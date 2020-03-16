@@ -203,8 +203,7 @@ class ExpandGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("expand_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
@@ -212,7 +211,6 @@ class ExpandGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("expand_times_tensor", this->Input("expand_times_tensor"));
     op->SetInput("ExpandTimes", this->Input("ExpandTimes"));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 

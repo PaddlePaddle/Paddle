@@ -57,6 +57,17 @@ class AssignOp : public framework::OperatorWithKernel {
   }
 };
 
+class AssignInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    auto out_var_name = ctx->Output("Out")[0];
+    auto input_type = ctx->GetType(ctx->Input("X")[0]);
+    auto input_data_type = ctx->GetDataType(ctx->Input("X")[0]);
+    ctx->SetType(out_var_name, input_type);
+    ctx->SetDataType(out_var_name, input_data_type);
+  }
+};
+
 class AssignKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
@@ -99,12 +110,10 @@ class AssignGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("assign");
     op->SetInput("X", this->OutputGrad("Out"));
     op->SetOutput("Out", this->InputGrad("X"));
-    return std::unique_ptr<T>(op);
   }
 };
 
@@ -114,19 +123,23 @@ DECLARE_INPLACE_OP_INFERER(AssignOpInplaceInferer, {"X", "Out"});
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OPERATOR(assign, ops::AssignOp,
                   ops::AssignGradMaker<paddle::framework::OpDesc>,
                   ops::AssignGradMaker<paddle::imperative::OpBase>,
-                  ops::AssignOpProtoMaker, ops::AssignOpInplaceInferer);
+                  ops::AssignOpProtoMaker, ops::AssignOpInplaceInferer,
+                  ops::AssignInferVarType);
 
 REGISTER_OP_CPU_KERNEL_FUNCTOR(assign, float, ops::AssignKernel, double,
                                ops::AssignKernel, int, ops::AssignKernel,
                                int64_t, ops::AssignKernel, bool,
+                               ops::AssignKernel, plat::float16,
                                ops::AssignKernel);
 
 #ifdef PADDLE_WITH_CUDA
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(assign, float, ops::AssignKernel, double,
                                 ops::AssignKernel, int, ops::AssignKernel,
                                 int64_t, ops::AssignKernel, bool,
+                                ops::AssignKernel, plat::float16,
                                 ops::AssignKernel);
 #endif

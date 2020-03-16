@@ -19,55 +19,109 @@ __all__ = [
 
 import os
 import paddle.fluid as fluid
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig
+from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig, DistributedMode
 
 
 class TrainerRuntimeConfig(object):
     def __init__(self):
-        self.max_merge_var_num = int(
-            os.getenv("FLAGS_communicator_max_merge_var_num", "20"))
-        self.send_queue_size = int(
-            os.getenv("FLAGS_communicator_send_queue_size", "20"))
-        self.independent_recv_thread = int(
-            os.getenv("FLAGS_communicator_independent_recv_thread", "1"))
-        self.min_send_grad_num_before_recv = int(
-            os.getenv("FLAGS_communicator_min_send_grad_num_before_recv", "20"))
-        self.thread_pool_size = int(
-            os.getenv("FLAGS_communicator_thread_pool_size", "5"))
-        self.send_wait_times = int(
-            os.getenv("FLAGS_communicator_send_wait_times", "5"))
-        self.fake_rpc = int(os.getenv("FLAGS_communicator_fake_rpc", "0"))
-        self.merge_sparse_grad = int(
-            os.getenv("FLAGS_communicator_merge_sparse_grad", "1"))
-        self.is_sgd_optimizer = int(
-            os.getenv("FLAGS_communicator_is_sgd_optimizer", "1"))
+        self.mode = None
+        num_threads = os.getenv("CPU_NUM", "1")
+
+        self.runtime_configs = {}
+        self.runtime_configs['communicator_max_merge_var_num'] = os.getenv(
+            "FLAGS_communicator_max_merge_var_num", num_threads)
+        self.runtime_configs['communicator_send_queue_size'] = os.getenv(
+            "FLAGS_communicator_send_queue_size", num_threads)
+        self.runtime_configs[
+            'communicator_independent_recv_thread'] = os.getenv(
+                "FLAGS_communicator_independent_recv_thread", "1")
+        self.runtime_configs[
+            'communicator_min_send_grad_num_before_recv'] = os.getenv(
+                "FLAGS_communicator_min_send_grad_num_before_recv", num_threads)
+        self.runtime_configs['communicator_thread_pool_size'] = os.getenv(
+            "FLAGS_communicator_thread_pool_size", "5")
+        self.runtime_configs['communicator_send_wait_times'] = os.getenv(
+            "FLAGS_communicator_send_wait_times", "5")
+        self.runtime_configs['communicator_is_sgd_optimizer'] = os.getenv(
+            "FLAGS_communicator_is_sgd_optimizer", "1")
 
         # not used 
-        self._rpc_deadline = int(os.getenv("FLAGS_rpc_deadline", "180000"))
-        self._rpc_retry_times = int(os.getenv("FLAGS_rpc_retry_times", "3"))
+        self.runtime_configs['rpc_deadline'] = os.getenv("FLAGS_rpc_deadline",
+                                                         "180000")
+        self.runtime_configs['rpc_retry_times'] = os.getenv(
+            "FLAGS_rpc_retry_times", "3")
 
     def get_communicator_flags(self):
-        _communicator_flags = dict()
-        _communicator_flags["max_merge_var_num"] = self.max_merge_var_num
-        _communicator_flags["send_queue_size"] = self.send_queue_size
-        _communicator_flags[
-            "independent_recv_thread"] = self.independent_recv_thread
-        _communicator_flags[
-            "min_send_grad_num_before_recv"] = self.min_send_grad_num_before_recv
-        _communicator_flags["thread_pool_size"] = self.thread_pool_size
-        _communicator_flags["send_wait_times"] = self.send_wait_times
-        _communicator_flags["fake_rpc"] = self.fake_rpc
-        _communicator_flags["merge_sparse_grad"] = self.merge_sparse_grad
-        _communicator_flags["is_sgd_optimizer"] = self.is_sgd_optimizer
-        return _communicator_flags
+        need_keys = []
+        num_threads = os.getenv("CPU_NUM", "1")
+        mode_str = ""
+        if self.mode is None or self.mode == DistributedMode.ASYNC:
+            need_keys = self.runtime_configs.keys()
+            mode_str = "async"
+        elif self.mode == DistributedMode.SYNC or self.mode == DistributedMode.HALF_ASYNC:
+            mode_str = "sync or half_async"
+            need_keys = [
+                'communicator_max_merge_var_num',
+                'communicator_send_wait_times', 'communicator_thread_pool_size',
+                'communicator_send_queue_size'
+            ]
+        elif self.mode == DistributedMode.GEO:
+            mode_str = "GEO"
+            need_keys = [
+                'communicator_thread_pool_size', 'communicator_send_wait_times'
+            ]
+        else:
+            raise ValueError("Unsupported Mode")
+
+        if self.mode == DistributedMode.SYNC or self.mode == DistributedMode.HALF_ASYNC:
+            max_merge_var_num = self.runtime_configs[
+                'communicator_max_merge_var_num']
+            send_queue_size = self.runtime_configs[
+                'communicator_send_queue_size']
+            if max_merge_var_num != num_threads:
+                print('WARNING: In {} mode, communicator_max_merge_var_num '
+                      'must be equal to CPU_NUM. But received, '
+                      'communicator_max_merge_var_num = {}, CPU_NUM = '
+                      '{}. communicator_max_merge_var_num will be fored to {}.'
+                      .format(mode_str, max_merge_var_num, num_threads,
+                              num_threads))
+                self.runtime_configs[
+                    'communicator_max_merge_var_num'] = num_threads
+            if send_queue_size != num_threads:
+                print('WARNING: In {} mode, communicator_send_queue_size '
+                      'must be equal to CPU_NUM. But received, '
+                      'communicator_send_queue_size = {}, CPU_NUM = '
+                      '{}. communicator_send_queue_size will be fored to {}.'
+                      .format(mode_str, send_queue_size, num_threads,
+                              num_threads))
+                self.runtime_configs[
+                    'communicator_send_queue_size'] = num_threads
+
+        return dict((key, str(self.runtime_configs[key])) for key in need_keys)
+
+    def display(self, configs):
+        raw0, raw1, length = 45, 5, 50
+        h_format = "{:^45s}{:<5s}\n"
+        l_format = "{:<45s}{:<5s}\n"
+
+        border = "".join(["="] * length)
+        line = "".join(["-"] * length)
+
+        draws = ""
+        draws += border + "\n"
+        draws += h_format.format("TrainerRuntimeConfig Overview", "Value")
+        draws += line + "\n"
+
+        for k, v in configs.items():
+            draws += l_format.format(k, v)
+
+        draws += border
+
+        _str = "\n{}\n".format(draws)
+        return _str
 
     def __repr__(self):
-        _str = "please check that TrainerRuntimeConfig is as expected:\n"
-        _communicator_flags = self.get_communicator_flags()
-        for key in _communicator_flags:
-            _str += "communicator_{}: {}\n".format(key,
-                                                   _communicator_flags[key])
-        return _str
+        return self.display(self.get_communicator_flags())
 
 
 class DistributedStrategy(object):
@@ -75,12 +129,31 @@ class DistributedStrategy(object):
         self._program_config = DistributeTranspilerConfig()
         self._trainer_runtime_config = TrainerRuntimeConfig()
         self._server_runtime_config = ServerRuntimeConfig()
+        num_threads = int(os.getenv("CPU_NUM", "1"))
+
         self._execute_strategy = fluid.ExecutionStrategy()
         self._build_strategy = fluid.BuildStrategy()
-        num_threads = int(os.getenv("CPU_NUM", "1"))
+
         self._execute_strategy.num_threads = num_threads
         if num_threads > 1:
             self._build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
+        self.debug_opt = None
+
+    def set_debug_opt(self, opt_info):
+        self.debug_opt = opt_info
+
+    def get_debug_opt(self):
+        opt_info = dict()
+        if self.debug_opt is not None and isinstance(self.debug_opt, dict):
+            opt_info["dump_slot"] = bool(self.debug_opt.get("dump_slot", 0))
+            opt_info["dump_converter"] = str(
+                self.debug_opt.get("dump_converter", ""))
+            opt_info["dump_fields"] = self.debug_opt.get("dump_fields", [])
+            opt_info["dump_file_num"] = self.debug_opt.get("dump_file_num", 16)
+            opt_info["dump_fields_path"] = self.debug_opt.get(
+                "dump_fields_path", "")
+            opt_info["dump_param"] = self.debug_opt.get("dump_param", [])
+        return opt_info
 
     def get_program_config(self):
         return self._program_config
@@ -100,6 +173,12 @@ class DistributedStrategy(object):
             raise TypeError(
                 "program_config only accept input type: dict or DistributeTranspilerConfig"
             )
+        self.check_program_config()
+
+    def check_program_config(self):
+        raise NotImplementedError(
+            "check_program_config must be implemented by derived class. You should use StrategyFactory to create DistributedStrategy."
+        )
 
     def get_trainer_runtime_config(self):
         return self._trainer_runtime_config
@@ -108,9 +187,9 @@ class DistributedStrategy(object):
         if isinstance(config, TrainerRuntimeConfig):
             self._trainer_runtime_config = config
         elif isinstance(config, dict):
-            for key in config:
-                if hasattr(self._trainer_runtime_config, key):
-                    setattr(self._trainer_runtime_config, key, config[key])
+            for key, Value in config.items():
+                if key in self._trainer_runtime_config.runtime_configs:
+                    self._trainer_runtime_config.runtime_configs[key] = Value
                 else:
                     raise ValueError(
                         "TrainerRuntimeConfig doesn't have key: {}".format(key))
@@ -118,6 +197,12 @@ class DistributedStrategy(object):
             raise TypeError(
                 "trainer_runtime_config only accept input type: dict or TrainerRuntimeConfig"
             )
+        self.check_trainer_runtime_config()
+
+    def check_trainer_runtime_config(self):
+        raise NotImplementedError(
+            "check_trainer_runtime_config must be implemented by derived class. You should use StrategyFactory to create DistributedStrategy."
+        )
 
     def get_server_runtime_config(self):
         return self._server_runtime_config
@@ -136,6 +221,12 @@ class DistributedStrategy(object):
             raise TypeError(
                 "server_runtime_config only accept input type: dict or ServerRuntimeConfig"
             )
+        self.check_server_runtime_config()
+
+    def check_server_runtime_config(self):
+        raise NotImplementedError(
+            "check_server_runtime_config must be implemented by derived class. You should use StrategyFactory to create DistributedStrategy."
+        )
 
     def get_execute_strategy(self):
         return self._execute_strategy
@@ -154,6 +245,12 @@ class DistributedStrategy(object):
             raise TypeError(
                 "execute_strategy only accept input type: dict or ExecutionStrategy"
             )
+        self.check_execute_strategy()
+
+    def check_execute_strategy(self):
+        raise NotImplementedError(
+            "check_execute_strategy must be implemented by derived class. You should use StrategyFactory to create DistributedStrategy."
+        )
 
     def get_build_strategy(self):
         return self._build_strategy
@@ -171,39 +268,120 @@ class DistributedStrategy(object):
         else:
             raise TypeError(
                 "build_strategy only accept input type: dict or BuildStrategy")
+        self.check_build_strategy()
+
+    def check_build_strategy(self):
+        raise NotImplementedError(
+            "check_build_strategy must be implemented by derived class. You should use StrategyFactory to create DistributedStrategy."
+        )
 
 
 class SyncStrategy(DistributedStrategy):
     def __init__(self):
         super(SyncStrategy, self).__init__()
-        self._program_config.sync_mode = True
-        self._program_config.runtime_split_send_recv = False
-        self._build_strategy.async_mode = False
+        self.check_program_config()
+        self.check_trainer_runtime_config()
+        self.check_server_runtime_config()
+        self.check_build_strategy()
+        self.check_execute_strategy()
+
+    def check_trainer_runtime_config(self):
+        self._trainer_runtime_config.mode = DistributedMode.SYNC
+
+    def check_program_config(self):
+        self._program_config.sync_mode = False
+        self._program_config.runtime_split_send_recv = True
+        self._program_config.half_async = True
+        self._program_config.completely_not_async = True
+
+    def check_server_runtime_config(self):
+        pass
+
+    def check_execute_strategy(self):
+        self._execute_strategy.use_thread_barrier = True
+
+    def check_build_strategy(self):
+        self._build_strategy.async_mode = True
 
 
 class AsyncStrategy(DistributedStrategy):
     def __init__(self):
         super(AsyncStrategy, self).__init__()
+        self.check_program_config()
+        self.check_trainer_runtime_config()
+        self.check_server_runtime_config()
+        self.check_build_strategy()
+        self.check_execute_strategy()
+
+    def check_trainer_runtime_config(self):
+        self._trainer_runtime_config.mode = DistributedMode.ASYNC
+
+    def check_program_config(self):
         self._program_config.sync_mode = False
         self._program_config.runtime_split_send_recv = True
+
+    def check_server_runtime_config(self):
+        pass
+
+    def check_execute_strategy(self):
+        pass
+
+    def check_build_strategy(self):
         self._build_strategy.async_mode = True
 
 
 class HalfAsyncStrategy(DistributedStrategy):
     def __init__(self):
         super(HalfAsyncStrategy, self).__init__()
+        self.check_program_config()
+        self.check_trainer_runtime_config()
+        self.check_server_runtime_config()
+        self.check_build_strategy()
+        self.check_execute_strategy()
+
+    def check_trainer_runtime_config(self):
+        self._trainer_runtime_config.mode = DistributedMode.HALF_ASYNC
+
+    def check_program_config(self):
         self._program_config.sync_mode = False
-        self._program_config.runtime_split_send_recv = False
-        self._build_strategy.async_mode = False
+        self._program_config.runtime_split_send_recv = True
+        self._program_config.half_async = True
+
+    def check_server_runtime_config(self):
+        pass
+
+    def check_execute_strategy(self):
+        self._execute_strategy.use_thread_barrier = True
+
+    def check_build_strategy(self):
+        self._build_strategy.async_mode = True
 
 
 class GeoStrategy(DistributedStrategy):
     def __init__(self, update_frequency=100):
         super(GeoStrategy, self).__init__()
+        self._program_config.geo_sgd_need_push_nums = update_frequency
+        self.check_program_config()
+        self.check_trainer_runtime_config()
+        self.check_server_runtime_config()
+        self.check_build_strategy()
+        self.check_execute_strategy()
+
+    def check_program_config(self):
         self._program_config.sync_mode = False
         self._program_config.runtime_split_send_recv = True
         self._program_config.geo_sgd_mode = True
-        self._program_config.geo_sgd_need_push_nums = update_frequency
+
+    def check_trainer_runtime_config(self):
+        self._trainer_runtime_config.mode = DistributedMode.GEO
+
+    def check_server_runtime_config(self):
+        pass
+
+    def check_execute_strategy(self):
+        pass
+
+    def check_build_strategy(self):
         self._build_strategy.async_mode = True
 
 

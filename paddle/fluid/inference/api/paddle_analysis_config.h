@@ -77,6 +77,14 @@ struct AnalysisConfig {
    */
   const std::string& params_file() const { return params_file_; }
 
+  // Padding related.
+  /** Turn off Padding.
+ */
+  void DisableFCPadding();
+  /** A bool state telling whether padding is turned on.
+   */
+  bool use_fc_padding() const { return use_fc_padding_; }
+
   // GPU related.
 
   /**
@@ -152,33 +160,23 @@ struct AnalysisConfig {
    * @param min_subgrpah_size the minimum TensorRT subgraph size needed, if a
    * subgraph is less than this, it will not transfer to TensorRT engine.
    */
-  void EnableTensorRtEngine(int workspace_size = 1 << 20,
-                            int max_batch_size = 1, int min_subgraph_size = 3,
-                            Precision precision = Precision::kFloat32,
-                            bool use_static = false,
-                            bool use_calib_mode = true);
+  void EnableTensorRtEngine(
+      int workspace_size = 1 << 20, int max_batch_size = 1,
+      int min_subgraph_size = 3, Precision precision = Precision::kFloat32,
+      bool use_static = false, bool use_calib_mode = true,
+      std::map<std::string, std::vector<int>> min_input_shape = {},
+      std::map<std::string, std::vector<int>> max_input_shape = {},
+      std::map<std::string, std::vector<int>> optim_input_shape = {});
   /** A boolean state telling whether the TensorRT engine is used.
    */
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
   /**
-   *  \brief Turn on the usage of Anakin sub-graph engine.
+   *  \brief Turn on the usage of Lite sub-graph engine.
    */
-  void EnableAnakinEngine(
-      int max_batch_size = 1,
-      std::map<std::string, std::vector<int>> max_input_shape = {},
-      int min_subgraph_size = 6, Precision precision = Precision::kFloat32,
-      bool auto_config_layout = false,
-      std::vector<std::string> passes_filter = {},
-      std::vector<std::string> ops_filter = {});
-
   void EnableLiteEngine(
       AnalysisConfig::Precision precision_mode = Precision::kFloat32,
       const std::vector<std::string>& passes_filter = {},
       const std::vector<std::string>& ops_filter = {});
-
-  /** A boolean state indicating whether the Anakin sub-graph engine is used.
-  */
-  bool anakin_engine_enabled() const { return use_anakin_; }
 
   /** A boolean state indicating whether the Lite sub-graph engine is used.
   */
@@ -305,6 +303,9 @@ struct AnalysisConfig {
 
   bool use_cudnn_{false};
 
+  // Padding related
+  bool use_fc_padding_{true};
+
   // TensorRT related.
   bool use_tensorrt_{false};
   // For workspace_size, refer it from here:
@@ -349,15 +350,9 @@ struct AnalysisConfig {
   std::string serialized_info_cache_;
 
   mutable std::unique_ptr<PassStrategy> pass_builder_;
-
-  bool use_anakin_{false};
-  int anakin_max_batchsize_;
-  int anakin_min_subgraph_size_{6};
-  std::map<std::string, std::vector<int>> anakin_max_input_shape_;
-  Precision anakin_precision_mode_;
-  bool anakin_auto_config_layout_{false};
-  std::vector<std::string> anakin_passes_filter_;
-  std::vector<std::string> anakin_ops_filter_;
+  std::map<std::string, std::vector<int>> min_input_shape_;
+  std::map<std::string, std::vector<int>> max_input_shape_;
+  std::map<std::string, std::vector<int>> optim_input_shape_;
 
   bool use_lite_{false};
   std::vector<std::string> lite_passes_filter_;

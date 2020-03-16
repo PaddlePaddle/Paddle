@@ -82,7 +82,7 @@ class CropTensorOp : public framework::OperatorWithKernel {
     }
     PADDLE_ENFORCE_EQ(int64_t(shape.size()), x_dim.size(),
                       "Attr(shape)'size of Op(crop_tensor) should be equal to "
-                      "dimention size of input tensor.");
+                      "dimension size of input tensor.");
     std::vector<int64_t> out_shape(shape.size(), -1);
     for (size_t i = 0; i < shape.size(); ++i) {
       if (shape[i] > 0) {
@@ -279,8 +279,7 @@ class CropTensorGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("crop_tensor_grad");
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetInput("X", this->Input("X"));
@@ -292,7 +291,6 @@ class CropTensorGradOpMaker : public framework::SingleGradOpMaker<T> {
     }
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 

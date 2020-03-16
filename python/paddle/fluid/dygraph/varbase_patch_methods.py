@@ -27,7 +27,7 @@ def monkey_patch_varbase():
     def set_value(self, value):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Set a new value for this Variable.
 
@@ -76,7 +76,7 @@ def monkey_patch_varbase():
     def backward(self, backward_strategy=None):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Run backward of current Graph which starts from current Variable
 
@@ -116,13 +116,13 @@ def monkey_patch_varbase():
             self._run_backward(backward_strategy, framework._dygraph_tracer())
         else:
             raise ValueError(
-                "Variable.backward() is only avaliable in DyGraph mode")
+                "Variable.backward() is only available in DyGraph mode")
 
     @framework.dygraph_only
     def gradient(self):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Get the Gradient of Current Variable
 
@@ -151,11 +151,8 @@ def monkey_patch_varbase():
 
         """
         if self._grad_ivar() is None:
-            raise ValueError(
-                "%s has no grad, Please set Variable.stop_gradient=False, or "
-                "check if this is the first and only variable need grad, if so, please set its pre-Variable's "
-                "stop_gradient=False, to make sure it has gradient " %
-                self.name)
+            return None
+
         new_ivar = self._grad_ivar()._copy_to(core.CPUPlace(), True)
         if self._grad_ivar().type == core.VarDesc.VarType.SELECTED_ROWS:
             return (np.array(new_ivar.value().get_selected_rows().get_tensor()),

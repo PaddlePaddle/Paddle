@@ -75,6 +75,11 @@ class GenerateMaskLabelsOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("MaskRois", {-1, 4});
     ctx->SetOutputDim("RoiHasMaskInt32", {-1, 1});
     ctx->SetOutputDim("MaskInt32", {-1, num_classes * resolution * resolution});
+    if (!ctx->IsRuntime()) {
+      ctx->SetLoDLevel("MaskRois", ctx->GetLoDLevel("Rois"));
+      ctx->SetLoDLevel("RoiHasMaskInt32", ctx->GetLoDLevel("Rois"));
+      ctx->SetLoDLevel("MaskInt32", ctx->GetLoDLevel("Rois"));
+    }
   }
 
  protected:
@@ -403,7 +408,7 @@ class GenerateMaskLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
         "each element is a bounding box with (xmin, ymin, xmax, ymax) format.");
     AddInput("LabelsInt32",
              "(LoDTensor), This intput is a 2D LoDTensor with shape [R, 1], "
-             "each element repersents a class label of a roi");
+             "each element represents a class label of a roi");
     AddOutput(
         "MaskRois",
         "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4]. "
@@ -411,7 +416,7 @@ class GenerateMaskLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
         "each element is a bounding box with [xmin, ymin, xmax, ymax] format.");
     AddOutput("RoiHasMaskInt32",
               "(LoDTensor), This output is a 2D LoDTensor with shape [P, 1], "
-              "each element repersents the output mask rois index with regard "
+              "each element represents the output mask rois index with regard "
               "to input rois");
     AddOutput("MaskInt32",
               "(LoDTensor), This output is a 4D LoDTensor with shape [P, Q], "
