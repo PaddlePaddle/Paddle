@@ -26,7 +26,10 @@ namespace operators {
 
 class EnqueueOp : public framework::OperatorBase {
  public:
-  using framework::OperatorBase::OperatorBase;
+  EnqueueOp(const std::string& type, const framework::VariableNameMap& inputs,
+            const framework::VariableNameMap& outputs,
+            const framework::AttributeMap& attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
 
  private:
   void RunImpl(const framework::Scope& scope,
@@ -51,7 +54,7 @@ class EnqueueOp : public framework::OperatorBase {
 };
 
 class EnqueueOpMaker : public framework::OpProtoAndCheckerMaker {
- protected:
+ public:
   void Make() override {
     AddInput("blocking_queue",
              "Name of the `LoDTensorBlockingQueueHolder` variable");
@@ -67,4 +70,4 @@ class EnqueueOpMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = ::paddle::operators;
 
-REGISTER_FILE_READER_OPERATOR(enqueue, ops::EnqueueOp, ops::EnqueueOpMaker);
+REGISTER_OPERATOR(enqueue, ops::EnqueueOp, ops::EnqueueOpMaker);

@@ -4307,7 +4307,16 @@ class ModelParallelOptimizer(object):
                     continue
                 prev_device = prev_op.attr(op_device)
                 if prev_device != cur_device:
-                    print("insert op for var %s" % var_name)
+                    print("generate and insert queue for var %s" % var_name)
+                    queue_name = var_name + "_blocking_queue"
+                    block.append_op(
+                        type='gen_queue', attrs={'queue_names': [queue_name]})
+                    block.append_op(
+                        type='enqueue',
+                        inputs={
+                            'queue_name': queue_name,
+                            'tensor_name': var_name
+                        })
 
         return devices
 
