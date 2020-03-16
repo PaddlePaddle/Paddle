@@ -216,11 +216,9 @@ set(TEST_OPS_WITH_GC
   test_concat_op
   test_elementwise_add_op
   test_elementwise_sub_op
-  test_fill_constant_batch_size_like_op
   test_fill_zeros_like2_op
   test_gather_op
   test_gather_nd_op
-  test_gaussian_random_batch_size_like_op
   test_linear_chain_crf_op
   test_lod_reset_op
   test_lookup_table_op
@@ -238,8 +236,7 @@ set(TEST_OPS_WITH_GC
   test_sequence_slice_op
   test_slice_op
   test_space_to_depth_op
-  test_squared_l2_distance_op
-  test_uniform_random_batch_size_like_op)
+  test_squared_l2_distance_op)
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
