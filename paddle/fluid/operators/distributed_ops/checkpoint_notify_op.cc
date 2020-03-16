@@ -39,6 +39,7 @@ class CheckpointNotifyOp : public framework::OperatorBase {
         Attr<std::vector<std::string>>("endpoints");
     std::string dirname = Attr<std::string>("dirname");
     std::string varname = Attr<std::string>("varname");
+    auto is_slice = Attr<bool>("is_slice");
 
     std::vector<std::string> slice_varnames =
         Attr<std::vector<std::string>>("slice_varnames");
@@ -50,8 +51,14 @@ class CheckpointNotifyOp : public framework::OperatorBase {
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
 
     for (size_t i = 0; i < epmap.size(); i++) {
-      auto save_path =
-          string::Sprintf("%s/%s/%s", dirname, varname, slice_varnames[i]);
+      std::string save_path = "";
+      if (is_slice) {
+        save_path =
+            string::Sprintf("%s/%s/%s", dirname, varname, slice_varnames[i]);
+      } else {
+        save_path = string::Sprintf("%s/%s", dirname, varname);
+      }
+
       rpc_client->AsyncCheckpointNotify(epmap[i], save_path,
                                         remote_varnames[i]);
 
@@ -76,6 +83,9 @@ class CheckpointNotifyOpMaker : public framework::OpProtoAndCheckerMaker {
         "slice_varnames", "(string vector) the slice vars need to be saved");
     AddAttr<std::vector<std::string>>(
         "remote_varnames", "(string vector) the slice vars need to be saved");
+    AddAttr<bool>(
+        "is_slice",
+        "is_slice=True means the var has been slice by parameter server");
     AddComment(R"DOC(
 CheckpointNotify operator
 

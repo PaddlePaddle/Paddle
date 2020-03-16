@@ -519,7 +519,8 @@ def _save_distributed_persistables(executor, dirname, main_program):
                     "remote_varnames": remote_varnames,
                     "slice_varnames": slice_varnames,
                     "dirname": dirname,
-                    "endpoints": endpoints
+                    "endpoints": endpoints,
+                    "is_slice": is_slice
                 })
 
         executor.run(prog)
@@ -566,17 +567,12 @@ def _save_distributed_persistables(executor, dirname, main_program):
             "'_save_distributed_persistables' just be designed for distributed training."
         )
 
-    optimizer_params_map = main_program._parameters_on_pservers.get_distributed_vars_by_vtypes(
-        ["Optimizer"], groupby=True)
-
     remote_params_map = main_program._parameters_on_pservers.get_distributed_vars_by_vtypes(
-        ["RemotePrefetch"], groupby=True)
+        ["Optimizer", "RemotePrefetch"], groupby=True)
 
     exclude_var_names = []
     if remote_params_map:
         exclude_var_names.extend(remote_params_map.keys())
-    if optimizer_params_map:
-        exclude_var_names.extend(optimizer_params_map.keys())
 
     if main_program._distributed_lookup_table:
         if isinstance(main_program._distributed_lookup_table, list):
@@ -594,8 +590,6 @@ def _save_distributed_persistables(executor, dirname, main_program):
             __save_params_on_pserver(executor, dirname, remote_params_map)
         else:
             __save_remote_params(executor, dirname, remote_params_map)
-
-        __save_remote_params(executor, dirname, optimizer_params_map)
 
         if main_program._distributed_lookup_table:
             __save_distributed_lookup_tables(
