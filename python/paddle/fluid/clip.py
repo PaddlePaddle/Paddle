@@ -523,28 +523,32 @@ def append_gradient_clip_ops(param_grads):
             clip_attr._process_context(context=context, param=p, grad=g)
 
     res = []
+    param_new_grad_dict = dict()
     for p, g in param_grads:
         if g is None:
             continue
         with p.block.program._optimized_guard(
             [p, g]), framework.name_scope('append_graident_clip_@CLIP'):
-            res.append(clip_attr._create_operators(param=p, grad=g))
+            param, new_grad = clip_attr._create_operators(param=p, grad=g)
+            param_new_grad_dict[param.name] = new_grad.name
+            res.append([param, new_grad])
 
     # change wrong mapping relation between param & grad in clip op
     clip_flag = '@CLIP'
+    block_id_list = []
     for p, g in param_grads:
         if g is None:
             continue
+        block_id = p.block.idx
+        if block_id in block_id_list:
+            continue
+        block_id_list.append(block_id)
         for op in p.block.program.global_block().ops:
             if 'op_namescope' in op.all_attrs() and clip_flag in op.attr(
                     "op_namescope"):
                 if op.attr('op_role_var'):
                     param_name = op.attr('op_role_var')[0]
-                    index = 0
-                    for i in range(len(res)):
-                        if res[i][0].name == param_name:
-                            index = i
-                    correct_p_g = [param_name, res[index][1].name]
+                    correct_p_g = [param_name, param_new_grad_dict[param_name]]
                     op._set_attr('op_role_var', correct_p_g)
     return res
 

@@ -316,8 +316,9 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         dst_memory_p = handler.AcquireDstMemoryFromResidualDataMemory(
             user_residual_memory_p, to_void_cast<T>(output_data), pipeline);
       } else {
-        output->ShareDataWith(*residual_param);
-        auto output_data = output->mutable_data<T>(ctx.GetPlace());
+        auto output_data = output->mutable_data<T>(
+            ctx.GetPlace(), residual_param->memory_size());
+        framework::TensorCopy(*residual_param, residual_param->place(), output);
         dst_memory_p =
             handler.AcquireDstMemoryFromPrimitive(to_void_cast<T>(output_data));
       }
@@ -610,7 +611,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
               ctx, output, residual_param, user_residual_md, handler,
               &pipeline);
         } else {
-          output->ShareDataWith(*residual_param);
+          framework::TensorCopy(*residual_param, residual_param->place(),
+                                output);
           dst_memory_p = platform::SetDstMemory<T_out>(ctx, output, handler);
         }
         need_s8_to_u8 =
@@ -681,7 +683,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
       if (fuse_residual_conn) {
         auto residual_param = ctx.Input<Tensor>("ResidualData");
-        output->ShareDataWith(*residual_param);
+        framework::TensorCopy(*residual_param, residual_param->place(), output);
         need_s8_to_u8 =
             (platform::MKLDNNGetDataType<T_out>() == memory::data_type::s8) &&
             unsigned_output;

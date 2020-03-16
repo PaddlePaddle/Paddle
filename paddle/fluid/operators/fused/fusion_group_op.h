@@ -22,6 +22,20 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+static void MutableMultiTypeData(
+    std::vector<paddle::framework::LoDTensor*>* var,
+    const std::vector<std::string>& data_type, const platform::Place& place) {
+  for (size_t i = 0; i < var->size(); i++) {
+    if (data_type[i] == "float") {
+      (*var)[i]->mutable_data<float>(place);
+    } else if (data_type[i] == "double") {
+      (*var)[i]->mutable_data<double>(place);
+    } else if (data_type[i] == "::paddle::platform::float16") {
+      (*var)[i]->mutable_data<paddle::platform::float16>(place);
+    }
+  }
+}
+
 template <typename DeviceContext, typename T>
 class FusionGroupKernel : public framework::OpKernel<T> {
  public:
@@ -29,14 +43,15 @@ class FusionGroupKernel : public framework::OpKernel<T> {
     auto ins = ctx.MultiInput<framework::LoDTensor>("Inputs");
     auto outs = ctx.MultiOutput<framework::LoDTensor>("Outs");
     int type = ctx.Attr<int>("type");
+    auto outs_type = ctx.Attr<std::vector<std::string>>("outs_data_type");
+    auto inputs_type = ctx.Attr<std::vector<std::string>>("inputs_data_type");
 
     size_t num_ins = ins.size();
     size_t num_outs = outs.size();
 
     auto place = ctx.GetPlace();
-    for (size_t i = 0; i < num_outs; ++i) {
-      outs[i]->mutable_data<T>(place);
-    }
+
+    MutableMultiTypeData(&outs, outs_type, place);
 
     std::string func_name = ctx.Attr<std::string>("func_name");
     platform::DeviceCode* dev_code =
@@ -47,13 +62,25 @@ class FusionGroupKernel : public framework::OpKernel<T> {
       size_t n = ins[0]->numel();
       std::vector<void*> args;
       args.push_back(&n);
-      std::vector<const T*> ptrs(num_ins + num_outs);
+      std::vector<const void*> ptrs(num_ins + num_outs);
       for (size_t i = 0; i < num_ins; ++i) {
-        ptrs[i] = ins[i]->data<T>();
+        if (inputs_type[i] == "::paddle::platform::float16") {
+          ptrs[i] = ins[i]->data<paddle::platform::float16>();
+        } else if (inputs_type[i] == "double") {
+          ptrs[i] = ins[i]->data<double>();
+        } else if (inputs_type[i] == "float") {
+          ptrs[i] = ins[i]->data<float>();
+        }
         args.push_back(&ptrs[i]);
       }
       for (size_t j = 0; j < num_outs; ++j) {
-        ptrs[num_ins + j] = outs[j]->data<T>();
+        if (outs_type[j] == "::paddle::platform::float16") {
+          ptrs[num_ins + j] = outs[j]->data<paddle::platform::float16>();
+        } else if (outs_type[j] == "double") {
+          ptrs[num_ins + j] = outs[j]->data<double>();
+        } else if (outs_type[j] == "float") {
+          ptrs[num_ins + j] = outs[j]->data<float>();
+        }
         args.push_back(&ptrs[num_ins + j]);
       }
       dev_code->Launch(n, &args);

@@ -45,8 +45,9 @@ bool StaticGraphInferNoNeedBufferVarsContext::HasOutput(
 }
 
 DyGraphInferNoNeedBufferVarsContext::DyGraphInferNoNeedBufferVarsContext(
-    const imperative::NameVarBaseMap &inputs,
-    const imperative::NameVarBaseMap &outputs, const AttributeMap &attrs)
+    const imperative::NameVarMap<imperative::VariableWrapper> &inputs,
+    const imperative::NameVarMap<imperative::VariableWrapper> &outputs,
+    const AttributeMap &attrs)
     : InferNoNeedBufferVarsContext(attrs), inputs_(inputs), outputs_(outputs) {}
 
 bool DyGraphInferNoNeedBufferVarsContext::HasOutput(
