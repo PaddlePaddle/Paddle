@@ -144,7 +144,6 @@ def main():
             momentum=.9,
             parameter_list=model.parameters())
         inputs = [Input([None, 1, 28, 28], 'float32', name='image')]
-        #inputs = {'inputs': Input([None, 1, 28, 28], 'float32', name='image')}
         labels = [Input([None, 1], 'int64', name='label')]
         model.prepare(optim, CrossEntropy(), inputs, labels)
         if FLAGS.resume is not None:

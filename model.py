@@ -200,18 +200,15 @@ class StaticGraphAdapter(object):
         if optim_state is None:
             return
 
-        assert self._executor
-        self._load_optimizer(optim_state)
+        self._load_optimizer(optim_state, executor)
 
-    def _load_optimizer(self, state):
+    def _load_optimizer(self, state, executor):
         prog = self._progs.get('train', None)
         optim = list(filter(is_belong_to_optimizer, prog.list_vars()))
         if not optim:
             return
 
-        fluid.core._create_loaded_parameter(optim,
-                                            global_scope(),
-                                            self._executor._default_executor)
+        fluid.core._create_loaded_parameter(optim, global_scope(), executor)
 
         converted_state = dict(state)
         for var in optim:
@@ -288,8 +285,10 @@ class StaticGraphAdapter(object):
 
         t.set(ndarray, place)
 
-    def _run(self, inputs, labels=None, device='CPU'):
-        compiled_prog = self.prepare()
+    def _run(self, inputs, labels=None):
+        compiled_prog = self._compiled_progs.get(self.mode, None)
+        assert compiled_prog, \
+            "Model is not ready, please call `model.prepare()` first"
 
         inputs = to_list(inputs)
         if labels is not None:
@@ -309,9 +308,7 @@ class StaticGraphAdapter(object):
                 feed[v.name] = labels[idx]
 
         endpoints = self._endpoints[self.mode]
-        fetch_list = endpoints['output']
-        if 'loss' in endpoints:
-            fetch_list = endpoints['output'] + endpoints['loss']
+        fetch_list = endpoints['output'] + endpoints['loss']
         num_output = len(endpoints['output'])
         out = self._executor.run(compiled_prog,
                                  feed=feed,
@@ -321,64 +318,58 @@ class StaticGraphAdapter(object):
         else:
             return out[:num_output], out[num_output:]
 
-    def _get_loss(self, outputs):
-        assert self.model._loss_function
-        label_vars = [k.forward() for k in to_list(self.model._labels)]
-        self._label_vars[self.mode] = label_vars
-        losses = self.model._loss_function(outputs, label_vars)
-        return losses
+    def prepare(self):
+        modes = ['train', 'eval', 'test']
+        for mode in modes:
+            self._make_program(mode)
+            self._compile_and_initialize(self._progs[mode], mode)
 
-    def _make_program(self, inputs):
+    def _make_program(self, mode):
+        prog = self._progs.get(mode, None)
+        if prog is not None:
+            return
+
         prog = self._orig_prog.clone()
-        # change inputs to the same var in cloned program
-        inputs = fluid.layers.utils.map_structure(
-            lambda var: prog.global_block().var(var.name), inputs)
         # NOTE: When defining learning rate scheduling in static-graph, ops to
         # increase the global step var and calculate learning rate would be
         # prepended into _orig_prog. test program maked by `_orig_prog.clone`
         # also would include these ops. Thus must prune these ops in test
         # program, otherwise the global step would be changed in test.
-        if self.mode != 'train':
+        if mode != 'train':
             for op in list(prog.global_block().ops):
                 prog.global_block()._remove_op(0)
-        if self.mode == 'train' and self.model._optimizer._learning_rate_map:
+        if mode == 'train' and self.model._optimizer \
+            and self.model._optimizer._learning_rate_map:
             # HACK workaround learning rate map issue
             lr_var = self.model._optimizer._learning_rate_map[self._orig_prog]
             self.model._optimizer._learning_rate_map[prog] = lr_var
         losses = []
         with fluid.program_guard(prog, self._startup_prog):
+            if isinstance(self.model._inputs, dict):
+                ins = [self.model._inputs[n] \
+                    for n in extract_args(self.model.forward) if n != 'self']
+            else:
+                ins = self.model._inputs
+            lbls = self.model._labels if self.model._labels else []
+            inputs = [k.forward() for k in to_list(ins)]
+            labels = [k.forward() for k in to_list(lbls)]
             outputs = to_list(self.model.forward(*inputs))
-            if self.mode != 'test':
-                losses = self._get_loss(outputs)
-                if self.mode == 'train' and self.model._optimizer:
+            if mode != 'test':
+                if self.model._loss_function:
+                    losses = self.model._loss_function(outputs, labels)
+                if mode == 'train' and self.model._optimizer:
                     self._loss_endpoint = fluid.layers.sum(losses)
                     self.model._optimizer.minimize(self._loss_endpoint)
-        if self.mode != 'train':  # clone again to put it in test mode
+        if mode != 'train':  # clone again to put it in test mode
             prog = prog.clone(for_test=True)
-        self._progs[self.mode] = prog
-        self._endpoints[self.mode] = {
-            "output": outputs,
-            "loss": losses
-        } if self.model._loss_function else {
-            'output': outputs
-        }
 
-    def prepare(self):
-        compiled_prog = self._compiled_progs.get(self.mode, None)
-        if compiled_prog is not None:
-            return compiled_prog
+        self._input_vars[mode] = inputs
+        self._label_vars[mode] = labels
+        self._progs[mode] = prog
+        self._endpoints[mode] = {"output": outputs, "loss": losses}
 
-        if isinstance(self.model._inputs, dict):
-            ins = [self.model._inputs[n] \
-                for n in extract_args(self.model.forward) if n != 'self']
-        else:
-            ins = self.model._inputs
-        self._input_vars[self.mode] = [k.forward() for k in to_list(ins)]
-        self._make_program(self._input_vars[self.mode])
-        return self._compile_and_initialize(self._progs[self.mode])
-
-    def _compile_and_initialize(self, prog):
-        compiled_prog = self._compiled_progs.get(self.mode, None)
+    def _compile_and_initialize(self, prog, mode):
+        compiled_prog = self._compiled_progs.get(mode, None)
         if compiled_prog is not None:
             return compiled_prog
 
@@ -409,23 +400,11 @@ class StaticGraphAdapter(object):
         compiled_prog = fluid.CompiledProgram(prog)
         if len(places) > 1:
             loss_name = None
-            if self.mode == 'train' and self._loss_endpoint is not None:
+            if mode == 'train' and self._loss_endpoint is not None:
                 loss_name = self._loss_endpoint.name
-
-            share_vars_from = None
-            if self.mode == 'eval' and 'train' in self._compiled_progs:
-                share_vars_from = self._compiled_progs['train']
-            # HACK invalidate eval program if is compiled before train program
-            # quite hackish, OTOH, it is generally uncommon that the eval
-            # program will be run before the train program
-            if self.mode == 'train' and 'eval' in self._compiled_progs:
-                del self._compiled_progs['eval']
             compiled_prog = compiled_prog.with_data_parallel(
-                loss_name=loss_name,
-                places=places,
-                share_vars_from=share_vars_from)
-        self._compiled_progs[self.mode] = compiled_prog
-        return compiled_prog
+                loss_name=loss_name, places=places)
+        self._compiled_progs[mode] = compiled_prog
 
 
 class DynamicGraphAdapter(object):
@@ -451,7 +430,7 @@ class DynamicGraphAdapter(object):
         if labels is not None:
             labels = to_list(labels)
         outputs = self.model.forward(*[to_variable(x) for x in inputs])
-        losses = self._get_loss(outputs, labels)
+        losses = self.model._loss_function(outputs, labels)
         final_loss = fluid.layers.sum(losses)
         final_loss.backward()
         self.model._optimizer.minimize(final_loss)
@@ -466,7 +445,14 @@ class DynamicGraphAdapter(object):
         if labels is not None:
             labels = to_list(labels)
         outputs = self.model.forward(*[to_variable(x) for x in inputs])
-        losses = self._get_loss(outputs, labels)
+
+        if self.model._loss_function:
+            losses = self.model._loss_function(outputs, labels)
+        else:
+            losses = []
+
+        # To be consistent with static graph
+        # return empty loss if loss_function is None
         return [to_numpy(o) for o in to_list(outputs)], \
             [to_numpy(l) for l in losses]
 
@@ -476,10 +462,6 @@ class DynamicGraphAdapter(object):
         inputs = [to_variable(x) for x in to_list(inputs)]
         outputs = self.model.forward(*inputs)
         return [to_numpy(o) for o in to_list(outputs)]
-
-    def _get_loss(self, outputs, labels):
-        assert self.model._loss_function
-        return self.model._loss_function(outputs, labels)
 
     def parameters(self, *args, **kwargs):
         return super(Model, self.model).parameters(*args, **kwargs)
@@ -598,11 +580,10 @@ class Model(fluid.dygraph.Layer):
                 and should be a Loss instance. It can be None when there is
                 no loss.
             inputs (Input|list|dict|None): inputs, entry points of network,
-            inputs (Input|list|dict|None): inputs, entry points of network,
                 could be a Input layer, or lits of Input layers,
                 or dict (name: Input), or None. For static graph,
                 inputs must be set. For dynamic graph, it could be None.
-            labels (Input|list|dict|None): labels, entry points of network,
+            labels (Input|list|None): labels, entry points of network,
                 could be a Input layer or lits of Input layers, or None.
                 For static graph, if set loss_function in Model.prepare(), it
                 must be set. Otherwise, it could be None.
