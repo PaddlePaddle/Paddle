@@ -65,6 +65,59 @@ def nested_if_else(x_v):
     return y
 
 
+def nested_if_else_2(x):
+    x = fluid.dygraph.to_variable(x)
+    y = fluid.layers.reshape(x, [-1, 1])
+    b = 2
+    if b < 1:
+        # var `z` is not visible for outer scope
+        z = y
+
+    if fluid.layers.shape(x)[0] < 1:
+        if fluid.layers.shape(y)[0] > 1:
+            res = fluid.layers.fill_constant(
+                value=2, shape=x.shape, dtype="int32")
+            # `z` is a new var here.
+            z = y + 1
+        else:
+            res = fluid.layers.fill_constant(
+                value=3, shape=x.shape, dtype="int32")
+    else:
+        res = x
+    return res
+
+
+def nested_if_else_3(x):
+    x = fluid.dygraph.to_variable(x)
+    y = fluid.layers.reshape(x, [-1, 1])
+    b = 2
+    # var `z` is visible for func.body
+    if b < 1:
+        z = y
+    else:
+        z = x
+
+    if b < 1:
+        res = x
+        # var `out` is only visible for current `if`
+        if b > 1:
+            out = x + 1
+        else:
+            out = x - 1
+    else:
+        if fluid.layers.shape(y)[0] > 1:
+            res = fluid.layers.fill_constant(
+                value=2, shape=x.shape, dtype="int32")
+            # `z` is created in above code block.
+            z = y + 1
+        else:
+            res = fluid.layers.fill_constant(
+                value=3, shape=x.shape, dtype="int32")
+            # `out` is a new var.
+            out = x + 1
+    return res
+
+
 class NetWithControlFlowIf(fluid.dygraph.Layer):
     def __init__(self, hidden_dim=16):
         super(NetWithControlFlowIf, self).__init__()
