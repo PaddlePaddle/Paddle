@@ -38,13 +38,17 @@ class InplaceABNOp : public paddle::operators::BatchNormOp {
       bn_param_type = framework::proto::VarType::FP64;
     }
     PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Scale")->type(),
-                      "Scale input should be of float type");
+                      platform::errors::InvalidArgument(
+                          "Scale input should be of float type"));
     PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Bias")->type(),
-                      "Bias input should be of float type");
+                      platform::errors::InvalidArgument(
+                          "Bias input should be of float type"));
     PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Mean")->type(),
-                      "Mean input should be of float type");
+                      platform::errors::InvalidArgument(
+                          "Mean input should be of float type"));
     PADDLE_ENFORCE_EQ(bn_param_type, ctx.Input<Tensor>("Variance")->type(),
-                      "Variance input should be of float type");
+                      platform::errors::InvalidArgument(
+                          "Variance input should be of float type"));
 
     framework::LibraryType library = framework::LibraryType::kPlain;
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
@@ -64,7 +68,8 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
     const auto* var = ctx.InputVar(framework::GradVarName("Y"));
     auto input_data_type = ctx.Input<Tensor>("Y")->type();
     if (var == nullptr) {
-      PADDLE_THROW("can't find Y@GRAD");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "can't find gradient variable of Y"));
     }
     const Tensor* t = nullptr;
     if (var->IsType<Tensor>()) {
@@ -73,7 +78,8 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
       t = &var->Get<LoDTensor>();
     }
     if (t == nullptr) {
-      PADDLE_THROW("can't find Y@GRAD");
+      PADDLE_THROW(
+          platform::errors::InvalidArgument("gradient variable of Y is empty"));
     }
     framework::LibraryType library = framework::LibraryType::kPlain;
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;

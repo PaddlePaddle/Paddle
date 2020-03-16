@@ -515,7 +515,8 @@ framework::OpKernelType BatchNormGradOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   const auto *var = ctx.InputVar(framework::GradVarName("Y"));
   if (var == nullptr) {
-    PADDLE_THROW(platform::errors::InvalidArgument("can't find Y@GRAD"));
+    PADDLE_THROW(
+        platform::errors::InvalidArgument("can't find gradient variable of Y"));
   }
   const Tensor *t = nullptr;
   if (var->IsType<Tensor>()) {
@@ -524,7 +525,8 @@ framework::OpKernelType BatchNormGradOp::GetExpectedKernelType(
     t = &var->Get<LoDTensor>();
   }
   if (t == nullptr) {
-    PADDLE_THROW(platform::errors::InvalidArgument("can't find Y@GRAD"));
+    PADDLE_THROW(
+        platform::errors::InvalidArgument("gradient variable of Y is empty"));
   }
 
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
