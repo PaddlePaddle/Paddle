@@ -26,14 +26,16 @@ import astor
 import gast
 
 from paddle.fluid import unique_name
+from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import BreakContinueTransformer
+from paddle.fluid.dygraph.dygraph_to_static.for_to_while_transformer import ForToWhileTransformer
+from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import IfElseTransformer
+from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import LoopTransformer
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, NodeVarType
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_api, is_dygraph_api, is_to_variable
 from paddle.fluid.dygraph.dygraph_to_static.utils import to_assign_node, to_static_ast, update_args_of_func
 from paddle.fluid.dygraph.dygraph_to_static.utils import dygraph_class_to_static_api, create_api_shape_node
-from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import LoopTransformer
-from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import IfElseTransformer
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, NodeVarType
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 
 __all__ = ['DygraphToStaticAst', 'convert_to_static']
 
@@ -67,10 +69,16 @@ class DygraphToStaticAst(gast.NodeTransformer):
         basic_api_trans.ast_visit()
         self.feed_name_to_arg_name = basic_api_trans.get_feed_name_to_arg_id()
 
+        # TODO: currently we transform all `for in range` loop to while to make
+        # loop and break/continuer transformer easier, where we guarantee
+        # correctness but may not be user-friendly. TODO thing is finding a
+        # better condition to transform from `for` to `while`
+        ForToWhileTransformer(node_wrapper).transform()
+        BreakContinueTransformer(node_wrapper).transform()
+        LoopTransformer(node_wrapper).transform()
+
         # Transform all if/else statement of Dygraph into Static Graph.
         IfElseTransformer(node_wrapper).transform()
-
-        LoopTransformer(node_wrapper).transform()
 
     def visit_FunctionDef(self, node):
         if self.decorate_func_name is None:

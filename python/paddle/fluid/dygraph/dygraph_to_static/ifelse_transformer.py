@@ -196,9 +196,8 @@ class IsControlFlowIfVisitor(gast.NodeTransformer):
                 if isinstance(child, list):
                     child = child[0]
                 if (isinstance(child, gast.Constant) and
-                        child.value is None) or (
-                            isinstance(child, gast.Name) and
-                            child.id == 'None'):
+                        child.value is None) or (isinstance(
+                            child, gast.Name) and child.id == 'None'):
                     return True
         return False
 
