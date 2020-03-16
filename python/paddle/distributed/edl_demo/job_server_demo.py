@@ -17,6 +17,8 @@ add_arg = functools.partial(utils.add_arguments, argparser=parser)
 add_arg(
     'node_ips', str, None,
     "Nodes's IP list, splitted by ','. For example, 192.168.0.1,192.168.0.2")
+add_arg('gpu_num_of_node', int, 8, "")
+add_arg('pod_num_of_node', int, 1, "")
 
 random.seed(10)
 
@@ -36,6 +38,9 @@ class JobInfoManager(object):
         self.job_stage[self._job_id] = -1
         self._ip_list = None
         self._ip_pod_num = None
+        self._gpu_num_of_node = None
+        self._pod_num_of_node = None
+        self._gpu_num_of_pod = None
 
     def _make_new_pods(self, start_rank, pod_num, step_id=0):
         pods = []
@@ -46,7 +51,7 @@ class JobInfoManager(object):
 
         return pods
 
-    def _assign_pods_to_nodes(self, pods, ip_pod_num):
+    def _assign_pods_to_nodes(self, pods, ip_pod_num, gpu_num_of_pod):
         """
         ip_podnum:[[ip,pod_num],[ip, pod_num]]
         """
@@ -61,32 +66,41 @@ class JobInfoManager(object):
                     return
 
                 pod = pods[pod_rank]
-                #pod["pod_id"] = "pod_{}_{}".format(pod_rank, step_id)
                 pod["running"] = True
                 pod["addr"] = ip
 
                 pod["pod_port"] = port
-                pod["trainer_ports"] = [port + 1]
-                pod["gpu"] = [i]
+                port += 1
 
-                port += 2
+                pod["trainer_ports"] = []
+                pod["gpus"] = []
+                for j in range(0, gpu_num_of_pod):
+                    pod["trainer_ports"].append(port)
+                    pod["gpus"].append(i * gpu_num_of_pod + j)
+                    port += 1
                 pod_rank += 1
 
-    def start(self, node_ips):
+    def start(self, node_ips, gpu_num_of_node, pod_num_of_node):
         assert self._t_id is None, "thread has been started"
 
         self._ip_list = ['127.0.0.1']
         if node_ips is not None:
             self._ip_list = [x.strip() for x in node_ips.split(',')]
 
+        self._pod_num_of_node = pod_num_of_node
+        self._gpu_num_of_node = gpu_num_of_node
+        assert gpu_num_of_node % pod_num_of_node == 0, "{} % {} must be 0.".format(
+            gpu_num_of_node, pod_num_of_node)
+        self._gpu_num_of_pod = gpu_num_of_node / pod_num_of_node
+
         self._ip_pod_num = []
         pod_num = 0
         for ip in self._ip_list:
-            self._ip_pod_num.append([ip, 8])
-            pod_num += 8
+            self._ip_pod_num.append([ip, pod_num_of_node])
+            pod_num += pod_num_of_node
 
         pods = self._make_new_pods(0, pod_num)
-        self._assign_pods_to_nodes(pods, self._ip_pod_num)
+        self._assign_pods_to_nodes(pods, self._ip_pod_num, self._gpu_num_of_pod)
         self.job[self._job_id] = pods
 
         thread = threading.Thread(target=self.run)
@@ -113,7 +127,8 @@ class JobInfoManager(object):
             new_pods = self._make_new_pods(start_rank, pod_num, step_id)
             pods.extend(new_pods)
 
-            self._assign_pods_to_nodes(pods, self._ip_pod_num)
+            self._assign_pods_to_nodes(pods, self._ip_pod_num,
+                                       self._gpu_num_of_pod)
             self.job[self._job_id] = pods
             self.job_stage[self._job_id] = step_id
             #print("added pods {}".format(pods))
@@ -194,5 +209,9 @@ class ScopeKV(object):
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    job_manager.start(args.node_ips)
+    #print("input_args:", args)
+    job_manager.start(
+        args.node_ips,
+        gpu_num_of_node=args.gpu_num_of_node,
+        pod_num_of_node=args.pod_num_of_node)
     app.run(host='0.0.0.0', port=8180)

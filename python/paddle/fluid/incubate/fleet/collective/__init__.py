@@ -257,6 +257,23 @@ class Collective(Fleet):
         if not remain_all_checkpoint:
             self.clean_redundant_check_points(path)
 
+    """
+    def save_hdfs_check_point(self,
+                         executor,
+                         local_path,
+                         hdfs_name,
+                         hdfs_ugi,
+                         hdfs_path,
+                         train_status,
+                         main_program=None,
+                         remain_all_checkpoint=True):
+
+        cmd="{} -ls {}"
+        check_points = core.run_cmd(cmd)
+        #get max_no
+        for dirs in check_points:
+    """
+
     def load_check_point(self,
                          executor,
                          path,

@@ -92,7 +92,7 @@ class PodManager(object):
 
     def start_local_pods(self, cluster):
         host_name, host_ip = get_host_name_ip()
-        gpu_rank = 0
+        #gpu_rank = 0
         for pod in cluster.pods:
             print("pod.addr:", pod.addr, "host_name:", host_name, "host_ip:",
                   host_ip)
@@ -100,7 +100,7 @@ class PodManager(object):
                     pod.addr==host_name or \
                     pod.addr == host_ip:
                 self.start_local_pod(cluster.job_server, cluster.job_id, pod)
-                gpu_rank += 1
+                #gpu_rank += 1
 
     def start_local_pod(self, job_server, job_id, pod):
         assert pod.id not in self.local_pods, "pod_id:{} local_pods:{}".format(
@@ -206,11 +206,11 @@ def manage_pods():
 
             added_pods = get_added_pods(cluster, cluster2)
             logger.debug("added_pods:", added_pods)
-            gpu_rank = 0
+            #gpu_rank = 0
             for pod in added_pods:
                 pod_manager.start_local_pod(cluster2.job_server,
                                             cluster2.job_id, pod)
-                gpu_rank += 1
+                #gpu_rank += 1
 
             cluster = cluster2
 

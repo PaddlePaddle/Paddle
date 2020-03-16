@@ -43,14 +43,14 @@ class Edlenv(object):
             pod.id = r_pod["pod_id"]
             pod.addr = r_pod["addr"]
             pod.port = r_pod["pod_port"]
-            pod.gpu = r_pod["gpu"]
+            pod.gpus = r_pod["gpus"]
             pod.trainers = []
 
             for idx, t_port in enumerate(r_pod["trainer_ports"]):
                 trainer = Trainer()
                 trainer.endpoint = "{}:{}".format(pod.addr, t_port)
-                trainer.gpu.append(idx)
                 trainer.rank = t_rank
+                trainer.gpus = [pod.gpus[idx]]
                 t_rank += 1
 
                 pod.trainers.append(trainer)

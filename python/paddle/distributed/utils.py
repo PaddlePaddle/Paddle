@@ -128,23 +128,23 @@ class JobServer(object):
 
 class Trainer(object):
     def __init__(self):
-        self.gpu = []
+        self.gpus = []
         self.endpoint = None
         self.rank = None
 
     def __str__(self):
-        return "gpu:{} endpoint:{} rank:{}".format(self.gpu, self.endpoint,
+        return "gpu:{} endpoint:{} rank:{}".format(self.gpus, self.endpoint,
                                                    self.rank)
 
     def __eq__(self, t):
-        if len(self.gpu) != len(t.gpu):
+        if len(self.gpus) != len(t.gpus):
             return False
 
         if self.endpoint != t.endpoint or \
                 self.rank != t.rank :
             return False
 
-        for a, b in zip(self.gpu, t.gpu):
+        for a, b in zip(self.gpus, t.gpus):
             if a != b:
                 return False
 
@@ -164,11 +164,11 @@ class Pod(object):
         self.addr = None
         self.port = None
         self.trainers = []
-        self.gpu = []
+        self.gpus = []
 
     def __str__(self):
         return "rank:{} id:{} addr:{} port:{} visible_gpu:{} trainers:{}".format(
-            self.rank, self.id, self.addr, self.port, self.gpu,
+            self.rank, self.id, self.addr, self.port, self.gpus,
             [str(t) for t in self.trainers])
 
     def __eq__(self, pod):
@@ -203,7 +203,7 @@ class Pod(object):
 
     def get_visible_gpus(self):
         r = ""
-        for g in self.gpu:
+        for g in self.gpus:
             r += "{},".format(g)
 
         assert r != "", "this pod {} can't see any gpus".format(self)

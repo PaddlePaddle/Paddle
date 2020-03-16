@@ -136,11 +136,20 @@ POD_IP (current node ip address, not needed for local training)
     parser.add_argument(
         "--hdfs_ugi", type=str, default=None, help="The hdfs_ugi used for edl.")
 
+    # checkpoint will saved here
     parser.add_argument(
         "--hdfs_path",
         type=str,
         default=None,
         help="The hdfs_path used for edl.")
+    """
+    #checkpoint path
+    parser.add_argument(
+        "--checkpoint",
+        type=str,
+        default="./checkpoint",
+        help="The hdfs_path used for edl.")
+    """
 
     #positional
     parser.add_argument(
@@ -308,7 +317,7 @@ def edl_barrier(edl_env, hdfs, timeout=-1):
                         format(cluster, pod))
             sys.exit(0)
 
-        if not kv_server.is_alive():
+        if pod.rank == 0 and not kv_server.is_alive():
             kv_server.start("0.0.0.0", pod.port)
 
         ret = edl_utils.barrier(cluster=cluster, pod=pod)
