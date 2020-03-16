@@ -15,7 +15,10 @@
 
 import sys
 from os import path
-__all__ = ['TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer']
+__all__ = [
+    'TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer',
+    'ModelParallelTrainer'
+]
 
 
 class TrainerDesc(object):
@@ -278,4 +281,28 @@ class PipelineTrainer(TrainerDesc):
             raise RuntimeError("None Program")
         self._device_worker._set_infer(self._infer)
         self._device_worker._set_program(self._program)
+
+
+class ModelParallelTrainer(TrainerDesc):
+    """
+    Implement of ModelParallelTrainer.
+    It's for model parallel.
+    """
+
+    def __init__(self):
+        super(ModelParallelTrainer, self).__init__()
+        pass
+
+    def _set_program(self, program):
+        super(ModelParallelTrainer, self)._set_program(program)
+        self._program = program
+
+    def _gen_trainer_desc(self):
+        super(ModelParallelTrainer, self)._gen_trainer_desc()
+        self.proto_desc.class_name = "ModelParallelTrainer"
+        if self._program == None:
+            raise RuntimeError("None Program")
+        self._device_worker._set_infer(self._infer)
+        self._device_worker._set_program(self._program)
+        self._device_worker._gen_worker_desc(self.proto_desc)
         self._device_worker._gen_worker_desc(self.proto_desc)
