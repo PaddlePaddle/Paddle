@@ -40,7 +40,7 @@ def filter_by(list_file, max_rate):
             except:
                 pass
 
-            print name, rate
+            print(name, rate)
 
 
 if __name__ == '__main__':

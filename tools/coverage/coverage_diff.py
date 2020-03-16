@@ -90,12 +90,12 @@ def get_info_file_lines(info_file, diff_file):
                 continue
 
             elif line.startswith('LF:'):
-                print 'LF:{}'.format(current_lf)
+                print('LF:{}'.format(current_lf))
 
                 continue
 
             elif line.startswith('LH:'):
-                print 'LH:{}'.format(current_lh)
+                print('LH:{}'.format(current_lh))
 
                 continue
 
