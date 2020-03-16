@@ -295,6 +295,8 @@ def _create_loss_op_desc_(loss):
             core.op_proto_and_checker_maker.kOpRoleAttrName():
             int(core.op_proto_and_checker_maker.OpRole.Backward) |
             int(core.op_proto_and_checker_maker.OpRole.Loss),
+            core.op_proto_and_checker_maker.kOpDeviceAttrName():
+            loss.op.attr(core.op_proto_and_checker_maker.kOpDeviceAttrName())
         })
     return op_desc
 
