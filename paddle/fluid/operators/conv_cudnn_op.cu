@@ -559,7 +559,8 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     cudnnConvolutionBwdFilterAlgo_t filter_algo =
         static_cast<cudnnConvolutionBwdFilterAlgo_t>(0);
     size_t workspace_size = 0;
-    int iwo_groups, c_groups;
+    int iwo_groups = groups;
+    int c_groups = 1;
 
 #if CUDNN_VERSION_MIN(7, 0, 1)
     iwo_groups = 1;
