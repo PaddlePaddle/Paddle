@@ -173,7 +173,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       platform::RecordEvent op_type_record_event(Type());
       auto op_name = platform::OpName(outputs_, Type());
       platform::RecordEvent op_name_record_event(
-          op_name, platform::RecordRole::kUniqueOp);
+          op_name, platform::EventRole::kUniqueOp);
       RunImpl(scope, place);
     }
 
@@ -957,7 +957,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   Scope* transfer_scope = nullptr;
   {
     platform::RecordEvent record_event("prepare_data",
-                                       platform::RecordRole::kInnerOp);
+                                       platform::EventRole::kInnerOp);
     transfer_scope = PrepareData(scope, *kernel_type_, &transfered_inplace_vars,
                                  runtime_ctx);
   }
@@ -971,7 +971,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   if (!all_kernels_must_compute_runtime_shape_) {
     platform::RecordEvent record_event("infer_shape",
-                                       platform::RecordRole::kInnerOp);
+                                       platform::EventRole::kInnerOp);
     RuntimeInferShapeContext infer_shape_ctx(*this, *runtime_ctx);
     this->InferShape(&infer_shape_ctx);
   }
@@ -984,13 +984,13 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // not Scope. Imperative mode only pass inputs and get outputs.
   {
     platform::RecordEvent record_event("compute",
-                                       platform::RecordRole::kInnerOp);
+                                       platform::EventRole::kInnerOp);
     (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
                                      kernel_configs));
   }
 
   if (!transfered_inplace_vars.empty()) {
-    // there is inplace variable has been transfered.
+    // there is inplace variable has been transferred.
     TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
   }
   if (FLAGS_enable_unused_var_check) {
@@ -1056,6 +1056,22 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
 
   auto expected_kernel_key = this->GetExpectedKernelType(
       ExecutionContext(*this, scope, *dev_ctx, ctx, nullptr));
+  if (HasAttr("op_device")) {
+    if (Attr<std::string>("op_device") == "cpu") {
+      expected_kernel_key.place_ = platform::CPUPlace();
+    } else if (Attr<std::string>("op_device") == "gpu") {
+      // when the Op that only has CPUKernel is assigned to GPU, the CPUKernel
+      // will be executed and a warning will be given at the same time.
+      if (SupportGPU()) {
+        expected_kernel_key.place_ = dev_ctx->GetPlace();
+      } else {
+        expected_kernel_key.place_ = platform::CPUPlace();
+        LOG_FIRST_N(WARNING, 1)
+            << "Op(" << type_
+            << ") has no CUDA implementation. It will be assigned to CPUPlace.";
+      }
+    }
+  }
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
@@ -1294,8 +1310,10 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
   for (auto& input : ctx.InNameList()) {
     ParseInputDataType(ctx, input, &data_type);
   }
-  PADDLE_ENFORCE_NE(data_type, dafault_data_type,
-                    "DataType should be indicated by input Variable.");
+  PADDLE_ENFORCE_NE(
+      data_type, dafault_data_type,
+      platform::errors::NotFound(
+          "DataType should be indicated by input Variable at %s.", Type()));
   return data_type;
 }
 

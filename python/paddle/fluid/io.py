@@ -1043,7 +1043,7 @@ def save_inference_model(dirname,
 
     Args:
         dirname(str): The directory path to save the inference model.
-        feeded_var_names(list[str]): list of string. Names of variables that need to be feeded
+        feeded_var_names(list[str]): list of string. Names of variables that need to be fed
                                      data during inference.
         target_vars(list[Variable]): list of Variable. Variables from which we can get 
                                      inference results.
@@ -1135,6 +1135,9 @@ def save_inference_model(dirname,
     # remind user to set auc_states to zeros if the program contains auc op 
     all_ops = main_program.global_block().ops
     for op in all_ops:
+        # clear device of Op
+        device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
+        op._set_attr(device_attr_name, "")
         if op.type == 'auc':
             warnings.warn(
                 "please ensure that you have set the auc states to zeros before saving inference model"

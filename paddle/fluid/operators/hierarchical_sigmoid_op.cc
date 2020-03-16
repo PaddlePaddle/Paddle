@@ -162,7 +162,7 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<std::vector<std::string>>(
         "table_names",
-        "(string vector, the splited table names that will be fetched from "
+        "(string vector, the split table names that will be fetched from "
         "parameter server)"
         "in the order of input variables for mapping")
         .SetDefault({});
@@ -189,8 +189,7 @@ class HierarchicalSigmoidGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     // Inputs: X, W, Label, PathTable, PathCode, PreOut, Out@GRAD
     op->SetInput("X", this->Input("X"));
@@ -207,8 +206,6 @@ class HierarchicalSigmoidGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
     op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
     op->SetAttrMap(this->Attrs());
-
-    return std::unique_ptr<T>(op);
   }
 };
 

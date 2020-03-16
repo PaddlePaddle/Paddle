@@ -44,14 +44,12 @@ class CastOpGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto grad = new T();
+  void Apply(GradOpPtr<T> grad) const override {
     grad->SetType("cast");
     grad->SetInput("X", this->OutputGrad("Out"));
     grad->SetOutput("Out", this->InputGrad("X"));
     grad->SetAttr("out_dtype", this->GetAttr("in_dtype"));
     grad->SetAttr("in_dtype", this->GetAttr("out_dtype"));
-    return std::unique_ptr<T>(grad);
   }
 };
 

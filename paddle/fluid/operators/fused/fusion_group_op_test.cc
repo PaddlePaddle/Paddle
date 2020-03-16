@@ -57,7 +57,8 @@ framework::OpDesc* CreateFusionGroupOp(
     const std::vector<std::string>& input_names,
     const std::vector<std::vector<int64_t>>& input_shapes,
     const std::vector<std::string>& output_names, int type,
-    std::string func_name) {
+    const std::vector<std::string>& inputs_data_type,
+    const std::vector<std::string>& outs_data_type, std::string func_name) {
   EXPECT_EQ(input_names.size(), input_shapes.size());
 
   for (size_t i = 0; i < input_names.size(); ++i) {
@@ -76,6 +77,8 @@ framework::OpDesc* CreateFusionGroupOp(
   op->SetType("fusion_group");
   op->SetInput("Inputs", input_names);
   op->SetOutput("Outs", output_names);
+  op->SetAttr("inputs_data_type", inputs_data_type);
+  op->SetAttr("outs_data_type", outs_data_type);
   op->SetAttr("type", type);
   op->SetAttr("func_name", func_name);
   op->SetAttr(framework::OpProtoAndCheckerMaker::OpRoleAttrName(),
@@ -130,6 +133,8 @@ void CheckOutputs(framework::Scope* scope,
 void TestMain(const std::vector<std::string>& input_names,
               const std::vector<std::vector<int64_t>>& input_shapes,
               const std::vector<std::string>& output_names, int type,
+              const std::vector<std::string>& inputs_data_type,
+              const std::vector<std::string>& outs_data_type,
               std::string func_name, std::string cuda_kernel_str,
               CPUKernelFunc cpu_kernel_func) {
   // Compile the device code
@@ -139,8 +144,9 @@ void TestMain(const std::vector<std::string>& input_names,
 
   // Create a ProgramDesc that has a fusion_group_op.
   framework::ProgramDesc program;
-  framework::OpDesc* op_desc = CreateFusionGroupOp(
-      &program, input_names, input_shapes, output_names, type, func_name);
+  framework::OpDesc* op_desc =
+      CreateFusionGroupOp(&program, input_names, input_shapes, output_names,
+                          type, inputs_data_type, outs_data_type, func_name);
   auto fusion_group_op = framework::OpRegistry::CreateOp(*op_desc);
 
   framework::Scope scope;
@@ -210,8 +216,11 @@ void elementwise_cuda_kernel_0(size_t n, float *x, float* y, float* z) {
     }
   };
 
-  TestMain(input_names, input_shapes, output_names, 0,
-           "elementwise_cuda_kernel_0", kernel, elementwise_cpu_kernel_0);
+  std::vector<std::string> inputs_data_type(input_names.size(), "float");
+  std::vector<std::string> outs_data_type(output_names.size(), "float");
+  TestMain(input_names, input_shapes, output_names, 0, inputs_data_type,
+           outs_data_type, "elementwise_cuda_kernel_0", kernel,
+           elementwise_cpu_kernel_0);
 }
 
 }  // namespace operators

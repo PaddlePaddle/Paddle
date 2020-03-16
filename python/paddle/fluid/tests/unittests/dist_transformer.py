@@ -272,7 +272,7 @@ class LearningRateScheduler(object):
     """
     Wrapper for learning rate scheduling as described in the Transformer paper.
     LearningRateScheduler adapts the learning rate externally and the adapted
-    learning rate will be feeded into the main_program as input data.
+    learning rate will be fed into the main_program as input data.
     """
 
     def __init__(self,

@@ -76,8 +76,7 @@ class ElementwiseMulOpGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("elementwise_mul_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("Y", this->Input("Y"));
@@ -85,7 +84,6 @@ class ElementwiseMulOpGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
-    return op;
   }
 };
 
@@ -95,8 +93,7 @@ class ElementwiseMulDoubleGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("elementwise_mul_grad_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("Y", this->Input("Y"));
@@ -109,7 +106,6 @@ class ElementwiseMulDoubleGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
-    return op;
   }
 };
 
