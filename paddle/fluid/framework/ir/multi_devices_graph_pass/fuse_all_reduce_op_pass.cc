@@ -38,7 +38,7 @@ class FuseAllReduceOpPass : public ir::Pass {
     auto &places = Get<const std::vector<platform::Place>>(details::kPlaces);
     auto &local_scopes = Get<const std::vector<Scope *>>(details::kLocalScopes);
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
     auto *multi_nccl_ctxs =
         &Get<platform::NCCLCommunicator>(details::kNCCLCtxs);
 #endif
@@ -61,10 +61,12 @@ class FuseAllReduceOpPass : public ir::Pass {
       return;
     }
 
-    PADDLE_ENFORCE_EQ(all_reduce_ops.size(), grads.size(),
-                      "The number of all_reduce OpHandle is not equal to the "
-                      "number of grads. Maybe some gradients are sparse type, "
-                      "it is not supported currently.");
+    PADDLE_ENFORCE_EQ(
+        all_reduce_ops.size(), grads.size(),
+        platform::errors::Unimplemented(
+            "The number of all_reduce OpHandle is not equal to the "
+            "number of grads. Maybe some gradients are sparse type, "
+            "it is not supported currently."));
 
     auto &group_params_grads = graph->Get<details::GroupParamsAndGrads>(
         details::kGroupParamsAndDenseGrads);
@@ -83,7 +85,7 @@ class FuseAllReduceOpPass : public ir::Pass {
       for (auto &p_g : group_p_g) {
         group_all_reduce_ops.emplace_back(all_reduce_ops.at(p_g.second));
       }
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
       InsertFusedAllReduce(places, local_scopes, group_size,
                            group_all_reduce_ops, multi_nccl_ctxs, &result);
 #else
@@ -105,6 +107,12 @@ class FuseAllReduceOpPass : public ir::Pass {
         auto *all_reduce_op_handle = dynamic_cast<details::AllReduceOpHandle *>(
             &node->Wrapper<details::OpHandleBase>());
         if (all_reduce_op_handle) {
+#if defined(PADDLE_WITH_DGC)
+          PADDLE_ENFORCE_NE(
+              all_reduce_op_handle->Name(), "sparse_all_reduce",
+              "DGC doesn't support fuse for now, if you want to use DGC "
+              "you need set strategy.fuse_all_reduce_ops = False.");
+#endif
           auto inputs = details::DynamicCast<details::VarHandle>(
               all_reduce_op_handle->Inputs());
           PADDLE_ENFORCE_EQ(inputs.size(), num_place);
@@ -126,7 +134,7 @@ class FuseAllReduceOpPass : public ir::Pass {
                             const std::vector<Scope *> &local_scopes,
                             const size_t num_of_all_reduce,
                             const std::vector<ir::Node *> &all_reduce_ops,
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
                             const platform::NCCLCommunicator *multi_nccl_ctxs,
 #endif
                             ir::Graph *result) const {
@@ -153,7 +161,7 @@ class FuseAllReduceOpPass : public ir::Pass {
       result->RemoveNode(op_handle.Node());
     }
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
     CreateFusedAllReduceOp(inputs, outputs, num_of_all_reduce, places,
                            local_scopes, multi_nccl_ctxs, result);
 #else
@@ -169,11 +177,11 @@ class FuseAllReduceOpPass : public ir::Pass {
       const size_t num_of_all_reduce,
       const std::vector<platform::Place> &places,
       const std::vector<Scope *> &local_scopes,
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
       const platform::NCCLCommunicator *multi_nccl_ctxs,
 #endif
       ir::Graph *result) const {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
     auto *op_handle = new details::FusedAllReduceOpHandle(
         result->CreateEmptyNode("fused_all_reduce", ir::Node::Type::kOperation),
         local_scopes, places, num_of_all_reduce, multi_nccl_ctxs);
@@ -191,7 +199,7 @@ class FuseAllReduceOpPass : public ir::Pass {
       op_handle->AddOutput(out);
     }
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
     if (!multi_nccl_ctxs) {
       SetCommunicationContext(places, op_handle);
     }

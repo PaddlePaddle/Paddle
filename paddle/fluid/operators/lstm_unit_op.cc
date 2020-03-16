@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/lstm_unit_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -94,12 +95,32 @@ class LstmUnitGradOp : public framework::OperatorWithKernel {
   }
 };
 
+template <typename T>
+class LstmUnitGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("lstm_unit_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("C_prev", this->Input("C_prev"));
+    op->SetInput("C", this->Output("C"));
+    op->SetInput(framework::GradVarName("H"), this->OutputGrad("H"));
+    op->SetInput(framework::GradVarName("C"), this->OutputGrad("C"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("C_prev"), this->InputGrad("C_prev"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(lstm_unit, ops::LstmUnitOp, ops::LstmUnitOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::LstmUnitGradOpMaker<paddle::framework::OpDesc>,
+                  ops::LstmUnitGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(lstm_unit_grad, ops::LstmUnitGradOp);
 REGISTER_OP_CPU_KERNEL(lstm_unit,
                        ops::LstmUnitKernel<paddle::platform::CPUPlace, float>,

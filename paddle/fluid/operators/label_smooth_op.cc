@@ -37,7 +37,7 @@ class LabelSmoothOp : public framework::OperatorWithKernel {
       auto noise_dims = ctx->GetInputDim("PriorDist");
       auto noise_numel = paddle::framework::product(noise_dims);
       PADDLE_ENFORCE(
-          in_dims[1] == noise_numel,
+          in_dims[in_dims.size() - 1] == noise_numel,
           "The number of elements in Input(PriorDist) must be equal to the "
           "dimension of each label.");
     }
@@ -111,18 +111,17 @@ class LabelSmoothGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class LabelSmoothGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class LabelSmoothGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("label_smooth_grad");
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -131,7 +130,8 @@ class LabelSmoothGradDescMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(label_smooth, ops::LabelSmoothOp, ops::LabelSmoothOpMaker,
-                  ops::LabelSmoothGradDescMaker);
+                  ops::LabelSmoothGradMaker<paddle::framework::OpDesc>,
+                  ops::LabelSmoothGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(label_smooth_grad, ops::LabelSmoothGradOp);
 REGISTER_OP_CPU_KERNEL(
     label_smooth,

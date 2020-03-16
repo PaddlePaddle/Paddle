@@ -27,7 +27,6 @@ class TestElementwiseModOp(OpTest):
 
     def setUp(self):
         self.op_type = "elementwise_mod"
-        self.dtype = np.int32
         self.axis = -1
         self.init_dtype()
         self.init_input_output()
@@ -50,7 +49,7 @@ class TestElementwiseModOp(OpTest):
         self.out = np.mod(self.x, self.y)
 
     def init_dtype(self):
-        pass
+        self.dtype = np.int32
 
     def init_axis(self):
         pass
@@ -63,6 +62,24 @@ class TestElementwiseModOp_scalar(TestElementwiseModOp):
         self.x = (np.random.rand(2, 3, 4) * scale_x).astype(self.dtype)
         self.y = (np.random.rand(1) * scale_y + 1).astype(self.dtype)
         self.out = np.mod(self.x, self.y)
+
+
+class TestElementwiseModOpFloat(TestElementwiseModOp):
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def init_input_output(self):
+        self.x = np.random.uniform(-1000, 1000, [10, 10]).astype(self.dtype)
+        self.y = np.random.uniform(-100, 100, [10, 10]).astype(self.dtype)
+        self.out = np.fmod(self.y + np.fmod(self.x, self.y), self.y)
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestElementwiseModOpDouble(TestElementwiseModOpFloat):
+    def init_dtype(self):
+        self.dtype = np.float64
 
 
 if __name__ == '__main__':

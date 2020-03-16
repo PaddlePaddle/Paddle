@@ -109,8 +109,10 @@ class Graph {
 
   template <typename AttrType>
   void Set(const std::string &attr_name, AttrType *attr) {
-    PADDLE_ENFORCE_EQ(attrs_.count(attr_name), 0, "%s already set in the graph",
-                      attr_name);
+    PADDLE_ENFORCE_EQ(
+        attrs_.count(attr_name), 0,
+        platform::errors::AlreadyExists(
+            "The attribute %s has been set in the graph.", attr_name));
     attrs_[attr_name] = attr;
     attr_dels_[attr_name] = [attr, attr_name]() {
       VLOG(3) << "deleting " << attr_name;
@@ -120,15 +122,19 @@ class Graph {
 
   template <typename AttrType>
   void SetNotOwned(const std::string &attr_name, AttrType *attr) {
-    PADDLE_ENFORCE_EQ(attrs_.count(attr_name), 0, "%s already set in the graph",
-                      attr_name);
+    PADDLE_ENFORCE_EQ(
+        attrs_.count(attr_name), 0,
+        platform::errors::AlreadyExists(
+            "The attribute %s has been set in the graph.", attr_name));
     attrs_[attr_name] = attr;
     attr_dels_[attr_name] = []() {};
   }
 
   void Erase(const std::string &attr_name) {
-    PADDLE_ENFORCE_NE(attrs_.count(attr_name), 0, "%s not set in the graph",
-                      attr_name);
+    PADDLE_ENFORCE_NE(
+        attrs_.count(attr_name), 0,
+        platform::errors::NotFound(
+            "The attribute %s has not been set in the graph.", attr_name));
     attr_dels_[attr_name]();
     attrs_.erase(attr_name);
     attr_dels_.erase(attr_name);

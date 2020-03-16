@@ -43,8 +43,10 @@ void Copy<platform::CPUPlace, platform::CUDAPlace>(
     platform::CPUPlace dst_place, void* dst, platform::CUDAPlace src_place,
     const void* src, size_t num, cudaStream_t stream) {
   if (UNLIKELY(num == 0)) return;
-  platform::SetDeviceId(src_place.device);
 
+  platform::SetDeviceId(src_place.device);
+  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
+          << dst_place << " by thream(" << stream << ")";
   if (stream) {
     platform::RecordEvent record_event("GpuMemcpyAsync:GPU->CPU");
     platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyDeviceToHost, stream);
@@ -65,6 +67,8 @@ void Copy<platform::CUDAPlace, platform::CPUPlace>(
   if (UNLIKELY(num == 0)) return;
 
   platform::SetDeviceId(dst_place.device);
+  VLOG(4) << "memory::Copy " << num << " Bytes from " << src_place << " to "
+          << dst_place << " by thream(" << stream << ")";
   if (stream) {
     platform::RecordEvent record_event("GpuMemcpyAsync:CPU->GPU");
     platform::GpuMemcpyAsync(dst, src, num, cudaMemcpyHostToDevice, stream);

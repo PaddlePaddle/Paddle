@@ -23,36 +23,48 @@
 namespace paddle {
 namespace operators {
 
-static framework::proto::VarType::Type kDefaultDtype =
-    framework::proto::VarType::Type::VarType_Type_BOOL;
-
 template <typename DeviceContext, typename T>
-class CoalesceTensorOp : public framework::OpKernel<T> {
+class CoalesceTensorOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto &in_var_names = context.Inputs("Input");
-    auto &out_var_names = context.Outputs("Output");
+    auto in_var_names = context.InputNames("Input");
+    auto out_var_names = context.OutputNames("Output");
     auto &in_vars = context.MultiInputVar("Input");
     auto out_vars = context.MultiOutputVar("Output");
 
-    PADDLE_ENFORCE_GT(in_var_names.size(), static_cast<size_t>(0));
-    PADDLE_ENFORCE_EQ(in_var_names.size(), out_var_names.size());
+    PADDLE_ENFORCE_GT(in_var_names.size(), static_cast<size_t>(0),
+                      "The CoalesceTensorOp has no input.");
+    PADDLE_ENFORCE_EQ(
+        in_var_names.size(), out_var_names.size(),
+        "The number of CoalesceTensorOp's input and output is not match.");
 
+    // Input & Output check: only support LoDTensor
     for (size_t i = 0; i < in_var_names.size(); ++i) {
-      // Only support LoDTensor
-      PADDLE_ENFORCE_NOT_NULL(in_vars[i], "%s should not be nullptr,",
-                              in_var_names[i]);
-      PADDLE_ENFORCE_NOT_NULL(out_vars[i], "%s should not be nullptr,",
-                              out_var_names[i]);
-      PADDLE_ENFORCE(in_vars[i]->IsType<framework::LoDTensor>());
-      PADDLE_ENFORCE(out_vars[i]->IsType<framework::LoDTensor>());
+      PADDLE_ENFORCE_NOT_NULL(
+          in_vars[i],
+          "The input variable %s of CoalesceTensorOp does not exist.",
+          in_var_names[i]);
+      PADDLE_ENFORCE_NOT_NULL(
+          out_vars[i],
+          "The output variable %s of CoalesceTensorOp does not exist.",
+          out_var_names[i]);
+      PADDLE_ENFORCE_EQ(
+          in_vars[i]->IsType<framework::LoDTensor>(), true,
+          "The input variable %s of CoalesceTensorOp is not LoDTensor.",
+          in_var_names[i]);
+      PADDLE_ENFORCE_EQ(
+          out_vars[i]->IsType<framework::LoDTensor>(), true,
+          "The output variable %s of CoalesceTensorOp is not LoDTensor.",
+          in_var_names[i]);
     }
 
     auto in_tensors = context.MultiInput<framework::LoDTensor>("Input");
 
     if (context.Attr<bool>("check_name")) {
       for (size_t i = 0; i < in_var_names.size(); ++i) {
-        PADDLE_ENFORCE_EQ(in_var_names[i], out_var_names[i]);
+        PADDLE_ENFORCE_EQ(
+            in_var_names[i], out_var_names[i],
+            "The input and output variable of CoalesceTensorOp is different.");
       }
     } else {
       // Init the output as input
@@ -66,8 +78,10 @@ class CoalesceTensorOp : public framework::OpKernel<T> {
 
     // Get numel and dtype
     size_t numel = 0;
-    auto dtype = kDefaultDtype;
-    GetMemSizeAndDtype(in_tensors, in_var_names, &numel, &dtype,
+    auto dtype = static_cast<framework::proto::VarType::Type>(
+        context.Attr<int>("dtype"));
+    size_t size_of_dtype = framework::SizeOfType(dtype);
+    GetMemSizeAndDtype(in_tensors, in_var_names, &numel, size_of_dtype,
                        context.GetPlace());
 
     // Alloc the continuous space
@@ -78,7 +92,6 @@ class CoalesceTensorOp : public framework::OpKernel<T> {
     // Init the continuous space
     auto out_tensors = context.MultiOutput<framework::LoDTensor>("Output");
     size_t offset = 0;
-    size_t size_of_dtype = framework::SizeOfType(dtype);
     if (context.Attr<bool>("copy_data")) {
       for (size_t i = 0; i < in_var_names.size(); ++i) {
         size_t len = static_cast<size_t>(in_tensors[i]->numel());
@@ -120,31 +133,20 @@ class CoalesceTensorOp : public framework::OpKernel<T> {
   void GetMemSizeAndDtype(
       const std::vector<const framework::LoDTensor *> &lod_tensors,
       const std::vector<std::string> var_names, size_t *numel,
-      framework::proto::VarType::Type *dtype,
-      const platform::Place &place) const {
+      const size_t &size_of_dtype, const platform::Place &place) const {
     PADDLE_ENFORCE_EQ(lod_tensors.size(), var_names.size());
     *numel = 0;
-    size_t size_of_dtype = 0;
-
     std::stringstream ss;
     ss << "alloc_space_for_vars: ";
     for (size_t i = 0; i < var_names.size(); ++i) {
-      PADDLE_ENFORCE(lod_tensors[i]->IsInitialized(), "%s is not initialized.",
-                     var_names[i]);
-
-      auto p_dtype = lod_tensors[i]->type();
-      if (*dtype == kDefaultDtype) {
-        PADDLE_ENFORCE_NE(p_dtype, kDefaultDtype, "%s's type should not be %s.",
-                          var_names[i], kDefaultDtype);
-        *dtype = p_dtype;
-        size_of_dtype = framework::SizeOfType(p_dtype);
-      }
-      PADDLE_ENFORCE_EQ(p_dtype, *dtype, "Input vars is not equal.");
+      PADDLE_ENFORCE_EQ(lod_tensors[i]->IsInitialized(), true,
+                        "%s is not initialized.", var_names[i]);
 
       auto size = lod_tensors[i]->numel();
       PADDLE_ENFORCE_GT(size, 0);
       ss << "input(" << var_names[i] << ") dim:(" << lod_tensors[i]->dims()
-         << "), ";
+         << ") "
+         << " addres:" << lod_tensors[i]->data<void>() << ", ";
       *numel += platform::Alignment(static_cast<size_t>(size) * size_of_dtype,
                                     place) /
                 size_of_dtype;
@@ -154,14 +156,23 @@ class CoalesceTensorOp : public framework::OpKernel<T> {
   }
 };
 
-class AllocContinuousSpaceOp : public framework::OperatorWithKernel {
+class CoalesceTensorOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {}
+
+ protected:
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   expected_kernel_type.place_,
+                                   tensor.layout());
+  }
 };
 
-class AllocContinuousSpaceOpMaker : public framework::OpProtoAndCheckerMaker {
+class CoalesceTensorOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Input",
@@ -178,6 +189,7 @@ class AllocContinuousSpaceOpMaker : public framework::OpProtoAndCheckerMaker {
               "(LoDTensor) The output tensor "
               "of coalesce_tensor operator. And the tensors of"
               " Output is sliced from the tensor of FusedOutput.");
+    AddAttr<int>("dtype", "The output data type.");
     AddAttr<bool>("copy_data", "Whether to copy the Input value to Output.")
         .SetDefault(false);
     AddAttr<bool>("set_constant",
@@ -192,7 +204,7 @@ class AllocContinuousSpaceOpMaker : public framework::OpProtoAndCheckerMaker {
                   "they are the same separately.")
         .SetDefault(false);
     AddComment(R"DOC(
-AllocContinuousSpace Operator.
+CoalesceTensor Operator.
 
 coalesce_tensor is used to make the address of Output
 continuous according to the Input. This Op will alloc a big tensor
@@ -213,22 +225,22 @@ setting the Output with a constant value.
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(coalesce_tensor, paddle::operators::AllocContinuousSpaceOp,
-                  paddle::operators::AllocContinuousSpaceOpMaker);
+REGISTER_OPERATOR(coalesce_tensor, paddle::operators::CoalesceTensorOp,
+                  paddle::operators::CoalesceTensorOpMaker);
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_CPU_KERNEL(
     coalesce_tensor,
-    ops::CoalesceTensorOp<paddle::platform::CPUDeviceContext, plat::float16>,
-    ops::CoalesceTensorOp<paddle::platform::CPUDeviceContext, int>,
-    ops::CoalesceTensorOp<paddle::platform::CPUDeviceContext, float>,
-    ops::CoalesceTensorOp<paddle::platform::CPUDeviceContext, double>);
+    ops::CoalesceTensorOpKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::CoalesceTensorOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::CoalesceTensorOpKernel<paddle::platform::CPUDeviceContext, double>);
 
 #ifdef PADDLE_WITH_CUDA
 REGISTER_OP_CUDA_KERNEL(
     coalesce_tensor,
-    ops::CoalesceTensorOp<paddle::platform::CUDADeviceContext, plat::float16>,
-    ops::CoalesceTensorOp<paddle::platform::CUDADeviceContext, int>,
-    ops::CoalesceTensorOp<paddle::platform::CUDADeviceContext, float>,
-    ops::CoalesceTensorOp<paddle::platform::CUDADeviceContext, double>);
+    ops::CoalesceTensorOpKernel<paddle::platform::CUDADeviceContext,
+                                plat::float16>,
+    ops::CoalesceTensorOpKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::CoalesceTensorOpKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::CoalesceTensorOpKernel<paddle::platform::CUDADeviceContext, double>);
 #endif

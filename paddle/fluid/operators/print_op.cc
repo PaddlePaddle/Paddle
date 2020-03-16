@@ -15,6 +15,7 @@
 #include <algorithm>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/operators/assign_op.h"
 
 namespace paddle {
 namespace operators {
@@ -261,18 +262,17 @@ class PrintOpVarTypeInference : public framework::VarTypeInference {
   }
 };
 
-class PrintOpGradientMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class PrintOpGradientMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *op_desc_ptr = new framework::OpDesc();
+  void Apply(GradOpPtr<T> op_desc_ptr) const override {
     op_desc_ptr->SetType("print");
-    op_desc_ptr->SetInput("In", OutputGrad("Out"));
-    op_desc_ptr->SetOutput("Out", InputGrad("In"));
-    op_desc_ptr->SetAttrMap(Attrs());
+    op_desc_ptr->SetInput("In", this->OutputGrad("Out"));
+    op_desc_ptr->SetOutput("Out", this->InputGrad("In"));
+    op_desc_ptr->SetAttrMap(this->Attrs());
     op_desc_ptr->SetAttr("is_forward", false);
-    return std::unique_ptr<framework::OpDesc>(op_desc_ptr);
   }
 };
 
@@ -282,5 +282,6 @@ class PrintOpGradientMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(print, ops::PrintOp, ops::PrintOpProtoAndCheckMaker,
-                  ops::PrintOpGradientMaker, ops::PrintOpInferShape,
-                  ops::PrintOpVarTypeInference);
+                  ops::PrintOpGradientMaker<paddle::framework::OpDesc>,
+                  ops::PrintOpGradientMaker<paddle::imperative::OpBase>,
+                  ops::PrintOpInferShape, ops::PrintOpVarTypeInference);

@@ -40,15 +40,23 @@ class SGDOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
                       "Learning rate should have 1 element");
     auto param_dim = ctx->GetInputDim("Param");
-    // TODO(qijun): check dimensions of Param and Grad at compile
-    // and runtime.
+    if (ctx->GetInputsVarType("Grad")[0] ==
+        framework::proto::VarType::LOD_TENSOR) {
+      PADDLE_ENFORCE_EQ(
+          param_dim, ctx->GetInputDim("Grad"),
+          platform::errors::InvalidArgument(
+              "SGD Operator's input Param and Grad dimensions do not match. "
+              "The Param %s shape is [%s], but the Grad %s shape is [%s].",
+              ctx->Inputs("Param")[0], param_dim, ctx->Inputs("Grad")[0],
+              ctx->GetInputDim("Grad")));
+    }
     ctx->SetOutputDim("ParamOut", param_dim);
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("Param"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Param");
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 
@@ -108,6 +116,11 @@ $$param\_out = param - learning\_rate * grad$$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(sgd, ops::SGDOp, ops::SGDOpMaker,
-                  paddle::framework::EmptyGradOpMaker, ops::SGDOpInferVarType);
-REGISTER_OP_CPU_KERNEL(sgd, ops::SGDOpKernel<float>, ops::SGDOpKernel<double>);
+REGISTER_OPERATOR(
+    sgd, ops::SGDOp, ops::SGDOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::SGDOpInferVarType);
+REGISTER_OP_CPU_KERNEL(
+    sgd, ops::SGDOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SGDOpKernel<paddle::platform::CPUDeviceContext, double>);

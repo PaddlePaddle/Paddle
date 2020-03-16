@@ -50,7 +50,7 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(static_cast<bool>(fout), "Cannot open %s to write",
                    filename);
 
-    auto &inp_var_names = ctx.Inputs("X");
+    auto inp_var_names = ctx.InputNames("X");
     auto &inp_vars = ctx.MultiInputVar("X");
     PADDLE_ENFORCE_GT(static_cast<int>(inp_var_names.size()), 0,
                       "The number of input variables should be greater than 0");

@@ -148,15 +148,32 @@ set(COMMON_FLAGS
     -Wno-unused-parameter
     -Wno-unused-function
     -Wno-error=literal-suffix
-    -Wno-error=sign-compare
     -Wno-error=unused-local-typedefs
     -Wno-error=parentheses-equality # Warnings in pybind11
     -Wno-error=ignored-attributes  # Warnings in Eigen, gcc 6.3
     -Wno-error=terminate  # Warning in PADDLE_ENFORCE
     -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
     -Wimplicit-fallthrough=0 # Warning in tinyformat.h
+    -Wno-error=maybe-uninitialized # Warning in boost gcc 7.2
     ${fsanitize}
 )
+
+if(NOT APPLE)
+    if(${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.0)
+        set(COMMON_FLAGS
+                ${COMMON_FLAGS}
+                -Wno-format-truncation # Warning in boost gcc 8.2
+                -Wno-error=cast-function-type # Warning in boost gcc 8.2
+                -Wno-error=parentheses # Warning in boost gcc 8.2
+                -Wno-error=catch-value # Warning in boost gcc 8.2
+                -Wno-error=nonnull-compare # Warning in boost gcc 8.2
+                -Wno-error=address # Warning in boost gcc 8.2
+                -Wno-ignored-qualifiers # Warning in boost gcc 8.2
+                -Wno-ignored-attributes # Warning in Eigen gcc 8.3 
+                -Wno-parentheses # Warning in Eigen gcc 8.3
+                )
+    endif()
+endif(NOT APPLE)
 
 set(GPU_COMMON_FLAGS
     -fPIC
@@ -165,13 +182,14 @@ set(GPU_COMMON_FLAGS
     -Wdelete-non-virtual-dtor
     -Wno-unused-parameter
     -Wno-unused-function
-    -Wno-error=sign-compare
     -Wno-error=literal-suffix
     -Wno-error=unused-local-typedefs
     -Wno-error=unused-function  # Warnings in Numpy Header.
     -Wno-error=array-bounds # Warnings in Eigen::array
 )
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
+if (NOT WITH_NV_JETSON) 
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
+endif()
 endif(NOT WIN32)
 
 if (APPLE)
@@ -188,11 +206,6 @@ if(LINUX)
         -Werror
         ${GPU_COMMON_FLAGS})
 endif(LINUX)
-
-if(UNIX AND NOT APPLE)
-  # except apple from nix*Os family
-  set(LINUX TRUE)
-endif(UNIX AND NOT APPLE)
 
 foreach(flag ${COMMON_FLAGS})
     safe_set_cflag(CMAKE_C_FLAGS ${flag})

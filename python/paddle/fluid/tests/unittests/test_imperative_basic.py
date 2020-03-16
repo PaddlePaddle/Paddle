@@ -18,13 +18,13 @@ import numpy as np
 
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid import FC
+from paddle.fluid import Linear
 from test_imperative_base import new_program_scope
 
 
 class MyLayer(fluid.Layer):
-    def __init__(self, name_scope):
-        super(MyLayer, self).__init__(name_scope)
+    def __init__(self):
+        super(MyLayer, self).__init__()
 
     def forward(self, inputs):
         x = fluid.layers.relu(inputs)
@@ -35,42 +35,44 @@ class MyLayer(fluid.Layer):
 
 
 class MLP(fluid.Layer):
-    def __init__(self, name_scope):
-        super(MLP, self).__init__(name_scope)
-        self._fc1 = FC(self.full_name(),
-                       3,
-                       param_attr=fluid.ParamAttr(
-                           initializer=fluid.initializer.Constant(value=0.1)),
-                       bias_attr=fluid.ParamAttr(
-                           initializer=fluid.initializer.Constant(value=0.1)))
-        self._fc2 = FC(self.full_name(),
-                       4,
-                       param_attr=fluid.ParamAttr(
-                           initializer=fluid.initializer.Constant(value=0.1)),
-                       bias_attr=fluid.ParamAttr(
-                           initializer=fluid.initializer.Constant(value=0.1)))
+    def __init__(self, input_size):
+        super(MLP, self).__init__()
+        self._linear1 = None
+        self._linear1 = Linear(
+            input_size,
+            3,
+            param_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.1)),
+            bias_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.1)))
+        self._linear2 = Linear(
+            3,
+            4,
+            param_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.1)),
+            bias_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.1)))
 
     def forward(self, inputs):
-        x = self._fc1(inputs)
-        x = self._fc2(x)
+        x = self._linear1(inputs)
+        x = self._linear2(x)
         x = fluid.layers.reduce_sum(x)
         return x
 
 
 class SimpleRNNCell(fluid.Layer):
-    def __init__(self, name_scope, step_input_size, hidden_size, output_size,
-                 param_attr):
-        super(SimpleRNNCell, self).__init__(name_scope)
+    def __init__(self, step_input_size, hidden_size, output_size, param_attr):
+        super(SimpleRNNCell, self).__init__()
         self.step_input_size = step_input_size
         self.hidden_size = hidden_size
         self.output_size = output_size
         self._dtype = core.VarDesc.VarType.FP32
         self.param_attr = param_attr
 
-    def _build_once(self, inputs, pre_hidden):
         i2h_param_shape = [self.step_input_size, self.hidden_size]
         h2h_param_shape = [self.hidden_size, self.hidden_size]
         h2o_param_shape = [self.output_size, self.hidden_size]
+        self._i2h_w = None
         self._i2h_w = self.create_parameter(
             attr=self.param_attr,
             shape=i2h_param_shape,
@@ -88,7 +90,6 @@ class SimpleRNNCell(fluid.Layer):
             is_bias=False)
 
     def forward(self, input, pre_hidden):
-
         tmp_i2h = self.create_variable(dtype=self._dtype)
         tmp_h2h = self.create_variable(dtype=self._dtype)
         hidden = self.create_variable(dtype=self._dtype)
@@ -138,19 +139,17 @@ class SimpleRNNCell(fluid.Layer):
             type='reduce_sum',
             inputs={'X': softmax_out},
             outputs={'Out': reduce_out},
-            attrs={'dim': [],
-                   'keep_dim': False,
+            attrs={'keep_dim': False,
                    'reduce_all': True})
 
         return reduce_out, hidden
 
 
 class SimpleRNN(fluid.Layer):
-    def __init__(self, name_scope):
-        super(SimpleRNN, self).__init__(name_scope)
+    def __init__(self):
+        super(SimpleRNN, self).__init__()
         self.seq_len = 4
         self._cell = SimpleRNNCell(
-            self.full_name(),
             3,
             3,
             3,
@@ -178,6 +177,55 @@ class SimpleRNN(fluid.Layer):
 
 
 class TestImperative(unittest.TestCase):
+    def test_functional_dygraph_context(self):
+        self.assertFalse(fluid.dygraph.enabled())
+        fluid.enable_dygraph()
+        self.assertTrue(fluid.dygraph.enabled())
+        np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
+        var_inp = fluid.dygraph.base.to_variable(np_inp)
+        mlp = MLP(input_size=2)
+        out = mlp(var_inp)
+        dy_out1 = out.numpy()
+        out.backward()
+        dy_grad1 = mlp._linear1.weight.gradient()
+        fluid.disable_dygraph()
+        self.assertFalse(fluid.dygraph.enabled())
+        with fluid.dygraph.guard():
+            self.assertTrue(fluid.dygraph.enabled())
+            var_inp = fluid.dygraph.base.to_variable(np_inp)
+            mlp = MLP(input_size=2)
+            out = mlp(var_inp)
+            dy_out2 = out.numpy()
+            out.backward()
+            dy_grad2 = mlp._linear1.weight.gradient()
+        self.assertFalse(fluid.dygraph.enabled())
+        self.assertTrue(np.array_equal(dy_out1, dy_out2))
+        self.assertTrue(np.array_equal(dy_grad1, dy_grad2))
+
+    def test_isinstance(self):
+        var = fluid.layers.data(shape=[1], name='x', dtype='float32')
+        self.assertTrue(isinstance(var, fluid.Variable))
+        with fluid.dygraph.guard():
+            var_base = fluid.dygraph.base.to_variable(np.array([3, 4, 5]))
+            self.assertTrue(isinstance(var_base, core.VarBase))
+            self.assertTrue(isinstance(var_base, fluid.Variable))
+
+    def test_create_VarBase(self):
+        x = np.ones([2, 2], np.float32)
+        y = np.zeros([3, 3], np.float32)
+        with fluid.dygraph.guard():
+            tmp = fluid.core.VarBase(value=x, place=fluid.core.CPUPlace())
+            tmp2 = fluid.core.VarBase(y, fluid.core.CPUPlace())
+            tmp3 = fluid.dygraph.base.to_variable(x)
+            tmp4 = fluid.core.VarBase(y)
+            tmp5 = fluid.core.VarBase(value=x)
+
+            self.assertTrue(np.array_equal(x, tmp.numpy()))
+            self.assertTrue(np.array_equal(y, tmp2.numpy()))
+            self.assertTrue(np.array_equal(x, tmp3.numpy()))
+            self.assertTrue(np.array_equal(y, tmp4.numpy()))
+            self.assertTrue(np.array_equal(x, tmp5.numpy()))
+
     def test_sum_op(self):
         x = np.ones([2, 2], np.float32)
         with fluid.dygraph.guard():
@@ -207,6 +255,59 @@ class TestImperative(unittest.TestCase):
             a = inputs2[0].gradient()
             self.assertTrue(np.allclose(inputs2[0].gradient(), x))
 
+    def test_empty_var(self):
+        with fluid.dygraph.guard():
+            cur_program = fluid.Program()
+            cur_block = cur_program.current_block()
+            new_variable = cur_block.create_var(
+                name="X", shape=[-1, 23, 48], dtype='float32')
+            try:
+                new_variable.numpy()
+            except Exception as e:
+                assert type(e) == core.EnforceNotMet
+
+            try:
+                new_variable.backward()
+            except Exception as e:
+                assert type(e) == core.EnforceNotMet
+
+            try:
+                new_variable.clear_gradient()
+            except Exception as e:
+                assert type(e) == core.EnforceNotMet
+
+    def test_empty_grad(self):
+        with fluid.dygraph.guard():
+            x = np.ones([2, 2], np.float32)
+            new_var = fluid.dygraph.base.to_variable(x)
+            try:
+                new_var.gradient()
+            except Exception as e:
+                assert type(e) == ValueError
+
+            try:
+                new_var.clear_gradient()
+            except Exception as e:
+                assert type(e) == core.EnforceNotMet
+
+        with fluid.dygraph.guard():
+            cur_program = fluid.Program()
+            cur_block = cur_program.current_block()
+            new_variable = cur_block.create_var(
+                name="X", shape=[-1, 23, 48], dtype='float32')
+            try:
+                new_variable.gradient()
+            except Exception as e:
+                assert type(e) == ValueError
+
+    def test_set_persistable(self):
+        with fluid.dygraph.guard():
+            x = np.ones([2, 2], np.float32)
+            new_var = fluid.dygraph.base.to_variable(x)
+            self.assertFalse(new_var.persistable)
+            new_var.persistable = True
+            self.assertTrue(new_var.persistable)
+
     def test_layer(self):
         with fluid.dygraph.guard():
             cl = core.Layer()
@@ -219,7 +320,8 @@ class TestImperative(unittest.TestCase):
         with fluid.dygraph.guard():
             var_inp = fluid.dygraph.base.to_variable(np_inp)
             var_inp.stop_gradient = False
-            l = MyLayer("my_layer")
+            l = MyLayer()
+            print(var_inp)
             x = l(var_inp)[0]
             self.assertIsNotNone(x)
             dy_out = x.numpy()
@@ -229,7 +331,7 @@ class TestImperative(unittest.TestCase):
         with fluid.dygraph.guard():
             var_inp2 = fluid.dygraph.base.to_variable(np_inp)
             var_inp2.stop_gradient = False
-            l2 = MyLayer("my_layer")
+            l2 = MyLayer()
             x2 = l2(var_inp2)[0]
             self.assertIsNotNone(x2)
             dy_out2 = x2.numpy()
@@ -241,7 +343,7 @@ class TestImperative(unittest.TestCase):
         with new_program_scope():
             inp = fluid.layers.data(
                 name="inp", shape=[3], append_batch_size=False)
-            l = MyLayer("my_layer")
+            l = MyLayer()
             x = l(inp)[0]
             param_grads = fluid.backward.append_backward(
                 x, parameter_list=[l._x_for_debug.name])[0]
@@ -261,29 +363,29 @@ class TestImperative(unittest.TestCase):
         np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
         with fluid.dygraph.guard():
             var_inp = fluid.dygraph.base.to_variable(np_inp)
-            mlp = MLP("mlp")
+            mlp = MLP(input_size=2)
             out = mlp(var_inp)
             dy_out = out.numpy()
             out.backward()
-            dy_grad = mlp._fc1._w.gradient()
+            dy_grad = mlp._linear1.weight.gradient()
 
         with fluid.dygraph.guard():
             var_inp2 = fluid.dygraph.base.to_variable(np_inp)
-            mlp2 = MLP("mlp")
+            mlp2 = MLP(input_size=2)
             out2 = mlp2(var_inp2)
             dy_out2 = out2.numpy()
             backward_strategy = fluid.dygraph.BackwardStrategy()
             backward_strategy.sort_sum_gradient = True
             out2.backward(backward_strategy)
-            dy_grad2 = mlp2._fc1._w.gradient()
+            dy_grad2 = mlp2._linear1.weight.gradient()
 
         with new_program_scope():
             inp = fluid.layers.data(
                 name="inp", shape=[2, 2], append_batch_size=False)
-            mlp = MLP("mlp")
+            mlp = MLP(input_size=2)
             out = mlp(inp)
             param_grads = fluid.backward.append_backward(
-                out, parameter_list=[mlp._fc1._w.name])[0]
+                out, parameter_list=[mlp._linear1.weight.name])[0]
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
             exe.run(fluid.default_startup_program())
@@ -298,24 +400,26 @@ class TestImperative(unittest.TestCase):
         self.assertTrue(np.allclose(dy_grad2, static_grad))
 
         params = mlp.parameters(True)
-        self.assertEqual("mlp/MLP_0/FC_0.w_0", params[0].name)
-        self.assertEqual("mlp/MLP_0/FC_0.b_0", params[1].name)
-        self.assertEqual("mlp/MLP_0/FC_1.w_0", params[2].name)
-        self.assertEqual("mlp/MLP_0/FC_1.b_0", params[3].name)
+        self.assertEqual("linear_0.w_0", params[0].name)
+        self.assertEqual("linear_0.b_0", params[1].name)
+        self.assertEqual("linear_1.w_0", params[2].name)
+        self.assertEqual("linear_1.b_0", params[3].name)
         self.assertEqual(len(params), 4)
 
         sublayers = mlp.sublayers(True)
-        self.assertEqual(mlp._fc1, sublayers[0])
-        self.assertEqual(mlp._fc2, sublayers[1])
+        self.assertEqual(mlp._linear1, sublayers[0])
+        self.assertEqual(mlp._linear2, sublayers[1])
         self.assertEqual(len(sublayers), 2)
 
     def test_dygraph_vs_static(self):
-        inp1 = np.random.rand(4, 3, 3)
-        inp2 = np.random.rand(4, 3, 3)
+        np_inp1 = np.random.rand(4, 3, 3)
+        np_inp2 = np.random.rand(4, 3, 3)
 
         # dynamic graph
         with fluid.dygraph.guard():
-            if np.sum(inp1) < np.sum(inp2):
+            inp1 = fluid.dygraph.to_variable(np_inp1)
+            inp2 = fluid.dygraph.to_variable(np_inp2)
+            if np.sum(np_inp1) < np.sum(np_inp2):
                 x = fluid.layers.elementwise_add(inp1, inp2)
             else:
                 x = fluid.layers.elementwise_sub(inp1, inp2)
@@ -353,8 +457,8 @@ class TestImperative(unittest.TestCase):
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
             static_result = exe.run(fluid.default_main_program(),
-                                    feed={'inp1': inp1,
-                                          'inp2': inp2},
+                                    feed={'inp1': np_inp1,
+                                          'inp2': np_inp2},
                                     fetch_list=out)[0]
         self.assertTrue(np.allclose(dygraph_result, static_result))
 
@@ -366,7 +470,7 @@ class TestImperative(unittest.TestCase):
         with fluid.dygraph.guard():
             var_inp = fluid.dygraph.base.to_variable(np_inp)
             var_inp = fluid.layers.reshape(var_inp, shape=[1, 4, 3])
-            simple_rnn = SimpleRNN("simple_rnn")
+            simple_rnn = SimpleRNN()
             outs, pre_hiddens = simple_rnn.forward(var_inp)
             dy_out = outs[3].numpy()
             outs[3].backward()
@@ -377,7 +481,7 @@ class TestImperative(unittest.TestCase):
         with fluid.dygraph.guard():
             var_inp2 = fluid.dygraph.base.to_variable(np_inp)
             var_inp2 = fluid.layers.reshape(var_inp2, shape=[1, 4, 3])
-            simple_rnn2 = SimpleRNN("simple_rnn")
+            simple_rnn2 = SimpleRNN()
             outs2, pre_hiddens2 = simple_rnn2.forward(var_inp2)
             dy_out2 = outs2[3].numpy()
             backward_strategy = fluid.dygraph.BackwardStrategy()
@@ -390,7 +494,7 @@ class TestImperative(unittest.TestCase):
         with new_program_scope():
             inp = fluid.layers.data(
                 name="inp", shape=[1, 4, 3], append_batch_size=False)
-            simple_rnn = SimpleRNN("simple_rnn")
+            simple_rnn = SimpleRNN()
             outs, pre_hiddens = simple_rnn(inp)
             param_grads = fluid.backward.append_backward(outs[3])
             exe = fluid.Executor(fluid.CPUPlace())
@@ -417,6 +521,19 @@ class TestImperative(unittest.TestCase):
         self.assertFalse(hasattr(layer, "whatever"))
         self.assertTrue(hasattr(layer, "test_attr"))
         self.assertEqual(layer.test_attr, 1)
+
+        my_layer = MyLayer()
+        my_layer.w1 = my_layer.create_parameter([3, 3])
+        my_layer.add_parameter('w2', None)
+        self.assertEqual(len(my_layer.parameters()), 1)
+        self.assertRaises(TypeError, my_layer.__setattr__, 'w1', 'str')
+        my_layer.w1 = None
+        self.assertEqual(len(my_layer.parameters()), 0)
+        my_layer.l1 = fluid.dygraph.Linear(3, 3)
+        self.assertEqual(len(my_layer.sublayers()), 1)
+        self.assertRaises(TypeError, my_layer.__setattr__, 'l1', 'str')
+        my_layer.l1 = None
+        self.assertEqual(len(my_layer.sublayers()), 0)
 
 
 if __name__ == '__main__':

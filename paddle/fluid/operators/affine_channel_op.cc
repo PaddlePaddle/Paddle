@@ -121,30 +121,28 @@ class AffineChannelOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
   }
 };
 
-class AffineChannelGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class AffineChannelGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("affine_channel_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetInput("Scale", Input("Scale"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput("Scale", this->Input("Scale"));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
 
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Scale"), InputGrad("Scale"));
-    op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
-
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Scale"), this->InputGrad("Scale"));
+    op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
   }
 };
 
@@ -297,24 +295,14 @@ class AffineChannelNoNeedBufferVarsInference
  public:
   using framework::NoNeedBufferVarsInference::NoNeedBufferVarsInference;
 
- private:
-  inline bool HasOutput(const std::string& name) const {
-    auto& outputs = Outputs();
-    auto iter = outputs.find(name);
-    if (iter == outputs.end() || iter->second.empty()) {
-      return false;
+  const std::unordered_set<std::string>& operator()(
+      const framework::InferNoNeedBufferVarsContext& ctx) const final {
+    static const std::unordered_set<std::string> kX({"X"});
+    if (!ctx.HasOutput(framework::GradVarName("Scale")) &&
+        !ctx.HasOutput(framework::GradVarName("Bias"))) {
+      return kX;
     } else {
-      return iter->second[0] != framework::kEmptyVarName;
-    }
-  }
-
- public:
-  std::unordered_set<std::string> operator()() const override {
-    if (!HasOutput(framework::GradVarName("Scale")) &&
-        !HasOutput(framework::GradVarName("Bias"))) {
-      return {"X"};
-    } else {
-      return {};
+      return Empty();
     }
   }
 };
@@ -331,7 +319,9 @@ namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(affine_channel, ops::AffineChannelOp,
-                  ops::AffineChannelOpMaker, ops::AffineChannelGradMaker,
+                  ops::AffineChannelOpMaker,
+                  ops::AffineChannelGradMaker<paddle::framework::OpDesc>,
+                  ops::AffineChannelGradMaker<paddle::imperative::OpBase>,
                   ops::AffineChannelInplaceInferer);
 REGISTER_OPERATOR(affine_channel_grad, ops::AffineChannelOpGrad,
                   ops::AffineChannelNoNeedBufferVarsInference,

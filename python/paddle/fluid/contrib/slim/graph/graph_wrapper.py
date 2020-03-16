@@ -35,6 +35,7 @@ OPTIMIZER_OPS = [
     'adagrad',
     'adam',
     'adamax',
+    'dpsgd',
     'decayed_adagrad',
     'adadelta',
     'rmsprop',
@@ -62,7 +63,7 @@ class VarWrapper(object):
 
     def shape(self):
         """
-        Get the shape of the varibale.
+        Get the shape of the variable.
         """
         return self._var.shape
 
@@ -151,13 +152,13 @@ class OpWrapper(object):
 
     def inputs(self, name):
         """
-        Get all the varibales by the input name.
+        Get all the variables by the input name.
         """
         return [self._graph.var(var_name) for var_name in self._op.input(name)]
 
     def outputs(self, name):
         """
-        Get all the varibales by the output name.
+        Get all the variables by the output name.
         """
         return [self._graph.var(var_name) for var_name in self._op.output(name)]
 
@@ -211,6 +212,7 @@ class GraphWrapper(object):
                 self.persistables[var.name] = var
         self.compiled_graph = None
         in_nodes = [] if in_nodes is None else in_nodes
+        out_nodes = [] if out_nodes is None else out_nodes
         self.in_nodes = OrderedDict(in_nodes)
         self.out_nodes = OrderedDict(out_nodes)
         self._attrs = OrderedDict()
@@ -231,7 +233,7 @@ class GraphWrapper(object):
         """
         Whether the given variable is parameter.
         Args:
-            var(VarWrapper): The given varibale.
+            var(VarWrapper): The given variable.
         """
         return isinstance(var._var, Parameter)
 
@@ -239,7 +241,7 @@ class GraphWrapper(object):
         """
         Whether the given variable is persistable.
         Args:
-            var(VarWrapper): The given varibale.
+            var(VarWrapper): The given variable.
         """
         return var._var.persistable
 
@@ -261,6 +263,7 @@ class GraphWrapper(object):
             build_strategy = compiler.BuildStrategy()
             build_strategy.enable_inplace = mem_opt
             build_strategy.memory_optimize = mem_opt
+            build_strategy.fuse_all_reduce_ops = False
             #            build_strategy.async_mode = False
             self.compiled_graph = compiler.CompiledProgram(
                 target).with_data_parallel(
@@ -394,7 +397,7 @@ class GraphWrapper(object):
         """
         Get a new graph for training by appending some backward operators and optimization operators.
         Args:
-            optimizer: The optimzier used to generate training graph.
+            optimizer: The optimizer used to generate training graph.
             place: The place to run the graph.
             scope: The scope used to run the graph. Some new variable will be added into this scope.
             no_grad_var_names(list<str>): Names of variables that should be ignored while computing gradients. default: [].
@@ -471,6 +474,54 @@ class GraphWrapper(object):
 
         return flops
 
+    def save_model(self, path, exe):
+        """
+        Save network and parameters into file which can be load by load_inference_model api.
+        Args:
+            path(str): The path to save the persistables.
+            exe(framework.Executor): The executor used to save the persistables.
+        """
+        out_vars = [
+            self.var(var_name)._var for var_name in self.out_nodes.values()
+        ]
+        in_vars = list(self.in_nodes.values())
+        assert (len(in_vars) > 0)
+        assert (len(out_vars) > 0)
+        io.save_inference_model(
+            path,
+            in_vars,
+            out_vars,
+            exe.exe,
+            model_filename="__model__",
+            params_filename="__params__",
+            main_program=self.program.clone(),
+            export_for_deployment=True)
+
+    def save_infer_model(self, path, exe, in_out, program_only=False):
+        """
+        Save network and parameters into file which can be load by load_inference_model api.
+        Args:
+            path(str): The path to save the persistables.
+            exe(framework.Executor): The executor used to save the persistables.
+            in_out(tuple|list): in_out[0] is a list of input nodes' names
+            and in_out[1] is a list of output nodes' names.
+            program_only(bool): Whether to save program only.
+        """
+        out_vars = [self.var(var_name)._var for var_name in in_out[1]]
+        in_vars = list(in_out[0])
+        assert (len(in_vars) > 0)
+        assert (len(out_vars) > 0)
+        io.save_inference_model(
+            path,
+            in_vars,
+            out_vars,
+            exe.exe,
+            model_filename="__model__.infer",
+            params_filename="__params__",
+            program_only=program_only,
+            main_program=self.program.clone(),
+            export_for_deployment=True)
+
     def save_persistables(self, path, exe):
         """
         Save all the persistable variables into file.
@@ -527,5 +578,6 @@ class GraphWrapper(object):
 
     def update_groups_of_conv(self):
         for op in self.ops():
-            if op.type() == 'depthwise_conv2d':
+            if op.type() == 'depthwise_conv2d' or op.type(
+            ) == 'depthwise_conv2d_grad':
                 op.set_attr('groups', op.inputs('Filter')[0].shape()[0])

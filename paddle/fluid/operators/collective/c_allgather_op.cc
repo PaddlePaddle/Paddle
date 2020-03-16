@@ -29,6 +29,7 @@ class CAllGatherOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(nranks, 2, "nranks should be >=2");
     framework::DDim dim = ctx->GetInputDim("X");
     dim[0] = dim[0] * nranks;
+    if (dim[0] < 0) dim[0] = -1;
     ctx->SetOutputDim("Out", dim);
   }
 };
@@ -55,18 +56,17 @@ reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/us
   }
 };
 
-class CAllGatherOpGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class CAllGatherOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> retv(new framework::OpDesc());
+  void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("c_reducescatter");
-    retv->SetInput("X", OutputGrad("Out"));
-    retv->SetOutput("Out", InputGrad("X"));
-    retv->SetAttrMap(Attrs());
-    return retv;
+    retv->SetInput("X", this->OutputGrad("Out"));
+    retv->SetOutput("Out", this->InputGrad("X"));
+    retv->SetAttrMap(this->Attrs());
   }
 };
 
@@ -76,7 +76,9 @@ class CAllGatherOpGradMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OPERATOR(c_allgather, ops::CAllGatherOp, ops::CAllGatherOpGradMaker,
+REGISTER_OPERATOR(c_allgather, ops::CAllGatherOp,
+                  ops::CAllGatherOpGradMaker<paddle::framework::OpDesc>,
+                  ops::CAllGatherOpGradMaker<paddle::imperative::OpBase>,
                   ops::CAllGatherOpMaker);
 
 REGISTER_OP_CPU_KERNEL(c_allgather, ops::CAllGatherOpCPUKernel<float>,

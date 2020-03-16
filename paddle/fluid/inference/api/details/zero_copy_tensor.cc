@@ -52,7 +52,7 @@ T *ZeroCopyTensor::mutable_data(PaddlePlace place) {
       return tensor->mutable_data<T>(platform::CPUPlace());
     }
     case static_cast<int>(PaddlePlace::kGPU): {
-      return tensor->mutable_data<T>(platform::CUDAPlace());
+      return tensor->mutable_data<T>(platform::CUDAPlace(device_));
     }
     default:
       PADDLE_THROW("Unsupported place: %d", static_cast<int>(place));
@@ -138,7 +138,8 @@ void ZeroCopyTensor::copy_to_cpu(T *data) {
         static_cast<const platform::CUDADeviceContext *>(pool.Get(gpu_place));
     memory::Copy(platform::CPUPlace(), static_cast<void *>(data), gpu_place,
                  t_data, ele_num * sizeof(T), dev_ctx->stream());
-    cudaDeviceSynchronize();
+
+    cudaStreamSynchronize(dev_ctx->stream());
 #else
     PADDLE_THROW("Not compile with CUDA, should not reach here.");
 #endif

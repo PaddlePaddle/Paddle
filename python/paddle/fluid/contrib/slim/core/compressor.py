@@ -20,6 +20,7 @@ from .... import profiler
 from .... import scope_guard
 from ....data_feeder import DataFeeder
 from ....log_helper import get_logger
+from ....reader import DataLoaderBase
 from ..graph import *
 from .config import ConfigFactory
 import numpy as np
@@ -54,7 +55,9 @@ def cached_reader(reader, sampled_rate, cache_path, cached_id):
     def s_reader():
         if os.path.isdir(cache_path):
             for file_name in open(os.path.join(cache_path, "list")):
-                yield np.load(os.path.join(cache_path, file_name.strip()))
+                yield np.load(
+                    os.path.join(cache_path, file_name.strip()),
+                    allow_pickle=True)
         else:
             os.makedirs(cache_path)
             list_file = open(os.path.join(cache_path, "list"), 'w')
@@ -139,7 +142,7 @@ class Context(object):
         """
         Load the context from file.
         """
-        with open(file_name) as context_file:
+        with open(file_name, 'rb') as context_file:
             if sys.version_info < (3, 0):
                 data = pickle.load(context_file)
             else:
@@ -185,10 +188,16 @@ class Context(object):
         s_time = time.time()
         reader = self.eval_reader
         if sampled_rate:
+            assert (not isinstance(reader, Variable))
+            assert (sampled_rate > 0)
+            assert (self.cache_path is not None)
+            _logger.info('sampled_rate: {}; cached_id: {}'.format(sampled_rate,
+                                                                  cached_id))
             reader = cached_reader(reader, sampled_rate, self.cache_path,
                                    cached_id)
 
-        if isinstance(reader, Variable):
+        if isinstance(reader, Variable) or (
+                isinstance(reader, DataLoaderBase) and (not reader.iterable)):
             reader.start()
             try:
                 while True:
@@ -211,7 +220,7 @@ class Context(object):
                         batch_id, eval_graph.out_nodes.keys(), result))
                 batch_id += 1
 
-        result = np.mean(np.array(results), axis=0)
+        result = list(np.mean(np.array(results), axis=0))
         _logger.info("Final eval result: {}={}".format(
             eval_graph.out_nodes.keys(), result))
         if not isinstance(result, Iterable):
@@ -242,11 +251,15 @@ class Compressor(object):
                  eval_reader=None,
                  eval_feed_list=None,
                  eval_fetch_list=None,
+                 eval_func=None,
+                 save_eval_model=True,
+                 prune_infer_model=None,
                  teacher_programs=[],
                  checkpoint_path=None,
                  train_optimizer=None,
                  distiller_optimizer=None,
-                 search_space=None):
+                 search_space=None,
+                 log_period=20):
         """
         Args:
             place(fluid.Place): The device place where the compression job running.
@@ -260,13 +273,28 @@ class Compressor(object):
                                    The key is user-defined and human-readable name.
                                    The value is the name of Variable.
             eval_program(Program): The program used for evaluation.
-            eval_reader: The data reader used for evaluation.
+            eval_reader: The data reader used for evaluation. It can be None if eval_func is not None.
             eval_feed_list(dict): A dict to indicate the input variable of the evaluation program.
                                    The key is user-defined and human-readable name.
                                    The value is the name of Variable.
+                                   It can be None if eval_func is not None.
             eval_fetch_list(dict): A dict to indicate the output variable of the evaluation program.
                                    The key is user-defined and human-readable name.
                                    The value is the name of Variable.
+            eval_func(dict|function): Callback functions used to evaluate the compressed model.
+                                   The eval_func is a dict, the key is user-defined name and the value is 
+                                   a callback function. And the score returned from callback functions 
+                                   can be referenced in config file by the key of eval_func.
+                                   The args of callback function are compressed eval_program and scope which
+                                   store the compressed parameters.
+                                   Default: None.
+            save_eval_model(bool): Whether to save eval model when saving checkpoints. Default: True.
+            prune_infer_model(tuple|list): If prune_infer_model is not None, compressor will prune
+                                   eval program into inference program according to inputs and outputs
+                                   defined in prune_infer_model. prune_infer_model[0] is a list of input
+                                   variables' names and prune_infer_model[1] is a list of output variables'
+                                   names. If prune_infer_model is None, it will not save inference model.
+                                   Default: None.
             teacher_programs: The teacher graphs used in distillation strategies.
             train_optimizer: The optimizer used to append backward ops and
                              optimization ops into train_graph.
@@ -274,8 +302,9 @@ class Compressor(object):
                                  this optimizer is used to minimize the combined loss of student-net and
                                  teacher-net while train_optimizer is used to minimize loss of
                                  student-net in fine-tune stage. 
-            search_space(slim.nas.SearchSpace): The instance that define the searching space. It must inherite
+            search_space(slim.nas.SearchSpace): The instance that define the searching space. It must inherit
                               slim.nas.SearchSpace class and overwrite the abstract methods.
+            log_period(int): The period of print log of training.
 
         """
         assert train_feed_list is None or isinstance(
@@ -294,6 +323,10 @@ class Compressor(object):
             eval_program, in_nodes=eval_feed_list, out_nodes=eval_fetch_list)
         self.train_reader = train_reader
         self.eval_reader = eval_reader
+        self.eval_func = eval_func
+        self.save_eval_model = save_eval_model
+        self.prune_infer_model = prune_infer_model
+
         self.teacher_graphs = []
         for teacher in teacher_programs:
             self.teacher_graphs.append(GraphWrapper(teacher))
@@ -307,6 +340,8 @@ class Compressor(object):
         self.init_model = None
 
         self.search_space = search_space
+        self.log_period = log_period
+        assert (log_period > 0)
 
     def _add_strategy(self, strategy):
         """
@@ -335,6 +370,7 @@ class Compressor(object):
 
         if 'eval_epoch' in factory.compressor:
             self.eval_epoch = factory.compressor['eval_epoch']
+        assert (self.eval_epoch > 0)
 
     def _init_model(self, context):
         """
@@ -392,6 +428,9 @@ class Compressor(object):
                         else:
                             strategies = pickle.load(
                                 strategy_file, encoding='bytes')
+                assert (len(self.strategies) == len(strategies))
+                for s, s1 in zip(self.strategies, strategies):
+                    s1.__dict__.update(s.__dict__)
 
                 for strategy in strategies:
                     strategy.restore_from_checkpoint(context)
@@ -401,10 +440,6 @@ class Compressor(object):
                     with scope_guard(context.scope):
                         context.optimize_graph.load_persistables(model_path,
                                                                  exe)
-                    context.optimize_graph.update_param_shape(context.scope)
-                    context.optimize_graph.update_groups_of_conv()
-                    context.eval_graph.update_param_shape(context.scope)
-                    context.eval_graph.update_groups_of_conv()
                     _logger.info("Loaded params from: {}".format(model_path))
         return context, strategies
 
@@ -416,6 +451,7 @@ class Compressor(object):
             checkpoint_path = os.path.join(self.checkpoint_path,
                                            str(context.epoch_id))
             model_path = os.path.join(checkpoint_path, 'model')
+            eval_model_path = os.path.join(checkpoint_path, 'eval_model')
             context_path = os.path.join(checkpoint_path, 'context')
             strategy_path = os.path.join(checkpoint_path, 'strategies')
             if not os.path.isdir(model_path):
@@ -423,6 +459,15 @@ class Compressor(object):
             exe = SlimGraphExecutor(context.place)
             with scope_guard(context.scope):
                 context.optimize_graph.save_persistables(model_path, exe)
+                if self.save_eval_model:
+                    context.eval_graph.save_model(eval_model_path, exe)
+                if self.prune_infer_model:
+                    context.eval_graph.save_infer_model(
+                        eval_model_path,
+                        exe,
+                        self.prune_infer_model,
+                        program_only=self.save_eval_model)
+
             context.to_file(context_path)
             with open(strategy_path, 'wb') as strategy_file:
                 pickle.dump(self.strategies, strategy_file)
@@ -437,11 +482,16 @@ class Compressor(object):
         executor = SlimGraphExecutor(self.place)
 
         if context.optimize_graph.compiled_graph is None:
+            build_strategy = compiler.BuildStrategy()
+            build_strategy.fuse_all_reduce_ops = False
             context.optimize_graph.compiled_graph = compiler.CompiledProgram(
                 context.optimize_graph.program).with_data_parallel(
-                    loss_name=context.optimize_graph.out_nodes['loss'])
+                    loss_name=context.optimize_graph.out_nodes['loss'],
+                    build_strategy=build_strategy)
 
-        if isinstance(context.train_reader, Variable):
+        if isinstance(context.train_reader, Variable) or (
+                isinstance(context.train_reader, DataLoaderBase) and
+            (not context.train_reader.iterable)):
             context.train_reader.start()
             try:
                 while True:
@@ -451,11 +501,11 @@ class Compressor(object):
                     results = executor.run(context.optimize_graph,
                                            context.scope)
                     results = [float(np.mean(result)) for result in results]
-                    if context.batch_id % 20 == 0:
+                    if context.batch_id % self.log_period == 0:
                         _logger.info("epoch:{}; batch_id:{}; {} = {}".format(
                             context.epoch_id, context.batch_id,
                             context.optimize_graph.out_nodes.keys(
-                            ), [round(r, 3) for r in results]))
+                            ), [round(r, 6) for r in results]))
                     for strategy in self.strategies:
                         strategy.on_batch_end(context)
                     context.batch_id += 1
@@ -471,11 +521,11 @@ class Compressor(object):
                                        context.scope,
                                        data=data)
                 results = [float(np.mean(result)) for result in results]
-                if context.batch_id % 20 == 0:
+                if context.batch_id % self.log_period == 0:
                     _logger.info("epoch:{}; batch_id:{}; {} = {}".format(
                         context.epoch_id, context.batch_id,
                         context.optimize_graph.out_nodes.keys(
-                        ), [round(r, 3) for r in results]))
+                        ), [round(r, 6) for r in results]))
                 for strategy in self.strategies:
                     strategy.on_batch_end(context)
                 context.batch_id += 1
@@ -485,15 +535,23 @@ class Compressor(object):
         """
         Runing evaluation.
         """
-        results, names = context.run_eval_graph()
-        for name, result in zip(names, results):
-            if name not in context.eval_results:
-                context.eval_results[name] = []
-            context.eval_results[name].append(result)
+        if self.eval_func is not None:
+            for key in self.eval_func:
+                func = self.eval_func[key]
+                if key not in context.eval_results:
+                    context.eval_results[key] = []
+                context.eval_results[key].append(
+                    func(self.eval_graph.program, self.scope))
+        else:
+            results, names = context.run_eval_graph()
+            for name, result in zip(names, results):
+                if name not in context.eval_results:
+                    context.eval_results[name] = []
+                context.eval_results[name].append(result)
 
     def run(self):
         """
-        Execute compressiong pass.
+        Execute compressing pass.
         """
         context = Context(
             place=self.place,

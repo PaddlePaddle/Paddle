@@ -23,6 +23,8 @@ from paddle.fluid.executor import Executor
 
 
 class TestLoDTensorArrayConcat(unittest.TestCase):
+    """Test case for concat mode of tensor_array_to_tensor."""
+
     def setUp(self):
         self.op_type = "tensor_array_to_tensor"
         self.attrs = {"axis": 0}
@@ -98,7 +100,7 @@ class TestLoDTensorArrayConcat(unittest.TestCase):
 
         exe = fluid.Executor(fluid.CPUPlace())
         out = exe.run(program, fetch_list=fetch_list, scope=scope)
-        #print ("index: ", numpy.array(out[1]))  
+        #print ("index: ", numpy.array(out[1]))
 
         # test forward
         tensor_res = numpy.array(out[0])
@@ -136,6 +138,83 @@ class TestLoDTensorArrayConcat(unittest.TestCase):
                 self.assertEqual(
                     numpy.array(grad_tensor_array[i]),
                     numpy.array(random_grad[i + 1]))
+
+
+class TestLoDTensorArrayStack(unittest.TestCase):
+    """Test case for stack mode of tensor_array_to_tensor."""
+
+    def setUp(self):
+        self.op_type = "tensor_array_to_tensor"
+        self.attrs = {"axis": 1, "use_stack": True}
+        self.inputs = [
+            numpy.random.rand(2, 3, 4).astype("float32"),
+            numpy.random.rand(2, 3, 4).astype("float32"),
+            numpy.random.rand(2, 3, 4).astype("float32")
+        ]
+        self.outputs = [
+            numpy.stack(
+                self.inputs, axis=self.attrs["axis"]), numpy.array(
+                    [x.shape[self.attrs["axis"]] for x in self.inputs],
+                    dtype="int32")
+        ]
+        self.input_grads = [numpy.ones_like(x) for x in self.inputs]
+        self.set_program()
+        for var in self.program.list_vars():
+            # to avoid scope clearing after execution
+            var.persistable = True
+
+    def set_program(self):
+        self.program = fluid.Program()
+        with fluid.program_guard(self.program):
+            self.array = array = fluid.layers.create_array(dtype='float32')
+            idx = fluid.layers.fill_constant(shape=[1], dtype="int64", value=0)
+            for i, x in enumerate(self.inputs):
+                x = fluid.layers.assign(x)
+                fluid.layers.array_write(x, idx + i, array)
+            output, output_index = fluid.layers.tensor_array_to_tensor(
+                input=array, **self.attrs)
+            loss = fluid.layers.reduce_sum(output)
+            fluid.backward.append_backward(loss)
+        self.output_vars = [output, output_index]
+
+    def run_check(self, executor, scope):
+        executor.run(self.program, scope=scope)
+        for i, output in enumerate(self.outputs):
+            numpy.allclose(
+                numpy.array(scope.var(self.output_vars[i].name).get_tensor()),
+                output,
+                atol=0)
+        tensor_array_grad = scope.var(self.array.name).get_lod_tensor_array()
+        for i, input_grad in enumerate(self.input_grads):
+            numpy.allclose(
+                numpy.array(tensor_array_grad[i]), input_grad, atol=0)
+
+    def test_cpu(self):
+        scope = core.Scope()
+        place = core.CPUPlace()
+        executor = fluid.Executor(place)
+        self.run_check(executor, scope)
+
+    def test_gpu(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            scope = core.Scope()
+            executor = fluid.Executor(place)
+            self.run_check(executor, scope)
+
+
+class TestTensorArrayToTensorAPI(unittest.TestCase):
+    def test_case(self):
+        x0 = fluid.layers.assign(numpy.random.rand(2, 3, 4).astype("float32"))
+        x1 = fluid.layers.assign(numpy.random.rand(2, 3, 4).astype("float32"))
+        i = fluid.layers.fill_constant(shape=[1], dtype="int64", value=0)
+        array = fluid.layers.create_array(dtype='float32')
+        fluid.layers.array_write(x0, i, array)
+        fluid.layers.array_write(x1, i + 1, array)
+        output, output_index = fluid.layers.tensor_array_to_tensor(
+            input=array, axis=1, use_stack=True)
+        output, output_index = fluid.layers.tensor_array_to_tensor(
+            input=array, axis=1, use_stack=False)
 
 
 if __name__ == '__main__':

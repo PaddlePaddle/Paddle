@@ -35,6 +35,10 @@ class SequencePadOpKernel : public framework::OpKernel<T> {
     auto* len_t = ctx.Output<LoDTensor>("Length");
     out->mutable_data<T>(ctx.GetPlace());
 
+    PADDLE_ENFORCE_EQ(
+        x->lod().empty(), false,
+        "Input(X) Tensor of SequencePadOp does not contain LoD information.");
+
     const auto* pad_value = ctx.Input<LoDTensor>("PadValue");
 
     int padded_length = ctx.Attr<int>("padded_length");

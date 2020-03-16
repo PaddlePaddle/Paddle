@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fused_embedding_seq_pool_op.h"
+#include <memory>
 #include "paddle/fluid/framework/var_type_inference.h"
 
 namespace paddle {
@@ -56,7 +57,7 @@ class FusedEmbeddingSeqPoolOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("W"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "W");
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
@@ -125,7 +126,7 @@ class FusedEmbeddingSeqPoolOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("W"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "W");
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
@@ -150,13 +151,33 @@ class FusedEmbeddingSeqPoolOpGradVarTypeInference
   }
 };
 
+template <typename T>
+class FusedEmbeddingSeqPoolGradOpMaker
+    : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("fused_embedding_seq_pool_grad");
+    op->SetInput("Ids", this->Input("Ids"));
+    op->SetInput("W", this->Input("W"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fused_embedding_seq_pool, ops::FusedEmbeddingSeqPoolOp,
-                  paddle::framework::DefaultGradOpDescMaker<true>,
-                  ops::FusedEmbeddingSeqPoolOpMaker);
+
+REGISTER_OPERATOR(
+    fused_embedding_seq_pool, ops::FusedEmbeddingSeqPoolOp,
+    ops::FusedEmbeddingSeqPoolGradOpMaker<paddle::framework::OpDesc>,
+    ops::FusedEmbeddingSeqPoolGradOpMaker<paddle::imperative::OpBase>,
+    ops::FusedEmbeddingSeqPoolOpMaker);
 REGISTER_OPERATOR(fused_embedding_seq_pool_grad,
                   ops::FusedEmbeddingSeqPoolOpGrad,
                   ops::FusedEmbeddingSeqPoolOpGradVarTypeInference);

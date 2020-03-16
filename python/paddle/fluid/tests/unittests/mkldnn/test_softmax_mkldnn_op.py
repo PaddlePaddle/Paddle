@@ -18,11 +18,66 @@ import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.test_softmax_op import *
+from paddle.fluid.tests.unittests.test_softmax_op import TestSoftmaxOp, TestSoftmaxOp2, TestSoftmaxOp3, TestSoftmaxOp4, TestSoftmaxOp5, TestSoftmaxOp6
 from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
 
 
+def stable_softmax(x):
+    """Compute the softmax of vector x in a numerically stable way."""
+    shiftx = x - np.max(x).clip(-64.)
+    exps = np.exp(shiftx)
+    return exps / np.sum(exps)
+
+
 class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
+    def get_x_shape(self):
+        return [10, 10]
+
+    def get_axis(self):
+        return -1
+
+    def setUp(self):
+        self.op_type = "softmax"
+        self.use_cudnn = False
+        self.use_mkldnn = False
+        self.dtype = np.float32
+        self.init_kernel_type()
+        self.shape = self.get_x_shape()
+        self.axis = self.get_axis()
+
+        x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        out = np.apply_along_axis(stable_softmax, self.axis, x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {
+            'axis': self.axis,
+            'use_cudnn': self.use_cudnn,
+            'use_mkldnn': self.use_mkldnn
+        }
+
+    def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        if self.use_cudnn:
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, check_dygraph=False)
+        else:
+            self.check_output(check_dygraph=False)
+
+    def test_check_grad(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        if self.use_cudnn or self.dtype == np.float16:
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_grad_with_place(
+                    place, ["X"],
+                    "Out",
+                    max_relative_error=0.01,
+                    check_dygraph=False)
+        else:
+            self.check_grad(
+                ["X"], "Out", max_relative_error=0.01, check_dygraph=False)
+
     def init_kernel_type(self):
         self.use_mkldnn = True
 

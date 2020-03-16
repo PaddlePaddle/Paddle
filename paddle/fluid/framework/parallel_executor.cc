@@ -34,6 +34,8 @@ limitations under the License. */
 
 DECLARE_bool(use_ngraph);
 
+DECLARE_double(eager_delete_tensor_gb);
+
 #ifdef WITH_GPERFTOOLS
 #include "gperftools/profiler.h"
 #endif
@@ -85,18 +87,18 @@ class ParallelExecutorPrivate {
   inline bool HasGarbageCollectors() const { return !gcs_.empty(); }
 
   /**
-   * NOTE(zengjinle): the feeded variables of users should not be reused,
-   * because users may feed them into another network. Changing the feeded
+   * NOTE(zengjinle): the fed variables of users should not be reused,
+   * because users may feed them into another network. Changing the fed
    * variables that users can visit may cause calculation wrong, which is
    * a very subtle bug when traning networks. However, these variables
    * can be garbage collected.
    *
    * ParallelExecutor provides 2 methods to feed variables:
    *
-   *  - FeedTensorsIntoLocalScopes: this method would share memory of feeded
+   *  - FeedTensorsIntoLocalScopes: this method would share memory of fed
    *                                variables, so we have to skip these.
    *
-   *  - FeedAndSplitTensorIntoLocalScopes: this method would copy data of feeded
+   *  - FeedAndSplitTensorIntoLocalScopes: this method would copy data of fed
    *                                       variables, so we do not need to skip
    *                                       them.
    */
@@ -107,7 +109,7 @@ class ParallelExecutorPrivate {
     }
   }
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
   void InitNCCLCtxs(framework::Scope *scope, const BuildStrategy &bst) {
     VLOG(1) << "nccl comm num:" << bst.nccl_comm_num_ << ", nranks:" << nranks_
             << ", num_trainers:" << bst.num_trainers_
@@ -245,7 +247,7 @@ class ParallelExecutorPrivate {
 
   std::unordered_map<std::string, bool> is_persistable_;
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
   platform::NCCLCommunicator *nccl_ctxs_{nullptr};
 #endif
   bool own_local_scope_;
@@ -265,6 +267,26 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     return graph;
   }
 
+  /**
+   * NOTE(zengjinle): If BuildStrategy.memory_optimize = None in Python,
+   * set BuildStrategy.memory_optimize according to whether gc is enabled.
+   * If gc is enabled, BuildStrategy.memory_optimize = False.
+   * If gc is disabled, BuildStrategy.memory_optimize = True.
+   * This is because gc+memory_optimize is worse than gc only.
+   *
+   * As an option, users can enable BuildStrategy.memory_optimize forcely
+   * by setting True, and disable it forcely by setting False.
+   */
+  bool is_gc_enabled = (GetEagerDeletionThreshold() >= 0);
+  if (!build_strategy_.memory_optimize_) {
+    build_strategy_.memory_optimize_ = !is_gc_enabled;
+  }
+
+  bool need_mem_opt = build_strategy_.enable_inplace_ ||
+                      build_strategy_.memory_optimize_.get() || is_gc_enabled;
+
+  if (!need_mem_opt) return graph;
+
   std::vector<ir::LastLiveOpsOfVars> last_live_ops_of_vars;
 
   auto ref_cnt_pass = ir::PassRegistry::Instance().Get("reference_count_pass");
@@ -282,23 +304,8 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     VLOG(10) << "Start to apply buffer_shared_inplace_pass";
     graph = inplace_pass->Apply(graph);
     VLOG(10) << "buffer_shared_inplace_pass Applied";
-    LOG(INFO) << "Inplace strategy is enabled, when "
-                 "build_strategy.enable_inplace = True";
-  }
-
-  /**
-   * NOTE(zengjinle): If BuildStrategy.memory_optimize = None in Python,
-   * set BuildStrategy.memory_optimize according to whether gc is enabled.
-   * If gc is enabled, BuildStrategy.memory_optimize = False.
-   * If gc is disabled, BuildStrategy.memory_optimize = True.
-   * This is because gc+memory_optimize is worse than gc only.
-   *
-   * As an option, users can enable BuildStrategy.memory_optimize forcely
-   * by setting True, and disable it forcely by setting False.
-   */
-  bool is_gc_enabled = (GetEagerDeletionThreshold() >= 0);
-  if (!build_strategy_.memory_optimize_) {
-    build_strategy_.memory_optimize_ = !is_gc_enabled;
+    LOG_FIRST_N(INFO, 1) << "Inplace strategy is enabled, when "
+                            "build_strategy.enable_inplace = True";
   }
 
   if (build_strategy_.memory_optimize_.get()) {
@@ -365,12 +372,14 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     eager_deletion_pass->SetNotOwned(ir::kAllPlaces, &places_);
     graph = eager_deletion_pass->Apply(graph);
     VLOG(10) << "EagerDeletionPass Applied";
-    LOG(INFO) << "Garbage collection strategy is enabled, when "
-              << "FLAGS_eager_delete_tensor_gb = "
-              << (static_cast<double>(GetEagerDeletionThreshold()) / (1 << 30));
+    LOG_FIRST_N(INFO, 1) << "Garbage collection strategy is enabled, when "
+                         << "FLAGS_eager_delete_tensor_gb = "
+                         << FLAGS_eager_delete_tensor_gb;
   }
   return graph;
 }
+
+size_t ParallelExecutor::DeviceCount() const { return member_->places_.size(); }
 
 std::vector<Scope *> &ParallelExecutor::GetLocalScopes() {
   return member_->local_scopes_;
@@ -418,11 +427,20 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
 #endif
 
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_NCCL)
+  PADDLE_ENFORCE_EQ(
+      places.size(), 1,
+      platform::errors::PermissionDenied(
+          "Your machine has multiple cards, "
+          "but the WITH_NCCL option is not turned on during compilation, "
+          "and you cannot use multi-card training or prediction. "
+          "Please recompile and turn on the WITH_NCCL option."));
+#endif
+
   LOG(INFO) << string::Sprintf(
-      "The number of %s, which is used in ParallelExecutor, is %lu. And "
-      "the Program will be copied %lu copies",
-      (member_->use_cuda_ ? "CUDAPlace" : "CPUPlace"), places.size(),
-      places.size());
+      "The Program will be executed on %s using ParallelExecutor, %lu "
+      "cards are used, so %lu programs are executed in parallel.",
+      (member_->use_cuda_ ? "CUDA" : "CPU"), places.size(), places.size());
 
   // Step 1. Bcast the bcast_vars to devs.
   // Create local scopes
@@ -465,7 +483,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
 
   if (member_->use_cuda_ && member_->nranks_ > 1) {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
     member_->InitOrGetNCCLCommunicator(scope, &member_->build_strategy_);
 
     // Initialize device context's nccl comm, will be used by normal
@@ -508,7 +526,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
   // ncclOp
   std::vector<ir::Graph *> async_graphs(places.size());
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
   if (member_->build_strategy_.async_mode_) {
     VLOG(3) << "use local async mode";
     graph = member_->build_strategy_.Apply(
@@ -562,21 +580,6 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 
       member_->is_persistable_.emplace(node->Var()->Name(),
                                        node->Var()->Persistable());
-    }
-  }
-
-  // If the loss_var_name is given, the number of graph should be only one.
-  if (loss_var_name.size()) {
-    size_t graph_num = ir::GraphNum(*graph);
-    if (graph_num > 1) {
-      LOG(WARNING)
-          << "The number of graph should be only one, "
-             "but the current graph has "
-          << ir::GraphNum(*graph)
-          << " sub_graphs. If you want to see the nodes of the "
-             "sub_graphs, you should use 'FLAGS_print_sub_graph_dir' "
-             "to specify the output dir. NOTES: if you not do training, "
-             "please don't pass loss_var_name.";
     }
   }
 
@@ -659,7 +662,7 @@ void ParallelExecutor::BCastParamsToDevices(
     }
     auto &dims = main_tensor.dims();
     if (paddle::platform::is_gpu_place(main_tensor.place())) {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
       std::vector<void *> buffers;
       buffers.reserve(member_->places_.size());
       size_t numel = main_tensor.numel();
@@ -720,9 +723,10 @@ void ParallelExecutor::BCastParamsToDevices(
   }
 }
 
-FeedFetchList ParallelExecutor::Run(
-    const std::vector<std::string> &fetch_tensors) {
+FetchResultType ParallelExecutor::Run(
+    const std::vector<std::string> &fetch_tensors, bool return_merged) {
   VLOG(3) << "enter ParallelExecutor Run";
+  platform::RecordEvent parallel_executor_event("ParallelExecutor::Run");
 #ifdef WITH_GPERFTOOLS
   if (gProfileStarted) {
     ProfilerFlush();
@@ -735,7 +739,7 @@ FeedFetchList ParallelExecutor::Run(
                                 member_->HasGarbageCollectors());
 
   VLOG(3) << "ParallelExecutor begin to run member_->executor_->Run";
-  auto fetch_data = member_->executor_->Run(fetch_tensors);
+  auto fetch_data = member_->executor_->Run(fetch_tensors, return_merged);
   return fetch_data;
 }
 

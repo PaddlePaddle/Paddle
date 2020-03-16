@@ -31,8 +31,9 @@ class CropTensorOp : public framework::OperatorWithKernel {
                       "Input(X) of Op(crop_tensor) should not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
                       "Output(Out) of Op(crop_tensor) should not be null.");
-
+    auto x_dim = ctx->GetInputDim("X");
     auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
+    auto offsets = ctx->Attrs().Get<std::vector<int>>("offsets");
     if (ctx->HasInputs("ShapeTensor")) {
       // top prority shape
       auto inputs_name = ctx->Inputs("ShapeTensor");
@@ -43,15 +44,19 @@ class CropTensorOp : public framework::OperatorWithKernel {
           "Op(fluid.layers.crop_tensor).");
       auto out_dims = std::vector<int>(inputs_name.size(), -1);
       for (size_t i = 0; i < shape.size(); ++i) {
-        if (shape[i] != -1) {
+        if (shape[i] > 0) {
           out_dims[i] = static_cast<int64_t>(shape[i]);
+        } else {
+          if (shape[i] == -1 && offsets[i] != -1 && x_dim[i] != -1) {
+            out_dims[i] = x_dim[i] - static_cast<int64_t>(offsets[i]);
+          }
         }
       }
       ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
 
       return;
     }
-    auto x_dim = ctx->GetInputDim("X");
+
     if (ctx->HasInput("Shape")) {
       auto shape_dim = ctx->GetInputDim("Shape");
       PADDLE_ENFORCE_EQ(
@@ -77,18 +82,25 @@ class CropTensorOp : public framework::OperatorWithKernel {
     }
     PADDLE_ENFORCE_EQ(int64_t(shape.size()), x_dim.size(),
                       "Attr(shape)'size of Op(crop_tensor) should be equal to "
-                      "dimention size of input tensor.");
-    std::vector<int64_t> tensor_shape(shape.size());
+                      "dimension size of input tensor.");
+    std::vector<int64_t> out_shape(shape.size(), -1);
     for (size_t i = 0; i < shape.size(); ++i) {
-      tensor_shape[i] = static_cast<int64_t>(shape[i]);
+      if (shape[i] > 0) {
+        out_shape[i] = static_cast<int64_t>(shape[i]);
+      } else {
+        if (shape[i] == -1 && offsets[i] != -1 && x_dim[i] != -1) {
+          out_shape[i] = x_dim[i] - static_cast<int64_t>(offsets[i]);
+        }
+      }
     }
-    ctx->SetOutputDim("Out", framework::make_ddim(tensor_shape));
+    ctx->SetOutputDim("Out", framework::make_ddim(out_shape));
   }
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -243,9 +255,9 @@ class CropTensorOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -261,25 +273,24 @@ class CropTensorOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class CropTensorGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class CropTensorGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("crop_tensor_grad");
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetInput("X", Input("X"));
-    if (ForwardOp().Inputs().count("OffsetsTensor") > 0) {
-      op->SetInput("OffsetsTensor", Input("OffsetsTensor"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput("X", this->Input("X"));
+    if (this->HasInput("OffsetsTensor")) {
+      op->SetInput("OffsetsTensor", this->Input("OffsetsTensor"));
     }
-    if (ForwardOp().Inputs().count("Offsets") > 0) {
-      op->SetInput("Offsets", Input("Offsets"));
+    if (this->HasInput("Offsets")) {
+      op->SetInput("Offsets", this->Input("Offsets"));
     }
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -288,13 +299,18 @@ class CropTensorGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(crop_tensor, ops::CropTensorOp, ops::CropTensorOpMaker,
-                  ops::CropTensorGradOpDescMaker);
+                  ops::CropTensorGradOpMaker<paddle::framework::OpDesc>,
+                  ops::CropTensorGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(crop_tensor_grad, ops::CropTensorOpGrad);
 REGISTER_OP_CPU_KERNEL(
     crop_tensor,
     ops::CropTensorKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CropTensorKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::CropTensorKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::CropTensorKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::CropTensorKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     crop_tensor_grad,
     ops::CropTensorGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CropTensorGradKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::CropTensorGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::CropTensorGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::CropTensorGradKernel<paddle::platform::CPUDeviceContext, int64_t>);

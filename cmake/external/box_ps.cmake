@@ -12,18 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-IF(NOT ${WITH_BOX_PS})
-  return()
-ENDIF(NOT ${WITH_BOX_PS})
-
-IF(WIN32 OR APPLE)
-    MESSAGE(WARNING
-        "Windows or Mac is not supported with BOX_PS in Paddle yet."
-        "Force WITH_BOX_PS=OFF")
-    SET(WITH_BOX_PS OFF CACHE STRING "Disable BOX_PS package in Windows and MacOS" FORCE)
-    return()
-ENDIF()
-
 INCLUDE(ExternalProject)
 
 SET(BOX_PS_PROJECT       "extern_box_ps")
@@ -31,7 +19,7 @@ IF((NOT DEFINED BOX_PS_VER) OR (NOT DEFINED BOX_PS_URL))
   MESSAGE(STATUS "use pre defined download url")
   SET(BOX_PS_VER "0.1.1" CACHE STRING "" FORCE)
   SET(BOX_PS_NAME "box_ps" CACHE STRING "" FORCE)
-  SET(BOX_PS_URL "http://box-ps.gz.bcebos.com/box_ps_stub.tar.gz" CACHE STRING "" FORCE)
+  SET(BOX_PS_URL "http://box-ps.gz.bcebos.com/box_ps.tar.gz" CACHE STRING "" FORCE)
 ENDIF()
 MESSAGE(STATUS "BOX_PS_NAME: ${BOX_PS_NAME}, BOX_PS_URL: ${BOX_PS_URL}")
 SET(BOX_PS_SOURCE_DIR    "${THIRD_PARTY_PATH}/box_ps")

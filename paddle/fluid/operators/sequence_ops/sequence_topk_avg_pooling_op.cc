@@ -63,7 +63,7 @@ class SequenceTopkAvgPoolingOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput(
         "Out",
         "(Tensor) The output of SequenceTopkPoolingOp does not contain LoD "
-        "infomation.");
+        "information.");
     AddOutput("pos", "(Tensor<int>) store the topk index ").AsIntermediate();
     AddAttr<std::vector<int>>("topks", "topks");
     AddAttr<int>("channel_num", "channel number");
@@ -90,36 +90,38 @@ class SequenceTopkAvgPoolingGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("X"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
-class SequenceTopkAvgPoolGradOpMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SequenceTopkAvgPoolGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op_desc_ptr = new framework::OpDesc();
+  void Apply(GradOpPtr<T> op_desc_ptr) const override {
     op_desc_ptr->SetType("sequence_topk_avg_pooling_grad");
-    op_desc_ptr->SetInput("X", Input("X"));
-    op_desc_ptr->SetInput("ROW", Input("ROW"));
-    op_desc_ptr->SetInput("COLUMN", Input("COLUMN"));
-    op_desc_ptr->SetInput("pos", Output("pos"));
-    op_desc_ptr->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op_desc_ptr->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op_desc_ptr->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(op_desc_ptr);
+    op_desc_ptr->SetInput("X", this->Input("X"));
+    op_desc_ptr->SetInput("ROW", this->Input("ROW"));
+    op_desc_ptr->SetInput("COLUMN", this->Input("COLUMN"));
+    op_desc_ptr->SetInput("pos", this->Output("pos"));
+    op_desc_ptr->SetInput(framework::GradVarName("Out"),
+                          this->OutputGrad("Out"));
+    op_desc_ptr->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op_desc_ptr->SetAttrMap(this->Attrs());
   }
 };
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(sequence_topk_avg_pooling, ops::SequenceTopkAvgPoolingOp,
-                  ops::SequenceTopkAvgPoolingOpMaker,
-                  ops::SequenceTopkAvgPoolGradOpMaker);
+REGISTER_OPERATOR(
+    sequence_topk_avg_pooling, ops::SequenceTopkAvgPoolingOp,
+    ops::SequenceTopkAvgPoolingOpMaker,
+    ops::SequenceTopkAvgPoolGradOpMaker<paddle::framework::OpDesc>,
+    ops::SequenceTopkAvgPoolGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sequence_topk_avg_pooling_grad,
                   ops::SequenceTopkAvgPoolingGradOp);
 REGISTER_OP_CPU_KERNEL(sequence_topk_avg_pooling,

@@ -48,7 +48,7 @@ class FilterByInstagOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("Ins"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Ins");
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
@@ -60,6 +60,9 @@ class FilterByInstagOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Ins_tag", "(LoDTensor) ins tag list");
     AddInput("Filter_tag", "(1D Tensor) filter tag list");
     AddAttr<bool>("is_lod", "is Ins with LoD info or not, default True");
+    AddAttr<int64_t>("out_val_if_empty",
+                     "if the output after filter is empty, the output value")
+        .SetDefault(0);
     AddOutput("Out", "(LoDTensor) embeded tensor filtered by instag");
     AddOutput("LossWeight", "(Tensor) loss weight.");
     AddOutput("IndexMap", "(LoDTensor) mapping from Out rows to X1 rows");
@@ -101,27 +104,26 @@ class FilterByInstagOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(
-        ctx.InputVar(framework::GradVarName("Out")));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
-class FilterByInstagGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class FilterByInstagGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("filter_by_instag_grad");
-    op->SetInput("IndexMap", Output("IndexMap"));
-    op->SetInput("Ins", Input("Ins"));
-    op->SetAttrMap(Attrs());
-    op->SetInput("LossWeight", Output("LossWeight"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("Ins"), InputGrad("Ins"));
-    return op;
+    op->SetInput("IndexMap", this->Output("IndexMap"));
+    op->SetInput("Ins", this->Input("Ins"));
+    op->SetAttrMap(this->Attrs());
+    op->SetInput("LossWeight", this->Output("LossWeight"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("Ins"), this->InputGrad("Ins"));
   }
 };
 }  // namespace operators
@@ -130,7 +132,8 @@ class FilterByInstagGradOpDescMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(filter_by_instag, ops::FilterByInstagOp,
                   ops::FilterByInstagOpMaker,
-                  ops::FilterByInstagGradOpDescMaker);
+                  ops::FilterByInstagGradOpMaker<paddle::framework::OpDesc>,
+                  ops::FilterByInstagGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(filter_by_instag_grad, ops::FilterByInstagOpGrad);
 

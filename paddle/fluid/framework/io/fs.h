@@ -50,6 +50,8 @@ extern bool localfs_exists(const std::string& path);
 
 extern void localfs_mkdir(const std::string& path);
 
+extern void localfs_mv(const std::string& src, const std::string& dest);
+
 // hdfs
 extern size_t hdfs_buffer_size();
 
@@ -58,6 +60,10 @@ extern void hdfs_set_buffer_size(size_t x);
 extern const std::string& hdfs_command();
 
 extern void hdfs_set_command(const std::string& x);
+
+extern const std::string& download_cmd();
+
+extern void set_download_command(const std::string& x);
 
 extern std::shared_ptr<FILE> hdfs_open_read(std::string path, int* err_no,
                                             const std::string& converter);
@@ -74,6 +80,8 @@ extern std::string hdfs_tail(const std::string& path);
 extern bool hdfs_exists(const std::string& path);
 
 extern void hdfs_mkdir(const std::string& path);
+
+extern void hdfs_mv(const std::string& src, const std::string& dest);
 
 // aut-detect fs
 extern std::shared_ptr<FILE> fs_open_read(const std::string& path, int* err_no,
@@ -97,5 +105,8 @@ extern std::string fs_tail(const std::string& path);
 extern bool fs_exists(const std::string& path);
 
 extern void fs_mkdir(const std::string& path);
+
+extern void fs_mv(const std::string& src, const std::string& dest);
+
 }  // namespace framework
 }  // namespace paddle

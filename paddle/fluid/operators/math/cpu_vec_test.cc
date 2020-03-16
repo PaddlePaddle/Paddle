@@ -181,7 +181,7 @@ void compare_clip(
   T* ytgt_data = ytgt.data();
   tgt(n, threshold, x_data, ytgt_data);
   ref(n, threshold, x_data, yref_data);
-  for (int i = 0; i < n; ++i) {
+  for (size_t i = 0; i < n; ++i) {
     EXPECT_NEAR(ytgt_data[i], yref_data[i], 1e-3);
   }
 }

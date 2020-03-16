@@ -40,7 +40,8 @@ __all__ = [
 
 age_table = [1, 18, 25, 35, 45, 50, 56]
 
-URL = 'http://files.grouplens.org/datasets/movielens/ml-1m.zip'
+#URL = 'http://files.grouplens.org/datasets/movielens/ml-1m.zip'
+URL = 'https://dataset.bj.bcebos.com/movielens%2Fml-1m.zip'
 MD5 = 'c4d9eecfca2ab87c1945afe126590906'
 
 
@@ -223,7 +224,7 @@ def max_job_id():
 
 def movie_categories():
     """
-    Get movie categoriges dictionary.
+    Get movie categories dictionary.
     """
     __initialize_meta_info__()
     return CATEGORIES_DICT

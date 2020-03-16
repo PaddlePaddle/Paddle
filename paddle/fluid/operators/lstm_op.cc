@@ -97,7 +97,8 @@ class LSTMOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>("Input")->type(), ctx.device_context());
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
   }
 };
 
@@ -261,46 +262,46 @@ class LSTMGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>("Input")->type(), ctx.device_context());
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
   }
 };
 
-class LSTMGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class LSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("lstm_grad");
-    op->SetAttrMap(Attrs());
-    op->SetInput("Input", Input("Input"));
-    op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
+    op->SetAttrMap(this->Attrs());
+    op->SetInput("Input", this->Input("Input"));
+    op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
 
-    if (ForwardOp().Inputs().count("H0") > 0) {
-      op->SetInput("H0", Input("H0"));
-      op->SetOutput(framework::GradVarName("H0"), InputGrad("H0"));
+    if (this->HasInput("H0")) {
+      op->SetInput("H0", this->Input("H0"));
+      op->SetOutput(framework::GradVarName("H0"), this->InputGrad("H0"));
     }
 
-    if (ForwardOp().Inputs().count("C0") > 0) {
-      op->SetInput("C0", Input("C0"));
-      op->SetOutput(framework::GradVarName("C0"), InputGrad("C0"));
+    if (this->HasInput("C0")) {
+      op->SetInput("C0", this->Input("C0"));
+      op->SetOutput(framework::GradVarName("C0"), this->InputGrad("C0"));
     }
 
-    op->SetInput("Weight", Input("Weight"));
-    op->SetOutput(framework::GradVarName("Weight"), InputGrad("Weight"));
+    op->SetInput("Weight", this->Input("Weight"));
+    op->SetOutput(framework::GradVarName("Weight"), this->InputGrad("Weight"));
 
-    op->SetInput("Bias", Input("Bias"));
-    op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
+    op->SetInput("Bias", this->Input("Bias"));
+    op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
 
-    op->SetInput("Cell", Output("Cell"));
+    op->SetInput("Cell", this->Output("Cell"));
 
-    op->SetInput("Hidden", Output("Hidden"));
-    op->SetInput(framework::GradVarName("Hidden"), OutputGrad("Hidden"));
+    op->SetInput("Hidden", this->Output("Hidden"));
+    op->SetInput(framework::GradVarName("Hidden"), this->OutputGrad("Hidden"));
 
-    op->SetInput("BatchGate", Output("BatchGate"));
-    op->SetInput("BatchCellPreAct", Output("BatchCellPreAct"));
-    return op;
+    op->SetInput("BatchGate", this->Output("BatchGate"));
+    op->SetInput("BatchCellPreAct", this->Output("BatchCellPreAct"));
   }
 };
 
@@ -309,7 +310,8 @@ class LSTMGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(lstm, ops::LSTMOp, ops::LSTMOpMaker,
-                  ops::LSTMGradOpDescMaker);
+                  ops::LSTMGradOpMaker<paddle::framework::OpDesc>,
+                  ops::LSTMGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(lstm_grad, ops::LSTMGradOp);
 REGISTER_OP_CPU_KERNEL(
     lstm, ops::LSTMKernel<paddle::platform::CPUDeviceContext, float>,

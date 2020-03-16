@@ -74,28 +74,24 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
 DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(SquaredL2DistanceGradOpNoBuffer, "X",
                                       "Y");
 
-class SquaredL2DistanceGradOpDescMaker
-    : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SquaredL2DistanceGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
-
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("squared_l2_distance_grad");
 
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetInput("sub_result", Output("sub_result"));
-    op->SetInput("X", Input("X"));
-    op->SetInput("Y", Input("Y"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput("sub_result", this->Output("sub_result"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
 
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
 
-    op->SetAttrMap(Attrs());
-
-    return op;
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -137,12 +133,14 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
-    PADDLE_INFERSHAPE_ENFORCE_EQ(ctx, out_dims[0], x_dims[0],
-                                 "First dimension of output gradient and "
-                                 "input value must be equal.");
-    PADDLE_INFERSHAPE_ENFORCE_EQ(ctx, out_dims[1], 1,
-                                 "Second dimension of output gradient "
-                                 "must be 1.");
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(out_dims[0], x_dims[0],
+                        "First dimension of output gradient and "
+                        "input value must be equal.");
+      PADDLE_ENFORCE_EQ(out_dims[1], 1,
+                        "Second dimension of output gradient "
+                        "must be 1.");
+    }
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
     if (ctx->HasOutput(x_grad_name)) ctx->SetOutputDim(x_grad_name, x_dims);
@@ -152,8 +150,9 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("sub_result")->type(),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "sub_result"),
+        ctx.GetPlace());
   }
 };
 
@@ -161,9 +160,11 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(squared_l2_distance, ops::SquaredL2DistanceOp,
-                  ops::SquaredL2DistanceOpMaker,
-                  ops::SquaredL2DistanceGradOpDescMaker);
+REGISTER_OPERATOR(
+    squared_l2_distance, ops::SquaredL2DistanceOp,
+    ops::SquaredL2DistanceOpMaker,
+    ops::SquaredL2DistanceGradOpMaker<paddle::framework::OpDesc>,
+    ops::SquaredL2DistanceGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(squared_l2_distance_grad, ops::SquaredL2DistanceGradOp,
                   ops::SquaredL2DistanceGradOpNoBuffer);
 REGISTER_OP_CPU_KERNEL(

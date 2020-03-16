@@ -34,6 +34,25 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   rules_["prior_box"]["Image"] = ScaleAlgo::NONE;
   rules_["prior_box"]["Boxes"] = ScaleAlgo::NONE;
   rules_["prior_box"]["Variances"] = ScaleAlgo::NONE;
+
+  // Transpose2 does not perform calculation on the data. Scale is calculated on
+  // input data and assign to Quantize and Dequantize scale.
+  rules_["transpose2"]["X"] = ScaleAlgo::KL;
+  rules_["transpose2"]["Out"] = ScaleAlgo::NONE;
+
+  rules_["fc"]["Input"] = ScaleAlgo::KL;
+  rules_["fc"]["W"] = ScaleAlgo::MAX_CH_T;
+  rules_["fc"]["Bias"] = ScaleAlgo::NONE;
+  rules_["fc"]["Out"] = ScaleAlgo::KL;
+
+  // Reshape2 does not perform calculation on the data and shapes are not
+  // changed. Scale is calculated on input data and assign to Quantize and
+  // Dequantize scale.
+  rules_["reshape2"]["X"] = ScaleAlgo::KL;
+  rules_["reshape2"]["Shape"] = ScaleAlgo::NONE;
+  rules_["reshape2"]["ShapeTensor"] = ScaleAlgo::NONE;
+  rules_["reshape2"]["XShape"] = ScaleAlgo::NONE;
+  rules_["reshape2"]["Out"] = ScaleAlgo::NONE;
 }
 
 ScaleAlgo MkldnnQuantizerConfig::scale_algo(

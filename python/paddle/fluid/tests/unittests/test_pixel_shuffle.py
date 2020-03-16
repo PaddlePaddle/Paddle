@@ -25,7 +25,7 @@ class TestPixelShuffle(OpTest):
         n, c, h, w = 2, 9, 4, 4
         up_factor = 3
         shape = [n, c, h, w]
-        x = np.random.random(shape).astype("float32")
+        x = np.random.random(shape).astype("float64")
         new_shape = (n, c // (up_factor * up_factor), up_factor, up_factor, h,
                      w)
         # reshape to (num,output_channel,upscale_factor,upscale_factor,h,w)

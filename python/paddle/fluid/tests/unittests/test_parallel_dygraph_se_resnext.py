@@ -17,6 +17,9 @@ import unittest
 from test_dist_base import TestDistBase
 import paddle.fluid as fluid
 
+import os
+flag_name = os.path.splitext(__file__)[0]
+
 
 class TestParallelDygraphSeResNeXt(TestDistBase):
     def _setup_config(self):
@@ -26,7 +29,11 @@ class TestParallelDygraphSeResNeXt(TestDistBase):
 
     def test_se_resnext(self):
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place("parallel_dygraph_se_resnext.py", delta=0.01)
+            self.check_with_place(
+                "parallel_dygraph_se_resnext.py",
+                delta=0.01,
+                check_error_log=True,
+                log_name=flag_name)
 
 
 if __name__ == "__main__":

@@ -28,7 +28,8 @@ import six
 
 __all__ = ['train', 'test', 'build_dict']
 
-URL = 'http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz'
+#URL = 'http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz'
+URL = 'https://dataset.bj.bcebos.com/imikolov%2Fsimple-examples.tgz'
 MD5 = '30177ea32e27c525793142b6bf2c8e2d'
 
 

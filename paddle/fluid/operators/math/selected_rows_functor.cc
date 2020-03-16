@@ -332,7 +332,7 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
       int64_t copied_numel = 0;
       for (auto* in : inputs) {
         auto* in_data = in->value().data<T>();
-        auto in_numel = in->value().numel();
+        auto in_numel = in->rows().size() * input_width;
         memory::Copy(boost::get<platform::CPUPlace>(out_place),
                      out_data + copied_numel,
                      boost::get<platform::CPUPlace>(in_place), in_data,

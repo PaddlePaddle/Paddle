@@ -115,7 +115,7 @@ struct SequenceSoftmaxFunctor<platform::CUDADeviceContext, T> {
                   const LoDTensor &x,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/
                   LoDTensor *out) {
-    int hight = ref_lod.size() - 1;
+    int height = ref_lod.size() - 1;
 
     const int kThreadsPerBlock = 32;
     int thread_x = kThreadsPerBlock;
@@ -126,7 +126,7 @@ struct SequenceSoftmaxFunctor<platform::CUDADeviceContext, T> {
     dim3 grid_size(max_blocks);
     sequence_softmax_kernel<
         T, kThreadsPerBlock><<<grid_size, block_size, 0, context.stream()>>>(
-        x.data<T>(), ref_lod.CUDAData(context.GetPlace()), hight,
+        x.data<T>(), ref_lod.CUDAData(context.GetPlace()), height,
         out->mutable_data<T>(context.GetPlace()));
   }
 };
@@ -137,7 +137,7 @@ struct SequenceSoftmaxGradFunctor<platform::CUDADeviceContext, T> {
                   const LoDTensor &dout, const LoDTensor &out,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/
                   LoDTensor *dx) {
-    size_t hight = ref_lod.size() - 1;
+    size_t height = ref_lod.size() - 1;
 
     const int kThreadsPerBlock = 32;
     int thread_x = kThreadsPerBlock;
@@ -150,7 +150,7 @@ struct SequenceSoftmaxGradFunctor<platform::CUDADeviceContext, T> {
     sequence_softmax_grad_kernel<
         T, kThreadsPerBlock><<<grid_size, block_size, 0, context.stream()>>>(
         dout.data<T>(), out.data<T>(), ref_lod.CUDAData(context.GetPlace()),
-        hight, dx->mutable_data<T>(context.GetPlace()));
+        height, dx->mutable_data<T>(context.GetPlace()));
   }
 };
 

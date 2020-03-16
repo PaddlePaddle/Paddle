@@ -65,7 +65,7 @@ class TestSigmoidFocalLossOp1(OpTest):
         self.set_argument()
 
         dims = (self.num_anchors, self.num_classes)
-        X = np.random.standard_normal(dims).astype("float32")
+        X = np.random.standard_normal(dims).astype("float64")
         L = np.random.randint(0, self.num_classes + 1,
                               (dims[0], 1)).astype("int32")
         F = np.zeros(1)
@@ -85,7 +85,7 @@ class TestSigmoidFocalLossOp1(OpTest):
         loss = sigmoid_focal_loss_forward(
             self.inputs['X'], self.inputs['Label'], self.inputs['FgNum'],
             self.gamma, self.alpha, self.num_classes)
-        self.outputs = {'Out': loss.astype('float32')}
+        self.outputs = {'Out': loss.astype('float64')}
 
     def test_check_output(self):
         self.check_output()

@@ -59,12 +59,12 @@ TEST(SimplifyWithBasicOpsPass, dropout) {
       int num_scale_nodes_after = GetNumOpNodes(graph, "scale");
       VLOG(3) << DebugString(graph);
 
-      PADDLE_ENFORCE_EQ(num_dropout_nodes_after, 0UL);
+      PADDLE_ENFORCE_EQ(num_dropout_nodes_after, 0);
       if (dropout_implementation == "downgrade_in_infer") {
         PADDLE_ENFORCE_EQ(num_dropout_nodes_before,
                           num_scale_nodes_after - num_scale_nodes_before);
       } else {
-        PADDLE_ENFORCE_EQ(num_scale_nodes_after - num_scale_nodes_before, 0UL);
+        PADDLE_ENFORCE_EQ(num_scale_nodes_after - num_scale_nodes_before, 0);
       }
     }
   }

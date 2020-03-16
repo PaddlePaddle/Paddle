@@ -14,17 +14,18 @@
 
 #pragma once
 #include <ThreadPool.h>
+#include <deque>
 #include <list>
 #include <memory>
 #include <string>
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include "paddle/fluid/framework/details/op_handle_base.h"
-#include "paddle/fluid/framework/details/var_handle.h"
-
 #include "paddle/fluid/framework/details/execution_strategy.h"
+#include "paddle/fluid/framework/details/op_handle_base.h"
+#include "paddle/fluid/framework/details/scope_buffered_monitor.h"
 #include "paddle/fluid/framework/details/ssa_graph_executor.h"
+#include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/place.h"
 namespace paddle {
@@ -49,7 +50,8 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
     return underlying_executor_->Graph();
   }
 
-  FeedFetchList Run(const std::vector<std::string>& fetch_tensors) override;
+  FetchResultType Run(const std::vector<std::string>& fetch_tensors,
+                      bool return_merged) override;
 
   void DropLocalExeScopes();
 
@@ -59,6 +61,8 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
 
  private:
   void InitVariables();
+
+  bool DropScopeOrNot() const;
 
   size_t drop_scope_counter_{0};
   ExecutionStrategy strategy_;
@@ -70,8 +74,12 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
   std::vector<std::vector<std::pair<Variable*, proto::VarType::Type>>>
       tmp_var_infos_;
 
+  std::vector<Variable*> tensor_array_vars_;
+
   std::vector<VariableInfo> var_infos_;
   std::vector<platform::Place> places_;
+
+  ScopeBufferedMonitor scope_monitor_;
 };
 }  // namespace details
 }  // namespace framework

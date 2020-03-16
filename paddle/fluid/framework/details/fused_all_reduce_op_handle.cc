@@ -28,7 +28,7 @@ namespace details {
 typedef std::vector<std::vector<std::pair<std::string, const LoDTensor *>>>
     GradientAndLoDTensor;
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 FusedAllReduceOpHandle::FusedAllReduceOpHandle(
     ir::Node *node, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places, const size_t num_of_all_reduce,
@@ -189,8 +189,10 @@ void FusedAllReduceOpHandle::GetGradLoDTensor(
     auto var = local_scope->FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(var, "%s is not found in local scope.", var_name);
     auto &lod_tensor = var->Get<LoDTensor>();
-    PADDLE_ENFORCE_EQ(lod_tensor.place(), places_.at(scope_idx),
-                      "%s(%d) is not in the right place.", var_name, scope_idx);
+
+    PADDLE_ENFORCE_EQ(
+        platform::is_same_place(lod_tensor.place(), places_.at(scope_idx)),
+        true, "%s(%d) is not in the right place.", var_name, scope_idx);
     grad_tensor->emplace_back(std::make_pair(var_name, &lod_tensor));
   }
 }

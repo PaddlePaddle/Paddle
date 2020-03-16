@@ -55,7 +55,7 @@ class GradClipByValue(GradClipBase):
     Args:
         max_value (float): The maximum value to clip by. 
         min (float, optional): The minimum value to clip by. if not set by user, \
-        will be set to -max_value(max_value MUST be postive) by framework. 
+        will be set to -max_value(max_value MUST be positive) by framework. 
 
     Examples:
         .. code-block:: python
@@ -65,7 +65,7 @@ class GradClipByValue(GradClipBase):
             import paddle.fluid as fluid
 
             from paddle.fluid.dygraph.base import to_variable
-            from paddle.fluid.dygraph.nn import FC
+            from paddle.fluid.dygraph.nn import Linear
 
             from paddle.fluid.clip import GradClipByValue, GradClipByNorm, GradClipByGlobalNorm
 
@@ -77,9 +77,9 @@ class GradClipByValue(GradClipBase):
                 
                 init_value = np.random.uniform( -1, 1, (10, 10)).astype('float32')
 
-                fc = FC( "fc", 10)
+                linear = Linear( 10, 10)
 
-                out = fc( to_variable(init_value) )
+                out = linear( to_variable(init_value) )
 
                 loss = fluid.layers.reduce_mean( out )
 
@@ -144,7 +144,7 @@ class GradClipByNorm(GradClipBase):
             import paddle.fluid as fluid
 
             from paddle.fluid.dygraph.base import to_variable
-            from paddle.fluid.dygraph.nn import FC
+            from paddle.fluid.dygraph.nn import Linear
 
             from paddle.fluid.clip import GradClipByValue, GradClipByNorm, GradClipByGlobalNorm
 
@@ -156,9 +156,9 @@ class GradClipByNorm(GradClipBase):
                 
                 init_value = np.random.uniform( -1, 1, (10, 10)).astype('float32')
 
-                fc = FC( "fc", 10)
+                linear = Linear( 10, 10)
 
-                out = fc( to_variable(init_value) )
+                out = linear( to_variable(init_value) )
 
                 loss = fluid.layers.reduce_mean( out )
 
@@ -192,15 +192,14 @@ class GradClipByGlobalNorm(GradClipBase):
     """
     Clips values of multiple tensors by the ratio of the sum of their norms.
 
-    Given a list of tensors t_list, and a clipping ratio clip_norm, this
-    operation returns a list of clipped tensors list_clipped and the global
-    norm (global_norm) of all tensors in t_list.
+    Given a list of tensors t_list, and a clipping ratio max_global_norm, this
+    operation returns a list of clipped tensors list_clipped.
 
     To perform the clipping, the values :math:`t\_list[i]` are set to:
 
     .. math::
 
-        t\_list[i] = t\_list[i] * \\frac{clip\_norm}{\max(global\_norm, clip\_norm)}
+        t\_list[i] = t\_list[i] * \\frac{max\_global\_norm}{\max(global\_norm, max\_global\_norm)}
 
     where:
 
@@ -208,12 +207,12 @@ class GradClipByGlobalNorm(GradClipBase):
 
         global\_norm = \sqrt{\sum_{i=0}^{N-1}(l2norm(t\_list[i]))^2}
 
-    If :math:`clip\_norm > global\_norm` then the entries in t_list remain as they are,
+    If :math:`max\_global\_norm > global\_norm` then the entries in t_list remain as they are,
     otherwise they're all shrunk by the global ratio.
 
     Args:
-        clip_norm (float): The maximum norm value
-        group_name (str, optional): The group name for this clip.
+        max_global_norm (float): The maximum norm value.
+        dtype (str, optional): The type of max_global_norm. Default: "float32".
 
     Examples:
         .. code-block:: python
@@ -223,9 +222,9 @@ class GradClipByGlobalNorm(GradClipBase):
             import paddle.fluid as fluid
 
             from paddle.fluid.dygraph.base import to_variable
-            from paddle.fluid.dygraph.nn import FC
+            from paddle.fluid.dygraph.nn import Linear
 
-            from paddle.fluid.clip import GradClipByValue, GradClipByNorm, GradClipByGlobalNorm
+            from paddle.fluid.dygraph_grad_clip import GradClipByValue, GradClipByNorm, GradClipByGlobalNorm
 
             from paddle.fluid.optimizer import SGDOptimizer
 
@@ -235,9 +234,9 @@ class GradClipByGlobalNorm(GradClipBase):
                 
                 init_value = np.random.uniform( -1, 1, (10, 10)).astype('float32')
 
-                fc = FC( "fc", 10)
+                linear = Linear( 10, 10)
 
-                out = fc( to_variable(init_value) )
+                out = linear( to_variable(init_value) )
 
                 loss = fluid.layers.reduce_mean( out )
 
@@ -248,9 +247,9 @@ class GradClipByGlobalNorm(GradClipBase):
     """
 
     @imperative_base.no_grad
-    def __init__(self, max_global_norm):
+    def __init__(self, max_global_norm, dtype='float32'):
         self.max_global_norm = layers.fill_constant(
-            shape=[1], dtype='float32', value=max_global_norm)
+            shape=[1], dtype=dtype, value=max_global_norm)
 
     def __str__(self):
         return "ClipByGlobalNorm, max_global_norm=%f" % (self.max_global_norm)
@@ -263,7 +262,11 @@ class GradClipByGlobalNorm(GradClipBase):
         for p, g in para_and_grad:
             if g is None:
                 continue
-            power = layers.square(g)
+            merge_grad = g
+            if g.type == core.VarDesc.VarType.SELECTED_ROWS:
+                merge_grad = layers.merge_selected_rows(g)
+                merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
+            power = layers.square(merge_grad)
             sum_t = layers.reduce_sum(power)
             norm_arr.append(sum_t)
 
@@ -271,15 +274,14 @@ class GradClipByGlobalNorm(GradClipBase):
         norm_global = layers.reduce_sum(norm_global)
         norm_global = layers.sqrt(norm_global)
 
-        clip_scale = layers.elementwise_div(
-            x=self.max_global_norm,
-            y=layers.elementwise_max(
-                x=norm_global, y=self.max_global_norm))
+        clip_scale = self.max_global_norm / (layers.elementwise_max(
+            x=norm_global, y=self.max_global_norm))
 
         for p, g in para_and_grad:
             if g is None:
                 out.append((p, g))
                 continue
+
             new_grad = g * clip_scale
 
             out.append((p, new_grad))

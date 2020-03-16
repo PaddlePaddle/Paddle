@@ -50,7 +50,7 @@ void PrintCuptiHint() {
   static bool showed = false;
   if (showed) return;
   showed = true;
-  LOG(WARNING) << "Invalid timestamp occured. Please try increasing the "
+  LOG(WARNING) << "Invalid timestamp occurred. Please try increasing the "
                   "FLAGS_multiple_of_cupti_buffer_size.";
 }
 
@@ -185,8 +185,13 @@ void CUPTIAPI bufferCompleted(CUcontext ctx, uint32_t streamId, uint8_t *buffer,
         switch (record->kind) {
           case CUPTI_ACTIVITY_KIND_KERNEL:
           case CUPTI_ACTIVITY_KIND_CONCURRENT_KERNEL: {
+#if CUDA_VERSION >= 9000
+            auto *kernel =
+                reinterpret_cast<const CUpti_ActivityKernel4 *>(record);
+#else
             auto *kernel =
                 reinterpret_cast<const CUpti_ActivityKernel3 *>(record);
+#endif
             tracer->AddKernelRecords(kernel->name, kernel->start, kernel->end,
                                      kernel->deviceId, kernel->streamId,
                                      kernel->correlationId);
@@ -395,7 +400,7 @@ class DeviceTracerImpl : public DeviceTracer {
     } else if (ret != CUPTI_SUCCESS) {
       fprintf(stderr, "Failed to create CUPTI subscriber.\n");
     }
-    const std::vector<int> cbids {
+    const std::vector<int> runtime_cbids {
       CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020,
           CUPTI_RUNTIME_TRACE_CBID_cudaSetupArgument_v3020,
           CUPTI_RUNTIME_TRACE_CBID_cudaMemcpyAsync_v3020,
@@ -409,9 +414,15 @@ class DeviceTracerImpl : public DeviceTracer {
           CUPTI_RUNTIME_TRACE_CBID_cudaLaunchCooperativeKernelMultiDevice_v9000
 #endif
     };
-    for (auto cbid : cbids)
+    const std::vector<int> driver_cbids{CUPTI_DRIVER_TRACE_CBID_cuLaunch,
+                                        CUPTI_DRIVER_TRACE_CBID_cuLaunchGrid,
+                                        CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel};
+    for (auto cbid : runtime_cbids)
       CUPTI_CALL(dynload::cuptiEnableCallback(
           1, subscriber_, CUPTI_CB_DOMAIN_RUNTIME_API, cbid));
+    for (auto cbid : driver_cbids)
+      CUPTI_CALL(dynload::cuptiEnableCallback(
+          1, subscriber_, CUPTI_CB_DOMAIN_DRIVER_API, cbid));
     CUPTI_CALL(dynload::cuptiGetTimestamp(&start_ns_));
 #endif  // PADDLE_WITH_CUPTI
     enabled_ = true;
@@ -441,6 +452,11 @@ class DeviceTracerImpl : public DeviceTracer {
       auto c = correlations_.find(r.correlation_id);
       if (c != correlations_.end() && c->second != nullptr) {
         Event *e = c->second;
+        Event *parent = e->parent();
+        while (parent) {
+          parent->AddCudaElapsedTime(r.start_ns, r.end_ns);
+          parent = parent->parent();
+        }
         e->AddCudaElapsedTime(r.start_ns, r.end_ns);
       }
     }
@@ -448,6 +464,11 @@ class DeviceTracerImpl : public DeviceTracer {
       auto c = correlations_.find(r.correlation_id);
       if (c != correlations_.end() && c->second != nullptr) {
         Event *e = c->second;
+        Event *parent = e->parent();
+        while (parent) {
+          parent->AddCudaElapsedTime(r.start_ns, r.end_ns);
+          parent = parent->parent();
+        }
         e->AddCudaElapsedTime(r.start_ns, r.end_ns);
       }
     }
@@ -617,7 +638,13 @@ DeviceTracer *GetDeviceTracer() {
   return tracer;
 }
 
-void SetCurAnnotation(Event *event) { annotation_stack.push_back(event); }
+void SetCurAnnotation(Event *event) {
+  if (!annotation_stack.empty()) {
+    event->set_parent(annotation_stack.back());
+    event->set_name(annotation_stack.back()->name() + "/" + event->name());
+  }
+  annotation_stack.push_back(event);
+}
 
 void ClearCurAnnotation() { annotation_stack.pop_back(); }
 

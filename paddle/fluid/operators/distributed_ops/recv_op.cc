@@ -122,7 +122,7 @@ This operator can get variables from server side.
     AddAttr<std::vector<std::string>>(
         "recv_varnames",
         "(vector<string>) "
-        "the splited parameter varnames to be recved from pserver")
+        "the split parameter varnames to be recved from pserver")
         .SetDefault(std::vector<std::string>{});
     AddAttr<int>("do_not_run", "if recv need to really run").SetDefault(0);
   }
@@ -138,5 +138,8 @@ class RecvOpShapeInference : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(recv, ops::RecvOp, paddle::framework::EmptyGradOpMaker,
-                  ops::RecvOpMaker, ops::RecvOpShapeInference);
+REGISTER_OPERATOR(
+    recv, ops::RecvOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::RecvOpMaker, ops::RecvOpShapeInference);

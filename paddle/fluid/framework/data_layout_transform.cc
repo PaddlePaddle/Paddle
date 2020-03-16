@@ -105,15 +105,12 @@ void* GetDataFromTensor(const Tensor& tensor, mkldnn::memory::data_type type) {
       return platform::to_void_cast(tensor.data<int8_t>());
     case mkldnn::memory::data_type::u8:
       return platform::to_void_cast(tensor.data<unsigned char>());
-    case mkldnn::memory::data_type::s16:
-      return platform::to_void_cast(tensor.data<int16_t>());
     case mkldnn::memory::data_type::s32:
       return platform::to_void_cast(tensor.data<int32_t>());
     default:
       PADDLE_THROW("wrong mkldnn type provided");
   }
 }
-#endif
 
 void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
                                const OpKernelType& expected_kernel_type,
@@ -127,17 +124,22 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
       "TransDataLayoutFromMKLDNN only supports transform from MKLDNN to "
       "non-MKLDNN");
 
-  innerTransDataLayoutFromMKLDNN(in_layout, out_layout, in, out, place);
+  innerTransDataLayoutFromMKLDNN(in_layout,
+                                 paddle::platform::get_cur_paddle_data_layout(),
+                                 in, out, place);
 }
 
 void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
                                     const Tensor& in, Tensor* out,
                                     platform::Place place) {
-#ifdef PADDLE_WITH_MKLDNN
-  PADDLE_ENFORCE_NE(in.format(), MKLDNNMemoryFormat::format_undef,
-                    "Input tensor should have specified memory format");
+  PADDLE_ENFORCE_NE(in.format(), MKLDNNMemoryFormat::undef,
+                    platform::errors::InvalidArgument(
+                        "Input tensor format is invalid. Input tensor should "
+                        "have specified memory format."));
   PADDLE_ENFORCE_NE(in.format(), MKLDNNMemoryFormat::any,
-                    "Input tensor should have specified memory format");
+                    platform::errors::InvalidArgument(
+                        "Input tensor format is invalid. Input tensor should "
+                        "have specified memory format."));
 
   // Set default as NCHW in case not specified
   out_layout =
@@ -147,12 +149,12 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
   auto* dev_ctx = dynamic_cast<platform::MKLDNNDeviceContext*>(pool.Get(place));
   auto& cpu_engine = dev_ctx->GetEngine();
 
-  auto in_tz = paddle::framework::vectorize<int>(in.dims());
+  auto in_tz = paddle::framework::vectorize<int64_t>(in.dims());
   auto out_tz = in_tz;
 
   memory::data_type in_type = ToMKLDNNDataType(in.type());
-  PADDLE_ENFORCE(in_type != memory::data_type::data_undef,
-                 "Input tensor type is not supported: %s", in.type());
+  PADDLE_ENFORCE_NE(in_type, memory::data_type::undef,
+                    "Input tensor type is not supported: %s", in.type());
 
   auto in_format = platform::MKLDNNFormatForSize(in_tz.size(), in.format());
   auto out_format =
@@ -163,8 +165,8 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
 
   if (in_format != out_format) {
     void* in_data = GetDataFromTensor(in, in_type);
-    const std::string key = platform::CreateKey(in_tz, in_format, out_format,
-                                                std::to_string(in_type));
+    const std::string key =
+        platform::CreateKey(in_tz, in_format, out_format, in_type);
 
     platform::ReorderMKLDNNHandler handler(in_tz, in.type(), in_type, *dev_ctx,
                                            cpu_engine, key);
@@ -175,17 +177,21 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
     auto reorder_p =
         handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
 
-    std::vector<mkldnn::primitive> pipeline;
-    pipeline.push_back(*reorder_p);
-    mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
+    mkldnn::stream astream(cpu_engine);
+    reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
+    astream.wait();
   } else {
     out->ShareDataWith(in);
   }
+  // For exepected NHWC data format we need to reshape the Output tensor
+  // As MKL-DNN description was in NCHW and paddle is expecting NHWC
+  platform::MatchShapeToLayout(out, in_layout, out_layout);
+
   out->set_layout(out_layout);
   // reset format since the out tensor will be feed to non-MKLDNN OPkernel
-  out->set_format(MKLDNNMemoryFormat::format_undef);
-#endif
+  out->set_format(MKLDNNMemoryFormat::undef);
 }
+#endif
 
 }  // namespace framework
 }  // namespace paddle

@@ -39,10 +39,18 @@ proto::ProgramDesc *ProgramDesc::Proto() {
   return &desc_;
 }
 
+proto::OpCompatibleMap *ProgramDesc::OpCompatibleMap() {
+  return desc_.mutable_op_compatible_map();
+}
+
 int64_t ProgramDesc::Version() const { return desc_.version().version(); }
 
+void ProgramDesc::SetVersion(const int64_t version) {
+  desc_.mutable_version()->set_version(version);
+}
+
 ProgramDesc::ProgramDesc() {
-  desc_.mutable_version()->set_version(kCurProgramVersion);
+  SetVersion(kCurProgramVersion);
   auto *block = desc_.mutable_blocks()->Add();
   block->set_idx(kRootBlockIndex);
   block->set_parent_idx(kNoneBlockIndex);

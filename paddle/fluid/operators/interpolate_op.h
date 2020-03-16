@@ -22,6 +22,7 @@ template <typename T, size_t D, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 using Tensor = framework::Tensor;
+using DataLayout = framework::DataLayout;
 
 inline std::vector<int> get_new_shape(
     const std::vector<const Tensor*>& list_new_shape_tensor) {
@@ -57,12 +58,30 @@ inline std::vector<T> get_new_data_from_tensor(const Tensor* new_data_tensor) {
   return vec_new_data;
 }
 
+inline void ExtractNCDWH(const framework::DDim& dims,
+                         const DataLayout& data_layout, int* N, int* C, int* D,
+                         int* H, int* W) {
+  *N = dims[0];
+  if (dims.size() == 4) {
+    *C = data_layout == DataLayout::kNCHW ? dims[1] : dims[3];
+    *D = 1;
+    *H = data_layout == DataLayout::kNCHW ? dims[2] : dims[1];
+    *W = data_layout == DataLayout::kNCHW ? dims[3] : dims[2];
+  } else {
+    *C = data_layout == DataLayout::kNCHW ? dims[1] : dims[4];
+    *D = data_layout == DataLayout::kNCHW ? dims[2] : dims[1];
+    *H = data_layout == DataLayout::kNCHW ? dims[3] : dims[2];
+    *W = data_layout == DataLayout::kNCHW ? dims[4] : dims[3];
+  }
+}
+
 template <typename T>
 static void NearestNeighborInterpolate(const Tensor& input, Tensor* output,
                                        const float ratio_h, const float ratio_w,
                                        const int n, const int c,
                                        const int out_h, const int out_w,
-                                       const bool align_corners) {
+                                       const bool align_corners,
+                                       const DataLayout& data_layout) {
   auto input_t = EigenTensor<T, 4>::From(input);
   auto output_t = EigenTensor<T, 4>::From(*output);
   for (int k = 0; k < out_h; k++) {  // loop for images
@@ -75,7 +94,11 @@ static void NearestNeighborInterpolate(const Tensor& input, Tensor* output,
 
       for (int i = 0; i < n; i++) {    // loop for batches
         for (int j = 0; j < c; j++) {  // loop for channels
-          output_t(i, j, k, l) = input_t(i, j, in_k, in_l);
+          if (data_layout == DataLayout::kNCHW) {
+            output_t(i, j, k, l) = input_t(i, j, in_k, in_l);
+          } else {
+            output_t(i, k, l, j) = input_t(i, in_k, in_l, j);
+          }
         }
       }
     }
@@ -88,7 +111,8 @@ static void BilinearInterpolation(const Tensor& input, Tensor* output,
                                   const int in_h, const int in_w, const int n,
                                   const int c, const int out_h, const int out_w,
                                   const bool align_corners,
-                                  const bool align_mode) {
+                                  const bool align_mode,
+                                  const DataLayout data_layout) {
   auto input_t = EigenTensor<T, 4>::From(input);
   auto output_t = EigenTensor<T, 4>::From(*output);
   bool align_flag = (align_mode == 0 && !align_corners);
@@ -154,11 +178,21 @@ static void BilinearInterpolation(const Tensor& input, Tensor* output,
       for (int k = 0; k < out_h; k++) {  // loop for images
         for (int l = 0; l < out_w; l++) {
           // bilinear interpolation
-          T out_t = input_t(i, j, vy_n[k], vx_w[l]) * vd_s[k] * vd_e[l] +
+          T out_t;
+          if (data_layout == DataLayout::kNCHW) {
+            out_t = input_t(i, j, vy_n[k], vx_w[l]) * vd_s[k] * vd_e[l] +
                     input_t(i, j, vy_s[k], vx_w[l]) * vd_n[k] * vd_e[l] +
                     input_t(i, j, vy_n[k], vx_e[l]) * vd_s[k] * vd_w[l] +
                     input_t(i, j, vy_s[k], vx_e[l]) * vd_n[k] * vd_w[l];
-          output_t(i, j, k, l) = out_t;
+            output_t(i, j, k, l) = out_t;
+
+          } else {
+            out_t = input_t(i, vy_n[k], vx_w[l], j) * vd_s[k] * vd_e[l] +
+                    input_t(i, vy_s[k], vx_w[l], j) * vd_n[k] * vd_e[l] +
+                    input_t(i, vy_n[k], vx_e[l], j) * vd_s[k] * vd_w[l] +
+                    input_t(i, vy_s[k], vx_e[l], j) * vd_n[k] * vd_w[l];
+            output_t(i, k, l, j) = out_t;
+          }
         }
       }
     }
@@ -170,7 +204,8 @@ static void TrilinearInterpolation(
     const Tensor& input, Tensor* output, const float ratio_d,
     const float ratio_h, const float ratio_w, const int in_d, const int in_h,
     const int in_w, const int n, const int c, const int out_d, const int out_h,
-    const int out_w, const bool align_corners, const bool align_mode) {
+    const int out_w, const bool align_corners, const bool align_mode,
+    const DataLayout& data_layout) {
   auto input_t = EigenTensor<T, 5>::From(input);
   auto output_t = EigenTensor<T, 5>::From(*output);
   bool align_flag = (align_mode == 0 && !align_corners);
@@ -263,23 +298,43 @@ static void TrilinearInterpolation(
         for (int k = 0; k < out_h; k++) {
           for (int l = 0; l < out_w; l++) {
             // trilinear interpolation
-            T out_t = input_t(b, i, vt_f[j], vy_n[k], vx_w[l]) * vd_b[j] *
-                          vd_s[k] * vd_e[l] +
-                      input_t(b, i, vt_f[j], vy_n[k], vx_e[l]) * vd_b[j] *
-                          vd_s[k] * vd_w[l] +
-                      input_t(b, i, vt_f[j], vy_s[k], vx_w[l]) * vd_b[j] *
-                          vd_n[k] * vd_e[l] +
-                      input_t(b, i, vt_f[j], vy_s[k], vx_e[l]) * vd_b[j] *
-                          vd_n[k] * vd_w[l] +
-                      input_t(b, i, vt_b[j], vy_n[k], vx_w[l]) * vd_f[j] *
-                          vd_s[k] * vd_e[l] +
-                      input_t(b, i, vt_b[j], vy_n[k], vx_e[l]) * vd_f[j] *
-                          vd_s[k] * vd_w[l] +
-                      input_t(b, i, vt_b[j], vy_s[k], vx_w[l]) * vd_f[j] *
-                          vd_n[k] * vd_e[l] +
-                      input_t(b, i, vt_b[j], vy_s[k], vx_e[l]) * vd_f[j] *
-                          vd_n[k] * vd_w[l];
-            output_t(b, i, j, k, l) = out_t;
+            if (data_layout == DataLayout::kNCHW) {
+              T out_t = input_t(b, i, vt_f[j], vy_n[k], vx_w[l]) * vd_b[j] *
+                            vd_s[k] * vd_e[l] +
+                        input_t(b, i, vt_f[j], vy_n[k], vx_e[l]) * vd_b[j] *
+                            vd_s[k] * vd_w[l] +
+                        input_t(b, i, vt_f[j], vy_s[k], vx_w[l]) * vd_b[j] *
+                            vd_n[k] * vd_e[l] +
+                        input_t(b, i, vt_f[j], vy_s[k], vx_e[l]) * vd_b[j] *
+                            vd_n[k] * vd_w[l] +
+                        input_t(b, i, vt_b[j], vy_n[k], vx_w[l]) * vd_f[j] *
+                            vd_s[k] * vd_e[l] +
+                        input_t(b, i, vt_b[j], vy_n[k], vx_e[l]) * vd_f[j] *
+                            vd_s[k] * vd_w[l] +
+                        input_t(b, i, vt_b[j], vy_s[k], vx_w[l]) * vd_f[j] *
+                            vd_n[k] * vd_e[l] +
+                        input_t(b, i, vt_b[j], vy_s[k], vx_e[l]) * vd_f[j] *
+                            vd_n[k] * vd_w[l];
+              output_t(b, i, j, k, l) = out_t;
+            } else {
+              T out_t = input_t(b, vt_f[j], vy_n[k], vx_w[l], i) * vd_b[j] *
+                            vd_s[k] * vd_e[l] +
+                        input_t(b, vt_f[j], vy_n[k], vx_e[l], i) * vd_b[j] *
+                            vd_s[k] * vd_w[l] +
+                        input_t(b, vt_f[j], vy_s[k], vx_w[l], i) * vd_b[j] *
+                            vd_n[k] * vd_e[l] +
+                        input_t(b, vt_f[j], vy_s[k], vx_e[l], i) * vd_b[j] *
+                            vd_n[k] * vd_w[l] +
+                        input_t(b, vt_b[j], vy_n[k], vx_w[l], i) * vd_f[j] *
+                            vd_s[k] * vd_e[l] +
+                        input_t(b, vt_b[j], vy_n[k], vx_e[l], i) * vd_f[j] *
+                            vd_s[k] * vd_w[l] +
+                        input_t(b, vt_b[j], vy_s[k], vx_w[l], i) * vd_f[j] *
+                            vd_n[k] * vd_e[l] +
+                        input_t(b, vt_b[j], vy_s[k], vx_e[l], i) * vd_f[j] *
+                            vd_n[k] * vd_w[l];
+              output_t(b, j, k, l, i) = out_t;
+            }
           }
         }
       }
@@ -291,7 +346,7 @@ template <typename T>
 static void NearestNeighborInterpolateGrad(
     const Tensor& output_grad, Tensor* input_grad, const float ratio_h,
     const float ratio_w, const int n, const int c, const int out_h,
-    const int out_w, const bool align_corners) {
+    const int out_w, const bool align_corners, const DataLayout data_layout) {
   auto input_grad_t = EigenTensor<T, 4>::From(*input_grad);
   auto output_grad_t = EigenTensor<T, 4>::From(output_grad);
 
@@ -305,7 +360,11 @@ static void NearestNeighborInterpolateGrad(
 
       for (int i = 0; i < n; i++) {    // loop for batches
         for (int j = 0; j < c; j++) {  // loop for channels
-          input_grad_t(i, j, in_k, in_l) += output_grad_t(i, j, k, l);
+          if (data_layout == DataLayout::kNCHW) {
+            input_grad_t(i, j, in_k, in_l) += output_grad_t(i, j, k, l);
+          } else {
+            input_grad_t(i, in_k, in_l, j) += output_grad_t(i, k, l, j);
+          }
         }
       }
     }
@@ -313,13 +372,11 @@ static void NearestNeighborInterpolateGrad(
 }
 
 template <typename T>
-static void BilinearInterpolationGrad(const Tensor& output_grad,
-                                      Tensor* input_grad, const float ratio_h,
-                                      const float ratio_w, const int in_h,
-                                      const int in_w, const int n, const int c,
-                                      const int out_h, const int out_w,
-                                      const bool align_corners,
-                                      const int align_mode) {
+static void BilinearInterpolationGrad(
+    const Tensor& output_grad, Tensor* input_grad, const float ratio_h,
+    const float ratio_w, const int in_h, const int in_w, const int n,
+    const int c, const int out_h, const int out_w, const bool align_corners,
+    const int align_mode, const DataLayout data_layout) {
   auto input_grad_t = EigenTensor<T, 4>::From(*input_grad);
   auto output_grad_t = EigenTensor<T, 4>::From(output_grad);
   bool align_flag = (align_mode == 0 && !align_corners);
@@ -346,11 +403,19 @@ static void BilinearInterpolationGrad(const Tensor& output_grad,
       for (int i = 0; i < n; i++) {    // loop for batches
         for (int j = 0; j < c; j++) {  // loop for channels
           // bilinear interpolation grad
-          const T grad = output_grad_t(i, j, k, l);
-          input_grad_t(i, j, y_n, x_w) += static_cast<T>(grad * d_s * d_e);
-          input_grad_t(i, j, y_s, x_w) += static_cast<T>(grad * d_n * d_e);
-          input_grad_t(i, j, y_n, x_e) += static_cast<T>(grad * d_s * d_w);
-          input_grad_t(i, j, y_s, x_e) += static_cast<T>(grad * d_n * d_w);
+          if (data_layout == DataLayout::kNCHW) {
+            const T grad = output_grad_t(i, j, k, l);
+            input_grad_t(i, j, y_n, x_w) += static_cast<T>(grad * d_s * d_e);
+            input_grad_t(i, j, y_s, x_w) += static_cast<T>(grad * d_n * d_e);
+            input_grad_t(i, j, y_n, x_e) += static_cast<T>(grad * d_s * d_w);
+            input_grad_t(i, j, y_s, x_e) += static_cast<T>(grad * d_n * d_w);
+          } else {
+            const T grad = output_grad_t(i, k, l, j);
+            input_grad_t(i, y_n, x_w, j) += static_cast<T>(grad * d_s * d_e);
+            input_grad_t(i, y_s, x_w, j) += static_cast<T>(grad * d_n * d_e);
+            input_grad_t(i, y_n, x_e, j) += static_cast<T>(grad * d_s * d_w);
+            input_grad_t(i, y_s, x_e, j) += static_cast<T>(grad * d_n * d_w);
+          }
         }
       }
     }
@@ -362,7 +427,8 @@ static void TrilinearInterpolationGrad(
     const Tensor& output_grad, Tensor* input_grad, const float ratio_d,
     const float ratio_h, const float ratio_w, const int in_d, const int in_h,
     const int in_w, const int n, const int c, const int out_d, const int out_h,
-    const int out_w, const bool align_corners, const int align_mode) {
+    const int out_w, const bool align_corners, const int align_mode,
+    const DataLayout data_layout) {
   auto input_grad_t = EigenTensor<T, 5>::From(*input_grad);
   auto output_grad_t = EigenTensor<T, 5>::From(output_grad);
   bool align_flag = (align_mode == 0 && !align_corners);
@@ -399,23 +465,43 @@ static void TrilinearInterpolationGrad(
         for (int b = 0; b < n; b++) {    // loop for batches
           for (int i = 0; i < c; i++) {  // loop for channels
             // trilinear interpolation grad
-            const T grad = output_grad_t(b, i, j, k, l);
-            input_grad_t(b, i, t_f, y_n, x_w) +=
-                static_cast<T>(grad * d_b * d_s * d_e);
-            input_grad_t(b, i, t_f, y_n, x_e) +=
-                static_cast<T>(grad * d_b * d_s * d_w);
-            input_grad_t(b, i, t_f, y_s, x_w) +=
-                static_cast<T>(grad * d_b * d_n * d_e);
-            input_grad_t(b, i, t_f, y_s, x_e) +=
-                static_cast<T>(grad * d_b * d_n * d_w);
-            input_grad_t(b, i, t_b, y_n, x_w) +=
-                static_cast<T>(grad * d_f * d_s * d_e);
-            input_grad_t(b, i, t_b, y_n, x_e) +=
-                static_cast<T>(grad * d_f * d_s * d_w);
-            input_grad_t(b, i, t_b, y_s, x_w) +=
-                static_cast<T>(grad * d_f * d_n * d_e);
-            input_grad_t(b, i, t_b, y_s, x_e) +=
-                static_cast<T>(grad * d_f * d_n * d_w);
+            if (data_layout == DataLayout::kNCHW) {
+              const T grad = output_grad_t(b, i, j, k, l);
+              input_grad_t(b, i, t_f, y_n, x_w) +=
+                  static_cast<T>(grad * d_b * d_s * d_e);
+              input_grad_t(b, i, t_f, y_n, x_e) +=
+                  static_cast<T>(grad * d_b * d_s * d_w);
+              input_grad_t(b, i, t_f, y_s, x_w) +=
+                  static_cast<T>(grad * d_b * d_n * d_e);
+              input_grad_t(b, i, t_f, y_s, x_e) +=
+                  static_cast<T>(grad * d_b * d_n * d_w);
+              input_grad_t(b, i, t_b, y_n, x_w) +=
+                  static_cast<T>(grad * d_f * d_s * d_e);
+              input_grad_t(b, i, t_b, y_n, x_e) +=
+                  static_cast<T>(grad * d_f * d_s * d_w);
+              input_grad_t(b, i, t_b, y_s, x_w) +=
+                  static_cast<T>(grad * d_f * d_n * d_e);
+              input_grad_t(b, i, t_b, y_s, x_e) +=
+                  static_cast<T>(grad * d_f * d_n * d_w);
+            } else {
+              const T grad = output_grad_t(b, j, k, l, i);
+              input_grad_t(b, t_f, y_n, x_w, i) +=
+                  static_cast<T>(grad * d_b * d_s * d_e);
+              input_grad_t(b, t_f, y_n, x_e, i) +=
+                  static_cast<T>(grad * d_b * d_s * d_w);
+              input_grad_t(b, t_f, y_s, x_w, i) +=
+                  static_cast<T>(grad * d_b * d_n * d_e);
+              input_grad_t(b, t_f, y_s, x_e, i) +=
+                  static_cast<T>(grad * d_b * d_n * d_w);
+              input_grad_t(b, t_b, y_n, x_w, i) +=
+                  static_cast<T>(grad * d_f * d_s * d_e);
+              input_grad_t(b, t_b, y_n, x_e, i) +=
+                  static_cast<T>(grad * d_f * d_s * d_w);
+              input_grad_t(b, t_b, y_s, x_w, i) +=
+                  static_cast<T>(grad * d_f * d_n * d_e);
+              input_grad_t(b, t_b, y_s, x_e, i) +=
+                  static_cast<T>(grad * d_f * d_n * d_w);
+            }
           }
         }
       }
@@ -426,10 +512,10 @@ static void TrilinearInterpolationGrad(
 template <typename T>
 static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
                                 const Tensor& input, Tensor* output) {
-  const int n = input.dims()[0];
-  const int c = input.dims()[1];
-  const int in_h = input.dims()[2];
-  const int in_w = input.dims()[3];
+  const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
+  const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
+  int n, c, in_d, in_h, in_w;
+  ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   auto interp_method = ctx.Attr<std::string>("interp_method");
   bool align_corners = ctx.Attr<bool>("align_corners");
@@ -470,7 +556,13 @@ static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
   PADDLE_ENFORCE_GT(
       out_w, 0,
       "out_w in Attr(out_shape) of Op(interpolate) should be greater than 0.");
-  output->mutable_data<T>({n, c, out_h, out_w}, ctx.GetPlace());
+  framework::DDim dim_out;
+  if (data_layout == DataLayout::kNCHW) {
+    dim_out = {n, c, out_h, out_w};
+  } else {
+    dim_out = {n, out_h, out_w, c};
+  }
+  output->mutable_data<T>(dim_out, ctx.GetPlace());
 
   if (in_h == out_h && in_w == out_w) {
     framework::TensorCopy(input, ctx.GetPlace(), output);
@@ -490,21 +582,21 @@ static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
 
   if ("bilinear" == interp_method) {
     BilinearInterpolation<T>(input, output, ratio_h, ratio_w, in_h, in_w, n, c,
-                             out_h, out_w, align_corners, align_mode);
+                             out_h, out_w, align_corners, align_mode,
+                             data_layout);
   } else if ("nearest" == interp_method) {
     NearestNeighborInterpolate<T>(input, output, ratio_h, ratio_w, n, c, out_h,
-                                  out_w, align_corners);
+                                  out_w, align_corners, data_layout);
   }
 }
 
 template <typename T>
 static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
                                 const Tensor& input, Tensor* output) {
-  const int n = input.dims()[0];
-  const int c = input.dims()[1];
-  const int in_d = input.dims()[2];
-  const int in_h = input.dims()[3];
-  const int in_w = input.dims()[4];
+  const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
+  const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
+  int n, c, in_d, in_h, in_w;
+  ExtractNCDWH(input.dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   auto interp_method = ctx.Attr<std::string>("interp_method");
   bool align_corners = ctx.Attr<bool>("align_corners");
@@ -552,7 +644,15 @@ static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
   PADDLE_ENFORCE_GT(
       out_w, 0,
       "out_w in Attr(out_shape) of Op(interpolate) should be greater than 0.");
-  output->mutable_data<T>({n, c, out_d, out_h, out_w}, ctx.GetPlace());
+
+  framework::DDim dim_out;
+  if (data_layout == DataLayout::kNCHW) {
+    dim_out = {n, c, out_d, out_h, out_w};
+  } else {
+    dim_out = {n, out_d, out_h, out_w, c};
+  }
+
+  output->mutable_data<T>(dim_out, ctx.GetPlace());
 
   if (in_d == out_d && in_h == out_h && in_w == out_w) {
     framework::TensorCopy(input, ctx.GetPlace(), output);
@@ -578,7 +678,7 @@ static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
   if ("trilinear" == interp_method) {
     TrilinearInterpolation<T>(input, output, ratio_d, ratio_h, ratio_w, in_d,
                               in_h, in_w, n, c, out_d, out_h, out_w,
-                              align_corners, align_mode);
+                              align_corners, align_mode, data_layout);
   }
 }
 
@@ -586,10 +686,10 @@ template <typename T>
 static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
                                 Tensor* input_grad, const Tensor& output_grad) {
   auto* input = ctx.Input<Tensor>("X");
-  const int n = input->dims()[0];
-  const int c = input->dims()[1];
-  const int in_h = input->dims()[2];
-  const int in_w = input->dims()[3];
+  const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
+  const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
+  int n, c, in_d, in_h, in_w;
+  ExtractNCDWH(input->dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   auto interp_method = ctx.Attr<std::string>("interp_method");
   bool align_corners = ctx.Attr<bool>("align_corners");
@@ -623,7 +723,14 @@ static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
     out_w = new_size[1];
   }
 
-  input_grad->mutable_data<T>({n, c, in_h, in_w}, ctx.GetPlace());
+  framework::DDim dim_grad;
+  if (data_layout == DataLayout::kNCHW) {
+    dim_grad = {n, c, in_h, in_w};
+  } else {
+    dim_grad = {n, in_h, in_w, c};
+  }
+  input_grad->mutable_data<T>(dim_grad, ctx.GetPlace());
+
   auto& device_ctx = ctx.template device_context<platform::CPUDeviceContext>();
   math::SetConstant<platform::CPUDeviceContext, T> zero;
   zero(device_ctx, input_grad, static_cast<T>(0.0));
@@ -647,10 +754,11 @@ static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
   if ("bilinear" == interp_method) {
     BilinearInterpolationGrad<T>(output_grad, input_grad, ratio_h, ratio_w,
                                  in_h, in_w, n, c, out_h, out_w, align_corners,
-                                 align_mode);
+                                 align_mode, data_layout);
   } else if ("nearest" == interp_method) {
     NearestNeighborInterpolateGrad<T>(output_grad, input_grad, ratio_h, ratio_w,
-                                      n, c, out_h, out_w, align_corners);
+                                      n, c, out_h, out_w, align_corners,
+                                      data_layout);
   }
 }
 
@@ -658,11 +766,10 @@ template <typename T>
 static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx,
                                 Tensor* input_grad, const Tensor output_grad) {
   auto* input = ctx.Input<Tensor>("X");
-  const int n = input->dims()[0];
-  const int c = input->dims()[1];
-  const int in_d = input->dims()[2];
-  const int in_h = input->dims()[3];
-  const int in_w = input->dims()[4];
+  const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
+  const DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
+  int n, c, in_d, in_h, in_w;
+  ExtractNCDWH(input->dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
   auto interp_method = ctx.Attr<std::string>("interp_method");
   bool align_corners = ctx.Attr<bool>("align_corners");
@@ -700,7 +807,13 @@ static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx,
     out_w = new_size[2];
   }
 
-  input_grad->mutable_data<T>({n, c, in_d, in_h, in_w}, ctx.GetPlace());
+  framework::DDim dim_grad;
+  if (data_layout == DataLayout::kNCHW) {
+    dim_grad = {n, c, in_d, in_h, in_w};
+  } else {
+    dim_grad = {n, in_d, in_h, in_w, c};
+  }
+  input_grad->mutable_data<T>(dim_grad, ctx.GetPlace());
   auto& device_ctx = ctx.template device_context<platform::CPUDeviceContext>();
   math::SetConstant<platform::CPUDeviceContext, T> zero;
   zero(device_ctx, input_grad, static_cast<T>(0.0));
@@ -727,9 +840,9 @@ static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx,
   }
 
   if ("trilinear" == interp_method) {
-    TrilinearInterpolationGrad<T>(output_grad, input_grad, ratio_d, ratio_h,
-                                  ratio_w, in_d, in_h, in_w, n, c, out_d, out_h,
-                                  out_w, align_corners, align_mode);
+    TrilinearInterpolationGrad<T>(
+        output_grad, input_grad, ratio_d, ratio_h, ratio_w, in_d, in_h, in_w, n,
+        c, out_d, out_h, out_w, align_corners, align_mode, data_layout);
   }
 }
 

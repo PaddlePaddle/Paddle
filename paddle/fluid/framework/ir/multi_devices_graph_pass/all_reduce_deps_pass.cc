@@ -39,7 +39,7 @@ class AllReduceDepsPass : public ir::Pass {
     std::vector<details::OpHandleBase*> all_reduce_op_handles =
         GetSortedAllReduceOps(*graph);
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
     auto use_hierarchical_allreduce =
         Get<bool>(details::kUseHierarchicalAllReduce);
     for (size_t i = 0; i < all_reduce_op_handles.size(); ++i) {
@@ -186,27 +186,18 @@ class AllReduceDepsPass : public ir::Pass {
         graph.Get<const std::vector<OpDesc*>>(details::kStaleProgramOpDescs);
     int order = 0;
     for (auto* op_desc : ops) {
-      try {
-        bool is_bk_op =
-            static_cast<bool>(boost::get<int>(op_desc->GetAttr(
-                                  OpProtoAndCheckerMaker::OpRoleAttrName())) &
-                              static_cast<int>(OpRole::kBackward));
-        if (!is_bk_op) continue;
+      bool is_bk_op = details::IsOpRole(*op_desc, OpRole::kBackward);
+      if (!is_bk_op) continue;
 
-        auto backward_vars =
-            boost::get<std::vector<std::string>>(op_desc->GetNullableAttr(
-                OpProtoAndCheckerMaker::OpRoleVarAttrName()));
-        if (backward_vars.empty()) continue;
+      auto backward_vars = details::GetOpRoleVarsOrEmpty(*op_desc);
+      if (backward_vars.empty()) continue;
 
-        PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
-        for (size_t i = 1; i < backward_vars.size(); i += 2) {
-          vars[order].emplace_back(backward_vars[i]);
-          VLOG(1) << "get parameter and gradient: " << backward_vars[i - 1]
-                  << ", " << backward_vars[i];
-        }
-        order++;
-      } catch (boost::bad_get e) {
+      for (size_t i = 1; i < backward_vars.size(); i += 2) {
+        vars[order].emplace_back(backward_vars[i]);
+        VLOG(1) << "get parameter and gradient: " << backward_vars[i - 1]
+                << ", " << backward_vars[i];
       }
+      order++;
     }
     return vars;
   }

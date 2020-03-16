@@ -17,16 +17,8 @@ import unittest
 from test_dist_base import TestDistBase
 import os
 
-
-def skip_ci(func):
-    on_ci = bool(int(os.environ.get("SKIP_UNSTABLE_CI", '0')))
-
-    def __func__(*args, **kwargs):
-        if on_ci:
-            return
-        return func(*args, **kwargs)
-
-    return __func__
+import os
+flag_name = os.path.splitext(__file__)[0]
 
 
 class TestDistSeResneXt2x2(TestDistBase):
@@ -34,9 +26,13 @@ class TestDistSeResneXt2x2(TestDistBase):
         self._sync_mode = True
         self._use_reader_alloc = False
 
-    @skip_ci
+    @unittest.skip(reason="Skip unstable ci")
     def test_dist_train(self):
-        self.check_with_place("dist_se_resnext.py", delta=1e-7)
+        self.check_with_place(
+            "dist_se_resnext.py",
+            delta=1e-7,
+            check_error_log=True,
+            log_name=flag_name)
 
 
 if __name__ == "__main__":

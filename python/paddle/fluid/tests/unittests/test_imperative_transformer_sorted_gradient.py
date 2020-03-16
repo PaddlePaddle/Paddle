@@ -16,13 +16,16 @@ from __future__ import print_function
 
 import unittest
 import paddle.fluid as fluid
-from paddle.fluid import Embedding, LayerNorm, FC, Layer
+from paddle.fluid import Embedding, LayerNorm, Linear, Layer
 from paddle.fluid.dygraph import to_variable, guard
+from paddle.fluid.dygraph import TracedLayer
 from test_imperative_base import new_program_scope
 from paddle.fluid import core
 import numpy as np
 import six
 np.set_printoptions(suppress=True)
+
+from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
 
 
 # Copy from models
@@ -226,11 +229,11 @@ seq_len = ModelHyperParams.max_length
 # compile time.
 input_descs = {
     # The actual data shape of src_word is:
-    # [batch_size, max_src_len_in_batch, 1]
-    "src_word": [(batch_size, seq_len, 1), "int64", 2],
+    # [batch_size, max_src_len_in_batch]
+    "src_word": [(batch_size, seq_len), "int64", 2],
     # The actual data shape of src_pos is:
-    # [batch_size, max_src_len_in_batch, 1]
-    "src_pos": [(batch_size, seq_len, 1), "int64"],
+    # [batch_size, max_src_len_in_batch]
+    "src_pos": [(batch_size, seq_len), "int64"],
     # This input is used to remove attention weights on paddings in the
     # encoder.
     # The actual data shape of src_slf_attn_bias is:
@@ -238,12 +241,12 @@ input_descs = {
     "src_slf_attn_bias": [(batch_size, ModelHyperParams.n_head, seq_len,
                            seq_len), "float32"],
     # The actual data shape of trg_word is:
-    # [batch_size, max_trg_len_in_batch, 1]
-    "trg_word": [(batch_size, seq_len, 1), "int64",
+    # [batch_size, max_trg_len_in_batch]
+    "trg_word": [(batch_size, seq_len), "int64",
                  2],  # lod_level is only used in fast decoder.
     # The actual data shape of trg_pos is:
-    # [batch_size, max_trg_len_in_batch, 1]
-    "trg_pos": [(batch_size, seq_len, 1), "int64"],
+    # [batch_size, max_trg_len_in_batch]
+    "trg_pos": [(batch_size, seq_len), "int64"],
     # This input is used to remove attention weights on paddings and
     # subsequent words in the decoder.
     # The actual data shape of trg_slf_attn_bias is:
@@ -263,7 +266,7 @@ input_descs = {
     # The actual data shape of label_word is:
     # [batch_size * max_trg_len_in_batch, 1]
     "lbl_word": [(batch_size * seq_len, 1), "int64"],
-    # This input is used to mask out the loss of paddding tokens.
+    # This input is used to mask out the loss of padding tokens.
     # The actual data shape of label_weight is:
     # [batch_size * max_trg_len_in_batch, 1]
     "lbl_weight": [(batch_size * seq_len, 1), "float32"],
@@ -314,17 +317,17 @@ batch_num = 5
 
 np.random.seed = 90
 src_word_np = np.arange(1, TrainTaskConfig.batch_size * seq_len + 1).reshape(
-    [TrainTaskConfig.batch_size, seq_len, 1]).astype('int64')
+    [TrainTaskConfig.batch_size, seq_len]).astype('int64')
 src_pos_np = np.random.randint(
-    1, seq_len, size=(TrainTaskConfig.batch_size, seq_len, 1), dtype='int64')
+    1, seq_len, size=(TrainTaskConfig.batch_size, seq_len), dtype='int64')
 src_slf_attn_bias_np = np.random.randn(TrainTaskConfig.batch_size,
                                        ModelHyperParams.n_head, seq_len,
                                        seq_len).astype('float32')
 
 trg_word_np = np.arange(1, TrainTaskConfig.batch_size * seq_len + 1).reshape(
-    [TrainTaskConfig.batch_size, seq_len, 1]).astype('int64')
+    [TrainTaskConfig.batch_size, seq_len]).astype('int64')
 trg_pos_np = np.random.randint(
-    1, seq_len, size=(TrainTaskConfig.batch_size, seq_len, 1), dtype='int64')
+    1, seq_len, size=(TrainTaskConfig.batch_size, seq_len), dtype='int64')
 trg_slf_attn_bias_np = np.random.randn(TrainTaskConfig.batch_size,
                                        ModelHyperParams.n_head, seq_len,
                                        seq_len).astype('float32')
@@ -347,13 +350,12 @@ pos_inp2 = position_encoding_init(ModelHyperParams.max_length,
 
 
 class PrePostProcessLayer(Layer):
-    def __init__(self, name_scope, process_cmd, shape_len=None):
-        super(PrePostProcessLayer, self).__init__(name_scope)
+    def __init__(self, d_model, process_cmd, shape_len=None):
+        super(PrePostProcessLayer, self).__init__()
         for cmd in process_cmd:
             if cmd == "n":
                 self._layer_norm = LayerNorm(
-                    name_scope=self.full_name(),
-                    begin_norm_axis=shape_len - 1,
+                    normalized_shape=d_model,
                     param_attr=fluid.ParamAttr(
                         initializer=fluid.initializer.Constant(1.)),
                     bias_attr=fluid.ParamAttr(
@@ -376,15 +378,10 @@ class PrePostProcessLayer(Layer):
 
 
 class PositionwiseFeedForwardLayer(Layer):
-    def __init__(self, name_scope, d_inner_hid, d_hid, dropout_rate):
-        super(PositionwiseFeedForwardLayer, self).__init__(name_scope)
-        self._i2h = FC(name_scope=self.full_name(),
-                       size=d_inner_hid,
-                       num_flatten_dims=2,
-                       act="relu")
-        self._h2o = FC(name_scope=self.full_name(),
-                       size=d_hid,
-                       num_flatten_dims=2)
+    def __init__(self, d_inner_hid, d_hid, dropout_rate):
+        super(PositionwiseFeedForwardLayer, self).__init__()
+        self._i2h = Linear(d_hid, d_inner_hid, act="relu")
+        self._h2o = Linear(d_inner_hid, d_hid)
         self._dropout_rate = dropout_rate
 
     def forward(self, x):
@@ -401,7 +398,6 @@ class PositionwiseFeedForwardLayer(Layer):
 
 class MultiHeadAttentionLayer(Layer):
     def __init__(self,
-                 name_scope,
                  d_key,
                  d_value,
                  d_model,
@@ -410,28 +406,16 @@ class MultiHeadAttentionLayer(Layer):
                  cache=None,
                  gather_idx=None,
                  static_kv=False):
-        super(MultiHeadAttentionLayer, self).__init__(name_scope)
+        super(MultiHeadAttentionLayer, self).__init__()
         self._n_head = n_head
         self._d_key = d_key
         self._d_value = d_value
         self._d_model = d_model
         self._dropout_rate = dropout_rate
-        self._q_fc = FC(name_scope=self.full_name(),
-                        size=d_key * n_head,
-                        bias_attr=False,
-                        num_flatten_dims=2)
-        self._k_fc = FC(name_scope=self.full_name(),
-                        size=d_key * n_head,
-                        bias_attr=False,
-                        num_flatten_dims=2)
-        self._v_fc = FC(name_scope=self.full_name(),
-                        size=d_value * n_head,
-                        bias_attr=False,
-                        num_flatten_dims=2)
-        self._proj_fc = FC(name_scope=self.full_name(),
-                           size=self._d_model,
-                           bias_attr=False,
-                           num_flatten_dims=2)
+        self._q_fc = Linear(self._d_model, d_key * n_head, bias_attr=False)
+        self._k_fc = Linear(self._d_model, d_key * n_head, bias_attr=False)
+        self._v_fc = Linear(self._d_model, d_value * n_head, bias_attr=False)
+        self._proj_fc = Linear(d_value * n_head, self._d_model, bias_attr=False)
 
     def forward(self, queries, keys, values, attn_bias):
         # compute q ,k ,v
@@ -488,7 +472,6 @@ class MultiHeadAttentionLayer(Layer):
 
 class EncoderSubLayer(Layer):
     def __init__(self,
-                 name_scope,
                  n_head,
                  d_key,
                  d_value,
@@ -500,24 +483,23 @@ class EncoderSubLayer(Layer):
                  preprocess_cmd="n",
                  postprocess_cmd="da"):
 
-        super(EncoderSubLayer, self).__init__(name_scope)
+        super(EncoderSubLayer, self).__init__()
         self._preprocess_cmd = preprocess_cmd
         self._postprocess_cmd = postprocess_cmd
         self._prepostprocess_dropout = prepostprocess_dropout
 
-        self._preprocess_layer = PrePostProcessLayer(self.full_name(),
+        self._preprocess_layer = PrePostProcessLayer(d_model,
                                                      self._preprocess_cmd, 3)
         self._multihead_attention_layer = MultiHeadAttentionLayer(
-            self.full_name(), d_key, d_value, d_model, n_head,
-            attention_dropout)
+            d_key, d_value, d_model, n_head, attention_dropout)
         self._postprocess_layer = PrePostProcessLayer(
-            self.full_name(), self._postprocess_cmd, None)
-        self._preprocess_layer2 = PrePostProcessLayer(self.full_name(),
+            d_model, self._postprocess_cmd, None)
+        self._preprocess_layer2 = PrePostProcessLayer(d_model,
                                                       self._preprocess_cmd, 3)
         self._positionwise_feed_forward = PositionwiseFeedForwardLayer(
-            self.full_name(), d_inner_hid, d_model, relu_dropout)
+            d_inner_hid, d_model, relu_dropout)
         self._postprocess_layer2 = PrePostProcessLayer(
-            self.full_name(), self._postprocess_cmd, None)
+            d_model, self._postprocess_cmd, None)
 
     def forward(self, enc_input, attn_bias):
         pre_process_multihead = self._preprocess_layer(
@@ -538,7 +520,6 @@ class EncoderSubLayer(Layer):
 
 class EncoderLayer(Layer):
     def __init__(self,
-                 name_scope,
                  n_layer,
                  n_head,
                  d_key,
@@ -551,21 +532,21 @@ class EncoderLayer(Layer):
                  preprocess_cmd="n",
                  postprocess_cmd="da"):
 
-        super(EncoderLayer, self).__init__(name_scope)
+        super(EncoderLayer, self).__init__()
         self._preprocess_cmd = preprocess_cmd
         self._encoder_sublayers = list()
         self._prepostprocess_dropout = prepostprocess_dropout
         self._n_layer = n_layer
-        self._preprocess_layer = PrePostProcessLayer(self.full_name(),
+        self._preprocess_layer = PrePostProcessLayer(d_model,
                                                      self._preprocess_cmd, 3)
         for i in range(n_layer):
             self._encoder_sublayers.append(
                 self.add_sublayer(
                     'esl_%d' % i,
-                    EncoderSubLayer(
-                        self.full_name(), n_head, d_key, d_value, d_model,
-                        d_inner_hid, prepostprocess_dropout, attention_dropout,
-                        relu_dropout, preprocess_cmd, postprocess_cmd)))
+                    EncoderSubLayer(n_head, d_key, d_value, d_model,
+                                    d_inner_hid, prepostprocess_dropout,
+                                    attention_dropout, relu_dropout,
+                                    preprocess_cmd, postprocess_cmd)))
 
     def forward(self, enc_input, attn_bias):
         for i in range(self._n_layer):
@@ -578,21 +559,21 @@ class EncoderLayer(Layer):
 
 class PrepareEncoderDecoderLayer(Layer):
     def __init__(self,
-                 name_scope,
                  src_vocab_size,
                  src_emb_dim,
                  src_max_len,
                  dropout_rate,
+                 is_sparse=False,
                  word_emb_param_name=None,
                  pos_enc_param_name=None):
-        super(PrepareEncoderDecoderLayer, self).__init__(name_scope)
+        super(PrepareEncoderDecoderLayer, self).__init__()
         self._src_max_len = src_max_len
         self._src_emb_dim = src_emb_dim
         self._src_vocab_size = src_vocab_size
         self._dropout_rate = dropout_rate
         self._input_emb = Embedding(
-            name_scope=self.full_name(),
             size=[src_vocab_size, src_emb_dim],
+            is_sparse=is_sparse,
             padding_idx=0,
             param_attr=fluid.ParamAttr(
                 name=word_emb_param_name,
@@ -603,8 +584,8 @@ class PrepareEncoderDecoderLayer(Layer):
         else:
             pos_inp = pos_inp2
         self._pos_emb = Embedding(
-            name_scope=self.full_name(),
             size=[self._src_max_len, src_emb_dim],
+            is_sparse=is_sparse,
             param_attr=fluid.ParamAttr(
                 name=pos_enc_param_name,
                 initializer=fluid.initializer.NumpyArrayInitializer(pos_inp),
@@ -630,27 +611,39 @@ class PrepareEncoderDecoderLayer(Layer):
 
 
 class WrapEncoderLayer(Layer):
-    def __init__(self, name_cope, src_vocab_size, max_length, n_layer, n_head,
-                 d_key, d_value, d_model, d_inner_hid, prepostprocess_dropout,
-                 attention_dropout, relu_dropout, preprocess_cmd,
-                 postprocess_cmd, weight_sharing):
+    def __init__(self,
+                 src_vocab_size,
+                 max_length,
+                 n_layer,
+                 n_head,
+                 d_key,
+                 d_value,
+                 d_model,
+                 d_inner_hid,
+                 prepostprocess_dropout,
+                 attention_dropout,
+                 relu_dropout,
+                 preprocess_cmd,
+                 postprocess_cmd,
+                 weight_sharing,
+                 is_sparse=False):
         """
         The wrapper assembles together all needed layers for the encoder.
         """
-        super(WrapEncoderLayer, self).__init__(name_cope)
+        super(WrapEncoderLayer, self).__init__()
 
         self._prepare_encoder_layer = PrepareEncoderDecoderLayer(
-            self.full_name(),
             src_vocab_size,
             d_model,
             max_length,
             prepostprocess_dropout,
+            is_sparse=is_sparse,
             word_emb_param_name=word_emb_param_names[0],
             pos_enc_param_name=pos_enc_param_names[0])
-        self._encoder = EncoderLayer(
-            self.full_name(), n_layer, n_head, d_key, d_value, d_model,
-            d_inner_hid, prepostprocess_dropout, attention_dropout,
-            relu_dropout, preprocess_cmd, postprocess_cmd)
+        self._encoder = EncoderLayer(n_layer, n_head, d_key, d_value, d_model,
+                                     d_inner_hid, prepostprocess_dropout,
+                                     attention_dropout, relu_dropout,
+                                     preprocess_cmd, postprocess_cmd)
 
     def forward(self, enc_inputs):
         src_word, src_pos, src_slf_attn_bias = enc_inputs
@@ -661,7 +654,6 @@ class WrapEncoderLayer(Layer):
 
 class DecoderSubLayer(Layer):
     def __init__(self,
-                 name_scope,
                  n_head,
                  d_key,
                  d_value,
@@ -674,14 +666,13 @@ class DecoderSubLayer(Layer):
                  postprocess_cmd,
                  cache=None,
                  gather_idx=None):
-        super(DecoderSubLayer, self).__init__(name_scope)
+        super(DecoderSubLayer, self).__init__()
         self._postprocess_cmd = postprocess_cmd
         self._preprocess_cmd = preprocess_cmd
         self._prepostprcess_dropout = prepostprocess_dropout
-        self._pre_process_layer = PrePostProcessLayer(self.full_name(),
-                                                      preprocess_cmd, 3)
+        self._pre_process_layer = PrePostProcessLayer(d_model, preprocess_cmd,
+                                                      3)
         self._multihead_attention_layer = MultiHeadAttentionLayer(
-            self.full_name(),
             d_key,
             d_value,
             d_model,
@@ -689,12 +680,11 @@ class DecoderSubLayer(Layer):
             attention_dropout,
             cache=cache,
             gather_idx=gather_idx)
-        self._post_process_layer = PrePostProcessLayer(self.full_name(),
-                                                       postprocess_cmd, None)
-        self._pre_process_layer2 = PrePostProcessLayer(self.full_name(),
-                                                       preprocess_cmd, 3)
+        self._post_process_layer = PrePostProcessLayer(d_model, postprocess_cmd,
+                                                       None)
+        self._pre_process_layer2 = PrePostProcessLayer(d_model, preprocess_cmd,
+                                                       3)
         self._multihead_attention_layer2 = MultiHeadAttentionLayer(
-            self.full_name(),
             d_key,
             d_value,
             d_model,
@@ -703,13 +693,13 @@ class DecoderSubLayer(Layer):
             cache=cache,
             gather_idx=gather_idx,
             static_kv=True)
-        self._post_process_layer2 = PrePostProcessLayer(self.full_name(),
+        self._post_process_layer2 = PrePostProcessLayer(d_model,
                                                         postprocess_cmd, None)
-        self._pre_process_layer3 = PrePostProcessLayer(self.full_name(),
-                                                       preprocess_cmd, 3)
+        self._pre_process_layer3 = PrePostProcessLayer(d_model, preprocess_cmd,
+                                                       3)
         self._positionwise_feed_forward_layer = PositionwiseFeedForwardLayer(
-            self.full_name(), d_inner_hid, d_model, relu_dropout)
-        self._post_process_layer3 = PrePostProcessLayer(self.full_name(),
+            d_inner_hid, d_model, relu_dropout)
+        self._post_process_layer3 = PrePostProcessLayer(d_model,
                                                         postprocess_cmd, None)
 
     def forward(self, dec_input, enc_output, slf_attn_bias, dec_enc_attn_bias):
@@ -740,7 +730,6 @@ class DecoderSubLayer(Layer):
 
 class DecoderLayer(Layer):
     def __init__(self,
-                 name_scope,
                  n_layer,
                  n_head,
                  d_key,
@@ -754,9 +743,9 @@ class DecoderLayer(Layer):
                  postprocess_cmd,
                  caches=None,
                  gather_idx=None):
-        super(DecoderLayer, self).__init__(name_scope)
-        self._pre_process_layer = PrePostProcessLayer(self.full_name(),
-                                                      preprocess_cmd, 3)
+        super(DecoderLayer, self).__init__()
+        self._pre_process_layer = PrePostProcessLayer(d_model, preprocess_cmd,
+                                                      3)
         self._decoder_sub_layers = list()
         self._n_layer = n_layer
         self._preprocess_cmd = preprocess_cmd
@@ -766,7 +755,6 @@ class DecoderLayer(Layer):
                 self.add_sublayer(
                     'dsl_%d' % i,
                     DecoderSubLayer(
-                        self.full_name(),
                         n_head,
                         d_key,
                         d_value,
@@ -795,7 +783,6 @@ class DecoderLayer(Layer):
 
 class WrapDecoderLayer(Layer):
     def __init__(self,
-                 name_scope,
                  trg_vocab_size,
                  max_length,
                  n_layer,
@@ -811,22 +798,22 @@ class WrapDecoderLayer(Layer):
                  postprocess_cmd,
                  weight_sharing,
                  caches=None,
-                 gather_idx=None):
+                 gather_idx=None,
+                 is_sparse=False):
         """
         The wrapper assembles together all needed layers for the encoder.
         """
-        super(WrapDecoderLayer, self).__init__(name_scope)
+        super(WrapDecoderLayer, self).__init__()
 
         self._prepare_decoder_layer = PrepareEncoderDecoderLayer(
-            self.full_name(),
             trg_vocab_size,
             d_model,
             max_length,
             prepostprocess_dropout,
+            is_sparse=is_sparse,
             word_emb_param_name=word_emb_param_names[1],
             pos_enc_param_name=pos_enc_param_names[1])
         self._decoder_layer = DecoderLayer(
-            self.full_name(),
             n_layer,
             n_head,
             d_key,
@@ -842,9 +829,7 @@ class WrapDecoderLayer(Layer):
             gather_idx=gather_idx)
         self._weight_sharing = weight_sharing
         if not weight_sharing:
-            self._fc = FC(self.full_name(),
-                          size=trg_vocab_size,
-                          bias_attr=False)
+            self._fc = Linear(d_model, trg_vocab_size, bias_attr=False)
 
     def forward(self, dec_inputs=None, enc_output=None):
         trg_word, trg_pos, trg_slf_attn_bias, trg_src_attn_bias = dec_inputs
@@ -858,7 +843,7 @@ class WrapDecoderLayer(Layer):
         if self._weight_sharing:
             predict = fluid.layers.matmul(
                 x=dec_output_reshape,
-                y=self._prepare_decoder_layer._input_emb._w,
+                y=self._prepare_decoder_layer._input_emb.weight,
                 transpose_y=True)
         else:
             predict = self._fc(dec_output_reshape)
@@ -872,7 +857,6 @@ class WrapDecoderLayer(Layer):
 
 class TransFormer(Layer):
     def __init__(self,
-                 name_scope,
                  src_vocab_size,
                  trg_vocab_size,
                  max_length,
@@ -890,8 +874,9 @@ class TransFormer(Layer):
                  weight_sharing,
                  label_smooth_eps,
                  use_py_reader=False,
-                 is_test=False):
-        super(TransFormer, self).__init__(name_scope)
+                 is_test=False,
+                 is_sparse=False):
+        super(TransFormer, self).__init__()
         self._label_smooth_eps = label_smooth_eps
         self._trg_vocab_size = trg_vocab_size
         if weight_sharing:
@@ -899,18 +884,40 @@ class TransFormer(Layer):
                 "Vocabularies in source and target should be same for weight sharing."
             )
         self._wrap_encoder_layer = WrapEncoderLayer(
-            self.full_name(), src_vocab_size, max_length, n_layer, n_head,
-            d_key, d_value, d_model, d_inner_hid, prepostprocess_dropout,
-            attention_dropout, relu_dropout, preprocess_cmd, postprocess_cmd,
-            weight_sharing)
+            src_vocab_size,
+            max_length,
+            n_layer,
+            n_head,
+            d_key,
+            d_value,
+            d_model,
+            d_inner_hid,
+            prepostprocess_dropout,
+            attention_dropout,
+            relu_dropout,
+            preprocess_cmd,
+            postprocess_cmd,
+            weight_sharing,
+            is_sparse=is_sparse)
         self._wrap_decoder_layer = WrapDecoderLayer(
-            self.full_name(), trg_vocab_size, max_length, n_layer, n_head,
-            d_key, d_value, d_model, d_inner_hid, prepostprocess_dropout,
-            attention_dropout, relu_dropout, preprocess_cmd, postprocess_cmd,
-            weight_sharing)
+            trg_vocab_size,
+            max_length,
+            n_layer,
+            n_head,
+            d_key,
+            d_value,
+            d_model,
+            d_inner_hid,
+            prepostprocess_dropout,
+            attention_dropout,
+            relu_dropout,
+            preprocess_cmd,
+            postprocess_cmd,
+            weight_sharing,
+            is_sparse=is_sparse)
 
         if weight_sharing:
-            self._wrap_decoder_layer._prepare_decoder_layer._input_emb._w = self._wrap_encoder_layer._prepare_encoder_layer._input_emb._w
+            self._wrap_decoder_layer._prepare_decoder_layer._input_emb.weight = self._wrap_encoder_layer._prepare_encoder_layer._input_emb.weight
 
     def forward(self, enc_inputs, dec_inputs, label, weights):
         enc_output = self._wrap_encoder_layer(enc_inputs)
@@ -934,7 +941,11 @@ class TransFormer(Layer):
 
 
 class TestDygraphTransformerSortGradient(unittest.TestCase):
-    def test_transformer_sort_gradient_float32(self):
+    def test_transformer_sort_gradient(self):
+        for is_sparse in [True, False]:
+            self.transformer_sort_gradient_float32(is_sparse)
+
+    def transformer_sort_gradient_float32(self, is_sparse):
         seed = 90
 
         with guard():
@@ -943,7 +954,6 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
             backward_strategy = fluid.dygraph.BackwardStrategy()
             backward_strategy.sort_sum_gradient = True
             transformer = TransFormer(
-                'transformer',
                 ModelHyperParams.src_vocab_size,
                 ModelHyperParams.trg_vocab_size,
                 ModelHyperParams.max_length + 1,
@@ -961,7 +971,8 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 ModelHyperParams.weight_sharing,
                 TrainTaskConfig.label_smooth_eps,
                 use_py_reader=use_py_reader,
-                is_test=False)
+                is_test=False,
+                is_sparse=is_sparse)
             if sync:
                 lr_decay = fluid.layers.learning_rate_scheduler.noam_decay(
                     ModelHyperParams.d_model, TrainTaskConfig.warmup_steps)
@@ -971,15 +982,40 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                     learning_rate=learning_rate,
                     beta1=TrainTaskConfig.beta1,
                     beta2=TrainTaskConfig.beta2,
-                    epsilon=TrainTaskConfig.eps)
+                    epsilon=TrainTaskConfig.eps,
+                    parameter_list=transformer.parameters())
             else:
-                optimizer = fluid.optimizer.SGD(learning_rate=0.003)
+                optimizer = fluid.optimizer.SGD(
+                    learning_rate=0.003,
+                    parameter_list=transformer.parameters())
             dy_param_init = dict()
             dy_param_updated = dict()
+
+            helper = DyGraphProgramDescTracerTestHelper(self)
+            program = None
+
             for i in range(batch_num):
                 enc_inputs, dec_inputs, label, weights = create_data()
-                dy_sum_cost, dy_avg_cost, dy_predict, dy_token_num = transformer(
-                    enc_inputs, dec_inputs, label, weights)
+                if i % 2 == 0:
+                    outs, traced_layer = TracedLayer.trace(
+                        transformer, [enc_inputs, dec_inputs, label, weights])
+
+                    ins_static = enc_inputs + dec_inputs + [label, weights]
+                    outs_static = traced_layer(ins_static)
+                    helper.assertEachVar(outs, outs_static)
+                    if program is not None:
+                        self.assertTrue(
+                            is_equal_program(program, traced_layer.program))
+
+                    program = traced_layer.program
+                    traced_layer.save_inference_model(
+                        './infer_imperative_transformer',
+                        feed=range(len(ins_static)),
+                        fetch=range(len(outs_static)))
+                else:
+                    outs = transformer(enc_inputs, dec_inputs, label, weights)
+
+                dy_sum_cost, dy_avg_cost, dy_predict, dy_token_num = outs
 
                 if i == 0:
                     for param in transformer.parameters():
@@ -993,11 +1029,15 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                     for param in transformer.parameters():
                         dy_param_updated[param.name] = param.numpy()
 
+            dy_avg_cost_value = dy_avg_cost.numpy()
+            dy_sum_cost_value = dy_sum_cost.numpy()
+            dy_predict_value = dy_predict.numpy()
+            dy_token_num_value = dy_token_num.numpy()
+
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
             transformer = TransFormer(
-                'transformer',
                 ModelHyperParams.src_vocab_size,
                 ModelHyperParams.trg_vocab_size,
                 ModelHyperParams.max_length + 1,
@@ -1015,7 +1055,8 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 ModelHyperParams.weight_sharing,
                 TrainTaskConfig.label_smooth_eps,
                 use_py_reader=use_py_reader,
-                is_test=False)
+                is_test=False,
+                is_sparse=is_sparse)
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
             optimizer = fluid.optimizer.SGD(learning_rate=0.003)
@@ -1067,13 +1108,12 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                                                                     4]] = out[k]
 
         self.assertTrue(
-            np.array_equal(static_avg_cost_value, dy_avg_cost.numpy()))
+            np.array_equal(static_avg_cost_value, dy_avg_cost_value))
         self.assertTrue(
-            np.array_equal(static_sum_cost_value, dy_sum_cost.numpy()))
+            np.array_equal(static_sum_cost_value, dy_sum_cost_value))
+        self.assertTrue(np.array_equal(static_predict_value, dy_predict_value))
         self.assertTrue(
-            np.array_equal(static_predict_value, dy_predict.numpy()))
-        self.assertTrue(
-            np.array_equal(static_token_num_value, dy_token_num.numpy()))
+            np.array_equal(static_token_num_value, dy_token_num_value))
 
         for key, value in six.iteritems(static_param_init):
             self.assertTrue(np.array_equal(value, dy_param_init[key]))

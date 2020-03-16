@@ -385,10 +385,10 @@ class FusedElemwiseActivationKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto &in_x = detail::Ref(ctx.Input<framework::Tensor>("X"),
                              "Cannot get input tensor %s, variable name = %s",
-                             "X", ctx.op().Input("X"));
+                             "X", ctx.InputName("X"));
     auto &in_y = detail::Ref(ctx.Input<framework::Tensor>("Y"),
                              "Cannot get input tensor %s, variable name = %s",
-                             "Y", ctx.op().Input("Y"));
+                             "Y", ctx.InputName("Y"));
     PADDLE_ENFORCE(ctx.HasOutput("Out"), "The output(Out) should not be empty");
     auto output = ctx.Output<framework::Tensor>("Out");
 

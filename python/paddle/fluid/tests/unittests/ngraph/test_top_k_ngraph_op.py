@@ -13,8 +13,9 @@
 # limitations under the License.
 from __future__ import print_function
 
-import unittest
-from paddle.fluid.tests.unittests.test_top_k_op import TestTopkOp, TestTopkOp3d, TestTopkOp2, TestTopkOp3, TestTopkOp4
+import unittest, sys
+sys.path.append("../")
+from test_top_k_op import TestTopkOp
 
 if __name__ == "__main__":
     unittest.main()

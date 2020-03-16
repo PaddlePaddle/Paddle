@@ -369,10 +369,10 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
     auto *im_info = context.Input<Tensor>("ImInfo");
     auto anchors = detail::Ref(context.Input<Tensor>("Anchors"),
                                "Cannot find input Anchors(%s) in scope",
-                               context.Inputs("Anchors")[0]);
+                               context.InputNames("Anchors")[0]);
     auto variances = detail::Ref(context.Input<Tensor>("Variances"),
                                  "Cannot find input Variances(%s) in scope",
-                                 context.Inputs("Variances")[0]);
+                                 context.InputNames("Variances")[0]);
 
     auto *rpn_rois = context.Output<LoDTensor>("RpnRois");
     auto *rpn_roi_probs = context.Output<LoDTensor>("RpnRoiProbs");

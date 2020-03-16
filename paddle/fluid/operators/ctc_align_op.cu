@@ -43,17 +43,15 @@ __global__ void MergeAndDelCudaKernel(const int64_t num_token, const T* tokens,
 }
 
 template <typename T>
-__global__ void PaddingMergeAndDelCudaKernel(const int64_t num_token,
-                                             const T* tokens, const int blank,
-                                             const int merge_repeated,
-                                             const int padding_value,
-                                             const int64_t batch_size,
-                                             T* output) {
+__global__ void PaddingMergeAndDelCudaKernel(
+    const int64_t num_token, const T* tokens, const T* tokens_length,
+    const int blank, const int merge_repeated, const int padding_value,
+    const int64_t batch_size, T* output, T* output_length) {
   int ind = blockIdx.x * blockDim.x + threadIdx.x;
   if (ind >= batch_size) return;
   int output_idx = ind * num_token;
   T prev_token = -1;
-  for (int i = ind * num_token; i < ind * num_token + num_token; i++) {
+  for (int i = ind * num_token; i < ind * num_token + tokens_length[ind]; i++) {
     if ((unsigned)tokens[i] != blank &&
         !(merge_repeated && tokens[i] == prev_token)) {
       output[output_idx] = tokens[i];
@@ -61,6 +59,7 @@ __global__ void PaddingMergeAndDelCudaKernel(const int64_t num_token,
     }
     prev_token = tokens[i];
   }
+  output_length[ind] = output_idx - ind * num_token;
   for (int i = output_idx; i < ind * num_token + num_token; i++) {
     output[i] = padding_value;
   }
@@ -86,10 +85,15 @@ class CTCAlignOpCUDAKernel : public framework::OpKernel<T> {
       auto input_dims = input->dims();
       T* output_data = output->mutable_data<T>({input_dims[0], input_dims[1]},
                                                ctx.GetPlace());
+      auto* input_length = ctx.Input<LoDTensor>("InputLength");
+      const T* input_length_data = input_length->data<T>();
+      auto* output_length = ctx.Output<LoDTensor>("OutputLength");
+      T* output_length_data =
+          output_length->mutable_data<T>({input_dims[0], 1}, ctx.GetPlace());
       PaddingMergeAndDelCudaKernel<
           T><<<32, (input_dims[0] + 32 - 1) / 32, 0, stream>>>(
-          input_dims[1], tokens, blank, merge_repeated, padding_value,
-          input_dims[0], output_data);
+          input_dims[1], tokens, input_length_data, blank, merge_repeated,
+          padding_value, input_dims[0], output_data, output_length_data);
     } else {
       const size_t level = 0;
       auto input_lod = framework::ToAbsOffset(input->lod());

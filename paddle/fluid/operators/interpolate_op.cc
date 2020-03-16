@@ -19,6 +19,7 @@ namespace paddle {
 namespace operators {
 
 using framework::Tensor;
+using DataLayout = framework::DataLayout;
 
 static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
   auto dim_x = ctx->GetInputDim("X");
@@ -28,6 +29,8 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
       "bilinear" == interp_method || "nearest" == interp_method,
       "Interpolation method can only be \"bilinear\" or \"nearest\" when "
       "Input(X) dimension is 4");
+  const DataLayout data_layout = framework::StringToDataLayout(
+      ctx->Attrs().Get<std::string>("data_layout"));
 
   if (ctx->HasInputs("SizeTensor")) {
     // top prority size
@@ -38,8 +41,13 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
         "Attr(out_shape)'s length must be 2 for 4-D input tensor.");
     int out_h = ctx->Attrs().Get<int>("out_h");
     int out_w = ctx->Attrs().Get<int>("out_w");
-    std::vector<int64_t> dim_out({dim_x[0], dim_x[1], out_h, out_w});
-    ctx->SetOutputDim("Out", framework::make_ddim(dim_out));
+    framework::DDim dim_out;
+    if (data_layout == DataLayout::kNCHW) {
+      dim_out = {dim_x[0], dim_x[1], out_h, out_w};
+    } else {
+      dim_out = {dim_x[0], out_h, out_w, dim_x[3]};
+    }
+    ctx->SetOutputDim("Out", dim_out);
 
     return;
   }
@@ -55,8 +63,12 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
     float scale = ctx->Attrs().Get<float>("scale");
     if (scale > 0) {
       // round down
-      out_h = static_cast<int>(dim_x[2] * scale);
-      out_w = static_cast<int>(dim_x[3] * scale);
+      out_h = (data_layout == DataLayout::kNCHW
+                   ? static_cast<int>(dim_x[2] * scale)
+                   : static_cast<int>(dim_x[1] * scale));
+      out_w = (data_layout == DataLayout::kNCHW
+                   ? static_cast<int>(dim_x[3] * scale)
+                   : static_cast<int>(dim_x[2] * scale));
       // protect when input shape is -1
       out_h = out_h > 0 ? out_h : -1;
       out_w = out_w > 0 ? out_w : -1;
@@ -75,8 +87,13 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
     return;
   }
 
-  std::vector<int64_t> dim_out({dim_x[0], dim_x[1], out_h, out_w});
-  ctx->SetOutputDim("Out", framework::make_ddim(dim_out));
+  framework::DDim dim_out;
+  if (data_layout == DataLayout::kNCHW) {
+    dim_out = {dim_x[0], dim_x[1], out_h, out_w};
+  } else {
+    dim_out = {dim_x[0], out_h, out_w, dim_x[3]};
+  }
+  ctx->SetOutputDim("Out", dim_out);
 }
 
 static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
@@ -86,6 +103,8 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
   PADDLE_ENFORCE("trilinear" == interp_method,
                  "Interpolation method can only be \"trilinear\" when Input(X) "
                  "dimension is 5");
+  const DataLayout data_layout = framework::StringToDataLayout(
+      ctx->Attrs().Get<std::string>("data_layout"));
 
   if (ctx->HasInputs("SizeTensor")) {
     // top prority size
@@ -97,8 +116,13 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
     int out_d = ctx->Attrs().Get<int>("out_d");
     int out_h = ctx->Attrs().Get<int>("out_h");
     int out_w = ctx->Attrs().Get<int>("out_w");
-    std::vector<int64_t> dim_out({dim_x[0], dim_x[1], out_d, out_h, out_w});
-    ctx->SetOutputDim("Out", framework::make_ddim(dim_out));
+    framework::DDim dim_out;
+    if (data_layout == DataLayout::kNCHW) {
+      dim_out = {dim_x[0], dim_x[1], out_d, out_h, out_w};
+    } else {
+      dim_out = {dim_x[0], out_d, out_h, out_w, dim_x[4]};
+    }
+    ctx->SetOutputDim("Out", dim_out);
 
     return;
   }
@@ -115,9 +139,15 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
     float scale = ctx->Attrs().Get<float>("scale");
     if (scale > 0) {
       // round down
-      out_d = static_cast<int>(dim_x[2] * scale);
-      out_h = static_cast<int>(dim_x[3] * scale);
-      out_w = static_cast<int>(dim_x[4] * scale);
+      out_d = (data_layout == DataLayout::kNCHW
+                   ? static_cast<int>(dim_x[2] * scale)
+                   : static_cast<int>(dim_x[1] * scale));
+      out_h = (data_layout == DataLayout::kNCHW
+                   ? static_cast<int>(dim_x[3] * scale)
+                   : static_cast<int>(dim_x[2] * scale));
+      out_w = (data_layout == DataLayout::kNCHW
+                   ? static_cast<int>(dim_x[4] * scale)
+                   : static_cast<int>(dim_x[3] * scale));
       // protect when input shape is -1
       out_d = out_d > 0 ? out_d : -1;
       out_h = out_h > 0 ? out_h : -1;
@@ -138,8 +168,13 @@ static void Interpolate3DInferShapeCheck(framework::InferShapeContext* ctx) {
     return;
   }
 
-  std::vector<int64_t> dim_out({dim_x[0], dim_x[1], out_d, out_h, out_w});
-  ctx->SetOutputDim("Out", framework::make_ddim(dim_out));
+  framework::DDim dim_out;
+  if (data_layout == DataLayout::kNCHW) {
+    dim_out = {dim_x[0], dim_x[1], out_d, out_h, out_w};
+  } else {
+    dim_out = {dim_x[0], out_d, out_h, out_w, dim_x[4]};
+  }
+  ctx->SetOutputDim("Out", dim_out);
 }
 
 class InterpolateOp : public framework::OperatorWithKernel {
@@ -169,8 +204,8 @@ class InterpolateOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -213,6 +248,13 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
               "The output tensor of interpolate operator, "
               "This is a tensor in same rank with Input(X).");
 
+    AddAttr<std::string>(
+        "data_layout",
+        "(string, default NCHW) Only used in "
+        "an optional string from: \"NHWC\", \"NCHW\". "
+        "Specify that the data format of the input and output data is "
+        "channel_first or channel_last.")
+        .SetDefault("NCHW");
     AddAttr<int>("out_d", "output depth of interpolate op.").SetDefault(0);
     AddAttr<int>("out_h", "output height of interpolate op.").SetDefault(0);
     AddAttr<int>("out_w", "output width of interpolate op.").SetDefault(0);
@@ -243,7 +285,7 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
           interpolation.
 
           Nearest neighbor interpolation is to perform nearest neighbor interpolation
-          in both the 3rd dimention(in height direction) and the 4th dimention(in width 
+          in both the 3rd dimension(in height direction) and the 4th dimension(in width 
           direction) on input tensor.
             
           Bilinear interpolation is an extension of linear interpolation for 
@@ -257,7 +299,7 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
           H-direction and W-direction in this op) on a rectilinear 3D grid. 
           The linear interpolation is performed on three directions.
 
-          Align_corners and align_mode are optinal parameters,the calculation method 
+          Align_corners and align_mode are optional parameters,the calculation method 
           of interpolation can be selected by them.
           
           Example:
@@ -365,9 +407,9 @@ class InterpolateOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -381,28 +423,27 @@ class InterpolateOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class InterpolateGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class InterpolateGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
-    op->SetType(ForwardOp().Type() + "_grad");
-    op->SetInput("X", Input("X"));
-    if (ForwardOp().Inputs().count("SizeTensor") > 0) {
-      op->SetInput("SizeTensor", Input("SizeTensor"));
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType(this->ForwardOpType() + "_grad");
+    op->SetInput("X", this->Input("X"));
+    if (this->HasInput("SizeTensor") > 0) {
+      op->SetInput("SizeTensor", this->Input("SizeTensor"));
     }
-    if (ForwardOp().Inputs().count("OutSize") > 0) {
-      op->SetInput("OutSize", Input("OutSize"));
+    if (this->HasInput("OutSize") > 0) {
+      op->SetInput("OutSize", this->Input("OutSize"));
     }
-    if (ForwardOp().Inputs().count("Scale") > 0) {
-      op->SetInput("Scale", Input("Scale"));
+    if (this->HasInput("Scale") > 0) {
+      op->SetInput("Scale", this->Input("Scale"));
     }
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -414,15 +455,18 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(InterpolateGradNoNeedBufferVarsInference,
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(bilinear_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
-                  ops::InterpolateGradDescMaker);
+                  ops::InterpolateGradMaker<paddle::framework::OpDesc>,
+                  ops::InterpolateGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(bilinear_interp_grad, ops::InterpolateOpGrad,
                   ops::InterpolateGradNoNeedBufferVarsInference);
 REGISTER_OPERATOR(nearest_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
-                  ops::InterpolateGradDescMaker);
+                  ops::InterpolateGradMaker<paddle::framework::OpDesc>,
+                  ops::InterpolateGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(nearest_interp_grad, ops::InterpolateOpGrad,
                   ops::InterpolateGradNoNeedBufferVarsInference);
 REGISTER_OPERATOR(trilinear_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
-                  ops::InterpolateGradDescMaker);
+                  ops::InterpolateGradMaker<paddle::framework::OpDesc>,
+                  ops::InterpolateGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(trilinear_interp_grad, ops::InterpolateOpGrad,
                   ops::InterpolateGradNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(bilinear_interp, ops::InterpolateKernel<float>,

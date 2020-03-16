@@ -16,7 +16,7 @@
 
 namespace paddle {
 namespace imperative {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 void NCCLParallelContext::RecvNCCLID(const std::string &ep,
                                      ncclUniqueId *nccl_id) {
   auto addr = paddle::string::Split(ep, ':');
@@ -82,11 +82,18 @@ void NCCLParallelContext::SendNCCLID(const std::string &ep,
   if (inet_pton(AF_INET, host.c_str(), &serv_addr.sin_addr) <= 0)
     PADDLE_THROW("invalied address: %s", ep);
 
+  int try_times = 0;
   while (true) {
     if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
       VLOG(0) << "worker: " << ep
-              << " is not ready, will retry after 3 seconds...";
+              << (try_times < 5 ? " is not ready, will retry after 3 seconds..."
+                                : " is not ready. Maybe that some process "
+                                  "is occupied the GPUs of this node now, "
+                                  "and you should kill those process manually. "
+                                  "Will retry after 3 seconds...");
+
       std::this_thread::sleep_for(std::chrono::seconds(3));
+      ++try_times;
       continue;
     }
     VLOG(3) << "sending the ncclUniqueId to " << ep;

@@ -100,20 +100,19 @@ class HingeLossGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class HingeLossGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class HingeLossGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("hinge_loss_grad");
-    op->SetInput("Logits", Input("Logits"));
-    op->SetInput("Labels", Input("Labels"));
-    op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
-    op->SetOutput(framework::GradVarName("Logits"), InputGrad("Logits"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("Logits", this->Input("Logits"));
+    op->SetInput("Labels", this->Input("Labels"));
+    op->SetInput(framework::GradVarName("Loss"), this->OutputGrad("Loss"));
+    op->SetOutput(framework::GradVarName("Logits"), this->InputGrad("Logits"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -122,7 +121,8 @@ class HingeLossGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(hinge_loss, ops::HingeLossOp, ops::HingeLossOpMaker<float>,
-                  ops::HingeLossGradOpDescMaker);
+                  ops::HingeLossGradOpMaker<paddle::framework::OpDesc>,
+                  ops::HingeLossGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(hinge_loss_grad, ops::HingeLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     hinge_loss,

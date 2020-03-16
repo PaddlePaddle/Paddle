@@ -67,10 +67,34 @@ struct OperatorRegistrar : public Registrar {
 
 class OpRegistry {
  public:
+  /**
+   * @brief Return an OperatorBase constructed by type, inputs, outputs, attrs.
+   *        In dygraph mode, inputs, output, attrs will be set to empty map to
+   *        improve the execution efficiency of dygraph.
+   *        Dygraph mode will use:
+   *        framework::OpRegistry::CreateOp(type, {}, {}, {}, false).
+   *
+   * @param[str] type               The operator type.
+   * @param[map] inputs             Inputs map of the operator.
+   * @param[map] outputs            Outputs map of the operator.
+   * @param[unordered_map] attrs    Attributes map of the operator.
+   * @param[bool] attr_check
+   *            Whether do the attribute check before OperatorBase construction.
+   *            Default is true.
+   *            Attr_check is used to control the check of attribute map.
+   *            The check of attribute map have two purposes:
+   *            1. check whether the attribute item is valid or not.
+   *            2. add attribute item which has default value
+   *            if it is not in attrs.
+   *            In dygraph mode, attrs is an empty unordered_map,
+   *            attr_check is set to false, otherwise it will be failed
+   *            when check function called.
+   */
   static std::unique_ptr<OperatorBase> CreateOp(const std::string& type,
                                                 const VariableNameMap& inputs,
                                                 const VariableNameMap& outputs,
-                                                AttributeMap attrs);
+                                                AttributeMap attrs,
+                                                bool attr_check = true);
 
   static std::unique_ptr<OperatorBase> CreateOp(const proto::OpDesc& op_desc);
 
@@ -209,7 +233,8 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
 
 #define REGISTER_OP_WITHOUT_GRADIENT(op_type, op_class, op_maker_class) \
   REGISTER_OPERATOR(op_type, op_class, op_maker_class, \
-                    paddle::framework::EmptyGradOpMaker)
+        paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,   \
+        paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
 
 /**
  * Macro to register OperatorKernel.

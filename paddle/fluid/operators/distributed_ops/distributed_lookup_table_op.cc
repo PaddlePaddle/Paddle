@@ -72,8 +72,9 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("W"));
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return framework::OpKernelType(
+        framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
+        ctx.GetPlace());
   }
 };
 
@@ -84,9 +85,9 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
     auto ids_vars = context.MultiInputVar("Ids");
     auto emb_vars = context.MultiOutput<framework::Tensor>("Embeddings");
 
-    auto id_names = context.Inputs("Ids");
-    auto embedding_name = context.Inputs("W").front();
-    auto out_names = context.Outputs("Outputs");
+    auto id_names = context.InputNames("Ids");
+    auto embedding_name = context.InputNames("W").front();
+    auto out_names = context.OutputNames("Outputs");
 
     auto lookup_tables = context.Attr<std::vector<std::string>>("table_names");
     auto height_sections =
@@ -139,6 +140,10 @@ class DistributedLookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
                      "Otherwise the given value indicates padding the output "
                      "with zeros whenever lookup encounters it in Ids.")
         .SetDefault(distributed::kNoPadding);
+    AddAttr<int>("dtype",
+                 "(int, default 5 (FP32)) "
+                 "Output data type")
+        .SetDefault(framework::proto::VarType::FP32);
 
     AddComment(R"DOC(
 Lookup Tablel Prefetch Operator.

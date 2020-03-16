@@ -27,7 +27,7 @@ namespace distributed {
 template <typename T>
 struct ParameterSend {
   void operator()(const RpcContext &rpc_ctx, const framework::Scope &scope,
-                  bool sync);
+                  bool sync, int multi_parts);
 };
 
 };  // namespace distributed

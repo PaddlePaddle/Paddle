@@ -27,15 +27,73 @@ BuildStrategy = core.ParallelExecutor.BuildStrategy
 
 class ParallelExecutor(object):
     """
-    ParallelExecutor is designed for data parallelism, which focuses on distributing
-    the data across different nodes and every node operates on the data in parallel.
-    If you use ParallelExecutor to run the current program on GPU, the node means GPU
-    device, and ParallelExecutor will get the available GPU device automatically on
-    the current machine. If you use ParallelExecutor to run the current program on CPU,
-    the node means the CPU device, and you can specify the CPU device number by adding
-    'CPU_NUM' environment variable, for example 'CPU_NUM=4', if the environment variable
-    is not found, ParallelExecutor will call `multiprocessing.cpu_count` to get the number
-    of CPUs in the system.
+    The ParallelExecutor is an upgraded version of :code:`fluid.Executor` that supports multi-node model
+    training and testing based on the data-parallel mode. In data-parallel mode,
+    ParallelExecutor will broadcast the parameters from Node0 to other nodes during
+    construction and copy the input Program to other nodes from Node0 to make sure
+    that the initial state on each node is the same. Each node runs the model independently
+    and the parameters' gradient is aggregated between those nodes during backward
+    computation, and then each node independently updates its parameters. If you use
+    the GPU to run the model, i.e. use_cuda=True, the node refers to the GPU,
+    ParallelExecutor will automatically get the GPU resources available on the
+    current machine, users can also set the available GPU resources in the environment
+    variable, for example: want to use GPU0, GPU1, export CUDA_VISIBLEDEVICES=0,1;
+    If the operation is performed on the CPU, i.e. use_cuda=False, the node refers to the CPU.
+    **Note: At this time, the user needs to manually add CPU_NUM to the environment variable
+    and set the number of CPU devices. For example, export CPU_NUM=4, if the environment
+    variable is not set, the executor will add the variable to the environment variable
+    and set it to 1.**
+
+
+    Args:
+        use_cuda (bool): Whether to use CUDA or not.
+        loss_name (str): This parameter is the name of the loss variable of the
+            model. **Note: If it is data-parallel model training, you must set loss_name,
+            otherwise, the results may be wrong**. The default is None.
+        main_program (Program): This parameter represents the Program to be executed.
+            If this parameter is not provided, that parameter is None, the program will
+            be set to :code:`fluid.default_main_program()`. The default is None.
+        share_vars_from(ParallelExecutor): If share_vars_from is set, the current
+            ParallelExecutor will share the parameters with the ParallelExecutor
+            specified by share_vars_from. This parameter needs to be set when model testing
+            is required during model training, and the data parallel mode is used for
+            training and testing. Since ParallelExecutor will only distribute parameter
+            variables to other devices when it is first executed, the ParallelExecutor
+            specified by share_vars_from must be run before the current ParallelExecutor.
+            The default is None.
+        exec_strategy(ExecutionStrategy): exec_strategy specifies the options that can
+            be changed when running the current model, such as the thread pool size.
+            For more information about exec_strategy, please refer to :code:`fluid.ExecutionStrategy`.
+            The default is None.
+        build_strategy(BuildStrategy): By configuring build_strategy, we can
+            optimize the computational graph, such as operators' fusion in the
+            computational graph and memory optimization during the execution
+            of the computational graph. For more information about build_strategy,
+            please refer to :code:`fluid.BuildStrategy`.  The default is None.
+        num_trainers(int): This parameter needs to be set in GPU distributed training.
+            If the parameter value is greater than 1, NCCL will be initialized by multi-level
+            nodes. Each node should have the same number of GPUs. The default is 1.
+        trainer_id(int): This parameter needs to be set when performing GPU distributed
+            training. This parameter must be used with the num_trainers parameter.
+            Trainer_id indicates the "rank" of the current node. The trainer_id starts
+            counting from 0. The default is 0.
+        scope(Scope): Specifies the scope in which the program is executed.
+            The default is fluid.global_scope().
+
+    Returns:
+        ParallelExecutor: The initialized ParallelExecutor object.
+
+    Raises:
+        TypeError: If share_vars_from is provided, but not ParallelExecutor object.
+
+    NOTES:
+
+        1. If you only use ParallelExecutor to do multi-card test, you don't need to set loss_name
+           and share_vars_from.
+
+        2. If you need to train and test the model with ParallelExecutor, the share_vars_from
+           must be set when building the ParallelExecutor corresponding to the model test.
+           Otherwise, the parameters used in the model test and the model training are inconsistent.
 
     Examples:
         .. code-block:: python
@@ -61,7 +119,7 @@ class ParallelExecutor(object):
           train_program = fluid.Program()
           startup_program = fluid.Program()
           with fluid.program_guard(train_program, startup_program):
-              data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+              data = fluid.data(name='X', shape=[None, 1], dtype='float32')
               hidden = fluid.layers.fc(input=data, size=10)
               loss = fluid.layers.mean(hidden)
               test_program = fluid.default_main_program().clone(for_test=True)
@@ -83,35 +141,6 @@ class ParallelExecutor(object):
 
           loss_data, = test_exe.run(feed={"X": x},
                                     fetch_list=[loss.name])
-
-    Args:
-        use_cuda (bool): Whether to use CUDA or not.
-        loss_name (str): The loss name must set in training. Default None.
-        main_program (Program): The program that need to run, if not provided,
-            then default_main_program will be used. Default None.
-        share_vars_from(ParallelExecutor): If provide, it will share variables
-            from the specified ParallelExecutor. Default None.
-        exec_strategy(ExecutionStrategy): exec_strategy is used to control how to run
-            the program in ParallelExecutor, for example how many threads are used to
-            execute the program, how many iterations to clean up the temp variables
-            which is generated during execution. For more information, please refer
-            to fluid.ExecutionStrategy. Default None.
-        build_strategy(BuildStrategy): build_strategy is used to control how to
-            build the SSA Graph in ParallelExecutor by setting the property,
-            for example reduce_strategy, gradient_scale_strategy. For more information,
-            please refer to fluid.BuildStrategy. Default None.
-        num_trainers(int): If greater than 1, NCCL will be initialized with
-            multiple rank of nodes, each node should have same number of GPUs.
-            Distributed training will be enabled then. Default 1.
-        trainer_id(int): Must use together with num_trainers. trainer_id is the
-            "rank" of current node starts from 0. Default 0.
-        scope(Scope): scope to run with, default use fluid.global_scope().
-
-    Returns:
-        ParallelExecutor: The initialized ParallelExecutor object.
-
-    Raises:
-        TypeError: If share_vars_from is provided, but not ParallelExecutor object.
 
     """
 
@@ -146,15 +175,6 @@ class ParallelExecutor(object):
         ) if use_cuda else framework.cpu_places()
         self._scope = scope if scope is not None else executor.global_scope()
 
-        if main_program is not None and main_program._enable_dgc:
-            assert build_strategy.num_trainers > 1, "dgc is not useful when num_trainers <= 1"
-            assert build_strategy.reduce_strategy == BuildStrategy.ReduceStrategy.AllReduce, "dgc \
-                only used for allreduce"
-
-            assert build_strategy.num_trainers * len(
-                self._places) > 1, "dgc is not useful for single card training"
-            assert use_cuda, "dgc only used under cuda"
-
         main_program = main_program if main_program is not None \
             else framework.default_main_program()
 
@@ -176,12 +196,51 @@ class ParallelExecutor(object):
 
     def run(self, fetch_list, feed=None, feed_dict=None, return_numpy=True):
         """
-        Run a parallel executor with fetch_list.
+        This interface is used to run the current model. It should be noted
+        that the executor will execute all the operators in the Program,
+        and will not prune some operators in the Program according to the
+        fetch_list.
 
-        The feed parameter can be a dict or a list. If feed is a dict, the
-        feed data will be split into multiple devices. If feed is a list, we
-        assume the data has been split into multiple devices, the each
-        element in the list will be copied to each device directly.
+        Args:
+            fetch_list(list): This parameter represents the variables that need to be returned
+                after the model runs. The default is None.
+            feed(list|dict): This parameter represents the input variables of the model.
+                If it is single card training, the feed is dict type, and if it is multi-card
+                training, the parameter feed can be dict or list type variable. If the
+                parameter type is dict, the data in the feed will be split and sent to
+                multiple devices (CPU/GPU), that is to say, the input data will be evenly
+                sent to different devices, so you should make sure the number of samples of
+                the current mini-batch must be greater than the number of places;
+                if the parameter type is list, those data are copied directly to each device,
+                so the length of this list should be equal to the number of places.
+                The default is None.
+            feed_dict: Alias for feed parameter, for backward compatibility.
+                This parameter has been deprecated. Default None.
+            return_numpy(bool): This parameter indicates whether convert the fetched variables
+                (the variable specified in the fetch list) to numpy.ndarray. if it is False,
+                the type of the return value is a list of :code:`LoDTensor`. The default is True.
+
+        Returns:
+            List: The fetched result list.
+
+        Raises:
+            ValueError: If the feed is a list, but its length is not equal the
+                length of active places, or its element's is not dict.
+
+        NOTES:
+            1. If the feed parameter is dict type, the input data will be evenly distributed
+               to different cards. For example, using two GPUs to run the model, the input
+               sample number is 3, that is, [0, 1, 2], the sample number on GPU0 is 1,
+               that is, [0], and the sample number on GPU1 is 2, that is, [1, 2].
+               If the number of samples is less than the number of devices, the program will
+               throw an exception, so when running the model, you should make sure that the
+               number of samples of the last batch of the data set should be greater than the
+               number of CPU cores or GPU cards, if it is less than, it is recommended that
+               the batch be discarded.
+            2. If the number of CPU cores or GPU cards available is greater than 1, the fetch
+               results are spliced together in dimension 0 for the same variable values
+               (variables in fetch_list) on different devices.
+
 
         Examples:
             .. code-block:: python
@@ -207,7 +266,7 @@ class ParallelExecutor(object):
               train_program = fluid.Program()
               startup_program = fluid.Program()
               with fluid.program_guard(train_program, startup_program):
-                  data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+                  data = fluid.data(name='X', shape=[None, 1], dtype='float32')
                   hidden = fluid.layers.fc(input=data, size=10)
                   loss = fluid.layers.mean(hidden)
                   fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
@@ -219,7 +278,7 @@ class ParallelExecutor(object):
                                                  loss_name=loss.name)
 
               # If the feed is a dict:
-              # the image will be splitted into devices. If there is two devices
+              # the image will be split into devices. If there is two devices
               # each device will process an image with shape (5, 1)
               x = numpy.random.random(size=(10, 1)).astype('float32')
               loss_data, = train_exe.run(feed={"X": x},
@@ -235,42 +294,6 @@ class ParallelExecutor(object):
               loss_data, = train_exe.run(feed=[{"X": x}, {"X": x2}],
                                          fetch_list=[loss.name])
 
-        Args:
-            fetch_list(list): The fetched variable names
-            feed(list|dict|None): The feed variables. If the feed is a dict,
-                tensors in that dict will be split into each devices. If
-                the feed is a list, each element of the list will be copied
-                to each device. Default None.
-            feed_dict: Alias for feed parameter, for backward compatibility.
-                This parameter has been deprecated. Default None.
-            return_numpy(bool): Whether converts the fetched tensor to numpy.
-                Default: True.
-
-        Returns:
-            List: The fetched result list.
-
-        Raises:
-            ValueError: If the feed is a list, but its length is not equal the
-                length of active places, or its element's is not dict.
-
-        NOTES:
-            1. If the feed's type is dict, the number of data that feeds to
-               ParallelExecutor must be bigger than active places. Otherwise,
-               it will throw exception from C++ side. Special attention should be
-               paid to check whether the last batch of the dataset is bigger
-               than active places.
-            2. If active places are more than one, the fetch results for each
-               variable is a list, and each element of this list is the variable of
-               respective active place.
-
-        Examples:
-            .. code-block:: python
-
-                pe = fluid.ParallelExecutor(use_cuda=use_cuda,
-                                            loss_name=avg_cost.name,
-                                            main_program=fluid.default_main_program())
-                loss = pe.run(feed=feeder.feed(cur_batch),
-                              fetch_list=[avg_cost.name]))
         """
         return self._exe.run(program=self._compiled_program,
                              scope=self._scope,
@@ -284,19 +307,17 @@ class ParallelExecutor(object):
 
     def drop_local_exe_scopes(self):
         """
-        Drop the local execution scope immediately.
+        Drop the local execution scopes immediately. In order to avoid frequently
+        application and release of temporary variables, the strategy adopted by
+        ParallelExecutor is to drop the local execution scopes after several iterations.
+        ParallelExecutor provides the num_iteration_per_drop_scope option in
+        :code:`fluid.ExecutionStrategy`, which indicates how many iterations are intervened to
+        drop the local execution scopes. If the num_iteration_per_drop_scope value
+        is 100, but you want to drop the local execution scopes after 50 iterations,
+        you can call the interface manually.
 
-        During the execution of the Program, the generate intermediate
-        results are placed in local execution scope, in some model the
-        creation and deletion of those intermediate results are time-consuming.
-        To resolve that problem, ParallelExecutor provides an option in
-        ExecutionStrategy, i.g. num_iteration_per_drop_scope, this option
-        indicates how many iterations to run before dropping the local execution
-        scope. But in some situation, each iteration generates different
-        intermediate results, it will lead to the result that the memory which
-        is needed by local execution scope gradually increase. And if you want
-        to run another program at this time, there may be insufficient storage,
-        At this point you should drop the local execution scope of other Programs.
+        Returns:
+            None
 
         Examples:
             .. code-block:: python
@@ -318,7 +339,7 @@ class ParallelExecutor(object):
               train_program = fluid.Program()
               startup_program = fluid.Program()
               with fluid.program_guard(train_program, startup_program):
-                  data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+                  data = fluid.data(name='X', shape=[None, 1], dtype='float32')
                   hidden = fluid.layers.fc(input=data, size=10)
                   loss = fluid.layers.mean(hidden)
 

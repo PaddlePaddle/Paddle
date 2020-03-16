@@ -179,40 +179,53 @@ class MergeLoDTensorInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE(context->HasInput("X"),
-                   "MergeLoDTensorOp must has input X.");
+                   "MergeLoDTensorOp must have input X.");
     PADDLE_ENFORCE(context->HasInput("Mask"),
-                   "MergeLoDTensorOp must has input Mask.");
+                   "MergeLoDTensorOp must have input Mask.");
     PADDLE_ENFORCE(context->HasInput("InTrue"),
-                   "MergeLoDTensorOp must has input InTrue.");
+                   "MergeLoDTensorOp must have input InTrue.");
     PADDLE_ENFORCE(context->HasInput("InFalse"),
-                   "MergeLoDTensorOp must has input InFalse.");
+                   "MergeLoDTensorOp must have input InFalse.");
     PADDLE_ENFORCE(context->HasOutput("Out"),
-                   "MergeLoDTensorOp must has output Out");
+                   "MergeLoDTensorOp must have output Out");
 
     auto mask_dim = context->GetInputDim("Mask");
-    PADDLE_ENFORCE_EQ(mask_dim.size(), 2);
+    PADDLE_ENFORCE_EQ(mask_dim.size(), 2,
+                      "If you are using IfElse OP:"
+                      "\n\nie = fluid.layers.IfElse(cond=cond)\nwith "
+                      "ie.true_block():\n    out_1 = ie.input(x)\n\n"
+                      "Please ensure that the cond should be a 2-D tensor and "
+                      "the second dim size of cond should be 1. "
+                      "But now the cond's shape is [",
+                      *mask_dim.Get(), "].\n");
     if (context->IsRuntime() || mask_dim[1] > 0) {
-      PADDLE_ENFORCE_EQ(mask_dim[1], 1);
+      PADDLE_ENFORCE_EQ(mask_dim[1], 1,
+                        "If you are using IfElse OP:"
+                        "\n\nie = fluid.layers.IfElse(cond=cond)\nwith "
+                        "ie.true_block():\n    out_1 = ie.input(x)\n\n"
+                        "Please ensure that the cond should be a 2-D tensor "
+                        "and the second dim size of cond should be 1. "
+                        "But now the cond's shape is [",
+                        *mask_dim.Get(), "].\n");
     }
 
     context->SetOutputDim("Out", context->GetInputDim("InTrue"));
   }
 };
 
-class MergeLoDTensorGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class MergeLoDTensorGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("split_lod_tensor");
-    grad_op->SetInput("X", OutputGrad("Out"));
-    grad_op->SetInput("Mask", Input("Mask"));
-    grad_op->SetOutput("OutTrue", InputGrad("InTrue"));
-    grad_op->SetOutput("OutFalse", InputGrad("InFalse"));
-    grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetInput("X", this->OutputGrad("Out"));
+    grad_op->SetInput("Mask", this->Input("Mask"));
+    grad_op->SetOutput("OutTrue", this->InputGrad("InTrue"));
+    grad_op->SetOutput("OutFalse", this->InputGrad("InFalse"));
+    grad_op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -222,8 +235,11 @@ class MergeLoDTensorGradMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(merge_lod_tensor, ops::MergeLoDTensorOp,
                   ops::MergeLoDTensorOpProtoMaker,
-                  ops::MergeLoDTensorInferShape, ops::MergeLoDTensorGradMaker);
-REGISTER_OPERATOR(merge_lod_tensor_infer, ops::MergeLoDTensorInferOp,
-                  ops::MergeLoDTensorOpProtoMaker,
                   ops::MergeLoDTensorInferShape,
-                  paddle::framework::EmptyGradOpMaker);
+                  ops::MergeLoDTensorGradMaker<paddle::framework::OpDesc>,
+                  ops::MergeLoDTensorGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(
+    merge_lod_tensor_infer, ops::MergeLoDTensorInferOp,
+    ops::MergeLoDTensorOpProtoMaker, ops::MergeLoDTensorInferShape,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

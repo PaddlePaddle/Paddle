@@ -27,6 +27,13 @@ struct ModFunctor {
   inline HOSTDEVICE T operator()(T a, T b) const { return a % b; }
 };
 
+template <typename T>
+struct ModFunctorFP {
+  inline HOSTDEVICE T operator()(T a, T b) const {
+    return fmod(b + fmod(a, b), b);
+  }
+};
+
 template <typename DeviceContext, typename T>
 void elementwise_mod(const framework::ExecutionContext &ctx,
                      const framework::Tensor *x, const framework::Tensor *y,
@@ -34,6 +41,15 @@ void elementwise_mod(const framework::ExecutionContext &ctx,
   int axis = ctx.Attr<int>("axis");
   ElementwiseComputeEx<ModFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
                                                         ModFunctor<T>(), z);
+}
+
+template <typename DeviceContext, typename T>
+void elementwise_mod_fp(const framework::ExecutionContext &ctx,
+                        const framework::Tensor *x, const framework::Tensor *y,
+                        framework::Tensor *z) {
+  int axis = ctx.Attr<int>("axis");
+  ElementwiseComputeEx<ModFunctorFP<T>, DeviceContext, T>(ctx, x, y, axis,
+                                                          ModFunctorFP<T>(), z);
 }
 
 template <typename DeviceContext, typename T>
@@ -48,6 +64,21 @@ class ElementwiseModKernel : public framework::OpKernel<T> {
 
     // dtype of x and y is int64 or int32
     elementwise_mod<DeviceContext, T>(ctx, x, y, z);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class ElementwiseModFPKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    auto *x = ctx.Input<framework::LoDTensor>("X");
+    auto *y = ctx.Input<framework::LoDTensor>("Y");
+    auto *z = ctx.Output<framework::LoDTensor>("Out");
+
+    z->mutable_data<T>(ctx.GetPlace());
+
+    // dtype of x and y is float or double
+    elementwise_mod_fp<DeviceContext, T>(ctx, x, y, z);
   }
 };
 

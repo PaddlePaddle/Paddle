@@ -40,6 +40,14 @@ class UniqueWithCountsOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Index", in_dims);
     ctx->SetOutputDim("Count", {-1});
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        platform::CPUPlace());
+  }
 };
 
 class UniqueWithCountsOpMaker : public framework::OpProtoAndCheckerMaker {

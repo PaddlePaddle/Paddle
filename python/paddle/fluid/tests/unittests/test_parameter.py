@@ -25,8 +25,8 @@ import numpy as np
 main_program = default_main_program()
 
 
-class TestParameter(unittest.TestCase):
-    def test_param(self):
+class ParameterChecks(unittest.TestCase):
+    def check_param(self):
         shape = [784, 100]
         val = 1.0625
         b = main_program.global_block()
@@ -45,6 +45,29 @@ class TestParameter(unittest.TestCase):
         self.assertTrue(np.allclose(p, np.ones(shape) * val))
         p = io.get_parameter_value_by_name('fc.w', exe, main_program)
         self.assertTrue(np.allclose(np.array(p), np.ones(shape) * val))
+
+    def check_exceptions(self):
+        b = main_program.global_block()
+        with self.assertRaises(ValueError):
+            b.create_parameter(
+                name='test', shape=None, dtype='float32', initializer=None)
+        with self.assertRaises(ValueError):
+            b.create_parameter(
+                name='test', shape=[1], dtype=None, initializer=None)
+        with self.assertRaises(ValueError):
+            b.create_parameter(
+                name='test', shape=[], dtype='float32', initializer=None)
+        with self.assertRaises(ValueError):
+            b.create_parameter(
+                name='test', shape=[-1], dtype='float32', initializer=None)
+
+
+class TestParameter(ParameterChecks):
+    def test_param(self):
+        self.check_param()
+
+    def test_exceptions(self):
+        self.check_exceptions()
 
 
 if __name__ == '__main__':

@@ -1,0 +1,73 @@
+# NOTE The manylinux1 policy mandates CentOS-5. We replace it with CentOS-6 in
+# order to satisfy the build of capnproto library (a nupic.core dependency),
+# which requires some headers and symbols not present on CentOS-5 (e.g.,
+# signalfd.h, pipe2, O_NONBLOCK, SOCK_NONBLOCK, etc.). See
+# https://github.com/sandstorm-io/capnproto/issues/350.
+FROM nvidia/cuda:10.1-cudnn7-devel-centos6
+MAINTAINER Numenta, based on the ManyLinux project
+
+ENV LC_ALL en_US.UTF-8
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US.UTF-8
+ENV PATH /opt/rh/devtoolset-2/root/usr/bin:$PATH
+ENV LD_LIBRARY_PATH /opt/rh/devtoolset-2/root/usr/lib64:/opt/rh/devtoolset-2/root/usr/lib:/usr/local/lib64:/usr/local/lib:${LD_LIBRARY_PATH}
+ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+
+RUN yum install -y sqlite-devel zlib-devel openssl-devel pcre-devel vim tk-devel tkinter libtool xz graphviz gettext-devel expat-devel cpio perl curl-devel
+
+COPY tools/manylinux1/build_scripts /build_scripts
+RUN bash build_scripts/build.sh && bash build_scripts/install_nccl2.sh && rm -rf build_scripts
+
+ENV SSL_CERT_FILE=/opt/_internal/certs.pem
+
+# gcc8.2
+RUN wget -q https://paddle-docker-tar.bj.bcebos.com/home/users/tianshuo/bce-python-sdk-0.8.27/gcc-8.2.0.tar.xz && \
+  tar -xvf gcc-8.2.0.tar.xz && \
+  cd gcc-8.2.0 && \
+  sed -i 's#ftp://gcc.gnu.org/pub/gcc/infrastructure/#https://paddle-ci.gz.bcebos.com/#g' ./contrib/download_prerequisites && \
+  unset LIBRARY_PATH CPATH C_INCLUDE_PATH PKG_CONFIG_PATH CPLUS_INCLUDE_PATH INCLUDE && \
+  ./contrib/download_prerequisites && \
+  cd .. && mkdir temp_gcc82 && cd temp_gcc82 && \
+  ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib && \
+  make -j8 && make install
+
+ENV PATH=/usr/local/gcc-8.2/bin:$PATH
+RUN rm -rf /temp_gcc82 && rm -rf /gcc-8.2.0.tar.xz && rm -rf /gcc-8.2.0 
+
+# git 2.7.1
+RUN wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz && \
+  tar -xvf git-2.17.1.tar.gz && \
+  cd git-2.17.1 && \
+  ./configure --prefix=/usr/local && \
+  make -j8 && make install 
+
+# protobuf 3.6.1
+RUN cd /opt && wget -q --no-check-certificate https://github.com/google/protobuf/releases/download/v3.6.1/protobuf-cpp-3.6.1.tar.gz && \
+    tar xzf protobuf-cpp-3.6.1.tar.gz && \
+    cd protobuf-3.6.1 && ./configure && make -j4 && make install && cd .. && rm -f protobuf-cpp-3.6.1.tar.gz
+
+RUN wget https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/python/requirements.txt -O /root/requirements.txt
+
+RUN LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs4/lib:${LD_LIBRARY_PATH} /opt/python/cp27-cp27mu/bin/pip install setuptools -U && \
+    LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs2/lib:${LD_LIBRARY_PATH} /opt/python/cp27-cp27m/bin/pip install setuptools -U && \
+    LD_LIBRARY_PATH=/opt/_internal/cpython-3.5.1/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.5.1/bin/pip3 install setuptools -U && \
+    LD_LIBRARY_PATH=/opt/_internal/cpython-3.6.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.6.0/bin/pip3 install setuptools -U && \
+    LD_LIBRARY_PATH=/opt/_internal/cpython-3.7.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.7.0/bin/pip3 install setuptools -U
+
+RUN LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs4/lib:${LD_LIBRARY_PATH} /opt/python/cp27-cp27mu/bin/pip install -r /root/requirements.txt && \
+    LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs2/lib:${LD_LIBRARY_PATH} /opt/python/cp27-cp27m/bin/pip install -r /root/requirements.txt && \
+    LD_LIBRARY_PATH=/opt/_internal/cpython-3.5.1/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.5.1/bin/pip3 install -r /root/requirements.txt && \
+    LD_LIBRARY_PATH=/opt/_internal/cpython-3.6.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.6.0/bin/pip3 install -r /root/requirements.txt && \
+    LD_LIBRARY_PATH=/opt/_internal/cpython-3.7.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.7.0/bin/pip3 install -r /root/requirements.txt && \
+    rm -rf /root/requirements.txt
+
+RUN LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs4/lib:${LD_LIBRARY_PATH} /opt/python/cp27-cp27mu/bin/pip install pre-commit 'ipython==5.3.0' opencv-python && \
+    LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs2/lib:${LD_LIBRARY_PATH} /opt/python/cp27-cp27m/bin/pip install pre-commit 'ipython==5.3.0' opencv-python && \
+    LD_LIBRARY_PATH=/opt/_internal/cpython-3.5.1/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.5.1/bin/pip3 install pre-commit 'ipython==5.3.0' opencv-python && \
+    LD_LIBRARY_PATH=/opt/_internal/cpython-3.6.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.6.0/bin/pip3 install pre-commit 'ipython==5.3.0' opencv-python && \
+    LD_LIBRARY_PATH=/opt/_internal/cpython-3.7.0/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.7.0/bin/pip3 install pre-commit 'ipython==5.3.0' opencv-python
+
+RUN wget -O /opt/swig-2.0.12.tar.gz https://sourceforge.net/projects/swig/files/swig/swig-2.0.12/swig-2.0.12.tar.gz/download && \
+    cd /opt && tar xzf swig-2.0.12.tar.gz && cd /opt/swig-2.0.12 && ./configure && make && make install && cd /opt && rm swig-2.0.12.tar.gz
+
+CMD ["bash", "/paddle/paddle/scripts/docker/build.sh"]

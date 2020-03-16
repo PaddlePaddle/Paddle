@@ -22,11 +22,21 @@ from datetime import datetime
 import re
 import copy
 import errno
-
+import time
 import logging
-from paddle.fluid.log_helper import get_logger
 
 __all__ = ["HDFSClient"]
+
+
+def get_logger(name, level, fmt):
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    handler = logging.FileHandler('hdfs.log', mode='w')
+    formatter = logging.Formatter(fmt=fmt)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    return logger
+
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
@@ -34,10 +44,10 @@ _logger = get_logger(
 
 class HDFSClient(object):
     """
-    A tool of HDFS 
+    A tool of HDFS
 
     Args:
-        hadoop_home (string): hadoop_home 
+        hadoop_home (string): hadoop_home
         configs (dict): hadoop config, it is a dict, please contain \
             key "fs.default.name" and "hadoop.job.ugi"
         Can be a float value
@@ -73,6 +83,7 @@ class HDFSClient(object):
         ret_code = 0
         ret_out = None
         ret_err = None
+        retry_sleep_second = 3
         whole_commands = " ".join(whole_commands)
         for x in range(retry_times + 1):
             proc = subprocess.Popen(
@@ -89,6 +100,7 @@ class HDFSClient(object):
 
             if ret_code == 0:
                 break
+            time.sleep(retry_sleep_second)
 
         return ret_code, ret_out, ret_err
 
@@ -262,10 +274,10 @@ class HDFSClient(object):
     @staticmethod
     def make_local_dirs(local_path):
         """
-        create a directiory local, is same to mkdir
+        create a directory local, is same to mkdir
 
         Args:
-            local_path(str): local path that wants to create a directiory.
+            local_path(str): local path that wants to create a directory.
         """
         try:
             os.makedirs(local_path)
@@ -319,7 +331,7 @@ class HDFSClient(object):
 
         ls_commands = ['-ls', hdfs_path]
         returncode, output, errors = self.__run_hdfs_cmd(
-            ls_commands, retry_times=1)
+            ls_commands, retry_times=10)
 
         if returncode:
             _logger.error("HDFS list path: {} failed".format(hdfs_path))
@@ -457,11 +469,11 @@ class HDFSClient(object):
 
         self.make_local_dirs(local_path)
 
-        all_files = client.ls(hdfs_path)
+        all_files = self.ls(hdfs_path)
 
         procs = []
         for i in range(multi_processes):
-            process_datas = HDFSClient.split_flies(all_files, i,
+            process_datas = HDFSClient.split_files(all_files, i,
                                                    multi_processes)
             p = multiprocessing.Process(
                 target=__subprocess_download,
@@ -551,7 +563,7 @@ class HDFSClient(object):
 
         procs = []
         for i in range(multi_processes):
-            process_datas = HDFSClient.split_flies(all_files, i,
+            process_datas = HDFSClient.split_files(all_files, i,
                                                    multi_processes)
             p = multiprocessing.Process(
                 target=__subprocess_upload, args=(
@@ -585,8 +597,7 @@ class HDFSClient(object):
         if not self.is_exist(dest_dir):
             self.makedirs(dest_dir)
         put_command = ["-put", local_dir, dest_dir]
-        returncode, output, errors = self.__run_hdfs_cmd(put_command,
-                                                         retry_times)
+        returncode, output, errors = self.__run_hdfs_cmd(put_command)
         if returncode != 0:
             _logger.error("Put local dir: {} to HDFS dir: {} failed".format(
                 local_dir, dest_dir))

@@ -31,7 +31,7 @@ class GarbageCollector {
 
   GarbageCollector(const platform::Place &place, size_t max_memory_size);
 
-  virtual ~GarbageCollector() = default;
+  virtual ~GarbageCollector() PADDLE_MAY_THROW {}
 
   virtual void Wait() const {}
 

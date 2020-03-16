@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/selu_op.h"
+#include <memory>
 #include <string>
+#include <unordered_map>
 
 namespace paddle {
 namespace operators {
@@ -39,7 +41,7 @@ class SeluOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        framework::GetDataTypeOfVar(ctx.InputVar("X")), ctx.GetPlace());
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
@@ -84,18 +86,17 @@ or not. And the output shares the LoD information with input `X`.
   }
 };
 
-class SeluGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SeluGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("selu_grad");
-    grad_op->SetInput("Out", Output("Out"));
-    grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    grad_op->SetInput("Out", this->Output("Out"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     grad_op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 
@@ -115,7 +116,7 @@ class SeluGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        framework::GetDataTypeOfVar(ctx.InputVar("Out")), ctx.GetPlace());
+        OperatorWithKernel::IndicateVarDataType(ctx, "Out"), ctx.GetPlace());
   }
 };
 
@@ -125,7 +126,8 @@ class SeluGradOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(selu, ops::SeluOp, ops::SeluOpMaker, ops::SeluOpInferVarType,
-                  ops::SeluGradMaker);
+                  ops::SeluGradMaker<paddle::framework::OpDesc>,
+                  ops::SeluGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(selu_grad, ops::SeluGradOp);
 REGISTER_OP_CPU_KERNEL(
     selu, ops::SeluKernel<paddle::platform::CPUDeviceContext, float>,

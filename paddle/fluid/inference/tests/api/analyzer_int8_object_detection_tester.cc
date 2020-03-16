@@ -50,7 +50,7 @@ template <typename T>
 class TensorReader {
  public:
   TensorReader(std::ifstream &file, size_t beginning_offset, std::string name)
-      : file_(file), position(beginning_offset), name_(name) {}
+      : file_(file), position_(beginning_offset), name_(name) {}
 
   PaddleTensor NextBatch(std::vector<int> shape, std::vector<size_t> lod) {
     int numel =
@@ -64,9 +64,9 @@ class TensorReader {
       tensor.lod.clear();
       tensor.lod.push_back(lod);
     }
-    file_.seekg(position);
+    file_.seekg(position_);
     file_.read(reinterpret_cast<char *>(tensor.data.data()), numel * sizeof(T));
-    position = file_.tellg();
+    position_ = file_.tellg();
     if (file_.eof()) LOG(ERROR) << name_ << ": reached end of stream";
     if (file_.fail())
       throw std::runtime_error(name_ + ": failed reading file.");
@@ -75,7 +75,7 @@ class TensorReader {
 
  protected:
   std::ifstream &file_;
-  size_t position;
+  size_t position_;
   std::string name_;
 };
 
@@ -269,7 +269,7 @@ TEST(Analyzer_int8_mobilenet_ssd, quantization) {
   q_cfg.EnableMkldnnQuantizer();
   q_cfg.mkldnn_quantizer_config();
   std::unordered_set<std::string> quantize_operators(
-      {"conv2d", "depthwise_conv2d", "prior_box"});
+      {"conv2d", "depthwise_conv2d", "prior_box", "transpose2", "reshape2"});
   q_cfg.mkldnn_quantizer_config()->SetEnabledOpTypes(quantize_operators);
   q_cfg.mkldnn_quantizer_config()->SetWarmupData(warmup_data);
   q_cfg.mkldnn_quantizer_config()->SetWarmupBatchSize(FLAGS_warmup_batch_size);

@@ -14,8 +14,9 @@
 
 from __future__ import print_function
 
-import unittest
-from paddle.fluid.tests.unittests.test_elementwise_add_op import TestElementwiseAddOp, TestElementwiseAddOp_broadcast_0
+import unittest, sys
+sys.path.append("../")
+from test_elementwise_add_op import TestElementwiseAddOp, TestElementwiseAddOp_broadcast_0
 
 if __name__ == '__main__':
     unittest.main()

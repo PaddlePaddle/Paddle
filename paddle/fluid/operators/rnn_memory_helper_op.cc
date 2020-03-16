@@ -156,10 +156,12 @@ class RNNMemoryHelperGradOpShapeInference : public framework::InferShapeBase {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(rnn_memory_helper, paddle::operators::RNNMemoryHelperOp,
-                  paddle::operators::RNNMemoryHelperOpInfoMaker,
-                  paddle::operators::RNNMemoryHelperOpShapeInference,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    rnn_memory_helper, paddle::operators::RNNMemoryHelperOp,
+    paddle::operators::RNNMemoryHelperOpInfoMaker,
+    paddle::operators::RNNMemoryHelperOpShapeInference,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(rnn_memory_helper_grad,
                   paddle::operators::RNNMemoryHelperGradOp,
                   paddle::operators::RNNMemoryHelperGradOpInfoMaker,

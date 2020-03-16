@@ -192,7 +192,8 @@ class GreaterThanChecker {
  public:
   explicit GreaterThanChecker(T lower_bound) : lower_bound_(lower_bound) {}
   void operator()(const T& value) const {
-    PADDLE_ENFORCE(value > lower_bound_, "larger_than check fails.");
+    PADDLE_ENFORCE_GT(value, lower_bound_,
+                      platform::errors::OutOfRange("larger_than check fails."));
   }
 
  private:
@@ -219,7 +220,7 @@ class DefaultValueSetter {
  public:
   explicit DefaultValueSetter(T default_value)
       : default_value_(default_value) {}
-  void operator()(T* value) const { *value = default_value_; }
+  const T& operator()() const { return default_value_; }
 
  private:
   T default_value_;
@@ -258,7 +259,7 @@ class EnumInContainer {
 // an attribute can have more than one limits
 template <typename T>
 class TypedAttrChecker {
-  typedef std::function<void(T*)> DefaultValueChecker;
+  typedef std::function<const T&()> DefaultValueChecker;
   typedef std::function<void(const T&)> ValueChecker;
 
  public:
@@ -295,19 +296,26 @@ class TypedAttrChecker {
     return *this;
   }
 
-  void operator()(AttributeMap* attr_map) const {
-    if (!attr_map->count(attr_name_)) {
+  void operator()(AttributeMap* attr_map,
+                  bool get_default_value_only = false) const {
+    if (get_default_value_only) {
+      if (!default_value_setter_.empty()) {
+        attr_map->emplace(attr_name_, default_value_setter_[0]());
+      }
+      return;
+    }
+
+    auto it = attr_map->find(attr_name_);
+    if (it == attr_map->end()) {
       // user do not set this attr
       PADDLE_ENFORCE(!default_value_setter_.empty(),
                      "Attribute '%s' is required!", attr_name_);
       // default_value_setter_ has no more than one element
-      T val;
-      (default_value_setter_[0])(&val);
-      (*attr_map)[attr_name_] = val;
+      attr_map->emplace(attr_name_, default_value_setter_[0]());
     }
-    Attribute& attr = attr_map->at(attr_name_);
+    it = attr_map->find(attr_name_);
     ExtractAttribute<T> extract_attr(attr_name_);
-    T* attr_value = extract_attr(attr);
+    T* attr_value = extract_attr(it->second);
     for (const auto& checker : value_checkers_) {
       checker(*attr_value);
     }
@@ -321,7 +329,7 @@ class TypedAttrChecker {
 
 // check whether op's all attributes fit their own limits
 class OpAttrChecker {
-  typedef std::function<void(AttributeMap*)> AttrChecker;
+  typedef std::function<void(AttributeMap*, bool)> AttrChecker;
 
  public:
   template <typename T>
@@ -331,14 +339,37 @@ class OpAttrChecker {
     return *(checker.target<TypedAttrChecker<T>>());
   }
 
-  void Check(AttributeMap* attr_map) const {
-    for (const auto& checker : attr_checkers_) {
-      checker(attr_map);
+  void Check(AttributeMap* attr_map, bool explicit_only = false) const {
+    auto checker_num = attr_checkers_.size();
+    if (explicit_only) checker_num = explicit_checker_num_;
+    for (size_t i = 0; i < checker_num; ++i) {
+      attr_checkers_[i](attr_map, false);
     }
+  }
+
+  AttributeMap GetAttrsDefaultValuesMap() const {
+    AttributeMap default_values_map;
+    for (const auto& checker : attr_checkers_) {
+      checker(&default_values_map, true);
+    }
+    return default_values_map;
+  }
+
+  void RecordExplicitCheckerNum() {
+    explicit_checker_num_ = attr_checkers_.size();
   }
 
  private:
   std::vector<AttrChecker> attr_checkers_;
+
+  // in order to improve the efficiency of dynamic graph mode,
+  // we divede the attribute into explicit type and implicit type.
+  // for explicit attribute, we mean the attribute added in the customized
+  // op makers, usually it's defined in the overloaded Make method.
+  // for implicit attribute, we mean the attribute added outside of the Make
+  // method like "op_role", "op_role_var", and they are useless in dynamic graph
+  // mode
+  size_t explicit_checker_num_;
 };
 
 }  // namespace framework

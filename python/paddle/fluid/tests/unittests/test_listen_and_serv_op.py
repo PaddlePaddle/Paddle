@@ -52,7 +52,11 @@ def run_pserver(use_cuda, sync_mode, ip, port, trainers, trainer_id):
     config = fluid.DistributeTranspilerConfig()
     config.sync_mode = sync_mode
     t = fluid.DistributeTranspiler(config=config)
-    t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
+    t.transpile(
+        trainer_id,
+        pservers=pserver_endpoints,
+        trainers=trainers,
+        sync_mode=sync_mode)
     pserver_prog = t.get_pserver_program(current_endpoint)
     pserver_startup = t.get_startup_program(current_endpoint, pserver_prog)
     exe.run(pserver_startup)
@@ -86,7 +90,11 @@ def run_pserver_with_empty_block(use_cuda, sync_mode, ip, port, trainers,
     config.slice_var_up = False
 
     t = fluid.DistributeTranspiler(config=config)
-    t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
+    t.transpile(
+        trainer_id,
+        pservers=pserver_endpoints,
+        trainers=trainers,
+        sync_mode=sync_mode)
     pserver_prog = t.get_pserver_program(ps2)
 
     # pserver2 have no parameter
@@ -105,7 +113,7 @@ def gen_complete_file_flag(flag_file):
 
 class TestListenAndServOp(unittest.TestCase):
     def setUp(self):
-        self.ps_timeout = 5
+        self.ps_timeout = 200
         self.ip = "127.0.0.1"
         self.port = "0"
         self.trainers = 1

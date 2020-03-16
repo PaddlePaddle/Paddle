@@ -49,8 +49,12 @@ class ElementwiseWeightOpConverter : public OpConverter {
 
     auto* X = engine_->GetITensor(op_desc.Input("X").front());
     nvinfer1::Dims dims_x = X->getDimensions();
-    PADDLE_ENFORCE(dims_x.nbDims >= 3, "x dims experts 3, but %d is given.",
-                   dims_x.nbDims);
+    std::vector<int> no_batch_dims;
+    int start_index = 0;
+
+    if (engine_->with_dynamic_shape()) start_index = 1;
+    for (; start_index < dims_x.nbDims; start_index++)
+      no_batch_dims.push_back(dims_x.d[start_index]);
 
     auto* Y_v = scope.FindVar(op_desc.Input("Y").front());
     PADDLE_ENFORCE_NOT_NULL(Y_v);
@@ -62,23 +66,23 @@ class ElementwiseWeightOpConverter : public OpConverter {
     auto scale_mode = nvinfer1::ScaleMode::kELEMENTWISE;
 
     std::vector<int> dims_y = framework::vectorize<int>(Y_t->dims());
-    if (static_cast<int>(dims_y.size()) == dims_x.nbDims + 1) {
+    if (dims_y.size() == no_batch_dims.size() + 1) {
       if (dims_y[0] == 1) dims_y.erase(dims_y.begin());
     }
 
-    if (static_cast<int>(dims_y.size()) == 1 && dims_y[0] == dims_x.d[0]) {
+    if (dims_y.size() == 1 && dims_y[0] == no_batch_dims[0]) {
       scale_mode = nvinfer1::ScaleMode::kCHANNEL;
-    } else if (static_cast<int>(dims_y.size()) == dims_x.nbDims &&
-               dims_y[0] == dims_x.d[0]) {
+    } else if (dims_y.size() == no_batch_dims.size() &&
+               dims_y[0] == no_batch_dims[0]) {
       scale_mode = nvinfer1::ScaleMode::kELEMENTWISE;
-      for (int i = 1; i < dims_x.nbDims; i++) {
-        if (dims_y[i] != dims_x.d[i]) {
+      for (size_t i = 1; i < no_batch_dims.size(); i++) {
+        if (dims_y[i] != no_batch_dims[i]) {
           scale_mode = nvinfer1::ScaleMode::kCHANNEL;
           break;
         }
       }
       if (scale_mode == nvinfer1::ScaleMode::kCHANNEL) {
-        for (int i = 1; i < dims_x.nbDims; i++) {
+        for (size_t i = 1; i < no_batch_dims.size(); i++) {
           if (dims_y[i] != 1)
             PADDLE_THROW(
                 "TensorRT unsupported weight shape for Elementwise op!");
@@ -110,10 +114,11 @@ class ElementwiseWeightOpConverter : public OpConverter {
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "elementwise_" + op_type_, {output_name},
                              test_mode);
-    if (op_desc.HasAttr("out_scale")) {
+    if (op_desc.HasAttr("enable_int8")) {
 #if IS_TRT_VERSION_GE(5000)
-      float out_scale = boost::get<float>(op_desc.GetAttr("out_scale"));
-      engine_->SetTensorDynamicRange(layer->getOutput(0), out_scale);
+      CHECK(op_desc.HasAttr("X_scale"));
+      float x_scale = boost::get<float>(op_desc.GetAttr("X_scale"));
+      engine_->SetTensorDynamicRange(X, x_scale);
 #endif
     }
   }
@@ -169,10 +174,14 @@ class ElementwiseTensorOpConverter : public OpConverter {
       layer = plugin_layer;
     }
     RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
-    if (op_desc.HasAttr("out_scale")) {
+    if (op_desc.HasAttr("enable_int8")) {
 #if IS_TRT_VERSION_GE(5000)
-      float out_scale = boost::get<float>(op_desc.GetAttr("out_scale"));
-      engine_->SetTensorDynamicRange(layer->getOutput(0), out_scale);
+      CHECK(op_desc.HasAttr("X_scale"));
+      CHECK(op_desc.HasAttr("Y_scale"));
+      float x_scale = boost::get<float>(op_desc.GetAttr("X_scale"));
+      float y_scale = boost::get<float>(op_desc.GetAttr("Y_scale"));
+      engine_->SetTensorDynamicRange(X, x_scale);
+      engine_->SetTensorDynamicRange(Y, y_scale);
 #endif
     }
   }

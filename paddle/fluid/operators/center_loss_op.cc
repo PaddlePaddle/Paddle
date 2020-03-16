@@ -61,8 +61,9 @@ class CenterLossOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -117,27 +118,30 @@ class CenterLossGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<Tensor>("SampleCenterDiff")->type(), ctx.device_context());
+        OperatorWithKernel::IndicateVarDataType(ctx, "SampleCenterDiff"),
+        ctx.device_context());
   }
 };
 
-class CenterLossOpGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class CenterLossOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> retv(new framework::OpDesc());
+  void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("center_loss_grad");
-    retv->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
-    retv->SetInput("SampleCenterDiff", Output("SampleCenterDiff"));
-    retv->SetInput("X", Input("X"));
-    retv->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    retv->SetInput(framework::GradVarName("Loss"), this->OutputGrad("Loss"));
+    retv->SetInput("SampleCenterDiff", this->Output("SampleCenterDiff"));
+    retv->SetInput("X", this->Input("X"));
+    retv->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
 
-    retv->SetAttrMap(Attrs());
-    return retv;
+    retv->SetAttrMap(this->Attrs());
   }
 };
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(CenterLossGradNoNeedBufVarsInferer, "X");
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -145,9 +149,11 @@ namespace ops = paddle::operators;
 using CPUCtx = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(center_loss, ops::CenterLossOp, ops::CenterLossOpMaker,
-                  ops::CenterLossOpGradMaker);
+                  ops::CenterLossOpGradMaker<paddle::framework::OpDesc>,
+                  ops::CenterLossOpGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(center_loss_grad, ops::CenterLossGradOp);
+REGISTER_OPERATOR(center_loss_grad, ops::CenterLossGradOp,
+                  ops::CenterLossGradNoNeedBufVarsInferer);
 
 REGISTER_OP_CPU_KERNEL(center_loss, ops::CenterLossKernel<CPUCtx, float>,
                        ops::CenterLossKernel<CPUCtx, double>);

@@ -44,12 +44,14 @@ class TestVariable(unittest.TestCase):
         self.assertEqual(core.VarDesc.VarType.FP64, w.dtype)
         self.assertEqual((784, 100), w.shape)
         self.assertEqual("fc.w", w.name)
+        self.assertEqual("fc.w@GRAD", w.grad_name)
         self.assertEqual(0, w.lod_level)
 
         w = b.create_var(name='fc.w')
         self.assertEqual(core.VarDesc.VarType.FP64, w.dtype)
         self.assertEqual((784, 100), w.shape)
         self.assertEqual("fc.w", w.name)
+        self.assertEqual("fc.w@GRAD", w.grad_name)
         self.assertEqual(0, w.lod_level)
 
         self.assertRaises(ValueError,
@@ -181,6 +183,43 @@ class TestVariable(unittest.TestCase):
 
         with fluid.program_guard(default_main_program()):
             self._tostring()
+
+    # NOTE(zhiqiu): for coverage CI
+    # TODO(zhiqiu): code clean for dygraph
+    def test_dygraph_deprecated_api(self):
+        b = default_main_program().current_block()
+        var = b.create_var(dtype="float64", lod_level=0)
+        with fluid.dygraph.guard():
+            self.assertIsNone(var.detach())
+            self.assertIsNone(var.numpy())
+            self.assertIsNone(var.set_value(None))
+            self.assertIsNone(var.backward())
+            self.assertIsNone(var.gradient())
+            self.assertIsNone(var.clear_gradient())
+            self.assertIsNone(var.to_string(True))
+            self.assertIsNone(var.persistable)
+            var.stop_gradient = True
+            self.assertIsNone(var.stop_gradient)
+            var.stop_gradient = 'tmp'
+            self.assertIsNone(var.name)
+            self.assertIsNone(var.shape)
+            self.assertIsNone(var.dtype)
+            self.assertIsNone(var.type)
+
+    def test_create_selected_rows(self):
+        b = default_main_program().current_block()
+
+        var = b.create_var(
+            name="var",
+            shape=[1, 1],
+            dtype="float32",
+            type=fluid.core.VarDesc.VarType.SELECTED_ROWS,
+            persistable=True)
+
+        def _test():
+            var.lod_level()
+
+        self.assertRaises(Exception, _test)
 
 
 if __name__ == '__main__':

@@ -183,7 +183,7 @@ class TestIfElse(unittest.TestCase):
                 false_target = fluid.layers.tanh(false_target)
                 ie.output(false_target)
             if_out = ie()
-            out = layers.reduce_sum(if_out)
+            out = layers.reduce_sum(if_out[0])
 
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())

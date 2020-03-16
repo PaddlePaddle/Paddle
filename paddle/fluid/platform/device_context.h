@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_helper.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
-#if !defined(__APPLE__) && !defined(_WIN32)
+#if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
 #include "paddle/fluid/platform/gpu_info.h"
@@ -30,6 +30,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "mkldnn.hpp"
+#include "paddle/fluid/framework/data_layout.h"
 #endif
 
 #include <map>
@@ -46,7 +47,7 @@ namespace platform {
 
 class DeviceContext {
  public:
-  virtual ~DeviceContext() {}
+  virtual ~DeviceContext() PADDLE_MAY_THROW {}
   virtual Place GetPlace() const = 0;
 
   virtual void Wait() const {}
@@ -96,6 +97,15 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return the max physical thread count in the device context */
   int GetMaxPhysicalThreadCount() const;
 
+  /*! \brief  Return the SM count in the device context */
+  int GetSMCount() const;
+
+  /*! \brief  Return the Max thread num of block in the device context */
+  int GetMaxThreadsPerBlock() const;
+
+  /*! \brief  Return the max grid dim size in the device context */
+  dim3 GetCUDAMaxGridDimSize() const;
+
   /*! \brief  Return eigen device in the device context. */
   Eigen::GpuDevice* eigen_device() const;
 
@@ -134,7 +144,7 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return cuda stream in the device context. */
   cudaStream_t stream() const;
 
-#if !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
   /*! \brief  Return nccl communicators. */
   ncclComm_t nccl_comm() const { return nccl_comm_; }
 
@@ -170,7 +180,7 @@ class CUDADeviceContext : public DeviceContext {
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;
 
-#if !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
   // NCCL communicator (single process version) for NCCL collective operations.
   // NCCL collective operations provides fast collectives over multiple GPUs
   // both within and across nodes.
@@ -184,6 +194,8 @@ class CUDADeviceContext : public DeviceContext {
   int driver_version_;
   int multi_process_;
   int max_threads_per_mp_;
+  int max_threads_per_block_;
+  dim3 max_grid_dim_size_;
 
   // StreamCallbackManager is thread-safe
   std::unique_ptr<StreamCallbackManager> callback_manager_;
@@ -220,14 +232,7 @@ class CudnnWorkspaceHandle {
     ResetWorkspace();
   }
 
-  inline void ReallocWorkspace(size_t required_workspace_bytes) {
-    if (required_workspace_bytes <= WorkspaceSize()) {
-      return;
-    }
-    // reset allocation first before re-allocate to save memory
-    allocation_.reset();
-    allocation_ = memory::Alloc(device_context_, required_workspace_bytes);
-  }
+  void ReallocWorkspace(size_t required_workspace_bytes);
 
   inline void ResetWorkspace() { allocation_ = nullptr; }
 
@@ -293,6 +298,8 @@ void set_cur_mkldnn_session_id(size_t);
 size_t get_cur_mkldnn_session_id(void);
 void set_cur_input_shape_str(std::string input_shape_str);
 void set_cur_input_shape_cache_capacity(int input_shape_cache_capacity);
+void set_cur_paddle_data_layout(framework::DataLayout);
+framework::DataLayout get_cur_paddle_data_layout(void);
 
 class MKLDNNDeviceContext : public CPUDeviceContext {
  public:
@@ -337,6 +344,8 @@ class DeviceContextPool {
     }
     return *pool;
   }
+
+  static void SetPool(DeviceContextPool* dev_pool) { pool = dev_pool; }
 
   /*! \brief  Return handle of single device context. */
   platform::DeviceContext* Get(const platform::Place& place);

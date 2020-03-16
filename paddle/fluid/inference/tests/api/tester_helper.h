@@ -39,9 +39,14 @@
 
 DEFINE_string(model_name, "", "model name");
 DEFINE_string(infer_model, "", "model path");
+DEFINE_string(fp32_model, "", "FP32 model path");
+DEFINE_string(int8_model, "", "INT8 model path");
 DEFINE_string(infer_data, "", "data file");
 DEFINE_string(refer_result, "", "reference result for comparison");
 DEFINE_int32(batch_size, 1, "batch size");
+DEFINE_bool(ernie_large, false, "Test ernie large");
+DEFINE_bool(with_accuracy_layer, true,
+            "Calculate the accuracy while label is in the input");
 DEFINE_bool(enable_fp32, true, "Enable FP32 type prediction");
 DEFINE_bool(enable_int8, true, "Enable INT8 type prediction");
 DEFINE_int32(warmup_batch_size, 100, "batch size for quantization warmup");
@@ -92,6 +97,14 @@ void PrintConfig(const PaddlePredictor::Config *config, bool use_analysis) {
   LOG(INFO) << analysis_config->ToNativeConfig();
 }
 
+void CheckError(float data_ref, float data) {
+  if (std::abs(data_ref) > 1) {
+    CHECK_LE(std::abs((data_ref - data) / data_ref), FLAGS_accuracy);
+  } else {
+    CHECK_LE(std::abs(data_ref - data), FLAGS_accuracy);
+  }
+}
+
 // Compare result between two PaddleTensor
 void CompareResult(const std::vector<PaddleTensor> &outputs,
                    const std::vector<PaddleTensor> &ref_outputs) {
@@ -118,7 +131,7 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
         float *pdata = static_cast<float *>(out.data.data());
         float *pdata_ref = static_cast<float *>(ref_out.data.data());
         for (size_t j = 0; j < size; ++j) {
-          CHECK_LE(std::abs(pdata_ref[j] - pdata[j]), FLAGS_accuracy);
+          CheckError(pdata_ref[j], pdata[j]);
         }
         break;
       }
@@ -167,16 +180,16 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
       case PaddleDType::FLOAT32: {
         float *pdata = static_cast<float *>(out.data.data());
         float *pdata_ref = ref_out.data<float>(&place, &ref_size);
-        EXPECT_EQ(size, ref_size);
+        EXPECT_EQ(size, static_cast<size_t>(ref_size));
         for (size_t j = 0; j < size; ++j) {
-          CHECK_LE(std::abs(pdata_ref[j] - pdata[j]), FLAGS_accuracy);
+          CheckError(pdata_ref[j], pdata[j]);
         }
         break;
       }
       case PaddleDType::INT32: {
         int32_t *pdata = static_cast<int32_t *>(out.data.data());
         int32_t *pdata_ref = ref_out.data<int32_t>(&place, &ref_size);
-        EXPECT_EQ(size, ref_size);
+        EXPECT_EQ(size, static_cast<size_t>(ref_size));
         for (size_t j = 0; j < size; ++j) {
           EXPECT_EQ(pdata_ref[j], pdata[j]);
         }
@@ -185,7 +198,7 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
       case PaddleDType::UINT8: {
         uint8_t *pdata = static_cast<uint8_t *>(out.data.data());
         uint8_t *pdata_ref = ref_out.data<uint8_t>(&place, &ref_size);
-        EXPECT_EQ(size, ref_size);
+        EXPECT_EQ(size, static_cast<size_t>(ref_size));
         for (size_t j = 0; j < size; ++j) {
           EXPECT_EQ(pdata_ref[j], pdata[j]);
         }
@@ -238,7 +251,11 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
                        const std::vector<std::string> *feed_names = nullptr,
                        const int continuous_inuput_index = 0) {
   // Set fake_image_data
-  PADDLE_ENFORCE_EQ(FLAGS_test_all_data, 0, "Only have single batch of data.");
+  PADDLE_ENFORCE_EQ(FLAGS_test_all_data, 0,
+                    platform::errors::InvalidArgument(
+                        "In SetFakeImageInput, expected test_all_data = false, "
+                        "but now test_all_data=",
+                        FLAGS_test_all_data));
   std::vector<std::vector<int64_t>> feed_target_shapes = GetFeedTargetShapes(
       dirname, is_combined, model_filename, params_filename);
   std::ostringstream os;
@@ -251,7 +268,13 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
   }
   LOG(INFO) << os.str();
   if (feed_names) {
-    PADDLE_ENFORCE_EQ(feed_names->size(), feed_target_shapes.size());
+    PADDLE_ENFORCE_EQ(
+        feed_names->size(), feed_target_shapes.size(),
+        platform::errors::InvalidArgument(
+            "The size of feeds_names and size of "
+            "feed_target_shapes must be equal, but now feeds_names "
+            "size is %d and feed_target_shapes size is %d",
+            feed_names->size(), feed_target_shapes.size()));
   }
   std::vector<PaddleTensor> input_slots(feed_target_shapes.size());
   for (size_t i = 0; i < feed_target_shapes.size(); ++i) {
@@ -466,12 +489,20 @@ void TestPrediction(const PaddlePredictor::Config *config,
 
 void SummarizeAccuracy(float avg_acc_fp32, float avg_acc_int8,
                        int compared_idx) {
-  PADDLE_ENFORCE_LE(compared_idx, 2,
-                    "Compare either top1 accuracy or mAP (top5), the "
-                    "compared_idx is out of range");
-  PADDLE_ENFORCE_GE(compared_idx, 1,
-                    "Compare either top1 accuracy or mAP (top5), the "
-                    "compared_idx is out of range");
+  PADDLE_ENFORCE_LE(
+      compared_idx, 2,
+      platform::errors::InvalidArgument(
+          "The compared_idx should be <= 2. But received compared_idx = %d. "
+          "For top1 accuracy, set compared_idx = 1; For top5 accuracy or mean "
+          "Average Precision (mAP), set compared_idx = 2.",
+          compared_idx));
+  PADDLE_ENFORCE_GE(
+      compared_idx, 1,
+      platform::errors::InvalidArgument(
+          "The compared_idx should be >= 1. But received compared_idx = %d. "
+          "For top1 accuracy, set compared_idx = 1; For top5 accuracy or mean "
+          "Average Precision (mAP), set compared_idx = 2.",
+          compared_idx));
   std::string prefix = (compared_idx == 1) ? "top1_accuracy " : "mAP ";
   LOG(INFO) << "--- Accuracy summary --- ";
   LOG(INFO) << "Accepted " << prefix
@@ -501,9 +532,10 @@ void SummarizePerformance(float sample_latency_fp32,
 float CompareAccuracyOne(
     const std::vector<std::vector<PaddleTensor>> &output_slots,
     int compared_idx) {
-  if (output_slots.size() == 0)
-    throw std::invalid_argument(
-        "CompareAccuracy: output_slots vector is empty.");
+  PADDLE_ENFORCE_GT(output_slots.size(), 0,
+                    platform::errors::InvalidArgument(
+                        "The accuracy vector is empty. The accuracy vector "
+                        "size should be bigger than 0"));
 
   float total_accs{0};
 
@@ -512,12 +544,19 @@ float CompareAccuracyOne(
       case 1:
         PADDLE_ENFORCE_GE(
             output_slots[i].size(), 2UL,
-            "To achieve top 1 accuracy, output_slots_quant[i].size()>=2");
+            platform::errors::InvalidArgument(
+                "To achieve top 1 accuracy, output_slots size "
+                "must be bigger than or equal to 2, but now the size is %d",
+                output_slots[i].size()));
         break;
       case 2:
         PADDLE_ENFORCE_GE(
-            output_slots[i].size(), 2UL,
-            "To achieve top 1 accuracy, output_slots_ref[i].size()>=2");
+            output_slots[i].size(), 3UL,
+            platform::errors::InvalidArgument(
+                "To achieve top 5 accuracy or mean Average "
+                "Precision (mAP), output_slots size must be "
+                "bigger than or equal to 3, but now the size is %d",
+                output_slots[i].size()));
         break;
       default:
         throw std::invalid_argument(
@@ -534,8 +573,6 @@ float CompareAccuracyOne(
     total_accs +=
         *static_cast<float *>(output_slots[i][compared_idx].data.data());
   }
-
-  CHECK_GT(output_slots.size(), 0);
 
   return total_accs / output_slots.size();
 }
@@ -594,8 +631,14 @@ void CompareNativeAndAnalysis(
   std::vector<std::vector<PaddleTensor>> native_outputs, analysis_outputs;
   TestOneThreadPrediction(config, inputs, &native_outputs, false);
   TestOneThreadPrediction(config, inputs, &analysis_outputs, true);
-  PADDLE_ENFORCE_GT(native_outputs.size(), 0, "Native output is empty.");
-  PADDLE_ENFORCE_GT(analysis_outputs.size(), 0, "Analysis output is empty.");
+  PADDLE_ENFORCE_GT(native_outputs.size(), 0,
+                    platform::errors::InvalidArgument(
+                        "The native outputs is empty. The native outputs "
+                        "vector size must be bigger than 0"));
+  PADDLE_ENFORCE_GT(analysis_outputs.size(), 0,
+                    platform::errors::InvalidArgument(
+                        "The analysis outputs is empty. The analysis outputs "
+                        "vector size must be bigger than 0"));
   CompareResult(analysis_outputs.back(), native_outputs.back());
 }
 
@@ -603,8 +646,12 @@ void CompareQuantizedAndAnalysis(
     const AnalysisConfig *config, const AnalysisConfig *qconfig,
     const std::vector<std::vector<PaddleTensor>> &inputs,
     const int compared_idx = 1) {
-  PADDLE_ENFORCE_EQ(inputs[0][0].shape[0], FLAGS_batch_size,
-                    "Input data has to be packed batch by batch.");
+  PADDLE_ENFORCE_EQ(
+      inputs[0][0].shape[0], FLAGS_batch_size,
+      platform::errors::InvalidArgument(
+          "Input data has to be packed batch by batch. The batchsize is set to "
+          "%d, but the real input is packed with batchsize = %d",
+          FLAGS_batch_size, inputs[0][0].shape[0]));
   LOG(INFO) << "FP32 & INT8 prediction run: batch_size " << FLAGS_batch_size
             << ", warmup batch size " << FLAGS_warmup_batch_size << ".";
 
@@ -632,6 +679,48 @@ void CompareQuantizedAndAnalysis(
   SummarizePerformance(sample_latency_fp32, sample_latency_int8);
 
   CompareAccuracy(quantized_outputs, analysis_outputs, compared_idx);
+}
+
+void CompareAnalysisAndAnalysis(
+    const AnalysisConfig *config1, const AnalysisConfig *config2,
+    const std::vector<std::vector<PaddleTensor>> &inputs,
+    const bool with_accuracy_layer = FLAGS_with_accuracy_layer,
+    const int compared_idx = 1) {
+  PADDLE_ENFORCE_EQ(
+      inputs[0][0].shape[0], FLAGS_batch_size,
+      platform::errors::InvalidArgument(
+          "Input data has to be packed batch by batch. The batchsize is set to "
+          "%d, but the real input is packed with batchsize = %d",
+          FLAGS_batch_size, inputs[0][0].shape[0]));
+
+  LOG(INFO) << "FP32 & INT8 prediction run: batch_size " << FLAGS_batch_size
+            << ", warmup batch size " << FLAGS_warmup_batch_size << ".";
+
+  LOG(INFO) << "--- FP32 prediction start ---";
+  auto *cfg1 = reinterpret_cast<const PaddlePredictor::Config *>(config1);
+  PrintConfig(cfg1, true);
+  std::vector<std::vector<PaddleTensor>> analysis_outputs;
+  float sample_latency_fp32{-1};
+
+  if (FLAGS_enable_fp32) {
+    TestOneThreadPrediction(cfg1, inputs, &analysis_outputs, true,
+                            VarType::FP32, &sample_latency_fp32);
+  }
+
+  LOG(INFO) << "--- INT8 prediction start ---";
+  auto *cfg2 = reinterpret_cast<const PaddlePredictor::Config *>(config2);
+  PrintConfig(cfg2, true);
+  std::vector<std::vector<PaddleTensor>> int8_outputs;
+  float sample_latency_int8{-1};
+
+  if (FLAGS_enable_int8) {
+    TestOneThreadPrediction(cfg2, inputs, &int8_outputs, true, VarType::INT8,
+                            &sample_latency_int8);
+  }
+  SummarizePerformance(sample_latency_fp32, sample_latency_int8);
+  if (with_accuracy_layer) {
+    CompareAccuracy(int8_outputs, analysis_outputs, compared_idx);
+  }
 }
 
 void CompareNativeAndAnalysis(

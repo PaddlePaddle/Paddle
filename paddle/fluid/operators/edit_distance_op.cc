@@ -98,13 +98,16 @@ EditDistance operator computes the edit distances between a batch of hypothesis
 strings and their references.
 
 Edit distance, also called Levenshtein distance, measures how dissimilar two strings
-are by counting the minimum number of operations to transform one string into anthor.
-Here the operations include insertion, deletion, and substitution. For example,
-given hypothesis string A = "kitten" and reference B = "sitting", the edit distance
-is 3 for A will be transformed into B at least after two substitutions and one
+are by counting the minimum number of operations to transform one string into another.
+The operations include insertion, deletion, and substitution. 
+
+For example, given hypothesis string A = "kitten" and reference B = "sitting",
+A will be transformed into B at least after two substitutions and one
 insertion:
 
    "kitten" -> "sitten" -> "sittin" -> "sitting"
+
+So the edit distance between A and B is 3.
 
 Input(Hyps) is a 2-D Tensor or a 2-D LoDTensor consisting of all the hypothesis strings.
 And the `batch_size` reference strings are arranged in order in the same way in the
@@ -122,7 +125,9 @@ will be divided by the length of reference string.
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(edit_distance, ops::EditDistanceOp, ops::EditDistanceOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    edit_distance, ops::EditDistanceOp, ops::EditDistanceOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     edit_distance, ops::EditDistanceKernel<paddle::platform::CPUPlace, float>);

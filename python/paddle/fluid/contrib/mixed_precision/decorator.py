@@ -24,10 +24,10 @@ from .fp16_lists import AutoMixedPrecisionLists
 __all__ = ["decorate"]
 
 
-class OptimizerWithMixedPrecison(object):
+class OptimizerWithMixedPrecision(object):
     """
     Optimizer with mixed-precision (MP) training. This is a wrapper of a common 
-    optimizer, plus the support of mixed-precision pretraining. The object
+    optimizer, plus the support of mixed-precision pre-training. The object
     of this class almost has the same behavior as the common optimizer, with the 
     methods `minimize()`, `backward()`, `apply_gradients()` implemented. 
     Additionally, it enables the MP training automatically, i.e, the creation 
@@ -58,6 +58,7 @@ class OptimizerWithMixedPrecison(object):
         self._param_grads = None
         self._train_program = default_main_program()
         self._startup_prog = default_startup_program()
+        self._scaled_loss = None
         self._loss_scaling = layers.create_global_var(
             name=unique_name.generate("loss_scaling"),
             shape=[1],
@@ -101,6 +102,13 @@ class OptimizerWithMixedPrecison(object):
         """
         return self._loss_scaling
 
+    def get_scaled_loss(self):
+        """Return the scaled loss.
+        It's useful when you feed customed loss into executor.
+        """
+
+        return self._scaled_loss
+
     def backward(self,
                  loss,
                  startup_program=None,
@@ -108,7 +116,7 @@ class OptimizerWithMixedPrecison(object):
                  no_grad_set=None,
                  callbacks=None):
         """
-        Backward propogation or auto differentiation for gradients' computation.
+        Backward propagation or auto differentiation for gradients' computation.
 
         Args:
             loss (Variable): The loss Variable to minimize.
@@ -116,7 +124,7 @@ class OptimizerWithMixedPrecison(object):
                                        parameters in `parameter_list`.
             parameter_list (list|None): A list of Variables to update.
             no_grad_set (set|None): A set of Variables should be ignored.
-            callbacks (list|None): A list of callables to run when appending 
+            callbacks (list|None): A list of callable objects to run when appending
                                    backward operator for one parameter.
 
         Returns:
@@ -124,10 +132,12 @@ class OptimizerWithMixedPrecison(object):
             gradient respectively, and the scaled loss.
         """
         rewrite_program(self._train_program, self._amp_lists)
-        scaled_loss = loss * self._loss_scaling
+        self._scaled_loss = loss * self._loss_scaling
         self._params_grads = self._optimizer.backward(
-            scaled_loss, startup_program, parameter_list, no_grad_set,
+            self._scaled_loss, startup_program, parameter_list, no_grad_set,
             callbacks)
+        # Change the op_role_var attr for some ops, so that gradients
+        # transferred across GPUs can be FP16.
         update_role_var_grad(self._train_program, self._params_grads)
         scaled_params_grads = []
         for p, g in self._params_grads:
@@ -135,7 +145,7 @@ class OptimizerWithMixedPrecison(object):
                 scaled_g = g / self._loss_scaling
                 scaled_params_grads.append([p, scaled_g])
 
-        return scaled_params_grads, scaled_loss
+        return scaled_params_grads
 
     def apply_gradients(self, scaled_params_grads):
         """
@@ -194,7 +204,7 @@ class OptimizerWithMixedPrecison(object):
             The scaled loss by scaling factor, the list of optimize ops, and a
             list of scaled parameters and gradients.
         """
-        scaled_params_grads, scaled_loss = self.backward(
+        scaled_params_grads = self.backward(
             loss,
             startup_program=startup_program,
             parameter_list=parameter_list,
@@ -207,7 +217,7 @@ class OptimizerWithMixedPrecison(object):
 
 def decorate(optimizer,
              amp_lists=None,
-             init_loss_scaling=1.0,
+             init_loss_scaling=2**15,
              incr_every_n_steps=1000,
              decr_every_n_nan_or_inf=2,
              incr_ratio=2.0,
@@ -245,11 +255,11 @@ def decorate(optimizer,
 	              optimizer=optimizer, init_loss_scaling=8.0)
 	
             ops, param_grads = mp_optimizer.minimize(loss)
-            scaled_loss = mp_optimizer.get_loss_scaling()
+            scaled_loss = mp_optimizer.get_scaled_loss()
     """
     if amp_lists is None:
         amp_lists = AutoMixedPrecisionLists()
-    mp_optimizer = OptimizerWithMixedPrecison(
+    mp_optimizer = OptimizerWithMixedPrecision(
         optimizer, amp_lists, init_loss_scaling, use_dynamic_loss_scaling,
         incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio, decr_ratio)
 

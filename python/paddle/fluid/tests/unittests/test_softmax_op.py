@@ -18,11 +18,15 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
 
 
 def stable_softmax(x):
     """Compute the softmax of vector x in a numerically stable way."""
-    shiftx = x - np.max(x).clip(-64.)
+    # clip to shiftx, otherwise, when calc loss with
+    # log(exp(shiftx)), may get log(0)=INF
+    shiftx = (x - np.max(x)).clip(-64.)
     exps = np.exp(shiftx)
     return exps / np.sum(exps)
 
@@ -38,7 +42,7 @@ class TestSoftmaxOp(OpTest):
         self.op_type = "softmax"
         self.use_cudnn = False
         self.use_mkldnn = False
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_kernel_type()
         self.shape = self.get_x_shape()
         self.axis = self.get_axis()
@@ -58,20 +62,44 @@ class TestSoftmaxOp(OpTest):
         pass
 
     def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(
+                place, atol=1e-5, check_dygraph=(self.use_mkldnn == False))
         else:
-            self.check_output()
+            self.check_output(check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn or self.dtype == np.float16:
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 self.check_grad_with_place(
-                    place, ["X"], "Out", max_relative_error=0.01)
+                    place, ["X"],
+                    "Out",
+                    max_relative_error=0.01,
+                    check_dygraph=(self.use_mkldnn == False))
         else:
-            self.check_grad(["X"], "Out", max_relative_error=0.01)
+            self.check_grad(
+                ["X"],
+                "Out",
+                max_relative_error=0.01,
+                check_dygraph=(self.use_mkldnn == False))
+
+
+class TestSoftmaxOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The input type of softmax_op must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, fluid.layers.softmax, x1)
+            # The input dtype of softmax_op must be float16, float32 or float64.
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.softmax, x2)
+            x3 = fluid.layers.data(name='x3', shape=[4], dtype="float16")
+            fluid.layers.softmax(x3)
 
 
 class TestSoftmaxOp2(TestSoftmaxOp):

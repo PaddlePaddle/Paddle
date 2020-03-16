@@ -17,7 +17,7 @@ import sys
 import numpy as np
 from .... import Executor
 from .... import io
-from .... import core
+from .... import core, scope_guard
 from ....compiler import CompiledProgram
 from ....compiler import BuildStrategy
 from ....framework import IrGraph, Variable, Program
@@ -138,6 +138,7 @@ class QuantizationStrategy(Strategy):
         build_strategy = BuildStrategy()
         build_strategy.enable_inplace = False
         build_strategy.memory_optimize = False
+        build_strategy.fuse_all_reduce_ops = False
         # for quantization training
         context.optimize_graph.compiled_graph = CompiledProgram(
             train_ir_graph.graph).with_data_parallel(
@@ -199,15 +200,16 @@ class QuantizationStrategy(Strategy):
             # save float model
             if self.float_model_save_path:
                 executor = Executor(context.place)
-                io.save_inference_model(
-                    self.float_model_save_path,
-                    in_vars,
-                    out_vars,
-                    executor,
-                    main_program=test_ir_graph.to_program(),
-                    model_filename='model',
-                    params_filename='weights',
-                    export_for_deployment=True)
+                with scope_guard(context.scope):
+                    io.save_inference_model(
+                        self.float_model_save_path,
+                        in_vars,
+                        out_vars,
+                        executor,
+                        main_program=test_ir_graph.to_program(),
+                        model_filename='model',
+                        params_filename='weights',
+                        export_for_deployment=True)
 
             # save int8 model
             if self.int8_model_save_path:
@@ -216,15 +218,17 @@ class QuantizationStrategy(Strategy):
                 convert_int8_pass.apply(test_ir_graph)
 
                 executor = Executor(context.place)
-                io.save_inference_model(
-                    self.int8_model_save_path,
-                    in_vars,
-                    out_vars,
-                    executor,
-                    main_program=test_ir_graph.to_program(),
-                    model_filename='model',
-                    params_filename='weights',
-                    export_for_deployment=True)
+
+                with scope_guard(context.scope):
+                    io.save_inference_model(
+                        self.int8_model_save_path,
+                        in_vars,
+                        out_vars,
+                        executor,
+                        main_program=test_ir_graph.to_program(),
+                        model_filename='model',
+                        params_filename='weights',
+                        export_for_deployment=True)
 
             # save mobile model
             if self.mobile_model_save_path:
@@ -237,13 +241,14 @@ class QuantizationStrategy(Strategy):
                 mobile_pass = TransformForMobilePass()
                 mobile_pass.apply(test_ir_graph)
                 executor = Executor(context.place)
-                io.save_inference_model(
-                    self.mobile_model_save_path,
-                    in_vars,
-                    out_vars,
-                    executor,
-                    main_program=test_ir_graph.to_program(),
-                    model_filename='model',
-                    params_filename='weights',
-                    export_for_deployment=True)
+                with scope_guard(context.scope):
+                    io.save_inference_model(
+                        self.mobile_model_save_path,
+                        in_vars,
+                        out_vars,
+                        executor,
+                        main_program=test_ir_graph.to_program(),
+                        model_filename='model',
+                        params_filename='weights',
+                        export_for_deployment=True)
             _logger.info('Finish QuantizationStrategy::on_epoch_end')

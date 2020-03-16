@@ -30,32 +30,30 @@ def huber_loss_forward(val, delta):
 class TestHuberLossOp(OpTest):
     def setUp(self):
         self.op_type = 'huber_loss'
-        self.samples_num = 64
         self.delta = 1.0
         self.init_input()
-        residual = self.inputs['Y'].reshape(
-            self.samples_num, 1) - self.inputs['X'].reshape(self.samples_num, 1)
+        shape = self.set_shape()
+        residual = self.inputs['Y'] - self.inputs['X']
         loss = np.vectorize(huber_loss_forward)(residual,
                                                 self.delta).astype('float32')
         self.attrs = {'delta': self.delta}
-        self.outputs = {
-            'Residual': residual,
-            'Out': loss.reshape((self.samples_num, 1))
-        }
+        self.outputs = {'Residual': residual, 'Out': loss.reshape(shape)}
 
     def init_input(self):
+        shape = self.set_shape()
         self.inputs = {
-            'X': np.random.uniform(0, 1.,
-                                   (self.samples_num, 1)).astype('float32'),
-            'Y': np.random.uniform(0, 1.,
-                                   (self.samples_num, 1)).astype('float32'),
+            'X': np.random.uniform(0, 1., shape).astype('float32'),
+            'Y': np.random.uniform(0, 1., shape).astype('float32'),
         }
+
+    def set_shape(self):
+        return (100, 1)
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.008)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
@@ -67,12 +65,18 @@ class TestHuberLossOp(OpTest):
 
 
 def TestHuberLossOp1(TestHuberLossOp):
-    def init_input(self):
-        self.inputs = {
-            'X': np.random.uniform(0, 1.,
-                                   (self.samples_num, 1)).astype('float32'),
-            'Y': np.random.uniform(0, 1., (self.samples_num)).astype('float32'),
-        }
+    def set_shape(self):
+        return (64)
+
+
+def TestHuberLossOp2(TestHuberLossOp):
+    def set_shape(self):
+        return (6, 6)
+
+
+def TestHuberLossOp2(TestHuberLossOp):
+    def set_shape(self):
+        return (6, 6, 1)
 
 
 if __name__ == '__main__':

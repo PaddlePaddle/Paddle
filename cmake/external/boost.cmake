@@ -22,26 +22,30 @@ set(BOOST_PROJECT       "extern_boost")
 # version of boost, say, 1.66.0, doesn't build on CentOS 6.  We
 # checked that the devtools package of CentOS 6 installs boost 1.41.0.
 # So we use 1.41.0 here.
-set(BOOST_VER           "1.41.0")
-set(BOOST_TAR "boost_1_41_0" CACHE STRING "" FORCE)
-set(BOOST_URL "http://paddlepaddledeps.bj.bcebos.com/${BOOST_TAR}.tar.gz" CACHE STRING "" FORCE)
+set(BOOST_VER   "1.41.0")
+set(BOOST_TAR   "boost_1_41_0" CACHE STRING "" FORCE)
+set(BOOST_URL   "http://paddlepaddledeps.bj.bcebos.com/${BOOST_TAR}.tar.gz" CACHE STRING "" FORCE)
 
-MESSAGE(STATUS "BOOST_TAR: ${BOOST_TAR}, BOOST_URL: ${BOOST_URL}")
+MESSAGE(STATUS "BOOST_VERSION: ${BOOST_VER}, BOOST_URL: ${BOOST_URL}")
 
-set(BOOST_SOURCES_DIR ${THIRD_PARTY_PATH}/boost)
-set(BOOST_DOWNLOAD_DIR  "${BOOST_SOURCES_DIR}/src/${BOOST_PROJECT}")
+set(BOOST_PREFIX_DIR ${THIRD_PARTY_PATH}/boost)
+set(BOOST_SOURCE_DIR ${THIRD_PARTY_PATH}/boost/src/extern_boost)
+cache_third_party(${BOOST_PROJECT}
+        URL       ${BOOST_URL}
+        DIR       BOOST_SOURCE_DIR)
 
-set(BOOST_INCLUDE_DIR "${BOOST_DOWNLOAD_DIR}" CACHE PATH "boost include directory." FORCE)
+set(BOOST_INCLUDE_DIR "${BOOST_SOURCE_DIR}" CACHE PATH "boost include directory." FORCE)
 set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM 1)
 include_directories(${BOOST_INCLUDE_DIR})
 
 ExternalProject_Add(
     ${BOOST_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    DOWNLOAD_DIR          ${BOOST_DOWNLOAD_DIR}
-    URL      ${BOOST_URL}
+    "${BOOST_DOWNLOAD_CMD}"
+    PREFIX                ${BOOST_PREFIX_DIR}
+    DOWNLOAD_DIR          ${BOOST_SOURCE_DIR}
+    SOURCE_DIR            ${BOOST_SOURCE_DIR}
     DOWNLOAD_NO_PROGRESS  1
-    PREFIX                ${BOOST_SOURCES_DIR}
     CONFIGURE_COMMAND     ""
     BUILD_COMMAND         ""
     INSTALL_COMMAND       ""

@@ -16,28 +16,37 @@
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
 #include <cstring>
+#include <functional>
 #include <iostream>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <unordered_set>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/inference/api/analysis_predictor.h"
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/paddle_pass_builder.h"
+#include "paddle/fluid/inference/utils/io_utils.h"
 
 namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {
-using paddle::PaddleDType;
-using paddle::PaddleBuf;
-using paddle::PaddleTensor;
-using paddle::PaddlePlace;
-using paddle::PaddlePredictor;
+using paddle::AnalysisPredictor;
 using paddle::NativeConfig;
 using paddle::NativePaddlePredictor;
-using paddle::AnalysisPredictor;
+using paddle::PaddleBuf;
+using paddle::PaddleDType;
+using paddle::PaddlePassBuilder;
+using paddle::PaddlePlace;
+using paddle::PaddlePredictor;
+using paddle::PaddleTensor;
+using paddle::PassStrategy;
+using paddle::ZeroCopyTensor;
 
 namespace {
 void BindPaddleDType(py::module *m);
@@ -49,6 +58,8 @@ void BindNativeConfig(py::module *m);
 void BindNativePredictor(py::module *m);
 void BindAnalysisConfig(py::module *m);
 void BindAnalysisPredictor(py::module *m);
+void BindZeroCopyTensor(py::module *m);
+void BindPaddlePassBuilder(py::module *m);
 
 #ifdef PADDLE_WITH_MKLDNN
 void BindMkldnnQuantizerConfig(py::module *m);
@@ -57,7 +68,7 @@ void BindMkldnnQuantizerConfig(py::module *m);
 template <typename T>
 PaddleBuf PaddleBufCreate(py::array_t<T> data) {
   PaddleBuf buf(data.size() * sizeof(T));
-  std::copy_n(static_cast<T *>(data.mutable_data()), data.size(),
+  std::copy_n(static_cast<const T *>(data.data()), data.size(),
               static_cast<T *>(buf.data()));
   return buf;
 }
@@ -65,26 +76,8 @@ PaddleBuf PaddleBufCreate(py::array_t<T> data) {
 template <typename T>
 void PaddleBufReset(PaddleBuf &buf, py::array_t<T> data) {  // NOLINT
   buf.Resize(data.size() * sizeof(T));
-  std::copy_n(static_cast<T *>(data.mutable_data()), data.size(),
+  std::copy_n(static_cast<const T *>(data.data()), data.size(),
               static_cast<T *>(buf.data()));
-}
-
-template <typename T>
-PaddleDType PaddleTensorGetDType();
-
-template <>
-PaddleDType PaddleTensorGetDType<int32_t>() {
-  return PaddleDType::INT32;
-}
-
-template <>
-PaddleDType PaddleTensorGetDType<int64_t>() {
-  return PaddleDType::INT64;
-}
-
-template <>
-PaddleDType PaddleTensorGetDType<float>() {
-  return PaddleDType::FLOAT32;
 }
 
 template <typename T>
@@ -95,14 +88,14 @@ PaddleTensor PaddleTensorCreate(
 
   if (copy) {
     PaddleBuf buf(data.size() * sizeof(T));
-    std::copy_n(static_cast<T *>(data.mutable_data()), data.size(),
+    std::copy_n(static_cast<const T *>(data.data()), data.size(),
                 static_cast<T *>(buf.data()));
     tensor.data = std::move(buf);
   } else {
     tensor.data = PaddleBuf(data.mutable_data(), data.size() * sizeof(T));
   }
 
-  tensor.dtype = PaddleTensorGetDType<T>();
+  tensor.dtype = inference::PaddleTensorGetDType<T>();
   tensor.name = name;
   tensor.lod = lod;
   tensor.shape.resize(data.ndim());
@@ -111,9 +104,9 @@ PaddleTensor PaddleTensorCreate(
   return tensor;
 }
 
-py::array PaddleTensorGetData(PaddleTensor &tensor) {  // NOLINT
+py::dtype PaddleDTypeToNumpyDType(PaddleDType dtype) {
   py::dtype dt;
-  switch (tensor.dtype) {
+  switch (dtype) {
     case PaddleDType::INT32:
       dt = py::dtype::of<int32_t>();
       break;
@@ -126,7 +119,68 @@ py::array PaddleTensorGetData(PaddleTensor &tensor) {  // NOLINT
     default:
       LOG(FATAL) << "unsupported dtype";
   }
-  return py::array(dt, {tensor.shape}, tensor.data.data());
+
+  return dt;
+}
+
+py::array PaddleTensorGetData(PaddleTensor &tensor) {  // NOLINT
+  py::dtype dt = PaddleDTypeToNumpyDType(tensor.dtype);
+  return py::array(std::move(dt), {tensor.shape}, tensor.data.data());
+}
+
+template <typename T>
+void ZeroCopyTensorCreate(ZeroCopyTensor &tensor,  // NOLINT
+                          py::array_t<T> data) {
+  std::vector<int> shape;
+  std::copy_n(data.shape(), data.ndim(), std::back_inserter(shape));
+  tensor.Reshape(std::move(shape));
+  tensor.copy_from_cpu(static_cast<const T *>(data.data()));
+}
+
+size_t PaddleGetDTypeSize(PaddleDType dt) {
+  size_t size{0};
+  switch (dt) {
+    case PaddleDType::INT32:
+      size = sizeof(int32_t);
+      break;
+    case PaddleDType::INT64:
+      size = sizeof(int64_t);
+      break;
+    case PaddleDType::FLOAT32:
+      size = sizeof(float);
+      break;
+    default:
+      LOG(FATAL) << "unsupported dtype";
+  }
+  return size;
+}
+
+py::array ZeroCopyTensorToNumpy(ZeroCopyTensor &tensor) {  // NOLINT
+  py::dtype dt = PaddleDTypeToNumpyDType(tensor.type());
+  auto tensor_shape = tensor.shape();
+  py::array::ShapeContainer shape(tensor_shape.begin(), tensor_shape.end());
+  py::array array(dt, std::move(shape));
+
+  switch (tensor.type()) {
+    case PaddleDType::INT32:
+      tensor.copy_to_cpu(static_cast<int32_t *>(array.mutable_data()));
+      break;
+    case PaddleDType::INT64:
+      tensor.copy_to_cpu(static_cast<int64_t *>(array.mutable_data()));
+      break;
+    case PaddleDType::FLOAT32:
+      tensor.copy_to_cpu<float>(static_cast<float *>(array.mutable_data()));
+      break;
+    default:
+      LOG(FATAL) << "unsupported dtype";
+  }
+  return array;
+}
+
+py::bytes SerializePDTensorToBytes(PaddleTensor &tensor) {  // NOLINT
+  std::stringstream ss;
+  paddle::inference::SerializePDTensorToStream(&ss, tensor);
+  return static_cast<py::bytes>(ss.str());
 }
 }  // namespace
 
@@ -140,6 +194,8 @@ void BindInferenceApi(py::module *m) {
   BindNativePredictor(m);
   BindAnalysisConfig(m);
   BindAnalysisPredictor(m);
+  BindZeroCopyTensor(m);
+  BindPaddlePassBuilder(m);
 #ifdef PADDLE_WITH_MKLDNN
   BindMkldnnQuantizerConfig(m);
 #endif
@@ -148,6 +204,7 @@ void BindInferenceApi(py::module *m) {
   m->def("create_paddle_predictor",
          &paddle::CreatePaddlePredictor<NativeConfig>);
   m->def("paddle_dtype_size", &paddle::PaddleDtypeSize);
+  m->def("paddle_tensor_to_bytes", &SerializePDTensorToBytes);
 }
 
 namespace {
@@ -258,8 +315,11 @@ void BindPaddlePredictor(py::module *m) {
            })
       .def("get_input_tensor", &PaddlePredictor::GetInputTensor)
       .def("get_output_tensor", &PaddlePredictor::GetOutputTensor)
+      .def("get_input_names", &PaddlePredictor::GetInputNames)
+      .def("get_output_names", &PaddlePredictor::GetOutputNames)
       .def("zero_copy_run", &PaddlePredictor::ZeroCopyRun)
-      .def("clone", &PaddlePredictor::Clone);
+      .def("clone", &PaddlePredictor::Clone)
+      .def("get_serialized_program", &PaddlePredictor::GetSerializedProgram);
 
   auto config = py::class_<PaddlePredictor::Config>(paddle_predictor, "Config");
   config.def(py::init<>())
@@ -338,6 +398,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("ir_optim", &AnalysisConfig::ir_optim)
       .def("enable_memory_optim", &AnalysisConfig::EnableMemoryOptim)
       .def("enable_profile", &AnalysisConfig::EnableProfile)
+      .def("disable_glog_info", &AnalysisConfig::DisableGlogInfo)
+      .def("glog_info_disabled", &AnalysisConfig::glog_info_disabled)
       .def("set_optim_cache_dir", &AnalysisConfig::SetOptimCacheDir)
       .def("switch_use_feed_fetch_ops", &AnalysisConfig::SwitchUseFeedFetchOps,
            py::arg("x") = true)
@@ -350,16 +412,13 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("workspace_size") = 1 << 20, py::arg("max_batch_size") = 1,
            py::arg("min_subgraph_size") = 3,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
-           py::arg("use_static") = false, py::arg("use_calib_mode") = true)
-      .def("enable_anakin_engine", &AnalysisConfig::EnableAnakinEngine,
-           py::arg("max_batch_size") = 1,
+           py::arg("use_static") = false, py::arg("use_calib_mode") = true,
+           py::arg("min_input_shape") =
+               std::map<std::string, std::vector<int>>({}),
            py::arg("max_input_shape") =
-               std::map<std::string, std::vector<int>>(),
-           py::arg("min_subgraph_size") = 6,
-           py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
-           py::arg("auto_config_layout") = false,
-           py::arg("passes_filter") = std::vector<std::string>(),
-           py::arg("ops_filter") = std::vector<std::string>())
+               std::map<std::string, std::vector<int>>({}),
+           py::arg("optim_input_shape") =
+               std::map<std::string, std::vector<int>>({}))
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
       .def("switch_ir_debug", &AnalysisConfig::SwitchIrDebug,
            py::arg("x") = true)
@@ -378,6 +437,10 @@ void BindAnalysisConfig(py::module *m) {
       .def("set_mkldnn_op", &AnalysisConfig::SetMKLDNNOp)
       .def("set_model_buffer", &AnalysisConfig::SetModelBuffer)
       .def("model_from_memory", &AnalysisConfig::model_from_memory)
+      .def("delete_pass",
+           [](AnalysisConfig &self, const std::string &pass) {
+             self.pass_builder()->DeletePass(pass);
+           })
       .def("pass_builder", &AnalysisConfig::pass_builder,
            py::return_value_policy::reference);
 }
@@ -417,12 +480,87 @@ void BindAnalysisPredictor(py::module *m) {
           })
       .def("get_input_tensor", &AnalysisPredictor::GetInputTensor)
       .def("get_output_tensor", &AnalysisPredictor::GetOutputTensor)
+      .def("get_input_names", &AnalysisPredictor::GetInputNames)
+      .def("get_output_names", &AnalysisPredictor::GetOutputNames)
+      .def("get_input_tensor_shape", &AnalysisPredictor::GetInputTensorShape)
       .def("zero_copy_run", &AnalysisPredictor::ZeroCopyRun)
+      .def("create_feed_fetch_var", &AnalysisPredictor::CreateFeedFetchVar)
+      .def("prepare_feed_fetch", &AnalysisPredictor::PrepareFeedFetch)
+      .def("prepare_argument", &AnalysisPredictor::PrepareArgument)
+      .def("optimize_inference_program",
+           &AnalysisPredictor::OptimizeInferenceProgram)
+      .def("analysis_argument", &AnalysisPredictor::analysis_argument,
+           py::return_value_policy::reference)
       .def("clone", &AnalysisPredictor::Clone)
       .def("scope", &AnalysisPredictor::scope,
            py::return_value_policy::reference)
+      .def("program", &AnalysisPredictor::program,
+           py::return_value_policy::reference)
+      .def("get_serialized_program", &AnalysisPredictor::GetSerializedProgram)
+      .def("mkldnn_quantize", &AnalysisPredictor::MkldnnQuantize)
       .def("SaveOptimModel", &AnalysisPredictor::SaveOptimModel,
            py::arg("dir"));
+}
+
+void BindZeroCopyTensor(py::module *m) {
+  py::class_<ZeroCopyTensor>(*m, "ZeroCopyTensor")
+      .def("reshape", &ZeroCopyTensor::Reshape)
+      .def("copy_from_cpu", &ZeroCopyTensorCreate<int32_t>)
+      .def("copy_from_cpu", &ZeroCopyTensorCreate<int64_t>)
+      .def("copy_from_cpu", &ZeroCopyTensorCreate<float>)
+      .def("copy_to_cpu", &ZeroCopyTensorToNumpy)
+      .def("shape", &ZeroCopyTensor::shape)
+      .def("set_lod", &ZeroCopyTensor::SetLoD)
+      .def("lod", &ZeroCopyTensor::lod)
+      .def("type", &ZeroCopyTensor::type);
+}
+
+void BindPaddlePassBuilder(py::module *m) {
+  py::class_<PaddlePassBuilder>(*m, "PaddlePassBuilder")
+      .def(py::init<const std::vector<std::string> &>())
+      .def("set_passes",
+           [](PaddlePassBuilder &self, const std::vector<std::string> &passes) {
+             self.ClearPasses();
+             for (auto pass : passes) {
+               self.AppendPass(std::move(pass));
+             }
+           })
+      .def("append_pass", &PaddlePassBuilder::AppendPass)
+      .def("insert_pass", &PaddlePassBuilder::InsertPass)
+      .def("delete_pass",
+           [](PaddlePassBuilder &self, const std::string &pass_type) {
+             self.DeletePass(pass_type);
+           })
+      .def("append_analysis_pass", &PaddlePassBuilder::AppendAnalysisPass)
+      .def("turn_on_debug", &PaddlePassBuilder::TurnOnDebug)
+      .def("debug_string", &PaddlePassBuilder::DebugString)
+      .def("all_passes", &PaddlePassBuilder::AllPasses,
+           py::return_value_policy::reference)
+      .def("analysis_passes", &PaddlePassBuilder::AnalysisPasses);
+
+  py::class_<PassStrategy, PaddlePassBuilder>(*m, "PassStrategy")
+      .def(py::init<const std::vector<std::string> &>())
+      .def("enable_cudnn", &PassStrategy::EnableCUDNN)
+      .def("enable_mkldnn", &PassStrategy::EnableMKLDNN)
+      .def("enable_ngraph", &PassStrategy::EnableNgraph)
+      .def("enable_mkldnn_quantizer", &PassStrategy::EnableMkldnnQuantizer)
+      .def("use_gpu", &PassStrategy::use_gpu);
+
+  py::class_<CpuPassStrategy, PassStrategy>(*m, "CpuPassStrategy")
+      .def(py::init<>())
+      .def(py::init<const CpuPassStrategy &>())
+      .def("enable_cudnn", &CpuPassStrategy::EnableCUDNN)
+      .def("enable_mkldnn", &CpuPassStrategy::EnableMKLDNN)
+      .def("enable_ngraph", &CpuPassStrategy::EnableNgraph)
+      .def("enable_mkldnn_quantizer", &CpuPassStrategy::EnableMkldnnQuantizer);
+
+  py::class_<GpuPassStrategy, PassStrategy>(*m, "GpuPassStrategy")
+      .def(py::init<>())
+      .def(py::init<const GpuPassStrategy &>())
+      .def("enable_cudnn", &GpuPassStrategy::EnableCUDNN)
+      .def("enable_mkldnn", &GpuPassStrategy::EnableMKLDNN)
+      .def("enable_ngraph", &GpuPassStrategy::EnableNgraph)
+      .def("enable_mkldnn_quantizer", &GpuPassStrategy::EnableMkldnnQuantizer);
 }
 }  // namespace
 }  // namespace pybind

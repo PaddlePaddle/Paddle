@@ -44,7 +44,6 @@ void ReorderCKtoKC(TensorRTEngine::Weight& iweights,  // NOLINT
            static_cast<float*>(const_cast<void*>(oweights->get().values)),
            ostrides);
 }
-
 /*
  * FC converter convert a MUL op in Fluid to a FC layer in TRT.
  */
@@ -63,7 +62,6 @@ class FcOpConverter : public OpConverter {
       w_name = "W";
       i_name = "Input";
     }
-
     // Declare inputs
     auto* X = engine_->GetITensor(op_desc.Input(i_name).front());
 
@@ -71,13 +69,24 @@ class FcOpConverter : public OpConverter {
     auto* Y_v = scope.FindVar(op_desc.Input(w_name).front());
     PADDLE_ENFORCE_NOT_NULL(Y_v);
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
+    const int x_num_col_dims =
+        op_desc.HasAttr("x_num_col_dims")
+            ? boost::get<int>(op_desc.GetAttr("x_num_col_dims"))
+            : (op_desc.HasAttr("in_num_col_dims")
+                   ? boost::get<int>(op_desc.GetAttr("in_num_col_dims"))
+                   : 1);
+    const std::string activation_type =
+        op_desc.HasAttr("activation_type")
+            ? boost::get<std::string>(op_desc.GetAttr("activation_type"))
+            : "";
     // This may trigger a GPU->CPU copy, because TRT's weight can only be
     // assigned from CPU memory, which can't be avoided.
     float* weight_data = nullptr;
     bool enable_int8 = boost::get<bool>(op_desc.HasAttr("enable_int8"));
     if (enable_int8) {
 #if IS_TRT_VERSION_GE(5000)
-      float in_scale = boost::get<float>(op_desc.GetAttr("input_scale"));
+      CHECK(op_desc.HasAttr(i_name + "_scale"));
+      float in_scale = boost::get<float>(op_desc.GetAttr(i_name + "_scale"));
       auto weight_scale =
           boost::get<std::vector<float>>(op_desc.GetAttr("weight_scale"));
       weight_data = engine_->GetWeightCPUData(op_desc.Input(w_name).front(),
@@ -127,19 +136,75 @@ class FcOpConverter : public OpConverter {
                                 static_cast<void*>(bias_data),
                                 static_cast<size_t>(bias_num)};
 
-    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected,
-                                       *const_cast<nvinfer1::ITensor*>(X),
-                                       n_output, tmp_weight.get(), bias.get());
+    // in order to handle situations in NLP models(input dims < 3,
+    // x_num_col_dims != 1, etc.), reshape input to perform FC correctly.
+    auto* reshape_itensor = X;
+    int input_dims = X->getDimensions().nbDims;
+    auto input_d = X->getDimensions().d;
+    int reshape_dim3[3] = {0};
+    int reshape_dim4[4] = {0};
+    PADDLE_ENFORCE_EQ(
+        x_num_col_dims == 1 || x_num_col_dims == 2, true,
+        platform::errors::InvalidArgument(
+            "Wrong x_num_col_dims param of op mul. Paddle-TRT FC converter "
+            "expects x_num_col_dims is either 1 or 2, but got %d",
+            x_num_col_dims));
+    PADDLE_ENFORCE_LE(x_num_col_dims, input_dims,
+                      platform::errors::InvalidArgument(
+                          "Params and input dims mismatch. Paddle-TRT FC "
+                          "converter expects x_num_col_dims <= input dims"));
+    if (x_num_col_dims == 1) {
+      if (input_dims == 4) {
+        PADDLE_ENFORCE_EQ(
+            input_d[3], 1,
+            platform::errors::InvalidArgument(
+                "Invalid dimensions. When x_num_col_dims equals to 1 and input "
+                "dims equals to 4, the last dim of input must be 1, but got %d",
+                input_d[3]));
+      }
+      for (int i = 0; i < 3; i++) {
+        if (i < input_dims) {
+          reshape_dim3[i] = input_d[i];
+        } else {
+          reshape_dim3[i] = 1;
+        }
+      }
+      nvinfer1::Dims3 reshape_dim(reshape_dim3[0], reshape_dim3[1],
+                                  reshape_dim3[2]);
+      auto* reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *X);
+      reshape_layer->setReshapeDimensions(reshape_dim);
+      reshape_itensor = reshape_layer->getOutput(0);
+    } else {
+      PADDLE_ENFORCE_NE(input_dims, 1,
+                        platform::errors::InvalidArgument(
+                            "Invalid dimensions. When x_num_col_dims equals to "
+                            "2, input_dims should not be 1"));
+      for (int i = 0; i < 4; i++) {
+        if (i < input_dims) {
+          reshape_dim4[i] = input_d[i];
+        } else {
+          reshape_dim4[i] = 1;
+        }
+      }
+      nvinfer1::Dims4 reshape_dim(reshape_dim4[0], reshape_dim4[1],
+                                  reshape_dim4[2], reshape_dim4[3]);
+      auto* reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *X);
+      reshape_layer->setReshapeDimensions(reshape_dim);
+      reshape_itensor = reshape_layer->getOutput(0);
+    }
+    auto* fc_layer =
+        TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *reshape_itensor,
+                             n_output, tmp_weight.get(), bias.get());
 
     engine_->SetWeights(op_desc.Input(w_name).front(), std::move(tmp));
     auto output_name = op_desc.Output("Out").front();
-
-    RreplenishLayerAndOutput(layer, "fc", {output_name}, test_mode);
-    if (enable_int8) {
-#if IS_TRT_VERSION_GE(5000)
-      float out_scale = boost::get<float>(op_desc.GetAttr("out_scale"));
-      engine_->SetTensorDynamicRange(layer->getOutput(0), out_scale);
-#endif
+    if (activation_type == "relu") {
+      nvinfer1::IActivationLayer* relu_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Activation, *(fc_layer->getOutput(0)),
+                               nvinfer1::ActivationType::kRELU);
+      RreplenishLayerAndOutput(relu_layer, "fc", {output_name}, test_mode);
+    } else {
+      RreplenishLayerAndOutput(fc_layer, "fc", {output_name}, test_mode);
     }
   }
 };

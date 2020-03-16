@@ -60,18 +60,17 @@ Reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/us
   }
 };
 
-class CReduceScatterOpGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class CReduceScatterOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> retv(new framework::OpDesc());
+  void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("c_allgather");
-    retv->SetInput("X", OutputGrad("Out"));
-    retv->SetOutput("Out", InputGrad("X"));
-    retv->SetAttrMap(Attrs());
-    return retv;
+    retv->SetInput("X", this->OutputGrad("Out"));
+    retv->SetOutput("Out", this->InputGrad("X"));
+    retv->SetAttrMap(this->Attrs());
   }
 };
 

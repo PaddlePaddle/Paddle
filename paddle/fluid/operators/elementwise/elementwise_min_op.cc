@@ -24,23 +24,39 @@ class ElementwiseMinOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Min"; }
   std::string GetEquation() const override { return "Out = min(X, Y)"; }
+
+  void AddInputX() override {
+    AddInput(
+        "X",
+        "(Variable), The first tensor holding the elements to be compared.");
+  }
+
+  void AddInputY() override {
+    AddInput(
+        "Y",
+        "(Variable), The second tensor holding the elements to be compared.");
+  }
+
+  std::string GetOpFuntionality() const override {
+    return "Compare two tensors and returns a new tensor containing the "
+           "element-wise minima.";
+  }
 };
 
-class ElementwiseMinGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ElementwiseMinGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("elementwise_min_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("Y", Input("Y"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -51,7 +67,8 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(elementwise_min, ops::ElementwiseOp,
                   ops::ElementwiseMinOpMaker, ops::ElementwiseOpInferVarType,
-                  ops::ElementwiseMinGradOpDescMaker);
+                  ops::ElementwiseMinGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ElementwiseMinGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(elementwise_min_grad, ops::ElementwiseOpGrad);
 

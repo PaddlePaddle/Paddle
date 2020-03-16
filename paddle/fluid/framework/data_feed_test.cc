@@ -34,7 +34,8 @@ paddle::framework::DataFeedDesc load_datafeed_param_from_file(
     const char* filename) {
   paddle::framework::DataFeedDesc data_feed_desc;
   int file_descriptor = open(filename, O_RDONLY);
-  PADDLE_ENFORCE(file_descriptor != -1, "Can not open %s.", filename);
+  PADDLE_ENFORCE_NE(file_descriptor, -1, platform::errors::Unavaliable(
+                                             "Cannot open file %s.", filename));
   google::protobuf::io::FileInputStream fileInput(file_descriptor);
   google::protobuf::TextFormat::Parse(&fileInput, &data_feed_desc);
   close(file_descriptor);
@@ -44,7 +45,8 @@ paddle::framework::DataFeedDesc load_datafeed_param_from_file(
 const std::vector<std::string> load_filelist_from_file(const char* filename) {
   std::vector<std::string> filelist;
   std::ifstream fin(filename);
-  PADDLE_ENFORCE(fin.good(), "Can not open %s.", filename);
+  PADDLE_ENFORCE_EQ(fin.good(), true, platform::errors::Unavaliable(
+                                          "Cannot open file %s.", filename));
   std::string line;
   while (getline(fin, line)) {
     filelist.push_back(line);

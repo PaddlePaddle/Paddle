@@ -11,9 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import os
 import warnings
-
+"""
+Convert the fluid program to distributed data-parallelism programs.
+"""
 import paddle.fluid.io as io
 from paddle.fluid.communicator import Communicator
 from paddle.fluid.framework import default_main_program
@@ -23,8 +26,11 @@ from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.executor import Executor
 from paddle.fluid.parallel_executor import ParallelExecutor
 from paddle.fluid.optimizer import Optimizer
+
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import TrainerRuntimeConfig, DistributedStrategy, SyncStrategy, AsyncStrategy, HalfAsyncStrategy, GeoStrategy, StrategyFactory
+
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspiler as OriginTranspiler
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
+from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig, DistributedMode
 
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
@@ -63,13 +69,50 @@ class DistributedTranspiler(Fleet):
             from paddle.fluid.transpiler.details.checkport import wait_server_ready
             wait_server_ready(fleet.server_endpoints(to_string=False))
 
-        if not self._transpile_config.sync_mode:
-            self._communicator = Communicator(self.main_program)
+        program_config = self._transpile_config.get_program_config()
+        trainer_communicator_config = self._transpile_config.get_trainer_runtime_config(
+        )
 
-            if not self._communicator.is_running():
-                self._communicator.start()
-            else:
-                warnings.warn("communicator has been initialized, skip")
+        print(trainer_communicator_config)
+
+        if isinstance(self._transpile_config, GeoStrategy):
+            kwargs = {}
+            kwargs["push_vars"] = self.vars_info
+            kwargs["trainers"] = fleet.worker_num()
+            kwargs["push_nums"] = self._transpile_config.get_program_config(
+            ).geo_sgd_need_push_nums
+
+            self._communicator = Communicator(
+                self.main_program, DistributedMode.GEO, kwargs,
+                trainer_communicator_config.get_communicator_flags())
+
+        elif isinstance(self._transpile_config, AsyncStrategy):
+            self._communicator = Communicator(
+                self.main_program, DistributedMode.ASYNC, None,
+                trainer_communicator_config.get_communicator_flags())
+
+        elif isinstance(self._transpile_config, HalfAsyncStrategy):
+            self._communicator = Communicator(
+                self.main_program, DistributedMode.HALF_ASYNC, None,
+                trainer_communicator_config.get_communicator_flags())
+
+        elif isinstance(self._transpile_config, SyncStrategy):
+            kwargs = {}
+            kwargs[
+                "pserver_endpoints"] = self._role_maker.get_pserver_endpoints()
+            kwargs["trainer_id"] = self._role_maker.worker_index()
+
+            self._communicator = Communicator(
+                self.main_program, DistributedMode.SYNC, kwargs,
+                trainer_communicator_config.get_communicator_flags())
+
+        else:
+            raise TypeError("Training MODE do not supported")
+
+        if not self._communicator.is_running():
+            self._communicator.start()
+        else:
+            warnings.warn("communicator has been initialized, skip")
 
     def init_server(self, model_dir=None):
         """
@@ -120,13 +163,11 @@ class DistributedTranspiler(Fleet):
         Returns:
             None
         """
-        if not self._transpile_config.sync_mode and self._communicator.is_running(
-        ):
-            self._communicator.stop()
-        self._executor.close()
 
+        self._communicator.stop()
         if isinstance(self._role_maker, MPISymetricRoleMaker):
             self._role_maker._finalize()
+        self._executor.close()
 
     def distributed_optimizer(self, optimizer, strategy=None):
         """
@@ -145,6 +186,10 @@ class DistributedTranspiler(Fleet):
 
         if not isinstance(optimizer, Optimizer):
             raise ValueError("optimizer must be an instance of Optimizer")
+        if not fleet._is_initialized:
+            raise ValueError(
+                "use fleet.init(role) to initialize the role of current node before optimizer.minimize(loss)"
+            )
         self._optimizer = TranspilerOptimizer(optimizer, strategy)
         return self._optimizer
 
@@ -228,41 +273,78 @@ class DistributedTranspiler(Fleet):
         io.save_persistables(executor, dirname, main_program, None)
 
     def _transpile(self, config):
-        if not isinstance(config, DistributeTranspilerConfig):
-            raise TypeError(
-                "config must be an instance of DistributeTranspilerConfig")
+        if isinstance(config, DistributedStrategy):
+            self._transpile_config = config
+        elif isinstance(config, DistributeTranspilerConfig):
+            if config.sync_mode:
+                self._transpile_config = SyncStrategy()
+            else:
+                if config.runtime_split_send_recv:
+                    if config.geo_sgd_mode:
+                        self._transpile_config = GeoStrategy(
+                            config.geo_sgd_need_push_nums)
+                    elif config.half_async:
+                        self._transpile_config = HalfAsyncStrategy()
+                    else:
+                        self._transpile_config = AsyncStrategy()
 
-        if not config.sync_mode:
-            config.runtime_split_send_recv = True
+                else:
+                    self._transpile_config = HalfAsyncStrategy()
+                    # for half_async compatibility
+                    config.half_async = True
+                    config.runtime_split_send_recv = True
+            self._transpile_config.set_program_config(config)
+        else:
+            raise TypeError(
+                "config must be an instance of DistributeTranspilerConfig, SyncStrategy, HalfAsyncStrategy, AsyncStrategy or GeoStratey."
+            )
+
+        program_config = self._transpile_config.get_program_config()
 
         # _origin_program is a deep copy for default_main_program, for inference
         self._origin_program = default_main_program().clone(for_test=False)
 
-        self._transpile_config = config
-        self._transpiler = OriginTranspiler(config)
+        if program_config.geo_sgd_mode:
+            from paddle.fluid.transpiler.geo_sgd_transpiler import GeoSgdTranspiler
+            self._transpiler = GeoSgdTranspiler(program_config)
+        else:
+            self._transpiler = OriginTranspiler(program_config)
+        self._transpiler._set_server_config(
+            self._transpile_config.get_server_runtime_config())
 
         if self.is_worker():
             self._transpiler.transpile(
                 trainer_id=fleet.worker_index(),
                 pservers=fleet.server_endpoints(to_string=True),
                 trainers=fleet.worker_num(),
-                sync_mode=config.sync_mode)
+                sync_mode=program_config.sync_mode)
 
             if isinstance(self._role_maker, MPISymetricRoleMaker):
-                config.wait_port = False
+                program_config.wait_port = False
+                self._transpile_config.set_program_config(program_config)
 
             self.main_program = self._transpiler.get_trainer_program(
-                wait_port=config.wait_port)
+                wait_port=program_config.wait_port)
             self.startup_program = default_startup_program()
+            if program_config.geo_sgd_mode:
+                self.vars_info = self._transpiler._get_vars_info()
+                self.startup_program = self._transpiler.trainer_startup_program
         else:
             self._transpiler.transpile(
                 trainer_id=fleet.worker_index(),
                 pservers=fleet.server_endpoints(to_string=True),
                 trainers=fleet.worker_num(),
-                sync_mode=config.sync_mode,
+                sync_mode=program_config.sync_mode,
                 current_endpoint=self.server_endpoints()[self.server_index()])
             self.main_program, self.startup_program = \
-                self._transpiler.get_pserver_programs(self.server_endpoints()[self.server_index()])
+                self._transpiler.get_pserver_programs(
+                    self.server_endpoints()[self.server_index()])
+
+    def _set_opt_info(self, opt_info):
+        """
+        this function saves the result from DistributedOptimizer.minimize()
+        """
+        self._opt_info = opt_info
 
 
 fleet = DistributedTranspiler()
@@ -289,15 +371,26 @@ class TranspilerOptimizer(DistributedOptimizer):
     def __init__(self, optimizer, strategy=None):
         super(TranspilerOptimizer, self).__init__(optimizer, strategy)
 
+        self.opt_info = dict()
         if strategy:
-            if not isinstance(strategy, DistributeTranspilerConfig):
-                raise TypeError(
-                    "In {} mode, strategy must be an instance of DistributeTranspilerConfig".
-                    format(fleet._mode))
-            else:
+            if isinstance(strategy, DistributeTranspilerConfig):
                 self._strategy = strategy
+            elif isinstance(strategy, DistributedStrategy):
+                self._strategy = strategy
+            else:
+                raise TypeError(
+                    "In {} mode, strategy must be an instance of DistributeTranspilerConfig, SyncStrategy, HalfAsyncStrategy, AsyncStrategy, or GeoStrategy".
+                    format(fleet._mode))
         else:
-            self._strategy = DistributeTranspilerConfig()
+            self._strategy = StrategyFactory.create_sync_strategy()
+
+        if isinstance(self._strategy, DistributedStrategy):
+            self.opt_info = self._strategy.get_debug_opt()
+            self.opt_info["mpi_rank"] = fleet.worker_index()
+            self.opt_info["mpi_size"] = fleet.worker_num()
+            self.opt_info["trainer"] = "MultiTrainer"
+            self.opt_info["device_worker"] = "Hogwild"
+            fleet._set_opt_info(self.opt_info)
 
     def backward(self,
                  loss,
@@ -386,4 +479,5 @@ class TranspilerOptimizer(DistributedOptimizer):
         optimize_ops, params_grads = self._optimizer.minimize(
             loss, startup_program, parameter_list, no_grad_set)
         fleet._transpile(config=self._strategy)
+        loss.block.program._fleet_opt = self.opt_info
         return optimize_ops, params_grads

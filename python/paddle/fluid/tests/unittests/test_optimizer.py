@@ -18,6 +18,7 @@ import unittest
 
 import paddle.fluid.framework as framework
 import paddle.fluid.optimizer as optimizer
+import paddle.compat as cpt
 from paddle.fluid.backward import append_backward
 
 
@@ -269,7 +270,7 @@ class TestAdagradOptimizer(unittest.TestCase):
 
         # Check init_program
         init_ops = init_program.global_block().ops
-        self.assertEqual(len(init_ops), 3)
+        self.assertEqual(len(init_ops), 2)
         self.assertEqual(init_ops[0].type, "fill_constant")
         self.assertAlmostEqual(init_ops[0].attr('value'), learning_rate)
         self.assertEqual(init_ops[1].type, "fill_constant")
@@ -319,9 +320,8 @@ class TestAdamOptimizer(unittest.TestCase):
         self.assertEqual(len(adam_optimizer.get_accumulators()), 0)
         with framework.program_guard(program, init_program):
             opts = adam_optimizer.apply_gradients(params_grads)
-        self.assertEqual(len(opts), 4)
-        self.assertEqual([op.type for op in opts],
-                         ["scale", "adam", "scale", "scale"])
+        self.assertEqual(len(opts), 2)
+        self.assertEqual([op.type for op in opts], ["scale", "adam"])
 
         # Check accumulators
         accumulators = adam_optimizer.get_accumulators()
@@ -405,6 +405,47 @@ class TestAdamaxOptimizer(unittest.TestCase):
         self.assertEqual(len(init_ops), 4)
         self.assertEqual(init_ops[0].type, "fill_constant")
         self.assertAlmostEqual(init_ops[0].attr('value'), learning_rate)
+
+
+class TestDpsgdOptimizer(unittest.TestCase):
+    def test_dpsgd_optimizer(self):
+        def check_dpsgd_optimizer(optimizer_attr):
+            init_program = framework.Program()
+            program = framework.Program()
+            block = program.global_block()
+            mul_x = block.create_parameter(
+                dtype="float32",
+                shape=[5, 10],
+                lod_level=0,
+                name="mul.x",
+                optimize_attr=optimizer_attr)
+            mul_y = block.create_var(
+                dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
+            mul_out = block.create_var(
+                dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
+            block.append_op(
+                type="mul",
+                inputs={"X": mul_x,
+                        "Y": mul_y},
+                outputs={"Out": mul_out},
+                attrs={"x_num_col_dims": 1})
+            mean_out = block.create_var(
+                dtype="float32", shape=[1], lod_level=0, name="mean.out")
+            block.append_op(
+                type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
+            dpsgd_optimizer = optimizer.DpsgdOptimizer(
+                learning_rate=0.01, clip=100.0, batch_size=16.0, sigma=0.0)
+            opts, _ = dpsgd_optimizer.minimize(mean_out, init_program)
+            return opts
+
+        opts = check_dpsgd_optimizer({
+            'learning_rate': 1.1,
+            'clip': 100.0,
+            'batch_size': 16.0,
+            'sigma': 4.0
+        })
+        self.assertEqual(len(opts), 2)
+        self.assertEqual([op.type for op in opts], ["scale", "dpsgd"])
 
 
 class TestDecayedAdagradOptimizer(unittest.TestCase):
@@ -569,6 +610,236 @@ class TestLookaheadOptimizer(unittest.TestCase):
             opts, _ = lookahead.minimize(mean_out)
         self.assertEqual(len(opts), 2)
         self.assertEqual([op.type for op in opts], ["scale", "sgd"])
+
+
+class TestRecomputeOptimizer(unittest.TestCase):
+    def net(self, return_input=False, with_dropout=False):
+        program = framework.Program()
+        block = program.global_block()
+        mul_x = block.create_parameter(
+            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x")
+        mul_y = block.create_var(
+            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
+        mul_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
+        if with_dropout == True:
+            mul_out_drop = block.create_var(
+                dtype="float32",
+                shape=[5, 8],
+                lod_level=0,
+                name="mul.out.dropout")
+            mul_out_mask = block.create_var(
+                dtype="uint8", shape=[5, 8], lod_level=0, name="mul.out.mask")
+        b1 = block.create_parameter(
+            dtype="float32", shape=[5, 8], lod_level=0, name="b1")
+        b1_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="b1_out")
+        b2 = block.create_parameter(
+            dtype="float32", shape=[5, 8], lod_level=0, name="b2")
+        b2_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="b2_out")
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out")
+        block.append_op(
+            type="mul",
+            inputs={"X": mul_x,
+                    "Y": mul_y},
+            outputs={"Out": mul_out},
+            attrs={"x_num_col_dims": 1})
+        if with_dropout == True:
+            block.append_op(
+                type='dropout',
+                inputs={'X': [mul_out]},
+                outputs={'Out': [mul_out_drop],
+                         'Mask': [mul_out_mask]},
+                attrs={'dropout_prob': 0.5, })
+            block.append_op(
+                type="elementwise_add",
+                inputs={"X": mul_out_drop,
+                        "Y": b1},
+                outputs={"Out": b1_out})
+        else:
+            block.append_op(
+                type="elementwise_add",
+                inputs={"X": mul_out,
+                        "Y": b1},
+                outputs={"Out": b1_out})
+        block.append_op(
+            type="elementwise_add",
+            inputs={"X": b1_out,
+                    "Y": b2},
+            outputs={"Out": b2_out})
+        block.append_op(
+            type="mean", inputs={"X": b2_out}, outputs={"Out": mean_out})
+
+        if return_input == True:
+            return mul_x, mul_out, b1_out, b2_out, mean_out
+        return mul_out, b1_out, b2_out, mean_out
+
+    def test_no_checkpoint(self):
+        mul_out, b1_out, b2_out, mean_out = self.net()
+        self.assertEqual(len(mean_out.block.ops), 4)
+        self.assertEqual([op.type for op in mean_out.block.ops],
+                         ["mul", "elementwise_add", "elementwise_add", "mean"])
+        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
+        recompute_optimizer._set_checkpoints([])
+        opts, params_grads = recompute_optimizer.minimize(mean_out)
+
+        self.assertEqual(len(mean_out.block.ops), 12)
+        self.assertEqual([op.type for op in mean_out.block.ops], [
+            "mul", "elementwise_add", "elementwise_add", "mean",
+            "fill_constant", "mean_grad", "elementwise_add_grad",
+            "elementwise_add_grad", "mul_grad", "sgd", "sgd", "sgd"
+        ])
+
+    def test_one_checkpoint(self):
+        mul_out, b1_out, b2_out, mean_out = self.net()
+        self.assertEqual(len(mean_out.block.ops), 4)
+        self.assertEqual([op.type for op in mean_out.block.ops],
+                         ["mul", "elementwise_add", "elementwise_add", "mean"])
+        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
+        recompute_optimizer._set_checkpoints([b1_out])
+        opts, params_grads = recompute_optimizer.minimize(mean_out)
+
+        self.assertEqual(len(mean_out.block.ops), 13)
+        self.assertEqual([op.type for op in mean_out.block.ops], [
+            "mul", "elementwise_add", "elementwise_add", "mean",
+            "fill_constant", "mean_grad", "elementwise_add_grad", "mul",
+            "elementwise_add_grad", "mul_grad", "sgd", "sgd", "sgd"
+        ])
+
+    def test_multi_checkpoint(self):
+        mul_out, b1_out, b2_out, mean_out = self.net()
+        self.assertEqual(len(mean_out.block.ops), 4)
+        self.assertEqual([op.type for op in mean_out.block.ops],
+                         ["mul", "elementwise_add", "elementwise_add", "mean"])
+        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
+        recompute_optimizer._set_checkpoints([mul_out, b2_out])
+        opts, params_grads = recompute_optimizer.minimize(mean_out)
+
+        self.assertEqual(len(mean_out.block.ops), 13)
+        self.assertEqual([op.type for op in mean_out.block.ops], [
+            "mul", "elementwise_add", "elementwise_add", "mean",
+            "fill_constant", "mean_grad", "elementwise_add",
+            "elementwise_add_grad", "elementwise_add_grad", "mul_grad", "sgd",
+            "sgd", "sgd"
+        ])
+
+    def test_adjacent_checkpoint(self):
+        mul_out, b1_out, b2_out, mean_out = self.net()
+        self.assertEqual(len(mean_out.block.ops), 4)
+        self.assertEqual([op.type for op in mean_out.block.ops],
+                         ["mul", "elementwise_add", "elementwise_add", "mean"])
+        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
+        recompute_optimizer._set_checkpoints([mul_out, b1_out])
+        opts, params_grads = recompute_optimizer.minimize(mean_out)
+
+        self.assertEqual(len(mean_out.block.ops), 12)
+        self.assertEqual([op.type for op in mean_out.block.ops], [
+            "mul", "elementwise_add", "elementwise_add", "mean",
+            "fill_constant", "mean_grad", "elementwise_add_grad",
+            "elementwise_add_grad", "mul_grad", "sgd", "sgd", "sgd"
+        ])
+
+    def test_out_of_order_checkpoint(self):
+        mul_out, b1_out, b2_out, mean_out = self.net()
+        self.assertEqual(len(mean_out.block.ops), 4)
+        self.assertEqual([op.type for op in mean_out.block.ops],
+                         ["mul", "elementwise_add", "elementwise_add", "mean"])
+        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
+        recompute_optimizer._set_checkpoints([b2_out, mul_out])
+        opts, params_grads = recompute_optimizer.minimize(mean_out)
+
+        self.assertEqual(len(mean_out.block.ops), 13)
+        self.assertEqual([op.type for op in mean_out.block.ops], [
+            "mul", "elementwise_add", "elementwise_add", "mean",
+            "fill_constant", "mean_grad", "elementwise_add",
+            "elementwise_add_grad", "elementwise_add_grad", "mul_grad", "sgd",
+            "sgd", "sgd"
+        ])
+
+    def test_input_as_checkpoints(self):
+        mul_x, mul_out, b1_out, b2_out, mean_out = self.net(return_input=True)
+        self.assertEqual(len(mean_out.block.ops), 4)
+        self.assertEqual([op.type for op in mean_out.block.ops],
+                         ["mul", "elementwise_add", "elementwise_add", "mean"])
+        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
+        recompute_optimizer._set_checkpoints([mul_x, b2_out])
+        opts, params_grads = recompute_optimizer.minimize(mean_out)
+
+        self.assertEqual(len(mean_out.block.ops), 14)
+        self.assertEqual([op.type for op in mean_out.block.ops], [
+            "mul", "elementwise_add", "elementwise_add", "mean",
+            "fill_constant", "mean_grad", "mul", "elementwise_add",
+            "elementwise_add_grad", "elementwise_add_grad", "mul_grad", "sgd",
+            "sgd", "sgd"
+        ])
+
+    def test_apply_gradients(self):
+        mul_out, b1_out, b2_out, mean_out = self.net()
+        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
+        recompute_optimizer._set_checkpoints([b1_out])
+        # apply backward
+        params_grads = recompute_optimizer.backward(
+            mean_out,
+            startup_program=None,
+            parameter_list=None,
+            no_grad_set=None)
+
+        # apply gradient
+        program = mean_out.block.program
+        with framework.program_guard(program, None):
+            optimize_ops = recompute_optimizer.apply_gradients(params_grads)
+
+        self.assertEqual(len(mean_out.block.ops), 13)
+        self.assertEqual([op.type for op in mean_out.block.ops], [
+            "mul", "elementwise_add", "elementwise_add", "mean",
+            "fill_constant", "mean_grad", "elementwise_add_grad", "mul",
+            "elementwise_add_grad", "mul_grad", "sgd", "sgd", "sgd"
+        ])
+
+    def test_load(self):
+        mul_out, b1_out, b2_out, mean_out = self.net()
+        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
+        recompute_optimizer._set_checkpoints([b1_out])
+        try:
+            stat_dict = {}
+            recompute_optimizer.load(stat_dict)
+        except NotImplementedError as e:
+            self.assertEqual(
+                "load function is not supported by Recompute Optimizer for now",
+                cpt.get_exception_message(e))
+
+    def test_dropout(self):
+        """
+        If there are dropout layers in the forward nets, we should add a
+        seed op
+        """
+        mul_out, b1_out, b2_out, mean_out = self.net(with_dropout=True)
+        self.assertEqual(len(mean_out.block.ops), 5)
+        self.assertEqual(
+            [op.type for op in mean_out.block.ops],
+            ["mul", "dropout", "elementwise_add", "elementwise_add", "mean"])
+        sgd_optimizer = optimizer.SGD(learning_rate=1.0)
+        recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
+        recompute_optimizer._set_checkpoints([b1_out])
+        opts, params_grads = recompute_optimizer.minimize(mean_out)
+
+        self.assertEqual(len(mean_out.block.ops), 17)
+        self.assertEqual([op.type for op in mean_out.block.ops], [
+            "mul", "seed", "dropout", "elementwise_add", "elementwise_add",
+            "mean", "fill_constant", "mean_grad", "elementwise_add_grad", "mul",
+            "dropout", "elementwise_add_grad", "dropout_grad", "mul_grad",
+            "sgd", "sgd", "sgd"
+        ])
 
 
 if __name__ == '__main__':

@@ -32,7 +32,7 @@ class ScatterOpCUDAKernel : public framework::OpKernel<T> {
     auto *Out = ctx.Output<Tensor>("Out");
     bool overwrite = ctx.Attr<bool>("overwrite");
 
-    Out->ShareDataWith(*X);
+    framework::TensorCopy(*X, ctx.GetPlace(), Out);
     // use template class to support int32_t and int64_t
     const auto &index_type = Ids->type();
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
@@ -94,5 +94,9 @@ class ScatterGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(scatter, ops::ScatterOpCUDAKernel<float>);
-REGISTER_OP_CUDA_KERNEL(scatter_grad, ops::ScatterGradOpCUDAKernel<float>);
+REGISTER_OP_CUDA_KERNEL(scatter, ops::ScatterOpCUDAKernel<float>,
+                        ops::ScatterOpCUDAKernel<double>,
+                        ops::ScatterOpCUDAKernel<int>,
+                        ops::ScatterOpCUDAKernel<int64_t>);
+REGISTER_OP_CUDA_KERNEL(scatter_grad, ops::ScatterGradOpCUDAKernel<float>,
+                        ops::ScatterGradOpCUDAKernel<double>);

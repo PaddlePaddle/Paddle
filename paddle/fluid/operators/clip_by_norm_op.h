@@ -75,7 +75,7 @@ class ClipByNormKernel : public framework::OpKernel<T> {
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
 
-    auto temp = (x_norm <= max_norm).template cast<T>().eval();
+    auto temp = (x_norm <= max_norm).template cast<T>();
     auto scaling = temp + (static_cast<T>(1) - temp) * max_norm / x_norm;
     Eigen::array<int, 1> one_dim{{1}};
     Eigen::DSizes<int, 1> m_dsize(input->numel());
@@ -105,10 +105,11 @@ class ClipByNormOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(Tensor) The input of clip_by_norm op."
+             "(Tensor) The input of clip_by_norm op and data type is float32."
              "The number of dimensions must be between [1, 9].");
     AddOutput("Out",
-              "(Tensor) The output of clip_by_norm op with shape as input(X)");
+              "(Tensor) The output of clip_by_norm op with shape as input(X)"
+              "The data type is float32.");
     AddAttr<float>("max_norm", "(float) The maximum norm value.");
     AddComment(R"DOC(
 ClipByNorm Operator.

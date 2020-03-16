@@ -77,8 +77,12 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "quant_conv2d_dequant_fuse_pass",            //
       "delete_quant_dequant_op_pass",              //
       // "fc_fuse_pass",                                 //
-      "tensorrt_subgraph_pass",  //
-      "conv_bn_fuse_pass",       //
+      "simplify_with_basic_ops_pass",  //
+      "multihead_matmul_fuse_pass",    //
+      "conv_bn_fuse_pass",             //
+      "fc_fuse_pass",                  //
+      "tensorrt_subgraph_pass",        //
+      "conv_bn_fuse_pass",             //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
       "conv_elementwise_add_act_fuse_pass",   //
@@ -88,17 +92,10 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "transpose_flatten_concat_fuse_pass",
 });
 
-// The following passes works for Anakin sub-graph engine.
-const std::vector<std::string> kAnakinSubgraphPasses({
-    "quant_conv2d_dequant_fuse_pass",               //
-    "simplify_anakin_priorbox_detection_out_pass",  //
-    "fillconstant_elementwisemul_fuse",             //
-    "fc_fuse_pass",                                 //
-    "conv_elementwise_add_fuse_pass",               //
-    "fc_gru_fuse_pass",                             //
-    "shuffle_channel_detect_pass",                  //
-    "anakin_subgraph_pass",                         //
-    "fc_gru_fuse_pass",                             //
+const std::vector<std::string> kLiteSubgraphPasses({
+#ifdef PADDLE_WITH_LITE
+    "lite_subgraph_pass",
+#endif
 });
 
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
@@ -106,19 +103,21 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
     //   "identity_scale_op_clean_pass",             //
     "is_test_pass",                                  //
         "simplify_with_basic_ops_pass",              //
-        "fc_fuse_pass",                              //
-        "fc_elementwise_layernorm_fuse_pass",        //
         "conv_affine_channel_fuse_pass",             //
         "conv_eltwiseadd_affine_channel_fuse_pass",  //
         "conv_bn_fuse_pass",                         //
         "conv_eltwiseadd_bn_fuse_pass",              //
+        "embedding_eltwise_layernorm_fuse_pass",     //
+        "multihead_matmul_fuse_pass_v2",             //
+        "fc_fuse_pass",                              //
+        "fc_elementwise_layernorm_fuse_pass",        //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
         "conv_elementwise_add_act_fuse_pass",   //
         "conv_elementwise_add2_act_fuse_pass",  //
         "conv_elementwise_add_fuse_pass",       //
 #endif                                          //
-        "transpose_flatten_concat_fuse_pass",
+        "transpose_flatten_concat_fuse_pass",   //
         // following pass should be located in the last, since it will
         // work on all fused ops.
         "runtime_context_cache_pass"
@@ -155,17 +154,19 @@ CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
                   // "seqpool_concat_fuse_pass",    //
                   "seqpool_cvm_concat_fuse_pass",  //
                   // "embedding_fc_lstm_fuse_pass", //
-                  "fc_lstm_fuse_pass",             //
-                  "mul_lstm_fuse_pass",            //
-                  "fc_gru_fuse_pass",              //
-                  "mul_gru_fuse_pass",             //
-                  "seq_concat_fc_fuse_pass",       //
-                  "fc_fuse_pass",                  //
-                  "repeated_fc_relu_fuse_pass",    //
-                  "squared_mat_sub_fuse_pass",     //
-                  "conv_bn_fuse_pass",             //
-                  "conv_eltwiseadd_bn_fuse_pass",  //
-                  "is_test_pass",                  //
+                  "fc_lstm_fuse_pass",                       //
+                  "mul_lstm_fuse_pass",                      //
+                  "fc_gru_fuse_pass",                        //
+                  "mul_gru_fuse_pass",                       //
+                  "seq_concat_fc_fuse_pass",                 //
+                  "fc_fuse_pass",                            //
+                  "repeated_fc_relu_fuse_pass",              //
+                  "squared_mat_sub_fuse_pass",               //
+                  "conv_bn_fuse_pass",                       //
+                  "conv_eltwiseadd_bn_fuse_pass",            //
+                  "conv_transpose_bn_fuse_pass",             //
+                  "conv_transpose_eltwiseadd_bn_fuse_pass",  //
+                  "is_test_pass",                            //
                   // following pass should be located in the last, since
                   // it will work on all fused ops.
                   "runtime_context_cache_pass"});
@@ -185,7 +186,9 @@ void CpuPassStrategy::EnableMKLDNN() {
              "depthwise_conv_mkldnn_pass",    //
              "conv_bn_fuse_pass",             // Execute BN passes again to
              "conv_eltwiseadd_bn_fuse_pass",  // preserve correct pass order
-             "conv_bias_mkldnn_fuse_pass",    //
+             "conv_transpose_bn_fuse_pass",   //
+             "conv_transpose_eltwiseadd_bn_fuse_pass",  //
+             "conv_bias_mkldnn_fuse_pass",              //
              "conv_transpose_bias_mkldnn_fuse_pass",
              "conv3d_bias_mkldnn_fuse_pass",  //
              "conv_elementwise_add_mkldnn_fuse_pass",

@@ -264,5 +264,35 @@ class TestLinearWamrupLearningRateDecayWithScalarInput(unittest.TestCase):
         run_places(lr, start_lr, end_lr)
 
 
+class TestLinearWamrupLearningRateDecayDygraphMode(unittest.TestCase):
+    def test_dygraph_mode(self):
+        with fluid.dygraph.guard():
+            lr = fluid.layers.polynomial_decay(
+                learning_rate=1.0,
+                decay_steps=10,
+                end_learning_rate=0.0,
+                power=1.0)
+            lr = fluid.layers.linear_lr_warmup(
+                learning_rate=lr, warmup_steps=2, start_lr=0.0, end_lr=1.0)
+
+            right_result = [0.5, 0.9, 0.8, 0.7, 0.6]
+            for i in range(5):
+
+                t = lr()
+
+                self.assertEqual(t[0], right_result[i])
+
+
+class TestLinearWamrupLearningRateDecayDygraphModeTypeCheck(unittest.TestCase):
+    def test_dygraph_mode(self):
+        with fluid.dygraph.guard():
+            with self.assertRaises(TypeError):
+                lr = fluid.layers.linear_lr_warmup(
+                    learning_rate="fake_lr",
+                    warmup_steps=2,
+                    start_lr=0.0,
+                    end_lr=1.0)
+
+
 if __name__ == '__main__':
     unittest.main()

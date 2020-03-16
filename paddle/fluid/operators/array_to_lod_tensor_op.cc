@@ -172,7 +172,7 @@ class ArrayToLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
              "(std::vector<LodTensor>) A vector of tensors that is going to "
              "be casted to a big LoDTensor.");
     AddInput("RankTable",
-             "(LoDRankTable) RankTable provides the coarse lod infomation to "
+             "(LoDRankTable) RankTable provides the coarse lod information to "
              "build the output LoDTensor. See "
              "'paddle/framework/lod_rank_table.h' for more details.");
     AddOutput("Out", "(LoDTensor) The LoDTensor formed by input tensor array.");
@@ -189,26 +189,39 @@ class ArrayToLoDTensorInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE(context->HasInput("X"),
-                   "ArrayToLoDTensorOp must has input X.");
+                   "ArrayToLoDTensorOp must have input X.");
     PADDLE_ENFORCE(context->HasInput("RankTable"),
-                   "ArrayToLoDTensorOp must has input RankTable.");
+                   "ArrayToLoDTensorOp must have input RankTable.");
+    // For compile-time, the first dim of input X and output Out should be -1.
+    // For runtime, the first dim of output Out should be the sum of all
+    // elements's first dim in input X. The output's dims will be re-computed in
+    // detail kernel implementation.
     context->SetOutputDim("Out", context->GetInputDim("X"));
+
+    // The output LoDTensor's lod_level should be input X's lod_level + 1.
+    // For compile-time, we call SetLoDLevel to set output's lod_level.
+    // For runtime, output LoDTensor's lod is determined by input X's lod and
+    // the level specified by input RandTable.
+    // We cannot get X's detail lod and RankTable's level in this function, so
+    // leave this work to the detail kernel implementation.
+    if (!context->IsRuntime()) {
+      context->SetLoDLevel("Out", context->GetLoDLevel("X") + 1);
+    }
   }
 };
 
-class ArrayToLoDTensorGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ArrayToLoDTensorGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("lod_tensor_to_array");
-    grad_op->SetInput("X", OutputGrad("Out"));
-    grad_op->SetInput("RankTable", Input("RankTable"));
-    grad_op->SetOutput("Out", InputGrad("X"));
-    grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetInput("X", this->OutputGrad("Out"));
+    grad_op->SetInput("RankTable", this->Input("RankTable"));
+    grad_op->SetOutput("Out", this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -219,4 +232,5 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(array_to_lod_tensor, ops::ArrayToLoDTensorOp,
                   ops::ArrayToLoDTensorOpProtoMaker,
                   ops::ArrayToLoDTensorInferShape,
-                  ops::ArrayToLoDTensorGradMaker);
+                  ops::ArrayToLoDTensorGradMaker<paddle::framework::OpDesc>,
+                  ops::ArrayToLoDTensorGradMaker<paddle::imperative::OpBase>);

@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/operators/reader/py_reader.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
 
@@ -39,7 +41,38 @@ class CreatePyReaderOp : public framework::OperatorBase {
     auto* queue_holder =
         queue_holder_var->template GetMutable<LoDTensorBlockingQueueHolder>();
 
-    out->Reset(std::make_shared<PyReader>(queue_holder->GetQueue()));
+    /* Coverting shape_concat and ranks into DDim of each data.
+     shape_concat and ranks are shapes and shape ranks of each data.E.g.
+     shape_concat = [2,3,4,5,6], ranks = [3,2] means two data whose shapes are
+     [2,3,4] and [5,6] respectively. */
+    auto& shape_concat = Attr<std::vector<int>>("shape_concat");
+    auto& ranks = Attr<std::vector<int>>("ranks");
+    int shape_start_index = 0;
+    std::vector<framework::DDim> dims;
+    for (size_t i = 0; i < ranks.size(); ++i) {
+      int shape_end_index = shape_start_index + ranks[i];
+      auto shape = std::vector<int>(shape_concat.begin() + shape_start_index,
+                                    shape_concat.begin() + shape_end_index);
+      dims.push_back(framework::make_ddim(shape));
+      shape_start_index = shape_end_index;
+    }
+
+    // Converts VarType from int to enum
+    auto& dtype_int = Attr<std::vector<int>>("dtypes");
+    std::vector<framework::proto::VarType::Type> var_types;
+    for (size_t i = 0; i < dtype_int.size(); ++i) {
+      var_types.push_back(
+          static_cast<framework::proto::VarType::Type>(dtype_int[i]));
+    }
+
+    // Converts need_check_feed from int to bool
+    auto& need_check_feed_int = Attr<std::vector<int>>("need_check_feed");
+    std::vector<bool> need_check_feed;
+    for (size_t i = 0; i < need_check_feed_int.size(); ++i) {
+      need_check_feed.push_back(static_cast<bool>(need_check_feed_int[i]));
+    }
+    out->Reset(std::make_shared<PyReader>(queue_holder->GetQueue(), dims,
+                                          var_types, need_check_feed));
   }
 };
 

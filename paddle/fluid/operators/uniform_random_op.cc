@@ -11,9 +11,10 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include "paddle/fluid/operators/uniform_random_op.h"
+#include <string>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-
 namespace paddle {
 namespace operators {
 
@@ -26,14 +27,28 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     framework::Tensor *tensor = nullptr;
     auto out_var = ctx.OutputVar("Out");
-    if (out_var->IsType<framework::LoDTensor>()) {
-      tensor = out_var->GetMutable<framework::LoDTensor>();
-    } else if (out_var->IsType<framework::SelectedRows>()) {
-      auto shape = ctx.Attr<std::vector<int64_t>>("shape");
+    std::vector<int64_t> new_shape;
+    auto list_new_shape_tensor =
+        ctx.MultiInput<framework::Tensor>("ShapeTensorList");
+    if (list_new_shape_tensor.size() > 0 || ctx.HasInput("ShapeTensor")) {
+      if (ctx.HasInput("ShapeTensor")) {
+        auto *shape_tensor = ctx.Input<framework::Tensor>("ShapeTensor");
+        new_shape = GetNewDataFromShapeTensor(shape_tensor);
+      } else if (list_new_shape_tensor.size() > 0) {
+        new_shape = GetNewDataFromShapeTensorList(list_new_shape_tensor);
+      }
+    }
+
+    if (out_var->IsType<framework::SelectedRows>()) {
       auto *selected_rows = out_var->GetMutable<framework::SelectedRows>();
       tensor = selected_rows->mutable_value();
+      auto shape = ctx.Attr<std::vector<int64_t>>("shape");
+      if (!new_shape.empty()) shape = new_shape;
       tensor->Resize(framework::make_ddim(shape));
       selected_rows->mutable_rows()->reserve(shape[0]);
+    } else if (out_var->IsType<framework::LoDTensor>()) {
+      tensor = out_var->GetMutable<framework::LoDTensor>();
+      if (!new_shape.empty()) tensor->Resize(framework::make_ddim(new_shape));
     } else {
       PADDLE_THROW(
           "uniform_random_op's output only"
@@ -60,7 +75,11 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
     auto diag_val = static_cast<T>(ctx.Attr<float>("diag_val"));
     if (diag_num > 0) {
       PADDLE_ENFORCE_GT(size, (diag_num - 1) * (diag_step + 1),
-                        "The index of diagonal elements is out of bounds");
+                        "ShapeError: the diagonal's elements is equal (num-1) "
+                        "* (step-1) with num %d, step %d,"
+                        "It should be smaller than %d, but received %d",
+                        diag_num, diag_step, (diag_num - 1) * (diag_step + 1),
+                        size);
       for (int64_t i = 0; i < diag_num; ++i) {
         int64_t pos = i * diag_step + i;
         data[pos] = diag_val;
@@ -80,17 +99,54 @@ class UniformRandomOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_LT(ctx->Attrs().Get<float>("min"),
                       ctx->Attrs().Get<float>("max"),
                       "uniform_random's min must less then max");
-    auto &shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
     PADDLE_ENFORCE_GE(ctx->Attrs().Get<int>("diag_num"), 0,
                       "diag_num must greater than or equal 0");
     PADDLE_ENFORCE_GE(ctx->Attrs().Get<int>("diag_step"), 0,
                       "diag_step must greater than or equal 0");
-    std::vector<int64_t> temp;
-    temp.reserve(shape.size());
-    for (auto dim : shape) {
-      temp.push_back(static_cast<int64_t>(dim));
+
+    if (ctx->HasInputs("ShapeTensorList")) {
+      // top prority shape
+      auto inputs_name = ctx->Inputs("ShapeTensorList");
+      PADDLE_ENFORCE_GT(
+          inputs_name.size(), 0,
+          "Input(ShapeTensorList)'size of Op(uniform_random) can't be zero."
+          "Please check the Attr(shape)'s size of"
+          "Op(fluid.layers.uniform_random).)");
+      auto out_dims = std::vector<int>(inputs_name.size(), -1);
+      ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
+
+      return;
     }
-    ctx->SetOutputDim("Out", framework::make_ddim(temp));
+    auto &shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
+    if (ctx->HasInput("ShapeTensor") && shape.empty()) {
+      auto shape_dims = ctx->GetInputDim("ShapeTensor");
+      PADDLE_ENFORCE_EQ(
+          shape_dims.size(), 1,
+          "ShapeError: Input(ShapeTensor)' dimension size of "
+          "Op(uniform_random) must be 1."
+          "But received ShapeTensor's dimensions = %d, shape = [%s]",
+          shape_dims.size(), shape_dims);
+      int num_ele = 1;
+      for (int i = 0; i < shape_dims.size(); ++i) {
+        num_ele *= shape_dims[i];
+      }
+      auto vec_dims = std::vector<int64_t>(num_ele, -1);
+      auto out_dims = framework::make_ddim(vec_dims);
+      ctx->SetOutputDim("Out", out_dims);
+      return;
+    }
+
+    PADDLE_ENFORCE_EQ(
+        shape.empty(), false,
+        "if there is no Input(ShapeTensorList) and no Input(ShapeTensor),the "
+        "attr(shape) information must "
+        "be set by Attr(shape).");
+    std::vector<int64_t> tensor_shape;
+    tensor_shape.reserve(shape.size());
+    for (auto dim : shape) {
+      tensor_shape.push_back(static_cast<int64_t>(dim));
+    }
+    ctx->SetOutputDim("Out", framework::make_ddim(tensor_shape));
   }
 
  protected:
@@ -100,18 +156,44 @@ class UniformRandomOp : public framework::OperatorWithKernel {
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
   }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "ShapeTensorList" || var_name == "ShapeTensor") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
+  }
 };
 
 class UniformRandomOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+    AddInput("ShapeTensor",
+             "(Tensor<int64_t> or Tensor<int32_t>, optional) . If provided, "
+             "uniform_random "
+             "according to "
+             "this given shape. It means that it has a higher priority than "
+             "the shape attribute, while the shape attribute still should be "
+             "set correctly to guarantee shape inference in compile time.")
+        .AsDispensable();
+    AddInput("ShapeTensorList",
+             "(vector<Tensor<int64_t>> or vector<Tensor<int32_t>>, optional). "
+             "If provided, uniform_random use this. The shape of the tensor "
+             "must be [1], it has the highest priority comparing with "
+             "Input(ShapeTensor) and attr(shape).")
+        .AsDuplicable()
+        .AsDispensable();
     AddOutput("Out", "The output tensor of uniform random op");
     AddComment(R"DOC(
 This operator initializes a tensor with random values sampled from a
-uniform distribution. The random result is in set [min, max].
+uniform distribution. The random result is in set [min, max).
 
 )DOC");
-    AddAttr<std::vector<int64_t>>("shape", "The shape of the output tensor");
+    AddAttr<std::vector<int64_t>>("shape", "The shape of the output tensor")
+        .SetDefault({});
     AddAttr<float>("min", "Minimum value of uniform random. [default -1.0].")
         .SetDefault(-1.0f);
     AddAttr<float>("max", "Maximun value of uniform random. [default 1.0].")
@@ -153,10 +235,12 @@ class UniformRandomOpVarTypeInference : public framework::VarTypeInference {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(uniform_random, paddle::operators::UniformRandomOp,
-                  paddle::operators::UniformRandomOpMaker,
-                  paddle::framework::EmptyGradOpMaker,
-                  paddle::operators::UniformRandomOpVarTypeInference);
+REGISTER_OPERATOR(
+    uniform_random, paddle::operators::UniformRandomOp,
+    paddle::operators::UniformRandomOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    paddle::operators::UniformRandomOpVarTypeInference);
 
 REGISTER_OP_CPU_KERNEL(uniform_random,
                        paddle::operators::CPUUniformRandomKernel<float>,

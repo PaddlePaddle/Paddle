@@ -197,6 +197,8 @@ void BindDataset(py::module *m) {
            py::call_guard<py::gil_scoped_release>())
       .def("set_hdfs_config", &framework::Dataset::SetHdfsConfig,
            py::call_guard<py::gil_scoped_release>())
+      .def("set_download_cmd", &framework::Dataset::SetDownloadCmd,
+           py::call_guard<py::gil_scoped_release>())
       .def("set_data_feed_desc", &framework::Dataset::SetDataFeedDesc,
            py::call_guard<py::gil_scoped_release>())
       .def("get_filelist", &framework::Dataset::GetFileList,
@@ -209,6 +211,8 @@ void BindDataset(py::module *m) {
            &framework::Dataset::GetFleetSendBatchSize,
            py::call_guard<py::gil_scoped_release>())
       .def("get_hdfs_config", &framework::Dataset::GetHdfsConfig,
+           py::call_guard<py::gil_scoped_release>())
+      .def("get_download_cmd", &framework::Dataset::GetDownloadCmd,
            py::call_guard<py::gil_scoped_release>())
       .def("get_data_feed_desc", &framework::Dataset::GetDataFeedDesc,
            py::call_guard<py::gil_scoped_release>())
@@ -247,6 +251,12 @@ void BindDataset(py::module *m) {
            py::call_guard<py::gil_scoped_release>())
       .def("merge_by_lineid", &framework::Dataset::MergeByInsId,
            py::call_guard<py::gil_scoped_release>())
+      .def("set_generate_unique_feasigns",
+           &framework::Dataset::SetGenerateUniqueFeasign,
+           py::call_guard<py::gil_scoped_release>())
+      .def("generate_local_tables_unlock",
+           &framework::Dataset::GenerateLocalTablesUnlock,
+           py::call_guard<py::gil_scoped_release>())
       .def("slots_shuffle", &framework::Dataset::SlotsShuffle,
            py::call_guard<py::gil_scoped_release>())
       .def("set_fea_eval", &framework::Dataset::SetFeaEval,
@@ -257,6 +267,15 @@ void BindDataset(py::module *m) {
            py::call_guard<py::gil_scoped_release>())
       .def("destroy_preload_readers",
            &framework::Dataset::DestroyPreLoadReaders,
+           py::call_guard<py::gil_scoped_release>())
+      .def("dynamic_adjust_channel_num",
+           &framework::Dataset::DynamicAdjustChannelNum,
+           py::call_guard<py::gil_scoped_release>())
+      .def("dynamic_adjust_readers_num",
+           &framework::Dataset::DynamicAdjustReadersNum,
+           py::call_guard<py::gil_scoped_release>())
+      .def("set_fleet_send_sleep_seconds",
+           &framework::Dataset::SetFleetSendSleepSeconds,
            py::call_guard<py::gil_scoped_release>());
 
   py::class_<IterableDatasetWrapper>(*m, "IterableDatasetWrapper")

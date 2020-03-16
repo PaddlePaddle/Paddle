@@ -32,7 +32,7 @@ from . import tensor
 from ..initializer import init_on_cpu
 from ..framework import default_main_program, Parameter, unique_name, name_scope
 from ..framework import Variable
-from ..dygraph import base as imperative_base
+from ..framework import in_dygraph_mode
 from ..dygraph import learning_rate_scheduler as imperate_lr
 
 __all__ = [
@@ -56,7 +56,7 @@ def noam_decay(d_model, warmup_steps):
 
     .. code-block:: python
       
-      import padde.fluid as fluid
+      import paddle.fluid as fluid
       import numpy as np
       # set hyper parameters
       d_model = 2
@@ -80,7 +80,7 @@ def noam_decay(d_model, warmup_steps):
     Examples:
         .. code-block:: python
 
-          import padde.fluid as fluid
+          import paddle.fluid as fluid
           warmup_steps = 100
           learning_rate = 0.01
           lr = fluid.layers.learning_rate_scheduler.noam_decay(
@@ -88,7 +88,7 @@ def noam_decay(d_model, warmup_steps):
                          warmup_steps)
     """
     with default_main_program()._lr_schedule_guard():
-        if imperative_base.enabled():
+        if in_dygraph_mode():
             decay = imperate_lr.NoamDecay(d_model, warmup_steps)
             return decay
         else:
@@ -109,20 +109,25 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     training progresses. By using this function, the learning rate will be decayed by
     'decay_rate' every 'decay_steps' steps.
 
+    Decayed learning rate calculates as follows:
+
     >>> if staircase == True:
     >>>     decayed_learning_rate = learning_rate * decay_rate ^ floor(global_step / decay_steps)
     >>> else:
     >>>     decayed_learning_rate = learning_rate * decay_rate ^ (global_step / decay_steps)
 
     Args:
-        learning_rate(Variable|float): The initial learning rate.
-        decay_steps(int): See the decay computation above.
-        decay_rate(float): The decay rate. See the decay computation above.
-        staircase(Boolean): If True, decay the learning rate at discrete intervals.
-                            Default: False
+        learning_rate(Variable|float): The initial learning rate. It should be a Variable 
+                                       or a float
+        decay_steps(int): The learning rate decay steps. See the decay computation above.
+        decay_rate(float): The learning rate decay rate. See the decay computation above.
+        staircase(bool): If True, decay the learning rate at discrete intervals, which 
+                         means the learning rate will be decayed by `decay_rate` every
+                         `decay_steps`. If False, learning rate will be decayed continuously
+                         and following the formula above. Default: False
 
     Returns:
-        Variable: The decayed learning rate
+        Variable: The decayed learning rate. The data type is float32.
 
     Examples:
         .. code-block:: python
@@ -138,7 +143,7 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
 
     """
     with default_main_program()._lr_schedule_guard():
-        if imperative_base.enabled():
+        if in_dygraph_mode():
             decay = imperate_lr.ExponentialDecay(learning_rate, decay_steps,
                                                  decay_rate, staircase)
             return decay
@@ -156,20 +161,29 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
 def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     """Applies natural exponential decay to the initial learning rate.
 
+    When training a model, it is often recommended to lower the learning rate as the
+    training progresses. By using this function, the learning rate will be decayed by
+    natural exponential power 'decay_rate' every 'decay_steps' steps.
+
+    Decayed learning rate calculates as follows:
+
     >>> if not staircase:
     >>>     decayed_learning_rate = learning_rate * exp(- decay_rate * (global_step / decay_steps))
     >>> else:
     >>>     decayed_learning_rate = learning_rate * exp(- decay_rate * floor(global_step / decay_steps))
 
     Args:
-        learning_rate: A scalar float32 value or a Variable. This
-          will be the initial learning rate during training
-        decay_steps: A Python `int32` number.
-        decay_rate: A Python `float` number.
-        staircase: Boolean. If set true, decay the learning rate every decay_steps.
+        learning_rate(Variable|float): The initial learning rate. It should be a Variable 
+                                       or a float
+        decay_steps(int): The learning rate decay steps. See the decay computation above.
+        decay_rate(float): The learning rate decay rate. See the decay computation above.
+        staircase(bool): If True, decay the learning rate at discrete intervals, which 
+                         means the learning rate will be decayed by natural exponential power
+                         `decay_rate` every `decay_steps`. If False, learning rate will be
+                         decayed continuously and following the formula above. Default: False
 
     Returns:
-        The decayed learning rate
+        The decayed learning rate. The data type is float32.
 
     Examples:
         .. code-block:: python
@@ -185,7 +199,7 @@ def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
 
     """
     with default_main_program()._lr_schedule_guard():
-        if imperative_base.enabled():
+        if in_dygraph_mode():
             decay = imperate_lr.NaturalExpDecay(learning_rate, decay_steps,
                                                 decay_rate, staircase)
             return decay
@@ -208,20 +222,25 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     training progresses. By using this function, an inverse decay function will be
     applied to the initial learning rate.
 
+    Decayed learning rate calculates as follows:
+
     >>> if staircase == True:
     >>>     decayed_learning_rate = learning_rate / (1 + decay_rate * floor(global_step / decay_step))
     >>> else:
     >>>     decayed_learning_rate = learning_rate / (1 + decay_rate * global_step / decay_step)
 
     Args:
-        learning_rate(Variable|float): The initial learning rate.
-        decay_steps(int): See the decay computation above.
-        decay_rate(float): The decay rate. See the decay computation above.
-        staircase(Boolean): If True, decay the learning rate at discrete intervals.
-                            Default: False
+        learning_rate(Variable|float): The initial learning rate. It should be a Variable 
+                                       or a float
+        decay_steps(int): The learning rate decay steps. See the decay computation above.
+        decay_rate(float): The learning rate decay rate. See the decay computation above.
+        staircase(bool): If True, decay the learning rate at discrete intervals, which 
+                         means the learning rate will be decayed by `decay_rate` times 
+                         every `decay_steps`. If False, learning rate will be decayed 
+                         continuously and following the formula above. Default: False
 
     Returns:
-        Variable: The decayed learning rate
+        Variable: The decayed learning rate. The data type is float32.
 
     Examples:
         .. code-block:: python
@@ -229,14 +248,14 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
           import paddle.fluid as fluid
           base_lr = 0.1
           sgd_optimizer = fluid.optimizer.SGD(
-	      learning_rate=fluid.layers.natural_exp_decay(
+	      learning_rate=fluid.layers.inverse_time_decay(
 		    learning_rate=base_lr,
 		    decay_steps=10000,
 		    decay_rate=0.5,
 		    staircase=True))
     """
     with default_main_program()._lr_schedule_guard():
-        if imperative_base.enabled():
+        if in_dygraph_mode():
             decay = imperate_lr.InverseTimeDecay(learning_rate, decay_steps,
                                                  decay_rate, staircase)
             return decay
@@ -292,7 +311,7 @@ def polynomial_decay(learning_rate,
 
     """
     with default_main_program()._lr_schedule_guard():
-        if imperative_base.enabled():
+        if in_dygraph_mode():
             decay = imperate_lr.PolynomialDecay(learning_rate, decay_steps,
                                                 end_learning_rate, power, cycle)
             return decay
@@ -361,7 +380,7 @@ def piecewise_decay(boundaries, values):
         if len(values) - len(boundaries) != 1:
             raise ValueError("len(values) - len(boundaries) should be 1")
 
-        if imperative_base.enabled():
+        if in_dygraph_mode():
             decay = imperate_lr.PiecewiseDecay(boundaries, values, 0)
             return decay
         else:
@@ -425,7 +444,7 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
     """
 
     with default_main_program()._lr_schedule_guard():
-        if imperative_base.enabled():
+        if in_dygraph_mode():
             decay = imperate_lr.CosineDecay(learning_rate, step_each_epoch,
                                             epochs)
             return decay
@@ -440,37 +459,59 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
 
 def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
     """
-    Applies linear learning rate warmup before the normal learning rate
-    scheduling.
-
-    .. code-block:: python
-
-     if global_step < warmup_steps:
-         linear_step = end_lr - start_lr
-         lr = start_lr + linear_step * (global_step / warmup_steps)
-
+    This operator use the linear learning rate warm up strategy to adjust the learning rate preliminarily before the normal learning rate scheduling.
+    For more information, please refer to `Bag of Tricks for Image Classification with Convolutional Neural Networks <https://arxiv.org/abs/1812.01187>`_
+    
+    When global_step < warmup_steps, learning rate is updated as:
+    
+    .. code-block:: text
+    
+            linear_step = end_lr - start_lr
+            lr = start_lr + linear_step * (global_step / warmup_steps)
+    
+    where start_lr is the initial learning rate, and end_lr is the final learning rate;
+    
+    When global_step >= warmup_steps, learning rate is updated as:
+    
+    .. code-block:: text
+    
+            lr = learning_rate
+    
+    where lr is the learning_rate after warm-up.
+    
     Args:
-        learning_rate (float | Variable): A float value or Variable.
-        warmup_steps (int): The warmup steps.
-        start_lr (float): The start learning rate of warmup.
-        end_lr (float): The end learning rate of warmup.
-
+        learning_rate (Variable|float): Learning_rate after warm-up, it could be 1D-Tensor or single value with the data type of float32.
+        warmup_steps (int): Steps for warm up.
+        start_lr (float): Initial learning rate of warm up.
+        end_lr (float): Final learning rate of warm up.
+    
     Returns:
-        The decayed learning rate in warmup period.
-
+        Variable: Warm-up learning rate with the same data type as learning_rate.
+    
+    
     Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            boundaries = [100, 200]
-            lr_steps = [0.1, 0.01, 0.001]
-            warmup_steps = 50 
-            start_lr = 1. / 3. 
-            end_lr = 0.1
-            decayed_lr = fluid.layers.linear_lr_warmup(
-                fluid.layers.piecewise_decay(boundaries, lr_steps),
-                warmup_steps, start_lr, end_lr)
-
+    
+    .. code-block:: python
+    
+        import paddle.fluid as fluid
+    
+        boundaries = [100, 200]
+        lr_steps = [0.1, 0.01, 0.001]
+        learning_rate = fluid.layers.piecewise_decay(boundaries, lr_steps) #case1, 1D-Tensor
+        #learning_rate = 0.1  #case2, single-value
+        warmup_steps = 50
+        start_lr = 1. / 3.
+        end_lr = 0.1
+        decayed_lr = fluid.layers.linear_lr_warmup(learning_rate,
+            warmup_steps, start_lr, end_lr)
+    
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        out, = exe.run(fetch_list=[decayed_lr.name])
+        print(out)
+        # case1: [0.33333334]
+        # case2: [0.33333334]
     """
     dtype = 'float32'
     if isinstance(learning_rate, Variable):
@@ -478,23 +519,29 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
 
     linear_step = float(end_lr) - float(start_lr)
     with default_main_program()._lr_schedule_guard():
-        lr = tensor.create_global_var(
-            shape=[1],
-            value=0.0,
-            dtype=dtype,
-            persistable=True,
-            name="learning_rate_warmup")
 
-        global_step = _decay_step_counter()
+        if in_dygraph_mode():
+            lr = imperate_lr.LinearLrWarmup(learning_rate, warmup_steps,
+                                            start_lr, end_lr)
+            return lr
+        else:
+            lr = tensor.create_global_var(
+                shape=[1],
+                value=0.0,
+                dtype=dtype,
+                persistable=True,
+                name="learning_rate_warmup")
 
-        with control_flow.Switch() as switch:
-            with switch.case(global_step < warmup_steps):
-                decayed_lr = start_lr + linear_step * (global_step /
-                                                       float(warmup_steps))
-                tensor.assign(decayed_lr, lr)
-            with switch.default():
-                if not isinstance(learning_rate, Variable):
-                    learning_rate = tensor.fill_constant(
-                        shape=[1], dtype=dtype, value=float(learning_rate))
-                tensor.assign(learning_rate, lr)
-    return lr
+            global_step = _decay_step_counter()
+
+            with control_flow.Switch() as switch:
+                with switch.case(global_step < warmup_steps):
+                    decayed_lr = start_lr + linear_step * (global_step /
+                                                           float(warmup_steps))
+                    tensor.assign(decayed_lr, lr)
+                with switch.default():
+                    if not isinstance(learning_rate, Variable):
+                        learning_rate = tensor.fill_constant(
+                            shape=[1], dtype=dtype, value=float(learning_rate))
+                    tensor.assign(learning_rate, lr)
+            return lr

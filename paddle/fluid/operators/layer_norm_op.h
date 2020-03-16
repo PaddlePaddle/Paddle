@@ -13,8 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
+#include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 #if !defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__) && \
@@ -140,21 +143,6 @@ struct DivAndSqrtFunctor {
 };
 
 template <typename T>
-struct MulFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const { return a * b; }
-};
-
-template <typename T>
-struct AddFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const { return a + b; }
-};
-
-template <typename T>
-struct SubFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const { return a - b; }
-};
-
-template <typename T>
 struct MulInvVarFunctor {
   inline HOSTDEVICE T operator()(T a, T b) const {
     return a * std::sqrt(1.0 / b);
@@ -164,6 +152,17 @@ struct MulInvVarFunctor {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 using DataLayout = framework::DataLayout;
+
+#ifdef PADDLE_WITH_CUDA
+template <typename T>
+class LayerNormDirectCUDAFunctor {
+ public:
+  void operator()(cudaStream_t stream, const T* input,
+                  std::vector<int> input_shape, const T* bias, const T* scale,
+                  T* output, T* mean, T* variance, int begin_norm_axis,
+                  float eps);
+};
+#endif
 
 template <typename DeviceContext, typename T>
 class LayerNormKernel : public framework::OpKernel<T> {
@@ -224,17 +223,35 @@ class LayerNormKernel : public framework::OpKernel<T> {
           ctx, &out, bias, /*axis*/ 1, AddFunctor<T>(), &out);
     }
 #else
-    PADDLE_ENFORCE_EQ(mean->numel(), left);
-    PADDLE_ENFORCE_EQ(var->numel(), left);
-    PADDLE_ENFORCE_EQ(scale->numel(), right);
-    PADDLE_ENFORCE_EQ(bias->numel(), right);
+    PADDLE_ENFORCE_EQ(mean->numel(), left,
+                      platform::errors::InvalidArgument(
+                          "mean's length (%d) is not equal with expected (%d).",
+                          mean->numel(), left));
+    PADDLE_ENFORCE_EQ(var->numel(), left,
+                      platform::errors::InvalidArgument(
+                          "var's length (%d) is not equal with expected (%d).",
+                          var->numel(), left));
+    if (scale) {
+      PADDLE_ENFORCE_EQ(
+          scale->numel(), right,
+          platform::errors::InvalidArgument(
+              "scale's length (%d) is not equal with expected (%d).",
+              scale->numel(), right));
+    }
+    if (bias) {
+      PADDLE_ENFORCE_EQ(
+          bias->numel(), right,
+          platform::errors::InvalidArgument(
+              "bias's length (%d) is not equal with expected (%d).",
+              bias->numel(), right));
+    }
 
     auto ker =
         jit::KernelFuncs<jit::LayerNormTuple<T>, platform::CPUPlace>::Cache()
             .At(right);
     ker(x.data<T>(), out.data<T>(), mean->data<T>(), var->data<T>(),
-        scale->data<T>(), bias->data<T>(), static_cast<int>(left),
-        static_cast<const float>(epsilon), right);
+        scale ? scale->data<T>() : nullptr, bias ? bias->data<T>() : nullptr,
+        static_cast<int>(left), static_cast<const float>(epsilon), right);
 #endif
   }
 };

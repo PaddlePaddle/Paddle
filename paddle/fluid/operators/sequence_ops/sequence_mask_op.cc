@@ -40,8 +40,9 @@ class SequenceMaskOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
@@ -88,9 +89,11 @@ If maxlen < 0, maxlen = max(X)
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(sequence_mask, paddle::operators::SequenceMaskOp,
-                  paddle::operators::SequenceMaskOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    sequence_mask, paddle::operators::SequenceMaskOp,
+    paddle::operators::SequenceMaskOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(
     sequence_mask,
