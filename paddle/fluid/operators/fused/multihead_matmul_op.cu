@@ -300,7 +300,7 @@ template <typename T>
 void MatMulWithHeadQKV(const platform::CUDADeviceContext &context, int head_num,
                        int seq_len, int size_per_head, int batch_size,
                        bool qk_trans, bool v_trans, T *v_buf_, const T *qk_buf_,
-                       T *dst, T *out, T alpha, T beta) {
+                       T *dst, T alpha, T beta) {
   int m = batch_size * seq_len;
   int k = head_num * size_per_head;
 
@@ -312,96 +312,201 @@ void MatMulWithHeadQKV(const platform::CUDADeviceContext &context, int head_num,
   blas.BatchedGEMM(transA, transB, seq_len, size_per_head, seq_len, alpha,
                    qk_buf_, v_buf_, beta, dst, batch_size * head_num,
                    seq_len * seq_len, seq_len * size_per_head);
-
-  int grid = batch_size * head_num * seq_len;
-  int block = size_per_head;
-  transpose<T><<<grid, block, 0, stream>>>(dst, out, batch_size, seq_len,
-                                           head_num, size_per_head);
 }
 
 template <typename T>
-void MultiHeadGPUCompute(const platform::CUDADeviceContext &dev_ctx,
-                         int head_num, const framework::DDim &mat_q,
-                         const framework::DDim &mat_k,
-                         const framework::DDim &mat_v, const T *Q, const T *K,
-                         const T *V, const T *bias_q, const T *bias_k,
-                         const T *bias_v, const T *bias_qk, T *out, T alpha,
-                         T beta, bool trans_q, bool trans_k, bool trans_v) {
-  int seq_len = mat_q[1];
-  int size_per_head = (mat_q[2] / head_num);
-  int batch_size = mat_q[0];
-  int buf_size = batch_size * head_num * seq_len * size_per_head;
-  int qk_buf_size = batch_size * head_num * seq_len * seq_len;
+inline __device__ T add_func(T a, T b);
 
-  auto alloc_buf =
-      memory::Alloc(dev_ctx, (buf_size * 4 + qk_buf_size) * sizeof(T));
+template <>
+__device__ float add_func<float>(float a, float b) {
+  return a + b;
+}
 
-  T *buf = reinterpret_cast<T *>(alloc_buf->ptr());
-  T *q_buf = buf;
-  T *k_buf = buf + buf_size;
-  T *v_buf = buf + 2 * buf_size;
-  T *qk_buf = buf + 3 * buf_size;
-  T *dst_buf = buf + 3 * buf_size + qk_buf_size;
+template <>
+__device__ float2 add_func<float2>(float2 a, float2 b) {
+  float2 c;
+  c.x = a.x + b.x;
+  c.y = a.y + b.y;
+  return c;
+}
 
-  int m = batch_size * seq_len;
-  int k = head_num * size_per_head;
+template <>
+__device__ float4 add_func<float4>(float4 a, float4 b) {
+  float4 c;
+  c.x = a.x + b.x;
+  c.y = a.y + b.y;
+  c.z = a.z + b.z;
+  c.w = a.w + b.w;
+  return c;
+}
 
-  // Each block process head*size-per_head element,
-  // have m lines. bias is m lines
-  auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
+template <typename T>
+__global__ void transpose_qkv_kernel(const int H, const T *input, const T *bias,
+                                     T *output) {
+  // Input: BxSx3xNxH
+  // Bias: 3xSxB
+  // Output: 3xBxNxSxH
+  int n = threadIdx.y;
+  int s = blockIdx.x;
+  int b = blockIdx.y;
+  int m = blockIdx.z;
+
+  const int N = blockDim.y;
+  const int S = gridDim.x;
+  const int B = gridDim.y;
+
+  const int NH = N * H;
+  const int NHS = NH * S;
+  const int in_offset = n * H + m * NH + s * 3 * NH + b * NHS * 3;
+  const int bias_offset = m * NH + n * H;
+  const int out_offset = s * H + n * S * H + b * NHS + m * NHS * B;
+
+  const int i = threadIdx.x;
+  output[out_offset + i] =
+      add_func(input[in_offset + i], bias[bias_offset + i]);
+}
+
+void TransQKVWithBias(const int batch, const int seq_len, const int head_size,
+                      const int head_num, const float *input, const float *bias,
+                      float *output, cudaStream_t stream) {
+  // BxSx3xNxH + 3xNxH -> 3xBxNxSxH
+  const dim3 grid(seq_len, batch, 3);
+  if (head_size % 4 == 0) {
+    const int h = head_size / 4;
+    const float4 *input4 = reinterpret_cast<const float4 *>(input);
+    const float4 *bias4 = reinterpret_cast<const float4 *>(bias);
+    float4 *output4 = reinterpret_cast<float4 *>(output);
+    const dim3 block(h, head_num, 1);
+
+    // limit h * head_num to max block size(1024).
+    PADDLE_ENFORCE_LE(h * head_num, 1024,
+                      platform::errors::InvalidArgument(
+                          "head_num (%d) * head_size (%d) should <= %d",
+                          head_num, head_size, 1024 * 4));
+    transpose_qkv_kernel<float4><<<grid, block, 0, stream>>>(h, input4, bias4,
+                                                             output4);
+  } else if (head_size % 2 == 0) {
+    const int h = head_size / 2;
+    const float2 *input2 = reinterpret_cast<const float2 *>(input);
+    const float2 *bias2 = reinterpret_cast<const float2 *>(bias);
+    float2 *output2 = reinterpret_cast<float2 *>(output);
+    const dim3 block(h, head_num, 1);
+    // limit h * head_num to max block size(1024).
+    PADDLE_ENFORCE_LE(h * head_num, 1024,
+                      platform::errors::InvalidArgument(
+                          "head_num (%d) * head_size (%d) should <= %d",
+                          head_num, head_size, 1024 * 2));
+    transpose_qkv_kernel<float2><<<grid, block, 0, stream>>>(h, input2, bias2,
+                                                             output2);
+  } else {
+    const dim3 block(head_size, head_num, 1);
+    // limit head_size * head_num to max block size(1024).
+    PADDLE_ENFORCE_LE(head_size * head_num, 1024,
+                      platform::errors::InvalidArgument(
+                          "head_num (%d) * head_size (%d) should <= %d",
+                          head_num, head_size, 1024));
+    transpose_qkv_kernel<float><<<grid, block, 0, stream>>>(head_size, input,
+                                                            bias, output);
+  }
+}
+
+template <typename T>
+void MultiHeadGPUComputeV2(const platform::CUDADeviceContext &dev_ctx,
+                           int batch, int seq_len, int head_num, int head_size,
+                           T *qkptr, const T *bias_qk_ptr, T *tptr, T alpha,
+                           T beta) {
   auto stream = dev_ctx.stream();
+  const int tsize = batch * head_num * seq_len * head_size;
 
-  int grid = m;
-  PADDLE_ENFORCE_LE(k, 1024,
-                    "Input head_number * size_per_head should <= 1024");
-  int block = k <= 1024 ? k : 1024;
-  add_QKV<T><<<grid, block, 0, stream>>>(Q, K, V, q_buf, k_buf, v_buf, bias_q,
-                                         bias_k, bias_v, batch_size, seq_len,
-                                         head_num, size_per_head);
-
-  MatMulWithHeadQK<T>(dev_ctx, head_num, seq_len, size_per_head, batch_size,
-                      trans_q, trans_k, q_buf, k_buf, qk_buf, bias_qk, alpha,
-                      beta);
-  MatMulWithHeadQKV<T>(dev_ctx, head_num, seq_len, size_per_head, batch_size,
-                       false, trans_v, v_buf, qk_buf, dst_buf, out, T(1.0),
-                       beta);
+  T *qptr = tptr;
+  T *kptr = qptr + tsize;
+  T *vptr = kptr + tsize;
+  // batch gemm stride, softmaxwithscale.
+  MatMulWithHeadQK<T>(dev_ctx, head_num, seq_len, head_size, batch, false, true,
+                      qptr, kptr, qkptr, bias_qk_ptr, alpha, beta);
+  // batch gemm stride, transpose.
+  MatMulWithHeadQKV<T>(dev_ctx, head_num, seq_len, head_size, batch, false,
+                       false, vptr, qkptr, tptr, T(1.0), beta);
 }
 
 template <typename DeviceContext, typename T>
-class MultiHeadMatMulKernel : public framework::OpKernel<T> {
+class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *q = context.Input<framework::Tensor>("Q");
-    auto *k = context.Input<framework::Tensor>("K");
-    auto *v = context.Input<framework::Tensor>("V");
-
-    auto &bias_q = detail::Ref(context.Input<framework::Tensor>("BiasQ"),
-                               "Cannot find BiasQ");
-    auto &bias_k = detail::Ref(context.Input<framework::Tensor>("BiasK"),
-                               "Cannot find BiasK");
-    auto &bias_v = detail::Ref(context.Input<framework::Tensor>("BiasV"),
-                               "Cannot find BiasV");
+    using Tensor = framework::Tensor;
+    auto *input = context.Input<framework::Tensor>("Input");
+    auto *w = context.Input<framework::Tensor>("W");
+    auto *bias = context.Input<framework::Tensor>("Bias");
 
     auto &bias_qk = detail::Ref(context.Input<framework::Tensor>("BiasQK"),
                                 "Cannot find QK");
 
-    auto *out = context.Output<framework::Tensor>("Out");
-    out->mutable_data<T>(context.GetPlace());
-
+    auto *input_d = input->data<T>();
+    auto *w_d = w->data<T>();
+    auto *bias_d = bias->data<T>();
+    auto *bias_qk_d = bias_qk.data<T>();
     T scale = static_cast<T>(context.Attr<float>("alpha"));
-    bool transpose_q = context.Attr<bool>("transpose_Q");
-    bool transpose_k = context.Attr<bool>("transpose_K");
-    bool transpose_v = context.Attr<bool>("transpose_V");
 
     int head_number = context.Attr<int>("head_number");
     // compute q*k with eltadd
     auto &device_ctx = context.template device_context<DeviceContext>();
+    // should be (B * S * hidden)
+    auto input_dims = input->dims();
+    // shouble be (hidden * 3 * all_head_size)
+    auto w_dims = w->dims();
+    int batch = input_dims[0];
+    int seq_len = input_dims[1];
+    int hidden = input_dims[2];
 
-    MultiHeadGPUCompute<T>(device_ctx, head_number, q->dims(), k->dims(),
-                           v->dims(), q->data<T>(), k->data<T>(), v->data<T>(),
-                           bias_q.data<T>(), bias_k.data<T>(), bias_v.data<T>(),
-                           bias_qk.data<T>(), out->data<T>(), scale, T(0.0),
-                           transpose_q, transpose_k, transpose_v);
+    int all_head_size = w_dims[2];
+    int head_size = all_head_size / head_number;
+
+    auto *out = context.Output<framework::Tensor>("Out");
+    out->Resize({batch, seq_len, all_head_size});
+    auto *output_d = out->mutable_data<T>(context.GetPlace());
+
+    // (B*S, hidden)
+    const Tensor input_matrix =
+        framework::ReshapeToMatrix(*input, 2 /*x_num_col_dims */);
+    // (hidden, 3 * all_head_size)
+    const Tensor w_matrix =
+        framework::ReshapeToMatrix(*w, 1 /*y_num_col_dims*/);
+
+    Tensor temp_out_tensor;
+    auto temp_out_dims =
+        framework::make_ddim({batch, seq_len, 3, head_number, head_size});
+    temp_out_tensor.Resize({batch * seq_len, framework::product(temp_out_dims) /
+                                                 (batch * seq_len)});
+    auto *temp_out_data = temp_out_tensor.mutable_data<T>(context.GetPlace());
+
+    // (B * S, hidden) * (hidden, 3 * N * H) -> (B * S * 3 * N * H)
+    auto blas = math::GetBlas<platform::CUDADeviceContext, T>(device_ctx);
+    blas.MatMul(input_matrix, w_matrix, &temp_out_tensor);
+
+    // temp_out_tensor.Resize(temp_out_dims);
+
+    Tensor multihead_temp_tensor;
+    // B * head_number * S * S * 1 + B * S * 3 * N * H
+    int scratch_size = batch * head_number * seq_len * seq_len * 1;
+    multihead_temp_tensor.Resize({scratch_size + temp_out_tensor.numel()});
+    auto *multihead_temp_data =
+        multihead_temp_tensor.mutable_data<T>(context.GetPlace());
+    auto *qkptr = multihead_temp_data;
+    auto *tptr = multihead_temp_data + scratch_size;
+
+    auto stream = device_ctx.stream();
+    // Do the transpose with bias.
+    // BxSx3xNxH => tptr: 3xBxNxSxH.
+    TransQKVWithBias(batch, seq_len, head_size, head_number, temp_out_data,
+                     bias_d, tptr, stream);
+
+    MultiHeadGPUComputeV2<T>(device_ctx, batch, seq_len, head_number, head_size,
+                             qkptr, bias_qk_d, tptr, scale, T(0.0));
+
+    int grid = batch * head_number * seq_len;
+    int block = head_size;
+    transpose<T><<<grid, block, 0, stream>>>(tptr, output_d, batch, seq_len,
+                                             head_number, head_size);
   }
 };
 
@@ -411,5 +516,4 @@ class MultiHeadMatMulKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     multihead_matmul,
-    ops::MultiHeadMatMulKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::MultiHeadMatMulKernel<paddle::platform::CUDADeviceContext, double>);
+    ops::MultiHeadMatMulV2Kernel<paddle::platform::CUDADeviceContext, float>);

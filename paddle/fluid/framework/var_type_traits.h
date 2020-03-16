@@ -24,7 +24,7 @@
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
 #include <cudnn.h>
-#ifndef _WIN32
+#if defined(PADDLE_WITH_NCCL)
 #include <nccl.h>
 #endif
 #endif
@@ -34,7 +34,7 @@ namespace paddle {
 
 namespace platform {
 #ifdef PADDLE_WITH_CUDA
-#ifndef _WIN32
+#if defined(PADDLE_WITH_NCCL)
 class Communicator;
 class NCCLCommunicator;
 #endif
@@ -140,7 +140,7 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     LoDTensorArray, platform::PlaceList, ReaderHolder, std::string, Scope *,
     operators::reader::LoDTensorBlockingQueueHolder,
 #ifdef PADDLE_WITH_CUDA
-#ifndef _WIN32
+#if defined(PADDLE_WITH_NCCL)
     ncclUniqueId, platform::Communicator, platform::NCCLCommunicator,
 #endif
     operators::CudnnRNNCache,

@@ -135,7 +135,7 @@ class ImageClassificationDatasetCreater(preprocess_util.DatasetCreater):
 
     def create_dataset_from_dir(self, path):
         """
-        Create a Dataset object for image classfication.
+        Create a Dataset object for image classification.
         Each folder in the path directory corresponds to a set of images of
         this label, and the name of the folder is the name of the
         path: the path of the image dataset.

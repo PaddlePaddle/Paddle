@@ -832,7 +832,7 @@ def _append_backward_ops_(block,
         target_block(Block): the block which is going to hold new generated grad ops
         no_grad_dict(dict):
             key(int)  block index
-            val(set) a set of varibale names. These varibales have no gradient
+            val(set) a set of variable names. These variables have no gradient
         grad_to_var(dict)(output argument):
             key(str): grad variable name
             val(str): corresponding forward variable name
@@ -875,6 +875,12 @@ def _append_backward_ops_(block,
         # Getting op's corresponding grad_op
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
             op.desc, cpt.to_text(no_grad_dict[block.idx]), grad_sub_block_list)
+
+        # Set device for grad_op according to forward Op
+        device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
+        op_device = op.desc.attr(device_attr_name)
+        for op_desc in grad_op_desc:
+            op_desc._set_attr(device_attr_name, op_device)
 
         # If input_grad_names_set is not None, extend grad_op_descs only when
         # any input grad in outputs of previous grad ops.
@@ -1038,7 +1044,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
                     '''
                     if op_desc.type() not in ['rnn_memory_helper_grad']:
                         ops_to_remove.append(op_idx)
-                    continue
+                        continue
 
         new_vars = set()
         # create new gradient variables
@@ -1110,6 +1116,26 @@ def _get_son_parent_block_idx_dict(program, current_block_idx):
     return son_parent_block_idx_dict
 
 
+def _get_no_grad_set_name(no_grad_set):
+    no_grad_set_name = set()
+    if no_grad_set is not None:
+        if isinstance(no_grad_set, (set, list, tuple)):
+            for i, no_grad_var in enumerate(no_grad_set):
+                if isinstance(no_grad_var, framework.Variable):
+                    no_grad_set_name.add(no_grad_var.name)
+                elif isinstance(no_grad_var, six.string_types):
+                    no_grad_set_name.add(no_grad_var)
+                else:
+                    raise TypeError(
+                        "The type of no_grad_set's member must be paddle.fluid.Variable or str, but received %s."
+                        % (type(no_grad_var)))
+        else:
+            raise TypeError(
+                "The type of no_grad_set should be set or list or tuple, but received {}".
+                format(type(no_grad_set)))
+    return no_grad_set_name
+
+
 def append_backward(loss,
                     parameter_list=None,
                     no_grad_set=None,
@@ -1133,11 +1159,11 @@ def append_backward(loss,
                                            If it is None, all parameters
                                            will be updated.
                                            Default: None.
-        no_grad_set(set[str], optional): Variable names in the :ref:`api_guide_Block_en` 0 whose gradients
+        no_grad_set(set[Variable|str], optional): Set of Variables or Variable.names in the :ref:`api_guide_Block_en` 0 whose gradients
                                should be ignored. All variables with
                                `stop_gradient=True` from all blocks will
                                be automatically added into this set.
-                               If this parameter is not None, the names in this set will be added to the default set.
+                               If this parameter is not None, the Variables or Variable.names in this set will be added to the default set.
                                Default: None.
         callbacks(list[callable object], optional): List of callback functions.
                                                The callbacks are used for
@@ -1174,18 +1200,40 @@ def append_backward(loss,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.data(name='x', shape=[None, 13], dtype='float32')
+
+            x = fluid.data(name='x', shape=[None, 13], dtype='int64')
             y = fluid.data(name='y', shape=[None, 1], dtype='float32')
-
-            y_predict = fluid.layers.fc(input=x, size=1, act=None)
+            x_emb = fluid.embedding(x, size=[100, 256])
+            y_predict = fluid.layers.fc(input=x_emb, size=1, act=None, name='my_fc')
             loss = fluid.layers.square_error_cost(input=y_predict, label=y)
-
             avg_loss = fluid.layers.mean(loss)
-            param_grad_list = fluid.backward.append_backward(loss=avg_loss)
-            p_g_list1 = fluid.backward.append_backward(loss=avg_loss)  # len(p_g_list1) == 2
-            p_g_list2 = fluid.backward.append_backward(loss=avg_loss, parameter_list=[p_g_list1[0][0].name])  # len(p_g_list1) == 1
-            p_g_list3 = fluid.backward.append_backward(loss=avg_loss, no_grad_set=set([p_g_list1[0][0].name]))  # len(p_g_list1) == 1
-            p_g_list4 = fluid.backward.append_backward(loss=avg_loss, parameter_list=[p_g_list1[0][0].name], no_grad_set=set([p_g_list1[0][0].name]))  # len(p_g_list1) == 0
+
+            # Get all weights in main_program, not include bias.
+            all_weights = [param for param in fluid.default_main_program().block(0).all_parameters() if 'w_' in param.name]
+            all_weights_name = [w.name for w in all_weights]
+
+            # return all param_grads needed to be updated if parameter_list set default None.
+            p_g_list1 = fluid.backward.append_backward(loss=avg_loss)
+            # output: [(embedding_0.w_0, embedding_0.w_0@GRAD), (my_fc.w_0, my_fc.w_0@GRAD), (my_fc.b_0, my_fc.b_0@GRAD)]
+
+            # return the param_grads corresponding to parameter_list that can be list of param (Variable).
+            p_g_list2 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights)
+            # output: [(embedding_0.w_0, embedding_0.w_0@GRAD), (my_fc.w_0, my_fc.w_0@GRAD)]
+
+            # parameter_list can be list of param.name (str).
+            p_g_list3 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights_name)
+            # output: [(embedding_0.w_0, embedding_0.w_0@GRAD), (my_fc.w_0, my_fc.w_0@GRAD)]
+
+            # no_grad_set can be set of Variables that means grad will be cut off from these Variables.
+            p_g_list4 = fluid.backward.append_backward(loss=avg_loss, no_grad_set=set([x_emb]))
+            # output: [(my_fc.w_0, my_fc.w_0@GRAD), (my_fc.b_0, my_fc.b_0@GRAD)]
+
+            # no_grad_set can be set of Variable.name when the Variable is created inside layers and can't be specified explicitly.
+            p_g_list5 = fluid.backward.append_backward(loss=avg_loss, no_grad_set=set(['my_fc.b_0']))
+            # output: [(embedding_0.w_0, embedding_0.w_0@GRAD), (my_fc.w_0, my_fc.w_0@GRAD)]
+
+            # return [] because all param_grads are filtered by no_grad_set.
+            p_g_list6 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights, no_grad_set=set(all_weights))
 
     """
     assert isinstance(loss, framework.Variable)
@@ -1215,7 +1263,8 @@ def append_backward(loss,
 
     if no_grad_set is None:
         no_grad_set = set()
-    no_grad_set = copy.copy(no_grad_set)
+    else:
+        no_grad_set = _get_no_grad_set_name(copy.copy(no_grad_set))
     no_grad_dict = _get_stop_gradients_(program)
     # no_grad_set only contains vars in block 0
     # Todo(liym27): support vars in sub block
@@ -1501,12 +1550,15 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     Args:
         targets(Variable|list[Variable]): The target variables
         inputs(Variable|list[Variable]): The input variables
-        target_gradients (Variable|list[Variable]|None): The gradient variables
+        target_gradients (Variable|list[Variable], optional): The gradient variables
             of targets which has the same shape with targets, If None, ones will
             be created for them.
-        no_grad_set(set[string]): The names of variables that have no gradients
-            in Block 0. All variables with `stop_gradient=True` from all blocks
-            will be automatically added.
+        no_grad_set(set[Variable|str], optional): Set of Variables or Variable.names in the :ref:`api_guide_Block_en` 0 whose gradients
+                               should be ignored. All variables with
+                               `stop_gradient=True` from all blocks will
+                               be automatically added into this set.
+                               If this parameter is not None, the Variables or Variable.names in this set will be added to the default set.
+                               Default: None.
 
     Return:
         (list[Variable]): A list of gradients for inputs
@@ -1532,7 +1584,8 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
 
     if no_grad_set is None:
         no_grad_set = set()
-    no_grad_set = copy.copy(no_grad_set)
+    else:
+        no_grad_set = _get_no_grad_set_name(copy.copy(no_grad_set))
     no_grad_dict = _get_stop_gradients_(prog)
     no_grad_dict[0].update(list(map(_append_grad_suffix_, no_grad_set)))
 
@@ -1623,12 +1676,13 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
     Args:
         targets (Variable|list[Variable]): The target variables.
         inputs (Variable|list[Variable]): The input variables.
-        target_gradients (Variable|list[Variable]|None): The gradient variables
+        target_gradients (Variable|list[Variable], optional): The gradient variables
             of targets which has the same shape with targets, If None, ones will
             be created for them.
-        no_grad_set (set[string]): The names of variables that have no gradients
-            in Block 0. All variables with `stop_gradient=True` from all blocks
-            will be automatically added.
+        no_grad_set (set[Variable|str], optional): Set of Variables or Variable.names in the :ref:`api_guide_Block_en` 0 whose gradients
+            should be ignored. All variables with `stop_gradient=True` from all blocks will
+            be automatically added into this set. If this parameter is not None, the Variables or Variable.names
+            in this set will be added to the default set. Default: None.
 
     Return:
         (list[Variable]): A list of gradients for inputs
@@ -1640,7 +1694,7 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
 
             import paddle.fluid as fluid
 
-            x = fluid.layers.data(name='x', shape=[2,8,8], dtype='float32')
+            x = fluid.data(name='x', shape=[None,2,8,8], dtype='float32')
             x.stop_gradient=False
             y = fluid.layers.conv2d(x, 4, 1, bias_attr=False)
             y = fluid.layers.relu(y)

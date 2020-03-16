@@ -744,6 +744,7 @@ class BilinearInitializer(Initializer):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import math
             factor = 2
             C = 2
             B = 8
@@ -781,7 +782,7 @@ class BilinearInitializer(Initializer):
         super(BilinearInitializer, self).__init__()
 
     def __call__(self, var, block):
-        """Add biliear initialization ops for a variable
+        """Add bilinear initialization ops for a variable
 
         Args:
             var (Variable): Variable that needs to be initialized.

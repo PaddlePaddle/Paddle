@@ -219,13 +219,11 @@ class ReorderLodTensorByRankGradOpMaker
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("reorder_lod_tensor_by_rank_grad");
     grad_op->SetInput("X", this->OutputGrad("Out"));
     grad_op->SetOutput("Out", this->InputGrad("X"));
     grad_op->SetInput("RankTable", this->Input("RankTable"));
-    return std::unique_ptr<T>(grad_op);
   }
 };
 

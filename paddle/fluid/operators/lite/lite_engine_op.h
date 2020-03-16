@@ -78,7 +78,8 @@ class LiteEngineOp : public framework::OperatorBase {
           inference::analysis::GetFromScope<framework::LoDTensor>(scope,
                                                                   in_names_[i]);
       paddle::lite::Tensor *dst_t = engine_->GetInput(i);
-      VLOG(3) << "fluid -> lite: " << in_names_[i];
+      VLOG(3) << "[Copy] fluid -> lite (" << in_names_[i] << " -> "
+              << engine_->GetInputNames()[i] << ")";
       inference::lite::utils::TensorCopyAsync(dst_t, src_t, *ctx);
     }
 #ifdef PADDLE_WITH_CUDA
@@ -95,7 +96,8 @@ class LiteEngineOp : public framework::OperatorBase {
       framework::LoDTensor *dst_t =
           &inference::analysis::GetFromScope<framework::LoDTensor>(
               scope, out_names_[i]);
-      VLOG(3) << "lite -> fluid: " << out_names_[i];
+      VLOG(3) << "[Copy] lite -> fluid (" << out_names_[i] << " -> "
+              << engine_->GetOutputNames()[i] << ")";
       inference::lite::utils::TensorCopyAsync(dst_t, src_t, *ctx);
     }
 #ifdef PADDLE_WITH_CUDA

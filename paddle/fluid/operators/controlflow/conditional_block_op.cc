@@ -262,8 +262,7 @@ class ConditionalBlockGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("conditional_block_grad");
     grad_op->SetInput(ConditionalOp::kCondition,
                       this->Input(ConditionalOp::kCondition));
@@ -280,7 +279,6 @@ class ConditionalBlockGradMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetBlockAttr("sub_block", this->grad_block_[0]);
     grad_op->SetAttr("is_scalar_condition",
                      this->GetAttr("is_scalar_condition"));
-    return std::unique_ptr<T>(grad_op);
   }
 };
 

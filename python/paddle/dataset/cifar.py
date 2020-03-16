@@ -17,7 +17,7 @@ CIFAR dataset.
 This module will download dataset from https://dataset.bj.bcebos.com/cifar/cifar-10-python.tar.gz and https://dataset.bj.bcebos.com/cifar/cifar-100-python.tar.gz, parse train/test set into
 paddle reader creators.
 
-The CIFAR-10 dataset consists of 60000 32x32 colour images in 10 classes,
+The CIFAR-10 dataset consists of 60000 32x32 color images in 10 classes,
 with 6000 images per class. There are 50000 training images and 10000 test
 images.
 

@@ -142,6 +142,21 @@ class TestBackward(unittest.TestCase):
             exe.run(startup)
             exe.run(feed=net.init_data())
 
+    def _check_error_no_grad_set(self, net, no_grad_set):
+        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+
+        main = fluid.Program()
+        startup = fluid.Program()
+
+        with fluid.program_guard(main, startup):
+            loss = net.build_model()
+            optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+            optimizer.minimize(loss, no_grad_set=no_grad_set)
+            exe.run(startup)
+            exe.run(feed=net.init_data())
+
 
 class SimpleNet(BackwardNet):
     def __init__(self):
@@ -233,10 +248,23 @@ class TestSimpleNetWithErrorParamList(TestBackward):
         # The type of parameter_list argument must be list or tuple
         with self.assertRaises(TypeError):
             self._check_error_param_list(self.net, "test")
-        # The type of parameter_list's member must be varable or str
+        # The type of parameter_list's member must be Variable or str
         test = fluid.data(name='test', shape=[None, 90], dtype='float32')
         with self.assertRaises(TypeError):
             self._check_error_param_list(self.net, [test, "test", 3])
+
+
+class TestSimpleNetWithErrorNoGradSet(TestBackward):
+    def test_no_grad_set_type_error(self):
+        self.global_block_idx = 0
+        self.net = SimpleNet()
+        # The type of no_grad_set argument must be set or list or tuple
+        with self.assertRaises(TypeError):
+            self._check_error_no_grad_set(self.net, "test")
+        # The type of no_grad_set's member must be Variable or str
+        test = fluid.data(name='test', shape=[None, 90], dtype='float32')
+        with self.assertRaises(TypeError):
+            self._check_error_no_grad_set(self.net, [test, "test", 3])
 
 
 # TODO(Aurelius84): add conditional network test

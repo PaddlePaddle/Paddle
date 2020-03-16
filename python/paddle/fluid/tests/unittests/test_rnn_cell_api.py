@@ -245,5 +245,170 @@ class TestRnnUtil(unittest.TestCase):
             pass
 
 
+class EncoderCell(RNNCell):
+    """Encoder Cell"""
+
+    def __init__(
+            self,
+            num_layers,
+            hidden_size,
+            dropout_prob=0.,
+            init_scale=0.1, ):
+        self.num_layers = num_layers
+        self.hidden_size = hidden_size
+        self.dropout_prob = dropout_prob
+        self.lstm_cells = []
+
+        for i in range(num_layers):
+            self.lstm_cells.append(LSTMCell(hidden_size))
+
+    def call(self, step_input, states):
+        new_states = []
+        for i in range(self.num_layers):
+            out, new_state = self.lstm_cells[i](step_input, states[i])
+            step_input = layers.dropout(
+                out,
+                self.dropout_prob, ) if self.dropout_prob else out
+            new_states.append(new_state)
+        return step_input, new_states
+
+    @property
+    def state_shape(self):
+        return [cell.state_shape for cell in self.lstm_cells]
+
+
+class DecoderCell(RNNCell):
+    """Decoder Cell"""
+
+    def __init__(self, num_layers, hidden_size, dropout_prob=0.):
+        self.num_layers = num_layers
+        self.hidden_size = hidden_size
+        self.dropout_prob = dropout_prob
+        self.lstm_cells = []
+        for i in range(num_layers):
+            self.lstm_cells.append(LSTMCell(hidden_size))
+
+    def call(self, step_input, states):
+        new_lstm_states = []
+        for i in range(self.num_layers):
+            out, new_lstm_state = self.lstm_cells[i](step_input, states[i])
+            step_input = layers.dropout(
+                out,
+                self.dropout_prob, ) if self.dropout_prob else out
+            new_lstm_states.append(new_lstm_state)
+        return step_input, new_lstm_states
+
+
+def def_seq2seq_model(num_layers, hidden_size, dropout_prob, src_vocab_size,
+                      trg_vocab_size):
+    "vanilla seq2seq model"
+    # data
+    source = fluid.data(name="src", shape=[None, None], dtype="int64")
+    source_length = fluid.data(
+        name="src_sequence_length", shape=[None], dtype="int64")
+    target = fluid.data(name="trg", shape=[None, None], dtype="int64")
+    target_length = fluid.data(
+        name="trg_sequence_length", shape=[None], dtype="int64")
+    label = fluid.data(name="label", shape=[None, None, 1], dtype="int64")
+
+    # embedding
+    src_emb = fluid.embedding(source, (src_vocab_size, hidden_size))
+    tar_emb = fluid.embedding(target, (src_vocab_size, hidden_size))
+
+    # encoder
+    enc_cell = EncoderCell(num_layers, hidden_size, dropout_prob)
+    enc_output, enc_final_state = dynamic_rnn(
+        cell=enc_cell, inputs=src_emb, sequence_length=source_length)
+
+    # decoder
+    dec_cell = DecoderCell(num_layers, hidden_size, dropout_prob)
+    dec_output, dec_final_state = dynamic_rnn(
+        cell=dec_cell, inputs=tar_emb, initial_states=enc_final_state)
+    logits = layers.fc(dec_output,
+                       size=trg_vocab_size,
+                       num_flatten_dims=len(dec_output.shape) - 1,
+                       bias_attr=False)
+
+    # loss
+    loss = layers.softmax_with_cross_entropy(
+        logits=logits, label=label, soft_label=False)
+    loss = layers.unsqueeze(loss, axes=[2])
+    max_tar_seq_len = layers.shape(target)[1]
+    tar_mask = layers.sequence_mask(
+        target_length, maxlen=max_tar_seq_len, dtype="float")
+    loss = loss * tar_mask
+    loss = layers.reduce_mean(loss, dim=[0])
+    loss = layers.reduce_sum(loss)
+
+    # optimizer
+    optimizer = fluid.optimizer.Adam(0.001)
+    optimizer.minimize(loss)
+    return loss
+
+
+class TestSeq2SeqModel(unittest.TestCase):
+    """
+    Test cases to confirm seq2seq api training correctly.
+    """
+
+    def setUp(self):
+        np.random.seed(123)
+        self.model_hparams = {
+            "num_layers": 2,
+            "hidden_size": 128,
+            "dropout_prob": 0.1,
+            "src_vocab_size": 100,
+            "trg_vocab_size": 100
+        }
+
+        self.iter_num = iter_num = 2
+        self.batch_size = batch_size = 4
+        src_seq_len = 10
+        trg_seq_len = 12
+        self.data = {
+            "src": np.random.randint(
+                2, self.model_hparams["src_vocab_size"],
+                (iter_num * batch_size, src_seq_len)).astype("int64"),
+            "src_sequence_length": np.random.randint(
+                1, src_seq_len, (iter_num * batch_size, )).astype("int64"),
+            "trg": np.random.randint(
+                2, self.model_hparams["src_vocab_size"],
+                (iter_num * batch_size, trg_seq_len)).astype("int64"),
+            "trg_sequence_length": np.random.randint(
+                1, trg_seq_len, (iter_num * batch_size, )).astype("int64"),
+            "label": np.random.randint(
+                2, self.model_hparams["src_vocab_size"],
+                (iter_num * batch_size, trg_seq_len, 1)).astype("int64"),
+        }
+
+        place = core.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else core.CPUPlace()
+        self.exe = Executor(place)
+
+    def test_seq2seq_model(self):
+        main_program = fluid.Program()
+        startup_program = fluid.Program()
+        with fluid.program_guard(main_program, startup_program):
+            cost = def_seq2seq_model(**self.model_hparams)
+            self.exe.run(startup_program)
+            for iter_idx in range(self.iter_num):
+                cost_val = self.exe.run(feed={
+                    "src": self.data["src"][iter_idx * self.batch_size:(
+                        iter_idx + 1) * self.batch_size, :],
+                    "src_sequence_length": self.data["src_sequence_length"]
+                    [iter_idx * self.batch_size:(iter_idx + 1) *
+                     self.batch_size],
+                    "trg": self.data["trg"][iter_idx * self.batch_size:(
+                        iter_idx + 1) * self.batch_size, :],
+                    "trg_sequence_length": self.data["trg_sequence_length"][
+                        iter_idx * self.batch_size:(iter_idx + 1
+                                                    ) * self.batch_size],
+                    "label": self.data["label"][iter_idx * self.batch_size:(
+                        iter_idx + 1) * self.batch_size]
+                },
+                                        fetch_list=[cost])[0]
+                print("iter_idx: %d, cost: %f" % (iter_idx, cost_val))
+
+
 if __name__ == '__main__':
     unittest.main()

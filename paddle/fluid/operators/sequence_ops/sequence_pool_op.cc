@@ -54,7 +54,7 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(LoDTensor) The variable-length input of SequencePoolOp");
     AddOutput("Out",
               "(Tensor) The output of SequencePoolOp does not contain LoD "
-              "infomation.");
+              "information.");
     AddOutput("MaxIndex",
               "(Tensor<int>) This tensor is used for the sequence max-pooling "
               "to record the max indexes.")
@@ -93,7 +93,7 @@ Assume X is a [7,M,N] LoDTensor, and X->lod()[0] = [0, 2, 5, 7], 7=2+3+2.
 Besides, for the sake of simplicity, we assume M=1 and N=1,
 and the value of X = [[1, 3], [2, 4, 6], [5, 1]].
 
-Thus, Out is a [3,1,1] Tensor without LoD infomation.
+Thus, Out is a [3,1,1] Tensor without LoD information.
 And for different pooltype, the value of Out is as follows:
 
 - AVERAGE: [2, 4, 3], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2
@@ -144,8 +144,7 @@ class SequencePoolGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* op_desc_ptr = new T();
+  void Apply(GradOpPtr<T> op_desc_ptr) const override {
     op_desc_ptr->SetType("sequence_pool_grad");
     op_desc_ptr->SetInput("X", this->Input("X"));
     if (boost::get<std::string>(this->GetAttr("pooltype")) == "MAX") {
@@ -155,7 +154,6 @@ class SequencePoolGradOpMaker : public framework::SingleGradOpMaker<T> {
                           this->OutputGrad("Out"));
     op_desc_ptr->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op_desc_ptr->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(op_desc_ptr);
   }
 };
 

@@ -89,6 +89,7 @@ option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VER
 option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ${WITH_DISTRIBUTE})
 option(SANITIZER_TYPE "Choose the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined" OFF)
 option(WITH_LITE   "Compile Paddle Fluid with Lite Engine" OFF)
+option(WITH_NCCL   "Compile PaddlePaddle with NCCL support"             ON)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -121,6 +122,27 @@ if(WIN32)
         set(WITH_DISTRIBUTE OFF CACHE STRING
             "Disable DISTRIBUTE when compiling for Windows" FORCE)
     endif()
+    if(WITH_NCCL)
+        MESSAGE(WARNING
+            "Disable NCCL when compiling for Windows. Force WITH_NCCL=OFF.")
+        set(WITH_NCCL OFF CACHE STRING
+            "Disable NCCL when compiling for Windows" FORCE)
+    endif()
+endif()
+
+if (NOT WITH_GPU AND WITH_NCCL)
+    MESSAGE(WARNING
+        "Disable NCCL when compiling without GPU. Force WITH_NCCL=OFF.")
+    set(WITH_NCCL OFF CACHE STRING
+        "Disable NCCL when compiling without GPU" FORCE)
+endif()
+
+if(WITH_NCCL)
+     add_definitions("-DPADDLE_WITH_NCCL")
+else()
+     if(WITH_GPU)
+         MESSAGE(WARNING "If the environment is multi-card, the WITH_NCCL option needs to be turned on, otherwise only a single card can be used.")
+     endif()
 endif()
 
 if(WITH_BRPC_RDMA)

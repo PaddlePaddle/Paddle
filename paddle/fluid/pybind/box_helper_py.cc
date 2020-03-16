@@ -29,6 +29,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_feed.pb.h"
 #include "paddle/fluid/framework/fleet/box_wrapper.h"
 #include "paddle/fluid/pybind/box_helper_py.h"
+#ifdef PADDLE_WITH_BOX_PS
+#include <boxps_public.h>
+#endif
 
 namespace py = pybind11;
 
@@ -40,6 +43,8 @@ void BindBoxHelper(py::module* m) {
       .def(py::init([](paddle::framework::Dataset* dataset) {
         return std::make_shared<paddle::framework::BoxHelper>(dataset);
       }))
+      .def("set_date", &framework::BoxHelper::SetDate,
+           py::call_guard<py::gil_scoped_release>())
       .def("begin_pass", &framework::BoxHelper::BeginPass,
            py::call_guard<py::gil_scoped_release>())
       .def("end_pass", &framework::BoxHelper::EndPass,
@@ -51,5 +56,35 @@ void BindBoxHelper(py::module* m) {
       .def("load_into_memory", &framework::BoxHelper::LoadIntoMemory,
            py::call_guard<py::gil_scoped_release>());
 }  // end BoxHelper
+
+#ifdef PADDLE_WITH_BOX_PS
+void BindBoxWrapper(py::module* m) {
+  py::class_<framework::BoxWrapper, std::shared_ptr<framework::BoxWrapper>>(
+      *m, "BoxWrapper")
+      .def(py::init([]() {
+        // return std::make_shared<paddle::framework::BoxHelper>(dataset);
+        return framework::BoxWrapper::GetInstance();
+      }))
+      .def("save_base", &framework::BoxWrapper::SaveBase,
+           py::call_guard<py::gil_scoped_release>())
+      .def("feed_pass", &framework::BoxWrapper::FeedPass,
+           py::call_guard<py::gil_scoped_release>())
+      .def("save_delta", &framework::BoxWrapper::SaveDelta,
+           py::call_guard<py::gil_scoped_release>())
+      .def("initialize_gpu", &framework::BoxWrapper::InitializeGPU,
+           py::call_guard<py::gil_scoped_release>())
+      .def("init_metric", &framework::BoxWrapper::InitMetric,
+           py::call_guard<py::gil_scoped_release>())
+      .def("get_metric_msg", &framework::BoxWrapper::GetMetricMsg,
+           py::call_guard<py::gil_scoped_release>())
+      .def("get_metric_name_list", &framework::BoxWrapper::GetMetricNameList,
+           py::call_guard<py::gil_scoped_release>())
+      .def("flip_pass_flag", &framework::BoxWrapper::FlipPassFlag,
+           py::call_guard<py::gil_scoped_release>())
+      .def("finalize", &framework::BoxWrapper::Finalize,
+           py::call_guard<py::gil_scoped_release>());
+}  // end BoxWrapper
+#endif
+
 }  // end namespace pybind
 }  // end namespace paddle

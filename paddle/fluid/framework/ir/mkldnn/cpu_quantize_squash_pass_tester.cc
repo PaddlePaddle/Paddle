@@ -24,7 +24,7 @@ namespace ir {
 void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs, bool use_mkldnn,
-           float scale = 0) {
+           float scale = 0, float bias = 0.0) {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
   op->SetAttr("use_mkldnn", use_mkldnn);
@@ -59,6 +59,11 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
                           inputs.size()));
     op->SetInput("W", {inputs[1]});
     op->SetOutput("Out", outputs);
+  } else if (type == "scale") {
+    op->SetInput("X", {inputs[0]});
+    op->SetOutput("Out", {outputs[0]});
+    op->SetAttr("scale", scale);
+    op->SetAttr("bias", bias);
   }
 }
 
@@ -252,6 +257,21 @@ ProgramDesc BuildMultipleQuantizeProgramDesc(bool use_mkldnn, float first_scale,
   return prog;
 }
 
+// a->Dequant->b
+// b->Scale->c
+ProgramDesc BuildDequantScaleProgramDesc(bool use_mkldnn, float dequant_scale,
+                                         float scale_scale, float bias) {
+  ProgramDesc prog;
+  for (auto& v : variable_names) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  SetOp(&prog, "dequantize", "Dequant", {"a"}, {"b"}, use_mkldnn,
+        dequant_scale);
+  SetOp(&prog, "scale", "Scale", {"b"}, {"c"}, use_mkldnn, scale_scale, bias);
+
+  return prog;
+}
+
 void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
                       const char* var_name) {
   auto x = scope->Var(var_name);
@@ -289,17 +309,17 @@ void CountNodeTest(const ProgramDesc& prog, int removed_nodes_num) {
 }
 
 // check op->scale_out
-void EqualScaleOutTest(const ProgramDesc& prog, const std::string& name,
-                       float scale) {
+void EqualScaleTest(const ProgramDesc& prog, const std::string& op_name,
+                    const std::string& scale_name, float scale) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
   PrepareGraph(&graph, prog);
   RegisterPass(&graph);
 
   for (auto* node : graph->Nodes()) {
     if (node->IsOp() &&
-        boost::get<std::string>(node->Op()->GetAttr("name")) == name) {
-      float scale_out = boost::get<float>(node->Op()->GetAttr("Scale_out"));
-      EXPECT_EQ(scale_out, scale);
+        boost::get<std::string>(node->Op()->GetAttr("name")) == op_name) {
+      float op_scale = boost::get<float>(node->Op()->GetAttr(scale_name));
+      EXPECT_EQ(op_scale, scale);
     }
   }
 }
@@ -368,9 +388,9 @@ TEST(CpuQuantizeSquashPass, unequal_scales) {
       BuildConvRequantProgramDesc(use_mkldnn, scale_out, scale1, scale2),
       remove_nodes);
 
-  EqualScaleOutTest(
+  EqualScaleTest(
       BuildConvRequantProgramDesc(use_mkldnn, scale_out, scale1, scale2),
-      "Conv1", scale2);
+      "Conv1", "Scale_out", scale2);
 }
 
 //  a->Conv1->b->Requant->c
@@ -388,12 +408,12 @@ TEST(CpuQuantizeSquashPass, equal_scales_squash_requantize) {
       remove_nodes);
 
   // check equal scale conv->scale_out and requant->scale_out
-  EqualScaleOutTest(
+  EqualScaleTest(
       BuildConvsRequantConcatProgramDesc(use_mkldnn, scale_out, scale, scale),
-      "Conv1", scale);
-  EqualScaleOutTest(
+      "Conv1", "Scale_out", scale);
+  EqualScaleTest(
       BuildConvsRequantConcatProgramDesc(use_mkldnn, scale_out, scale, scale),
-      "Conv2", scale);
+      "Conv2", "Scale_out", scale);
 }
 
 // from
@@ -544,6 +564,37 @@ TEST(CpuQuantizeSquashPass, quatize_with_different_scale) {
       remove_nodes);
 }
 
+// if scale has no bias
+TEST(CpuQuantizeSquashPass, dequantize_scale_with_no_bias) {
+  auto dequant_scale = 1.2345f;
+  auto scale_scale = 1.5432f;
+  auto bias = 0.0f;
+  auto use_mkldnn = true;
+  // remove: dequant out, scale op
+  auto remove_nodes = 2;
+  CountNodeTest(BuildDequantScaleProgramDesc(use_mkldnn, dequant_scale,
+                                             scale_scale, bias),
+                remove_nodes);
+  EqualScaleTest(BuildDequantScaleProgramDesc(use_mkldnn, dequant_scale,
+                                              scale_scale, bias),
+                 "Dequant", "Scale", dequant_scale / scale_scale);
+}
+
+// if scale has bias
+TEST(CpuQuantizeSquashPass, dequantize_scale_with_bias) {
+  auto dequant_scale = 1.2345f;
+  auto scale_scale = 1.5432f;
+  auto bias = 1.0f;
+  auto use_mkldnn = true;
+  // nothing change
+  auto remove_nodes = 0;
+  CountNodeTest(BuildDequantScaleProgramDesc(use_mkldnn, dequant_scale,
+                                             scale_scale, bias),
+                remove_nodes);
+  EqualScaleTest(BuildDequantScaleProgramDesc(use_mkldnn, dequant_scale,
+                                              scale_scale, bias),
+                 "Dequant", "Scale", dequant_scale);
+}
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

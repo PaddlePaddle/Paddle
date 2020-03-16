@@ -32,7 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -77,7 +77,8 @@ class ParallelExecutor {
   void FeedAndSplitTensorIntoLocalScopes(
       const std::unordered_map<std::string, LoDTensor> &tensors);
 
-  FeedFetchList Run(const std::vector<std::string> &fetch_tensors);
+  FetchResultType Run(const std::vector<std::string> &fetch_tensors,
+                      bool return_merged = true);
 
  private:
   // broadcast the parameters from the 0th device.

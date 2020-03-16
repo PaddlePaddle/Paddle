@@ -112,7 +112,7 @@ This operator will send variables to listen_and_serve op at the parameter server
     AddAttr<std::vector<std::string>>(
         "send_varnames",
         "(vector<string>) "
-        "the splited output varnames to send to pserver")
+        "the split output varnames to send to pserver")
         .SetDefault(std::vector<std::string>{});
     AddAttr<int>("num",
                  "(int, default 0)"

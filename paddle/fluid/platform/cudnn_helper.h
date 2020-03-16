@@ -75,7 +75,7 @@ enum class PoolingMode {
   kAverageInclusive,
 };
 
-enum ActivationMode {
+enum class ActivationMode {
   kNone,  // activation identity
   kSigmoid,
   kRelu,

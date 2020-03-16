@@ -38,6 +38,7 @@ class PassTest(unittest.TestCase):
         self.pass_attrs = {}
         self.fused_op_type = None
         self.num_fused_ops = -1
+        self.backward = True
 
         np.random.seed(123)
         random.seed(124)
@@ -47,6 +48,11 @@ class PassTest(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         return places
+
+    def append_gradinets(self, outs):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            loss = fluid.layers.mean(outs)
+            fluid.backward.append_backward(loss)
 
     def check_output(self, startup_on_cpu=False, atol=1e-5):
         '''
@@ -130,7 +136,7 @@ class PassTest(unittest.TestCase):
 
         if startup_on_cpu and not isinstance(place, fluid.CPUPlace):
             warnings.warn(
-                "Parameters are on CPU, and will be transfered to GPU "
+                "Parameters are on CPU, and will be transferred to GPU "
                 "automatically by data transform.")
 
         outs_opt, lods_opt = self._run_program(executor, opt_program)
@@ -142,8 +148,8 @@ class PassTest(unittest.TestCase):
             self.assertTrue(
                 np.allclose(
                     outs_opt[i], outs[i], atol=atol),
-                "Output < {} > has diff at {}".format(self.fetch_list[i].name,
-                                                      str(place)))
+                "Output < {} > has diff at {}, expected {} but got {}".format(
+                    self.fetch_list[i], str(place), outs_opt[i], outs[i]))
 
     def _check_fused_ops(self, program):
         '''

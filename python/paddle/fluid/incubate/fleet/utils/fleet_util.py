@@ -23,14 +23,18 @@ import sys
 import time
 import paddle.fluid as fluid
 from paddle.fluid.log_helper import get_logger
-from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet as fleet_pslib
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet as fleet_transpiler
 from . import hdfs
 from .hdfs import *
+from . import utils
 
 __all__ = ["FleetUtil"]
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
+
+fleet = fleet_pslib
 
 
 class FleetUtil(object):
@@ -45,6 +49,16 @@ class FleetUtil(object):
           fleet_util.rank0_print("my log")
 
     """
+
+    def __init__(self, mode="pslib"):
+        global fleet
+        if mode == "pslib":
+            fleet = fleet_pslib
+        elif mode == "transpiler":
+            fleet = fleet_transpiler
+        else:
+            raise ValueError(
+                "Please choose one mode from [\"pslib\", \"transpiler\"]")
 
     def rank0_print(self, s):
         """
@@ -887,7 +901,7 @@ class FleetUtil(object):
             hadoop_fs_name(str): hadoop fs name
             hadoop_fs_ugi(str): hadoop fs ugi
             hadoop_home(str): hadoop home, default is "$HADOOP_HOME"
-            save_combine(bool): whether to save in a file or seperate files,
+            save_combine(bool): whether to save in a file or separate files,
                                 default is True
 
         Examples:
@@ -920,7 +934,7 @@ class FleetUtil(object):
                         feeded_var_names=feeded_var_names,
                         target_vars=target_vars,
                         executor=executor,
-                        main_program=program,
+                        main_program=program.clone(),
                         params_filename="params")
                 else:
                     fluid.io.save_inference_model(
@@ -928,7 +942,7 @@ class FleetUtil(object):
                         feeded_var_names=feeded_var_names,
                         target_vars=target_vars,
                         executor=executor,
-                        main_program=program)
+                        main_program=program.clone())
 
             configs = {
                 "fs.default.name": hadoop_fs_name,
@@ -976,7 +990,7 @@ class FleetUtil(object):
             hadoop_fs_ugi(str): hadoop fs ugi
             hadoop_home(str): hadoop home, default is "$HADOOP_HOME"
             var_names(list): save persistable var names, default is None
-            save_combine(bool): whether to save in a file or seperate files,
+            save_combine(bool): whether to save in a file or separate files,
                                 default is True
 
         Examples:
@@ -1286,7 +1300,7 @@ class FleetUtil(object):
               from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               metric_list = fleet_util.get_global_metrics(myscope,
-                                                          stat_pos.nane,
+                                                          stat_pos.name,
                                                           stat_neg.name,
                                                           local_sqrerr.name,
                                                           local_abserr.name,
@@ -1473,7 +1487,7 @@ class FleetUtil(object):
               from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
               fleet_util = FleetUtil()
               fleet_util.print_global_metrics(myscope,
-                                              stat_pos.nane,
+                                              stat_pos.name,
                                               stat_neg.name,
                                               local_sqrerr.name,
                                               local_abserr.name,
@@ -1535,3 +1549,69 @@ class FleetUtil(object):
                          (print_prefix, auc, bucket_error, mae, rmse,
                           actual_ctr, predicted_ctr, copc, mean_predict_qvalue,
                           total_ins_num))
+
+    def program_type_trans(self, prog_dir, prog_fn, is_text):
+        return utils.program_type_trans(prog_dir, prog_fn, is_text)
+
+    def draw_from_program_file(self, model_filename, is_text, output_dir,
+                               output_filename):
+        """draw program from file"""
+        program = utils.load_program(model_filename, is_text)
+        utils.graphviz(program.global_block(), output_dir, output_filename)
+
+    def draw_from_program(self, program, output_dir, output_name):
+        """draw Program"""
+        utils.graphviz(program.global_block(), output_dir, output_name)
+
+    def check_two_programs(self, config):
+        train_prog = utils.load_program(config.train_prog_path,
+                                        config.is_text_train_program)
+        pruned_prog = utils.load_program(config.pruned_prog_path,
+                                         config.is_text_pruned_program)
+        if config.draw:
+            pruned_dir = os.path.dirname(config.pruned_prog_path)
+            self.draw_from_program(pruned_prog, pruned_dir,
+                                   config.draw_out_name)
+        res = utils.check_pruned_program_vars(train_prog, pruned_prog)
+        if res:
+            _logger.info("check_programs succeed.")
+        else:
+            _logger.info(
+                "check_programs failed. pruned program and train program not match!"
+            )
+        return res
+
+    def check_vars_and_dump(self, config):
+        _logger.info("start check_vars_and_dump.")
+        results = utils.check_saved_vars_try_dump(
+            config.dump_model_dir, config.dump_program_filename,
+            config.is_text_dump_program, config.feed_config,
+            config.fetch_config, config.batch_size, config.save_params_filename)
+        _logger.info("check_vars_and_dump succeed.")
+        return results
+
+    def parse_program_proto(self, prog_path, is_text, output_dir):
+        """
+        Parse program.proto into a more readable format. 
+        This function will generate three files: 
+        output_dir/vars_all.log,
+        output_dir/vars_persistable.log,
+        output_dir/ops.log.
+
+        Args:
+            prog_path(str): proto file path to be parsed.
+            is_text(bool): proto file is human-readale format or not(binary).
+            output_dir(str): output dir.
+
+        Examples:
+            .. code-block:: python
+
+              from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
+              fleet_util = FleetUtil()
+              program_path = "./program.pbtxt"
+              is_text = True
+              output_dir = "/tmp/"
+              fleet_util.parse_program_proto(program_path, is_text, output_dir)
+        """
+        program = utils.load_program(prog_path, is_text)
+        utils.parse_program(program, output_dir)

@@ -328,8 +328,7 @@ class WhileGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *while_grad = new T();
+  void Apply(GradOpPtr<T> while_grad) const override {
     while_grad->SetType("while_grad");
     while_grad->SetInput(kX, this->Input(kX));
     while_grad->SetInput(kOutputs, this->Output(kOutputs));
@@ -401,8 +400,6 @@ class WhileGradOpMaker : public framework::SingleGradOpMaker<T> {
     while_grad->SetAttr("original_output_grad", output_grads_list);
 
     while_grad->SetAttr(kSkipEagerDeletionVars, std::vector<std::string>());
-
-    return std::unique_ptr<T>(while_grad);
   }
 };
 
