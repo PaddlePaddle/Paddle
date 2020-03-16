@@ -280,7 +280,7 @@ class TestLinearWamrupLearningRateDecayDygraphMode(unittest.TestCase):
 
                 t = lr()
 
-                self.assertEqual(t[0], right_result[i])
+                self.assertEqual((t.numpy())[0], right_result[i])
 
 
 class TestLinearWamrupLearningRateDecayDygraphModeTypeCheck(unittest.TestCase):

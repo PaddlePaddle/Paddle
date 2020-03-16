@@ -272,7 +272,7 @@ def monkey_patch_varbase():
 
     def __nonzero__(self):
         numel = np.prod(self.shape)
-        assert numel == 1, "bool value of Variable should contain only one value"
+        assert numel == 1, "If you want to use if logic to determine whether the variable is None type, please use code like if variable is None or if Variable is not None. If you want to use if logic for Variable, Variable can only contain one element."
         tensor = self.value().get_tensor()
         assert tensor._is_initialized(), "tensor not initialized"
         return bool(np.all(tensor.__array__() > 0))
