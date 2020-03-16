@@ -128,12 +128,12 @@ void NCCLParallelContext::Init() {
           << " local rank: " << strategy_.local_rank_ << " gpu id: " << gpu_id;
 
   PADDLE_ENFORCE(cudaSetDevice(gpu_id));
-  PADDLE_ENFORCE(platform::dynload::ncclCommInitRank(
-      &comm, strategy_.nranks_, nccl_id, strategy_.local_rank_));
+  NCCLComm *nccl_comm = NCCLCommContext.Instance().CreateNCCLComm(
+      nccl_id, strategy_.nranks_, strategy_.local_rank_, gpu_id, 0);
 
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(pool.Get(place_));
-  dev_ctx->set_nccl_comm(comm);
+  dev_ctx->set_nccl_comm(nccl_comm->comm());
 }
 #endif
 

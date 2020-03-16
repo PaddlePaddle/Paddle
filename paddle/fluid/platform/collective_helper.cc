@@ -79,7 +79,11 @@ NCCLComm* NCCLCommContext::CreateNCCLComm(ncclUniqueId* nccl_id, int nranks,
   comm_map_mutex_.lock();
   if (comm_map_.count(ring_id) == 0) {
     comm_map_.emplace(ring_id, std::map<int, std::unique_ptr<NCCLComm>>());
+  } else if (comm_map_[ring_id].count(dev_id) > 0) {
+    VLOG(0) << "Reinitialize nccl communicator on device " << dev_id
+            << " of ring " << ring_id;
   }
+
   auto& dev2comm = comm_map_[ring_id];
 
   dev2comm.emplace(dev_id, std::unique_ptr<NCCLComm>(c));
