@@ -4150,3 +4150,192 @@ class LookaheadOptimizer(object):
             with switch.default():
                 pass
         return mini_out
+
+
+class ModelParallelOptimizer(object):
+    """
+    ModelParallel Optimizer
+
+    Train with model parallel mode. The program will be split by devices where ops run on. 
+
+    So the length of place_list and concurrency_list must be also 2*k-1.
+
+    Args:
+        optimizer (Optimizer): The based optimizer, such as SGD.
+        num_macrobatches (int): Number of macrobatches. [Optional. Default:1].
+        start_cpu_core_id (int): specify the first cpu core id if cpu is used. [Optional. Default:0].
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+
+            with device_guard("cpu"):
+                x = fluid.layers.data(name='x', shape=[1], dtype='int64', lod_level=0)
+                y = fluid.layers.data(name='y', shape=[1], dtype='int64', lod_level=0)
+                emb_x = layers.embedding(input=x, param_attr=fluid.ParamAttr(name="embx"), size=[10,2], is_sparse=False)
+                emb_y = layers.embedding(input=y, param_attr=fluid.ParamAttr(name="emby",learning_rate=0.9), size=[10,2], is_sparse=False)
+            with device_guard("gpu:0"):
+                concat = layers.concat([emb_x, emb_y], axis=1)
+                fc = layers.fc(input=concat, name="fc", size=1, num_flatten_dims=1, bias_attr=False)
+                loss = layers.reduce_mean(fc)
+            optimizer = fluid.optimizer.SGD(learning_rate=0.5)
+            optimizer = fluid.optimizer.ModelParallelOptimizer(optimizer,
+                    num_macrobatches=4,
+                    )
+            optimizer.minimize(loss)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            filelist = [] # you should set your own filelist, e.g. filelist = ["dataA.txt"]
+            dataset = fluid.DatasetFactory().create_dataset("FileInstantDataset")
+            dataset.set_use_var([x,y])
+            dataset.set_batch_size(batch_size)
+            dataset.set_filelist(filelist)
+            exe.train_from_dataset(
+                        fluid.default_main_program(),
+                        dataset,
+                        thread=2,
+                        debug=False,
+                        fetch_list=[],
+                        fetch_info=[],
+                        print_period=1)
+    """
+
+    def __init__(self, optimizer, num_macrobatches=1, start_cpu_core_id=0):
+        if framework.in_dygraph_mode():
+            raise Exception("In dygraph, don't support PipelineOptimizer.")
+        # TODO: check properties
+        self._optimizer = optimizer
+        self._place_list = None
+        self._start_cpu_core_id = start_cpu_core_id
+        self._num_macrobatches = num_macrobatches
+
+    def _create_vars(self, block, main_program):
+        used_var_set = set()
+        for op_idx in range(block.desc.op_size()):
+            op_desc = block.desc.op(op_idx)
+            vars = op_desc.input_arg_names() + op_desc.output_arg_names()
+            for var in vars:
+                if var in used_var_set:
+                    continue
+                used_var_set.add(var)
+                source_var = main_program.block(0).var(str(var))
+                block._clone_variable(source_var, False)
+
+    def _split_program(self, main_program):
+        programs = []
+        device_program_map = dict()
+        block = main_program.block(0)
+        op_maker = core.op_proto_and_checker_maker
+        op_device = op_maker.kOpDeviceAttrName()
+        for op in block.ops:
+            if not op.has_attr(op_device):
+                cur_device = "gpu"
+            else:
+                cur_device = op.attr(op_device)
+            if cur_device is None:
+                cur_device = "gpu"
+            if cur_device == "":
+                cur_device = "cpu"
+            if cur_device not in device_program_map:
+                program = {
+                    "program": Program(),
+                    "input_set": set(),
+                    "output_set": set()
+                }
+                device_program_map[cur_device] = program
+            op_desc = op.desc
+            ap_op = program["program"].block(0).desc.append_op()
+            ap_op.copy_from(op_desc)
+        for key in sorted(device_program_map.keys()):
+            program = device_program_map[key]
+            programs.append(program)
+        return programs
+
+    def _find_real_prev_op(self, ops, cur_op, var_name):
+        """
+        Find the real prev op that outputs var_name variable.
+
+        Args:
+            ops (list): A list of ops.
+            cur_op (Operator): Current operator which has var_name variable.
+            var_name (string): Variable name.
+        """
+        prev_op = []
+        for op in ops:
+            if op == cur_op:
+                break
+            for out_var_name in op.output_arg_names:
+                if out_var_name == var_name:
+                    prev_op.append(op)
+        if prev_op:
+            if not len(prev_op) == 1:
+                raise ValueError("There must be only one previous op "
+                                 "that outputs {0} variable.".format(var_name))
+            else:
+                return prev_op[0]
+        return None
+
+    def _insert_enq_deq_ops(self, block):
+        op_maker = core.op_proto_and_checker_maker
+        op_device = op_maker.kOpDeviceAttrName()
+        devices = set()
+
+        for op in block.ops:
+            type = op.type
+            if not op._has_kernel(type):
+                continue
+            cur_device = op.attr(op_device)
+            devices.add(cur_device)
+            for var_name in op.input_arg_names:
+                prev_op = self._find_real_prev_op(block.ops, op, var_name)
+                if prev_op is None:
+                    continue
+                if not prev_op._has_kernel(prev_op.type):
+                    continue
+                prev_device = prev_op.attr(op_device)
+                if prev_device != cur_device:
+                    print("insert op for var %s" % var_name)
+
+        return devices
+
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None):
+        block = loss.block
+        devices = self._insert_enq_deq_ops(block)
+        device_list = sorted(devices)
+        self._optimizer.minimize(loss, startup_program, parameter_list,
+                                 no_grad_set)
+        program = block.program
+        place_list = []
+        for device in devices:
+            if device == "cpu":
+                place_list.append(core.CPUPlace())
+            elif device == "gpu":
+                place_list.append(core.CUDAPlace(0))
+            else:
+                raise ValueError("Unknown device type: %s", device)
+        if len(place_list) == 0:
+            program_list = []
+            ptmp = {"program": program, "input_set": set(), "output_set": set()}
+            program_list.append(ptmp)
+        else:
+            program_list = self._split_program(program)
+            for p in program_list:
+                self._create_vars(p["program"].block(0), program)
+                print("sub program: ", p)
+        program._pipeline_opt = {
+            "trainer": "ModelParallelTrainer",
+            "device_worker": "ModelParallel",
+            "section_program_list": program_list,
+            "place_list": place_list,
+            "sync_steps": -1,
+            "concurrency_list": [2],
+            "num_macrobatches": self._num_macrobatches,
+            "start_cpu_core_id": self._start_cpu_core_id,
+        }
