@@ -107,6 +107,8 @@ def dyfunc_with_for_2(x):
 def dyfunc_with_for_3(x):
     # TODO(liym27):
     #  It will fail to run because `for i in range(len(x.shape))` will be transformed into Paddle while_loop.
+    #  Here the python list x.shape will be added to loop_vars. However, loop_vars doesn't support python list.
+    #  And the condition of `for i in range(len(x.shape))` only uses the length of x.shape, so it doesn't have to be transformed into Paddle while_loop.
     #  After the AST tranformation of for loop is improved, add TestTensorShapeInFor3.
     x = fluid.dygraph.to_variable(x)
     res = fluid.layers.fill_constant(value=0, shape=[1], dtype="int32")
@@ -144,7 +146,7 @@ def dyfunc_with_while_2(x):
 
 def dyfunc_with_while_3(x):
     # TODO(liym27):
-    #  It will fail to run because `while len(x_shape) < i` will be transformed into Paddle while_loop and `x_shape` will be loop_vars.
+    #  It will fail to run because the same problem as `dyfunc_with_for_3`.
     #  After the AST tranformation of for loop is improved, add TestTensorShapeInWhile3.
     x = fluid.dygraph.to_variable(x)
     x_shape = x.shape

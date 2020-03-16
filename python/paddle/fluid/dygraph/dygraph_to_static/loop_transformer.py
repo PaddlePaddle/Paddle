@@ -70,8 +70,6 @@ class NameVisitor(gast.NodeVisitor):
     def __init__(self, root_node):
         # Set of gast.Name or gast.Attribute for variables
         self.current_seen_vars = set()
-        # list of nodes of current visit node
-        self.ancestor_nodes = []
 
         # List of gast.While/gast.For nodes
         self.current_loop = []
@@ -127,11 +125,9 @@ class NameVisitor(gast.NodeVisitor):
         self.generic_visit(node)
 
     def visit(self, node):
-        self.ancestor_nodes.append(node)
         method = 'visit_' + node.__class__.__name__
         visitor = getattr(self, method, self.generic_visit)
         ret = visitor(node)
-        self.ancestor_nodes.pop()
         return ret
 
     def visit_Attribute(self, node):
@@ -164,26 +160,15 @@ class NameVisitor(gast.NodeVisitor):
         for node in node_set:
             if ctx_filter_set is None or type(node.ctx) in ctx_filter_set:
                 if isinstance(node, gast.Name):
-                    parent_node = self.node_to_wrapper_map[node].parent.node
-                    if isinstance(parent_node,
-                                  gast.Call) and parent_node.func == node:
-                        # Don't add the name of gast.Name if it is "len" in `len(x)`.
-                        continue
                     ret.add(node.id)
                 elif isinstance(node, gast.Attribute):
-                    parent_node = self.node_to_wrapper_map[node].parent.node
-                    if isinstance(parent_node,
-                                  gast.Call) and parent_node.func == node:
-                        # Don't add the name of gast.Attribute if it is like `fluid.layers.shape(x)`.
-                        continue
                     ret.add(get_attribute_full_name(node))
         return ret
 
     def _is_call_func_name_node(self, node):
-        if self.ancestor_nodes:
-            parent_node = self.ancestor_nodes[-1]
-            if isinstance(parent_node, gast.Call) and parent_node.func == node:
-                return True
+        parent_node = self.node_to_wrapper_map[node].parent.node
+        if isinstance(parent_node, gast.Call) and parent_node.func == node:
+            return True
         return False
 
 
