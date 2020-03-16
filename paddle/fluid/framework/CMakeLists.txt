@@ -189,7 +189,8 @@ endif()
 
 cc_library(executor_gc_helper SRCS executor_gc_helper.cc DEPS scope proto_desc operator garbage_collector)
 if(WITH_DISTRIBUTE)
-  cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
+  cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc
+  model_parallel_trainer.cc dataset_factory.cc model_parallel_worker.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
   data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc downpour_worker_opt.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
