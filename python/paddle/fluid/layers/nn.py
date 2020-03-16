@@ -359,6 +359,33 @@ def fc(input,
     return helper.append_activation(pre_activation)
 
 
+def enqueue(queue_name=None, tensor_name=None):
+    """
+    """
+    helper = LayerHelper("enqueue", **locals())
+    helper.append_op(
+        type="enqueue",
+        inputs={"blocking_queue": queue_name,
+                "lod_tensor": tensor_name})
+
+
+def dequeue(queue_name=None, tensor_name=None):
+    """
+    """
+    helper = LayerHelper("dequeue", **locals())
+    helper.append_op(
+        type="dequeue",
+        inputs={"blocking_queue": queue_name,
+                "lod_tensor": tensor_name})
+
+
+def gen_queue(queue_name=None):
+    """
+    """
+    helper = LayerHelper("dequeue", **locals())
+    helper.append_op(type="gen_queue", inputs={"queue_names": queue_name})
+
+
 def embedding(input,
               size,
               is_sparse=False,
