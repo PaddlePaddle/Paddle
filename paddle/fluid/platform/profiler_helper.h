@@ -185,11 +185,16 @@ void DealWithShowName() {
     for (auto &block : (*it)->event_blocks) {
       for (auto &r : block) {
         auto event_name = r.name();
-        size_t start = event_name.find('%', 0);
-        size_t end = event_name.find('%', start + 1);
-        std::string prefix_str = event_name.substr(0, start);
-        while (start != std::string::npos && end != std::string::npos) {
-          auto search_str = event_name.substr(start, end - start + 1);
+        auto origin_event_name = event_name;
+        size_t start = origin_event_name.find('%', 0);
+        size_t end = origin_event_name.find('%', start + 1);
+        size_t start_replace = start;
+        size_t end_replace = end;
+        std::string prefix_str = origin_event_name.substr(0, start);
+        while (start != std::string::npos && end != std::string::npos &&
+               start_replace != std::string::npos &&
+               end_replace != std::string::npos) {
+          auto search_str = origin_event_name.substr(start, end - start + 1);
           std::string replace_str = "";
           int replace_index = 0;
 
@@ -202,18 +207,21 @@ void DealWithShowName() {
             auto iter =
                 find(op_name_vector.begin(), op_name_vector.end(), search_str);
             if (iter == op_name_vector.end()) {
-              replace_index = it->second.size();
-              it->second.push_back(search_str);
+              replace_index = profiler_name_info[prefix_str].size();
+              profiler_name_info[prefix_str].push_back(search_str);
             } else {
-              replace_index = it->second.size() - 1;
+              replace_index = iter - op_name_vector.begin();
             }
           }
           replace_str = std::to_string(replace_index);
-          event_name.replace(start, end - start + 1, replace_str);
+          event_name.replace(start_replace, end_replace - start_replace + 1,
+                             replace_str);
           start = start + 1;
-          start = event_name.find('%', start);
-          end = event_name.find('%', start + 1);
-          prefix_str = event_name.substr(0, start);
+          start = origin_event_name.find('%', start);
+          end = origin_event_name.find('%', start + 1);
+          start_replace = event_name.find('%', 0);
+          end_replace = event_name.find('%', start_replace + 1);
+          prefix_str = origin_event_name.substr(0, start);
         }
         r.set_name(event_name);
       }

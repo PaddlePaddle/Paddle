@@ -77,6 +77,29 @@ def is_numpy_api(node):
         return False
 
 
+def is_control_flow_to_transform(node, var_name_to_type):
+    """
+    Determines whether the node is a Paddle control flow statement which needs to
+    transform into a static graph control flow statement.
+    """
+    assert isinstance(node, gast.AST), \
+        "The type of input node must be gast.AST, but received %s." % type(node)
+
+    if isinstance(node, gast.If):
+        # TODO: make a better condition
+        return True
+
+    if isinstance(node, gast.For):
+        # TODO: make a better condition
+        return True
+
+    if isinstance(node, gast.While):
+        # TODO: make a better condition
+        return True
+
+    return False
+
+
 def _delete_keywords_from(node):
     assert isinstance(node, gast.Call)
     func_src = astor.to_source(gast.gast_to_ast(node.func))
@@ -215,6 +238,18 @@ def create_api_shape_node(tensor_shape_node):
     return api_shape_node
 
 
+def get_constant_variable_node(name, value, shape=[1], dtype='int64'):
+    return gast.parse('%s = fluid.layers.fill_constant(%s, "%s", %s)' %
+                      (name, str(shape), dtype, str(value)))
+
+
+def get_attribute_full_name(node):
+    assert isinstance(
+        node,
+        gast.Attribute), "Input non-Attribute node to get attribute full name"
+    return astor.to_source(gast.gast_to_ast(node)).strip()
+
+
 def generate_name_node(name_ids, ctx=gast.Load()):
     """
     Generate list or gast.Tuple of ast.Name for Return statement.
@@ -243,7 +278,8 @@ def create_funcDef_node(nodes, name, input_args, return_name_ids):
     """
     nodes = copy.copy(nodes)
     # add return statement
-    nodes.append(gast.Return(value=generate_name_node(return_name_ids)))
+    if return_name_ids:
+        nodes.append(gast.Return(value=generate_name_node(return_name_ids)))
     func_def_node = gast.FunctionDef(
         name=name,
         args=input_args,
@@ -266,13 +302,7 @@ def ast_to_func(ast_root, func_name, delete_on_exit=True):
     """
     Transform modified AST of decorated function into python callable object.
     """
-    if not isinstance(ast_root, (gast.AST, ast.AST)):
-        raise TypeError(
-            "Type of ast_root should be gast.AST or ast.AST, but received %s." %
-            type(ast_root))
-    if isinstance(ast_root, gast.AST):
-        ast_root = gast.gast_to_ast(ast_root)
-    source = astor.to_source(ast_root)
+    source = ast_to_source_code(ast_root)
     if six.PY2:
         source = source.encode('utf-8')
         f = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
@@ -300,3 +330,26 @@ def ast_to_func(ast_root, func_name, delete_on_exit=True):
             func_name)
 
     return getattr(module, func_name), f.name
+
+
+def ast_to_source_code(ast_node):
+    """
+    Transformers ast node into source code.
+    """
+    if not isinstance(ast_node, (gast.AST, ast.AST)):
+        raise TypeError(
+            "Type of ast_root should be gast.AST or ast.AST, but received %s." %
+            type(ast_node))
+    if isinstance(ast_node, gast.AST):
+        ast_node = gast.gast_to_ast(ast_node)
+    source_code = astor.to_source(ast_node)
+    return source_code
+
+
+def create_assign_node(name, node):
+    """
+    Creates a `gast.Assign` node by given name_id as target and node as value.
+    """
+    targets = generate_name_node(name, ctx=gast.Store())
+    assign_node = gast.Assign(targets=[targets], value=node)
+    return targets, assign_node

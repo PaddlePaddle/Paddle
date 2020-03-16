@@ -14,21 +14,21 @@
 
 from __future__ import print_function
 
-import copy
-import inspect
-import textwrap
-
 import astor
+import copy
 # gast is a generic AST to represent Python2 and Python3's Abstract Syntax Tree(AST).
 # It provides a compatibility layer between the AST of various Python versions,
 # as produced by ast.parse from the standard ast module.
 # See details in https://github.com/serge-sans-paille/gast/
 import gast
+import inspect
+import textwrap
 
 from paddle.fluid import unique_name
 from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import BreakContinueTransformer
 from paddle.fluid.dygraph.dygraph_to_static.for_to_while_transformer import ForToWhileTransformer
 from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import IfElseTransformer
+from paddle.fluid.dygraph.dygraph_to_static.list_transformer import ListTransformer
 from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import LoopTransformer
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, NodeVarType
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
@@ -75,6 +75,7 @@ class DygraphToStaticAst(gast.NodeTransformer):
         # better condition to transform from `for` to `while`
         ForToWhileTransformer(node_wrapper).transform()
         BreakContinueTransformer(node_wrapper).transform()
+        ListTransformer(node_wrapper).transform()
         LoopTransformer(node_wrapper).transform()
 
         # Transform all if/else statement of Dygraph into Static Graph.
