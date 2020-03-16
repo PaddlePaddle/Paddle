@@ -42,16 +42,20 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
     input_names_.reserve(inputs_.size());
     for (auto& it : inputs_) {
       for (auto& var : it.second) {
-        input_names_[it.first].emplace_back(var->Name());
-        var_set_[var->Name()] = var.get();
+        if (var) {
+          input_names_[it.first].emplace_back(var->Name());
+          var_set_[var->Name()] = var.get();
+        }
       }
     }
 
     output_names_.reserve(outputs_.size());
     for (auto& it : outputs_) {
       for (auto& var : it.second) {
-        output_names_[it.first].emplace_back(var->Name());
-        var_set_[var->Name()] = var.get();
+        if (var) {
+          output_names_[it.first].emplace_back(var->Name());
+          var_set_[var->Name()] = var.get();
+        }
       }
     }
   }

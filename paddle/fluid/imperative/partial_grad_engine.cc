@@ -61,7 +61,8 @@ static void GetGraphInfoBetweenTargets(
     std::unordered_map<const OpBase *, std::unordered_set<const OpBase *>>
         *pending_ops_ptr,
     std::unordered_map<const OpBase *, size_t> *op_deps_ptr,
-    std::unordered_set<VariableWrapper *> *related_grad_vars_ptr) {
+    std::unordered_set<VariableWrapper *> *related_grad_vars_ptr,
+    const std::unordered_set<VariableWrapper *> &no_grad_var_grad) {
   /**
    * Step 1. Find the candidate startup grad ops, prepared for following BFS.
    */
@@ -190,16 +191,22 @@ static void GetGraphInfoBetweenTargets(
       }
 
       for (auto &in_var : input_pair.second) {
-        target_vars.insert(in_var.get());
+        if (no_grad_var_grad.count(in_var.get()) == 0) {
+          target_vars.insert(in_var.get());
+        }
       }
     }
 
     auto iter = preceding_ops.find(op);
     if (iter != preceding_ops.end()) {
       for (auto &preceding_op : iter->second) {
-        pending_ops[preceding_op].insert(op);
-        ++op_deps[op];
-        op_queue.push(preceding_op);
+        if (pending_ops[preceding_op].count(op) == 0) {
+          VLOG(10) << "Pending op of " << preceding_op->Type() << " is "
+                   << op->Type();
+          pending_ops[preceding_op].insert(op);
+          ++op_deps[op];
+          op_queue.push(preceding_op);
+        }
       }
     } else {
       VLOG(10) << "Found startup op " << op->Type();
@@ -491,6 +498,7 @@ class PartialGradTask {
   PartialGradTask(const std::vector<std::shared_ptr<VarBase>> &input_targets,
                   const std::vector<std::shared_ptr<VarBase>> &output_targets,
                   const std::vector<std::shared_ptr<VarBase>> &output_grads,
+                  const std::vector<std::shared_ptr<VarBase>> &no_grad_vars,
                   const platform::Place &place,
                   const detail::BackwardStrategy &strategy, bool create_graph);
 
@@ -504,6 +512,10 @@ class PartialGradTask {
   void PrepareInitialGradientAccumulators(const OpBase *op);
 
   std::vector<std::shared_ptr<VarBase>> CreateResult();
+
+  bool IsValidGradVar(const std::shared_ptr<VariableWrapper> &var) const {
+    return var && no_grad_var_grad_.count(var.get()) == 0;
+  }
 
  private:
   std::unordered_set<const OpBase *> startup_ops_;
@@ -522,6 +534,8 @@ class PartialGradTask {
   // Input targets that are reachable
   std::vector<std::shared_ptr<VarBase>> input_targets_;
   std::unordered_set<VariableWrapper *> input_target_grads_;
+
+  std::unordered_set<VariableWrapper *> no_grad_var_grad_;
   std::vector<std::weak_ptr<VariableWrapper>> reset_stop_gradient_vars_;
 
   platform::Place place_;
@@ -533,12 +547,24 @@ PartialGradTask::PartialGradTask(
     const std::vector<std::shared_ptr<VarBase>> &input_targets,
     const std::vector<std::shared_ptr<VarBase>> &output_targets,
     const std::vector<std::shared_ptr<VarBase>> &output_grads,
+    const std::vector<std::shared_ptr<VarBase>> &no_grad_vars,
     const platform::Place &place, const detail::BackwardStrategy &strategy,
     bool create_graph) {
   input_targets_ = input_targets;
   place_ = place;
   create_graph_ = create_graph;
   strategy_ = strategy;
+
+  for (auto &var : no_grad_vars) {
+    if (var && var->GradVarBase()) {
+      no_grad_var_grad_.insert(var->GradVarBase()->SharedVar().get());
+    }
+
+    if (var && !var->OverridedStopGradient()) {
+      var->SetOverridedStopGradient(true);
+      reset_stop_gradient_vars_.emplace_back(var->SharedVar());
+    }
+  }
 
   PADDLE_ENFORCE_EQ(
       input_targets.empty(), false,
@@ -552,14 +578,18 @@ PartialGradTask::PartialGradTask(
     PADDLE_ENFORCE_NOT_NULL(output,
                             platform::errors::PermissionDenied(
                                 "Variable inside outputs should not be null"));
-    PADDLE_ENFORCE_NOT_NULL(
-        output->GradVarBase(),
+    PADDLE_ENFORCE_EQ(
+        output->GradVarBase() && !output->OverridedStopGradient(), true,
         platform::errors::PermissionDenied(
             "Variable %s inside outputs has no gradient", output->Name()));
     PADDLE_ENFORCE_EQ(
         out_set.count(output.get()), 0,
         platform::errors::AlreadyExists("outputs contain duplicate variable %s",
                                         output->Name()));
+    PADDLE_ENFORCE_EQ(IsValidGradVar(output->GradVarBase()->SharedVar()), true,
+                      platform::errors::PermissionDenied(
+                          "outputs contain var that is inside no_grad_set"));
+
     out_set.insert(output.get());
   }
 
@@ -569,8 +599,8 @@ PartialGradTask::PartialGradTask(
     PADDLE_ENFORCE_NOT_NULL(input,
                             platform::errors::PermissionDenied(
                                 "Variable inside inputs should not be null"));
-    PADDLE_ENFORCE_NOT_NULL(
-        input->GradVarBase(),
+    PADDLE_ENFORCE_EQ(
+        input->GradVarBase() && !input->OverridedStopGradient(), true,
         platform::errors::PermissionDenied(
             "Variable %s inside inputs has no gradient", input->Name()));
     PADDLE_ENFORCE_EQ(
@@ -579,6 +609,11 @@ PartialGradTask::PartialGradTask(
                                         input->Name()));
     in_set.insert(input.get());
     input_target_grads_.insert(input->GradVarBase()->SharedVar().get());
+
+    PADDLE_ENFORCE_EQ(IsValidGradVar(input->GradVarBase()->SharedVar()), true,
+                      platform::errors::PermissionDenied(
+                          "inputs contain var that is inside no_grad_set"));
+
     // Record same vars between inputs and outputs
     if (out_set.count(input.get()) > 0) {
       one_grad_vars.insert(input->GradVarBase()->SharedVar().get());
@@ -587,7 +622,8 @@ PartialGradTask::PartialGradTask(
 
   std::unordered_set<VariableWrapper *> related_grad_vars;
   GetGraphInfoBetweenTargets(&input_target_grads_, &out_set, &startup_ops_,
-                             &pending_ops_, &op_deps_, &related_grad_vars);
+                             &pending_ops_, &op_deps_, &related_grad_vars,
+                             no_grad_var_grad_);
 
   for (auto &op_pair : pending_ops_) {
     auto *op = op_pair.first;
@@ -649,6 +685,9 @@ PartialGradTask::PartialGradTask(
                             "match the %d-th output",
                             i, i));
       out_grad_var = output_grads[i]->SharedVar();
+      PADDLE_ENFORCE_EQ(IsValidGradVar(out_grad_var), true,
+                        platform::errors::PermissionDenied(
+                            "grad_outputs contain var inside no_grad_set"));
 
       if (out_grad_var->OverridedStopGradient()) {
         VLOG(10) << "Grad var " << out_grad_var->Name()
@@ -768,7 +807,7 @@ void PartialGradTask::RunEachOp(const OpBase *op) {
       }
     } else {
       for (auto &grad_var : output_pair.second) {
-        if (grad_var) {
+        if (IsValidGradVar(grad_var)) {
           VLOG(10) << "Creating output grad var " << grad_var->Name();
           auto new_grad_var_iter = grad_accumulators_.find(grad_var.get());
           PADDLE_ENFORCE_EQ(new_grad_var_iter != grad_accumulators_.end(), true,
@@ -925,7 +964,7 @@ std::vector<std::shared_ptr<VarBase>> PartialGradTask::CreateResult() {
   for (auto &weak_var : reset_stop_gradient_vars_) {
     if (auto var = weak_var.lock()) {
       VLOG(10) << "Reset " << var->Name() << " stop gradient";
-      var->SetOverridedStopGradient(true);
+      var->SetOverridedStopGradient(!var->OverridedStopGradient());
     }
   }
 
@@ -940,11 +979,13 @@ PartialGradEngine::PartialGradEngine(
     const std::vector<std::shared_ptr<VarBase>> &input_targets,
     const std::vector<std::shared_ptr<VarBase>> &output_targets,
     const std::vector<std::shared_ptr<VarBase>> &output_grads,
+    const std::vector<std::shared_ptr<VarBase>> &no_grad_vars,
     const platform::Place &place, const detail::BackwardStrategy &strategy,
     bool create_graph)
     : input_targets_(input_targets),
       output_targets_(output_targets),
       output_grads_(output_grads),
+      no_grad_vars_(no_grad_vars),
       place_(place),
       strategy_(strategy),
       create_graph_(create_graph) {}
@@ -957,11 +998,12 @@ void PartialGradEngine::Clear() {
   input_targets_.clear();
   output_targets_.clear();
   output_grads_.clear();
+  no_grad_vars_.clear();
 }
 
 void PartialGradEngine::Execute() {
-  PartialGradTask task(input_targets_, output_targets_, output_grads_, place_,
-                       strategy_, create_graph_);
+  PartialGradTask task(input_targets_, output_targets_, output_grads_,
+                       no_grad_vars_, place_, strategy_, create_graph_);
   VLOG(10) << "Starts to execute PartialGradEngine";
   results_ = task.Run();
   Clear();

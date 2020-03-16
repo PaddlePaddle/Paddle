@@ -30,6 +30,7 @@ class PartialGradEngine : public Engine {
   PartialGradEngine(const std::vector<std::shared_ptr<VarBase>> &input_targets,
                     const std::vector<std::shared_ptr<VarBase>> &output_targets,
                     const std::vector<std::shared_ptr<VarBase>> &output_grads,
+                    const std::vector<std::shared_ptr<VarBase>> &no_grad_vars,
                     const platform::Place &place,
                     const detail::BackwardStrategy &strategy,
                     bool create_graph);
@@ -45,6 +46,7 @@ class PartialGradEngine : public Engine {
   std::vector<std::shared_ptr<VarBase>> input_targets_;
   std::vector<std::shared_ptr<VarBase>> output_targets_;
   std::vector<std::shared_ptr<VarBase>> output_grads_;
+  std::vector<std::shared_ptr<VarBase>> no_grad_vars_;
   platform::Place place_;
   detail::BackwardStrategy strategy_;
   bool create_graph_;

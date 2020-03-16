@@ -686,12 +686,13 @@ void BindImperative(py::module *m_ptr) {
          const std::vector<std::shared_ptr<imperative::VarBase>>
              &output_targets,
          const std::vector<std::shared_ptr<imperative::VarBase>> &output_grads,
+         const std::vector<std::shared_ptr<imperative::VarBase>> &no_grad_vars,
          const platform::Place &place,
          const imperative::detail::BackwardStrategy &strategy,
          bool create_graph) {
         imperative::PartialGradEngine engine(input_targets, output_targets,
-                                             output_grads, place, strategy,
-                                             create_graph);
+                                             output_grads, no_grad_vars, place,
+                                             strategy, create_graph);
         engine.Execute();
         return engine.GetResult();
       },

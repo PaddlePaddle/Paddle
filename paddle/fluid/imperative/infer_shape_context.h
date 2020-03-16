@@ -99,7 +99,6 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   }
 
   std::vector<std::string> Inputs(const std::string& name) const override {
-    // return op_.Inputs(name);
     std::vector<std::string> vec_res;
     auto it = var_base_map_in_->find(name);
     PADDLE_ENFORCE_NE(
@@ -108,7 +107,11 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
 
     vec_res.reserve(it->second.size());
     for (auto& var : it->second) {
-      vec_res.push_back(var->Name());
+      if (var) {
+        vec_res.push_back(var->Name());
+      } else {
+        vec_res.push_back(framework::kEmptyVarName);
+      }
     }
 
     return vec_res;
@@ -123,7 +126,11 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
 
     vec_res.reserve(it->second.size());
     for (auto& var : it->second) {
-      vec_res.push_back(var->Name());
+      if (var) {
+        vec_res.push_back(var->Name());
+      } else {
+        vec_res.push_back(framework::kEmptyVarName);
+      }
     }
 
     return vec_res;
@@ -212,7 +219,11 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
         platform::errors::NotFound("can not find [%s] in output", name));
     vec_res.reserve(it->second.size());
     for (size_t i = 0; i < it->second.size(); ++i) {
-      vec_res.emplace_back(GetDim(it->second[i]->MutableVar()));
+      if (it->second[i]) {
+        vec_res.emplace_back(GetDim(it->second[i]->MutableVar()));
+      } else {
+        vec_res.emplace_back();
+      }
     }
 
     return vec_res;
@@ -227,8 +238,12 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
         platform::errors::NotFound("can not find [%s] in input", name));
     vec_res.reserve(it->second.size());
     for (size_t i = 0; i < it->second.size(); ++i) {
-      vec_res.emplace_back(
-          framework::ToVarType(it->second[i]->MutableVar()->Type()));
+      if (it->second[i]) {
+        vec_res.emplace_back(
+            framework::ToVarType(it->second[i]->MutableVar()->Type()));
+      } else {
+        vec_res.emplace_back();
+      }
     }
     return vec_res;
   }
@@ -242,8 +257,12 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
         platform::errors::NotFound("can not find [%s] in output", name));
     vec_res.reserve(it->second.size());
     for (size_t i = 0; i < it->second.size(); ++i) {
-      vec_res.emplace_back(
-          framework::ToVarType(it->second[i]->MutableVar()->Type()));
+      if (it->second[i]) {
+        vec_res.emplace_back(
+            framework::ToVarType(it->second[i]->MutableVar()->Type()));
+      } else {
+        vec_res.emplace_back(static_cast<framework::proto::VarType::Type>(-1));
+      }
     }
     return vec_res;
   }
@@ -254,7 +273,9 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
         it, var_base_map_out_->end(),
         platform::errors::NotFound("can not find [%s] in output", name));
 
-    SetDim(it->second[0]->MutableVar(), dim);
+    if (it->second[0]) {
+      SetDim(it->second[0]->MutableVar(), dim);
+    }
   }
 
   void SetOutputsDim(const std::string& name,
@@ -270,7 +291,9 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
                           dims.size(), it->second.size()));
 
     for (size_t i = 0; i < dims.size(); ++i) {
-      SetDim(it->second[i]->MutableVar(), dims[i]);
+      if (it->second[i]) {
+        SetDim(it->second[i]->MutableVar(), dims[i]);
+      }
     }
   }
 

@@ -253,6 +253,7 @@ def _print_debug_msg(parameter_list, limit=5, is_test=False):
 def grad(outputs,
          inputs,
          grad_outputs=None,
+         no_grad_set=None,
          create_graph=False,
          backward_strategy=None):
     def check_in_out(in_out_list, name):
@@ -292,6 +293,19 @@ def grad(outputs,
         assert len(grad_outputs) == len(
             outputs), "The length of grad_outputs must be equal to outputs"
 
+    if no_grad_set is None:
+        no_grad_set = []
+    elif isinstance(no_grad_set, core.VarBase):
+        no_grad_set = [no_grad_set]
+    elif isinstance(no_grad_set, (list, tuple, set)):
+        no_grad_set = list(no_grad_set)
+        for var in no_grad_set:
+            assert isinstance(
+                var, core.VarBase), "no_grad_set can only contains Variable"
+    else:
+        raise AssertionError(
+            "no_grad_set must be None, Variable or list/tuple/set of Variables")
+
     if backward_strategy is None:
         backward_strategy = core.BackwardStrategy()
 
@@ -302,8 +316,8 @@ def grad(outputs,
 
     place = core.Place()
     place.set_place(framework._current_expected_place())
-    return core.dygraph_partial_grad(inputs, outputs, grad_outputs, place,
-                                     backward_strategy, create_graph)
+    return core.dygraph_partial_grad(inputs, outputs, grad_outputs, no_grad_set,
+                                     place, backward_strategy, create_graph)
 
 
 @framework.dygraph_only

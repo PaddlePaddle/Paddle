@@ -47,7 +47,7 @@ class DygraphExecutionContext : public framework::ExecutionContext {
     PADDLE_ENFORCE_NE(it, var_base_map_in_.end(),
                       platform::errors::PreconditionNotMet(
                           "Can not find [%s] in Input", name));
-    return it->second[0]->Name();
+    return it->second[0] ? it->second[0]->Name() : framework::kEmptyVarName;
   }
 
   std::vector<std::string> InputNames(const std::string& name) const override {
@@ -58,7 +58,11 @@ class DygraphExecutionContext : public framework::ExecutionContext {
     std::vector<std::string> vec_res;
     vec_res.reserve(it->second.size());
     for (size_t i = 0; i < it->second.size(); ++i) {
-      vec_res.push_back(it->second[i]->Name());
+      if (it->second[i]) {
+        vec_res.push_back(it->second[i]->Name());
+      } else {
+        vec_res.push_back(framework::kEmptyVarName);
+      }
     }
     return vec_res;
   }
@@ -68,7 +72,7 @@ class DygraphExecutionContext : public framework::ExecutionContext {
     PADDLE_ENFORCE_NE(
         it, var_base_map_out_.end(),
         platform::errors::NotFound("Can not find [%s] in Output", name));
-    return it->second[0]->Name();
+    return it->second[0] ? it->second[0]->Name() : framework::kEmptyVarName;
   }
 
   std::vector<std::string> OutputNames(const std::string& name) const override {
@@ -79,7 +83,11 @@ class DygraphExecutionContext : public framework::ExecutionContext {
     std::vector<std::string> vec_res;
     vec_res.reserve(it->second.size());
     for (size_t i = 0; i < it->second.size(); ++i) {
-      vec_res.push_back(it->second[i]->Name());
+      if (it->second[i]) {
+        vec_res.push_back(it->second[i]->Name());
+      } else {
+        vec_res.push_back(framework::kEmptyVarName);
+      }
     }
     return vec_res;
   }
@@ -110,6 +118,7 @@ class DygraphExecutionContext : public framework::ExecutionContext {
 
     return vec_temp;
   }
+
   bool HasInput(const std::string& name) const override {
     auto it = var_base_map_in_.find(name);
     return (it != var_base_map_in_.end() && it->second.size() > 0);
@@ -134,7 +143,9 @@ class DygraphExecutionContext : public framework::ExecutionContext {
       return nullptr;
     }
 
-    return it->second.empty() ? nullptr : it->second[0]->MutableVar();
+    return it->second.empty() || it->second[0] == nullptr
+               ? nullptr
+               : it->second[0]->MutableVar();
   }
 
   Variable* OutputVar(const std::string& name) const override {
@@ -143,7 +154,9 @@ class DygraphExecutionContext : public framework::ExecutionContext {
       return nullptr;
     }
 
-    return it->second.empty() ? nullptr : it->second[0]->MutableVar();
+    return it->second.empty() || it->second[0] == nullptr
+               ? nullptr
+               : it->second[0]->MutableVar();
   }
 
   const std::vector<Variable*> MultiInputVar(
@@ -155,7 +168,7 @@ class DygraphExecutionContext : public framework::ExecutionContext {
     std::vector<Variable*> vec_res;
     vec_res.reserve(it->second.size());
     for (size_t i = 0; i < it->second.size(); ++i) {
-      vec_res.push_back(it->second[i]->MutableVar());
+      vec_res.push_back(it->second[i] ? it->second[i]->MutableVar() : nullptr);
     }
 
     return vec_res;
@@ -170,7 +183,7 @@ class DygraphExecutionContext : public framework::ExecutionContext {
     std::vector<Variable*> vec_res;
     vec_res.reserve(it->second.size());
     for (size_t i = 0; i < it->second.size(); ++i) {
-      vec_res.push_back(it->second[i]->MutableVar());
+      vec_res.push_back(it->second[i] ? it->second[i]->MutableVar() : nullptr);
     }
 
     return vec_res;

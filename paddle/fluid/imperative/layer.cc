@@ -338,7 +338,9 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
   // Initialize output var type
   for (auto& var_pair : outs) {
     for (auto& var : var_pair.second) {
-      InitializeVariable(var->MutableVar(), var->Type());
+      if (var) {
+        InitializeVariable(var->MutableVar(), var->Type());
+      }
     }
   }
 

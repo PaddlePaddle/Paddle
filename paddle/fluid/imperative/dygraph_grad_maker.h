@@ -152,7 +152,13 @@ class GradOpBaseMakerBase {
     if (iterator != data_map.end()) {
       vec_temp.reserve(iterator->second.size());
 
+      bool is_valid = false;
       for (auto& var_base_temp : iterator->second) {
+        if (!var_base_temp) {
+          vec_temp.emplace_back();
+          continue;
+        }
+
         if (kRole == TracedVarRole::kBackward) {
           if (!var_base_temp->HasGradVar()) {
             VLOG(6) << "GradVarBase of var " << var_base_temp->Name()
@@ -171,6 +177,11 @@ class GradOpBaseMakerBase {
         } else {
           vec_temp.emplace_back(var_base_temp);
         }
+        is_valid = true;
+      }
+
+      if (!is_valid) {
+        vec_temp.clear();
       }
     }
 
@@ -208,13 +219,13 @@ class TracedGradOp {
 
     if (kRole == TracedVarRole::kBackward) {
       for (auto& var : vars) {
-        if (var) {
+        if (var && !var->OverridedStopGradient()) {
           var->SetGradNode(node_);
         }
       }
     }
 
-    auto var_wrappers = ToVarWrapperList(vars);
+    auto var_wrappers = ToVarWrapperList<kRole>(vars);
     if (!var_wrappers.empty()) {
       op_->SetInput(name, std::move(var_wrappers),
                     kRole == TracedVarRole::kBackward);
@@ -240,7 +251,7 @@ class TracedGradOp {
       }
     }
 
-    auto var_wrappers = ToVarWrapperList(vars);
+    auto var_wrappers = ToVarWrapperList<kRole>(vars);
     if (!var_wrappers.empty()) {
       op_->SetOutput(name, std::move(var_wrappers),
                      kRole == TracedVarRole::kBackward);
@@ -269,17 +280,19 @@ class TracedGradOp {
   }
 
  private:
+  template <TracedVarRole kRole>
   static std::vector<std::shared_ptr<VariableWrapper>> ToVarWrapperList(
       const std::vector<std::shared_ptr<VarBase>>& vars) {
     std::vector<std::shared_ptr<VariableWrapper>> result;
     result.reserve(vars.size());
     bool has_valid = false;
     for (auto& var : vars) {
-      if (var) {
-        has_valid = true;
-        result.emplace_back(var->SharedVar());
-      } else {
+      if (UNLIKELY(!var || (kRole == TracedVarRole::kBackward &&
+                            var->OverridedStopGradient()))) {
         result.emplace_back();
+      } else {
+        result.emplace_back(var->SharedVar());
+        has_valid = true;
       }
     }
 
