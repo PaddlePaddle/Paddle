@@ -33,7 +33,7 @@ from paddle.fluid.dygraph.nn import Conv2D
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
 
-from model import Model, Loss, shape_hints
+from model import Model, Loss, Input
 from resnet import ResNet, ConvBNLayer
 
 import logging
@@ -152,7 +152,6 @@ class YOLOv3(Model):
                                 act='leaky_relu'))
                 self.route_blocks.append(route)
 
-    @shape_hints(inputs=[None, 3, None, None], img_info=[None, 3])
     def forward(self, inputs, img_info):
         outputs = []
         boxes = []
@@ -208,10 +207,9 @@ class YOLOv3(Model):
 
 
 class YoloLoss(Loss):
-    def __init__(self, num_classes=80, num_max_boxes=50):
+    def __init__(self, num_classes=80):
         super(YoloLoss, self).__init__()
         self.num_classes = num_classes
-        self.num_max_boxes = num_max_boxes
         self.ignore_thresh = 0.7
         self.anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45,
                         59, 119, 116, 90, 156, 198, 373, 326]
@@ -239,16 +237,6 @@ class YoloLoss(Loss):
             losses.append(loss)
             downsample //= 2
         return losses
-
-    def infer_shape(self, _):
-        return [
-            [None, self.num_max_boxes, 4],
-            [None, self.num_max_boxes],
-            [None, self.num_max_boxes]
-        ]
-
-    def infer_dtype(self, _):
-        return ['float32', 'int32', 'float32']
 
 
 def make_optimizer(parameter_list=None):
@@ -470,8 +458,7 @@ def run(model, loader, mode='train'):
     start = time.time()
 
     for idx, batch in enumerate(loader()):
-        losses, _ = getattr(model, mode)(
-            batch[0], batch[1], device='gpu', device_ids=device_ids)
+        losses = getattr(model, mode)(batch[0], batch[1])
 
         total_loss += np.sum(losses)
         if idx > 1:  # skip first two steps
@@ -521,7 +508,8 @@ def main():
         os.mkdir('yolo_checkpoints')
 
     with guard:
-        NUM_CLASSES=7
+        NUM_CLASSES = 7
+        NUM_MAX_BOXES = 50
         model = YOLOv3(num_classes=NUM_CLASSES)
         # XXX transfer learning
         if FLAGS.pretrain_weights is not None:
@@ -530,12 +518,18 @@ def main():
             model.load(FLAGS.weights)
         optim = make_optimizer(parameter_list=model.parameters())
         anno_path = os.path.join(FLAGS.data, 'annotations', 'instances_val2017.json')
+        inputs = [Input([None, 3, None, None], 'float32', name='image'),
+                  Input([None, 3], 'int32', name='img_info')]
+        labels = [Input([None, NUM_MAX_BOXES, 4], 'float32', name='gt_bbox'),
+                  Input([None, NUM_MAX_BOXES], 'int32', name='gt_label'),
+                  Input([None, NUM_MAX_BOXES], 'float32', name='gt_score')]
         model.prepare(optim,
                       YoloLoss(num_classes=NUM_CLASSES),
                       # For YOLOv3, output variable in train/eval is different,
                       # which is not supported by metric, add by callback later?
                       # metrics=COCOMetric(anno_path, with_background=False)
-                      )
+                      inputs=inputs,
+                      labels = labels)
 
         for e in range(epoch):
             logger.info("======== train epoch {} ========".format(e))
