@@ -13,6 +13,10 @@
 # limitations under the License.
 """Defination of TrainerFactory."""
 
+from multiprocessing import Process, Manager
+from .framework import Variable
+from .device_worker import Hogwild, DownpourSGD, Section
+from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer
 import threading
 import time
 import logging
@@ -21,11 +25,6 @@ import numpy as np
 FORMAT = '%(asctime)s-%(levelname)s: %(message)s'
 logging.basicConfig(level=logging.INFO, format=FORMAT)
 local_logger = logging.getLogger(__name__)
-
-from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer
-from .device_worker import Hogwild, DownpourSGD, Section
-from .framework import Variable
-from multiprocessing import Process, Manager
 
 __all__ = ["TrainerFactory", "FetchHandler", "FetchHandlerMonitor"]
 
@@ -43,7 +42,7 @@ class TrainerFactory(object):
     def _create_trainer(self, opt_info=None):
         trainer = None
         device_worker = None
-        if opt_info == None:
+        if not opt_info:
             # default is MultiTrainer + Hogwild
             trainer = MultiTrainer()
             device_worker = Hogwild()
