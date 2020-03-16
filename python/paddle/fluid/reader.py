@@ -21,28 +21,18 @@ import paddle
 from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode, cpu_places
 from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider
+from .batch_sampler import BatchSampler
+from .multiprocess_utils import multiprocess_queue_set, CleanupFuncRegistrar, _cleanup_mmap, QUEUE_GET_TIMEOUT
+from .dataloader_helper import _DataLoaderIter
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
 from .unique_name import UniqueNameGenerator
 import logging
 from .dataset import DatasetBase, InMemoryDataset
 
 ### Dygraph DataLoader configs ###
-import atexit
 import os
 import multiprocessing
 import signal
-# NOTE: queue has a different name in python2 and python3
-if sys.version_info[0] == 2:
-    import Queue as queue
-else:
-    import queue
-# NOTE: [ avoid hanging & failed quickly ] These value is used in getting data from another process
-QUEUE_GET_TIMEOUT = 60
-
-# NOTE: [ mmap files clear ] If there is still data in the multiprocess queue when the main process finishes reading,
-# the data in the queue needs to be popped. Then the LoDTensor read by the main process
-# from the child process will automatically clear the memory-mapped file.
-multiprocess_queue_set = set()
 
 __all__ = ['PyReader', 'DataLoader']
 
@@ -62,84 +52,6 @@ def _convert_places(places):
 
         ret.append(p)
     return ret
-
-
-def _clear_multiprocess_queue_set():
-    global multiprocess_queue_set
-    for data_queue in multiprocess_queue_set:
-        while True:
-            try:
-                data_queue.get_nowait()
-            except queue.Empty:
-                break
-
-
-# NOTE: main process clear function at exit
-def _cleanup():
-    # NOTE: inter-process Queue shared memory objects clear function
-    _clear_multiprocess_queue_set()
-    # NOTE: main process memory map files clear funciton
-    core._cleanup_mmap_fds()
-
-
-# NOTE used for register a function to be executed at interpreter exit.
-class CleanupFuncRegistrar():
-    # Record the cleanup functions that have been executed
-    _executed_func_set = set()
-    # Record the cleanup functions that have been registered
-    _registered_func_set = set()
-
-    @classmethod
-    def register(cls, function, signals=[signal.SIGTERM]):
-        def _func_exectuor():
-            if function not in cls._executed_func_set:
-                try:
-                    function()
-                finally:
-                    cls._executed_func_set.add(function)
-
-        def _func_register(function):
-            if not callable(function):
-                raise TypeError("%s is not callable object." % (function))
-            # check function object whether hash-able
-            set([function])
-            if function not in cls._registered_func_set:
-                atexit.register(_func_exectuor)
-                cls._registered_func_set.add(function)
-
-        def _signal_handler(signum=None, frame=None):
-            _func_exectuor()
-            if signum is not None:
-                if signum == signal.SIGINT:
-                    raise KeyboardInterrupt
-                sys.exit(signum)
-
-        def _signal_register(signals):
-            signals = set(signals)
-            for sig in signals:
-                orig_handler = signal.signal(sig, _signal_handler)
-                if orig_handler not in (signal.SIG_DFL, signal.SIG_IGN):
-                    if (sig == signal.SIGINT and
-                            orig_handler is signal.default_int_handler):
-                        continue
-                    if orig_handler not in cls._registered_func_set:
-                        atexit.register(orig_handler)
-                        cls._registered_func_set.add(orig_handler)
-
-        # deal with signals
-        _signal_register(signals)
-        # deal with function
-        _func_register(function)
-
-
-# NOTE: [ mmap files clear ] When the main process exits unexpectedly, the remaining
-# shared memory objects in the inter-process Queue and the main process (mostly in the
-# BlockingQueue) may not be completely released, resulting in the corresponding
-# memory-mapped file remaining on the disk (/dev/shm), so register this function
-# to clean up shared memory objects in these two queues before the python interpreter exits.
-# NOTE: Currently multi-process DataLoader only supports Linux platform
-if not (sys.platform == 'darwin' or sys.platform == 'win32'):
-    CleanupFuncRegistrar.register(_cleanup)
 
 
 class DataLoaderBase(object):
@@ -166,20 +78,59 @@ class DataLoaderBase(object):
 
 
 class DataLoader(object):
+    def __init__(self,
+                 dataset,
+                 feed_list=None,
+                 places=None,
+                 return_list=False,
+                 batch_sampler=None,
+                 shuffle=False,
+                 batch_size=1,
+                 drop_last=False,
+                 collate_fn=None,
+                 num_workers=0,
+                 use_buffer_reader=True,
+                 timeout=0,
+                 worker_init_fn=None):
+        self.dataset = dataset
+        self.feed_list = feed_list
+        self.return_list = return_list
+        self.collate_fn = collate_fn
+        self.use_buffer_reader = use_buffer_reader
+        self.worker_init_fn = worker_init_fn
 
-    # def __init__(self,
-    #              dataset,
-    #              feed_list=None,
-    #              batch_sampler=None,
-    #              collate_fn=None,
-    #              shuffle=False,
-    #              batch_size=1,
-    #              drop_last=False,
-    #              num_workers=0,
-    #              use_buffer_reader=True,
-    #              timeout=0,
-    #              worker_init_fn):
-    #     pass
+        assert places is not None, "places cannot be None"
+        self.places = _convert_places(places)
+
+        assert num_workers >= 0, "num_workers should be a non-negative value"
+        self.num_workers = num_workers
+
+        assert timeout >= 0, "timeout should be a non-negative value"
+        self.timeout = timeout if timeout > 0 else QUEUE_GET_TIMEOUT
+
+        if batch_sampler is not None:
+            assert isinstance(batch_sampler, BatchSampler), \
+                "batch_sampler should be None or subclass instance " \
+                "of BatchSampler"
+            assert batch_size == 1 and not shuffle and not drop_last, \
+                "batch_size/shuffle/drop_last should not be set when " \
+                "batch_sampler is given"
+            self.batch_sampler = batch_sampler
+        else:
+            assert batch_size is not None and batch_size > 0, \
+                "batch_size should be a positive value when " \
+                "batch_sampler is not given"
+            self.batch_sampler = BatchSampler(
+                data_source=dataset,
+                batch_size=batch_size,
+                shuffle=shuffle,
+                drop_last=drop_last)
+
+    def __len__(self):
+        return len(self.batch_sampler)
+
+    def __iter__(self):
+        return _DataLoaderIter(self)
 
     @staticmethod
     def from_generator(feed_list=None,
@@ -615,16 +566,11 @@ class DygraphGeneratorLoader(DataLoaderBase):
             # set signal handler
             core._set_process_signal_handler()
 
-            # child process clear function at exit
-            def _cleanup():
-                # clear memory map files in child process
-                core._cleanup_mmap_fds()
-
             # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
             # some shared memory objects may have been applied for but have not yet
             # been put into the inter-process Queue. This part of the object needs
             # to be cleaned up when the process ends.
-            CleanupFuncRegistrar.register(_cleanup)
+            CleanupFuncRegistrar.register(_cleanup_mmap)
 
             for batch in self._batch_reader():
                 tensor_list = core._convert_to_tensor_list(batch)
