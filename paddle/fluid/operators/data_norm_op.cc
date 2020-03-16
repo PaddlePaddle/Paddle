@@ -697,7 +697,6 @@ class DataNormGradMaker : public framework::SingleGradOpMaker<T> {
                   this->InputGrad("BatchSquareSum"));
     op->SetOutput(framework::GradVarName("scale_w"), this->InputGrad("scale_w"));
     op->SetOutput(framework::GradVarName("bias"), this->InputGrad("bias"));
-    return std::unique_ptr<T>(op);
   }
 };
 
