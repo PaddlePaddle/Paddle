@@ -313,7 +313,8 @@ void FleetWrapper::PushDenseVarsAsync(
     std::vector<::std::future<int32_t>>* push_sparse_status,
     float scale_datanorm, int batch_size,
     std::vector<std::vector<float>>& dense_grad_regions_,
-    const paddle::platform::Place& place) {
+    const paddle::platform::Place& place,
+    cudaStream_t stream) {
 #ifdef PADDLE_WITH_PSLIB
   if (!platform::is_cpu_place(place)) {
     //platform::DeviceContextPool::Instance().Get(place)->Wait();
@@ -336,7 +337,7 @@ void FleetWrapper::PushDenseVarsAsync(
           platform::CPUPlace(),
           dense_grad_regions_[i].data(),
           boost::get<platform::CUDAPlace>(place),
-          g_data, sizeof(float) * count, nullptr);
+          g_data, sizeof(float) * count, stream);
       g = dense_grad_regions_[i].data();
     }
     #endif
@@ -373,7 +374,9 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     const int batch_size, const bool use_cvm, const bool dump_slot,
     std::vector<uint64_t>* sparse_push_keys, const bool no_cvm,
     const paddle::platform::Place& place,
-    std::vector<float>& sparse_grad_region) {
+    std::vector<float>& sparse_grad_region,
+    cudaStream_t stream,
+    cudaEvent_t event) {
 #ifdef PADDLE_WITH_PSLIB
   int offset = 2;
   int slot_offset = 0;
@@ -406,6 +409,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   if (!platform::is_cpu_place(place)) {
     
     in_cpu = false;
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(stream, event, 0));
     //platform::DeviceContextPool::Instance().Get(place)->Wait();
   }
   for (size_t i = 0;
@@ -444,7 +448,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
           platform::CPUPlace(),
           sparse_grad_region.data(),
           boost::get<platform::CUDAPlace>(place),
-          g, sizeof(float) * emb_dim * len, nullptr);
+          g, sizeof(float) * emb_dim * len, stream);
       g = sparse_grad_region.data();
       #endif
 

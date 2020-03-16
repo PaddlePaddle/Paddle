@@ -94,7 +94,7 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
             w,
             platform::CPUPlace(),
             dense_region[i].data(), sizeof(float) * tensor->numel(),
-            nullptr);
+            copy_stream_);
       }
     }
   }

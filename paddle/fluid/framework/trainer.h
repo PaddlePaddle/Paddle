@@ -108,6 +108,9 @@ class DistMultiTrainer : public MultiTrainer {
   int mpi_rank_;
   int mpi_size_;
   int dump_file_num_;
+  #ifdef PADDLE_WITH_CUDA
+  cudaStream_t copy_stream_;
+  #endif
 };
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)

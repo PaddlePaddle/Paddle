@@ -55,6 +55,9 @@ class PullDenseWorker {
  public:
   virtual ~PullDenseWorker() {}
   virtual void Initialize(const TrainerDesc& param);
+  #ifdef PADDLE_WITH_CUDA
+  void SetStream(cudaStream_t stream) { copy_stream_ = stream; }
+  #endif
   int Start();
   void Stop();
   void SetRootScope(Scope* scope) { root_scope_ = scope; }
@@ -106,6 +109,9 @@ class PullDenseWorker {
   std::mutex mutex_for_mean_scale_;
   float total_batch_num_ = 0;
   std::map<uint64_t, std::vector<std::vector<float>>> dense_regions_; 
+  #ifdef PADDLE_WITH_CUDA
+  cudaStream_t copy_stream_;
+  #endif
 };
 
 // should incorporate different type of device
@@ -129,6 +135,9 @@ class DeviceWorker {
   virtual void SetNeedDump(bool need_dump_field) {}
   virtual void SetChannelWriter(ChannelObject<std::string>* queue) {}
   virtual const platform::Place& place() const { return place_; }
+  #ifdef PADDLE_WITH_CUDA
+  virtual void SetStream(cudaStream_t stream) {}
+  #endif
   virtual void SetPlace(const paddle::platform::Place& place) {
     place_ = place;
   }
@@ -199,6 +208,9 @@ class DownpourWorker : public HogwildWorker {
   virtual ~DownpourWorker() {}
   virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
+  #ifdef PADDLE_WITH_CUDA
+  virtual void SetStream(cudaStream_t stream) { copy_stream_ = stream; }
+  #endif
   virtual void TrainFilesWithProfiler();
   virtual void SetNeedDump(bool need_dump_field);
   virtual void SetChannelWriter(ChannelObject<std::string>* queue);
@@ -234,6 +246,10 @@ class DownpourWorker : public HogwildWorker {
   std::map<uint64_t, std::vector<std::string>> dense_value_names_;
   std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
   std::vector<std::vector<float>> dense_grad_regions_;
+  #ifdef PADDLE_WITH_CUDA
+  cudaEvent_t event_;
+  cudaStream_t copy_stream_;
+  #endif
   std::vector<float> sparse_grad_region_;
   // actually pushed feasign of each table
   std::map<uint64_t, std::vector<uint64_t>> sparse_push_keys_;

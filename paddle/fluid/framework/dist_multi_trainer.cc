@@ -28,6 +28,9 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
                                   Dataset *dataset) {
   thread_num_ = trainer_desc.thread_num();
   SetDataset(dataset);
+  #ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&copy_stream_));
+  #endif
 
   dump_fields_path_ = trainer_desc.dump_fields_path();
   dump_converter_ = trainer_desc.dump_converter();
@@ -62,11 +65,17 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
     workers_[i]->SetDataFeed(readers[i]);
     workers_[i]->Initialize(trainer_desc);
     workers_[i]->SetNeedDump(need_dump_field_);
+    #ifdef PADDLE_WITH_CUDA
+    workers_[i]->SetStream(copy_stream_);
+    #endif
   }
 
   VLOG(3) << "going to initialize pull dense worker";
   pull_dense_worker_ = PullDenseWorker::GetInstance();
   pull_dense_worker_->Initialize(trainer_desc);
+  #ifdef PADDLE_WITH_CUDA
+  pull_dense_worker_->SetStream(copy_stream_);
+  #endif
   VLOG(3) << "initialize pull dense worker";
   SetDebug(trainer_desc.debug());
 }

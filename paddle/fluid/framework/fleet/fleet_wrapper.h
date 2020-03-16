@@ -108,7 +108,8 @@ class FleetWrapper {
       std::vector<::std::future<int32_t>>* push_sparse_status,
       float scale_datanorm, int batch_size,
       std::vector<std::vector<float>>& dense_grad_regions_,
-      const paddle::platform::Place& place);
+      const paddle::platform::Place& place,
+      cudaStream_t stream);
 
   // push dense variables to server in sync mode
   void PushDenseVarsSync(Scope* scope, const uint64_t table_id,
@@ -130,7 +131,7 @@ class FleetWrapper {
       const int batch_size, const bool use_cvm, const bool dump_slot,
       std::vector<uint64_t>* sparse_push_keys, const bool no_cvm,
       const paddle::platform::Place& place,
-      std::vector<float>& sparse_grad_region);
+      std::vector<float>& sparse_grad_region, cudaStream_t stream, cudaEvent_t event);
 
   // Push sparse variables to server in Async mode
   // Param<In>: scope, table_id, fea_keys, sparse_grad_names
