@@ -385,5 +385,40 @@ class SectionWorker : public DeviceWorker {
   platform::DeviceContext* dev_ctx_ = nullptr;
 };
 #endif
+
+class ModelParallelWorker : public DeviceWorker {
+ public:
+  ModelParallelWorker() { VLOG(3) << "worker construct."; }
+  ~ModelParallelWorker() override {}
+
+  void Initialize(const TrainerDesc& desc) override;
+
+  void BindingDataFeedMemory() override {}
+  void CreateDeviceResource(const ProgramDesc& main_prog) override{};
+  void SetThreadIndex(int thread_id) { thread_id_ = thread_id; }
+  void SetDeviceIndex(int tid) override { pipeline_id_ = tid; }
+  void SetMacrobatchScopes(const std::vector<Scope*>& scope) {
+    macrobatch_scopes_ = scope;
+  }
+
+  void TrainFiles() override;
+  void TrainFilesWithProfiler() override;
+
+  void PrintFetchVars() override {}
+
+  const platform::Place& place() const { return place_; }
+
+  static std::atomic<int> cpu_id_;
+
+ protected:
+  int thread_id_;
+  int pipeline_id_;
+  std::vector<Scope*> macrobatch_scopes_;
+  void AutoSetCPUAffinity(bool reuse);
+  std::vector<std::unique_ptr<OperatorBase>> ops_;
+
+  platform::DeviceContext* dev_ctx_ = nullptr;
+};
+
 }  // namespace framework
 }  // namespace paddle

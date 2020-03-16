@@ -170,5 +170,41 @@ class PipelineTrainer : public TrainerBase {
   void construct_sync_functor();
 };
 #endif
+
+class ModelParallelTrainer : public TrainerBase {
+ public:
+  ModelParallelTrainer() { VLOG(3) << "constructor"; }
+  ~ModelParallelTrainer() override {}
+  void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set) override;
+  void InitTrainerEnv(const ProgramDesc& main_program,
+                      const platform::Place& place) override;
+  void InitOtherEnv(const ProgramDesc& main_program) override {}
+  void Run() override;
+  void Finalize() override;
+  virtual Scope* GetWorkerScope(int thread_id);
+
+ protected:
+  int section_num_;
+  std::vector<std::string> feed_var_names_;
+  SectionWorkerParameter pipeline_config_;
+
+  // worker: [section_id][pipeline_id][thread_id]
+  std::vector<std::vector<std::shared_ptr<paddle::framework::DeviceWorker>>>
+      workers_;
+  std::vector<std::thread> section_threads_;
+
+  // We use scope to maintain context info, and scopes
+  // will be deliverd between different sections.
+  std::vector<Scope*> macrobatch_scopes_;
+
+  std::vector<std::string> persistable_vars_;
+
+  std::vector<DataFeed*> readers_;
+
+  void CopyParameters(const Scope& scope, int pipeline_id,
+                      const ProgramDesc& main_program);
+  int concurrency_;
+};
+
 }  // namespace framework
 }  // namespace paddle
