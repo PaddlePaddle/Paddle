@@ -109,7 +109,7 @@ static int64_t GetTimestamp() {
 
 void ListenAndServOp::RunSyncLoop(
     framework::Executor *executor, framework::ProgramDesc *program,
-    framework::Scope *recv_scope, platform::DeviceContext *dev_ctx,
+    framework::Scope *recv_scope, const platform::DeviceContext *dev_ctx,
     const std::vector<int> &prefetch_block_id_list,
     const int checkpoint_point_block_id) const {
   VLOG(2) << "RunSyncLoop";
@@ -188,7 +188,7 @@ void ListenAndServOp::RunSyncLoop(
 }
 
 void ListenAndServOp::ResetReceivedVars(framework::Scope *recv_scope,
-                                        platform::DeviceContext *dev_ctx,
+                                        const platform::DeviceContext *dev_ctx,
                                         bool reset_all) const {
   for (auto &varname : sparse_vars_) {
     auto var = recv_scope->FindVar(varname);
@@ -290,7 +290,7 @@ void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
 
 static void FillRequestCtx(
     distributed::RequestHandler *h, framework::Scope *scope,
-    platform::DeviceContext *dev_ctx, framework::Executor *executor,
+    const platform::DeviceContext *dev_ctx, framework::Executor *executor,
     framework::ProgramDesc *program,
     std::unordered_map<std::string,
                        std::shared_ptr<framework::ExecutorPrepareContext>>

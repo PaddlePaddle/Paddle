@@ -36,10 +36,8 @@ class GenNCCLIdOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+               const platform::DeviceContext& dev_ctx) const override {
     // put nccl id in CPUPlace
-    auto& dev_ctx = *pool.Get(platform::CPUPlace());
     int trainer_id = Attr<int>("trainer_id");
 
     std::vector<std::string> trainers =

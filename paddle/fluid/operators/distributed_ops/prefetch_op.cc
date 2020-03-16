@@ -32,14 +32,11 @@ class PrefetchOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& place) const override {
+               const platform::DeviceContext& dev_ctx) const override {
     auto ins = Inputs("X");
     auto outs = Outputs("Out");
 
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
-
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto& ctx = *pool.Get(place);
 
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(
@@ -50,7 +47,7 @@ class PrefetchOp : public framework::OperatorBase {
       if (NeedSend(scope, ins[i])) {
         VLOG(3) << "sending " << ins[i] << " to " << epmap[i] << " to get "
                 << outs[i] << " back";
-        rets.push_back(rpc_client->AsyncPrefetchVar(epmap[i], ctx, scope,
+        rets.push_back(rpc_client->AsyncPrefetchVar(epmap[i], dev_ctx, scope,
                                                     ins[i], outs[i]));
       } else {
         VLOG(3) << "don't send no-initialied variable: " << ins[i];

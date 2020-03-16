@@ -97,10 +97,10 @@ static int64_t GetTimestamp() {
   return tp.tv_sec * 1000 + tp.tv_usec / 1000;
 }
 
-void FlListenAndServOp::RunSyncLoop(framework::Executor *executor,
-                                    framework::ProgramDesc *program,
-                                    framework::Scope *recv_scope,
-                                    platform::DeviceContext *dev_ctx) const {
+void FlListenAndServOp::RunSyncLoop(
+    framework::Executor *executor, framework::ProgramDesc *program,
+    framework::Scope *recv_scope,
+    const platform::DeviceContext *dev_ctx) const {
   VLOG(2) << "RunSyncLoop";
   size_t num_blocks = program->Size();
   auto optimize_blocks =
@@ -167,7 +167,7 @@ void FlListenAndServOp::RunSyncLoop(framework::Executor *executor,
 
 static void FillRequestCtx(distributed::RequestHandler *h,
                            framework::Scope *scope,
-                           platform::DeviceContext *dev_ctx,
+                           const platform::DeviceContext *dev_ctx,
                            framework::Executor *executor,
                            framework::ProgramDesc *program,
                            distributed::RPCServer *rpc_server) {

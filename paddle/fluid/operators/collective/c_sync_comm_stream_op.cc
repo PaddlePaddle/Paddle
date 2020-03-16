@@ -37,7 +37,8 @@ class CSyncCommStreamOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& place) const override {
+               const platform::DeviceContext& dev_ctx) const override {
+    auto place = dev_ctx.GetPlace();
     PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
                       "Sync stream op can run on gpu place only for now.");
 

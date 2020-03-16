@@ -37,13 +37,13 @@ class CSyncCalcStreamOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& place) const override {
+               const platform::DeviceContext& dev_ctx) const override {
+    auto place = dev_ctx.GetPlace();
     PADDLE_ENFORCE(is_gpu_place(place),
                    "Sync stream op can run on gpu place only for now.");
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    auto dev_ctx = static_cast<platform::CUDADeviceContext*>(
-        platform::DeviceContextPool::Instance().Get(place));
-    cudaError_t e_sync = cudaStreamSynchronize(dev_ctx->stream());
+    cudaError_t e_sync = cudaStreamSynchronize(
+        static_cast<const platform::CUDADeviceContext*>(&dev_ctx)->stream());
     if (e_sync != 0) {
       LOG(FATAL) << "Fail to sync cuda stream: " << cudaGetErrorString(e_sync);
     }

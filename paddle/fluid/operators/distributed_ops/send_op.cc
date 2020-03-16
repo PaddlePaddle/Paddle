@@ -37,7 +37,7 @@ class SendOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& place) const override {
+               const platform::DeviceContext& dev_ctx) const override {
     auto ins = Inputs("X");
 
     auto epmap = Attr<std::vector<std::string>>("epmap");
@@ -50,10 +50,6 @@ class SendOp : public framework::OperatorBase {
     if (send_varnames.size() > 0) {
       distributed::Communicator::GetInstance()->Send(ins, send_varnames, scope);
     } else {
-      platform::DeviceContextPool& pool =
-          platform::DeviceContextPool::Instance();
-      auto& ctx = *pool.Get(place);
-
       distributed::RPCClient* rpc_client =
           distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
 
@@ -63,7 +59,7 @@ class SendOp : public framework::OperatorBase {
           if (NeedSend(scope, ins[i])) {
             VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
             rets.push_back(
-                rpc_client->AsyncSendVar(epmap[i], ctx, scope, ins[i]));
+                rpc_client->AsyncSendVar(epmap[i], dev_ctx, scope, ins[i]));
           } else {
             VLOG(3) << "don't send no-initialied variable: " << ins[i];
           }
@@ -73,8 +69,8 @@ class SendOp : public framework::OperatorBase {
           for (size_t j = 0; j < epmap.size(); j++) {
             if (NeedSend(scope, ins[i])) {
               VLOG(3) << "sending " << ins[i] << " to " << epmap[j];
-              rets.push_back(rpc_client->AsyncDistributeNotify(epmap[j], ctx,
-                                                               scope, ins[i]));
+              rets.push_back(rpc_client->AsyncDistributeNotify(
+                  epmap[j], dev_ctx, scope, ins[i]));
             } else {
               VLOG(3) << "don't send no-initialied variable: " << ins[i];
             }

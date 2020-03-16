@@ -60,14 +60,14 @@ class FlListenAndServOp : public framework::OperatorBase {
   void RunSyncLoop(framework::Executor* executor,
                    framework::ProgramDesc* program,
                    framework::Scope* recv_scope,
-                   platform::DeviceContext* dev_ctx) const;
+                   const platform::DeviceContext* dev_ctx) const;
 
   void SavePort() const;
 
   int GetSelectedPort() { return rpc_service_->GetSelectedPort(); }
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override;
+               const platform::DeviceContext& dev_ctx) const override;
 
  protected:
   mutable std::shared_ptr<distributed::RPCServer> rpc_service_;

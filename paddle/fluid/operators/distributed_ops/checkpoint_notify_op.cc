@@ -34,7 +34,7 @@ class CheckpointNotifyOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& place) const override {
+               const platform::DeviceContext& dev_ctx) const override {
     std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
     std::string dir = Attr<std::string>("dir");
     std::string lookup_table_name = Attr<std::string>("lookup_table");

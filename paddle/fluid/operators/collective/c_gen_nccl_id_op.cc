@@ -43,17 +43,16 @@ class CGenNCCLIdOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& dev_place) const override {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+               const platform::DeviceContext& dev_ctx) const override {
     // put nccl id in CPUPlace
-    auto& dev_ctx = *pool.Get(platform::CPUPlace());
+    auto ctx = platform::CPUDeviceContext();
     int rank = Attr<int>("rank");
     framework::Scope& local_scope = scope.NewScope();
 
     if (rank == 0) {
-      GenerateAndSend(&local_scope, dev_ctx);
+      GenerateAndSend(&local_scope, ctx);
     } else {
-      GetIdByServer(&local_scope, dev_ctx);
+      GetIdByServer(&local_scope, ctx);
     }
     scope.DeleteScope(&local_scope);
   }

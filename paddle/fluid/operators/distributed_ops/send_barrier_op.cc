@@ -35,7 +35,7 @@ class SendBarrierOp : public framework::OperatorBase {
       : OperatorBase(type, inputs, outputs, attrs) {}
 
   void RunImpl(const framework::Scope& scope,
-               const platform::Place& place) const override {
+               const platform::DeviceContext& dev_ctx) const override {
     auto is_half_async = Attr<bool>("half_async");
 
     if (is_half_async) {
