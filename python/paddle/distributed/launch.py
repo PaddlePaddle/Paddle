@@ -210,7 +210,7 @@ def start_local_trainers(cluster, pod):
     procs = []
     for idx, t in enumerate(pod.trainers):
         proc_env = {
-            "FLAGS_selected_gpus": "%s" % ",".join([str(g) for g in t.gpu]),
+            "FLAGS_selected_gpus": "%s" % ",".join([str(g) for g in t.gpus]),
             "PADDLE_TRAINER_ID": "%d" % t.rank,
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
@@ -302,7 +302,7 @@ def get_hdfs_from_args(args):
     hdfs.hdfs_ugi = args.hdfs_ugi
     hdfs.hdfs_path = args.hdfs_path
 
-    assert hdfs.is_valid()
+    #assert hdfs.is_valid()
     return hdfs
 
 
@@ -326,7 +326,7 @@ def edl_barrier(edl_env, hdfs, timeout=-1):
 
         logger.warning("Can't barrier in cluster:{}:{}".format(pod.addr,
                                                                pod.port))
-        time.sleep(1)
+        time.sleep(3)
         if timeout > 0 and step >= timeout:
             logger.warning("can't barrier to start now!so exit")
             sys.exit(1)
@@ -388,7 +388,7 @@ def launch(args):
             logger.info("Local procs complete, POD info:{}".format(pod))
             break
 
-        time.sleep(5)
+        time.sleep(3)
 
     edl_barrier(edl_env, hdfs)
 

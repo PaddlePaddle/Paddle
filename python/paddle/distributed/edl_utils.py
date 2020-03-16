@@ -48,9 +48,10 @@ class Edlenv(object):
 
             for idx, t_port in enumerate(r_pod["trainer_ports"]):
                 trainer = Trainer()
+                trainer.gpus = []
                 trainer.endpoint = "{}:{}".format(pod.addr, t_port)
                 trainer.rank = t_rank
-                trainer.gpus = [pod.gpus[idx]]
+                trainer.gpus = [idx]
                 t_rank += 1
 
                 pod.trainers.append(trainer)
@@ -86,7 +87,7 @@ class Edlenv(object):
                 logger.warning(
                     "get pods from job_server:{} payload:{} error:{}, try again!".
                     format(url, job_id, str(e)))
-                time.sleep(3)
+                #time.sleep(3)
 
         return self._parse_response_pods(pods), flag
 
