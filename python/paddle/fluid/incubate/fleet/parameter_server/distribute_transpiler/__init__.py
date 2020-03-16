@@ -53,8 +53,6 @@ class DistributedTranspiler(Fleet):
         self.startup_program = None
         self.main_program = None
 
-        self.save_on_pserver = False
-
     def init_worker(self):
         """
         `init_worker` has many many functions to do before training,
@@ -273,7 +271,7 @@ class DistributedTranspiler(Fleet):
             raise ValueError(
                 "main_program is for local, may not use fleet.save_persistables")
 
-        if self.save_on_pserver:
+        if self._optimizer._strategy.use_pserver_save:
             main_program._save_on_pserver = True
 
         io.save_persistables(executor, dirname, main_program, None)
