@@ -39,7 +39,7 @@ class GenQueueOp : public framework::OperatorBase {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     // put queue var in CPUPlace
     auto& dev_ctx = *pool.Get(platform::CPUPlace());
-    framework::Scope& local_scope = scope.NewScope();
+    // framework::Scope& local_scope = scope.NewScope();
 
     std::vector<std::string> queue_names =
         Attr<std::vector<std::string>>("queue_names");
@@ -53,12 +53,14 @@ class GenQueueOp : public framework::OperatorBase {
 
     // generate queue vars and initialize them
     for (auto var_name : queue_names) {
-      Generate(&local_scope, dev_ctx, var_name, queue_size);
+      // Generate(&local_scope, dev_ctx, var_name, queue_size);
+      Generate(&scope, dev_ctx, var_name, queue_size);
     }
   }
 
  private:
-  void Generate(framework::Scope* scope, const platform::DeviceContext& dev_ctx,
+  void Generate(const framework::Scope* scope,
+                const platform::DeviceContext& dev_ctx,
                 const std::string& var_name, size_t queue_size) const {
     auto var = scope->FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(var, "can't find var_name:%s", var_name);

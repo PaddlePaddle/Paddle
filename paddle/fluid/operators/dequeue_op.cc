@@ -20,9 +20,9 @@
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = paddle::framework::LoDTensor;
 using LoDTensorBlockingQueueHolder =
-    operators::reader::LoDTensorBlockingQueueHolder;
+    paddle::operators::reader::LoDTensorBlockingQueueHolder;
 
 namespace paddle {
 namespace operators {
@@ -45,16 +45,18 @@ class DequeueOp : public framework::OperatorBase {
         "No LoDTensorBlockingQueueHolder variable with name %s found",
         queue_name);
     const std::string& var_name = Input("lod_tensor");
-    auto* out_tensor = scope.FindVar(var_name);
-    PADDLE_ENFORCE_NOT_NULL(in_tensor, "No variable with name %s found",
+    auto* out_var = scope.FindVar(var_name);
+    auto* out_tensor = out_var->GetMutable<LoDTensor>();
+    PADDLE_ENFORCE_NOT_NULL(out_tensor, "No variable with name %s found",
                             var_name);
     auto* queue_holder =
         queue_holder_var->template GetMutable<LoDTensorBlockingQueueHolder>();
 
     std::vector<LoDTensor> lod_tensor_vec;
-    queue_holder->GetQueue()->Pop(lod_tensor_vec);
-    for (int i = 0; i < lod_tensor_vec.size(); ++i) {
-      TensorCopySync(lod_tensor_vec[i], dev_place, *out_tensor);
+    bool success = false;
+    lod_tensor_vec = queue_holder->GetQueue()->Pop(&success);
+    for (size_t i = 0; i < lod_tensor_vec.size(); ++i) {
+      TensorCopySync(lod_tensor_vec[i], dev_place, out_tensor);
     }
   }
 };

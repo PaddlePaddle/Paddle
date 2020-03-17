@@ -21,6 +21,10 @@
 #include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 
+using LoDTensor = paddle::framework::LoDTensor;
+using LoDTensorBlockingQueueHolder =
+    paddle::operators::reader::LoDTensorBlockingQueueHolder;
+
 namespace paddle {
 namespace operators {
 
@@ -41,7 +45,8 @@ class EnqueueOp : public framework::OperatorBase {
         "No LoDTensorBlockingQueueHolder variable with name %s found",
         queue_name);
     const std::string& var_name = Input("lod_tensor");
-    auto* in_tensor = scope.FindVar(var_name);
+    auto* in_var = scope.FindVar(var_name);
+    auto* in_tensor = in_var->GetMutable<LoDTensor>();
     PADDLE_ENFORCE_NOT_NULL(in_tensor, "No variable with name %s found",
                             var_name);
     auto* queue_holder =

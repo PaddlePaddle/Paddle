@@ -30,7 +30,7 @@ void ModelParallelWorker::Initialize(const TrainerDesc& trainer_desc) {
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
   std::shared_ptr<framework::ProgramDesc> program;
   program.reset(new ProgramDesc(
-      trainer_desc.section_param().section_config(0).program_desc()));
+      trainer_desc.section_param().section_config(thread_id_).program_desc()));
   for (auto& op_desc : program->Block(0).AllOps()) {
     ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
@@ -86,16 +86,25 @@ void ModelParallelWorker::TrainFiles() {
     //}
     VLOG(3) << "assign var for data reader_ ";
     device_reader_->AssignFeedVar(*root_scope_);
-    VLOG(3) << "get batch_size for data reader_ ";
-    batch_size = device_reader_->Next();
-    VLOG(3) << "read batch size: " << batch_size;
+    // VLOG(3) << "get batch_size for data reader_ ";
+    // batch_size = device_reader_->Next();
+    // VLOG(3) << "read batch size: " << batch_size;
+    while ((batch_size = device_reader_->Next()) > 0) {
+      VLOG(3) << "read batch size: " << batch_size;
+      VLOG(3) << "begin running ops";
+      for (auto& op : ops_) {
+        VLOG(3) << "running an op " << op->Type() << " for " << thread_id_;
+        op->Run(*macrobatch_scopes_[0], place_);
+      }
+      dev_ctx_->Wait();
+    }
+  } else {
+    for (auto& op : ops_) {
+      VLOG(3) << "running an op " << op->Type() << " for " << thread_id_;
+      op->Run(*macrobatch_scopes_[0], place_);
+    }
+    dev_ctx_->Wait();
   }
-
-  VLOG(3) << "begin running ops";
-  for (auto& op : ops_) {
-    op->Run(*macrobatch_scopes_[0], place_);
-  }
-  dev_ctx_->Wait();
 }
 
 void ModelParallelWorker::TrainFilesWithProfiler() {

@@ -72,6 +72,8 @@ void ModelParallelTrainer::Initialize(const TrainerDesc& trainer_desc,
         this_worker->SetDataFeed(reader);
         this_worker->SetReaderPlace(place);
       }
+      auto thread_index = i * concurrency_ + j;
+      this_worker->SetThreadIndex(thread_index);
       this_worker->SetPlace(place);
       this_worker->Initialize(trainer_desc);
     }
@@ -156,6 +158,7 @@ void ModelParallelTrainer::Finalize() {
   for (auto& th : section_threads_) {
     th.join();
   }
+  VLOG(3) << "trainer finalized. ";
   root_scope_->DropKids();
 }
 
