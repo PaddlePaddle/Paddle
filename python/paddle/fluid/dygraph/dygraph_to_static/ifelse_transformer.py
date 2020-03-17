@@ -372,11 +372,13 @@ class IfConditionVisitor(object):
 
 
 class NameVisitor(gast.NodeVisitor):
-    def __init__(self, not_name_set=None, node_black_set=None):
-        self.not_name_set = not_name_set or set()
+    def __init__(self, node_black_set=None):
+        # Set of nodes that will not be visited.
         self.node_black_set = node_black_set or set()
+        # Dict to store the names and ctxs of vars.
         self.name_ids = defaultdict(list)
-        self.name_nodes = []
+        # List of current visited nodes
+        self.ancestor_nodes = []
         # Available only when node_black_set is set.
         self._is_finished = False
         self._candidate_ctxs = (gast.Store, gast.Load, gast.Param)
@@ -386,9 +388,14 @@ class NameVisitor(gast.NodeVisitor):
         if node in self.node_black_set or self._is_finished:
             self._is_finished = True
             return
+
+        self.ancestor_nodes.append(node)
         method = 'visit_' + node.__class__.__name__
         visitor = getattr(self, method, self.generic_visit)
-        return visitor(node)
+        ret = visitor(node)
+        self.ancestor_nodes.pop()
+
+        return ret
 
     def visit_If(self, node):
         """
@@ -408,7 +415,7 @@ class NameVisitor(gast.NodeVisitor):
                 res = res + 1   # Error, `res` is not visible here.
 
         In above two cases, we should consider to manage the scope of vars to parsing
-        arguments and returned vars correctly.
+        the arguments and returned vars correctly.
         """
         before_if_name_ids = copy.deepcopy(self.name_ids)
         body_name_ids = self._visit_child(node.body)
@@ -426,25 +433,22 @@ class NameVisitor(gast.NodeVisitor):
 
             self.name_ids = before_if_name_ids
 
-    def visit_Call(self, node):
-        self._update_no_name_set(node.func)
-        self.generic_visit(node)
-
     def visit_Attribute(self, node):
-        self._update_no_name_set(node.value)
-        self.generic_visit(node)
+        if not self._is_call_func_name_node(node):
+            self.generic_visit(node)
 
     def visit_Name(self, node):
-        if node.id not in self.not_name_set:
+        if not self._is_call_func_name_node(node):
             if isinstance(node.ctx, self._candidate_ctxs):
                 self.name_ids[node.id].append(node.ctx)
-                self.name_nodes.append(node)
 
     def visit_Assign(self, node):
+        # Visit `value` firstly.
         node._fields = ('value', 'targets')
         self.generic_visit(node)
 
     def visit_Return(self, node):
+        # Ignore the vars in return
         return
 
     def _visit_child(self, node):
@@ -477,16 +481,20 @@ class NameVisitor(gast.NodeVisitor):
 
         return new_name_ids
 
-    def _update_no_name_set(self, node):
-        if isinstance(node, gast.Name):
-            self.not_name_set.add(node.id)
+    def _is_call_func_name_node(self, node):
+        if len(self.ancestor_nodes) > 1:
+            assert self.ancestor_nodes[-1] == node
+            parent_node = self.ancestor_nodes[-2]
+            if isinstance(parent_node, gast.Call) and parent_node.func == node:
+                return True
+        return False
 
 
-def get_name_ids(nodes, not_name_set=None, node_black_set=None):
+def get_name_ids(nodes, node_black_set=None):
     """
     Return all ast.Name.id of python variable in nodes.
     """
-    name_visitor = NameVisitor(not_name_set, node_black_set)
+    name_visitor = NameVisitor(node_black_set)
     for node in nodes:
         name_visitor.visit(node)
     return name_visitor.name_ids
