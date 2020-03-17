@@ -720,33 +720,6 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
         except Exception as e:
             self.assertTrue(False)
 
-    def test_fetch_handler(self):
-        """
-        Test Dataset With Fetch Handler. TestCases.
-        """
-        slots_vars, out = self.net()
-        files = ["test_queue_dataset_run_a.txt", "test_queue_dataset_run_b.txt"]
-        dataset = self.get_dataset(slots_vars, files)
-
-        exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(fluid.default_startup_program())
-
-        fh = fluid.executor.FetchHandler(out.name)
-        fh.help()
-
-        try:
-            exe.train_from_dataset(
-                program=fluid.default_main_program(),
-                dataset=dataset,
-                fetch_handler=fh)
-        except ImportError as e:
-            print("warning: we skip trainer_desc_pb2 import problem in windows")
-        except RuntimeError as e:
-            error_msg = "dataset is need and should be initialized"
-            self.assertEqual(error_msg, cpt.get_exception_message(e))
-        except Exception as e:
-            self.assertTrue(False)
-
 
 class TestDataset2(unittest.TestCase):
     """  TestCases for Dataset. """
@@ -796,6 +769,7 @@ class TestDataset2(unittest.TestCase):
                 print("warning: no mpi4py")
             adam = fluid.optimizer.Adam(learning_rate=0.000005)
             try:
+                fleet.init()
                 adam = fleet.distributed_optimizer(adam)
                 adam.minimize([fake_cost], [scope])
             except AttributeError as e:
@@ -858,6 +832,7 @@ class TestDataset2(unittest.TestCase):
                 print("warning: no mpi4py")
             adam = fluid.optimizer.Adam(learning_rate=0.000005)
             try:
+                fleet.init()
                 adam = fleet.distributed_optimizer(
                     adam,
                     strategy={
