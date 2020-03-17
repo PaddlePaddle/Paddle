@@ -9627,18 +9627,26 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
 
     helper = LayerHelper('gaussian_random', **locals())
     out = helper.create_variable_for_type_inference(dtype)
+    if not isinstance(shape, (list, tuple, Variable)):
+        raise TypeError(
+            "The type of 'shape' in fill_constant must be Variable, list or tuple, but "
+            "received %s." % (type(shape)))
     c_dtype = convert_np_dtype_to_dtype_(dtype)
+    attrs = {
+        'mean': mean,
+        'std': std,
+        'seed': seed,
+        'dtype': c_dtype,
+        'use_mkldnn': False
+    }
+    shape_inputs = get_shape_tensor_inputs(
+        attrs=attrs, shape=shape, op_type='gaussian_random')
+
     helper.append_op(
         type='gaussian_random',
+        inputs=inputs,
         outputs={'Out': out},
-        attrs={
-            'shape': shape,
-            'mean': mean,
-            'std': std,
-            'seed': seed,
-            'dtype': c_dtype,
-            'use_mkldnn': False
-        })
+        attrs=attrs)
 
     return out
 

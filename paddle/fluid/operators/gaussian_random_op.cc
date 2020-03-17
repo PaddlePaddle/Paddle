@@ -37,13 +37,13 @@ class CPUGaussianRandomKernel : public framework::OpKernel<T> {
     }
     engine.seed(seed);
     std::normal_distribution<T> dist(mean, std);
-    
+
     auto shape = GetShape(context);
-    tensor->Resize(shape);   
+    tensor->Resize(shape);
     VLOG(0) << shape;
     int64_t size = tensor->numel();
     T* data = tensor->mutable_data<T>(context.GetPlace());
-    
+
     for (int64_t i = 0; i < size; ++i) {
       data[i] = dist(engine);
     }
@@ -74,7 +74,7 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
 
       return;
     }
-    
+
     ctx->SetOutputDim("Out", framework::make_ddim(temp));
   }
 
@@ -96,7 +96,7 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype")),
         ctx.device_context(), layout, library);
   }
-  
+
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
@@ -116,7 +116,7 @@ class GaussianRandomOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int64_t>>("shape",
                                   "(vector<int64_t>) "
                                   "The dimension of random tensor.")
-	    .SetDefault({});
+        .SetDefault({});
     AddInput("ShapeTensor",
              "(Tensor<int>), optional). The shape of the output."
              "It has a higher priority than Attr(shape).")

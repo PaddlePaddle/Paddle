@@ -23,6 +23,7 @@ from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 from op_test import OpTest
 
+
 class TestGaussianRandomOp(OpTest):
     def setUp(self):
         self.op_type = "gaussian_random"
@@ -69,12 +70,13 @@ class TestGaussianRandomOp_ShapeTensorList(OpTest):
                 (1)).astype('int32') * ele))
 
         self.inputs = {'ShapeTensorList': shape_tensor_list}
-        self.attrs =  {'shape': self.infer_shape, 
-                       'mean': self.mean,
-                       'std': self.std,
-                       'seed': self.seed,
-                       'use_mkldnn': self.use_mkldnn
-                       }
+        self.attrs = {
+            'shape': self.infer_shape,
+            'mean': self.mean,
+            'std': self.std,
+            'seed': self.seed,
+            'use_mkldnn': self.use_mkldnn
+        }
 
         self.outputs = {'Out': np.zeros((123, 92), dtype='float32')}
 
@@ -85,10 +87,10 @@ class TestGaussianRandomOp_ShapeTensorList(OpTest):
         self.mean = 1.0
         self.std = 2.0
         self.seed = 10
-    
+
     def test_check_output(self):
         self.check_output_customized(self.verify_output)
-    
+
     def verify_output(self, outs):
         self.assertEqual(outs[0].shape, (123, 92))
         hist, _ = np.histogram(outs[0], range=(-3, 5))
@@ -102,6 +104,7 @@ class TestGaussianRandomOp_ShapeTensorList(OpTest):
             np.allclose(
                 hist, hist2, rtol=0, atol=0.01),
             "hist: " + str(hist) + " hist2: " + str(hist2))
+
 
 """
 class TestGaussianRandomOp2_ShapeTensorList(TestGaussianRandomOp_ShapeTensorList):
