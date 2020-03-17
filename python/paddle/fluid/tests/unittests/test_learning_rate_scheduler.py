@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import copy
 import math
+import numpy as np
 import unittest
 
 import paddle.fluid as fluid
@@ -280,7 +281,8 @@ class TestLinearWamrupLearningRateDecayDygraphMode(unittest.TestCase):
 
                 t = lr()
 
-                self.assertEqual((t.numpy())[0], right_result[i])
+                self.assertTrue(
+                    np.allclose((t.numpy())[0].item(), right_result[i]))
 
 
 class TestLinearWamrupLearningRateDecayDygraphModeTypeCheck(unittest.TestCase):
