@@ -38,6 +38,8 @@ class GenNCCLIdOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::DeviceContext& dev_ctx) const override {
     // put nccl id in CPUPlace
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto& ctx = *pool.Get(platform::CPUPlace());
     int trainer_id = Attr<int>("trainer_id");
 
     std::vector<std::string> trainers =
@@ -71,7 +73,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
     }
 
     if (trainer_id != 0) {
-      GetIdByServer(endpoint, &local_scope, dev_ctx, nccl_comm_num,
+      GetIdByServer(endpoint, &local_scope, ctx, nccl_comm_num,
                     use_hierarchical_allreduce, trainer_id, inter_trainer_id,
                     exter_trainer_id);
     }
@@ -96,7 +98,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
       // flat nccl_id
       for (int i = 0; i < nccl_comm_num; i++) {
         std::string var_name = platform::GetFlatNCCLVarName(i);
-        GenerateAndSend(&local_scope, dev_ctx, var_name, flat_endpoints);
+        GenerateAndSend(&local_scope, ctx, var_name, flat_endpoints);
       }
     }
 
@@ -125,7 +127,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
       for (int i = 0; i < nccl_comm_num; i++) {
         std::string nccl_var_name =
             platform::GetHierarchicalInterNCCLVarName(i);
-        GenerateAndSend(&local_scope, dev_ctx, nccl_var_name, inter_endpoints);
+        GenerateAndSend(&local_scope, ctx, nccl_var_name, inter_endpoints);
       }
     }
 
@@ -143,7 +145,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
       for (int i = 0; i < nccl_comm_num; i++) {
         std::string nccl_var_name =
             platform::GetHierarchicalExterNCCLVarName(i);
-        GenerateAndSend(&local_scope, dev_ctx, nccl_var_name, exter_endpoints);
+        GenerateAndSend(&local_scope, ctx, nccl_var_name, exter_endpoints);
       }
     }
   }

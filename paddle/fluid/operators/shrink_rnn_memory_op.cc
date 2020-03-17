@@ -119,7 +119,6 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::DeviceContext &dev_ctx) const override {
-    const platform::Place &place = dev_ctx.GetPlace();
     auto *dout_var = scope.FindVar(Input(framework::GradVarName("Out")));
     auto *dx_var = scope.FindVar(Output(framework::GradVarName("X")));
     PADDLE_ENFORCE(dx_var != nullptr, "Input Gradient should not be nullptr");

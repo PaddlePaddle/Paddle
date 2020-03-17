@@ -45,7 +45,8 @@ class CGenNCCLIdOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::DeviceContext& dev_ctx) const override {
     // put nccl id in CPUPlace
-    auto ctx = platform::CPUDeviceContext();
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto& ctx = *pool.Get(platform::CPUPlace());
     int rank = Attr<int>("rank");
     framework::Scope& local_scope = scope.NewScope();
 
