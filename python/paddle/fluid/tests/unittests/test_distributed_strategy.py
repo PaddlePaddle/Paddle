@@ -15,7 +15,7 @@
 import unittest
 import paddle.fluid as fluid
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import TrainerRuntimeConfig, StrategyFactory
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import TrainerRuntimeConfig, StrategyFactory
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 import os
