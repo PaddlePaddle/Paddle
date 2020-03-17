@@ -68,8 +68,10 @@ class DygraphToStaticAst(gast.NodeTransformer):
         basic_api_trans.ast_visit()
         self.feed_name_to_arg_name = basic_api_trans.get_feed_name_to_arg_id()
 
-        BreakContinueTransformer(node_wrapper).transform()
         ListTransformer(node_wrapper).transform()
+
+        BreakContinueTransformer(node_wrapper).transform()
+
         LoopTransformer(node_wrapper).transform()
 
         # Transform all if/else statement of Dygraph into Static Graph.
