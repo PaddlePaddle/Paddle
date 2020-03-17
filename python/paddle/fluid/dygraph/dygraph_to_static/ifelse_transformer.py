@@ -265,6 +265,7 @@ class NodeTestTransformer(gast.NodeTransformer):
         return self.visit(self.ast_root)
 
     def visit_UnaryOp(self, node):
+        self.generic_visit(node)
         if isinstance(node.op, gast.Not):
             arg = ast_to_source_code(node.operand)
             new_node_str = "fluid.layers.logical_not({})".format(arg)

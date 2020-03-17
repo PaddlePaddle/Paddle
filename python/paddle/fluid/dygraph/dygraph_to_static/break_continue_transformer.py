@@ -17,6 +17,7 @@ from __future__ import print_function
 import gast
 
 from paddle.fluid import unique_name
+from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import NodeTestTransformer
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_constant_variable_node
@@ -45,14 +46,16 @@ class ForToWhileTransformer(gast.NodeTransformer):
 
     def transform(self):
         if hasattr(self.parent_node, 'body'):
-            i = index_in_list(self.parent_node.body, loop_node)
+            body_list = self.parent_node.body
+            i = index_in_list(body_list, self.loop_node)
             if i != -1:
                 new_stmts = self.get_for_stmt_nodes(body_list[i])
                 body_list[i:i + 1] = new_stmts
                 i += len(new_stmts)
                 return
         if hasattr(self.parent_node, 'orelse'):
-            i = index_in_list(self.parent_node.orlese, loop_node)
+            body_list = self.parent_node.orelse
+            i = index_in_list(body_list, self.loop_node)
             if i != -1:
                 new_stmts = self.get_for_stmt_nodes(body_list[i])
                 body_list[i:i + 1] = new_stmts
@@ -76,9 +79,6 @@ class ForToWhileTransformer(gast.NodeTransformer):
         1. Initailize of iterate variable
         2. Condition for the loop
         3. Statement for changing of iterate variable during the loop
-        NOTE(TODO): Python allows to access iteration variable after loop, such
-           as "for i in range(10)" will create i = 9 after the loop. But using
-           current conversion will make i = 10. We should find a way to change it
         '''
         len_range_args = len(args_list)
         assert len_range_args >= 1 and len_range_args <= 3, "range() function takes 1 to 3 arguments"
@@ -177,8 +177,6 @@ class BreakContinueTransformer(gast.NodeTransformer):
 
     def transform(self):
         self.visit(self.root)
-        # delete it when review
-        print(ast_to_source_code(self.root))
 
     def generic_visit(self, node):
         # TODO: because we change ancestor nodes during visit_Break/Continue,
@@ -224,11 +222,13 @@ class BreakContinueTransformer(gast.NodeTransformer):
         assign_false_node = create_fill_constant_node(variable_name, False)
         self._add_stmt_before_cur_node(loop_node_index, assign_false_node)
 
-        cond_var_node = gast.Name(
-            id=variable_name,
-            ctx=gast.Load(),
-            annotation=None,
-            type_comment=None)
+        cond_var_node = gast.UnaryOp(
+            op=gast.Not(),
+            operand=gast.Name(
+                id=variable_name,
+                ctx=gast.Load(),
+                annotation=None,
+                type_comment=None))
         if isinstance(loop_node, gast.While):
             loop_node.test = gast.BoolOp(
                 op=gast.And(), values=[loop_node.test, cond_var_node])
@@ -343,7 +343,7 @@ class BreakContinueTransformer(gast.NodeTransformer):
         i = index_in_list(stmt_list, node)
         if i == -1:
             return False
-        stmt_list.insert(i + 1, stmt_node)
+        stmt_list.insert(i, stmt_node)
         return True
 
     def _find_ancestor_loop_index(self, node):

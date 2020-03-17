@@ -55,6 +55,26 @@ def test_continue_in_while(x):
     return x
 
 
+def test_break_in_for(x):
+    x = fluid.dygraph.to_variable(x)
+    for i in range(10):
+        x += 1
+        if i > 5:
+            break
+            x += 10086
+        x += i
+    return x
+
+
+def test_break_in_for_at_end(x):
+    x = fluid.dygraph.to_variable(x)
+    for i in range(10):
+        x += 1
+        if i > 5:
+            break
+    return x
+
+
 def test_break_in_while(x):
     x = fluid.dygraph.to_variable(x)
     i = fluid.layers.fill_constant(shape=[1], dtype='int32', value=0)
@@ -69,7 +89,7 @@ def test_break_in_while(x):
 
 class TestContinueInFor(unittest.TestCase):
     def setUp(self):
-        self.input = np.random.random((1)).astype('int32')
+        self.input = np.zeros((1)).astype('int32')
         self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         self.init_dygraph_func()
@@ -93,13 +113,50 @@ class TestContinueInFor(unittest.TestCase):
 
     def test_transformed_static_result(self):
         static_res = self.run_static_mode()
-        #dygraph_res = self.run_dygraph_mode()
-        print(static_res)
-        #print(dygraph_res)
-        #self.assertTrue(
-        #    np.allclose(dygraph_res, static_res),
-        #    msg='dygraph res is {}\nstatic_res is {}'.format(dygraph_res,
-        #                                                     static_res))
+        dygraph_res = self.run_dygraph_mode()
+        self.assertTrue(
+            np.allclose(dygraph_res, static_res),
+            msg='dygraph res is {}\nstatic_res is {}'.format(dygraph_res,
+                                                             static_res))
+
+
+class TestContinueInForAtEnd(TestContinueInFor):
+    def init_dygraph_func(self):
+        self.dygraph_func = test_continue_in_for_at_end
+
+
+class TestBreakInFor(TestContinueInFor):
+    def init_dygraph_func(self):
+        self.dygraph_func = test_break_in_for
+
+
+class TestBreakInForAtEnd(TestContinueInFor):
+    def init_dygraph_func(self):
+        self.dygraph_func = test_break_in_for_at_end
+
+
+class TestContinueInWhile(TestContinueInFor):
+    def init_dygraph_func(self):
+        self.dygraph_func = test_continue_in_while
+
+    def test_transformed_static_result(self):
+        # TODO: while i < 10 in dygraph will be supported after PR22892
+        # so currently we just assert static result.
+        # remove this overrided function after PR22892 is merged
+        static_res = self.run_static_mode()
+        self.assertEqual(15, static_res[0])
+
+
+class TestBreakInWhile(TestContinueInWhile):
+    def init_dygraph_func(self):
+        self.dygraph_func = test_break_in_while
+
+    def test_transformed_static_result(self):
+        # TODO: while i < 10 in dygraph will be supported after PR22892
+        # so currently we just assert static result.
+        # remove this overrided function after PR22892 is merged
+        static_res = self.run_static_mode()
+        self.assertEqual(15, static_res[0])
 
 
 if __name__ == '__main__':

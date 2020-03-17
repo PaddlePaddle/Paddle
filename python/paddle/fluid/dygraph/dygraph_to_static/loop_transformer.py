@@ -19,8 +19,9 @@ import gast
 
 from collections import defaultdict
 from paddle.fluid import unique_name
-from paddle.fluid.dygraph.dygraph_to_static.utils import generate_name_node
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
+from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+from paddle.fluid.dygraph.dygraph_to_static.utils import generate_name_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_constant_variable_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_static_variable_gast_node
@@ -60,6 +61,54 @@ def create_while_node(condition_name, body_name, loop_var_names):
             elts=assign_targets, ctx=gast.Store())],
         value=while_node)
     return assign_node
+
+
+class LogicalOpTransformer(gast.NodeTransformer):
+    """
+    Transform python boolean op into Paddle logical op
+    """
+
+    def __init__(self, node):
+        self.root = node
+
+    def transform(self):
+        return self.visit(self.root)
+
+    def visit_UnaryOp(self, node):
+        self.generic_visit(node)
+        if isinstance(node.op, gast.Not):
+            arg = ast_to_source_code(node.operand)
+            new_node_str = "fluid.layers.logical_not({})".format(arg)
+            # gast.parse returns Module(body=[expr(value=...)])
+            new_node = gast.parse(new_node_str).body[0].value
+            return new_node
+
+    def visit_BoolOp(self, node):
+        self.generic_visit(node)
+        if isinstance(node.op, gast.And):
+            new_node = self._create_bool_op_node(node.values, 'and')
+        elif isinstance(node.op, gast.Or):
+            new_node = self._create_bool_op_node(node.values, 'or')
+        else:
+            raise TypeError(
+                "Only supports and/or syntax in control flow if statement.")
+        return new_node
+
+    def _create_bool_op_node(self, nodes, api_type):
+        assert len(
+            nodes
+        ) > 1, "The length of BoolOp should be at least 2, but received {}.".format(
+            len(nodes))
+        if len(nodes) > 2:
+            # Creates logic_and/logic_or node recursively.
+            pre_assign_node = _create_node(nodes[:2], api_type)
+            nodes = [pre_assign_node] + nodes[2:]
+        args = [ast_to_source_code(child) for child in nodes]
+        new_node_str = "fluid.layers.logical_{}(x={}, y={})".format(
+            api_type, args[0], args[1])
+        # gast.parse return Module(body=[expr(value=...)])
+        new_node = gast.parse(new_node_str).body[0].value
+        return new_node
 
 
 class NameVisitor(gast.NodeVisitor):
@@ -391,6 +440,9 @@ class LoopTransformer(gast.NodeTransformer):
         for name in loop_var_names:
             new_stmts.append(to_static_variable_gast_node(name))
 
+        logical_op_transformer = LogicalOpTransformer(node.test)
+        cond_value_node = logical_op_transformer.transform()
+
         condition_func_node = gast.FunctionDef(
             name=unique_name.generate(WHILE_CONDITION_PREFIX),
             args=gast.arguments(
@@ -407,7 +459,7 @@ class LoopTransformer(gast.NodeTransformer):
                 kw_defaults=None,
                 kwarg=None,
                 defaults=[]),
-            body=[gast.Return(value=node.test)],
+            body=[gast.Return(value=cond_value_node)],
             decorator_list=[],
             returns=None,
             type_comment=None)
