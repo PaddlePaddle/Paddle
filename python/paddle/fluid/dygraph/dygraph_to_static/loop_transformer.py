@@ -20,6 +20,7 @@ import gast
 from collections import defaultdict
 from paddle.fluid import unique_name
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import generate_name_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_constant_variable_node
@@ -119,8 +120,6 @@ class NameVisitor(gast.NodeVisitor):
     def __init__(self, root_node):
         # Set of gast.Name or gast.Attribute for variables
         self.current_seen_vars = set()
-        # list of nodes of current visit node
-        self.ancestor_nodes = []
 
         # List of gast.While/gast.For nodes
         self.current_loop = []
@@ -128,6 +127,10 @@ class NameVisitor(gast.NodeVisitor):
         # Mapping from gast.While/gast.For to variable nodes
         self.before_loop_body_vars = defaultdict(set)
         self.in_loop_vars = defaultdict(set)
+
+        self.static_analysis_visitor = StaticAnalysisVisitor(root_node)
+        self.node_to_wrapper_map = self.static_analysis_visitor.get_node_to_wrapper_map(
+        )
 
         self.visit(root_node)
 
@@ -172,11 +175,9 @@ class NameVisitor(gast.NodeVisitor):
         self.generic_visit(node)
 
     def visit(self, node):
-        self.ancestor_nodes.append(node)
         method = 'visit_' + node.__class__.__name__
         visitor = getattr(self, method, self.generic_visit)
         ret = visitor(node)
-        self.ancestor_nodes.pop()
         return ret
 
     def visit_Attribute(self, node):
@@ -215,10 +216,9 @@ class NameVisitor(gast.NodeVisitor):
         return ret
 
     def _is_call_func_name_node(self, node):
-        if self.ancestor_nodes:
-            parent_node = self.ancestor_nodes[-2]
-            if isinstance(parent_node, gast.Call) and parent_node.func == node:
-                return True
+        parent_node = self.node_to_wrapper_map[node].parent.node
+        if isinstance(parent_node, gast.Call) and parent_node.func == node:
+            return True
         return False
 
 

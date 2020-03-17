@@ -1087,6 +1087,7 @@ void MultiSlotDataset::SlotsShuffle(
   random_data.clear();
   random_data.shrink_to_fit();
   input_channel_->Close();
+  cur_channel_ = 0;
 
   timeline.Pause();
   VLOG(2) << "DatasetImpl<T>::SlotsShuffle() end"
