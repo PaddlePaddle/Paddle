@@ -93,7 +93,7 @@ class DownpourServer(Server):
             else:
                 sgd.adam.weight_bounds.extend(
                     strategy.get(prefix + 'sparse_weight_bounds'))
-    
+
     def add_sparse_table_common_config(self, table, strategy):
         table.accessor.embedx_dim = strategy.get('sparse_embedx_dim', 8)
         table.accessor.embedx_threshold = strategy.get(
@@ -120,8 +120,7 @@ class DownpourServer(Server):
             "(scripts/xbox_compressor_mf.py | bin/xbox_pb_converter)")
         deconverter = strategy.get(
             'sparse_deconverter',
-            "(bin/xbox_pb_deconverter | scripts/xbox_decompressor_mf.awk)"
-        )
+            "(bin/xbox_pb_deconverter | scripts/xbox_decompressor_mf.awk)")
 
         table1 = table.accessor.table_accessor_save_param.add()
         table1.param = 1
@@ -132,7 +131,7 @@ class DownpourServer(Server):
         table2.param = 2
         table2.converter = converter
         table2.deconverter = deconverter
-    
+
     def add_sparse_table(self, table_id, strategy):
         """
         Args:
