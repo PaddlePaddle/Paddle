@@ -76,7 +76,7 @@ class UnfoldOp : public framework::OperatorWithKernel {
     // Only [N, C, H, W] input supported now
     PADDLE_ENFORCE(
         in_dims.size() == 4,
-        "Input shold be 4-D tensor of format [N, C, H, W], but get %u",
+        "Input should be 4-D tensor of format [N, C, H, W], but get %u",
         in_dims.size());
     PADDLE_ENFORCE(
         in_dims.size() - kernel_sizes.size() == 2U,
@@ -86,7 +86,7 @@ class UnfoldOp : public framework::OperatorWithKernel {
         in_dims.size(), kernel_sizes.size());
     PADDLE_ENFORCE_EQ(
         strides.size(), kernel_sizes.size(),
-        "The dims of strides shold be the same with that of kernel_sizes. "
+        "The dims of strides should be the same with that of kernel_sizes. "
         "But recieved dims(strides: %u) != dims(kernel_sizes: %u).",
         strides.size(), kernel_sizes.size());
     PADDLE_ENFORCE_EQ(
@@ -96,7 +96,7 @@ class UnfoldOp : public framework::OperatorWithKernel {
         paddings.size(), strides.size());
     PADDLE_ENFORCE_EQ(
         strides.size(), dilations.size(),
-        "The dims of strides shold be the same with that of dilations. "
+        "The dims of strides should be the same with that of dilations. "
         "But recieved dims(strides: %u) != dims(dilations: %u).",
         strides.size(), dilations.size());
 
@@ -154,14 +154,12 @@ class UnfoldGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("unfold_grad");
     op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
     op->SetInput("X", this->Input("X"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 

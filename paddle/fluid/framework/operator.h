@@ -517,7 +517,8 @@ class OperatorWithKernel : public OperatorBase {
                RuntimeContext* runtime_ctx) const;
 
   /**
-   * Transfer data from scope to a transfered scope. If there is no data need to
+   * Transfer data from scope to a transferred scope. If there is no data need
+   * to
    * be tranfered, it returns nullptr.
    *
    * * transfered_inplace_vars is a output vector.

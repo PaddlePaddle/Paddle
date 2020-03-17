@@ -30,35 +30,50 @@ namespace fusion_group {
 static inline std::string ArgName(int index) {
   return "arg" + std::to_string(index);
 }
+
 static inline std::string TmpName(int index) {
   return "tmp" + std::to_string(index);
+}
+
+static inline std::string VarName(int index) {
+  return "arg" + std::to_string(index) + "[idx]";
 }
 
 class OperationExpression {
  public:
   explicit OperationExpression(std::string op_type, std::vector<int> input_ids,
-                               std::vector<int> output_ids)
-      : op_type_(op_type), input_ids_(input_ids), output_ids_(output_ids) {}
+                               std::vector<int> output_ids,
+                               std::string rhs_type, std::string lhs_type)
+      : op_type_(op_type),
+        input_ids_(input_ids),
+        output_ids_(output_ids),
+        rhs_type_(rhs_type),
+        lhs_type_(lhs_type) {}
 
   std::string GetOpType() const { return op_type_; }
   std::vector<int> GetInputIds() const { return input_ids_; }
   std::vector<int> GetOutputIds() const { return output_ids_; }
+  std::string GetRHSType() const { return rhs_type_; }
+  std::string GetLHSType() const { return lhs_type_; }
 
   // Check whether this operation type is supported in OperationMap.
   bool IsSupport() const;
 
-  std::string GetExpression(std::string dtype,
-                            std::unordered_set<int>* used) const;
+  std::string GetExpression(std::unordered_set<int>* used) const;
 
  private:
   // TODO(wangchao): make offset more flexible we add stride and basic offset
-  std::string GetRHS(std::unordered_set<int>* used, size_t i = 0) const;
+  std::string GetRHS(std::unordered_set<int>* used,
+                     std::string* half2fp32_statement,
+                     size_t exprs_index = 0) const;
   std::string GetLHS(size_t i = 0) const;
 
  private:
   std::string op_type_;
   std::vector<int> input_ids_;
   std::vector<int> output_ids_;
+  std::string rhs_type_;
+  std::string lhs_type_;
 };
 
 class TemplateVariable {

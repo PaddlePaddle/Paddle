@@ -233,7 +233,7 @@ def retinanet_target_assign(bbox_pred,
                             dtype='float32')
           im_info = fluid.data(name='im_infoss', shape=[1, 3],
                             dtype='float32')
-          score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num =
+          score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num = \\
                 fluid.layers.retinanet_target_assign(bbox_pred, cls_logits, anchor_box,
                 anchor_var, gt_boxes, gt_labels, is_crowd, im_info, 10)
 

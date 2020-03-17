@@ -20,6 +20,7 @@ namespace paddle {
 namespace framework {
 
 using LoDTensorArray = std::vector<LoDTensor>;
+using LoDTensor2DArray = std::vector<std::vector<LoDTensor>>;
 
 }  // namespace framework
 }  // namespace paddle

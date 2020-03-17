@@ -74,6 +74,9 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
     } else {
       ctx->SetOutputDim("Out", {-1, box_dims[2] + 2});
     }
+    if (!ctx->IsRuntime()) {
+      ctx->SetLoDLevel("Out", std::max(ctx->GetLoDLevel("BBoxes"), 1));
+    }
   }
 
  protected:
@@ -492,6 +495,9 @@ class MultiClassNMS2Op : public MultiClassNMSOp {
       ctx->SetOutputDim("Index", {box_dims[1], 1});
     } else {
       ctx->SetOutputDim("Index", {-1, 1});
+    }
+    if (!ctx->IsRuntime()) {
+      ctx->SetLoDLevel("Index", std::max(ctx->GetLoDLevel("BBoxes"), 1));
     }
   }
 };

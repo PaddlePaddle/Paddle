@@ -6,6 +6,7 @@ register_operators(EXCLUDES
     fusion_conv_inception_op
     fused_fc_elementwise_layernorm_op
     multihead_matmul_op
+    fused_embedding_eltwise_layernorm_op
     fusion_group_op)
 
 if (WITH_GPU)
@@ -33,6 +34,8 @@ if (WITH_GPU)
     # multihead_matmul_op
     op_library(multihead_matmul_op)
     file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(multihead_matmul);\n")
+    op_library(fused_embedding_eltwise_layernorm_op)
+    file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(fused_embedding_eltwise_layernorm);\n")
     # fusion_group
     if(NOT APPLE AND NOT WIN32)
         op_library(fusion_group_op DEPS device_code)

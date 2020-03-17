@@ -301,9 +301,9 @@ class DatasetCreater(object):
         Create a data set object from a path.
         It will use directory structure or a file list to determine dataset if
         self.from_list is True. Otherwise, it will uses a file list  to
-        determine the datset.
+        determine the dataset.
         path: the path of the dataset.
-        return a tuple of Dataset object, and a mapping from lable set
+        return a tuple of Dataset object, and a mapping from label set
         to label id.
         """
         if self.from_list:
@@ -314,9 +314,9 @@ class DatasetCreater(object):
     def create_dataset_from_list(self, path):
         """
         Create a data set object from a path.
-        It will uses a file list to determine the datset.
+        It will uses a file list to determine the dataset.
         path: the path of the dataset.
-        return a tuple of Dataset object, and a mapping from lable set
+        return a tuple of Dataset object, and a mapping from label set
         to label id
         """
         raise NotImplementedError
@@ -327,7 +327,7 @@ class DatasetCreater(object):
         It will use directory structure or a file list to determine dataset if
         self.from_list is True.
         path: the path of the dataset.
-        return a tuple of Dataset object, and a mapping from lable set
+        return a tuple of Dataset object, and a mapping from label set
         to label id
         """
         raise NotImplementedError

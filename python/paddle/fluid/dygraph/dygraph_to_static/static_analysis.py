@@ -14,58 +14,11 @@
 
 from __future__ import print_function
 
-import astor
 import gast
-import inspect
-import six
 import warnings
+from .utils import is_paddle_api, is_dygraph_api, is_numpy_api
 
 __all__ = ['AstNodeWrapper', 'NodeVarType', 'StaticAnalysisVisitor']
-
-
-# TODO: _is_paddle_dygraph_api is duplicated in Yamei's utils.py. Merge the two
-# function code together when Yamei finish her PR.
-def _is_api_in_module_helper(obj, module_prefix):
-    m = inspect.getmodule(obj)
-    return m is not None and m.__name__.startswith(module_prefix)
-
-
-# TODO: is_dygraph_api is duplicated in Yamei's utils.py. Merge the two
-# function code together when Yamei finish her PR.
-def is_api_in_module(node, module_prefix):
-    assert isinstance(node, gast.Call), "Input non-Call node for is_dygraph_api"
-    func_str = astor.to_source(gast.gast_to_ast(node.func))
-    try:
-        import paddle.fluid as fluid
-        import paddle
-        return eval("_is_api_in_module_helper({}, '{}')".format(func_str,
-                                                                module_prefix))
-    except NameError:
-        return False
-
-
-def is_dygraph_api(node):
-    return is_api_in_module(node, "paddle.fluid.dygraph")
-
-
-def is_paddle_api(node):
-    return is_api_in_module(node, "paddle.fluid")
-
-
-# Is numpy_api cannot reuse is_api_in_module because of numpy module problem
-def is_numpy_api(node):
-    assert isinstance(node, gast.Call), "Input non-Call node for is_numpy_api"
-    func_str = astor.to_source(gast.gast_to_ast(node.func))
-    try:
-        import numpy as np
-        module_result = eval("_is_api_in_module_helper({}, '{}')".format(
-            func_str, "numpy"))
-        # BUG: np.random.uniform doesn't have module and cannot be analyzed
-        # TODO: find a better way
-        if not module_result:
-            return func_str.startswith("numpy.") or func_str.startswith("np.")
-    except NameError:
-        return False
 
 
 class NodeVarType(object):
@@ -153,7 +106,7 @@ class AstNodeWrapper(object):
 class AstVarScope(object):
     """
     AstVarScope is a class holding the map from current scope variable to its
-    type. 
+    type.
     """
     SCOPE_TYPE_SCRIPT = 0
     SCOPE_TYPE_FUNCTION = 1

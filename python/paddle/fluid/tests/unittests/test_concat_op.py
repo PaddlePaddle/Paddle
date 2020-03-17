@@ -211,5 +211,42 @@ class TestConcatAPI(unittest.TestCase):
         assert np.array_equal(res_3, np.concatenate((input_2, input_3), axis=1))
 
 
+class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
+    """
+    Test concat api when the input(x) is a LoDTensorArray.
+    """
+
+    def setUp(self):
+        self.axis = 1
+        self.iter_num = 3
+        self.input_shape = [2, 3]
+        self.x = np.random.random(self.input_shape).astype("float32")
+        self.place = fluid.CUDAPlace(0) \
+            if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+        self.set_program()
+
+    def set_program(self):
+        self.program = fluid.Program()
+        with fluid.program_guard(self.program):
+            input = fluid.layers.assign(self.x)
+            tensor_array = fluid.layers.create_array(dtype='float32')
+            zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
+
+            for i in range(self.iter_num):
+                fluid.layers.array_write(input, zero + i, tensor_array)
+
+            self.out_var = fluid.layers.concat(tensor_array, axis=self.axis)
+
+    def test_case(self):
+        self.assertTrue(self.out_var.shape[self.axis] == -1)
+        exe = fluid.Executor(self.place)
+        res = exe.run(self.program, fetch_list=self.out_var)
+        self.assertTrue(
+            np.array_equal(
+                res[0],
+                np.concatenate(
+                    [self.x] * self.iter_num, axis=self.axis)))
+
+
 if __name__ == '__main__':
     unittest.main()
