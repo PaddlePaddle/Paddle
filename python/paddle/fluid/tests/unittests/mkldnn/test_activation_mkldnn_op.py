@@ -126,14 +126,13 @@ class TestMKLDNNSwishDim2(TestSwish):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.007, check_dygraph=False)
+        self.check_grad(['X'], 'Out')
 
 
 class TestMKLDNNReluDim4(TestRelu):
@@ -267,14 +266,13 @@ class TestMKLDNNSwishDim4(TestSwish):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.007, check_dygraph=False)
+        self.check_grad(['X'], 'Out')
 
 
 # Check if primitives already exist in backward
