@@ -19,6 +19,9 @@ from ..framework import Variable, convert_np_dtype_to_dtype_
 from ..layers.layer_function_generator import OpProtoHolder
 from . import to_variable, no_grad
 
+import numpy as np
+import six
+
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,
     core.VarDesc.VarType.INT8,
@@ -115,6 +118,45 @@ def monkey_patch_math_varbase():
 
     def _neg_(var):
         return _scalar_elementwise_op_(var, -1.0, 0.0)
+
+    def _float_(var):
+        numel = np.prod(var.shape)
+        assert numel == 1, "If you want to convert Variable to float, Variable can only contain one element."
+        tensor = var.value().get_tensor()
+        assert tensor._is_initialized(), "tensor not initialized"
+        return float(np.reshape(tensor.__array__(), (1, 1))[0][0])
+
+    def _long_(var):
+        numel = np.prod(var.shape)
+        assert numel == 1, "If you want to convert Variable to long, Variable can only contain one element."
+        tensor = var.value().get_tensor()
+        assert tensor._is_initialized(), "tensor not initialized"
+        if six.PY2:
+            return long(np.reshape(tensor.__array__(), (1, 1))[0][0])
+        else:
+            return int(np.reshape(tensor.__array__(), (1, 1))[0][0])
+
+    def _int_(var):
+        numel = np.prod(var.shape)
+        assert numel == 1, "If you want to convert Variable to int, Variable can only contain one element."
+        tensor = var.value().get_tensor()
+        assert tensor._is_initialized(), "tensor not initialized"
+        return int(np.reshape(tensor.__array__(), (1, 1))[0][0])
+
+    def _len_(var):
+        tensor = var.value().get_tensor()
+        dims = tensor._get_dims()
+        return dims[0]
+
+    def _index_(var):
+        numel = np.prod(var.shape)
+        assert numel == 1, "If you want to convert Variable to Python index, Variable can only contain one element."
+        tensor = var.value().get_tensor()
+        assert tensor._is_initialized(), "tensor not initialized"
+        if six.PY2:
+            return long(np.reshape(tensor.__array__(), (1, 1))[0][0])
+        else:
+            return int(np.reshape(tensor.__array__(), (1, 1))[0][0])
 
     def _scalar_elementwise_add_(var, value):
         return _scalar_elementwise_op_(var, 1.0, value)
@@ -220,4 +262,9 @@ def monkey_patch_math_varbase():
 
     # b = -a
     core.VarBase.__neg__ = _neg_
+    core.VarBase.__float__ = _float_
+    core.VarBase.__long__ = _long_
+    core.VarBase.__int__ = _int_
+    core.VarBase.__len__ = _len_
+    core.VarBase.__index__ = _index_
     core.VarBase.astype = astype
