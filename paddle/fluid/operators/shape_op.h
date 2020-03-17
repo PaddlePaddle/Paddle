@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 #include <algorithm>
-
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/inference/api/details/zero_copy_tensor.cc"
 
 namespace paddle {
 namespace operators {
@@ -28,10 +28,11 @@ class ShapeKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in_t = ctx.Input<Tensor>("Input");
     auto* out_t = ctx.Output<Tensor>("Out");
-    auto out_data = out_t->mutable_data<int32_t>(ctx.GetPlace());
+    auto out_data = out_t->mutable_data<int32_t>(platform::CPUPlace());
     auto in_dims = in_t->dims();
     for (int i = 0; i < in_dims.size(); ++i) {
       out_data[i] = in_dims[i];
+    ZeroCopyTensor::copy_from_cpu<Tensor>(&out_data)
     }
   }
 };
