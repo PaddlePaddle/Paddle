@@ -15,11 +15,8 @@
 from __future__ import print_function
 
 from paddle.fluid.incubate.fleet.parameter_server import version
-from paddle.fluid.incubate.fleet.parameter_server.transpiler import FleetTranspiler
+from paddle.fluid.incubate.fleet.parameter_server.transpiler import fleet
 from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy import TrainerRuntimeConfig
 from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy import StrategyFactory
 
 __all__ = ['TrainerRuntimeConfig', 'StrategyFactory', 'fleet']
-
-# fleet is a global instance for parameter server.
-fleet = FleetTranspiler()
