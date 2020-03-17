@@ -240,5 +240,8 @@ def convert_to_static(dyfunc):
 
     # Get static_func from AST
     func_name = dygraph_to_static.get_module_name()
-    static_func, file_name = ast_to_func(root_wrapper.node, func_name)
+    # Transform into callable function
+    source_file = inspect.getfile(dyfunc)
+    static_func, file_name = ast_to_func(root_wrapper.node, func_name,
+                                         source_file)
     return static_func, dygraph_to_static
