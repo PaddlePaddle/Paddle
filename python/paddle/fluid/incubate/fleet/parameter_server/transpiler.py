@@ -797,8 +797,8 @@ class ParameterServerOptimizer(DistributedOptimizer):
 
     def __init__(self, optimizer, strategy, mode=PSMode.TRAINSPILER):
         super(ParameterServerOptimizer, self).__init__(optimizer, strategy)
-
-        if mode == PSMode.PSLIB:
+        self._mode = mode
+        if self._mode == PSMode.PSLIB:
             self._optimizer_name = "Distributed%s" % optimizer.type.capitalize()
             if optimizer.type != "adam":
                 print("Currently, distributed optimizer only support Adam"
