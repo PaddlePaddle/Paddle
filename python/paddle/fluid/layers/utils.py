@@ -17,6 +17,7 @@ import collections
 import six
 import numpy as np
 from ..framework import Variable
+from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
 
 def convert_to_list(value, n, name, dtype=np.int):
