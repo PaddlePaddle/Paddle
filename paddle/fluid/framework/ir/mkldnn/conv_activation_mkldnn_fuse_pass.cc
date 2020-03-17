@@ -61,6 +61,7 @@ void ConvActivationFusePass::ApplyImpl(ir::Graph* graph) const {
       desc->SetAttr("fuse_alpha",
                     boost::get<float>(activation->Op()->GetAttr("threshold")));
     } else if (activation_type() == "swish") {
+      // paddle uses beta but mkldnn uses alpha for swish
       desc->SetAttr("fuse_alpha",
                     activation->Op()->GetAttrIfExists<float>("beta"));
     } else {

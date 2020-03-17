@@ -76,6 +76,7 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
   T alpha = ctx.HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
   T beta = ctx.HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
 
+  // paddle uses beta but mkldnn uses alpha for swish
   if (algorithm == mkldnn::algorithm::eltwise_swish) {
     std::swap(alpha, beta);
   }
@@ -119,6 +120,7 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
   T alpha = ctx.HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
   T beta = ctx.HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
 
+  // paddle uses beta but mkldnn uses alpha for swish
   if (algorithm == mkldnn::algorithm::eltwise_swish) {
     std::swap(alpha, beta);
   }
