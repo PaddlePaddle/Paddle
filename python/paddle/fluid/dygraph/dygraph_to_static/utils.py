@@ -14,9 +14,16 @@
 
 from __future__ import print_function
 
-import inspect
-import gast
+import ast
 import astor
+import atexit
+import copy
+import gast
+import imp
+import inspect
+import os
+import six
+import tempfile
 
 dygraph_class_to_static_api = {
     "CosineDecay": "cosine_decay",
@@ -68,6 +75,29 @@ def is_numpy_api(node):
             return func_str.startswith("numpy.") or func_str.startswith("np.")
     except NameError:
         return False
+
+
+def is_control_flow_to_transform(node, var_name_to_type):
+    """
+    Determines whether the node is a Paddle control flow statement which needs to
+    transform into a static graph control flow statement.
+    """
+    assert isinstance(node, gast.AST), \
+        "The type of input node must be gast.AST, but received %s." % type(node)
+
+    if isinstance(node, gast.If):
+        # TODO: make a better condition
+        return True
+
+    if isinstance(node, gast.For):
+        # TODO: make a better condition
+        return True
+
+    if isinstance(node, gast.While):
+        # TODO: make a better condition
+        return True
+
+    return False
 
 
 def _delete_keywords_from(node):
@@ -200,9 +230,127 @@ def update_args_of_func(node, dygraph_node, method_name):
 
 
 def create_api_shape_node(tensor_shape_node):
-    assert isinstance(tensor_shape_node, gast.Attribute)
-    api_shape_node = gast.Call(
-        func=gast.parse('fluid.layers.shape').body[0].value,
-        args=[tensor_shape_node.value],
-        keywords=[])
-    return api_shape_node
+    assert isinstance(tensor_shape_node, (gast.Attribute, gast.Subscript))
+
+    if isinstance(tensor_shape_node, gast.Attribute):
+        api_shape_node = gast.Call(
+            func=gast.parse('fluid.layers.shape').body[0].value,
+            args=[tensor_shape_node.value],
+            keywords=[])
+        return api_shape_node
+
+    if isinstance(tensor_shape_node, gast.Subscript):
+        result_node = copy.deepcopy(tensor_shape_node)
+        result_node.value = create_api_shape_node(result_node.value)
+        return result_node
+
+
+def get_constant_variable_node(name, value, shape=[1], dtype='int64'):
+    return gast.parse('%s = fluid.layers.fill_constant(%s, "%s", %s)' %
+                      (name, str(shape), dtype, str(value)))
+
+
+def get_attribute_full_name(node):
+    assert isinstance(
+        node,
+        gast.Attribute), "Input non-Attribute node to get attribute full name"
+    return astor.to_source(gast.gast_to_ast(node)).strip()
+
+
+def generate_name_node(name_ids, ctx=gast.Load()):
+    """
+    Generate list or gast.Tuple of ast.Name for Return statement.
+    """
+    if isinstance(name_ids, six.string_types):
+        name_ids = [name_ids]
+    if not isinstance(name_ids, (list, tuple, set)):
+        raise TypeError('name_ids must be list or tuple or set, but received %s'
+                        % type(type(name_ids)))
+    gast_names = [
+        gast.Name(
+            id=name_id, ctx=ctx, annotation=None, type_comment=None)
+        for name_id in name_ids
+    ]
+    if len(gast_names) == 1:
+        name_node = gast_names[0]
+    else:
+        name_node = gast.Tuple(elts=gast_names, ctx=ctx)
+    return name_node
+
+
+def create_funcDef_node(nodes, name, input_args, return_name_ids):
+    """
+    Wrapper all statements of nodes into one ast.FunctionDef, which can be
+    called by ast.Call.
+    """
+    nodes = copy.copy(nodes)
+    # add return statement
+    if return_name_ids:
+        nodes.append(gast.Return(value=generate_name_node(return_name_ids)))
+    else:
+        nodes.append(gast.Return(value=None))
+    func_def_node = gast.FunctionDef(
+        name=name,
+        args=input_args,
+        body=nodes,
+        decorator_list=[],
+        returns=None,
+        type_comment=None)
+    return func_def_node
+
+
+def ast_to_func(ast_root, func_name, delete_on_exit=True):
+    """
+    Transform modified AST of decorated function into python callable object.
+    """
+    source = ast_to_source_code(ast_root)
+    if six.PY2:
+        source = source.encode('utf-8')
+        f = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
+    else:
+        f = tempfile.NamedTemporaryFile(
+            mode='w', suffix='.py', delete=False, encoding='utf-8')
+
+    # TODO(Aurelius84): more elegant way to transform ast into callable object
+    import_str = "import paddle\n" \
+                 "import paddle.fluid as fluid\n" \
+                 "import paddle.fluid.layers as layers\n" \
+                 "import numpy as np\n" \
+                 "import numpy\n"
+    with f:
+        module_name = os.path.basename(f.name[:-3])
+        f.write(import_str)
+        f.write(source)
+
+    if delete_on_exit:
+        atexit.register(lambda: os.remove(f.name))
+    module = imp.load_source(module_name, f.name)
+    if not hasattr(module, func_name):
+        raise ValueError(
+            'Function: %s doesn\'t exist in the Module transformed from AST.' %
+            func_name)
+
+    return getattr(module, func_name), f.name
+
+
+def ast_to_source_code(ast_node):
+    """
+    Transformers ast node into source code.
+    """
+    if not isinstance(ast_node, (gast.AST, ast.AST)):
+        raise TypeError(
+            "Type of ast_root should be gast.AST or ast.AST, but received %s." %
+            type(ast_node))
+    if isinstance(ast_node, gast.AST):
+        ast_node = gast.gast_to_ast(ast_node)
+    source_code = astor.to_source(ast_node)
+    return source_code
+
+
+def create_assign_node(name, node):
+    """
+    Creates a `gast.Assign` node by given name_id as target and node as value.
+    """
+    targets = generate_name_node(name, ctx=gast.Store())
+    assign_node = gast.Assign(targets=[targets], value=node)
+    return targets, assign_node

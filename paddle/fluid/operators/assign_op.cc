@@ -57,6 +57,17 @@ class AssignOp : public framework::OperatorWithKernel {
   }
 };
 
+class AssignInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    auto out_var_name = ctx->Output("Out")[0];
+    auto input_type = ctx->GetType(ctx->Input("X")[0]);
+    auto input_data_type = ctx->GetDataType(ctx->Input("X")[0]);
+    ctx->SetType(out_var_name, input_type);
+    ctx->SetDataType(out_var_name, input_data_type);
+  }
+};
+
 class AssignKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
@@ -116,7 +127,8 @@ namespace plat = paddle::platform;
 REGISTER_OPERATOR(assign, ops::AssignOp,
                   ops::AssignGradMaker<paddle::framework::OpDesc>,
                   ops::AssignGradMaker<paddle::imperative::OpBase>,
-                  ops::AssignOpProtoMaker, ops::AssignOpInplaceInferer);
+                  ops::AssignOpProtoMaker, ops::AssignOpInplaceInferer,
+                  ops::AssignInferVarType);
 
 REGISTER_OP_CPU_KERNEL_FUNCTOR(assign, float, ops::AssignKernel, double,
                                ops::AssignKernel, int, ops::AssignKernel,

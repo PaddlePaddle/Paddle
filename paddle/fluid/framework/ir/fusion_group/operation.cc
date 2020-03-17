@@ -102,6 +102,13 @@ void OperationMap::InsertUnaryElementwiseOperations() {
   //  dx = dout * (1 - out * out)
   insert_handler("tanh", "2.0 / (1.0 + real_exp(-2.0 * ${0})) - 1.0",
                  {"${2} * (1.0 - ${1} * ${1})"});
+
+  // cast
+  // out = static_cast<T>(d)
+  // dx = static_cast<T>(d_out)
+  // TODO(wangchaochaohu): This is not the compelete definition of
+  // cast Op, We need refine it later.
+  insert_handler("cast", "${0}", {"${0}"});
 }
 
 void OperationMap::InsertBinaryElementwiseOperations() {
@@ -158,10 +165,12 @@ void OperationMap::InsertMultivariateElementwiseOperations() {
                             std::vector<std::string> grad_exprs) {
     int type = 0;
     int num_oprands = -1;
-    // here ... represent the number of input is changed
     Insert(type, num_oprands, op_type, expr, grad_exprs, {"X"}, {"Out"});
   };
 
+  // here [] represent the number of input is positive(>=0).
+  // if input list size of Sum Op is 3, It will expand as
+  // ${0} + ${1} + ${2}
   insert_handler("sum", "${0}[ + ${?}]", {});
 }
 
