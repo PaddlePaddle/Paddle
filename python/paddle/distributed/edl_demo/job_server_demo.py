@@ -19,6 +19,9 @@ add_arg(
     "Nodes's IP list, splitted by ','. For example, 192.168.0.1,192.168.0.2")
 add_arg('gpu_num_of_node', int, 8, "")
 add_arg('pod_num_of_node', int, 1, "")
+add_arg('del_pods_one_step', int, 1, "")
+add_arg('add_pods_one_step', int, 1, "")
+add_arg('time_interval_to_change', int, 900, "")
 
 random.seed(10)
 
@@ -134,20 +137,20 @@ class JobInfoManager(object):
             #print("added pods {}".format(pods))
 
     def run(self):
-        step_id = 0
+        step_id = -1
         modify = True
         while (True):
-            time.sleep(15 * 60)  # 20minutes
+            time.sleep(args.time_interval_to_change)  # 20minutes
             if modify:
                 step_id += 1
                 #print("del 2 pods")
-                self._del_tail(self._job_id, 2, step_id)
-                time.sleep(15 * 60)
+                self._del_tail(self._job_id, args.del_pods_one_step, step_id)
+                time.sleep(args.time_interval_to_change)
 
                 step_id += 1
                 #print("add 2 pods")
-                self._add_tail(self._job_id, 2, step_id)
-                modify = False
+                self._add_tail(self._job_id, args.add_pods_one_step, step_id)
+                #modify = False
 
 
 job_manager = JobInfoManager()
@@ -214,4 +217,4 @@ if __name__ == '__main__':
         args.node_ips,
         gpu_num_of_node=args.gpu_num_of_node,
         pod_num_of_node=args.pod_num_of_node)
-    app.run(host='0.0.0.0', port=8180)
+    app.run(host='0.0.0.0', port=8180, threaded=True, processes=1)

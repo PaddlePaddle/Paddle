@@ -201,12 +201,12 @@ def manage_pods():
         cluster2 = get_cluster()
         if cluster2 != cluster:
             deleted_pods = get_deleted_pods(cluster, cluster2)
-            logger.debug("deleted_pods:", deleted_pods)
+            logger.info("deleted_pods:", deleted_pods)
             for pod in deleted_pods:
                 pod_manager.kill_local_pod(pod.id)
 
             added_pods = get_added_pods(cluster, cluster2)
-            logger.debug("added_pods:", added_pods)
+            logger.info("added_pods:", added_pods)
             #gpu_rank = 0
             for pod in added_pods:
                 pod_manager.start_local_pod(cluster2.job_server,
@@ -215,7 +215,7 @@ def manage_pods():
 
             cluster = cluster2
 
-        time.sleep(1)
+        time.sleep(3)
 
 
 if __name__ == '__main__':
