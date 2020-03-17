@@ -78,16 +78,15 @@ class Edlenv(object):
                 break
             except Exception as e:
                 step += 1
-                if step > 10:
+                if step >= 30 * 60 / 3:  # 30 minutes
                     logger.error(
                         "get pods from job_server:{} error, try again!".format(
                             url))
                     sys.exit(1)
-
                 logger.warning(
                     "get pods from job_server:{} payload:{} error:{}, try again!".
                     format(url, job_id, str(e)))
-                #time.sleep(3)
+                time.sleep(3)
 
         return self._parse_response_pods(pods), flag
 

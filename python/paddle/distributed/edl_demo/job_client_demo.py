@@ -132,8 +132,9 @@ class PodManager(object):
             fn = open("%s/pod_%s.log" % (args.log_dir, pod.id), "w")
 
         wd = os.getcwd()
-        pod_path = args.pod_path + "/{}".format(pod.id)
-        os.chdir(pod_path)
+        if args.pod_path is not None:
+            pod_path = args.pod_path + "/{}".format(pod.id)
+            os.chdir(pod_path)
 
         #cmd = [sys.executable, "-u", args.training_script
         #       ] + args.training_script_args
