@@ -121,9 +121,7 @@ class FSPGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
-
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("fsp_grad");
 
     op->SetInput("X", this->Input("X"));
@@ -134,8 +132,6 @@ class FSPGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
-
-    return op;
   }
 };
 

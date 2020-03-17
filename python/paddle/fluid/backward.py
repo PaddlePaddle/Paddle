@@ -832,7 +832,7 @@ def _append_backward_ops_(block,
         target_block(Block): the block which is going to hold new generated grad ops
         no_grad_dict(dict):
             key(int)  block index
-            val(set) a set of varibale names. These varibales have no gradient
+            val(set) a set of variable names. These variables have no gradient
         grad_to_var(dict)(output argument):
             key(str): grad variable name
             val(str): corresponding forward variable name
@@ -875,6 +875,12 @@ def _append_backward_ops_(block,
         # Getting op's corresponding grad_op
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
             op.desc, cpt.to_text(no_grad_dict[block.idx]), grad_sub_block_list)
+
+        # Set device for grad_op according to forward Op
+        device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
+        op_device = op.desc.attr(device_attr_name)
+        for op_desc in grad_op_desc:
+            op_desc._set_attr(device_attr_name, op_device)
 
         # If input_grad_names_set is not None, extend grad_op_descs only when
         # any input grad in outputs of previous grad ops.

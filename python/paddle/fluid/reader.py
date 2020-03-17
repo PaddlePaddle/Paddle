@@ -27,6 +27,8 @@ import logging
 from .dataset import DatasetBase, InMemoryDataset
 
 ### Dygraph DataLoader configs ###
+import atexit
+import os
 import multiprocessing
 import signal
 # NOTE: queue has a different name in python2 and python3
@@ -34,8 +36,13 @@ if sys.version_info[0] == 2:
     import Queue as queue
 else:
     import queue
-# NOTE: [ avoid hanging ] This value is used in getting data from another process
-MP_CHECK_TIMEOUT = 10
+# NOTE: [ avoid hanging & failed quickly ] These value is used in getting data from another process
+QUEUE_GET_TIMEOUT = 60
+
+# NOTE: [ mmap files clear ] If there is still data in the multiprocess queue when the main process finishes reading,
+# the data in the queue needs to be popped. Then the LoDTensor read by the main process
+# from the child process will automatically clear the memory-mapped file.
+multiprocess_queue_set = set()
 
 __all__ = ['PyReader', 'DataLoader']
 
@@ -55,6 +62,84 @@ def _convert_places(places):
 
         ret.append(p)
     return ret
+
+
+def _clear_multiprocess_queue_set():
+    global multiprocess_queue_set
+    for data_queue in multiprocess_queue_set:
+        while True:
+            try:
+                data_queue.get_nowait()
+            except queue.Empty:
+                break
+
+
+# NOTE: main process clear function at exit
+def _cleanup():
+    # NOTE: inter-process Queue shared memory objects clear function
+    _clear_multiprocess_queue_set()
+    # NOTE: main process memory map files clear funciton
+    core._cleanup_mmap_fds()
+
+
+# NOTE used for register a function to be executed at interpreter exit.
+class CleanupFuncRegistrar():
+    # Record the cleanup functions that have been executed
+    _executed_func_set = set()
+    # Record the cleanup functions that have been registered
+    _registered_func_set = set()
+
+    @classmethod
+    def register(cls, function, signals=[signal.SIGTERM]):
+        def _func_exectuor():
+            if function not in cls._executed_func_set:
+                try:
+                    function()
+                finally:
+                    cls._executed_func_set.add(function)
+
+        def _func_register(function):
+            if not callable(function):
+                raise TypeError("%s is not callable object." % (function))
+            # check function object whether hash-able
+            set([function])
+            if function not in cls._registered_func_set:
+                atexit.register(_func_exectuor)
+                cls._registered_func_set.add(function)
+
+        def _signal_handler(signum=None, frame=None):
+            _func_exectuor()
+            if signum is not None:
+                if signum == signal.SIGINT:
+                    raise KeyboardInterrupt
+                sys.exit(signum)
+
+        def _signal_register(signals):
+            signals = set(signals)
+            for sig in signals:
+                orig_handler = signal.signal(sig, _signal_handler)
+                if orig_handler not in (signal.SIG_DFL, signal.SIG_IGN):
+                    if (sig == signal.SIGINT and
+                            orig_handler is signal.default_int_handler):
+                        continue
+                    if orig_handler not in cls._registered_func_set:
+                        atexit.register(orig_handler)
+                        cls._registered_func_set.add(orig_handler)
+
+        # deal with signals
+        _signal_register(signals)
+        # deal with function
+        _func_register(function)
+
+
+# NOTE: [ mmap files clear ] When the main process exits unexpectedly, the remaining
+# shared memory objects in the inter-process Queue and the main process (mostly in the
+# BlockingQueue) may not be completely released, resulting in the corresponding
+# memory-mapped file remaining on the disk (/dev/shm), so register this function
+# to clean up shared memory objects in these two queues before the python interpreter exits.
+# NOTE: Currently multi-process DataLoader only supports Linux platform
+if not (sys.platform == 'darwin' or sys.platform == 'win32'):
+    CleanupFuncRegistrar.register(_cleanup)
 
 
 class DataLoaderBase(object):
@@ -124,7 +209,7 @@ class DataLoader(object):
                 presented as a list. It is only valid when iterable=True. 
                 If return_list=False, the return value on each device would 
                 be a dict of str -> LoDTensor, where the key of the dict is 
-                the name of each feeded variables. If return_list=True, the 
+                the name of each fed variables. If return_list=True, the 
                 return value on each device would be a list(LoDTensor). It is
                 recommended to use return_list=False in static graph mode and
                 use return_list=True in dygraph mode.  
@@ -382,6 +467,16 @@ class DygraphGeneratorLoader(DataLoaderBase):
     def iterable(self):
         return self._iterable
 
+    def _clear_and_remove_data_queue(self):
+        if self._data_queue is not None:
+            while True:
+                try:
+                    self._data_queue.get_nowait()
+                except queue.Empty:
+                    break
+            global multiprocess_queue_set
+            multiprocess_queue_set.remove(self._data_queue)
+
     def _wait_thread_ends(self):
         thread = self._thread
         if thread is not None:
@@ -391,11 +486,24 @@ class DygraphGeneratorLoader(DataLoaderBase):
     def _wait_process_ends(self):
         process = self._process
         if process is not None:
-            self._data_queue.cancel_join_thread()
-            self._data_queue.close()
             process.join()
             # erase process id
             core._erase_process_pid(id(self))
+
+    def _set_child_signal_handler(self):
+        core._set_process_pid(id(self), self._process.pid)
+        current_handler = signal.getsignal(signal.SIGCHLD)
+        if not callable(current_handler):
+            current_handler = None
+
+        def __handler__(signum, frame):
+            # NOTE: Here the signum is SIGDHLD, when the child process exits, this handler
+            # will be called whenever the child process exits normally or abnormally.
+            core._throw_error_if_process_failed()
+            if current_handler is not None:
+                current_handler(signum, frame)
+
+        signal.signal(signal.SIGCHLD, __handler__)
 
     def _init_iterable(self):
         self._wait_thread_ends()
@@ -413,8 +521,13 @@ class DygraphGeneratorLoader(DataLoaderBase):
 
     def _start(self):
         if self._use_multiprocess:
-            # Set data_queue and process
+            # clear old _data_queue and remove it from multiprocess_queue_set
+            self._clear_and_remove_data_queue()
+            # set data_queue and process
             self._data_queue = multiprocessing.Queue(self._capacity)
+            # add _data_queue into global queue set
+            global multiprocess_queue_set
+            multiprocess_queue_set.add(self._data_queue)
             self._process = multiprocessing.Process(
                 target=self._reader_process_loop)
             self._process.daemon = True
@@ -431,11 +544,12 @@ class DygraphGeneratorLoader(DataLoaderBase):
             # Set reader_thread
             self._thread_done_event = threading.Event()
             self._thread = threading.Thread(
-                target=self._reader_thread_loop_with_process)
+                target=self._reader_thread_loop_for_multiprocess)
             self._thread.daemon = True
             self._thread.start()
         else:
-            self._thread = threading.Thread(target=self._reader_thread_loop)
+            self._thread = threading.Thread(
+                target=self._reader_thread_loop_for_singleprocess)
             self._thread.daemon = True
             self._thread.start()
 
@@ -472,40 +586,43 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 " to locate the data causes this issue.\n\t* Please consider using "
                 "'fluid.create_lod_tensor' to convert it to a LoD-Tensor.")
 
-    def _set_child_signal_handler(self):
-        core._set_process_pid(id(self), self._process.pid)
-        current_handler = signal.getsignal(signal.SIGCHLD)
-        if not callable(current_handler):
-            current_handler = None
+    def _exit_thread_expectedly(self):
+        self._thread_done_event.set()
+        self._blocking_queue.close()
 
-        def __handler__(signum, frame):
-            core._throw_error_if_process_failed()
-            if current_handler is not None:
-                current_handler(signum, frame)
-
-        signal.signal(signal.SIGCHLD, __handler__)
+    def _exit_thread_unexpectedly(self):
+        self._thread_done_event.set()
+        self._blocking_queue.kill()
+        logging.error("DataLoader reader thread raised an exception!")
 
     def _reader_process_loop(self):
         try:
             # set signal handler
             core._set_process_signal_handler()
 
-            for sample in self._batch_reader():
-                if sample is None:
-                    raise ValueError(
-                        "Sample in reader is None. Please check whether your dataset is valid."
-                    )
-                self._data_queue.put(sample)
+            # child process clear function at exit
+            def _cleanup():
+                # clear memory map files in child process
+                core._cleanup_mmap_fds()
+
+            # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
+            # some shared memory objects may have been applied for but have not yet
+            # been put into the inter-process Queue. This part of the object needs
+            # to be cleaned up when the process ends.
+            CleanupFuncRegistrar.register(_cleanup)
+
+            for batch in self._batch_reader():
+                tensor_list = core._convert_to_tensor_list(batch)
+                self._data_queue.put(tensor_list)
+                core._remove_tensor_list_mmap_fds(tensor_list)
             self._data_queue.put(None)
         except KeyboardInterrupt:
             # NOTE: Main process will raise KeyboardInterrupt anyways, ignore it in child process
             pass
         except:
-            self._data_queue.cancel_join_thread()
-            self._data_queue.close()
             six.reraise(*sys.exc_info())
 
-    def _reader_thread_loop_with_process(self):
+    def _reader_thread_loop_for_multiprocess(self):
         while not self._thread_done_event.is_set():
             try:
                 # NOTE: [ avoid hanging ] Even with carefully designed data dependencies 
@@ -513,41 +630,38 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 # still happen when data in queue is corrupted (e.g., due to 
                 # Queue.cancel_join_thread or unexpected exit). So we set a timeout whenever 
                 # we try to get data from `data_queue`
-                sample = self._data_queue.get(timeout=MP_CHECK_TIMEOUT)
-            except queue.Empty:
-                self._thread_done_event.set()
-                logging.error("The reader has not read data for a long time.")
+                # NOTE: [ avoid failed quickly ] Here, the time setting of QUEUE_GET_TIMEOUT
+                # is relatively long, currently it is 60 seconds, because in some models,
+                # if the reader child process starts with a heavy burden, the child process
+                # has no enough time to put the data in the queue when the main process
+                # start trying to get data from queue. At this time, the child thread needs
+                # to wait slightly longer
+                tensor_list = self._data_queue.get(timeout=QUEUE_GET_TIMEOUT)
+            except:
+                # NOTE [ avoid handing ] After adding the shared memory mechanism, not only
+                # the queue.Empty exception will occur here, but other exceptions will also
+                # occur, such as mmap failure. If it is not handled here, it will hang.
+                self._exit_thread_unexpectedly()
+                logging.error(
+                    "DataLoader reader thread failed to read data from the multiprocessing.Queue."
+                )
+                six.reraise(*sys.exc_info())
 
             if not self._thread_done_event.is_set():
-                if sample is not None:
+                if tensor_list is not None:
                     try:
                         array = core.LoDTensorArray()
-                        for item in sample:
-                            if not isinstance(item, core.LoDTensor):
-                                self._check_input_array(item)
-                                tmp = core.LoDTensor()
-                                tmp.set(item, core.CPUPlace())
-                                item = tmp
-                            array.append(item)
+                        for tensor in tensor_list:
+                            array.append(tensor)
                         if not self._blocking_queue.push(array):
                             self._blocking_queue.close()
                     except:
-                        self._thread_done_event.set()
-                        self._blocking_queue.kill()
-                        self._data_queue.close()
-                        logging.warning(
-                            "DygraphDataLoader reader thread raised an exception."
-                        )
+                        self._exit_thread_unexpectedly()
                         six.reraise(*sys.exc_info())
                 else:
-                    self._thread_done_event.set()
-                    self._blocking_queue.close()
-                    self._data_queue.close()
-            else:
-                self._blocking_queue.kill()
-                self._data_queue.close()
+                    self._exit_thread_expectedly()
 
-    def _reader_thread_loop(self):
+    def _reader_thread_loop_for_singleprocess(self):
         try:
             for sample in self._batch_reader():
                 array = core.LoDTensorArray()
@@ -877,7 +991,7 @@ class PyReader(DataLoaderBase):
             presented as a list. It is only valid when iterable=True. 
             If return_list=False, the return value on each device would 
             be a dict of str -> LoDTensor, where the key of the dict is 
-            the name of each feeded variables. If return_list=True, the 
+            the name of each fed variables. If return_list=True, the 
             return value on each device would be a list(LoDTensor). It is
             recommended to use return_list=False in static graph mode and
             use return_list=True in dygraph mode. 

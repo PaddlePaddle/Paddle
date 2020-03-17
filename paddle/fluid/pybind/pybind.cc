@@ -24,8 +24,10 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
+#include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/garbage_collector.h"
+#include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/framework/ir/coalesce_grad_tensor_pass.h"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/load_op_lib.h"
@@ -46,6 +48,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
+#include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/py_func_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
@@ -101,6 +104,7 @@ DECLARE_bool(use_ngraph);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
+PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensor2DArray);
 
 namespace paddle {
 namespace pybind {
@@ -859,7 +863,58 @@ PYBIND11_MODULE(core_noavx, m) {
         }
         dst.set_lod(self.lod());
         return dst;
+#ifdef _WIN32
       });
+#else
+           })
+      .def(py::pickle(
+          [](const LoDTensor &t) {  // __getstate__
+            auto holder = t.Holder();
+            PADDLE_ENFORCE_EQ(
+              platform::is_cpu_place(holder->place()), true,
+              platform::errors::PreconditionNotMet(
+                  "LoDTensor is not on CPU."
+                  "Now only LoDTensor on CPU can be serialized."));
+            auto* mmap_writer_allocation =
+              dynamic_cast<memory::allocation::MemoryMapWriterAllocation *>(
+                holder.get());
+            PADDLE_ENFORCE_NOT_NULL(mmap_writer_allocation,
+              platform::errors::PreconditionNotMet(
+                "LoDTensor is not in shared memory."
+                "Now only LoDTensor on shared memory can be serialized."));
+            int type_idx = static_cast<int>(t.type());
+
+            return py::make_tuple(mmap_writer_allocation->ipc_name(),
+                                  mmap_writer_allocation->size(),
+                                  type_idx, vectorize(t.dims()), t.lod());
+          },
+          [](py::tuple t) {  // __setstate__
+            if (t.size() != 5)
+              throw std::runtime_error("Invalid LoDTensor state!");
+
+            // 1. Create a new C++ instance
+            LoDTensor tensor;
+
+            // 2. Rebuild Allocation
+            const std::string &ipc_name = t[0].cast<std::string>();
+            size_t size = t[1].cast<size_t>();
+            auto shared_reader_holder =
+              memory::allocation::RebuildMemoryMapReaderAllocation(
+                ipc_name, size);
+
+            // 3. Maintain global fd set
+            VLOG(3) << "LoDTensor ipc name: " << ipc_name;
+            memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
+
+            // 4. Rebuild LoDTensor
+            tensor.ResetHolderWithType(shared_reader_holder,
+              static_cast<proto::VarType::Type>(t[2].cast<int>()));
+            tensor.Resize(make_ddim(t[3].cast<std::vector<int>>()));
+            tensor.set_lod(t[4].cast<framework::LoD>());
+
+            return tensor;
+          }));
+#endif
 
   py::class_<SelectedRows>(m, "SelectedRows")
       .def("__init__",
@@ -1135,9 +1190,23 @@ All parameter, weight, gradient are variables in Paddle.
     Prune(*prog_with_targets.Proto(), feeded_var_names, &pruned_desc);
     return new ProgramDesc(pruned_desc);
   });
-  m.def("prune_backward", [](const framework::ProgramDesc &program) {
-    return PruneBackward(program);
-  });
+  m.def("prune_backward",
+        [](const framework::ProgramDesc &program) {
+          return PruneBackward(program);
+        },
+        R"DOC(
+             Prune the backward part of a program, mostly called in
+             program.clone(for_test=True).
+              
+             Args:
+                   program (ProgramDesc): The original program.
+
+             Returns:
+                   tuple(ProgramDesc, map<int, int>): The first part is 
+                   the pruned program desc, and the second part is a map
+                   which contains the id pair of pruned block and corresponding
+                   origin block.
+           )DOC");
   m.def("empty_var_name",
         []() { return std::string(framework::kEmptyVarName); });
   m.def("grad_var_suffix",
@@ -1456,6 +1525,9 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
+  m.def("run_cmd", [](const std::string &cmd) -> const std::string {
+    return paddle::framework::shell_get_command_output(cmd);
+  });
 #ifdef PADDLE_WITH_CUDA
   m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
     // Only GPUs with Compute Capability >= 53 support float16
@@ -1544,6 +1616,25 @@ All parameter, weight, gradient are variables in Paddle.
            },
            py::return_value_policy::take_ownership);
 
+  py::class_<LoDTensor2DArray>(m, "LoDTensor2DArray", R"DOC(
+        LoDTensor2DArray is 2-D array of LoDTensor.
+        )DOC")
+      .def("_move_to_list",
+           [](LoDTensor2DArray &self) -> py::list {
+             py::list res(self.size());
+             for (size_t i = 0; i < self.size(); ++i) {
+               py::list tmp(self[i].size());
+               for (size_t j = 0; j < self[i].size(); ++j) {
+                 tmp[j] = py::cast(std::move(self[i][j]));
+               }
+               res[i] = std::move(tmp);
+               self[i].clear();
+             }
+             self.clear();
+             return res;
+           },
+           py::return_value_policy::take_ownership);
+
   m.def("op_support_gpu", OpSupportGPU);
 #ifdef PADDLE_WITH_CUDA
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
@@ -1554,6 +1645,12 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("nvprof_stop", platform::CudaProfilerStop);
 #endif
 #endif
+
+  py::enum_<platform::TracerOption>(m, "TracerOption", py::arithmetic())
+      .value("kDefault", platform::TracerOption::kDefault)
+      .value("kOpDetail", platform::TracerOption::kOpDetail)
+      .value("kAllOpDetail", platform::TracerOption::kAllOpDetail)
+      .export_values();
 
   py::enum_<platform::ProfilerState>(m, "ProfilerState", py::arithmetic())
       .value("kDisabled", platform::ProfilerState::kDisabled)
@@ -1571,6 +1668,7 @@ All parameter, weight, gradient are variables in Paddle.
       .value("kAve", platform::EventSortingKey::kAve)
       .export_values();
 
+  m.def("set_tracer_option", platform::SetTracerOption);
   m.def("enable_profiler", platform::EnableProfiler);
   m.def("disable_profiler", platform::DisableProfiler);
   m.def("is_profiler_enabled", platform::IsProfileEnabled);
@@ -2229,15 +2327,29 @@ All parameter, weight, gradient are variables in Paddle.
            &ParallelExecutor::FeedAndSplitTensorIntoLocalScopes)
       .def("run",
            [](ParallelExecutor &self,
-              const std::vector<std::string> &fetch_tensors) {
-             pybind11::gil_scoped_release release;
-             return self.Run(fetch_tensors);
+              const std::vector<std::string> &fetch_tensors,
+              bool return_merged) -> py::object {
+             paddle::framework::FetchResultType ret;
+             {
+               pybind11::gil_scoped_release release;
+               ret = self.Run(fetch_tensors, return_merged);
+             }
+             if (return_merged) {
+               return py::cast(std::move(
+                   boost::get<paddle::framework::FeedFetchList>(ret)));
+             } else {
+               return py::cast(std::move(
+                   boost::get<paddle::framework::FetchUnmergedList>(ret)));
+             }
            })
       .def("device_count", &ParallelExecutor::DeviceCount);
 
   BindFleetWrapper(&m);
   BindGlooWrapper(&m);
   BindBoxHelper(&m);
+#ifdef PADDLE_WITH_BOX_PS
+  BindBoxWrapper(&m);
+#endif
 #ifdef PADDLE_WITH_NCCL
   BindNCCLWrapper(&m);
 #endif

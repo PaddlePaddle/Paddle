@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace paddle {
@@ -108,25 +109,27 @@ class MinusGradMaker : public imperative::GradOpBaseMakerBase {
  public:
   using imperative::GradOpBaseMakerBase::GradOpBaseMakerBase;
 
-  std::vector<std::unique_ptr<imperative::OpBase>> operator()() const override {
-    std::vector<std::unique_ptr<imperative::OpBase>> ops;
+  std::vector<std::shared_ptr<imperative::OpBase>> operator()() const override {
+    std::vector<std::shared_ptr<imperative::OpBase>> ops;
     auto x_g = this->InputGrad("X");
     if (!x_g.empty()) {
-      auto *x_g_op = new imperative::OpBase();
-      x_g_op->SetType("scale");
-      x_g_op->SetInput("X", this->OutputGrad("Out"));
-      x_g_op->SetOutput("Out", x_g);
-      x_g_op->SetAttr("scale", 1.0f);
+      auto x_g_op = CreateOp();
+      imperative::TracedGradOp op(x_g_op);
+      op.SetType("scale");
+      op.SetInput("X", this->OutputGrad("Out"));
+      op.SetOutput("Out", x_g);
+      op.SetAttr("scale", 1.0f);
       ops.emplace_back(x_g_op);
     }
 
     auto y_g = this->InputGrad("Y");
     if (!y_g.empty()) {
-      auto *y_g_op = new imperative::OpBase();
-      y_g_op->SetType("scale");
-      y_g_op->SetInput("X", this->OutputGrad("Out"));
-      y_g_op->SetOutput("Out", y_g);
-      y_g_op->SetAttr("scale", -1.0f);
+      auto y_g_op = CreateOp();
+      imperative::TracedGradOp op(y_g_op);
+      op.SetType("scale");
+      op.SetInput("X", this->OutputGrad("Out"));
+      op.SetOutput("Out", y_g);
+      op.SetAttr("scale", -1.0f);
       ops.emplace_back(y_g_op);
     }
 

@@ -18,7 +18,7 @@ import numpy as np
 from collections import defaultdict
 
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
-from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program
+from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
 
 from . import framework
 from . import layers
@@ -108,16 +108,17 @@ class Optimizer(object):
         self.helper = None
         self._opti_name_list = []
         self._accumulators_holder = {}
+        self._param_device_map = dict()
 
     @framework.dygraph_only
     def state_dict(self):
         '''
-        Get state dict information from optimizer. It contain all the variable used by optimizer. For Adam opimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be include in state dict.
-        If the optimzier never be called(minimize function), the state_dict is empty.
+        Get state dict information from optimizer. It contain all the variable used by optimizer. For Adam optimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be include in state dict.
+        If the optimizer never be called(minimize function), the state_dict is empty.
 
         Args: None
         Return:
-            state_dict(dict) : dict contains all the variablel used by optimizer
+            state_dict(dict) : dict contains all the variable used by optimizer
         
         Examples:
             .. code-block:: python
@@ -153,7 +154,7 @@ class Optimizer(object):
     @framework.dygraph_only
     def set_dict(self, state_dict):
         '''
-        Load optimizer state dict. For Adam opimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be changed.
+        Load optimizer state dict. For Adam optimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be changed.
 
         Args: 
             state_dict(dict) : Dict contains all the Variable needed by optimizer
@@ -289,7 +290,7 @@ class Optimizer(object):
     def current_step_lr(self):
         """
         .. note::
-          **This API is ONLY avaliable in Dygraph mode**
+          **This API is ONLY available in Dygraph mode**
         
         Get current step learning rate. The return value is all the same When LearningRateDecay is not used,
         otherwise return the step learning rate.
@@ -404,7 +405,8 @@ class Optimizer(object):
                          dtype=None,
                          fill_value=0.0,
                          shape=None,
-                         type=None):
+                         type=None,
+                         device=None):
         """Utility function to add an accumulator for a parameter
 
         Args:
@@ -437,8 +439,11 @@ class Optimizer(object):
             type=param.type if type is None else type,
             shape=shape,
             belong_to_optimizer=True)
-        self.helper.set_variable_initializer(
-            var, initializer=Constant(value=float(fill_value)))
+        if device is None:
+            device = self._get_device_for_param(param.name)
+        with device_guard(device):
+            self.helper.set_variable_initializer(
+                var, initializer=Constant(value=float(fill_value)))
 
         if framework.in_dygraph_mode():
             if len(self._accumulators_holder) > 0:
@@ -466,6 +471,27 @@ class Optimizer(object):
             raise Exception("Accumulator {} does not exist for parameter {}".
                             format(name, param.name))
         return self._accumulators[name][param.name]
+
+    def _update_param_device_map(self, parameters_and_grads, target_block):
+        for param_and_grad in parameters_and_grads:
+            if param_and_grad[0].trainable is True:
+                param_name = param_and_grad[0].name
+                ops = target_block.ops
+                device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName(
+                )
+                for op in ops:
+                    input_arg_names = op.input_arg_names
+                    if param_name in input_arg_names:
+                        self._param_device_map[param_name] = op.attr(
+                            device_attr_name)
+                    else:
+                        self._param_device_map[param_name] = None
+
+    def _get_device_for_param(self, param_name):
+        device = None
+        if param_name in self._param_device_map:
+            device = self._param_device_map[param_name]
+        return device
 
     def _create_optimization_pass(self, parameters_and_grads):
         """Add optimization operators to update gradients to variables.
@@ -502,6 +528,7 @@ class Optimizer(object):
 
         start = len(target_block.ops)
         self.helper = LayerHelper(self.__class__.__name__)
+        self._update_param_device_map(parameters_and_grads, target_block)
         self._create_accumulators(
             target_block,
             [p[0] for p in parameters_and_grads if p[0].trainable])
@@ -520,7 +547,11 @@ class Optimizer(object):
                 with param_and_grad[0].block.program._optimized_guard(
                         param_and_grad), name_scope("optimizer"):
                     if param_and_grad[0].trainable is True:
-                        self._append_optimize_op(target_block, param_and_grad)
+                        device = self._get_device_for_param(param_and_grad[0]
+                                                            .name)
+                        with device_guard(device):
+                            optimize_op = self._append_optimize_op(
+                                target_block, param_and_grad)
 
         # Get custom finish ops for subclasses
         # FIXME: Need to fix this once we figure out how to handle dependencies
@@ -1118,21 +1149,23 @@ class DGCMomentumOptimizer(Optimizer):
             self._num_trainers = num_trainers
             self._clip_norm = local_grad_clip_norm * (num_trainers**-0.5)
 
-        self._get_dgc_regularization_param()
+        self.regular_type, self.regular_coeff = self._get_regularization_param(
+            self.regularization)
 
-    def _get_dgc_regularization_param(self):
-        self.regular_coeff = 0.0
-        self.regular_type = 0
+    def _get_regularization_param(self, regularization):
+        regular_type = 0
+        regular_coeff = 0.0
 
-        if self.regularization is not None:
-            self.regular_coeff = self.regularization._regularization_coeff
+        if regularization is not None:
+            regular_coeff = regularization._regularization_coeff
             from .regularizer import L1Decay, L2Decay
-            if isinstance(self.regularization, L1Decay):
-                self.regular_type = 1
-            elif isinstance(self.regularization, L2Decay):
-                self.regular_type = 2
+            if isinstance(regularization, L1Decay):
+                regular_type = 1
+            elif isinstance(regularization, L2Decay):
+                regular_type = 2
             else:
                 assert False, 'regularization must be None|L1Decay|L2Deacy'
+        return regular_type, regular_coeff
 
     def _is_use_dgc(self, param_var, grad_var):
         var_numel = abs(reduce(lambda x, y: x * y, param_var.shape))
@@ -1333,6 +1366,13 @@ class DGCMomentumOptimizer(Optimizer):
         block = framework.default_main_program().global_block()
         op_maker = core.op_proto_and_checker_maker
 
+        regular_type = self.regular_type
+        regular_coeff = self.regular_coeff
+        # The regularizer of the Parameters have higher priority
+        if param_var.regularizer is not None:
+            regular_type, regular_coeff = self._get_regularization_param(
+                param_var.regularizer)
+
         dgc_op = block.append_op(
             type="dgc",
             inputs={
@@ -1357,8 +1397,8 @@ class DGCMomentumOptimizer(Optimizer):
                 "use_nesterov": self._use_nesterov,
                 "rampup_begin_step": float(self._rampup_begin_step),
                 "rampup_step": float(self._rampup_step),
-                "regular_coeff": float(self.regular_coeff),
-                "regular_type": int(self.regular_type),
+                "regular_coeff": float(regular_coeff),
+                "regular_type": int(regular_type),
             },
             stop_gradient=True)
 
@@ -1613,7 +1653,7 @@ class AdagradOptimizer(Optimizer):
 
 class AdamOptimizer(Optimizer):
     """
-    The Adam optimzier uses an optimization described at the end
+    The Adam optimizer uses an optimization described at the end
     of section 2 of `Adam paper <https://arxiv.org/abs/1412.6980>`_ ,
     it can dynamically adjusts the learning rate of each parameter using
     the 1st moment estimates and the 2nd moment estimates of the gradient.
@@ -1790,14 +1830,14 @@ class AdamOptimizer(Optimizer):
                 fill_value=0.9 if isinstance(self._beta1, Variable) \
                         else self._beta1,
                 shape=[1],
-                type=core.VarDesc.VarType.LOD_TENSOR)
+                type=core.VarDesc.VarType.LOD_TENSOR, device='cpu')
             self._add_accumulator(
                 name=self._beta2_pow_acc_str,
                 param=p,
                 fill_value=0.999 if isinstance(self._beta2, Variable) \
                         else self._beta2,
                 shape=[1],
-                type=core.VarDesc.VarType.LOD_TENSOR)
+                type=core.VarDesc.VarType.LOD_TENSOR, device='cpu')
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -3375,10 +3415,10 @@ class PipelineOptimizer(object):
     """
     Pipeline Optimizer
 
-    Train with pipeline mode. The program will be splited by cut_list. 
+    Train with pipeline mode. The program will be split by cut_list. 
 
     If the len of cut_list is k, then the whole program (including \
-    backward part) will be splited to 2*k-1 sections. 
+    backward part) will be split to 2*k-1 sections. 
     
     So the length of place_list and concurrency_list must be also 2*k-1.
 
@@ -3810,12 +3850,12 @@ class RecomputeOptimizer(Optimizer):
 
                 sgd = fluid.optimizer.Adam(learning_rate=0.01)
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                sgd._set_checkpoints([fc_1, pred])
                 params_grads = sgd.backward(
                     cost,
                     startup_program=None,
                     parameter_list=None,
-                    no_grad_set=None,
-                    checkpoints=[fc_1, pred])
+                    no_grad_set=None)
 
                 program = cost.block.program
                 with framework.program_guard(program, None):
@@ -3831,8 +3871,7 @@ class RecomputeOptimizer(Optimizer):
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None,
-                 callbacks=None,
-                 checkpoints=None):
+                 callbacks=None):
         """
         call append_backward with checkpoints.
 
@@ -3866,12 +3905,12 @@ class RecomputeOptimizer(Optimizer):
     
                 sgd = fluid.optimizer.Adam(learning_rate=0.01)
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                sgd._set_checkpoints([fc_1, pred])
                 params_grads = sgd.backward(
                     cost,
                     startup_program=None,
                     parameter_list=None,
-                    no_grad_set=None,
-                    checkpoints=[fc_1, pred])
+                    no_grad_set=None)
                 print("Finished backward")
         """
 
@@ -3887,6 +3926,9 @@ class RecomputeOptimizer(Optimizer):
                 parameter_list,
                 no_grad_set,
                 checkpoints=self._checkpoints)
+            # Note: since we can't use all_reduce_op now,
+            #  dgc_op should be the last op of one grad.
+            self._optimizer._append_dgc_ops(params_grads)
         return params_grads
 
     def apply_optimize(self, loss, startup_program, params_grads):
@@ -3918,12 +3960,12 @@ class RecomputeOptimizer(Optimizer):
                 
                 sgd = fluid.optimizer.Adam(learning_rate=0.01)
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                sgd._set_checkpoints([fc_1, pred])
                 params_grads = sgd.backward(
                     cost,
                     startup_program=None,
                     parameter_list=None,
-                    no_grad_set=None,
-                    checkpoints=[fc_1, pred])
+                    no_grad_set=None)
                 
                 optimize_ops = sgd.apply_optimize(
                     cost, startup_program=None, params_grads=params_grads)
@@ -3953,8 +3995,7 @@ class RecomputeOptimizer(Optimizer):
             loss,
             startup_program=startup_program,
             parameter_list=parameter_list,
-            no_grad_set=no_grad_set,
-            checkpoints=self._checkpoints)
+            no_grad_set=no_grad_set)
 
         if grad_clip:
             # TODO(guru4elephant): should add grad_clip for static graph

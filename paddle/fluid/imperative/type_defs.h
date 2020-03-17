@@ -22,12 +22,16 @@ limitations under the License. */
 namespace paddle {
 namespace imperative {
 
+class VariableWrapper;
 class VarBase;
 class OpBase;
 class Tracer;
 
-using NameVarBaseMap =
-    std::map<std::string, std::vector<std::shared_ptr<VarBase>>>;
+template <typename T>
+using NameVarMap = std::map<std::string, std::vector<std::shared_ptr<T>>>;
+
+using NameVarBaseMap = NameVarMap<VarBase>;
+using NameVariableWrapperMap = NameVarMap<VariableWrapper>;
 
 using WeakNameVarBaseMap =
     std::map<std::string, std::vector<std::weak_ptr<VarBase>>>;

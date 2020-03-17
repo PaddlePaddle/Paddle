@@ -26,7 +26,9 @@ list(APPEND MIXED_DIST_TEST_OPS test_launch_ps)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_async)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_geo)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_half_async)
+list(APPEND MIXED_DIST_TEST_OPS test_communicator_sync)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_input_with_psilib)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
@@ -56,6 +58,7 @@ endif()
 
 if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_pipeline)
+    LIST(REMOVE_ITEM TEST_OPS test_boxps)
 endif()
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
 list(REMOVE_ITEM TEST_OPS test_lstm_unit_op) # # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
@@ -195,9 +198,11 @@ list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
 if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
   list(REMOVE_ITEM TEST_OPS test_dataset_dataloader)
-  list(REMOVE_ITEM TEST_OPS test_imperative_data_loader)
+  list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_base)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_process)
+  list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_fds_clear)
+  list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exit_func)
   list(REMOVE_ITEM TEST_OPS test_imperative_signal_handler)
 endif()
 
@@ -212,11 +217,9 @@ set(TEST_OPS_WITH_GC
   test_concat_op
   test_elementwise_add_op
   test_elementwise_sub_op
-  test_fill_constant_batch_size_like_op
   test_fill_zeros_like2_op
   test_gather_op
   test_gather_nd_op
-  test_gaussian_random_batch_size_like_op
   test_linear_chain_crf_op
   test_lod_reset_op
   test_lookup_table_op
@@ -234,8 +237,7 @@ set(TEST_OPS_WITH_GC
   test_sequence_slice_op
   test_slice_op
   test_space_to_depth_op
-  test_squared_l2_distance_op
-  test_uniform_random_batch_size_like_op)
+  test_squared_l2_distance_op)
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
@@ -281,9 +283,12 @@ if(WITH_DISTRIBUTE)
     py_test_modules(test_nce_remote_table_op MODULES test_nce_remote_table_op ENVS ${dist_ENVS})
     py_test_modules(test_recv_save_op MODULES test_recv_save_op ENVS ${dist_ENVS})
     py_test_modules(test_transpiler_ops MODULES test_transpiler_ops ENVS ${dist_ENVS})
+    py_test_modules(test_fleet_input_with_psilib MODULES test_fleet_input_with_psilib ENVS ${dist_ENVS})
     py_test_modules(test_communicator_async MODULES test_communicator_async ENVS ${dist_ENVS})
     py_test_modules(test_communicator_geo MODULES test_communicator_geo ENVS ${dist_ENVS})
     py_test_modules(test_communicator_half_async MODULES test_communicator_half_async ENVS ${dist_ENVS} FLAGS_communicator_send_queue_size=1 FLAGS_communicator_max_merge_var_num=1)
+    py_test_modules(test_communicator_sync MODULES test_communicator_sync ENVS ${dist_ENVS} FLAGS_communicator_send_queue_size=1 FLAGS_communicator_max_merge_var_num=1)
+
     if(WITH_DGC)
         # if with dgc, test all dgc tests.
         # NOTE. dist dgc tests is already in DIST_TEST_OPS
@@ -333,6 +338,7 @@ set_tests_properties(test_parallel_executor_seresnext_with_reduce_cpu PROPERTIES
 set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu PROPERTIES TIMEOUT 750)
 
 add_subdirectory(sequence)
+add_subdirectory(dygraph_to_static)
 
 if (WITH_NGRAPH)
     add_subdirectory(ngraph)
@@ -355,5 +361,11 @@ set_tests_properties(test_parallel_executor_test_while_train test_parallel_execu
         test_parallel_executor_feed_persistable_var
         test_parallel_executor_crf_auto_growth test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
         test_data_norm_op test_imperative_using_non_zero_gpu test_fuse_bn_act_pass
-        test_optimizer_in_control_flow
+        test_optimizer_in_control_flow test_fetch_unmerged
         test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
+
+if(NOT WIN32 AND NOT APPLE)
+    set_tests_properties(test_imperative_data_loader_base PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+    set_tests_properties(test_imperative_data_loader_exception PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+    set_tests_properties(test_imperative_data_loader_fds_clear PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+endif()

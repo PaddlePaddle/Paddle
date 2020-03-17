@@ -18,11 +18,13 @@ from .optimizer_factory import *
 from google.protobuf import text_format
 import paddle.fluid as fluid
 from paddle.fluid.framework import Program
+from paddle.fluid.optimizer import Optimizer
 
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
+from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy import TrainerRuntimeConfig, DistributedStrategy, SyncStrategy, AsyncStrategy, HalfAsyncStrategy, GeoStrategy, StrategyFactory
 
 
 class PSLib(Fleet):
@@ -222,7 +224,32 @@ class PSLib(Fleet):
             optimizer(DownpourOptimizer): downpour optimizer
 
         """
-        self._optimizer = DownpourOptimizer(optimizer, strategy)
+
+        if not isinstance(optimizer, Optimizer):
+            raise ValueError("optimizer must be an instance of Optimizer")
+        if not fleet._is_initialized:
+            raise ValueError(
+                "use fleet.init(role) to initialize the role of current node before optimizer.minimize(loss)"
+            )
+        if strategy:
+            if isinstance(strategy, dict):
+                self._strategy = strategy
+            elif isinstance(strategy, DistributedStrategy):
+                if isinstance(strategy, AsyncStrategy):
+                    self._strategy = strategy.get_pslib_runtime_config(
+                    ).get_runtime_configs()
+                else:
+                    raise TypeError(
+                        "In {} mode, strategy must be an instance of AsyncStrategy, or Dict".
+                        format(fleet._mode))
+            else:
+                raise TypeError(
+                    "In {} mode, strategy must be an instance of AsyncStrategy, or Dict".
+                    format(fleet._mode))
+        else:
+            self._strategy = {}
+
+        self._optimizer = DownpourOptimizer(optimizer, self._strategy)
         return self._optimizer
 
     def save_inference_model(self,
@@ -417,21 +444,6 @@ class PSLib(Fleet):
             self._fleet_ptr.clear_model()
         self._role_maker._barrier_worker()
 
-    def clear_model(self):
-        """
-        clear_model() will be called by user. It will clear sparse model.
-
-        Examples:
-            .. code-block:: python
-
-              fleet.clear_model()
-
-        """
-        self._role_maker._barrier_worker()
-        if self._role_maker.is_first_worker():
-            self._fleet_ptr.clear_model()
-        self._role_maker._barrier_worker()
-
     def load_one_table(self, table_id, model_path, **kwargs):
         """
         load pslib model for one table or load params from paddle model
@@ -448,7 +460,7 @@ class PSLib(Fleet):
                     model_proto_file(str): path of program desc proto binary
                                            file, can be local or hdfs/afs file
                     var_names(list): var name list
-                    load_combine(bool): load from a file or splited param files
+                    load_combine(bool): load from a file or split param files
                                         default False.
 
         Examples:
@@ -502,7 +514,7 @@ class PSLib(Fleet):
             model_proto_file(str): path of program desc proto binary file,
                                    can be local or hdfs/afs file
             var_names(list): load var names
-            load_combine(bool): load from a file or splited param files
+            load_combine(bool): load from a file or split param files
 
         """
         self._role_maker._barrier_worker()
@@ -618,7 +630,7 @@ class DownpourOptimizer(DistributedOptimizer):
         """
         minimize a program through loss, loss can be a list in DistributedOptimizer.
         Note that in parameter server mode, a worker will not get anything about optimize_os
-        Because optmizer algorithms run on pserver side. We will make this usable in pserver
+        Because optimizer algorithms run on pserver side. We will make this usable in pserver
         process, but currently the optimization part is written into Fleet(). A user does not
         need to care about how to startup a pserver node.
 

@@ -79,10 +79,11 @@ const char* PD_ParamsFile(const PD_AnalysisConfig* config) {
   return config->config.params_file().c_str();
 }
 
-void PD_EnableUseGpu(PD_AnalysisConfig* config,
-                     uint64_t memory_pool_init_size_mb, int device_id) {
+void PD_EnableUseGpu(PD_AnalysisConfig* config, int memory_pool_init_size_mb,
+                     int device_id) {
   PADDLE_ENFORCE_NOT_NULL(config);
-  config->config.EnableUseGpu(memory_pool_init_size_mb, device_id);
+  config->config.EnableUseGpu(static_cast<uint64_t>(memory_pool_init_size_mb),
+                              device_id);
 }
 
 void PD_DisableGpu(PD_AnalysisConfig* config) {

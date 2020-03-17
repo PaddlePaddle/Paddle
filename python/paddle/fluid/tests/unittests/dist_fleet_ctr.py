@@ -229,7 +229,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                 fetch_list=[self.avg_cost],
                 fetch_info=["cost"],
                 print_period=2,
-                debug=False)
+                debug=int(os.getenv("Debug", "0")))
             pass_time = time.time() - pass_start
 
         if os.getenv("SAVE_MODEL") == "1":

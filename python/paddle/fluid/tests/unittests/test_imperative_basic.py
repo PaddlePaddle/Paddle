@@ -177,6 +177,31 @@ class SimpleRNN(fluid.Layer):
 
 
 class TestImperative(unittest.TestCase):
+    def test_functional_dygraph_context(self):
+        self.assertFalse(fluid.dygraph.enabled())
+        fluid.enable_dygraph()
+        self.assertTrue(fluid.dygraph.enabled())
+        np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
+        var_inp = fluid.dygraph.base.to_variable(np_inp)
+        mlp = MLP(input_size=2)
+        out = mlp(var_inp)
+        dy_out1 = out.numpy()
+        out.backward()
+        dy_grad1 = mlp._linear1.weight.gradient()
+        fluid.disable_dygraph()
+        self.assertFalse(fluid.dygraph.enabled())
+        with fluid.dygraph.guard():
+            self.assertTrue(fluid.dygraph.enabled())
+            var_inp = fluid.dygraph.base.to_variable(np_inp)
+            mlp = MLP(input_size=2)
+            out = mlp(var_inp)
+            dy_out2 = out.numpy()
+            out.backward()
+            dy_grad2 = mlp._linear1.weight.gradient()
+        self.assertFalse(fluid.dygraph.enabled())
+        self.assertTrue(np.array_equal(dy_out1, dy_out2))
+        self.assertTrue(np.array_equal(dy_grad1, dy_grad2))
+
     def test_isinstance(self):
         var = fluid.layers.data(shape=[1], name='x', dtype='float32')
         self.assertTrue(isinstance(var, fluid.Variable))
@@ -496,6 +521,19 @@ class TestImperative(unittest.TestCase):
         self.assertFalse(hasattr(layer, "whatever"))
         self.assertTrue(hasattr(layer, "test_attr"))
         self.assertEqual(layer.test_attr, 1)
+
+        my_layer = MyLayer()
+        my_layer.w1 = my_layer.create_parameter([3, 3])
+        my_layer.add_parameter('w2', None)
+        self.assertEqual(len(my_layer.parameters()), 1)
+        self.assertRaises(TypeError, my_layer.__setattr__, 'w1', 'str')
+        my_layer.w1 = None
+        self.assertEqual(len(my_layer.parameters()), 0)
+        my_layer.l1 = fluid.dygraph.Linear(3, 3)
+        self.assertEqual(len(my_layer.sublayers()), 1)
+        self.assertRaises(TypeError, my_layer.__setattr__, 'l1', 'str')
+        my_layer.l1 = None
+        self.assertEqual(len(my_layer.sublayers()), 0)
 
 
 if __name__ == '__main__':

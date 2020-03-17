@@ -14,9 +14,9 @@
 """Defination of Role Makers."""
 
 from __future__ import print_function
-import paddle.fluid as fluid
 import os
-import time
+
+from paddle.fluid.core import Gloo
 
 __all__ = [
     'Role', 'RoleMakerBase', 'MPISymetricRoleMaker', 'UserDefinedRoleMaker',
@@ -542,8 +542,8 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 class GeneralRoleMaker(RoleMakerBase):
     """
     This role maker is for general use, you can set os.environ to customize:
-        PADDLE_PSERVERS_IP_PORT_LIST : all pservers' ip:port, seperated by ','
-        PADDLE_TRAINER_ENDPOINTS     : all trainers' ip:port, seperated by ','
+        PADDLE_PSERVERS_IP_PORT_LIST : all pservers' ip:port, separated by ','
+        PADDLE_TRAINER_ENDPOINTS     : all trainers' ip:port, separated by ','
         TRAINING_ROLE                : TRAINER or PSERVER
         PADDLE_TRAINER_ID            : current trainer id (only for trainer),
                                        it is index in PADDLE_TRAINER_ENDPOINTS
@@ -577,7 +577,7 @@ class GeneralRoleMaker(RoleMakerBase):
                 current_id = int(os.environ["PADDLE_TRAINER_ID"])
                 self._node_type = 1
                 self._cur_endpoint = worker_endpoints[current_id]
-                gloo = fluid.core.Gloo()
+                gloo = Gloo()
                 gloo.init(current_id,
                           len(worker_endpoints),
                           self._hdfs_path.rstrip("/") + "/trainer",
@@ -597,7 +597,7 @@ class GeneralRoleMaker(RoleMakerBase):
                     current_id = eplist.index(cur_endpoint)
                 self._node_type = 0
                 self._cur_endpoint = cur_endpoint
-                gloo = fluid.core.Gloo()
+                gloo = Gloo()
                 gloo.init(current_id,
                           len(eplist),
                           self._hdfs_path.rstrip("/") + "/pserver",
@@ -605,7 +605,7 @@ class GeneralRoleMaker(RoleMakerBase):
                           self._prefix)
                 self._node_type_comm = gloo
 
-            gloo = fluid.core.Gloo()
+            gloo = Gloo()
             all_list = worker_endpoints + eplist
             gloo.init(
                 all_list.index(self._cur_endpoint),

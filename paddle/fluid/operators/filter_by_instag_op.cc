@@ -116,8 +116,7 @@ class FilterByInstagGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("filter_by_instag_grad");
     op->SetInput("IndexMap", this->Output("IndexMap"));
     op->SetInput("Ins", this->Input("Ins"));
@@ -125,7 +124,6 @@ class FilterByInstagGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("LossWeight", this->Output("LossWeight"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("Ins"), this->InputGrad("Ins"));
-    return op;
   }
 };
 }  // namespace operators

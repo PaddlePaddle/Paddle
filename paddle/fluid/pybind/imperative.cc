@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/profiler.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/op_function.h"
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 #include "paddle/fluid/pybind/tensor_py.h"
@@ -220,13 +221,92 @@ void BindImperative(py::module *m_ptr) {
 
   BindOpFunctions(&m);
 
+#ifndef _WIN32
+  // Dygraph DataLoader signal handler
+  m.def("_set_process_pid", [](int64_t key, pid_t pid) {
+    imperative::SetLoadProcessPID(key, pid);
+  });
+  m.def("_erase_process_pid",
+        [](int64_t key) { imperative::EraseLoadProcessPID(key); });
+  m.def("_set_process_signal_handler",
+        []() { imperative::SetLoadProcessSignalHandler(); });
+  m.def("_throw_error_if_process_failed",
+        []() { imperative::ThrowErrorIfLoadProcessFailed(); });
+
+  // Dygraph DataLoader reader process & thread related functions
+  m.def(
+      "_convert_to_tensor_list",
+      [](py::object &obj) -> py::list {
+        // 0. input data check
+        PADDLE_ENFORCE(
+            py::isinstance<py::tuple>(obj) || py::isinstance<py::list>(obj),
+            platform::errors::InvalidArgument(
+                "The batch data read into DataLoader is illegal."
+                "Expected data type is tuple or list, but received %s",
+                obj.get_type()));
+        py::list batch = py::cast<py::list>(obj);
+        py::list tensors;
+        for (size_t i = 0; i < batch.size(); ++i) {
+          // 1. cast to python array
+          auto array = batch[i].cast<py::array>();
+          PADDLE_ENFORCE_NE(
+              string::Sprintf("%s", array.dtype()).compare("object"), 0,
+              platform::errors::InvalidArgument(
+                  "Faild to convert input data to a regular ndarray.\n  * "
+                  "Usually this means the input data contains nested "
+                  "lists with different lengths.\n  * Check the reader "
+                  "function passed to 'set_(sample/sample_list/batch)"
+                  "_generator' to locate the data causes this issue."));
+          // 2. construcct LoDTensor
+          framework::LoDTensor t;
+          SetTensorFromPyArray<platform::CPUPlace>(&t, array,
+                                                   platform::CPUPlace(), true);
+          // 3. allocate shared memory
+          void *data_ptr = t.data<void>();
+          size_t data_size = t.numel() * framework::SizeOfType(t.type());
+          auto shared_writer_holder =
+              memory::allocation::AllocateMemoryMapWriterAllocation(data_size);
+          // 4. maintain mmap fd set & backup ipc_name
+          const std::string &ipc_name = shared_writer_holder->ipc_name();
+          memory::allocation::MemoryMapFdSet::Instance().Insert(ipc_name);
+          // 5. copy data & reset holder
+          memory::Copy(platform::CPUPlace(), shared_writer_holder->ptr(),
+                       platform::CPUPlace(), data_ptr, data_size);
+          t.ResetHolder(shared_writer_holder);
+          // 6. append to result list
+          tensors.append(t);
+        }
+        return tensors;
+      },
+      py::return_value_policy::take_ownership);
+
+  m.def("_remove_tensor_list_mmap_fds", [](py::list &tensor_list) {
+    for (size_t i = 0; i < tensor_list.size(); ++i) {
+      auto t = tensor_list[i].cast<framework::LoDTensor>();
+      auto *mmap_writer_allocation =
+          dynamic_cast<memory::allocation::MemoryMapWriterAllocation *>(
+              t.Holder().get());
+      PADDLE_ENFORCE_NOT_NULL(
+          mmap_writer_allocation,
+          platform::errors::NotFound("The shared memory of LoDTensor in "
+                                     "DataLoader's child process has been "
+                                     "released."));
+      memory::allocation::MemoryMapFdSet::Instance().Remove(
+          mmap_writer_allocation->ipc_name());
+    }
+  });
+
+  m.def("_cleanup_mmap_fds",
+        []() { memory::allocation::MemoryMapFdSet::Instance().Clear(); });
+#endif
+
   py::class_<imperative::detail::BackwardStrategy> backward_strategy(
       m, "BackwardStrategy", R"DOC(
 
     BackwardStrategy is a descriptor of how to run the backward process.
 
     **Note**:
-        **This API is only avaliable in** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **Mode**
+        **This API is only available in** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **Mode**
 
     Attribute:
         **sort_sum_gradient**:
@@ -277,19 +357,6 @@ void BindImperative(py::module *m_ptr) {
           imperative::SetCurrentTracer(tracer);
         });
 
-#ifndef _WIN32
-  // Dygraph DataLoader signal handler
-  m.def("_set_process_pid", [](int64_t key, pid_t pid) {
-    imperative::SetLoadProcessPID(key, pid);
-  });
-  m.def("_erase_process_pid",
-        [](int64_t key) { imperative::EraseLoadProcessPID(key); });
-  m.def("_set_process_signal_handler",
-        []() { imperative::SetLoadProcessSignalHandler(); });
-  m.def("_throw_error_if_process_failed",
-        []() { imperative::ThrowErrorIfLoadProcessFailed(); });
-#endif
-
   py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
       m, "VarBase",
       R"DOC()DOC")
@@ -339,7 +406,7 @@ void BindImperative(py::module *m_ptr) {
            },
            R"DOC(
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Returns a numpy array shows the value of current :ref:`api_guide_Variable_en`
 
@@ -375,7 +442,7 @@ void BindImperative(py::module *m_ptr) {
            },
            py::return_value_policy::copy, R"DOC(
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Returns a new Variable, detached from the current graph.
 
@@ -402,7 +469,7 @@ void BindImperative(py::module *m_ptr) {
       .def("clear_gradient", &imperative::VarBase::ClearGradient, R"DOC(
 
         **Notes**:
-        **1. This API is ONLY avaliable in Dygraph mode**
+        **1. This API is ONLY available in Dygraph mode**
 
         **2. Use it only Variable has gradient, normally we use this for Parameters since other temporal Variable will be deleted by Python's GC**
 

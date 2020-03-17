@@ -37,7 +37,7 @@ import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import StrategyFactory
 
 __all__ = ['FleetDistRunnerBase', 'TestFleetBase', 'runtime_main']
 
@@ -79,6 +79,17 @@ class FleetDistRunnerBase(object):
         elif args.mode == "geo":
             self.strategy = StrategyFactory.create_geo_strategy(
                 args.geo_sgd_need_push_nums)
+        self.dump_param = os.getenv("dump_param", "").split(",")
+        self.dump_fields = os.getenv("dump_fields", "").split(",")
+        self.dump_fields_path = os.getenv("dump_fields_path", "")
+        debug = int(os.getenv("Debug", "0"))
+        if debug:
+            self.strategy.set_debug_opt({
+                "dump_param": self.dump_param,
+                "dump_fields": self.dump_fields,
+                "dump_fields_path": self.dump_fields_path
+            })
+
         return self.strategy
 
     def build_optimizer(self, avg_cost, strategy):

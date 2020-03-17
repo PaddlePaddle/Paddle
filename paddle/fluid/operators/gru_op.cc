@@ -113,7 +113,7 @@ class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate();
     AddOutput(
         "BatchResetHiddenPrev",
-        "(LoDTensor) The reseted hidden state LoDTensor organized in batches. "
+        "(LoDTensor) The reset hidden state LoDTensor organized in batches. "
         "This LoDTensor is a matrix with shape (T X D) and has the same LoD "
         "with `BatchGate`.")
         .AsIntermediate();
@@ -390,8 +390,7 @@ class GRUGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("gru_grad");
     grad_op->SetInput("Input", this->Input("Input"));
     grad_op->SetInput("H0", this->Input("H0"));
@@ -415,7 +414,6 @@ class GRUGradOpMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
 
     grad_op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(grad_op);
   }
 };
 
