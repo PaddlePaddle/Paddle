@@ -88,7 +88,7 @@ class DownpourServer(Server):
             if key not in support_sparse_key_list:
                 raise ValueError("strategy key '%s' not support" % (key))
 
-        support_table_calss = ['DownpourSparseTable']
+        support_table_calss = ['DownpourSparseTable', 'DownpourSparseSSDTable' ]
         if strategy.get('sparse_table_class') is not None:
             table_class = strategy.get('sparse_table_class')
             if table_class not in support_table_calss:
