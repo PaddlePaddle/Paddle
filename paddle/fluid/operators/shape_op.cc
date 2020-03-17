@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/shape_op.h"
+#include <string>
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -38,6 +39,13 @@ class ShapeOp : public framework::OperatorWithKernel {
         OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
         ctx.device_context());
   }
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   expected_kernel_type.place_,
+                                   tensor.layout());
+  }
 };
 
 class ShapeOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -55,7 +63,6 @@ Return the shape of the input.
 )DOC");
   }
 };
-
 }  // namespace operators
 }  // namespace paddle
 

@@ -124,10 +124,19 @@ class TrainerRuntimeConfig(object):
         return self.display(self.get_communicator_flags())
 
 
+class PSLibRuntimeConfig(object):
+    def __init__(self):
+        self.runtime_configs = {}
+
+    def get_runtime_configs(self):
+        return self.runtime_configs
+
+
 class DistributedStrategy(object):
     def __init__(self):
         self._program_config = DistributeTranspilerConfig()
         self._trainer_runtime_config = TrainerRuntimeConfig()
+        self._pslib_runtime_config = PSLibRuntimeConfig()
         self._server_runtime_config = ServerRuntimeConfig()
         num_threads = int(os.getenv("CPU_NUM", "1"))
 
@@ -203,6 +212,12 @@ class DistributedStrategy(object):
         raise NotImplementedError(
             "check_trainer_runtime_config must be implemented by derived class. You should use StrategyFactory to create DistributedStrategy."
         )
+
+    def get_pslib_runtime_config(self):
+        return self._pslib_runtime_config
+
+    def set_pslib_runtime_config(self, config):
+        self._pslib_runtime_config.runtime_configs = config
 
     def get_server_runtime_config(self):
         return self._server_runtime_config
