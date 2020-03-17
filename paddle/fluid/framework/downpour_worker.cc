@@ -274,6 +274,7 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
 void DownpourWorker::FillSparseValue(size_t table_idx) {
   uint64_t table_id = static_cast<uint64_t>(
       param_.program_config(0).pull_sparse_table_id(table_idx));
+  VLOG(1) << "FillSparseValue table " << table_id;
 
   TableParameter table;
   for (auto i : param_.sparse_table()) {
@@ -290,6 +291,7 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
   for (size_t i = 0; i < sparse_key_names_[table_id].size(); ++i) {
     std::string slot_name = sparse_key_names_[table_id][i];
     std::string emb_slot_name = sparse_value_names_[table_id][i];
+    VLOG(1) << "slot_name: " << slot_name << "; emb_slot_name: " << emb_slot_name;
     Variable* var = thread_scope_->FindVar(slot_name);
     if (var == nullptr) {
       continue;
@@ -306,12 +308,17 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
     float* ptr = tensor_emb->mutable_data<float>({len, table.emb_dim()},
                                                  platform::CPUPlace());
     memset(ptr, 0, sizeof(float) * len * table.emb_dim());
-    auto& tensor_lod = tensor->lod()[0];
-    LoD data_lod{tensor_lod};
-    tensor_emb->set_lod(data_lod);
+    VLOG(1) << "init ptr, len: " << len << "; emb_dim: " << table.emb_dim();
+    auto& tensor_lod = tensor->lod();
+    if (tensor_lod.size() > 0) {
+      auto& tensor_lod = tensor->lod()[0];
+      LoD data_lod{tensor_lod};
+      tensor_emb->set_lod(data_lod);
+    }
 
     bool is_nid = (adjust_ins_weight_config_.need_adjust() &&
                    adjust_ins_weight_config_.nid_slot() == emb_slot_name);
+    VLOG(1) << "is_nid: " << is_nid;
     if (is_nid) {
       nid_show_.clear();
     }
@@ -594,6 +601,16 @@ void DownpourWorker::TrainFilesWithProfiler() {
     copy_table_time += timeline.ElapsedSec();
     total_time += timeline.ElapsedSec();
 
+    // pre-run op
+    for (auto& op : ops_) {
+      if (op->Type() != "lookup_table") {
+        VLOG(1) << "Going to pre-run op " << op->Type();
+        op->Run(*thread_scope_, place_);
+      } else {
+        break;
+      }
+    }
+
     VLOG(3) << "program config size: " << param_.program_config_size();
     for (int i = 0; i < param_.program_config(0).pull_sparse_table_id_size();
          ++i) {
@@ -637,7 +654,15 @@ void DownpourWorker::TrainFilesWithProfiler() {
     VLOG(3) << "Fill sparse value for all sparse table done.";
 
     int run_op_idx = 0;
+    bool encounter_lookup_table = false;
     for (auto& op : ops_) {
+      if (op->Type() == "lookup_table") {
+        encounter_lookup_table = true;
+      }
+      if (!encounter_lookup_table) {
+        op_total_time[run_op_idx++] = 0;
+        continue;
+      }
       bool need_skip = false;
       for (auto t = 0u; t < skip_ops_.size(); ++t) {
         if (op->Type().find(skip_ops_[t]) != std::string::npos) {
@@ -841,6 +866,17 @@ void DownpourWorker::TrainFiles() {
         CopyDenseVars();
       }
     }
+
+    // pre-run op
+    for (auto& op : ops_) {
+      if (op->Type() != "lookup_table") {
+        VLOG(1) << "Going to pre-run op " << op->Type();
+        op->Run(*thread_scope_, place_);
+      } else {
+        break;
+      }
+    }
+
     // pull sparse here
     for (int i = 0; i < param_.program_config(0).pull_sparse_table_id_size();
          ++i) {
@@ -868,7 +904,14 @@ void DownpourWorker::TrainFiles() {
     VLOG(3) << "fill sparse value for all sparse table done.";
 
     // do computation here
+    bool encounter_lookup_table = false;
     for (auto& op : ops_) {
+      if (op->Type() == "lookup_table") {
+        encounter_lookup_table = true;
+      }
+      if (!encounter_lookup_table) {
+        continue;
+      }
       bool need_skip = false;
       for (auto t = 0u; t < skip_ops_.size(); ++t) {
         if (op->Type().find(skip_ops_[t]) != std::string::npos) {
@@ -878,6 +921,7 @@ void DownpourWorker::TrainFiles() {
       }
       if (!need_skip) {
         op->Run(*thread_scope_, place_);
+        VLOG(1) << "running op " << op->Type();
       }
     }
 

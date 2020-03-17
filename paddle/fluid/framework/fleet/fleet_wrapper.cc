@@ -353,8 +353,11 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     size_t len = tensor->numel();
     int64_t* ids = tensor->data<int64_t>();
     int slot = 0;
+    //if (dump_slot) {
+     // slot = boost::lexical_cast<int>(sparse_key_names[i]);     
+    //}
     if (dump_slot) {
-      slot = boost::lexical_cast<int>(sparse_key_names[i]);
+      slot = 1;
     }
     Variable* g_var = scope.FindVar(sparse_grad_names[i]);
     if (g_var == nullptr) {
