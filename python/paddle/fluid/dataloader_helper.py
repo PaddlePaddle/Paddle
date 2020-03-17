@@ -64,14 +64,21 @@ class _DataLoaderIter(object):
         self._blocking_queue = None
         self._thread = None
 
+        # indices outstand as _outstanding_capacity at first, and
+        # blocking_queue capacity is also _outstanding_capacity.
+        # _outstanding_capacity here to make sure each indices_queue
+        # has at least 2 indices, and outstanding batch cached
+        # output data for at least 2 iterations(Note that len(_places)
+        # batches will be composed as an iteration output)
+        self._outstanding_capacity = 2 * max(self._num_workers,
+                                             len(self._places))
         # initial workers if _num_workers > 0
         self._init_workers()
         # initial thread for reading data into blocking queue
         self._init_thread()
 
-        # put 2 indices in each indices_queue
         if self._num_workers > 0:
-            for _ in range(2 * self._num_workers):
+            for _ in range(self._outstanding_capacity):
                 self._try_put_indices()
 
     def _init_workers(self):
@@ -99,6 +106,7 @@ class _DataLoaderIter(object):
         # will be cached in _reorder_dict
         self._send_idx = 0
         self._rcvd_idx = 0
+        self._batches_outstanding = 0
         self._reorder_dict = {}
 
         for i in range(self._num_workers):
@@ -148,9 +156,8 @@ class _DataLoaderIter(object):
         self._need_check_feed = [
             v.desc.need_check_feed() for v in self._feed_list
         ]
-        capacity = max(2 * self._num_workers, 1)
         self._blocking_queue = core.init_lod_tensor_blocking_queue(
-            core.Variable(), capacity)
+            core.Variable(), self._outstanding_capacity)
         self._reader = core.create_py_reader(
             self._blocking_queue, self._var_names, self._shapes, self._dtypes,
             self._need_check_feed, self._places, self._use_buffer_reader)
@@ -171,13 +178,24 @@ class _DataLoaderIter(object):
     def _wait_thread_ends(self):
         if self._thread is not None:
             self._blocking_queue.close()
-            self._thread.join()
+            self._thread = None
 
     def _wait_workers_ends(self):
+        if self._num_workers == 0:
+            return
+
+        self._workers_done_event.set()
         for worker, queue in zip(self._workers, self._indices_queues):
+            # put None to indices queue, worker will exit if read None
             queue.put(None)
+
+            # wait worker joined and erase pid
             worker.join()
             core._erase_process_pid(id(worker))
+
+            # close indices_queue after worker exit
+            queue.cancel_join_thread()
+            queue.close()
 
     def _worker_loop(self, dataset, indices_queue, out_queue, done_event,
                      collate_fn, init_fn, worker_id, timeout):
@@ -191,6 +209,7 @@ class _DataLoaderIter(object):
             # to be cleaned up when the process ends.
             CleanupFuncRegistrar.register(_cleanup_mmap)
 
+            init_exception = None
             if init_fn is not None:
                 try:
                     init_fn(worker_id)
@@ -219,13 +238,23 @@ class _DataLoaderIter(object):
                         batch = init_exception
                         init_exception = None
                     else:
-                        batch = collate_fn([dataset[i] for i in indices])
+                        # batch = collate_fn([dataset[i] for i in indices])
+                        batch = [dataset[i] for i in indices]
                 except:
                     out_queue.put((idx, Exception("Get data failed in worker {}: " \
                                    "{}".format(worker_id, sys.exc_info()))))
                 else:
                     # copy batch data to shared memory
-                    tensor_list = core._convert_to_tensor_list(batch)
+                    slots = []
+                    for items in batch:
+                        for i, item in enumerate(items):
+                            if len(slots) < len(items):
+                                slots.append([item])
+                            else:
+                                slots[i].append(item)
+
+                    sys.stdout.flush()
+                    tensor_list = core._convert_to_tensor_list(slots)
                     out_queue.put((idx, tensor_list))
                     core._remove_tensor_list_mmap_fds(tensor_list)
         except KeyboardInterrupt:
@@ -235,8 +264,8 @@ class _DataLoaderIter(object):
             six.reraise(*sys.exc_info())
 
         if done_event.is_set():
-            indices_queue.cancel_join_thread()
-            indices_queue.close()
+            out_queue.cancel_join_thread()
+            out_queue.close()
 
     def _thread_loop_for_singleprocess(self):
         try:
@@ -289,6 +318,10 @@ class _DataLoaderIter(object):
                     except:
                         self._exit_thread_unexpectedly()
                         six.reraise(*sys.exc_info())
+                    else:
+                        # py_reader keep data order inside, _rcvd_idx
+                        # only keep data order in multi-process
+                        self._rcvd_idx += 1
                 else:
                     self._exit_thread_expectedly()
 
@@ -331,10 +364,15 @@ class _DataLoaderIter(object):
                 # to wait slightly longer
                 data = self._data_queue.get(timeout=self._timeout)
             except Exception as e:
+                # FIXME: _data_queue.get may start before _thread_done_event set when data drained
+                # and may raise queue.Empty exception here, so check whether _thread_done_event is
+                # set and exception here is queue.Empty, do not raise this exception.
+                if isinstance(e,
+                              queue.Empty) and self._thread_done_event.is_set():
+                    continue
                 # NOTE [ avoid handing ] After adding the shared memory mechanism, not only
                 # the queue. Empty exception will occur here, but other exceptions will also
                 # occur, such as mmap failure. If it is not handled here, it will hang.
-                self._wait_workers_ends()
                 self._exit_thread_unexpectedly()
                 logging.error("DataLoader reader thread failed to read data from " \
                               "workers' result queue.")
@@ -359,6 +397,7 @@ class _DataLoaderIter(object):
 
         worker_idx = next(self._workers_idx_cycle)
         self._indices_queues[worker_idx].put((self._send_idx, indices))
+        self._batches_outstanding += 1
         self._send_idx += 1
 
     def __iter__(self):
@@ -368,26 +407,40 @@ class _DataLoaderIter(object):
         return len(self.batch_sampler)
 
     def __del__(self):
-        self._wait_workers_ends
-        self._wait_thread_ends()
+        self._shutdown()
 
     def _shutdown(self):
-        self._wait_workers_ends
+        self._wait_workers_ends()
         self._wait_thread_ends()
 
     def __next__(self):
         try:
+            if self._num_workers > 0:
+                # print("_batches_outstanding", self._batches_outstanding, self._send_idx, self._rcvd_idx)
+                # sys.stdout.flush()
+                if self._send_idx == self._rcvd_idx and \
+                    self._batches_outstanding < len(self._places):
+                    self._blocking_queue.close()
+
             if in_dygraph_mode():
-                return self._reader.read_next_var_list()
+                data = self._reader.read_next_var_list()
             else:
                 if self._return_list:
-                    return self._reader.read_next_list()
+                    data = self._reader.read_next_list()
                 else:
-                    return self._reader.read_next()
+                    data = self._reader.read_next()
+            self._on_output_batch(data)
+            return data
         except StopIteration:
             self._reader.reset()
             self._shutdown()
             six.reraise(*sys.exc_info())
+
+    def _on_output_batch(self, data):
+        if self._num_workers > 0:
+            for _ in range(len(data)):
+                self._batches_outstanding -= 1
+                self._try_put_indices()
 
     def next(self):
         return self.__next__()

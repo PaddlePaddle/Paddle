@@ -56,15 +56,16 @@ class BatchSampler(object):
         self.drop_last = drop_last
 
     def __iter__(self):
-        if self.sample_iter is None:
+        _sample_iter = self.sample_iter
+        if _sample_iter is None:
             num_samples = len(self.data_source)
             indices = np.arange(num_samples).tolist()
             if self.shuffle:
                 np.random.shuffle(indices)
-            self.sample_iter = iter(indices)
+            _sample_iter = iter(indices)
 
         batch_indices = []
-        for idx in self.sample_iter:
+        for idx in _sample_iter:
             batch_indices.append(idx)
             if len(batch_indices) == self.batch_size:
                 yield batch_indices

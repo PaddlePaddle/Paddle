@@ -20,20 +20,23 @@ import six
 import unittest
 from paddle.fluid.io import Dataset, DataLoader
 
-EPOCH_NUM = 1
-BATCH_SIZE = 2
-SAMPLE_NUM = 10
+EPOCH_NUM = 20
+BATCH_SIZE = 32
+IMAGE_SIZE = 784
+SAMPLE_NUM = 80000
 CLASS_NUM = 10
 
 
 class RandomDataset(Dataset):
-    def __init__(self, sample_num, class_num, seed=100):
-        np.random.seed(seed)
+    def __init__(self, sample_num, class_num):
         self.sample_num = sample_num
         self.class_num = class_num
 
     def __getitem__(self, idx):
-        image = np.random.random([784]).astype('float32')
+        np.random.seed(idx)
+        image = np.random.random([IMAGE_SIZE]).astype('float32')
+        for _ in range(100):
+            image = image * (image + 0.5)
         label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
         return image, label
 
@@ -49,7 +52,8 @@ def simple_fc_net_static():
 
     with fluid.unique_name.guard():
         with fluid.program_guard(main_prog, startup_prog):
-            image = fluid.data(name='image', shape=[None, 784], dtype='float32')
+            image = fluid.data(
+                name='image', shape=[None, IMAGE_SIZE], dtype='float32')
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
             hidden = image
             for hidden_size in [10, 20, 30]:
@@ -102,15 +106,17 @@ class TestStaticDataLoader(unittest.TestCase):
             loss_list = []
             start_t = time.time()
             for _ in six.moves.range(EPOCH_NUM):
+                print("step_list", step_list)
+                import sys
+                sys.stdout.flush()
                 step = 0
                 for d in dataloader:
-                    print("data: ", d)
                     assert len(d) == len(places), "{} != {}".format(
                         len(d), len(places))
                     for i, item in enumerate(d):
                         image = item['image']
                         label = item['label']
-                        assert image.shape() == [BATCH_SIZE, 784]
+                        assert image.shape() == [BATCH_SIZE, IMAGE_SIZE]
                         assert label.shape() == [BATCH_SIZE, 1]
                         assert image._place()._equals(ps[i])
                         assert label._place()._equals(ps[i])
@@ -128,32 +134,33 @@ class TestStaticDataLoader(unittest.TestCase):
             "step": step_list,
             "loss": np.array(loss_list)
         }
+        print("time cost", ret['time'])
         return ret
 
     def prepare_places(self, with_data_parallel, with_cpu=True, with_gpu=True):
         places = []
-        if with_cpu:
-            places.append([fluid.CPUPlace()])
-            if with_data_parallel:
-                places.append([fluid.CPUPlace()] * 2)
+        # if with_cpu:
+        #     places.append([fluid.CPUPlace()])
+        #     if with_data_parallel:
+        #         places.append([fluid.CPUPlace()] * 2)
 
         if with_gpu and fluid.core.is_compiled_with_cuda():
             tmp = fluid.cuda_places()
             assert len(tmp) > 0, "no gpu detected"
-            if with_data_parallel:
-                places.append(tmp)
+            # if with_data_parallel:
+            #     places.append(tmp)
             places.append([tmp[0]])
         return places
 
     def test_main(self):
         # for with_data_parallel in [True, False]:
-        for with_data_parallel in [False]:
+        for with_data_parallel in [True]:
             for p in self.prepare_places(with_data_parallel):
                 # for use_buffer_reader in [False, True]:
-                for use_buffer_reader in [False]:
+                for use_buffer_reader in [True]:
                     results = []
                     # for num_workers in [0, 4]:
-                    for num_workers in [0]:
+                    for num_workers in [4]:
                         print(p, use_buffer_reader, num_workers)
                         ret = self.run_main(
                             num_workers=num_workers,
@@ -161,26 +168,27 @@ class TestStaticDataLoader(unittest.TestCase):
                             places=p,
                             with_data_parallel=with_data_parallel)
                         results.append(ret)
-                    # if not use_buffer_reader:
-                    #     diff = np.max(
-                    #         np.abs(results[0]['loss'] - results[1]['loss']))
-                    #     self.assertLess(diff, 1e-3)
+                    if not use_buffer_reader:
+                        diff = np.max(
+                            np.abs(results[0]['loss'] - results[1]['loss']) /
+                            np.abs(results[0]['loss']))
+                        self.assertLess(diff, 1e-3)
 
-                    # class TestDataLoaderBaseAbstract(unittest.TestCase):
-                    #     def test_main(self):
-                    #         loader = DataLoaderBase()
-                    #         try:
-                    #             loader.__iter__()
-                    #             self.assertTrue(False)
-                    #         except NotImplementedError:
-                    #             self.assertTrue(True)
-                    #
-                    #         try:
-                    #             loader.__next__()
-                    #             self.assertTrue(False)
-                    #         except NotImplementedError:
-                    #             self.assertTrue(True)
 
+# class TestDataLoaderBaseAbstract(unittest.TestCase):
+#     def test_main(self):
+#         loader = DataLoaderBase()
+#         try:
+#             loader.__iter__()
+#             self.assertTrue(False)
+#         except NotImplementedError:
+#             self.assertTrue(True)
+#
+#         try:
+#             loader.__next__()
+#             self.assertTrue(False)
+#         except NotImplementedError:
+#             self.assertTrue(True)
 
 if __name__ == '__main__':
     unittest.main()
