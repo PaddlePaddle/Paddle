@@ -34,7 +34,6 @@ from .. import unique_name
 from functools import reduce
 from .. import core
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
-
 __all__ = [
     'fc',
     'embedding',
@@ -9575,7 +9574,7 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
     Generate a random tensor whose data is drawn from a Gaussian distribution.
 
     Args:
-        shape (Tuple[int] | List[int]): Shape of the generated random tensor.
+        shape (Tuple[int] | List[int] | Tensor | TensorList): Shape of the generated random tensor.
         
         mean (float): Mean of the random tensor, defaults to 0.0.
             
@@ -9618,8 +9617,12 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
     
            place = fluid.CPUPlace()
            with dg.guard(place) as g:
-               x = fluid.layers.gaussian_random((2, 4), mean=2., dtype="float32", seed=10)
-               x_np = x.numpy()       
+               shape1 = layers.fill_constant(shape=[1], dtype='int32', value=2)
+               shape2 = layers.fill_constant(shape=[1], dtype='int32', value=4)
+               x1 = fluid.layers.gaussian_random((2, 4), mean=2., dtype="float32", seed=10)
+               x2 = fluid.layers.gaussian_random([shape1, 4], mean=2., dtype="float32", seed=10)
+               x3 = fluid.layers.gaussian_random([shape1, shape2], mean=2., dtype="float32", seed=10)
+               x1_np = x1.numpy()       
            x_np
            # array([[2.3060477 , 2.676496  , 3.9911983 , 0.9990833 ],
            #        [2.8675377 , 2.2279181 , 0.79029655, 2.8447366 ]], dtype=float32)
@@ -9639,7 +9642,7 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
         'dtype': c_dtype,
         'use_mkldnn': False
     }
-    inputs = get_shape_tensor_inputs(
+    inputs = utils._get_shape_tensor_inputs(
         attrs=attrs, shape=shape, op_type='gaussian_random')
 
     helper.append_op(

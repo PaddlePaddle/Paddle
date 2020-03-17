@@ -2546,6 +2546,14 @@ class TestBook(LayerTest):
             out = layers.gaussian_random(shape=[shape1, 30])
             return (out)
 
+    def make_gussian_random_shape_tensori_list(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            shape1 = layers.fill_constant(shape=[1], dtype='int32', value=20)
+            shape2 = layers.fill_constant(shape=[1], dtype='int32', value=30)
+            out = layers.gaussian_random(shape=[shape1, shape2])
+            return (out)
+
     def make_sampling_id(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
