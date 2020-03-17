@@ -40,7 +40,6 @@ class CPUGaussianRandomKernel : public framework::OpKernel<T> {
 
     auto shape = GetShape(context);
     tensor->Resize(shape);
-    VLOG(0) << shape;
     int64_t size = tensor->numel();
     T* data = tensor->mutable_data<T>(context.GetPlace());
 

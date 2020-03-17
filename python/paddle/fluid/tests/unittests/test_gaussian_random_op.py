@@ -30,63 +30,14 @@ class TestGaussianRandomOp(OpTest):
         self.inputs = {}
         self.use_mkldnn = False
         self.attrs = {
-            "shape": [500, 2000],
+            "shape": [123, 92],
             "mean": 1.0,
             "std": 2.,
             "seed": 10,
             "use_mkldnn": self.use_mkldnn
         }
 
-        self.outputs = {'Out': np.zeros((500, 2000), dtype='float32')}
-
-    def test_check_output(self):
-        self.check_output_customized(self.verify_output)
-
-    def verify_output(self, outs):
-        self.assertEqual(outs[0].shape, (500, 2000))
-        hist, _ = np.histogram(outs[0], range=(-3, 5))
-        hist = hist.astype("float32")
-        hist /= float(outs[0].size)
-        data = np.random.normal(size=(500, 2000), loc=1, scale=2)
-        hist2, _ = np.histogram(data, range=(-3, 5))
-        hist2 = hist2.astype("float32")
-        hist2 /= float(outs[0].size)
-        self.assertTrue(
-            np.allclose(
-                hist, hist2, rtol=0, atol=0.01),
-            "hist: " + str(hist) + " hist2: " + str(hist2))
-
-
-# Situation 2: Attr(shape) is a list(with tensor)
-class TestGaussianRandomOp_ShapeTensorList(OpTest):
-    def setUp(self):
-        '''Test fill_constant op with specified value
-        '''
-        self.op_type = "gaussian_random"
-        self.init_data()
-        shape_tensor_list = []
-        for index, ele in enumerate(self.shape):
-            shape_tensor_list.append(("x" + str(index), np.ones(
-                (1)).astype('int32') * ele))
-
-        self.inputs = {'ShapeTensorList': shape_tensor_list}
-        self.attrs = {
-            'shape': self.infer_shape,
-            'mean': self.mean,
-            'std': self.std,
-            'seed': self.seed,
-            'use_mkldnn': self.use_mkldnn
-        }
-
         self.outputs = {'Out': np.zeros((123, 92), dtype='float32')}
-
-    def init_data(self):
-        self.shape = [123, 92]
-        self.infer_shape = [-1, 92]
-        self.use_mkldnn = True
-        self.mean = 1.0
-        self.std = 2.0
-        self.seed = 10
 
     def test_check_output(self):
         self.check_output_customized(self.verify_output)
@@ -106,36 +57,73 @@ class TestGaussianRandomOp_ShapeTensorList(OpTest):
             "hist: " + str(hist) + " hist2: " + str(hist2))
 
 
-"""
-class TestGaussianRandomOp2_ShapeTensorList(TestGaussianRandomOp_ShapeTensorList):
+# Situation 2: Attr(shape) is a list(with tensor)
+class TestGaussianRandomOp_ShapeTensorList(TestGaussianRandomOp):
+    def setUp(self):
+        '''Test fill_constant op with specified value
+        '''
+        self.op_type = "gaussian_random"
+        self.init_data()
+        shape_tensor_list = []
+        for index, ele in enumerate(self.shape):
+            shape_tensor_list.append(("x" + str(index), np.ones(
+                (1)).astype('int32') * ele))
+
+        self.attrs = {
+            'shape': self.infer_shape,
+            'mean': self.mean,
+            'std': self.std,
+            'seed': self.seed,
+            'use_mkldnn': self.use_mkldnn
+        }
+
+        self.inputs = {"ShapeTensorList": shape_tensor_list}
+        self.outputs = {'Out': np.zeros((123, 92), dtype='float32')}
+
+    def init_data(self):
+        self.shape = [123, 92]
+        self.infer_shape = [-1, 92]
+        self.use_mkldnn = False
+        self.mean = 1.0
+        self.std = 2.0
+        self.seed = 10
+
+    def test_check_output(self):
+        self.check_output_customized(self.verify_output)
+
+
+class TestGaussianRandomOp2_ShapeTensorList(
+        TestGaussianRandomOp_ShapeTensorList):
     def init_data(self):
         self.shape = [123, 92]
         self.infer_shape = [-1, -1]
-        self.use_mkldnn = True
-        self.mean = 0.0
-        self.std = 1.0
+        self.use_mkldnn = False
+        self.mean = 1.0
+        self.std = 2.0
         self.seed = 10
 
 
-
-class TestGaussianRandomOp3_ShapeTensorList(TestGaussianRandomOp_ShapeTensorList):
+class TestGaussianRandomOp3_ShapeTensorList(
+        TestGaussianRandomOp_ShapeTensorList):
     def init_data(self):
         self.shape = [123, 92]
         self.infer_shape = [123, -1]
         self.use_mkldnn = True
-        self.mean = 0.0
-        self.std = 1.0
+        self.mean = 1.0
+        self.std = 2.0
         self.seed = 10
 
 
-class TestGaussianRandomOp4_ShapeTensorList(TestGaussianRandomOp_ShapeTensorList):
+class TestGaussianRandomOp4_ShapeTensorList(
+        TestGaussianRandomOp_ShapeTensorList):
     def init_data(self):
         self.shape = [123, 92]
         self.infer_shape = [123, -1]
         self.use_mkldnn = False
-        self.mean = 0.0
-        self.std = 1.0
+        self.mean = 1.0
+        self.std = 2.0
         self.seed = 10
+
 
 # Situation 3: shape is a tensor
 class TestGaussianRandomOp1_ShapeTensor(TestGaussianRandomOp):
@@ -144,22 +132,24 @@ class TestGaussianRandomOp1_ShapeTensor(TestGaussianRandomOp):
         '''
         self.op_type = "gaussian_random"
         self.init_data()
+        self.use_mkldnn = False
 
-        self.inputs = {"ShapeTensor": numpy.array(self.shape).astype("int32")}
-        self.attrs = { 'mean': self.mean,
-                       'std': self.std,
-                       'seed': self.seed,
-                       'use_mkldnn': self.use_mkldnn
-                       }
-        self.outputs = {'Out'}
+        self.inputs = {"ShapeTensor": np.array(self.shape).astype("int32")}
+        self.attrs = {
+            'mean': self.mean,
+            'std': self.std,
+            'seed': self.seed,
+            'use_mkldnn': self.use_mkldnn
+        }
+        self.outputs = {'Out': np.zeros((123, 92), dtype='float32')}
 
     def init_data(self):
         self.shape = [123, 92]
         self.use_mkldnn = False
-        self.mean = 0.0
-        self.std = 1.0
+        self.mean = 1.0
+        self.std = 2.0
         self.seed = 10
-"""
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -9639,7 +9639,7 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
         'dtype': c_dtype,
         'use_mkldnn': False
     }
-    shape_inputs = get_shape_tensor_inputs(
+    inputs = get_shape_tensor_inputs(
         attrs=attrs, shape=shape, op_type='gaussian_random')
 
     helper.append_op(

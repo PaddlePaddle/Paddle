@@ -44,7 +44,6 @@ inline framework::DDim GetShape(const framework::ExecutionContext &ctx) {
   // 2. shape is a list/tuple containing Tensor
   auto shape_tensor_list = ctx.MultiInput<framework::Tensor>("ShapeTensorList");
   if (shape_tensor_list.size() > 0) {
-    VLOG(0) << shape_tensor_list.size();
     std::vector<int> vec_shape;
     for (size_t i = 0; i < shape_tensor_list.size(); ++i) {
       auto tensor = shape_tensor_list[i];

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <string>
+#include "paddle/fluid/operators/fill_constant_op.h"
 #include "paddle/fluid/operators/mean_op.h"
 
 namespace paddle {
@@ -26,7 +27,6 @@ class GaussianMKLDNNKernel : public paddle::framework::OpKernel<T> {
     float mean = context.Attr<float>("mean");
     float std = context.Attr<float>("std");
     auto* tensor = context.Output<framework::Tensor>("Out");
-    T* data = tensor->mutable_data<T>(context.GetPlace());
 
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
     std::minstd_rand engine;
@@ -35,6 +35,10 @@ class GaussianMKLDNNKernel : public paddle::framework::OpKernel<T> {
     }
     engine.seed(seed);
     std::normal_distribution<T> dist(mean, std);
+
+    auto shape = GetShape(context);
+    tensor->Resize(shape);
+    T* data = tensor->mutable_data<T>(context.GetPlace());
     int64_t size = tensor->numel();
     for (int64_t i = 0; i < size; ++i) {
       data[i] = dist(engine);
