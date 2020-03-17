@@ -42,7 +42,7 @@ def random_var(size, low=-1, high=1, dtype='float32'):
 class TestDygraphDoubleGrad(TestCase):
     def setUp(self):
         self.sort_sum_gradient = False
-        self.shape = [10, 20]
+        self.shape = [5, 10]
 
     def grad(self,
              outputs,
@@ -271,7 +271,7 @@ class TestDygraphDoubleGrad(TestCase):
 class TestDygraphDoubleGradSortGradient(TestDygraphDoubleGrad):
     def setUp(self):
         self.sort_sum_gradient = True
-        self.shape = [10, 40]
+        self.shape = [5, 10]
 
 
 if __name__ == '__main__':

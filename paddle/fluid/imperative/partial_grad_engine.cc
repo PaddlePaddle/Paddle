@@ -115,7 +115,7 @@ static void GetGraphInfoBetweenTargets(
       }
 
       for (auto &out_var : output_pair.second) {
-        if (input_target_grads->count(out_var.get()) > 0) {
+        if (out_var && input_target_grads->count(out_var.get()) > 0) {
           VLOG(10) << "Found endpoint op " << op->Type() << " which generates "
                    << out_var->Name();
           found_input_target_grads.insert(out_var.get());
@@ -153,14 +153,17 @@ static void GetGraphInfoBetweenTargets(
   auto &target_vars = *related_grad_vars_ptr;
   target_vars = *input_target_grads;
 
-  std::queue<const OpBase *> op_queue;
+  std::queue<std::pair<const OpBase * /*op*/, const OpBase * /*pending op*/>>
+      op_queue;
   for (auto &endpoint_op : endpoint_ops) {
-    op_queue.push(endpoint_op);
-    pending_ops[endpoint_op];  // Create empty pending ops
+    op_queue.emplace(endpoint_op, nullptr);
   }
 
   while (!op_queue.empty()) {
-    auto *op = op_queue.front();
+    auto op_pair = op_queue.front();
+    auto *op = op_pair.first;
+    auto *pending_op = op_pair.second;
+
     op_queue.pop();
 
     bool is_valid = false;
@@ -170,7 +173,7 @@ static void GetGraphInfoBetweenTargets(
       }
 
       for (auto &out_var : output_pair.second) {
-        if (target_vars.count(out_var.get()) > 0) {
+        if (out_var && target_vars.count(out_var.get()) > 0) {
           is_valid = true;
           break;
         }
@@ -185,30 +188,45 @@ static void GetGraphInfoBetweenTargets(
       continue;
     }
 
+    is_valid = false;
     for (auto &input_pair : op->GetInsMap()) {
       if (!input_pair.second.IsGrad()) {
         continue;
       }
 
       for (auto &in_var : input_pair.second) {
-        if (no_grad_var_grad.count(in_var.get()) == 0) {
+        if (in_var && no_grad_var_grad.count(in_var.get()) == 0) {
           target_vars.insert(in_var.get());
+          is_valid = true;
         }
       }
+    }
+
+    if (!is_valid) {
+      continue;
+    }
+
+    op_deps[op];
+    if (pending_op) {
+      VLOG(10) << "Pending op of " << op->Type() << " is "
+               << pending_op->Type();
+      pending_ops[op].insert(pending_op);
+      ++op_deps[pending_op];
+    } else {
+      pending_ops[op];
     }
 
     auto iter = preceding_ops.find(op);
     if (iter != preceding_ops.end()) {
       for (auto &preceding_op : iter->second) {
-        if (pending_ops[preceding_op].count(op) == 0) {
-          VLOG(10) << "Pending op of " << preceding_op->Type() << " is "
-                   << op->Type();
-          pending_ops[preceding_op].insert(op);
-          ++op_deps[op];
-          op_queue.push(preceding_op);
-        }
+        op_queue.emplace(preceding_op, op);
       }
-    } else {
+    }
+  }
+
+  for (auto &pair : op_deps) {
+    if (pair.second == 0) {
+      auto *op = pair.first;
       VLOG(10) << "Found startup op " << op->Type();
       startup_ops.insert(op);
     }
@@ -558,11 +576,6 @@ PartialGradTask::PartialGradTask(
   for (auto &var : no_grad_vars) {
     if (var && var->GradVarBase()) {
       no_grad_var_grad_.insert(var->GradVarBase()->SharedVar().get());
-    }
-
-    if (var && !var->OverridedStopGradient()) {
-      var->SetOverridedStopGradient(true);
-      reset_stop_gradient_vars_.emplace_back(var->SharedVar());
     }
   }
 
