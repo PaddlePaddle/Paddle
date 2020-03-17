@@ -335,7 +335,7 @@ class ImportVisitor(gast.NodeVisitor):
         return root
 
 
-def ast_to_func(ast_root, func_name, source_file=None, delete_on_exit=True):
+def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     """
     Transform modified AST of decorated function into python callable object.
     """
@@ -350,6 +350,7 @@ def ast_to_func(ast_root, func_name, source_file=None, delete_on_exit=True):
     # to import same modules twice by the import mechanism in python.
     # We insert the import statements defined in source file into the tmpfile
     # to make it easier to import external functions correctly.
+    source_file = inspect.getfile(dyfunc)
     import_statements = ImportVisitor(source_file).transform()
     import_str = "".join(import_statements)
     with f:
@@ -360,6 +361,7 @@ def ast_to_func(ast_root, func_name, source_file=None, delete_on_exit=True):
     if delete_on_exit:
         atexit.register(lambda: os.remove(f.name))
     module = imp.load_source(module_name, f.name)
+    func_name = dyfunc.__name__
     if not hasattr(module, func_name):
         raise ValueError(
             'Function: %s doesn\'t exist in the Module transformed from AST.' %
