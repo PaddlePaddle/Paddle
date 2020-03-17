@@ -61,8 +61,7 @@ class DownpourServer(Server):
             sgd.naive.initial_range = \
                 strategy.get(predix + 'sparse_initial_range', 1e-4)
             if strategy.get(prefix + 'sparse_weight_bounds') is None:
-                sgd.naive.weight_bounds.extend(
-                    [-10, 10])
+                sgd.naive.weight_bounds.extend([-10, 10])
             else:
                 sgd.naive.weight_bounds.extend(
                     strategy.get(prefix + 'sparse_weight_bounds'))
@@ -74,8 +73,7 @@ class DownpourServer(Server):
             sgd.adagrad.initial_g2sum = strategy.get(
                 prefix + 'sparse_initial_g2sum', 3)
             if strategy.get('sparse_weight_bounds') is None:
-                sgd.adagrad.weight_bounds.extend(
-                    [-10, 10])
+                sgd.adagrad.weight_bounds.extend([-10, 10])
             else:
                 sgd.adagrad.weight_bounds.extend(
                     strategy.get(prefix + 'sparse_weight_bounds'))
@@ -88,11 +86,10 @@ class DownpourServer(Server):
                 prefix + 'sparse_beta1_decay_rate', 0.9)
             sgd.adam.beta2_decay_rate = strategy.get(
                 prefix + 'sparse_beta2_decay_rate', 0.999)
-            sgd.adam.ada_epsilon = strategy.get(
-                prefix + 'sparse_ada_epsilon', 1e-8)
+            sgd.adam.ada_epsilon = strategy.get(prefix + 'sparse_ada_epsilon',
+                                                1e-8)
             if strategy.get(prefix + 'sparse_weight_bounds') is None:
-                sgd.adam.weight_bounds.extend(
-                    [-10, 10])
+                sgd.adam.weight_bounds.extend([-10, 10])
             else:
                 sgd.adam.weight_bounds.extend(
                     strategy.get(prefix + 'sparse_weight_bounds'))
