@@ -27,6 +27,7 @@ from paddle.fluid.optimizer import Momentum
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 
 from model import Model, CrossEntropy, Input
+from metrics import Accuracy
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
@@ -145,36 +146,38 @@ def main():
             parameter_list=model.parameters())
         inputs = [Input([None, 1, 28, 28], 'float32', name='image')]
         labels = [Input([None, 1], 'int64', name='label')]
-        model.prepare(optim, CrossEntropy(), inputs, labels)
+        model.prepare(optim, CrossEntropy(), Accuracy(topk=(1, 2)), inputs, labels)
         if FLAGS.resume is not None:
             model.load(FLAGS.resume)
 
         for e in range(FLAGS.epoch):
             train_loss = 0.0
-            train_acc = 0.0
             val_loss = 0.0
-            val_acc = 0.0
             print("======== train epoch {} ========".format(e))
             for idx, batch in enumerate(train_loader()):
-                outputs, losses = model.train(batch[0], batch[1])
+                losses, metrics = model.train(batch[0], batch[1])
 
-                acc = accuracy(outputs[0], batch[1])[0]
                 train_loss += np.sum(losses)
-                train_acc += acc
                 if idx % 10 == 0:
-                    print("{:04d}: loss {:0.3f} top1: {:0.3f}%".format(
-                        idx, train_loss / (idx + 1), train_acc / (idx + 1)))
+                    print("{:04d}: loss {:0.3f} top1: {:0.3f}% top2: {:0.3f}%".format(
+                        idx, train_loss / (idx + 1), metrics[0][0], metrics[0][1]))
+            for metric in model._metrics:
+                res = metric.accumulate()
+                print("train epoch {:03d}: top1: {:0.3f}%, top2: {:0.3f}".format(e, res[0], res[1]))
+                metric.reset()
 
             print("======== eval epoch {} ========".format(e))
             for idx, batch in enumerate(val_loader()):
-                outputs, losses = model.eval(batch[0], batch[1])
+                losses, metrics = model.eval(batch[0], batch[1])
 
-                acc = accuracy(outputs[0], batch[1])[0]
                 val_loss += np.sum(losses)
-                val_acc += acc
                 if idx % 10 == 0:
-                    print("{:04d}: loss {:0.3f} top1: {:0.3f}%".format(
-                        idx, val_loss / (idx + 1), val_acc / (idx + 1)))
+                    print("{:04d}: loss {:0.3f} top1: {:0.3f}% top2: {:0.3f}%".format(
+                        idx, val_loss / (idx + 1), metrics[0][0], metrics[0][1]))
+            for metric in model._metrics:
+                res = metric.accumulate()
+                print("eval epoch {:03d}: top1: {:0.3f}%, top2: {:0.3f}".format(e, res[0], res[1]))
+                metric.reset()
             model.save('mnist_checkpoints/{:02d}'.format(e))
 
 

@@ -26,6 +26,7 @@ from paddle.fluid.framework import in_dygraph_mode, Variable
 from paddle.fluid.executor import global_scope
 from paddle.fluid.io import is_belong_to_optimizer
 from paddle.fluid.dygraph.base import to_variable
+from metrics import Metric
 
 __all__ = ['Model', 'Loss', 'CrossEntropy', 'Input']
 
@@ -44,6 +45,26 @@ def to_numpy(var):
         return var.numpy()
     t = global_scope().find_var(var.name).get_tensor()
     return np.array(t)
+
+
+def flatten_list(l):
+    assert isinstance(l, list), "not a list"
+    outl = []
+    splits = []
+    for sl in l:
+        assert isinstance(sl, list), "sub content not a list"
+        splits.append(len(sl))
+        outl += sl
+    return outl, splits
+
+
+def restore_flatten_list(l, splits):
+    outl = []
+    for split in splits:
+        assert len(l) >= split, "list length invalid"
+        sl, l = l[:split], l[split:]
+        outl.append(sl)
+    return outl
 
 
 def extract_args(func):
@@ -309,15 +330,26 @@ class StaticGraphAdapter(object):
                 feed[v.name] = labels[idx]
 
         endpoints = self._endpoints[self.mode]
-        fetch_list = endpoints['output'] + endpoints['loss']
-        num_output = len(endpoints['output'])
-        out = self._executor.run(compiled_prog,
-                                 feed=feed,
-                                 fetch_list=fetch_list)
         if self.mode == 'test':
-            return out[:num_output]
+            fetch_list = endpoints['output']
         else:
-            return out[:num_output], out[num_output:]
+            metric_list, metric_splits = flatten_list(endpoints['metric'])
+            fetch_list = endpoints['loss'] + metric_list
+            num_loss = len(endpoints['loss'])
+        rets = self._executor.run(
+            compiled_prog, feed=feed,
+            fetch_list=fetch_list,
+            return_numpy=False)
+        # LoDTensor cannot be fetch as numpy directly
+        rets = [np.array(v) for v in rets]
+        if self.mode == 'test':
+            return rets[:]
+        losses = rets[:num_loss]
+        metric_states = restore_flatten_list(rets[num_loss:], metric_splits)
+        metrics = []
+        for metric, state in zip(self.model._metrics, metric_states):
+            metrics.append(metric.update(*state))
+        return (losses, metrics) if len(metrics) > 0 else losses
 
     def prepare(self):
         modes = ['train', 'eval', 'test']
@@ -345,6 +377,7 @@ class StaticGraphAdapter(object):
             lr_var = self.model._optimizer._learning_rate_map[self._orig_prog]
             self.model._optimizer._learning_rate_map[prog] = lr_var
         losses = []
+        metrics = []
         with fluid.program_guard(prog, self._startup_prog):
             if isinstance(self.model._inputs, dict):
                 ins = [self.model._inputs[n] \
@@ -358,6 +391,8 @@ class StaticGraphAdapter(object):
             if mode != 'test':
                 if self.model._loss_function:
                     losses = self.model._loss_function(outputs, labels)
+                    for metric in self.model._metrics:
+                        metrics.append(to_list(metric.add_metric_op(outputs, labels)))
                 if mode == 'train' and self.model._optimizer:
                     self._loss_endpoint = fluid.layers.sum(losses)
                     self.model._optimizer.minimize(self._loss_endpoint)
@@ -367,7 +402,7 @@ class StaticGraphAdapter(object):
         self._input_vars[mode] = inputs
         self._label_vars[mode] = labels
         self._progs[mode] = prog
-        self._endpoints[mode] = {"output": outputs, "loss": losses}
+        self._endpoints[mode] = {"output": outputs, "loss": losses, "metric": metrics}
 
     def _compile_and_initialize(self, prog, mode):
         compiled_prog = self._compiled_progs.get(mode, None)
@@ -429,33 +464,44 @@ class DynamicGraphAdapter(object):
         self.mode = 'train'
         inputs = to_list(inputs)
         if labels is not None:
-            labels = to_list(labels)
-        outputs = self.model.forward(* [to_variable(x) for x in inputs])
+            labels = [to_variable(l) for l in to_list(labels)]
+        outputs = to_list(self.model.forward(*[to_variable(x) for x in inputs]))
         losses = self.model._loss_function(outputs, labels)
         final_loss = fluid.layers.sum(losses)
         final_loss.backward()
         self.model._optimizer.minimize(final_loss)
         self.model.clear_gradients()
-        return [to_numpy(o) for o in to_list(outputs)], \
-            [to_numpy(l) for l in losses]
+        metrics = []
+        for metric in self.model._metrics:
+            metric_outs = metric.add_metric_op(outputs, to_list(labels))
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
+            metrics.append(m)
+        return ([to_numpy(l) for l in losses], metrics) \
+                if len(metrics) > 0 else [to_numpy(l) for l in losses]
 
     def eval(self, inputs, labels=None):
         super(Model, self.model).eval()
         self.mode = 'eval'
         inputs = to_list(inputs)
         if labels is not None:
-            labels = to_list(labels)
-        outputs = self.model.forward(* [to_variable(x) for x in inputs])
+            labels = [to_variable(l) for l in to_list(labels)]
+        outputs = to_list(self.model.forward(*[to_variable(x) for x in inputs]))
 
         if self.model._loss_function:
             losses = self.model._loss_function(outputs, labels)
         else:
             losses = []
 
+        metrics = []
+        for metric in self.model._metrics:
+            metric_outs = metric.add_metric_op(outputs, labels)
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
+            metrics.append(m)
+
         # To be consistent with static graph
         # return empty loss if loss_function is None
-        return [to_numpy(o) for o in to_list(outputs)], \
-            [to_numpy(l) for l in losses]
+        return ([to_numpy(l) for l in losses], metrics) \
+                if len(metrics) > 0 else [to_numpy(l) for l in losses]
 
     def test(self, inputs):
         super(Model, self.model).eval()
@@ -567,6 +613,7 @@ class Model(fluid.dygraph.Layer):
     def prepare(self,
                 optimizer=None,
                 loss_function=None,
+                metrics=None,
                 inputs=None,
                 labels=None,
                 device=None,
@@ -580,6 +627,8 @@ class Model(fluid.dygraph.Layer):
             loss_function (Loss|None): loss function must be set in training
                 and should be a Loss instance. It can be None when there is
                 no loss.
+            metrics (Metric|list of Metric|None): if metrics is set, all
+                metric will be calculate and output in train/eval mode.
             inputs (Input|list|dict|None): inputs, entry points of network,
                 could be a Input layer, or lits of Input layers,
                 or dict (name: Input), or None. For static graph,
@@ -615,6 +664,13 @@ class Model(fluid.dygraph.Layer):
                     "'inputs' must be list or dict in static graph mode")
             if loss_function and not isinstance(labels, (list, Input)):
                 raise TypeError("'labels' must be list in static graph mode")
+
+        metrics = metrics or []
+        for metric in to_list(metrics):
+            assert isinstance(metric, Metric), \
+                "{} is not sub class of Metric".format(metric.__class__.__name__)
+        self._metrics = to_list(metrics)
+
         self._inputs = inputs
         self._labels = labels
         self._device = device
