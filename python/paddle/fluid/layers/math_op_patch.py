@@ -14,6 +14,8 @@
 
 from __future__ import print_function
 
+import logging
+
 from .. import core
 from ..framework import Variable, unique_name
 from .layer_function_generator import OpProtoHolder
@@ -28,6 +30,29 @@ _supported_int_dtype_ = [
 ]
 
 compare_ops = ['__eq__', '__ne__', '__lt__', '__le__', '__gt__', '__ge__']
+
+EXPRESSION_MAP = {
+    "__add__": "A + B",
+    "__radd__": "A += B",
+    "__sub__": "A - B",
+    "__rsub__": "A -= B",
+    "__mul__": "A * B",
+    "__rmul__": "A *= B",
+    "__div__": "A / B",
+    "__truediv__": "A / B",
+    "__rdiv__": "A /= B",
+    "__rtruediv__": "A /= B",
+    "__pow__": "A ** B",
+    "__rpow__": "A **= B",
+    "__floordiv__": "A //B",
+    "__mod__": "A % B",
+    "__eq__": "A == B",
+    "__ne__": "A != B",
+    "__lt__": "A < B",
+    "__le__": "A <= B",
+    "__gt__": "A > B",
+    "__ge__": "A >= B"
+}
 
 
 def monkey_patch_variable():
@@ -234,7 +259,12 @@ def monkey_patch_variable():
 
             axis = -1
             if other_var.shape[0] == -1:
-                axis = 0
+                logging.warning(
+                    "The behavior of expression %s has been unified with %s(X, Y, axis=-1) from Paddle 2.0. "
+                    "If your code works well in the older versions but wrong in this version, try to use "
+                    "%s(X, Y, axis=0) instead of %s. This transitional warning will be dropped in the future."
+                    % (EXPRESSION_MAP[method_name], op_type, op_type,
+                       EXPRESSION_MAP[method_name]))
             current_block(self).append_op(
                 type=op_type,
                 inputs={'X': [self],
