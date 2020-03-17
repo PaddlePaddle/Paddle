@@ -114,6 +114,44 @@ def check_dtype(input_dtype,
             (input_name, op_name, expected_dtype, convert_dtype(input_dtype),
              extra_message))
 
+def get_shape_tensor_inputs(attrs, shape, op_type):
+    inputs = {}
+    def _get_shape_tensor(list_shape):
+        new_shape_tensor = []
+        for idx, dim in enumerate(list_shape):
+            if isinstance(dim, Variable):
+                dim.stop_gradient = True
+                check_dtype(
+                    dim.dtype, 'shape[' + str(idx) + ']', ['int32', 'int64'],
+                    op_type,
+                    '(When type of shape in' + op_type + 'is list or tuple.)')
+                if convert_dtype(dim.dtype) == 'int64':
+                    dim = cast(x=dim, dtype='int32')
+                new_shape_tensor.append(dim)
+            else:
+                temp_out = helper.create_variable_for_type_inference('int32')
+                fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
+                new_shape_tensor.append(temp_out)
+        return new_shape_tensor
+
+    if isinstance(shape, Variable):
+        shape.stop_gradient = True
+        check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'fill_constant',
+                    '(When type of shape in'+ op_type + ' is Variable.)')
+        if (convert_dtype(shape.dtype) == 'int64'):
+            shape = cast(shape, 'int32')
+        inputs["ShapeTensor"] = shape
+    elif isinstance(shape, (list, tuple)):
+        assert len(shape) > 0, (
+            "The size of 'shape' in" + op_type  +" can't be zero, "
+            "but received %s." % len(shape))
+        attrs["shape"] = _get_attr_shape(shape)
+        if utils._contain_var(shape):
+            inputs['ShapeTensorList'] = _get_shape_tensor(shape)
+
+    return inputs
+
+
 
 class DataToLoDTensorConverter(object):
     def __init__(self, place, lod_level, shape, dtype):
