@@ -314,7 +314,8 @@ void FleetWrapper::PushDenseVarsAsync(
     float scale_datanorm, int batch_size,
     std::vector<std::vector<float>>& dense_grad_regions_,
     const paddle::platform::Place& place,
-    cudaStream_t stream) {
+    cudaStream_t stream,
+    cudaEvent_t event) {
 #ifdef PADDLE_WITH_PSLIB
   if (!platform::is_cpu_place(place)) {
     //platform::DeviceContextPool::Instance().Get(place)->Wait();
@@ -330,15 +331,20 @@ void FleetWrapper::PushDenseVarsAsync(
     float* g = g_data;
     #ifdef PADDLE_WITH_CUDA
     if (!platform::is_cpu_place(place)) {
-      if (int(dense_grad_regions_[i].size()) < count) {
-        dense_grad_regions_[i].resize(count);
-      }
+      Variable *pin_var = scope.FindVar(t + "pin");
+      LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();
+      float *pin_g = pin_tensor->mutable_data<float>(tensor->dims(), platform::CUDAPinnedPlace());
+      //if (int(dense_grad_regions_[i].size()) < count) {
+      //  dense_grad_regions_[i].resize(count);
+      //}
       memory::Copy(
-          platform::CPUPlace(),
-          dense_grad_regions_[i].data(),
+          platform::CUDAPinnedPlace(),
+          pin_g,
           boost::get<platform::CUDAPlace>(place),
           g_data, sizeof(float) * count, stream);
-      g = dense_grad_regions_[i].data();
+      g = pin_g;
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, stream));
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(stream, event, 0));
     }
     #endif
     if (scale_datanorm >= 0) {
@@ -410,7 +416,22 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     
     in_cpu = false;
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(stream, event, 0));
-    //platform::DeviceContextPool::Instance().Get(place)->Wait();
+    
+    Variable* g_var = scope.FindVar(sparse_grad_names[0]);
+    LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
+    float* g = g_tensor->data<float>();
+    
+    Variable *pin_var = scope.FindVar(sparse_grad_names[0] + "pin");
+    LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();
+    float *pin_g = pin_tensor->mutable_data<float>(g_tensor->dims(), platform::CUDAPinnedPlace());
+    #ifdef PADDLE_WITH_CUDA
+    memory::Copy(
+        platform::CUDAPinnedPlace(),
+        pin_g,
+        boost::get<platform::CUDAPlace>(place),
+        g, sizeof(float) * g_tensor->numel(), stream);
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, stream));
+    #endif
   }
   for (size_t i = 0;
        i < sparse_key_names.size() && i < sparse_grad_names.size(); ++i) {
@@ -440,18 +461,33 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     }
     float* g = g_tensor->data<float>();
     if (!in_cpu) {
-      if (sparse_grad_region.size() < (len * emb_dim)) {
-        sparse_grad_region.resize(len * emb_dim);
+      //if (sparse_grad_region.size() < (len * emb_dim)) {
+      //  sparse_grad_region.resize(len * emb_dim);
+      //}
+      
+      Variable *pin_var = scope.FindVar(sparse_grad_names[i] + "pin");
+      LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();
+      g = pin_tensor->data<float>();
+      
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(stream, event, 0));
+      if (i + 1 < sparse_grad_names.size()) {
+    
+        Variable* next_g_var = scope.FindVar(sparse_grad_names[i + 1]);
+        LoDTensor* next_g_tensor = next_g_var->GetMutable<LoDTensor>();
+        float* next_g = next_g_tensor->data<float>();
+        
+        Variable *next_pin_var = scope.FindVar(sparse_grad_names[i + 1] + "pin");
+        LoDTensor* next_pin_tensor = next_pin_var->GetMutable<LoDTensor>();
+        float * next_pin_g = next_pin_tensor->mutable_data<float>(next_g_tensor->dims(), platform::CUDAPinnedPlace());
+        #ifdef PADDLE_WITH_CUDA
+        memory::Copy(
+            platform::CUDAPinnedPlace(),
+            next_pin_g,
+            boost::get<platform::CUDAPlace>(place),
+            next_g, sizeof(float) * next_g_tensor->numel(), stream);
+        PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, stream));
+        #endif
       }
-      #ifdef PADDLE_WITH_CUDA
-      memory::Copy(
-          platform::CPUPlace(),
-          sparse_grad_region.data(),
-          boost::get<platform::CUDAPlace>(place),
-          g, sizeof(float) * emb_dim * len, stream);
-      g = sparse_grad_region.data();
-      #endif
-
     }
 
     if (scale_sparse_gradient_with_batch_size_ && grad_dim > 0) {

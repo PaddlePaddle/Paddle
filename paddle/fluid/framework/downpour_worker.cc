@@ -134,6 +134,29 @@ void DownpourWorker::SetNeedDump(bool need_dump_field) {
   need_dump_field_ = need_dump_field;
 }
 
+void DownpourWorker::CreatePinVar() {
+  #ifdef PADDLE_WITH_CUDA
+  for (auto& v : sparse_value_names_) {
+    for (auto& name : v.second) {
+      auto *ptr = thread_scope_->Var(name + "pin");
+      InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
+    }
+  }
+  for (auto& v : sparse_grad_names_) {
+    for (auto& name : v.second) {
+      auto *ptr = thread_scope_->Var(name + "pin");
+      InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
+    }
+  }
+  for (auto& v : dense_grad_names_) {
+    for (auto& name : v.second) {
+      auto *ptr = thread_scope_->Var(name + "pin");
+      InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
+    }
+  }
+  #endif
+}
+
 template <typename T>
 std::string PrintLodTensorType(LoDTensor* tensor, int64_t start, int64_t end) {
   auto count = tensor->numel();
@@ -309,11 +332,18 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
     }
     LoDTensor* tensor_emb = var_emb->GetMutable<LoDTensor>();
     float* ptr = tensor_emb->mutable_data<float>({len, table.emb_dim()},
-                                                 platform::CPUPlace());
-    memset(ptr, 0, sizeof(float) * len * table.emb_dim());
+                                                 place_);
+    //memset(ptr, 0, sizeof(float) * len * table.emb_dim());
     auto& tensor_lod = tensor->lod()[0];
     LoD data_lod{tensor_lod};
     tensor_emb->set_lod(data_lod);
+
+    #ifdef PADDLE_WITH_CUDA
+    Variable* pin_var = thread_scope_->FindVar(emb_slot_name + "pin");
+    LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();
+    ptr = pin_tensor->mutable_data<float>({len, table.emb_dim()},
+                                                 platform::CUDAPinnedPlace());
+    #endif
 
     bool is_nid = (adjust_ins_weight_config_.need_adjust() &&
                    adjust_ins_weight_config_.nid_slot() == emb_slot_name);
@@ -361,7 +391,22 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
         fea_idx++;
       }
     }
+    #ifdef PADDLE_WITH_CUDA
+    {
+      float* ptr = tensor_emb->data<float>();
+      float* pin_ptr = pin_tensor->data<float>();
+      memory::Copy(
+          boost::get<platform::CUDAPlace>(place_),
+          ptr,
+          platform::CUDAPinnedPlace(),
+          pin_ptr,
+          len * table.emb_dim(), copy_stream_);
+    }
+    #endif
   }
+  #ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event_, copy_stream_));
+  #endif
 }
 
 void DownpourWorker::AdjustInsWeight() {
@@ -711,7 +756,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
             param_.program_config(0).push_dense_table_id(i));
         fleet_ptr_->PushDenseVarsAsync(
             *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
-            scale_datanorm_, cur_batch, dense_grad_regions_, place_, copy_stream_);
+            scale_datanorm_, cur_batch, dense_grad_regions_, place_, copy_stream_, event_);
       }
       timeline.Pause();
       push_dense_time += timeline.ElapsedSec();
@@ -768,7 +813,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
 
     if (thread_id_ == 0) {
       // should be configured here
-      if (batch_cnt > 0 && batch_cnt % 100 == 0) {
+      if (batch_cnt > 0) {
         double op_sum_time = 0;
         std::unordered_map<std::string, double> op_to_time;
         for (size_t i = 0; i < op_total_time.size(); ++i) {
@@ -873,7 +918,9 @@ void DownpourWorker::TrainFiles() {
       }
     }
     VLOG(3) << "fill sparse value for all sparse table done.";
-
+    #ifdef PADDLE_WITH_CUDA
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(copy_stream_, event_, 0));
+    #endif
     // do computation here
     for (auto& op : ops_) {
       bool need_skip = false;
@@ -935,7 +982,7 @@ void DownpourWorker::TrainFiles() {
             param_.program_config(0).push_dense_table_id(i));
         fleet_ptr_->PushDenseVarsAsync(
             *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
-            scale_datanorm_, cur_batch, dense_grad_regions_, place_, copy_stream_);
+            scale_datanorm_, cur_batch, dense_grad_regions_, place_, copy_stream_, event_);
       }
       VLOG(3) << "push dense gradient done.";
 

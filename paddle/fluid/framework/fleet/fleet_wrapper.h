@@ -109,7 +109,7 @@ class FleetWrapper {
       float scale_datanorm, int batch_size,
       std::vector<std::vector<float>>& dense_grad_regions_,
       const paddle::platform::Place& place,
-      cudaStream_t stream);
+      cudaStream_t stream, cudaEvent_t event);
 
   // push dense variables to server in sync mode
   void PushDenseVarsSync(Scope* scope, const uint64_t table_id,

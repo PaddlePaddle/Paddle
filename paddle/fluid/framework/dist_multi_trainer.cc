@@ -140,6 +140,11 @@ void DistMultiTrainer::InitOtherEnv(const ProgramDesc &main_program) {
   pull_dense_worker_->SetRootScope(root_scope_);
   pull_dense_worker_->SetPlace(workers_[0]->place());
   pull_dense_worker_->Start();
+  #ifdef PADDLE_WITH_CUDA
+  for (int i = 0; i < thread_num_; ++i) {
+    workers_[i]->CreatePinVar();
+  }
+  #endif
   VLOG(3) << "init other env done.";
 }
 

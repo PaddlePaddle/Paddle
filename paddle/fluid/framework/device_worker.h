@@ -135,6 +135,7 @@ class DeviceWorker {
   virtual void SetNeedDump(bool need_dump_field) {}
   virtual void SetChannelWriter(ChannelObject<std::string>* queue) {}
   virtual const platform::Place& place() const { return place_; }
+  virtual void CreatePinVar() {};
   #ifdef PADDLE_WITH_CUDA
   virtual void SetStream(cudaStream_t stream) {}
   #endif
@@ -214,6 +215,7 @@ class DownpourWorker : public HogwildWorker {
   virtual void TrainFilesWithProfiler();
   virtual void SetNeedDump(bool need_dump_field);
   virtual void SetChannelWriter(ChannelObject<std::string>* queue);
+  virtual void CreatePinVar();
 
  protected:
   std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
