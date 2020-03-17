@@ -9617,8 +9617,8 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
     
            place = fluid.CPUPlace()
            with dg.guard(place) as g:
-               shape1 = layers.fill_constant(shape=[1], dtype='int32', value=2)
-               shape2 = layers.fill_constant(shape=[1], dtype='int32', value=4)
+               shape1 = fluid.layers.fill_constant(shape=[1], dtype='int32', value=2)
+               shape2 = fluid.layers.fill_constant(shape=[1], dtype='int32', value=4)
                x1 = fluid.layers.gaussian_random((2, 4), mean=2., dtype="float32", seed=10)
                x2 = fluid.layers.gaussian_random([shape1, 4], mean=2., dtype="float32", seed=10)
                x3 = fluid.layers.gaussian_random([shape1, shape2], mean=2., dtype="float32", seed=10)
