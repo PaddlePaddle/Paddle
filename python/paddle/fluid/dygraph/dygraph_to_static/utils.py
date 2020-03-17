@@ -230,12 +230,19 @@ def update_args_of_func(node, dygraph_node, method_name):
 
 
 def create_api_shape_node(tensor_shape_node):
-    assert isinstance(tensor_shape_node, gast.Attribute)
-    api_shape_node = gast.Call(
-        func=gast.parse('fluid.layers.shape').body[0].value,
-        args=[tensor_shape_node.value],
-        keywords=[])
-    return api_shape_node
+    assert isinstance(tensor_shape_node, (gast.Attribute, gast.Subscript))
+
+    if isinstance(tensor_shape_node, gast.Attribute):
+        api_shape_node = gast.Call(
+            func=gast.parse('fluid.layers.shape').body[0].value,
+            args=[tensor_shape_node.value],
+            keywords=[])
+        return api_shape_node
+
+    if isinstance(tensor_shape_node, gast.Subscript):
+        result_node = copy.deepcopy(tensor_shape_node)
+        result_node.value = create_api_shape_node(result_node.value)
+        return result_node
 
 
 def get_constant_variable_node(name, value, shape=[1], dtype='int64'):
@@ -280,6 +287,8 @@ def create_funcDef_node(nodes, name, input_args, return_name_ids):
     # add return statement
     if return_name_ids:
         nodes.append(gast.Return(value=generate_name_node(return_name_ids)))
+    else:
+        nodes.append(gast.Return(value=None))
     func_def_node = gast.FunctionDef(
         name=name,
         args=input_args,
@@ -294,13 +303,7 @@ def ast_to_func(ast_root, func_name, delete_on_exit=True):
     """
     Transform modified AST of decorated function into python callable object.
     """
-    if not isinstance(ast_root, (gast.AST, ast.AST)):
-        raise TypeError(
-            "Type of ast_root should be gast.AST or ast.AST, but received %s." %
-            type(ast_root))
-    if isinstance(ast_root, gast.AST):
-        ast_root = gast.gast_to_ast(ast_root)
-    source = astor.to_source(ast_root)
+    source = ast_to_source_code(ast_root)
     if six.PY2:
         source = source.encode('utf-8')
         f = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
@@ -328,3 +331,26 @@ def ast_to_func(ast_root, func_name, delete_on_exit=True):
             func_name)
 
     return getattr(module, func_name), f.name
+
+
+def ast_to_source_code(ast_node):
+    """
+    Transformers ast node into source code.
+    """
+    if not isinstance(ast_node, (gast.AST, ast.AST)):
+        raise TypeError(
+            "Type of ast_root should be gast.AST or ast.AST, but received %s." %
+            type(ast_node))
+    if isinstance(ast_node, gast.AST):
+        ast_node = gast.gast_to_ast(ast_node)
+    source_code = astor.to_source(ast_node)
+    return source_code
+
+
+def create_assign_node(name, node):
+    """
+    Creates a `gast.Assign` node by given name_id as target and node as value.
+    """
+    targets = generate_name_node(name, ctx=gast.Store())
+    assign_node = gast.Assign(targets=[targets], value=node)
+    return targets, assign_node

@@ -313,9 +313,9 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
   }
 
   {
-    // Initialize output var type
     platform::RecordEvent run_event("mutable_var",
                                     platform::EventRole::kInnerOp);
+    // Initialize output var type
     for (auto& var_pair : outs) {
       for (auto& var : var_pair.second) {
         InitializeVariable(var->MutableVar(), var->Type());

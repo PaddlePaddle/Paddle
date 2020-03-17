@@ -28,7 +28,7 @@ from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, 
 from .. import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
-from .tensor import concat, assign, fill_constant, zeros
+from .tensor import concat, assign, fill_constant, zeros, tensor_array_to_tensor
 from . import utils
 from .. import unique_name
 from functools import reduce
@@ -9137,11 +9137,25 @@ def stack(x, axis=0):
 
     if not isinstance(x, list) and not isinstance(x, tuple):
         x = [x]
-
     out = helper.create_variable_for_type_inference(x[0].dtype)
-    helper.append_op(
-        type='stack', inputs={'X': x}, outputs={'Y': out},
-        attrs={'axis': axis})
+    if not in_dygraph_mode() and \
+            x[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        assert len(x) == 1, "If the elements of 'x' in stack are Variable(LoDTensorArray), " \
+                            "number of the elements must be 1, but received %s." % len(x)
+        out_index = helper.create_variable_for_type_inference(dtype="int32")
+        helper.append_op(
+            type='tensor_array_to_tensor',
+            inputs={'X': x[0]},
+            outputs={'Out': [out],
+                     'OutIndex': [out_index]},
+            attrs={'axis': axis,
+                   'use_stack': True})
+    else:
+        helper.append_op(
+            type='stack',
+            inputs={'X': x},
+            outputs={'Y': out},
+            attrs={'axis': axis})
 
     return out
 

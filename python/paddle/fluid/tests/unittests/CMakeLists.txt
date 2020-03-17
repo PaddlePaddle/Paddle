@@ -28,6 +28,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_communicator_geo)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_half_async)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_sync)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_input_with_psilib)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
@@ -216,11 +217,9 @@ set(TEST_OPS_WITH_GC
   test_concat_op
   test_elementwise_add_op
   test_elementwise_sub_op
-  test_fill_constant_batch_size_like_op
   test_fill_zeros_like2_op
   test_gather_op
   test_gather_nd_op
-  test_gaussian_random_batch_size_like_op
   test_linear_chain_crf_op
   test_lod_reset_op
   test_lookup_table_op
@@ -238,8 +237,7 @@ set(TEST_OPS_WITH_GC
   test_sequence_slice_op
   test_slice_op
   test_space_to_depth_op
-  test_squared_l2_distance_op
-  test_uniform_random_batch_size_like_op)
+  test_squared_l2_distance_op)
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
@@ -285,6 +283,7 @@ if(WITH_DISTRIBUTE)
     py_test_modules(test_nce_remote_table_op MODULES test_nce_remote_table_op ENVS ${dist_ENVS})
     py_test_modules(test_recv_save_op MODULES test_recv_save_op ENVS ${dist_ENVS})
     py_test_modules(test_transpiler_ops MODULES test_transpiler_ops ENVS ${dist_ENVS})
+    py_test_modules(test_fleet_input_with_psilib MODULES test_fleet_input_with_psilib ENVS ${dist_ENVS})
     py_test_modules(test_communicator_async MODULES test_communicator_async ENVS ${dist_ENVS})
     py_test_modules(test_communicator_geo MODULES test_communicator_geo ENVS ${dist_ENVS})
     py_test_modules(test_communicator_half_async MODULES test_communicator_half_async ENVS ${dist_ENVS} FLAGS_communicator_send_queue_size=1 FLAGS_communicator_max_merge_var_num=1)
