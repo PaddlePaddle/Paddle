@@ -1310,8 +1310,10 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
   for (auto& input : ctx.InNameList()) {
     ParseInputDataType(ctx, input, &data_type);
   }
-  PADDLE_ENFORCE_NE(data_type, dafault_data_type,
-                    "DataType should be indicated by input Variable.");
+  PADDLE_ENFORCE_NE(
+      data_type, dafault_data_type,
+      platform::errors::NotFound(
+          "DataType should be indicated by input Variable at %s.", Type()));
   return data_type;
 }
 

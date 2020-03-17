@@ -1241,7 +1241,7 @@ class Variable(object):
                 out = fluid.layers.concat(input=[out1, out2, c], axis=1)
                 out.backward()
 
-                assert (linear.weight.gradient() == 0).all()
+                assert linear.weight.gradient() is None
                 assert (out1.gradient() == 0).all()
         """
         if in_dygraph_mode():

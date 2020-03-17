@@ -273,18 +273,32 @@ def concat(input, axis=0, name=None):
             x, 'input[' + str(id) + ']',
             ['float16', 'float32', 'float64', 'int32', 'int64'], 'concat')
     check_type(axis, 'axis', (int, Variable), 'concat')
-    inputs = {'X': input}
-    attrs = {}
-    if isinstance(axis, Variable):
-        axis.stop_gradient = True
-        inputs['AxisTensor'] = axis
-    else:
-        attrs['axis'] = axis
 
     helper = LayerHelper('concat', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    helper.append_op(
-        type='concat', inputs=inputs, outputs={'Out': [out]}, attrs=attrs)
+
+    if input[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        assert len(input) == 1, "If the elements of 'input' in concat are Variable(LoDTensorArray), " \
+                            "number of the elements must be 1, but received %s." % len(x)
+        out_index = helper.create_variable_for_type_inference(dtype="int32")
+        helper.append_op(
+            type='tensor_array_to_tensor',
+            inputs={'X': input[0]},
+            outputs={'Out': [out],
+                     'OutIndex': [out_index]},
+            attrs={'axis': axis,
+                   'use_stack': False})
+    else:
+        inputs = {'X': input}
+        attrs = {}
+        if isinstance(axis, Variable):
+            axis.stop_gradient = True
+            inputs['AxisTensor'] = axis
+        else:
+            attrs['axis'] = axis
+
+        helper.append_op(
+            type='concat', inputs=inputs, outputs={'Out': [out]}, attrs=attrs)
     return out
 
 

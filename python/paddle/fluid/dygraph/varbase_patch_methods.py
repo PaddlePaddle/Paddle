@@ -151,11 +151,8 @@ def monkey_patch_varbase():
 
         """
         if self._grad_ivar() is None:
-            raise ValueError(
-                "%s has no grad, Please set Variable.stop_gradient=False, or "
-                "check if this is the first and only variable need grad, if so, please set its pre-Variable's "
-                "stop_gradient=False, to make sure it has gradient " %
-                self.name)
+            return None
+
         new_ivar = self._grad_ivar()._copy_to(core.CPUPlace(), True)
         if self._grad_ivar().type == core.VarDesc.VarType.SELECTED_ROWS:
             return (np.array(new_ivar.value().get_selected_rows().get_tensor()),

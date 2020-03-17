@@ -171,8 +171,7 @@ class LayerNormGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("layer_norm_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("Mean", this->Output("Mean"));
@@ -189,7 +188,6 @@ class LayerNormGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 
