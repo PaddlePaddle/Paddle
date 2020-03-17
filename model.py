@@ -55,6 +55,7 @@ def extract_args(func):
 
 class Input(fluid.dygraph.Layer):
     def __init__(self, shape=None, dtype=None, name=None):
+        super(Input, self).__init__()
         self.shape = shape
         self.dtype = dtype
         self.name = name
@@ -429,7 +430,7 @@ class DynamicGraphAdapter(object):
         inputs = to_list(inputs)
         if labels is not None:
             labels = to_list(labels)
-        outputs = self.model.forward(*[to_variable(x) for x in inputs])
+        outputs = self.model.forward(* [to_variable(x) for x in inputs])
         losses = self.model._loss_function(outputs, labels)
         final_loss = fluid.layers.sum(losses)
         final_loss.backward()
@@ -444,7 +445,7 @@ class DynamicGraphAdapter(object):
         inputs = to_list(inputs)
         if labels is not None:
             labels = to_list(labels)
-        outputs = self.model.forward(*[to_variable(x) for x in inputs])
+        outputs = self.model.forward(* [to_variable(x) for x in inputs])
 
         if self.model._loss_function:
             losses = self.model._loss_function(outputs, labels)
