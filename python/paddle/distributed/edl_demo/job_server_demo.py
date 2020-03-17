@@ -9,7 +9,7 @@ import time
 import argparse
 import copy
 import functools
-from .. import utils
+import paddle.distributed.utils as utils
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(utils.add_arguments, argparser=parser)
@@ -137,7 +137,7 @@ class JobInfoManager(object):
         step_id = 0
         modify = True
         while (True):
-            time.sleep(20)  # 20minutes
+            time.sleep(15 * 60)  # 20minutes
             if modify:
                 step_id += 1
                 #print("del 2 pods")
