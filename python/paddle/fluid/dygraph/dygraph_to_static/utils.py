@@ -230,12 +230,19 @@ def update_args_of_func(node, dygraph_node, method_name):
 
 
 def create_api_shape_node(tensor_shape_node):
-    assert isinstance(tensor_shape_node, gast.Attribute)
-    api_shape_node = gast.Call(
-        func=gast.parse('fluid.layers.shape').body[0].value,
-        args=[tensor_shape_node.value],
-        keywords=[])
-    return api_shape_node
+    assert isinstance(tensor_shape_node, (gast.Attribute, gast.Subscript))
+
+    if isinstance(tensor_shape_node, gast.Attribute):
+        api_shape_node = gast.Call(
+            func=gast.parse('fluid.layers.shape').body[0].value,
+            args=[tensor_shape_node.value],
+            keywords=[])
+        return api_shape_node
+
+    if isinstance(tensor_shape_node, gast.Subscript):
+        result_node = copy.deepcopy(tensor_shape_node)
+        result_node.value = create_api_shape_node(result_node.value)
+        return result_node
 
 
 def get_constant_variable_node(name, value, shape=[1], dtype='int64'):
@@ -280,6 +287,8 @@ def create_funcDef_node(nodes, name, input_args, return_name_ids):
     # add return statement
     if return_name_ids:
         nodes.append(gast.Return(value=generate_name_node(return_name_ids)))
+    else:
+        nodes.append(gast.Return(value=None))
     func_def_node = gast.FunctionDef(
         name=name,
         args=input_args,
