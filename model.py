@@ -76,6 +76,7 @@ def extract_args(func):
 
 class Input(fluid.dygraph.Layer):
     def __init__(self, shape=None, dtype=None, name=None):
+        super(Input, self).__init__()
         self.shape = shape
         self.dtype = dtype
         self.name = name
