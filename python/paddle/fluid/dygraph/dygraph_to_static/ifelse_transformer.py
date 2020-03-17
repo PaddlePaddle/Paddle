@@ -36,6 +36,7 @@ TRUE_FUNC_PREFIX = 'true_fn'
 FALSE_FUNC_PREFIX = 'false_fn'
 LOGIC_AND_PREFIX = 'logic_and'
 LOGIC_OR_PREFIX = 'logic_or'
+LOGIC_NOT_PREFIX = 'logic_not'
 PLAIN_TENSOR_PREFIX = 'bool_tensor'
 
 
@@ -124,7 +125,7 @@ def is_candidate_node(node):
     """
     Nodes with specified type will be dependent on tensor.
     """
-    return isinstance(node, (gast.Compare, gast.BoolOp))
+    return isinstance(node, (gast.Compare, gast.BoolOp, gast.UnaryOp))
 
 
 def compare_with_none(node):
@@ -262,6 +263,23 @@ class NodeTestTransformer(gast.NodeTransformer):
 
     def transform(self):
         return self.visit(self.ast_root)
+
+    def visit_UnaryOp(self, node):
+        if isinstance(node.op, gast.Not):
+            arg = ast_to_source_code(node.operand)
+            new_node_str = "fluid.layers.logical_not({})".format(arg)
+            # gast.parse returns Module(body=[expr(value=...)])
+            new_node = gast.parse(new_node_str).body[0].value
+            logic_tensor_name = unique_name.generate(LOGIC_NOT_PREFIX)
+            assign_name, assign_node = create_assign_node(logic_tensor_name,
+                                                          new_node)
+            self._new_assign_nodes.append(assign_node)
+
+            return assign_name
+        else:
+            raise TypeError(
+                "Only supports 'not' syntax as unary op in control flow if statement."
+            )
 
     def visit_BoolOp(self, node):
         for i, child in enumerate(node.values):

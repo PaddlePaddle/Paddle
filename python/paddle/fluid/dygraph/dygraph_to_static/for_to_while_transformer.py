@@ -17,6 +17,7 @@ from __future__ import print_function
 import gast
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
+from paddle.fluid.dygraph.dygraph_to_static.utils import get_constant_variable_node
 
 
 class ForToWhileTransformer(gast.NodeTransformer):
@@ -27,7 +28,7 @@ class ForToWhileTransformer(gast.NodeTransformer):
 
     def __init__(self, wrapper_root):
         assert isinstance(
-            node_root, AstNodeWrapper
+            wrapper_root, AstNodeWrapper
         ), "Input is NOT AstNodeWrapper for the initialization of ForToWhileTransformer."
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node

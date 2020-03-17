@@ -26,7 +26,6 @@ import textwrap
 
 from paddle.fluid import unique_name
 from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import BreakContinueTransformer
-from paddle.fluid.dygraph.dygraph_to_static.for_to_while_transformer import ForToWhileTransformer
 from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import IfElseTransformer
 from paddle.fluid.dygraph.dygraph_to_static.list_transformer import ListTransformer
 from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import LoopTransformer
@@ -69,11 +68,6 @@ class DygraphToStaticAst(gast.NodeTransformer):
         basic_api_trans.ast_visit()
         self.feed_name_to_arg_name = basic_api_trans.get_feed_name_to_arg_id()
 
-        # TODO: currently we transform all `for in range` loop to while to make
-        # loop and break/continuer transformer easier, where we guarantee
-        # correctness but may not be user-friendly. TODO thing is finding a
-        # better condition to transform from `for` to `while`
-        ForToWhileTransformer(node_wrapper).transform()
         BreakContinueTransformer(node_wrapper).transform()
         ListTransformer(node_wrapper).transform()
         LoopTransformer(node_wrapper).transform()

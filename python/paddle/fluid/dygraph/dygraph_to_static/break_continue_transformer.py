@@ -17,13 +17,134 @@ from __future__ import print_function
 import gast
 
 from paddle.fluid import unique_name
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
+from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+from paddle.fluid.dygraph.dygraph_to_static.utils import get_constant_variable_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import index_in_list
-from paddle.fluid.dygraph.dygraph_to_static.for_to_while_transformer import ForToWhileTransformer
+from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
 
 __all__ = ['BreakContinueTransformer']
 
-BREAK_NAME_PREFIX = '__break__'
-CONTINUE_NAME_PREFIX = '__continue__'
+BREAK_NAME_PREFIX = '__break'
+CONTINUE_NAME_PREFIX = '__continue'
+
+
+class ForToWhileTransformer(gast.NodeTransformer):
+    """
+    Transform python for loop into while loop and add condition node in the
+    loop test
+    """
+
+    def __init__(self, parent_node, loop_node, condition_node):
+        assert isinstance(
+            loop_node,
+            gast.For), "loop_node is not gast.For in ForToWhileTransformer"
+        self.parent_node = parent_node
+        self.loop_node = loop_node
+        self.condition_node = condition_node
+
+    def transform(self):
+        if hasattr(self.parent_node, 'body'):
+            i = index_in_list(self.parent_node.body, loop_node)
+            if i != -1:
+                new_stmts = self.get_for_stmt_nodes(body_list[i])
+                body_list[i:i + 1] = new_stmts
+                i += len(new_stmts)
+                return
+        if hasattr(self.parent_node, 'orelse'):
+            i = index_in_list(self.parent_node.orlese, loop_node)
+            if i != -1:
+                new_stmts = self.get_for_stmt_nodes(body_list[i])
+                body_list[i:i + 1] = new_stmts
+                i += len(new_stmts)
+                return
+        raise ValueError(
+            "parent_node doesn't contain the loop_node in ForToWhileTransformer")
+
+    def get_for_range_node(self, node):
+        if not isinstance(node.iter, gast.Call):
+            return None
+        if not isinstance(node.iter.func, gast.Name):
+            return None
+        if node.iter.func.id != "range":
+            return None
+        return node.iter
+
+    def get_for_args_stmts(self, iter_name, args_list):
+        '''
+        Returns 3 gast stmt nodes for argument.
+        1. Initailize of iterate variable
+        2. Condition for the loop
+        3. Statement for changing of iterate variable during the loop
+        NOTE(TODO): Python allows to access iteration variable after loop, such
+           as "for i in range(10)" will create i = 9 after the loop. But using
+           current conversion will make i = 10. We should find a way to change it
+        '''
+        len_range_args = len(args_list)
+        assert len_range_args >= 1 and len_range_args <= 3, "range() function takes 1 to 3 arguments"
+        if len_range_args == 1:
+            init_stmt = get_constant_variable_node(iter_name, 0)
+        else:
+            init_stmt = gast.Assign(
+                targets=[
+                    gast.Name(
+                        id=iter_name,
+                        ctx=gast.Store(),
+                        annotation=None,
+                        type_comment=None)
+                ],
+                value=args_list[0])
+
+        range_max_node = args_list[0] if len_range_args == 1 else args_list[1]
+        step_node = args_list[2] if len_range_args == 3 else gast.Constant(
+            value=1, kind=None)
+
+        old_cond_stmt = gast.Compare(
+            left=gast.BinOp(
+                left=gast.Name(
+                    id=iter_name,
+                    ctx=gast.Load(),
+                    annotation=None,
+                    type_comment=None),
+                op=gast.Add(),
+                right=step_node),
+            ops=[gast.LtE()],
+            comparators=[range_max_node])
+        cond_stmt = gast.BoolOp(
+            op=gast.And(), values=[old_cond_stmt, self.condition_node])
+
+        change_stmt = gast.AugAssign(
+            target=gast.Name(
+                id=iter_name,
+                ctx=gast.Store(),
+                annotation=None,
+                type_comment=None),
+            op=gast.Add(),
+            value=step_node)
+
+        return init_stmt, cond_stmt, change_stmt
+
+    def get_for_stmt_nodes(self, node):
+        assert isinstance(
+            node, gast.For), "Input node is NOT gast.For in get_for_stmt_nodes"
+
+        # TODO: support non-range case
+        range_call_node = self.get_for_range_node(node)
+        if range_call_node is None:
+            return [node]
+
+        if not isinstance(node.target, gast.Name):
+            return [node]
+        iter_var_name = node.target.id
+
+        init_stmt, cond_stmt, change_stmt = self.get_for_args_stmts(
+            iter_var_name, range_call_node.args)
+
+        new_body = node.body
+        new_body.append(change_stmt)
+        while_node = gast.While(
+            test=cond_stmt, body=new_body, orelse=node.orelse)
+        return [init_stmt, while_node]
 
 
 class BreakContinueTransformer(gast.NodeTransformer):
@@ -56,25 +177,35 @@ class BreakContinueTransformer(gast.NodeTransformer):
 
     def transform(self):
         self.visit(self.root)
+        # delete it when review
+        print(ast_to_source_code(self.root))
+
+    def generic_visit(self, node):
+        # TODO: because we change ancestor nodes during visit_Break/Continue,
+        # not current node, so generic_visit of NodeTransformer will visit node
+        # which may be deleted. To prevent that node being added into
+        # transformed AST, I have to self-write a generic_visit, but this is
+        # NOT a good thing. Considering refactorying this whole class.
+        for field, value in gast.iter_fields(node):
+            if isinstance(value, list):
+                for item in value:
+                    if isinstance(item, gast.AST):
+                        self.visit(item)
+            elif isinstance(value, gast.AST):
+                self.visit(value)
 
     def visit(self, node):
         self.ancestor_nodes.append(node)
         method = 'visit_' + node.__class__.__name__
         visitor = getattr(self, method, self.generic_visit)
         ret = visitor(node)
-        self.ancestor.pop()
+        self.ancestor_nodes.pop()
         return ret
 
     def visit_Break(self, node):
         loop_node_index = self._find_ancestor_loop_index(node)
         assert loop_node_index != -1, "SyntaxError: 'break' outside loop"
         loop_node = self.ancestor_nodes[loop_node_index]
-
-        if not isinstance(loop_node, gast.While):
-            # "For in range loop" will be transformed into while at
-            # ForToWhileTransformer, other "For loop" is unsupported now
-            # so we just do nothing and return
-            return
 
         # 1. Map the 'break/continue' stmt with an unique boolean variable V.
         variable_name = unique_name.generate(BREAK_NAME_PREFIX)
@@ -90,41 +221,30 @@ class BreakContinueTransformer(gast.NodeTransformer):
         self._replace_if_stmt(loop_node_index, first_block_index, variable_name)
 
         # 4. For 'break' add break into condition of the loop.
-        assign_false_node = gast.Assign(
-            targets=[
-                gast.Name(
-                    id=variable_name,
-                    ctx=gast.Store(),
-                    annotation=None,
-                    type_comment=None)
-            ],
-            value=gast.Constant(
-                value=False, kind=None))
+        assign_false_node = create_fill_constant_node(variable_name, False)
         self._add_stmt_before_cur_node(loop_node_index, assign_false_node)
 
-        loop_node.test = gast.BoolOp(
-            op=gast.And(),
-            values=[
-                loop_node.test, gast.Name(
-                    id=variable_name,
-                    ctx=gast.Load(),
-                    annotation=None,
-                    type_comment=None)
-            ])
+        cond_var_node = gast.Name(
+            id=variable_name,
+            ctx=gast.Load(),
+            annotation=None,
+            type_comment=None)
+        if isinstance(loop_node, gast.While):
+            loop_node.test = gast.BoolOp(
+                op=gast.And(), values=[loop_node.test, cond_var_node])
+        elif isinstance(loop_node, gast.For):
+            parent_node = self.ancestor_nodes[loop_node_index - 1]
+            for_to_while = ForToWhileTransformer(parent_node, loop_node,
+                                                 cond_var_node)
+            for_to_while.transform()
 
     def visit_Continue(self, node):
         loop_node_index = self._find_ancestor_loop_index(node)
         assert loop_node_index != -1, "SyntaxError: 'break' outside loop"
         loop_node = self.ancestor_nodes[loop_node_index]
 
-        if not isinstance(loop_node, gast.While):
-            # "For in range loop" will be transformed into while at
-            # ForToWhileTransformer, other "For loop" is unsupported now
-            # so we just do nothing and return
-            return
-
         # 1. Map the 'break/continue' stmt with an unique boolean variable V.
-        variable_name = unique_name.generate(BREAK_NAME_PREFIX)
+        variable_name = unique_name.generate(CONTINUE_NAME_PREFIX)
 
         # 2. Find the first ancestor block containing this 'break/continue', a
         # block can be a node containing stmt list. We should remove all stmts
@@ -137,16 +257,7 @@ class BreakContinueTransformer(gast.NodeTransformer):
         self._replace_if_stmt(loop_node_index, first_block_index, variable_name)
 
         # 4. For 'continue', set continue to False at the beginning of each loop
-        assign_false_node = gast.Assign(
-            targets=[
-                gast.Name(
-                    id=variable_name,
-                    ctx=gast.Store(),
-                    annotation=None,
-                    type_comment=None)
-            ],
-            value=gast.Constant(
-                value=False, kind=None))
+        assign_false_node = create_fill_constant_node(variable_name, False)
         loop_node.body.insert(0, assign_false_node)
 
     def _remove_stmts_after_break_continue(
@@ -155,34 +266,26 @@ class BreakContinueTransformer(gast.NodeTransformer):
                 len(self.ancestor_nodes) - 1, loop_node_index - 1, -1):
             first_block = self.ancestor_nodes[first_block_index]
             if hasattr(first_block,
-                       "body") and self._replace_break_conntinue_in_stmt_lists(
-                           first_block.body, break_continue_node):
+                       "body") and self._replace_break_continue_in_stmt_list(
+                           first_block.body, break_continue_node,
+                           break_continue_name):
                 return first_block_index
 
             if hasattr(first_block,
-                       "orelse") and self._replace_break_conntinue_in_stmt_list(
-                           first_block.orelse, break_continue_node):
+                       "orelse") and self._replace_break_continue_in_stmt_list(
+                           first_block.orelse, break_continue_node,
+                           break_continue_name):
                 return first_block_index
 
         return first_block_index
 
-    def _replace_break_conntinue_in_stmt_list(self, stmt_list,
-                                              break_continue_node):
+    def _replace_break_continue_in_stmt_list(
+            self, stmt_list, break_continue_node, break_continue_name):
         i = index_in_list(stmt_list, break_continue_node)
         if i == -1:
             return False
-        stmt_list = stmt_list[0:i]
-        assign_true_node = gast.Assign(
-            targets=[
-                gast.Name(
-                    id=break_continue_name,
-                    ctx=gast.Store(),
-                    annotation=None,
-                    type_comment=None)
-            ],
-            value=gast.Constant(
-                value=True, kind=None))
-        stmt_list.append(assign_true_node)
+        assign_true_node = create_fill_constant_node(break_continue_name, True)
+        stmt_list[i:] = [assign_true_node]
         return True
 
     def _replace_if_stmt(self, loop_node_index, first_block_index,
@@ -210,14 +313,16 @@ class BreakContinueTransformer(gast.NodeTransformer):
             # No need to add, we consider this as added successfully
             return True
 
-        if_stmt = gast.If(test=gast.Name(
-            id=break_continue_name,
-            ctx=gast.Store(),
-            annotation=None,
-            type_comment=None),
-                          body=[gast.Pass()],
-                          orelse=stmt_list[i + 1:])
-        stmt_list = stmt_list[0:i + 1]
+        if_stmt = gast.If(test=gast.UnaryOp(
+            op=gast.Not(),
+            operand=gast.Name(
+                id=break_continue_name,
+                ctx=gast.Store(),
+                annotation=None,
+                type_comment=None)),
+                          body=stmt_list[i + 1:],
+                          orelse=[])
+        stmt_list[i + 1:] = []
         stmt_list.append(if_stmt)
         return True
 

@@ -34,6 +34,28 @@ def create_static_variable_gast_node(name):
     return gast.parse(func_code)
 
 
+def create_fill_constant_node(name, value):
+    func_code = "{} = fluid.layers.fill_constant(shape=[1], ".format(name)
+    if isinstance(value, bool):
+        func_code += "dtype='bool', value={})".format(value)
+        return gast.parse(func_code)
+    if isinstance(value, float):
+        func_code += "dtype='float64', value={})".format(value)
+        return gast.parse(func_code)
+
+    if six.PY2:
+        if isinstance(value, int):
+            func_code += "dtype='int32', value={})".format(value)
+            return gast.parse(func_code)
+        if isinstance(value, long):
+            func_code += "dtype='int64', value={})".format(value)
+            return gast.parse(func_code)
+    else:
+        if isinstance(value, int):
+            func_code += "dtype='int64', value={})".format(value)
+            return gast.parse(func_code)
+
+
 def to_static_variable(x):
     '''
     Translate a Python variable to PaddlePaddle static graph variable

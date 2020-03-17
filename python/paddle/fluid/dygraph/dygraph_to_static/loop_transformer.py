@@ -167,7 +167,7 @@ class NameVisitor(gast.NodeVisitor):
 
     def _is_call_func_name_node(self, node):
         if self.ancestor_nodes:
-            parent_node = self.ancestor_nodes[-1]
+            parent_node = self.ancestor_nodes[-2]
             if isinstance(parent_node, gast.Call) and parent_node.func == node:
                 return True
         return False
