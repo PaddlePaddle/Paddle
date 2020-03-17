@@ -77,7 +77,7 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
   T beta = ctx.HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
 
   if (algorithm == mkldnn::algorithm::eltwise_swish) {
-      std::swap(alpha, beta);
+    std::swap(alpha, beta);
   }
 
   PADDLE_ENFORCE(
@@ -120,7 +120,7 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
   T beta = ctx.HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
 
   if (algorithm == mkldnn::algorithm::eltwise_swish) {
-      std::swap(alpha, beta);
+    std::swap(alpha, beta);
   }
 
   auto diff_dst_tz = framework::vectorize<int64_t>(diff_y->dims());
