@@ -463,7 +463,7 @@ class DynamicGraphAdapter(object):
         self.mode = 'train'
         inputs = to_list(inputs)
         if labels is not None:
-            labels = to_list(labels)
+            labels = [to_variable(l) for l in to_list(labels)]
         outputs = to_list(self.model.forward(*[to_variable(x) for x in inputs]))
         losses = self.model._loss_function(outputs, labels)
         final_loss = fluid.layers.sum(losses)
@@ -472,7 +472,7 @@ class DynamicGraphAdapter(object):
         self.model.clear_gradients()
         metrics = []
         for metric in self.model._metrics:
-            metric_outs = metric.add_metric_op(outputs, [to_variable(l) for l in labels])
+            metric_outs = metric.add_metric_op(outputs, to_list(labels))
             m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
         return ([to_numpy(l) for l in losses], metrics) \
@@ -483,7 +483,7 @@ class DynamicGraphAdapter(object):
         self.mode = 'eval'
         inputs = to_list(inputs)
         if labels is not None:
-            labels = to_list(labels)
+            labels = [to_variable(l) for l in to_list(labels)]
         outputs = to_list(self.model.forward(*[to_variable(x) for x in inputs]))
 
         if self.model._loss_function:
@@ -493,7 +493,7 @@ class DynamicGraphAdapter(object):
 
         metrics = []
         for metric in self.model._metrics:
-            metric_outs = metric.add_metric_op(outputs, [to_variable(l) for l in labels])
+            metric_outs = metric.add_metric_op(outputs, labels)
             m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
