@@ -48,7 +48,7 @@ _out_scale_op_list = [
 # list op real input and output names, to avoid processing input such as AxisTensor.
 _op_real_in_out_name = {
     "conv2d": [["Input", "Filter"], ["Output"]],
-    "depthwise_conv2d": [["Input"], ["Output"]],
+    "depthwise_conv2d": [["Input", "Filter"], ["Output"]],
     "mul": [["X", "Y"], ["Out"]],
     "matmul": [["X", "Y"], ["Out"]],
     "pool2d": [["X"], ["Out"]],
@@ -240,7 +240,7 @@ class QuantizationTransformPass(object):
                 op_node.op()._set_attr("skip_quant", True)
 
         def _transform_forward(graph, op):
-            op.op()._set_attr("is_quantized_with_weight", True)
+            op.op()._set_attr("quantization_type", "qat_with_weight")
             op.op()._set_attr("activation_bits", self._activation_bits)
             op.op()._set_attr("weight_bits", self._weight_bits)
             op.op()._set_attr("activation_quantize_type",
@@ -660,8 +660,8 @@ class QuantizationTransformPass(object):
         if op_node.name() in ["mul", "matmul"] and \
             _is_input_all_not_persistable(graph, op_node):
             is_skip = True
-        if op_node.op().has_attr("is_quantized_without_weight") and \
-            op_node.op().attr("is_quantized_without_weight"):
+        if op_node.op().has_attr("quantization_type") and \
+            op_node.op().attr("quantization_type") == "qat_without_weight":
             is_skip = True
         return is_skip
 
@@ -764,8 +764,8 @@ class QuantizationFreezePass(object):
         ops = graph.all_op_nodes()
         for op_node in ops:
             op_node_desc = op_node.op()
-            if op_node_desc.has_attr("is_quantized_with_weight") and \
-                op_node_desc.attr("is_quantized_with_weight"):
+            if op_node_desc.has_attr("quantization_type") and \
+                op_node_desc.attr("quantization_type") == "qat_with_weight":
                 if self._weight_quantize_type == 'channel_wise_abs_max' \
                     and op_node.name() in self._conv_ops:
                     self._insert_post_channel_dequant_op(graph, op_node)
@@ -794,8 +794,8 @@ class QuantizationFreezePass(object):
         ops = graph.all_op_nodes()
         for op_node in ops:
             op_node_desc = op_node.op()
-            if op_node_desc.has_attr("is_quantized_with_weight") and \
-                op_node_desc.attr("is_quantized_with_weight"):
+            if op_node_desc.has_attr("quantization_type") and \
+                op_node_desc.attr("quantization_type") == "qat_with_weight":
                 for input_arg_name in op_node.input_arg_names():
                     # The input var name of fake_quant op is original_var_name
                     original_var_name = self._original_var_name(input_arg_name)
@@ -808,17 +808,17 @@ class QuantizationFreezePass(object):
                             continue
                     else:
                         scale_value = scale_item
-                    op_node_desc._set_attr(
-                        original_var_name + ".input_threshold", scale_value)
-            if op_node_desc.has_attr("is_quantized_without_weight") and \
-                op_node_desc.attr("is_quantized_without_weight"):
+                    op_node_desc._set_attr(original_var_name + ".threshold",
+                                           scale_value)
+            if op_node_desc.has_attr("quantization_type") and \
+                op_node_desc.attr("quantization_type") == "qat_without_weight":
                 for var_node in op_node.inputs:
                     # use the input var name of fake_quant_dequant op 
                     # as the scale name
                     quant_dequant_op_node = var_node.inputs[0]
                     original_var_name = quant_dequant_op_node.input('X')[0]
                     op_node_desc._set_attr(
-                        original_var_name + ".input_threshold",
+                        original_var_name + ".threshold",
                         self._quant_dequant_var_scale_map[original_var_name])
 
         # remove the unused var node in the graph
@@ -1043,8 +1043,8 @@ class ConvertToInt8Pass(object):
         ops = graph.all_op_nodes()
         input_map = {}
         for op_node in ops:
-            if op_node.op().has_attr("is_quantized_with_weight") and \
-                op_node.op().attr("is_quantized_with_weight"):
+            if op_node.op().has_attr("quantization_type") and \
+                op_node.op().attr("quantization_type") == "qat_with_weight":
                 for var_node in op_node.inputs:
                     name = var_node.name()
                     if name in persistable_vars:
@@ -1377,13 +1377,14 @@ class AddQuantDequantPass(object):
                 elif isinstance(self._skip_pattern, str):
                     is_skip = op_node.op().has_attr("op_namescope") and \
                                    op_node.op().attr("op_namescope").find(self._skip_pattern) != -1
-                is_quantized = op_node.op().has_attr("is_quantized_with_weight") and \
-                    op_node.op().attr("is_quantized_with_weight")
+                is_quantized = op_node.op().has_attr("quantization_type") and \
+                    op_node.op().attr("quantization_type") == "qat_with_weight"
                 if is_skip or is_quantized or \
                     (not _is_input_all_not_persistable(graph, op_node)):
                     continue
 
-                op_node.op()._set_attr("is_quantized_without_weight", True)
+                op_node.op()._set_attr("quantization_type",
+                                       "qat_without_weight")
                 op_node.op()._set_attr("activation_bits", self._quant_bits)
                 input_name_list = _op_real_in_out_name[op_node.name()][0]
                 arg_names = []

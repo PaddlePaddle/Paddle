@@ -37,7 +37,10 @@ def _load_variable_data(scope, var_name):
     '''
     Load variable value from scope
     '''
-    return np.array(scope.find_var(var_name).get_tensor())
+    var_node = scope.find_var(var_name)
+    assert var_node is not None, \
+        "Cannot find " + var_name + " in scope."
+    return np.array(var_node.get_tensor())
 
 
 def _set_variable_data(scope, place, var_name, np_value):
@@ -53,6 +56,12 @@ def _set_variable_data(scope, place, var_name, np_value):
 
 
 class PostTrainingQuantization(object):
+    """
+    Utilizing post training quantization methon to quantize the FP32 model,
+    and it uses calibrate data to get the quantization information for all 
+    quantized variables.
+    """
+
     def __init__(self,
                  executor=None,
                  scope=None,
@@ -70,13 +79,10 @@ class PostTrainingQuantization(object):
                  is_use_cache_file=False,
                  cache_dir="./temp_post_training"):
         '''
-        The class utilizes post training quantization methon to quantize the 
-        fp32 model. It uses calibrate data to calculate the scale factor of 
-        quantized variables, and inserts fake quant/dequant op to obtain the 
-        quantized model.
+        Constructor.
 
         Args:
-            executor(fluid.Executor): The executor to load, run and save the 
+            executor(fluid.Executor): The executor to load, run and save the
                 quantized model.
             scope(fluid.Scope, optional): The scope of the program, use it to load 
                 and save variables. If scope=None, get scope by global_scope(). 
@@ -96,9 +102,11 @@ class PostTrainingQuantization(object):
             batch_nums(int, optional): If batch_nums is not None, the number of 
                 calibrate data is batch_size*batch_nums. If batch_nums is None, use 
                 all data provided by sample_generator as calibrate data.
-            algo(str, optional): If algo=KL, use KL-divergenc method to 
-                get the more precise scale factor. If algo='direct', use 
-                abs_max methon to get the scale factor. Default is KL.
+            algo(str, optional): If algo='KL', use KL-divergenc method to
+                get the KL threshold for quantized activations and get the abs_max
+                value for quantized weights. If algo='abs_max', get the abs max 
+                value for activations and weights. If algo= 'min_max', get the min 
+                and max value for quantized activations and weights. Default is KL.
             quantizable_op_type(list[str], optional): List the type of ops 
                 that will be quantized. Default is ["conv2d", "depthwise_conv2d", 
                 "mul"].
@@ -158,7 +166,9 @@ class PostTrainingQuantization(object):
         assert executor is not None, "The executor cannot be None."
         assert model_dir is not None, "The model_dir cannot be None."
         assert sample_generator is not None, \
-                "The sample_generator cannot be None."
+            "The sample_generator cannot be None."
+        assert algo in ['KL', 'abs_max', 'min_max'], \
+            "The algo should be KL, abs_max or min_max."
 
         self._executor = executor
         self._scope = global_scope() if scope == None else scope
@@ -196,20 +206,25 @@ class PostTrainingQuantization(object):
         self._quantized_weight_var_name = set()
         self._quantized_act_var_name = set()
         self._sampling_data = {}
-        self._quantized_var_scale_factor = {}
+        self._quantized_var_kl_threshold = {}
+        self._quantized_var_min = {}
+        self._quantized_var_max = {}
+        self._quantized_var_abs_max = {}
 
     def quantize(self):
         '''
-        Quantize the fp32 model. Use calibrate data to calculate the scale factor of 
-        quantized variables, and inserts fake quant/dequant op to obtain the 
-        quantized model.
+        Load the FP32 model, and use the calibrate data to calculate the forward-stage.
+        Based on the sample data, we can get the quantization information, and obtain
+        the final quantized model.
 
         Args:
             None
         Returns:
             the program of quantized model.
         '''
-        self._preprocess()
+        self._load_model_data()
+        self._collect_quantized_varnames()
+        self._set_activation_persistable()
 
         batch_id = 0
         for data in self._data_loader():
@@ -217,22 +232,29 @@ class PostTrainingQuantization(object):
                                feed=data,
                                fetch_list=self._fetch_list,
                                return_numpy=False)
-            self._sample_data(batch_id)
+            if self._algo == "KL":
+                self._sample_data(batch_id)
+            else:
+                self._sample_threshold()
 
             if batch_id % 5 == 0:
-                _logger.info("run batch: " + str(batch_id))
+                _logger.info("Run batch: " + str(batch_id))
             batch_id += 1
             if self._batch_nums and batch_id >= self._batch_nums:
                 break
-        _logger.info("all run batch: " + str(batch_id))
+        _logger.info("Finish all batch: " + str(batch_id))
 
-        _logger.info("calculate scale factor ...")
-        self._calculate_scale_factor()
+        self._reset_activation_persistable()
 
-        _logger.info("update the program ...")
-        self._update_program()
+        if self._algo == "KL":
+            self._calculate_kl_threshold()
 
-        self._save_output_scale()
+        if self._algo in ["KL", "abs_max"]:
+            self._update_program()
+        else:
+            self._save_input_threhold()
+
+        self._save_output_threshold()
         return self._program
 
     def save_quantized_model(self, save_model_path):
@@ -251,12 +273,11 @@ class PostTrainingQuantization(object):
             executor=self._executor,
             main_program=self._program)
 
-    def _preprocess(self):
+    def _load_model_data(self):
         '''
-        Load model and set data loader, collect the variable names for sampling, 
-        and set activation variables to be persistable.
+        Load model and set data loader.
         '''
-        # load model and set data loader
+        _logger.info("Load model and set data loader ...")
         [self._program, self._feed_list, self._fetch_list] = \
             io.load_inference_model(dirname=self._model_dir,
                                     executor=self._executor,
@@ -272,7 +293,12 @@ class PostTrainingQuantization(object):
             drop_last=True,
             places=self._place)
 
-        # collect the variable names for sampling.
+    def _collect_quantized_varnames(self):
+        '''
+        Collect the variable names for sampling, and set activation
+        variables to be persistable.
+        '''
+        _logger.info("Collect quantized variable names ...")
         # TODO(juncaipeng), consider the name_scope of skip_quant and
         # reduce the variables for sampling
         persistable_var_names = []
@@ -283,46 +309,109 @@ class PostTrainingQuantization(object):
         for op in self._program.global_block().ops:
             op_type = op.type
             if op_type in self._quantizable_op_type:
-                if op_type in ("conv2d", "depthwise_conv2d"):
-                    self._quantized_act_var_name.add(op.input("Input")[0])
-                    self._quantized_weight_var_name.add(op.input("Filter")[0])
-                    self._quantized_act_var_name.add(op.output("Output")[0])
-                elif op_type in ["mul", "matmul"]:
-                    x_var_name = op.input("X")[0]
-                    if x_var_name in persistable_var_names:
-                        self._quantized_weight_var_name.add(x_var_name)
-                    else:
-                        self._quantized_act_var_name.add(x_var_name)
-                    y_var_name = op.input("Y")[0]
-                    if y_var_name in persistable_var_names:
-                        self._quantized_weight_var_name.add(y_var_name)
-                    else:
-                        self._quantized_act_var_name.add(y_var_name)
-                    self._quantized_act_var_name.add(op.output("Out")[0])
-                else:
-                    # process other quantizable op type, the input must all not persistable
-                    if self._is_input_all_not_persistable(
-                            op, persistable_var_names):
-                        input_output_name_list = self._op_real_in_out_name[
-                            op_type]
-                        for input_name in input_output_name_list[0]:
-                            for var_name in op.input(input_name):
-                                self._quantized_act_var_name.add(var_name)
-                        for output_name in input_output_name_list[1]:
-                            for var_name in op.output(output_name):
-                                self._quantized_act_var_name.add(var_name)
+                name_list = self._op_real_in_out_name[op_type]
+                for input_name in name_list[0]:
+                    for var_name in op.input(input_name):
+                        if var_name in persistable_var_names:
+                            self._quantized_weight_var_name.add(var_name)
+                        else:
+                            self._quantized_act_var_name.add(var_name)
+                for output_name in name_list[1]:
+                    for var_name in op.output(output_name):
+                        if var_name in persistable_var_names:
+                            self._quantized_weight_var_name.add(var_name)
+                        else:
+                            self._quantized_act_var_name.add(var_name)
 
-        # set activation variables to be persistable, so can obtain 
-        # the tensor data in sample_data
+    def _set_activation_persistable(self):
+        '''
+        Set activation variables to be persistable, so can obtain 
+        the tensor data in sample_data
+        '''
+        persistable_var_names = []
+        for var in self._program.list_vars():
+            if var.persistable:
+                persistable_var_names.append(var.name)
         for var in self._program.list_vars():
             if var.name in self._quantized_act_var_name:
                 var.persistable = True
+
+    def _reset_activation_persistable(self):
+        '''
+        Reset activations to be not persistable.
+        '''
+        for var in self._program.list_vars():
+            if var.name in self._quantized_act_var_name:
+                var.persistable = False
+
+    def _sample_threshold(self):
+        '''
+        Sample the input threshold(min, max, or abs_max) in every iterations.
+        '''
+        assert self._algo in ["abs_max", "min_max"], \
+            "The algo should be abs_max or min_max to sample min max value."
+        if self._algo == "abs_max":
+            # Only calculate abs_max value for weight for once
+            if self._quantized_var_abs_max == {}:
+                for var_name in self._quantized_weight_var_name:
+                    var_tensor = _load_variable_data(self._scope, var_name)
+                    abs_max_per_channel = []
+                    for i in range(var_tensor.shape[0]):
+                        abs_max_per_channel.append(
+                            float(np.max(np.abs(var_tensor[i]))))
+                    self._quantized_var_abs_max[var_name] = abs_max_per_channel
+            for var_name in self._quantized_act_var_name:
+                var_tensor = _load_variable_data(self._scope, var_name)
+                abs_max_value = float(np.max(np.abs(var_tensor)))
+                if (var_name not in self._quantized_var_abs_max) or \
+                    (abs_max_value > self._quantized_var_abs_max[var_name]):
+                    self._quantized_var_abs_max[var_name] = abs_max_value
+        elif self._algo == "min_max":
+            if self._quantized_var_min == {} and self._quantized_var_max == {}:
+                for var_name in self._quantized_weight_var_name:
+                    var_tensor = _load_variable_data(self._scope, var_name)
+                    min_per_channel = []
+                    max_per_channle = []
+                    for i in range(var_tensor.shape[0]):
+                        min_per_channel.append(float(np.min(var_tensor[i])))
+                        max_per_channle.append(float(np.max(var_tensor[i])))
+                    self._quantized_var_min[var_name] = min_per_channel
+                    self._quantized_var_max[var_name] = max_per_channle
+            for var_name in self._quantized_act_var_name:
+                var_tensor = _load_variable_data(self._scope, var_name)
+                min_value = float(np.min(var_tensor))
+                max_value = float(np.max(var_tensor))
+                if (var_name not in self._quantized_var_min) or \
+                    (min_value < self._quantized_var_min[var_name]):
+                    self._quantized_var_min[var_name] = min_value
+                if (var_name not in self._quantized_var_max) or \
+                    (max_value > self._quantized_var_max[var_name]):
+                    self._quantized_var_max[var_name] = max_value
+
+    def _save_input_threhold(self):
+        '''
+        Save input threshold to the quantized op.
+        '''
+        assert self._algo == "min_max", \
+            "The algo should be min_max to save input threshold."
+        for op in self._program.global_block().ops:
+            if op.type in self._quantizable_op_type:
+                input_name_list = self._op_real_in_out_name[op.type][0]
+                for input_name in input_name_list:
+                    for var_name in op.input(input_name):
+                        assert var_name in self._quantized_var_min
+                        assert var_name in self._quantized_var_max
+                        op._set_attr(var_name + ".min",
+                                     self._quantized_var_min[var_name])
+                        op._set_attr(var_name + ".max",
+                                     self._quantized_var_max[var_name])
 
     def _sample_data(self, iter):
         '''
         Sample the tensor data of quantized variables, 
         applied in every iteration.
         '''
+        assert self._algo == "KL", "The algo should be KL to sample data."
         for var_name in self._quantized_weight_var_name:
             if var_name not in self._sampling_data:
                 var_tensor = _load_variable_data(self._scope, var_name)
@@ -343,19 +432,20 @@ class PostTrainingQuantization(object):
                 var_tensor = var_tensor.ravel()
                 self._sampling_data[var_name].append(var_tensor)
 
-    def _calculate_scale_factor(self):
+    def _calculate_kl_threshold(self):
         '''
-        Calculate the scale factor of quantized variables.
+        Calculate the KL threshold of quantized variables.
         '''
+        _logger.info("Calculate KL threshold ...")
+        assert self._algo == "KL", "The algo should be KL to calculate kl threshold."
         # apply channel_wise_abs_max quantization for weights
         for var_name in self._quantized_weight_var_name:
             data = self._sampling_data[var_name]
-            scale_factor_per_channel = []
+            threshold_per_channel = []
             for i in range(data.shape[0]):
                 abs_max_value = np.max(np.abs(data[i]))
-                scale_factor_per_channel.append(abs_max_value)
-            self._quantized_var_scale_factor[
-                var_name] = scale_factor_per_channel
+                threshold_per_channel.append(abs_max_value)
+            self._quantized_var_kl_threshold[var_name] = threshold_per_channel
 
         # apply kl quantization for activation
         if self._is_use_cache_file:
@@ -368,36 +458,25 @@ class PostTrainingQuantization(object):
                     sampling_data.append(np.load(file_path))
                     os.remove(file_path)
                 sampling_data = np.concatenate(sampling_data)
-
-                if self._algo == "KL":
-                    self._quantized_var_scale_factor[var_name] = \
-                        self._get_kl_scaling_factor(np.abs(sampling_data))
-                else:
-                    self._quantized_var_scale_factor[var_name] = \
-                        np.max(np.abs(sampling_data))
+                self._quantized_var_kl_threshold[var_name] = \
+                    self._get_kl_scaling_factor(np.abs(sampling_data))
         else:
             for var_name in self._quantized_act_var_name:
                 self._sampling_data[var_name] = np.concatenate(
                     self._sampling_data[var_name])
-                if self._algo == "KL":
-                    self._quantized_var_scale_factor[var_name] = \
-                        self._get_kl_scaling_factor(np.abs(self._sampling_data[var_name]))
-                else:
-                    self._quantized_var_scale_factor[var_name] = \
-                        np.max(np.abs(self._sampling_data[var_name]))
+                self._quantized_var_kl_threshold[var_name] = \
+                    self._get_kl_scaling_factor(np.abs(self._sampling_data[var_name]))
 
     def _update_program(self):
         '''
-        Insert fake_quantize/fake_dequantize op to the program.
+        Use QuantizationTransformPass and AddQuantDequantPass to insert 
+        fake_quantize, fake_dequantize and fake_quant_dequant op. 
+        Besides, save all kl threshold to the scale var node.
         '''
-        # reset quantized activation variable
-        for var in self._program.list_vars():
-            if var.name in self._quantized_act_var_name:
-                var.persistable = False
-
-        # use QuantizationTransformPass to insert fake_quantize/fake_dequantize op
+        _logger.info("Update the program ...")
         graph = IrGraph(core.Graph(self._program.desc), for_test=True)
 
+        # use QuantizationTransformPass to insert fake_quant/fake_dequantize op
         major_quantizable_op_types = []
         for op_type in QuantizationTransformPass._supported_quantizable_op_type:
             if op_type in self._quantizable_op_type:
@@ -423,8 +502,12 @@ class PostTrainingQuantization(object):
             quantizable_op_type=minor_quantizable_op_types)
         add_quant_dequant_pass.apply(graph)
 
-        # save scale factor to scale var node
-        for key, val in self._quantized_var_scale_factor.items():
+        # save abs_max or KL threshold to scale var node
+        if self._algo == "KL":
+            scale_dict = self._quantized_var_kl_threshold
+        else:
+            scale_dict = self._quantized_var_abs_max
+        for key, val in scale_dict.items():
             _set_variable_data(
                 self._scope,
                 self._place,
@@ -449,33 +532,34 @@ class PostTrainingQuantization(object):
         freeze_pass.apply(graph)
         self._program = graph.to_program()
 
-    def _save_output_scale(self):
+    def _save_output_threshold(self):
         '''
-        Save output scale to the quantized op.
+        Save output threshold to the quantized op.
         '''
-        output_scale_name = "output_threshold"
         for op in self._program.global_block().ops:
             if op.type in self._quantizable_op_type:
                 output_name_list = self._op_real_in_out_name[op.type][1]
                 for output_name in output_name_list:
-                    for output_var_name in op.output(output_name):
-                        if output_var_name in self._quantized_var_scale_factor:
-                            op._set_attr(output_scale_name,
-                                         self._quantized_var_scale_factor[
-                                             output_var_name])
-
-    def _is_input_all_not_persistable(self, op, persistable_var_names):
-        '''
-        Analyze the real inputs of the op are all not persistable.
-        '''
-        is_input_all_not_persistable = True
-        input_name_list = self._op_real_in_out_name[op.type][0]
-        for input_name in input_name_list:
-            for var_name in op.input(input_name):
-                if var_name in persistable_var_names:
-                    is_input_all_not_persistable = False
-                    break
-        return is_input_all_not_persistable
+                    for var_name in op.output(output_name):
+                        if self._algo == "KL":
+                            assert var_name in self._quantized_var_kl_threshold
+                            op._set_attr(
+                                var_name + ".threshold",
+                                self._quantized_var_kl_threshold[var_name])
+                            op._set_attr("quantization_type", "post_kl")
+                        elif self._algo == "abs_max":
+                            assert var_name in self._quantized_var_abs_max
+                            op._set_attr(var_name + ".threshold",
+                                         self._quantized_var_abs_max[var_name])
+                            op._set_attr("quantization_type", "post_abs_max")
+                        elif self._algo == "min_max":
+                            assert var_name in self._quantized_var_min
+                            assert var_name in self._quantized_var_max
+                            op._set_attr(var_name + ".min",
+                                         self._quantized_var_min[var_name])
+                            op._set_attr(var_name + ".max",
+                                         self._quantized_var_max[var_name])
+                            op._set_attr("quantization_type", "post_min_max")
 
     def _get_kl_scaling_factor(self, activation_blob, num_quantized_bins=255):
         '''

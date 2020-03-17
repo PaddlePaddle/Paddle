@@ -20,7 +20,7 @@ from test_post_training_quantization_mobilenetv1 import TestPostTrainingQuantiza
 class TestPostTrainingForResnet50(TestPostTrainingQuantization):
     def test_post_training_resnet50(self):
         model = "ResNet-50"
-        algo = "direct"
+        algo = "min_max"
         data_urls = [
             'http://paddle-inference-dist.bj.bcebos.com/int8/resnet50_int8_model.tar.gz'
         ]
