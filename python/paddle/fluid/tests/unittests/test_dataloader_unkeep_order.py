@@ -17,6 +17,9 @@ import unittest
 import numpy as np
 import os
 import six
+from paddle.fluid.reader import keep_data_loader_order
+
+keep_data_loader_order(False)
 
 
 def create_reader(shape, batch_number):
@@ -40,6 +43,9 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
         self.shape = [3, 4, 5]
         self.initParameters()
 
+    def clear_visited(self):
+        self.visited = set()
+
     def build_network(self, places):
         input_data = fluid.data(shape=self.shape, dtype='float32', name="input")
         loader = fluid.io.DataLoader.from_generator(
@@ -54,14 +60,22 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
 
         return input_data, loss, loader
 
-    def assertInputData(self, batch_id, input_data, dev_cnt):
+    def assertInputData(self, batch_id, input_data, dev_cnt,
+                        check_visited=True):
         if isinstance(input_data, list):
             self.assertTrue(len(input_data), dev_cnt)
             start_val = dev_cnt * batch_id
             for each_input_dict in input_data:
                 input_tensor = np.array(each_input_dict["input"])
                 self.assertEqual(self.shape, list(input_tensor.shape))
-                self.assertTrue((input_tensor == start_val).all())
+
+                num = input_tensor.flatten()[0]
+                equal = (input_tensor == num).all()
+                self.assertTrue(equal)
+                if check_visited:
+                    self.assertTrue(num not in self.visited)
+                    self.visited.add(num)
+
                 start_val += 1
         else:
             self.assertEqual(
@@ -71,7 +85,12 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
             for idx in six.moves.range(dev_cnt):
                 data_part = input_data[idx * self.shape[0]:(idx + 1) *
                                        self.shape[0], :]
-                self.assertTrue((data_part == start_val).all())
+                num = data_part.flatten()[0]
+                self.assertTrue((data_part == num).all())
+                if check_visited:
+                    self.assertTrue(num not in self.visited)
+                    self.visited.add(num)
+
                 start_val += 1
 
     def get_places(self):
@@ -112,25 +131,31 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
                     early_break = False
                     for epoch_id in six.moves.range(self.epoch_num):
                         early_break = False
+                        self.clear_visited()
                         batch_id = 0
                         for data in loader():
                             if batch_id >= self.break_num:
                                 early_break = True
                                 break
-                            self.assertInputData(batch_id, data, dev_cnt)
+                            self.assertInputData(
+                                batch_id, data, dev_cnt, check_visited=False)
                             fetch_val, = exe.run(program=main_program,
                                                  feed=data,
                                                  fetch_list=fetch_list)
                             self.assertInputData(batch_id, fetch_val, dev_cnt)
                             batch_id += 1
 
-                        self.assertEqual(batch_id, max_batch_num)
+                        if dev_cnt == 1:
+                            self.assertEqual(batch_id, max_batch_num)
+                        else:
+                            self.assertLessEqual(batch_id, max_batch_num)
 
                     if early_break:
                         loader._reset()
                 else:
                     for epoch_id in six.moves.range(self.epoch_num):
                         batch_id = 0
+                        self.clear_visited()
                         loader.start()
                         try:
                             while True:
@@ -145,7 +170,10 @@ class DataLoaderKeepOrderTestBase(unittest.TestCase):
                         except fluid.core.EOFException:
                             loader.reset()
 
-                        self.assertEqual(batch_id, max_batch_num)
+                        if dev_cnt == 1:
+                            self.assertEqual(batch_id, max_batch_num)
+                        else:
+                            self.assertLessEqual(batch_id, max_batch_num)
 
 
 class IterableDataLoaderKeepOrderTest2(DataLoaderKeepOrderTestBase):

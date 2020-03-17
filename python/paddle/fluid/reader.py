@@ -48,6 +48,17 @@ __all__ = ['PyReader', 'DataLoader']
 
 data_loader_unique_name_generator = UniqueNameGenerator()
 
+KEEP_DATA_LOADER_ORDER = True
+
+
+def keep_data_loader_order(*args):
+    global KEEP_DATA_LOADER_ORDER
+    if len(args) == 0:
+        return KEEP_DATA_LOADER_ORDER
+    else:
+        assert len(args) == 1 and isinstance(args[0], bool)
+        KEEP_DATA_LOADER_ORDER = args[0]
+
 
 def _convert_places(places):
     if not isinstance(places, (list, tuple)):
@@ -171,8 +182,7 @@ class DataLoader(object):
                        iterable=True,
                        return_list=False,
                        use_multiprocess=False,
-                       drop_last=True,
-                       keep_order=True):
+                       drop_last=True):
         """
         Create a DataLoader object for loading data from Python generator. 
         Data would be prefetched using Python thread and be pushed
@@ -182,6 +192,9 @@ class DataLoader(object):
         :code:`set_sample_generator` , :code:`set_sample_list_generator` and 
         :code:`set_batch_generator` . Please see the following example codes
         to know their usages.
+        
+        Notice that the framework ensures that the data loading order is exactly 
+        the same as the user-defined data source.
 
         If iterable = True, the created DataLoader object is a Python generator
         object, which is iterable using for-range loop.
@@ -220,21 +233,16 @@ class DataLoader(object):
                 The Default value is False.
             drop_last (bool): whether to drop the last batches whose number is
                 less than the CPU core/GPU card number. The default value is 
-                True.
-            keep_order (bool): whether to assign the data to CPU cores or GPU 
-                cards in order. Supposing that there are 2 batches and we use 
-                2 GPU cards to run the network. If keep_order=True, GPU 0 would 
-                get batch 0 and GPU 1 would get batch 1 exactly. If 
-                keep_order=False, GPU 0 may get batch 0 or may get batch 1, and 
-                GPU 1 may get the rest of the data, which is uncertain. If 
-                keep_order=True, the framework may do some synchronization to 
-                keep the reading order, which may be slower. The default value 
-                is False.
+                True. In training phase, users should not set drop_last=True,
+                because all CPU cores/GPU cards must read data from DataLoader. 
+                In inference phase, users can set drop_last=False, so that the
+                last batches whose number is less than the CPU core/GPU card
+                number can be tested. 
 
         Returns:
             loader (DataLoader): the created DataLoader object.
 
-        Examples:
+        Examples 1:
             
             .. code-block:: python
 
@@ -366,17 +374,57 @@ class DataLoader(object):
                         assert image.shape == [BATCH_SIZE, 784] 
                         assert label.shape == [BATCH_SIZE, 1]
                         assert relu.shape == [BATCH_SIZE, 784]
+
+        Examples 2:
+
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
+                import os
+
+                # We use 2 CPU cores to run inference network 
+                os.environ['CPU_NUM'] = '2'
+
+                # The data source has only 3 batches, which can not be
+                # divided evenly to each CPU core
+                def batch_generator():  
+                    for i in range(3):
+                        yield np.array([i+1]).astype('float32'), 
+
+                x = fluid.data(name='x', shape=[None], dtype='float32')  
+                y = x * x
+
+                def run_inference(drop_last): 
+                    loader = fluid.io.DataLoader.from_generator(feed_list=[x],
+                            capacity=8, drop_last=drop_last)
+                    loader.set_batch_generator(batch_generator, fluid.cpu_places())
+
+                    exe = fluid.Executor(fluid.CPUPlace())
+                    prog = fluid.CompiledProgram(fluid.default_main_program())
+                    prog = prog.with_data_parallel()
+
+                    result = []
+                    for data in loader():
+                        each_ret, = exe.run(prog, feed=data, fetch_list=[y])
+                        result.extend(each_ret)
+                    return result
+
+                # Set drop_last to True, so that the last batch whose
+                # number is less than CPU core number would be discarded.
+                print(run_inference(drop_last=True)) # [1.0, 4.0]
+
+                # Set drop_last to False, so that the last batch whose
+                # number is less than CPU core number can be tested.
+                print(run_inference(drop_last=False)) # [1.0, 4.0, 9.0]
         """
         if in_dygraph_mode():
-            # Dygraph only support multiprocess training when using multi GPUs. 
-            # So in each process, we only use 1 GPU card to train the network, 
-            # so `keep_order` would also be True.
             return DygraphGeneratorLoader(feed_list, capacity,
                                           use_double_buffer, iterable,
                                           return_list, use_multiprocess)
         else:
             return GeneratorLoader(feed_list, capacity, use_double_buffer,
-                                   iterable, return_list, drop_last, keep_order)
+                                   iterable, return_list, drop_last)
 
     @staticmethod
     def from_dataset(dataset, places, drop_last=True):
@@ -739,8 +787,7 @@ class GeneratorLoader(DataLoaderBase):
                  use_double_buffer=True,
                  iterable=True,
                  return_list=False,
-                 drop_last=True,
-                 keep_order=True):
+                 drop_last=True):
         self._tensor_reader = None
         self._places = None
         self._thread = None
@@ -748,7 +795,7 @@ class GeneratorLoader(DataLoaderBase):
         self._feed_list = feed_list
         self._exited = False
         self._drop_last = drop_last
-        self._keep_order = keep_order
+        self._keep_order = keep_data_loader_order()
         if not capacity:
             raise ValueError("Please give value to capacity.")
         self._iterable = iterable
