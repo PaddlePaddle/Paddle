@@ -13,7 +13,6 @@
 """Defination of Server and Worker."""
 
 from . import ps_pb2 as pslib
-from six.moves import reduce
 
 
 class Server(object):
