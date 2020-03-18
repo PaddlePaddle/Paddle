@@ -168,6 +168,11 @@ class TensorRTEngine {
   // Get an ITensor called name.
   nvinfer1::ITensor* GetITensor(const std::string& name);
   int GetRuntimeBatch() { return runtime_batch_; }
+  bool WithFp16() {
+    bool enable_fp16 = (precision_ == AnalysisConfig::Precision::kHalf);
+    bool support_fp16 = infer_builder_->platformHasFastFp16();
+    return enable_fp16 && support_fp16;
+  }
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
   nvinfer1::IExecutionContext* context() {

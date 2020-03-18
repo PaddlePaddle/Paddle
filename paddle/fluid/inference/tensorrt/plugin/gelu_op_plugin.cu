@@ -40,9 +40,14 @@ REGISTER_TRT_PLUGIN("gelu_plugin", PluginTensorRT,
 
 bool GeluPlugin::supportsFormat(nvinfer1::DataType type,
                                 nvinfer1::PluginFormat format) const {
+#if __CUDA_ARCH__ >= 600
   return ((type == nvinfer1::DataType::kFLOAT ||
            type == nvinfer1::DataType::kHALF) &&
           (format == nvinfer1::PluginFormat::kNCHW));
+#else
+  return ((type == nvinfer1::DataType::kFLOAT) &&
+          (format == nvinfer1::PluginFormat::kNCHW));
+#endif
 }
 
 nvinfer1::Dims GeluPlugin::getOutputDimensions(int index,
@@ -87,7 +92,8 @@ __global__ void no_exact_gelu_kernel(const T a, const T b, const T c, int n,
   const int idx = blockIdx.x * TPB + threadIdx.x;
   if (idx < n) {
     const T in = input[idx];
-    const T cdf = a + a * do_tanh(in * (c * in * in + b));
+    const T tmp = in * (c * in * in + b);
+    const T cdf = a + a * do_tanh<T>(tmp);
     output[idx] = in * cdf;
   }
 }
@@ -109,11 +115,15 @@ int GeluPlugin::enqueue(int batch_size, const void* const* inputs,
     gelu_kernel<float, block_size><<<grid_size, block_size, 0, stream>>>(
         kA, num, input, output);
   } else if (type == nvinfer1::DataType::kHALF) {
+#if __CUDA_ARCH__ >= 600
     const half* input = static_cast<const half*>(inputs[0]);
     half* output = static_cast<half*>(outputs[0]);
     no_exact_gelu_kernel<half,
                          block_size><<<grid_size, block_size, 0, stream>>>(
         kAT, kBT, kCT, num, input, output);
+#else
+    PADDLE_THROW("The cuda arch must greater than 600.");
+#endif
   } else {
     PADDLE_THROW("The Gelu TRT Plugin's input type should be float or half.");
   }
@@ -152,9 +162,14 @@ bool GeluPluginDynamic::supportsFormatCombination(
                                         pos, nb_inputs + nb_outputs));
   (in_out && pos < (nb_inputs + nb_outputs));
 
+#if __CUDA_ARCH__ >= 600
   return ((in_out[pos].type == nvinfer1::DataType::kFLOAT ||
            in_out[pos].type == nvinfer1::DataType::kHALF) &&
           in_out[pos].format == nvinfer1::PluginFormat::kNCHW);
+#else
+  return ((in_out[pos].type == nvinfer1::DataType::kFLOAT) &&
+          in_out[pos].format == nvinfer1::PluginFormat::kNCHW);
+#endif
 }
 
 nvinfer1::DataType GeluPluginDynamic::getOutputDataType(
@@ -186,11 +201,15 @@ int GeluPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     gelu_kernel<float, block_size><<<grid_size, block_size, 0, stream>>>(
         kA, num, input, output);
   } else if (input_type == nvinfer1::DataType::kHALF) {
+#if __CUDA_ARCH__ >= 600
     const half* input = static_cast<const half*>(inputs[0]);
     half* output = static_cast<half*>(outputs[0]);
     no_exact_gelu_kernel<half,
                          block_size><<<grid_size, block_size, 0, stream>>>(
         kAT, kBT, kCT, num, input, output);
+#else
+    PADDLE_THROW("The cuda arch must greater than 600.");
+#endif
   } else {
     PADDLE_THROW("The Swish TRT Plugin's input type should be float or half.");
   }

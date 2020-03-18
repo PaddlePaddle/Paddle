@@ -73,6 +73,7 @@ struct KeyValuePair<float> {
   }
 };
 
+#if __CUDA_ARCH__ >= 600
 template <>
 struct KeyValuePair<half> {
   __device__ __forceinline__ KeyValuePair() {}
@@ -91,6 +92,7 @@ struct KeyValuePair<half> {
     return KeyValuePair(res.x, res.y);
   }
 };
+#endif
 
 template <typename T>
 using kvp = KeyValuePair<T>;
@@ -269,7 +271,7 @@ nvinfer1::DataType EmbEltwiseLayernormPluginDynamic::getOutputDataType(
                     "The EmbEltwiseLayernorm Plugin only has one input, so the "
                     "index value should be 0, but get %d.",
                     index));
-  return nvinfer1::DataType::kFLOAT;
+  return input_type_;
 }
 
 int EmbEltwiseLayernormPluginDynamic::enqueue(
@@ -294,11 +296,15 @@ int EmbEltwiseLayernormPluginDynamic::enqueue(
         hidden_size_, word_id, pos_id, sent_id, scale_gpu_, bias_gpu_,
         word_emb_gpu_, pos_emb_gpu_, sent_emb_gpu_, output_d, eps_);
   } else if (out_type == nvinfer1::DataType::kHALF) {
+#ifdef SUPPORT_CUDA_FP16
     half *output_d = static_cast<half *>(outputs[0]);
     half eps = static_cast<half>(eps_);
     emb_eltwise_layernorm_kernel<half, tpb><<<grid, block, 0, stream>>>(
         hidden_size_, word_id, pos_id, sent_id, scale_gpu_, bias_gpu_,
         word_emb_gpu_, pos_emb_gpu_, sent_emb_gpu_, output_d, eps);
+#else
+    PADDLE_THROW("The cuda arch must greater than 600.");
+#endif
   } else {
     PADDLE_THROW(
         "The EmbEltwiseLayernorm TRT Plugin's input type should be float or "

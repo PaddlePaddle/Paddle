@@ -51,6 +51,10 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     framework::DDim word_emb_dims, pos_emb_dims, sent_emb_dims, bias_dims,
         scale_dims;
 
+    nvinfer1::DataType input_type = nvinfer1::DataType::kFLOAT;
+    if (engine_->WithFp16()) {
+      input_type = nvinfer1::DataType::kHALF;
+    }
     auto* word_emb = get_persistable_data("WordEmb", &word_emb_dims);
     auto* pos_emb = get_persistable_data("PosEmb", &pos_emb_dims);
     auto* sent_emb = get_persistable_data("SentEmb", &sent_emb_dims);
@@ -68,7 +72,8 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     plugin::EmbEltwiseLayernormPluginDynamic* plugin =
         new plugin::EmbEltwiseLayernormPluginDynamic(
             word_emb, pos_emb, sent_emb, bias, scale, word_emb_size,
-            pos_emb_size, sent_emb_size, bias_size, scale_size, hidden, eps);
+            pos_emb_size, sent_emb_size, bias_size, scale_size, hidden, eps,
+            input_type);
     layer = engine_->AddPluginV2(inputs.data(), 3, plugin);
     // Get output
     size_t output_num = op_desc.Output("Out").size();

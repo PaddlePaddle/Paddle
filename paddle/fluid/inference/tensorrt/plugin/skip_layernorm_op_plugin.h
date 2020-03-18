@@ -26,49 +26,31 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-#define EMBELTWISELAYERNORM_PLUGIN_COMMON_FUNC         \
-  const char* getPluginType() const override {         \
-    return "fused_embedding_eltwise_layernorm_plugin"; \
-  }                                                    \
-  int getNbOutputs() const override { return 1; }      \
+#define SKIP_LAYERNORM_PLUGIN_COMMON_FUNC         \
+  const char* getPluginType() const override {    \
+    return "skip_layernorm_plugin";               \
+  }                                               \
+  int getNbOutputs() const override { return 1; } \
   int initialize() override;
 
 #if IS_TRT_VERSION_GE(6000)
-class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
+class SkipLayerNormPluginDynamic : public DynamicPluginTensorRT {
  public:
-  explicit EmbEltwiseLayernormPluginDynamic(
-      float* word_emb, float* pos_emb, float* sent_emb, float* bias,
-      float* scale, int64_t word_emb_size, int64_t pos_emb_size,
-      int64_t sent_emb_size, int bias_size, int scale_size, int hidden_size,
-      float eps, nvinfer1::DataType input_type)
-      : word_emb_(word_emb),
-        pos_emb_(pos_emb),
-        sent_emb_(sent_emb),
-        bias_(bias),
+  explicit SkipLayerNormPluginDynamic(float* bias, float* scale, int bias_size,
+                                      int scale_size, const float eps)
+      : bias_(bias),
         scale_(scale),
-        word_emb_size_(word_emb_size),
-        pos_emb_size_(pos_emb_size),
-        sent_emb_size_(sent_emb_size),
         bias_size_(bias_size),
         scale_size_(scale_size),
-        hidden_size_(hidden_size),
-        eps_(eps),
-        input_type_(input_type) {}
-
-  EmbEltwiseLayernormPluginDynamic(void const* serialData,
-                                   size_t serialLength) {
-    // deserializeBase(serialData, serialLength);
-    // DeserializeValue(&serialData, &serialLength, &beta_);
-  }
-  ~EmbEltwiseLayernormPluginDynamic() {}
+        eps_(eps) {}
+  SkipLayerNormPluginDynamic(void const* serialData, size_t serialLength) {}
+  ~SkipLayerNormPluginDynamic() {}
   nvinfer1::IPluginV2DynamicExt* clone() const override {
-    return new EmbEltwiseLayernormPluginDynamic(
-        word_emb_, pos_emb_, sent_emb_, bias_, scale_, word_emb_size_,
-        pos_emb_size_, sent_emb_size_, bias_size_, scale_size_, hidden_size_,
-        eps_, input_type_);
+    return new SkipLayerNormPluginDynamic(bias_, scale_, bias_size_,
+                                          scale_size_, eps_);
   }
 
-  EMBELTWISELAYERNORM_PLUGIN_COMMON_FUNC;
+  SKIP_LAYERNORM_PLUGIN_COMMON_FUNC;
   size_t getSerializationSize() const override;
   void serialize(void* buffer) const override;
 
@@ -103,27 +85,16 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
   void destroy() override { delete this; }
 
  private:
-  float* word_emb_;
-  float* pos_emb_;
-  float* sent_emb_;
   float* bias_;
   float* scale_;
 
-  // data on devices
-  float* word_emb_gpu_;
-  float* pos_emb_gpu_;
-  float* sent_emb_gpu_;
   float* bias_gpu_;
   float* scale_gpu_;
 
-  int64_t word_emb_size_;
-  int64_t pos_emb_size_;
-  int64_t sent_emb_size_;
   int bias_size_;
   int scale_size_;
-  int hidden_size_;
+
   float eps_;
-  nvinfer1::DataType input_type_;
 };
 #endif
 

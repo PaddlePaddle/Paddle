@@ -16,6 +16,7 @@
 #include <cassert>
 #include <vector>
 #include "glog/logging.h"
+#include "paddle/fluid/inference/tensorrt/plugin/plugin_kernel_util.h"
 #include "paddle/fluid/inference/tensorrt/plugin/swish_op_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 
@@ -44,29 +45,16 @@ nvinfer1::Dims SwishPlugin::getOutputDimensions(int index,
 }
 
 template <typename T>
-__device__ T math_exp(T a);
-
-template <>
-__device__ half math_exp<half>(half a) {
-  return hexp(a);
-}
-
-template <>
-__device__ float math_exp<float>(float a) {
-  return expf(a);
-}
-
-template <typename T>
 __global__ void swish_kernel(int num, const T *input, T *output, T beta) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < num) {
 #if __CUDA_ARCH__ >= 350
     output[index] =
         __ldg(input + index) /
-        (static_cast<T>(1.0) + math_exp<T>(-beta * __ldg(input + index)));
+        (static_cast<T>(1.0) + exp_func<T>(-beta * __ldg(input + index)));
 #else
     output[index] = input[index] /
-                    (static_cast<T>(1.0) + math_exp<T>(-beta * input[index]));
+                    (static_cast<T>(1.0) + exp_func<T>(-beta * input[index]));
 #endif
   }
 }
@@ -99,11 +87,15 @@ int SwishPlugin::enqueue(int batch_size, const void *const *inputs,
     swish_kernel<float><<<blocks, threads, 0, stream>>>(num, input, output,
                                                         beta_);
   } else if (type == nvinfer1::DataType::kHALF) {
+#ifdef SUPPORT_CUDA_FP16
     const half *input = reinterpret_cast<const half *>(inputs[0]);
     half *output = reinterpret_cast<half **>(outputs)[0];
     half beta = static_cast<half>(beta_);
     swish_kernel<half><<<blocks, threads, 0, stream>>>(num, input, output,
                                                        beta_);
+#else
+    PADDLE_THROW("The cuda arch must greater than 600.");
+#endif
   } else {
     PADDLE_THROW("The Swish TRT Plugin's input type should be float or half.");
   }
@@ -113,9 +105,14 @@ int SwishPlugin::enqueue(int batch_size, const void *const *inputs,
 
 bool SwishPlugin::supportsFormat(nvinfer1::DataType type,
                                  nvinfer1::PluginFormat format) const {
+#ifdef SUPPORT_CUDA_FP16
   return ((type == nvinfer1::DataType::kFLOAT ||
            type == nvinfer1::DataType::kHALF) &&
           (format == nvinfer1::PluginFormat::kNCHW));
+#else
+  return ((type == nvinfer1::DataType::kFLOAT) &&
+          (format == nvinfer1::PluginFormat::kNCHW));
+#endif
 }
 
 // Dynamic Plugin below.
@@ -154,9 +151,14 @@ bool SwishPluginDynamic::supportsFormatCombination(
                                         pos, nb_inputs + nb_outputs));
   (in_out && pos < (nb_inputs + nb_outputs));
 
+#ifdef SUPPORT_CUDA_FP16
   return ((in_out[pos].type == nvinfer1::DataType::kFLOAT ||
            in_out[pos].type == nvinfer1::DataType::kHALF) &&
           in_out[pos].format == nvinfer1::PluginFormat::kNCHW);
+#else
+  return ((in_out[pos].type == nvinfer1::DataType::kFLOAT) &&
+          in_out[pos].format == nvinfer1::PluginFormat::kNCHW);
+#endif
 }
 
 nvinfer1::DataType SwishPluginDynamic::getOutputDataType(
@@ -188,11 +190,15 @@ int SwishPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
     swish_kernel<float><<<blocks, threads, 0, stream>>>(num, input, output,
                                                         beta_);
   } else if (input_type == nvinfer1::DataType::kHALF) {
+#ifdef SUPPORT_CUDA_FP16
     const half *input = static_cast<const half *>(inputs[0]);
     half *output = static_cast<half *>(outputs[0]);
     half beta = static_cast<half>(beta);
     swish_kernel<half><<<blocks, threads, 0, stream>>>(num, input, output,
                                                        beta);
+#else
+    PADDLE_THROW("The cuda arch must greater than 600.");
+#endif
   } else {
     PADDLE_THROW("The Swish TRT Plugin's input type should be float or half.");
   }

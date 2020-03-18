@@ -30,6 +30,109 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+#define FINAL_MASK 0xffffffff
+#define HALF_WARP 16
+#define WARP_SIZE 32
+
+template <typename T>
+__inline__ __device__ T warpReduceSum(T val, unsigned lane_mask) {
+  for (int mask = HALF_WARP; mask > 0; mask >>= 1)
+#if __CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000
+    val += __shfl_xor_sync(lane_mask, val, mask, warpSize);
+#else
+    val += __shfl_xor(val, mask, warpSize);
+#endif
+  return val;
+}
+
+/* Calculate the sum of all elements in a block */
+template <typename T>
+__inline__ __device__ T blockReduceSum(T val, unsigned mask) {
+  static __shared__ T shared[WARP_SIZE];
+  int lane = threadIdx.x & 0x1f;
+  int wid = threadIdx.x >> 5;
+
+  val = warpReduceSum<T>(val, mask);
+
+  if (lane == 0) shared[wid] = val;
+
+  __syncthreads();
+
+  // align block_span to warpSize
+  int block_span = (blockDim.x + warpSize - 1) >> 5;
+  val = (threadIdx.x < block_span) ? shared[lane] : static_cast<T>(0.0f);
+  val = warpReduceSum<T>(val, mask);
+
+  return val;
+}
+
+template <typename T>
+__inline__ __device__ T warpReduceMax(T val, unsigned lane_mask) {
+  for (int mask = HALF_WARP; mask > 0; mask >>= 1)
+#if __CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000
+    val = max(val, __shfl_xor_sync(lane_mask, val, mask, warpSize));
+#else
+    val = max(val, __shfl_xor(val, mask, warpSize));
+#endif
+  return val;
+}
+
+/* Calculate the maximum of all elements in a block */
+template <typename T>
+__inline__ __device__ T blockReduceMax(T val, unsigned mask) {
+  static __shared__ T shared[WARP_SIZE];
+  int lane = threadIdx.x & 0x1f;
+  int wid = threadIdx.x >> 5;
+
+  val = warpReduceMax(val, mask);
+
+  if (lane == 0) shared[wid] = val;
+
+  __syncthreads();
+
+  // align block_span to warpSize
+  int block_span = (blockDim.x + warpSize - 1) >> 5;
+  val = (threadIdx.x < block_span) ? shared[lane] : -1e10f;
+  val = warpReduceMax(val, mask);
+
+  return val;
+}
+
+template <typename T>
+__global__ void softmax_kernel_with_eltadd(T *qk_buf_, const T *bias_qk_,
+                                           const int batch_size,
+                                           const int head_num,
+                                           const int seq_len,
+                                           const unsigned mask) {
+  int qk_offset = blockIdx.x * seq_len;
+  assert(blockDim.x % 32 == 0);
+
+  __shared__ float s_sum, s_max;
+
+  float qk = threadIdx.x < seq_len
+                 ? static_cast<float>((qk_buf_[threadIdx.x + qk_offset] +
+                                       bias_qk_[threadIdx.x + qk_offset]))
+                 : 0.0f;
+  float tmp = threadIdx.x < seq_len ? static_cast<float>(qk) : -1e20f;
+
+  float max_val = blockReduceMax<float>(tmp, mask);
+
+  if (threadIdx.x == 0) s_max = max_val;
+  __syncthreads();
+
+  float qk_tmp =
+      threadIdx.x < seq_len ? __expf(static_cast<float>(tmp - s_max)) : 0.0f;
+  float sum_val = blockReduceSum<float>(qk_tmp, mask);
+
+  if (threadIdx.x == 0) {
+    s_sum = sum_val + 1e-6f;
+  }
+  __syncthreads();
+
+  if (threadIdx.x < seq_len)
+    qk_buf_[threadIdx.x + qk_offset] = (T)(qk_tmp / s_sum);
+}
+
 // Dynamic Plugin below.
 #if IS_TRT_VERSION_GE(6000)
 
@@ -41,10 +144,12 @@ __device__ float exp_func<float>(float a) {
   return expf(a);
 }
 
+#if __CUDA_ARCH__ >= 600
 template <>
 __device__ half exp_func<half>(half a) {
   return hexp(a);
 }
+#endif
 
 template <typename T>
 __global__ void transpose(T *src, T *dst, const int batch_size,
@@ -220,8 +325,8 @@ inline void MatMulWithHeadQK(const platform::CUDADeviceContext &context,
     block = 1024;
 
   const int threads = 256;
-  softmax_kernel_with_eltadd_kernel<T, threads><<<grid, threads, 0, stream>>>(
-      seq_len, qk_buf_, bias_qk);
+  softmax_kernel_with_eltadd<T><<<grid, block, 0, stream>>>(
+      qk_buf_, bias_qk, batch_size, head_num, seq_len, FINAL_MASK);
 }
 
 // Compute QK*V->transpose
@@ -270,17 +375,9 @@ inline void MultiHeadGPUComputeV2(const platform::CUDADeviceContext &dev_ctx,
 
 int QkvToContextPluginDynamic::initialize() { return 0; }
 
-size_t QkvToContextPluginDynamic::getSerializationSize() const {
-  return 0;
-  // return getBaseSerializationSize() + SerializedSize(beta_) +
-  //       SerializedSize(getPluginType());
-}
+size_t QkvToContextPluginDynamic::getSerializationSize() const { return 0; }
 
-void QkvToContextPluginDynamic::serialize(void *buffer) const {
-  // SerializeValue(&buffer, getPluginType());
-  // serializeBase(buffer);
-  // SerializeValue(&buffer, beta_);
-}
+void QkvToContextPluginDynamic::serialize(void *buffer) const {}
 
 nvinfer1::DimsExprs QkvToContextPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
@@ -288,7 +385,6 @@ nvinfer1::DimsExprs QkvToContextPluginDynamic::getOutputDimensions(
   // input[0], (B, S, 3 * N * H, 1, 1)
   // input[1], (B, head_num, seq_len, seq_len)
   // output, (B, seq_len, hidden)
-
   PADDLE_ENFORCE_EQ(output_index, 0,
                     platform::errors::InvalidArgument(
                         "There is only one output of the EmbEltwiseLayernorm, "
@@ -323,14 +419,26 @@ bool QkvToContextPluginDynamic::supportsFormatCombination(
       platform::errors::InvalidArgument("The pos(%d) should be less than the "
                                         "num(%d) of the input and the output.",
                                         pos, nb_inputs + nb_outputs));
-  (in_out && pos < (nb_inputs + nb_outputs));
 
-  const nvinfer1::PluginTensorDesc &desc = in_out[pos];
-  if (desc.format != nvinfer1::TensorFormat::kLINEAR) {
-    return false;
+  const nvinfer1::PluginTensorDesc &in = in_out[pos];
+  if (pos == 0) {
+#ifdef SUPPORT_CUDA_FP16
+    return (in.type == nvinfer1::DataType::kFLOAT ||
+            in.type == nvinfer1::DataType::kHALF) &&
+           (in.format == nvinfer1::TensorFormat::kLINEAR);
+#else
+    return (in.type == nvinfer1::DataType::kFLOAT) &&
+           (in.format == nvinfer1::TensorFormat::kLINEAR);
+#endif
   }
-  return desc.type == nvinfer1::DataType::kFLOAT ||
-         desc.type == nvinfer1::DataType::kHALF;
+  const nvinfer1::PluginTensorDesc &prev = in_out[pos - 1];
+
+  if (pos == 1) {
+    return in.type == prev.type && in.format == prev.format;
+  }
+
+  // output
+  return in.type == prev.type && in.format == prev.format;
 }
 
 nvinfer1::DataType QkvToContextPluginDynamic::getOutputDataType(
@@ -388,8 +496,9 @@ int QkvToContextPluginDynamic::enqueue(
                                                  head_number_, head_size_);
 
   } else if (input_type == nvinfer1::DataType::kHALF) {
+#ifdef SUPPORT_CUDA_FP16
     auto *multihead_temp_data =
-        multihead_temp_tensor.mutable_data<short>(  // NOLINT
+        multihead_temp_tensor.mutable_data<int16_t>(  // NOLINT
             platform::CUDAPlace(device_id));
 
     half *qkptr = reinterpret_cast<half *>(multihead_temp_data);
@@ -415,6 +524,9 @@ int QkvToContextPluginDynamic::enqueue(
     half *output = static_cast<half *>(outputs[0]);
     transpose<half><<<grid, block, 0, stream>>>(tptr, output, batch, seq_len,
                                                 head_number_, head_size_);
+#else
+    PADDLE_THROW("The cuda arch must greater than 600.");
+#endif
   } else {
     PADDLE_THROW("The QKV TRT Plugin's input type should be float or half.");
   }
