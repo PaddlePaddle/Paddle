@@ -172,12 +172,12 @@ class FusionGroupPassSumTest(FusionGroupPassTest):
 
             tmp_0 = layers.sum(
                 [self.feed_vars[0], self.feed_vars[1], self.feed_vars[2]])
-            tmp_1 = layers.mul(tmp_0, self.feed_vars[3])
-            tmp_2 = layers.sum([tmp_0, tmp_1])
-            tmp_3 = layers.relu(tmp_2)
+            tmp_1 = layers.sqrt(tmp_0)
+            tmp_2 = layers.mul(tmp_0, self.feed_vars[3])
+            tmp_3 = layers.square(layers.sum([tmp_1, tmp_2]))
 
-        self.fetch_list = [tmp_0, tmp_1, tmp_2]
-        self.num_fused_ops = 1
+        self.fetch_list = [tmp_3]
+        self.num_fused_ops = 2
 
 
 class FusionGroupPassCastTest(FusionGroupPassTest):
