@@ -178,52 +178,42 @@ class Collective(Fleet):
 
         return r
 
-    def _get_local_last_checkpoint_no(self, root_path):
+    def _is_hdfs_path(self, fs_path):
+        if fs_path.startswith("abs://") or fs_path.startswith("hdfs://"):
+            return True
+        return False
+
+    def _get_last_checkpoint_no(self, root_path, fs):
         """
         only get the first depth
         """
         max_no = -1
         d = {}
-        for subdir, dirs, files in os.walk(root_path):
-            for dir in dirs:
-                g = dir.split(".")
-                if len(g) != 2:
-                    continue
+        dirs = []
+        if self._is_hdfs_path(root_path):
+            dirs = hdfs.list_dirs(root_path)
+        else:
+            dirs = [f for f in os.listdir(root_path) if os.path.isdir(f)]
 
-                if g[0] != "__paddle_fleet_checkpoint__":
-                    continue
+        for dir in dirs:
+            g = dir.split(".")
+            if len(g) != 2:
+                continue
 
-                try:
-                    n = int(g[1])
-                    if n > max_no:
-                        max_no = n
-                except:
-                    continue
+            if g[0] != "__paddle_fleet_checkpoint__":
+                continue
 
-        return max_no
-
-    def _get_hdfs_last_checkpoint_no(self, fs_path):
-        max_no = -1
-        d = {}
-        for subdir, dirs, files in os.walk(root_path):
-            for dir in dirs:
-                g = dir.split(".")
-                if len(g) != 2:
-                    continue
-
-                if g[0] != "__paddle_fleet_checkpoint__":
-                    continue
-
-                try:
-                    n = int(g[1])
-                    if n > max_no:
-                        max_no = n
-                except:
-                    continue
+            try:
+                n = int(g[1])
+                if n > max_no:
+                    max_no = n
+            except:
+                continue
 
         return max_no
 
-    def clean_redundant_check_points(self, root_path, checkpoint_num=1):
+    def clean_redundant_check_points(self, root_path, fs=None,
+                                     checkpoint_num=1):
         max_no = self._get_last_checkpoint_no(root_path)
         if max_no < 0:
             return
@@ -231,86 +221,62 @@ class Collective(Fleet):
         if checkpoint_num < 1:
             checkpoint_num = 1
 
-        for subdir, dirs, files in os.walk(root_path):
-            for dir in dirs:
-                g = dir.split(".")
-                if len(g) != 2:
-                    continue
+            dirs = hdfs.list_dirs(root_path)
 
-                if g[0] != self._checkoint_prefix:
-                    continue
+        for dir in dirs:
+            g = dir.split(".")
+            if len(g) != 2:
+                continue
 
-                try:
-                    n = int(g[1])
-                    if n <= max_no - checkpoint_num:
-                        path = "{}/{}.{}".format(root_path,
-                                                 self._checkoint_prefix, n)
-                        shutil.rmtree(path)
-                except Exception as e:
-                    print(e)
-                    continue
+            if g[0] != self._checkoint_prefix:
+                continue
+
+            try:
+                n = int(g[1])
+                if n <= max_no - checkpoint_num:
+                    path = "{}/{}.{}".format(root_path, self._checkoint_prefix,
+                                             n)
+                    shutil.rmtree(path)
+            except Exception as e:
+                print(e)
+                continue
 
     def save_check_point(self,
                          executor,
                          path,
                          train_status,
                          main_program=None,
+                         fs=LocalFS(),
+                         local_cache_path=".cache",
                          remain_all_checkpoint=True):
         """
         This function save persistables and current epoch num to path.
         """
+
         if main_program == None:
             main_program = self._transpiled_program
 
-        max_no = self._get_last_checkpoint_no(path)
+        max_no = self._get_last_checkpoint_no(path, fs=fs)
         if max_no < 0:
             max_no = -1
 
+        cache_path = "{}/{}.{}".format(local_cache_path, self._checkoint_prefix,
+                                       max_no + 1)
         real_path = "{}/{}.{}".format(path, self._checkoint_prefix, max_no + 1)
         tmp_path = "{}.tmp".format(real_path)
 
         self.save_persistables(
             executor=executor,
-            dirname=tmp_path,
+            dirname=cache_path,
             main_program=main_program,
             filename=self._param_file_name)
-        self._save_train_status(path=tmp_path, train_status=train_status)
+        self._save_train_status(path=cache_path, train_status=train_status)
 
-        step = 0
-        while True:
-            try:
-                os.rename(tmp_path, real_path)
-                break
-            except Exception as e:
-                if os.path.exists(real_path):
-                    break
-                logging.error("rename from {} to {} error:{}".format(
-                    tmp_path, real_path, e))
-                time.sleep(5)
-                step += 1
-                if step > 3:
-                    sys.exit(1)
-                continue
+        fs.mv(cache_path, tmp_path)
+        fs.mv(tmp_path, real_path)
 
         if not remain_all_checkpoint:
             self.clean_redundant_check_points(path)
-
-    """
-    def save_hdfs_check_point(self,
-                         executor,
-                         local_path,
-                         hdfs_name,
-                         hdfs_ugi,
-                         hdfs_path,
-                         train_status,
-                         main_program=None,
-                         remain_all_checkpoint=True):
-
-        cmd="{} -ls {}"
-        check_points = core.run_cmd(cmd)
-        #get max_no
-        for dirs in check_points:
-    """
 
     def load_check_point(self,
                          executor,

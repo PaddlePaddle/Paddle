@@ -327,8 +327,6 @@ std::string shell_get_command_output(const std::string& cmd, int time_out,
       "This function(shell_get_command_output) is not implemented under _WIN32 "
       "or __APPLE__.");
 #else
-  printf("timeout_out:%d\n", time_out);
-  printf("timeout_out:%d\n", sleep_inter);
   int err_no = 0;
   ElapsedTime elapsed;
   do {
@@ -337,7 +335,8 @@ std::string shell_get_command_output(const std::string& cmd, int time_out,
     string::LineFileReader reader;
 
     char* buf = reader.getdelim(&*pipe, 0);
-    if (buf && errno == 0) {
+    // printf("errno:%d!\n", errno);
+    if (buf && err_no == 0) {
       return reader.get();
     }
 
@@ -354,6 +353,7 @@ std::string shell_get_command_output(const std::string& cmd, int time_out,
   } while (err_no);
 
   // nothing returned
+  // printf("reached unkown place!\n");
   return "";
 #endif
 }
