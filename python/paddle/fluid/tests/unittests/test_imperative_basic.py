@@ -20,6 +20,7 @@ import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid import Linear
 from test_imperative_base import new_program_scope
+import paddle.fluid.dygraph_utils as dygraph_utils
 
 
 class MyLayer(fluid.Layer):
@@ -509,6 +510,49 @@ class TestImperative(unittest.TestCase):
         self.assertRaises(TypeError, my_layer.__setattr__, 'l1', 'str')
         my_layer.l1 = None
         self.assertEqual(len(my_layer.sublayers()), 0)
+
+
+class TestDygraphUtils(unittest.TestCase):
+    def test_append_activation_in_dygraph_exception(self):
+        with new_program_scope():
+            np_inp = np.random.random(size=(10, 20, 30)).astype(np.float32)
+            a = fluid.layers.data("a", [10, 20])
+            func = dygraph_utils._append_activation_in_dygraph
+            self.assertRaises(AssertionError, func, a, act="sigmoid")
+
+    def test_append_activation_in_dygraph1(self):
+        a_np = np.random.random(size=(10, 20, 30)).astype(np.float32)
+        func = dygraph_utils._append_activation_in_dygraph
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            res1 = func(a, act="hard_sigmoid")
+            res2 = fluid.layers.hard_sigmoid(a)
+            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+
+    def test_append_activation_in_dygraph2(self):
+        a_np = np.random.random(size=(10, 20, 30)).astype(np.float32)
+        func = dygraph_utils._append_activation_in_dygraph
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            res1 = func(a, act="sigmoid", use_mkldnn=True, use_cudnn=True)
+            res2 = fluid.layers.sigmoid(a)
+            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+
+    def test_append_bias_in_dygraph_exception(self):
+        with new_program_scope():
+            np_inp = np.random.random(size=(10, 20, 30)).astype(np.float32)
+            a = fluid.layers.data("a", [10, 20])
+            func = dygraph_utils._append_bias_in_dygraph
+            self.assertRaises(AssertionError, func, a)
+
+    def test_append_bias_in_dygraph(self):
+        a_np = np.random.random(size=(10, 20, 30)).astype(np.float32)
+        func = dygraph_utils._append_bias_in_dygraph
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            res1 = func(a, bias=a)
+            res2 = a + a
+            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
 
 
 if __name__ == '__main__':

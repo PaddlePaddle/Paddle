@@ -19,8 +19,8 @@ from ..framework import dygraph_only
 @dygraph_only
 def _append_activation_in_dygraph(input,
                                   act=None,
-                                  use_cudnn=False,
-                                  use_mkldnn=False):
+                                  use_cudnn=None,
+                                  use_mkldnn=None):
     """Append activation in dygraph mode.
 
         Args:
@@ -33,8 +33,11 @@ def _append_activation_in_dygraph(input,
     """
     if not act:
         return input
-
-    attrs = {'use_cudnn': use_cudnn, 'use_mkldnn': use_mkldnn}
+    attrs = {}
+    if (use_cudnn is not None) and use_cudnn:
+        attrs['use_cudnn'] = use_cudnn
+    if (use_mkldnn is not None) and use_mkldnn:
+        attrs['use_mkldnn'] = use_mkldnn
     inputs = {"X": [input]}
     act_op = getattr(core.ops, act)
     res = act_op(inputs, attrs)
@@ -42,10 +45,7 @@ def _append_activation_in_dygraph(input,
 
 
 @dygraph_only
-def _append_bias_in_dygraph(
-        input,
-        bias=None,
-        axis=1, ):
+def _append_bias_in_dygraph(input, bias=None, axis=1):
     """Append bias operation in dygraph mode.
 
         Args:
