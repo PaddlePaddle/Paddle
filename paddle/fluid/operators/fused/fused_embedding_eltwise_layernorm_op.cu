@@ -19,93 +19,11 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
+#include "paddle/fluid/operators/math/bert_encoder_functor.h"
 #include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
 namespace operators {
-
-template <typename T>
-using kvp = cub::KeyValuePair<T, T>;
-
-template <typename T>
-using cv2 = cub::CubVector<T, 2>;
-
-template <typename T, int TPB>
-__device__ inline void LayerNorm(const cv2<T> &thread_data, const int ld,
-                                 const int offset, const float *bias,
-                                 const float *scale, T *output, float eps) {
-  using BlockReduce = cub::BlockReduce<cv2<T>, TPB>;
-  __shared__ typename BlockReduce::TempStorage temp_storage;
-  __shared__ T mu;      // mean
-  __shared__ T rsigma;  // 1 / std.dev.
-
-  const auto sum_kv = BlockReduce(temp_storage).Reduce(thread_data, cub::Sum());
-
-  if (threadIdx.x == 0) {
-    mu = sum_kv.x;
-    rsigma = rsqrt(sum_kv.y - mu * mu + eps);
-  }
-  __syncthreads();
-
-  for (int i = threadIdx.x; i < ld; i += TPB) {
-    const int idx = offset + i;
-    const T val = output[idx];
-    const T g(scale[i]);
-    const T b(bias[i]);
-    output[idx] = g * (val - mu) * rsigma + b;
-  }
-}
-
-template <typename T, unsigned TPB>
-__global__ void EmbEltwiseLayernormKernel(
-    int hidden, const int64_t *word_id_d, const int64_t *pos_id_d,
-    const int64_t *sent_id_d, const T *scale, const T *bias, const T *word_emb,
-    const T *pos_emb, const T *sent_emb, T *output, float eps) {
-  cub::Sum pair_sum;
-  // blockIdx.x: position in the sequence
-  // blockIdx.y: batch
-  // gridDim.x: Seq
-  // gridDim.y: Batch
-  __shared__ int64_t word_id;
-  __shared__ int64_t pos_id;
-  __shared__ int64_t sent_id;
-
-  const T rhidden = T(1.f) / T(hidden);
-  const int64_t seq_pos = blockIdx.y + blockIdx.x * gridDim.y;
-  if (threadIdx.x == 0) {
-    word_id = word_id_d[seq_pos];
-    pos_id = pos_id_d[seq_pos];
-    sent_id = sent_id_d[seq_pos];
-  }
-  __syncthreads();
-
-  // load word, pos, sentence embeddings and add them toghether
-  const int64_t woffset = word_id * hidden;
-  const int64_t poffset = pos_id * hidden;
-  const int64_t soffset = sent_id * hidden;
-  const int64_t out_offset = seq_pos * hidden;
-
-  cv2<T> thread_data;
-  thread_data.x = 0;
-  thread_data.y = 0;
-
-#pragma unroll
-  for (int it = threadIdx.x; it < hidden; it += TPB) {
-    const T w(word_emb[woffset + it]);
-    const T p(pos_emb[poffset + it]);
-    const T s(sent_emb[soffset + it]);
-    const T val = w + s + p;
-
-    output[out_offset + it] = val;
-    const T rhiddenval = rhidden * val;
-    cv2<T> temp_data;
-    temp_data.x = rhiddenval;
-    temp_data.y = rhiddenval * val;
-
-    thread_data = pair_sum(thread_data, temp_data);
-  }
-  LayerNorm<T, TPB>(thread_data, hidden, out_offset, bias, scale, output, eps);
-}
 
 template <typename DeviceContext, typename T>
 class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
@@ -147,12 +65,10 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
     int seq_len = word_id_dims[1];
     int hidden = word_emb_dims[1];
 
-    const unsigned tpb = 256;
-    const dim3 grid(seq_len, batch, 1);
-    const dim3 block(tpb, 1, 1);
-    EmbEltwiseLayernormKernel<T, tpb><<<grid, block, 0, device_ctx.stream()>>>(
-        hidden, word_id_d, pos_id_d, sent_id_d, scale_d, bias_d, word_emb_d,
-        pos_emb_d, sent_emb_d, output_d, eps);
+    math::EmbEltwiseLayerNormFunctor<T> emb_eltwise_layernorm_func;
+    emb_eltwise_layernorm_func(
+        batch, seq_len, hidden, word_id_d, pos_id_d, sent_id_d, scale_d, bias_d,
+        word_emb_d, pos_emb_d, sent_emb_d, output_d, eps, device_ctx.stream());
   }
 };
 
