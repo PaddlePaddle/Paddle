@@ -189,12 +189,7 @@ class Collective(Fleet):
         """
         max_no = -1
         d = {}
-        dirs = []
-        if self._is_hdfs_path(root_path):
-            dirs = hdfs.list_dirs(root_path)
-        else:
-            dirs = [f for f in os.listdir(root_path) if os.path.isdir(f)]
-
+        dirs = fs.list_dirs(root_path)
         for dir in dirs:
             g = dir.split(".")
             if len(g) != 2:
@@ -221,8 +216,6 @@ class Collective(Fleet):
         if checkpoint_num < 1:
             checkpoint_num = 1
 
-            dirs = hdfs.list_dirs(root_path)
-
         for dir in dirs:
             g = dir.split(".")
             if len(g) != 2:
@@ -236,7 +229,8 @@ class Collective(Fleet):
                 if n <= max_no - checkpoint_num:
                     path = "{}/{}.{}".format(root_path, self._checkoint_prefix,
                                              n)
-                    shutil.rmtree(path)
+                    #shutil.rmtree(path)
+                    fs.rmr(path)
             except Exception as e:
                 print(e)
                 continue
@@ -260,8 +254,10 @@ class Collective(Fleet):
         if max_no < 0:
             max_no = -1
 
-        cache_path = "{}/{}.{}".format(local_cache_path, self._checkoint_prefix,
-                                       max_no + 1)
+        cache_path = "{}/{}.{}.cache".format(local_cache_path,
+                                             self._checkoint_prefix, max_no + 1)
+        if not os.exists(local_cache_path):
+            os.mkdir(local_cache_path)
         real_path = "{}/{}.{}".format(path, self._checkoint_prefix, max_no + 1)
         tmp_path = "{}.tmp".format(real_path)
 
@@ -272,7 +268,7 @@ class Collective(Fleet):
             filename=self._param_file_name)
         self._save_train_status(path=cache_path, train_status=train_status)
 
-        fs.mv(cache_path, tmp_path)
+        fs.upload(cache_path, tmp_path)
         fs.mv(tmp_path, real_path)
 
         if not remain_all_checkpoint:

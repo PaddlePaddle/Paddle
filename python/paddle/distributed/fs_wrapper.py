@@ -68,7 +68,9 @@ class Local(object):
         os.symlink(fs_path, local_path)
 
     def mkdir(self, fs_path):
-        if not stat(fs_path):
+        assert not os.path.isfile(fs_path), "{} is already a file".format(
+            fs_path)
+        if not os.exists(fs_path):
             os.mkdir(fs_path)
 
     def mv(self, fs_src_path, fs_dst_path):
@@ -138,8 +140,9 @@ class BDFS(FS):
         fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
 
     def mkdir(self, fs_path):
-        cmd = "{} -mkdir {}".format(self._base_cmd, fs_path)
-        fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
+        if not self.stat(fs_path):
+            cmd = "{} -mkdir {}".format(self._base_cmd, fs_path)
+            fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
 
     def mv(self, fs_src_path, fs_dst_path):
         cmd = "{} -mv {} {}".format(self._base_cmd, fs_src_path, fs_dst_path)
