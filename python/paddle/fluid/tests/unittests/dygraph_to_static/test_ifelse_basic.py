@@ -65,14 +65,10 @@ class TestGetNameIds2(TestGetNameIds):
             return z
         """
         self.all_name_ids = {
-            'x': [
-                gast.Param(), gast.Store(), gast.Load(), gast.Load(),
-                gast.Load()
-            ],
-            'a': [gast.Store(), gast.Load(), gast.Load()],
-            'y':
-            [gast.Param(), gast.Load(), gast.Load(), gast.Load(), gast.Load()],
-            'z': [gast.Store(), gast.Load(), gast.Store(), gast.Store()]
+            'x': [gast.Param(), gast.Store()],
+            'a': [gast.Store(), gast.Load()],
+            'y': [gast.Param(), gast.Load()],
+            'z': [gast.Store()]
         }
 
 
@@ -87,9 +83,9 @@ class TestGetNameIds3(TestGetNameIds):
             return z
         """
         self.all_name_ids = {
-            'x': [gast.Param(), gast.Load(), gast.Load(), gast.Load()],
-            'y': [gast.Param(), gast.Load(), gast.Load()],
-            'z': [gast.Store(), gast.Store(), gast.Load(), gast.Store()]
+            'x': [gast.Param()],
+            'y': [gast.Param()],
+            'z': [gast.Store()]
         }
 
 
