@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,26 +16,26 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 
-#include "paddle/fluid/operators/erf_op.h"
+#include "paddle/fluid/operators/gelu_op.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
 
-class ErfOp : public framework::OperatorWithKernel {
+class GeluOp : public framework::OperatorWithKernel {
  public:
-  ErfOp(const std::string &type, const framework::VariableNameMap &inputs,
-        const framework::VariableNameMap &outputs,
-        const framework::AttributeMap &attrs)
+  GeluOp(const std::string &type, const framework::VariableNameMap &inputs,
+         const framework::VariableNameMap &outputs,
+         const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
                       platform::errors::InvalidArgument(
-                          "Input(%s) of ErfOp should not be null.", "X"));
+                          "Input(%s) of GeluOp should not be null.", "X"));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
                       platform::errors::InvalidArgument(
-                          "Output(%s) of ErfOp should not be null.", "Out"));
+                          "Output(%s) of GeluOp should not be null.", "Out"));
 
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -49,7 +49,7 @@ class ErfOp : public framework::OperatorWithKernel {
   }
 };
 
-class ErfGradOp : public framework::OperatorWithKernel {
+class GeluGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -57,13 +57,14 @@ class ErfGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput(framework::GradVarName("Out")), true,
         platform::errors::InvalidArgument(
-            "Input(%s) of ErfGradOp should not be null.", "DOut"));
+            "Input(%s) of GeluGradOp should not be null.", "DOut"));
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
                       platform::errors::InvalidArgument(
-                          "Input(%s) of ErfGradOp should not be null.", "X"));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
-                      platform::errors::InvalidArgument(
-                          "Output(%s) of ErfGradOp should not be null.", "DX"));
+                          "Input(%s) of GeluGradOp should not be null.", "X"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput(framework::GradVarName("X")), true,
+        platform::errors::InvalidArgument(
+            "Output(%s) of GeluGradOp should not be null.", "DX"));
     auto x_grad_name = framework::GradVarName("X");
     ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ x_grad_name);
@@ -77,33 +78,48 @@ class ErfGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class ErfOpMaker : public framework::OpProtoAndCheckerMaker {
+class GeluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "The input tensor of erf operator.");
-    AddOutput("Out", "The output tensor of erf operator.");
+    AddInput("X", "Input of Gelu operator");
+    AddOutput("Out", "Output of Gelu operator");
+    AddAttr<bool>("approximate",
+                  "(bool, default false) use approximation of gelu")
+        .SetDefault(false);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
+    AddAttr<bool>("use_cudnn",
+                  "(bool, default false) Only used in cudnn kernel, need "
+                  "install cudnn")
+        .SetDefault(false);
+    AddAttr<bool>("is_test",
+                  "(bool, default false) Set to true for inference only, false "
+                  "for training. Some layers may run faster when this is true.")
+        .SetDefault(false);
     AddComment(R"DOC(
-Erf Operator.
+Gelu Activation Operator. 
 
-The equation is:
-$$
-f(x) = \frac{2}{\sqrt{\pi}} \int_{0}^{x}e^{- \eta^{2}}d\eta
-$$
+For more details, please refer to [Gaussian Error Linear Units](https://arxiv.org/pdf/1606.08415.pdf).
 
-The input `X` can carry the LoD (Level of Details) information,
-or not. And the output shares the LoD information with input `X`.
+when using approximation
+$out = \\frac{1}{2}x(1+tanh(\\sqrt{\\frac{2}{\\pi}}(x+0.044715x^{3}))$
+
+or else
+$out = \\frac{1 + erf(\\frac{x}{\\sqrt{2}})}{2} x$
+
 )DOC");
   }
 };
 
 template <typename T>
-class ErfGradOpMaker : public framework::SingleGradOpMaker<T> {
+class GeluGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
   void Apply(GradOpPtr<T> grad_op) const override {
-    grad_op->SetType("erf_grad");
+    grad_op->SetType("gelu_grad");
     grad_op->SetInput("X", this->Input("X"));
     grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
@@ -116,17 +132,13 @@ class ErfGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(erf, ops::ErfOp, ops::ErfOpMaker,
-                  ops::ErfGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ErfGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(erf_grad, ops::ErfGradOp);
+REGISTER_OPERATOR(gelu, ops::GeluOp, ops::GeluOpMaker,
+                  ops::GeluGradOpMaker<paddle::framework::OpDesc>,
+                  ops::GeluGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(gelu_grad, ops::GeluGradOp);
 REGISTER_OP_CPU_KERNEL(
-    erf, ops::ErfKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ErfKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ErfKernel<paddle::platform::CPUDeviceContext,
-                   paddle::platform::float16>);
+    gelu, ops::GeluKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GeluKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
-    erf_grad, ops::ErfGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ErfGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ErfGradKernel<paddle::platform::CPUDeviceContext,
-                       paddle::platform::float16>);
+    gelu_grad, ops::GeluGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GeluGradKernel<paddle::platform::CPUDeviceContext, double>);

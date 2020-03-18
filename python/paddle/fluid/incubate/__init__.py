@@ -14,5 +14,4 @@
 # incubate directory is mainly for internal use
 # after we have tested incubate APIs in industrial application for a period
 # we will move stable functions into fluid
-
-from __future__ import print_function
+__version__ = '0.1.0'

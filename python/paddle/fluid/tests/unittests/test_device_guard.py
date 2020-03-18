@@ -144,6 +144,27 @@ class TestDeviceGuard(unittest.TestCase):
         for op in all_ops:
             self.assertEqual(op.desc.attr(device_attr_name), "gpu")
 
+    def test_loss_op_desc(self):
+        main_program = fluid.Program()
+        startup_program = fluid.Program()
+        with fluid.program_guard(main_program, startup_program):
+            data1 = fluid.layers.data(name="data_1", shape=[2], dtype="float32")
+            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            fc1 = fluid.layers.fc(input=data1, size=10)
+            with fluid.device_guard("gpu"):
+                out = fluid.layers.softmax_with_cross_entropy(
+                    logits=fc1, label=label)
+                loss = fluid.layers.mean(out)
+                opt = fluid.optimizer.SGDOptimizer(0.1)
+                opt.minimize(loss)
+
+        all_ops = main_program.global_block().ops
+        device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
+        for op in all_ops:
+            self.assertEqual(True, op.desc.has_attr(device_attr_name))
+            if op.desc == 'fill_constant':
+                self.assertEqual(op.desc.attr(device_attr_name), "gpu")
+
 
 if __name__ == '__main__':
     unittest.main()
