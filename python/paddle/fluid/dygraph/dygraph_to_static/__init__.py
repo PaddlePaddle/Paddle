@@ -17,5 +17,21 @@ from __future__ import print_function
 from . import ast_transformer
 from .ast_transformer import *
 
+from . import static_analysis
+from .static_analysis import *
+
+from . import loop_transformer
+from .loop_transformer import *
+
+from . import variable_trans_func
+from .variable_trans_func import *
+
+from . import cache_program
+from .cache_program import *
+
 __all__ = []
 __all__ += ast_transformer.__all__
+__all__ += loop_transformer.__all__
+__all__ += static_analysis.__all__
+__all__ += variable_trans_func.__all__
+__all__ += cache_program.__all__

@@ -409,7 +409,7 @@ class CollectiveOptimizer(DistributedOptimizer):
 
     def _check_collective_mode(self, main_program, optimizer, strategy):
         """
-        Check the conflict condtions.
+        Check the conflict conditions.
         """
         if strategy.use_local_sgd:
             strategy.mode = "collective"
@@ -581,7 +581,7 @@ class CollectiveOptimizer(DistributedOptimizer):
             tuple: (optimize_ops, params_grads) which are, list of operators appended;
             and list of (param, grad) Variables pair for optimization.
         Note that in parameter server mode, a worker will not get anything about optimize_os
-        Because optmizer algorithms run on pserver side. We will make this usable in pserver
+        Because optimizer algorithms run on pserver side. We will make this usable in pserver
         process, but currently the optimization part is written into Fleet(). A user does not
         need to care about how to startup a pserver node.
         """

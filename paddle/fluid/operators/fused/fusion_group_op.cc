@@ -21,7 +21,7 @@ class FusionGroupOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     const size_t num_ins = ctx->Inputs("Inputs").size();
     const size_t num_outs = ctx->Outputs("Outs").size();
 
@@ -58,6 +58,13 @@ class FusionGroupOp : public framework::OperatorWithKernel {
       ctx->ShareLoD("Inputs", /*->*/ "Outs", 0, j);
     }
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   platform::CUDAPlace(0));
+  };
 };
 
 class FusionGroupOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -69,6 +76,12 @@ class FusionGroupOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Outs",
               "(std::vector<LoDTensor>) The outputs of fusion_group op.")
         .AsDuplicable();
+    AddAttr<std::vector<std::string>>(
+        "outs_data_type", "The data type of Outputs in fusion_group op.")
+        .SetDefault({});
+    AddAttr<std::vector<std::string>>(
+        "inputs_data_type", "The data type of Inputs in fusion_group op.")
+        .SetDefault({});
     AddAttr<int>("type", "Fusion type.").SetDefault(0);
     AddAttr<std::string>("func_name", "Name of the generated functions.")
         .SetDefault("");
@@ -76,7 +89,7 @@ class FusionGroupOpMaker : public framework::OpProtoAndCheckerMaker {
 fusion_group Operator.
 
 It is used to execute a generated CUDA kernel which fuse the computation of
-multiple operators into one. It supports serveral types:
+multiple operators into one. It supports several types:
 0, fused computation of elementwise operations in which all the dims of inputs
     and outputs should be exactly the same.
 )DOC");

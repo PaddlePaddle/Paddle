@@ -104,7 +104,7 @@ class TestReduceMeanWithDimDoubleGradCheck(unittest.TestCase):
 class TestMulDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        # the shape of input variable shoule be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not inlcude -1.
         x_shape = [7, 11]
         y_shape = [11, 9]
         eps = 0.005

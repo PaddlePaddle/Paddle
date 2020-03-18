@@ -261,7 +261,7 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
     int output_offset =
         transformed_output.numel() / transformed_output.dims()[0] / groups;
     int filter_offset = filter->numel() / groups;
-    T alpha = 1.0f, beta = 0.0f;
+    T alpha = static_cast<T>(1.0), beta = static_cast<T>(0.0);
     auto workspace_handle = dev_ctx.cudnn_workspace_handle();
     for (int g = 0; g < groups; g++) {
       auto cudnn_func = [&](void* cudnn_workspace) {
@@ -514,7 +514,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
     int output_grad_offset = transformed_output_grad.numel() /
                              transformed_output_grad.dims()[0] / groups;
     int filter_offset = filter->numel() / groups;
-    T alpha = 1.0f, beta = 0.0f;
+    T alpha = static_cast<T>(1.0), beta = static_cast<T>(0.0);
     auto workspace_handle = dev_ctx.cudnn_workspace_handle();
     if (input_grad) {
       T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
@@ -576,17 +576,22 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
 REGISTER_OP_KERNEL(conv2d_transpose, CUDNN, ::paddle::platform::CUDAPlace,
+                   ops::CUDNNConvTransposeOpKernel<plat::float16>,
                    ops::CUDNNConvTransposeOpKernel<float>,
                    ops::CUDNNConvTransposeOpKernel<double>);
 REGISTER_OP_KERNEL(conv2d_transpose_grad, CUDNN, ::paddle::platform::CUDAPlace,
+                   ops::CUDNNConvTransposeGradOpKernel<plat::float16>,
                    ops::CUDNNConvTransposeGradOpKernel<float>,
                    ops::CUDNNConvTransposeGradOpKernel<double>);
 
 REGISTER_OP_KERNEL(conv3d_transpose, CUDNN, ::paddle::platform::CUDAPlace,
+                   ops::CUDNNConvTransposeOpKernel<plat::float16>,
                    ops::CUDNNConvTransposeOpKernel<float>,
                    ops::CUDNNConvTransposeOpKernel<double>);
 REGISTER_OP_KERNEL(conv3d_transpose_grad, CUDNN, ::paddle::platform::CUDAPlace,
+                   ops::CUDNNConvTransposeGradOpKernel<plat::float16>,
                    ops::CUDNNConvTransposeGradOpKernel<float>,
                    ops::CUDNNConvTransposeGradOpKernel<double>);

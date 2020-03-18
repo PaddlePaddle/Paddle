@@ -107,7 +107,7 @@ set(IR_PASS_DEPS graph_viz_pass multi_devices_graph_pass
     coalesce_grad_tensor_pass fuse_all_reduce_op_pass backward_optimizer_op_deps_pass
     fuse_adam_op_pass fuse_sgd_op_pass fuse_momentum_op_pass
     sync_batch_norm_pass runtime_context_cache_pass)
-if(WITH_GPU)
+if(NOT APPLE AND NOT WIN32 AND WITH_GPU)
   set(IR_PASS_DEPS ${IR_PASS_DEPS} fusion_group_pass)
 endif()
 if(WITH_NGRAPH) 

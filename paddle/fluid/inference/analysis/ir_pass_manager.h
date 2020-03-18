@@ -54,9 +54,6 @@ class IRPassManager final {
 
  private:
   void CreatePasses(Argument *argument, const std::vector<std::string> &passes);
-  bool HasPass(const std::string &pass_type);
-  std::unique_ptr<Pass> &GetPass(const std::string &pass_type);
-  void UpdatePasses();
 
   std::unique_ptr<Graph> graph_;
   std::vector<std::unique_ptr<Pass>> passes_;

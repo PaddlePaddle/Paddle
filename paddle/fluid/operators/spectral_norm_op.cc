@@ -93,7 +93,7 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("U",
              "The weight_u tensor of spectral_norm operator, "
              "This can be a 1-D tensor in shape [H, 1],"
-             "H is the 1st dimentions of Weight after reshape"
+             "H is the 1st dimensions of Weight after reshape"
              "corresponding by Attr(dim). As for Attr(dim) = 1"
              "in conv2d layer with weight shape [M, C, K1, K2]"
              "Weight will be reshape to [C, M*K1*K2], U will"
@@ -101,7 +101,7 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("V",
              "The weight_v tensor of spectral_norm operator, "
              "This can be a 1-D tensor in shape [W, 1], "
-             "W is the 2nd dimentions of Weight after reshape "
+             "W is the 2nd dimensions of Weight after reshape "
              "corresponding by Attr(dim). As for Attr(dim) = 1 "
              "in conv2d layer with weight shape [M, C, K1, K2] "
              "Weight will be reshape to [C, M*K1*K2], V will "
@@ -174,8 +174,7 @@ class SpectralNormGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("spectral_norm_grad");
 
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
@@ -186,8 +185,6 @@ class SpectralNormGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("Weight"), this->InputGrad("Weight"));
 
     op->SetAttrMap(this->Attrs());
-
-    return op;
   }
 };
 

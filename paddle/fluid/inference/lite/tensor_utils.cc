@@ -157,22 +157,28 @@ void TensorCopyAsync(paddle::lite::Tensor* dst, const framework::LoDTensor& src,
   dst->Resize(framework::vectorize(src.dims()));
   const void* src_data = src.data<void>();
   void* dst_data = dst->mutable_data(bytes);
+  VLOG(3) << "[CopyAsync fluid -> lite] Bytes = " << bytes << ", src = " << &src
+          << ", dst = " << dst << ", src_type = " << src.type();
   MemoryCopyAsync(dst_place, dst_data, src_place, src_data, bytes, ctx);
+  VLOG(3) << "[Lite memory size] Bytes = " << dst->memory_size();
 }
 
 template <>
 void TensorCopyAsync(framework::LoDTensor* dst, const paddle::lite::Tensor& src,
                      const platform::DeviceContext& ctx) {
+  dst->Resize(paddle::framework::make_ddim(src.dims().Vectorize()));
   InitDstTensor(dst, src);
   const platform::Place& src_place = GetNativePlace(src.target());
   const platform::Place& dst_place = dst->place();
-  dst->Resize(paddle::framework::make_ddim(src.dims().Vectorize()));
   const size_t bytes =
       static_cast<size_t>(src.numel()) * framework::SizeOfType(dst->type());
   const void* src_data = src.raw_data();
   // When Lite is ready, the source type needs to be modified here.
   void* dst_data = dst->mutable_data(dst_place, dst->type());
+  VLOG(3) << "[CopyAsync lite -> fluid] Bytes = " << bytes << ", src = " << &src
+          << ", dst = " << dst << ", src_type = " << dst->type();
   MemoryCopyAsync(dst_place, dst_data, src_place, src_data, bytes, ctx);
+  VLOG(3) << "[Lite memory size] Bytes = " << src.memory_size();
 }
 
 }  // namespace utils
