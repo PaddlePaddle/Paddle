@@ -83,6 +83,7 @@ class LogicalOpTransformer(gast.NodeTransformer):
             # gast.parse returns Module(body=[expr(value=...)])
             new_node = gast.parse(new_node_str).body[0].value
             return new_node
+        return node
 
     def visit_BoolOp(self, node):
         self.generic_visit(node)
@@ -102,12 +103,12 @@ class LogicalOpTransformer(gast.NodeTransformer):
             len(nodes))
         if len(nodes) > 2:
             # Creates logic_and/logic_or node recursively.
-            pre_assign_node = _create_node(nodes[:2], api_type)
+            pre_assign_node = self._create_bool_op_node(nodes[:2], api_type)
             nodes = [pre_assign_node] + nodes[2:]
         args = [ast_to_source_code(child) for child in nodes]
         new_node_str = "fluid.layers.logical_{}(x={}, y={})".format(
             api_type, args[0], args[1])
-        # gast.parse return Module(body=[expr(value=...)])
+        # gast.parse return Module(body=[expr(...)])
         new_node = gast.parse(new_node_str).body[0].value
         return new_node
 

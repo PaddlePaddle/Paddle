@@ -275,12 +275,9 @@ class NodeTestTransformer(gast.NodeTransformer):
             assign_name, assign_node = create_assign_node(logic_tensor_name,
                                                           new_node)
             self._new_assign_nodes.append(assign_node)
-
             return assign_name
-        else:
-            raise TypeError(
-                "Only supports 'not' syntax as unary op in control flow if statement."
-            )
+
+        return node
 
     def visit_BoolOp(self, node):
         for i, child in enumerate(node.values):

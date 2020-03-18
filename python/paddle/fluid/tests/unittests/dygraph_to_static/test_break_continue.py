@@ -87,6 +87,32 @@ def test_break_in_while(x):
     return x
 
 
+def test_break_continue_in_for(x):
+    x = fluid.dygraph.to_variable(x)
+    for i in range(1, 10, 1):
+        if i <= 4:
+            x += 1
+            continue
+        else:
+            break
+        x += 10086
+    return x
+
+
+def test_for_in_else(x):
+    x = fluid.dygraph.to_variable(x)
+    if False:
+        pass
+    else:
+        for i in range(0, 10):
+            x += 1
+            if i > 5:
+                break
+                x += 10086
+            x += i
+    return x
+
+
 class TestContinueInFor(unittest.TestCase):
     def setUp(self):
         self.input = np.zeros((1)).astype('int32')
@@ -133,6 +159,16 @@ class TestBreakInFor(TestContinueInFor):
 class TestBreakInForAtEnd(TestContinueInFor):
     def init_dygraph_func(self):
         self.dygraph_func = test_break_in_for_at_end
+
+
+class TestBreakContinueInFor(TestContinueInFor):
+    def init_dygraph_func(self):
+        self.dygraph_func = test_break_continue_in_for
+
+
+class TestForInElse(TestContinueInFor):
+    def init_dygraph_func(self):
+        self.dygraph_func = test_for_in_else
 
 
 class TestContinueInWhile(TestContinueInFor):

@@ -334,7 +334,7 @@ class BreakContinueTransformer(gast.NodeTransformer):
                        parent_node.body, cur_node, stmt_node):
             return True
         if hasattr(parent_node,
-                   "orelse") and slef._add_stmt_into_list_before_node(
+                   "orelse") and self._add_stmt_into_list_before_node(
                        parent_node.orelse, cur_node, stmt_node):
             return True
         return False
