@@ -169,6 +169,9 @@ class NameVisitor(gast.NodeVisitor):
         if self._is_call_func_name_node(node):
             self.generic_visit(node)
             return
+        if node.id == "False" or node.id == "True":
+            self.generic_visit(node)
+            return
 
         self.current_seen_vars.add(node)
         for loop_node in self.current_loop:
