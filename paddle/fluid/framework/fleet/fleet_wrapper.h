@@ -220,6 +220,8 @@ class FleetWrapper {
                              const std::vector<uint64_t>& feasign_list);
   // clear all models, release their memory
   void ClearModel();
+  // clear one table
+  void ClearOneTable(const uint64_t table_id);
   // shrink sparse table
   void ShrinkSparseTable(int table_id);
   // shrink dense table
