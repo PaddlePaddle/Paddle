@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 import collections
+import copy
 import six
 import numpy as np
 from ..framework import Variable
@@ -185,6 +186,24 @@ def map_structure(func, *structure):
     flat_structure = [flatten(s) for s in structure]
     entries = zip(*flat_structure)
     return pack_sequence_as(structure[0], [func(*x) for x in entries])
+
+
+def assert_with_mutable_vars(structure):
+    """
+    Confirm whether structure holds sequence like `list/dict`.
+    """
+    for s in structure:
+        if is_sequence(s):
+            return True
+    return False
+
+
+def copy_mutable_vars(structure):
+    """
+    Copy vars from sequence and remove mutable property.
+    """
+    flat_structure = copy.copy(flatten(structure))
+    return pack_sequence_as(structure, flat_structure)
 
 
 def _recursive_assert_same_structure(nest1, nest2, check_types):
