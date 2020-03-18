@@ -160,8 +160,7 @@ class SmoothL1LossGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("smooth_l1_loss_grad");
     op->SetInput("InsideWeight", this->Input("InsideWeight"));
     op->SetInput("OutsideWeight", this->Input("OutsideWeight"));
@@ -172,7 +171,6 @@ class SmoothL1LossGradMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
-    return std::unique_ptr<T>(op);
   }
 };
 

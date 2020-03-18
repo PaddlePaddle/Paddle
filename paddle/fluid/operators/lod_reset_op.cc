@@ -41,6 +41,20 @@ class LoDResetOp : public framework::OperatorWithKernel {
     if (append) {
       ctx->ShareLoD("X", /*->*/ "Out");
     }
+
+    if (ctx->HasInput("Y")) {
+      if (!ctx->IsRuntime()) {
+        ctx->SetLoDLevel("Out", std::max(ctx->GetLoDLevel("Y"), 1));
+      }
+    } else if (append) {
+      if (!ctx->IsRuntime()) {
+        ctx->SetLoDLevel("Out", std::max(ctx->GetLoDLevel("X") + 1, 1));
+      }
+    } else {
+      if (!ctx->IsRuntime()) {
+        ctx->SetLoDLevel("Out", 1);
+      }
+    }
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
   }
 
@@ -194,14 +208,12 @@ class LoDResetGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("lod_reset_grad");
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetInput("X", this->Input("X"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 

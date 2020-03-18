@@ -449,6 +449,14 @@ DEFINE_uint64(reallocate_gpu_memory_in_mb, 0ul,
               "size specified by this flag. Else Paddle will reallocate by "
               "FLAGS_fraction_of_gpu_memory_to_use");
 
+DEFINE_uint64(gpu_memory_limit_mb, 0UL,
+              "The maximum gpu memory limit that the process can allocate. "
+              "If it is equal to 0, there would be no limit and all gpu memory "
+              "would be available to the process. If it is larger than 0, "
+              "the process would raise out of memory error if the allocated "
+              "memory exceeds the limit even though there is available "
+              "memory on the gpu card. The unit is MB and default value is 0.");
+
 #endif
 
 /**

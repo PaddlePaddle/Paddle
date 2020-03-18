@@ -13,7 +13,8 @@
 # limitations under the License.
 
 # check no_grad_set is None
-NOT_CHECK_OP_LIST = []
+NOT_CHECK_OP_LIST = ['deformable_conv', 'row_conv']
+
 # TODO(Shixiaowei02): Check if the items do not need fix.
 # no_grad_set has value in NEED_TO_FIX_OP_LIST
 # yapf: disable
@@ -22,7 +23,6 @@ NEED_TO_FIX_OP_LIST = [
     'affine_grid',
     'backward',
     'batch_norm',
-    'conv_shift',
     'conv2d',
     'conv2d_transpose',
     'conv3d',
@@ -31,7 +31,6 @@ NEED_TO_FIX_OP_LIST = [
     'cross_entropy',
     'cross_entropy2',
     'data_norm',
-    'deformable_conv',
     'deformable_conv_v1',
     'depthwise_conv2d',
     'depthwise_conv2d_transpose',
@@ -61,9 +60,7 @@ NEED_TO_FIX_OP_LIST = [
     'matmul',
     'mul',
     'multiplex',
-    'prelu',
     'rank_loss',
-    'row_conv',
     'sequence_conv',
     'smooth_l1_loss',
     'spectral_norm'

@@ -77,6 +77,34 @@ class TestApiWhileLoop(unittest.TestCase):
             data = np.add(data, data_one)
         self.assertTrue(np.allclose(np.asarray(res[1]), data))
 
+    def test_var_dict(self):
+        def cond(i, ten, test_dict):
+            return layers.less_than(i, ten)
+
+        def body(i, ten, test_dict):
+            layers.assign(i, test_dict["test_key"])
+            i = layers.increment(i)
+            return [i, ten, test_dict]
+
+        main_program = Program()
+        startup_program = Program()
+        with program_guard(main_program, startup_program):
+            i = layers.zeros(shape=[1], dtype='int64')
+            ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
+            test_data = layers.fill_constant(shape=[1], dtype='int64', value=0)
+            test_dict = {"test_key": test_data}
+            i, ten, test_dict = layers.while_loop(cond, body,
+                                                  [i, ten, test_dict])
+        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        res = exe.run(main_program, fetch_list=[test_dict["test_key"]])
+        self.assertTrue(
+            np.allclose(
+                np.asarray(res[0]),
+                np.full(
+                    shape=(1), fill_value=9, dtype=np.int64)))
+
 
 class TestApiWhileLoop_Nested(unittest.TestCase):
     def test_nested_net(self):
@@ -311,7 +339,17 @@ class TestApiWhileLoop_Error(unittest.TestCase):
         def cond_returns_2d_tensor(i):
             return layers.less_than(i, ten_2d)
 
+        def cond_receives_two_args(i, ten):
+            return layers.less_than(i, ten)
+
         def body(i):
+            return layers.increment(i)
+
+        def body_returns_error_length(i):
+            i = layers.increment(i)
+            return [i, i]
+
+        def body_returns_error_type(i, ten):
             return layers.increment(i)
 
         main_program = Program()
@@ -366,6 +404,20 @@ class TestApiWhileLoop_Error(unittest.TestCase):
                 out = layers.while_loop(cond_returns_2d_tensor, body, [data_2d])
 
             self.assertRaises(TypeError, type_error_shape_cond_returns_2d)
+
+            # The length of `body` returns in Op(while_loop) must be same as `loop_vars`
+            def value_error_body_returns_error_length():
+                out = layers.while_loop(cond_returns_bool_tensor,
+                                        body_returns_error_length, [data])
+
+            self.assertRaises(ValueError, value_error_body_returns_error_length)
+
+            # The type of `body` returns in Op(while_loop) must be same as `loop_vars`
+            def value_error_body_returns_error_type():
+                out = layers.while_loop(cond_receives_two_args,
+                                        body_returns_error_type, [data, ten])
+
+            self.assertRaises(ValueError, value_error_body_returns_error_type)
 
 
 if __name__ == '__main__':

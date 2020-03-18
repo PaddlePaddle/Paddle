@@ -109,7 +109,7 @@ def sequence_conv(input,
             the same as input whether :attr:`padding` is set true or false. Because the length of
             input sequence may be shorter than :attr:`filter\_size`, which will cause the convolution
             result to not be computed correctly. These padding data will not be trainable or updated
-            while trainnig. Default: True.
+            while training. Default: True.
         padding_start (int): It is used to indicate the start index for padding the input
             sequence, which can be negative. The negative number means to pad
             :attr:`|padding_start|` time-steps of all-zero data at the beginning of each instance.
@@ -626,7 +626,7 @@ def sequence_expand(x, y, ref_level=-1, name=None):
         ref_level: 0
 
         then output is a 1-level LoDTensor out:
-            out.lod =  [[2,        2,        2,        2]]    #lod based on offfset
+            out.lod =  [[2,        2,        2,        2]]    #lod based on offset
             out.data = [[a], [b], [a], [b], [c], [d], [c], [d]]
             out.dims = [8, 1]
 
@@ -844,7 +844,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
          to ``maxlen``). The padding value is defined by ``pad_value``, and will be \
         appended to the tail of sequences. The result is a Python tuple ``(Out, Length)``: \
         the LodTensor ``Out`` is the padded sequences, and LodTensor ``Length`` is \
-        the length information of input sequences. For removing paddding data (unpadding \
+        the length information of input sequences. For removing padding data (unpadding \
 	operation), See :ref:`api_fluid_layers_sequence_unpad` .
 
     Please note that the input ``x`` should be LodTensor.
@@ -869,7 +869,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
             x.data = [[a1,a2],[b1,b2],[c1,c2],[d1,d2],[e1,e2]]
         pad_value:
             pad_value.data = [0]
-        defualt maxlen = None, (the virtual value is 3, according to the shape of x)
+        default maxlen = None, (the virtual value is 3, according to the shape of x)
 
         the output tuple (Out, Length):
             Out.data = [[[a1,a2],[b1,b2],[0,0]],[[c1,c2],[d1,d2],[e1,e2]]]
@@ -881,7 +881,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
             x.data = [[a1,a2],[b1,b2],[c1,c2],[d1,d2],[e1,e2]]
         pad_value:
             pad_value.data = [p1,p2]
-        defualt maxlen = None, (the virtual value is 3)
+        default maxlen = None, (the virtual value is 3)
 
         get tuple (Out, Length):
             Out.data = [[[a1,a2],[b1,b2],[p1,p2]],[[c1,c2],[d1,d2],[e1,e2]]]
@@ -891,7 +891,7 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
 
     Args:
         x (Variable): Input 1-level LodTensor with dims ``[M, K]``. The batch \
-            size is described by lod infor (the number of sequnces ). \
+            size is described by lod infor (the number of sequences ). \
             The data type should be float32, float64, int8, int32 or int64.
         pad_value (Variable): Padding value. It can be a scalar or a 1D tensor \
             with length ``K``. If it's a scalar, it will be automatically broadcasted \
@@ -962,7 +962,7 @@ def sequence_unpad(x, length, name=None):
 		      [ 6.0,  7.0,  8.0,  9.0, 10.0],
 		      [11.0, 12.0, 13.0, 14.0, 15.0]],
 
-	in which there are 3 sequences padded to length 5, and the acutal length
+	in which there are 3 sequences padded to length 5, and the actual length
 	specified by input Variable **length**:
 
 	    length.data = [2, 3, 4],
@@ -1077,7 +1077,7 @@ def sequence_scatter(input, index, updates, name=None):
     
     **The index and updates parameters of the OP must be LoDTensor.**
      
-    Plus the updates data to the correspoding input according to the index.
+    Plus the updates data to the corresponding input according to the index.
  
     The updated algorithm is as follows: output[instance_index][index [pos]] = input[instance_index][index [pos]] +  updates[pos], 
     where instance_idx is the K sample corresponding to pos in batch.

@@ -25,13 +25,13 @@ OperationMap* OperationMap::map = nullptr;
 OperationMap::OperationMap() {
   InsertUnaryElementwiseOperations();
   InsertBinaryElementwiseOperations();
+  InsertMultivariateElementwiseOperations();
 }
 
-std::unordered_set<std::string> OperationMap::Find(int type, int num_operands) {
+std::unordered_set<std::string> OperationMap::Find(int type) {
   std::unordered_set<std::string> res;
   for (auto& t : operations_) {
-    if ((t.second.type == type) &&
-        (num_operands < 0 || t.second.num_operands == num_operands)) {
+    if (t.second.type == type) {
       res.insert(t.first);
     }
   }
@@ -91,7 +91,7 @@ void OperationMap::InsertUnaryElementwiseOperations() {
   // relu:
   //  out = f(x) = x > 0 ? x : 0
   //  dx = dout * (out > 0 ? 1 : 0)
-  insert_handler("relu", "real_max(${0}, 0)", {"${1} > 0 ? ${2} : 0"});
+  insert_handler("relu", "${0} > 0 ? ${0} : 0", {"${1} > 0 ? ${2} : 0"});
   // sigmoid:
   //  out = f(x) = 1.0 / (1.0 + exp(-x))
   //  dx = dout * out * (1 - out)
@@ -102,6 +102,13 @@ void OperationMap::InsertUnaryElementwiseOperations() {
   //  dx = dout * (1 - out * out)
   insert_handler("tanh", "2.0 / (1.0 + real_exp(-2.0 * ${0})) - 1.0",
                  {"${2} * (1.0 - ${1} * ${1})"});
+
+  // cast
+  // out = static_cast<T>(d)
+  // dx = static_cast<T>(d_out)
+  // TODO(wangchaochaohu): This is not the compelete definition of
+  // cast Op, We need refine it later.
+  insert_handler("cast", "${0}", {"${0}"});
 }
 
 void OperationMap::InsertBinaryElementwiseOperations() {
@@ -133,9 +140,38 @@ void OperationMap::InsertBinaryElementwiseOperations() {
   //  dy = dout * x
   insert_handler("elementwise_mul", "${0} * ${1}",
                  {"${3} * ${1}", "${3} * ${0}"});
-  insert_handler("elementwise_div", "${0} / ${1}", {});
-  insert_handler("elementwise_min", "real_min(${0}, ${1})", {});
-  insert_handler("elementwise_max", "real_max(${0}, ${1})", {});
+  // elementwise_div:
+  //  out = x / y
+  //  dx = dout / y
+  //  dy = - dout * out / y
+  insert_handler("elementwise_div", "${0} / ${1}",
+                 {"${3} / ${1}", "- ${3} * ${2} / ${1}"});
+  // elementwise_min:
+  //  out = x < y ? x : y
+  //  dx = dout * (x < y)
+  //  dy = dout * (x >= y)
+  insert_handler("elementwise_min", "${0} < ${1} ? ${0} : ${1}",
+                 {"${3} * (${0} < ${1})", "${3} * (${0} >= ${1})"});
+  // elementwise_max:
+  //  out = x > y ? x : y
+  //  dx = dout * (x > y)
+  //  dy = dout * (x <= y)
+  insert_handler("elementwise_max", "${0} > ${1} ? ${0} : ${1}",
+                 {"${3} * (${0} > ${1})", "${3} * (${0} <= ${1})"});
+}
+
+void OperationMap::InsertMultivariateElementwiseOperations() {
+  auto insert_handler = [&](std::string op_type, std::string expr,
+                            std::vector<std::string> grad_exprs) {
+    int type = 0;
+    int num_oprands = -1;
+    Insert(type, num_oprands, op_type, expr, grad_exprs, {"X"}, {"Out"});
+  };
+
+  // here [] represent the number of input is positive(>=0).
+  // if input list size of Sum Op is 3, It will expand as
+  // ${0} + ${1} + ${2}
+  insert_handler("sum", "${0}[ + ${?}]", {});
 }
 
 }  // namespace fusion_group

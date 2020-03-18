@@ -15,11 +15,9 @@ limitations under the License. */
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <fstream>
-#include <iostream>
 #include <string>
 #include <vector>
-#include "paddle/fluid/inference/capi/c_api.h"
+#include "paddle/fluid/inference/capi/paddle_c_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
@@ -71,7 +69,7 @@ void zero_copy_run() {
   delete[] outputs;
 }
 
-TEST(PD_ZeroCopyRun, zero_copy_run) { zero_copy_run(); }
+TEST(PD_PredictorZeroCopyRun, zero_copy_run) { zero_copy_run(); }
 
 #ifdef PADDLE_WITH_MKLDNN
 TEST(PD_AnalysisConfig, profile_mkldnn) {

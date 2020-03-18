@@ -137,7 +137,7 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
                  "model version %ld is not supported.",
                  main_program->Version());
 
-  // model_from_memory is false in seperate parameters.
+  // model_from_memory is false in separate parameters.
   LoadPersistables(executor, scope, *main_program, dirname, "",
                    false /* model_from_memory */);
   return main_program;

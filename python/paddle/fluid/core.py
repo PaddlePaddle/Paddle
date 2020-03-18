@@ -189,6 +189,9 @@ if avx_supported():
             from .core_avx import _erase_process_pid
             from .core_avx import _set_process_signal_handler
             from .core_avx import _throw_error_if_process_failed
+            from .core_avx import _convert_to_tensor_list
+            from .core_avx import _cleanup_mmap_fds
+            from .core_avx import _remove_tensor_list_mmap_fds
     except Exception as e:
         if has_avx_core:
             raise e
@@ -230,6 +233,9 @@ if load_noavx:
             from .core_noavx import _erase_process_pid
             from .core_noavx import _set_process_signal_handler
             from .core_noavx import _throw_error_if_process_failed
+            from .core_noavx import _convert_to_tensor_list
+            from .core_noavx import _cleanup_mmap_fds
+            from .core_noavx import _remove_tensor_list_mmap_fds
     except Exception as e:
         if has_noavx_core:
             sys.stderr.write(

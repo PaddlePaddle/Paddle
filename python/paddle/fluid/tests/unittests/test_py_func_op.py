@@ -34,6 +34,10 @@ def dummy_func_with_no_output(x):
     pass
 
 
+def dummy_func_with_multi_input_output(x, y):
+    return np.array(x), np.array(y)
+
+
 def tanh(x):
     return np.tanh(x)
 
@@ -108,6 +112,24 @@ def simple_fc_net(img, label, use_py_func_op):
             func=dummy_func_with_no_input, x=None, out=dummy_var)
         loss += dummy_var
         fluid.layers.py_func(func=dummy_func_with_no_output, x=loss, out=None)
+
+        loss_out = fluid.default_main_program().current_block().create_var(
+            dtype='float32', shape=[-1, 1])
+        dummy_var_out = fluid.default_main_program().current_block().create_var(
+            dtype='float32', shape=[1])
+        fluid.layers.py_func(
+            func=dummy_func_with_multi_input_output,
+            x=(loss, dummy_var),
+            out=(loss_out, dummy_var_out))
+        assert loss == loss_out and dummy_var == dummy_var_out, \
+            "py_func failed with multi input and output"
+
+        fluid.layers.py_func(
+            func=dummy_func_with_multi_input_output,
+            x=[loss, dummy_var],
+            out=[loss_out, dummy_var_out])
+        assert loss == loss_out and dummy_var == dummy_var_out, \
+            "py_func failed with multi input and output"
 
     loss = fluid.layers.mean(loss)
     return loss

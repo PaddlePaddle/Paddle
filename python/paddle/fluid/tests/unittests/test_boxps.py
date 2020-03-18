@@ -90,7 +90,6 @@ class TestBoxPSPreload(unittest.TestCase):
         y = fluid.layers.data(name='y', shape=[1], dtype='int64', lod_level=0)
         emb_x, emb_y = _pull_box_sparse([x, y], size=2)
         emb_xp = _pull_box_sparse(x, size=2)
-        layers.Print(emb_xp)
         concat = layers.concat([emb_x, emb_y], axis=1)
         fc = layers.fc(input=concat,
                        name="fc",
@@ -102,7 +101,6 @@ class TestBoxPSPreload(unittest.TestCase):
         place = fluid.CPUPlace() if is_cpu or not core.is_compiled_with_cuda(
         ) else fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
-        optimizer = fluid.optimizer.SGD(learning_rate=0.5)
         batch_size = 2
 
         def binary_print(slot, fout):
@@ -125,6 +123,7 @@ class TestBoxPSPreload(unittest.TestCase):
 
         def create_dataset():
             dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
+            dataset.set_date("20190930")
             dataset.set_use_var([x, y])
             dataset.set_batch_size(2)
             dataset.set_thread(1)
@@ -134,6 +133,14 @@ class TestBoxPSPreload(unittest.TestCase):
         datasets = []
         datasets.append(create_dataset())
         datasets.append(create_dataset())
+        optimizer = fluid.optimizer.SGD(learning_rate=0.5)
+        optimizer = fluid.optimizer.PipelineOptimizer(
+            optimizer,
+            cut_list=[],
+            place_list=[place],
+            concurrency_list=[1],
+            queue_size=1,
+            sync_steps=-1)
         optimizer.minimize(loss)
         exe.run(fluid.default_startup_program())
         datasets[0].load_into_memory()
@@ -149,7 +156,8 @@ class TestBoxPSPreload(unittest.TestCase):
         exe.train_from_dataset(
             program=fluid.default_main_program(),
             dataset=datasets[1],
-            print_period=1)
+            print_period=1,
+            debug=True)
         datasets[1].end_pass()
         for f in filelist:
             os.remove(f)

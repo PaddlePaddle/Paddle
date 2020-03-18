@@ -124,13 +124,6 @@ function(copy_part_of_thrid_party TARGET DST)
                 DSTS ${dst_dir} ${dst_dir})
     endif ()
 
-    if (TENSORRT_FOUND)
-        set(dst_dir "${DST}/third_party/install/tensorrt")
-        copy(${TARGET}
-                SRCS ${TENSORRT_INCLUDE_DIR}/Nv*.h ${TENSORRT_LIBRARY_DIR}/*nvinfer*
-                DSTS ${dst_dir}/include ${dst_dir}/lib)
-    endif ()
-
     if (LITE_BINARY_DIR)
         set(dst_dir "${DST}/third_party/install/lite")
         copy(${TARGET}
@@ -166,6 +159,10 @@ copy(inference_lib_dist
         SRCS  ${src_dir}/inference/api/paddle_*.h ${paddle_fluid_lib}
         DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib)
 
+copy(inference_lib_dist
+        SRCS  ${CMAKE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
+        DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include/internal)
+
 # CAPI inference library for only inference
 set(FLUID_INFERENCE_C_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_inference_c_install_dir" CACHE STRING
 "A path setting CAPI fluid inference shared")
@@ -179,7 +176,7 @@ else(WIN32)
 endif(WIN32)
 
 copy(inference_lib_dist
-        SRCS  ${src_dir}/inference/capi/c_api.h  ${paddle_fluid_c_lib}
+        SRCS  ${src_dir}/inference/capi/paddle_c_api.h  ${paddle_fluid_c_lib}
         DSTS  ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/include ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/lib)
 
 # fluid library for both train and inference
@@ -283,8 +280,7 @@ function(version version_file)
     endif()
     if(TENSORRT_FOUND)
         file(APPEND ${version_file}
-                "WITH_TENSORRT: ${TENSORRT_FOUND}\n"
-                "TENSORRT_ROOT: ${TENSORRT_ROOT}\n")
+                "WITH_TENSORRT: ${TENSORRT_FOUND}\n")
     endif()
     
 endfunction()

@@ -50,7 +50,7 @@ class Conv2D(layers.Layer):
     C will equal the number of input feature map divided by the groups.
     Please refer to UFLDL's `convolution
     <http://ufldl.stanford.edu/tutorial/supervised/FeatureExtractionUsingConvolution/>`_
-    for more detials.
+    for more details.
     If bias attribution and activation type are provided, bias is added to the
     output of the convolution, and the corresponding activation function is
     applied to the final result.
@@ -923,14 +923,13 @@ class Linear(layers.Layer):
 
     def forward(self, input):
         attrs = {
-            "transpose_X": False,
-            "transpose_Y": False,
-            "alpha": 1,
+            "x_num_col_dims": len(input.shape) - 1,
+            "y_num_col_dims": 1,
         }
         inputs = {"X": [input], "Y": [self.weight]}
 
         if in_dygraph_mode():
-            outs = core.ops.matmul(inputs, attrs)
+            outs = core.ops.mul(inputs, attrs)
             pre_bias = outs['Out'][0]
 
             pre_act = dygraph_utils._append_bias_in_dygraph(
@@ -941,7 +940,7 @@ class Linear(layers.Layer):
 
         tmp = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
-            type="matmul", inputs=inputs, outputs={"Out": tmp}, attrs=attrs)
+            type="mul", inputs=inputs, outputs={"Out": tmp}, attrs=attrs)
         if self.bias:
             pre_activation = self._helper.create_variable_for_type_inference(
                 dtype=self._dtype)
@@ -1004,7 +1003,7 @@ class BatchNorm(layers.Layer):
 
     Parameters:
         num_channels(int): Indicate the number of channels of the input ``Tensor``.
-        act(str, optional): Activation to be applied to the output of batch normalizaiton. Default: None.
+        act(str, optional): Activation to be applied to the output of batch normalization. Default: None.
         is_test (bool, optional): A flag indicating whether it is in test phrase or not. Default: False.
         momentum(float, optional): The value used for the moving_mean and moving_var computation. Default: 0.9.
         epsilon(float, optional): The small value added to the variance to prevent division by zero. Default: 1e-5.
@@ -1243,7 +1242,7 @@ class Embedding(layers.Layer):
             default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` . In addition,
             user-defined or pre-trained word vectors can be loaded with the :attr:`param_attr` parameter. 
             The local word vector needs to be transformed into numpy format, and the shape of local word
-            vector shoud be consistent with :attr:`size` . Then :ref:`api_fluid_initializer_NumpyArrayInitializer`
+            vector should be consistent with :attr:`size` . Then :ref:`api_fluid_initializer_NumpyArrayInitializer`
             is used to load custom or pre-trained word vectors. See code example 2 for details.
         dtype(np.dtype|core.VarDesc.VarType|str): It refers to the data type of output Tensor.
             It must be "float32" or "float64". Default: "float32".
@@ -1383,7 +1382,7 @@ class LayerNorm(layers.Layer):
             omitted. If :attr:`shift` is True and :attr:`param_attr` is None,
             a default :code:`ParamAttr` would be added as bias. The
             :attr:`bias_attr` is initialized as 0 if it is added. Default: None.
-        act(str, optional): Activation to be applied to the output of layer normalizaiton.
+        act(str, optional): Activation to be applied to the output of layer normalization.
                   Default: None.
         dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32".
 
@@ -1436,7 +1435,7 @@ class LayerNorm(layers.Layer):
                 default_initializer=Constant(1.0))
         else:
             if self._param_attr:
-                logging.warn("param_attr are only avaliable with scale is True")
+                logging.warn("param_attr are only available with scale is True")
 
         if self._shift:
             assert self._bias_attr is not False
@@ -1447,7 +1446,7 @@ class LayerNorm(layers.Layer):
                 is_bias=True)
         else:
             if self._bias_attr:
-                logging.warn("bias_attr are only avaliable with shift is True")
+                logging.warn("bias_attr are only available with shift is True")
 
     def forward(self, input):
         input_shape = list(input.shape)
@@ -1703,7 +1702,7 @@ class NCE(layers.Layer):
              will create ParamAttr as bias_attr. If the Initializer of the bias_attr
              is not set, the bias is initialized zero. Default: None.
         num_neg_samples (int, optional): The number of negative classes. The default value is 10.
-        sampler (str, optional): The sampler used to sample class from negtive classes.
+        sampler (str, optional): The sampler used to sample class from negative classes.
                        It can be 'uniform', 'log_uniform' or 'custom_dist'.
                        default: 'uniform'.
         custom_dist (float[], optional): A float[] with size=num_total_classes.
@@ -2545,7 +2544,7 @@ class GroupNorm(layers.Layer):
         bias_attr(ParamAttr, optional): The parameter attribute for the learnable
                                         bias :math:`b`. If it is set to False, no bias will be added to the output units.
                                         If it is set to None, the bias is initialized zero. Default: None.
-        act(str, optional): Activation to be applied to the output of group normalizaiton. Default: None.
+        act(str, optional): Activation to be applied to the output of group normalization. Default: None.
         data_layout(str, optional): Specify the input data format. Only NCHW is supported. Default: NCHW.
 
     Returns:
@@ -2641,7 +2640,7 @@ class SpectralNorm(layers.Layer):
     and W is the product result of remaining dimensions.
 
     Step 2:
-    :attr:`power_iters` shoule be a positive interger, do following
+    :attr:`power_iters` should be a positive integer, do following
     calculations with U and V for :attr:`power_iters` rounds.
 
     .. math::

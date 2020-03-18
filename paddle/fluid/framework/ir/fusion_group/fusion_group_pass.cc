@@ -32,8 +32,7 @@ void FusionGroupPass::ApplyImpl(ir::Graph* graph) const {
   if (Get<bool>("use_gpu")) {
     fusion_group::OperationMap::Init();
     int num_elementwise_groups = DetectFusionGroup(graph, 0);
-    VLOG(3) << "Detect " << num_elementwise_groups
-            << " elementwise fusion groups.";
+    AddStatis(num_elementwise_groups);
   }
 }
 
@@ -49,23 +48,23 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
   size_t min_subgraph_size = 2;
   bool save_intermediate_out = true;
   for (auto& vec : subgraphs) {
-    if (vec.size() >= min_subgraph_size) {
-      std::string func_name = "fused_elementwise_" + std::to_string(index++);
-      fusion_group::SubGraph subgraph(
-          type, func_name, save_intermediate_out,
-          std::unordered_set<Node*>(vec.begin(), vec.end()));
-      VLOG(3) << "subgraph: {\n"
-              << DebugString(subgraph.SortedNodes()) << "}\n";
+    fusion_group::SubGraph subgraph(
+        type, "", save_intermediate_out,
+        std::unordered_set<Node*>(vec.begin(), vec.end()));
+    VLOG(3) << "subgraph: {\n" << DebugString(subgraph.SortedNodes()) << "}\n";
 
-      GenerateCode(&subgraph);
-      InsertFusionGroupOp(graph, &subgraph);
-      num_subgraphs++;
+    if (subgraph.IsValid(min_subgraph_size)) {
+      subgraph.SetFuncName("fused_elementwise_" + std::to_string(index++));
+      if (GenerateCode(&subgraph)) {
+        InsertFusionGroupOp(graph, &subgraph);
+        num_subgraphs++;
+      }
     }
   }
   return num_subgraphs;
 }
 
-void FusionGroupPass::GenerateCode(fusion_group::SubGraph* subgraph) const {
+bool FusionGroupPass::GenerateCode(fusion_group::SubGraph* subgraph) const {
   fusion_group::CodeGenerator code_generator;
   std::string code_str = code_generator.Generate(subgraph);
   VLOG(3) << code_str;
@@ -74,10 +73,12 @@ void FusionGroupPass::GenerateCode(fusion_group::SubGraph* subgraph) const {
   platform::CUDAPlace place = platform::CUDAPlace(0);
   std::unique_ptr<platform::CUDADeviceCode> device_code(
       new platform::CUDADeviceCode(place, subgraph->GetFuncName(), code_str));
-  device_code->Compile();
-
-  platform::DeviceCodePool& pool = platform::DeviceCodePool::Init({place});
-  pool.Set(std::move(device_code));
+  bool is_compiled = device_code->Compile();
+  if (is_compiled) {
+    platform::DeviceCodePool& pool = platform::DeviceCodePool::Init({place});
+    pool.Set(std::move(device_code));
+  }
+  return is_compiled;
 }
 
 static int ExtractOpRole(fusion_group::SubGraph* subgraph) {
@@ -109,18 +110,25 @@ void FusionGroupPass::InsertFusionGroupOp(
   op_desc.SetType("fusion_group");
 
   std::vector<std::string> input_names;
+  std::vector<std::string> inputs_data_types;
   for (auto* n : input_vars_of_subgraph) {
     input_names.push_back(n->Name());
+    inputs_data_types.push_back(DataTypeToString(n->Var()->GetDataType()));
     external_nodes.insert(n);
   }
   op_desc.SetInput("Inputs", input_names);
 
   std::vector<std::string> output_names;
+  std::vector<std::string> outs_data_types;
   for (auto* n : output_vars_of_subgraph) {
     output_names.push_back(n->Name());
+    outs_data_types.push_back(DataTypeToString(n->Var()->GetDataType()));
     external_nodes.insert(n);
   }
+
   op_desc.SetOutput("Outs", output_names);
+  op_desc.SetAttr("inputs_data_type", inputs_data_types);
+  op_desc.SetAttr("outs_data_type", outs_data_types);
   op_desc.SetAttr("type", subgraph->GetType());
   op_desc.SetAttr("func_name", subgraph->GetFuncName());
   op_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
@@ -130,6 +138,7 @@ void FusionGroupPass::InsertFusionGroupOp(
   for (auto* in : input_vars_of_subgraph) {
     IR_NODE_LINK_TO(in, fusion_group_node);
   }
+
   for (auto* out : output_vars_of_subgraph) {
     IR_NODE_LINK_TO(fusion_group_node, out);
   }

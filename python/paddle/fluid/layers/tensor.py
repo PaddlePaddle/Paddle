@@ -256,9 +256,11 @@ def concat(input, axis=0, name=None):
 
     if in_dygraph_mode():
         inputs = {'X': input}
-        if not isinstance(axis, int):
-            raise TypeError(
-                "Input 'axis' in concat must be int in Dygraph mode.")
+        if isinstance(axis, Variable):
+            axis = axis.numpy()
+            assert axis.shape == (
+                1, ), "axis of type Variable should have shape [1]"
+            axis = axis[0]
         attrs = {'axis': axis}
         outs = core.ops.concat(inputs, attrs)
         return outs['Out'][0]
@@ -273,18 +275,32 @@ def concat(input, axis=0, name=None):
             x, 'input[' + str(id) + ']',
             ['float16', 'float32', 'float64', 'int32', 'int64'], 'concat')
     check_type(axis, 'axis', (int, Variable), 'concat')
-    inputs = {'X': input}
-    attrs = {}
-    if isinstance(axis, Variable):
-        axis.stop_gradient = True
-        inputs['AxisTensor'] = axis
-    else:
-        attrs['axis'] = axis
 
     helper = LayerHelper('concat', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    helper.append_op(
-        type='concat', inputs=inputs, outputs={'Out': [out]}, attrs=attrs)
+
+    if input[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        assert len(input) == 1, "If the elements of 'input' in concat are Variable(LoDTensorArray), " \
+                            "number of the elements must be 1, but received %s." % len(x)
+        out_index = helper.create_variable_for_type_inference(dtype="int32")
+        helper.append_op(
+            type='tensor_array_to_tensor',
+            inputs={'X': input[0]},
+            outputs={'Out': [out],
+                     'OutIndex': [out_index]},
+            attrs={'axis': axis,
+                   'use_stack': False})
+    else:
+        inputs = {'X': input}
+        attrs = {}
+        if isinstance(axis, Variable):
+            axis.stop_gradient = True
+            inputs['AxisTensor'] = axis
+        else:
+            attrs['axis'] = axis
+
+        helper.append_op(
+            type='concat', inputs=inputs, outputs={'Out': [out]}, attrs=attrs)
     return out
 
 
@@ -512,9 +528,9 @@ def assign(input, output=None):
 def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     """
     This OP creates a Tensor with specified `shape` and `dtype`, and
-    initializes it with a constant specifed by `value`.
+    initializes it with a constant specified by `value`.
 
-    The attribute `stop_gradient` of the created Tensor is setted to True.
+    The attribute `stop_gradient` of the created Tensor is set to True.
 
     Args:
         shape(list|tuple|Variable): Shape of the Tensor to be created.
@@ -524,7 +540,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output tensor which can
             be float16, float32, float64, int32, int64.
         value(float): The constant value used to initialize the Tensor to be created.
-        force_cpu(True): data should be on CPU if it's true, defalut value is False.
+        force_cpu(True): data should be on CPU if it's true, default value is False.
         out(Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
@@ -565,15 +581,12 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
 
     if in_dygraph_mode():
         if isinstance(shape, (list, tuple)):
-            if utils._contain_var(shape):
-                raise TypeError(
-                    "The type of 'shape' in fill_constant must be list[int] or tuple(int) in Dygraph mode, but "
-                    "received %s, which contains Variable." % type(shape))
-            attrs['shape'] = shape
+            shape = list(
+                map(lambda x: x.numpy()[0] if isinstance(x, Variable) else x,
+                    shape))
         else:
-            raise TypeError(
-                "The type of 'shape' in fill_constant must be list[int] or tuple(int) in Dygraph mode, but "
-                "received %s." % type(shape))
+            shape = list(shape.numpy().astype(int))
+        attrs['shape'] = shape
         if out is None:
             out = _varbase_creator(dtype=dtype)
         attrs['dtype'] = out.dtype
@@ -668,7 +681,7 @@ def fill_constant_batch_size_like(input,
                                   output_dim_idx=0,
                                   force_cpu=False):
     """
-    This OP creates a Tesnor accroding the shape and dtype, and initializes the
+    This OP creates a Tesnor according the shape and dtype, and initializes the
     Tensor with the constants provided in ``value``. When the input is LoDTensor
     and the input_dim_idx is 0, the output_dim_idx dimension is set to the value
     of the batch_size input by the input, the Stop_gradient attribute of the created
@@ -686,7 +699,7 @@ def fill_constant_batch_size_like(input,
             The default value is 0.
         output_dim_idx(int): Used to specify which dimension of Tensor is created to be set
             the value of batch_size of input Tensor. The default value is 0.
-        force_cpu(bool): data should be on CPU if it's true, defalut value is False.
+        force_cpu(bool): data should be on CPU if it's true, default value is False.
 
     Returns:
         Variable: Tensor which will be created according to dtype.
@@ -780,6 +793,7 @@ def argmin(x, axis=0):
         inputs={'X': x},
         outputs={'Out': [out]},
         attrs={'axis': axis})
+    out.stop_gradient = True
     return out
 
 
@@ -839,6 +853,7 @@ def argmax(x, axis=0):
         inputs={'X': x},
         outputs={'Out': [out]},
         attrs={'axis': axis})
+    out.stop_gradient = True
     return out
 
 
@@ -1077,7 +1092,7 @@ def save_combine(x, file_path, overwrite=True):
 
 def load_combine(out, file_path):
     """
-    Loads a list of vairables from a single file.
+    Loads a list of variable from a single file.
 
     Args:
         out(list): The list of variables to be read from the disk file.
@@ -1286,7 +1301,7 @@ def zeros_like(x, out=None):
         x(Variable): The input tensor which specifies shape and dtype, the input data dtype could be bool, float32, float64, int32, int64.
         out(Variable, optional): If is :attr:`None` , the op will create the variable as output, the data type and shape of \
             this variable will be same as input :attr:`x`. If is a tensor, the data type and shape need to be same as input :attr:`x`. 
-            The defalut value is :attr:`None` .
+            The default value is :attr:`None` .
 
     Returns:
         Variable: The N-D tensor, the element in tensor is related to input data type, if the input data type is bool, \

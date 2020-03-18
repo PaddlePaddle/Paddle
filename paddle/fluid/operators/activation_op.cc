@@ -68,8 +68,7 @@ class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
@@ -86,8 +85,6 @@ class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
         static_cast<int>(ActBwdOpFwdDeps::kDepOut)) {
       op->SetInput("Out", this->Output("Out"));
     }
-
-    return op;
   }
 };
 
@@ -185,13 +182,6 @@ UNUSED constexpr char ReluDoc[] = R"DOC(
 Relu Activation Operator.
 
 $out = \max(x, 0)$
-
-)DOC";
-
-UNUSED constexpr char GeluDoc[] = R"DOC(
-Gelu Activation Operator.
-
-$out = \\frac{1 + erf(\\frac{x}{\\sqrt{2}})}{2} x$
 
 )DOC";
 
@@ -638,7 +628,6 @@ REGISTER_ACTIVATION_OP_MAKER(Sigmoid, SigmoidDoc);
 REGISTER_ACTIVATION_OP_MAKER(LogSigmoid, LogSigmoidDoc);
 REGISTER_ACTIVATION_OP_MAKER(Exp, ExpDoc);
 REGISTER_ACTIVATION_OP_MAKER(Relu, ReluDoc);
-REGISTER_ACTIVATION_OP_MAKER(Gelu, GeluDoc);
 REGISTER_ACTIVATION_OP_MAKER(Tanh, TanhDoc);
 REGISTER_ACTIVATION_OP_MAKER(TanhShrink, TanhShrinkDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sqrt, SqrtDoc);
@@ -727,8 +716,7 @@ class ReluDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
   using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("relu_grad_grad");
     // input1: Out
     op->SetInput("Out", this->Input("Out"));
@@ -737,7 +725,6 @@ class ReluDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
     // output: ddy
     op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
-    return std::unique_ptr<T>(op);
   }
 };
 
@@ -750,8 +737,7 @@ class LeakyReluDoubleGradMaker
   using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("leaky_relu_grad_grad");
     // input1: Out
     op->SetInput("Out", this->Input("Out"));
@@ -760,7 +746,6 @@ class LeakyReluDoubleGradMaker
     op->SetAttrMap(this->Attrs());
     // Out@GRAD@GRAD: ddy
     op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
-    return std::unique_ptr<T>(op);
   }
 };
 
@@ -772,8 +757,7 @@ class ELUDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
   using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("elu_grad_grad");
 
     op->SetInput("X", this->Input("X"));
@@ -785,7 +769,6 @@ class ELUDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
     // Out@GRAD@GRAD: ddy
     op->SetOutput("DX", this->InputGrad("X"));
     op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
-    return std::unique_ptr<T>(op);
   }
 };
 
@@ -797,8 +780,7 @@ class SqrtDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
   using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("sqrt_grad_grad");
     op->SetInput("Out", this->Input("Out"));
     op->SetInput("DX", this->Output(framework::GradVarName("X")));
@@ -806,7 +788,6 @@ class SqrtDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
     op->SetOutput("DOut", this->InputGrad("Out"));
     op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
-    return std::unique_ptr<T>(op);
   }
 };
 
@@ -818,8 +799,7 @@ class SquareDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
   using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("square_grad_grad");
     op->SetInput("X", this->Input("X"));
     // Out@GRAD: dy
@@ -833,7 +813,6 @@ class SquareDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
     op->SetOutput("DX", this->InputGrad("X"));
     // Out@GRAD@GRAD: ddy
     op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
-    return std::unique_ptr<T>(op);
   }
 };
 
@@ -849,16 +828,13 @@ class PowGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("pow_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetInput("FactorTensor", this->Input("FactorTensor"));
     op->SetAttrMap(this->Attrs());
-
-    return op;
   }
 };
 class PowOp : public framework::OperatorWithKernel {

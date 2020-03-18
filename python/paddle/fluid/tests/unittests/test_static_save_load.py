@@ -285,7 +285,7 @@ class TestSaveLoadBase(unittest.TestCase):
                 if isinstance(var, framework.Parameter) or var.persistable:
                     t = np.array(fluid.global_scope().find_var(var.name)
                                  .get_tensor())
-                    # make sure all the paramerter or optimzier var have been update
+                    # make sure all the paramerter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
@@ -299,7 +299,7 @@ class TestSaveLoadBase(unittest.TestCase):
 
                     new_t = np.array(fluid.global_scope().find_var(var.name)
                                      .get_tensor())
-                    # make sure all the paramerter or optimzier var have been set to zero
+                    # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             fluid.load(main_program, "./test_1.pdparams", exe)
@@ -394,7 +394,7 @@ class TestSaveLoadPartial(unittest.TestCase):
                 if isinstance(var, framework.Parameter) or var.persistable:
                     t = np.array(fluid.global_scope().find_var(var.name)
                                  .get_tensor())
-                    # make sure all the paramerter or optimzier var have been update
+                    # make sure all the paramerter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
@@ -408,7 +408,7 @@ class TestSaveLoadPartial(unittest.TestCase):
 
                     new_t = np.array(fluid.global_scope().find_var(var.name)
                                      .get_tensor())
-                    # make sure all the paramerter or optimzier var have been set to zero
+                    # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             fluid.load(test_program, "./test_1.pdopt", None)
@@ -496,7 +496,7 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
                 if isinstance(var, framework.Parameter) or var.persistable:
                     t = np.array(fluid.global_scope().find_var(var.name)
                                  .get_tensor())
-                    # make sure all the paramerter or optimzier var have been update
+                    # make sure all the paramerter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
@@ -510,7 +510,7 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
 
                     new_t = np.array(fluid.global_scope().find_var(var.name)
                                      .get_tensor())
-                    # make sure all the paramerter or optimzier var have been set to zero
+                    # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             fluid.load(main_program, "./test_1", exe)
@@ -605,7 +605,7 @@ class TestProgramStatePartial(unittest.TestCase):
                 if isinstance(var, framework.Parameter) or var.persistable:
                     t = np.array(fluid.global_scope().find_var(var.name)
                                  .get_tensor())
-                    # make sure all the paramerter or optimzier var have been update
+                    # make sure all the paramerter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
@@ -619,13 +619,83 @@ class TestProgramStatePartial(unittest.TestCase):
 
                     new_t = np.array(fluid.global_scope().find_var(var.name)
                                      .get_tensor())
-                    # make sure all the paramerter or optimzier var have been set to zero
+                    # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             #fluid.load(test_program, "./test_1", None )
             program_state = fluid.load_program_state(
                 os.path.join('some_dir', 'test_1'))
+
+            program_state_1 = fluid.load_program_state(
+                os.path.join('some_dir', 'test_1.pdparams'))
+
+            program_state_2 = fluid.load_program_state(
+                os.path.join('some_dir', 'test_1.pdopt'))
+
+            program_state_3 = fluid.load_program_state(
+                os.path.join('some_dir', 'test_1.pdmodel'))
+
             fluid.set_program_state(test_program, program_state)
+
+            for var in test_program.list_vars():
+                if isinstance(var, framework.Parameter) or var.persistable:
+                    new_t = np.array(fluid.global_scope().find_var(var.name)
+                                     .get_tensor())
+                    base_t = base_map[var.name]
+                    self.assertTrue(np.array_equal(new_t, base_t))
+
+            # check 1
+            for var in main_program.list_vars():
+                if isinstance(var, framework.Parameter) or var.persistable:
+                    ten = fluid.global_scope().find_var(var.name).get_tensor()
+                    ten.set(np.zeros_like(np.array(ten)), place)
+
+                    new_t = np.array(fluid.global_scope().find_var(var.name)
+                                     .get_tensor())
+                    # make sure all the paramerter or optimizer var have been set to zero
+                    self.assertTrue(np.sum(np.abs(new_t)) == 0)
+
+            fluid.set_program_state(test_program, program_state_1)
+
+            for var in test_program.list_vars():
+                if isinstance(var, framework.Parameter) or var.persistable:
+                    new_t = np.array(fluid.global_scope().find_var(var.name)
+                                     .get_tensor())
+                    base_t = base_map[var.name]
+                    self.assertTrue(np.array_equal(new_t, base_t))
+
+            # check 2
+            for var in main_program.list_vars():
+                if isinstance(var, framework.Parameter) or var.persistable:
+                    ten = fluid.global_scope().find_var(var.name).get_tensor()
+                    ten.set(np.zeros_like(np.array(ten)), place)
+
+                    new_t = np.array(fluid.global_scope().find_var(var.name)
+                                     .get_tensor())
+                    # make sure all the paramerter or optimizer var have been set to zero
+                    self.assertTrue(np.sum(np.abs(new_t)) == 0)
+
+            fluid.set_program_state(test_program, program_state_2)
+
+            for var in test_program.list_vars():
+                if isinstance(var, framework.Parameter) or var.persistable:
+                    new_t = np.array(fluid.global_scope().find_var(var.name)
+                                     .get_tensor())
+                    base_t = base_map[var.name]
+                    self.assertTrue(np.array_equal(new_t, base_t))
+
+            # check 3
+            for var in main_program.list_vars():
+                if isinstance(var, framework.Parameter) or var.persistable:
+                    ten = fluid.global_scope().find_var(var.name).get_tensor()
+                    ten.set(np.zeros_like(np.array(ten)), place)
+
+                    new_t = np.array(fluid.global_scope().find_var(var.name)
+                                     .get_tensor())
+                    # make sure all the paramerter or optimizer var have been set to zero
+                    self.assertTrue(np.sum(np.abs(new_t)) == 0)
+
+            fluid.set_program_state(test_program, program_state_3)
 
             for var in test_program.list_vars():
                 if isinstance(var, framework.Parameter) or var.persistable:
@@ -707,7 +777,7 @@ class TestVariableInit(unittest.TestCase):
             if isinstance(var, framework.Parameter) or var.persistable:
                 t = np.array(fluid.global_scope().find_var(var.name)
                              .get_tensor())
-                # make sure all the paramerter or optimzier var have been update
+                # make sure all the paramerter or optimizer var have been update
                 base_map[var.name] = t
 
         for var in program.list_vars():
@@ -798,7 +868,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
                 if isinstance(var, framework.Parameter) or var.persistable:
                     t = np.array(fluid.global_scope().find_var(var.name)
                                  .get_tensor())
-                    # make sure all the paramerter or optimzier var have been update
+                    # make sure all the paramerter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
@@ -813,7 +883,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
 
                     new_t = np.array(fluid.global_scope().find_var(var.name)
                                      .get_tensor())
-                    # make sure all the paramerter or optimzier var have been set to zero
+                    # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             fluid.load(main_program, "test_path", exe)
@@ -835,7 +905,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 fluid.load(main_program, "test_path", exe)
 
-            # check unused paramter
+            # check unused parameter
 
             fluid.load(test_clone_program, "test_path", exe)
 
@@ -914,7 +984,7 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                 if isinstance(var, framework.Parameter) or var.persistable:
                     t = np.array(fluid.global_scope().find_var(var.name)
                                  .get_tensor())
-                    # make sure all the paramerter or optimzier var have been update
+                    # make sure all the paramerter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
@@ -930,7 +1000,7 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
 
                     new_t = np.array(fluid.global_scope().find_var(var.name)
                                      .get_tensor())
-                    # make sure all the paramerter or optimzier var have been set to zero
+                    # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             file_model_path = os.path.join("test_path", "model_single")
@@ -982,6 +1052,248 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                 all_var_list = list(main_program.list_vars())
                 fluid.load(main_program, file_model_path, exe,
                            all_var_list + [temp_var])
+
+
+class TestProgramStateOldSave(unittest.TestCase):
+    def test_ptb_rnn_cpu_float32(self):
+        seed = 90
+        hidden_size = 10
+        vocab_size = 1000
+        num_layers = 1
+        num_steps = 3
+        init_scale = 0.1
+        batch_size = 4
+        batch_num = 200
+
+        with new_program_scope():
+            fluid.default_startup_program().random_seed = seed
+            fluid.default_main_program().random_seed = seed
+            ptb_model = PtbModel(
+                "ptb_model",
+                hidden_size=hidden_size,
+                vocab_size=vocab_size,
+                num_layers=num_layers,
+                num_steps=num_steps,
+                init_scale=init_scale)
+
+            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
+            ) else fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+            sgd = Adam(learning_rate=1e-3)
+            x = fluid.layers.data(
+                name="x", shape=[-1, num_steps], dtype='int64')
+            y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
+            init_hidden = fluid.layers.data(
+                name="init_hidden", shape=[1], dtype='float32')
+            init_cell = fluid.layers.data(
+                name="init_cell", shape=[1], dtype='float32')
+
+            static_loss, static_last_hidden, static_last_cell = ptb_model(
+                x, y, init_hidden, init_cell)
+
+            test_program = fluid.default_main_program().clone(for_test=True)
+
+            add_1 = fluid.layers.fc(static_last_hidden,
+                                    size=hidden_size,
+                                    num_flatten_dims=2,
+                                    bias_attr=False)
+
+            sgd.minimize(static_loss)
+            static_param_updated = dict()
+            static_param_init = dict()
+
+            out = exe.run(framework.default_startup_program())
+
+            static_loss_value = None
+            static_last_cell_value = None
+            static_last_hidden_value = None
+            for i in range(batch_num):
+                x_data = np.arange(12).reshape(4, 3).astype('int64')
+                y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
+                x_data = x_data.reshape((-1, num_steps, 1))
+                y_data = y_data.reshape((-1, 1))
+                init_hidden_data = np.zeros(
+                    (num_layers, batch_size, hidden_size), dtype='float32')
+                init_cell_data = np.zeros(
+                    (num_layers, batch_size, hidden_size), dtype='float32')
+                fetch_list = [static_loss, static_last_hidden, static_last_cell]
+                out = exe.run(fluid.default_main_program(),
+                              feed={
+                                  "x": x_data,
+                                  "y": y_data,
+                                  "init_hidden": init_hidden_data,
+                                  "init_cell": init_cell_data
+                              },
+                              fetch_list=fetch_list)
+                static_loss_value = out[0]
+                static_last_hidden_value = out[1]
+                static_last_cell_value = out[2]
+
+            # get value before save
+            main_program = framework.default_main_program()
+            base_map = {}
+            for var in main_program.list_vars():
+                if isinstance(var, framework.Parameter) or var.persistable:
+                    t = np.array(fluid.global_scope().find_var(var.name)
+                                 .get_tensor())
+                    # make sure all the paramerter or optimizer var have been update
+                    self.assertTrue(np.sum(np.abs(t)) != 0)
+                    base_map[var.name] = t
+
+            fluid.io.save_persistables(exe, "test_program_1", main_program)
+
+            # set var to zero
+            for var in main_program.list_vars():
+                if isinstance(var, framework.Parameter) or var.persistable:
+                    ten = fluid.global_scope().find_var(var.name).get_tensor()
+                    ten.set(np.zeros_like(np.array(ten)), place)
+
+                    new_t = np.array(fluid.global_scope().find_var(var.name)
+                                     .get_tensor())
+                    # make sure all the paramerter or optimizer var have been set to zero
+                    self.assertTrue(np.sum(np.abs(new_t)) == 0)
+
+            #fluid.load(test_program, "./test_1", None )
+            program_state = fluid.load_program_state("test_program_1")
+            fluid.set_program_state(main_program, program_state)
+
+            for var in main_program.list_vars():
+                if isinstance(var, framework.Parameter) or var.persistable:
+                    new_t = np.array(fluid.global_scope().find_var(var.name)
+                                     .get_tensor())
+                    base_t = base_map[var.name]
+                    self.assertTrue(np.array_equal(new_t, base_t))
+
+
+class TestProgramStateOldSaveSingleModel(unittest.TestCase):
+    def test_ptb_rnn_cpu_float32(self):
+        seed = 90
+        hidden_size = 10
+        vocab_size = 1000
+        num_layers = 1
+        num_steps = 3
+        init_scale = 0.1
+        batch_size = 4
+        batch_num = 200
+
+        with new_program_scope():
+            fluid.default_startup_program().random_seed = seed
+            fluid.default_main_program().random_seed = seed
+            ptb_model = PtbModel(
+                "ptb_model",
+                hidden_size=hidden_size,
+                vocab_size=vocab_size,
+                num_layers=num_layers,
+                num_steps=num_steps,
+                init_scale=init_scale)
+
+            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
+            ) else fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+            sgd = Adam(learning_rate=1e-3)
+            x = fluid.layers.data(
+                name="x", shape=[-1, num_steps], dtype='int64')
+            y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
+            init_hidden = fluid.layers.data(
+                name="init_hidden", shape=[1], dtype='float32')
+            init_cell = fluid.layers.data(
+                name="init_cell", shape=[1], dtype='float32')
+
+            static_loss, static_last_hidden, static_last_cell = ptb_model(
+                x, y, init_hidden, init_cell)
+
+            test_program = fluid.default_main_program().clone(for_test=True)
+
+            add_1 = fluid.layers.fc(static_last_hidden,
+                                    size=hidden_size,
+                                    num_flatten_dims=2,
+                                    bias_attr=False)
+
+            sgd.minimize(static_loss)
+            static_param_updated = dict()
+            static_param_init = dict()
+
+            out = exe.run(framework.default_startup_program())
+
+            static_loss_value = None
+            static_last_cell_value = None
+            static_last_hidden_value = None
+            for i in range(batch_num):
+                x_data = np.arange(12).reshape(4, 3).astype('int64')
+                y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
+                x_data = x_data.reshape((-1, num_steps, 1))
+                y_data = y_data.reshape((-1, 1))
+                init_hidden_data = np.zeros(
+                    (num_layers, batch_size, hidden_size), dtype='float32')
+                init_cell_data = np.zeros(
+                    (num_layers, batch_size, hidden_size), dtype='float32')
+                fetch_list = [static_loss, static_last_hidden, static_last_cell]
+                out = exe.run(fluid.default_main_program(),
+                              feed={
+                                  "x": x_data,
+                                  "y": y_data,
+                                  "init_hidden": init_hidden_data,
+                                  "init_cell": init_cell_data
+                              },
+                              fetch_list=fetch_list)
+                static_loss_value = out[0]
+                static_last_hidden_value = out[1]
+                static_last_cell_value = out[2]
+
+            # get value before save
+            main_program = framework.default_main_program()
+            base_map = {}
+            for var in main_program.list_vars():
+                if isinstance(var, framework.Parameter) or var.persistable:
+                    t = np.array(fluid.global_scope().find_var(var.name)
+                                 .get_tensor())
+                    # make sure all the paramerter or optimizer var have been update
+                    self.assertTrue(np.sum(np.abs(t)) != 0)
+                    base_map[var.name] = t
+
+            fluid.io.save_persistables(
+                exe, "test_program_2", main_program, filename="model_1")
+
+            # set var to zero
+            for var in main_program.list_vars():
+                if isinstance(var, framework.Parameter) or var.persistable:
+                    ten = fluid.global_scope().find_var(var.name).get_tensor()
+                    ten.set(np.zeros_like(np.array(ten)), place)
+
+                    new_t = np.array(fluid.global_scope().find_var(var.name)
+                                     .get_tensor())
+                    # make sure all the paramerter or optimizer var have been set to zero
+                    self.assertTrue(np.sum(np.abs(new_t)) == 0)
+
+            #fluid.load(test_program, "./test_1", None )
+            program_state = fluid.load_program_state(
+                os.path.join("test_program_2", "model_1"),
+                var_list=fluid.io.get_program_persistable_vars(main_program))
+            fluid.set_program_state(main_program, program_state)
+
+            for var in main_program.list_vars():
+                if isinstance(var, framework.Parameter) or var.persistable:
+                    new_t = np.array(fluid.global_scope().find_var(var.name)
+                                     .get_tensor())
+                    base_t = base_map[var.name]
+                    self.assertTrue(np.array_equal(new_t, base_t))
+
+            with self.assertRaises(ValueError):
+                fluid.load_program_state(
+                    os.path.join("test_program_2", "model_1"))
+
+            with self.assertRaises(TypeError):
+                fluid.load_program_state(
+                    os.path.join("test_program_2", "model_1"),
+                    var_list=["str"])
+
+            with self.assertRaises(RuntimeError):
+                fluid.load_program_state(
+                    os.path.join("test_program_2", "model_1"),
+                    var_list=[
+                        main_program.global_block().create_var(
+                            name="fake_var_name", persistable=True)
+                    ])
 
 
 if __name__ == '__main__':

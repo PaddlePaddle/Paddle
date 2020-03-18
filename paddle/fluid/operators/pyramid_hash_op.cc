@@ -429,8 +429,7 @@ class PyramidHashGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* op_desc_ptr = new T();
+  void Apply(GradOpPtr<T> op_desc_ptr) const override {
     op_desc_ptr->SetType("pyramid_hash_grad");
     op_desc_ptr->SetInput("X", this->Input("X"));
     op_desc_ptr->SetInput("W", this->Input("W"));
@@ -441,7 +440,6 @@ class PyramidHashGradOpMaker : public framework::SingleGradOpMaker<T> {
                           this->OutputGrad("Out"));
     op_desc_ptr->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op_desc_ptr->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(op_desc_ptr);
   }
 };
 

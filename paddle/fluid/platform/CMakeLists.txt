@@ -117,6 +117,8 @@ cc_test(profiler_test SRCS profiler_test.cc DEPS profiler)
 nv_test(float16_gpu_test SRCS float16_test.cu DEPS lod_tensor)
 cc_test(float16_test SRCS float16_test.cc DEPS lod_tensor)
 
+nv_test(test_limit_gpu_memory SRCS test_limit_gpu_memory.cu DEPS gpu_info flags)
+
 nv_library(cuda_device_guard SRCS cuda_device_guard.cc DEPS gpu_info)
 
 if(NOT APPLE AND NOT WIN32)
