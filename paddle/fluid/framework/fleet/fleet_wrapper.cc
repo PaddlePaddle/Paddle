@@ -804,10 +804,10 @@ void FleetWrapper::ClearModel() {
 #endif
 }
 
-void ClearOneTable(const uint64_t table_id) {
+void FleetWrapper::ClearOneTable(const uint64_t table_id) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->clear(table_id);
-   ret.wait();
+  ret.wait();
 #else
   VLOG(0) << "FleetWrapper::ClearOneTable does nothing when no pslib";
 #endif
