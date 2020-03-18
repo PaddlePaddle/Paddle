@@ -33,7 +33,13 @@ class SliceOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
                       "Output (Out) of slice op should not be null.");
-
+    auto x_var_type = ctx->GetInputsVarType("Input")[0];
+    if (x_var_type == framework::proto::VarType::LOD_TENSOR_ARRAY &&
+        ctx->IsRuntime()) {
+      // If the var type of input is LOD_TENSOR_ARRAY,
+      // the output shape is determined by SliceKernel:Compute in runtime.
+      return;
+    }
     auto in_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_LT(in_dims.size(), 7,
                       "The rank of input should be less than 7.");
@@ -146,6 +152,25 @@ class SliceOp : public framework::OperatorWithKernel {
   }
 };
 
+class SliceOpVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    auto x_name = ctx->Input("Input")[0];
+    auto out_name = ctx->Output("Out")[0];
+    auto decrease_axis = ctx->GetAttr("decrease_axis");
+    auto not_decrease = boost::get<std::vector<int>>(decrease_axis).size() == 0;
+    if (not_decrease) {
+      // The default type of out is LoDTensor.
+      // However, if no axis is decreased and the type of input is not
+      // LoDTensor, the type of out should be the same as input.
+      // For example, input is a LoDTensorArray and no axis is decreased, the
+      // output should be a LoDTensorArray.
+      ctx->SetType(out_name, ctx->GetType(x_name));
+      ctx->SetDataType(out_name, ctx->GetDataType(x_name));
+    }
+  }
+};
+
 class SliceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -236,6 +261,12 @@ class SliceOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true, "Input should not be null");
     PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
                       "Input(Out@GRAD) should not be null");
+    auto x_var_type = ctx->GetInputsVarType("Input")[0];
+    if (x_var_type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
+      // If the var type of input is LOD_TENSOR_ARRAY,
+      // the output shape is determined by SliceGradKernel:Compute in runtime.
+      if (ctx->IsRuntime()) return;
+    }
     auto x_dims = ctx->GetInputDim("Input");
     auto x_grad_name = framework::GradVarName("Input");
     if (ctx->HasOutput(x_grad_name)) {
@@ -259,6 +290,21 @@ class SliceOpGrad : public framework::OperatorWithKernel {
     }
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    tensor.place(), tensor.layout());
+  }
+};
+
+class SliceOpGradVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    auto x_name = ctx->Input("Input")[0];
+    auto out_name = ctx->Output(framework::GradVarName("Input"))[0];
+    auto d_out_name = ctx->Input(framework::GradVarName("Out"))[0];
+    // The types of grad_input and input should always be the same.
+    // The default type of out is LoDTensor, but the type of input can be
+    // LoDTensor or LoDTensorArray,
+    // so set the type of both to be the same.
+    ctx->SetType(out_name, ctx->GetType(x_name));
+    ctx->SetDataType(out_name, ctx->GetDataType(d_out_name));
   }
 };
 
@@ -324,11 +370,13 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(SliceOpGradNoNeedBufferVarsInference,
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(slice, ops::SliceOp, ops::SliceOpMaker,
                   ops::SliceOpGradMaker<paddle::framework::OpDesc>,
-                  ops::SliceOpGradMaker<paddle::imperative::OpBase>);
+                  ops::SliceOpGradMaker<paddle::imperative::OpBase>,
+                  ops::SliceOpVarTypeInference);
 REGISTER_OPERATOR(slice_grad, ops::SliceOpGrad,
                   ops::SliceDoubleOpGradMaker<paddle::framework::OpDesc>,
                   ops::SliceDoubleOpGradMaker<paddle::imperative::OpBase>,
-                  ops::SliceOpGradNoNeedBufferVarsInference);
+                  ops::SliceOpGradNoNeedBufferVarsInference,
+                  ops::SliceOpGradVarTypeInference);
 
 REGISTER_OP_CPU_KERNEL(
     slice, ops::SliceKernel<paddle::platform::CPUDeviceContext, int>,
