@@ -363,9 +363,9 @@ def terminate_local_procs(procs):
             logger.debug("terminate process id:{}".format(p.proc.pid))
 
     # wait all process terminiated
-    time.sleep(3)
+    # time.sleep(3)
 
-    for step in range(0, 10):
+    for step in range(0, 50):
         alive = False
         for p in procs:
             if p.proc.poll() is None:  # not termniate
@@ -373,10 +373,10 @@ def terminate_local_procs(procs):
                 alive = True
 
         if not alive:
-            logger.debug("terminate all the procs")
+            logger.info("terminate all the procs")
             return
 
-        time.sleep(1)
+        time.sleep(3)
 
     logger.fatal("can't kill all process and exit")
     exit(1)
