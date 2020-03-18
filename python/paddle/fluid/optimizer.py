@@ -484,8 +484,7 @@ class Optimizer(object):
                     if param_name in input_arg_names:
                         self._param_device_map[param_name] = op.attr(
                             device_attr_name)
-                    else:
-                        self._param_device_map[param_name] = None
+                        break
 
     def _get_device_for_param(self, param_name):
         device = None
@@ -3926,6 +3925,9 @@ class RecomputeOptimizer(Optimizer):
                 parameter_list,
                 no_grad_set,
                 checkpoints=self._checkpoints)
+            # Note: since we can't use all_reduce_op now,
+            #  dgc_op should be the last op of one grad.
+            self._optimizer._append_dgc_ops(params_grads)
         return params_grads
 
     def apply_optimize(self, loss, startup_program, params_grads):
