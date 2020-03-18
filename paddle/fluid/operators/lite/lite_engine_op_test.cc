@@ -108,7 +108,7 @@ TEST(LiteEngineOp, engine_op) {
   LOG(INFO) << "engine_op " << engine_op.get();
   // Execute them.
   LOG(INFO) << "engine_op run";
-  engine_op->Run(scope, place);
+  engine_op->Run(scope, ctx);
   LOG(INFO) << "done";
 }
 }  // namespace operators

@@ -104,8 +104,9 @@ void OpTester::Run() {
 }
 
 void OpTester::RunImpl() {
-  op_->Run(*scope_, place_);
-  platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  const auto &dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
+  op_->Run(*scope_, *dev_ctx);
+  dev_ctx->Wait();
   scope_->DropKids();
 }
 

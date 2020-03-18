@@ -58,7 +58,7 @@ bool ExceptionTestMain(T &&obj, bool set_exception) {
   }
   Scope scope;
   try {
-    op.Run(scope, platform::CPUPlace());
+    op.Run(scope, platform::CPUDeviceContext(platform::CPUPlace()));
     return false;
   } catch (T &) {
     return true;

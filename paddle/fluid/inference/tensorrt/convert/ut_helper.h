@@ -156,7 +156,7 @@ class TRTConvertValidation {
     // Execute Fluid Op
     PADDLE_ENFORCE_LE(batch_size, max_batch_size_);
     platform::CUDADeviceContext ctx(place_);
-    op_->Run(scope_, place_);
+    op_->Run(scope_, ctx);
     cudaStreamSynchronize(stream_);
     std::vector<std::string> input_output_names;
 

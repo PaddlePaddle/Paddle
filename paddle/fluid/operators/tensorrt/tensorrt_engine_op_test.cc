@@ -131,7 +131,7 @@ TEST(TensorRTEngineOp, manual) {
 
   // Execute them.
   LOG(INFO) << "engine_op run";
-  engine_op->Run(scope, place);
+  engine_op->Run(scope, ctx);
 }
 
 void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
@@ -218,7 +218,7 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
   auto engine_op = framework::OpRegistry::CreateOp(engine_op_desc);
 
   // Execute them.
-  engine_op->Run(scope, place);
+  engine_op->Run(scope, ctx);
 }
 
 // Test with a larger FC layer.

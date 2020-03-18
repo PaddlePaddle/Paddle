@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace pd = paddle::framework;
 
@@ -96,7 +97,7 @@ TEST(OpRegistry, CreateOp) {
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::framework::Scope scope;
   paddle::platform::CPUPlace cpu_place;
-  op->Run(scope, cpu_place);
+  op->Run(scope, paddle::platform::CPUDeviceContext(cpu_place));
   float scale_get = op->Attr<float>("scale");
   ASSERT_EQ(scale_get, scale);
 }
@@ -135,7 +136,7 @@ TEST(OpRegistry, DefaultValue) {
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::framework::Scope scope;
   paddle::platform::CPUPlace cpu_place;
-  op->Run(scope, cpu_place);
+  op->Run(scope, paddle::platform::CPUDeviceContext(cpu_place));
   ASSERT_EQ(op->Attr<float>("scale"), 1.0);
 }
 
@@ -182,7 +183,7 @@ TEST(OpRegistry, CustomChecker) {
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   paddle::platform::CPUPlace cpu_place;
   paddle::framework::Scope scope;
-  op->Run(scope, cpu_place);
+  op->Run(scope, paddle::platform::CPUDeviceContext(cpu_place));
   int test_attr = op->Attr<int>("test_attr");
   ASSERT_EQ(test_attr, 4);
 }
@@ -243,7 +244,7 @@ TEST(OperatorRegistrar, CPU) {
   op_desc.set_type("op_with_kernel");
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
 
-  op->Run(scope, cpu_place);
+  op->Run(scope, paddle::platform::CPUDeviceContext(cpu_place));
 }
 
 TEST(OperatorRegistrar, CUDA) {
@@ -254,7 +255,7 @@ TEST(OperatorRegistrar, CUDA) {
   op_desc.set_type("op_with_kernel");
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
 
-  op->Run(scope, cuda_place);
+  op->Run(scope, paddle::platform::CUDADeviceContext(cuda_place));
 }
 
 static int op_test_value = 0;
@@ -359,6 +360,6 @@ TEST(OperatorRegistrar, OpWithMultiKernel) {
 
   // TODO(qiao) add priority back
   // use all available kernels
-  op->Run(scope, cuda_place);
+  op->Run(scope, paddle::platform::CUDADeviceContext(cuda_place));
   EXPECT_EQ(op_test_value, -10);
 }

@@ -113,7 +113,7 @@ TEST(SaveLoadCombineOp, CPU) {
   auto save_combine_op = paddle::framework::OpRegistry::CreateOp(
       "save_combine",
       {{"X", {"test_var1", "test_var2", "test_var3", "test_var4"}}}, {}, attrs);
-  save_combine_op->Run(scope, place);
+  save_combine_op->Run(scope, paddle::platform::CPUDeviceContext(place));
 
   // Set up output vars
   auto target1 = GeneratePlaceholderBeforeLoad("out_var1", &scope);
@@ -125,7 +125,7 @@ TEST(SaveLoadCombineOp, CPU) {
   auto load_combine_op = paddle::framework::OpRegistry::CreateOp(
       "load_combine", {},
       {{"Out", {"out_var1", "out_var2", "out_var3", "out_var4"}}}, attrs);
-  load_combine_op->Run(scope, place);
+  load_combine_op->Run(scope, paddle::platform::CPUDeviceContext(place));
 
   paddle::framework::LoD actual_lod1, actual_lod2, actual_lod3, actual_lod4;
   int* actual1 = GetValuesAfterLoadCombineOp<int>(target1, scope, &actual_lod1);
@@ -179,7 +179,7 @@ TEST(SaveCombineFP16Op, CPU) {
   auto save_combine_op = paddle::framework::OpRegistry::CreateOp(
       "save_combine",
       {{"X", {"test_var1", "test_var2", "test_var3", "test_var4"}}}, {}, attrs);
-  save_combine_op->Run(scope, place);
+  save_combine_op->Run(scope, paddle::platform::CPUDeviceContext(place));
 
   // Set up output vars
   auto target1 = GeneratePlaceholderBeforeLoad("out_var1", &scope);
@@ -191,7 +191,7 @@ TEST(SaveCombineFP16Op, CPU) {
   auto load_combine_op = paddle::framework::OpRegistry::CreateOp(
       "load_combine", {},
       {{"Out", {"out_var1", "out_var2", "out_var3", "out_var4"}}}, attrs);
-  load_combine_op->Run(scope, place);
+  load_combine_op->Run(scope, paddle::platform::CPUDeviceContext(place));
 
   paddle::framework::LoD actual_lod1, actual_lod2, actual_lod3, actual_lod4;
   paddle::platform::float16* actual1 =
@@ -256,7 +256,7 @@ TEST(LoadCombineFP16Op, CPU) {
   auto save_combine_op = paddle::framework::OpRegistry::CreateOp(
       "save_combine",
       {{"X", {"test_var1", "test_var2", "test_var3", "test_var4"}}}, {}, attrs);
-  save_combine_op->Run(scope, place);
+  save_combine_op->Run(scope, paddle::platform::CPUDeviceContext(place));
 
   // Set up output vars
   auto load_var1 = scope.Var("out_var1");
@@ -269,7 +269,7 @@ TEST(LoadCombineFP16Op, CPU) {
   auto load_combine_op = paddle::framework::OpRegistry::CreateOp(
       "load_combine", {},
       {{"Out", {"out_var1", "out_var2", "out_var3", "out_var4"}}}, attrs);
-  load_combine_op->Run(scope, place);
+  load_combine_op->Run(scope, paddle::platform::CPUDeviceContext(place));
 
   auto* target1 = load_var1->GetMutable<paddle::framework::LoDTensor>();
   auto* target2 = load_var2->GetMutable<paddle::framework::LoDTensor>();
@@ -325,13 +325,13 @@ TEST(SaveLoadTestWithCombineOp, CPU) {
 
   auto save_op = paddle::framework::OpRegistry::CreateOp(
       "save_combine", {{"X", {"test_var"}}}, {}, attrs);
-  save_op->Run(scope, place);
+  save_op->Run(scope, paddle::platform::CPUDeviceContext(place));
 
   auto load_var = scope.Var("out_var");
   auto target = load_var->GetMutable<paddle::framework::LoDTensor>();
   auto load_op = paddle::framework::OpRegistry::CreateOp(
       "load_combine", {}, {{"Out", {"out_var"}}}, attrs);
-  load_op->Run(scope, place);
+  load_op->Run(scope, paddle::platform::CPUDeviceContext(place));
   int* actual = target->data<int>();
   for (int64_t i = 0; i < tensor->numel(); ++i) {
     EXPECT_EQ(expect[i], actual[i]);

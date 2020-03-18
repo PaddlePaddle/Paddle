@@ -67,7 +67,7 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   auto dropout_op = f::OpRegistry::CreateOp(
       "dropout", {{"X", {"X"}}}, {{"Out", {"Out"}}, {"Mask", {"Mask"}}}, attrs);
 
-  dropout_op->Run(*scope, place);
+  dropout_op->Run(*scope, ctx);
 
   std::vector<float> out_vec;
   TensorToVector(*out_tensor, ctx, &out_vec);

@@ -83,8 +83,9 @@ bool TestMain(const platform::Place &place, const framework::DDim &dims,
   auto op = framework::OpRegistry::CreateOp("elementwise_add",
                                             {{"X", {"x"}}, {"Y", {"y"}}},
                                             {{"Out", {out_name}}}, {});
-  op->Run(scope, place);
-  platform::DeviceContextPool::Instance().Get(place)->Wait();
+  const auto &dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  op->Run(scope, *dev_ctx);
+  dev_ctx->Wait();
 
   framework::LoDTensor cpu_out;
   auto &out_tensor = scope.FindVar(out_name)->Get<framework::LoDTensor>();

@@ -64,8 +64,9 @@ TEST(op_debug_str, test_unknown_dtype) {
   LOG(INFO) << before_run_str;
   ASSERT_TRUE(before_run_str.find(unknown_dtype) != std::string::npos);
 
-  op->Run(scope, place);
-  platform::DeviceContextPool::Instance().Get(place)->Wait();
+  const auto& dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+  op->Run(scope, *dev_ctx);
+  dev_ctx->Wait();
 
   auto after_run_str = op->DebugStringEx(&scope);
   LOG(INFO) << after_run_str;

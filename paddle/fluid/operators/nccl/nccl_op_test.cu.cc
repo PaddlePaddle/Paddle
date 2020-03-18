@@ -87,7 +87,7 @@ class NCCLTester : public ::testing::Test {
 
     auto op = f::OpRegistry::CreateOp(*op1);
     VLOG(1) << "invoke NCCLInitOp.";
-    op->Run(g_scope_, cpu_place);
+    op->Run(g_scope_, paddle::platform::CPUDeviceContext(cpu_place));
     VLOG(1) << "NCCLInitOp finished.";
   }
 
@@ -122,7 +122,7 @@ class NCCLTester : public ::testing::Test {
     VLOG(1) << "Device : " << gpu_id << " invoke " << op_desc.Type();
     VLOG(1) << " send_tensor : " << send_tensor->numel()
             << " recv_tensor : " << recv_tensor->numel();
-    op->Run(*scope, place);
+    op->Run(*scope, paddle::platform::CUDADeviceContext(place));
     VLOG(1) << "Device : " << gpu_id << " finished " << op_desc.Type();
   }
 

@@ -30,6 +30,8 @@ using LoDTensorArray = paddle::framework::LoDTensorArray;
 using Scope = paddle::framework::Scope;
 using Variable = paddle::framework::Variable;
 using Place = paddle::platform::Place;
+using CPUDeviceContext = paddle::platform::CPUDeviceContext;
+using CPUPlace = paddle::platform::CPUPlace;
 
 TEST(ConditionalBlockGrad, NoNeedRunLoDTensorArray) {
   Place place = paddle::platform::CPUPlace();
@@ -66,7 +68,7 @@ TEST(ConditionalBlockGrad, NoNeedRunLoDTensorArray) {
       {{"Input", {"input_lod_tensor_array"}}, {"Cond", {"condition"}}},
       {{"Input@GRAD", {"input_lod_tensor_array@GRAD"}}}, attrs);
 
-  conditional_grad_op->Run(scope, place);
+  conditional_grad_op->Run(scope, CPUDeviceContext(CPUPlace()));
 
   const LoDTensorArray& out_tensors = input_grad_var->Get<LoDTensorArray>();
   for (int i = 0; i < 5; ++i) {

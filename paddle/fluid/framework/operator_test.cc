@@ -92,7 +92,7 @@ TEST(OperatorBase, all) {
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   scope.Var("OUT1");
   ASSERT_EQ(paddle::framework::op_run_num, 0);
-  op->Run(scope, cpu_place);
+  op->Run(scope, paddle::platform::CPUDeviceContext(cpu_place));
   ASSERT_EQ(paddle::framework::op_run_num, 1);
 }
 
@@ -243,7 +243,7 @@ TEST(OpKernel, all) {
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 0);
-  op->Run(scope, cpu_place);
+  op->Run(scope, paddle::platform::CPUDeviceContext(cpu_place));
   // kerne_sub_type = 0, hence cpu_kernel is called, cpu_kernel2 is not called.
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 1);
   ASSERT_EQ(paddle::framework::cpu_kernel2_run_num, 0);
@@ -253,7 +253,7 @@ TEST(OpKernel, all) {
   attr->set_type(paddle::framework::proto::AttrType::INT);
   attr->set_i(1);
   auto op2 = paddle::framework::OpRegistry::CreateOp(op_desc);
-  op2->Run(scope, cpu_place);
+  op2->Run(scope, paddle::platform::CPUDeviceContext(cpu_place));
   // kerne_sub_type = 1, hence cpu_kernel2 is called, cpu_kernel is not called.
   ASSERT_EQ(paddle::framework::cpu_kernel_run_num, 1);
   ASSERT_EQ(paddle::framework::cpu_kernel2_run_num, 1);
@@ -290,7 +290,7 @@ TEST(OpKernel, multi_inputs) {
   scope.Var("y1")->GetMutable<paddle::framework::LoDTensor>();
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
-  op->Run(scope, cpu_place);
+  op->Run(scope, paddle::platform::CPUDeviceContext(cpu_place));
 }
 
 TEST(VarNameTest, all) {
@@ -432,7 +432,7 @@ TEST(IndicateVarDataTypeTest, lodtensor) {
 
   bool caught = false;
   try {
-    op->Run(scope, cpu_place);
+    op->Run(scope, paddle::platform::CPUDeviceContext(cpu_place));
   } catch (paddle::platform::EnforceNotMet& err) {
     caught = true;
     std::string ex_msg = err.what();
@@ -460,7 +460,7 @@ TEST(IndicateVarDataTypeTest, selectedrows) {
 
   bool caught = false;
   try {
-    op->Run(scope, cpu_place);
+    op->Run(scope, paddle::platform::CPUDeviceContext(cpu_place));
   } catch (paddle::platform::EnforceNotMet& err) {
     caught = true;
     std::string ex_msg = err.what();
@@ -487,7 +487,7 @@ TEST(IndicateVarDataTypeTest, other) {
 
   bool caught = false;
   try {
-    op->Run(scope, cpu_place);
+    op->Run(scope, paddle::platform::CPUDeviceContext(cpu_place));
   } catch (paddle::platform::EnforceNotMet& err) {
     caught = true;
     std::string ex_msg = err.what();
@@ -618,7 +618,7 @@ void SetGetLoDLevelTestMain(std::string op_type) {
       "is different among operators so that should be set in the runtime "
       "kernel.";
   try {
-    op->Run(scope, place);
+    op->Run(scope, paddle::platform::CPUDeviceContext(place));
   } catch (paddle::platform::EnforceNotMet& err) {
     caught = true;
     std::string ex_msg = err.what();
@@ -716,7 +716,8 @@ TEST(OpWithUnusedVar, all) {
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   // should throw exception
-  ASSERT_THROW(op->Run(scope, cpu_place), paddle::platform::EnforceNotMet);
+  ASSERT_THROW(op->Run(scope, paddle::platform::CPUDeviceContext(cpu_place)),
+               paddle::platform::EnforceNotMet);
   FLAGS_enable_unused_var_check = false;
 }
 
@@ -741,6 +742,7 @@ TEST(OpWithoutUnusedVar, all) {
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   // should not throw exception
-  ASSERT_NO_THROW(op->Run(scope, cpu_place));
+  ASSERT_NO_THROW(
+      op->Run(scope, paddle::platform::CPUDeviceContext(cpu_place)));
   FLAGS_enable_unused_var_check = false;
 }

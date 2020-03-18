@@ -166,7 +166,7 @@ void TestMain(const std::vector<std::string>& input_names,
     CreateTensor<float>(&scope, place, output_names[j], empty_shape);
   }
 
-  fusion_group_op->Run(scope, place);
+  fusion_group_op->Run(scope, paddle::platform::CUDADeviceContext(place));
 
   auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
   dev_ctx->Wait();

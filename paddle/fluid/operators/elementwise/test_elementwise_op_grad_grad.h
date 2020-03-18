@@ -104,8 +104,9 @@ class TestElementwiseOpGradGrad {
   bool Check() {
     Setup();
     auto op = CreateTestOp();
-    op->Run(scope_, place_);
-    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+    const auto &dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
+    op->Run(scope_, *dev_ctx);
+    dev_ctx->Wait();
     framework::LoDTensor cpu_out;
     PADDLE_ENFORCE_EQ(scope_.kids().empty(), true, "scope has child scopes");
 

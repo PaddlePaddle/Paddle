@@ -43,13 +43,13 @@ TEST(SaveLoadOp, CPU) {
 
   auto save_op = paddle::framework::OpRegistry::CreateOp(
       "save", {{"X", {"test_var"}}}, {}, attrs);
-  save_op->Run(scope, place);
+  save_op->Run(scope, paddle::platform::CPUDeviceContext(place));
 
   auto load_var = scope.Var("out_var");
   auto target = load_var->GetMutable<paddle::framework::LoDTensor>();
   auto load_op = paddle::framework::OpRegistry::CreateOp(
       "load", {}, {{"Out", {"out_var"}}}, attrs);
-  load_op->Run(scope, place);
+  load_op->Run(scope, paddle::platform::CPUDeviceContext(place));
   int* actual = target->data<int>();
   for (int64_t i = 0; i < tensor->numel(); ++i) {
     EXPECT_EQ(expect[i], actual[i]);
@@ -89,13 +89,13 @@ TEST(SaveFP16Op, CPU) {
 
   auto save_op = paddle::framework::OpRegistry::CreateOp(
       "save", {{"X", {"test_var"}}}, {}, attrs);
-  save_op->Run(scope, place);
+  save_op->Run(scope, paddle::platform::CPUDeviceContext(place));
 
   auto load_var = scope.Var("out_var");
   auto target = load_var->GetMutable<paddle::framework::LoDTensor>();
   auto load_op = paddle::framework::OpRegistry::CreateOp(
       "load", {}, {{"Out", {"out_var"}}}, attrs);
-  load_op->Run(scope, place);
+  load_op->Run(scope, paddle::platform::CPUDeviceContext(place));
   paddle::platform::float16* actual = target->data<paddle::platform::float16>();
   for (int64_t i = 0; i < tensor->numel(); ++i) {
     EXPECT_EQ(expect[i], static_cast<float>(actual[i]));
@@ -136,13 +136,13 @@ TEST(LoadFP16Op, CPU) {
 
   auto save_op = paddle::framework::OpRegistry::CreateOp(
       "save", {{"X", {"test_var"}}}, {}, attrs);
-  save_op->Run(scope, place);
+  save_op->Run(scope, paddle::platform::CPUDeviceContext(place));
 
   auto load_var = scope.Var("out_var");
   load_var->GetMutable<paddle::framework::LoDTensor>();
   auto load_op = paddle::framework::OpRegistry::CreateOp(
       "load", {}, {{"Out", {"out_var"}}}, attrs);
-  load_op->Run(scope, place);
+  load_op->Run(scope, paddle::platform::CPUDeviceContext(place));
 
   auto target = load_var->Get<paddle::framework::LoDTensor>();
   paddle::platform::float16* actual = target.data<paddle::platform::float16>();
