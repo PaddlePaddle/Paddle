@@ -56,7 +56,7 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
     VLOG(3) << "subgraph: {\n" << DebugString(subgraph.SortedNodes()) << "}\n";
 
     if (subgraph.IsValid(min_subgraph_size)) {
-      subgraph.SetFuncName("fused_elementwise_" + std::to_string(index++));
+      subgraph.SetFuncName("FusedElementwise" + std::to_string(index++));
       if (GenerateCode(&subgraph)) {
         InsertFusionGroupOp(graph, &subgraph);
         num_subgraphs++;

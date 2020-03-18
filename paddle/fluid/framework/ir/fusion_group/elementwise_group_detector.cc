@@ -60,61 +60,45 @@ static bool IsEqualAndNotEmpty(const std::vector<int64_t>& l,
   return l.size() != 0U && r.size() != 0U && l == r;
 }
 
-bool GroupDetector::IsFusionGroupOp(const Node* n) {
-  if (!(n && n->IsOp() && n->Op())) return false;
-  bool is_first = true;
-  proto::VarType::Type i_data_type = proto::VarType::FP32;
-  proto::VarType::Type o_data_type = proto::VarType::FP32;
+bool GroupDetector::CheckPrecondition(const Node* n) {
+  auto check_data_type = [&](const std::vector<Node*>& nodes) -> bool {
+    bool is_first = true;
+    proto::VarType::Type data_type_0;
+    for (auto* n : nodes) {
+      if (n && n->IsVar() && n->Var()) {
+        if (n->Var()->GetType() != proto::VarType::LOD_TENSOR) {
+          return false;
+        }
 
-  for (auto* i_node : n->inputs) {
-    if (!i_node->Var()) return false;
-    if (i_node->Var()->GetType() != proto::VarType::LOD_TENSOR) {
-      return false;
+        proto::VarType::Type data_type_i = n->Var()->GetDataType();
+        if (data_type_i == proto::VarType::FP32 ||
+            data_type_i == proto::VarType::FP64 ||
+            data_type_i == proto::VarType::FP16) {
+          if (is_first) {
+            data_type_0 = data_type_i;
+            is_first = false;
+          } else if (data_type_0 != data_type_i) {
+            return false;
+          }
+        } else {
+          return false;
+        }
+      }
     }
-    if (is_first) {
-      i_data_type = i_node->Var()->GetDataType();
-      is_first = false;
-    } else {
-      if (i_data_type != i_node->Var()->GetDataType()) return false;
-    }
-  }
+    return true;
+  };
 
-  is_first = true;
-  for (auto* o_node : n->outputs) {
-    if (!o_node->Var()) return false;
-    if (o_node->Var()->GetType() != proto::VarType::LOD_TENSOR) {
-      return false;
-    }
-    if (is_first) {
-      o_data_type = o_node->Var()->GetDataType();
-      is_first = false;
-    } else {
-      if (o_data_type != o_node->Var()->GetDataType()) return false;
-    }
-  }
-
-  if (!(i_data_type == proto::VarType::FP32 ||
-        i_data_type == proto::VarType::FP64 ||
-        i_data_type == proto::VarType::FP16) ||
-      !(o_data_type == proto::VarType::FP32 ||
-        o_data_type == proto::VarType::FP64 ||
-        o_data_type == proto::VarType::FP16))
-    return false;
-
-  return true;
+  return n && n->IsOp() && n->Op() && check_data_type(n->inputs) &&
+         check_data_type(n->outputs);
 }
 
 bool ElementwiseGroupDetector::IsElementwiseOp(const Node* n) {
   if (IsSpecifiedOp(GetElementwiseOpTypes(), n)) {
-    // Check whether all inputs are LOD_TENSOR and the shapes are the same.
+    // Check whether all inputs have the same shape.
     std::vector<int64_t> shape_0;
     for (size_t i = 0; i < n->inputs.size(); ++i) {
       auto* in_i = n->inputs[i];
       if (!(in_i && in_i->IsVar() && in_i->Var())) {
-        return false;
-      }
-
-      if (in_i->Var()->GetType() != proto::VarType::LOD_TENSOR) {
         return false;
       }
 
@@ -135,7 +119,7 @@ bool ElementwiseGroupDetector::IsElementwiseOp(const Node* n) {
 std::vector<std::vector<Node*>> ElementwiseGroupDetector::operator()(
     Graph* graph) {
   auto teller = [&](const Node* n) -> bool {
-    return IsFusionGroupOp(n) && IsElementwiseOp(n);
+    return CheckPrecondition(n) && IsElementwiseOp(n);
   };
 
   return SubgraphDetector(graph, teller)();
