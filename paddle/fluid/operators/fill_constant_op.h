@@ -26,7 +26,8 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-inline framework::DDim GetShape(const framework::ExecutionContext &ctx) {
+inline framework::DDim GetShape(const framework::ExecutionContext &ctx,
+                                const std::string op_type) {
   // 1. shape is a Tensor
   if (ctx.HasInput("ShapeTensor")) {
     auto *shape_tensor = ctx.Input<framework::LoDTensor>("ShapeTensor");
@@ -49,11 +50,11 @@ inline framework::DDim GetShape(const framework::ExecutionContext &ctx) {
       auto tensor = shape_tensor_list[i];
       PADDLE_ENFORCE_EQ(
           tensor->dims(), framework::make_ddim({1}),
-          "ShapeError: If the element type of 'shape' in FillConstantOp is "
+          "ShapeError: If the element type of 'shape' in [%s] is "
           "Tensor, "
           "the element's shape must be [1]. But received the element's shape "
           "is [%s]",
-          tensor->dims());
+          op_type, tensor->dims());
       if (platform::is_gpu_place(tensor->place())) {
         framework::Tensor temp;
         TensorCopySync(*tensor, platform::CPUPlace(), &temp);
@@ -99,7 +100,8 @@ class FillConstantKernel : public framework::OpKernel<T> {
         value = static_cast<T>(tmp_value);
       }
     }
-    auto shape = GetShape(ctx);
+    const std::string op_type = "fill_constant";
+    auto shape = GetShape(ctx, op_type);
 
     if (out_var->IsType<framework::LoDTensor>()) {
       tensor = out_var->GetMutable<framework::LoDTensor>();

@@ -21,6 +21,7 @@ import six
 from six.moves import zip, range, xrange
 import multiprocessing
 import warnings
+
 from .framework import Variable, default_main_program, _current_expected_place, in_dygraph_mode
 from .framework import _cpu_num, _cuda_ids
 __all__ = ['DataFeeder']
