@@ -109,13 +109,19 @@ def test_for_in_else(x):
     #if False:
     #    pass
     #else:
-    #    for ...
-    for i in range(0, 10):
-        x += 1
-        if i > 5:
+    #    for i in range(0, 10):
+    #        if i > 5:
+    #            x += 1
+    #            break
+    #        x += i
+    #
+    if False:
+        pass
+    else:
+        for i in range(0, 10):
+            x += 1
             break
-            x += 10086
-        x += i
+            x += i
     return x
 
 
