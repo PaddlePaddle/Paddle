@@ -21,7 +21,7 @@ from .. import core
 from ..framework import Program, Variable, Operator, in_dygraph_mode
 from ..layer_helper import LayerHelper, unique_name
 from .nn import logical_and, logical_not, logical_or
-from .utils import assert_same_structure, map_structure, assert_with_mutable_vars, copy_mutable_vars
+from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars
 import numpy
 import warnings
 import six
@@ -1018,13 +1018,13 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         return loop_vars
 
     while_loop_block = While(pre_cond, is_test, name)
-    with_mutable_vars = assert_with_mutable_vars(loop_vars)
+    has_mutable_vars_in_loop = hold_mutable_vars(loop_vars)
     with while_loop_block.block():
-        # If a variable with mutable type is included in vars, like `dict/list`,
-        # modifying them in the body function will cause origin variable be modified
+        # If a variable with mutable type is included in loop_vars, like `dict/list`,
+        # modifying it in the body function will cause origin variable to be modified
         # synchronously. This will raise an assignment error out of while block.
-        # Here we make a copy of the mutable object to aviod this problem.
-        if with_mutable_vars:
+        # Here we make a copy of the mutable vars to avoid this problem.
+        if has_mutable_vars_in_loop:
             new_loop_vars = copy_mutable_vars(loop_vars)
             output_vars = body(*new_loop_vars)
         else:

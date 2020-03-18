@@ -188,9 +188,9 @@ def map_structure(func, *structure):
     return pack_sequence_as(structure[0], [func(*x) for x in entries])
 
 
-def assert_with_mutable_vars(structure):
+def hold_mutable_vars(structure):
     """
-    Confirm whether structure holds sequence like `list/dict`.
+    Returns whether structure holds sequence like `list/dict`.
     """
     for s in structure:
         if is_sequence(s):
@@ -200,7 +200,7 @@ def assert_with_mutable_vars(structure):
 
 def copy_mutable_vars(structure):
     """
-    Copy vars from sequence and remove mutable property.
+    Returns vars copied from sequence without mutable property.
     """
     flat_structure = copy.copy(flatten(structure))
     return pack_sequence_as(structure, flat_structure)
