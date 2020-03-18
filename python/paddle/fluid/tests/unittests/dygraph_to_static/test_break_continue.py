@@ -94,6 +94,7 @@ def test_break_continue_in_for(x):
             x += 1
             continue
         else:
+            x += 10010
             break
         x += 10086
     return x
