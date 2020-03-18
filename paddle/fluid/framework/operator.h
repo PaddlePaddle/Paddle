@@ -137,7 +137,7 @@ class OperatorBase {
 
   /// Executor will call this interface function to Run an op.
   //  The implementation should be written at RunImpl
-  void Run(const Scope& scope, const platform::Place& place);
+  void Run(const Scope& scope, const platform::DeviceContext& dev_ctx);
 
   // FIXME(typhoonzero): this is only used for recv_op to stop event_loop.
   virtual void Stop() {}

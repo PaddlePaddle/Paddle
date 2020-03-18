@@ -131,7 +131,9 @@ void ScopeBufferedSSAGraphExecutor::InitVariables() {
       for (auto &op_desc : program_desc.Block(0).AllOps()) {
         for (size_t i = 0; i < local_exec_scopes_.size(); ++i) {
           auto op = OpRegistry::CreateOp(*op_desc);
-          op->Run(*local_exec_scopes_[i], places_[i]);
+          const auto &dev_ctx =
+              platform::DeviceContextPool::Instance().Get(places_[i]);
+          op->Run(*local_exec_scopes_[i], *dev_ctx);
         }
       }
     }

@@ -403,7 +403,6 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
                         platform::errors::InvalidArgument(
                             "Sizes of Parameters and ParamGrads are not equal "
                             "in RecurrentGradOp"));
-
       for (size_t param_id = 0; param_id < pg_names.size(); ++param_id) {
         auto inside_grad_name = framework::GradVarName(p_names[param_id]);
 
@@ -425,7 +424,7 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
           auto zero_op = framework::OpRegistry::CreateOp(
               "fill_constant", framework::VariableNameMap{},
               {{"Out", {pg_names[param_id]}}}, attrs);
-          zero_op->Run(scope, place);
+          zero_op->Run(scope, dev_ctx);
         }
 
         auto new_inside_name = cur_scope.Rename(inside_grad_name);
@@ -435,7 +434,7 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
             "sum", {{"X", {pg_names[param_id], new_inside_name}}},
             {{"Out", {pg_names[param_id]}}},
             framework::AttributeMap{{"use_mkldnn", {false}}});
-        sum_op->Run(cur_scope, place);
+        sum_op->Run(cur_scope, dev_ctx);
 
         cur_scope.Rename(new_inside_name, inside_grad_name);
       }

@@ -84,7 +84,6 @@ class LoDTensorArray2TensorOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::DeviceContext &dev_ctx) const override {
-    const platform::Place &place = dev_ctx.GetPlace();
     auto axis = Attr<int>("axis");
 
     framework::AttributeMap attrs;
@@ -132,7 +131,7 @@ class LoDTensorArray2TensorOp : public framework::OperatorBase {
             : framework::OpRegistry::CreateOp(
                   "concat", {{"X", names}}, {{"Out", {Output("Out")}}}, attrs);
 
-    op->Run(scope, place);
+    op->Run(scope, dev_ctx);
   }
 };
 
@@ -227,7 +226,6 @@ class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::DeviceContext &dev_ctx) const override {
-    const platform::Place &place = dev_ctx.GetPlace();
     auto axis = Attr<int>("axis");
     framework::AttributeMap attrs;
     attrs["axis"] = axis;
@@ -260,7 +258,7 @@ class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
                                    {{"X", names}, {"Out@GRAD", {dout_name}}},
                                    {{"X@GRAD", grad_names}}, attrs);
 
-    grad_op->Run(scope, place);
+    grad_op->Run(scope, dev_ctx);
 
     LodTensorArrayCreateFromLodTensorArray(scope, Input("X"), dx_name);
     auto &grad_inx =

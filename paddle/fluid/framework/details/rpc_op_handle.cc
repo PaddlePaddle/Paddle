@@ -41,7 +41,9 @@ void RPCOpHandle::RunImpl() {
       in->GeneratedOp()->RecordWaitEventOnCtx(dev_ctxes_.at(p));
     }
   }
-  this->RunAndRecordEvent([this] { op_->Run(*local_exec_scopes_[0], place_); });
+  const auto &dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
+  this->RunAndRecordEvent(
+      [this, &dev_ctx] { op_->Run(*local_exec_scopes_[0], *dev_ctx); });
 }
 
 std::string RPCOpHandle::Name() const { return name_; }

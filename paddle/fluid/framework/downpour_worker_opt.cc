@@ -326,6 +326,7 @@ void DownpourWorkerOpt::TrainFiles() {
   int cur_batch;
   std::future<int32_t> pull_async_status;
   std::string async_wait_name = "";
+  const auto& dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
   for (int i = 0; i < param_.program_config(0).pull_sparse_table_id_size();
        ++i) {
     uint64_t tid =
@@ -424,7 +425,7 @@ void DownpourWorkerOpt::TrainFiles() {
               }
             }
           }
-          op->Run(*thread_scope_, place_);
+          op->Run(*thread_scope_, *dev_ctx);
         }
       }
       op_idx++;

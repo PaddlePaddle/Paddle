@@ -233,7 +233,9 @@ bool RequestPrefetchHandler::Handle(const std::string& varname,
     auto lookup_table_op =
         BuildLookupTableOp(table_name, varname, out_var_name);
     paddle::platform::CPUPlace cpu_place;
-    lookup_table_op->Run(*scope, cpu_place);
+    const auto& dev_ctx =
+        platform::DeviceContextPool::Instance().Get(cpu_place);
+    lookup_table_op->Run(*scope, *dev_ctx);
   }
   return true;
 }

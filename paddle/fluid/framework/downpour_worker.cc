@@ -501,6 +501,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
   int batch_cnt = 0;
   uint64_t total_inst = 0;
   timeline.Start();
+  const auto& dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
   while ((cur_batch = device_reader_->Next()) > 0) {
     timeline.Pause();
     read_time += timeline.ElapsedSec();
@@ -573,7 +574,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
       if (!need_skip) {
         timeline.Start();
         VLOG(3) << "Going to run op " << op_name[run_op_idx];
-        op->Run(*thread_scope_, place_);
+        op->Run(*thread_scope_, *dev_ctx);
         VLOG(3) << "Op " << op_name[run_op_idx] << " Finished";
         timeline.Pause();
         op_total_time[run_op_idx++] += timeline.ElapsedSec();
@@ -763,6 +764,7 @@ void DownpourWorker::TrainFiles() {
   device_reader_->Start();
   int batch_cnt = 0;
   int cur_batch;
+  const auto& dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
   while ((cur_batch = device_reader_->Next()) > 0) {
     if (copy_table_config_.need_copy()) {
       if (batch_cnt % copy_table_config_.batch_num() == 0) {
@@ -807,7 +809,7 @@ void DownpourWorker::TrainFiles() {
         }
       }
       if (!need_skip) {
-        op->Run(*thread_scope_, place_);
+        op->Run(*thread_scope_, *dev_ctx);
       }
     }
 

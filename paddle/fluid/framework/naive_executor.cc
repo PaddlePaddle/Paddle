@@ -41,11 +41,12 @@ void NaiveExecutor::Prepare(Scope *scope, const ProgramDesc &program_desc,
 }
 
 void NaiveExecutor::Run() {
+  const auto &dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
   for (auto &op : ops_) {
     VLOG(4) << std::this_thread::get_id() << " run "
             << op->DebugStringEx(scope_) << " on scope " << scope_;
     op->SetIsCalledByExecutor(false);
-    op->Run(*scope_, place_);
+    op->Run(*scope_, *dev_ctx);
   }
 }
 

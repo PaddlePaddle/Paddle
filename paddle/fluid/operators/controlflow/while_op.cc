@@ -301,7 +301,7 @@ class WhileGradOp : public framework::OperatorBase {
             auto zero_op = framework::OpRegistry::CreateOp(
                 "fill_constant", framework::VariableNameMap{},
                 {{"Out", {var_name}}}, attrs);
-            zero_op->Run(scope, dev_place);
+            zero_op->Run(scope, dev_ctx);
             scope.FindVar(var_name)
                 ->GetMutable<framework::LoDTensor>()
                 ->set_lod(inside_tensor.lod());
@@ -312,7 +312,7 @@ class WhileGradOp : public framework::OperatorBase {
             "sum", {{"X", {pg_ig_names[param_id], new_inside_name}}},
             {{"Out", {pg_ig_names[param_id]}}},
             framework::AttributeMap{{"use_mkldnn", {false}}});
-        sum_op->Run(cur_scope, dev_place);
+        sum_op->Run(cur_scope, dev_ctx);
         cur_scope.Rename(new_inside_name, inside_grad_name);
       }
       dev_ctx.Wait();

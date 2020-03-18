@@ -81,8 +81,7 @@ void SyncFunctor::Synchronize() {
       attrs.insert({"scale", static_cast<float>(1. / rank_num_)});
       auto scale_op = framework::OpRegistry::CreateOp("scale", {{"X", {name}}},
                                                       {{"Out", {name}}}, attrs);
-      scale_op->Run(*(pipeline_scopes_[i]),
-                    nccl_ctx_map_->DevCtx(i)->GetPlace());
+      scale_op->Run(*(pipeline_scopes_[i]), *(nccl_ctx_map_->DevCtx(i)));
       PADDLE_ENFORCE(platform::dynload::ncclAllReduce(
           data, data, numel, ncclFloat, ncclSum, nccl_ctx.comm(),
           dynamic_cast<platform::CUDADeviceContext*>(
@@ -172,6 +171,7 @@ void SectionWorker::TrainFiles() {
     }
 
     Scope* exe_scope = scope;
+    const auto& dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
     if (section_id_ > 0 && platform::is_gpu_place(place_)) {
       SEC_LOG << "CPU2GPU memory copy";
 
@@ -198,7 +198,7 @@ void SectionWorker::TrainFiles() {
     SEC_LOG << "begin running ops";
 
     for (auto& op : ops_) {
-      op->Run(*exe_scope, place_);
+      op->Run(*exe_scope, *dev_ctx);
     }
     exe_scope->DropKids();
     // Wait for GPU calc finising, as the cudaMemcpy and GPU calc may be in
@@ -270,6 +270,7 @@ void SectionWorker::TrainFilesWithProfiler() {
   int64_t accum_num = 0;
   int batch_size = 0;
   Scope* scope = nullptr;
+  const auto& dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
 
   platform::Timer reader_timer;
   platform::Timer cal_timer;
@@ -351,7 +352,7 @@ void SectionWorker::TrainFilesWithProfiler() {
     dev_ctx_->Wait();
     for (auto& op : ops_) {
       timeline.Start();
-      op->Run(*exe_scope, place_);
+      op->Run(*exe_scope, *dev_ctx);
       dev_ctx_->Wait();
       timeline.Pause();
       op_total_time[op_id++] += timeline.ElapsedUS();

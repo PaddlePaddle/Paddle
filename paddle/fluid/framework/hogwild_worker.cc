@@ -150,7 +150,9 @@ void HogwildWorker::TrainFilesWithProfiler() {
       timeline.Start();
       VLOG(3) << "Going to run op " << op_name[i];
       if (!need_skip) {
-        ops_[i]->Run(*thread_scope_, place_);
+        const auto &dev_ctx =
+            platform::DeviceContextPool::Instance().Get(place_);
+        ops_[i]->Run(*thread_scope_, *dev_ctx);
       }
       VLOG(3) << "Op " << op_name[i] << " Finished";
       timeline.Pause();
@@ -235,6 +237,7 @@ void HogwildWorker::SetChannelWriter(ChannelObject<std::string> *queue) {
 }
 
 void HogwildWorker::TrainFiles() {
+  const auto &dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
   platform::SetNumThreads(1);
 
   // how to accumulate fetched values here
@@ -250,7 +253,7 @@ void HogwildWorker::TrainFiles() {
         }
       }
       if (!need_skip) {
-        op->Run(*thread_scope_, place_);
+        op->Run(*thread_scope_, *dev_ctx);
       }
     }
 

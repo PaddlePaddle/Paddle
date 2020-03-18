@@ -154,7 +154,9 @@ RuntimeContext::RuntimeContext(const VariableNameMap& innames,
   }
 }
 
-void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
+void OperatorBase::Run(const Scope& scope,
+                       const platform::DeviceContext& dev_ctx) {
+  const auto& place = dev_ctx.GetPlace();
   try {
     VLOG(4) << place << " " << DebugStringEx(&scope);
     if (platform::is_gpu_place(place)) {
@@ -174,9 +176,8 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       auto op_name = platform::OpName(outputs_, Type());
       platform::RecordEvent op_name_record_event(
           op_name, platform::EventRole::kUniqueOp);
-      const auto& ctx = platform::DeviceContextPool::Instance().Get(place);
       platform::RecordEvent record_event(Type());
-      RunImpl(scope, *ctx);
+      RunImpl(scope, dev_ctx);
     }
 
     VLOG(3) << place << " " << DebugStringEx(&scope);

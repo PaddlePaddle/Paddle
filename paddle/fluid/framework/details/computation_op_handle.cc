@@ -31,7 +31,10 @@ ComputationOpHandle::ComputationOpHandle(ir::Node *node, Scope *scope,
 void ComputationOpHandle::RunImpl() {
   WaitInputVarGenerated(place_);
 
-  auto run_func = [this]() { op_->Run(*local_exec_scopes_[0], place_); };
+  const auto &dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
+  auto run_func = [this, &dev_ctx]() {
+    op_->Run(*local_exec_scopes_[0], *dev_ctx);
+  };
 
   if (is_lock_and_record_event_free_) {
     run_func();

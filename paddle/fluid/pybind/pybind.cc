@@ -1420,14 +1420,24 @@ All parameter, weight, gradient are variables in Paddle.
           })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
-              const platform::CPUPlace &place) { self.Run(scope, place); })
+              const platform::CPUPlace &place) {
+             const auto &dev_ctx =
+                 platform::DeviceContextPool::Instance().Get(place);
+             self.Run(scope, *dev_ctx);
+           })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
-              const platform::CUDAPlace &place) { self.Run(scope, place); })
+              const platform::CUDAPlace &place) {
+             const auto &dev_ctx =
+                 platform::DeviceContextPool::Instance().Get(place);
+             self.Run(scope, *dev_ctx);
+           })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
               const platform::CUDAPinnedPlace &place) {
-             self.Run(scope, place);
+             const auto &dev_ctx =
+                 platform::DeviceContextPool::Instance().Get(place);
+             self.Run(scope, *dev_ctx);
            })
       .def("type",
            [](const OperatorBase &op) -> std::string { return op.Type(); })

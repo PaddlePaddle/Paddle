@@ -161,7 +161,7 @@ class ReadFromArrayOp : public ArrayOp {
 
       auto zero_op = framework::OpRegistry::CreateOp(
           "fill_constant", {}, {{"Out", {Output("Out")}}}, attrs);
-      zero_op->Run(scope, place);
+      zero_op->Run(scope, dev_ctx);
       auto *out_tensor = out->GetMutable<framework::LoDTensor>();
       out_tensor->set_lod(fw_var_tensor.lod());
     }

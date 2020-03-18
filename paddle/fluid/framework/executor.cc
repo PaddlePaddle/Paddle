@@ -446,8 +446,9 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 #endif
   }
 
+  const auto& dev_ctx = platform::DeviceContextPool::Instance().Get(place_);
   for (auto& op : ctx->ops_) {
-    op->Run(*local_scope, place_);
+    op->Run(*local_scope, *dev_ctx);
     if (gc) {
       DeleteUnusedTensors(*local_scope, op.get(), ctx->unused_vars_, gc.get());
     }

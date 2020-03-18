@@ -108,7 +108,7 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
 
       auto zero_op = framework::OpRegistry::CreateOp(
           "fill_constant", {}, {{"Out", {in_grad_var_name}}}, attrs);
-      zero_op->Run(scope, dev_place);
+      zero_op->Run(scope, dev_ctx);
     } else {
       auto &out_grad_tensor = out_grad_var->Get<framework::LoDTensor>();
       auto *in_grad_tensor = in_grad_var->GetMutable<framework::LoDTensor>();
