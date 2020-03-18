@@ -72,7 +72,13 @@ class TestDataNormOpInference(unittest.TestCase):
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
 
-    def check_with_place(self, place, data_layout, dtype, shape, slot_dim=-1):
+    def check_with_place(self,
+                         place,
+                         data_layout,
+                         dtype,
+                         shape,
+                         slot_dim=-1,
+                         enable_scale_and_shift=False):
         """
         do forward and check
 
@@ -82,7 +88,7 @@ class TestDataNormOpInference(unittest.TestCase):
             dtype(dtype): np.float32
             shape(list): input shape
             slot_dim(int): dimension of one slot. Refer to data_norm api.
-
+            enable_scale_and_shift(bool): if enable scale and shift after normalization.
 
         """
         epsilon = 0.00001
@@ -127,21 +133,49 @@ class TestDataNormOpInference(unittest.TestCase):
         mean_tensor = create_or_get_tensor(scope, "mean", None, place)
         scales_tensor = create_or_get_tensor(scope, "scales", None, place)
 
-        data_norm_op = Operator(
-            "data_norm",
-            # inputs
-            X="x_val",
-            BatchSize="batch_size",
-            BatchSum="batch_sum",
-            BatchSquareSum="batch_square_sum",
-            # outputs
-            Y="y_out",
-            Means="mean",
-            Scales="scales",
-            # attrs
-            epsilon=epsilon,
-            use_mkldnn=self.use_mkldnn,
-            slot_dim=slot_dim)
+        if not enable_scale_and_shift:
+            data_norm_op = Operator(
+                "data_norm",
+                # inputs
+                X="x_val",
+                BatchSize="batch_size",
+                BatchSum="batch_sum",
+                BatchSquareSum="batch_square_sum",
+                # outputs
+                Y="y_out",
+                Means="mean",
+                Scales="scales",
+                # attrs
+                epsilon=epsilon,
+                use_mkldnn=self.use_mkldnn,
+                slot_dim=slot_dim,
+                enable_scale_and_shift=False)
+        else:
+            scale_w = np.ones(scale_shape).astype(np.float32)
+            bias = np.zeros(scale_shape).astype(np.float32)
+            scale_w_tensor = create_or_get_tensor(
+                scope, "scale_w",
+                OpTest.np_dtype_to_fluid_dtype(scale_w), place)
+            bias_tensor = create_or_get_tensor(
+                scope, "bias", OpTest.np_dtype_to_fluid_dtype(bias), place)
+            data_norm_op = Operator(
+                "data_norm",
+                # inputs
+                X="x_val",
+                BatchSize="batch_size",
+                BatchSum="batch_sum",
+                BatchSquareSum="batch_square_sum",
+                scale_w="scale_w",
+                bias="bias",
+                # outputs
+                Y="y_out",
+                Means="mean",
+                Scales="scales",
+                # attrs
+                epsilon=epsilon,
+                use_mkldnn=self.use_mkldnn,
+                slot_dim=slot_dim,
+                enable_scale_and_shift=True)
 
         data_norm_op.run(scope, place)
 
@@ -162,11 +196,13 @@ class TestDataNormOpInference(unittest.TestCase):
         for place in places:
             for data_format in ["NCHW", "NHWC"]:
                 for slot_dim in [-1, 1]:
-                    self.check_with_place(
-                        place,
-                        data_format,
-                        self.dtype, [2, 3],
-                        slot_dim=slot_dim)
+                    for enable_scale_and_shift in [False, True]:
+                        self.check_with_place(
+                            place,
+                            data_format,
+                            self.dtype, [2, 3],
+                            slot_dim=slot_dim,
+                            enable_scale_and_shift=enable_scale_and_shift)
 
 
 class TestDataNormOp(OpTest):
