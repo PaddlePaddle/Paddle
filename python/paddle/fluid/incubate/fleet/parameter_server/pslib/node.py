@@ -327,8 +327,10 @@ class DownpourServer(Server):
                 table2.deconverter = deconverter
             elif accessor_class == 'DownpourUnitAccessor':
                 self.add_sparse_table_common_config(table, strategy)
-                self.add_sparse_optimizer(table.accessor.embed_sgd_param, strategy, "embed")
-                self.add_sparse_optimizer(table.accessor.embedx_sgd_param, strategy, "embedx")
+                self.add_sparse_optimizer(table.accessor.embed_sgd_param,
+                                          strategy, "embed")
+                self.add_sparse_optimizer(table.accessor.embedx_sgd_param,
+                                          strategy, "embedx")
     
     def add_dense_table(self, table_id, param_var, grad_var, strategy,
                         sparse_table_names):
