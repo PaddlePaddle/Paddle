@@ -178,7 +178,31 @@ class Collective(Fleet):
 
         return r
 
-    def _get_last_checkpoint_no(self, root_path):
+    def _get_local_last_checkpoint_no(self, root_path):
+        """
+        only get the first depth
+        """
+        max_no = -1
+        d = {}
+        for subdir, dirs, files in os.walk(root_path):
+            for dir in dirs:
+                g = dir.split(".")
+                if len(g) != 2:
+                    continue
+
+                if g[0] != "__paddle_fleet_checkpoint__":
+                    continue
+
+                try:
+                    n = int(g[1])
+                    if n > max_no:
+                        max_no = n
+                except:
+                    continue
+
+        return max_no
+
+    def _get_hdfs_last_checkpoint_no(self, fs_path):
         max_no = -1
         d = {}
         for subdir, dirs, files in os.walk(root_path):
