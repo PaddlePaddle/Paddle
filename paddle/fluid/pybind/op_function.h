@@ -18,7 +18,9 @@
 #include <pybind11/complex.h>
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
+#include <memory>
 #include <string>
+#include <vector>
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/variable.h"
@@ -35,6 +37,17 @@ static void ConstructAttrMapFromPyArgs(framework::AttributeMap* attrs,
     auto value = args[i + 1].cast<framework::Attribute>();
     (*attrs)[name] = value;
   }
+}
+
+static std::vector<std::shared_ptr<imperative::VarBase>>
+ConstructDuplicableOutput(const size_t num) {
+  auto tracer = imperative::GetCurrentTracer();
+  std::vector<std::shared_ptr<imperative::VarBase>> res;
+  for (size_t i = 0; i < num; i++) {
+    auto var_base_name = tracer->GenerateUniqueName();
+    res.emplace_back(new imperative::VarBase(var_base_name));
+  }
+  return res;
 }
 
 }  // namespace paddle

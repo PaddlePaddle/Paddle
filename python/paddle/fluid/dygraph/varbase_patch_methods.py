@@ -251,23 +251,12 @@ def monkey_patch_varbase():
 
         out = self
         if len(slice_axis) > 0:
-            # append slice_op here
-            # inputs = {'Input': [out]}
-            # attrs = {
-            #     'axes': slice_axis,
-            #     'starts': slice_start,
-            #     'ends': slice_end,
-            #     'decrease_axis': decrease_axis
-            # }
-            # out = core.ops.slice(inputs, attrs)
-            out = core.ops.slice(out, slice_axis, slice_start, slice_end,
+            out = core.ops.slice(out, 'axes', slice_axis, 'starts', slice_start,
+                                 'ends', slice_end, 'decrease_axis',
                                  decrease_axis)
 
         if len(reverse_axis) > 0:
-            inputs = {'X': [out]}
-            attrs = {'axis': reverse_axis}
-            outs = core.ops.reverse(inputs, attrs)
-            out = outs['Out'][0]
+            out = core.ops.reverse(out, 'axis', reverse_axis)
 
         return out
 

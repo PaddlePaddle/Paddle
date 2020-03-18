@@ -258,7 +258,7 @@ def concat(input, axis=0, name=None):
         if not isinstance(axis, int):
             raise TypeError(
                 "Input 'axis' in concat must be int in Dygraph mode.")
-        return core.ops.concat(input, axis)
+        return core.ops.concat(input, 'axis', axis)
 
     if not isinstance(input, list):
         warnings.warn(
@@ -571,11 +571,12 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
             raise TypeError(
                 "The type of 'shape' in fill_constant must be list[int] or tuple(int) in Dygraph mode, but "
                 "received %s." % type(shape))
-        if out is None:
-            out = _varbase_creator(dtype=dtype)
-        attrs['dtype'] = out.dtype
-        outputs = {'Out': [out]}
-        outs = core.ops.fill_constant({}, attrs, outputs)
+        dtype = convert_np_dtype_to_dtype_(dtype)
+        out = core.ops.fill_constant('value',
+                                     float(value), 'force_cpu', force_cpu or
+                                     force_init_on_cpu(), 'dtype', dtype,
+                                     'str_value', attrs['str_value'], 'shape',
+                                     attrs['shape'])
         out.stop_gradient = True
         return out
 

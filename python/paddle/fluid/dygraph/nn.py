@@ -219,16 +219,16 @@ class Conv2D(layers.Layer):
 
     def forward(self, input):
         if in_dygraph_mode() and self._l_type == 'conv2d':
-            out = core.ops.conv2d(input, self.weight, self._stride,
-                                  self._padding, self._dilation, self._groups if
-                                  self._groups else 1, self._use_cudnn, False)
-            # outs = core.ops.conv2d(inputs, attrs)
-            # pre_bias = outs['Output'][0]
+            attrs = {
+                'strides', self._stride, 'paddings', self._padding, 'dilations',
+                self._dilation, 'groups', self._groups
+                if self._groups else 1, 'use_cudnn', self._use_cudnn
+            }
+            out = core.ops.conv2d(input, self.weight, *attrs)
             pre_bias = out
 
             pre_act = dygraph_utils._append_bias_in_dygraph(pre_bias, self.bias,
                                                             1)
-
             return dygraph_utils._append_activation_in_dygraph(pre_act,
                                                                self._act)
         inputs = {
@@ -828,12 +828,15 @@ class Pool2D(layers.Layer):
 
     def forward(self, input):
         if in_dygraph_mode():
-            # outs = core.ops.pool2d(inputs, attrs)
-            # return outs['Out'][0]
-            return core.ops.pool2d(input, self._pool_type, self._pool_size,
-                                   self._global_pooling, self._pool_stride,
-                                   self._pool_padding, self._use_cudnn,
-                                   self._ceil_mode, False, self._exclusive)
+            attrs = {
+                'pooling_type', self._pool_type, 'ksize', self._pool_size,
+                'global_pooling', self._global_pooling, 'strides',
+                self._pool_stride, 'paddings', self._pool_padding, 'use_cudnn',
+                self._use_cudnn, 'ceil_mode', self._ceil_mode, 'use_mkldnn',
+                False, 'exclusive', self._exclusive
+            }
+            return core.ops.pool2d(input, *attrs)
+
         attrs = {
             "pooling_type": self._pool_type,
             "ksize": self._pool_size,
@@ -934,8 +937,8 @@ class Linear(layers.Layer):
         inputs = {"X": [input], "Y": [self.weight]}
 
         if in_dygraph_mode():
-            outs = core.ops.mul(inputs, attrs)
-            pre_bias = outs['Out'][0]
+            pre_bias = core.ops.mul(x, self.weight, 'x_num_col_dims',
+                                    len(input.shape) - 1, 'y_num_col_dims', 1)
 
             pre_act = dygraph_utils._append_bias_in_dygraph(
                 pre_bias, self.bias, axis=len(input.shape) - 1)
@@ -1133,8 +1136,24 @@ class BatchNorm(layers.Layer):
         # mean and mean_out share the same memory
         mean_out = self._mean
         # variance and variance out share the same memory
-
         variance_out = self._variance
+
+        if in_dygraph_mode():
+            attrs = {
+                "momentum", self._momentum, "epsilon", self._epsilon, "is_test",
+                self._is_test, "data_layout", self._data_layout, "use_mkldnn",
+                False, "fuse_with_relu", self._fuse_with_relu,
+                "use_global_stats", self._use_global_stats,
+                "trainable_statistics", self._trainable_statistics
+            }
+            batch_norm_out, mean_out, variance_out, saved_mean, saved_variance = core.ops.batch_norm(
+                input, self.weight, self.bias, self._mean, self._variance,
+                *attrs)
+
+            outs = core.ops.batch_norm(inputs, attrs, outputs)
+            return dygraph_utils._append_activation_in_dygraph(
+                batch_norm_out, act=self._act)
+
         attrs = {
             "momentum": self._momentum,
             "epsilon": self._epsilon,
@@ -1154,20 +1173,12 @@ class BatchNorm(layers.Layer):
             "Variance": [self._variance]
         }
 
-        if in_dygraph_mode():
-            attrs['is_test'] = not _dygraph_tracer()._train_mode
-            saved_mean = _varbase_creator(dtype=self._dtype)
-            saved_variance = _varbase_creator(dtype=self._dtype)
-            batch_norm_out = _varbase_creator(dtype=self._dtype)
-            batch_norm_out.stop_gradient = False
-            # inplace is not supported currently
-        else:
-            saved_mean = self._helper.create_variable_for_type_inference(
-                dtype=self._dtype, stop_gradient=True)
-            saved_variance = self._helper.create_variable_for_type_inference(
-                dtype=self._dtype, stop_gradient=True)
-            batch_norm_out = input if self._in_place else self._helper.create_variable_for_type_inference(
-                self._dtype)
+        saved_mean = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype, stop_gradient=True)
+        saved_variance = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype, stop_gradient=True)
+        batch_norm_out = input if self._in_place else self._helper.create_variable_for_type_inference(
+            self._dtype)
 
         outputs = {
             "Y": [batch_norm_out],
@@ -1176,11 +1187,6 @@ class BatchNorm(layers.Layer):
             "SavedMean": [saved_mean],
             "SavedVariance": [saved_variance]
         }
-
-        if in_dygraph_mode():
-            outs = core.ops.batch_norm(inputs, attrs, outputs)
-            return dygraph_utils._append_activation_in_dygraph(
-                batch_norm_out, act=self._act)
 
         self._helper.append_op(
             type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
@@ -1320,17 +1326,18 @@ class Embedding(layers.Layer):
             is_bias=False)
 
     def forward(self, input):
+        if in_dygraph_mode():
+            return core.ops.lookup_table_v2(
+                self.weight, input, 'is_sparse', self._is_sparse,
+                'is_distributed', self._is_distributed, 'remote_prefetch',
+                self._remote_prefetch, 'padding_idx', self._padding_idx)
+
         attrs = {
             'is_sparse': self._is_sparse,
             'is_distributed': self._is_distributed,
             'remote_prefetch': self._remote_prefetch,
             'padding_idx': self._padding_idx
         }
-
-        if in_dygraph_mode():
-            inputs = {'Ids': [input], 'W': [self.weight]}
-            outs = core.ops.lookup_table_v2(inputs, attrs)
-            return outs['Out'][0]
 
         out = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
@@ -1441,6 +1448,7 @@ class LayerNorm(layers.Layer):
         else:
             if self._param_attr:
                 logging.warn("param_attr are only available with scale is True")
+            self.weight = None
 
         if self._shift:
             assert self._bias_attr is not False
@@ -1452,6 +1460,7 @@ class LayerNorm(layers.Layer):
         else:
             if self._bias_attr:
                 logging.warn("bias_attr are only available with shift is True")
+            self.bias = None
 
     def forward(self, input):
         input_shape = list(input.shape)
@@ -1465,23 +1474,25 @@ class LayerNorm(layers.Layer):
                 'Given normalized_shape is ' + str_normalized_shape +
                 ', expected input with shape [*, ' + str_normalized_shape[
                     1:] + ', but got input shape ' + str(input_shape))
+
+        if in_dygraph_mode():
+            out, _, _ = core.ops.layer_norm(
+                input, self.weight, self.bias, 'epsilon', self._epsilon,
+                'begin_norm_axis', self._begin_norm_axis)
+            pre_act = out
+            return dygraph_utils._append_activation_in_dygraph(
+                pre_act, act=self._act)
+
         inputs = dict()
         inputs['X'] = [input]
         if self._scale:
             inputs['Scale'] = [self.weight]
         if self._shift:
             inputs['Bias'] = [self.bias]
-
         attrs = {
             "epsilon": self._epsilon,
             "begin_norm_axis": self._begin_norm_axis
         }
-
-        if in_dygraph_mode():
-            outs = core.ops.layer_norm(inputs, attrs)
-            pre_act = outs['Y'][0]
-            return dygraph_utils._append_activation_in_dygraph(
-                pre_act, act=self._act)
 
         # create output
         mean_out = self._helper.create_variable_for_type_inference(
@@ -1647,6 +1658,12 @@ class GRUUnit(layers.Layer):
             attr=bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
 
     def forward(self, input, hidden):
+        if in_dygraph_mode():
+            gate, reset_hidden_pre, updated_hidden = core.ops.gru_unit(
+                input, hidden, self.weight, self.bias, 'activation',
+                self.activation, 'gate_activation', self.gate_activation)
+            return hidden, reset, gate
+
         inputs = {
             'Input': [input],
             'HiddenPrev': [hidden],
@@ -1658,12 +1675,6 @@ class GRUUnit(layers.Layer):
             'activation': self.activation,
             'gate_activation': self.gate_activation,
         }
-
-        if in_dygraph_mode():
-            outs = core.ops.gru_unit(inputs, attrs)
-            return outs['Hidden'][0], outs['ResetHiddenPrev'][0], outs['Gate'][
-                0]
-
         gate = self._helper.create_variable_for_type_inference(self._dtype)
         reset_hidden_pre = self._helper.create_variable_for_type_inference(
             self._dtype)
@@ -2327,8 +2338,11 @@ class Conv2DTranspose(layers.Layer):
 
         if in_dygraph_mode():
             op = getattr(core.ops, self._op_type)
-            outs = op(inputs, attrs)
-            pre_bias = outs['Output'][0]
+            out = op(input, self.weight, 'output_size', self._output_size,
+                     'strides', self._stride, 'paddings', self._padding,
+                     'dilations', self._dilation, 'groups', self._groups,
+                     'use_cudnn', self._use_cudnn)
+            pre_bias = out
             pre_act = dygraph_utils._append_bias_in_dygraph(pre_bias, self.bias,
                                                             1)
             return dygraph_utils._append_activation_in_dygraph(

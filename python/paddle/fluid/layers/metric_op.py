@@ -75,23 +75,13 @@ def accuracy(input, label, k=1, correct=None, total=None):
     """
     if in_dygraph_mode():
         topk_out, topk_indices = nn.topk(input, k=k)
-        inputs = {
-            "Out": [topk_out],
-            "Indices": [topk_indices],
-            "Label": [label]
-        }
-        acc_out = _varbase_creator(dtype="float32")
+        _acc, _correct, _total = core.ops.accuracy(topk_out, topk_indices,
+                                                   label)
         if correct is None:
-            correct = _varbase_creator(dtype="int64")
+            correct = _correct
         if total is None:
-            total = _varbase_creator(dtype="int64")
-        outputs = {
-            "Accuracy": [acc_out],
-            "Correct": [correct],
-            "Total": [total]
-        }
-        outs = core.ops.accuracy(inputs, {}, outputs)
-        return outs['Accuracy'][0]
+            total = _total
+        return _acc
 
     helper = LayerHelper("accuracy", **locals())
     check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],

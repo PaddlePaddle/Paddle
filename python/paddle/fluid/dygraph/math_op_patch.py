@@ -39,17 +39,10 @@ def monkey_patch_math_varbase():
 
     @no_grad
     def create_tensor(value, dtype, shape):
-        value = float(value)
-        inputs = {}
-        attrs = {
-            'dtype': dtype,
-            'shape': shape,
-            'value': value,
-            'force_cpu': False
-        }
-        outs = core.ops.fill_constant(inputs, attrs)
-        outs['Out'][0].stop_gradient = True
-        return outs['Out'][0]
+        out = core.ops.fill_constant('dtype', dtype, 'shape', shape, 'value',
+                                     value, 'force_cpu', False)
+        out.stop_gradient = True
+        return outs
 
     def create_scalar(value, dtype):
         return create_tensor(value, dtype, shape=[1])
@@ -99,19 +92,11 @@ def monkey_patch_math_varbase():
                     print("new var's dtype is: {}, numpy dtype is {}".format(new_variable.dtype, new_variable.numpy().dtype))
 
         """
-        inputs = {'X': [self]}
-        attrs = {
-            "in_dtype": self.dtype,
-            "out_dtype": convert_np_dtype_to_dtype_(dtype)
-        }
-        outs = core.ops.cast(inputs, attrs)
-        return outs['Out'][0]
+        return core.ops.cast(self, 'in_dtype', self.dtype, 'out_dtype',
+                             convert_np_dtype_to_dtype_(dtype))
 
     def _scalar_elementwise_op_(var, scale, bias):
-        inputs = {'X': [var]}
-        attrs = {"scale": scale, "bias": bias}
-        outs = core.ops.scale(inputs, attrs)
-        return outs['Out'][0]
+        return core.ops.scale(var, 'scale', scale, 'bias', bias)
 
     def _neg_(var):
         return _scalar_elementwise_op_(var, -1.0, 0.0)
@@ -168,10 +153,8 @@ def monkey_patch_math_varbase():
                 other_var = tmp
 
             axis = -1
-            op = getattr(core.ops, op_type)
-            # inputs = {'X': [self], 'Y': [other_var]}
-            # attrs = {'axis': axis}
-            return op(self, other_var, 'aixs', axis, 'use_mkldnn', False)
+            math_op = getattr(core.ops, op_type)
+            return math_op(self, other_var, 'aixs', axis)
 
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
 

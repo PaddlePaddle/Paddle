@@ -24,9 +24,21 @@
 #include "paddle/fluid/pybind/pybind.h"
 #include "paddle/fluid/string/string_helper.h"
 
+std::map<std::string, std::set<std::string>> op_ins_map = {
+    {"layer_norm", {"X", "Scale", "Bias"}},
+    {"gru_unit", {"Input", "HiddenPrev", "Weight", "Bias"}},
+    {"label_smooth", {"X", "PriorDist"}},
+    {"assign", {"X"}},
+};
+std::map<std::string, std::set<std::string>> op_passing_out_map = {
+    {"sgd", {"ParamOut"}},
+};
 // clang-format off
 const char* OUT_INITIALIZER_TEMPLATE =
     R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase(tracer->GenerateUniqueName()))}})";
+
+const char* OUT_DUPLICABLE_INITIALIZER_TEMPLATE =
+     R"({"%s", ConstructDuplicableOutput(%s)})";
 
 
 const char* INPUT_INITIALIZER_TEMPLATE =
@@ -38,7 +50,9 @@ const char* INPUT_LIST_INITIALIZER_TEMPLATE =
 
 // if inputs is list, no need {}
 const char* ARG_OUT_NUM =
-    R"(size_t %sNum)";
+    R"(%sNum)";
+const char* ARG_OUT_NUM_TYPE =
+    R"(size_t )";
 
 const char* OP_FUNCTION_TEMPLATE =
 R"(
@@ -124,8 +138,7 @@ R"(
 
     tracer->TraceOp("%s", ins_, outs_, attrs_);
     return %s; 
-  }
-   
+  }   
 })";
 
 const char* PYBIND_ITEM_TEMPLATE =
@@ -147,54 +160,14 @@ const std::vector<std::string> specialization = {
     // "batch_norm", "top_k", "accuracy", "gaussian_random"
 };
 
-static std::tuple<std::vector<std::string>, std::vector<std::string>>
-GenerateOpFunctions(const std::string& module_name) {
-  auto& op_info_map = paddle::framework::OpInfoMap::Instance().map();
+static bool FindInputInSpecialization(const std::string op_type,
+                                      const std::string in_name) {
+  return op_ins_map[op_type].count(in_name);
+}
 
-  std::vector<std::string> op_function_list, bind_function_list;
-  for (auto& pair : op_info_map) {
-    auto& op_info = pair.second;
-
-    auto op_proto = op_info.proto_;
-    if (op_proto == nullptr) {
-      continue;
-    }
-    auto& op_type = op_proto->type();
-
-    if (find(specialization.begin(), specialization.end(), op_type) !=
-        specialization.end())
-      continue;
-
-    // Generate outs initializer
-    std::string outs_initializer = "{";
-
-    for (auto& output : op_proto->outputs()) {
-      auto& out_name = output.name();
-      auto out_initializer_str =
-          paddle::string::Sprintf(OUT_INITIALIZER_TEMPLATE, out_name);
-      outs_initializer += out_initializer_str;
-      outs_initializer += ",";
-    }
-    if (outs_initializer.back() == ',') {
-      outs_initializer.pop_back();
-    }
-    outs_initializer += "}";
-
-    std::string func_name = "imperative_" + op_type;
-
-    // generate op funtcion body
-    auto op_function_str = paddle::string::Sprintf(
-        OP_FUNCTION_TEMPLATE, func_name, outs_initializer, op_type);
-
-    // generate pybind item
-    auto bind_function_str = paddle::string::Sprintf(
-        PYBIND_ITEM_TEMPLATE, module_name, op_type, func_name);
-
-    op_function_list.emplace_back(std::move(op_function_str));
-    bind_function_list.emplace_back(std::move(bind_function_str));
-  }
-
-  return std::make_tuple(op_function_list, bind_function_list);
+static bool FindOutoutInSpecialization(const std::string op_type,
+                                       const std::string out_name) {
+  return op_passing_out_map[op_type].count(out_name);
 }
 
 static std::tuple<std::vector<std::string>, std::vector<std::string>>
@@ -202,6 +175,8 @@ GenerateOpFunctions2(const std::string& module_name) {
   auto& op_info_map = paddle::framework::OpInfoMap::Instance().map();
 
   std::vector<std::string> op_function_list, bind_function_list;
+  auto& all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
+
   for (auto& pair : op_info_map) {
     auto& op_info = pair.second;
     auto op_proto = op_info.proto_;
@@ -210,32 +185,22 @@ GenerateOpFunctions2(const std::string& module_name) {
     }
 
     auto& op_type = op_proto->type();
-    if (op_type == "listen_and_serv") continue;
 
     // Skip ooerator which is not inherit form OperatorWithKernel, like while,
     // since only OperatorWithKernel can run in dygraph mode.
-    std::cout << op_type << std::endl;
-    try {
-      auto op =
-          paddle::framework::OpRegistry::CreateOp(op_type, {}, {}, {}, false);
-      std::cout << op_type << std::endl;
-      if (!dynamic_cast<paddle::framework::OperatorWithKernel*>(op.get())) {
-        std::cout << op_type << std::endl;
-        continue;
-      }
-    } catch (...) {
-      std::cout << op_type << std::endl;
+    if (!all_kernels.count(op_type)) {
+      continue;
     }
+
     std::string input_args = "";
     std::string ins_initializer = "{";
     std::string py_arg = "";
     for (auto& input : op_proto->inputs()) {
+      auto& in_name = input.name();
       // skip those dispensable inputs, like ResidualData in conv2d
-      if (input.dispensable()) {
+      if (input.dispensable() && !FindInputInSpecialization(op_type, in_name)) {
         continue;
       }
-
-      auto& in_name = input.name();
       // If input is duplicable, use list
       auto in_type = input.duplicable() ? VAR_LIST_TYPE : VAR_TYPE;
 
@@ -271,16 +236,38 @@ GenerateOpFunctions2(const std::string& module_name) {
       if (output.dispensable()) {
         continue;
       }
+
       auto out_type = output.duplicable() ? VAR_LIST_TYPE : VAR_TYPE;
       auto return_template =
           output.duplicable() ? RETURN_LIST_TEMPLATE : RETURN_TEMPLATE;
 
       auto& out_name = output.name();
-      auto out_initializer_str =
-          paddle::string::Sprintf(OUT_INITIALIZER_TEMPLATE, out_name);
+      std::string out_initializer_str;
+      if (FindOutoutInSpecialization(op_type, out_name)) {
+        input_args += ",";
+        input_args += out_type;
+        input_args += out_name;
+        auto out_template = output.duplicable()
+                                ? INPUT_LIST_INITIALIZER_TEMPLATE
+                                : INPUT_INITIALIZER_TEMPLATE;
+        out_initializer_str +=
+            paddle::string::Sprintf(out_template, out_name, out_name);
+      } else {
+        if (output.duplicable()) {
+          if (input_args != "") {
+            input_args += ",";
+          }
+          auto out_num_str = paddle::string::Sprintf(ARG_OUT_NUM, out_name);
+          input_args += ARG_OUT_NUM_TYPE;
+          input_args += out_num_str;
+          out_initializer_str = paddle::string::Sprintf(
+              OUT_DUPLICABLE_INITIALIZER_TEMPLATE, out_name, out_num_str);
+        } else {
+          out_initializer_str =
+              paddle::string::Sprintf(OUT_INITIALIZER_TEMPLATE, out_name);
+        }
+      }
 
-      outs_initializer += out_initializer_str;
-      outs_initializer += ",";
       return_type += out_type;
       return_type += ",";
       return_str += paddle::string::Sprintf(return_template, out_name);
@@ -289,13 +276,9 @@ GenerateOpFunctions2(const std::string& module_name) {
       // There are few Operators that have duplicable output, like `Out` in
       // split op. We need to specify the number of variables for the duplicable
       // output, as the argument OutNum;
-      if (output.duplicable()) {
-        if (input_args != "") {
-          input_args += ",";
-        }
 
-        input_args += paddle::string::Sprintf(ARG_OUT_NUM, out_name);
-      }
+      outs_initializer += out_initializer_str;
+      outs_initializer += ",";
     }
     if (outs_initializer.back() == ',') {
       outs_initializer.pop_back();
