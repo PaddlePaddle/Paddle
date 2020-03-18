@@ -16,14 +16,18 @@ import paddle
 import paddle.fluid as fluid
 import numpy as np
 import time
+import os
 import six
+import sys
 import unittest
 from paddle.fluid.io import Dataset, DataLoader
+from paddle.fluid.dygraph.nn import Linear
+from paddle.fluid.dygraph.base import to_variable
 
-EPOCH_NUM = 20
+EPOCH_NUM = 10
 BATCH_SIZE = 32
 IMAGE_SIZE = 784
-SAMPLE_NUM = 80000
+SAMPLE_NUM = 800
 CLASS_NUM = 10
 
 
@@ -35,8 +39,8 @@ class RandomDataset(Dataset):
     def __getitem__(self, idx):
         np.random.seed(idx)
         image = np.random.random([IMAGE_SIZE]).astype('float32')
-        for _ in range(100):
-            image = image * (image + 0.5)
+        # for _ in range(100):
+        #     image = image * (image + 0.5)
         label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
         return image, label
 
@@ -56,17 +60,22 @@ def simple_fc_net_static():
                 name='image', shape=[None, IMAGE_SIZE], dtype='float32')
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
             hidden = image
+            param_attr = fluid.ParamAttr(initializer=fluid.initializer.Constant(
+                value=0.8))
+            bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Constant(
+                value=0.5))
             for hidden_size in [10, 20, 30]:
-                hidden = fluid.layers.fc(
-                    hidden,
-                    size=hidden_size,
-                    act='tanh',
-                    bias_attr=fluid.ParamAttr(
-                        initializer=fluid.initializer.Constant(value=1.0)))
+                hidden = fluid.layers.fc(hidden,
+                                         size=hidden_size,
+                                         act='tanh',
+                                         param_attr=param_attr,
+                                         bias_attr=bias_attr)
 
             predict_label = fluid.layers.fc(hidden,
                                             size=CLASS_NUM,
-                                            act='softmax')
+                                            act='softmax',
+                                            param_attr=param_attr,
+                                            bias_attr=bias_attr)
             loss = fluid.layers.mean(
                 fluid.layers.cross_entropy(
                     input=predict_label, label=label))
@@ -74,6 +83,40 @@ def simple_fc_net_static():
             optimizer = fluid.optimizer.Adam()
             optimizer.minimize(loss)
     return startup_prog, main_prog, image, label, loss
+
+
+class SimpleFCNet(fluid.dygraph.Layer):
+    def __init__(self):
+        super(SimpleFCNet, self).__init__()
+
+        param_attr = fluid.ParamAttr(initializer=fluid.initializer.Constant(
+            value=0.8))
+        bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Constant(
+            value=0.5))
+        self._fcs = []
+        in_channel = IMAGE_SIZE
+        for hidden_size in [10, 20, 30]:
+            self._fcs.append(
+                Linear(
+                    in_channel,
+                    hidden_size,
+                    act='tanh',
+                    param_attr=param_attr,
+                    bias_attr=bias_attr))
+            in_channel = hidden_size
+        self._fcs.append(
+            Linear(
+                in_channel,
+                CLASS_NUM,
+                act='softmax',
+                param_attr=param_attr,
+                bias_attr=bias_attr))
+
+    def forward(self, image):
+        out = image
+        for fc in self._fcs:
+            out = fc(out)
+        return out
 
 
 class TestStaticDataLoader(unittest.TestCase):
@@ -106,9 +149,6 @@ class TestStaticDataLoader(unittest.TestCase):
             loss_list = []
             start_t = time.time()
             for _ in six.moves.range(EPOCH_NUM):
-                print("step_list", step_list)
-                import sys
-                sys.stdout.flush()
                 step = 0
                 for d in dataloader:
                     assert len(d) == len(places), "{} != {}".format(
@@ -134,7 +174,8 @@ class TestStaticDataLoader(unittest.TestCase):
             "step": step_list,
             "loss": np.array(loss_list)
         }
-        print("time cost", ret['time'])
+        print("time cost", ret['time'], 'step_list', ret['step'])
+        sys.stdout.flush()
         return ret
 
     def prepare_places(self, with_data_parallel, with_cpu=True, with_gpu=True):
@@ -147,12 +188,14 @@ class TestStaticDataLoader(unittest.TestCase):
         if with_gpu and fluid.core.is_compiled_with_cuda():
             tmp = fluid.cuda_places()
             assert len(tmp) > 0, "no gpu detected"
-            # if with_data_parallel:
-            #     places.append(tmp)
-            places.append([tmp[0]])
+            if with_data_parallel:
+                places.append(tmp)
+            # places.append([tmp[0]])
         return places
 
     def test_main(self):
+        if self.__class__.__name__ == "TestStaticDataLoader":
+            return
         # for with_data_parallel in [True, False]:
         for with_data_parallel in [True]:
             for p in self.prepare_places(with_data_parallel):
@@ -161,7 +204,8 @@ class TestStaticDataLoader(unittest.TestCase):
                     results = []
                     # for num_workers in [0, 4]:
                     for num_workers in [4]:
-                        print(p, use_buffer_reader, num_workers)
+                        print(self.__class__.__name__, p, use_buffer_reader,
+                              num_workers)
                         ret = self.run_main(
                             num_workers=num_workers,
                             use_buffer_reader=use_buffer_reader,
@@ -172,7 +216,71 @@ class TestStaticDataLoader(unittest.TestCase):
                         diff = np.max(
                             np.abs(results[0]['loss'] - results[1]['loss']) /
                             np.abs(results[0]['loss']))
-                        self.assertLess(diff, 1e-3)
+                        self.assertLess(diff, 1e-2)
+
+
+class TestDygraphDataLoader(TestStaticDataLoader):
+    def run_main(self, num_workers, use_buffer_reader, places,
+                 with_data_parallel):
+        fluid.default_startup_program().random_seed = 1
+        fluid.default_main_program().random_seed = 1
+        with fluid.dygraph.guard(places[0]):
+            # if with_data_parallel:
+            #     # strategy = fluid.dygraph.parallel.prepare_context()
+            #     strategy = fluid.dygraph.parallel.ParallelStrategy()
+            #     print("strategy", strategy)
+            #     sys.stdout.flush()
+            fc_net = SimpleFCNet()
+            optimizer = fluid.optimizer.Adam(parameter_list=fc_net.parameters())
+            # if with_data_parallel:
+            #     fc_net = fluid.dygraph.parallel.DataParallel(fc_net, strategy)
+
+            dataset = RandomDataset(SAMPLE_NUM, CLASS_NUM)
+            dataloader = DataLoader(
+                dataset,
+                places=places[0],
+                num_workers=num_workers,
+                batch_size=BATCH_SIZE,
+                shuffle=use_buffer_reader,
+                drop_last=True)
+            # if with_data_parallel:
+            #     dataloader = fluid.contrib.reader.distributed_batch_reader(dataloader)
+
+            step_list = []
+            loss_list = []
+            start_t = time.time()
+            for _ in six.moves.range(EPOCH_NUM):
+                step = 0
+                for image, label in dataloader():
+                    out = fc_net(image)
+                    loss = fluid.layers.cross_entropy(out, label)
+                    avg_loss = fluid.layers.mean(loss)
+
+                    # if with_data_parallel:
+                    #     avg_loss = fc_net.scale_loss(avg_loss)
+                    #     avg_loss.backward()
+                    #     fc_net.apply_collective_grads()
+                    # else:
+                    #     avg_loss.backward()
+                    avg_loss.backward()
+
+                    loss_list.append(np.mean(avg_loss.numpy()))
+
+                    optimizer.minimize(avg_loss)
+                    fc_net.clear_gradients()
+
+                    step += 1
+                step_list.append(step)
+
+        end_t = time.time()
+        ret = {
+            "time": end_t - start_t,
+            "step": step_list,
+            "loss": np.array(loss_list)
+        }
+        print("time cost", ret['time'], 'step_list', ret['step'])
+        sys.stdout.flush()
+        return ret
 
 
 # class TestDataLoaderBaseAbstract(unittest.TestCase):

@@ -132,6 +132,9 @@ class DataLoader(object):
     def __iter__(self):
         return _DataLoaderIter(self)
 
+    def __call__(self):
+        return self.__iter__()
+
     @staticmethod
     def from_generator(feed_list=None,
                        capacity=None,

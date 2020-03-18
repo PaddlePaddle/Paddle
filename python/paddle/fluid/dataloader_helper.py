@@ -14,6 +14,7 @@
 
 import six
 import sys
+import time
 import signal
 import logging
 import itertools
@@ -30,6 +31,8 @@ else:
 from . import core
 from .framework import in_dygraph_mode
 from .multiprocess_utils import multiprocess_queue_set, CleanupFuncRegistrar, _cleanup_mmap, QUEUE_GET_TIMEOUT
+
+THREAD_WAIT_TIME_ON_DRAIN = 0.5
 
 
 class _DataLoaderIter(object):
@@ -178,6 +181,7 @@ class _DataLoaderIter(object):
     def _wait_thread_ends(self):
         if self._thread is not None:
             self._blocking_queue.close()
+            self._thread_done_event.set()
             self._thread = None
 
     def _wait_workers_ends(self):
@@ -253,7 +257,6 @@ class _DataLoaderIter(object):
                             else:
                                 slots[i].append(item)
 
-                    sys.stdout.flush()
                     tensor_list = core._convert_to_tensor_list(slots)
                     out_queue.put((idx, tensor_list))
                     core._remove_tensor_list_mmap_fds(tensor_list)
@@ -306,7 +309,28 @@ class _DataLoaderIter(object):
 
     def _thread_loop_for_multiprocess(self):
         while not self._thread_done_event.is_set():
-            _, batch = self._get_data()
+            data = self._get_data()
+            if data is None:
+                continue
+            idx, batch = data
+            self._rcvd_idx += 1
+            # if self._rcvd_idx in self._reorder_dict.keys():
+            #     _, batch = self._reorder_dict.pop(self._rcvd_idx)
+            #     self._rcvd_idx += 1
+            # # if outstanding batches is not drained in workers
+            # elif self._send_idx - self._rcvd_idx > len(self._reorder_dict):
+            #     _, batch = self._get_from_data_queue()
+            #     self._rcvd_idx += 1
+            # else:
+            #     # In this design, multi-process workers and py_reader is
+            #     # seperate, thread may start read from data_queue and block
+            #     # at reading when data drained but before _thread_done_event
+            #     # set, we check whether data in workers and _data_queue is
+            #     # drained, if drained need to sleep for yielding CPU for
+            #     # main process to end or _try_put_indices
+            #     print("thread", self._send_idx, self._rcvd_idx, self._reorder_dict)
+            #     time.sleep(THREAD_WAIT_TIME_ON_DRAIN)
+            #     continue
             if not self._thread_done_event.is_set():
                 if batch is not None:
                     try:
@@ -318,10 +342,6 @@ class _DataLoaderIter(object):
                     except:
                         self._exit_thread_unexpectedly()
                         six.reraise(*sys.exc_info())
-                    else:
-                        # py_reader keep data order inside, _rcvd_idx
-                        # only keep data order in multi-process
-                        self._rcvd_idx += 1
                 else:
                     self._exit_thread_expectedly()
 
@@ -364,12 +384,9 @@ class _DataLoaderIter(object):
                 # to wait slightly longer
                 data = self._data_queue.get(timeout=self._timeout)
             except Exception as e:
-                # FIXME: _data_queue.get may start before _thread_done_event set when data drained
-                # and may raise queue.Empty exception here, so check whether _thread_done_event is
-                # set and exception here is queue.Empty, do not raise this exception.
                 if isinstance(e,
                               queue.Empty) and self._thread_done_event.is_set():
-                    continue
+                    return
                 # NOTE [ avoid handing ] After adding the shared memory mechanism, not only
                 # the queue. Empty exception will occur here, but other exceptions will also
                 # occur, such as mmap failure. If it is not handled here, it will hang.
@@ -406,20 +423,48 @@ class _DataLoaderIter(object):
     def __len__(self):
         return len(self.batch_sampler)
 
-    def __del__(self):
-        self._shutdown()
-
-    def _shutdown(self):
-        self._wait_workers_ends()
-        self._wait_thread_ends()
-
+    # def __del__(self):
+    #     self._wait_workers_ends()
+    #
     def __next__(self):
         try:
             if self._num_workers > 0:
-                # print("_batches_outstanding", self._batches_outstanding, self._send_idx, self._rcvd_idx)
+                # worker_status = [w.is_alive() for w in self._workers]
+                # indices_queue_lens = [q.qsize() for q in self._indices_queues]
+                # print("_batches_outstanding", self._batches_outstanding, self._send_idx, self._rcvd_idx, self._reorder_dict.keys(), self._blocking_queue.size(), self._thread_done_event.is_set(), self._workers_done_event.is_set(), worker_status, indices_queue_lens)
                 # sys.stdout.flush()
-                if self._send_idx == self._rcvd_idx and \
-                    self._batches_outstanding < len(self._places):
+
+                # _batches_outstanding here record the total batch data number
+                # in from _try_put_indices to output data, this value should
+                # be _outstanding_capacity if data is not drained, if 
+                # _batches_outstanding is less than _places number, there are
+                # no enough data to generate next output, close blocking_queue
+                # and set _thread_done_event to raise StopIteration
+                if self._batches_outstanding < len(self._places):
+                    if self._send_idx != self._rcvd_idx:
+                        worker_status = [w.is_alive() for w in self._workers]
+                        indices_queue_lens = [
+                            q.qsize() for q in self._indices_queues
+                        ]
+                        logging.warn(
+                            "Data drained for outstanding batches({})"
+                            " < places num({}) in multiprocessing, except "
+                            "send_idx({}) == rcvd_idx({}) but not, status:"
+                            "\n  reorder_dict indices: {}"
+                            "\n  blocking_queue size: {}"
+                            "\n  thread_event set: {}"
+                            "\n  worker_event set: {}"
+                            "\n  worker status: {}"
+                            "\n  indices_queue length: {}".format(
+                                self._batches_outstanding,
+                                len(self._places), self._send_idx,
+                                self._rcvd_idx,
+                                self._reorder_dict.keys(),
+                                self._blocking_queue.size(),
+                                self._thread_done_event.is_set(),
+                                self._workers_done_event.is_set(
+                                ), worker_status, indices_queue_lens))
+                    self._thread_done_event.set()
                     self._blocking_queue.close()
 
             if in_dygraph_mode():
@@ -429,16 +474,16 @@ class _DataLoaderIter(object):
                     data = self._reader.read_next_list()
                 else:
                     data = self._reader.read_next()
-            self._on_output_batch(data)
+            self._on_output_batch()
             return data
         except StopIteration:
             self._reader.reset()
-            self._shutdown()
+            self._wait_workers_ends()
             six.reraise(*sys.exc_info())
 
-    def _on_output_batch(self, data):
+    def _on_output_batch(self):
         if self._num_workers > 0:
-            for _ in range(len(data)):
+            for _ in range(len(self._places)):
                 self._batches_outstanding -= 1
                 self._try_put_indices()
 
