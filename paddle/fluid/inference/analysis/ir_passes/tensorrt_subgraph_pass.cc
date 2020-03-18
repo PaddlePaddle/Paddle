@@ -272,7 +272,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   // Check trt version for dynamic shape input.
 
   if (min_input_shape.size() > 0 && TRT_VERSION < 6000) {
-    std::cout << "hello";
     LOG_FIRST_N(WARNING, 1) << "You are using the dynamic size input mode of "
                                "Paddle-TRT, but we found that the version of "
                                "the TensorRT is less than 6.0, so we use the "
@@ -284,8 +283,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
 
   if (min_input_shape.size() > 0 && TRT_VERSION > 6000) {
     LOG_FIRST_N(WARNING, 1)
-        << "The Paddle lib links the " << TRT_VERSION / 1000.
-        << " version TensorRT, "
+        << "The Paddle lib links the " << TRT_VERSION << " version TensorRT, "
         << "make sure the runtime TensorRT you are using is no less than this "
            "version, otherwise, there might be Segfault!";
   }

@@ -267,6 +267,15 @@ class TensorRTEngine {
 
   bool with_dynamic_shape() { return with_dynamic_shape_; }
 
+#if IS_TRT_VERSION_GE(6000)
+  nvinfer1::IPluginV2Layer* AddPluginV2(nvinfer1::ITensor* const* inputs,
+                                        int num_inputs,
+                                        plugin::DynamicPluginTensorRT* plugin) {
+    owned_pluginv2_.emplace_back(plugin);
+    return network()->addPluginV2(inputs, num_inputs, *plugin);
+  }
+#endif
+
  private:
   // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
   // ensure that the thread is associated with the correct device by calling
@@ -322,6 +331,7 @@ class TensorRTEngine {
 #if IS_TRT_VERSION_GE(6000)
   infer_ptr<nvinfer1::IBuilderConfig> infer_builder_config_;
   std::unique_ptr<nvinfer1::IOptimizationProfile> optim_profile_;
+  std::vector<std::unique_ptr<plugin::DynamicPluginTensorRT>> owned_pluginv2_;
 #endif
   std::mutex mutex_;
 };  // class TensorRTEngine
