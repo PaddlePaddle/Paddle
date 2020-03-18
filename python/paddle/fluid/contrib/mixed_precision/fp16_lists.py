@@ -122,7 +122,6 @@ gray_list = {
     'flatten2',
     'stack',
     'unstack',
-    'uniform_random_batch_size_like',
     'gaussian_random',
     'gaussian_random_batch_size_like',
     'slice',

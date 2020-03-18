@@ -113,6 +113,3 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
 REGISTER_OP_CUDA_KERNEL(uniform_random,
                         paddle::operators::GPUUniformRandomKernel<float>,
                         paddle::operators::GPUUniformRandomKernel<double>);
-REGISTER_OP_CUDA_KERNEL(uniform_random_batch_size_like,
-                        paddle::operators::GPUUniformRandomKernel<float>,
-                        paddle::operators::GPUUniformRandomKernel<double>);

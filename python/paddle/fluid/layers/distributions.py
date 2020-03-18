@@ -202,8 +202,9 @@ class Uniform(Distribution):
             output_shape = shape + batch_shape
             zero_tmp = tensor.fill_constant_batch_size_like(
                 self.low + self.high, batch_shape + shape, self.low.dtype, 0.)
+            zero_tmp_shape = nn.shape(zero_tmp)
             uniform_random_tmp = nn.uniform_random_batch_size_like(
-                zero_tmp, zero_tmp.shape, min=0., max=1., seed=seed)
+                zero_tmp_shape, min=0., max=1., seed=seed)
             output = uniform_random_tmp * (zero_tmp + self.high - self.low
                                            ) + self.low
             return nn.reshape(output, output_shape)

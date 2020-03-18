@@ -245,6 +245,3 @@ REGISTER_OPERATOR(
 REGISTER_OP_CPU_KERNEL(uniform_random,
                        paddle::operators::CPUUniformRandomKernel<float>,
                        paddle::operators::CPUUniformRandomKernel<double>);
-REGISTER_OP_CPU_KERNEL(uniform_random_batch_size_like,
-                       paddle::operators::CPUUniformRandomKernel<float>,
-                       paddle::operators::CPUUniformRandomKernel<double>);

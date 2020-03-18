@@ -145,8 +145,6 @@ void OpCompatibleMap::InitOpCompatibleMap() {
   op_compatible_map_["pow"] = {"1.6.0", OpCompatibleType::possible};
   op_compatible_map_["prior_box"] = {"1.6.0", OpCompatibleType::possible};
   op_compatible_map_["uniform_random"] = {"1.6.0", OpCompatibleType::possible};
-  op_compatible_map_["uniform_random_batch_size_like"] = {
-      "1.6.0", OpCompatibleType::possible};
   op_compatible_map_["warpctc"] = {"1.6.0", OpCompatibleType::possible};
 
   op_compatible_map_["layer_norm"] = {"1.6.0", OpCompatibleType::bug_fix};

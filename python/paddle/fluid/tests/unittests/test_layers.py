@@ -1765,8 +1765,7 @@ class TestBook(LayerTest):
         self.not_compare_static_dygraph_set = set({
             "make_gaussian_random", "make_gaussian_random_batch_size_like",
             "make_kldiv_loss", "make_prelu",
-            "make_sampled_softmax_with_cross_entropy", "make_sampling_id",
-            "make_uniform_random_batch_size_like"
+            "make_sampled_softmax_with_cross_entropy", "make_sampling_id"
         })
         self.all_close_compare = set({"make_spectral_norm"})
 
@@ -2558,14 +2557,6 @@ class TestBook(LayerTest):
             x = self._get_data(name="input", shape=[10], dtype='int32')
             out = layers.expand(x, [1, 2])
             return out
-
-    def make_uniform_random_batch_size_like(self):
-        with program_guard(fluid.default_main_program(),
-                           fluid.default_startup_program()):
-            input = self._get_data(
-                name="input", shape=[13, 11], dtype='float32')
-            out = layers.uniform_random_batch_size_like(input, [-1, 11])
-            return (out)
 
     def make_gaussian_random(self):
         with program_guard(fluid.default_main_program(),
