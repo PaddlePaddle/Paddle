@@ -41,7 +41,7 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     } else if (type == "relu6") {
       op->SetAttr("threshold", 6.0f);
     } else if (type == "swish") {
-      op->SetAttr("beta", 1);
+      op->SetAttr("beta", 1.0f);
     }
   }
   op->SetOutput("Out", outputs);
