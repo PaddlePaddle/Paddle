@@ -338,8 +338,9 @@ class Normal(Distribution):
             output_shape = shape + batch_shape
             zero_tmp = tensor.fill_constant_batch_size_like(
                 self.loc + self.scale, batch_shape + shape, self.loc.dtype, 0.)
-            normal_random_tmp = nn.gaussian_random_batch_size_like(
-                zero_tmp, zero_tmp.shape, mean=0., std=1., seed=seed)
+            zero_tmp_shape = nn.shape(zero_tmp)
+            normal_random_tmp = nn.gaussian_random(
+                zero_tmp_shape, mean=0., std=1., seed=seed)
             output = normal_random_tmp * (zero_tmp + self.scale) + self.loc
             return nn.reshape(output, output_shape)
         else:

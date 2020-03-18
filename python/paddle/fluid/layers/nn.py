@@ -28,7 +28,7 @@ from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, 
 from .. import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
-from .tensor import concat, assign, fill_constant, zeros, tensor_array_to_tensor
+from .tensor import concat, assign, fill_constant, zeros, tensor_array_to_tensor, cast
 from . import utils
 from .. import unique_name
 from functools import reduce
@@ -136,7 +136,6 @@ __all__ = [
     'uniform_random_batch_size_like',
     'gaussian_random',
     'sampling_id',
-    'gaussian_random_batch_size_like',
     'sum',
     'slice',
     'strided_slice',
@@ -9642,8 +9641,50 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
         'dtype': c_dtype,
         'use_mkldnn': False
     }
-    inputs = utils._get_shape_tensor_inputs(
-        attrs=attrs, shape=shape, op_type='gaussian_random')
+    op_type = "gaussian_random"
+    inputs = {}
+
+    def _get_attr_shape(list_shape):
+        attr_shape = []
+        for idx, dim in enumerate(list_shape):
+            if isinstance(dim, Variable):
+                attr_shape.append(-1)
+            else:
+                attr_shape.append(dim)
+        return attr_shape
+
+    def _get_shape_tensor(list_shape):
+        new_shape_tensor = []
+        for idx, dim in enumerate(list_shape):
+            if isinstance(dim, Variable):
+                dim.stop_gradient = True
+                check_dtype(
+                    dim.dtype, 'shape[' + str(idx) + ']', ['int32', 'int64'],
+                    op_type,
+                    '(When type of shape in' + op_type + 'is list or tuple.)')
+                if convert_dtype(dim.dtype) == 'int64':
+                    dim = cast(x=dim, dtype='int32')
+                new_shape_tensor.append(dim)
+            else:
+                temp_out = helper.create_variable_for_type_inference('int32')
+                fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
+                new_shape_tensor.append(temp_out)
+        return new_shape_tensor
+
+    if isinstance(shape, Variable):
+        shape.stop_gradient = True
+        check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'fill_constant',
+                    '(When type of shape in' + op_type + ' is Variable.)')
+        if (convert_dtype(shape.dtype) == 'int64'):
+            shape = cast(shape, 'int32')
+        inputs["ShapeTensor"] = shape
+    elif isinstance(shape, (list, tuple)):
+        assert len(shape) > 0, (
+            "The size of 'shape' in" + op_type + " can't be zero, "
+            "but received %s." % len(shape))
+        attrs["shape"] = _get_attr_shape(shape)
+        if utils._contain_var(shape):
+            inputs['ShapeTensorList'] = _get_shape_tensor(shape)
 
     helper.append_op(
         type='gaussian_random',
@@ -9690,61 +9731,6 @@ def sampling_id(x, min=0.0, max=1.0, seed=0, dtype='float32'):
         attrs={'min': min,
                'max': max,
                'seed': seed})
-
-    return out
-
-
-@templatedoc()
-def gaussian_random_batch_size_like(input,
-                                    shape,
-                                    input_dim_idx=0,
-                                    output_dim_idx=0,
-                                    mean=0.0,
-                                    std=1.0,
-                                    seed=0,
-                                    dtype='float32'):
-    """
-    ${comment}
-
-    Args:
-        input (Variable): ${input_comment}
-        shape (tuple|list): ${shape_comment}
-        input_dim_idx (int): ${input_dim_idx_comment}
-        output_dim_idx (int): ${output_dim_idx_comment}
-        mean (float): ${mean_comment}
-        std (float): ${std_comment}
-        seed (int): ${seed_comment}
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of output data, float32 or float_64.
-
-    Returns:
-        out (Variable): ${out_comment}
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            input = fluid.data(name="input", shape=[13, 11], dtype='float32')
-
-            out = fluid.layers.gaussian_random_batch_size_like(
-                input, shape=[-1, 11], mean=1.0, std=2.0)
-    """
-
-    helper = LayerHelper('gaussian_random_batch_size_like', **locals())
-    out = helper.create_variable_for_type_inference(dtype)
-    c_dtype = convert_np_dtype_to_dtype_(dtype)
-    helper.append_op(
-        type='gaussian_random_batch_size_like',
-        inputs={'Input': input},
-        outputs={'Out': out},
-        attrs={
-            'shape': shape,
-            'input_dim_idx': input_dim_idx,
-            'output_dim_idx': output_dim_idx,
-            'mean': mean,
-            'std': std,
-            'seed': seed,
-            'dtype': c_dtype
-        })
 
     return out
 

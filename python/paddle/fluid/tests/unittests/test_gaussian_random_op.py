@@ -151,5 +151,78 @@ class TestGaussianRandomOp1_ShapeTensor(TestGaussianRandomOp):
         self.seed = 10
 
 
+# Test python API
+class TestGaussianRandomAPI(unittest.TestCase):
+    def test_api(self):
+        positive_2_int32 = fluid.layers.fill_constant([1], "int32", 2000)
+
+        positive_2_int64 = fluid.layers.fill_constant([1], "int64", 500)
+        shape_tensor_int32 = fluid.data(
+            name="shape_tensor_int32", shape=[2], dtype="int32")
+
+        shape_tensor_int64 = fluid.data(
+            name="shape_tensor_int64", shape=[2], dtype="int64")
+
+        out_1 = fluid.layers.gaussian_random(
+            shape=[2000, 500], dtype="float32", mean=0.0, std=1.0, seed=10)
+
+        out_2 = fluid.layers.gaussian_random(
+            shape=[2000, positive_2_int32],
+            dtype="float32",
+            mean=0.,
+            std=1.0,
+            seed=10)
+
+        out_3 = fluid.layers.gaussian_random(
+            shape=[2000, positive_2_int64],
+            dtype="float32",
+            mean=0.,
+            std=1.0,
+            seed=10)
+
+        out_4 = fluid.layers.gaussian_random(
+            shape=shape_tensor_int32,
+            dtype="float32",
+            mean=0.,
+            std=1.0,
+            seed=10)
+
+        out_5 = fluid.layers.gaussian_random(
+            shape=shape_tensor_int64,
+            dtype="float32",
+            mean=0.,
+            std=1.0,
+            seed=10)
+
+        out_6 = fluid.layers.gaussian_random(
+            shape=shape_tensor_int64,
+            dtype=np.float32,
+            mean=0.,
+            std=1.0,
+            seed=10)
+
+        exe = fluid.Executor(place=fluid.CPUPlace())
+        res_1, res_2, res_3, res_4, res_5, res_6 = exe.run(
+            fluid.default_main_program(),
+            feed={
+                "shape_tensor_int32": np.array([2000, 500]).astype("int32"),
+                "shape_tensor_int64": np.array([2000, 500]).astype("int64"),
+            },
+            fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6])
+
+        self.assertAlmostEqual(np.mean(res_1), 0.0, delta=0.1)
+        self.assertAlmostEqual(np.std(res_1), 1., delta=0.1)
+        self.assertAlmostEqual(np.mean(res_2), 0.0, delta=0.1)
+        self.assertAlmostEqual(np.std(res_2), 1., delta=0.1)
+        self.assertAlmostEqual(np.mean(res_3), 0.0, delta=0.1)
+        self.assertAlmostEqual(np.std(res_3), 1., delta=0.1)
+        self.assertAlmostEqual(np.mean(res_4), 0.0, delta=0.1)
+        self.assertAlmostEqual(np.std(res_5), 1., delta=0.1)
+        self.assertAlmostEqual(np.mean(res_5), 0.0, delta=0.1)
+        self.assertAlmostEqual(np.std(res_5), 1., delta=0.1)
+        self.assertAlmostEqual(np.mean(res_6), 0.0, delta=0.1)
+        self.assertAlmostEqual(np.std(res_6), 1., delta=0.1)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1729,8 +1729,7 @@ class TestBook(LayerTest):
     def setUp(self):
         self.only_static_set = set({"make_word_embedding"})
         self.not_compare_static_dygraph_set = set({
-            "make_gaussian_random", "make_gaussian_random_batch_size_like",
-            "make_kldiv_loss", "make_prelu",
+            "make_gaussian_random", "make_kldiv_loss", "make_prelu",
             "make_sampled_softmax_with_cross_entropy", "make_sampling_id",
             "make_uniform_random_batch_size_like"
         })
@@ -2549,16 +2548,6 @@ class TestBook(LayerTest):
                 append_batch_size=False)
 
             out = layers.sampling_id(x)
-            return (out)
-
-    def make_gaussian_random_batch_size_like(self):
-        with program_guard(fluid.default_main_program(),
-                           fluid.default_startup_program()):
-            input = self._get_data(
-                name="input", shape=[13, 11], dtype='float32')
-
-            out = layers.gaussian_random_batch_size_like(
-                input, shape=[-1, 11], mean=1.0, std=2.0)
             return (out)
 
     def make_sum(self):
