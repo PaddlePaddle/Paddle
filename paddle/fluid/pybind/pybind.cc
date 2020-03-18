@@ -1605,6 +1605,8 @@ All parameter, weight, gradient are variables in Paddle.
                    t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                    arr.append(t)
            )DOC")
+      .def("_resize",
+           [](LoDTensorArray &self, size_t size) { self.resize(size); })
       .def("_move_to_list",
            [](LoDTensorArray &self) -> py::list {
              py::list res(self.size());

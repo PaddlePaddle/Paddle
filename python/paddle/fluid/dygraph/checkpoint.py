@@ -83,6 +83,12 @@ def save_dygraph(state_dict, model_path):
         name_table[k] = v.name
     model_dict["StructuredToParameterName@@"] = name_table
 
+    # print save vars
+    # dygraph state_dict use ordered dict
+    print("dygraoh save vars name (unordered):")
+    for k, v in name_table.items():
+        print("- %s" % v)
+
     file_name = model_path + suffix
     dir_name = os.path.dirname(file_name)
     if dir_name and not os.path.exists(dir_name):

@@ -298,6 +298,14 @@ def save_vars(executor,
         save_program = Program()
         save_block = save_program.global_block()
 
+        # print all save vars name by order
+        save_var_name_list = []
+        for each_var in vars:
+            save_var_name_list.append(each_var.name)
+        # print("static save vars name (ordered):")
+        # for name in sorted(save_var_name_list):
+        #     print("- %s" % name)
+
         save_var_map = {}
         for each_var in vars:
             # NOTE: don't save the variable which type is RAW
