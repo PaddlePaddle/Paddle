@@ -79,9 +79,9 @@ class Layer(core.Layer):
         Returns:
             None
         """
-        # for static graph
+        # global setting
         framework._dygraph_tracer().train_mode()
-        # for dynamic graph
+        # Layer-level setting
         self.training = True
         for layer in self.sublayers():
             layer.train()
@@ -94,9 +94,9 @@ class Layer(core.Layer):
         Returns:
             None
         """
-        # for static graph
+        # global setting
         framework._dygraph_tracer().eval_mode()
-        # for dynamic graph
+        # Layer-level setting
         self.training = False
         for layer in self.sublayers():
             layer.eval()
