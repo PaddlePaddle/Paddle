@@ -9169,7 +9169,7 @@ def stack(x, axis=0):
 
 
 @templatedoc(op_type="filter_by_instag")
-def filter_by_instag(ins, ins_tag, filter_tag, is_lod):
+def filter_by_instag(ins, ins_tag, filter_tag, is_lod, out_val_if_empty=0):
     """
     **Filter By Instag Layer**
    
@@ -9206,6 +9206,8 @@ def filter_by_instag(ins, ins_tag, filter_tag, is_lod):
         filter_tag (Variable): Input Variable (1D Tensor/List), usually it is 
                         list that holds the tags.
         is_lod (Bool): Boolean value to indicate ins is lod tensor or not.
+        out_val_if_empty(Int64): If the output after filter is empty, this value
+                        will be set to Output tensor.
 
     Returns:
         Variable: filtered ins (LoDTensor) and loss weight (Tensor)
@@ -9233,7 +9235,8 @@ def filter_by_instag(ins, ins_tag, filter_tag, is_lod):
         outputs={'Out': out,
                  'LossWeight': loss_weight,
                  'IndexMap': mmap},
-        attrs={'is_lod': is_lod})
+        attrs={'is_lod': is_lod,
+               'out_val_if_empty': out_val_if_empty})
 
     return [out, loss_weight]
 
