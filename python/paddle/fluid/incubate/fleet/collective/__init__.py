@@ -252,7 +252,21 @@ class Collective(Fleet):
             filename=self._param_file_name)
         self._save_train_status(path=tmp_path, train_status=train_status)
 
-        os.rename(tmp_path, real_path)
+        step = 0
+        while True:
+            try:
+                os.rename(tmp_path, real_path)
+                break
+            except Exception as e:
+                if os.path.exists(real_path):
+                    break
+                logging.error("rename from {} to {} error:{}".format(
+                    tmp_path, real_path, e))
+                time.sleep(5)
+                step += 1
+                if step > 3:
+                    sys.exit(1)
+                continue
 
         if not remain_all_checkpoint:
             self.clean_redundant_check_points(path)
