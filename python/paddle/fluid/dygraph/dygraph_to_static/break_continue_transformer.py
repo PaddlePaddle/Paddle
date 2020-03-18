@@ -240,7 +240,7 @@ class BreakContinueTransformer(gast.NodeTransformer):
 
     def visit_Continue(self, node):
         loop_node_index = self._find_ancestor_loop_index(node)
-        assert loop_node_index != -1, "SyntaxError: 'break' outside loop"
+        assert loop_node_index != -1, "SyntaxError: 'continue' outside loop"
         loop_node = self.ancestor_nodes[loop_node_index]
 
         # 1. Map the 'break/continue' stmt with an unique boolean variable V.
