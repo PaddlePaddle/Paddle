@@ -28,7 +28,7 @@ class TestMKLDNNGaussianRandomOpSeed0(TestGaussianRandomOp):
     def setUp(self):
         TestGaussianRandomOp.setUp(self)
         self.attrs = {
-            "shape": [1000, 784],
+            "shape": [123, 92],
             "mean": .0,
             "std": 1.,
             "seed": 0,

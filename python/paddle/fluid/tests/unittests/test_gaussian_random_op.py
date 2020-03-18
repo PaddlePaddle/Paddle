@@ -128,7 +128,7 @@ class TestGaussianRandomOp4_ShapeTensorList(
 # Situation 3: shape is a tensor
 class TestGaussianRandomOp1_ShapeTensor(TestGaussianRandomOp):
     def setUp(self):
-        '''Test fill_constant op with specified value
+        '''Test gaussian_random op with specified value
         '''
         self.op_type = "gaussian_random"
         self.init_data()
