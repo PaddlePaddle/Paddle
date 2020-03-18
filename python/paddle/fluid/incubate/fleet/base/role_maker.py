@@ -14,9 +14,9 @@
 """Defination of Role Makers."""
 
 from __future__ import print_function
+import paddle.fluid as fluid
 import os
-
-from paddle.fluid.core import Gloo
+import time
 
 __all__ = [
     'Role', 'RoleMakerBase', 'MPISymetricRoleMaker', 'UserDefinedRoleMaker',
@@ -577,7 +577,7 @@ class GeneralRoleMaker(RoleMakerBase):
                 current_id = int(os.environ["PADDLE_TRAINER_ID"])
                 self._node_type = 1
                 self._cur_endpoint = worker_endpoints[current_id]
-                gloo = Gloo()
+                gloo = fluid.core.Gloo()
                 gloo.init(current_id,
                           len(worker_endpoints),
                           self._hdfs_path.rstrip("/") + "/trainer",
@@ -597,7 +597,7 @@ class GeneralRoleMaker(RoleMakerBase):
                     current_id = eplist.index(cur_endpoint)
                 self._node_type = 0
                 self._cur_endpoint = cur_endpoint
-                gloo = Gloo()
+                gloo = fluid.core.Gloo()
                 gloo.init(current_id,
                           len(eplist),
                           self._hdfs_path.rstrip("/") + "/pserver",
@@ -605,7 +605,7 @@ class GeneralRoleMaker(RoleMakerBase):
                           self._prefix)
                 self._node_type_comm = gloo
 
-            gloo = Gloo()
+            gloo = fluid.core.Gloo()
             all_list = worker_endpoints + eplist
             gloo.init(
                 all_list.index(self._cur_endpoint),
