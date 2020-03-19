@@ -23,15 +23,15 @@ SEED = 2020
 np.random.seed(SEED)
 
 
-def test_list_without_control_flow(x):
-    # Python list will not be transformed.
+def test_slice_without_control_flow(x):
+    # Python slice will not be transformed.
     x = fluid.dygraph.to_variable(x)
-    a = []
-    a.append(x)
+    a = [x]
+    a[0] = fluid.layers.fill_constant(shape=[2], value=2, dtype="float32")
     return a
 
 
-def test_list_in_if(x):
+def test_slice_in_if(x):
     x = fluid.dygraph.to_variable(x)
     a = []
     if x.numpy()[0] > 0:
@@ -40,27 +40,12 @@ def test_list_in_if(x):
         a.append(
             fluid.layers.fill_constant(
                 shape=[1, 2], value=9, dtype="int64"))
+    if x.numpy()[0] > 0:
+        a[0] = x
     return a
 
 
-def test_list_in_for_loop(x, iter_num):
-    x = fluid.dygraph.to_variable(x)
-    a = []
-    for i in range(iter_num):
-        a.append(x)
-    return a
-
-
-def test_list_in_for_loop_with_concat(x, iter_num):
-    x = fluid.dygraph.to_variable(x)
-    a = []
-    for i in range(iter_num):
-        a.append(x)
-    out = fluid.layers.concat(a, axis=0)
-    return out
-
-
-def test_list_in_while_loop(x, iter_num):
+def test_slice_in_while_loop(x, iter_num):
     x = fluid.dygraph.to_variable(x)
     iter_num = fluid.layers.fill_constant(
         shape=[1], value=iter_num, dtype="int32")
@@ -72,23 +57,27 @@ def test_list_in_while_loop(x, iter_num):
     while i < iter_num.numpy()[0]:
         a.append(x)
         i += 1
+
+    i = 0
+    while i < iter_num.numpy()[0]:
+        a[i] = fluid.layers.fill_constant(shape=[2], value=2, dtype="float32")
+        i += 1
+
     return a
 
 
-def test_list_in_while_loop_with_stack(x, iter_num):
+def test_slice_in_for_loop(x, iter_num):
     x = fluid.dygraph.to_variable(x)
-    iter_num = fluid.layers.fill_constant(
-        shape=[1], value=iter_num, dtype="int32")
     a = []
-    i = 0
-    while i < iter_num.numpy()[0]:
+    for i in range(iter_num):
         a.append(x)
-        i += 1
-    out = fluid.layers.stack(a, axis=1)
-    return out
+
+    for i in range(iter_num):
+        a[i] = x
+    return a
 
 
-class TestListWithoutControlFlow(unittest.TestCase):
+class TestSliceWithoutControlFlow(unittest.TestCase):
     def setUp(self):
         self.input = np.random.random((3)).astype('int32')
         self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
@@ -96,7 +85,7 @@ class TestListWithoutControlFlow(unittest.TestCase):
         self.init_dygraph_func()
 
     def init_dygraph_func(self):
-        self.dygraph_func = test_list_without_control_flow
+        self.dygraph_func = test_slice_without_control_flow
 
     def run_dygraph_mode(self):
         with fluid.dygraph.guard():
@@ -123,9 +112,9 @@ class TestListWithoutControlFlow(unittest.TestCase):
                                                              static_res))
 
 
-class TestListInIf(TestListWithoutControlFlow):
+class TestSliceInIf(TestSliceWithoutControlFlow):
     def init_dygraph_func(self):
-        self.dygraph_func = test_list_in_if
+        self.dygraph_func = test_slice_in_if
 
     def run_static_mode(self):
         main_program = fluid.Program()
@@ -141,7 +130,7 @@ class TestListInIf(TestListWithoutControlFlow):
         return numpy_res[0]
 
 
-class TestListInWhileLoop(TestListWithoutControlFlow):
+class TestSliceInWhileLoop(TestSliceWithoutControlFlow):
     def setUp(self):
         self.iter_num = 3
         self.input = np.random.random((3)).astype('int32')
@@ -150,7 +139,7 @@ class TestListInWhileLoop(TestListWithoutControlFlow):
         self.init_dygraph_func()
 
     def init_dygraph_func(self):
-        self.dygraph_func = test_list_in_while_loop
+        self.dygraph_func = test_slice_in_while_loop
 
     def run_dygraph_mode(self):
         with fluid.dygraph.guard():
@@ -176,34 +165,9 @@ class TestListInWhileLoop(TestListWithoutControlFlow):
         return numpy_res
 
 
-class TestListInWhileLoopWithStack(TestListInWhileLoop):
+class TestSliceInForLoop(TestSliceInWhileLoop):
     def init_dygraph_func(self):
-        self.dygraph_func = test_list_in_while_loop_with_stack
-
-    def run_dygraph_mode(self):
-        with fluid.dygraph.guard():
-            var_res = self.dygraph_func(self.input, self.iter_num)
-            numpy_res = var_res.numpy()
-            return numpy_res
-
-    def run_static_mode(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            out_var = dygraph_to_static_graph(self.dygraph_func)(self.input,
-                                                                 self.iter_num)
-        exe = fluid.Executor(self.place)
-        numpy_res = exe.run(main_program, fetch_list=out_var)
-        return numpy_res[0]
-
-
-class TestListInForLoop(TestListInWhileLoop):
-    def init_dygraph_func(self):
-        self.dygraph_func = test_list_in_for_loop
-
-
-class TestListInForLoopWithConcat(TestListInWhileLoopWithStack):
-    def init_dygraph_func(self):
-        self.dygraph_func = test_list_in_for_loop_with_concat
+        self.dygraph_func = test_slice_in_for_loop
 
 
 if __name__ == '__main__':
