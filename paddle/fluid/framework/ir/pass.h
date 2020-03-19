@@ -100,12 +100,13 @@ class Pass {
   // Set a pointer to the attribute. Pass takes ownership of the attribute.
   template <typename AttrType>
   void Set(const std::string &attr_name, AttrType *attr) {
-    if (default_pass_attrs_.count(attr_name) > 0 &&
-        attrs_.count(attr_name) > 0) {
-      attrs_.erase(attr_name);
+    if (default_pass_attrs_.count(attr_name) == 0) {
+      PADDLE_ENFORCE_EQ(attrs_.count(attr_name), 0,
+                        platform::errors::InvalidArgument(
+                            "Attribute %s already set in the pass", attr_name));
+    } else {
+      VLOG(3) << "Default pass attr " << attr_name << "is updated";
     }
-    PADDLE_ENFORCE(attrs_.count(attr_name) == 0, "%s already set in the pass",
-                   attr_name);
     attrs_[attr_name] = attr;
     attr_dels_[attr_name] = [attr, attr_name]() {
       VLOG(3) << "deleting " << attr_name;
@@ -246,7 +247,6 @@ struct PassRegistrar : public Registrar {
     default_pass_attrs_.insert(attr);
     default_attrs_[attr] = default_attr_value;
     default_attr_dels_[attr] = [default_attr_value, attr]() {
-      VLOG(3) << "deleting " << attr;
       delete default_attr_value;
     };
     return *this;
