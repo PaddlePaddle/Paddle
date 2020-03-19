@@ -25,15 +25,21 @@ namespace ir {
 namespace fusion_group {
 
 std::string ExtractDataType(const std::vector<Node*>& nodes) {
-  std::string dtype_str = "float";
-  auto data_type = nodes.back()->Var()->GetDataType();
-
-  if (data_type == proto::VarType::FP32) {
-    dtype_str = "float";
-  } else if (data_type == proto::VarType::FP64) {
-    dtype_str = "double";
-  } else if (data_type == proto::VarType::FP16) {
-    dtype_str = "float16";
+  std::string dtype_str = "";
+  for (const auto* n : nodes) {
+    if (n && n->IsVar() && n->Var()) {
+      // The data type of all inputs/outputs must be the same, which are
+      //  checked when detecting the subgraph.
+      auto dtype = n->Var()->GetDataType();
+      if (dtype == proto::VarType::FP32) {
+        dtype_str = "float";
+      } else if (dtype == proto::VarType::FP64) {
+        dtype_str = "double";
+      } else if (dtype == proto::VarType::FP16) {
+        dtype_str = "float16";
+      }
+      break;
+    }
   }
 
   return dtype_str;
