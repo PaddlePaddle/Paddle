@@ -310,8 +310,8 @@ class AutoTracer(object):
 
         if not isinstance(loss_name, six.string_types):
             raise ValueError(
-                "Type of input loss_name should type(str), but received {}."
-                .format(type(loss_name)))
+                "Type of input loss_name should type(str), but received {}.".
+                format(type(loss_name)))
         self._loss_name = loss_name
 
     def _add_optimizer(self):

@@ -299,6 +299,14 @@ def create_funcDef_node(nodes, name, input_args, return_name_ids):
     return func_def_node
 
 
+def index_in_list(array_list, item):
+    try:
+        return array_list.index(item)
+    except ValueError:
+        # Item not in array_list
+        return -1
+
+
 def ast_to_func(ast_root, func_name, delete_on_exit=True):
     """
     Transform modified AST of decorated function into python callable object.
