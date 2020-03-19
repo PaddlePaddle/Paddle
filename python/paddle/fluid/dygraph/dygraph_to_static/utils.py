@@ -335,6 +335,14 @@ class ImportVisitor(gast.NodeVisitor):
         return root
 
 
+def index_in_list(array_list, item):
+    try:
+        return array_list.index(item)
+    except ValueError:
+        # Item not in array_list
+        return -1
+
+
 def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     """
     Transform modified AST of decorated function into python callable object.
