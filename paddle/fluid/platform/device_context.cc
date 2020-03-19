@@ -23,9 +23,8 @@ limitations under the License. */
 #endif
 
 #include "glog/logging.h"
-
-#include "paddle/fluid/platform/stream/gpu_event_impl.h"
 #include "paddle/fluid/platform/stream/gpu_stream.h"
+#include "paddle/fluid/platform/stream/paddle_stream.h"
 
 namespace paddle {
 namespace memory {
@@ -58,6 +57,8 @@ namespace paddle {
 namespace platform {
 
 DeviceContextPool* DeviceContextPool::pool = nullptr;
+
+pfd::StreamExecutor* CUDADeviceContext::se_ = nullptr;
 
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   auto it = device_contexts_.find(place);
@@ -221,7 +222,7 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   max_threads_per_mp_ = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
   max_grid_dim_size_ = GetGpuMaxGridDimSize(place_.device);
   max_threads_per_block_ = GetCUDAMaxThreadsPerBlock(place_.device);
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream_));
+  // PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream_));
   eigen_stream_.reset(new EigenCudaStreamDevice());
   eigen_stream_->Reinitialize(&stream_, place);
   eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
@@ -233,6 +234,17 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
         new CublasHandleHolder(stream_, CUBLAS_TENSOR_OP_MATH));
 #endif
   }
+  // if (!pe_) {
+  //}
+  for (int i = 0; i < 3; ++i) {
+    bstream_[i] = new stream::BaseStream(se_);
+  }
+  stream_ = GetCUDAStream(bstream_[0]);
+
+  VLOG(3) << "set default stream:" << stream_;
+
+  se_->SetMainStream(bstream_[0]);
+  se_->SetD2HStream(bstream_[2]);
 
   driver_version_ = GetCUDADriverVersion(place_.device);
   runtime_version_ = GetCUDARuntimeVersion(place_.device);
@@ -348,6 +360,14 @@ int CUDADeviceContext::GetMaxThreadsPerBlock() const {
   return max_threads_per_block_;
 }
 
+/*stream::BaseStream*
+  CUDADeviceContext::GetDeviceToHostStream(framework::ParallelExecutor* pe) {
+    if (!device_to_host_stream) {
+      device_to_host_stream = new stream::BaseStream(pe);
+    }
+    return device_to_host_stream;
+  }*/
+
 Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
   return eigen_device_.get();
 }
@@ -391,16 +411,6 @@ MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
       p_blobmap_() {
   p_blobmap_.reset(new BlobMap());
   p_mutex_.reset(new std::mutex());
-}
-
-std::unique_ptr<si::StreamInterface>
-CUDADeviceContext::GetStreamImplementation() {
-  return std::unique_ptr<si::StreamInterface>(new stream::GpuStream());
-}
-
-std::unique_ptr<si::EventInterface>
-CUDADeviceContext::CreateEventImplementation() {
-  return std::unique_ptr<si::EventInterface>(new stream::GpuEvent());
 }
 
 namespace {

@@ -23,12 +23,14 @@ namespace details {
 
 FetchOpHandle::FetchOpHandle(ir::Node *node, FeedFetchList *data, size_t offset,
                              std::vector<Scope *> *local_scopes,
-                             std::vector<Scope *> *local_exec_scopes)
+                             std::vector<Scope *> *local_exec_scopes,
+                             StreamExecutor *exec)
     : OpHandleBase(node),
       data_(data),
       offset_(offset),
       local_scopes_(local_scopes),
-      local_exec_scopes_(local_exec_scopes) {}
+      local_exec_scopes_(local_exec_scopes),
+      exec_(exec) {}
 
 FetchOpHandle::~FetchOpHandle() {}
 
@@ -51,6 +53,7 @@ void FetchOpHandle::RunImpl() {
 
   tensors_.resize(inputs_.size());
   platform::CPUPlace cpu;
+  platform::CUDAPinnedPlace cpu_pinned;
   auto &scopes = *local_exec_scopes_;
 
   for (size_t i = 0; i < inputs_.size(); ++i) {
@@ -64,7 +67,18 @@ void FetchOpHandle::RunImpl() {
     if (t.IsInitialized() && t.numel() > 0) {
       if (platform::is_gpu_place(t.place())) {
 #ifdef PADDLE_WITH_CUDA
-        TensorCopy(t, cpu, &tensors_[i]);
+        if (exec_ && exec_->GetD2HStream()) {
+          // If have d2h stream, we make a callback function.
+          auto CopyFinished = [this]() { this->WaitAndMergeCPUTensors(); };
+          LOG(INFO) << "++++fetch var:" << var_handle->name();
+          TensorCopyD2H(t, cpu_pinned, &tensors_[i], exec_->GetD2HStream(),
+                        exec_->GetMainStream());
+          exec_->GetEventMgr()->Execute(exec_->GetD2HStream(), CopyFinished);
+          // Can return directly? or need to wait event finished.
+          return;
+        } else {
+          TensorCopy(t, cpu, &tensors_[i]);
+        }
 #endif
       } else {
         tensors_[i].ShareDataWith(t);

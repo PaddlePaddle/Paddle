@@ -45,6 +45,7 @@ cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
 
 add_subdirectory(dynload)
 add_subdirectory(stream)
+add_subdirectory(gpu)
 
 cc_library(cpu_helper SRCS cpu_helper.cc DEPS cblas enforce)
 cc_test(cpu_helper_test SRCS cpu_helper_test.cc DEPS cpu_helper)
@@ -77,7 +78,7 @@ cc_library(cudnn_workspace_helper SRCS cudnn_workspace_helper.cc DEPS boost)
 # avoiding cycle dependencies
 cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool malloc xxhash ${STREAM_CALLBACK_DEPS}
     place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
-    ${dgc_deps} dlpack cudnn_workspace_helper gpu_event_impl gpu_stream )
+    ${dgc_deps} dlpack cudnn_workspace_helper paddle_stream gpu_stream_executor)
 
 if (WITH_DISTRIBUTE)
   cc_library(collective_helper SRCS collective_helper.cc DEPS framework_proto  device_context enforce)
@@ -105,6 +106,7 @@ cc_library(lodtensor_printer SRCS lodtensor_printer.cc DEPS ddim place tensor sc
 cc_test(lodtensor_printer_test SRCS lodtensor_printer_test.cc DEPS lodtensor_printer)
 
 cc_library(device_tracer SRCS device_tracer.cc DEPS boost profiler_proto framework_proto ${GPU_CTX_DEPS})
+cc_library(device_base SRCS device_base.cc DEPS paddle_stream)
 if(WITH_GPU)
   nv_library(profiler SRCS profiler.cc profiler.cu DEPS device_tracer gpu_info enforce)
   nv_test(cuda_helper_test SRCS cuda_helper_test.cu)

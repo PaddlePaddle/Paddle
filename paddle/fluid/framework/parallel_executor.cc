@@ -414,6 +414,14 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   member_->use_all_reduce_ = member_->build_strategy_.reduce_ ==
                              BuildStrategy::ReduceStrategy::kAllReduce;
   member_->nranks_ = build_strategy.num_trainers_ * places.size();
+
+  // device_to_host_stream = new pfs::BaseStream(this);
+  /*device = new paddle::platform::GPUDevice(this);
+  event_mgr =
+  paddle::platform::gpu::EventManagerFactory::Singleton()->GetEventManager(this);
+  LOG(INFO)<<"++++event_mgr:"<<event_mgr;
+  device_to_host_stream = device->GetStream(2);*/
+
   if (!member_->use_all_reduce_ && member_->nranks_ == 1) {
     LOG(INFO) << "If you set build_strategy.reduce with 'Reduce',"
                  "the number of places should be greater than 1.";
@@ -873,7 +881,7 @@ bool ParallelExecutor::EnableParallelGraphExecution(
 
   return enable_parallel_graph;
 }
-
+/*
 static pfs::GpuEvent *GetGpuEvent(pfs::Event *event) {
   return static_cast<pfs::GpuEvent *>(event->implementation());
 }
@@ -886,11 +894,13 @@ bool ParallelExecutor::AllocateEvent(pfs::Event *event) {
   return GetGpuEvent(event)->Init();
 }
 
-std::unique_ptr<pfs::internal::StreamInterface> CreateStreamImplementation() {
+std::unique_ptr<pfs::internal::StreamInterface>
+ParallelExecutor::CreateStreamImplementation() {
   return std::unique_ptr<pfs::internal::StreamInterface>(new pfs::GpuStream());
 }
 
-std::unique_ptr<pfs::internal::EventInterface> CreateEventImplementation() {
+std::unique_ptr<pfs::internal::EventInterface>
+ParallelExecutor::CreateEventImplementation() {
   return std::unique_ptr<pfs::internal::EventInterface>(new pfs::GpuEvent());
 }
 
@@ -908,6 +918,10 @@ bool ParallelExecutor::CreateStreamDependency(pfs::BaseStream *dependent,
       cudaStreamWaitEvent(pfs::GetCUDAStream(dependent), event_finished, 0));
   return true;
 }
+
+bool ParallelExecutor::InsertEvent(pfs::BaseStream* stream, pfs::Event* event) {
+  return GetGpuEvent(event)->InsertEvent(pfs::GetGpuStream(stream));
+}*/
 
 }  // namespace framework
 }  // namespace paddle

@@ -42,18 +42,32 @@ limitations under the License. */
 #endif
 #include "unsupported/Eigen/CXX11/Tensor"
 
-#include "paddle/fluid/platform/stream/stream_internal.h"
+//#include "paddle/fluid/platform/stream/paddle_stream.h"
+#include "paddle/fluid/framework/details/stream_executor_impl.h"
 
 namespace paddle {
+namespace framework {
+namespace details {
+class StreamExecutor;
+}
+}
 namespace platform {
 
-namespace si = stream::internal;
+namespace gpu {
+class EventManager;
+}
+namespace stream {
+class BaseStream;
+}
+
+namespace pfd = paddle::framework::details;
+
 class DeviceContext {
  public:
   virtual ~DeviceContext() PADDLE_MAY_THROW {}
   virtual Place GetPlace() const = 0;
-  virtual std::unique_ptr<si::StreamInterface> GetStreamImplementation() = 0;
-  virtual std::unique_ptr<si::EventInterface> CreateEventImplementation() = 0;
+  // virtual void SetStreamExecutor(paddle::framework::details::StreamExecutor*
+  // se)  = 0;
 
   virtual void Wait() const {}
 };
@@ -66,19 +80,12 @@ class CPUDeviceContext : public DeviceContext {
   Eigen::DefaultDevice* eigen_device() const;
 
   Place GetPlace() const override;
-  std::unique_ptr<si::StreamInterface> GetStreamImplementation() override {
-    VLOG(3) << "Not Implemented Now";
-    return std::unique_ptr<si::StreamInterface>(
-        static_cast<si::StreamInterface*>(nullptr));
-  }
-  std::unique_ptr<si::EventInterface> CreateEventImplementation() override {
-    VLOG(3) << "Not Implemented Now";
-    return std::unique_ptr<si::EventInterface>(
-        static_cast<si::EventInterface*>(nullptr));
-  }
+  // void SetStreamExecutor(paddle::framework::details::StreamExecutor* se) {
+  // pe_ = se; }
 
  private:
   CPUPlace place_;
+  // paddle::framework::details::StreamExecutor* pe_;
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
 };
 
@@ -180,8 +187,13 @@ class CUDADeviceContext : public DeviceContext {
 
   void WaitStreamCallback() const { callback_manager_->Wait(); }
 
-  std::unique_ptr<si::StreamInterface> GetStreamImplementation();
-  std::unique_ptr<si::EventInterface> CreateEventImplementation();
+  // DeviceContext explore interface to pe,.but should not hold it.
+  // stream::BaseStream* GetDeviceToHostStream(framework::ParallelExecutor* pe);
+  // void SetStreamExecutor(paddle::framework::details::StreamExecutor* se) {
+  // pe_ = se; }
+  static pfd::StreamExecutor* Instance() { return se_; }
+  static void InitStreamExecutor() { se_ = new pfd::StreamExecutor(); }
+  stream::BaseStream* GetMainStream() { return bstream_[0]; }
 
  private:
   CUDAPlace place_;
@@ -217,6 +229,9 @@ class CUDADeviceContext : public DeviceContext {
 
   // StreamCallbackManager is thread-safe
   std::unique_ptr<StreamCallbackManager> callback_manager_;
+
+  static pfd::StreamExecutor* se_;
+  stream::BaseStream* bstream_[3];
 
   DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);
 };
@@ -284,21 +299,13 @@ class CUDAPinnedDeviceContext : public DeviceContext {
   Place GetPlace() const override;
 
   Eigen::DefaultDevice* eigen_device() const;
-
-  std::unique_ptr<si::StreamInterface> GetStreamImplementation() override {
-    VLOG(3) << "Not Implemented Now";
-    return std::unique_ptr<si::StreamInterface>(
-        static_cast<si::StreamInterface*>(nullptr));
-  }
-  std::unique_ptr<si::EventInterface> CreateEventImplementation() override {
-    VLOG(3) << "Not Implemented Now";
-    return std::unique_ptr<si::EventInterface>(
-        static_cast<si::EventInterface*>(nullptr));
-  }
+  // void SetStreamExecutor(paddle::framework::details::StreamExecutor* se) {
+  // pe_ = se; }
 
  private:
   CUDAPinnedPlace place_;
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+  // paddle::framework::details::StreamExecutor* pe_;
 };
 
 template <>

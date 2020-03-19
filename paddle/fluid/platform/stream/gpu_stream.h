@@ -36,8 +36,12 @@ class GpuStream : public internal::StreamInterface {
   virtual ~GpuStream() {}
   bool Init();
 
-  const cudaStream_t& gpu_stream() const { return gpu_stream_; }
-  const cudaEvent_t& finish_event() const { return finish_event_; }
+  cudaStream_t gpu_stream() const {
+    return const_cast<cudaStream_t>(gpu_stream_);
+  }
+  const cudaEvent_t* finish_event() const { return &finish_event_; }
+  bool IsIdle() const;
+  void Destroy();
 
  private:
   cudaStream_t gpu_stream_ = nullptr;

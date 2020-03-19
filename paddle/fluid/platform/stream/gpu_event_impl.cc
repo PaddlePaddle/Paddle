@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/platform/stream/gpu_event_impl.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/stream/gpu_stream.h"
 
 namespace paddle {
@@ -25,6 +26,7 @@ bool GpuEvent::Init() {
 }
 
 bool GpuEvent::InsertEvent(GpuStream* stream) {
+  VLOG(3) << "stream:" << stream << " insert cuda event:" << gpu_event_;
   PADDLE_ENFORCE_CUDA_SUCCESS(
       cudaEventRecord(gpu_event_, stream->gpu_stream()));
   return true;
@@ -38,6 +40,7 @@ GpuEvent::~GpuEvent() {}
 
 Event::Status GpuEvent::GetEventStatus() {
   auto res = cudaEventQuery(gpu_event_);
+  VLOG(3) << "Get cuda event:" << gpu_event_ << " status:" << res;
   switch (res) {
     case cudaSuccess:
       return Event::Status::kComplete;
@@ -46,6 +49,13 @@ Event::Status GpuEvent::GetEventStatus() {
     default:
       LOG(INFO) << "Error returned for event status: " << res;
       return Event::Status::kError;
+  }
+}
+
+void GpuEvent::Destroy() {
+  if (gpu_event_) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventDestroy(gpu_event_));
+    gpu_event_ = nullptr;
   }
 }
 

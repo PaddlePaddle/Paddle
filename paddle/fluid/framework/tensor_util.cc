@@ -23,6 +23,47 @@
 namespace paddle {
 namespace framework {
 
+void TensorCopyD2H(const Tensor& src, const platform::Place& dst_place,
+                   Tensor* dst, paddle::platform::stream::BaseStream* d2h,
+                   paddle::platform::stream::BaseStream* stream) {
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  const platform::DeviceContext* dev_ctx;
+  if (platform::is_gpu_place(dst_place)) {
+    dev_ctx = pool.Get(dst_place);
+  } else {
+    dev_ctx = pool.Get(src.place());
+  }
+  dst->Resize(src.dims());
+  dst->set_layout(src.layout());
+  auto src_place = src.place();
+  auto src_ptr = src.data<void>();
+  auto dst_ptr = dst->mutable_data(dst_place, src.type());
+
+  if (src_ptr == dst_ptr && src_place == dst_place) {
+    VLOG(3) << "Skip copy the same data async from " << src_place << " to "
+            << dst_place;
+    return;
+  }
+
+  auto size = src.numel() * SizeOfType(src.type());
+
+  VLOG(3) << "TensorCopyD2H size:" << size << " dev_ctx:" << dev_ctx;
+
+  if (platform::is_cuda_pinned_place(dst_place) &&
+      platform::is_gpu_place(src_place)) {
+    auto src_pinned_place = boost::get<platform::CUDAPlace>(src_place);
+    auto dst_gpu_place = boost::get<platform::CUDAPinnedPlace>(dst_place);
+
+    // auto stream =
+    //    reinterpret_cast<platform::CUDADeviceContext&>(dev_ctx).GetMainStream();
+
+    // wait compute stream finished
+    d2h->WaitForOtherStream(stream);
+
+    d2h->Memcpy(dst_ptr, src_ptr, size);
+  }
+}
+
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 const platform::DeviceContext& ctx, Tensor* dst) {
   if (&src == dst) {

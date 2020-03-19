@@ -20,10 +20,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/stream/paddle_stream.h"
 
 namespace paddle {
 namespace framework {
 
+void TensorCopyD2H(const Tensor& src, const platform::Place& dst_place,
+                   Tensor* dst, paddle::platform::stream::BaseStream* d2h,
+                   paddle::platform::stream::BaseStream* stream);
 // NOTE(zcd): Because TensorCopy is an async operation, when the src_place
 // and dst_place are two different GPU, to ensure that the operation can
 // be carried out correctly, there is a src_ctx wait operation in TensorCopy.

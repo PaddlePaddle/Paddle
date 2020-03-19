@@ -32,6 +32,7 @@ class GpuEvent : public internal::EventInterface {
   bool InsertEvent(GpuStream* stream);
   Event::Status GetEventStatus();
   cudaEvent_t gpu_event();
+  void Destroy();
 
  private:
   cudaEvent_t gpu_event_;

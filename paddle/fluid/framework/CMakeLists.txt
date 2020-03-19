@@ -40,10 +40,10 @@ cc_test(data_type_test SRCS data_type_test.cc DEPS data_type place tensor)
 if(WITH_GPU)
   if (WIN32)
     windows_symbolic(tensor_util SRCS tensor_util.cu)
-    nv_library(tensor SRCS tensor.cc .tensor_util.cu DEPS place memory data_type device_context)
+    nv_library(tensor SRCS tensor.cc .tensor_util.cu DEPS place memory data_type device_context paddle_stream)
     add_dependencies(tensor tensor_util)
   else()
-    nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type device_context profiler)
+    nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type device_context profiler paddle_stream)
   endif(WIN32)
 else()
   cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS place memory data_type device_context profiler)
@@ -214,7 +214,7 @@ target_link_libraries(executor while_op_helper executor_gc_helper recurrent_op_h
 cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         threaded_ssa_graph_executor scope_buffered_ssa_graph_executor parallel_ssa_graph_executor async_ssa_graph_executor
         graph build_strategy
-        fast_threaded_ssa_graph_executor variable_helper gpu_event_impl gpu_stream )
+        fast_threaded_ssa_graph_executor variable_helper )
 
 cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS executor)
 cc_library(prune SRCS prune.cc DEPS framework_proto boost)

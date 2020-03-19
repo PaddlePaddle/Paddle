@@ -14,14 +14,18 @@ limitations under the License. */
 
 #pragma once
 
+#include <cuda.h>
 #include <memory>
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/framework/details/stream_executor_impl.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/stream/gpu_event.h"
 
 namespace paddle {
 namespace framework {
-class ParallelExecutor;
+namespace details {
+class StreamExecutor;
 }  // namespace framework
+}
 namespace platform {
 namespace stream {
 
@@ -35,9 +39,11 @@ class StreamInterface;
     */
 class StreamExecutor;
 
+namespace exc = paddle::framework::details;
+
 class BaseStream {
  public:
-  explicit BaseStream(framework::ParallelExecutor* pe);
+  explicit BaseStream(exc::StreamExecutor* pe);
   virtual ~BaseStream();
 
   BaseStream& Init();
@@ -47,15 +53,19 @@ class BaseStream {
   //    LaunchKernel(BlockDim block_dims, GridDim grid_dims,
   //                 const KernelParam<Params...> &kernel, Args... args);
   BaseStream& WaitForOtherStream(BaseStream* other);
+  // should delete later
+  BaseStream& WaitForOtherStream(cudaStream_t other);
 
-  BaseStream& InsertEvent(Event* event);
+  BaseStream& InsertEvent(stream::Event* event);
   internal::StreamInterface* implementation() { return implementation_.get(); }
+
+  BaseStream& Memcpy(void* host_dst, const void* gpu_src, uint64_t size);
 
  private:
   bool allocated_;
   bool ok_;
   std::unique_ptr<internal::StreamInterface> implementation_;
-  framework::ParallelExecutor* pe_;
+  exc::StreamExecutor* pe_;
 };
 
 }  // namespace stream

@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/stream/gpu_event.h"
-#include "paddle/fluid/framework/parallel_executor.h"
+#include "paddle/fluid/framework/details/stream_executor_impl.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/stream/gpu_stream.h"
 
@@ -23,10 +23,14 @@ namespace stream {
 
 // namespace pf = paddle::framework;
 
-Event::Event(framework::ParallelExecutor* pe)
+Event::Event(pfd::StreamExecutor* pe)
     : implementation_(pe->CreateEventImplementation()), pe_(pe) {}
 
-Event::~Event() {}
+Event::~Event() {
+  if (pe_ && implementation_) {
+    pe_->DeleteEvent(this);
+  }
+}
 
 bool Event::Init() {
   if (pe_) {

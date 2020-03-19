@@ -36,11 +36,15 @@ limitations under the License. */
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
-#include "paddle/fluid/platform/stream/gpu_event_impl.h"
+/*#include "paddle/fluid/platform/stream/gpu_event_impl.h"
+#include "paddle/fluid/platform/gpu/gpu_event_manage.h"*/
 #include "paddle/fluid/platform/stream/gpu_stream.h"
 #include "paddle/fluid/platform/stream/stream_internal.h"
 
 namespace paddle {
+namespace platform {
+class Device;
+}
 namespace framework {
 
 class ParallelExecutorPrivate;
@@ -89,7 +93,7 @@ class ParallelExecutor {
    * platform independent functions.
    */
   // use pe to manage stream
-  bool AllocateStream(pfs::BaseStream *stream);
+  /*bool AllocateStream(pfs::BaseStream *stream);
   bool AllocateEvent(pfs::Event *event);
 
   std::unique_ptr<pfs::internal::StreamInterface> CreateStreamImplementation();
@@ -97,6 +101,7 @@ class ParallelExecutor {
   pfs::Event::Status PollForStatus(pfs::Event *event);
   bool CreateStreamDependency(pfs::BaseStream *dependent,
                               pfs::BaseStream *other);
+  bool InsertEvent(pfs::BaseStream* stream, pfs::Event* event);*/
 
  private:
   // broadcast the parameters from the 0th device.
@@ -109,6 +114,10 @@ class ParallelExecutor {
 
   ParallelExecutorPrivate *member_;
   std::vector<std::unique_ptr<ir::Graph>> async_graphs_;
+  // std::unique_ptr<pfs::BaseStream> device_to_host_stream;
+  /*pfs::BaseStream* device_to_host_stream;
+  paddle::platform::gpu::EventManager* event_mgr;
+  paddle::platform::Device* device;*/
 };
 }  // namespace framework
 }  // namespace paddle

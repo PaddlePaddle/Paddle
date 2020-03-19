@@ -48,6 +48,7 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
     }
   }
   PADDLE_ENFORCE_GT(op_deps_.size(), 0, "The graph doesn't have operators.");
+  stream_exec_ = platform::CUDADeviceContext::Instance();
   PrepareAtomicOpDeps();
 }
 
@@ -154,7 +155,7 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
     ir::Node *fetch_node =
         graph_->CreateEmptyNode("fetch", ir::Node::Type::kOperation);
     auto *op = new FetchOpHandle(fetch_node, fetches, i, &local_scopes_,
-                                 &local_exec_scopes_);
+                                 &local_exec_scopes_, stream_exec_);
     fetch_ops->emplace_back(op);
 
     for (auto &p : places_) {

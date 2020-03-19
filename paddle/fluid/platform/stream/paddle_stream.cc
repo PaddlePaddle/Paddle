@@ -13,19 +13,26 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/stream/paddle_stream.h"
-#include "paddle/fluid/framework/parallel_executor.h"
 
 namespace paddle {
 namespace platform {
 namespace stream {
 
-BaseStream::BaseStream(framework::ParallelExecutor* pe)
+BaseStream::BaseStream(exc::StreamExecutor* pe)
     : allocated_(false),
       ok_(false),
       implementation_(pe->CreateStreamImplementation()),
-      pe_(pe) {}
+      pe_(pe) {
+  Init();
+  VLOG(3) << "base stream:" << this << " gpu stream:" << implementation_.get();
+}
 
-BaseStream::~BaseStream() {}
+BaseStream::~BaseStream() {
+  if (allocated_) {
+    pe_->DeleteStream(this);
+    allocated_ = false;
+  }
+}
 
 BaseStream& BaseStream::Init() {
   if (pe_) {
@@ -36,11 +43,38 @@ BaseStream& BaseStream::Init() {
   return *this;
 }
 
+// Insert a event into this stream to manage the stream
+BaseStream& BaseStream::InsertEvent(stream::Event* event) {
+  if (pe_) {
+    VLOG(3) << "InsertEvent event:" << event << " to stream:" << this;
+    pe_->InsertEvent(this, event);
+  }
+  return *this;
+}
+
 BaseStream& BaseStream::WaitForOtherStream(BaseStream* other) {
   PADDLE_ENFORCE_NE(this, other, "should wait on different stream");
   PADDLE_ENFORCE_NE(pe_, nullptr, "PE should not be nullptr");
+
+  VLOG(3) << "stream:" << this << " wait for stream:" << other;
+
   PADDLE_ENFORCE_EQ(pe_->CreateStreamDependency(this, other), true,
                     "wait dependency should be ok");
+  return *this;
+}
+
+BaseStream& BaseStream::WaitForOtherStream(cudaStream_t other) {
+  PADDLE_ENFORCE_NE(pe_, nullptr, "PE should not be nullptr");
+  VLOG(3) << "stream:" << this << " wait for cuda stream:" << other;
+  PADDLE_ENFORCE_EQ(pe_->CreateStreamDependency(this, other), true,
+                    "wait dependency should be ok");
+  return *this;
+}
+
+BaseStream& BaseStream::Memcpy(void* host_dst, const void* gpu_src,
+                               uint64_t size) {
+  VLOG(3) << "memcpy src:" << gpu_src << " to dst:" << host_dst;
+  pe_->Memcpy(this, host_dst, gpu_src, size);
   return *this;
 }
 

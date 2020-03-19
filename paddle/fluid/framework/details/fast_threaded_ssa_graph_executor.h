@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
 #include "paddle/fluid/framework/details/ssa_graph_executor.h"
+#include "paddle/fluid/framework/details/stream_executor_impl.h"
 
 namespace paddle {
 namespace framework {
@@ -63,6 +64,9 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
   ::ThreadPool prepare_pool_;
 
   std::vector<OpHandleBase *> traced_ops_;
+
+  // std::unique_ptr<StreamExecutor> stream_exec_;
+  StreamExecutor *stream_exec_;
 
   bool RunOp(OpHandleBase *op,
              const std::shared_ptr<BlockingQueue<size_t>> &complete_q,

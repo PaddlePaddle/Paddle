@@ -15,21 +15,24 @@ limitations under the License. */
 #pragma once
 
 #include <memory>
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/stream/stream_internal.h"
 
 namespace paddle {
 namespace framework {
-class ParallelExecutor;
+namespace details {
+class StreamExecutor;
 }
+}
+
 namespace platform {
 namespace stream {
-
-class StreamExecutor;
 
 namespace internal {
 class StreamInterface;
 class EventInterface;
 }
+
+namespace pfd = paddle::framework::details;
 
 class Event {
  public:
@@ -44,7 +47,7 @@ class Event {
     kComplete,
   };
 
-  explicit Event(framework::ParallelExecutor* pe);  // NOLINT
+  explicit Event(pfd::StreamExecutor* pe);  // NOLINT
 
   // Releases any resources held by the Event object.
   ~Event();
@@ -67,7 +70,7 @@ class Event {
 
   std::unique_ptr<internal::EventInterface> implementation_;
   // StreamExecutor* stream_exec_;
-  framework::ParallelExecutor* pe_;
+  pfd::StreamExecutor* pe_;
   // DeviceContext* ctx_;
 
   DISALLOW_COPY_AND_ASSIGN(Event);

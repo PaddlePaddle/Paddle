@@ -18,9 +18,11 @@
 #include <vector>
 
 #include "paddle/fluid/framework/details/op_handle_base.h"
+#include "paddle/fluid/framework/details/stream_executor_impl.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/stream/paddle_stream.h"
 
 namespace paddle {
 namespace framework {
@@ -30,7 +32,7 @@ struct FetchOpHandle : public OpHandleBase {
  public:
   FetchOpHandle(ir::Node *node, FeedFetchList *data, size_t offset,
                 std::vector<Scope *> *local_scopes,
-                std::vector<Scope *> *local_exec_scopes);
+                std::vector<Scope *> *local_exec_scopes, StreamExecutor *exec);
 
   ~FetchOpHandle();
 
@@ -55,6 +57,8 @@ struct FetchOpHandle : public OpHandleBase {
   std::vector<Scope *> *local_scopes_;
   std::vector<Scope *> *local_exec_scopes_;
   std::vector<LoDTensor> tensors_;
+  // const paddle::platform::stream::BaseStream* d2h_;
+  StreamExecutor *exec_;
 };
 
 }  // namespace details
