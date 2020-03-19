@@ -492,8 +492,14 @@ class Executor(object):
                                fetch_list=[loss.name])
     """
 
-    def __init__(self, place):
-        self.place = place
+    def __init__(self, place=None):
+        if place is None:
+            if core.is_compiled_with_cuda():
+                self.place = core.CUDAPlace(0)
+            else:
+                self.place = core.CPUPlace()
+        else:
+            self.place = place
         self.program_caches = dict()
         self.ctx_caches = dict()
         self.scope_caches = dict()
