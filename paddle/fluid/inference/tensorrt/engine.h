@@ -208,6 +208,12 @@ class TensorRTEngine {
   void SetRuntimeBatch(size_t batch_size);
   int GetRuntimeBatch();
 
+  bool WithFp16() {
+    bool enable_fp16 = (precision_ == AnalysisConfig::Precision::kHalf);
+    bool support_fp16 = infer_builder_->platformHasFastFp16();
+    return enable_fp16 && support_fp16;
+  }
+
   int GetDeviceId() { return device_id_; }
   nvinfer1::IPluginLayer* AddPlugin(nvinfer1::ITensor* const* inputs,
                                     int num_inputs, plugin::PluginTensorRT*);

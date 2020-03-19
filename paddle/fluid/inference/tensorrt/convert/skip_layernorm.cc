@@ -13,31 +13,29 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
-#include "paddle/fluid/inference/tensorrt/helper.h"
-#include "paddle/fluid/inference/tensorrt/plugin/emb_eltwise_layernorm_plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/skip_layernorm_op_plugin.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-class EmbEltwiseLayerNormOpConverter : public OpConverter {
+class SkipLayerNormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
 #if IS_TRT_VERSION_GE(6000)
-    VLOG(4) << "convert fluid swish op to tensorrt layer";
-
+    VLOG(4) << "convert fused skip layernorm op to tensorrt layer";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
+    auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
+    auto* input2 = engine_->GetITensor(op_desc.Input("Y")[0]);
     std::vector<nvinfer1::ITensor*> inputs;
-    auto* word_id = engine_->GetITensor(op_desc.Input("WordId")[0]);
-    auto* pos_id = engine_->GetITensor(op_desc.Input("PosId")[0]);
-    auto* sent_id = engine_->GetITensor(op_desc.Input("SentId")[0]);
+    inputs.push_back(input1);
+    inputs.push_back(input2);
 
-    inputs.push_back(word_id);
-    inputs.push_back(pos_id);
-    inputs.push_back(sent_id);
-
+    // Get output
+    size_t output_num = op_desc.Output("Out").size();
+    PADDLE_ENFORCE(output_num == 1);
     auto get_persistable_data = [&](const std::string& arg_name,
                                     framework::DDim* dims) -> float* {
       std::string var_name = op_desc.Input(arg_name).front();
@@ -49,29 +47,19 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       return temp_data;
     };
 
-    framework::DDim word_emb_dims, pos_emb_dims, sent_emb_dims, bias_dims,
-        scale_dims;
-
-    auto* word_emb = get_persistable_data("WordEmb", &word_emb_dims);
-    auto* pos_emb = get_persistable_data("PosEmb", &pos_emb_dims);
-    auto* sent_emb = get_persistable_data("SentEmb", &sent_emb_dims);
+    framework::DDim bias_dims, scale_dims;
     auto* bias = get_persistable_data("Bias", &bias_dims);
     auto* scale = get_persistable_data("Scale", &scale_dims);
-    int64_t word_emb_size = framework::product(word_emb_dims);
-    int64_t pos_emb_size = framework::product(pos_emb_dims);
-    int64_t sent_emb_size = framework::product(sent_emb_dims);
-    int64_t bias_size = framework::product(bias_dims);
-    int64_t scale_size = framework::product(scale_dims);
-    int hidden = word_emb_dims[1];
     float eps = boost::get<float>(op_desc.GetAttr("epsilon"));
+    int bias_size = framework::product(bias_dims);
+    int scale_size = framework::product(scale_dims);
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
-      plugin::EmbEltwiseLayernormPluginDynamic* plugin =
-          new plugin::EmbEltwiseLayernormPluginDynamic(
-              word_emb, pos_emb, sent_emb, bias, scale, word_emb_size,
-              pos_emb_size, sent_emb_size, bias_size, scale_size, hidden, eps);
-      layer = engine_->AddPluginV2(inputs.data(), 3, plugin);
+      plugin::SkipLayerNormPluginDynamic* plugin =
+          new plugin::SkipLayerNormPluginDynamic(bias, scale, bias_size,
+                                                 scale_size, eps);
+      layer = engine_->AddPluginV2(inputs.data(), 2, plugin);
     } else {
       PADDLE_THROW(
           platform::errors::Fatal("There is no implement for Skip Layernorm "
@@ -79,8 +67,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     }
 
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "emb_eltwise_layernorm", {output_name},
-                             test_mode);
+    RreplenishLayerAndOutput(layer, "skip_layernorm", {output_name}, test_mode);
 #else
     PADDLE_THROW(platform::errors::Fatal(
         "You are running the TRT Dynamic Shape mode, need to confirm that "
@@ -93,5 +80,4 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_TRT_OP_CONVERTER(fused_embedding_eltwise_layernorm,
-                          EmbEltwiseLayerNormOpConverter);
+REGISTER_TRT_OP_CONVERTER(skip_layernorm, SkipLayerNormOpConverter);

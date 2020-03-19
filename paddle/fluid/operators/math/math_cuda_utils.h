@@ -13,8 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
 #include <cuda_fp16.h>
+#include <algorithm>
+
+namespace paddle {
+namespace operators {
+namespace math {
 
 template <typename T>
 __device__ __forceinline__ T FromFloat(float a);
@@ -113,3 +117,75 @@ struct KeyValuePair<half> {
   }
 };
 #endif
+
+#define FINAL_MASK 0xffffffff
+#define HALF_WARP 16
+#define WARP_SIZE 32
+
+template <typename T>
+__inline__ __device__ T warpReduceSum(T val, unsigned lane_mask) {
+  for (int mask = HALF_WARP; mask > 0; mask >>= 1)
+#if __CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000
+    val += __shfl_xor_sync(lane_mask, val, mask, warpSize);
+#else
+    val += __shfl_xor(val, mask, warpSize);
+#endif
+  return val;
+}
+
+/* Calculate the sum of all elements in a block */
+template <typename T>
+__inline__ __device__ T blockReduceSum(T val, unsigned mask) {
+  static __shared__ T shared[WARP_SIZE];
+  int lane = threadIdx.x & 0x1f;
+  int wid = threadIdx.x >> 5;
+
+  val = warpReduceSum<T>(val, mask);
+
+  if (lane == 0) shared[wid] = val;
+
+  __syncthreads();
+
+  // align block_span to warpSize
+  int block_span = (blockDim.x + warpSize - 1) >> 5;
+  val = (threadIdx.x < block_span) ? shared[lane] : static_cast<T>(0.0f);
+  val = warpReduceSum<T>(val, mask);
+
+  return val;
+}
+
+template <typename T>
+__inline__ __device__ T warpReduceMax(T val, unsigned lane_mask) {
+  for (int mask = HALF_WARP; mask > 0; mask >>= 1)
+#if __CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000
+    val = max(val, __shfl_xor_sync(lane_mask, val, mask, warpSize));
+#else
+    val = max(val, __shfl_xor(val, mask, warpSize));
+#endif
+  return val;
+}
+
+/* Calculate the maximum of all elements in a block */
+template <typename T>
+__inline__ __device__ T blockReduceMax(T val, unsigned mask) {
+  static __shared__ T shared[WARP_SIZE];
+  int lane = threadIdx.x & 0x1f;
+  int wid = threadIdx.x >> 5;
+
+  val = warpReduceMax(val, mask);
+
+  if (lane == 0) shared[wid] = val;
+
+  __syncthreads();
+
+  // align block_span to warpSize
+  int block_span = (blockDim.x + warpSize - 1) >> 5;
+  val = (threadIdx.x < block_span) ? shared[lane] : -1e10f;
+  val = warpReduceMax(val, mask);
+
+  return val;
+}
+
+}  // namespace math
+}  // namespace operators
+}  // namespace paddle
