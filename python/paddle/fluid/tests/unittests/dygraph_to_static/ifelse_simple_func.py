@@ -18,6 +18,16 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph.jit import dygraph_to_static_graph
 
 
+def add_fn(x):
+    x = x + 1
+    return x
+
+
+def loss_fn(x, lable):
+    loss = fluid.layers.cross_entropy(x, lable)
+    return loss
+
+
 def dyfunc_with_if_else(x_v, label=None):
     if fluid.layers.mean(x_v).numpy()[0] > 5:
         x_v = x_v - 1
