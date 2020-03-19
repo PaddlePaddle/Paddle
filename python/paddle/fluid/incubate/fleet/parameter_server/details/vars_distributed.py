@@ -15,6 +15,17 @@ from __future__ import print_function
 from paddle.fluid.framework import Variable
 
 
+class VarBlock:
+    def __init__(self, varname, offset, size):
+        self.varname = varname
+        # NOTE: real offset is offset * size
+        self.offset = offset
+        self.size = size
+
+    def __str__(self):
+        return "%s:%d:%d" % (self.varname, self.offset, self.size)
+
+
 class VarStruct(object):
     """
     record part properties of a Variable in python.

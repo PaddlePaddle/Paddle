@@ -45,6 +45,7 @@ from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 
 from paddle.fluid.incubate.fleet.parameter_server import version
+from paddle.fluid.incubate.fleet.parameter_server.details.checkport import wait_server_ready
 from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy import TrainerRuntimeConfig, DistributedStrategy, \
     SyncStrategy, AsyncStrategy, HalfAsyncStrategy, GeoStrategy, StrategyFactory
 
@@ -115,7 +116,6 @@ class FleetTranspiler(Fleet):
         # we suppose a user wants to submit job on mpi cluster
         if isinstance(self._role_maker, MPISymetricRoleMaker):
             # check whether server has been initialized
-            from paddle.fluid.transpiler.details.checkport import wait_server_ready
             wait_server_ready(self.server_endpoints(to_string=False))
 
         trainer_config = self._strategy.get_trainer_runtime_config()
@@ -387,7 +387,7 @@ class FleetTranspiler(Fleet):
             _strategy.set_pslib_runtime_config(strategy)
         else:
             raise TypeError(
-                "strategy must be an instance of DistributeTranspilerConfig, SyncStrategy, HalfAsyncStrategy, AsyncStrategy or GeoStratey."
+                "strategy must be an instance of DistributeTranspilerConfig, DistributedStrategy"
             )
 
         self._optimizer = ParameterServerOptimizer(optimizer, _strategy)
@@ -1022,8 +1022,6 @@ class ParameterServerOptimizer(DistributedOptimizer):
             if prog_id not in prog_id_to_param_grads:
                 prog_id_to_param_grads[prog_id] = []
             prog_id_to_param_grads[prog_id].append(params_grads)
-
-        # if strategy.get("parallel_compute")
 
         # if user specify a fleet_desc.prototxt file, then load the file
         # instead of creating default fleet_desc.prototxt.
