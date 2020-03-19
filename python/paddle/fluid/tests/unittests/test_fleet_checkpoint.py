@@ -21,13 +21,14 @@ from paddle.distributed.fs_wrapper import LocalFS, BDFS
 
 
 class FleetTest(unittest.TestCase):
-    def test_check_point(self):
-        dir_path = "./my_paddle_model"
+    def _test_check_point(self, fs, dir_path):
         file_name = "persistables"
 
         os.environ["TRAINING_ROLE"] = "TRAINER"
         os.environ["PADDLE_TRAINER_ID"] = "0"
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:6070"
+
+        #fs=LocalFS()
 
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
@@ -48,17 +49,30 @@ class FleetTest(unittest.TestCase):
         exe.run(fluid.default_startup_program())
 
         status = TrainStatus(2)
-        fleet.save_check_point(exe, dir_path, train_status=status)
-        n1 = fleet._get_last_checkpoint_no(dir_path, LocalFS())
+        fleet.save_check_point(exe, dir_path, train_status=status, fs=fs)
+        n1 = fleet._get_last_checkpoint_no(dir_path, fs=fs)
 
-        status2 = fleet.load_check_point(exe, dir_path)
+        status2 = fleet.load_check_point(exe, dir_path, fs=fs)
         assert status2 == status, "Checkpoint error!"
 
-        fleet.save_check_point(exe, dir_path, train_status=status)
-        n2 = fleet._get_last_checkpoint_no(dir_path, LocalFS())
+        fleet.save_check_point(exe, dir_path, train_status=status, fs=fs)
+        n2 = fleet._get_last_checkpoint_no(dir_path, fs=fs)
         assert n2 == n1 + 1, "checkpoint increment error:{} {}".format(n1, n2)
 
-        fleet.clean_redundant_check_points(dir_path)
+        fleet.clean_redundant_check_points(dir_path, fs=fs)
+
+    def test_hdfs_check_point(self):
+        try:
+            fs = BDFS("xxxx", "xxxx", 1 * 1000, 1 * 1000)
+            dir_path = "/user/Paddle_Data/gongweibao/edl_test/my_paddle_model"
+            self._test_check_point(fs, dir_path)
+        except Exception as e:
+            print(e)
+
+    def test_local_check_point(self):
+        fs = LocalFS()
+        dir_path = "./my_paddle_model"
+        self._test_check_point(fs, dir_path)
 
 
 if __name__ == '__main__':

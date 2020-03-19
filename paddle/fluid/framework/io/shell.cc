@@ -335,9 +335,11 @@ std::string shell_get_command_output(const std::string& cmd, int time_out,
     string::LineFileReader reader;
 
     char* buf = reader.getdelim(&*pipe, 0);
-    // printf("errno:%d!\n", errno);
-    if (buf && err_no == 0) {
-      return reader.get();
+    if (err_no == 0) {
+      if (buf) {
+        return reader.get();
+      }
+      return "";
     }
 
     if (sleep_inter > 0) {

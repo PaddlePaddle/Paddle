@@ -16,6 +16,8 @@ import paddle.fluid as fluid
 import sys
 import abc
 import os
+from pathlib import PurePosixPath
+import shutil
 
 
 class FS(object):
@@ -95,11 +97,9 @@ class LocalFS(FS):
         os.rename(fs_src_path, fs_dst_path)
 
     def rmr(self, fs_path):
-        assert os.path.isdir(fs_path), "{} must be a directory".format(fs_path)
         shutil.rmtree(fs_path)
 
     def rm(self, fs_path):
-        assert os.path.isfile(fs_path), "{} must be a file".format(fs_path)
         os.remove(fs_path)
 
     def rm_dir_file(self, fs_path):
@@ -140,62 +140,61 @@ class BDFS(FS):
         return dirs
 
     def ls(self, fs_path):
+        """
+        list directory under fs_path, and only give the pure name, not include the fs_path
+        """
         cmd = "{} -ls {}".format(self._base_cmd, fs_path)
+        print("ls command:", cmd)
         lines = self._run_cmd(cmd)
 
         dirs = []
         files = []
         for line in lines:
-            #print("line:", line)
             arr = line.split()
-            #print(arr)
             if len(arr) != 8:
                 continue
 
             if fs_path not in arr[7]:
                 continue
 
+            p = PurePosixPath(arr[7])
             if arr[0][0] == 'd':
-                dirs.append(arr[7])
+                dirs.append(p.name)
             else:
-                files.append(arr[7])
+                files.append(p.name)
 
         return dirs, files
 
     def _is_dir_or_file(self, fs_path):
-        cmd = "{} -ls {}".format(self._base_cmd, fs_path)
-        dirs, files = self.ls(cmd)
-        if fs_path in dirs:
+        p = PurePosixPath(fs_path)
+        dirs, files = self.ls(str(p.parent))
+        print("_is_dir_or_file:", p.name, dirs, files)
+        if p.name in dirs:
+            print("_is_dir_or_file is_dir:", True)
             return True, False
-        if fs_path in files:
+        if p.name in files:
+            print("_is_dir_or_file is_file:", True)
             return False, True
         return False, False
 
     def stat(self, fs_path):
-        cmd = "{} -stat {}/".format(self._base_cmd, fs_path)
-        lines = self._run_cmd(cmd)
-        for line in lines:
-            if "No such file or directory" in line:
-                return False
-        return True
+        cmd = "{} -test -e {} ; echo $?".format(self._base_cmd, fs_path)
+
+        test = self._run_cmd(cmd)
+        if test[0].strip() == "0":
+            return True
+
+        return False
 
     def upload(self, local_path, fs_path):
-        assert not self.stat(fs_path), "{} exists now".format(fs_path)
-        assert self.stat(local_path), "{} not exists".format(local_path)
-
-        cmd = "{} -put {} {}/".format(self._base_cmd, local_path, fs_path)
+        cmd = "{} -put {} {}".format(self._base_cmd, local_path, fs_path)
         fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
 
     def download(self, fs_path, local_path):
-        assert self.stat(fs_path), "{} not exists now".format(fs_path)
-        assert not self.stat(local_path), "{} already exists".format(local_path)
-
         cmd = "{} -get {} {}/".format(self._base_cmd, fs_path, local_path)
         fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
 
     def mkdir(self, fs_path):
-        is_dir, is_file = self._is_dir_or_file(fs_path)
-        assert not is_file, "{} is already be a file".format(fs_path)
 
         if not self.stat(fs_path):
             cmd = "{} -mkdir {}".format(self._base_cmd, fs_path)
@@ -209,18 +208,12 @@ class BDFS(FS):
         if not self.stat(fs_path):
             return
 
-        is_dir, _ = self.is_dir_or_file(fs_path)
-        assert is_dir, "{} must be dir".format(fs_path)
-
         cmd = "{} -rmr {}".format(self._base_cmd, fs_path)
         return fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
 
     def rm(self, fs_path):
         if not self.stat(fs_path):
             return
-
-        _, is_file = self._is_dir_or_file(fs_path)
-        assert is_file, "{} must be file".format(fs_path)
 
         cmd = "{} -rm {}".format(self._base_cmd, fs_path)
         return fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)

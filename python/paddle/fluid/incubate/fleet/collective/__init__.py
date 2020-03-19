@@ -191,12 +191,13 @@ class Collective(Fleet):
         max_no = -1
         d = {}
         dirs = fs.list_dirs(root_path)
-        print("dirs:", dirs)
+        print("get_last_checkpoint_no root_path:", root_path, "dirs:", dirs)
         for dir in dirs:
             g = dir.split(".")
             if len(g) != 2:
                 continue
 
+            print("_get_last_checkpoint_no:", g)
             if g[0] != "__paddle_fleet_checkpoint__":
                 continue
 
@@ -209,15 +210,18 @@ class Collective(Fleet):
 
         return max_no
 
-    def clean_redundant_check_points(self, root_path, fs=None,
+    def clean_redundant_check_points(self,
+                                     root_path,
+                                     fs=LocalFS(),
                                      checkpoint_num=1):
-        max_no = self._get_last_checkpoint_no(root_path)
+        max_no = self._get_last_checkpoint_no(root_path, fs)
         if max_no < 0:
             return
 
         if checkpoint_num < 1:
             checkpoint_num = 1
 
+        dirs = fs.list_dirs(root_path)
         for dir in dirs:
             g = dir.split(".")
             if len(g) != 2:
@@ -242,7 +246,7 @@ class Collective(Fleet):
                          train_status,
                          main_program=None,
                          fs=LocalFS(),
-                         local_cache_dir=".cache",
+                         local_cache_path=".cache",
                          remain_all_checkpoint=True):
         """
         This function save persistables and current epoch num to path.
@@ -258,15 +262,20 @@ class Collective(Fleet):
         if max_no < 0:
             max_no = -1
 
+        print("path:", path, "max_no:", max_no)
+
         real_path = "{}/{}.{}".format(path, self._checkoint_prefix, max_no + 1)
         tmp_path = "{}.tmp".format(real_path)
         saved_path = tmp_path
 
+        local_fs = LocalFS()
+
+        cache_path = None
         if fs.is_remote():
-            cache_path = "{}/{}/{}.{}.saved_cache".format(
-                path, local_cache_dir, self._checkoint_prefix, max_no + 1)
-            if not fs.stat(cache_path):
-                fs.mkdir(cache_path)
+            cache_path = "{}/{}.{}.saved_cache".format(
+                local_cache_path, self._checkoint_prefix, max_no + 1)
+            if not local_fs.stat(cache_path):
+                local_fs.mkdir(cache_path)
             saved_path = cache_path
 
         self.save_persistables(
@@ -276,10 +285,12 @@ class Collective(Fleet):
             filename=self._param_file_name)
         self._save_train_status(path=saved_path, train_status=train_status)
 
-        #print("tmp_path:", tmp_path, "cache_path:", cache_path, "real_path:", real_path, "cache_path:", cache_path)
         if fs.is_remote():
+            print("rmr:", tmp_path)
             fs.rm_dir_file(tmp_path)
+            print("upload:", cache_path, tmp_path)
             fs.upload(cache_path, tmp_path)
+        print("mv:", tmp_path, real_path)
         fs.mv(tmp_path, real_path)
 
         if not remain_all_checkpoint:
@@ -290,7 +301,7 @@ class Collective(Fleet):
                          path,
                          main_program=None,
                          fs=LocalFS(),
-                         local_cache_dir=".cache",
+                         local_cache_path=".cache",
                          ignore_empty=True):
         """
         This function load persistables and current epoch num from path.
@@ -305,11 +316,12 @@ class Collective(Fleet):
         if max_no < 0:
             return None
 
+        local_fs = LocalFS()
         if fs.is_remote():
-            cache_path = "{}/{}/{}.{}.load_cache".format(
-                path, local_cache_dir, self._checkoint_prefix, max_no)
-            if fs.stat(cache_path):
-                fs.rm_dir_file(cache_path)
+            cache_path = "{}/{}.{}.load_cache".format(
+                local_cache_path, self._checkoint_prefix, max_no)
+            if local_fs.stat(cache_path):
+                local_fs.rm_dir_file(cache_path)
 
         real_path = "{}/{}.{}".format(path, self._checkoint_prefix, max_no)
         load_path = real_path
