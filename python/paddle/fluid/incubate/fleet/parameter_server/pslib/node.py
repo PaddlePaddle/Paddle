@@ -331,7 +331,7 @@ class DownpourServer(Server):
                                           strategy, "embed")
                 self.add_sparse_optimizer(table.accessor.embedx_sgd_param,
                                           strategy, "embedx")
-    
+
     def add_dense_table(self, table_id, param_var, grad_var, strategy,
                         sparse_table_names):
         """
