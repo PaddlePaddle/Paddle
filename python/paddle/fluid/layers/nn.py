@@ -9587,6 +9587,27 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
         Variable: Random tensor whose data is drawn from a Gaussian distribution, dtype: flaot32 or float64 as specified.
 
     Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            # example 1:
+            # attr shape is a list which doesn't contain tensor Variable.
+            result_1 = fluid.layers.gaussian_random(shape=[3, 4])
+
+            # example 2:
+            # attr shape is a list which contains tensor Variable.
+            dim_1 = fluid.layers.fill_constant([1],"int64",3)
+            dim_2 = fluid.layers.fill_constant([1],"int32",5)
+            result_2 = fluid.layers.gaussian_random(shape=[dim_1, dim_2])
+
+            # example 3:
+            # attr shape is a Variable, the data type must be int64 or int32.
+            var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
+            result_3 = fluid.layers.gaussian_random(var_shape)
+            var_shape_int32 = fluid.data(name='var_shape_int32', shape=[2], dtype="int32")
+            result_4 = fluid.layers.gaussian_random(var_shape_int32)
+       
        .. code-block:: python
        
            # declarative mode 
@@ -9616,12 +9637,9 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
     
            place = fluid.CPUPlace()
            with dg.guard(place) as g:
-               shape1 = fluid.layers.fill_constant(shape=[1], dtype='int32', value=2)
-               shape2 = fluid.layers.fill_constant(shape=[1], dtype='int32', value=4)
-               x1 = fluid.layers.gaussian_random((2, 4), mean=2., dtype="float32", seed=10)
-               x2 = fluid.layers.gaussian_random([shape1, 4], mean=2., dtype="float32", seed=10)
-               x1_np = x1.numpy()       
-           x1_np
+               x = fluid.layers.gaussian_random((2, 4), mean=2., dtype="float32", seed=10)
+               x_np = x.numpy()       
+           x_np
            # array([[2.3060477 , 2.676496  , 3.9911983 , 0.9990833 ],
            #        [2.8675377 , 2.2279181 , 0.79029655, 2.8447366 ]], dtype=float32)
     """
