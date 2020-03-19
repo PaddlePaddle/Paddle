@@ -143,5 +143,6 @@ echo "Assert Python Diff Coverage"
 python ${PADDLE_ROOT}/tools/coverage/coverage_lines.py python-coverage-diff.info 0.9 || PYTHON_COVERAGE_LINES_ASSERT=1
 
 if [ "$COVERAGE_LINES_ASSERT" = "1" ] || [ "$PYTHON_COVERAGE_LINES_ASSERT" = "1" ]; then
+    echo "exit 9" > paddle_coverage.result
     exit 9
 fi
