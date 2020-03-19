@@ -102,19 +102,18 @@ def test_break_continue_in_for(x):
 
 def test_for_in_else(x):
     x = fluid.dygraph.to_variable(x)
-    #
-    # TODO: Huihuang founds that if we put the for range in else body
-    # the testcase will fail. Enable this test case after fixing it.
-    # 
-    #if False:
-    #    pass
-    #else:
-    #    for i in range(0, 10):
-    #        if i > 5:
-    #            x += 1
-    #            break
-    #        x += i
-    #
+
+    # Case 1:
+    if False:
+        pass
+    else:
+        for i in range(0, 10):
+            if i > 5:
+                x += 1
+                break
+            x += i
+
+    # Case 2:
     if False:
         pass
     else:
