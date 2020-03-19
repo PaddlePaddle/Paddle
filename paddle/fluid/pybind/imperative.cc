@@ -446,7 +446,7 @@ void BindImperative(py::module *m_ptr) {
                      reinterpret_cast<PySliceObject *>(slice_item), dim_len,
                      &start, &end, &step);
 #endif
-                 // None:None:None or 0:dim_len:1
+                 // :: or : or 0:dim_len:1
                  if (start == 0 && end == dim_len && step == 1) continue;
                  slice_axes.push_back(dim);
                  slice_starts.push_back(start);
@@ -459,22 +459,19 @@ void BindImperative(py::module *m_ptr) {
              // release gil and do tracing
              py::gil_scoped_release release;
              const auto &tracer = imperative::GetCurrentTracer();
-             std::shared_ptr<imperative::VarBase> out(
-                 new imperative::VarBase(tracer->GenerateUniqueName()));
-             out->MutableVar()
-                 ->GetMutable<framework::LoDTensor>()
-                 ->ShareDataWith(
-                     *(self.MutableVar()->GetMutable<framework::LoDTensor>()));
-             if (!slice_axes.empty()) {
+             auto _self = self.NewVarBase(tensor.place(), false);
+             if (slice_axes.empty()) {
+               return _self;
+             } else {
                std::vector<int> infer_flags(size, 1);
-               imperative::NameVarBaseMap ins = {{"Input", {out}}};
+               imperative::NameVarBaseMap ins = {{"Input", {_self}}};
                framework::AttributeMap attrs = {
                    {"axes", slice_axes},
                    {"starts", slice_starts},
                    {"ends", slice_ends},
                    {"infer_flags", infer_flags},
                    {"decrease_axis", decrease_axis}};
-               out = std::shared_ptr<imperative::VarBase>(
+               auto out = std::shared_ptr<imperative::VarBase>(
                    new imperative::VarBase(tracer->GenerateUniqueName()));
                imperative::NameVarBaseMap outs = {{"Out", {out}}};
                std::string op_type = "slice";
@@ -487,8 +484,8 @@ void BindImperative(py::module *m_ptr) {
                  }
                }
                tracer->TraceOp(op_type, ins, outs, std::move(attrs));
+               return out;
              }
-             return out;
            })
       .def("numpy",
            [](imperative::VarBase &self) -> py::array {
