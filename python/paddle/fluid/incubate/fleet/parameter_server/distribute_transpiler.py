@@ -46,6 +46,8 @@ from ..framework import Program, default_main_program, \
 from .details import wait_server_ready, UnionFind, VarStruct, VarsDistributed, VarBlock
 from .details import delete_ops, find_op_by_output_arg
 
+from paddle.fluid.incubate.fleet.base.role_maker import Role
+
 LOOKUP_TABLE_TYPE = "lookup_table"
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"
@@ -150,7 +152,7 @@ class DistributeTranspiler(object):
                 "In DistributeTranspiler, server_config must be an instance of ServerRuntimeConfig"
             )
 
-    def _get_all_remote_sparse_update_op(self, main_program):
+    def _get_all_pull_sparse_op(self, main_program):
         sparse_update_ops = []
         sparse_update_op_types = [LOOKUP_TABLE_TYPE, "nce"]
         for op in main_program.global_block().ops:
@@ -244,30 +246,45 @@ class DistributeTranspiler(object):
                 return True
         return False
 
-    def transpile(self,
-                  trainer_id,
-                  program=None,
-                  pservers="127.0.0.1:6174",
-                  trainers=1,
-                  startup_program=None,
-                  current_endpoint="127.0.0.1:6174"):
+    def server_transpile(self,
+                         pserver_id,
+                         trainers,
+                         startup_program=None,
+                         main_program=None,
+                         pservers=[]):
+        pass
 
-        assert program is not None
+    def worker_transpile(self,
+                         trainer_id,
+                         trainers,
+                         startup_program=None,
+                         main_program=None,
+                         pservers=[]):
+
+        assert trainer_id >= 0
+        assert main_program is not None
         assert startup_program is not None
 
-        self.origin_program = program
+        self.origin_program = main_program
         self.startup_program = startup_program
         self.origin_startup_program = self.startup_program.clone()
 
+        ps_dispatcher = self.config.split_method(pservers)
+        ps_dispatcher.reset()
+
         self.trainers = trainers
         self.trainer_id = trainer_id
-        pserver_endpoints = pservers.split(",")
-        self.pserver_endpoints = pserver_endpoints
+        self.pserver_endpoints = pservers
+
         self.vars_overview = VarsDistributed()
 
         self.optimize_ops, self.params_grads = self._get_optimize_pass()
 
-        ps_dispatcher = self.config.split_method(self.pserver_endpoints)
+        # get all sparse update ops
+        self.sparse_update_ops = self._get_all_pull_sparse_op(
+            self.origin_program)
+        # use_sparse_update_param_name -> split_height_section
+        self.sparse_param_to_height_sections = dict()
 
         self.param_name_to_grad_name = dict()
         self.grad_name_to_param_name = dict()
@@ -275,17 +292,11 @@ class DistributeTranspiler(object):
             self.param_name_to_grad_name[param_var.name] = grad_var.name
             self.grad_name_to_param_name[grad_var.name] = param_var.name
 
-        # get all sparse update ops
-        self.sparse_update_ops = self._get_all_remote_sparse_update_op(
-            self.origin_program)
-        # use_sparse_update_param_name -> split_height_section
-        self.sparse_param_to_height_sections = dict()
         self.need_delete_optimize_vars = []
 
         # add distributed attrs to program
         self.origin_program._is_distributed = True
         self.origin_program._endpoints = self.pserver_endpoints
-        self.origin_program._ps_endpoint = current_endpoint
         self.origin_program._is_chief = self.trainer_id == 0
 
         # split and create vars, then put split vars in dicts for later use.
@@ -293,7 +304,6 @@ class DistributeTranspiler(object):
         self._init_splited_vars()
 
         # step 2: insert send op to send gradient vars to parameter servers
-        ps_dispatcher.reset()
         send_vars = []
 
         grad_var_mapping_items = list(six.iteritems(self.grad_var_mapping))
@@ -1856,7 +1866,7 @@ class DistributeTranspiler(object):
         block = self.origin_program.global_block()
         opt_ops = []
         params_grads = []
-        # tmp set to dedup
+
         optimize_params = set()
         origin_var_dict = self.origin_program.global_block().vars
         for op in block.ops:
