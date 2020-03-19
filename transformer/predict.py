@@ -30,6 +30,7 @@ from utils.check import check_gpu, check_version
 # include task-specific libs
 import reader
 from transformer import InferTransformer, position_encoding_init
+from model import Input
 
 
 def post_process_seq(seq, bos_idx, eos_idx, output_bos=False,
@@ -50,8 +51,6 @@ def post_process_seq(seq, bos_idx, eos_idx, output_bos=False,
 
 
 def do_predict(args):
-    device_ids = list(range(args.num_devices))
-
     @contextlib.contextmanager
     def null_guard():
         yield
@@ -59,22 +58,23 @@ def do_predict(args):
     guard = fluid.dygraph.guard() if args.eager_run else null_guard()
 
     # define the data generator
-    processor = reader.DataProcessor(fpattern=args.predict_file,
-                                     src_vocab_fpath=args.src_vocab_fpath,
-                                     trg_vocab_fpath=args.trg_vocab_fpath,
-                                     token_delimiter=args.token_delimiter,
-                                     use_token_batch=False,
-                                     batch_size=args.batch_size,
-                                     device_count=1,
-                                     pool_size=args.pool_size,
-                                     sort_type=reader.SortType.NONE,
-                                     shuffle=False,
-                                     shuffle_batch=False,
-                                     start_mark=args.special_token[0],
-                                     end_mark=args.special_token[1],
-                                     unk_mark=args.special_token[2],
-                                     max_length=args.max_length,
-                                     n_head=args.n_head)
+    processor = reader.DataProcessor(
+        fpattern=args.predict_file,
+        src_vocab_fpath=args.src_vocab_fpath,
+        trg_vocab_fpath=args.trg_vocab_fpath,
+        token_delimiter=args.token_delimiter,
+        use_token_batch=False,
+        batch_size=args.batch_size,
+        device_count=1,
+        pool_size=args.pool_size,
+        sort_type=reader.SortType.NONE,
+        shuffle=False,
+        shuffle_batch=False,
+        start_mark=args.special_token[0],
+        end_mark=args.special_token[1],
+        unk_mark=args.special_token[2],
+        max_length=args.max_length,
+        n_head=args.n_head)
     batch_generator = processor.data_generator(phase="predict")
     args.src_vocab_size, args.trg_vocab_size, args.bos_idx, args.eos_idx, \
         args.unk_idx = processor.get_vocab_summary()
@@ -86,25 +86,38 @@ def do_predict(args):
         test_loader = batch_generator
 
         # define model
-        transformer = InferTransformer(args.src_vocab_size,
-                                       args.trg_vocab_size,
-                                       args.max_length + 1,
-                                       args.n_layer,
-                                       args.n_head,
-                                       args.d_key,
-                                       args.d_value,
-                                       args.d_model,
-                                       args.d_inner_hid,
-                                       args.prepostprocess_dropout,
-                                       args.attention_dropout,
-                                       args.relu_dropout,
-                                       args.preprocess_cmd,
-                                       args.postprocess_cmd,
-                                       args.weight_sharing,
-                                       args.bos_idx,
-                                       args.eos_idx,
-                                       beam_size=args.beam_size,
-                                       max_out_len=args.max_out_len)
+        inputs = [
+            Input(
+                [None, None], "int64", name="src_word"), Input(
+                    [None, None], "int64", name="src_pos"), Input(
+                        [None, args.n_head, None, None],
+                        "float32",
+                        name="src_slf_attn_bias"), Input(
+                            [None, args.n_head, None, None],
+                            "float32",
+                            name="trg_src_attn_bias")
+        ]
+        transformer = InferTransformer(
+            args.src_vocab_size,
+            args.trg_vocab_size,
+            args.max_length + 1,
+            args.n_layer,
+            args.n_head,
+            args.d_key,
+            args.d_value,
+            args.d_model,
+            args.d_inner_hid,
+            args.prepostprocess_dropout,
+            args.attention_dropout,
+            args.relu_dropout,
+            args.preprocess_cmd,
+            args.postprocess_cmd,
+            args.weight_sharing,
+            args.bos_idx,
+            args.eos_idx,
+            beam_size=args.beam_size,
+            max_out_len=args.max_out_len)
+        transformer.prepare(inputs=inputs)
 
         # load the trained model
         assert args.init_from_params, (
@@ -115,11 +128,8 @@ def do_predict(args):
         for input_data in test_loader():
             (src_word, src_pos, src_slf_attn_bias, trg_word,
              trg_src_attn_bias) = input_data
-            finished_seq = transformer.test(inputs=(src_word, src_pos,
-                                                    src_slf_attn_bias,
-                                                    trg_src_attn_bias),
-                                            device='gpu',
-                                            device_ids=device_ids)[0]
+            finished_seq = transformer.test(inputs=(
+                src_word, src_pos, src_slf_attn_bias, trg_src_attn_bias))[0]
             finished_seq = np.transpose(finished_seq, [0, 2, 1])
             for ins in finished_seq:
                 for beam_idx, beam in enumerate(ins):

@@ -31,10 +31,11 @@ from utils.check import check_gpu, check_version
 # include task-specific libs
 import reader
 from transformer import Transformer, CrossEntropyCriterion, NoamDecay
+from model import Input
 
 
 def do_train(args):
-    device_ids = list(range(args.num_devices))
+    trainer_count = 1  #get_nranks()
 
     @contextlib.contextmanager
     def null_guard():
@@ -43,23 +44,27 @@ def do_train(args):
     guard = fluid.dygraph.guard() if args.eager_run else null_guard()
 
     # define the data generator
-    processor = reader.DataProcessor(fpattern=args.training_file,
-                                     src_vocab_fpath=args.src_vocab_fpath,
-                                     trg_vocab_fpath=args.trg_vocab_fpath,
-                                     token_delimiter=args.token_delimiter,
-                                     use_token_batch=args.use_token_batch,
-                                     batch_size=args.batch_size,
-                                     device_count=args.num_devices,
-                                     pool_size=args.pool_size,
-                                     sort_type=args.sort_type,
-                                     shuffle=args.shuffle,
-                                     shuffle_batch=args.shuffle_batch,
-                                     start_mark=args.special_token[0],
-                                     end_mark=args.special_token[1],
-                                     unk_mark=args.special_token[2],
-                                     max_length=args.max_length,
-                                     n_head=args.n_head)
+    processor = reader.DataProcessor(
+        fpattern=args.training_file,
+        src_vocab_fpath=args.src_vocab_fpath,
+        trg_vocab_fpath=args.trg_vocab_fpath,
+        token_delimiter=args.token_delimiter,
+        use_token_batch=args.use_token_batch,
+        batch_size=args.batch_size,
+        device_count=trainer_count,
+        pool_size=args.pool_size,
+        sort_type=args.sort_type,
+        shuffle=args.shuffle,
+        shuffle_batch=args.shuffle_batch,
+        start_mark=args.special_token[0],
+        end_mark=args.special_token[1],
+        unk_mark=args.special_token[2],
+        max_length=args.max_length,
+        n_head=args.n_head)
     batch_generator = processor.data_generator(phase="train")
+    if trainer_count > 1:  # for multi-process gpu training
+        batch_generator = fluid.contrib.reader.distributed_batch_reader(
+            batch_generator)
     if args.validation_file:
         val_processor = reader.DataProcessor(
             fpattern=args.validation_file,
@@ -68,7 +73,7 @@ def do_train(args):
             token_delimiter=args.token_delimiter,
             use_token_batch=args.use_token_batch,
             batch_size=args.batch_size,
-            device_count=args.num_devices,
+            device_count=trainer_count,
             pool_size=args.pool_size,
             sort_type=args.sort_type,
             shuffle=False,
@@ -81,7 +86,6 @@ def do_train(args):
         val_batch_generator = val_processor.data_generator(phase="train")
     args.src_vocab_size, args.trg_vocab_size, args.bos_idx, args.eos_idx, \
         args.unk_idx = processor.get_vocab_summary()
-
 
     with guard:
         # set seed for CE
@@ -96,6 +100,28 @@ def do_train(args):
             val_loader = val_batch_generator
 
         # define model
+        inputs = [
+            Input(
+                [None, None], "int64", name="src_word"), Input(
+                    [None, None], "int64", name="src_pos"), Input(
+                        [None, args.n_head, None, None],
+                        "float32",
+                        name="src_slf_attn_bias"), Input(
+                            [None, None], "int64", name="trg_word"), Input(
+                                [None, None], "int64", name="trg_pos"), Input(
+                                    [None, args.n_head, None, None],
+                                    "float32",
+                                    name="trg_slf_attn_bias"), Input(
+                                        [None, args.n_head, None, None],
+                                        "float32",
+                                        name="trg_src_attn_bias")
+        ]
+        labels = [
+            Input(
+                [None, 1], "int64", name="label"), Input(
+                    [None, 1], "float32", name="weight")
+        ]
+
         transformer = Transformer(
             args.src_vocab_size, args.trg_vocab_size, args.max_length + 1,
             args.n_layer, args.n_head, args.d_key, args.d_value, args.d_model,
@@ -112,7 +138,9 @@ def do_train(args):
                 beta2=args.beta2,
                 epsilon=float(args.eps),
                 parameter_list=transformer.parameters()),
-            CrossEntropyCriterion(args.label_smooth_eps))
+            CrossEntropyCriterion(args.label_smooth_eps),
+            inputs=inputs,
+            labels=labels)
 
         ## init from some checkpoint, to resume the previous training
         if args.init_from_checkpoint:
@@ -126,9 +154,8 @@ def do_train(args):
         # the best cross-entropy value with label smoothing
         loss_normalizer = -(
             (1. - args.label_smooth_eps) * np.log(
-                (1. - args.label_smooth_eps)) +
-            args.label_smooth_eps * np.log(args.label_smooth_eps /
-                                           (args.trg_vocab_size - 1) + 1e-20))
+                (1. - args.label_smooth_eps)) + args.label_smooth_eps *
+            np.log(args.label_smooth_eps / (args.trg_vocab_size - 1) + 1e-20))
 
         step_idx = 0
         # train loop
@@ -136,10 +163,7 @@ def do_train(args):
             pass_start_time = time.time()
             batch_id = 0
             for input_data in train_loader():
-                outputs, losses = transformer.train(input_data[:-2],
-                                                    input_data[-2:],
-                                                    device='gpu',
-                                                    device_ids=device_ids)
+                losses = transformer.train(input_data[:-2], input_data[-2:])
 
                 if step_idx % args.print_step == 0:
                     total_avg_cost = np.sum(losses)
@@ -149,30 +173,27 @@ def do_train(args):
                             "step_idx: %d, epoch: %d, batch: %d, avg loss: %f, "
                             "normalized loss: %f, ppl: %f" %
                             (step_idx, pass_id, batch_id, total_avg_cost,
-                            total_avg_cost - loss_normalizer,
-                            np.exp([min(total_avg_cost, 100)])))
+                             total_avg_cost - loss_normalizer,
+                             np.exp([min(total_avg_cost, 100)])))
                         avg_batch_time = time.time()
                     else:
                         logging.info(
                             "step_idx: %d, epoch: %d, batch: %d, avg loss: %f, "
-                            "normalized loss: %f, ppl: %f, speed: %.2f step/s" %
+                            "normalized loss: %f, ppl: %f, speed: %.2f step/s"
+                            %
                             (step_idx, pass_id, batch_id, total_avg_cost,
-                            total_avg_cost - loss_normalizer,
-                            np.exp([min(total_avg_cost, 100)]),
-                            args.print_step / (time.time() - avg_batch_time)))
+                             total_avg_cost - loss_normalizer,
+                             np.exp([min(total_avg_cost, 100)]),
+                             args.print_step / (time.time() - avg_batch_time)))
                         avg_batch_time = time.time()
-
 
                 if step_idx % args.save_step == 0 and step_idx != 0:
                     # validation: how to accumulate with Model loss
                     if args.validation_file:
                         total_avg_cost = 0
                         for idx, input_data in enumerate(val_loader()):
-                            outputs, losses = transformer.eval(
-                                input_data[:-2],
-                                input_data[-2:],
-                                device='gpu',
-                                device_ids=device_ids)
+                            losses = transformer.eval(input_data[:-2],
+                                                      input_data[-2:])
                             total_avg_cost += np.sum(losses)
                         total_avg_cost /= idx + 1
                         logging.info("validation, step_idx: %d, avg loss: %f, "
@@ -181,10 +202,9 @@ def do_train(args):
                                       total_avg_cost - loss_normalizer,
                                       np.exp([min(total_avg_cost, 100)])))
 
-                        transformer.save(
-                            os.path.join(args.save_model,
-                                         "step_" + str(step_idx),
-                                         "transformer"))
+                    transformer.save(
+                        os.path.join(args.save_model, "step_" + str(step_idx),
+                                     "transformer"))
 
                 batch_id += 1
                 step_idx += 1

@@ -2,7 +2,6 @@
 enable_ce: False
 
 eager_run: False
-num_devices: 1
 
 # The frequency to save trained models when training.
 save_step: 10000

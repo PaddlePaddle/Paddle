@@ -54,8 +54,7 @@ class RNNUnit(Layer):
             if sys.version_info < (3, ):
                 integer_types = (
                     int,
-                    long,
-                )
+                    long, )
             else:
                 integer_types = (int, )
             """For shape, list/tuple of integer is the finest-grained objection"""
@@ -67,8 +66,8 @@ class RNNUnit(Layer):
             # TODO: Add check for the illegal
             if isinstance(seq, dict):
                 return True
-            return (isinstance(seq, collections.Sequence)
-                    and not isinstance(seq, six.string_types))
+            return (isinstance(seq, collections.Sequence) and
+                    not isinstance(seq, six.string_types))
 
         class Shape(object):
             def __init__(self, shape):
@@ -174,6 +173,7 @@ class BasicLSTMUnit(RNNUnit):
         forget_bias(float|1.0): forget bias used when computing forget gate
         dtype(string): data type used in this unit
     """
+
     def __init__(self,
                  hidden_size,
                  input_size,
@@ -190,9 +190,8 @@ class BasicLSTMUnit(RNNUnit):
         self._bias_attr = bias_attr
         self._gate_activation = gate_activation or layers.sigmoid
         self._activation = activation or layers.tanh
-        self._forget_bias = layers.fill_constant([1],
-                                                 dtype=dtype,
-                                                 value=forget_bias)
+        self._forget_bias = layers.fill_constant(
+            [1], dtype=dtype, value=forget_bias)
         self._forget_bias.stop_gradient = False
         self._dtype = dtype
         self._input_size = input_size
@@ -204,10 +203,11 @@ class BasicLSTMUnit(RNNUnit):
             ],
             dtype=self._dtype)
 
-        self._bias = self.create_parameter(attr=self._bias_attr,
-                                           shape=[4 * self._hidden_size],
-                                           dtype=self._dtype,
-                                           is_bias=True)
+        self._bias = self.create_parameter(
+            attr=self._bias_attr,
+            shape=[4 * self._hidden_size],
+            dtype=self._dtype,
+            is_bias=True)
 
     def forward(self, input, state):
         pre_hidden, pre_cell = state
@@ -260,9 +260,8 @@ class RNN(fluid.dygraph.Layer):
                 # TODO: use where_op
                 new_state = fluid.layers.elementwise_mul(
                     new_state, step_mask,
-                    axis=0) - fluid.layers.elementwise_mul(state,
-                                                           (step_mask - 1),
-                                                           axis=0)
+                    axis=0) - fluid.layers.elementwise_mul(
+                        state, (step_mask - 1), axis=0)
                 return new_state
 
             flat_inputs = flatten(inputs)
@@ -300,7 +299,9 @@ class RNN(fluid.dygraph.Layer):
                                                      **kwargs)
                 if sequence_length:
                     new_states = map_structure(
-                        partial(_maybe_copy, step_mask=mask[i]), states,
+                        partial(
+                            _maybe_copy, step_mask=mask[i]),
+                        states,
                         new_states)
                 states = new_states
                 outputs = map_structure(
@@ -347,10 +348,9 @@ class EncoderCell(RNNUnit):
         self.lstm_cells = list()
         for i in range(self.num_layers):
             self.lstm_cells.append(
-                self.add_sublayer(
-                    "layer_%d" % i,
-                    BasicLSTMUnit(input_size if i == 0 else hidden_size,
-                                  hidden_size)))
+                self.add_sublayer("layer_%d" % i,
+                                  BasicLSTMUnit(input_size if i == 0 else
+                                                hidden_size, hidden_size)))
 
     def forward(self, step_input, states):
         new_states = []
@@ -384,18 +384,14 @@ class MultiHeadAttention(Layer):
         self.d_value = d_value
         self.d_model = d_model
         self.dropout_rate = dropout_rate
-        self.q_fc = Linear(input_dim=d_model,
-                           output_dim=d_key * n_head,
-                           bias_attr=False)
-        self.k_fc = Linear(input_dim=d_model,
-                           output_dim=d_key * n_head,
-                           bias_attr=False)
-        self.v_fc = Linear(input_dim=d_model,
-                           output_dim=d_value * n_head,
-                           bias_attr=False)
-        self.proj_fc = Linear(input_dim=d_value * n_head,
-                              output_dim=d_model,
-                              bias_attr=False)
+        self.q_fc = Linear(
+            input_dim=d_model, output_dim=d_key * n_head, bias_attr=False)
+        self.k_fc = Linear(
+            input_dim=d_model, output_dim=d_key * n_head, bias_attr=False)
+        self.v_fc = Linear(
+            input_dim=d_model, output_dim=d_value * n_head, bias_attr=False)
+        self.proj_fc = Linear(
+            input_dim=d_value * n_head, output_dim=d_model, bias_attr=False)
 
     def forward(self, queries, keys, values, attn_bias, cache=None):
         # compute q ,k ,v
@@ -421,17 +417,14 @@ class MultiHeadAttention(Layer):
             cache["k"], cache["v"] = k, v
 
         # scale dot product attention
-        product = layers.matmul(x=q,
-                                y=k,
-                                transpose_y=True,
-                                alpha=self.d_model**-0.5)
+        product = layers.matmul(
+            x=q, y=k, transpose_y=True, alpha=self.d_model**-0.5)
         if attn_bias:
             product += attn_bias
         weights = layers.softmax(product)
         if self.dropout_rate:
-            weights = layers.dropout(weights,
-                                     dropout_prob=self.dropout_rate,
-                                     is_test=False)
+            weights = layers.dropout(
+                weights, dropout_prob=self.dropout_rate, is_test=False)
 
             out = layers.matmul(weights, v)
 
@@ -497,14 +490,13 @@ class DynamicDecode(Layer):
             inputs, states, finished = (initial_inputs, initial_states,
                                         initial_finished)
             cond = layers.logical_not((layers.reduce_all(initial_finished)))
-            sequence_lengths = layers.cast(layers.zeros_like(initial_finished),
-                                           "int64")
+            sequence_lengths = layers.cast(
+                layers.zeros_like(initial_finished), "int64")
             outputs = None
 
             step_idx = 0
-            step_idx_tensor = layers.fill_constant(shape=[1],
-                                                   dtype="int64",
-                                                   value=step_idx)
+            step_idx_tensor = layers.fill_constant(
+                shape=[1], dtype="int64", value=step_idx)
             while cond.numpy():
                 (step_outputs, next_states, next_inputs,
                  next_finished) = self.decoder.step(step_idx_tensor, inputs,
@@ -512,8 +504,8 @@ class DynamicDecode(Layer):
                 next_finished = layers.logical_or(next_finished, finished)
                 next_sequence_lengths = layers.elementwise_add(
                     sequence_lengths,
-                    layers.cast(layers.logical_not(finished),
-                                sequence_lengths.dtype))
+                    layers.cast(
+                        layers.logical_not(finished), sequence_lengths.dtype))
 
                 if self.impute_finished:  # rectify the states for the finished.
                     next_states = map_structure(
@@ -570,6 +562,7 @@ class TransfomerCell(object):
     Let inputs=(trg_word, trg_pos), states=cache to make Transformer can be
     used as RNNCell
     """
+
     def __init__(self, decoder):
         self.decoder = decoder
 
@@ -593,20 +586,16 @@ class TransformerBeamSearchDecoder(layers.BeamSearchDecoder):
         self.var_dim_in_state = var_dim_in_state
 
     def _merge_batch_beams_with_var_dim(self, x):
-        if not hasattr(self, "batch_size"):
-            self.batch_size = layers.shape(x)[0]
-        if not hasattr(self, "batch_beam_size"):
-            self.batch_beam_size = self.batch_size * self.beam_size
         # init length of cache is 0, and it increases with decoding carrying on,
         # thus need to reshape elaborately
         var_dim_in_state = self.var_dim_in_state + 1  # count in beam dim
-        x = layers.transpose(
-            x,
-            list(range(var_dim_in_state, len(x.shape))) +
-            list(range(0, var_dim_in_state)))
-        x = layers.reshape(x, [0] * (len(x.shape) - var_dim_in_state) +
-                           [self.batch_beam_size] +
-                           list(x.shape[-var_dim_in_state + 2:]))
+        x = layers.transpose(x,
+                             list(range(var_dim_in_state, len(x.shape))) +
+                             list(range(0, var_dim_in_state)))
+        x = layers.reshape(
+            x, [0] * (len(x.shape) - var_dim_in_state
+                      ) + [self.batch_size * self.beam_size] +
+            [int(size) for size in x.shape[-var_dim_in_state + 2:]])
         x = layers.transpose(
             x,
             list(range((len(x.shape) + 1 - var_dim_in_state), len(x.shape))) +
@@ -616,8 +605,10 @@ class TransformerBeamSearchDecoder(layers.BeamSearchDecoder):
     def _split_batch_beams_with_var_dim(self, x):
         var_dim_size = layers.shape(x)[self.var_dim_in_state]
         x = layers.reshape(
-            x, [-1, self.beam_size] + list(x.shape[1:self.var_dim_in_state]) +
-            [var_dim_size] + list(x.shape[self.var_dim_in_state + 1:]))
+            x, [-1, self.beam_size] +
+            [int(size)
+             for size in x.shape[1:self.var_dim_in_state]] + [var_dim_size] +
+            [int(size) for size in x.shape[self.var_dim_in_state + 1:]])
         return x
 
     def step(self, time, inputs, states, **kwargs):
@@ -642,137 +633,3 @@ class TransformerBeamSearchDecoder(layers.BeamSearchDecoder):
                                  beam_search_state.finished)
 
         return (beam_search_output, beam_search_state, next_inputs, finished)
-
-'''
-@contextlib.contextmanager
-def eager_guard(is_eager):
-    if is_eager:
-        with fluid.dygraph.guard():
-            yield
-    else:
-        yield
-
-
-# print(flatten(np.random.rand(2,8,8)))
-random_seed = 123
-np.random.seed(random_seed)
-# print np.random.rand(2, 8)
-batch_size = 2
-seq_len = 8
-hidden_size = 8
-vocab_size, embed_dim, num_layers, hidden_size = 100, 8, 2, 8
-bos_id, eos_id, beam_size, max_step_num = 0, 1, 5, 10
-time_major = False
-eagar_run = False
-
-import torch
-
-with eager_guard(eagar_run):
-    fluid.default_main_program().random_seed = random_seed
-    fluid.default_startup_program().random_seed = random_seed
-
-    inputs_data = np.random.rand(batch_size, seq_len,
-                                 hidden_size).astype("float32")
-    states_data = np.random.rand(batch_size, hidden_size).astype("float32")
-
-    lstm_cell = BasicLSTMUnit(hidden_size=8, input_size=8)
-    lstm = RNN(cell=lstm_cell, time_major=time_major)
-
-    inputs = to_variable(inputs_data) if eagar_run else fluid.data(
-        name="x", shape=[None, None, hidden_size], dtype="float32")
-
-    states = lstm_cell.get_initial_states(batch_ref=inputs,
-                                          batch_dim_idx=1 if time_major else 0)
-
-    out, _ = lstm(inputs, states)
-    # print states
-
-    # print layers.BeamSearchDecoder.tile_beam_merge_with_batch(out, 5)
-
-    # embedder = Embedding(size=(vocab_size, embed_dim))
-    # output_layer = Linear(hidden_size, vocab_size)
-    # decoder = layers.BeamSearchDecoder(lstm_cell,
-    #                                    bos_id,
-    #                                    eos_id,
-    #                                    beam_size,
-    #                                    embedding_fn=embedder,
-    #                                    output_fn=output_layer)
-    # dynamic_decoder = DynamicDecode(decoder, max_step_num)
-    # out,_ = dynamic_decoder(inits=states)
-
-    # caches = [{
-    #     "k":
-    #     layers.fill_constant_batch_size_like(out,
-    #                                          shape=[-1, 8, 0, 64],
-    #                                          dtype="float32",
-    #                                          value=0),
-    #     "v":
-    #     layers.fill_constant_batch_size_like(out,
-    #                                          shape=[-1, 8, 0, 64],
-    #                                          dtype="float32",
-    #                                          value=0)
-    # } for i in range(6)]
-    cache = layers.fill_constant_batch_size_like(out,
-                                                 shape=[-1, 8, 0, 64],
-                                                 dtype="float32",
-                                                 value=0)
-
-    print cache
-    # out = layers.BeamSearchDecoder.tile_beam_merge_with_batch(cache, 5)
-    # out = TransformerBeamSearchDecoder.tile_beam_merge_with_batch(cache, 5)
-    # batch_beam_size = layers.shape(out)[0] * 5
-    # print out
-    cell = TransfomerCell(None)
-    decoder = TransformerBeamSearchDecoder(cell, 0, 1, 5, 2)
-    cache = decoder._expand_to_beam_size(cache)
-    print cache
-    cache = decoder._merge_batch_beams_with_var_dim(cache)
-    print cache
-    cache1 = layers.fill_constant_batch_size_like(cache,
-                                                  shape=[-1, 8, 1, 64],
-                                                  dtype="float32",
-                                                  value=0)
-    print cache1.shape
-    cache = layers.concat([cache, cache1], axis=2)
-    out = decoder._split_batch_beams_with_var_dim(cache)
-    # out = layers.transpose(out,
-    #                      list(range(3, len(out.shape))) + list(range(0, 3)))
-    # print out
-    # out = layers.reshape(out, list(out.shape[:2]) + [batch_beam_size, 8])
-    # print out
-    # out = layers.transpose(out, [2,3,0,1])
-    print out.shape
-    if eagar_run:
-        print "hehe"  #out #.numpy()
-    else:
-        executor.run(fluid.default_startup_program())
-        inputs = fluid.data(name="x",
-                            shape=[None, None, hidden_size],
-                            dtype="float32")
-        out_np = executor.run(feed={"x": inputs_data},
-                              fetch_list=[out.name])[0]
-        print np.array(out_np).shape
-    exit(0)
-
-    # dygraph
-    # inputs = to_variable(inputs_data)
-    # states = lstm_cell.get_initial_states(batch_ref=inputs,
-    #                                       batch_dim_idx=1 if time_major else 0)
-
-    # print lstm(inputs, states)[0].numpy()
-
-    # graph
-    executor.run(fluid.default_startup_program())
-    inputs = fluid.data(name="x",
-                        shape=[None, None, hidden_size],
-                        dtype="float32")
-    states = lstm_cell.get_initial_states(batch_ref=inputs,
-                                          batch_dim_idx=1 if time_major else 0)
-    out, _ = lstm(inputs, states)
-    out_np = executor.run(feed={"x": inputs_data}, fetch_list=[out.name])[0]
-    print np.array(out_np)
-
-    #print fluid.io.save_inference_model(dirname="test_model", feeded_var_names=["x"], target_vars=[out], executor=executor, model_filename="model.pdmodel", params_filename="params.pdparams")
-    # test_program, feed_target_names, fetch_targets = fluid.io.load_inference_model(dirname="test_model", executor=executor, model_filename="model.pdmodel", params_filename="params.pdparams")
-    # out = executor.run(program=test_program, feed={"x": np.random.rand(2, 8, 8).astype("float32")}, fetch_list=fetch_targets)[0]
-'''
