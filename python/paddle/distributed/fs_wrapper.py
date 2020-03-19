@@ -50,8 +50,16 @@ class FS(object):
     def rmr(self, fs_path):
         pass
 
+    @abc.abstractmethod
+    def rm(self, fs_path):
+        pass
 
-class Local(object):
+    @abc.abstractmethod
+    def rm_dir_file(self, fs_path):
+        pass
+
+
+class LocalFS(FS):
     def list_dirs(self, fs_path):
         return [f for f in os.listdir(fs_path) if os.path.isdir(f)]
 
@@ -77,7 +85,22 @@ class Local(object):
         os.rename(fs_src_path, fs_dst_path)
 
     def rmr(self, fs_path):
+        assert os.path.isdir(fs_path), "{} must be a directory".format(fs_path)
         shutil.rmtree(fs_path)
+
+    def rm(self, fs_path):
+        assert os.path.isfile(fs_path), "{} must be a file".format(fs_path)
+        os.remove(fs_path)
+
+    def rm_dir_file(self, fs_path):
+        if not self.stat(fs_path):
+            return
+
+        if os.path.isfile(fs_path):
+            self.rm(fs_path)
+
+        if os.path.isdir(fs_path):
+            self.rmr(fs_path)
 
 
 class BDFS(FS):
@@ -104,7 +127,7 @@ class BDFS(FS):
         return dirs
 
     def ls(self, fs_path):
-        cmd = "{} -ls {}/".format(self._base_cmd, fs_path)
+        cmd = "{} -ls {}".format(self._base_cmd, fs_path)
         lines = self._run_cmd(cmd)
 
         dirs = []
@@ -123,6 +146,15 @@ class BDFS(FS):
 
         return dirs, files
 
+    def _is_dir_or_file(self, fs_path):
+        cmd = "{} -ls {}".format(self._base_cmd, fs_path)
+        dirs, files = self.ls(cmd)
+        if fs_path in dirs:
+            return True, False
+        if fs_path in files:
+            return False, True
+        return False, False
+
     def stat(self, fs_path):
         cmd = "{} -stat {}/".format(self._base_cmd, fs_path)
         lines = self._run_cmd(cmd)
@@ -140,6 +172,9 @@ class BDFS(FS):
         fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
 
     def mkdir(self, fs_path):
+        is_dir, is_file = self._is_dir_or_file(fs_path)
+        assert not is_file, "{} is already be a file".format(fs_path)
+
         if not self.stat(fs_path):
             cmd = "{} -mkdir {}".format(self._base_cmd, fs_path)
             fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
@@ -149,5 +184,42 @@ class BDFS(FS):
         fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
 
     def rmr(self, fs_path):
+        if not self.stat(fs_path):
+            return
+
+        is_dir, _ = self.is_dir_or_file(fs_path)
+        assert is_dir, "{} must be dir".format(fs_path)
+
         cmd = "{} -rmr {}".format(self._base_cmd, fs_path)
         return fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
+
+    def rm(self, fs_path):
+        if not self.stat(fs_path):
+            return
+
+        _, is_file = self._is_dir_or_file(fs_path)
+        assert is_file, "{} must be file".format(fs_path)
+
+        cmd = "{} -rm {}".format(self._base_cmd, fs_path)
+        return fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
+
+    def rm_dir_file(self, fs_path):
+        if not self.stat(fs_path):
+            return
+
+        is_dir, is_file = self._is_dir_or_file(fs_path)
+        if is_dir:
+            return self.rmr(fs_path)
+
+        if is_file:
+            return self.rm(fs_path)
+
+    """
+    def rm
+        is_dir,is_file = self.is_dir_or_file(fs_path)
+        if is_dir(fs_path):
+            return self.rmr(fs_path)
+
+        if is_file(fs_path):
+            return self.rm(fs_path)
+    """

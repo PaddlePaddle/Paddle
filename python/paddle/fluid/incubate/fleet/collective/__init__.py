@@ -258,6 +258,7 @@ class Collective(Fleet):
                                              self._checkoint_prefix, max_no + 1)
         if not os.exists(local_cache_path):
             os.mkdir(local_cache_path)
+
         real_path = "{}/{}.{}".format(path, self._checkoint_prefix, max_no + 1)
         tmp_path = "{}.tmp".format(real_path)
 
@@ -268,6 +269,8 @@ class Collective(Fleet):
             filename=self._param_file_name)
         self._save_train_status(path=cache_path, train_status=train_status)
 
+        print("prepare to remove:", tmp_path)
+        #fs.rm_dir_file(tmp_path):
         fs.upload(cache_path, tmp_path)
         fs.mv(tmp_path, real_path)
 
