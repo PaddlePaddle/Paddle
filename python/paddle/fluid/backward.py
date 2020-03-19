@@ -273,10 +273,13 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
                     args)))
 
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
+    op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
 
     if op_role_attr_name not in attrs:
         attrs[
             op_role_attr_name] = core.op_proto_and_checker_maker.OpRole.Backward
+    if op_device_attr_name not in attrs:
+        attrs[op_device_attr_name] = ""
     for name, val in six.iteritems(attrs):
         if isinstance(val, framework.Block):
             op_desc.set_block_attr(name, val.desc)
@@ -295,6 +298,8 @@ def _create_loss_op_desc_(loss):
             core.op_proto_and_checker_maker.kOpRoleAttrName():
             int(core.op_proto_and_checker_maker.OpRole.Backward) |
             int(core.op_proto_and_checker_maker.OpRole.Loss),
+            core.op_proto_and_checker_maker.kOpDeviceAttrName():
+            loss.op.attr(core.op_proto_and_checker_maker.kOpDeviceAttrName())
         })
     return op_desc
 

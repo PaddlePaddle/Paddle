@@ -484,8 +484,7 @@ class Optimizer(object):
                     if param_name in input_arg_names:
                         self._param_device_map[param_name] = op.attr(
                             device_attr_name)
-                    else:
-                        self._param_device_map[param_name] = None
+                        break
 
     def _get_device_for_param(self, param_name):
         device = None

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/shape_op.h"
+#include <string>
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -29,6 +30,15 @@ class ShapeOp : public framework::OperatorWithKernel {
                    "Output (Out) of get_shape op should not be null.");
     auto in_dim = ctx->GetInputDim("Input");
     ctx->SetOutputDim("Out", {in_dim.size()});
+  }
+
+ protected:
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   expected_kernel_type.place_,
+                                   tensor.layout());
   }
 };
 

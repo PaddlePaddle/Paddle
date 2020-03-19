@@ -25,13 +25,35 @@ __all__ = ['to_static_variable_gast_node', 'create_static_variable_gast_node']
 def to_static_variable_gast_node(name):
     func_code = "{} = fluid.dygraph.dygraph_to_static.variable_trans_func.to_static_variable({})".format(
         name, name)
-    return gast.parse(func_code)
+    return gast.parse(func_code).body[0]
 
 
 def create_static_variable_gast_node(name):
     func_code = "{} = fluid.layers.data(name='{}', shape=[-1], dtype='float32')".format(
         name, name)
-    return gast.parse(func_code)
+    return gast.parse(func_code).body[0]
+
+
+def create_fill_constant_node(name, value):
+    func_code = "{} = fluid.layers.fill_constant(shape=[1], ".format(name)
+    if isinstance(value, bool):
+        func_code += "dtype='bool', value={})".format(value)
+        return gast.parse(func_code).body[0]
+    if isinstance(value, float):
+        func_code += "dtype='float64', value={})".format(value)
+        return gast.parse(func_code).body[0]
+
+    if six.PY2:
+        if isinstance(value, int):
+            func_code += "dtype='int32', value={})".format(value)
+            return gast.parse(func_code).body[0]
+        if isinstance(value, long):
+            func_code += "dtype='int64', value={})".format(value)
+            return gast.parse(func_code).body[0]
+    else:
+        if isinstance(value, int):
+            func_code += "dtype='int64', value={})".format(value)
+            return gast.parse(func_code).body[0]
 
 
 def to_static_variable(x):

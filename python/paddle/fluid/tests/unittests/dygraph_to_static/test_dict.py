@@ -59,17 +59,7 @@ class SubNetWithDict(fluid.dygraph.Layer):
             cache_k, cache_v = cache["k"], cache["v"]
             k = 0.1 * cache_k + k
             v = 0.2 * cache_v + v
-            # TODO: currently while_loop can have a dict as loop_vars, but
-            # to change the value in a dict, you have to use layers.assign
-            # because cache["k"] = k is putting k in dict without building
-            # network. So we cannot write:
-            #
-            # cache["k"], cache["v"] = k, v
-            #
-            # we have to support this kind of dict in loop in the future.
-            # For example, automatically change = to assign in AutoTracer
-            fluid.layers.assign(k, cache["k"])
-            fluid.layers.assign(v, cache["v"])
+            cache["k"], cache["v"] = k, v
 
         weight = fluid.layers.matmul(x=q, y=k, transpose_y=True)
         weight = fluid.layers.softmax(weight)
@@ -108,16 +98,7 @@ class MainNetWithDict(fluid.dygraph.Layer):
 
     def update_cache(self, cache):
         for k, val in six.iteritems(cache):
-            # TODO: currently while_loop can have a dict as loop_vars, but
-            # to change the value in a dict, you have to use layers.assign
-            # because cache["k"] = k is putting k in dict without building
-            # network. So we cannot write:
-            #
-            # cache[k] = fluid.layers.softmax(val)
-            #
-            # we have to support this kind of dict in loop in the future.
-            # For example, automatically change = to assign in AutoTracer
-            fluid.layers.assign(fluid.layers.softmax(val), cache[k])
+            cache[k] = fluid.layers.softmax(val)
 
         return cache
 

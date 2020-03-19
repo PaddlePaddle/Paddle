@@ -256,9 +256,11 @@ def concat(input, axis=0, name=None):
 
     if in_dygraph_mode():
         inputs = {'X': input}
-        if not isinstance(axis, int):
-            raise TypeError(
-                "Input 'axis' in concat must be int in Dygraph mode.")
+        if isinstance(axis, Variable):
+            axis = axis.numpy()
+            assert axis.shape == (
+                1, ), "axis of type Variable should have shape [1]"
+            axis = axis[0]
         attrs = {'axis': axis}
         outs = core.ops.concat(inputs, attrs)
         return outs['Out'][0]
@@ -579,15 +581,12 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
 
     if in_dygraph_mode():
         if isinstance(shape, (list, tuple)):
-            if utils._contain_var(shape):
-                raise TypeError(
-                    "The type of 'shape' in fill_constant must be list[int] or tuple(int) in Dygraph mode, but "
-                    "received %s, which contains Variable." % type(shape))
-            attrs['shape'] = shape
+            shape = list(
+                map(lambda x: x.numpy()[0] if isinstance(x, Variable) else x,
+                    shape))
         else:
-            raise TypeError(
-                "The type of 'shape' in fill_constant must be list[int] or tuple(int) in Dygraph mode, but "
-                "received %s." % type(shape))
+            shape = list(shape.numpy().astype(int))
+        attrs['shape'] = shape
         if out is None:
             out = _varbase_creator(dtype=dtype)
         attrs['dtype'] = out.dtype
