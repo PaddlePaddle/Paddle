@@ -60,7 +60,7 @@ class TestGaussianRandomOp(OpTest):
 # Situation 2: Attr(shape) is a list(with tensor)
 class TestGaussianRandomOp_ShapeTensorList(TestGaussianRandomOp):
     def setUp(self):
-        '''Test fill_constant op with specified value
+        '''Test gaussian_random op with specified value
         '''
         self.op_type = "gaussian_random"
         self.init_data()
