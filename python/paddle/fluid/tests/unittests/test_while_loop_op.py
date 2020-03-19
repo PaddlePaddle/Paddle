@@ -41,9 +41,7 @@ class TestApiWhileLoop(unittest.TestCase):
             ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
             out = layers.while_loop(cond, body, (i, ))
 
-        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        exe = fluid.Executor()
         res = exe.run(main_program, fetch_list=out)
         self.assertTrue(
             np.allclose(np.asarray(res[0]), np.full((1), 10, np.int64)))
@@ -69,9 +67,7 @@ class TestApiWhileLoop(unittest.TestCase):
             data = np.random.rand(10).astype('float32')
             data_one = np.ones(10).astype('float32')
 
-        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        exe = fluid.Executor()
         res = exe.run(main_program, feed={'mem': data}, fetch_list=out)
         for i in range(10):
             data = np.add(data, data_one)
@@ -113,9 +109,7 @@ class TestApiWhileLoop(unittest.TestCase):
 
             i, ten, test_dict, test_list, test_list_dict = layers.while_loop(
                 cond, body, [i, ten, test_dict, test_list, test_list_dict])
-        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        exe = fluid.Executor()
         res = exe.run(main_program,
                       fetch_list=[
                           test_dict["test_key"], test_list[0],
@@ -179,9 +173,7 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
             data = np.random.rand(3, 3).astype('float32')
             data_sums = np.zeros([3, 3]).astype('float32')
 
-        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        exe = fluid.Executor()
         res = exe.run(main_program,
                       feed={'init': data,
                             'sums': data_sums},
@@ -218,9 +210,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             mean = layers.mean(out[1])
             append_backward(mean)
 
-        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        exe = fluid.Executor()
 
         feed_i = np.ones(1).astype('float32')
         feed_x = np.ones(1).astype('float32')
@@ -294,9 +284,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
             mean = layers.mean(sum_result)
             append_backward(mean)
 
-            place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-            ) else fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            exe = fluid.Executor()
 
             d = []
             for i in range(3):
@@ -348,9 +336,7 @@ class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
             one = layers.fill_constant(shape=[1], dtype='int64', value=1)
             out = layers.while_loop(cond, body, [i])
 
-        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        exe = fluid.Executor()
         res = exe.run(main_program, fetch_list=out)
 
         data = np.asarray([25]).astype('int64')
