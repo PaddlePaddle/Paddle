@@ -90,6 +90,20 @@ class _DataLoaderIterBase(object):
     def next(self):
         return self.__next__()
 
+    # following method is a remind for users initialize DataLoader
+    # with __init__ but call set_xxx(...) wrongly
+    def set_sample_generator(*args, **kwargs):
+        raise Exception("DataLoader is initialize, can be used as an " \
+                        "iterater, should not call set_sample_generator")
+
+    def set_sample_list_generator(*args, **kwargs):
+        raise Exception("DataLoader is initialize, can be used as an " \
+                        "iterater, should not call set_sample_list_generator")
+
+    def set_batch_generator(*args, **kwargs):
+        raise Exception("DataLoader is initialize, can be used as an " \
+                        "iterater, should not call set_batch_generator")
+
 
 class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
     """
@@ -270,10 +284,11 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 try:
                     self._data_queue.get_nowait()
                 except queue.Empty:
+                    self._data_queue.cancel_join_thread()
+                    self._data_queue.close()
                     break
             global multiprocess_queue_set
             multiprocess_queue_set.remove(self._data_queue)
-            self._data_queue = None
 
     def _init_thread(self):
         self._wait_thread_ends()
@@ -391,6 +406,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         except:
             six.reraise(*sys.exc_info())
 
+        if self._workers_done_event.is_set():
+            _cleanup_mmap()
+
     def _thread_loop(self):
         while not self._thread_done_event.is_set():
             data = self._get_data()
@@ -473,10 +491,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._indices_queues[worker_idx].put((self._send_idx, indices))
         self._batches_outstanding += 1
         self._send_idx += 1
-
-    def __del__(self):
-        # make sure shared memory cleared
-        self._clear_and_remove_data_queue()
 
     def __next__(self):
         try:

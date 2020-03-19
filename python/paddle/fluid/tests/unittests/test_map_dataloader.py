@@ -258,6 +258,32 @@ class TestDygraphDataLoader(TestStaticDataLoader):
         return ret
 
 
+class TestDataLoaderSetXXXException(unittest.TestCase):
+    def test_main(self):
+        place = fluid.cpu_places()[0]
+        with fluid.dygraph.guard(place):
+            dataset = RandomDataset(SAMPLE_NUM, CLASS_NUM)
+            dataloader = DataLoader(dataset, places=place)
+
+            try:
+                dataloader.set_sample_generator()
+                self.assertTrue(False)
+            except:
+                pass
+
+            try:
+                dataloader.set_sample_list_generator()
+                self.assertTrue(False)
+            except:
+                pass
+
+            try:
+                dataloader.set_batch_generator()
+                self.assertTrue(False)
+            except:
+                pass
+
+
 # -------------- Dataset unittests --------------
 class TestDatasetAbstract(unittest.TestCase):
     def test_main(self):
