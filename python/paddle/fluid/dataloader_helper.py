@@ -32,8 +32,6 @@ from . import core
 from .framework import in_dygraph_mode
 from .multiprocess_utils import multiprocess_queue_set, CleanupFuncRegistrar, _cleanup_mmap, QUEUE_GET_TIMEOUT
 
-THREAD_WAIT_TIME_ON_DRAIN = 0.5
-
 
 class _DataLoaderIter(object):
     """
@@ -51,9 +49,9 @@ class _DataLoaderIter(object):
         self._return_list = loader.return_list
         self._batch_sampler = loader.batch_sampler
         self._sampler_iter = iter(loader.batch_sampler)
+        self._collate_fn = loader.collate_fn
         self._num_workers = loader.num_workers
         self._use_buffer_reader = loader.use_buffer_reader
-        self._collate_fn = loader.collate_fn
         self._timeout = loader.timeout
         self._worker_init_fn = loader.worker_init_fn
 
@@ -242,8 +240,9 @@ class _DataLoaderIter(object):
                         batch = init_exception
                         init_exception = None
                     else:
-                        # batch = collate_fn([dataset[i] for i in indices])
                         batch = [dataset[i] for i in indices]
+                        if self._collate_fn is not None:
+                            batch = self._collate_fn(batch)
                 except:
                     out_queue.put((idx, Exception("Get data failed in worker {}: " \
                                    "{}".format(worker_id, sys.exc_info()))))
@@ -314,23 +313,6 @@ class _DataLoaderIter(object):
                 continue
             idx, batch = data
             self._rcvd_idx += 1
-            # if self._rcvd_idx in self._reorder_dict.keys():
-            #     _, batch = self._reorder_dict.pop(self._rcvd_idx)
-            #     self._rcvd_idx += 1
-            # # if outstanding batches is not drained in workers
-            # elif self._send_idx - self._rcvd_idx > len(self._reorder_dict):
-            #     _, batch = self._get_from_data_queue()
-            #     self._rcvd_idx += 1
-            # else:
-            #     # In this design, multi-process workers and py_reader is
-            #     # seperate, thread may start read from data_queue and block
-            #     # at reading when data drained but before _thread_done_event
-            #     # set, we check whether data in workers and _data_queue is
-            #     # drained, if drained need to sleep for yielding CPU for
-            #     # main process to end or _try_put_indices
-            #     print("thread", self._send_idx, self._rcvd_idx, self._reorder_dict)
-            #     time.sleep(THREAD_WAIT_TIME_ON_DRAIN)
-            #     continue
             if not self._thread_done_event.is_set():
                 if batch is not None:
                     try:
@@ -383,16 +365,23 @@ class _DataLoaderIter(object):
                 # start trying to get data from queue. At this time, the child thread needs
                 # to wait slightly longer
                 data = self._data_queue.get(timeout=self._timeout)
-            except Exception as e:
-                if isinstance(e,
-                              queue.Empty) and self._thread_done_event.is_set():
+            except queue.Empty:
+                # when data drained, _data_queue.get may start before _thread_done_event set
+                # when get queue.Empty, check _thread_done_event is set or python exit, end
+                # thread quietly, otherwise raise exception
+                if self._thread_done_event.is_set():
                     return
+                self._exit_thread_unexpectedly()
+                logging.error("DataLoader reader thread read workers' result queue get " \
+                              "Empty before reading finished.")
+                six.reraise(*sys.exc_info())
+            except Exception as e:
                 # NOTE [ avoid handing ] After adding the shared memory mechanism, not only
                 # the queue. Empty exception will occur here, but other exceptions will also
                 # occur, such as mmap failure. If it is not handled here, it will hang.
                 self._exit_thread_unexpectedly()
-                logging.error("DataLoader reader thread failed to read data from " \
-                              "workers' result queue.")
+                logging.error("DataLoader reader thread failed({}) to read data from " \
+                              "workers' result queue.".format(e))
                 six.reraise(*sys.exc_info())
             else:
                 idx, batch = data
@@ -423,9 +412,6 @@ class _DataLoaderIter(object):
     def __len__(self):
         return len(self.batch_sampler)
 
-    # def __del__(self):
-    #     self._wait_workers_ends()
-    #
     def __next__(self):
         try:
             if self._num_workers > 0:
@@ -435,12 +421,16 @@ class _DataLoaderIter(object):
                 # sys.stdout.flush()
 
                 # _batches_outstanding here record the total batch data number
-                # in from _try_put_indices to output data, this value should
-                # be _outstanding_capacity if data is not drained, if 
-                # _batches_outstanding is less than _places number, there are
-                # no enough data to generate next output, close blocking_queue
-                # and set _thread_done_event to raise StopIteration
+                # in 'from after _try_put_indices to beforeoutput data', this
+                # value should be _outstanding_capacity if data is not drained,
+                # if _batches_outstanding is less than _places number, there are
+                # no enough data to generate next output, close blocking_queue and
+                # set _thread_done_event here, py_reader will raise StopIteration,
+                # end workers and indices_queues in StopIteration handling
                 if self._batches_outstanding < len(self._places):
+                    # datas in workers should be all processed when starting to
+                    # end this epoch, if there are still data in workers, some
+                    # exceptions may occured in workers, log details here
                     if self._send_idx != self._rcvd_idx:
                         worker_status = [w.is_alive() for w in self._workers]
                         indices_queue_lens = [

@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
-import numpy as np
-import time
+from __future__ import division
+
 import os
 import six
-import sys
+import time
 import unittest
-from paddle.fluid.io import Dataset, DataLoader
+import numpy as np
+
+import paddle.fluid as fluid
+from paddle.fluid.io import Dataset, MnistDataset, BatchSampler, DataLoader
 from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.dygraph.base import to_variable
 
@@ -39,8 +40,6 @@ class RandomDataset(Dataset):
     def __getitem__(self, idx):
         np.random.seed(idx)
         image = np.random.random([IMAGE_SIZE]).astype('float32')
-        # for _ in range(100):
-        #     image = image * (image + 0.5)
         label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
         return image, label
 
@@ -175,35 +174,30 @@ class TestStaticDataLoader(unittest.TestCase):
             "loss": np.array(loss_list)
         }
         print("time cost", ret['time'], 'step_list', ret['step'])
-        sys.stdout.flush()
         return ret
 
     def prepare_places(self, with_data_parallel, with_cpu=True, with_gpu=True):
         places = []
-        # if with_cpu:
-        #     places.append([fluid.CPUPlace()])
-        #     if with_data_parallel:
-        #         places.append([fluid.CPUPlace()] * 2)
+        if with_cpu:
+            places.append([fluid.CPUPlace()])
+            if with_data_parallel:
+                places.append([fluid.CPUPlace()] * 2)
 
         if with_gpu and fluid.core.is_compiled_with_cuda():
             tmp = fluid.cuda_places()
             assert len(tmp) > 0, "no gpu detected"
             if with_data_parallel:
                 places.append(tmp)
-            # places.append([tmp[0]])
+            places.append([tmp[0]])
         return places
 
     def test_main(self):
-        if self.__class__.__name__ == "TestStaticDataLoader":
-            return
-        # for with_data_parallel in [True, False]:
-        for with_data_parallel in [True]:
+        for with_data_parallel in [False] if self.__class__.__name__ \
+                == "TestDygraphDataLoader" else [True, False]:
             for p in self.prepare_places(with_data_parallel):
-                # for use_buffer_reader in [False, True]:
-                for use_buffer_reader in [True]:
+                for use_buffer_reader in [False, True]:
                     results = []
-                    # for num_workers in [0, 4]:
-                    for num_workers in [4]:
+                    for num_workers in [0, 4]:
                         print(self.__class__.__name__, p, use_buffer_reader,
                               num_workers)
                         ret = self.run_main(
@@ -225,15 +219,8 @@ class TestDygraphDataLoader(TestStaticDataLoader):
         fluid.default_startup_program().random_seed = 1
         fluid.default_main_program().random_seed = 1
         with fluid.dygraph.guard(places[0]):
-            # if with_data_parallel:
-            #     # strategy = fluid.dygraph.parallel.prepare_context()
-            #     strategy = fluid.dygraph.parallel.ParallelStrategy()
-            #     print("strategy", strategy)
-            #     sys.stdout.flush()
             fc_net = SimpleFCNet()
             optimizer = fluid.optimizer.Adam(parameter_list=fc_net.parameters())
-            # if with_data_parallel:
-            #     fc_net = fluid.dygraph.parallel.DataParallel(fc_net, strategy)
 
             dataset = RandomDataset(SAMPLE_NUM, CLASS_NUM)
             dataloader = DataLoader(
@@ -243,8 +230,6 @@ class TestDygraphDataLoader(TestStaticDataLoader):
                 batch_size=BATCH_SIZE,
                 shuffle=use_buffer_reader,
                 drop_last=True)
-            # if with_data_parallel:
-            #     dataloader = fluid.contrib.reader.distributed_batch_reader(dataloader)
 
             step_list = []
             loss_list = []
@@ -255,20 +240,11 @@ class TestDygraphDataLoader(TestStaticDataLoader):
                     out = fc_net(image)
                     loss = fluid.layers.cross_entropy(out, label)
                     avg_loss = fluid.layers.mean(loss)
-
-                    # if with_data_parallel:
-                    #     avg_loss = fc_net.scale_loss(avg_loss)
-                    #     avg_loss.backward()
-                    #     fc_net.apply_collective_grads()
-                    # else:
-                    #     avg_loss.backward()
                     avg_loss.backward()
-
-                    loss_list.append(np.mean(avg_loss.numpy()))
-
                     optimizer.minimize(avg_loss)
                     fc_net.clear_gradients()
 
+                    loss_list.append(np.mean(avg_loss.numpy()))
                     step += 1
                 step_list.append(step)
 
@@ -279,24 +255,81 @@ class TestDygraphDataLoader(TestStaticDataLoader):
             "loss": np.array(loss_list)
         }
         print("time cost", ret['time'], 'step_list', ret['step'])
-        sys.stdout.flush()
         return ret
 
 
-# class TestDataLoaderBaseAbstract(unittest.TestCase):
-#     def test_main(self):
-#         loader = DataLoaderBase()
-#         try:
-#             loader.__iter__()
-#             self.assertTrue(False)
-#         except NotImplementedError:
-#             self.assertTrue(True)
-#
-#         try:
-#             loader.__next__()
-#             self.assertTrue(False)
-#         except NotImplementedError:
-#             self.assertTrue(True)
+# -------------- Dataset unittests --------------
+class TestDatasetAbstract(unittest.TestCase):
+    def test_main(self):
+        dataset = Dataset()
+        try:
+            d = dataset[0]
+            self.assertTrue(False)
+        except NotImplementedError:
+            pass
+
+        try:
+            l = len(dataset)
+            self.assertTrue(False)
+        except NotImplementedError:
+            pass
+
+
+class TestMnistDataset(unittest.TestCase):
+    def test_main(self):
+        md = MnistDataset(mode='test')
+        self.assertTrue(len(md) == 10000)
+
+        for i in range(len(md)):
+            image, label = md[i]
+            self.assertTrue(image.shape[0] == 784)
+            self.assertTrue(isinstance(label, int))
+
+
+# -------------- BatchSampler unittests --------------
+class TestBatchSampler(unittest.TestCase):
+    def setUp(self):
+        self.num_samples = 1000
+        self.batch_size = 32
+        self.shuffle = False
+        self.drop_last = False
+
+    def test_main(self):
+        bs = BatchSampler(
+            [0] * self.num_samples,
+            batch_size=self.batch_size,
+            shuffle=self.shuffle,
+            drop_last=self.drop_last)
+
+        # length check
+        bs_len = (self.num_samples + int(not self.drop_last) \
+                * (self.batch_size - 1)) // self.batch_size
+        self.assertTrue(bs_len == len(bs))
+
+        # output indices check
+        if not self.shuffle:
+            index = 0
+            for indices in bs:
+                for idx in indices:
+                    self.assertTrue(index == idx)
+                    index += 1
+
+
+class TestBatchSamplerDropLast(TestBatchSampler):
+    def setUp(self):
+        self.num_samples = 1000
+        self.batch_size = 32
+        self.shuffle = False
+        self.drop_last = True
+
+
+class TestBatchSamplerShuffle(TestBatchSampler):
+    def setUp(self):
+        self.num_samples = 1000
+        self.batch_size = 32
+        self.shuffle = True
+        self.drop_last = True
+
 
 if __name__ == '__main__':
     unittest.main()
