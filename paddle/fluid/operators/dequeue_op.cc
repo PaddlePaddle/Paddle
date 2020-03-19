@@ -46,6 +46,8 @@ class DequeueOp : public framework::OperatorBase {
         queue_name);
     const std::string& var_name = Input("lod_tensor");
     auto* out_var = scope.FindVar(var_name);
+    PADDLE_ENFORCE_NOT_NULL(out_var, "No variable with name %s found",
+                            var_name);
     auto* out_tensor = out_var->GetMutable<LoDTensor>();
     PADDLE_ENFORCE_NOT_NULL(out_tensor, "No variable with name %s found",
                             var_name);

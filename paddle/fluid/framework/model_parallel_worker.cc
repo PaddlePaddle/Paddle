@@ -99,9 +99,11 @@ void ModelParallelWorker::TrainFiles() {
       dev_ctx_->Wait();
     }
   } else {
-    for (auto& op : ops_) {
-      VLOG(3) << "running an op " << op->Type() << " for " << thread_id_;
-      op->Run(*macrobatch_scopes_[0], place_);
+    while (true) {
+      for (auto& op : ops_) {
+        VLOG(3) << "running an op " << op->Type() << " for " << thread_id_;
+        op->Run(*macrobatch_scopes_[0], place_);
+      }
     }
     dev_ctx_->Wait();
   }
