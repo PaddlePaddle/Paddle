@@ -33,8 +33,13 @@ from paddle.fluid.dygraph.nn import Conv2D
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
 
-from model import Model, Loss, shape_hints
+from model import Model, Loss, Input
 from resnet import ResNet, ConvBNLayer
+
+import logging
+FORMAT = '%(asctime)s-%(levelname)s: %(message)s'
+logging.basicConfig(level=logging.INFO, format=FORMAT)
+logger = logging.getLogger(__name__)
 
 
 # XXX transfer learning
@@ -102,13 +107,14 @@ class YoloDetectionBlock(fluid.dygraph.Layer):
 
 
 class YOLOv3(Model):
-    def __init__(self):
+    def __init__(self, num_classes=80):
         super(YOLOv3, self).__init__()
-        self.num_classes = 80
+        self.num_classes = num_classes
         self.anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45,
                         59, 119, 116, 90, 156, 198, 373, 326]
         self.anchor_masks = [[6, 7, 8], [3, 4, 5], [0, 1, 2]]
         self.valid_thresh = 0.005
+        self.nms_thresh = 0.45
         self.nms_topk = 400
         self.nms_posk = 100
         self.draw_thresh = 0.5
@@ -146,8 +152,7 @@ class YOLOv3(Model):
                                 act='leaky_relu'))
                 self.route_blocks.append(route)
 
-    @shape_hints(inputs=[None, 3, None, None], im_shape=[None, 2])
-    def forward(self, inputs, im_shape):
+    def forward(self, inputs, img_info):
         outputs = []
         boxes = []
         scores = []
@@ -161,48 +166,50 @@ class YOLOv3(Model):
                 feat = fluid.layers.concat(input=[route, feat], axis=1)
             route, tip = self.yolo_blocks[idx](feat)
             block_out = self.block_outputs[idx](tip)
+            outputs.append(block_out)
 
             if idx < 2:
                 route = self.route_blocks[idx](route)
                 route = fluid.layers.resize_nearest(route, scale=2)
 
-            anchor_mask = self.anchor_masks[idx]
-            mask_anchors = []
-            for m in anchor_mask:
-                mask_anchors.append(self.anchors[2 * m])
-                mask_anchors.append(self.anchors[2 * m + 1])
-            b, s = fluid.layers.yolo_box(
-                x=block_out,
-                img_size=im_shape,
-                anchors=mask_anchors,
-                class_num=self.num_classes,
-                conf_thresh=self.valid_thresh,
-                downsample_ratio=downsample)
+            if self.mode == 'test':
+                anchor_mask = self.anchor_masks[idx]
+                mask_anchors = []
+                for m in anchor_mask:
+                    mask_anchors.append(self.anchors[2 * m])
+                    mask_anchors.append(self.anchors[2 * m + 1])
+                img_shape = fluid.layers.slice(img_info, axes=[1], starts=[1], ends=[3])
+                img_id = fluid.layers.slice(img_info, axes=[1], starts=[0], ends=[1])
+                b, s = fluid.layers.yolo_box(
+                    x=block_out,
+                    img_size=img_shape,
+                    anchors=mask_anchors,
+                    class_num=self.num_classes,
+                    conf_thresh=self.valid_thresh,
+                    downsample_ratio=downsample)
 
-            outputs.append(block_out)
-            boxes.append(b)
-            scores.append(fluid.layers.transpose(s, perm=[0, 2, 1]))
+                boxes.append(b)
+                scores.append(fluid.layers.transpose(s, perm=[0, 2, 1]))
 
             downsample //= 2
 
         if self.mode != 'test':
             return outputs
 
-        return fluid.layers.multiclass_nms(
+        return [img_id, fluid.layers.multiclass_nms(
             bboxes=fluid.layers.concat(boxes, axis=1),
             scores=fluid.layers.concat(scores, axis=2),
             score_threshold=self.valid_thresh,
             nms_top_k=self.nms_topk,
             keep_top_k=self.nms_posk,
             nms_threshold=self.nms_thresh,
-            background_label=-1)
+            background_label=-1)]
 
 
 class YoloLoss(Loss):
-    def __init__(self, num_classes=80, num_max_boxes=50):
+    def __init__(self, num_classes=80):
         super(YoloLoss, self).__init__()
         self.num_classes = num_classes
-        self.num_max_boxes = num_max_boxes
         self.ignore_thresh = 0.7
         self.anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45,
                         59, 119, 116, 90, 156, 198, 373, 326]
@@ -226,19 +233,10 @@ class YoloLoss(Loss):
                 class_num=self.num_classes,
                 ignore_thresh=self.ignore_thresh,
                 use_label_smooth=True)
+            loss = fluid.layers.reduce_mean(loss)
             losses.append(loss)
             downsample //= 2
         return losses
-
-    def infer_shape(self, _):
-        return [
-            [None, self.num_max_boxes, 4],
-            [None, self.num_max_boxes],
-            [None, self.num_max_boxes]
-        ]
-
-    def infer_dtype(self, _):
-        return ['float32', 'int32', 'float32']
 
 
 def make_optimizer(parameter_list=None):
@@ -293,7 +291,7 @@ def random_crop(inputs):
     thresholds = [.0, .1, .3, .5, .7, .9]
     scaling = [.3, 1.]
 
-    img, gt_box, gt_label = inputs
+    img, img_ids, gt_box, gt_label = inputs
     h, w = img.shape[:2]
 
     if len(gt_box) == 0:
@@ -327,7 +325,7 @@ def random_crop(inputs):
             img = img[y1:y2, x1:x2, :]
             gt_box = np.take(cropped_box, valid_ids, axis=0)
             gt_label = np.take(gt_label, valid_ids, axis=0)
-            return img, gt_box, gt_label
+            return img, img_ids, gt_box, gt_label
 
         return inputs
 
@@ -335,9 +333,9 @@ def random_crop(inputs):
 # XXX mix up, color distort and random expand are skipped for simplicity
 def sample_transform(inputs, mode='train', num_max_boxes=50):
     if mode == 'train':
-        img, gt_box, gt_label = random_crop(inputs)
+        img, img_id, gt_box, gt_label = random_crop(inputs)
     else:
-        img, gt_box, gt_label = inputs
+        img, img_id, gt_box, gt_label = inputs
 
     h, w = img.shape[:2]
     # random flip
@@ -350,7 +348,7 @@ def sample_transform(inputs, mode='train', num_max_boxes=50):
 
     if len(gt_label) == 0:
         gt_box = np.zeros([num_max_boxes, 4], dtype=np.float32)
-        gt_label = np.zeros([num_max_boxes, 1], dtype=np.int32)
+        gt_label = np.zeros([num_max_boxes], dtype=np.int32)
         return img, gt_box, gt_label
 
     gt_box = gt_box[:num_max_boxes, :]
@@ -362,9 +360,9 @@ def sample_transform(inputs, mode='train', num_max_boxes=50):
 
     pad = num_max_boxes - gt_label.size
     gt_box = np.pad(gt_box, ((0, pad), (0, 0)), mode='constant')
-    gt_label = np.pad(gt_label, [(0, pad)], mode='constant')
+    gt_label = np.pad(gt_label, ((0, pad)), mode='constant')
 
-    return img, gt_box, gt_label
+    return img, img_id, gt_box, gt_label
 
 
 def batch_transform(batch, mode='train'):
@@ -376,7 +374,8 @@ def batch_transform(batch, mode='train'):
         d = 608
         interp = cv2.INTER_CUBIC
     # transpose batch
-    imgs, gt_boxes, gt_labels = list(zip(*batch))
+    imgs, img_ids, gt_boxes, gt_labels = list(zip(*batch))
+    img_shapes = np.array([[im.shape[0], im.shape[1]] for im in imgs]).astype('int32')
     imgs = np.array([cv2.resize(
         img, (d, d), interpolation=interp) for img in imgs])
 
@@ -389,12 +388,13 @@ def batch_transform(batch, mode='train'):
     imgs *= invstd
     imgs = imgs.transpose((0, 3, 1, 2))
 
-    im_shapes = np.full([len(imgs), 2], d, dtype=np.int32)
+    img_ids = np.array(img_ids)
+    img_info = np.concatenate([img_ids, img_shapes], axis=1)
     gt_boxes = np.array(gt_boxes)
     gt_labels = np.array(gt_labels)
     # XXX since mix up is not used, scores are all ones
     gt_scores = np.ones_like(gt_labels, dtype=np.float32)
-    return [imgs, im_shapes], [gt_boxes, gt_labels, gt_scores]
+    return [imgs, img_info], [gt_boxes, gt_labels, gt_scores]
 
 
 def coco2017(root_dir, mode='train'):
@@ -434,17 +434,18 @@ def coco2017(root_dir, mode='train'):
         gt_box = np.array(gt_box, dtype=np.float32)
         gt_label = np.array([class_map[cls] for cls in gt_label],
                             dtype=np.int32)[:, np.newaxis]
+        im_id = np.array([img['id']], dtype=np.int32)
 
         if gt_label.size == 0 and not mode == 'train':
             continue
-        samples.append((file_path, gt_box.copy(), gt_label.copy()))
+        samples.append((file_path, im_id.copy(), gt_box.copy(), gt_label.copy()))
 
     def iterator():
         if mode == 'train':
-            random.shuffle(samples)
-        for file_path, gt_box, gt_label in samples:
+            np.random.shuffle(samples)
+        for file_path, im_id, gt_box, gt_label in samples:
             img = cv2.imread(file_path)
-            yield img, gt_box, gt_label
+            yield img, im_id, gt_box, gt_label
 
     return iterator
 
@@ -457,14 +458,13 @@ def run(model, loader, mode='train'):
     start = time.time()
 
     for idx, batch in enumerate(loader()):
-        outputs, losses = getattr(model, mode)(
-            batch[0], batch[1], device='gpu', device_ids=device_ids)
+        losses = getattr(model, mode)(batch[0], batch[1])
 
         total_loss += np.sum(losses)
         if idx > 1:  # skip first two steps
             total_time += time.time() - start
         if idx % 10 == 0:
-            print("{:04d}: loss {:0.3f} time: {:0.3f}".format(
+            logger.info("{:04d}: loss {:0.3f} time: {:0.3f}".format(
                 idx, total_loss / (idx + 1), total_time / max(1, (idx - 1))))
         start = time.time()
 
@@ -501,26 +501,46 @@ def main():
                 coco2017(FLAGS.data, 'val'),
                 process_num=8,
                 buffer_size=4 * batch_size),
-            batch_size=batch_size),
+            batch_size=1),
         process_num=2, buffer_size=4)
 
     if not os.path.exists('yolo_checkpoints'):
         os.mkdir('yolo_checkpoints')
 
     with guard:
-        model = YOLOv3()
+        NUM_CLASSES = 7
+        NUM_MAX_BOXES = 50
+        model = YOLOv3(num_classes=NUM_CLASSES)
         # XXX transfer learning
+        if FLAGS.pretrain_weights is not None:
+            model.backbone.load(FLAGS.pretrain_weights)
         if FLAGS.weights is not None:
-            model.backbone.load(FLAGS.weights)
+            model.load(FLAGS.weights)
         optim = make_optimizer(parameter_list=model.parameters())
-        model.prepare(optim, YoloLoss())
+        anno_path = os.path.join(FLAGS.data, 'annotations', 'instances_val2017.json')
+        inputs = [Input([None, 3, None, None], 'float32', name='image'),
+                  Input([None, 3], 'int32', name='img_info')]
+        labels = [Input([None, NUM_MAX_BOXES, 4], 'float32', name='gt_bbox'),
+                  Input([None, NUM_MAX_BOXES], 'int32', name='gt_label'),
+                  Input([None, NUM_MAX_BOXES], 'float32', name='gt_score')]
+        model.prepare(optim,
+                      YoloLoss(num_classes=NUM_CLASSES),
+                      # For YOLOv3, output variable in train/eval is different,
+                      # which is not supported by metric, add by callback later?
+                      # metrics=COCOMetric(anno_path, with_background=False)
+                      inputs=inputs,
+                      labels = labels)
 
         for e in range(epoch):
-            print("======== train epoch {} ========".format(e))
+            logger.info("======== train epoch {} ========".format(e))
             run(model, train_loader)
             model.save('yolo_checkpoints/{:02d}'.format(e))
-            print("======== eval epoch {} ========".format(e))
+            logger.info("======== eval epoch {} ========".format(e))
             run(model, val_loader, mode='eval')
+            # should be called in fit()
+            for metric in model._metrics:
+                metric.accumulate()
+                metric.reset()
 
 
 if __name__ == '__main__':
@@ -538,8 +558,11 @@ if __name__ == '__main__':
     parser.add_argument(
         "-n", "--num_devices", default=8, type=int, help="number of devices")
     parser.add_argument(
-        "-w", "--weights", default=None, type=str,
+        "-p", "--pretrain_weights", default=None, type=str,
         help="path to pretrained weights")
+    parser.add_argument(
+        "-w", "--weights", default=None, type=str,
+        help="path to model weights")
     FLAGS = parser.parse_args()
     assert FLAGS.data, "error: must provide data path"
     main()
