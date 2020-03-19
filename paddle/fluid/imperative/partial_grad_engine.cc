@@ -549,6 +549,10 @@ class PartialGradTask {
 
   std::vector<std::shared_ptr<GradOpNode>> double_grad_nodes_;
 
+  std::vector<
+      std::pair<GradientAccumulationInfo *, std::shared_ptr<VariableWrapper>>>
+      grads_to_accumulate_;
+
   // Input targets that are reachable
   std::vector<std::shared_ptr<VarBase>> input_targets_;
   std::unordered_set<VariableWrapper *> input_target_grads_;
@@ -803,9 +807,6 @@ void PartialGradTask::RunEachOp(const OpBase *op) {
 
   // Prepare new outputs
   NameVarMap<VarBase> tmp_outs;
-  std::unordered_map<GradientAccumulationInfo *,
-                     std::vector<std::shared_ptr<VariableWrapper>>>
-      grads_to_accumulate;
   for (auto &output_pair : op->GetOutsMap()) {
     auto &new_outputs = tmp_outs[output_pair.first];
     if (!output_pair.second.IsGrad()) {
@@ -831,8 +832,8 @@ void PartialGradTask::RunEachOp(const OpBase *op) {
           auto new_grad_var = std::make_shared<VarBase>(true, grad_var->Name());
           new_grad_var->SetOverridedStopGradient(false);
           if (new_grad_var_iter->second->TotalRefCnt() > 1) {
-            grads_to_accumulate[new_grad_var_iter->second.get()].emplace_back(
-                new_grad_var->SharedVar());
+            grads_to_accumulate_.emplace_back(new_grad_var_iter->second.get(),
+                                              new_grad_var->SharedVar());
           } else {
             PADDLE_ENFORCE_EQ(
                 new_grad_var_iter->second->GradVar(), nullptr,
@@ -865,58 +866,59 @@ void PartialGradTask::RunEachOp(const OpBase *op) {
     }
   }
 
-  VLOG(10) << "There are " << grads_to_accumulate.size() << " to sum gradient";
+  VLOG(10) << "There are " << grads_to_accumulate_.size() << " to sum gradient";
 
   // Gradient accumulation and add assign op
-  for (auto &pair : grads_to_accumulate) {
+  for (auto &pair : grads_to_accumulate_) {
     auto *accumulator_info = pair.first;
-    for (auto &grad_var : pair.second) {
-      bool is_finished = false;
-      VLOG(10) << "Start to sum " << accumulator_info->MappedGradVar()->Name();
-      auto partial_grad_grads = accumulator_info->SumGradient(
-          std::move(grad_var), op->id(), &is_finished);
+    auto &grad_var = pair.second;
 
-      if (is_finished) {
-        VLOG(10) << "Sum has finished for "
-                 << accumulator_info->MappedGradVar()->Name() << " "
-                 << accumulator_info->GradVarBase();
-        ready_grad_vars_.Set(accumulator_info->MappedGradVar(),
-                             accumulator_info->GradVarBase());
-      }
+    bool is_finished = false;
+    VLOG(10) << "Start to sum " << accumulator_info->MappedGradVar()->Name();
+    auto partial_grad_grads = accumulator_info->SumGradient(
+        std::move(grad_var), op->id(), &is_finished);
 
-      if (partial_grad_grads.empty()) {
-        continue;
-      }
-
-      auto sum_grad_var_grad =
-          accumulator_info->GradVarBase()->MutableGradVarBase();
-      sum_grad_var_grad->SetOverridedStopGradient(false);
-
-      auto assign_node = std::make_shared<GradOpNode>();
-      sum_grad_var_grad->SetGradNode(assign_node);
-
-      VLOG(10) << "Add " << partial_grad_grads.size() << " assign op for "
-               << sum_grad_var_grad->Name();
-
-      for (auto &grad_grad : partial_grad_grads) {
-        auto *assign_op = &(assign_node->emplace_back());
-        assign_op->SetType("assign");  // Can use "scale" as static graph mode
-        assign_op->SetInput("X", {sum_grad_var_grad->SharedVar()}, true);
-        assign_op->SetOutput("Out", {grad_grad}, true);
-        assign_op->CheckAttrs();
-        assign_op->SetId(OpBase::GenerateUniqueId());
-        assign_op->SetPlace(op->place());
-
-        if (auto grad_pending_node = grad_grad->GetGradNode()) {
-          assign_node->InsertGradPendingNode(std::move(grad_pending_node));
-        }
-      }
-      VLOG(10) << "Pending ops of assign is "
-               << GradPendingOpTypes(*assign_node);
-      grad_accumulators_.erase(accumulator_info->MappedGradVar());
-      double_grad_nodes_.emplace_back(assign_node);
+    if (is_finished) {
+      VLOG(10) << "Sum has finished for "
+               << accumulator_info->MappedGradVar()->Name() << " "
+               << accumulator_info->GradVarBase();
+      ready_grad_vars_.Set(accumulator_info->MappedGradVar(),
+                           accumulator_info->GradVarBase());
     }
+
+    if (partial_grad_grads.empty()) {
+      continue;
+    }
+
+    auto sum_grad_var_grad =
+        accumulator_info->GradVarBase()->MutableGradVarBase();
+    sum_grad_var_grad->SetOverridedStopGradient(false);
+
+    auto assign_node = std::make_shared<GradOpNode>();
+    sum_grad_var_grad->SetGradNode(assign_node);
+
+    VLOG(10) << "Add " << partial_grad_grads.size() << " assign op for "
+             << sum_grad_var_grad->Name();
+
+    for (auto &grad_grad : partial_grad_grads) {
+      auto *assign_op = &(assign_node->emplace_back());
+      assign_op->SetType("assign");  // Can use "scale" as static graph mode
+      assign_op->SetInput("X", {sum_grad_var_grad->SharedVar()}, true);
+      assign_op->SetOutput("Out", {grad_grad}, true);
+      assign_op->CheckAttrs();
+      assign_op->SetId(OpBase::GenerateUniqueId());
+      assign_op->SetPlace(op->place());
+
+      if (auto grad_pending_node = grad_grad->GetGradNode()) {
+        assign_node->InsertGradPendingNode(std::move(grad_pending_node));
+      }
+    }
+    VLOG(10) << "Pending ops of assign is " << GradPendingOpTypes(*assign_node);
+    grad_accumulators_.erase(accumulator_info->MappedGradVar());
+    double_grad_nodes_.emplace_back(assign_node);
   }
+
+  grads_to_accumulate_.clear();
 }
 
 void PartialGradTask::PrepareInitialReadyVarsMap(const OpBase *op) {
