@@ -207,6 +207,7 @@ class TensorRTEngine {
 
   void SetRuntimeBatch(size_t batch_size);
   int GetRuntimeBatch();
+
   int GetDeviceId() { return device_id_; }
   nvinfer1::IPluginLayer* AddPlugin(nvinfer1::ITensor* const* inputs,
                                     int num_inputs, plugin::PluginTensorRT*);

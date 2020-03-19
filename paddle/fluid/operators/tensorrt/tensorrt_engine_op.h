@@ -252,7 +252,14 @@ class TensorRTEngineOp : public framework::OperatorBase {
             bind_index, inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
 #endif
       }
-      buffers[bind_index] = static_cast<void *>(t.data<float>());
+      auto type = t.type();
+      if (type == framework::proto::VarType::FP32) {
+        buffers[bind_index] = static_cast<void *>(t.data<float>());
+      } else if (type == framework::proto::VarType::INT64) {
+        buffers[bind_index] = static_cast<void *>(t.data<int64_t>());
+      } else {
+        PADDLE_THROW("The TRT Engine OP only support float and int64_t input.");
+      }
     }
 
     // Bind output tensor to TRT.
