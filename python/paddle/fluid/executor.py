@@ -513,6 +513,7 @@ class Executor(object):
         p.set_place(self.place)
         self._default_executor = core.Executor(p)
         self._closed = False
+        self.pruned_program_scope_caches = dict()
 
     def _get_scope_cache(self, program_cache_key):
         return self.scope_caches.get(program_cache_key, None)
@@ -531,6 +532,12 @@ class Executor(object):
 
     def _add_pruned_program_cache(self, program_cache_key, program):
         self.pruned_program_caches[program_cache_key] = program
+
+    def _get_pruned_program_scope_cache(self, program_cache_key):
+        return self.pruned_program_scope_caches.get(program_cache_key, None)
+
+    def _add_pruned_program_scope_cache(self, program_cache_key, program):
+        self.pruned_program_scope_caches[program_cache_key] = program
 
     def _add_ctx_cache(self, ctx_cache_key, ctx):
         self.ctx_caches[ctx_cache_key] = ctx
@@ -974,6 +981,7 @@ class Executor(object):
     def _run_impl(self, program, feed, fetch_list, feed_var_name,
                   fetch_var_name, scope, return_numpy, use_program_cache,
                   use_prune):
+        _origin_program = program
         if self._closed:
             raise RuntimeError("Attempted to use a closed Executor")
 
@@ -1011,11 +1019,19 @@ class Executor(object):
         if use_prune:
             cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
             cached_pruned_program = self._get_pruned_program_cache(cache_key)
+
             if cached_pruned_program is None:
                 if isinstance(program, compiler.CompiledProgram):
+                    program_scope_cache = self._get_pruned_program_scope_cache(
+                        str(id(_origin_program)))
                     program = copy.copy(
                         program
                     )  # copy the original program, so it can be cached.
+                    program._share_vars_from = program_scope_cache
+                    if self._get_pruned_program_scope_cache(
+                            str(id(_origin_program))) is None:
+                        self._add_pruned_program_scope_cache(
+                            str(id(_origin_program)), program)
                 pruned_program = self._prune_program(program, feed, fetch_list)
                 self._add_pruned_program_cache(cache_key, pruned_program)
             else:
