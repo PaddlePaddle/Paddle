@@ -37,7 +37,6 @@ class Edlenv(object):
         t_rank = 0
         pods = []
         for rank, r_pod in enumerate(r_pods):
-            #print("r_pod:", r_pod)
             pod = Pod()
             pod.rank = rank
             pod.id = r_pod["pod_id"]

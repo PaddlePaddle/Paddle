@@ -144,7 +144,6 @@ class BDFS(FS):
         list directory under fs_path, and only give the pure name, not include the fs_path
         """
         cmd = "{} -ls {}".format(self._base_cmd, fs_path)
-        print("ls command:", cmd)
         lines = self._run_cmd(cmd)
 
         dirs = []
@@ -168,12 +167,9 @@ class BDFS(FS):
     def _is_dir_or_file(self, fs_path):
         p = PurePosixPath(fs_path)
         dirs, files = self.ls(str(p.parent))
-        print("_is_dir_or_file:", p.name, dirs, files)
         if p.name in dirs:
-            print("_is_dir_or_file is_dir:", True)
             return True, False
         if p.name in files:
-            print("_is_dir_or_file is_file:", True)
             return False, True
         return False, False
 
