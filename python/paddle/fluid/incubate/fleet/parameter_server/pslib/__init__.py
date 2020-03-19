@@ -687,7 +687,7 @@ class fleet_ctr_embedding(object):
     def __init__(self, click_name=None, dump_slot=True, scale_sparse_grad=True):
         self.origin_emb = fluid.layers.embedding
         self.origin_emb_v2 = fluid.embedding
-        self.click_name = click_name
+        self.click_name = "" if click_name is None else click_name
         self.scale_sparse_grad = scale_sparse_grad
         if dump_slot:
             self.accessor = "DownpourCtrAccessor"
