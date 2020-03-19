@@ -123,9 +123,12 @@ void ThrowErrorIfLoadProcessFailed() {
         infop.si_status != EXIT_SUCCESS) {  // exit with error
       PADDLE_THROW(platform::errors::Fatal(
           "DataLoader process (pid %ld) exited unexpectedly with code %d. "
-          "Error detailed are lost due to multiprocessing. Rerunning with "
+          "Error detailed are lost due to multiprocessing. Rerunning with:\n "
+          "  1. If run DataLoader by DataLoader.from_generator(...), run with "
           "DataLoader.from_generator(..., use_multiprocess=False) may give "
-          "better error trace.",
+          "better error trace.\n"
+          "  2. If run DataLoader by DataLoader(dataset, ...), run with "
+          "DataLoader(dataset, ..., num_workers=0) may give better error trace",
           process_pid, infop.si_status));
     } else if (infop.si_code == CLD_KILLED ||
                infop.si_code == CLD_DUMPED) {  // killed by signal
@@ -138,7 +141,12 @@ void ThrowErrorIfLoadProcessFailed() {
             "space of `/dev/shm`. Shared storage space needs to be greater "
             "than (DataLoader Num * DataLoader queue capacity * 1 batch data "
             "size).\n  You can solve this problem by increasing the shared "
-            "storage space or reducing the queue capacity appropriately.",
+            "storage space or reducing the queue capacity appropriately.\n",
+            "  1. If run DataLoader by DataLoader.from_generator(...), queue "
+            "capacity is set by from_generator(..., capacity=xx, ...).\n"
+            "  2. If run DataLoader by DataLoader(dataset, ...), queue "
+            "capacity is set as 2 times of the max value of num_workers and "
+            "len(places).",
             process_pid, strsignal(infop.si_status)));
       } else {
         PADDLE_THROW(platform::errors::Fatal(

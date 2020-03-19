@@ -39,6 +39,11 @@ class BatchSampler(object):
                      or other python object which implemented
                      `__len__` for BatchSampler to get sample
                      number of data source.
+        batch_size(int): sample indice number in a mini-batch indices.
+        shuffle(bool): whther to shuffle indices order before genrate
+            batch indices. Default False.
+        drop_last(bool): whether drop the last incomplete batch dataset size
+            is not divisible by the batch size. Default False
     """
 
     def __init__(self, data_source, batch_size, shuffle=False, drop_last=False):
