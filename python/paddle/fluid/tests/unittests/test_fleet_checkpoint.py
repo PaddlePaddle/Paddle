@@ -17,6 +17,7 @@ import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet, TrainStatus
 import os
+from paddle.distributed.fs_wrapper import LocalFS, BDFS
 
 
 class FleetTest(unittest.TestCase):
@@ -48,13 +49,13 @@ class FleetTest(unittest.TestCase):
 
         status = TrainStatus(2)
         fleet.save_check_point(exe, dir_path, train_status=status)
-        n1 = fleet._get_last_checkpoint_no(dir_path)
+        n1 = fleet._get_last_checkpoint_no(dir_path, LocalFS())
 
         status2 = fleet.load_check_point(exe, dir_path)
         assert status2 == status, "Checkpoint error!"
 
         fleet.save_check_point(exe, dir_path, train_status=status)
-        n2 = fleet._get_last_checkpoint_no(dir_path)
+        n2 = fleet._get_last_checkpoint_no(dir_path, LocalFS())
         assert n2 == n1 + 1, "checkpoint increment error:{} {}".format(n1, n2)
 
         fleet.clean_redundant_check_points(dir_path)

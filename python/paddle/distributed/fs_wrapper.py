@@ -15,6 +15,7 @@
 import paddle.fluid as fluid
 import sys
 import abc
+import os
 
 
 class FS(object):
@@ -58,10 +59,16 @@ class FS(object):
     def rm_dir_file(self, fs_path):
         pass
 
+    @abc.abstractmethod
+    def is_remote(self):
+        pass
+
 
 class LocalFS(FS):
     def list_dirs(self, fs_path):
-        return [f for f in os.listdir(fs_path) if os.path.isdir(f)]
+        return [
+            f for f in os.listdir(fs_path) if os.path.isdir(fs_path + "/" + f)
+        ]
 
     def ls(self, fs_path):
         return [f for f in os.listdir(fs_path)]
@@ -69,17 +76,20 @@ class LocalFS(FS):
     def stat(self, fs_path):
         return os.path.exists(fs_path)
 
+    """
     def upload(self, local_path, fs_path):
-        os.symlink(local_path, fs_path)
+        #os.symlink(local_path, fs_path)
+        self.mv(local_path, fs_path)
 
     def download(self, fs_path, local_path):
-        os.symlink(fs_path, local_path)
+        #os.symlink(fs_path, local_path)
+        self.mv(fs_path, local_path)
+    """
 
     def mkdir(self, fs_path):
         assert not os.path.isfile(fs_path), "{} is already a file".format(
             fs_path)
-        if not os.exists(fs_path):
-            os.mkdir(fs_path)
+        os.system("mkdir -p {}".format(fs_path))
 
     def mv(self, fs_src_path, fs_dst_path):
         os.rename(fs_src_path, fs_dst_path)
@@ -101,6 +111,9 @@ class LocalFS(FS):
 
         if os.path.isdir(fs_path):
             self.rmr(fs_path)
+
+    def is_remote(self):
+        return False
 
 
 class BDFS(FS):
@@ -139,6 +152,9 @@ class BDFS(FS):
             if len(arr) != 8:
                 continue
 
+            if fs_path not in arr[7]:
+                continue
+
             if arr[0][0] == 'd':
                 dirs.append(arr[7])
             else:
@@ -164,10 +180,16 @@ class BDFS(FS):
         return True
 
     def upload(self, local_path, fs_path):
+        assert not self.stat(fs_path), "{} exists now".format(fs_path)
+        assert self.stat(local_path), "{} not exists".format(local_path)
+
         cmd = "{} -put {} {}/".format(self._base_cmd, local_path, fs_path)
         fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
 
     def download(self, fs_path, local_path):
+        assert self.stat(fs_path), "{} not exists now".format(fs_path)
+        assert not self.stat(local_path), "{} already exists".format(local_path)
+
         cmd = "{} -get {} {}/".format(self._base_cmd, fs_path, local_path)
         fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
 
@@ -214,12 +236,5 @@ class BDFS(FS):
         if is_file:
             return self.rm(fs_path)
 
-    """
-    def rm
-        is_dir,is_file = self.is_dir_or_file(fs_path)
-        if is_dir(fs_path):
-            return self.rmr(fs_path)
-
-        if is_file(fs_path):
-            return self.rm(fs_path)
-    """
+    def is_remote(self):
+        return True

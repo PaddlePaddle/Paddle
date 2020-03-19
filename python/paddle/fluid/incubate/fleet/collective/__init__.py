@@ -26,6 +26,7 @@ from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 
 from paddle.fluid import compiler
+from paddle.distributed.fs_wrapper import LocalFS, BDFS
 
 import os
 import sys
@@ -190,6 +191,7 @@ class Collective(Fleet):
         max_no = -1
         d = {}
         dirs = fs.list_dirs(root_path)
+        print("dirs:", dirs)
         for dir in dirs:
             g = dir.split(".")
             if len(g) != 2:
@@ -229,7 +231,6 @@ class Collective(Fleet):
                 if n <= max_no - checkpoint_num:
                     path = "{}/{}.{}".format(root_path, self._checkoint_prefix,
                                              n)
-                    #shutil.rmtree(path)
                     fs.rmr(path)
             except Exception as e:
                 print(e)
@@ -241,7 +242,7 @@ class Collective(Fleet):
                          train_status,
                          main_program=None,
                          fs=LocalFS(),
-                         local_cache_path=".cache",
+                         local_cache_dir=".cache",
                          remain_all_checkpoint=True):
         """
         This function save persistables and current epoch num to path.
@@ -250,28 +251,35 @@ class Collective(Fleet):
         if main_program == None:
             main_program = self._transpiled_program
 
+        if not fs.stat(path):
+            fs.mkdir(path)
+
         max_no = self._get_last_checkpoint_no(path, fs=fs)
         if max_no < 0:
             max_no = -1
 
-        cache_path = "{}/{}.{}.cache".format(local_cache_path,
-                                             self._checkoint_prefix, max_no + 1)
-        if not os.exists(local_cache_path):
-            os.mkdir(local_cache_path)
-
         real_path = "{}/{}.{}".format(path, self._checkoint_prefix, max_no + 1)
         tmp_path = "{}.tmp".format(real_path)
+        saved_path = tmp_path
+
+        if fs.is_remote():
+            cache_path = "{}/{}/{}.{}.saved_cache".format(
+                path, local_cache_dir, self._checkoint_prefix, max_no + 1)
+            if not fs.stat(cache_path):
+                fs.mkdir(cache_path)
+            saved_path = cache_path
 
         self.save_persistables(
             executor=executor,
-            dirname=cache_path,
+            dirname=saved_path,
             main_program=main_program,
             filename=self._param_file_name)
-        self._save_train_status(path=cache_path, train_status=train_status)
+        self._save_train_status(path=saved_path, train_status=train_status)
 
-        print("prepare to remove:", tmp_path)
-        #fs.rm_dir_file(tmp_path):
-        fs.upload(cache_path, tmp_path)
+        #print("tmp_path:", tmp_path, "cache_path:", cache_path, "real_path:", real_path, "cache_path:", cache_path)
+        if fs.is_remote():
+            fs.rm_dir_file(tmp_path)
+            fs.upload(cache_path, tmp_path)
         fs.mv(tmp_path, real_path)
 
         if not remain_all_checkpoint:
@@ -281,11 +289,15 @@ class Collective(Fleet):
                          executor,
                          path,
                          main_program=None,
+                         fs=LocalFS(),
+                         local_cache_dir=".cache",
                          ignore_empty=True):
         """
         This function load persistables and current epoch num from path.
         """
-        max_no = self._get_last_checkpoint_no(path)
+        max_no = self._get_last_checkpoint_no(path, fs)
+
+        print("path:", path, "max_no:", max_no)
 
         if not ignore_empty:
             assert max_no >= 0, "Can't find checkpoint"
@@ -293,17 +305,31 @@ class Collective(Fleet):
         if max_no < 0:
             return None
 
+        if fs.is_remote():
+            cache_path = "{}/{}/{}.{}.load_cache".format(
+                path, local_cache_dir, self._checkoint_prefix, max_no)
+            if fs.stat(cache_path):
+                fs.rm_dir_file(cache_path)
+
+        real_path = "{}/{}.{}".format(path, self._checkoint_prefix, max_no)
+        load_path = real_path
+        if fs.is_remote():
+            fs.download(real_path, cache_path)
+            load_path = cache_path
+
+        #print("cache_path:", cache_path,
+        #      "real_path:", real_path, "max_no:", max_no)
+
         if main_program == None:
             main_program = self._transpiled_program
 
-        real_path = "{}/{}.{}".format(path, self._checkoint_prefix, max_no)
         io.load_persistables(
             executor=executor,
-            dirname=real_path,
+            dirname=load_path,
             main_program=main_program,
             filename=self._param_file_name)
 
-        return self._load_train_status(real_path)
+        return self._load_train_status(load_path)
 
 
 fleet = Collective()
