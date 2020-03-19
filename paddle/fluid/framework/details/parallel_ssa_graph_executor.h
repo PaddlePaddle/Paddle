@@ -39,7 +39,8 @@ class ParallelSSAGraphExecutor : public SSAGraphExecutor {
 
   std::vector<ir::Graph *> Graphs();
 
-  FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
+  FetchResultType Run(const std::vector<std::string> &fetch_tensors,
+                      bool return_merged) override;
 
  private:
   std::vector<std::unique_ptr<ir::Graph>> SeparateMultiDevicesGraph(

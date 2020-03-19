@@ -16,7 +16,7 @@ cd /paddle/build
 
 python ${PADDLE_ROOT}/tools/coverage/gcda_clean.py ${GIT_PR_ID}
 
-lcov --capture -d ./ -o coverage.info --gcov-tool /usr/bin/gcov-4.8 --rc lcov_branch_coverage=0
+lcov --capture -d ./ -o coverage.info --rc lcov_branch_coverage=0
 
 # full html report
 

@@ -101,8 +101,7 @@ class LstmUnitGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("lstm_unit_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("C_prev", this->Input("C_prev"));
@@ -112,7 +111,6 @@ class LstmUnitGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetOutput(framework::GradVarName("C_prev"), this->InputGrad("C_prev"));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 

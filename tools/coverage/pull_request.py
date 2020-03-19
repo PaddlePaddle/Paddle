@@ -10,8 +10,7 @@ import os
 
 from github import Github
 
-token = os.getenv('GITHUB_API_TOKEN',
-                  'e1f9c3cf211d5c20e65bd9ab7ec07983da284bca')
+token = os.getenv('GITHUB_API_TOKEN')
 
 
 def get_pull(pull_id):

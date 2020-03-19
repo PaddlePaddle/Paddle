@@ -20,7 +20,7 @@ import paddle.fluid as fluid
 from paddle.fluid.optimizer import AdamOptimizer
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 
-from paddle.fluid.dygraph.jit import dygraph_to_static_output
+from paddle.fluid.dygraph.jit import dygraph_to_static_graph
 
 import unittest
 
@@ -66,7 +66,7 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             global_pooling=global_pooling,
             use_cudnn=use_cudnn)
 
-    @dygraph_to_static_output
+    @dygraph_to_static_graph
     def forward(self, inputs):
         x = self._conv2d(inputs)
         x = self._pool2d(x)
@@ -94,7 +94,7 @@ class MNIST(fluid.dygraph.Layer):
                     loc=0.0, scale=scale)),
             act="softmax")
 
-    @dygraph_to_static_output
+    @dygraph_to_static_graph
     def forward(self, inputs, label=None):
         x = self.inference(inputs)
         if label is not None:
@@ -105,7 +105,7 @@ class MNIST(fluid.dygraph.Layer):
         else:
             return x
 
-    @dygraph_to_static_output
+    @dygraph_to_static_graph
     def inference(self, inputs):
         x = self._simple_img_conv_pool_1(inputs)
         x = self._simple_img_conv_pool_2(x)
@@ -128,7 +128,7 @@ class TestMNIST(unittest.TestCase):
 
 class TestMNISTWithStaticMode(TestMNIST):
     """
-    Tests model when using `dygraph_to_static_output` to convert dygraph into static
+    Tests model when using `dygraph_to_static_graph` to convert dygraph into static
     model. It allows user to add customized code to train static model, such as `with`
     and `Executor` statement.
     """

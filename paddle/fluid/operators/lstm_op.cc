@@ -273,8 +273,7 @@ class LSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("lstm_grad");
     op->SetAttrMap(this->Attrs());
     op->SetInput("Input", this->Input("Input"));
@@ -303,7 +302,6 @@ class LSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetInput("BatchGate", this->Output("BatchGate"));
     op->SetInput("BatchCellPreAct", this->Output("BatchCellPreAct"));
-    return op;
   }
 };
 

@@ -71,13 +71,11 @@ class IncrementGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<T> Apply() const override {
-    auto *grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("increment");
     grad_op->SetInput("X", this->Output("Out"));
     grad_op->SetOutput("Out", this->Input("X"));
     grad_op->SetAttr("step", -boost::get<float>(this->GetAttr("step")));
-    return std::unique_ptr<T>(grad_op);
   }
 };
 

@@ -123,6 +123,13 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
       pass->Set("use_static_engine", new bool(use_static_engine));
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
+      pass->Set("max_input_shape", new std::map<std::string, std::vector<int>>(
+                                       argument->max_input_shape()));
+      pass->Set("min_input_shape", new std::map<std::string, std::vector<int>>(
+                                       argument->min_input_shape()));
+      pass->Set("optim_input_shape",
+                new std::map<std::string, std::vector<int>>(
+                    argument->optim_input_shape()));
     }
     if (pass_name == "ngraph_subgraph_pass") {
       pass->Set("program",

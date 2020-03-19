@@ -129,9 +129,22 @@ void ThrowErrorIfLoadProcessFailed() {
           process_pid, infop.si_status));
     } else if (infop.si_code == CLD_KILLED ||
                infop.si_code == CLD_DUMPED) {  // killed by signal
-      PADDLE_THROW(platform::errors::Fatal(
-          "DataLoader process (pid %ld) exited is killed by signal: %s.",
-          process_pid, strsignal(infop.si_status)));
+      if (infop.si_status == SIGBUS) {
+        PADDLE_THROW(platform::errors::Fatal(
+            "DataLoader process (pid %ld) exited is killed by signal: %s.\n"
+            "  It may be caused by insufficient shared storage space. This "
+            "problem usually occurs when using docker as a development "
+            "environment.\n  Please use command `df -h` to check the storage "
+            "space of `/dev/shm`. Shared storage space needs to be greater "
+            "than (DataLoader Num * DataLoader queue capacity * 1 batch data "
+            "size).\n  You can solve this problem by increasing the shared "
+            "storage space or reducing the queue capacity appropriately.",
+            process_pid, strsignal(infop.si_status)));
+      } else {
+        PADDLE_THROW(platform::errors::Fatal(
+            "DataLoader process (pid %ld) exited is killed by signal: %s.",
+            process_pid, strsignal(infop.si_status)));
+      }
     }
   }
 }
