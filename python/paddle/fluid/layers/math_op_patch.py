@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import logging
+import inspect
 
 from .. import core
 from ..framework import Variable, unique_name
@@ -259,12 +260,15 @@ def monkey_patch_variable():
 
             axis = -1
             if other_var.shape[0] == -1:
+                stack = inspect.stack()[1]
+                file_name = stack[1]
+                line_num = stack[2]
                 logging.warning(
-                    "The behavior of expression %s has been unified with %s(X, Y, axis=-1) from Paddle 2.0. "
-                    "If your code works well in the older versions but wrong in this version, try to use "
+                    "%s:%s\nThe behavior of expression %s has been unified with %s(X, Y, axis=-1) from Paddle 2.0. "
+                    "If your code works well in the older versions but crashes in this version, try to use "
                     "%s(X, Y, axis=0) instead of %s. This transitional warning will be dropped in the future."
-                    % (EXPRESSION_MAP[method_name], op_type, op_type,
-                       EXPRESSION_MAP[method_name]))
+                    % (file_name, line_num, EXPRESSION_MAP[method_name],
+                       op_type, op_type, EXPRESSION_MAP[method_name]))
             current_block(self).append_op(
                 type=op_type,
                 inputs={'X': [self],
