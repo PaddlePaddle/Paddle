@@ -49,9 +49,16 @@ def parse_args():
     parser.add_argument(
         '--qat_model', type=str, default='', help='A path to a QAT model.')
     parser.add_argument(
+        '--fp32_model',
+        type=str,
+        default='',
+        help='A path to a FP32 model. If empty, the QAT model will be used for FP32 inference.'
+    )
+    parser.add_argument(
         '--qat2',
-        action='store_true',
-        help='If used, the QAT model is treated as a second generation model for performance optimization.'
+        type=bool,
+        default=True,
+        help='By default use qat2 solution. If it is set to False, use qat1 solution'
     )
     parser.add_argument('--infer_data', type=str, default='', help='Data file.')
     parser.add_argument(
@@ -68,7 +75,7 @@ def parse_args():
     parser.add_argument(
         '--quantized_ops',
         type=str,
-        default='',
+        default='conv2d,pool2d',
         help='A comma separated list of quantized operators.')
 
     test_args, args = parser.parse_known_args(namespace=unittest)
@@ -289,7 +296,10 @@ class QatInt8ImageClassificationComparisonTest(unittest.TestCase):
             return
 
         qat_model_path = test_case_args.qat_model
+        assert qat_model_path, 'The QAT model path cannot be empty. Please, use the --qat_model option.'
         data_path = test_case_args.infer_data
+        assert data_path, 'The dataset path cannot be empty. Please, use the --infer_data option.'
+        fp32_model_path = test_case_args.fp32_model if test_case_args.fp32_model else qat_model_path
         batch_size = test_case_args.batch_size
         batch_num = test_case_args.batch_num
         skip_batch_num = test_case_args.skip_batch_num
@@ -297,20 +307,21 @@ class QatInt8ImageClassificationComparisonTest(unittest.TestCase):
         self._debug = test_case_args.debug
         self._quantized_ops = set(test_case_args.quantized_ops.split(','))
 
-        _logger.info('QAT FP32 & INT8 prediction run.')
+        _logger.info('FP32 & QAT INT8 prediction run.')
         _logger.info('QAT model: {0}'.format(qat_model_path))
+        _logger.info('FP32 model: {0}'.format(fp32_model_path))
         _logger.info('Dataset: {0}'.format(data_path))
         _logger.info('Batch size: {0}'.format(batch_size))
         _logger.info('Batch number: {0}'.format(batch_num))
         _logger.info('Accuracy drop threshold: {0}.'.format(acc_diff_threshold))
         _logger.info('Quantized ops: {0}.'.format(self._quantized_ops))
 
-        _logger.info('--- QAT FP32 prediction start ---')
+        _logger.info('--- FP32 prediction start ---')
         val_reader = paddle.batch(
             self._reader_creator(data_path), batch_size=batch_size)
         fp32_output, fp32_acc1, fp32_acc5, fp32_fps, fp32_lat = self._predict(
             val_reader,
-            qat_model_path,
+            fp32_model_path,
             batch_size,
             batch_num,
             skip_batch_num,

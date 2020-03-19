@@ -70,7 +70,7 @@ def parse_args():
     parser.add_argument(
         '--quantized_ops',
         type=str,
-        default='',
+        default='fc,reshape2,transpose2',
         help='A comma separated list of quantized operators.')
 
     test_args, args = parser.parse_known_args(namespace=unittest)
@@ -254,7 +254,7 @@ class QatInt8NLPComparisonTest(unittest.TestCase):
         self._debug = test_case_args.debug
         self._quantized_ops = set(test_case_args.quantized_ops.split(','))
 
-        _logger.info('QAT FP32 & INT8 prediction run.')
+        _logger.info('FP32 & QAT INT8 prediction run.')
         _logger.info('QAT model: {0}'.format(qat_model_path))
         _logger.info('FP32 model: {0}'.format(fp32_model_path))
         _logger.info('Dataset: {0}'.format(data_path))
@@ -264,7 +264,7 @@ class QatInt8NLPComparisonTest(unittest.TestCase):
         _logger.info('Accuracy drop threshold: {0}.'.format(acc_diff_threshold))
         _logger.info('Quantized ops: {0}.'.format(self._quantized_ops))
 
-        _logger.info('--- QAT FP32 prediction start ---')
+        _logger.info('--- FP32 prediction start ---')
         val_reader = paddle.batch(
             self._reader_creator(data_path, labels_path), batch_size=batch_size)
         fp32_acc, fp32_pps, fp32_lat = self._predict(
