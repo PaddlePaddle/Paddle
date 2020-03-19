@@ -499,6 +499,87 @@ def embedding(input,
         })
     return tmp
 
+def _pull_sparse(input,
+                 size,
+                 table_id,
+                 accessor_class,
+                 name="embedding",
+                 ctr_label_name="",
+                 padding_id = 0,
+                 dtype='float32',
+                 scale_sparse_grad=True,
+                 async_push=True):
+    helper = LayerHelper(name, **locals())
+    inputs = helper.multiple_input()
+    outs = [
+        helper.create_variable_for_type_inference(dtype)
+    ]
+    input_names = [i.name for i in inputs]
+    attrs={
+        'EmbeddingDim': size,
+        'TableId': table_id,
+        'AccessorClass': accessor_class,
+        'CtrLabelName': ctr_label_name,
+        'PaddingId': padding_id,
+        'ScaleSparseGrad': scale_sparse_grad,
+        'AsyncPush': async_push,
+        'InputNames': input_names,
+        # this is only for compatible with embedding op
+        'is_distributed': True
+    }
+    # this is only for compatible with embedding op
+    w, _ = helper.create_or_get_global_variable(
+        name=name, shape=[size], dtype=dtype, is_bias=False, persistable=True)
+    helper.append_op(
+        type='pull_sparse',
+        inputs={'Ids': inputs, 'W': w},
+        outputs={'Out': outs},
+        attrs=attrs
+    )
+    if len(outs) == 1:
+        return outs[0]
+    return outs
+
+def _pull_sparse_v2(input,
+                   size,
+                   table_id,
+                   accessor_class,
+                   name="embedding",
+                   ctr_label_name="",
+                   padding_id = 0,
+                   dtype='float32',
+                   scale_sparse_grad=True,
+                   async_push=True):
+    helper = LayerHelper(name, **locals())
+    inputs = helper.multiple_input()
+    outs = [
+        helper.create_variable_for_type_inference(dtype)
+    ]
+    input_names = [i.name for i in inputs]
+    attrs={
+        'EmbeddingDim': size,
+        'TableId': table_id,
+        'AccessorClass': accessor_class,
+        'CtrLabelName': ctr_label_name,
+        'PaddingId': padding_id,
+        'ScaleSparseGrad': scale_sparse_grad,
+        'AsyncPush': async_push,
+        'InputNames': input_names,
+        # this is only for compatible with embedding op
+        'is_distributed': True
+    }
+    # this is only for compatible with embedding op
+    w, _ = helper.create_or_get_global_variable(
+        name=name, shape=[size], dtype=dtype, is_bias=False, persistable=True)
+    helper.append_op(
+        type='pull_sparse_v2',
+        inputs={'Ids': inputs, 'W': w},
+        outputs={'Out': outs},
+        attrs=attrs
+    )
+    if len(outs) == 1:
+        return outs[0]
+    return outs
 
 def _pull_box_sparse(input, size, dtype='float32'):
     """

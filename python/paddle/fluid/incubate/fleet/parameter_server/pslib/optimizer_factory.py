@@ -67,6 +67,14 @@ class DistributedAdam(DistributedOptimizerImplBase):
             ".batch_size", ".batch_square_sum", ".batch_sum",
             ".batch_size@GRAD", ".batch_square_sum@GRAD", ".batch_sum@GRAD"
         ]
+        self.embedding_type = None
+        self.supported_embedding_types = [
+            "lookup_table", "lookup_table_v2", "pull_sparse", "pull_sparse_v2"]
+        self.embedding_grad_type = None
+        self.supported_embedding_grad_types = [
+            "lookup_table_grad", "lookup_table_v2_grad",
+            "push_sparse", "push_sparse_v2"
+        ]
 
     def _find_distributed_lookup_table_inputs(self, program, table_names):
         """
@@ -84,7 +92,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
             inputs_dict[table_name] = []
 
         for op in program.global_block().ops:
-            if op.type == "lookup_table":
+            if op.type in self.supported_embedding_types:
                 if op.input("W")[0] in table_names:
                     inputs_dict[op.input("W")[0]].extend(
                         [local_vars[name] for name in op.input("Ids")])
@@ -106,7 +114,12 @@ class DistributedAdam(DistributedOptimizerImplBase):
             outputs_dict[table_name] = []
 
         for op in program.global_block().ops:
-            if op.type == "lookup_table":
+            if op.type in self.supported_embedding_types:
+                if self.embedding_type is None:
+                    self.embedding_type = op.type
+                elif self.embedding_type != op.type:
+                    raise ValueError("embedding_type not equal: %s != %s"
+                                     % (self.embedding_type, op.type))
                 if op.input("W")[0] in table_names:
                     outputs_dict[op.input("W")[0]].extend(
                         [local_vars[name] for name in op.output("Out")])
@@ -119,10 +132,15 @@ class DistributedAdam(DistributedOptimizerImplBase):
             grads_dict[table_name] = []
 
         for op in program.global_block().ops:
-            if op.type == "lookup_table_grad" and op.input("W")[
-                    0] in table_names:
-                grads_dict[op.input("W")[0]].extend(
-                    [local_vars[name] for name in op.input("Out@GRAD")])
+            if op.type in self.supported_embedding_grad_types:
+                if self.embedding_grad_type is None:
+                    self.embedding_grad_type = op.type
+                elif self.embedding_grad_type != op.type:
+                    raise ValueError("embedding_grad_type not equal: %s != %s"
+                                     % (self.embedding_grad_type, op.type))
+                if op.input("W")[0] in table_names:
+                    grads_dict[op.input("W")[0]].extend(
+                        [local_vars[name] for name in op.input("Out@GRAD")])
         return grads_dict
 
     def _find_multi_distributed_lookup_table(self, losses):
@@ -135,7 +153,12 @@ class DistributedAdam(DistributedOptimizerImplBase):
         ret_list = []
         for loss in losses:
             for op in loss.block.program.global_block().ops:
-                if op.type == "lookup_table":
+                if op.type in self.supported_embedding_types:
+                    if self.embedding_type is None:
+                        self.embedding_type = op.type
+                    elif self.embedding_type != op.type:
+                        raise ValueError("embedding_type not equal: %s != %s"
+                                         % (self.embedding_type, op.type))
                     if op.attr('is_distributed') is True:
                         table_name = op.input("W")[0]
                         if table_name not in table_names:
