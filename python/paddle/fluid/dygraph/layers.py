@@ -84,43 +84,6 @@ class Layer(core.Layer):
         """
         return self._full_name
 
-    def create_parameter_from(self,
-                              value,
-                              stop_gradient=False,
-                              attr=None,
-                              is_bias=False):
-        """Create parameters for this layer. Data of the parameter
-
-        Parameters:
-            value(Variable or np.ndarray): The variable or numpy array used to create parameter.
-            stop_gradient(bool, optional): If the parameter stops gradient. Default: False.
-            attr(ParamAttr, optional): Parameter attribute of weight. Please refer to :ref:`api_fluid_ParamAttr`. Default: None.
-            is_bias(bool, optional): if this is a bias parameter. Default: False.
-
-        Returns:
-            :ref:`api_guide_Variable_en` : created parameter.
-        """
-        assert isinstance(value, (np.ndarray, core.VarBase))
-        attr = copy.deepcopy(attr)
-        attr = ParamAttr._to_attr(attr)
-        if not attr:
-            return None
-        assert isinstance(attr, ParamAttr)
-        suffix = 'b' if is_bias else 'w'
-        if attr.name is None:
-            attr.name = unique_name.generate(".".join(
-                [self._helper.name, suffix]))
-        param = framework.ParamBase(
-            dtype=value.dtype,
-            shape=value.shape,
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            **attr._to_kwargs(with_initializer=False))
-        np_value = value.numpy() if isinstance(value, core.VarBase) else value
-        param.value().get_tensor().set(np_value,
-                                       framework._current_expected_place())
-        param.stop_gradient = stop_gradient
-        return param
-
     def create_parameter(self,
                          shape,
                          attr=None,

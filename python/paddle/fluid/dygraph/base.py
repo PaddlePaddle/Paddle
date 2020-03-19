@@ -131,13 +131,12 @@ def no_grad_guard():
             with fluid.dygraph.no_grad_guard():
                 # l1.weight.stop_gradient is False
                 tmp = l1.weight * 2  # tmp.stop_gradient is True
-                l1.weight = l1.create_parameter_from(tmp)
             x = fluid.dygraph.to_variable(data)
-            y = l0(x)
+            y = l0(x) + tmp
             o = l1(y)
             o.backward()
-            # tmp._grad_ivar() is None
-            # l0.weight._grad_ivar() is not None
+            print(tmp._grad_ivar() is None)  # True
+            print(l0.weight._grad_ivar() is None)  # False
 
     """
     with _switch_tracer_mode_guard_(is_train=False):
