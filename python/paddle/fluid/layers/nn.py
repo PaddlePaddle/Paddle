@@ -9587,7 +9587,8 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
         Variable: Random tensor whose data is drawn from a Gaussian distribution, dtype: flaot32 or float64 as specified.
 
     Examples:
-        .. code-block:: python
+
+       .. code-block:: python
 
             import paddle.fluid as fluid
 
