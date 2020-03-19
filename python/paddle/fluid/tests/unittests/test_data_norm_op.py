@@ -256,6 +256,106 @@ class TestDataNormOp(OpTest):
         self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
 
 
+class TestDataNormOpWithEnableScaleAndShift(OpTest):
+    """
+    test class for data norm op
+    test forward and backward
+    """
+
+    def setUp(self):
+        """
+        init data norm op test env
+        """
+        self.op_type = 'data_norm'
+        self.use_mkldnn = False
+        epsilon = 0.00001
+        slot_dim = -1
+        enable_scale_and_shitf = True
+        x_shape = [2, 50]
+        scale_shape = [50]
+        tp = np.float32
+
+        x_val = np.random.uniform(-1, 1, x_shape).astype(tp)
+        batch_size = np.ones(scale_shape).astype(tp)
+        batch_size *= 1e4
+        batch_sum = np.zeros(scale_shape).astype(tp)
+        batch_square_sum = np.ones(scale_shape).astype(tp)
+        batch_square_sum *= 1e4
+        scale_w = np.ones(scale_shape).astype(tp)
+        bias = np.zeros(scale_shape).astype(tp)
+
+        y = np.array(x_val)
+
+        mean = np.zeros(x_shape).astype(tp)
+        scale = np.ones(x_shape).astype(tp)
+
+        self.inputs = {
+            "X": x_val,
+            "BatchSize": batch_size,
+            "BatchSum": batch_sum,
+            "BatchSquareSum": batch_square_sum,
+            "scale_w": scale_w,
+            "bias": bias
+        }
+        self.outputs = {"Y": y, "Means": mean, "Scales": scale}
+        self.attrs = {
+            "epsilon": epsilon,
+            "use_mkldnn": self.use_mkldnn,
+            "slot_dim": slot_dim,
+            "enable_scale_and_shift": True
+        }
+
+
+class TestDataNormOpWithEnableScaleAndShift(OpTest):
+    """
+    test class for data norm op
+    test forward and backward
+    """
+
+    def setUp(self):
+        """
+        init data norm op test env
+        """
+        self.op_type = 'data_norm'
+        self.use_mkldnn = False
+        epsilon = 0.00001
+        slot_dim = 1
+        enable_scale_and_shitf = True
+        x_shape = [2, 50]
+        scale_shape = [50]
+        tp = np.float32
+
+        x_val = np.random.uniform(-1, 1, x_shape).astype(tp)
+        batch_size = np.ones(scale_shape).astype(tp)
+        batch_size *= 1e4
+        batch_sum = np.zeros(scale_shape).astype(tp)
+        batch_square_sum = np.ones(scale_shape).astype(tp)
+        batch_square_sum *= 1e4
+        scale_w = np.ones(scale_shape).astype(tp)
+        bias = np.zeros(scale_shape).astype(tp)
+
+        y = np.array(x_val)
+
+        mean = np.zeros(x_shape).astype(tp)
+        scale = np.ones(x_shape).astype(tp)
+
+        self.inputs = {
+            "X": x_val,
+            "BatchSize": batch_size,
+            "BatchSum": batch_sum,
+            "BatchSquareSum": batch_square_sum,
+            "scale_w": scale_w,
+            "bias": bias
+        }
+        self.outputs = {"Y": y, "Means": mean, "Scales": scale}
+        self.attrs = {
+            "epsilon": epsilon,
+            "use_mkldnn": self.use_mkldnn,
+            "slot_dim": slot_dim,
+            "enable_scale_and_shift": True
+        }
+
+
 class TestDataNormOpWithSlotDim(OpTest):
     """
     test class for data norm op
