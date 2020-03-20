@@ -137,6 +137,9 @@ class StaticGraphAdapter(object):
         self._progs = {}
         self._compiled_progs = {}
 
+        self._nranks = distributed.Env().nranks
+        self._local_rank = distributed.Env().local_rank
+
     @property
     def mode(self):
         return self.model.mode
@@ -353,6 +356,12 @@ class StaticGraphAdapter(object):
         metric_states = restore_flatten_list(rets[num_loss:], metric_splits)
         metrics = []
         for metric, state in zip(self.model._metrics, metric_states):
+            # cut off padding size
+            if self.model._dataset is not None and self._nranks > 1:
+                total_size = len(self.model._dataset)
+                samples = state[0].shape[0]
+                if metric.count[0] + samples > total_size:
+                    state = [s[:total_size - metric.count[0], ...] for s in state]
             metrics.append(metric.update(*state))
         return (losses, metrics) if len(metrics) > 0 else losses
 
@@ -393,12 +402,12 @@ class StaticGraphAdapter(object):
             lbls = self.model._labels if self.model._labels else []
             inputs = [k.forward() for k in to_list(ins)]
             labels = [k.forward() for k in to_list(lbls)]
+            self._label_vars[mode] = labels
             outputs = to_list(self.model.forward(*inputs))
             if mode != 'test':
                 if self.model._loss_function:
                     losses = self.model._loss_function(outputs, labels)
-                    for metric in self.model._metrics:
-                        metrics.append(to_list(metric.add_metric_op(outputs, labels)))
+                    
                 if mode == 'train' and self.model._optimizer:
                     self._loss_endpoint = fluid.layers.sum(losses)
                     if self._nranks > 1:
@@ -410,18 +419,23 @@ class StaticGraphAdapter(object):
                         self.model._optimizer = fleet.distributed_optimizer(self.model._optimizer, strategy=dist_strategy)
                         
                     self.model._optimizer.minimize(self._loss_endpoint)
-            if self.mode != 'train':
+            if self._nranks > 1 and mode != 'train' and self.model._dataset is not None:
                 outputs = [distributed._all_gather(o, self._nranks) for o in outputs]
-                if self.mode != 'test':
-                    label_vars = [distributed._all_gather(l, self._nranks) for l in label_vars]   
+                if mode != 'test':
+                    labels = [distributed._all_gather(l, self._nranks) for l in labels]
+                    
+            if mode != 'test':
+                for metric in self.model._metrics:
+                    metrics.append(to_list(metric.add_metric_op(outputs, labels)))   
                      
         if mode != 'train':  # clone again to put it in test mode
             prog = prog.clone(for_test=True)
 
         self._input_vars[mode] = inputs
-        self._label_vars[mode] = labels
+        
         self._progs[mode] = prog
         self._endpoints[mode] = {"output": outputs, "loss": losses, "metric": metrics}
+
 
     def _compile_and_initialize(self, prog, mode):
         compiled_prog = self._compiled_progs.get(mode, None)
@@ -456,10 +470,6 @@ class StaticGraphAdapter(object):
             if uninitialized:
                 startup_prog = self._startup_prog._prune(uninitialized)
                 self._executor.run(startup_prog)
-
-            if self.mode == 'train' and self._lazy_load_optimizer:
-                self._load_optimizer(self._lazy_load_optimizer)
-                self._lazy_load_optimizer = None
 
         if self._nranks < 2:
             compiled_prog = fluid.CompiledProgram(prog)
@@ -518,7 +528,7 @@ class DynamicGraphAdapter(object):
         self.model.clear_gradients()
         metrics = []
         for metric in self.model._metrics:
-            metric_outs = metric.add_metric_op(outputs, to_list(labels))
+            metric_outs = metric.add_metric_op(to_list(outputs), to_list(labels))
             m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
         return ([to_numpy(l) for l in losses], metrics) \
@@ -539,7 +549,15 @@ class DynamicGraphAdapter(object):
             labels = [distributed._all_gather(l, self._nranks) for l in labels]
         metrics = []
         for metric in self.model._metrics:
-            metric_outs = metric.add_metric_op(outputs, labels)
+            # cut off padding value.
+            if self.model._dataset is not None and self._nranks > 1:
+                total_size = len(self.model._dataset)
+                samples = outputs[0].shape[0]
+                if metric.count[0] + samples > total_size:
+                    outputs = [o[:total_size - metric.count[0]] for o in outputs]
+                    labels = [l[:total_size - metric.count[0]] for l in labels]
+
+            metric_outs = metric.add_metric_op(to_list(outputs), labels)
             m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
@@ -637,6 +655,8 @@ class Model(fluid.dygraph.Layer):
         self._device = None
         self._device_ids = None
         self._optimizer = None
+        self._dataset = None
+        self._distributed_sampler = None
         if in_dygraph_mode():
             self._adapter = DynamicGraphAdapter(self)
         else:
@@ -664,6 +684,7 @@ class Model(fluid.dygraph.Layer):
                 metrics=None,
                 inputs=None,
                 labels=None,
+                dataset=None,
                 device=None,
                 device_ids=None):
         """
@@ -722,6 +743,7 @@ class Model(fluid.dygraph.Layer):
         self._inputs = inputs
         self._labels = labels
         self._device = device
+        self._dataset = dataset
         if device is None:
             self._device = 'GPU' if fluid.is_compiled_with_cuda() else 'CPU'
         self._device_ids = device_ids
