@@ -111,16 +111,16 @@ class DataNormOp : public framework::OperatorWithKernel {
       if (check) {
         PADDLE_ENFORCE_EQ(scale_dim[0], C,
                           platform::errors::InvalidArgument(
-                            "the shape"
-                            "of scale must equal to [%d]"
-                            "But received: the shape of scale is [%d]",
-                            C, scale_dim[0]));
+                              "the shape"
+                              "of scale must equal to [%d]"
+                              "But received: the shape of scale is [%d]",
+                              C, scale_dim[0]));
         PADDLE_ENFORCE_EQ(bias_dim[0], C,
                           platform::errors::InvalidArgument(
-                            "the shape "
-                            "of bias must equal to [%d]"
-                            "But received: the shape of bias is [%d]",
-                            C, bias_dim[0]));
+                              "the shape "
+                              "of bias must equal to [%d]"
+                              "But received: the shape of bias is [%d]",
+                              C, bias_dim[0]));
       }
     }
 
@@ -316,9 +316,8 @@ class DataNormKernel<platform::CPUDeviceContext, T>
         } else {
           if (!ctx.Attr<bool>("enable_scale_and_shift") && slot_dim <= 0) {
             EigenArrayMap<T>(y_data, C, N) =
-                (ConstEigenArrayMap<T>(x->data<T>(), C, N)
-                    .colwise() - means_arr).colwise() *
-                    scales_arr;
+                (ConstEigenArrayMap<T>(x->data<T>(), C, N).colwise() -
+                 means_arr).colwise() * scales_arr;
           } else if (ctx.Attr<bool>("enable_scale_and_shift") &&
                      slot_dim <= 0) {
             const auto *scale_w = ctx.Input<Tensor>("scale_w");
