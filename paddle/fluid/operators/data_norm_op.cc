@@ -110,15 +110,17 @@ class DataNormOp : public framework::OperatorWithKernel {
 
       if (check) {
         PADDLE_ENFORCE_EQ(scale_dim[0], C,
-                          platform::errors::InvalidArgument("the shape"
-                          "of scale must equal to [%d]"
-                          "But received: the shape of scale is [%d]",
-                          C, scale_dim[0]));
+                          platform::errors::InvalidArgument(
+                            "the shape"
+                            "of scale must equal to [%d]"
+                            "But received: the shape of scale is [%d]",
+                            C, scale_dim[0]));
         PADDLE_ENFORCE_EQ(bias_dim[0], C,
-                          platform::errors::InvalidArgument("the shape "
-                          "of bias must equal to [%d]"
-                          "But received: the shape of bias is [%d]",
-                          C, bias_dim[0]));
+                          platform::errors::InvalidArgument(
+                            "the shape "
+                            "of bias must equal to [%d]"
+                            "But received: the shape of bias is [%d]",
+                            C, bias_dim[0]));
       }
     }
 
@@ -291,7 +293,7 @@ class DataNormKernel<platform::CPUDeviceContext, T>
         // if slot_dim is set and batch size is larger than zero, we choose
         // to check if show number is zero, if so, skip normalization.
         if (slot_dim > 0 && N > 0 &&
-           (!ctx.Attr<bool>("enable_scale_and_shift"))) {
+            (!ctx.Attr<bool>("enable_scale_and_shift"))) {
           const int item_size = x->numel() / N;
           // location of show number in one embedding
           int offset = 0;
@@ -344,7 +346,7 @@ class DataNormKernel<platform::CPUDeviceContext, T>
             for (int k = 0; k < N; ++k) {
               for (int i = 0; i < item_size; i += slot_dim) {
                 if (x_data[offset + i] > -min_precision &&
-                  x_data[offset + i] < min_precision) {
+                    x_data[offset + i] < min_precision) {
                   // show = 0
                   memset(y_data + offset + i, 0, sizeof(T) * slot_dim);
                 } else {
