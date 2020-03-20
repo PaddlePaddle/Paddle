@@ -11,6 +11,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+///
+/// \file paddle_analysis_config.h
+///
+/// \brief Paddle Analysis Config API信息
+///
+/// \author paddle-infer@baidu.com
+/// \date 2020-03-20
+/// \since 1.7
+///
+
 #pragma once
 
 #include <cassert>
@@ -36,17 +47,49 @@ namespace paddle {
 class AnalysisPredictor;
 struct MkldnnQuantizerConfig;
 
-// NOTE WIP, not stable yet.
+///
+/// \brief configuration manager for `AnalysisPredictor`.
+/// \since 1.7.0
+///
+/// `AnalysisConfig` manages configurations of `AnalysisPredictor`.
+/// During inference procedure, there are many parameters(model/params path,
+/// place of inference, etc.)
+/// to be specified, and various optimizations(subgraph fusion, memory
+/// optimazation, TensorRT engine, etc.)
+/// to be done. Users can manage these settings by creating and modifying an
+/// `AnalysisConfig`,
+/// and loading it into `AnalysisPredictor`.
+///
 struct AnalysisConfig {
   AnalysisConfig() = default;
+  ///
+  /// \brief Construct a new `AnalysisConfig` object from another
+  /// `AnalysisConfig`.
+  ///
+  /// \param[in] other another `AnalysisConfig`
+  ///
   explicit AnalysisConfig(const AnalysisConfig& other);
+  ///
+  /// \brief Construct a new `AnalysisConfig` object from a no-combined model.
+  ///
+  /// \param[in] model_dir model directory of no-combined model.
+  ///
   explicit AnalysisConfig(const std::string& model_dir);
+  ///
+  /// \brief Construct a new `AnalysisConfig` object from a combined model.
+  ///
+  /// \param[in] prog_file model file of combined model.
+  /// \param[in] params_file params file of combined model.
+  ///
   explicit AnalysisConfig(const std::string& prog_file,
                           const std::string& params_file);
+  ///
+  /// \brief Precision of inference in TensorRT.
+  ///
   enum class Precision {
-    kFloat32 = 0,
-    kInt8,
-    kHalf,
+    kFloat32 = 0,  ///< fp32
+    kInt8,         ///< int8
+    kHalf,         ///< fp16
   };
 
   /** Set model with a directory.
