@@ -423,8 +423,11 @@ class Qat2Int8MkldnnPass(object):
             return waiting_for_scale
 
         waiting_for_scale = _update_scales(graph)
+        waiting_for_scale_prev = set()
 
-        while len(waiting_for_scale) != 0:
+        while len(waiting_for_scale
+                  ) != 0 and waiting_for_scale != waiting_for_scale_prev:
+            waiting_for_scale_prev = waiting_for_scale
             waiting_for_scale = _update_scales(graph)
 
         return graph
@@ -547,7 +550,16 @@ class Qat2Int8MkldnnPass(object):
         tensor = self._scope.find_var(name).get_tensor()
         tensor.set(array, self._place)
 
+    def _remove_ctrl_vars(self, graph):
+        remove_ctr_vars = set()
+        for node in graph.all_var_nodes():
+            if node.is_ctrl_var():
+                remove_ctr_vars.add(node)
+        graph.safe_remove_nodes(remove_ctr_vars)
+        return graph
+
     def _optimize_fp32_graph(self, graph):
+        graph = self._remove_ctrl_vars(graph)
         graph = self._apply_pass(graph, 'mkldnn_placement_pass',
                                  ['mkldnn_enabled_op_types'], [set()])
         if self._is_conv_quantized():
