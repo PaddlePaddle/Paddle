@@ -17,16 +17,19 @@ from __future__ import absolute_import
 import inspect
 import os
 import pickle
-from collections import OrderedDict
-
 import numpy as np
+import itertools
+from collections import Iterable
+from collections import OrderedDict
 
 from paddle import fluid
 from paddle.fluid.framework import in_dygraph_mode, Variable
 from paddle.fluid.executor import global_scope
 from paddle.fluid.io import is_belong_to_optimizer
 from paddle.fluid.dygraph.base import to_variable
+
 from metrics import Metric
+from callbacks import config_callbacks
 
 __all__ = ['Model', 'Loss', 'CrossEntropy', 'Input']
 
@@ -336,10 +339,10 @@ class StaticGraphAdapter(object):
             metric_list, metric_splits = flatten_list(endpoints['metric'])
             fetch_list = endpoints['loss'] + metric_list
             num_loss = len(endpoints['loss'])
-        rets = self._executor.run(
-            compiled_prog, feed=feed,
-            fetch_list=fetch_list,
-            return_numpy=False)
+        rets = self._executor.run(compiled_prog,
+                                  feed=feed,
+                                  fetch_list=fetch_list,
+                                  return_numpy=False)
         # LoDTensor cannot be fetch as numpy directly
         rets = [np.array(v) for v in rets]
         if self.mode == 'test':
@@ -392,7 +395,8 @@ class StaticGraphAdapter(object):
                 if self.model._loss_function:
                     losses = self.model._loss_function(outputs, labels)
                     for metric in self.model._metrics:
-                        metrics.append(to_list(metric.add_metric_op(outputs, labels)))
+                        metrics.append(
+                            to_list(metric.add_metric_op(outputs, labels)))
                 if mode == 'train' and self.model._optimizer:
                     self._loss_endpoint = fluid.layers.sum(losses)
                     self.model._optimizer.minimize(self._loss_endpoint)
@@ -402,7 +406,11 @@ class StaticGraphAdapter(object):
         self._input_vars[mode] = inputs
         self._label_vars[mode] = labels
         self._progs[mode] = prog
-        self._endpoints[mode] = {"output": outputs, "loss": losses, "metric": metrics}
+        self._endpoints[mode] = {
+            "output": outputs,
+            "loss": losses,
+            "metric": metrics
+        }
 
     def _compile_and_initialize(self, prog, mode):
         compiled_prog = self._compiled_progs.get(mode, None)
@@ -465,7 +473,8 @@ class DynamicGraphAdapter(object):
         inputs = to_list(inputs)
         if labels is not None:
             labels = [to_variable(l) for l in to_list(labels)]
-        outputs = to_list(self.model.forward(*[to_variable(x) for x in inputs]))
+        outputs = to_list(
+            self.model.forward(*[to_variable(x) for x in inputs]))
         losses = self.model._loss_function(outputs, labels)
         final_loss = fluid.layers.sum(losses)
         final_loss.backward()
@@ -485,7 +494,8 @@ class DynamicGraphAdapter(object):
         inputs = to_list(inputs)
         if labels is not None:
             labels = [to_variable(l) for l in to_list(labels)]
-        outputs = to_list(self.model.forward(*[to_variable(x) for x in inputs]))
+        outputs = to_list(
+            self.model.forward(*[to_variable(x) for x in inputs]))
 
         if self.model._loss_function:
             losses = self.model._loss_function(outputs, labels)
@@ -585,7 +595,6 @@ class Model(fluid.dygraph.Layer):
         self._labels = None
         self._loss_function = None
         self._loss_weights = None
-        self._loss = None
         self._optimizer = None
         self._device = None
         self._device_ids = None
@@ -609,6 +618,9 @@ class Model(fluid.dygraph.Layer):
 
     def load(self, *args, **kwargs):
         return self._adapter.load(*args, **kwargs)
+
+    def parameters(self, *args, **kwargs):
+        return self._adapter.parameters(*args, **kwargs)
 
     def prepare(self,
                 optimizer=None,
@@ -680,5 +692,99 @@ class Model(fluid.dygraph.Layer):
         if not in_dygraph_mode():
             self._adapter.prepare()
 
-    def parameters(self, *args, **kwargs):
-        return self._adapter.parameters(*args, **kwargs)
+    def fit(
+            self,
+            train_loader=None,
+            eval_loader=None,
+            epochs=1,
+            eval_freq=1,
+            log_freq=10,
+            save_freq=1,
+            verbose=2,
+            callbacks=None, ):
+        """
+        FIXME: add more comments and usage
+        Args:
+            train_loader (DataLoader): an iterable data loader is used for train.
+            eval_loader (DataLoader): an iterable data loader is used for
+                evaluation at the end of epoch. If None, will not do evaluation.
+            epochs (int): number of epochs to train the model.
+            eval_freq (int): evaluation frequency in epoch.
+            log_freq (int): frequency to print log during training.
+            save_freq (int): frequency to save checkpoint during training.
+            verbose (int): verbosity mode, should be 0, 1, or 2.
+                0 = silent, 1 = progress bar, 2 = one line per epoch.
+            callbacks (Callback|None): list of `Callback` instances to apply
+                during training.
+        """
+        do_eval = eval_loader is not None
+        metrics_name = self._metrics_name()
+        cbks = config_callbacks(
+            callbacks,
+            model=self,
+            epochs=epochs,
+            steps=None,
+            log_freq=log_freq,
+            save_freq=save_freq,
+            verbose=verbose,
+            metrics=self._metrics_name(), )
+
+        def _run_one_epoch(data_loader, callbacks, mode):
+            size = data_loader.size if hasattr(data_loader, 'size') else None
+            logs = {
+                'steps': size,
+                'metrics_name': metrics_name,
+            }
+            for step, data in enumerate(data_loader):
+                cbks.on_batch_begin(mode, step, logs)
+                if mode == 'train':
+                    outs = self.train(*data)
+                else:
+                    outs = self.eval(*data)
+
+                metrics = list(itertools.chain.from_iterable(outs))
+                metrics = [np.mean(metrics[0])]
+                for metric in self._metrics:
+                    res = metric.accumulate()
+                    metrics.extend(to_list(res))
+                assert len(metrics_name) == len(metrics)
+                for k, v in zip(metrics_name, metrics):
+                    logs[k] = np.mean(v)
+
+                logs['step'] = step
+                logs['batch_size'] = data[0].shape[0]
+
+                cbks.on_batch_end(mode, step, logs)
+            self._reset_metrics()
+            return logs
+
+        cbks.on_begin('train')
+        for epoch in range(epochs):
+            cbks.on_epoch_begin(epoch)
+            # FIXME: adapte to DataLoader
+            loader = train_loader
+            if not isinstance(train_loader, Iterable):
+                loader = train_loader()
+            logs = _run_one_epoch(loader, cbks, 'train')
+            cbks.on_epoch_end(epoch, logs)
+
+            if do_eval and epoch % eval_freq == 0:
+                cbks.on_begin('eval', logs)
+                # FIXME: adapte to DataLoader
+                loader = eval_loader
+                if not isinstance(eval_loader, Iterable):
+                    loader = eval_loader()
+                logs = _run_one_epoch(eval_loader(), cbks, 'eval')
+                cbks.on_end('eval', logs)
+
+        cbks.on_end('train', logs)
+
+    def _reset_metrics(self):
+        for metric in self._metrics:
+            metric.reset()
+
+    def _metrics_name(self):
+        metrics_name = ['loss']
+        for m in self._metrics:
+            metrics_name.extend(to_list(m.name()))
+        return metrics_name
