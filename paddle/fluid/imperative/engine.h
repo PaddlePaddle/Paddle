@@ -14,63 +14,18 @@
 
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
-#include <memory>
-#include <unordered_map>
-#include <unordered_set>
-#include <utility>
-#include <vector>
-#include "paddle/fluid/imperative/backward_strategy.h"
-#include "paddle/fluid/imperative/gradient_accumulator.h"
-#include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace imperative {
 
-// It seems there is no need for Engine to be an
-// singleton, we can have multi-engine to run
-// mutil-graoh. For future use we may expose a interface
-// to Python to support
 class Engine {
+  DISABLE_COPY_AND_ASSIGN(Engine);
+
  public:
+  Engine() = default;
   virtual ~Engine() = default;
   virtual void Execute() = 0;
-  virtual void Init(VarBase* var, const detail::BackwardStrategy& strategy) = 0;
-};
-
-class BasicEngine : public Engine {
- public:
-  void Init(VarBase* var, const detail::BackwardStrategy& strategy) override;
-
-  void Execute() override;
-
- private:
-  void PrepareDeps();
-
-  void CheckBackwardInputs(OpBase* op);
-
-  void PrepareGradAccumulators(OpBase* op);
-
-  void SumGradient(OpBase* op, std::shared_ptr<VariableWrapper> src,
-                   VariableWrapper* dst);
-
-  // TODO(jiabin): maybe we can optimize the performance of engine by cache the
-  // result
-  void Clear() {
-    init_ops_.clear();
-    op_deps_.clear();
-    accumulators_.clear();
-  }
-
-  std::vector<std::shared_ptr<OpBase>> init_ops_;
-  detail::BackwardStrategy backward_strategy_;
-  std::unordered_map<OpBase*, size_t> op_deps_;
-  std::unordered_map<VariableWrapper*, std::unique_ptr<GradientAccumulator>>
-      accumulators_;
-
-  std::vector<std::pair<VariableWrapper*, std::shared_ptr<VariableWrapper>>>
-      need_accu_var_list_;
 };
 
 }  // namespace imperative
