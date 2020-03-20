@@ -318,6 +318,29 @@ class MatMulGradKernel : public framework::OpKernel<T> {
   }
 };
 
+framework::DDim GetDimForInput(const framework::InferShapeContext &ctx,
+                               std::string input_name) {
+  auto shape = ctx.Attrs().Get<std::vector<int>>("shape_" + input_name);
+  auto axis = ctx.Attrs().Get<std::vector<int>>("axis_" + input_name);
+  auto dim = ctx.GetInputDim(input_name);
+  if (!shape.empty() && !axis.empty()) {
+    PADDLE_ENFORCE_GE(
+        shape.size(), 2,
+        platform::errors::InvalidArgument(
+            "shape_%s attribute of MatMulOp was implemented for 2, 3 "
+            "or 4 dimensions.",
+            input_name));
+    PADDLE_ENFORCE_LE(
+        shape.size(), 4,
+        platform::errors::InvalidArgument(
+            "shape_%s attribute of MatMulOp was implemented for 2, 3 "
+            "or 4 dimensions.",
+            input_name));
+    dim = dim.reshape(shape).transpose(axis);
+  }
+  return dim;
+}
+
 class MatMulOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -331,9 +354,8 @@ class MatMulOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(context->HasOutput("Out"),
                    "Output(Out) of MatMulOp should not be null.");
 
-    auto dim_x = context->GetInputDim("X");
-    auto dim_y = context->GetInputDim("Y");
-
+    auto dim_x = GetDimForInput(*context, "X");
+    auto dim_y = GetDimForInput(*context, "Y");
     auto mat_dim_x =
         math::CreateMatrixDescriptor(RowMatrixFromVector(dim_x), 0,
                                      context->Attrs().Get<bool>("transpose_X"));
@@ -468,6 +490,18 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Force INT8 kernel output FP32, only "
                   "used in MKL-DNN INT8")
         .SetDefault(false);
+    AddAttr<std::vector<int>>(
+        "shape_X", "Reshape's shape before reshape-transpose-matmul fuse.")
+        .SetDefault({});
+    AddAttr<std::vector<int>>(
+        "shape_Y", "Reshape's shape before reshape-transpose-matmul fuse.")
+        .SetDefault({});
+    AddAttr<std::vector<int>>(
+        "axis_X", "Transpose's axis before reshape-transpose-matmul fuse.")
+        .SetDefault({});
+    AddAttr<std::vector<int>>(
+        "axis_Y", "Transpose's axis before reshape-transpose-matmul fuse.")
+        .SetDefault({});
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
     AddAttr<int>("head_number", "The number of heads of the matrix")
         .SetDefault(1);

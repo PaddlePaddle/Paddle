@@ -33,7 +33,6 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-using string::PrettyLogEndl;
 using string::PrettyLog;
 using string::Style;
 
@@ -2145,6 +2144,57 @@ void patterns::DeleteQuantDequantOpPattern::operator()() {
   quant_dequant_op_outscale->LinksFrom({quant_dequant_op});
   quant_dequant_out->LinksFrom({quant_dequant_op});
   any_op2->LinksFrom({quant_dequant_out});
+}
+
+PDNode *patterns::ReshapeTransposeMatmulPattern::operator()(
+    bool with_reshape_xshape, bool with_transpose_xshape) {
+  auto reshape_op =
+      pattern->NewNode(reshape_op_repr())->assert_is_op("reshape2");
+  auto transpose_op =
+      pattern->NewNode(transpose_op_repr())->assert_is_op("transpose2");
+  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+
+  auto reshape_in = pattern->NewNode(reshape_in_repr())
+                        ->AsInput()
+                        ->assert_is_op_input("reshape2", "X");
+
+  auto reshape_out = pattern->NewNode(reshape_out_repr())
+                         ->AsIntermediate()
+                         ->assert_is_op_input("transpose2", "X")
+                         ->assert_is_op_output("reshape2", "Out");
+  if (!with_reshape_xshape)
+    reshape_out->assert_is_only_output_of_op("reshape2");
+
+  auto reshape_xshape = with_reshape_xshape
+                            ? pattern->NewNode(reshape_xshape_repr())
+                                  ->AsIntermediate()
+                                  ->assert_is_op_output("reshape2", "XShape")
+                            : nullptr;
+
+  auto transpose_out = pattern->NewNode(transpose_out_repr())
+                           ->AsIntermediate()
+                           ->assert_is_op_input("matmul")
+                           ->assert_is_op_output("transpose2", "Out");
+  if (!with_transpose_xshape)
+    transpose_out->assert_is_only_output_of_op("transpose2");
+
+  auto transpose_xshape =
+      with_transpose_xshape
+          ? pattern->NewNode(transpose_xshape_repr())
+                ->AsIntermediate()
+                ->assert_is_op_output("transpose2", "XShape")
+          : nullptr;
+
+  auto matmul_out = pattern->NewNode(matmul_out_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("matmul", "Out");
+
+  reshape_op->LinksFrom({reshape_in}).LinksTo({reshape_out});
+  if (with_reshape_xshape) reshape_op->LinksTo({reshape_xshape});
+  transpose_op->LinksFrom({reshape_out}).LinksTo({transpose_out});
+  if (with_transpose_xshape) transpose_op->LinksTo({transpose_xshape});
+  matmul_op->LinksFrom({transpose_out}).LinksTo({matmul_out});
+  return matmul_out;
 }
 
 }  // namespace ir
