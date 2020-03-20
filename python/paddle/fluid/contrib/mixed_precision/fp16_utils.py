@@ -16,24 +16,6 @@ from __future__ import print_function
 
 from ... import core
 from ... import layers
-from ... import framework
-
-
-def append_cast_op(i, o, prog):
-    """
-    Append a cast op in a given Program to cast input `i` to data type `o.dtype`.
-
-    Args:
-        i (Variable): The input Variable.
-        o (Variable): The output Variable.
-        prog (Program): The Program to append cast op.
-    """
-    prog.global_block().append_op(
-        type="cast",
-        inputs={"X": i},
-        outputs={"Out": o},
-        attrs={"in_dtype": i.dtype,
-               "out_dtype": o.dtype})
 
 
 def _rename_arg(op, old_name, new_name):
@@ -75,7 +57,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
         op (Operator): The operator to insert cast op.
         idx (int): The index of current operator.
         src_dtype (VarType): The input variable dtype of cast op.
-        desr_dtype (VarType): The output variable dtype of cast op.
+        dest_dtype (VarType): The output variable dtype of cast op.
 
     Returns:
         num_cast_op (int): The number of cast ops that have been inserted.
@@ -85,6 +67,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
         core.VarDesc.VarType.LOD_TENSOR, core.VarDesc.VarType.SELECTED_ROWS,
         core.VarDesc.VarType.LOD_TENSOR_ARRAY
     ]
+
     for in_name in op.input_names:
         if src_dtype == core.VarDesc.VarType.FP32 and op.type == 'batch_norm':
             if in_name != 'X':
@@ -94,22 +77,25 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
             if in_var.type not in valid_types:
                 continue
             if in_var.dtype == src_dtype:
-                out_var = block.create_var(
-                    name=in_var.name + \
-                            '.cast_' + _dtype_to_str(dest_dtype),
-                    dtype=dest_dtype,
-                    persistable=False,
-                    stop_gradient=False)
-                block._insert_op(
-                    idx,
-                    type="cast",
-                    inputs={"X": in_var},
-                    outputs={"Out": out_var},
-                    attrs={
-                        "in_dtype": in_var.dtype,
-                        "out_dtype": out_var.dtype
-                    })
-                num_cast_ops += 1
+                cast_name = in_var.name + '.cast_' + _dtype_to_str(dest_dtype)
+                out_var = block.vars.get(cast_name)
+                if out_var is None or out_var.dtype != dest_dtype:
+                    out_var = block.create_var(
+                        name=cast_name,
+                        dtype=dest_dtype,
+                        persistable=False,
+                        stop_gradient=False)
+
+                    block._insert_op(
+                        idx,
+                        type="cast",
+                        inputs={"X": in_var},
+                        outputs={"Out": out_var},
+                        attrs={
+                            "in_dtype": in_var.dtype,
+                            "out_dtype": out_var.dtype
+                        })
+                    num_cast_ops += 1
                 _rename_arg(op, in_var.name, out_var.name)
             else:
                 if op.has_attr('in_dtype'):
@@ -155,6 +141,18 @@ def find_true_prev_op(ops, cur_op, var_name):
     return None
 
 
+def _is_in_black_varnames(op, amp_lists):
+    for in_name in op.input_arg_names:
+        if in_name in amp_lists.black_varnames:
+            return True
+
+    for out_name in op.output_arg_names:
+        if out_name in amp_lists.black_varnames:
+            return True
+
+    return False
+
+
 def rewrite_program(main_prog, amp_lists):
     """
     Traverse all ops in current block and insert cast op according to 
@@ -180,6 +178,11 @@ def rewrite_program(main_prog, amp_lists):
     white_op_set = set()
     black_op_set = set()
     for op in ops:
+        if amp_lists.black_varnames is not None and _is_in_black_varnames(
+                op, amp_lists):
+            black_op_set.add(op)
+            continue
+
         if op.type in amp_lists.black_list:
             black_op_set.add(op)
         elif op.type in amp_lists.white_list:
@@ -240,7 +243,7 @@ def rewrite_program(main_prog, amp_lists):
 def update_role_var_grad(main_prog, params_grads):
     """
     Update op_role_var attr for some ops to make sure the gradients
-    transfered across gpus is FP16.
+    transferred across GPUs is FP16.
     1. Check whether the op that outputs gradient is cast or not.
     2. If op is cast and gradient is FP32, remove the op_role_var
        and find the prev op which outputs FP16 gradient
@@ -272,7 +275,8 @@ def update_role_var_grad(main_prog, params_grads):
                 attr_val.extend(op_for_fp16_grad.attr(op_role_var_attr_name))
             op_for_fp16_grad._set_attr(op_role_var_attr_name, attr_val)
 
-            # maximize the allreduce overlap
+            # Maximize the all_reduce overlap, and perform the cast
+            # operation after gradients transfer.
             op._set_attr('op_role', OPTIMIZE)
 
 
@@ -282,7 +286,7 @@ def update_loss_scaling(is_overall_finite, prev_loss_scaling, num_good_steps,
     """
     Update loss scaling according to overall gradients. If all gradients is 
     finite after incr_every_n_steps, loss scaling will increase by incr_ratio. 
-    Otherwisw, loss scaling will decrease by decr_ratio after 
+    Otherwise, loss scaling will decrease by decr_ratio after
     decr_every_n_nan_or_inf steps and each step some gradients are infinite.
 
     Args:

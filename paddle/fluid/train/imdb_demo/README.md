@@ -4,6 +4,24 @@ What is C++ inference API and how to install it:
 
 see: [PaddlePaddle Fluid 提供了 C++ API 来支持模型的部署上线](https://paddlepaddle.org.cn/documentation/docs/zh/1.5/advanced_usage/deploy/inference/index_cn.html)
 
+After downloading the source code of Paddle, you can build your own inference lib:
+
+```shell
+PADDLE_ROOT=./Paddle
+cd Paddle
+mkdir build
+cd build
+cmake -DFLUID_INFERENCE_INSTALL_DIR=$PADDLE_ROOT \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DWITH_PYTHON=OFF \
+      -DWITH_MKL=OFF \
+      -DWITH_GPU=OFF  \
+      -DON_INFER=ON \
+      ..
+make
+make inference_lib_dist
+```
+
 ## IMDB task
 
 see: [IMDB Dataset of 50K Movie Reviews | Kaggle](https://www.kaggle.com/lakshmi25npathi/imdb-dataset-of-50k-movie-reviews)
@@ -22,7 +40,7 @@ see: [IMDB Dataset of 50K Movie Reviews | Kaggle](https://www.kaggle.com/lakshmi
     mkdir build
     cd build
     rm -rf *
-    PADDLE_LIB=path/to/your/fluid_inference_install_dir/
+    PADDLE_LIB=path/to/Paddle/build/fluid_install_dir
     cmake .. -DPADDLE_LIB=$PADDLE_LIB  -DWITH_MKLDNN=OFF -DWITH_MKL=OFF
     make
 ```

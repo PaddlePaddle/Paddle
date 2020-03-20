@@ -106,9 +106,10 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
     auto max_seq_len = items[0].length;
     auto rank_level = rank_table.level();
 
-    PADDLE_ENFORCE_LT(rank_level, x.lod().size(),
-                      "Input should be a LOD tensor, and size is at least %d",
-                      rank_level + 1);
+    PADDLE_ENFORCE_LT(
+        rank_level, x.lod().size(),
+        "Input should be a LoDTensor, and its lod_level should be at least %d",
+        rank_level + 1);
     out.resize(max_seq_len);
     std::vector<std::vector<CopyRange>> copy_ranges(max_seq_len);
 
@@ -167,10 +168,21 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
 class LoDTensorToArrayOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "");
-    AddInput("RankTable", "");
-    AddOutput("Out", "");
-    AddComment("");
+    AddInput("X",
+             "(LoDTensor), the input lod tensor is a minibatch of sequences, "
+             "and will be split to a tensor_array according to "
+             "Input(RankTable).");
+    AddInput("RankTable", "(LoDRankTable), the rank table.");
+    AddOutput("Out",
+              "(LoDTensorArray), the result tensor_array, which is actually a "
+              "std::vector<LoDTensor>.");
+    AddComment(R"DOC(LoDTensorToArray operator.
+Input(X) is a minibatch of sequences. Input(RankTable) stores the order of the input sequences.
+The lod_tensor_to_array operator will spilt the input sequences to a tensor_array, with each
+element stores one sequence, according to the input rank_table.
+
+NOTE: this operator is an internal component of DynamicRNN, and cannot be called by users.
+)DOC");
   }
 };
 
@@ -187,12 +199,20 @@ class LoDTensorToArrayInferShape : public framework::InferShapeBase {
                    "Output(Out) of LoDTensorToArrayOp should not be null.");
 
     auto x_dim = context->GetInputDim("X");
-    // The first dim of each LoDTensor in Output can only be set at run-time.;
-    // We still have to Resize each LoDTensor in Output.
+    // For compile-time, the first dim of input X and output Out should be -1.
+    // For runtime, the first dim of input X should be the sum of all elements's
+    // first dim in output Out. The output's dims will be re-computed in detail
+    // kernel implementation.
     context->SetOutputDim("Out", x_dim);
-    // The lod level should be passed to out in compile time.
+
+    // The output LoDTensor's lod_level should be input X's lod_level - 1.
+    // For compile time, we call SetLoDLevel to set output's lod_level.
+    // For runtime, output LoDTensor's lod is determined by input X's lod and
+    // the level specified by input RandTable.
+    // We cannot get X's detail lod and RankTable's level in this function, so
+    // leave this work to the detail kernel implementation.
     if (!context->IsRuntime()) {
-      context->DecreaseLoDLevel("X", /*->*/ "Out");
+      context->SetLoDLevel("Out", context->GetLoDLevel("X") - 1);
     }
   }
 };
@@ -206,19 +226,18 @@ class LoDTensorToArrayInferVarType : public framework::VarTypeInference {
   }
 };
 
-class LoDTensorToArrayGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class LoDTensorToArrayGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("array_to_lod_tensor");
-    grad_op->SetInput("X", OutputGrad("Out"));
-    grad_op->SetInput("RankTable", Input("RankTable"));
-    grad_op->SetOutput("Out", InputGrad("X"));
-    grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetInput("X", this->OutputGrad("Out"));
+    grad_op->SetInput("RankTable", this->Input("RankTable"));
+    grad_op->SetOutput("Out", this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -230,4 +249,5 @@ REGISTER_OPERATOR(lod_tensor_to_array, ops::LoDTensorToArrayOp,
                   ops::LoDTensorToArrayOpProtoMaker,
                   ops::LoDTensorToArrayInferShape,
                   ops::LoDTensorToArrayInferVarType,
-                  ops::LoDTensorToArrayGradMaker);
+                  ops::LoDTensorToArrayGradMaker<paddle::framework::OpDesc>,
+                  ops::LoDTensorToArrayGradMaker<paddle::imperative::OpBase>);

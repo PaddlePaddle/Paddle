@@ -26,10 +26,16 @@ import six
 import collections
 from itertools import chain
 
+import os
 import nltk
 from nltk.corpus import movie_reviews
+import zipfile
+from functools import cmp_to_key
 
 import paddle.dataset.common
+
+URL = "https://corpora.bj.bcebos.com/movie_reviews%2Fmovie_reviews.zip"
+MD5 = '155de2b77c6834dd8eea7cbe88e93acb'
 
 __all__ = ['train', 'test', 'get_word_dict']
 NUM_TRAINING_INSTANCES = 1600
@@ -41,6 +47,14 @@ def download_data_if_not_yet():
     Download the data set, if the data set is not download.
     """
     try:
+        # download and extract movie_reviews.zip
+        paddle.dataset.common.download(
+            URL, 'corpora', md5sum=MD5, save_name='movie_reviews.zip')
+        path = os.path.join(paddle.dataset.common.DATA_HOME, 'corpora')
+        filename = os.path.join(path, 'movie_reviews.zip')
+        zip_file = zipfile.ZipFile(filename)
+        zip_file.extractall(path)
+        zip_file.close()
         # make sure that nltk can find the data
         if paddle.dataset.common.DATA_HOME not in nltk.data.path:
             nltk.data.path.append(paddle.dataset.common.DATA_HOME)
@@ -68,7 +82,7 @@ def get_word_dict():
             for words in movie_reviews.words(field):
                 word_freq_dict[words] += 1
     words_sort_list = list(six.iteritems(word_freq_dict))
-    words_sort_list.sort(cmp=lambda a, b: b[1] - a[1])
+    words_sort_list.sort(key=cmp_to_key(lambda a, b: b[1] - a[1]))
     for index, word in enumerate(words_sort_list):
         words_freq_sorted.append((word[0], index))
     return words_freq_sorted

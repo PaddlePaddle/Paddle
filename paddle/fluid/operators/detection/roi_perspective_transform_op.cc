@@ -187,17 +187,17 @@ void bilinear_interpolate(const T* in_data, const int channels, const int width,
                           const int height, int in_n, int in_c, T in_w, T in_h,
                           T* val) {
   // Deal with cases that source coords are out of feature map boundary
-  if (GT<T>(-0.5, in_w) || GT<T>(in_w, width - 0.5) || GT<T>(-0.5, in_h) ||
-      GT<T>(in_h, height - 0.5)) {
+  if (GT_E<T>(-0.5, in_w) || GT_E<T>(in_w, width - 0.5) ||
+      GT_E<T>(-0.5, in_h) || GT_E<T>(in_h, height - 0.5)) {
     // empty
     val[0] = 0.0;
     return;
   }
 
-  if (GT<T>(0, in_w)) {
+  if (GT_E<T>(0, in_w)) {
     in_w = 0;
   }
-  if (GT<T>(0, in_h)) {
+  if (GT_E<T>(0, in_h)) {
     in_h = 0;
   }
 
@@ -301,10 +301,10 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
             T in_w, in_h;
             get_source_coords<T>(matrix, out_w, out_h, &in_w, &in_h);
             if (in_quad<T>(in_w, in_h, roi_x, roi_y)) {
-              if (GT<T>(-0.5, in_w) ||
-                  GT<T>(in_w, static_cast<T>(in_width - 0.5)) ||
-                  GT<T>(-0.5, in_h) ||
-                  GT<T>(in_h, static_cast<T>(in_height - 0.5))) {
+              if (GT_E<T>(-0.5, in_w) ||
+                  GT_E<T>(in_w, static_cast<T>(in_width - 0.5)) ||
+                  GT_E<T>(-0.5, in_h) ||
+                  GT_E<T>(in_h, static_cast<T>(in_height - 0.5))) {
                 output_data[out_index] = 0.0;
                 mask_data[(n * transformed_height + out_h) * transformed_width +
                           out_w] = 0;
@@ -330,15 +330,15 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
 template <typename T>
 T get_feature_gradient(T xs, T ys, int w, int h, const int width,
                        const int height) {
-  if (GT<T>(-0.5, xs) || GT<T>(xs, width - 0.5) || GT<T>(-0.5, ys) ||
-      GT<T>(ys, height - 0.5)) {
+  if (GT_E<T>(-0.5, xs) || GT_E<T>(xs, width - 0.5) || GT_E<T>(-0.5, ys) ||
+      GT_E<T>(ys, height - 0.5)) {
     return 0;
   }
 
-  if (GT<T>(0, xs)) {
+  if (GT_E<T>(0, xs)) {
     xs = 0;
   }
-  if (GT<T>(0, ys)) {
+  if (GT_E<T>(0, ys)) {
     ys = 0;
   }
 
@@ -441,10 +441,10 @@ class CPUROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
                   T src_h;
                   get_source_coords<T>(matrix, out_w, out_h, &src_w, &src_h);
                   if (in_quad<T>(src_w, src_h, roi_x, roi_y)) {
-                    if (GT<T>(-0.5, src_w) ||
-                        GT<T>(src_w, static_cast<T>(in_width - 0.5)) ||
-                        GT<T>(-0.5, src_h) ||
-                        GT<T>(src_h, static_cast<T>(in_height - 0.5))) {
+                    if (GT_E<T>(-0.5, src_w) ||
+                        GT_E<T>(src_w, static_cast<T>(in_width - 0.5)) ||
+                        GT_E<T>(-0.5, src_h) ||
+                        GT_E<T>(src_h, static_cast<T>(in_height - 0.5))) {
                       continue;
                     }
                     T weight = get_feature_gradient<T>(src_w, src_h, in_w, in_h,
@@ -525,8 +525,9 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -545,8 +546,9 @@ class ROIPerspectiveTransformGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -618,23 +620,22 @@ class ROIPerspectiveTransformOpMaker
   }
 };
 
-class ROIPerspectiveTransformGradDescMaker
-    : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ROIPerspectiveTransformGradMaker
+    : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("roi_perspective_transform_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("ROIs", Input("ROIs"));
-    op->SetInput("Out2InIdx", Output("Out2InIdx"));
-    op->SetInput("Out2InWeights", Output("Out2InWeights"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("ROIs", this->Input("ROIs"));
+    op->SetInput("Out2InIdx", this->Output("Out2InIdx"));
+    op->SetInput("Out2InWeights", this->Output("Out2InWeights"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -642,9 +643,11 @@ class ROIPerspectiveTransformGradDescMaker
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(roi_perspective_transform, ops::ROIPerspectiveTransformOp,
-                  ops::ROIPerspectiveTransformOpMaker,
-                  ops::ROIPerspectiveTransformGradDescMaker);
+REGISTER_OPERATOR(
+    roi_perspective_transform, ops::ROIPerspectiveTransformOp,
+    ops::ROIPerspectiveTransformOpMaker,
+    ops::ROIPerspectiveTransformGradMaker<paddle::framework::OpDesc>,
+    ops::ROIPerspectiveTransformGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(roi_perspective_transform_grad,
                   ops::ROIPerspectiveTransformGradOp);
 REGISTER_OP_CPU_KERNEL(roi_perspective_transform,

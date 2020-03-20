@@ -42,13 +42,12 @@ TEST(communicator, merge_lod_tensors) {
     }
     out_value += static_cast<float>(i);
   }
-  out_value = out_value / 10.0;
   const std::string out_name = "Out";
   std::unique_ptr<framework::Scope> scope;
   scope.reset(new framework::Scope());
   scope->Var(out_name);
   for (auto i = 0; i < 10; ++i) {
-    MergeVars(out_name, in_vars, scope.get());
+    MergeVars<float>(out_name, in_vars, scope.get());
   }
   auto &out_tensor = scope->FindVar(out_name)->Get<LoDTensor>();
   auto *out_data = out_tensor.data<float>();
@@ -76,7 +75,7 @@ TEST(communicator, merge_selected_rows) {
     auto dims =
         framework::make_ddim({static_cast<int64_t>(rows.size()), width});
     auto *data = slr->mutable_value()->mutable_data<float>(dims, cpu_place);
-    for (auto i = 0; i < rows.size(); ++i) {
+    for (size_t i = 0; i < rows.size(); ++i) {
       for (auto j = 0; j < width; ++j) {
         data[i * width + j] = static_cast<float>(rows[i]);
       }
@@ -87,7 +86,7 @@ TEST(communicator, merge_selected_rows) {
   scope.reset(new framework::Scope());
   scope->Var(out_name);
   for (auto i = 0; i < 10; ++i) {
-    MergeVars(out_name, in_vars, scope.get());
+    MergeVars<float>(out_name, in_vars, scope.get());
   }
   auto &out_slr = scope->FindVar(out_name)->Get<SelectedRows>();
   auto &out_t = out_slr.value();
@@ -96,10 +95,10 @@ TEST(communicator, merge_selected_rows) {
   std::vector<float> out_values;
   out_values.reserve(10);
   for (auto i = 0; i < 10; ++i) {
-    out_values.push_back(static_cast<float>((i * (10 - i)) / 10.0));
+    out_values.push_back(static_cast<float>(i * (10 - i)));
   }
-  for (auto i = 0; i < out_slr.rows().size(); ++i) {
-    ASSERT_EQ(out_slr.rows()[i], i);
+  for (size_t i = 0; i < out_slr.rows().size(); ++i) {
+    ASSERT_EQ(out_slr.rows()[i], static_cast<int>(i));
     for (auto j = 0; j < width; ++j) {
       ASSERT_EQ(out_data[i * width + j], out_values[i]);
     }

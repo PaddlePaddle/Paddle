@@ -82,7 +82,7 @@ class TestSumOp4(OpTest):
 class TestSumOp5(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
-        self.inputs = {'X': np.random.random((5, 6)).astype("float64")}
+        self.inputs = {'X': np.random.random((5, 20)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=1)}
 
     def test_check_output(self):
@@ -95,7 +95,7 @@ class TestSumOp5(OpTest):
 class TestSumOp7(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
-        self.inputs = {'X': np.random.random((6)).astype("float64")}
+        self.inputs = {'X': np.random.random((100)).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=0)}
 
     def test_check_output(self):
@@ -109,7 +109,7 @@ class TestSumOp8(OpTest):
     def setUp(self):
         self.op_type = "cumsum"
         self.attrs = {'axis': 2, "exclusive": True}
-        a = np.random.random((5, 6, 3)).astype("float64")
+        a = np.random.random((5, 6, 4)).astype("float64")
         self.inputs = {'X': a}
         self.outputs = {
             'Out': np.concatenate(

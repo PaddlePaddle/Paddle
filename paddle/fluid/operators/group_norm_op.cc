@@ -39,24 +39,57 @@ class GroupNormOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Variance"),
                    "Output(Variance) of GroupNormOp should not be null.");
     auto x_dim = ctx->GetInputDim("X");
-    const DataLayout data_layout = framework::StringToDataLayout(
-        ctx->Attrs().Get<std::string>("data_layout"));
+    const std::string data_layout_str =
+        ctx->Attrs().Get<std::string>("data_layout");
+    const framework::DataLayout data_layout =
+        framework::StringToDataLayout(data_layout_str);
     const int64_t channel_num =
         (data_layout == DataLayout::kNCHW ? x_dim[1] : x_dim[x_dim.size() - 1]);
     auto batch_size = x_dim[0];
     auto groups = ctx->Attrs().Get<int>("groups");
     PADDLE_ENFORCE_LE(
         groups, channel_num,
-        "'groups' must be less equal than the number of channels.");
-    PADDLE_ENFORCE_GE(groups, 1, "'groups' must be greater equal than 1.");
+        "ValueError: the Attr(groups) of Op(group_norm) must be less than or "
+        "equal to the number of channels. "
+        "But received: groups is [%s], channels is [%s], the Attr(data_layout) "
+        "is [%s]. The error may come from wrong data_layout setting.",
+        groups, channel_num, data_layout_str);
+    PADDLE_ENFORCE_GE(
+        groups, 1,
+        "ValueError: the Attr(groups) of Op(group_norm) must be "
+        "greater than or equal to 1. But received: groups is [%s].",
+        groups);
 
     if (ctx->HasInput("Scale")) {
-      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale").size(), 1UL);
-      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0], channel_num);
+      PADDLE_ENFORCE_EQ(
+          ctx->GetInputDim("Scale").size(), 1UL,
+          "ShapeError: the Input(Scale) of Op(group_norm) should be 1-D "
+          "Tensor. "
+          "But received: %u-D Tensor, the shape of Input(Scale) is [%s].",
+          ctx->GetInputDim("Scale").size(), ctx->GetInputDim("Scale"));
+      PADDLE_ENFORCE_EQ(
+          ctx->GetInputDim("Scale")[0], channel_num,
+          "ShapeError: the Input(Scale)'s first dimension size of "
+          "Op(group_norm) must be equal to the number of channels. "
+          "But received: the Input(Scale)'s first dimension size is [%s], the "
+          "channels is [%s], the Attr(data_layout) is [%s]. The error may come "
+          "from wrong data_layout setting.",
+          ctx->GetInputDim("Scale")[0], channel_num, data_layout_str);
     }
     if (ctx->HasInput("Bias")) {
-      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias").size(), 1UL);
-      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias")[0], channel_num);
+      PADDLE_ENFORCE_EQ(
+          ctx->GetInputDim("Bias").size(), 1UL,
+          "ShapeError: the Input(Bias) of Op(group_norm) should be 1-D Tensor. "
+          "But received: %u-D Tensor, the shape of Input(Bias) is [%s].",
+          ctx->GetInputDim("Bias").size(), ctx->GetInputDim("Bias"));
+      PADDLE_ENFORCE_EQ(
+          ctx->GetInputDim("Bias")[0], channel_num,
+          "ShapeError: the Input(Bias)'s first dimension size of "
+          "Op(group_norm) must be equal to the number of channels. "
+          "But received: the Input(Bias)'s first dimension size is [%s], the "
+          "channels is [%s], the Attr(data_layout) is [%s]. The error may come "
+          "from wrong data_layout setting.",
+          ctx->GetInputDim("Bias")[0], channel_num, data_layout_str);
     }
 
     ctx->SetOutputDim("Y", ctx->GetInputDim("X"));
@@ -151,26 +184,24 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class GroupNormGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class GroupNormGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("group_norm_grad");
-    op->SetInput("Scale", Input("Scale"));
-    op->SetInput("Bias", Input("Bias"));
-    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
-    op->SetInput("Y", Output("Y"));
-    op->SetInput("Variance", Output("Variance"));
+    op->SetInput("Scale", this->Input("Scale"));
+    op->SetInput("Bias", this->Input("Bias"));
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
+    op->SetInput("Y", this->Output("Y"));
+    op->SetInput("Variance", this->Output("Variance"));
 
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
-    op->SetOutput(framework::GradVarName("Scale"), InputGrad("Scale"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
+    op->SetOutput(framework::GradVarName("Scale"), this->InputGrad("Scale"));
 
-    op->SetAttrMap(Attrs());
-
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -193,7 +224,9 @@ class GroupNormOpInferVarType
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(group_norm, ops::GroupNormOp, ops::GroupNormOpMaker,
-                  ops::GroupNormOpInferVarType, ops::GroupNormGradMaker,
+                  ops::GroupNormOpInferVarType,
+                  ops::GroupNormGradMaker<paddle::framework::OpDesc>,
+                  ops::GroupNormGradMaker<paddle::imperative::OpBase>,
                   ops::GroupNormInplaceInToOut);
 REGISTER_OPERATOR(group_norm_grad, ops::GroupNormGradOp,
                   ops::GroupNormGradInplaceInToOut);

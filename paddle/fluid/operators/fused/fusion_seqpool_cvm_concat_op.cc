@@ -52,7 +52,7 @@ void FusionSeqPoolCVMConcatOp::InferShape(
 framework::OpKernelType FusionSeqPoolCVMConcatOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   return framework::OpKernelType(
-      framework::GetDataTypeOfVar(ctx.MultiInputVar("X")[0]), ctx.GetPlace());
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
 }
 
 void FusionSeqPoolCVMConcatOpMaker::Make() {
@@ -139,9 +139,11 @@ class FusionSeqPoolCVMConcatKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fusion_seqpool_cvm_concat, ops::FusionSeqPoolCVMConcatOp,
-                  ops::FusionSeqPoolCVMConcatOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    fusion_seqpool_cvm_concat, ops::FusionSeqPoolCVMConcatOp,
+    ops::FusionSeqPoolCVMConcatOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(fusion_seqpool_cvm_concat,
                        ops::FusionSeqPoolCVMConcatKernel<float>,

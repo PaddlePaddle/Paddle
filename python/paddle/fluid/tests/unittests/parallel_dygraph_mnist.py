@@ -26,7 +26,7 @@ import paddle.fluid as fluid
 import paddle.fluid.dygraph as dygraph
 from paddle.fluid import core
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC
+from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 from paddle.fluid.dygraph.base import to_variable
 
 from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
@@ -34,7 +34,6 @@ from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
     def __init__(self,
-                 name_scope,
                  num_channels,
                  num_filters,
                  filter_size,
@@ -51,10 +50,10 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
                  use_cudnn=False,
                  param_attr=None,
                  bias_attr=None):
-        super(SimpleImgConvPool, self).__init__(name_scope)
+        super(SimpleImgConvPool, self).__init__()
 
         self._conv2d = Conv2D(
-            self.full_name(),
+            num_channels=num_channels,
             num_filters=num_filters,
             filter_size=filter_size,
             stride=conv_stride,
@@ -66,7 +65,6 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             use_cudnn=use_cudnn)
 
         self._pool2d = Pool2D(
-            self.full_name(),
             pool_size=pool_size,
             pool_type=pool_type,
             pool_stride=pool_stride,
@@ -81,28 +79,30 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
 
 
 class MNIST(fluid.dygraph.Layer):
-    def __init__(self, name_scope):
-        super(MNIST, self).__init__(name_scope)
+    def __init__(self):
+        super(MNIST, self).__init__()
 
         self._simple_img_conv_pool_1 = SimpleImgConvPool(
-            self.full_name(), 1, 20, 5, 2, 2, act="relu")
+            1, 20, 5, 2, 2, act="relu")
 
         self._simple_img_conv_pool_2 = SimpleImgConvPool(
-            self.full_name(), 20, 50, 5, 2, 2, act="relu")
+            20, 50, 5, 2, 2, act="relu")
 
-        pool_2_shape = 50 * 4 * 4
+        self.pool_2_shape = 50 * 4 * 4
         SIZE = 10
-        scale = (2.0 / (pool_2_shape**2 * SIZE))**0.5
-        self._fc = FC(self.full_name(),
-                      10,
-                      param_attr=fluid.param_attr.ParamAttr(
-                          initializer=fluid.initializer.NormalInitializer(
-                              loc=0.0, scale=scale)),
-                      act="softmax")
+        scale = (2.0 / (self.pool_2_shape**2 * SIZE))**0.5
+        self._fc = Linear(
+            self.pool_2_shape,
+            10,
+            param_attr=fluid.param_attr.ParamAttr(
+                initializer=fluid.initializer.NormalInitializer(
+                    loc=0.0, scale=scale)),
+            act="softmax")
 
     def forward(self, inputs, label):
         x = self._simple_img_conv_pool_1(inputs)
         x = self._simple_img_conv_pool_2(x)
+        x = fluid.layers.reshape(x, shape=[-1, self.pool_2_shape])
         cost = self._fc(x)
         loss = fluid.layers.cross_entropy(cost, label)
         avg_loss = fluid.layers.mean(loss)
@@ -111,10 +111,11 @@ class MNIST(fluid.dygraph.Layer):
 
 class TestMnist(TestParallelDyGraphRunnerBase):
     def get_model(self):
-        model = MNIST("mnist")
+        model = MNIST()
         train_reader = paddle.batch(
             paddle.dataset.mnist.train(), batch_size=2, drop_last=True)
-        opt = fluid.optimizer.SGD(learning_rate=1e-3)
+        opt = fluid.optimizer.Adam(
+            learning_rate=1e-3, parameter_list=model.parameters())
         return model, train_reader, opt
 
     def run_one_loop(self, model, opt, data):

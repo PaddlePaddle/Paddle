@@ -9,7 +9,7 @@ cc_library(computation_op_handle SRCS computation_op_handle.cc DEPS framework_pr
 cc_library(share_tensor_buffer_op_handle SRCS share_tensor_buffer_op_handle.cc DEPS op_handle_base scope computation_op_handle share_tensor_buffer_functor)
 cc_library(rpc_op_handle SRCS rpc_op_handle.cc DEPS framework_proto scope place operator op_registry)
 cc_library(fetch_barrier_op_handle SRCS fetch_barrier_op_handle.cc DEPS framework_proto scope place operator op_registry)
-cc_library(multi_devices_helper SRCS multi_devices_helper.cc DEPS graph graph_helper)
+cc_library(multi_devices_helper INTERFACE SRCS multi_devices_helper.cc DEPS graph graph_helper)
 
 cc_library(variable_visitor SRCS variable_visitor.cc DEPS lod_tensor selected_rows)
 
@@ -22,10 +22,11 @@ endif()
 
 
 if(WITH_GPU)
+    nv_library(nan_inf_utils SRCS nan_inf_utils_detail.cc nan_inf_utils_detail.cu DEPS framework_proto scope place)
     nv_library(all_reduce_op_handle SRCS all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
             dynload_cuda variable_visitor)
     nv_library(fused_all_reduce_op_handle SRCS fused_all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
-            dynload_cuda variable_visitor)
+            dynload_cuda variable_visitor place device_memory_aligment)
 
     if(WITH_DGC)
         nv_library(sparse_all_reduce_op_handle SRCS sparse_all_reduce_op_handle.cc DEPS op_handle_base scope 
@@ -43,10 +44,11 @@ if(WITH_GPU)
     nv_library(fused_broadcast_op_handle SRCS fused_broadcast_op_handle.cc DEPS broadcast_op_handle)
 
 else()
+    cc_library(nan_inf_utils SRCS nan_inf_utils_detail.cc DEPS framework_proto scope place)
     cc_library(all_reduce_op_handle SRCS all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
              variable_visitor)
     cc_library(fused_all_reduce_op_handle SRCS fused_all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
-            variable_visitor)
+            variable_visitor place device_memory_aligment)
     if(WITH_DISTRIBUTE)
         cc_library(reduce_op_handle SRCS reduce_op_handle.cc DEPS op_handle_base variable_visitor scope
             ddim selected_rows_functor sendrecvop_rpc)
@@ -62,7 +64,14 @@ cc_library(gather_op_handle SRCS gather_op_handle.cc DEPS op_handle_base scope d
 
 cc_library(eager_deletion_op_handle SRCS eager_deletion_op_handle.cc DEPS lod_tensor selected_rows reference_count_pass_helper)
 
-set(SSA_GRAPH_EXECUTOR_DEPS graph framework_proto sequential_execution_pass modify_op_lock_and_record_event_pass all_reduce_deps_pass reference_count_pass eager_deletion_pass buffer_shared_inplace_op_pass buffer_shared_cross_op_memory_reuse_pass)
+set(SSA_GRAPH_EXECUTOR_DEPS graph framework_proto
+    sequential_execution_pass
+    modify_op_lock_and_record_event_pass
+    all_reduce_deps_pass
+    reference_count_pass
+    eager_deletion_pass
+    buffer_shared_inplace_op_pass
+    buffer_shared_cross_op_memory_reuse_pass)
 cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS ${SSA_GRAPH_EXECUTOR_DEPS})
 
 cc_library(threaded_ssa_graph_executor SRCS threaded_ssa_graph_executor.cc DEPS fetch_op_handle ssa_graph_executor scope
@@ -89,18 +98,27 @@ cc_library(fast_threaded_ssa_graph_executor SRCS fast_threaded_ssa_graph_executo
         DEPS fetch_op_handle ssa_graph_executor scope simple_threadpool device_context)
 cc_test(fused_broadcast_op_test SRCS fused_broadcast_op_handle_test.cc DEPS fused_broadcast_op_handle)
 
+set(IR_PASS_DEPS graph_viz_pass multi_devices_graph_pass
+    multi_devices_graph_print_pass multi_devices_graph_check_pass
+    fuse_elewise_add_act_pass fuse_bn_act_pass 
+    multi_batch_merge_pass 
+    fuse_relu_depthwise_conv_pass
+    lock_free_optimize_pass
+    coalesce_grad_tensor_pass fuse_all_reduce_op_pass backward_optimizer_op_deps_pass
+    fuse_adam_op_pass fuse_sgd_op_pass fuse_momentum_op_pass
+    sync_batch_norm_pass runtime_context_cache_pass)
+if(NOT APPLE AND NOT WIN32 AND WITH_GPU)
+  set(IR_PASS_DEPS ${IR_PASS_DEPS} fusion_group_pass)
+endif()
 if(WITH_NGRAPH) 
-  set(NGRAPH_BS_DEPS ngraph)
-else()
-  set(NGRAPH_BS_DEPS)
+  set(IR_PASS_DEPS ${IR_PASS_DEPS} ngraph)
+endif()
+cc_library(build_strategy SRCS build_strategy.cc DEPS pass_builder ${IR_PASS_DEPS})
+
+if (WITH_MKLDNN)
+  target_link_libraries(build_strategy mkldnn_placement_pass)
 endif()
 
-cc_library(build_strategy SRCS build_strategy.cc DEPS
-        graph_viz_pass multi_devices_graph_pass
-        multi_devices_graph_print_pass multi_devices_graph_check_pass
-        fuse_elewise_add_act_pass multi_batch_merge_pass 
-        fuse_relu_depthwise_conv_pass
-        lock_free_optimize_pass
-        coalesce_grad_tensor_pass fuse_all_reduce_op_pass backward_optimizer_op_deps_pass
-        fuse_adam_op_pass fuse_sgd_op_pass fuse_momentum_op_pass
-        ${NGRAPH_BS_DEPS})
+if (WITH_NGRAPH)
+  target_link_libraries(build_strategy ngraph_subgraph_pass)
+endif()

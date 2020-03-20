@@ -204,8 +204,8 @@ class InterpolateOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -285,7 +285,7 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
           interpolation.
 
           Nearest neighbor interpolation is to perform nearest neighbor interpolation
-          in both the 3rd dimention(in height direction) and the 4th dimention(in width 
+          in both the 3rd dimension(in height direction) and the 4th dimension(in width 
           direction) on input tensor.
             
           Bilinear interpolation is an extension of linear interpolation for 
@@ -299,7 +299,7 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
           H-direction and W-direction in this op) on a rectilinear 3D grid. 
           The linear interpolation is performed on three directions.
 
-          Align_corners and align_mode are optinal parameters,the calculation method 
+          Align_corners and align_mode are optional parameters,the calculation method 
           of interpolation can be selected by them.
           
           Example:
@@ -407,9 +407,9 @@ class InterpolateOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -423,28 +423,27 @@ class InterpolateOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class InterpolateGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class InterpolateGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
-    op->SetType(ForwardOp().Type() + "_grad");
-    op->SetInput("X", Input("X"));
-    if (ForwardOp().Inputs().count("SizeTensor") > 0) {
-      op->SetInput("SizeTensor", Input("SizeTensor"));
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType(this->ForwardOpType() + "_grad");
+    op->SetInput("X", this->Input("X"));
+    if (this->HasInput("SizeTensor") > 0) {
+      op->SetInput("SizeTensor", this->Input("SizeTensor"));
     }
-    if (ForwardOp().Inputs().count("OutSize") > 0) {
-      op->SetInput("OutSize", Input("OutSize"));
+    if (this->HasInput("OutSize") > 0) {
+      op->SetInput("OutSize", this->Input("OutSize"));
     }
-    if (ForwardOp().Inputs().count("Scale") > 0) {
-      op->SetInput("Scale", Input("Scale"));
+    if (this->HasInput("Scale") > 0) {
+      op->SetInput("Scale", this->Input("Scale"));
     }
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -456,15 +455,18 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(InterpolateGradNoNeedBufferVarsInference,
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(bilinear_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
-                  ops::InterpolateGradDescMaker);
+                  ops::InterpolateGradMaker<paddle::framework::OpDesc>,
+                  ops::InterpolateGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(bilinear_interp_grad, ops::InterpolateOpGrad,
                   ops::InterpolateGradNoNeedBufferVarsInference);
 REGISTER_OPERATOR(nearest_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
-                  ops::InterpolateGradDescMaker);
+                  ops::InterpolateGradMaker<paddle::framework::OpDesc>,
+                  ops::InterpolateGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(nearest_interp_grad, ops::InterpolateOpGrad,
                   ops::InterpolateGradNoNeedBufferVarsInference);
 REGISTER_OPERATOR(trilinear_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
-                  ops::InterpolateGradDescMaker);
+                  ops::InterpolateGradMaker<paddle::framework::OpDesc>,
+                  ops::InterpolateGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(trilinear_interp_grad, ops::InterpolateOpGrad,
                   ops::InterpolateGradNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(bilinear_interp, ops::InterpolateKernel<float>,

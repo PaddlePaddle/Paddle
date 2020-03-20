@@ -31,7 +31,7 @@ class SoftmaxWithCrossEntropyOpMaker
              "by softmax.");
     AddInput(
         "Label",
-        "(Tensor) The input tesnor of groud truth label. If :attr:`soft_label` "
+        "(Tensor) The input tensor of groud truth label. If :attr:`soft_label` "
         "is set to false, Label is a Tensor<int64> in same shape with "
         "Input(Logits) except the shape in dimension :attr:`axis` as 1. If "
         "soft_label is set to true, Label is a Tensor<float/double> in same "
@@ -50,7 +50,7 @@ class SoftmaxWithCrossEntropyOpMaker
               "entropy loss.");
     AddAttr<bool>(
         "soft_label",
-        "(bool, default: false), A flag to indicate whether to interpretate "
+        "(bool, default: false), A flag to indicate whether to interpretant "
         "the given labels as soft labels.")
         .SetDefault(false);
     AddAttr<bool>(
@@ -171,8 +171,9 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Logits")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Logits"),
+        ctx.device_context());
   }
 };
 
@@ -232,26 +233,26 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Loss"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Loss")),
+                                   ctx.device_context());
   }
 };
 
-class SoftmaxGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SoftmaxGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* grad_op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("softmax_with_cross_entropy_grad");
-    grad_op->SetInput("Label", Input("Label"));
-    grad_op->SetInput("Softmax", Output("Softmax"));
-    grad_op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
-    grad_op->SetOutput(framework::GradVarName("Logits"), InputGrad("Logits"));
-    grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetInput("Label", this->Input("Label"));
+    grad_op->SetInput("Softmax", this->Output("Softmax"));
+    grad_op->SetInput(framework::GradVarName("Loss"), this->OutputGrad("Loss"));
+    grad_op->SetOutput(framework::GradVarName("Logits"),
+                       this->InputGrad("Logits"));
+    grad_op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -267,7 +268,9 @@ DECLARE_INPLACE_OP_INFERER(SoftmaxWithCrossEntropyGradInplaceInference,
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(softmax_with_cross_entropy, ops::SoftmaxWithCrossEntropyOp,
-                  ops::SoftmaxWithCrossEntropyOpMaker, ops::SoftmaxGradMaker,
+                  ops::SoftmaxWithCrossEntropyOpMaker,
+                  ops::SoftmaxGradMaker<paddle::framework::OpDesc>,
+                  ops::SoftmaxGradMaker<paddle::imperative::OpBase>,
                   ops::SoftmaxWithCrossEntropyInplaceInference);
 REGISTER_OPERATOR(softmax_with_cross_entropy_grad,
                   ops::SoftmaxWithCrossEntropyOpGrad,

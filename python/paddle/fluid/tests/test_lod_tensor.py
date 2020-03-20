@@ -125,6 +125,30 @@ class TestLoDTensor(unittest.TestCase):
             print(gtensor)
             self.assertTrue(isinstance(str(gtensor), str))
 
+    def test_dlpack_support(self):
+        tensor = fluid.create_lod_tensor(
+            np.array([[1], [2], [3], [4]]).astype('int'), [[1, 3]],
+            fluid.CPUPlace())
+        dltensor = tensor._to_dlpack()
+        tensor_from_dlpack = fluid.core.from_dlpack(dltensor)
+        self.assertTrue(isinstance(tensor_from_dlpack, fluid.core.Tensor))
+        self.assertTrue(
+            np.array_equal(
+                np.array(tensor_from_dlpack),
+                np.array([[1], [2], [3], [4]]).astype('int')))
+        # when build with cuda
+        if core.is_compiled_with_cuda():
+            gtensor = fluid.create_lod_tensor(
+                np.array([[1], [2], [3], [4]]).astype('int'), [[1, 3]],
+                fluid.CUDAPlace(0))
+            gdltensor = gtensor._to_dlpack()
+            gtensor_from_dlpack = fluid.core.from_dlpack(gdltensor)
+            self.assertTrue(isinstance(gtensor_from_dlpack, fluid.core.Tensor))
+            self.assertTrue(
+                np.array_equal(
+                    np.array(gtensor_from_dlpack),
+                    np.array([[1], [2], [3], [4]]).astype('int')))
+
 
 if __name__ == '__main__':
     unittest.main()

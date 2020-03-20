@@ -17,8 +17,7 @@ import paddle.fluid as fluid
 fluid.core._set_eager_deletion_mode(-1, -1, False)
 
 import paddle.fluid.layers.ops as ops
-from paddle.fluid.initializer import init_on_cpu
-from paddle.fluid.layers.learning_rate_scheduler import _decay_step_counter
+from paddle.fluid.layers.learning_rate_scheduler import cosine_decay
 from simple_nets import init_data
 import math
 import os
@@ -36,8 +35,14 @@ remove_dropout = False
 # and Executor is different.
 remove_bn = False
 
+# FIXME(huihuangzheng): Temporarily disable cudnn of conv2d in unit test because
+# it will cause random test failure. We have to re-enable it after someone fixs
+# cudnn_conv
+remove_cudnn_conv = False
+
 remove_dropout = True
 remove_bn = True
+remove_cudnn_conv = True
 
 
 def squeeze_excitation(input, num_channels, reduction_ratio):
@@ -69,6 +74,7 @@ def conv_bn_layer(input, num_filters, filter_size, stride=1, groups=1,
         padding=(filter_size - 1) // 2,
         groups=groups,
         act=None,
+        use_cudnn=(not remove_cudnn_conv),
         bias_attr=False)
     return conv if remove_bn else fluid.layers.batch_norm(
         input=conv, act=act, momentum=0.1)
@@ -152,20 +158,6 @@ def SE_ResNeXt50Small(use_feed):
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     loss = fluid.layers.mean(loss)
     return loss
-
-
-def cosine_decay(learning_rate, step_each_epoch, epochs=120):
-    """
-    Applies cosine decay to the learning rate.
-    lr = 0.05 * (math.cos(epoch * (math.pi / 120)) + 1)
-    """
-    global_step = _decay_step_counter()
-
-    with init_on_cpu():
-        epoch = ops.floor(global_step / step_each_epoch)
-        decayed_lr = learning_rate * \
-                     (ops.cos(epoch * (math.pi / epochs)) + 1)/2
-    return decayed_lr
 
 
 def optimizer(learning_rate=0.01):

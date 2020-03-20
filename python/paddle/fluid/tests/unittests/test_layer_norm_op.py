@@ -20,8 +20,11 @@ from operator import mul
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from functools import reduce
+from op_test import _set_use_system_allocator
 
 np.random.random(123)
+
+_set_use_system_allocator(True)
 
 
 def _reference_layer_norm_naive(x, scale, beta, epsilon, begin_norm_axis=1):
@@ -145,6 +148,8 @@ class TestLayerNormOp(unittest.TestCase):
                     grad_var = block.desc.find_var(arg.encode("ascii"))
                     grad_var.set_dtype(core.VarDesc.VarType.FP32)
 
+                program._sync_with_cpp()
+
                 exe = fluid.Executor(place)
                 out = exe.run(program,
                               feed={
@@ -173,6 +178,39 @@ class TestLayerNormOp(unittest.TestCase):
     def test_check_forward_backward_with_scale_and_bias(self):
         self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=1)
         self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=3)
+
+
+class TestLayerNormAPI(unittest.TestCase):
+    def test_case(self):
+        x = fluid.layers.data(
+            name='x',
+            shape=[64, 32, 256],
+            dtype='float32',
+            append_batch_size=False)
+        x = fluid.layers.layer_norm(
+            x,
+            scale=True,
+            shift=True,
+            begin_norm_axis=1,
+            epsilon=1e-05,
+            param_attr=None,
+            bias_attr=None)
+        x = fluid.layers.layer_norm(
+            x,
+            scale=False,
+            shift=False,
+            begin_norm_axis=1,
+            epsilon=1e-05,
+            param_attr=None,
+            bias_attr=None)
+        x = fluid.layers.layer_norm(
+            x,
+            scale=False,
+            shift=False,
+            begin_norm_axis=1,
+            epsilon=1e-05,
+            param_attr="scale",
+            bias_attr="shift")
 
 
 if __name__ == '__main__':

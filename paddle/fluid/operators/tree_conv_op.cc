@@ -104,32 +104,31 @@ class TreeConvOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("NodesVector")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "NodesVector"),
+        ctx.device_context());
   }
 };
 
-class TreeConvGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class TreeConvGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
-
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("tree_conv_grad");
 
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetInput("Filter", Input("Filter"));
-    op->SetInput("EdgeSet", Input("EdgeSet"));
-    op->SetInput("NodesVector", Input("NodesVector"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput("Filter", this->Input("Filter"));
+    op->SetInput("EdgeSet", this->Input("EdgeSet"));
+    op->SetInput("NodesVector", this->Input("NodesVector"));
 
     op->SetOutput(framework::GradVarName("NodesVector"),
-                  InputGrad("NodesVector"));
-    op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
+                  this->InputGrad("NodesVector"));
+    op->SetOutput(framework::GradVarName("Filter"), this->InputGrad("Filter"));
 
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -153,8 +152,9 @@ class TreeConvGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("NodesVector")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "NodesVector"),
+        ctx.device_context());
   }
 };
 }  // namespace operators
@@ -162,7 +162,8 @@ class TreeConvGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(tree_conv, ops::TreeConvOp, ops::TreeConvOpMaker,
-                  ops::TreeConvGradOpDescMaker);
+                  ops::TreeConvGradOpMaker<paddle::framework::OpDesc>,
+                  ops::TreeConvGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(tree_conv_grad, ops::TreeConvGradOp);
 

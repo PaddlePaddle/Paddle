@@ -1,9 +1,17 @@
-from setuptools import setup, Distribution, Extension
 import subprocess
 import os
+import os.path
 import re
 import shutil
 import sys
+import fnmatch
+
+from contextlib import contextmanager
+from setuptools import Command
+from setuptools import setup, Distribution, Extension
+from setuptools.command.install import install as InstallCommandBase
+
+
 class BinaryDistribution(Distribution):
     def has_ext_modules(foo):
         return True
@@ -104,6 +112,7 @@ packages=['paddle',
           'paddle.distributed',
           'paddle.fluid',
           'paddle.fluid.dygraph',
+          'paddle.fluid.dygraph.dygraph_to_static',
           'paddle.fluid.proto',
           'paddle.fluid.proto.profiler',
           'paddle.fluid.distributed',
@@ -167,8 +176,8 @@ package_data['paddle.libs']=[('libwarpctc' if os.name != 'nt' else 'warpctc') + 
 shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
 
 if '${TENSORRT_FOUND}' == 'ON' and os.name == 'nt':
-    shutil.copy(os.path.join('${TENSORRT_ROOT}', 'lib', '${TR_INFER_RT}'), libs_path)
-    shutil.copy(os.path.join('${TENSORRT_ROOT}', 'lib', '${TR_INFER_PLUGIN_RT}'), libs_path)
+    shutil.copy(os.path.join('${TENSORRT_LIBRARY_DIR}', '${TR_INFER_RT}'), libs_path)
+    shutil.copy(os.path.join('${TENSORRT_LIBRARY_DIR}', '${TR_INFER_PLUGIN_RT}'), libs_path)
     package_data['paddle.libs'] += ['${TR_INFER_RT}', '${TR_INFER_PLUGIN_RT}']
 
 if '${WITH_MKL}' == 'ON':
@@ -182,7 +191,7 @@ if '${WITH_MKL}' == 'ON':
 else:
     if os.name == 'nt':
         # copy the openblas.dll
-        shutil.copy(os.path.dirname('${CBLAS_LIBRARIES}') + '/openblas' + ext_name, libs_path)
+        shutil.copy('${OPENBLAS_SHARED_LIB}', libs_path)
         package_data['paddle.libs'] += ['openblas' + ext_name]
 
 if '${WITH_PSLIB}' == 'ON':
@@ -195,14 +204,19 @@ if '${WITH_MKLDNN}' == 'ON':
         # TODO(typhoonzero): use install_name_tool to patch mkl libs once
         # we can support mkl on mac.
         #
-        # change rpath of libmkldnn.so.0, add $ORIGIN/ to it.
+        # change rpath of libdnnl.so.1, add $ORIGIN/ to it.
         # The reason is that all thirdparty libraries in the same directory,
-        # thus, libmkldnn.so.0 will find libmklml_intel.so and libiomp5.so.
+        # thus, libdnnl.so.1 will find libmklml_intel.so and libiomp5.so.
         command = "patchelf --set-rpath '$ORIGIN/' ${MKLDNN_SHARED_LIB}"
         if os.system(command) != 0:
-            raise Exception("patch libmkldnn.so failed, command: %s" % command)
-    package_data['paddle.libs']+=['libmkldnn.so.0' if os.name != 'nt' else ('mkldnn' + ext_name)]
+            raise Exception("patch libdnnl.so failed, command: %s" % command)
     shutil.copy('${MKLDNN_SHARED_LIB}', libs_path)
+    if os.name != 'nt':
+        shutil.copy('${MKLDNN_SHARED_LIB_1}', libs_path)
+        package_data['paddle.libs']+=['libmkldnn.so.0', 'libdnnl.so.1']
+    else:
+        package_data['paddle.libs']+=['mkldnn.dll']
+
 if '${WITH_NGRAPH}' == 'ON':
     # only change rpath in Release mode,
     # since in Debug mode, nGraph lib may be too large to be changed?
@@ -220,10 +234,18 @@ if '${WITH_NGRAPH}' == 'ON':
     package_data['paddle.libs']+=['${NGRAPH_SHARED_LIB_NAME}',
                                   '${NGRAPH_CPU_LIB_NAME}',
                                   '${NGRAPH_TBB_LIB_NAME}']
+
+# copy libfuild_framework.so to libs
+if os.name != 'nt' and sys.platform != 'darwin':
+    paddle_framework_lib='${FLUID_FRAMEWORK_SHARED_LIB}'
+    shutil.copy(paddle_framework_lib, libs_path)
+    package_data['paddle.libs'] += [('libpaddle_framework' if os.name != 'nt' else 'paddle_framework') + ext_name]
+
 # remove unused paddle/libs/__init__.py
 if os.path.isfile(libs_path+'/__init__.py'):
     os.remove(libs_path+'/__init__.py')
 package_dir['paddle.libs']=libs_path
+
 
 # change rpath of ${FLUID_CORE_NAME}.ext, add $ORIGIN/../libs/ to it.
 # The reason is that libwarpctc.ext, libiomp5.ext etc are in paddle.libs, and
@@ -250,14 +272,142 @@ if os.name == 'nt':
 elif sys.platform == 'darwin':
     ext_modules = []
 
-setup(name='${PACKAGE_NAME}',
-      version='${PADDLE_VERSION}',
-      description='Parallel Distributed Deep Learning',
-      install_requires=setup_requires,
-      packages=packages,
-      ext_modules=ext_modules,
-      package_data=package_data,
-      package_dir=package_dir,
-      scripts=paddle_bins,
-      distclass=BinaryDistribution
-)
+def find_files(pattern, root):
+    for dirpath, _, files in os.walk(root):
+      for filename in fnmatch.filter(files, pattern):
+          yield os.path.join(dirpath, filename)
+
+headers = (
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/framework')) +
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/imperative')) +
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/memory')) +
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/platform')) +
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/string')) +
+    list(find_files('*.pb.h', '${PADDLE_BINARY_DIR}/paddle/fluid/platform')) +
+    list(find_files('*.pb.h', '${PADDLE_BINARY_DIR}/paddle/fluid/framework')) +
+    ['${EIGEN_INCLUDE_DIR}/Eigen/Core'] + # eigen
+    list(find_files('*', '${EIGEN_INCLUDE_DIR}/Eigen/src')) + # eigen
+    list(find_files('*', '${EIGEN_INCLUDE_DIR}/unsupported/Eigen')) + # eigen
+    list(find_files('*', '${GFLAGS_INSTALL_DIR}/include')) + # gflags
+    list(find_files('*', '${GLOG_INSTALL_DIR}/include')) + # glog
+    list(find_files('*', '${BOOST_INCLUDE_DIR}/boost')) + # boost
+    list(find_files('*', '${XXHASH_INSTALL_DIR}/include')) + # xxhash
+    list(find_files('*', '${PROTOBUF_INCLUDE_DIR}')) + # protobuf
+    list(find_files('*', '${DLPACK_INCLUDE_DIR}')) + # dlpack 
+    list(find_files('*.h', '${THREADPOOL_INCLUDE_DIR}'))) # threadpool
+
+if '${WITH_MKLDNN}' == 'ON':
+    headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn
+
+
+class InstallCommand(InstallCommandBase):
+    def finalize_options(self):
+        ret = InstallCommandBase.finalize_options(self)
+        self.install_headers = os.path.join(self.install_purelib, 'paddle',
+                                            'include')
+        self.install_lib = self.install_platlib
+        return ret
+  
+
+class InstallHeaders(Command):
+    """Override how headers are copied.
+    """
+    description = 'install C/C++ header files'
+  
+    user_options = [('install-dir=', 'd',
+                     'directory to install header files to'),
+                    ('force', 'f',
+                     'force installation (overwrite existing files)'),
+                   ]
+  
+    boolean_options = ['force']
+  
+    def initialize_options(self):
+        self.install_dir = None
+        self.force = 0
+        self.outfiles = []
+  
+    def finalize_options(self):
+        self.set_undefined_options('install',
+                                   ('install_headers', 'install_dir'),
+                                   ('force', 'force'))
+  
+    def mkdir_and_copy_file(self, header):
+        if 'pb.h' in header:
+            install_dir = re.sub('${PADDLE_BINARY_DIR}/', '', header)
+        elif 'third_party' not in header:
+            # framework
+            install_dir = re.sub('@PADDLE_SOURCE_DIR@/', '', header)
+        else:
+            # third_party
+            install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)
+            patterns = ['eigen3/src/extern_eigen3', 'boost/src/extern_boost',
+                       'dlpack/src/extern_dlpack/include',
+                       'install/protobuf/include',
+                       'install/gflags/include',
+                       'install/glog/include', 'install/xxhash/include',
+                       'install/mkldnn/include',
+                       'threadpool/src/extern_threadpool']
+            for pattern in patterns:
+                install_dir = re.sub(pattern, '', install_dir)
+        install_dir = os.path.join(self.install_dir, os.path.dirname(install_dir))
+        if not os.path.exists(install_dir):
+            self.mkpath(install_dir)
+        return self.copy_file(header, install_dir)
+  
+    def run(self):
+        if os.name == 'nt' or sys.platform == 'darwin':
+            return
+        hdrs = self.distribution.headers
+        if not hdrs:
+            return
+        self.mkpath(self.install_dir)
+        for header in hdrs:
+            (out, _) = self.mkdir_and_copy_file(header)
+            self.outfiles.append(out)
+  
+    def get_inputs(self):
+        return self.distribution.headers or []
+  
+    def get_outputs(self):
+        return self.outfiles
+
+# we redirect setuptools log for non-windows
+if sys.platform != 'win32':
+    @contextmanager
+    def redirect_stdout():
+        f_log = open('${SETUP_LOG_FILE}', 'w')
+        origin_stdout = sys.stdout
+        sys.stdout = f_log
+        yield
+        f_log = sys.stdout
+        sys.stdout = origin_stdout
+        f_log.close()
+else:
+    @contextmanager
+    def redirect_stdout():
+        yield
+
+with redirect_stdout():
+    setup(name='${PACKAGE_NAME}',
+        version='${PADDLE_VERSION}',
+        description='Parallel Distributed Deep Learning',
+        install_requires=setup_requires,
+        packages=packages,
+        ext_modules=ext_modules,
+        package_data=package_data,
+        package_dir=package_dir,
+        scripts=paddle_bins,
+        distclass=BinaryDistribution,
+        headers=headers,
+        cmdclass={
+            'install_headers': InstallHeaders,
+            'install': InstallCommand,
+        }
+    )
+
+# As there are a lot of files in purelib which causes many logs,
+# we don't print them on the screen, and you can open `setup.py.log` 
+# for the full logs.
+if os.path.exists('${SETUP_LOG_FILE}'):
+    os.system('grep -v "purelib" ${SETUP_LOG_FILE}')

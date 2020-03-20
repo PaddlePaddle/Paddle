@@ -35,6 +35,14 @@ class UniqueOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", {-1});
     ctx->SetOutputDim("Index", in_dims);
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        platform::CPUPlace());
+  }
 };
 
 class UniqueOpMaker : public framework::OpProtoAndCheckerMaker {

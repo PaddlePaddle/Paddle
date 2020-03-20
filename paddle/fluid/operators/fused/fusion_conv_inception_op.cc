@@ -58,7 +58,8 @@ class ConvInceptionFusionOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>("Input")->type(), ctx.device_context());
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
   }
 };
 
@@ -96,7 +97,7 @@ class ConvInceptionFusionOpMaker : public framework::OpProtoAndCheckerMaker {
                  "allocated/freed each time the operator runs, larger "
                  "workspace size can increase performance but also requires "
                  "better hardware. This size should be chosen carefully.")
-        .SetDefault(platform::kDefaultConvWorkspaceSizeLimitMB);
+        .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
     AddComment(R"DOC(
 )DOC");
   }
@@ -106,6 +107,8 @@ class ConvInceptionFusionOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(conv2d_inception_fusion, ops::ConvInceptionFusionOp,
-                  ops::ConvInceptionFusionOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    conv2d_inception_fusion, ops::ConvInceptionFusionOp,
+    ops::ConvInceptionFusionOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

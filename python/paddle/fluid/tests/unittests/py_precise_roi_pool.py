@@ -133,8 +133,7 @@ class PyPrRoIPool(object):
                             s_h = math.floor(win_start_h)
                             e_h = math.ceil(win_end_h)
 
-                            c_in = (c * pooled_height + ph) * pooled_width + pw
-
+                            c_in = c
                             for w_iter in range(int(s_w), int(e_w)):
                                 for h_iter in range(int(s_h), int(e_h)):
                                     sum_out += self._PrRoIPoolingMatCalculation(

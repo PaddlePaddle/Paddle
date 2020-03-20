@@ -13,8 +13,9 @@
 # limitations under the License.
 
 from __future__ import print_function
-import unittest
-from paddle.fluid.tests.unittests.test_softmax_with_cross_entropy_op import TestSoftmaxWithCrossEntropyOp, TestSoftmaxWithCrossEntropyOp2, TestSoftmaxWithCrossEntropyOp3
+import unittest, sys
+sys.path.append("../")
+from test_softmax_with_cross_entropy_op import TestSoftmaxWithCrossEntropyOp, TestSoftmaxWithCrossEntropyOp2, TestSoftmaxWithCrossEntropyOp3
 
 if __name__ == "__main__":
     unittest.main()

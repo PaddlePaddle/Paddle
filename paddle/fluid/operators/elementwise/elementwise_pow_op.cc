@@ -17,21 +17,20 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class ElementwisePowOpGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ElementwisePowOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("elementwise_pow_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("Y", Input("Y"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetAttrMap(Attrs());
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
-    return op;
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetAttrMap(this->Attrs());
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
   }
 };
 class ElementwisePowOpMaker : public ElementwiseOpMaker {
@@ -54,7 +53,8 @@ class ElementwisePowOpMaker : public ElementwiseOpMaker {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(elementwise_pow, ops::ElementwiseOp,
                   ops::ElementwisePowOpMaker, ops::ElementwiseOpInferVarType,
-                  ops::ElementwisePowOpGradDescMaker);
+                  ops::ElementwisePowOpGradMaker<paddle::framework::OpDesc>,
+                  ops::ElementwisePowOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(elementwise_pow_grad, ops::ElementwiseOpGrad);
 
 REGISTER_OP_CPU_KERNEL(

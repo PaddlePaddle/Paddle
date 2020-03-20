@@ -51,7 +51,7 @@ class TestROIPoolOp(OpTest):
         self.pooled_height = 2
         self.pooled_width = 2
 
-        self.x = np.random.random(self.x_dim).astype('float32')
+        self.x = np.random.random(self.x_dim).astype('float64')
 
     def calc_roi_pool(self):
         out_data = np.zeros((self.rois_num, self.channels, self.pooled_height,
@@ -103,7 +103,7 @@ class TestROIPoolOp(OpTest):
                                     argmax_data[i, c, ph,
                                                 pw] = h * self.width + w
 
-        self.outs = out_data.astype('float32')
+        self.outs = out_data.astype('float64')
         self.argmaxes = argmax_data.astype('int64')
 
     def make_rois(self):
@@ -125,7 +125,7 @@ class TestROIPoolOp(OpTest):
                 roi = [bno, x1, y1, x2, y2]
                 rois.append(roi)
         self.rois_num = len(rois)
-        self.rois = np.array(rois).astype("float32")
+        self.rois = np.array(rois).astype("float64")
 
     def setUp(self):
         self.op_type = "roi_pool"

@@ -13,6 +13,7 @@
 # limitations under the License.
 from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import contextlib
+import sys
 import numpy as np
 from paddle.fluid import core
 from paddle.fluid import framework
@@ -23,14 +24,112 @@ import objgraph
 __all__ = [
     'no_grad',
     'guard',
+    'enable_dygraph',
+    'disable_dygraph',
+    'enabled',
     'to_variable',
 ]
 
 
-# This function should be removed in V1.6, because it can easily lead to cyclic dependencies.
+def _switch_to_static_graph_(func):
+    def __impl__(*args, **kwargs):
+        with framework._dygraph_guard(None):
+            return func(*args, **kwargs)
+
+    return __impl__
+
+
+switch_to_static_graph = wrap_decorator(_switch_to_static_graph_)
+
+
+@signature_safe_contextmanager
+def program_desc_tracing_guard(enable):
+    tracer = framework._dygraph_tracer()
+    if tracer:
+        original_val = tracer._enable_program_desc_tracing
+        tracer._enable_program_desc_tracing = enable
+    yield
+    if tracer:
+        tracer._enable_program_desc_tracing = original_val
+
+
+_functional_dygraph_context_manager = None
+
+
 def enabled():
-    # Internal use only
+    """
+    This function checks whether the program runs in dynamic graph mode or not.
+    You can enter dynamic graph mode with :ref:`api_fluid_dygraph_guard` api,
+    or enable and disable dynamic graph mode with :ref:`api_fluid_dygraph_enable`
+    and :ref:`api_fluid_dygraph_disable` api .
+
+    **Note**:
+        ``fluid.dygraph.enabled`` is the alias of ``fluid.in_dygraph_mode``, and
+        ``fluid.in_dygraph_mode`` is recommended to use.
+
+    Returns:
+        bool: Whether the program is running in dynamic graph mode.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            fluid.enable_dygraph()  # Now we are in dygragh mode
+            print(fluid.dygraph.enabled())  # True
+            fluid.disable_dygraph()
+            print(fluid.dygraph.enabled())  # False
+    """
     return framework.in_dygraph_mode()
+
+
+def enable_dygraph(place=None):
+    """
+    This function enables dynamic graph mode.
+
+    Parameters:
+        place(fluid.CPUPlace or fluid.CUDAPlace, optional): Place to execute dygraph.
+            If None, the running place will be determined according to the way of paddle compilation. Default: None
+
+    return:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            fluid.enable_dygraph()  # Now we are in dygragh mode
+            print(fluid.in_dygraph_mode())  # True
+            fluid.disable_dygraph()
+            print(fluid.in_dygraph_mode())  # False
+    """
+    global _functional_dygraph_context_manager
+    _functional_dygraph_context_manager = guard(place=place)
+    _functional_dygraph_context_manager.__enter__()
+
+
+def disable_dygraph():
+    """
+    This function disables dynamic graph mode.
+
+    return:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            fluid.enable_dygraph()  # Now we are in dygragh mode
+            print(fluid.in_dygraph_mode())  # True
+            fluid.disable_dygraph()
+            print(fluid.in_dygraph_mode())  # False
+    """
+    global _functional_dygraph_context_manager
+    if _functional_dygraph_context_manager is not None:
+        _functional_dygraph_context_manager.__exit__(*sys.exc_info())
+        _functional_dygraph_context_manager = None
 
 
 @contextlib.contextmanager
@@ -45,21 +144,12 @@ def _switch_tracer_mode_guard_(is_train=True):
         yield
 
 
-def _dygraph_not_support_(func):
-    def __impl__(*args, **kwargs):
-        assert not framework.in_dygraph_mode(
-        ), "We don't support %s in Dygraph mode" % func.__name__
-        return func(*args, **kwargs)
-
-    return __impl__
-
-
 def _no_grad_(func):
     """
     This Decorator will avoid the func being decorated creating backward network in dygraph mode
 
-    Args:
-        func: the func don't need grad
+    Parameter:
+        - **func** (python func): the func don't need grad
 
     Examples:
 
@@ -71,12 +161,12 @@ def _no_grad_(func):
         @fluid.dygraph.no_grad
         def test_layer():
             with fluid.dygraph.guard():
-                inp = np.ones([3, 32, 32], dtype='float32')
+                inp = np.ones([3, 1024], dtype='float32')
                 t = fluid.dygraph.base.to_variable(inp)
-                fc1 = fluid.FC('fc1', size=4, bias_attr=False, num_flatten_dims=1)
-                fc2 = fluid.FC('fc2', size=4)
-                ret = fc1(t)
-                dy_ret = fc2(ret)
+                linear1 = fluid.Linear(1024, 4, bias_attr=False)
+                linear2 = fluid.Linear(4, 4)
+                ret = linear1(t)
+                dy_ret = linear2(ret)
 
         test_layer()
 
@@ -92,16 +182,16 @@ def _no_grad_(func):
 no_grad = wrap_decorator(_no_grad_)
 # for fluidDoc
 no_grad.__doc__ = _no_grad_.__doc__
-_not_support = wrap_decorator(_dygraph_not_support_)
 
 
 @signature_safe_contextmanager
 def guard(place=None):
     """
-    This context will create a dygraph context for dygraph to run
+    This context will create a dygraph context for dygraph to run, using python ``with`` statement.
 
-    Args:
-        place(fluid.CPUPlace|fluid.CUDAPlace|None): Place to run
+    Parameters:
+        place(fluid.CPUPlace or fluid.CUDAPlace, optional): Place to execute dygraph. 
+            If None, the running place will be determined according to the way of paddle compilation. Default: None
 
     return:
         None
@@ -114,23 +204,25 @@ def guard(place=None):
         import paddle.fluid as fluid
 
         with fluid.dygraph.guard():
-            inp = np.ones([3, 32, 32], dtype='float32')
+            inp = np.ones([3, 1024], dtype='float32')
             t = fluid.dygraph.base.to_variable(inp)
-            fc1 = fluid.FC('fc1', size=4, bias_attr=False, num_flatten_dims=1)
-            fc2 = fluid.FC('fc2', size=4)
-            ret = fc1(t)
-            dy_ret = fc2(ret)
+            linear1 = fluid.Linear(1024, 4, bias_attr=False)
+            linear2 = fluid.Linear(4, 4)
+            ret = linear1(t)
+            dy_ret = linear2(ret)
 
     """
     train = framework.Program()
     startup = framework.Program()
     tracer = Tracer()
+    VarBase = core.VarBase
 
     if place is None:
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
+    tracer._expected_place = place
 
     with framework.program_guard(train, startup):
         with framework.unique_name.guard():
@@ -139,14 +231,14 @@ def guard(place=None):
                     yield
 
 
-def _print_debug_msg(limit=5, is_test=False):
+def _print_debug_msg(parameter_list, limit=5, is_test=False):
     if not core._is_dygraph_debug_enabled():
         logging.warn(
             'Debug mode is not enabled. Please set FLAGS_dygraph_debug=1 to enable debug'
         )
         return
     unique_name_size = len(framework.unique_name.generator.ids)
-    tracer_var_size = len(framework._dygraph_tracer()._vars)
+    tracer_var_size = len(parameter_list)
     alive_cpp_var_size = len(core.VarBase._alive_vars())
     if not is_test:
         logging.warn(
@@ -157,17 +249,19 @@ def _print_debug_msg(limit=5, is_test=False):
         return unique_name_size, tracer_var_size, alive_cpp_var_size
 
 
-def to_variable(value, block=None, name=None):
+@framework.dygraph_only
+def to_variable(value, name=None, zero_copy=None):
     """
-    This function will create a variable from ndarray
+    The API will create a ``Variable`` object from numpy\.ndarray or Variable object.
 
-    Args:
-        value(ndarray): the numpy value need to be convert
-        block(fluid.Block|None): which block this variable will be in
-        name(str|None): Name of Variable
+    Parameters:
+        value(ndarray|Variable): The numpy\.ndarray or Variable object that needs to be converted, it can be multi-dimension, and the data type is one of numpy\.{float16, float32, float64, int16, int32, int64, uint8, uint16}.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
+        zero_copy(bool, optional): Whether to share memory with the input numpy array. This parameter only works with CPUPlace and will be set to True when it is None. Default: None.
 
-    return:
-        Variable: The variable created from given numpy
+    Returns:
+        Variable: If ``value`` is a numpy\.ndarray object, return ``Tensor`` created from the specified numpy\.ndarray object, which has same data type and shape with ``value``. If ``value`` is a Variable object, just return ``value``.
+
 
     Examples:
 
@@ -176,31 +270,34 @@ def to_variable(value, block=None, name=None):
         import numpy as np
         import paddle.fluid as fluid
 
-        with fluid.dygraph.guard():
+        with fluid.dygraph.guard(fluid.CPUPlace()):
             x = np.ones([2, 2], np.float32)
+            y = fluid.dygraph.to_variable(x, zero_copy=False)
+            x[0][0] = -1
+            y[0][0].numpy()  # array([1.], dtype=float32)
             y = fluid.dygraph.to_variable(x)
+            x[0][0] = 0
+            y[0][0].numpy()  # array([0.], dtype=float32)
 
     """
     if isinstance(value, np.ndarray):
         assert framework.in_dygraph_mode(
         ), "to_variable could only be called in dygraph mode"
-
-        if not block:
-            block = framework.default_main_program().current_block()
-        py_var = framework.Variable(
-            block,
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            name=name,
-            shape=value.shape,
-            dtype=value.dtype,
-            stop_gradient=True)
-        var = py_var._ivar.value()
-        tensor = var.get_tensor()
-        if value.dtype == np.float16:
-            value = value.view(np.uint16)
-        tensor.set(value, framework._current_expected_place())
+        if isinstance(framework._current_expected_place(),
+                      framework.core.CPUPlace):
+            if zero_copy is None:
+                zero_copy = True
+        else:
+            assert not zero_copy, "zero_copy mode can only be used with CPUPlace"
+            zero_copy = False
+        py_var = core.VarBase(
+            value=value,
+            place=framework._current_expected_place(),
+            persistable=False,
+            zero_copy=zero_copy,
+            name=name if name else '')
         return py_var
-    elif isinstance(value, framework.Variable):
+    elif isinstance(value, (core.VarBase, framework.Variable)):
         return value
     else:
         raise TypeError(

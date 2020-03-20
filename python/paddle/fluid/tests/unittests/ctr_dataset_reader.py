@@ -14,9 +14,11 @@
 
 from __future__ import print_function
 
+import os
 import logging
 import tarfile
-import os
+
+import random
 
 import paddle
 import paddle.fluid.incubate.data_generator as data_generator
@@ -59,16 +61,38 @@ def load_lr_input_record(sent):
     return res
 
 
+class CtrReader(object):
+    def __init__(self):
+        pass
+
+    def _reader_creator(self, filelist):
+        def reader():
+            for file in filelist:
+                with open(file, 'r') as f:
+                    for line in f:
+                        fs = line.strip().split('\t')
+                        dnn_input = load_dnn_input_record(fs[0])
+                        lr_input = load_lr_input_record(fs[1])
+                        click = [int(fs[2])]
+                        yield [dnn_input] + [lr_input] + [click]
+
+        return reader
+
+
 class DatasetCtrReader(data_generator.MultiSlotDataGenerator):
     def generate_sample(self, line):
+        def get_rand(low=0.0, high=1.0):
+            return random.random()
+
         def iter():
-            fs = line.strip().split('\t')
-            dnn_input = load_dnn_input_record(fs[0])
-            lr_input = load_lr_input_record(fs[1])
-            click = [int(fs[2])]
-            yield ("dnn_data", dnn_input), \
-                  ("lr_data", lr_input), \
-                  ("click", click)
+            if get_rand() < 0.05:
+                fs = line.strip().split('\t')
+                dnn_input = load_dnn_input_record(fs[0])
+                lr_input = load_lr_input_record(fs[1])
+                click = [int(fs[2])]
+                yield ("dnn_data", dnn_input), \
+                      ("lr_data", lr_input), \
+                      ("click", click)
 
         return iter
 

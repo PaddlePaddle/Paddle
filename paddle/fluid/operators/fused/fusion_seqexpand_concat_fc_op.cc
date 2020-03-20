@@ -67,8 +67,8 @@ void FusionSeqExpandConcatFCOp::InferShape(
 
 framework::OpKernelType FusionSeqExpandConcatFCOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(ctx.MultiInput<LoDTensor>("X")[0]->type(),
-                                 ctx.device_context());
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.device_context());
 }
 
 void FusionSeqExpandConcatFCOpMaker::Make() {

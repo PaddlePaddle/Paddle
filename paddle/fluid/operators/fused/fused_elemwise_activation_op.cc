@@ -140,8 +140,8 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx.Input<framework::Tensor>("X")->type(),
                       ctx.Input<framework::Tensor>("Y")->type(),
                       "The element's type of input should be the same.");
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
@@ -220,14 +220,14 @@ The functor_list records the functions to be fused, for example
   }
 };
 
+template <typename T>
 class FusedElemwiseActivationGradMaker
-    : public framework::SingleGradOpDescMaker {
+    : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType(this->ForwardOpType() + "_grad");
 
     for (auto &input_param : this->InputNames()) {
@@ -249,16 +249,15 @@ class FusedElemwiseActivationGradMaker
     grad_op->SetAttr("functor_list", functor_names);
 
     if (boost::get<bool>(grad_op->GetAttr("save_intermediate_out"))) {
-      PADDLE_ENFORCE_NE(Output("IntermediateOut").size(), 0);
+      // PADDLE_ENFORCE_NE(Output("IntermediateOut").size(), 0);
       grad_op->SetInput("IntermediateOut", this->Output("IntermediateOut"));
       grad_op->SetOutput(framework::GradVarName("IntermediateOut"),
                          this->OutputGrad("IntermediateOut"));
     } else {
-      grad_op->SetInput("IntermediateOut", {});
-      grad_op->SetOutput(framework::GradVarName("IntermediateOut"), {});
+      grad_op->SetInput("IntermediateOut", this->EmptyOutput());
+      grad_op->SetOutput(framework::GradVarName("IntermediateOut"),
+                         this->EmptyOutputGrad());
     }
-
-    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 
@@ -328,17 +327,19 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("Y")->type(),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Y"), ctx.GetPlace());
   }
 };
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fused_elemwise_activation, ops::FusedElemwiseActivationOp,
-                  ops::FusedElemwiseActivationMaker,
-                  ops::FusedElemwiseActivationGradMaker);
+REGISTER_OPERATOR(
+    fused_elemwise_activation, ops::FusedElemwiseActivationOp,
+    ops::FusedElemwiseActivationMaker,
+    ops::FusedElemwiseActivationGradMaker<paddle::framework::OpDesc>,
+    ops::FusedElemwiseActivationGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fused_elemwise_activation_grad,
                   ops::FusedElemwiseActivationOpGrad);
 

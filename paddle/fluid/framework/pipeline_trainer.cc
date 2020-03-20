@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/trainer.h"
@@ -121,13 +121,27 @@ void PipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
 
 void PipelineTrainer::InitFirstScopeQueue(ScopeQueue* scope_queue,
                                           int pipeline_id,
-                                          const ProgramDesc& main_program) {
+                                          const ProgramDesc& main_program,
+                                          const Scope& root_scope) {
   for (int i = 0; i < scope_queue_size_; ++i) {
     Scope* scope = &pipeline_scopes_[pipeline_id]->NewScope();
     for (auto& var : main_program.Block(0).AllVars()) {
       if (!var->Persistable()) {
         auto* ptr = scope->Var(var->Name());
         InitializeVariable(ptr, var->GetType());
+      } else {
+        if (section_num_ == 1) {  // Means only one section and it must be
+                                  // CUDAPlace, so copy all persistable vars to
+                                  // pipeline scope
+          const LoDTensor& root_tensor =
+              root_scope.FindVar(var->Name())->Get<LoDTensor>();
+          LoDTensor* gpu_tensor = pipeline_scopes_[pipeline_id]
+                                      ->Var(var->Name())
+                                      ->GetMutable<LoDTensor>();
+          platform::Place place = platform::CUDAPlace(pipeline_id);
+          TensorCopy(*static_cast<const Tensor*>(&root_tensor), place,
+                     static_cast<Tensor*>(gpu_tensor));
+        }
       }
     }
     scope_queue->Send(scope);
@@ -154,6 +168,11 @@ void PipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   SectionWorker::cpu_id_.store(pipeline_config_.start_cpu_core_id());
   scope_queues_.resize(section_num_);
   pipeline_scopes_.resize(pipeline_num_);
+  for (auto& var : main_program.Block(0).AllVars()) {
+    if (var->Persistable()) {
+      persistable_vars_.push_back(var->Name());
+    }
+  }
 
   VLOG(3) << "Init ScopeQueues and create all scopes";
   for (int i = 0; i < section_num_; ++i) {
@@ -162,7 +181,8 @@ void PipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
       if (i == 0) {
         pipeline_scopes_[j] = &root_scope_->NewScope();
         CopyParameters(*root_scope_, j);
-        InitFirstScopeQueue(scope_queues_[0].back().get(), j, main_program);
+        InitFirstScopeQueue(scope_queues_[0].back().get(), j, main_program,
+                            *root_scope_);
       }
     }
   }
@@ -192,7 +212,7 @@ void PipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
     }
   }
 
-  if (pipeline_num_ > 1) {
+  if (pipeline_num_ > 1 && sync_steps_ != -1) {
     construct_sync_functor();
   }
 }
@@ -251,7 +271,7 @@ void PipelineTrainer::Finalize() {
   for (auto& th : section_threads_) {
     th.join();
   }
-  for (const auto& var : *param_need_sync_) {
+  for (const auto& var : persistable_vars_) {
     auto* root_tensor = root_scope_->Var(var)->GetMutable<LoDTensor>();
     // TODO(hutuxian): Add a final all-reduce?
     const auto& thread_tensor =
@@ -259,6 +279,10 @@ void PipelineTrainer::Finalize() {
     TensorCopySync(thread_tensor, platform::CPUPlace(), root_tensor);
   }
   root_scope_->DropKids();
+}
+
+Scope* PipelineTrainer::GetWorkerScope(int thread_id) {
+  return pipeline_scopes_[thread_id];
 }
 
 }  // end namespace framework

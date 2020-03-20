@@ -36,6 +36,7 @@ struct ExecutionStrategy {
   ExecutorType type_{kExperimental};
   // This debug option.
   bool dry_run_{false};
+  bool thread_barrier_{false};
 
   // only use with async_ssa_graph_executor
   // and pyreader with data queue

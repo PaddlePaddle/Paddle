@@ -175,63 +175,73 @@ class DeformableConvOp : public framework::OperatorWithKernel {
 
     std::vector<int64_t> output_shape({in_dims[0], filter_dims[0]});
     for (size_t i = 0; i < strides.size(); ++i) {
-      output_shape.push_back(ConvOutputSize(in_dims[i + 2], filter_dims[i + 2],
-                                            dilations[i], paddings[i],
-                                            strides[i]));
+      if ((!ctx->IsRuntime()) &&
+          (in_dims[i + 2] <= 0 || filter_dims[i + 2] <= 0)) {
+        output_shape.push_back(-1);
+      } else {
+        output_shape.push_back(ConvOutputSize(in_dims[i + 2],
+                                              filter_dims[i + 2], dilations[i],
+                                              paddings[i], strides[i]));
+      }
     }
+
     PADDLE_ENFORCE_EQ(output_shape[1] % deformable_groups, 0U,
                       "output num_filter must divide deformable group size.");
-    PADDLE_ENFORCE_EQ(output_shape[2], offset_dims[2],
-                      "output height must equal to offset map height.");
-    PADDLE_ENFORCE_EQ(output_shape[3], offset_dims[3],
-                      "output width must equal to offset map width.");
-    PADDLE_ENFORCE_EQ(offset_dims[1] % (filter_dims[2] * filter_dims[3]), 0U,
-                      "offset filter must divide deformable group size.");
-    PADDLE_ENFORCE_EQ(offset_dims[1] / (2 * filter_dims[2] * filter_dims[3]),
-                      deformable_groups,
-                      "offset filter must divide deformable group size.");
-    PADDLE_ENFORCE_EQ(output_shape[2], mask_dims[2],
-                      "output height must equal to mask map height.");
-    PADDLE_ENFORCE_EQ(output_shape[3], mask_dims[3],
-                      "output width must equal to mask map width.");
-    PADDLE_ENFORCE_EQ(mask_dims[1] % (filter_dims[2] * filter_dims[3]), 0U,
-                      "mask filter must divide deformable group size.");
-    PADDLE_ENFORCE_EQ(mask_dims[1] / (filter_dims[2] * filter_dims[3]),
-                      deformable_groups,
-                      "mask filter must divide deformable group size.");
+
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(output_shape[2], offset_dims[2],
+                        "output height must equal to offset map height.");
+      PADDLE_ENFORCE_EQ(output_shape[3], offset_dims[3],
+                        "output width must equal to offset map width.");
+      PADDLE_ENFORCE_EQ(offset_dims[1] % (filter_dims[2] * filter_dims[3]), 0U,
+                        "offset filter must divide deformable group size.");
+      PADDLE_ENFORCE_EQ(offset_dims[1] / (2 * filter_dims[2] * filter_dims[3]),
+                        deformable_groups,
+                        "offset filter must divide deformable group size.");
+      PADDLE_ENFORCE_EQ(output_shape[2], mask_dims[2],
+                        "output height must equal to mask map height.");
+      PADDLE_ENFORCE_EQ(output_shape[3], mask_dims[3],
+                        "output width must equal to mask map width.");
+
+      PADDLE_ENFORCE_EQ(mask_dims[1] % (filter_dims[2] * filter_dims[3]), 0U,
+                        "mask filter must divide deformable group size.");
+      PADDLE_ENFORCE_EQ(mask_dims[1] / (filter_dims[2] * filter_dims[3]),
+                        deformable_groups,
+                        "mask filter must divide deformable group size.");
+    }
+
     ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
   }
 };
 
-class DeformableConvGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class DeformableConvGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
-
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("deformable_conv_grad");
-    op->SetInput("Input", Input("Input"));
-    op->SetInput("Filter", Input("Filter"));
-    op->SetInput("Offset", Input("Offset"));
-    op->SetInput("Mask", Input("Mask"));
-    op->SetInput(framework::GradVarName("Output"), OutputGrad("Output"));
+    op->SetInput("Input", this->Input("Input"));
+    op->SetInput("Filter", this->Input("Filter"));
+    op->SetInput("Offset", this->Input("Offset"));
+    op->SetInput("Mask", this->Input("Mask"));
+    op->SetInput(framework::GradVarName("Output"), this->OutputGrad("Output"));
 
-    op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
-    op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
-    op->SetOutput(framework::GradVarName("Offset"), InputGrad("Offset"));
-    op->SetOutput(framework::GradVarName("Mask"), InputGrad("Mask"));
+    op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
+    op->SetOutput(framework::GradVarName("Filter"), this->InputGrad("Filter"));
+    op->SetOutput(framework::GradVarName("Offset"), this->InputGrad("Offset"));
+    op->SetOutput(framework::GradVarName("Mask"), this->InputGrad("Mask"));
 
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -264,8 +274,9 @@ class DeformableConvGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
   }
 };
 }  // namespace operators
@@ -274,7 +285,9 @@ class DeformableConvGradOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(deformable_conv, ops::DeformableConvOp,
                   ops::DeformableConvOpMaker,
-                  ops::DeformableConvGradOpDescMaker);
+                  ops::DeformableConvGradOpMaker<paddle::framework::OpDesc>,
+                  ops::DeformableConvGradOpMaker<paddle::imperative::OpBase>);
+
 REGISTER_OPERATOR(deformable_conv_grad, ops::DeformableConvGradOp);
 
 REGISTER_OP_CPU_KERNEL(deformable_conv, ops::DeformableConvCPUKernel<float>,

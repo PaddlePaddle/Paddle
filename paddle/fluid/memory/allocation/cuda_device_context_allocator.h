@@ -81,7 +81,8 @@ class CUDADeviceContextAllocator : public Allocator {
     platform::CUDADeviceGuard guard(place_.device);
     PADDLE_ENFORCE_CUDA_SUCCESS(
         cudaEventCreate(&event_, cudaEventDisableTiming),
-        "Create event failed in CUDADeviceContextAllocator");
+        platform::errors::External(
+            "Create event failed in CUDADeviceContextAllocator"));
   }
 
   ~CUDADeviceContextAllocator() {

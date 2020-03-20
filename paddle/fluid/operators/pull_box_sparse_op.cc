@@ -79,19 +79,18 @@ or not. And the output only shares the LoD information with input Ids.
   }
 };
 
-class PushBoxSparseOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class PushBoxSparseOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("push_box_sparse");
-    op->SetInput("Ids", Input("Ids"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("Ids", this->Input("Ids"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -104,10 +103,9 @@ class PushBoxSparseOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.MultiInput<framework::Tensor>(framework::GradVarName("Out"))[0]
-            ->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 }  // namespace operators
@@ -115,7 +113,9 @@ class PushBoxSparseOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(pull_box_sparse, ops::PullBoxSparseOp,
-                  ops::PullBoxSparseOpMaker, ops::PushBoxSparseOpDescMaker);
+                  ops::PullBoxSparseOpMaker,
+                  ops::PushBoxSparseOpMaker<paddle::framework::OpDesc>,
+                  ops::PushBoxSparseOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(push_box_sparse, ops::PushBoxSparseOp);
 REGISTER_OP_CPU_KERNEL(pull_box_sparse, ops::PullBoxSparseCPUKernel<float>)
 REGISTER_OP_CPU_KERNEL(push_box_sparse, ops::PushBoxSparseCPUKernel<float>)

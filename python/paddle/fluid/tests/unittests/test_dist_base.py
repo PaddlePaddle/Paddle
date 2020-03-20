@@ -36,6 +36,7 @@ import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
 RUN_STEP = 5
 DEFAULT_BATCH_SIZE = 2
+DIST_UT_PORT = 0
 
 
 def print_to_out(out_losses):
@@ -75,11 +76,14 @@ class TestDistRunnerBase(object):
                        sync_mode,
                        dc_asgd=False,
                        current_endpoint=None,
-                       nccl_comm_num=1):
+                       nccl_comm_num=1,
+                       hogwild_mode=False):
         # NOTE: import fluid until runtime, or else forking processes will cause error.
         config = fluid.DistributeTranspilerConfig()
         config.enable_dc_asgd = dc_asgd
         config.sync_mode = sync_mode
+        config.runtime_split_send_recv = hogwild_mode
+
         if nccl_comm_num > 1:
             config.nccl_comm_num = nccl_comm_num
         # config.runtime_split_send_recv = True
@@ -89,6 +93,7 @@ class TestDistRunnerBase(object):
             program=main_program,
             pservers=pserver_endpoints,
             trainers=trainers,
+            sync_mode=sync_mode,
             current_endpoint=current_endpoint)
         return t
 
@@ -96,9 +101,15 @@ class TestDistRunnerBase(object):
         self.lr = args.lr
         self.get_model(batch_size=args.batch_size)
         # NOTE: pserver should not call memory optimize
-        t = self.get_transpiler(args.trainer_id,
-                                fluid.default_main_program(), args.endpoints,
-                                args.trainers, args.sync_mode, args.dc_asgd)
+
+        t = self.get_transpiler(
+            trainer_id=args.trainer_id,
+            main_program=fluid.default_main_program(),
+            pserver_endpoints=args.endpoints,
+            trainers=args.trainers,
+            sync_mode=args.sync_mode,
+            dc_asgd=args.dc_asgd,
+            hogwild_mode=args.hogwild)
         pserver_prog = t.get_pserver_program(args.current_endpoint)
         startup_prog = t.get_startup_program(args.current_endpoint,
                                              pserver_prog)
@@ -120,21 +131,23 @@ class TestDistRunnerBase(object):
 
         dist_strategy = DistributedStrategy()
         dist_strategy.exec_strategy = exec_strategy
-        dist_strategy.fuse_memory_size = 1  #MB
+        dist_strategy.fuse_memory_size = 1  # MB
         dist_strategy.fuse_laryer_size = 1
         if args.use_local_sgd:
             dist_strategy.use_local_sgd = True
         if args.ut4grad_allreduce:
             dist_strategy._ut4grad_allreduce = True
+        if args.sync_batch_norm:
+            dist_strategy.sync_batch_norm = True
 
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         print_to_err("gpu_fleet", "fleet.node_num:")
-        #"fleet.node_id:", fleet.node_id(),
-        #"fleet.trainer_num:", fleet.worker_num())
+        # "fleet.node_id:", fleet.node_id(),
+        # "fleet.trainer_num:", fleet.worker_num())
 
         test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
-                self.get_model(batch_size=args.batch_size, dist_strategy=dist_strategy)
+            self.get_model(batch_size=args.batch_size, dist_strategy=dist_strategy)
 
         trainer_prog = fleet._origin_program
         dist_prog = fleet.main_program
@@ -150,6 +163,13 @@ class TestDistRunnerBase(object):
             var for var in trainer_prog.global_block().vars.values()
             if var.is_data
         ]
+
+        eprint("feed_var_list:", feed_var_list)
+
+        # tmp add this code to pass python35 gcc8 CI
+        # Fixme(gongweibao, wangxi), need fix fleet api program order
+        if feed_var_list[0].name == 'label':
+            feed_var_list = feed_var_list[::-1]
 
         feeder = fluid.DataFeeder(feed_var_list, place)
         reader_generator = train_reader()
@@ -180,6 +200,36 @@ class TestDistRunnerBase(object):
         else:
             sys.stdout.buffer.write(pickle.dumps(out_losses))
 
+        if args.save_model:
+            model_save_dir = "/tmp"
+            if fleet.worker_index() == 0:
+                model_save_dir_fluid = os.path.join(model_save_dir,
+                                                    "fluid_persistables")
+                model_save_dir_fleet = os.path.join(model_save_dir,
+                                                    "fleet_persistables")
+                infer_save_dir_fluid = os.path.join(model_save_dir,
+                                                    "fluid_infer")
+                infer_save_dir_fleet = os.path.join(model_save_dir,
+                                                    "fleet_infer")
+            else:
+                model_save_dir_fluid = os.path.join(model_save_dir,
+                                                    "fluid_persistables_2")
+                model_save_dir_fleet = os.path.join(model_save_dir,
+                                                    "fleet_persistables_2")
+                infer_save_dir_fluid = os.path.join(model_save_dir,
+                                                    "fluid_infer_2")
+                infer_save_dir_fleet = os.path.join(model_save_dir,
+                                                    "fleet_infer_2")
+            fluid.io.save_persistables(exe, model_save_dir_fluid,
+                                       fleet._origin_program)
+            fleet.save_persistables(executor=exe, dirname=model_save_dir_fleet)
+            feeded_var_names = [var.name for var in feed_var_list]
+            fluid.io.save_inference_model(infer_save_dir_fluid,
+                                          feeded_var_names, [avg_cost], exe,
+                                          fleet._origin_program)
+            fleet.save_inference_model(exe, infer_save_dir_fleet,
+                                       feeded_var_names, [avg_cost])
+
     def run_trainer(self, args):
         self.lr = args.lr
         if args.nccl2_reduce_layer_local_run:
@@ -196,10 +246,15 @@ class TestDistRunnerBase(object):
             print_to_err(
                 type(self).__name__,
                 "begin to run transpile on trainer with pserver mode")
-            t = self.get_transpiler(args.trainer_id,
-                                    fluid.default_main_program(),
-                                    args.endpoints, args.trainers,
-                                    args.sync_mode, args.dc_asgd)
+            t = self.get_transpiler(
+                trainer_id=args.trainer_id,
+                main_program=fluid.default_main_program(),
+                pserver_endpoints=args.endpoints,
+                trainers=args.trainers,
+                sync_mode=args.sync_mode,
+                dc_asgd=args.dc_asgd,
+                hogwild_mode=args.hogwild)
+
             trainer_prog = t.get_trainer_program()
             print_to_err(
                 type(self).__name__,
@@ -233,6 +288,9 @@ class TestDistRunnerBase(object):
             trainer_prog = fluid.default_main_program()
             print_to_err(type(self).__name__, "use main program done.")
 
+        # FIXME(gongwb):wait pserver initialization.
+        time.sleep(1)
+
         if args.use_cuda:
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
             place = fluid.CUDAPlace(device_id)
@@ -250,6 +308,9 @@ class TestDistRunnerBase(object):
         # FIXME force disable enable_inplace and memory_optimize
         build_stra.enable_inplace = False
         build_stra.memory_optimize = False
+
+        if args.hogwild:
+            build_stra.async_mode = True
 
         if args.enable_backward_deps:
             build_stra.enable_backward_optimizer_op_deps = True
@@ -411,6 +472,8 @@ def runtime_main(test_class):
     parser.add_argument('--use_dgc', action='store_true')
     parser.add_argument('--use_reduce', action='store_true')
     parser.add_argument('--dc_asgd', action='store_true')
+    parser.add_argument('--hogwild', action='store_true')
+    parser.add_argument('--save_model', action='store_true')
     parser.add_argument(
         '--use_reader_alloc', action='store_true', required=False)
     parser.add_argument('--batch_size', required=False, type=int, default=2)
@@ -422,6 +485,7 @@ def runtime_main(test_class):
         required=False,
         type=bool,
         default=False)
+    parser.add_argument('--sync_batch_norm', action='store_true')
 
     args = parser.parse_args()
 
@@ -463,10 +527,9 @@ class TestDistBase(unittest.TestCase):
         self._trainers = 2
         self._pservers = 2
         self._port_set = set()
-        self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
-            self._find_free_port(), self._find_free_port())
         self._python_interp = sys.executable
         self._sync_mode = True
+        self._hogwild_mode = False
         self._enforce_place = None
         self._use_reduce = False
         self._dc_asgd = False  # must use with async mode
@@ -487,7 +550,22 @@ class TestDistBase(unittest.TestCase):
         self._use_local_sgd = False
         self._ut4grad_allreduce = False
         self._use_hallreduce = False
+        self._save_model = False
         self._setup_config()
+
+        global DIST_UT_PORT
+        if DIST_UT_PORT == 0 and os.getenv("PADDLE_DIST_UT_PORT"):
+            DIST_UT_PORT = int(os.getenv("PADDLE_DIST_UT_PORT"))
+
+        if DIST_UT_PORT == 0:
+            self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+                self._find_free_port(), self._find_free_port())
+        else:
+            print("set begin_port:", DIST_UT_PORT)
+            self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+                DIST_UT_PORT, DIST_UT_PORT + 1)
+            DIST_UT_PORT += 2
+
         self._after_setup_config()
 
     def _find_free_port(self):
@@ -505,7 +583,11 @@ class TestDistBase(unittest.TestCase):
                 self._port_set.add(port)
                 return port
 
-    def start_pserver(self, model_file, check_error_log, required_envs):
+    def start_pserver(self,
+                      model_file,
+                      check_error_log,
+                      required_envs,
+                      log_name=""):
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
         ps_cmd = "%s"
 
@@ -528,8 +610,8 @@ class TestDistBase(unittest.TestCase):
 
         print(ps0_cmd)
         print(ps1_cmd)
-        ps0_pipe = open("/tmp/ps0_err.log", "wb")
-        ps1_pipe = open("/tmp/ps1_err.log", "wb")
+        ps0_pipe = open(log_name + "_ps0_err.log", "wb")
+        ps1_pipe = open(log_name + "_ps1_err.log", "wb")
 
         print_to_err(type(self).__name__, "going to start pserver process 0")
         ps0_proc = subprocess.Popen(
@@ -551,7 +633,9 @@ class TestDistBase(unittest.TestCase):
                    envs,
                    check_error_log=False,
                    batch_size=DEFAULT_BATCH_SIZE,
-                   batch_merge_repeat=1):
+                   batch_merge_repeat=1,
+                   log_name="",
+                   gpus="0"):
 
         cmd = self._python_interp
 
@@ -571,18 +655,22 @@ class TestDistBase(unittest.TestCase):
         if self.__use_cuda:
             cmd += " --use_cuda"
             env_local = {
-                "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_VISIBLE_DEVICES": gpus,
                 "PADDLE_TRAINERS_NUM": "1",
                 "PADDLE_TRAINER_ID": "0"
             }
         else:
             env_local = {'CPU_NUM': '1'}
 
+        # not use dgc in single card
+        if len(gpus) > 1 and self._use_dgc:
+            cmd += " --use_dgc"
+
         env_local.update(envs)
         print("local_cmd: {}, env: {}".format(cmd, env_local))
 
         if check_error_log:
-            err_log = open("/tmp/trainer.err.log", "wb")
+            err_log = open(log_name + "_local.log", "wb")
             local_proc = subprocess.Popen(
                 cmd.split(" "),
                 stdout=subprocess.PIPE,
@@ -605,10 +693,10 @@ class TestDistBase(unittest.TestCase):
 
         return pickle.loads(local_out)
 
-    def _run_cluster(self, model, envs, check_error_log):
+    def _run_cluster(self, model, envs, check_error_log, log_name):
         # Run dist train to compare with local results
-        ps0, ps1, ps0_pipe, ps1_pipe = self.start_pserver(model,
-                                                          check_error_log, envs)
+        ps0, ps1, ps0_pipe, ps1_pipe = self.start_pserver(
+            model, check_error_log, envs, log_name=log_name)
 
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
 
@@ -630,6 +718,9 @@ class TestDistBase(unittest.TestCase):
         if self._sync_mode:
             tr0_cmd += " --sync_mode"
             tr1_cmd += " --sync_mode"
+        if self._hogwild_mode:
+            tr0_cmd += " --hogwild"
+            tr1_cmd += " --hogwild"
         if self._use_reduce:
             tr0_cmd += " --use_reduce"
             tr1_cmd += " --use_reduce"
@@ -650,8 +741,8 @@ class TestDistBase(unittest.TestCase):
 
         print("tr0_cmd: {}, env: {}".format(tr0_cmd, env0))
         print("tr1_cmd: {}, env: {}".format(tr1_cmd, env1))
-        tr0_pipe = open("/tmp/tr0_err.log", "wb")
-        tr1_pipe = open("/tmp/tr1_err.log", "wb")
+        tr0_pipe = open(log_name + "_tr0_err.log", "wb")
+        tr1_pipe = open(log_name + "_tr1_err.log", "wb")
 
         print_to_err(type(self).__name__, "going to start trainer process 0")
         tr0_proc = subprocess.Popen(
@@ -703,17 +794,19 @@ class TestDistBase(unittest.TestCase):
         tr_cmd += " %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --update_method %s --lr %f"
 
         tr_cmd = tr_cmd % \
-                  (self._python_interp, model, self._ps_endpoints,
-                   trainer_id, ep, update_method, self._lr)
+                 (self._python_interp, model, self._ps_endpoints,
+                  trainer_id, ep, update_method, self._lr)
 
         if self._use_reduce:
             tr_cmd += " --use_reduce"
         if self._use_reader_alloc:
             tr_cmd += " --use_reader_alloc"
+        if self._save_model:
+            tr_cmd += " --save_model"
         if self.__use_cuda:
             tr_cmd += " --use_cuda"
             env.update({
-                "CUDA_VISIBLE_DEVICES": "{}".format(trainer_id),
+                "CUDA_VISIBLE_DEVICES": "{}".format(trainer_id % 2),
                 "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
                 "PADDLE_TRAINER_ID": "{}".format(trainer_id),
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
@@ -726,7 +819,7 @@ class TestDistBase(unittest.TestCase):
             tr_cmd += " --use_dgc"
 
         if self._mp_mode:
-            env = {"FLAGS_selected_gpus": "{}".format(trainer_id)}
+            env = {"FLAGS_selected_gpus": "{}".format(trainer_id % 2)}
 
         if self._nccl_comm_num > 1:
             tr_cmd += " --nccl_comm_num {}".format(self._nccl_comm_num)
@@ -743,6 +836,8 @@ class TestDistBase(unittest.TestCase):
                 tr_cmd += " --use_local_sgd"
             if self._ut4grad_allreduce:
                 tr_cmd += " --ut4grad_allreduce"
+            if hasattr(self, '_sync_batch_norm') and self._sync_batch_norm:
+                tr_cmd += " --sync_batch_norm"
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             env['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
@@ -750,11 +845,19 @@ class TestDistBase(unittest.TestCase):
         return tr_cmd, env
 
     def _run_cluster_nccl2(self, model, envs, nccl2_reduce_layer,
-                           check_error_log):
+                           check_error_log, log_name):
         if self._use_hallreduce:
             self._ps_endpoints = ""
-            for i in range(0, 4):
-                self._ps_endpoints += "127.0.0.1:%s," % (self._find_free_port())
+
+            global DIST_UT_PORT
+            if DIST_UT_PORT == 0:
+                for i in range(0, 4):
+                    self._ps_endpoints += "127.0.0.1:%s," % (
+                        self._find_free_port())
+            else:
+                for i in range(0, 4):
+                    self._ps_endpoints += "127.0.0.1:%s," % (DIST_UT_PORT + i)
+                DIST_UT_PORT += 4
             self._ps_endpoints = self._ps_endpoints[:-1]
 
         # NOTE: we reuse ps_endpoints as nccl2 worker endpoints
@@ -775,7 +878,7 @@ class TestDistBase(unittest.TestCase):
             print("use_hallreduce:{} tr_cmd:{}, env: {}".format(
                 self._use_hallreduce, tr_cmd, tr_env))
 
-            tr_pipe = open("/tmp/tr{}_err.log".format(i), "wb")
+            tr_pipe = open(log_name + "_tr{}_err.log".format(i), "wb")
 
             print_to_err(
                 type(self).__name__,
@@ -801,11 +904,7 @@ class TestDistBase(unittest.TestCase):
             print("outs[1]:", outs[1])
         return pickle.loads(outs[0]), pickle.loads(outs[1])
 
-    def check_with_place(self,
-                         model_file,
-                         delta=1e-3,
-                         check_error_log=False,
-                         need_envs={}):
+    def _get_required_envs(self, check_error_log=False, need_envs={}):
         # TODO(typhoonzero): should auto adapt GPU count on the machine.
         required_envs = {
             "PATH": os.getenv("PATH", ""),
@@ -813,31 +912,54 @@ class TestDistBase(unittest.TestCase):
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
             "FLAGS_rpc_deadline": "30000",  # 5sec to fail fast
+            "FLAGS_rpc_retry_bind_port": "50",
             "FLAGS_cudnn_deterministic": "1",
+            "FLAGS_rpc_disable_reuse_port": "1",
             "http_proxy": "",
             "NCCL_P2P_DISABLE": "1",
             "NCCL_SHM_DISABLE": "1"
         }
 
-        required_envs.update(need_envs)
-
         if check_error_log:
-            required_envs["GLOG_v"] = "10"
+            required_envs["GLOG_vmodule"] = \
+                "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10," \
+                "alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10,executor=10,operator=10," \
+                "sparse_all_reduce_op_handle=10,gen_nccl_id_op=10,nccl_helper=10,grpc_client=10,grpc_server=10,request_handler_impl=10"
             required_envs["GLOG_logtostderr"] = "1"
 
-        local_losses\
+        required_envs.update(need_envs)
+        return required_envs
+
+    def check_with_place(self,
+                         model_file,
+                         delta=1e-3,
+                         check_error_log=False,
+                         need_envs={},
+                         log_name=""):
+        required_envs = self._get_required_envs(check_error_log, need_envs)
+
+        local_losses \
             = self._run_local(model_file, required_envs,
-                                check_error_log)
+                              check_error_log, log_name=log_name)
+
         if self._nccl2_mode:
             if self._nccl2_reduce_layer:
                 tr0_losses, tr1_losses = self._run_cluster_nccl2(
-                    model_file, required_envs, True, check_error_log)
+                    model_file,
+                    required_envs,
+                    True,
+                    check_error_log,
+                    log_name=log_name)
             else:
                 tr0_losses, tr1_losses = self._run_cluster_nccl2(
-                    model_file, required_envs, False, check_error_log)
+                    model_file,
+                    required_envs,
+                    False,
+                    check_error_log,
+                    log_name=log_name)
         else:
             tr0_losses, tr1_losses = self._run_cluster(
-                model_file, required_envs, check_error_log)
+                model_file, required_envs, check_error_log, log_name=log_name)
 
         for step_id in range(RUN_STEP):
             local_loss = local_losses[step_id]
@@ -846,3 +968,38 @@ class TestDistBase(unittest.TestCase):
             dist_loss = (np.array([tr0_loss]) + np.array([tr1_loss])) / 2
             print("=======", local_loss, ":", dist_loss[0], "=======")
             self.assertAlmostEqual(local_loss, dist_loss[0], delta=delta)
+
+    def check_with_place_multi_cards(self,
+                                     model_file,
+                                     delta=1e-3,
+                                     check_error_log=False,
+                                     need_envs={},
+                                     log_name=""):
+        # need open p2p or shm otherwise multi cards mode will hang
+        need_envs.update({"NCCL_P2P_DISABLE": "0", "NCCL_SHM_DISABLE": "0"})
+
+        required_envs = self._get_required_envs(check_error_log, need_envs)
+
+        if self._use_dgc:
+            multi_cards_losses = self._run_local(
+                model_file,
+                required_envs,
+                check_error_log,
+                log_name=log_name + "_dgc_2cards",
+                gpus="0,1")
+
+            self._use_dgc = False
+            base_losses = self._run_local(
+                model_file,
+                required_envs,
+                check_error_log,
+                log_name=log_name + "_base_2cards",
+                gpus="0,1")
+
+            self._use_dgc = True
+
+            for step_id in range(RUN_STEP):
+                base_loss = base_losses[step_id]
+                multi_cards_loss = multi_cards_losses[step_id]
+                print("=======", base_loss, ":", multi_cards_loss, "=======")
+                self.assertAlmostEqual(base_loss, multi_cards_loss, delta=delta)

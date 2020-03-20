@@ -41,21 +41,22 @@ class ClipOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(Tensor)The input of clip op."
-             "The number of dimensions must be between [1, 9].");
-    AddOutput("Out", "(Tensor)The output of clip op with shape as input(X)");
-    AddAttr<AttrType>(
-        "min", "(float)Minimum value, under which element is replaced by min.");
-    AddAttr<AttrType>(
-        "max", "(float)Maximum value, above which element is replaced by max");
+             "Tensor, the input of clip op, data type should be float32 or "
+             "float64.");
+    AddOutput(
+        "Out",
+        "Tensor, the clipped tensor, with the same shape and data type as "
+        "input(x)");
+    AddAttr<AttrType>("min", "float number, the minimum value to clip by.");
+    AddAttr<AttrType>("max", "float number, the maximum value to clip by.");
     AddComment(R"DOC(
 Clip Operator.
 
-The clip operator limits the value of given input within an interval. The
-interval is specified with arguments 'min' and 'max':
+The clip operator limits the value of given input within an interval [min, max], 
+just as the following equation,
 
 $$
-Out = \min(\max(X, min), max)
+Out = \MIN(\MAX(x, min), max)
 $$
 
 )DOC");
@@ -77,19 +78,18 @@ class ClipOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class ClipGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ClipGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("clip_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -103,9 +103,13 @@ DECLARE_INPLACE_OP_INFERER(ClipGradInplaceInferer,
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(clip, ops::ClipOp, ops::ClipOpMaker<float>,
-                  ops::ClipGradOpDescMaker, ops::ClipInplaceInferer);
+                  ops::ClipGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ClipGradOpMaker<paddle::imperative::OpBase>,
+                  ops::ClipInplaceInferer);
 REGISTER_OPERATOR(clip_grad, ops::ClipOpGrad, ops::ClipGradInplaceInferer);
 REGISTER_OP_CPU_KERNEL(
-    clip, ops::ClipKernel<paddle::platform::CPUDeviceContext, float>);
+    clip, ops::ClipKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ClipKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
-    clip_grad, ops::ClipGradKernel<paddle::platform::CPUDeviceContext, float>);
+    clip_grad, ops::ClipGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ClipGradKernel<paddle::platform::CPUDeviceContext, double>);

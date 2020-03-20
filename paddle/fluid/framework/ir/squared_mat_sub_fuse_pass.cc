@@ -240,7 +240,8 @@ PDNode* BuildSquaredMatSubPattern(PDPattern* pattern,
       return false;
     }
     for (auto* in : x->inputs) {
-      if (in && in->inputs[0] && is_fusion_sub_op(in->inputs[0])) {
+      if (in && in->inputs.size() > 0 && in->inputs[0] &&
+          is_fusion_sub_op(in->inputs[0])) {
         return true;
       }
     }
@@ -262,7 +263,7 @@ PDNode* BuildSquaredMatSubPattern(PDPattern* pattern,
   auto* constant_op_out = pattern->NewNode(
       [=](Node* x) {
         return x && x->IsVar() && var_is_op_input(x, "elementwise_mul") &&
-               x->inputs[0] && x->inputs[0]->IsOp() &&
+               x->inputs.size() > 0 && x->inputs[0] && x->inputs[0]->IsOp() &&
                x->inputs[0]->Op()->Type() == "fill_constant" && x->outputs[0] &&
                is_fusion_element_op(x->outputs[0]);
       },

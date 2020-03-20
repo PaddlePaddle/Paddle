@@ -26,7 +26,9 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler
 
-from op_test import OpTest
+from op_test import OpTest, _set_use_system_allocator
+
+_set_use_system_allocator(True)
 
 
 def create_or_get_tensor(scope, var_name, var, place):

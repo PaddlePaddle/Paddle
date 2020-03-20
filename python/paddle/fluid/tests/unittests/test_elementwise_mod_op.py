@@ -71,10 +71,10 @@ class TestElementwiseModOpFloat(TestElementwiseModOp):
     def init_input_output(self):
         self.x = np.random.uniform(-1000, 1000, [10, 10]).astype(self.dtype)
         self.y = np.random.uniform(-100, 100, [10, 10]).astype(self.dtype)
-        self.out = np.fmod(self.x, self.y)
+        self.out = np.fmod(self.y + np.fmod(self.x, self.y), self.y)
 
     def test_check_output(self):
-        self.check_output(atol=2e-5)
+        self.check_output()
 
 
 class TestElementwiseModOpDouble(TestElementwiseModOpFloat):

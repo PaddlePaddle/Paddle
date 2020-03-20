@@ -11,19 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-
-OPTION(WITH_LIBXSMM "Compile with libxsmm" OFF)
-
-IF(NOT WITH_LIBXSMM)
-    return()
-ENDIF()
-
-IF(WIN32 OR APPLE)
-    MESSAGE(WARNING "Windows, Mac are not supported with libxsmm in Paddle yet.")
-    SET(WITH_LIBXSMM OFF CACHE STRING "Disable LIBXSMM" FORCE)
-    return()
-ENDIF()
 
 INCLUDE (ExternalProject)
 
@@ -36,6 +23,7 @@ SET(LIBXSMM_LIBS        "${LIBXSMM_LIBRARY_DIR}/libxsmm.a"
 
 ExternalProject_Add(
     extern_libxsmm
+    ${SHALLOW_CLONE}
     GIT_REPOSITORY  "https://github.com/hfp/libxsmm.git"
     GIT_TAG         "7cc03b5b342fdbc6b6d990b190671c5dbb8489a2"
     PREFIX          ${LIBXSMM_SOURCES_DIR}

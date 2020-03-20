@@ -44,35 +44,35 @@ def crop(data, offsets, crop_shape):
 class TestCropTensorOp(OpTest):
     def setUp(self):
         self.op_type = "crop_tensor"
-        self.crop_by_1D_shape = False
+        self.shape_by_input = False
         self.offset_by_input = False
         self.unk_dim_idx = -1
         self.attrs = {}
         self.initTestCase()
 
-        if self.crop_by_1D_shape:
+        if self.shape_by_input:
             self.inputs = {
-                'X': np.random.random(self.x_shape).astype("float32"),
+                'X': np.random.random(self.x_shape).astype("float64"),
                 'Shape': np.array(self.crop_shape).astype("int32")
             }
         else:
             self.attrs['shape'] = self.crop_shape
             self.inputs = {
-                'X': np.random.random(self.x_shape).astype("float32"),
+                'X': np.random.random(self.x_shape).astype("float64"),
             }
         if self.offset_by_input:
             self.inputs['Offsets'] = np.array(self.offsets).astype('int32')
         else:
             self.attrs['offsets'] = self.offsets
 
-        if self.unk_dim_idx != -1:
-            self.crop_shape[self.unk_dim_idx] = self.x_shape[self.unk_dim_idx]
-        self.outputs = {
-            'Out': crop(self.inputs['X'], self.offsets, self.crop_shape)
-        }
+        crop_shape = [val for val in self.crop_shape]
+        for i in range(len(self.crop_shape)):
+            if self.crop_shape[i] == -1:
+                crop_shape[i] = self.x_shape[i] - self.offsets[i]
+        self.outputs = {'Out': crop(self.inputs['X'], self.offsets, crop_shape)}
 
     def initTestCase(self):
-        self.x_shape = (8, 8)
+        self.x_shape = (10, 10)
         self.crop_shape = [2, 2]
         self.offsets = [1, 2]
 
@@ -80,7 +80,7 @@ class TestCropTensorOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.006)
+        self.check_grad(['X'], 'Out')
 
 
 class TestCase1(TestCropTensorOp):
@@ -93,9 +93,8 @@ class TestCase1(TestCropTensorOp):
 class TestCase2(TestCropTensorOp):
     def initTestCase(self):
         self.x_shape = (12, 24)
-        self.crop_shape = [-1, 8]  #only the first dimension (batch) can be -1
+        self.crop_shape = [-1, 8]
         self.offsets = [0, 0]
-        self.unk_dim_idx = 0
 
 
 class TestCase3(TestCropTensorOp):
@@ -103,16 +102,15 @@ class TestCase3(TestCropTensorOp):
         self.x_shape = (4, 8, 16)
         self.crop_shape = [2, 2, 3]
         self.offsets = [1, 5, 3]
-        self.crop_by_1D_shape = True
+        self.shape_by_input = True
 
 
 class TestCase4(TestCropTensorOp):
     def initTestCase(self):
         self.x_shape = (8, 3, 6, 6)
-        self.crop_shape = [-1, 3, 4, 4]
-        self.offsets = [0, 0, 0, 0]
-        self.crop_by_1D_shape = True
-        self.unk_dim_idx = 0
+        self.crop_shape = [-1, 3, -1, 4]
+        self.offsets = [0, 0, 1, 0]
+        self.shape_by_input = True
 
 
 class TestCase5(TestCropTensorOp):
@@ -128,14 +126,13 @@ class TestCase6(TestCropTensorOp):
         self.x_shape = (2, 2, 4, 4, 4, 2)
         self.crop_shape = [1, 1, 4, 2, 2, 2]
         self.offsets = [0, 0, 0, 0, 0, 0]
-        self.crop_by_1D_shape = True
+        self.shape_by_input = True
         self.offset_by_input = True
 
 
-class TestCropTensorOp_attr_tensor(OpTest):
+class TestCropTensorOpTensorAttr(OpTest):
     def setUp(self):
         self.op_type = "crop_tensor"
-        self.mixed_type = False
         self.OffsetsTensor = False
         self.ShapeTensor = True
         self.attrs = {}
@@ -147,11 +144,10 @@ class TestCropTensorOp_attr_tensor(OpTest):
                 shape_tensor.append(("x" + str(index), np.ones(
                     (1)).astype('int32') * ele))
             self.inputs = {
-                'X': np.random.random(self.x_shape).astype("float32"),
+                'X': np.random.random(self.x_shape).astype("float64"),
                 'ShapeTensor': shape_tensor
             }
-            if self.mixed_type:
-                self.attrs['shape'] = self.shape_attr
+            self.attrs['shape'] = self.shape_attr
 
         if self.OffsetsTensor:
             offsets_tensor = []
@@ -159,59 +155,110 @@ class TestCropTensorOp_attr_tensor(OpTest):
                 offsets_tensor.append(("x" + str(index), np.ones(
                     (1)).astype('int32') * ele))
             self.inputs = {
-                'X': np.random.random(self.x_shape).astype("float32"),
+                'X': np.random.random(self.x_shape).astype("float64"),
                 'OffsetsTensor': offsets_tensor
             }
-        else:
-            self.attrs['offsets'] = self.offsets
+            self.attrs['offsets'] = self.offsets_attr
 
-        self.outputs = {
-            'Out': crop(self.inputs['X'], self.offsets, self.crop_shape)
-        }
+        self.attrs['shape'] = self.crop_shape
+        self.attrs['offsets'] = self.offsets
+        crop_shape = [val for val in self.crop_shape]
+        for i in range(len(self.crop_shape)):
+            if self.crop_shape[i] == -1:
+                crop_shape[i] = self.x_shape[i] - self.offsets[i]
+        self.outputs = {'Out': crop(self.inputs['X'], self.offsets, crop_shape)}
 
     def initTestCase(self):
-        self.x_shape = (8, 8)
+        self.x_shape = (10, 10)
         self.crop_shape = (2, 2)
         self.offsets = [1, 2]
+        self.shape_attr = [0, 0]
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(["X"], "Out", max_relative_error=0.006)
+        self.check_grad(["X"], "Out")
 
 
-class TestCropTensorOp_attr_tensor_case1(TestCropTensorOp_attr_tensor):
-    def init_data(self):
+class TestCropTensorOpTensorAttrCase1(TestCropTensorOpTensorAttr):
+    def initTestCase(self):
         self.x_shape = (16, 8, 32)
-        self.crop_shape = [2, 2, 3]
+        self.crop_shape = [-1, -1, 3]
         self.offsets = [1, 5, 3]
+        self.shape_attr = [-1, -1, 3]
 
 
-class TestCropTensorOp_attr_tensor_case2(TestCropTensorOp_attr_tensor):
-    def init_data(self):
+class TestCropTensorOpTensorAttrCase2(TestCropTensorOpTensorAttr):
+    def initTestCase(self):
         self.x_shape = (4, 8, 16, 8)
         self.crop_shape = [2, 2, 3, 4]
         self.offsets = [1, 5, 3, 0]
-        self.shape_attr = [-1, -1, 3, 4]
-        self.mixed_type = True
+        self.shape_attr = [0, 0, 3, 4]
 
 
-class TestCropTensorOp_attr_tensor_case3(TestCropTensorOp_attr_tensor):
-    def init_data(self):
+class TestCropTensorOpTensorAttrCase3(TestCropTensorOpTensorAttr):
+    def initTestCase(self):
         self.x_shape = (16, 8, 32)
         self.crop_shape = [2, 2, 3]
         self.offsets = [1, 5, 3]
+        self.offsets_attr = [-1, -1, 3]
         self.ShapeTensor = False
         self.OffsetsTensor = True
 
 
-class TestCropTensorOp_attr_tensor_case4(TestCropTensorOp_attr_tensor):
-    def init_data(self):
+class TestCropTensorOpTensorAttrCase4(TestCropTensorOpTensorAttr):
+    def initTestCase(self):
         self.x_shape = (16, 8, 32)
         self.crop_shape = [2, 2, 3]
+        self.shape_attr = [0, 2, 3]
         self.offsets = [1, 5, 3]
+        self.offsets_attr = [-1, -1, 3]
         self.OffsetsTensor = True
+
+
+class TestCropTensorException(unittest.TestCase):
+    def test_exception(self):
+        input1 = fluid.data(name="input1", shape=[2, 3, 6, 6], dtype="float32")
+        input2 = fluid.data(name="input2", shape=[2, 3, 6, 6], dtype="float16")
+        dim = fluid.data(name='dim', shape=[1], dtype='int32')
+        offset = fluid.data(name='offset', shape=[1], dtype='int32')
+
+        def attr_shape_type():
+            out = fluid.layers.crop_tensor(input1, shape=3)
+
+        def attr_shape_dtype():
+            out = fluid.layers.crop_tensor(input1, shape=[2, 2.0, 3, 3])
+
+        def attr_shape_value1():
+            out = fluid.layers.crop_tensor(input1, shape=[2, -2, dim, 3])
+
+        def attr_shape_value2():
+            out = fluid.layers.crop_tensor(input1, shape=[2, 0, dim, 3])
+
+        def attr_offsets_type():
+            out = fluid.layers.crop_tensor(
+                input1, shape=[2, 2, 3, 3], offsets=0)
+
+        def attr_offsets_dtype():
+            out = fluid.layers.crop_tensor(
+                input1, shape=[2, 2, 3, 3], offsets=[0, 1.0, 0, 0])
+
+        def attr_offsets_value():
+            out = fluid.layers.crop_tensor(
+                input1, shape=[2, 2, 3, 3], offsets=[0, -1, offset, 0])
+
+        def input_dtype():
+            out = fluid.layers.crop_tensor(input2, shape=[2, 2, 3, 3])
+
+        self.assertRaises(TypeError, attr_shape_type)
+        self.assertRaises(TypeError, attr_shape_dtype)
+        self.assertRaises(ValueError, attr_shape_value1)
+        self.assertRaises(ValueError, attr_shape_value2)
+        self.assertRaises(TypeError, attr_offsets_type)
+        self.assertRaises(TypeError, attr_offsets_dtype)
+        self.assertRaises(ValueError, attr_offsets_value)
+        self.assertRaises(TypeError, input_dtype)
 
 
 if __name__ == '__main__':

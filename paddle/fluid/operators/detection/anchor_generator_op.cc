@@ -53,7 +53,8 @@ class AnchorGeneratorOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<framework::Tensor>("Input")->type(), ctx.device_context());
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
   }
 };
 
@@ -145,9 +146,10 @@ https://arxiv.org/abs/1506.01497.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(anchor_generator, ops::AnchorGeneratorOp,
-                  ops::AnchorGeneratorOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    anchor_generator, ops::AnchorGeneratorOp, ops::AnchorGeneratorOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(anchor_generator, ops::AnchorGeneratorOpKernel<float>,
                        ops::AnchorGeneratorOpKernel<double>);

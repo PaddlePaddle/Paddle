@@ -62,20 +62,48 @@ def _prune_feed_ops(program):
         program.global_block()._remove_op(index)
 
 
+def _has_optimize_op(block):
+    for op in block.ops:
+        op_maker = core.op_proto_and_checker_maker
+        optimize = core.op_proto_and_checker_maker.OpRole.Optimize
+        if op_maker.kOpRoleVarAttrName() in op.attr_names and \
+                int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize):
+            return True
+    return False
+
+
+def _has_optimizer_in_control_flow(program):
+    if not program:
+        program = framework.default_main_program()
+    for op in program.global_block().ops:
+        if op.type == "conditional_block_grad":
+            sub_block = program.block(op._block_attr_id("sub_block"))
+            if _has_optimize_op(sub_block):
+                return True
+
+    return False
+
+
 class CompiledProgram(object):
     """
-    Compiles to Graph for execution.
+    The CompiledProgram is used to transform a program or graph for
+    various optimizations according to the configuration of build_strategy,
+    for example, the operators' fusion in the computation graph, memory
+    optimization during the execution of the computation graph, etc.
+    For more information about build_strategy, please refer to
+    :code:`fluid.BuildStrategy`.
 
-    1. Users first create the program with layers.
-    2. Optionally, users use CompiledProgram to optimize the program before run.
-    3. The original program or CompiledProgram is run by executor.
+    Args:
+        program_or_graph (Graph|Program): This parameter is the Program or Graph
+            being executed.
+        build_strategy(BuildStrategy): This parameter is used to compile the
+            program or graph with the specified options, such as operators' fusion
+            in the computational graph and memory optimization during the execution
+            of the computational graph. For more information about build_strategy,
+            please refer to :code:`fluid.BuildStrategy`. The default is None.
 
-    The CompiledProgram is used to transform a program for various
-    optimizations, for example.
-      * Pre-compute some logic once so that each run is faster.
-      * Transform the program so that it can run in multiple devices.
-      * Transform the program for optimized inference or distributed
-        training. **Note that: this part is not finished.**
+    Returns:
+        CompiledProgram
 
     Example:
         .. code-block:: python
@@ -88,7 +116,7 @@ class CompiledProgram(object):
           place = fluid.CUDAPlace(0) # fluid.CPUPlace()
           exe = fluid.Executor(place)
 
-          data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+          data = fluid.data(name='X', shape=[None, 1], dtype='float32')
           hidden = fluid.layers.fc(input=data, size=10)
           loss = fluid.layers.mean(hidden)
           fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
@@ -102,17 +130,6 @@ class CompiledProgram(object):
           loss_data, = exe.run(compiled_prog,
                                feed={"X": x},
                                fetch_list=[loss.name])
-
-    Args:
-        program_or_graph (Graph|Program): If it's Program, it will be first
-            lowered to a graph for further optimizations. If it's a graph
-            (potentially optimized before), it will be directly used for
-            further optimizations. Note: graph is only supported when compiled
-            with with_data_parallel option.
-        build_strategy(BuildStrategy): build_strategy is used to
-            build the graph with the specified options.
-            For more information, please refer to fluid.BuildStrategy.
-            Default None.
     """
 
     def __init__(self, program_or_graph, build_strategy=None):
@@ -146,7 +163,53 @@ class CompiledProgram(object):
                            exec_strategy=None,
                            share_vars_from=None,
                            places=None):
-        """Configs the program to run in data parallel way.
+        """
+        This interface is used to transform the input Program or Graph to a multi-graph
+        to run the model in data parallel mode. Users can use the build_strategy and
+        exec_strategy to set some optimizations that can be applied during the construction
+        and computation of the Graph, such as reducing the number of AllReduce operations,
+        specifying the size of the thread pool used in the computation Graph running the model,
+        and so on. **Note: If build_strategy is specified when building CompiledProgram and calling
+        with_data_parallel, build_strategy in CompiledProgram will be overwritten, therefore,
+        if it is data parallel training, it is recommended to set build_strategy when calling
+        with_data_parallel interface.**
+
+        Args:
+            loss_name (str): This parameter is the name of the loss variable of the model.
+                **Note: If it is model training, you must set loss_name, otherwise the
+                result may be problematic**. The default is None.
+            build_strategy(BuildStrategy): This parameter is used to compile the
+                program or graph with the specified options, such as operators' fusion
+                in the computational graph and memory optimization during the execution
+                of the computational graph. For more information about build_strategy,
+                please refer to :code:`fluid.BuildStrategy`. The default is None.
+            exec_strategy(ExecutionStrategy): exec_strategy specifies the options that can
+                be changed when running the current model, such as the thread pool size.
+                For more information about exec_strategy, please refer to :code:`fluid.ExecutionStrategy`.
+                The default is None.
+            share_vars_from(CompiledProgram): If share_vars_from is set, the current
+                CompiledProgram will share the parameter value with the CompiledProgram
+                specified by share_vars_from. This parameter needs to be set when model testing
+                is required during model training, and the data parallel mode is used for
+                training and testing. Since CompiledProgram will only distribute parameter
+                variables to other devices when it is first executed, the CompiledProgram
+                specified by share_vars_from must be run before the current CompiledProgram.
+                The default is None.
+            places(list(CUDAPlace)|list(CPUPlace)|None): This parameter specifies the device
+                on which the model is running. If you want to run on GPU0 and GPU1, places are
+                [fluid.CUDAPlace(0), fluid.CUDAPlace(1)]; if you want to run with 2 CPUs, places are
+                [fluid.CPUPlace()] * 2. If the parameter is not set, i.e. the parameter is None,
+                the available device will be obtained from the environment variable when the model
+                is executed: If the GPU is used, the currently available device ID is obtained
+                from the environment variable FLAGS_selected_gpus or CUDA_VISIBLE_DEVICES when
+                the model is executed; CPU, when the model is executed, the currently available
+                CPU number is obtained from the environment variable CPU_NUM. For example,
+                export CPU_NUM=4, if the environment variable is not set, the executor will
+                add the variable to the environment variable and set its value to 1.
+                The default is None.
+
+        Returns:
+            CompiledProgram
 
         Example:
             .. code-block:: python
@@ -170,7 +233,7 @@ class CompiledProgram(object):
 
               exe = fluid.Executor(place)
 
-              data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+              data = fluid.data(name='X', shape=[None, 1], dtype='float32')
               hidden = fluid.layers.fc(input=data, size=10)
               loss = fluid.layers.mean(hidden)
               fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
@@ -185,35 +248,6 @@ class CompiledProgram(object):
               loss_data, = exe.run(compiled_prog,
                                    feed={"X": x},
                                    fetch_list=[loss.name])
-
-        Args:
-            loss_name (str): The loss name must set in training. Default None.
-            build_strategy(BuildStrategy): build_strategy is used to
-                build the graph with the specified options.
-                For more information, please refer to fluid.BuildStrategy.
-                Note that, if you set build_strategy in the argument list when
-                creating CompiledProgram and calling with_data_parallel,
-                the build_strategy in CompiledProgram will be overwritten by the latter.
-                Default None.
-            exec_strategy(ExecutionStrategy): exec_strategy is used to
-                to select the a way to execute the graph, for example how many
-                threads are used, how many iterations to clean up the temp
-                variables. For more information, please refer
-                to fluid.ExecutionStrategy. Default None.
-            share_vars_from(CompiledProgram): If provided, this CompiledProgram
-                will share variables from `share_vars_from`. `share_vars_from`
-                must be run by the executor before this CompiledProgram so that
-                vars are ready.
-            places(list(CUDAPlace)|list(CPUPlace)|None): If provided, only compile
-                program in the given places. Otherwise, the places used when compiled 
-                is determined by the Executor, and the places used are controlled 
-                by environment variables: FLAGS_selected_gpus or CUDA_VISIBLE_DEVICES
-                if using GPU; or CPU_NUM if using CPU. For example, if you want to 
-                run on GPU 0 and 1, set places=[fluid.CUDAPlace(0), fluid.CUDAPlace(1)].
-                If you want to run on 2 CPU cores, set places=[fluid.CPUPlace()]*2.  
-
-        Returns:
-            self
         """
         assert not self._is_data_parallel, "Already compiled with parallel."
         assert not self._is_inference, "Cannot compile both data parallel and inference"
@@ -322,6 +356,16 @@ class CompiledProgram(object):
         if self._build_strategy.sync_batch_norm:
             self._build_strategy.enable_sequential_execution = True
 
+        if self._program is not None and self._program._enable_dgc:
+            assert use_cuda, "DGC only used under cuda"
+            assert self._build_strategy.num_trainers * len(
+                places) > 1, "DGC is not useful for single card training"
+            assert self._build_strategy.reduce_strategy == BuildStrategy.ReduceStrategy.AllReduce, "DGC \
+                only used for AllReduce BuildStrategy"
+
+            # DGC doesn't support fuse for now, close fuse.
+            self._build_strategy.fuse_all_reduce_ops = False
+
         self._persistable_vars = []
         for node in self._graph.nodes():
             if node.is_var() and node.var() is not None and node.var().persistable() and \
@@ -374,6 +418,16 @@ class CompiledProgram(object):
                 self._places = self._get_places(self._place, self._places)
             else:
                 self._places = [self._place]
+
+            # Todo(liym27):If optimizer is used in control flow,
+            #  training on multi-places is not supported now, will
+            #  be supported later.
+            if len(self._places) > 1 and \
+                    _has_optimizer_in_control_flow(self._program):
+                raise NotImplementedError(
+                    "If optimizer is used in control flow, "
+                    "training on multi-places is not supported now.")
+
             self._executor = self._compile_data_parallel(
                 use_cuda=isinstance(self._place, core.CUDAPlace),
                 scope=self._scope,

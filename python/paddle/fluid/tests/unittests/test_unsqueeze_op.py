@@ -25,7 +25,7 @@ class TestUnsqueezeOp(OpTest):
     def setUp(self):
         self.init_test_case()
         self.op_type = "unsqueeze"
-        self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
+        self.inputs = {"X": np.random.random(self.ori_shape).astype("float64")}
         self.init_attrs()
         self.outputs = {"Out": self.inputs["X"].reshape(self.new_shape)}
 
@@ -36,9 +36,9 @@ class TestUnsqueezeOp(OpTest):
         self.check_grad(["X"], "Out")
 
     def init_test_case(self):
-        self.ori_shape = (3, 5)
+        self.ori_shape = (3, 40)
         self.axes = (1, 2)
-        self.new_shape = (3, 1, 1, 5)
+        self.new_shape = (3, 1, 1, 40)
 
     def init_attrs(self):
         self.attrs = {"axes": self.axes}
@@ -47,33 +47,33 @@ class TestUnsqueezeOp(OpTest):
 # Correct: Single input index.
 class TestUnsqueezeOp1(TestUnsqueezeOp):
     def init_test_case(self):
-        self.ori_shape = (3, 5)
+        self.ori_shape = (20, 5)
         self.axes = (-1, )
-        self.new_shape = (3, 5, 1)
+        self.new_shape = (20, 5, 1)
 
 
 # Correct: Mixed input axis.
 class TestUnsqueezeOp2(TestUnsqueezeOp):
     def init_test_case(self):
-        self.ori_shape = (3, 5)
+        self.ori_shape = (20, 5)
         self.axes = (0, -1)
-        self.new_shape = (1, 3, 5, 1)
+        self.new_shape = (1, 20, 5, 1)
 
 
 # Correct: There is duplicated axis.
 class TestUnsqueezeOp3(TestUnsqueezeOp):
     def init_test_case(self):
-        self.ori_shape = (3, 2, 5)
+        self.ori_shape = (10, 2, 5)
         self.axes = (0, 3, 3)
-        self.new_shape = (1, 3, 2, 1, 1, 5)
+        self.new_shape = (1, 10, 2, 1, 1, 5)
 
 
 # Correct: Reversed axes.
 class TestUnsqueezeOp4(TestUnsqueezeOp):
     def init_test_case(self):
-        self.ori_shape = (3, 2, 5)
+        self.ori_shape = (10, 2, 5)
         self.axes = (3, 1, 1)
-        self.new_shape = (3, 1, 1, 2, 5, 1)
+        self.new_shape = (10, 1, 1, 2, 5, 1)
 
 
 if __name__ == "__main__":

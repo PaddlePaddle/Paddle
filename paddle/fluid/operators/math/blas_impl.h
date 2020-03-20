@@ -24,6 +24,14 @@ namespace math {
 template <typename T>
 struct CBlas;
 
+template <>
+struct CBlas<int8_t> {
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    PADDLE_THROW("Blas VCOPY don't support int8_t");
+  }
+};
+
 #ifdef PADDLE_WITH_MKLML
 template <>
 struct CBlas<float> {
@@ -100,8 +108,18 @@ struct CBlas<float> {
   }
 
   template <typename... ARGS>
+  static void VSUB(ARGS... args) {
+    platform::dynload::vsSub(args...);
+  }
+
+  template <typename... ARGS>
   static void VMUL(ARGS... args) {
     platform::dynload::vsMul(args...);
+  }
+
+  template <typename... ARGS>
+  static void VDIV(ARGS... args) {
+    platform::dynload::vsDiv(args...);
   }
 
   template <typename... ARGS>
@@ -211,8 +229,18 @@ struct CBlas<double> {
   }
 
   template <typename... ARGS>
+  static void VSUB(ARGS... args) {
+    platform::dynload::vdSub(args...);
+  }
+
+  template <typename... ARGS>
   static void VMUL(ARGS... args) {
     platform::dynload::vdMul(args...);
+  }
+
+  template <typename... ARGS>
+  static void VDIV(ARGS... args) {
+    platform::dynload::vdDiv(args...);
   }
 
   template <typename... ARGS>
@@ -445,6 +473,20 @@ void Blas<platform::CPUDeviceContext>::VADD(int n, const T *x, const T *y,
 
 template <>
 template <typename T>
+void Blas<platform::CPUDeviceContext>::VSUB(int n, const T *x, const T *y,
+                                            T *z) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VSUB(n, x, y, z);
+#else
+  // try to find if openblas support vsub
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] - y[i];
+  }
+#endif
+}
+
+template <>
+template <typename T>
 void Blas<platform::CPUDeviceContext>::VMUL(int n, const T *x, const T *y,
                                             T *z) const {
 #ifdef PADDLE_WITH_MKLML
@@ -453,6 +495,20 @@ void Blas<platform::CPUDeviceContext>::VMUL(int n, const T *x, const T *y,
   // try to find if openblas support vmul
   for (int i = 0; i < n; ++i) {
     z[i] = x[i] * y[i];
+  }
+#endif
+}
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::VDIV(int n, const T *x, const T *y,
+                                            T *z) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VDIV(n, x, y, z);
+#else
+  // try to find if openblas support vdiv
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] / y[i];
   }
 #endif
 }
@@ -721,11 +777,11 @@ void Blas<DeviceContext>::MatMul(const framework::Tensor &mat_a,
  * When user calls this API, the multiplication of two big matrixes is split
  * into multiplication of several (head_number_) small matrixes. e.g. if Mat A
  * is [3, 24] and Mat B is [24, 4], when multiple A and B with head_number as
- * 4, Mat A will be splitted as 4 matrix of [3, 6] and Mat B will be
- * (horizontally) splitted as 4 matrix of [6, 4]. The result of final matrix
+ * 4, Mat A will be split as 4 matrix of [3, 6] and Mat B will be
+ * (horizontally) split as 4 matrix of [6, 4]. The result of final matrix
  * will be 4 matrix of [3, 4], i.e. [3, 16].
  * Another example is A is [3, 8], B is [2, 16], head_number is 4. In this
- * case, A will be splitted as [3, 2], B will be (vertically) splitted as
+ * case, A will be split as [3, 2], B will be (vertically) split as
  * [2, 4]. The final result will be 4 matrix of 4 matrix of [3,4], i.e. [3, 16]
  */
 template <typename DeviceContext>

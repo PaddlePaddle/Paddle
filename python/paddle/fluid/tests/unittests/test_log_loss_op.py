@@ -19,15 +19,19 @@ import numpy as np
 from op_test import OpTest
 
 
+def sigmoid_array(x):
+    return 1 / (1 + np.exp(-x))
+
+
 class TestLogLossOp(OpTest):
     def setUp(self):
         self.op_type = 'log_loss'
-        samples_num = 32
+        samples_num = 100
 
-        predicted = np.random.uniform(0.1, 1.0,
-                                      (samples_num, 1)).astype("float32")
+        x = np.random.random((samples_num, 1)).astype("float32")
+        predicted = sigmoid_array(x)
         labels = np.random.randint(0, 2, (samples_num, 1)).astype("float32")
-        epsilon = 1e-4
+        epsilon = 1e-7
         self.inputs = {
             'Predicted': predicted,
             'Labels': labels,

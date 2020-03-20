@@ -22,9 +22,13 @@ from paddle.fluid.tests.unittests.test_elementwise_mul_op import *
 from paddle.fluid.tests.unittests.test_conv2d_op import conv2d_forward_naive
 from paddle.fluid.tests.unittests.mkldnn.mkldnn_op_test import __assert_close
 import paddle.fluid as fluid
+from paddle.fluid.tests.unittests.op_test import skip_check_grad_ci
 
 
 # For UT coverage, integrate conv2d + elementwise-mul so that nchw16C could be automatically chosen when mkldnn-kernel is enabled
+@skip_check_grad_ci(
+    reason="TODO: this test cannot use white list to skip check_grad, need to add check_grad."
+)
 class TestElementwiseMulMKLDNNOp_Integrated_With_Convs(ElementwiseMulOp):
     def setUp(self):
         self.dtype = np.float32
@@ -40,7 +44,7 @@ class TestElementwiseMulMKLDNNOp_Integrated_With_Convs(ElementwiseMulOp):
         self.filter_size2 = [1, 16, 2, 2]
         self.dilations = [1, 1]
         self.use_cudnn = False
-        self.data_format = "NCHW"
+        self.data_format = "ANYLAYOUT"
         self.input = np.random.random(self.input_size).astype(self.dtype)
         self.filter = np.random.random(self.filter_size).astype(self.dtype)
         self.filter2 = np.random.random(self.filter_size2).astype(self.dtype)
@@ -97,7 +101,8 @@ class TestElementwiseMulMKLDNNOp_Integrated_With_Convs(ElementwiseMulOp):
                     'groups': self.groups,
                     'dilations': self.dilations,
                     'use_cudnn': self.use_cudnn,
-                    'use_mkldnn': self.use_mkldnn
+                    'use_mkldnn': self.use_mkldnn,
+                    'data_format': self.data_format
                 })
             elementwise_mul_op = block.append_op(
                 type="elementwise_mul",
@@ -141,180 +146,6 @@ class TestElementwiseMulMKLDNNOp_Integrated_With_Convs(ElementwiseMulOp):
                 self.assertTrue(
                     np.allclose(
                         ground_truth[name], out[id], atol=1e-4), name)
-
-    def test_check_grad_normal(self):
-        pass
-
-    def test_check_grad_ingore_x(self):
-        pass
-
-    def test_check_grad_ingore_y(self):
-        pass
-
-
-class TestElementwiseMulMKLDNNOp_FallbackNCHW(ElementwiseMulOp):
-    def init_input_output(self):
-        self.x = np.random.rand(1, 16, 2, 2).astype(self.dtype)
-        self.y = np.random.rand(1, 16).astype(self.dtype)
-
-        self.out = self.x * self.y.reshape(1, 16, 1, 1)
-
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-    def init_axis(self):
-        self.axis = 0
-
-    def test_check_grad_normal(self):
-        pass
-
-    def test_check_grad_ingore_x(self):
-        pass
-
-    def test_check_grad_ingore_y(self):
-        pass
-
-
-class TestElementwiseMulMKLDNNOp_FallbackNCHW16C(ElementwiseMulOp):
-    def init_input_output(self):
-        x = np.random.rand(1, 16, 2, 2).astype(self.dtype)
-        self.x = x.transpose(0, 2, 3, 1).reshape(1, 16, 2, 2)
-        y = np.random.rand(1, 16, 2, 2).astype(self.dtype)
-        self.y = y.transpose(0, 2, 3, 1).reshape(1, 16, 2, 2)
-
-        self.out = x * y
-
-    def setUp(self):
-        super(TestElementwiseMulMKLDNNOp_FallbackNCHW16C, self).setUp()
-        self.attrs["x_data_format"] = "nchw16c"
-        self.attrs["y_data_format"] = "nchw16c"
-        self._cpu_only = True
-
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-    def init_axis(self):
-        self.axis = 0
-
-    def test_check_grad_normal(self):
-        pass
-
-    def test_check_grad_ingore_x(self):
-        pass
-
-    def test_check_grad_ingore_y(self):
-        pass
-
-
-class TestElementwiseMulMKLDNNOp_FallbackNoReorders(ElementwiseMulOp):
-    def init_input_output(self):
-        x = np.random.rand(1, 16, 2, 2).astype(self.dtype)
-        self.x = x.transpose(0, 2, 3, 1).reshape(1, 16, 2, 2)
-        y = np.random.rand(1, 16, 2, 2).astype(self.dtype)
-        self.y = y.transpose(0, 2, 3, 1).reshape(1, 16, 2, 2)
-
-        self.out = x * y
-
-    def setUp(self):
-        super(TestElementwiseMulMKLDNNOp_FallbackNoReorders, self).setUp()
-        self.attrs["x_data_format"] = "nchw16c"
-        self.attrs["y_data_format"] = "nchw16c"
-        self._cpu_only = True
-
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-    def init_axis(self):
-        self.axis = 0
-
-    def test_check_grad_normal(self):
-        pass
-
-    def test_check_grad_ingore_x(self):
-        pass
-
-    def test_check_grad_ingore_y(self):
-        pass
-
-
-class TestElementwiseMulMKLDNNOp_FallbackWithReorder1(ElementwiseMulOp):
-    def init_input_output(self):
-        self.x = np.random.rand(1, 16, 2, 2).astype(self.dtype)
-        y = np.random.rand(1, 16, 2, 2).astype(self.dtype)
-        self.y = y.transpose(0, 2, 3, 1).reshape(1, 16, 2, 2)
-
-        self.out = self.x * y
-
-    def setUp(self):
-        super(TestElementwiseMulMKLDNNOp_FallbackWithReorder1, self).setUp()
-        self.attrs["x_data_format"] = "nchw"
-        self.attrs["y_data_format"] = "nchw16c"
-        self._cpu_only = True
-
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-    def init_axis(self):
-        self.axis = 0
-
-    def test_check_grad_normal(self):
-        pass
-
-    def test_check_grad_ingore_x(self):
-        pass
-
-    def test_check_grad_ingore_y(self):
-        pass
-
-
-class TestElementwiseMulMKLDNNOp_FallbackWithReorder2(ElementwiseMulOp):
-    def init_input_output(self):
-        self.y = np.random.rand(1, 16, 2, 2).astype(self.dtype)
-        x = np.random.rand(1, 16, 2, 2).astype(self.dtype)
-        self.x = x.transpose(0, 2, 3, 1).reshape(1, 16, 2, 2)
-
-        self.out = x * self.y
-
-    def setUp(self):
-        super(TestElementwiseMulMKLDNNOp_FallbackWithReorder2, self).setUp()
-        self.attrs["x_data_format"] = "nchw16c"
-        self.attrs["y_data_format"] = "nchw"
-        self._cpu_only = True
-
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-    def init_axis(self):
-        self.axis = 0
-
-    def test_check_grad_normal(self):
-        pass
-
-    def test_check_grad_ingore_x(self):
-        pass
-
-    def test_check_grad_ingore_y(self):
-        pass
-
-
-class TestElementwiseMulMKLDNNOp_FallbackNoReorders2(ElementwiseMulOp):
-    def init_input_output(self):
-        self.x = np.random.rand(1, 16).astype(self.dtype)
-        self.y = np.random.rand(1, 16).astype(self.dtype)
-
-        self.out = self.x * self.y
-
-    def setUp(self):
-        super(TestElementwiseMulMKLDNNOp_FallbackNoReorders2, self).setUp()
-        self.attrs["x_data_format"] = "nc"
-        self.attrs["y_data_format"] = "nc"
-        self._cpu_only = True
-
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-    def init_axis(self):
-        self.axis = 0
 
     def test_check_grad_normal(self):
         pass

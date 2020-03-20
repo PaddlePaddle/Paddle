@@ -63,7 +63,7 @@ class VarWrapper(object):
 
     def shape(self):
         """
-        Get the shape of the varibale.
+        Get the shape of the variable.
         """
         return self._var.shape
 
@@ -152,13 +152,13 @@ class OpWrapper(object):
 
     def inputs(self, name):
         """
-        Get all the varibales by the input name.
+        Get all the variables by the input name.
         """
         return [self._graph.var(var_name) for var_name in self._op.input(name)]
 
     def outputs(self, name):
         """
-        Get all the varibales by the output name.
+        Get all the variables by the output name.
         """
         return [self._graph.var(var_name) for var_name in self._op.output(name)]
 
@@ -233,7 +233,7 @@ class GraphWrapper(object):
         """
         Whether the given variable is parameter.
         Args:
-            var(VarWrapper): The given varibale.
+            var(VarWrapper): The given variable.
         """
         return isinstance(var._var, Parameter)
 
@@ -241,7 +241,7 @@ class GraphWrapper(object):
         """
         Whether the given variable is persistable.
         Args:
-            var(VarWrapper): The given varibale.
+            var(VarWrapper): The given variable.
         """
         return var._var.persistable
 
@@ -263,6 +263,7 @@ class GraphWrapper(object):
             build_strategy = compiler.BuildStrategy()
             build_strategy.enable_inplace = mem_opt
             build_strategy.memory_optimize = mem_opt
+            build_strategy.fuse_all_reduce_ops = False
             #            build_strategy.async_mode = False
             self.compiled_graph = compiler.CompiledProgram(
                 target).with_data_parallel(
@@ -396,7 +397,7 @@ class GraphWrapper(object):
         """
         Get a new graph for training by appending some backward operators and optimization operators.
         Args:
-            optimizer: The optimzier used to generate training graph.
+            optimizer: The optimizer used to generate training graph.
             place: The place to run the graph.
             scope: The scope used to run the graph. Some new variable will be added into this scope.
             no_grad_var_names(list<str>): Names of variables that should be ignored while computing gradients. default: [].

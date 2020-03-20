@@ -165,30 +165,29 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class LayerNormGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class LayerNormGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("layer_norm_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("Mean", Output("Mean"));
-    op->SetInput("Variance", Output("Variance"));
-    if (ForwardOp().Inputs().count("Scale") > 0) {
-      op->SetInput("Scale", Input("Scale"));
-      op->SetOutput(framework::GradVarName("Scale"), InputGrad("Scale"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Mean", this->Output("Mean"));
+    op->SetInput("Variance", this->Output("Variance"));
+    if (this->HasInput("Scale")) {
+      op->SetInput("Scale", this->Input("Scale"));
+      op->SetOutput(framework::GradVarName("Scale"), this->InputGrad("Scale"));
     }
 
-    if (ForwardOp().Inputs().count("Bias") > 0) {
-      op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
+    if (this->HasInput("Bias")) {
+      op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
     }
 
-    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -197,7 +196,8 @@ class LayerNormGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(layer_norm, ops::LayerNormOp, ops::LayerNormOpMaker,
-                  ops::LayerNormGradOpDescMaker);
+                  ops::LayerNormGradOpMaker<paddle::framework::OpDesc>,
+                  ops::LayerNormGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(layer_norm_grad, ops::LayerNormGradOp);
 REGISTER_OP_CPU_KERNEL(
     layer_norm, ops::LayerNormKernel<paddle::platform::CPUDeviceContext, float>,

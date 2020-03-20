@@ -15,6 +15,10 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard, core
+
+SEED = 2020
 
 
 def fc_refer(matrix, with_bias, with_relu=False):
@@ -120,6 +124,71 @@ class TestFCOpWithBias3(TestFCOp):
         self.with_bias = True
         self.with_relu = True
         self.matrix = MatrixGenerate(1, 64, 32, 3, 3, 1)
+
+
+class TestFCOpWithPadding(TestFCOp):
+    def config(self):
+        self.with_bias = True
+        self.with_relu = True
+        self.matrix = MatrixGenerate(1, 4, 3, 128, 128, 2)
+
+
+class TestFcOp_NumFlattenDims_NegOne(unittest.TestCase):
+    def test_api(self):
+        startup_program = Program()
+        main_program = Program()
+        startup_program.random_seed = SEED
+        main_program.random_seed = SEED
+
+        with program_guard(main_program, startup_program):
+            input = np.random.random([2, 2, 25]).astype("float32")
+            x = fluid.layers.data(
+                name="x",
+                shape=[2, 2, 25],
+                append_batch_size=False,
+                dtype="float32")
+
+            out_1 = fluid.layers.fc(input=x, size=1, num_flatten_dims=-1)
+            out_2 = fluid.layers.fc(input=x, size=1, num_flatten_dims=2)
+
+        place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
+        ) else fluid.CUDAPlace(0)
+        exe = fluid.Executor(place=place)
+        exe.run(startup_program)
+        res_1, res_2 = exe.run(main_program,
+                               feed={"x": input},
+                               fetch_list=[out_1, out_2])
+
+        assert np.array_equal(res_1, res_2)
+
+
+class TestFCOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            input_data = np.random.random((2, 4)).astype("float32")
+
+            def test_Variable():
+                # the input type must be Variable
+                fluid.layers.fc(input=input_data, size=1)
+
+            self.assertRaises(TypeError, test_Variable)
+
+            def test_input_list():
+                # each of input(list) must be Variable
+                fluid.layers.fc(input=[input_data], size=1)
+
+            self.assertRaises(TypeError, test_input_list)
+
+            def test_type():
+                # dtype must be float32 or float64
+                x2 = fluid.layers.data(name='x2', shape=[4], dtype='int32')
+                fluid.layers.fc(input=x2, size=1)
+
+            self.assertRaises(TypeError, test_type)
+
+            # The input dtype of fc can be float16 in GPU, test for warning
+            x3 = fluid.layers.data(name='x3', shape=[4], dtype='float16')
+            fluid.layers.fc(input=x3, size=1)
 
 
 if __name__ == "__main__":

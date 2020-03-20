@@ -35,12 +35,23 @@ class SplitOpConverter : public OpConverter {
     // Get Attrs
     PADDLE_ENFORCE(input_num == 1);
     int axis = boost::get<int>(op_desc.GetAttr("axis"));
-    std::vector<int> output_lengths =
-        boost::get<std::vector<int>>(op_desc.GetAttr("sections"));
     // split on batch is not supported in TensorRT
     PADDLE_ENFORCE(axis != 0);
     axis += (axis < 0) ? input_dims.nbDims : -1;
-
+    std::vector<int> output_lengths =
+        boost::get<std::vector<int>>(op_desc.GetAttr("sections"));
+    output_lengths.reserve(output_num);
+    int num = boost::get<int>(op_desc.GetAttr("num"));
+    if (num > 0) {
+      int64_t in_axis_dim = input_dims.d[axis];
+      PADDLE_ENFORCE_EQ(in_axis_dim % num, 0,
+                        "Tensor split does not result"
+                        " in an equal division");
+      size_t out_axis_dim = in_axis_dim / num;
+      for (size_t i = 0; i < output_num; ++i) {
+        output_lengths.push_back(out_axis_dim);
+      }
+    }
     PADDLE_ENFORCE(output_lengths.size() == output_num);
     plugin::SplitPlugin* plugin = new plugin::SplitPlugin(axis, output_lengths);
     nvinfer1::IPluginLayer* layer =

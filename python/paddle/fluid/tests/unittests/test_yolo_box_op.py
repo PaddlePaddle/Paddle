@@ -32,6 +32,7 @@ def YoloBox(x, img_size, attrs):
     class_num = attrs['class_num']
     conf_thresh = attrs['conf_thresh']
     downsample = attrs['downsample']
+    clip_bbox = attrs['clip_bbox']
     input_size = downsample * h
 
     x = x.reshape((n, an_num, 5 + class_num, h, w)).transpose((0, 1, 3, 4, 2))
@@ -64,13 +65,14 @@ def YoloBox(x, img_size, attrs):
     pred_box[:, :, 2] = pred_box[:, :, 2] * img_size[:, 1][:, np.newaxis]
     pred_box[:, :, 3] = pred_box[:, :, 3] * img_size[:, 0][:, np.newaxis]
 
-    for i in range(len(pred_box)):
-        pred_box[i, :, 0] = np.clip(pred_box[i, :, 0], 0, np.inf)
-        pred_box[i, :, 1] = np.clip(pred_box[i, :, 1], 0, np.inf)
-        pred_box[i, :, 2] = np.clip(pred_box[i, :, 2], -np.inf,
-                                    img_size[i, 1] - 1)
-        pred_box[i, :, 3] = np.clip(pred_box[i, :, 3], -np.inf,
-                                    img_size[i, 0] - 1)
+    if clip_bbox:
+        for i in range(len(pred_box)):
+            pred_box[i, :, 0] = np.clip(pred_box[i, :, 0], 0, np.inf)
+            pred_box[i, :, 1] = np.clip(pred_box[i, :, 1], 0, np.inf)
+            pred_box[i, :, 2] = np.clip(pred_box[i, :, 2], -np.inf,
+                                        img_size[i, 1] - 1)
+            pred_box[i, :, 3] = np.clip(pred_box[i, :, 3], -np.inf,
+                                        img_size[i, 0] - 1)
 
     return pred_box, pred_score.reshape((n, -1, class_num))
 
@@ -87,6 +89,7 @@ class TestYoloBoxOp(OpTest):
             "class_num": self.class_num,
             "conf_thresh": self.conf_thresh,
             "downsample": self.downsample,
+            "clip_bbox": self.clip_bbox,
         }
 
         self.inputs = {
@@ -109,6 +112,20 @@ class TestYoloBoxOp(OpTest):
         self.class_num = 2
         self.conf_thresh = 0.5
         self.downsample = 32
+        self.clip_bbox = True
+        self.x_shape = (self.batch_size, an_num * (5 + self.class_num), 13, 13)
+        self.imgsize_shape = (self.batch_size, 2)
+
+
+class TestYoloBoxOpNoClipBbox(TestYoloBoxOp):
+    def initTestCase(self):
+        self.anchors = [10, 13, 16, 30, 33, 23]
+        an_num = int(len(self.anchors) // 2)
+        self.batch_size = 32
+        self.class_num = 2
+        self.conf_thresh = 0.5
+        self.downsample = 32
+        self.clip_bbox = False
         self.x_shape = (self.batch_size, an_num * (5 + self.class_num), 13, 13)
         self.imgsize_shape = (self.batch_size, 2)
 

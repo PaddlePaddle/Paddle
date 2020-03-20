@@ -50,7 +50,8 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
     }
   }
 #endif
-  PADDLE_ENFORCE(!vars.empty(), "Var names cannot be empty");
+  PADDLE_ENFORCE_NE(vars.empty(), true, platform::errors::InvalidArgument(
+                                            "Variable names are empty."));
   for (auto *var : var_infos_) {
     PADDLE_ENFORCE_NOT_NULL(var);
   }

@@ -128,8 +128,9 @@ class SliceOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
   }
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const Tensor &tensor,
@@ -243,9 +244,9 @@ class SliceOpGrad : public framework::OperatorWithKernel {
   }
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const Tensor &tensor,
@@ -261,23 +262,56 @@ class SliceOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class SliceOpGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SliceOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *bind = new framework::OpDesc();
-    bind->SetInput("Input", Input("Input"));
-    bind->SetInput("StartsTensor", Input("StartsTensor"));
-    bind->SetInput("EndsTensor", Input("EndsTensor"));
-    bind->SetInput("StartsTensorList", Input("StartsTensorList"));
-    bind->SetInput("EndsTensorList", Input("EndsTensorList"));
-    bind->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    bind->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
-    bind->SetAttrMap(Attrs());
+  void Apply(GradOpPtr<T> bind) const override {
+    bind->SetInput("Input", this->Input("Input"));
+    if (this->HasInput("StartsTensor")) {
+      bind->SetInput("StartsTensor", this->Input("StartsTensor"));
+    }
+    if (this->HasInput("EndsTensor")) {
+      bind->SetInput("EndsTensor", this->Input("EndsTensor"));
+    }
+    if (this->HasInput("StartsTensorList")) {
+      bind->SetInput("StartsTensorList", this->Input("StartsTensorList"));
+    }
+    if (this->HasInput("EndsTensorList")) {
+      bind->SetInput("EndsTensorList", this->Input("EndsTensorList"));
+    }
+    bind->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    bind->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
+    bind->SetAttrMap(this->Attrs());
     bind->SetType("slice_grad");
-    return std::unique_ptr<framework::OpDesc>(bind);
+  }
+};
+
+template <typename T>
+class SliceDoubleOpGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> bind) const override {
+    if (this->HasInput("StartsTensor")) {
+      bind->SetInput("StartsTensor", this->Input("StartsTensor"));
+    }
+    if (this->HasInput("EndsTensor")) {
+      bind->SetInput("EndsTensor", this->Input("EndsTensor"));
+    }
+    if (this->HasInput("StartsTensorList")) {
+      bind->SetInput("StartsTensorList", this->Input("StartsTensorList"));
+    }
+    if (this->HasInput("EndsTensorList")) {
+      bind->SetInput("EndsTensorList", this->Input("EndsTensorList"));
+    }
+    bind->SetInput("Input", this->OutputGrad(framework::GradVarName("Input")));
+    bind->SetOutput("Out", this->InputGrad(framework::GradVarName("Out")));
+    bind->SetAttrMap(this->Attrs());
+    bind->SetType("slice");
   }
 };
 
@@ -289,8 +323,11 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(SliceOpGradNoNeedBufferVarsInference,
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(slice, ops::SliceOp, ops::SliceOpMaker,
-                  ops::SliceOpGradMaker);
+                  ops::SliceOpGradMaker<paddle::framework::OpDesc>,
+                  ops::SliceOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(slice_grad, ops::SliceOpGrad,
+                  ops::SliceDoubleOpGradMaker<paddle::framework::OpDesc>,
+                  ops::SliceDoubleOpGradMaker<paddle::imperative::OpBase>,
                   ops::SliceOpGradNoNeedBufferVarsInference);
 
 REGISTER_OP_CPU_KERNEL(

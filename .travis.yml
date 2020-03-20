@@ -20,6 +20,7 @@ before_install:
   - |
     function timeout() { perl -e 'alarm shift; exec @ARGV' "$@"; }
 script:
+  - "travis_wait 30 sleep 1800 &"
   - |
     # 43min timeout
     paddle/scripts/paddle_docker_build.sh ${JOB}

@@ -23,9 +23,9 @@ import paddle.fluid.core as core
 class TestCenterLossOp(OpTest):
     def setUp(self):
         self.op_type = "center_loss"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_dtype_type()
-        batch_size = 6
+        batch_size = 12
         feet_dim = 10
         cluster_num = 8
         self.attrs = {}
@@ -34,9 +34,9 @@ class TestCenterLossOp(OpTest):
         self.config()
         self.attrs['need_update'] = self.need_update
         labels = np.random.randint(cluster_num, size=batch_size, dtype='int64')
-        feat = np.random.random((batch_size, feet_dim)).astype(np.float32)
-        centers = np.random.random((cluster_num, feet_dim)).astype(np.float32)
-        var_sum = np.zeros((cluster_num, feet_dim), dtype=np.float32)
+        feat = np.random.random((batch_size, feet_dim)).astype(np.float64)
+        centers = np.random.random((cluster_num, feet_dim)).astype(np.float64)
+        var_sum = np.zeros((cluster_num, feet_dim), dtype=np.float64)
         centers_select = centers[labels]
         output = feat - centers_select
         diff_square = np.square(output).reshape(batch_size, feet_dim)
@@ -51,7 +51,7 @@ class TestCenterLossOp(OpTest):
             var_sum[i] /= (1 + cout[i])
         var_sum *= 0.1
         result = centers + var_sum
-        rate = np.array([0.1]).astype(np.float32)
+        rate = np.array([0.1]).astype(np.float64)
 
         self.inputs = {
             'X': feat,

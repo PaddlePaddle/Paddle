@@ -176,21 +176,22 @@ class TestCRFDecodingOp4(TestCRFDecodingOp2):
         self.lod = [[0, 2, 3, 0]]
 
 
+def seq_pad(data, length):
+    max_len = np.max(length)
+    shape = [len(length), max_len] + list(data.shape[1:])
+    padded = np.zeros(shape).astype(data.dtype)
+    offset = 0
+    for i, l in enumerate(length):
+        padded[i, 0:l] = data[offset:offset + l]
+        offset += l
+    return np.squeeze(padded)
+
+
 class TestCRFDecodingOp5(OpTest):
     """
     Compare the dynamic program with random generated parameters and inputs
     with grouth truth not being given.
     """
-
-    def seq_pad(self, data, length):
-        max_len = np.max(length)
-        shape = [len(length), max_len] + list(data.shape[1:])
-        padded = np.zeros(shape).astype(data.dtype)
-        offset = 0
-        for i, l in enumerate(length):
-            padded[i, 0:l] = data[offset:offset + l]
-            offset += l
-        return np.squeeze(padded)
 
     def set_test_data(self):
         SEQ_NUM = 3
@@ -208,7 +209,7 @@ class TestCRFDecodingOp5(OpTest):
                                        [TAG_NUM + 2, TAG_NUM]).astype("float64")
 
         self.inputs = {
-            "Emission": self.seq_pad(emission, lod[0]),
+            "Emission": seq_pad(emission, lod[0]),
             "Transition": transition,
             "Length": np.array(lod).astype('int64'),
         }
@@ -216,11 +217,51 @@ class TestCRFDecodingOp5(OpTest):
         decoder = CRFDecoding(emission, transition, lod[0])
         decoded_path = decoder.decode()
 
-        self.outputs = {"ViterbiPath": self.seq_pad(decoded_path, lod[0])}
+        self.outputs = {"ViterbiPath": seq_pad(decoded_path, lod[0])}
 
     def setUp(self):
         self.op_type = "crf_decoding"
         self.set_test_data()
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestCRFDecodingOp6(OpTest):
+    def init_lod(self):
+        self.lod = [[1, 2, 3, 4]]
+
+    def setUp(self):
+        self.op_type = "crf_decoding"
+        TAG_NUM = 5
+
+        self.init_lod()
+        total_len = sum(self.lod[-1])
+        transition = np.repeat(
+            np.arange(
+                TAG_NUM, dtype="float64").reshape(1, TAG_NUM),
+            TAG_NUM + 2,
+            axis=0)
+        emission = np.repeat(
+            np.arange(
+                TAG_NUM, dtype="float64").reshape(1, TAG_NUM),
+            total_len,
+            axis=0)
+
+        labels = np.random.randint(
+            low=0, high=TAG_NUM, size=(total_len, 1), dtype="int64")
+        predicted_labels = np.ones(
+            (total_len, 1), dtype="int64") * (TAG_NUM - 1)
+        expected_output = (labels == predicted_labels).astype("int64")
+
+        self.inputs = {
+            "Emission": seq_pad(emission, self.lod[0]),
+            "Transition": transition,
+            "Label": seq_pad(labels, self.lod[0]),
+            "Length": np.array(self.lod).astype('int64'),
+        }
+
+        self.outputs = {"ViterbiPath": seq_pad(expected_output, self.lod[0])}
 
     def test_check_output(self):
         self.check_output()

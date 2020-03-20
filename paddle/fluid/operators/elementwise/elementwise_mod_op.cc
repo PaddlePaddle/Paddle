@@ -22,6 +22,22 @@ class ElementwiseModOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Mod"; }
   std::string GetEquation() const override { return "Out = X \\\\% Y"; }
+
+  void AddInputX() override {
+    AddInput("X",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64.");
+  }
+
+  void AddInputY() override {
+    AddInput("Y",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64.");
+  }
+
+  std::string GetOpFuntionality() const override {
+    return "Mod two tensors element-wise";
+  }
 };
 }  // namespace operators
 }  // namespace paddle

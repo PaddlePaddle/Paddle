@@ -55,13 +55,19 @@ class GatherNdOp : public framework::OperatorWithKernel {
     }
 
     ctx->SetOutputDim("Out", framework::make_ddim(result_dims));
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
+    auto* x = ctx.Input<Tensor>("X");
+    const auto& x_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(
+        x_type,
+        x_type == framework::proto::VarType::BOOL
+            ? x->place()  // to be consistent with compare and logical ops
+            : ctx.device_context().GetPlace());
   }
 };
 
@@ -77,9 +83,9 @@ class GatherNdGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 
@@ -139,20 +145,19 @@ class GatherNdOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-class GatherNdGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class GatherNdGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("gather_nd_grad");
-    op->SetInput("Index", Input("Index"));
-    op->SetInput("X", Input("X"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("Index", this->Input("Index"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -165,7 +170,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(GatherNdGradNoNeedBufferVarInference,
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(gather_nd, ops::GatherNdOp, ops::GatherNdOpMaker,
-                  ops::GatherNdGradOpDescMaker);
+                  ops::GatherNdGradOpMaker<paddle::framework::OpDesc>,
+                  ops::GatherNdGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(gather_nd_grad, ops::GatherNdGradOp,
                   ops::GatherNdGradNoNeedBufferVarInference);
@@ -173,7 +179,7 @@ REGISTER_OPERATOR(gather_nd_grad, ops::GatherNdGradOp,
 REGISTER_OP_CPU_KERNEL(gather_nd, ops::GatherNdOpKernel<float>,
                        ops::GatherNdOpKernel<double>,
                        ops::GatherNdOpKernel<int64_t>,
-                       ops::GatherNdOpKernel<int>,
+                       ops::GatherNdOpKernel<int>, ops::GatherNdOpKernel<bool>,
                        ops::GatherNdOpKernel<uint8_t>);
 
 REGISTER_OP_CPU_KERNEL(gather_nd_grad, ops::GatherNdGradOpKernel<float>,

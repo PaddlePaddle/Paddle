@@ -135,13 +135,13 @@ def bilinear_interpolate(in_data, in_n, in_c, in_w, in_h):
     height = in_data.shape[2]
     width = in_data.shape[3]
 
-    if gt(-0.5, in_w) or gt(in_w, width - 0.5) or gt(-0.5, in_h) or gt(
+    if gt_e(-0.5, in_w) or gt_e(in_w, width - 0.5) or gt_e(-0.5, in_h) or gt_e(
             in_h, height - 0.5):
         return 0.0
 
-    if gt(0, in_w):
+    if gt_e(0, in_w):
         in_w = 0
-    if gt(0, in_h):
+    if gt_e(0, in_h):
         in_h = 0
 
     in_w_floor = floor(in_w)
@@ -216,9 +216,9 @@ def roi_transform(in_data, rois, rois_lod, transformed_height,
                 for out_w in range(transformed_width):
                     in_w, in_h = get_source_coords(transform_matrix, out_w,
                                                    out_h)
-                    if in_quad(in_w, in_h, roi_x, roi_y) and gt_e(
-                            in_w, -0.5) and lt_e(in_w, in_width - 0.5) and gt_e(
-                                in_h, -0.5) and lt_e(in_h, in_height - 0.5):
+                    if in_quad(in_w, in_h, roi_x, roi_y) and gt(
+                            in_w, -0.5) and gt(in_width - 0.5, in_w) and gt(
+                                in_h, -0.5) and gt(in_height - 0.5, in_h):
                         out[n][c][out_h][out_w] = bilinear_interpolate(
                             in_data, image_id, c, in_w, in_h)
                         mask[n][0][out_h][out_w] = 1

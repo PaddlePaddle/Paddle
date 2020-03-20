@@ -33,16 +33,23 @@ from op_test import OpTest
 #   TestFusedElementwiseActivationOp_channelwise_add
 
 
-def create_test_class(test_case, callback, attrs):
+def create_test_class(test_case,
+                      callback,
+                      attrs,
+                      dtype=np.float32,
+                      grad_chek=True):
     class TestFusedElementwiseActivationOp_base(OpTest):
         def setUp(self):
             self.op_type = "fused_elemwise_activation"
-            self.dtype = np.float32
+            self.dtype = dtype
             self.axis = -1
 
             self.init_input()
             self.init_output()
             self.init_attr()
+
+            self.out = self.out.astype(self.dtype)
+            self.intermediate_out = self.intermediate_out.astype(self.dtype)
 
             self.inputs = {
                 'X': OpTest.np_dtype_to_fluid_dtype(self.x),
@@ -71,16 +78,25 @@ def create_test_class(test_case, callback, attrs):
                 self.attrs[key] = attrs[key]
 
         def test_check_output(self):
-            self.check_output()
+            if self.dtype == np.float16 and core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+                if core.is_float16_supported(place):
+                    self.check_output_with_place(place, atol=1e-3)
+            else:
+                self.check_output()
 
         # FIXME(zcd): the intermediate_out_grad is not checked.
         def test_check_grad_normal(self):
+            if not grad_chek:
+                return
             if self.attrs["save_intermediate_out"]:
-                self.check_grad(['X', 'Y'], ['Out'], max_relative_error=0.005)
+                self.check_grad(['X', 'Y'], ['Out'])
             else:
-                self.check_grad(['X', 'Y'], ['Out'], max_relative_error=0.005)
+                self.check_grad(['X', 'Y'], ['Out'])
 
         def test_check_grad_ingore_x(self):
+            if not grad_chek:
+                return
             if self.attrs["save_intermediate_out"]:
                 self.check_grad(
                     ['Y'], ['Out'],
@@ -93,6 +109,8 @@ def create_test_class(test_case, callback, attrs):
                     no_grad_set=set("X"))
 
         def test_check_grad_ingore_y(self):
+            if not grad_chek:
+                return
             if self.attrs["save_intermediate_out"]:
                 self.check_grad(
                     ['X'], ['Out'],
@@ -325,6 +343,51 @@ for mode in {0, 1}:
             'functor_list': ["elementwise_mul", "scale"],
             'save_intermediate_out': save_intermediate_out,
         })
+        if core.is_compiled_with_cuda():
+            create_test_class(
+                'scale_add_fp16' + suffix,
+                scale_add_func, {
+                    'scale': scale,
+                    'functor_list': ["scale", "elementwise_add"],
+                    'save_intermediate_out': save_intermediate_out,
+                },
+                dtype=np.float16,
+                grad_chek=False)
+            create_test_class(
+                'add_scale_fp16' + suffix,
+                add_scale_func, {
+                    'scale': scale,
+                    'functor_list': ["elementwise_add", "scale"],
+                    'save_intermediate_out': save_intermediate_out,
+                },
+                dtype=np.float16,
+                grad_chek=False)
+
+            create_test_class(
+                'add_relu_fp16' + suffix,
+                add_relu_func, {
+                    'functor_list': ["elementwise_add", "relu"],
+                    'save_intermediate_out': save_intermediate_out,
+                },
+                dtype=np.float16,
+                grad_chek=False)
+            create_test_class(
+                'relu_add_fp16' + suffix,
+                relu_add_func, {
+                    'functor_list': ["relu", "elementwise_add"],
+                    'save_intermediate_out': save_intermediate_out,
+                },
+                dtype=np.float16,
+                grad_chek=False)
+            create_test_class(
+                'mul_scale_fp16' + suffix,
+                mul_scale_func, {
+                    'scale': scale,
+                    'functor_list': ["elementwise_mul", "scale"],
+                    'save_intermediate_out': save_intermediate_out,
+                },
+                dtype=np.float16,
+                grad_chek=False)
 
 if __name__ == '__main__':
     unittest.main()

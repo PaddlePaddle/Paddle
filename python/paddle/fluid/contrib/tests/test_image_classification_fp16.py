@@ -134,13 +134,17 @@ def train(net_type, use_cuda, save_dirname, is_local):
 
         optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
 
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+            custom_black_varnames={"loss", "conv2d_0.w_0"})
         mp_optimizer = fluid.contrib.mixed_precision.decorate(
             optimizer=optimizer,
+            amp_lists=amp_lists,
             init_loss_scaling=8.0,
             use_dynamic_loss_scaling=True)
 
         mp_optimizer.minimize(avg_cost)
-        scaled_loss = mp_optimizer.get_loss_scaling()
+        loss_scaling = mp_optimizer.get_loss_scaling()
+        scaled_loss = mp_optimizer.get_scaled_loss()
 
     BATCH_SIZE = 128
     PASS_NUM = 1
@@ -232,7 +236,7 @@ def infer(use_cuda, save_dirname=None):
     inference_scope = fluid.core.Scope()
     with fluid.scope_guard(inference_scope):
         # Use fluid.io.load_inference_model to obtain the inference program desc,
-        # the feed_target_names (the names of variables that will be feeded
+        # the feed_target_names (the names of variables that will be fed
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
         [inference_program, feed_target_names,

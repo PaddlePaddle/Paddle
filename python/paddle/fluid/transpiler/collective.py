@@ -64,7 +64,7 @@ class Collective(object):
             self.main_program = default_main_program()
 
         self.nranks = len(endpoints)
-        if self.nranks == 1:
+        if self.nranks == 1 and self.mode != "single_process_multi_thread":
             raise ValueError('the number of endpoints must > 1')
 
         if rank < 0:
@@ -181,6 +181,7 @@ class GradAllReduce(Collective):
 
     def __init__(self, nrings=2):
         Collective.__init__(self, nrings)
+        self.mode = "grad_allreduce"
 
     def _transpile_main_program(self):
         self._insert_scale_loss_grad_ops()
@@ -273,6 +274,7 @@ class LocalSGD(Collective):
     def __init__(self, nrings=2):
         Collective.__init__(self, nrings)
         self.snapshot_key = '@SNAPSHOT'
+        self.mode = "local_sgd"
 
     def _transpile_startup_program(self):
         Collective._transpile_startup_program(self)
@@ -370,3 +372,16 @@ class LocalSGD(Collective):
                 inputs={'X': [param]},
                 outputs={'Out': [snapshot]},
                 attrs={self.op_role_key: OpRole.Optimize})
+
+
+class SingleProcessMultiThread(GradAllReduce):
+    '''
+    '''
+
+    def __init__(self):
+        GradAllReduce.__init__(self, 1)
+        self.mode = "single_process_multi_thread"
+
+    def _transpile_startup_program(self):
+        block = self.startup_program.global_block()
+        block.append_op(type='c_comm_init_all', attrs={'ring_id': 0})

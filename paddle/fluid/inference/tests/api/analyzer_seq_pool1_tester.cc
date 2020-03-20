@@ -72,7 +72,7 @@ struct DataRecord {
                         "size of each slot should be equal");
     }
     size_t num_batches = num_samples / bs;
-    EXPECT_GT(num_batches, 0);
+    EXPECT_GT(num_batches, 0UL);
     batched_data.resize(num_batches);
     for (auto &one_batch : batched_data) {
       one_batch.resize(datasets.size());

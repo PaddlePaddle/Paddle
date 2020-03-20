@@ -94,8 +94,7 @@ class RetinanetDetectionOutputOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
-        framework::GetDataTypeOfVar(ctx.MultiInputVar("Scores")[0]);
-
+        OperatorWithKernel::IndicateVarDataType(ctx, "Scores");
     return framework::OpKernelType(input_data_type,
                                    platform::CPUPlace());  // ctx.GetPlace());
   }
@@ -558,9 +557,11 @@ empty (None).
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(retinanet_detection_output, ops::RetinanetDetectionOutputOp,
-                  ops::RetinanetDetectionOutputOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    retinanet_detection_output, ops::RetinanetDetectionOutputOp,
+    ops::RetinanetDetectionOutputOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(retinanet_detection_output,
                        ops::RetinanetDetectionOutputKernel<float>,
                        ops::RetinanetDetectionOutputKernel<double>);

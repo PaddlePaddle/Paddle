@@ -44,7 +44,8 @@ TEST(test_layer, test_runtime_context) {
   imperative::NameVarBaseMap ins = {in_pair};
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap attrs;
-  auto* ctx = new imperative::RuntimeInferVarTypeContext(ins, &outs, attrs);
+  auto *ctx = new imperative::RuntimeInferVarTypeContext<imperative::VarBase>(
+      ins, &outs, attrs);
   ASSERT_TRUE(ctx->HasVar("vin"));
   ASSERT_TRUE(ctx->HasInput("X"));
   ASSERT_TRUE(ctx->HasOutput("Out"));
@@ -57,38 +58,94 @@ TEST(test_layer, test_runtime_context) {
   ASSERT_ANY_THROW(ctx->SetLoDLevel("vin", 2));
 }
 
-std::string LayerDebugString(const std::string& op_type,
-                             const NameVarBaseMap& ins,
-                             const NameVarBaseMap& outs);
+std::string LayerDebugString(const std::string &op_type,
+                             const NameVarBaseMap &ins,
+                             const NameVarBaseMap &outs);
 
-TEST(test_layer, test_debug_string_test_debug_Test) {
+TEST(test_layer, test_debug_string) {
+  platform::CPUPlace place;
   std::shared_ptr<imperative::VarBase> vin(
       new imperative::VarBase(false, "vin"));
-  std::shared_ptr<imperative::VarBase> vin_error(
-      new imperative::VarBase(false, "vin_error"));
-  std::shared_ptr<imperative::VarBase> vout(
-      new imperative::VarBase(false, "vout"));
-  std::shared_ptr<imperative::VarBase> vout_error(
-      new imperative::VarBase(false, "vout_error"));
-  vin_error->MutableVar()->GetMutable<framework::LoDTensor>();
-  vout->MutableVar()->GetMutable<framework::LoDTensor>();
-  vout_error->MutableVar()->GetMutable<framework::SelectedRows>();
   var_pair in_pair = var_pair("X", vb_vector(1, vin));
-  vb_vector vb_in_error = {vin_error, nullptr};
-  var_pair vin_error_pair = var_pair("X", vb_in_error);
-  var_pair out_pair = var_pair("Out", vb_vector(1, vout));
-  var_pair vout_error_pair = var_pair("Out2", vb_vector(1, vout_error));
-  imperative::NameVarBaseMap ins = {in_pair};
-  imperative::NameVarBaseMap ins_error = {vin_error_pair};
-  imperative::NameVarBaseMap outs = {out_pair};
-  imperative::NameVarBaseMap outs_error = {vout_error_pair};
-  ASSERT_NO_FATAL_FAILURE(LayerDebugString("test_op", ins, outs));
-  std::string res = LayerDebugString("test_op", ins, outs_error);
-  ASSERT_TRUE(res.find("UNRESOLVED_TYPE") != std::string::npos);
-  std::string res2 = LayerDebugString("test_op", ins_error, outs_error);
-  VLOG(3) << res2;
-  ASSERT_TRUE(res2.find("NOT_INITED") != std::string::npos);
-  ASSERT_TRUE(res2.find("NULL") != std::string::npos);
+
+  auto test_func = [&](std::shared_ptr<imperative::VarBase> &vout) {
+    var_pair out_pair = var_pair("Out", vb_vector(1, vout));
+    imperative::NameVarBaseMap ins = {in_pair};
+    imperative::NameVarBaseMap outs = {out_pair};
+    return LayerDebugString("test_op", ins, outs);
+  };
+
+  // 1. test null
+  std::shared_ptr<imperative::VarBase> null_out(nullptr);
+  std::string res_null = test_func(null_out);
+  ASSERT_TRUE(res_null.find("NULL") != std::string::npos);
+
+  // 2. test uninit var
+  std::shared_ptr<imperative::VarBase> un_init_out(
+      new imperative::VarBase(false, "un_init_out"));
+  std::string res_un_init = test_func(un_init_out);
+  ASSERT_TRUE(res_un_init.find("NOT_INITED_VAR") != std::string::npos);
+
+  // 3. test unresolved type
+  std::shared_ptr<imperative::VarBase> ut_out(
+      new imperative::VarBase(false, "ut_out"));
+  ut_out->MutableVar()->GetMutable<framework::LoDTensorArray>();
+  std::string res_ut = test_func(ut_out);
+  ASSERT_TRUE(res_ut.find("UNRESOLVED_TYPE") != std::string::npos);
+
+  // 4. test uninit lod tensor
+  std::shared_ptr<imperative::VarBase> lod_tensor(
+      new imperative::VarBase(false, "lod_tensor"));
+  auto tensor_l = lod_tensor->MutableVar()->GetMutable<framework::LoDTensor>();
+  std::string res_ui_lod_t = test_func(lod_tensor);
+  ASSERT_TRUE(res_ui_lod_t.find("NOT_INITED") != std::string::npos);
+
+  // 5. test init lod tensor
+  tensor_l->mutable_data<float>(place);
+  std::string res_lod_t = test_func(lod_tensor);
+  ASSERT_TRUE(res_lod_t.find("LoDTensor") != std::string::npos);
+
+  // 6. test uninit selected rows
+  std::shared_ptr<imperative::VarBase> selected_rows(
+      new imperative::VarBase(false, "selected_rows"));
+  auto tensor_sr = selected_rows->MutableVar()
+                       ->GetMutable<framework::SelectedRows>()
+                       ->mutable_value();
+  std::string res_ui_sr = test_func(selected_rows);
+  ASSERT_TRUE(res_ui_sr.find("NOT_INITED") != std::string::npos);
+
+  // 7. test init selected rows
+  tensor_sr->mutable_data<float>(place);
+  std::string res_sr = test_func(selected_rows);
+  ASSERT_TRUE(res_sr.find("SelectedRows") != std::string::npos);
+}
+
+static std::shared_ptr<imperative::OpBase> CreateOpBase(
+    size_t id, const std::string &type, const imperative::NameVarBaseMap &ins,
+    const imperative::NameVarBaseMap &outs,
+    const framework::AttributeMap &attrs, const platform::Place &place) {
+  auto op = std::make_shared<imperative::OpBase>();
+  op->SetId(id);
+  op->SetPlace(place);
+  op->SetType(type);
+  op->SetAttrMap(attrs);
+  for (auto &pair : ins) {
+    std::vector<std::shared_ptr<VariableWrapper>> vars;
+    for (auto &var : pair.second) {
+      vars.emplace_back(var->SharedVar());
+    }
+    op->SetInput(pair.first, vars);
+  }
+
+  for (auto &pair : outs) {
+    std::vector<std::shared_ptr<VariableWrapper>> vars;
+    for (auto &var : pair.second) {
+      vars.emplace_back(var->SharedVar());
+    }
+    op->SetOutput(pair.first, vars);
+  }
+
+  return op;
 }
 
 TEST(test_layer, test_clear_backward_info) {
@@ -105,22 +162,20 @@ TEST(test_layer, test_clear_backward_info) {
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap concat_att_map;
   concat_att_map["axis"] = 1;
-  std::shared_ptr<imperative::OpBase> op(
-      OpBase::Create(0, "mul", ins, outs, concat_att_map, place));
-  std::shared_ptr<imperative::OpBase> preceding_op(
-      OpBase::Create(0, "mul", ins, outs, concat_att_map, place));
-  op->InsertGradPendingOps(preceding_op.get());
-  *(op->GetMutableInsMap()) = ins;
-  *(op->GetMutableOutsMap()) = outs;
-  ASSERT_GT(op->GetInsMap().size(), 0);
-  ASSERT_GT(op->GetOutsMap().size(), 0);
-  ASSERT_GT(op->GradPendingOps().size(), 0);
+
+  auto op = CreateOpBase(0, "mul", ins, outs, concat_att_map, place);
+  auto preceding_op = CreateOpBase(0, "mul", ins, outs, concat_att_map, place);
+  op->SetGradPendingOps({preceding_op});
+
+  ASSERT_GT(op->GetInsMap().size(), 0UL);
+  ASSERT_GT(op->GetOutsMap().size(), 0UL);
+  ASSERT_GT(op->GradPendingOps().size(), 0UL);
 
   op->ClearBackwardTrace();
 
-  ASSERT_EQ(op->GetInsMap().size(), 0);
-  ASSERT_EQ(op->GetOutsMap().size(), 0);
-  ASSERT_EQ(op->GradPendingOps().size(), 0);
+  ASSERT_EQ(op->GetInsMap().size(), 0UL);
+  ASSERT_EQ(op->GetOutsMap().size(), 0UL);
+  ASSERT_EQ(op->GradPendingOps().size(), 0UL);
 }
 
 TEST(test_layer, test_varbase_basic) {
@@ -130,15 +185,15 @@ TEST(test_layer, test_varbase_basic) {
   vin->MutableVar()->GetMutable<framework::LoDTensor>()->mutable_data<float>(
       place);
   std::shared_ptr<imperative::VarBase> vout(vin->NewVarBase(place, false));
-  ASSERT_EQ(vout->Name(), "Itmp0");
+  ASSERT_EQ(vout->Name(), "vin0");
 
   std::shared_ptr<imperative::VarBase> vin_with_grad(
       new imperative::VarBase(true, "vin"));
   ASSERT_ANY_THROW(vin->MutableGradVar());
-  ASSERT_NO_THROW(ASSERT_TRUE(dynamic_cast<framework::Variable*>(
+  ASSERT_NO_THROW(ASSERT_TRUE(dynamic_cast<framework::Variable *>(
                                   vin_with_grad->MutableGradVar()) != 0));
-  ASSERT_TRUE(
-      dynamic_cast<framework::Variable*>(vin_with_grad->MutableGradVar()) != 0);
+  ASSERT_TRUE(dynamic_cast<framework::Variable *>(
+                  vin_with_grad->MutableGradVar()) != 0);
   vin_with_grad->SetOverridedStopGradient(false);
   ASSERT_FALSE(vin_with_grad->OverridedStopGradient());
   ASSERT_NO_FATAL_FAILURE(vin_with_grad->SetPersistable(true));
@@ -147,6 +202,68 @@ TEST(test_layer, test_varbase_basic) {
   ASSERT_EQ(vin_with_grad->Name(), "new_name");
 }
 // TODO(jiabin): Add more ut here for layer
+
+TEST(test_layer, test_dygraph_execution_context) {
+  std::shared_ptr<imperative::VarBase> vin(
+      new imperative::VarBase(false, "vin"));
+  std::shared_ptr<imperative::VarBase> vout(
+      new imperative::VarBase(false, "vout"));
+  framework::OpDesc desc;
+  platform::CPUPlace place;
+  var_pair x_pair = var_pair("X", vb_vector(1, vin));
+  var_pair y_pair = var_pair("Y", vb_vector(1, vin));
+  var_pair out_pair = var_pair("Out", vb_vector(1, vout));
+  imperative::NameVarBaseMap ins = {x_pair, y_pair};
+  imperative::NameVarBaseMap outs = {out_pair};
+
+  framework::AttributeMap concat_att_map;
+  concat_att_map["axis"] = 1;
+
+  auto op = framework::OpRegistry::CreateOp("mul", {}, {}, {}, false);
+  paddle::platform::CPUPlace cpu_place;
+
+  paddle::platform::DeviceContextPool &pool =
+      paddle::platform::DeviceContextPool::Instance();
+  auto *dev_ctx = pool.Get(cpu_place);
+  paddle::framework::RuntimeContext ctx({}, {});
+  framework::Scope scope;
+
+  DygraphExecutionContext<imperative::VarBase> dy_exe_context(
+      *(op.get()), scope, *dev_ctx, ctx, nullptr, ins, outs, concat_att_map);
+
+  ASSERT_EQ(dy_exe_context.InputSize("X"), 1u);
+  ASSERT_EQ(dy_exe_context.InputName("X"), "vin");
+  ASSERT_EQ(dy_exe_context.HasAttr("axis"), true);
+  auto attr_map = dy_exe_context.Attrs();
+  ASSERT_EQ(boost::get<int>(attr_map["axis"]), 1);
+  ASSERT_EQ(dy_exe_context.OutputSize("Out"), 1u);
+  ASSERT_EQ(dy_exe_context.HasOutput("Out"), true);
+}
+
+TEST(test_layer, test_dygraph_infershape_context) {
+  std::shared_ptr<imperative::VarBase> vin(
+      new imperative::VarBase(false, "vin"));
+  std::shared_ptr<imperative::VarBase> vout(
+      new imperative::VarBase(false, "vout"));
+  framework::OpDesc desc;
+  platform::CPUPlace place;
+  var_pair x_pair = var_pair("X", vb_vector(1, vin));
+  var_pair y_pair = var_pair("Y", vb_vector(1, vin));
+  var_pair out_pair = var_pair("Out", vb_vector(1, vout));
+  imperative::NameVarBaseMap ins = {x_pair, y_pair};
+  imperative::NameVarBaseMap outs = {out_pair};
+
+  framework::AttributeMap concat_att_map;
+  concat_att_map["axis"] = 1;
+
+  DygraphInferShapeContext<imperative::VarBase> infer_shape_ctx(
+      &ins, &outs, &concat_att_map);
+
+  bool have_x = infer_shape_ctx.HasOutputs("Out");
+  ASSERT_EQ(have_x, true);
+  bool have_z = infer_shape_ctx.HasOutputs("Z");
+  ASSERT_EQ(have_z, false);
+}
 
 }  // namespace imperative
 }  // namespace paddle

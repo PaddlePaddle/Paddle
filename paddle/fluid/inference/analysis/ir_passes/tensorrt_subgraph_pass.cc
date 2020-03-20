@@ -17,8 +17,8 @@
 #include <set>
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/ir/subgraph_detector.h"
 #include "paddle/fluid/inference/analysis/helper.h"
-#include "paddle/fluid/inference/analysis/ir_passes/subgraph_detector.h"
 #include "paddle/fluid/inference/analysis/ir_passes/tensorrt_subgraph_pass.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
@@ -34,15 +34,18 @@ using framework::ir::Node;
 void analysis::TensorRtSubgraphPass::ApplyImpl(
     framework::ir::Graph *graph) const {
   framework::ir::FusePassBase::Init("tensorrt_subgraph_pass", graph);
-
-  auto teller = [](const framework::ir::Node *node) {
+  auto enable_int8 = Get<bool>("enable_int8");
+  auto use_calib_mode = Get<bool>("use_calib_mode");
+  bool no_calib_int8 = enable_int8 && !(use_calib_mode);
+  auto teller = [&](const framework::ir::Node *node) {
     if (!node->IsOp() || !node->Op()) return false;
-    return tensorrt::OpTeller::Global().Tell(node->Op()->Type(), *node->Op());
+    return tensorrt::OpTeller::Global().Tell(node->Op()->Type(), *node->Op(),
+                                             no_calib_int8);
   };
 
-  SubGraphFuser fuser(graph, teller,
-                      Get<int>("min_subgraph_size") /*min subgraph size*/,
-                      "tensorrt_engine");
+  framework::ir::SubGraphFuser fuser(
+      graph, teller, Get<int>("min_subgraph_size") /*min subgraph size*/,
+      "tensorrt_engine");
   fuser();
 
   std::vector<std::string> graph_param_names =
@@ -52,18 +55,19 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   std::vector<std::string> repetitive_params;
 
   for (auto *node : graph->Nodes()) {
-    if (node->IsOp() && !Agent(node).subgraph()->empty()) {
+    if (node->IsOp() && !framework::ir::Agent(node).subgraph()->empty()) {
       CreateTensorRTOp(node, graph, graph_param_names, &repetitive_params);
 
       std::unordered_set<const Node *> nodes2remove(
-          Agent(node).subgraph()->begin(), Agent(node).subgraph()->end());
+          framework::ir::Agent(node).subgraph()->begin(),
+          framework::ir::Agent(node).subgraph()->end());
       framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
     }
   }
 
   std::unordered_set<const Node *> nodes2remove;
   for (auto *node : graph->Nodes()) {
-    if (node->IsOp() && Agent(node).deleted()) {
+    if (node->IsOp() && framework::ir::Agent(node).deleted()) {
       nodes2remove.insert(node);
     }
   }
@@ -88,11 +92,11 @@ std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
 }
 
 void TensorRtSubgraphPass::CreateTensorRTOp(
-    framework::ir::Node *node, Graph *graph,
+    framework::ir::Node *node, framework::ir::Graph *graph,
     const std::vector<std::string> &graph_params,
     std::vector<std::string> *repetitive_params) const {
   auto *op_desc = node->Op();
-  auto &subgraph = *Agent(node).subgraph();
+  auto &subgraph = *framework::ir::Agent(node).subgraph();
   PADDLE_ENFORCE(!subgraph.empty());
 
   framework::ProgramDesc *program_desc =
@@ -108,8 +112,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   framework::BlockDesc block_desc(nullptr, &block_proto);
   block_desc.Proto()->set_parent_idx(-1);
   block_desc.Proto()->set_idx(0);
-  string::PrettyLogDetail("---  detect a sub-graph with %d nodes",
-                          subgraph.size());
+  LOG(INFO) << "---  detect a sub-graph with " << subgraph.size() << " nodes";
 
   for (auto *node : subgraph) {
     auto *new_block_op = new_block->AppendOp();
@@ -162,7 +165,13 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   if (precision_mode == AnalysisConfig::Precision::kHalf) enable_fp16 = true;
   auto enable_int8 = Get<bool>("enable_int8");
   auto use_calib_mode = Get<bool>("use_calib_mode");
-  auto &subgraph_nodes = *Agent(node).subgraph();
+  auto &subgraph_nodes = *framework::ir::Agent(node).subgraph();
+  auto min_input_shape =
+      Get<std::map<std::string, std::vector<int>>>("min_input_shape");
+  auto max_input_shape =
+      Get<std::map<std::string, std::vector<int>>>("max_input_shape");
+  auto opt_input_shape =
+      Get<std::map<std::string, std::vector<int>>>("optim_input_shape");
 
   // The following procedure is used to rename all the intermediate
   // variables and the output variables of the subgraph.
@@ -213,14 +222,14 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   for (auto *x : node->inputs) {
     if (x->IsVar() && x->Var()) {
       framework::VarDesc *var = x->Var();
-      SetAttr(op_desc->Proto(), var->Name() + "_shape", var->GetShape());
+      op_desc->SetAttr(var->Name() + "_shape", var->GetShape());
     }
   }
 
   auto use_static_engine = Get<bool>("use_static_engine");
   // TODO(NHZlX)
   // There are models with the same structure but the different parameters,
-  // when runing in the 'use_serialize' mode, there is a bug.
+  // when running in the 'use_serialize' mode, there is a bug.
   auto engine_key = GenerateEngineKey(input_names_with_id, output_names_with_id,
                                       std::to_string(0));
   auto predictor_id = Get<int>("predictor_id");
@@ -260,11 +269,33 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   std::copy(params_not_shared.begin(), params_not_shared.end(),
             std::back_inserter(*repetitive_params));
 
+  // Check trt version for dynamic shape input.
+
+  if (min_input_shape.size() > 0 && TRT_VERSION < 6000) {
+    std::cout << "hello";
+    LOG_FIRST_N(WARNING, 1) << "You are using the dynamic size input mode of "
+                               "Paddle-TRT, but we found that the version of "
+                               "the TensorRT is less than 6.0, so we use the "
+                               "static shape mode instead.";
+    min_input_shape = {};
+    max_input_shape = {};
+    opt_input_shape = {};
+  }
+
+  if (min_input_shape.size() > 0 && TRT_VERSION > 6000) {
+    LOG_FIRST_N(WARNING, 1)
+        << "The Paddle lib links the " << TRT_VERSION / 1000.
+        << " version TensorRT, "
+        << "make sure the runtime TensorRT you are using is no less than this "
+           "version, otherwise, there might be Segfault!";
+  }
+
   tensorrt::TensorRTEngine *trt_engine =
       inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
           .Create(engine_key + std::to_string(predictor_id),
                   Get<int>("max_batch_size"), Get<int>("workspace_size"),
-                  precision_mode, calibrator.get(), Get<int>("gpu_device_id"));
+                  precision_mode, calibrator.get(), Get<int>("gpu_device_id"),
+                  min_input_shape, max_input_shape, opt_input_shape);
 
   bool need_serialize = (use_static_engine && !load_from_memory);
   if (need_serialize) {

@@ -73,11 +73,12 @@ class WarpCTCFunctor {
                       "Bytes of workspace got by warp-ctc function, "
                       "get_workspace_size(), should be larger than 0.");
 
-    Tensor workspace;
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
     size_t workspace_elements = workspace_bytes / sizeof(float) + 1UL;
-    float* workspace_data = workspace.mutable_data<float>(
+    Tensor workspace = ctx.AllocateTmpTensor<float, DeviceContext>(
         framework::make_ddim({static_cast<int64_t>(workspace_elements)}),
-        ctx.GetPlace());
+        dev_ctx);
+    float* workspace_data = workspace.data<float>();
     math::SetConstant<DeviceContext, float>()(
         ctx.template device_context<DeviceContext>(), &workspace,
         static_cast<float>(0));
@@ -148,7 +149,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
 
       logits_lod.push_back(0);
       label_lod.push_back(0);
-      for (auto i = 0; i < num_sequences; i++) {
+      for (size_t i = 0; i < num_sequences; i++) {
         logits_lod.push_back(logits_lod[i] +
                              logits_length_cpu.data<int64_t>()[i]);
         label_lod.push_back(label_lod[i] +
@@ -186,8 +187,10 @@ class WarpCTCKernel : public framework::OpKernel<T> {
         framework::make_ddim({static_cast<int64_t>(max_sequence_length),
                               static_cast<int64_t>(num_sequences),
                               static_cast<int64_t>(sequence_width)});
-    warpctc_logits.mutable_data<T>(warpctc_logits_dims, ctx.GetPlace());
-
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    Tensor warpctc_logits_tmp =
+        ctx.AllocateTmpTensor<T, DeviceContext>(warpctc_logits_dims, dev_ctx);
+    warpctc_logits.ShareDataWith(warpctc_logits_tmp);
     if (ctx.HasInput("LogitsLength")) {
       TensorCopySync(*logits, ctx.GetPlace(), &warpctc_logits);
     } else {
@@ -227,8 +230,35 @@ class WarpCTCKernel : public framework::OpKernel<T> {
         static_cast<T>(0));
 
     // warpctc accesses labels in CPU memory
-    Tensor warpctc_label;
-    TensorCopySync(*label, platform::CPUPlace(), &warpctc_label);
+    LoDTensor warpctc_label;
+    if (ctx.HasInput("LogitsLength")) {
+      warpctc_label.mutable_data<int>(
+          {static_cast<int64_t>(math::TotalSequenceLength(label_lod)), 1},
+          platform::CPUPlace());
+      std::vector<framework::Vector<size_t>> lod;
+      lod.push_back(label_lod);
+      warpctc_label.set_lod(lod);
+
+      if (platform::is_cpu_place(ctx.GetPlace())) {
+        math::UnpaddingLoDTensorFunctor<DeviceContext, int>()(
+            ctx.template device_context<DeviceContext>(), *label,
+            &warpctc_label, label->dims()[1] /*pad_seq_len*/, 0 /*lod_level*/,
+            false /*norm_by_times*/, math::kBatchLengthWidth);
+      } else {
+        LoDTensor gpu_label;
+        gpu_label.mutable_data<int>(
+            {static_cast<int64_t>(math::TotalSequenceLength(label_lod)), 1},
+            ctx.GetPlace());
+        gpu_label.set_lod(lod);
+        math::UnpaddingLoDTensorFunctor<DeviceContext, int>()(
+            ctx.template device_context<DeviceContext>(), *label, &gpu_label,
+            label->dims()[1] /*pad_seq_len*/, 0 /*lod_level*/,
+            false /*norm_by_times*/, math::kBatchLengthWidth);
+        TensorCopySync(gpu_label, platform::CPUPlace(), &warpctc_label);
+      }
+    } else {
+      TensorCopySync(*label, platform::CPUPlace(), &warpctc_label);
+    }
 
     const int* warpctc_label_data = warpctc_label.data<int>();
     // warpctc stores loss in CPU memory
@@ -264,6 +294,11 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
       size_t num_sequences = warpctc_grad->dims()[1];
       size_t seq_width = warpctc_grad->dims()[2];
 
+      auto* logits_length = ctx.Input<framework::Tensor>("LogitsLength");
+      framework::Tensor logits_length_cpu;
+      framework::TensorCopy(*logits_length, platform::CPUPlace(),
+                            &logits_length_cpu);
+
       LoDTensor logits_grad_with_lod;
       auto logits_grad_dims =
           framework::make_ddim({static_cast<int64_t>(max_seq_length),
@@ -286,10 +321,14 @@ class WarpCTCGradKernel : public framework::OpKernel<T> {
       const T* loss_grad_data = loss_grad_cpu.data<T>();
       for (size_t i = 0; i < max_seq_length; ++i) {
         for (size_t j = 0; j < num_sequences; ++j) {
+          T scale = 1.0;
+          if (norm_by_times) {
+            scale = 1.0 / static_cast<T>(logits_length_cpu.data<int64_t>()[j]);
+          }
           for (size_t k = 0; k < seq_width; ++k) {
             size_t idx = i * (num_sequences * seq_width) + j * seq_width + k;
             scaled_logits_data[idx] =
-                logits_grad_cpu_data[idx] * loss_grad_data[j];
+                logits_grad_cpu_data[idx] * loss_grad_data[j] * scale;
           }
         }
       }

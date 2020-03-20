@@ -191,13 +191,13 @@ class BeamSearchDecodeInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* context) const override {
     PADDLE_ENFORCE(context->HasInput("Ids"),
-                   "BeamSearchDecodeOp must has input Ids");
+                   "BeamSearchDecodeOp must have input Ids");
     PADDLE_ENFORCE(context->HasInput("Scores"),
-                   "BeamSearchDecodeOp must has input Scores");
+                   "BeamSearchDecodeOp must have input Scores");
     PADDLE_ENFORCE(context->HasOutput("SentenceIds"),
-                   "BeamSearchDecodeOp must has output SentenceIds");
+                   "BeamSearchDecodeOp must have output SentenceIds");
     PADDLE_ENFORCE(context->HasOutput("SentenceScores"),
-                   "BeamSearchDecodeOp must has output SentenceScores");
+                   "BeamSearchDecodeOp must have output SentenceScores");
   }
 };
 
@@ -216,8 +216,10 @@ class BeamSearchDecodeInferVarType : public framework::VarTypeInference {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(beam_search_decode, paddle::operators::BeamSearchDecodeOp,
-                  paddle::operators::BeamSearchDecodeOpProtoMaker,
-                  paddle::operators::BeamSearchDecodeInferShape,
-                  paddle::operators::BeamSearchDecodeInferVarType,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    beam_search_decode, paddle::operators::BeamSearchDecodeOp,
+    paddle::operators::BeamSearchDecodeOpProtoMaker,
+    paddle::operators::BeamSearchDecodeInferShape,
+    paddle::operators::BeamSearchDecodeInferVarType,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

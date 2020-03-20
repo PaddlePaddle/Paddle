@@ -90,7 +90,7 @@ struct SumGradFunctor {
             typename DY, typename Dim>
   void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
                   const Dim& dim, int size) {
-    dx->device(place) = dy->eval().broadcast(dim);
+    dx->device(place) = dy->broadcast(dim);
   }
 };
 

@@ -43,6 +43,41 @@ class TestMulGradCheck(unittest.TestCase):
             self.func(p)
 
 
+class TestSliceOpDoubleGradCheck(unittest.TestCase):
+    def func(self, place):
+        self.config()
+
+        out = fluid.layers.slice(
+            self.inputs, axes=self.axes, starts=self.starts, ends=self.ends)
+        gradient_checker.double_grad_check(
+            [self.inputs], out, x_init=self.x_arr, place=place)
+
+    def config(self):
+        self.starts = [1, 0, -1]
+        self.ends = [3, 3, 6]
+        self.axes = [0, 1, 2]
+        self.x_arr = np.random.random([3, 4, 5, 2]).astype("float64")
+        self.inputs = layers.create_parameter(
+            dtype="float64", shape=[3, 4, 5, 2], name='x')
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for place in places:
+            self.func(place)
+
+
+class TestSliceOpDoubleGradCheckCase3(TestSliceOpDoubleGradCheck):
+    def config(self):
+        self.starts = [1, -1, 1]
+        self.ends = [3, 3, 3]
+        self.axes = [0, 1, 2]
+        self.x_arr = np.random.random([3, 3, 3]).astype("float64")
+        self.inputs = layers.create_parameter(
+            dtype="float64", shape=[3, 3, 3], name='x3')
+
+
 class TestReduceMeanWithDimDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
@@ -69,7 +104,7 @@ class TestReduceMeanWithDimDoubleGradCheck(unittest.TestCase):
 class TestMulDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        # the shape of input variable shoule be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not inlcude -1.
         x_shape = [7, 11]
         y_shape = [11, 9]
         eps = 0.005
@@ -85,6 +120,30 @@ class TestMulDoubleGradCheck(unittest.TestCase):
 
         gradient_checker.double_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestReshapeDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        x_shape = [3, 12]
+        new_shape = [4, 9]
+        eps = 0.005
+        dtype = np.float64
+
+        x = layers.data('x', x_shape, False, dtype)
+        x.persistable = True
+        out = layers.reshape(x, new_shape)
+        x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [x], out, x_init=x_arr, place=place, eps=eps)
 
     def test_grad(self):
         places = [fluid.CPUPlace()]

@@ -19,7 +19,7 @@ namespace framework {
 
 std::shared_ptr<FILE> shell_fopen(const std::string& path,
                                   const std::string& mode) {
-#if defined _WIN32 || defined __APPLE__
+#if defined _WIN32 || defined __APPLE__ || defined PADDLE_ARM
   return nullptr;
 #else
   if (shell_verbose()) {
@@ -44,7 +44,7 @@ std::shared_ptr<FILE> shell_fopen(const std::string& path,
 // The implementation is async signal safe
 // Mostly copy from CPython code
 static int close_open_fds_internal() {
-#if defined _WIN32 || defined __APPLE__
+#if defined _WIN32 || defined __APPLE__ || defined PADDLE_ARM
   return 0;
 #else
   struct linux_dirent {

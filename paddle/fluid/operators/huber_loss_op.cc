@@ -32,23 +32,16 @@ class HuberLossOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
-    int rank = x_dims.size();
 
-    if (rank == y_dims.size()) {
-      PADDLE_ENFORCE_EQ(y_dims[rank - 1], 1U,
-                        "The last dimension of Input(Y) should be equal to 1.");
-    } else {
-      PADDLE_ENFORCE_EQ(rank, y_dims.size() + 1,
-                        "The rank of Input(X) should be equal to "
-                        "the rank of Input(Y) plus 1.");
-    }
+    PADDLE_ENFORCE_EQ(x_dims.size(), y_dims.size(),
+                      "The rank of Input(X) should be equal to "
+                      "the rank of Input(Y).");
     bool contain_unknown_dim = framework::contain_unknown_dim(x_dims) ||
                                framework::contain_unknown_dim(y_dims);
     if (ctx->IsRuntime() || !contain_unknown_dim) {
-      PADDLE_ENFORCE_EQ(framework::slice_ddim(x_dims, 0, rank - 1),
-                        framework::slice_ddim(y_dims, 0, rank - 1),
-                        "The Input(X) and Input(Label) should have the same "
-                        "shape except the last dimension.");
+      PADDLE_ENFORCE_EQ(
+          x_dims, y_dims,
+          "The Input(X) and Input(Label) should have the same shape.");
     }
 
     auto out_dims = y_dims;
@@ -64,16 +57,16 @@ class HuberLossOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "The input value of huber loss op."
-             "X is a 2-D tensor with shape [batch_size, 1].");
+             "X is a N-D tensor with shape [N_1, N_2,..., N_n].");
     AddInput("Y",
              "The target value of huber loss op."
-             "Y is a 2-D tensor with shape [batch_size, 1].");
+             "Y is a N-D tensor with shape [N_1, N_2,..., N_n].");
     AddOutput("Residual",
               "Intermediate tensor to cache residual value between Y and X."
               "The shape is same as Input(X) and will be reused in backward.")
         .AsIntermediate();
     AddOutput("Out",
-              "The output tensor with shape [batch_size, 1] "
+              "The output N-D tensor with shape [N_1, N_2,..., N_n] "
               "which represents the huber loss.");
     AddAttr<AttrType>("delta", "Hyper parameter in huber loss.");
     AddComment(R"DOC(
@@ -81,7 +74,7 @@ HuberLoss Operator.
 
 Huber loss is a loss function used in robust regression. We define X as the
 input value and Y as the target value. Huber loss can evaluate the fitness of
-X to Y. Different from MSE loss, Huber loss is more robust for outliers. The
+X to Y. Different from MSE loss, Huber loss is more robust for outliers. If the
 shape of X and Y are [batch_size, 1]. The equation is:
 
 $$
@@ -122,20 +115,19 @@ class HuberLossGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class HuberLossGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class HuberLossGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("huber_loss_grad");
-    op->SetInput("Residual", Output("Residual"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("Residual", this->Output("Residual"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -144,7 +136,8 @@ class HuberLossGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(huber_loss, ops::HuberLossOp, ops::HuberLossOpMaker<float>,
-                  ops::HuberLossGradOpDescMaker);
+                  ops::HuberLossGradOpMaker<paddle::framework::OpDesc>,
+                  ops::HuberLossGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(huber_loss_grad, ops::HuberLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     huber_loss, ops::HuberLossKernel<paddle::platform::CPUDeviceContext, float>,

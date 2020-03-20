@@ -16,7 +16,7 @@ from __future__ import division
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 
 from paddle.fluid import core
 
@@ -45,13 +45,17 @@ def spectral_norm(weight, u, v, dim, power_iters, eps):
     return weight / sigma
 
 
+@skip_check_grad_ci(
+    reason="Spectral norm do not check grad when power_iters > 0 "
+    "because grad is not calculated in power iterations, "
+    "which cannot be checked by python grad unittests")
 class TestSpectralNormOpNoGrad(OpTest):
     def setUp(self):
         self.initTestCase()
         self.op_type = 'spectral_norm'
-        weight = np.random.random(self.weight_shape).astype('float32')
-        u = np.random.normal(0., 1., self.u_shape).astype('float32')
-        v = np.random.normal(0., 1., self.v_shape).astype('float32')
+        weight = np.random.random(self.weight_shape).astype('float64')
+        u = np.random.normal(0., 1., self.u_shape).astype('float64')
+        v = np.random.normal(0., 1., self.v_shape).astype('float64')
 
         self.attrs = {
             "dim": self.dim,
@@ -73,14 +77,18 @@ class TestSpectralNormOpNoGrad(OpTest):
         self.check_output()
 
     def initTestCase(self):
-        self.weight_shape = (2, 3)
-        self.u_shape = (2, )
-        self.v_shape = (3, )
+        self.weight_shape = (10, 12)
+        self.u_shape = (10, )
+        self.v_shape = (12, )
         self.dim = 0
         self.power_iters = 5
         self.eps = 1e-12
 
 
+@skip_check_grad_ci(
+    reason="Spectral norm do not check grad when power_iters > 0 "
+    "because grad is not calculated in power iterations, "
+    "which cannot be checked by python grad unittests")
 class TestSpectralNormOpNoGrad2(TestSpectralNormOpNoGrad):
     def initTestCase(self):
         self.weight_shape = (2, 3, 3, 3)
@@ -96,13 +104,12 @@ class TestSpectralNormOp(TestSpectralNormOpNoGrad):
         self.check_grad(
             ['Weight'],
             'Out',
-            no_grad_set=set(["U", "V"]),
-            max_relative_error=0.1)
+            no_grad_set=set(["U", "V"]), )
 
     def initTestCase(self):
-        self.weight_shape = (2, 3)
-        self.u_shape = (2, )
-        self.v_shape = (3, )
+        self.weight_shape = (10, 12)
+        self.u_shape = (10, )
+        self.v_shape = (12, )
         self.dim = 0
         self.power_iters = 0
         self.eps = 1e-12
@@ -110,8 +117,8 @@ class TestSpectralNormOp(TestSpectralNormOpNoGrad):
 
 class TestSpectralNormOp2(TestSpectralNormOp):
     def initTestCase(self):
-        self.weight_shape = (2, 3, 3, 3)
-        self.u_shape = (3, )
+        self.weight_shape = (2, 6, 3, 3)
+        self.u_shape = (6, )
         self.v_shape = (18, )
         self.dim = 1
         self.power_iters = 0

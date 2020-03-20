@@ -76,9 +76,9 @@ class SequencePadOp : public framework::OperatorWithKernel {
       if (padded_length == -1) {
         padded_length = 1;
       }
-      framework::VarDesc* x_desc =
-          boost::get<framework::VarDesc*>(ctx->GetInputVarPtrs("X")[0]);
-      PADDLE_ENFORCE_GE(x_desc->GetLoDLevel(), 1);
+      PADDLE_ENFORCE_GT(
+          ctx->GetLoDLevel("X"), 0,
+          "The LoD level Input(X) of sequence_pad should be larger than 0.");
     }
 
     std::vector<int> out_dims_vec{out_dim_0, padded_length};
@@ -93,7 +93,7 @@ class SequencePadOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("X"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
@@ -118,7 +118,7 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
         "sequences before padding.");
     AddAttr<int>(
         "padded_length",
-        "The length of padded sequences. It can be setted to -1 or "
+        "The length of padded sequences. It can be set to -1 or "
         "any positive int. When it is -1, all sequences will be padded up to "
         "the length of the longest one among them; when it a certain positive "
         "value, it must be greater than the length of the longest original "
@@ -199,25 +199,24 @@ class SequencePadGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(
-        ctx.InputVar(framework::GradVarName("Out")));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
-class SequencePadGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SequencePadGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("sequence_pad_grad");
-    op->SetAttrMap(Attrs());
-    op->SetInput("X", Input("X"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    return op;
+    op->SetAttrMap(this->Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   }
 };
 
@@ -229,7 +228,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_pad, ops::SequencePadOp, ops::SequencePadOpMaker,
-                  ops::SequencePadGradOpDescMaker);
+                  ops::SequencePadGradOpMaker<paddle::framework::OpDesc>,
+                  ops::SequencePadGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sequence_pad_grad, ops::SequencePadGradOp,
                   ops::SequencePadGradOpNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(

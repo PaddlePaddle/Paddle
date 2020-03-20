@@ -17,6 +17,8 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 def generate_compatible_shapes(dim_X, dim_Y, transpose_X, transpose_Y):
@@ -98,7 +100,7 @@ class Generator(object):
         self.outputs = {'Out': Out}
 
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        self.check_output()
 
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'], 'Out', max_relative_error=1e-3)
@@ -112,7 +114,75 @@ class Generator(object):
             ['X'], 'Out', max_relative_error=1e-3, no_grad_set=set('Y'))
 
 
-# Generate test cases for all possibilities
+class TestMatmulOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The inputs type of matmul_op must be Variable.
+            input1 = 12
+            self.assertRaises(TypeError, fluid.layers.matmul, input1, input1)
+            # The inputs dtype of matmul_op must be float32, float64.
+            input2 = fluid.layers.data(
+                name='input2', shape=[10, 10], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.matmul, input2, input2)
+            input3 = fluid.layers.data(
+                name='input3', shape=[2, 2], dtype="float16")
+            fluid.layers.matmul(input3, input3)
+
+
+# Negative dimension generation
+def generate_negative_dims(in_shape):
+    from itertools import combinations
+    size = len(in_shape)
+    indexs = list()
+    shapes = list()
+    for i in range(size):
+        indexs.extend(list(combinations([j for j in range(size)], i + 1)))
+    for idx in indexs:
+        shapes.append(
+            [in_shape[i] if i not in idx else -1 for i in range(size)])
+    return shapes
+
+
+# Build program with inputs sizes that contain negative numbers
+def test_negative_dims_program(obj):
+    for shape_x in generate_negative_dims(obj.shape_X):
+        for shape_y in generate_negative_dims(obj.shape_Y):
+            X = np.random.random(obj.shape_X).astype("float32")
+            Y = np.random.random(obj.shape_Y).astype("float32")
+            Ref = reference_matmul(X, Y, obj.transpose_X, obj.transpose_Y)
+            with program_guard(Program(), Program()):
+                x = fluid.data(name='x', shape=shape_x, dtype='float32')
+                y = fluid.data(name='y', shape=shape_y, dtype='float32')
+                output = fluid.layers.matmul(x, y, obj.transpose_X,
+                                             obj.transpose_Y)
+                obj.assertEqual(len(Ref.shape), len(output.shape))
+                for idx in range(len(Ref.shape)):
+                    if output.shape[idx] != -1:
+                        obj.assertEqual(Ref.shape[idx], output.shape[idx])
+                exe = fluid.Executor(fluid.CPUPlace())
+                res, = exe.run(fluid.default_main_program(),
+                               feed={'x': X,
+                                     'y': Y},
+                               fetch_list=[output])
+                np.allclose(res, Ref, atol=1e-5)
+
+
+# Generate program api cases for all negative possibilities
+def api_test(dim_x, dim_y, trans_x, trans_y):
+    test_name = ('TestMatMulAPI_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
+        dim_x, dim_y, trans_x, trans_y))
+    shape_x, shape_y = generate_compatible_shapes(dim_x, dim_y, trans_x,
+                                                  trans_y)
+    globals()[test_name] = type(test_name, (unittest.TestCase, ), {
+        'shape_X': shape_x,
+        'shape_Y': shape_y,
+        'transpose_X': trans_x,
+        'transpose_Y': trans_y,
+        'test_propram': test_negative_dims_program,
+    })
+
+
+# Generate operators cases for all possibilities
 def inject_test(dim_x, dim_y, trans_x, trans_y):
     test_name = ('TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
         dim_x, dim_y, trans_x, trans_y))
@@ -131,6 +201,7 @@ for dim_X in (1, 2, 3):
         for transose_x in (False, True):
             for transose_y in (False, True):
                 inject_test(dim_X, dim_Y, transose_x, transose_y)
+                api_test(dim_X, dim_Y, transose_x, transose_y)
 
 
 # Test case n-dim

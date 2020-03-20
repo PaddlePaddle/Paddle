@@ -64,13 +64,14 @@ class ScatterNdAddOp : public framework::OperatorWithKernel {
                         "Updates has wrong shape");
     }
     ctx->SetOutputDim("Out", ref_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("X")->type(),
-                      ctx.Input<Tensor>("Updates")->type(),
+    PADDLE_ENFORCE_EQ(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                      OperatorWithKernel::IndicateVarDataType(ctx, "Updates"),
                       "Ref and Updates must have same type");
     return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
                                    ctx.device_context());
@@ -95,9 +96,9 @@ class ScatterNdAddGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 
@@ -140,21 +141,21 @@ Output is obtained by applying sparse addition to a single value or slice in a V
   }
 };
 
-class ScatterNdAddGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ScatterNdAddGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("scatter_nd_add_grad");
-    op->SetInput("Index", Input("Index"));
-    op->SetInput("Updates", Input("Updates"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Updates"), InputGrad("Updates"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("Index", this->Input("Index"));
+    op->SetInput("Updates", this->Input("Updates"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Updates"),
+                  this->InputGrad("Updates"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -167,7 +168,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ScatterNdAddGradNoNeedBufferVarsInference,
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(scatter_nd_add, ops::ScatterNdAddOp, ops::ScatterNdAddOpMaker,
-                  ops::ScatterNdAddGradDescMaker);
+                  ops::ScatterNdAddGradMaker<paddle::framework::OpDesc>,
+                  ops::ScatterNdAddGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(scatter_nd_add_grad, ops::ScatterNdAddGradOp,
                   ops::ScatterNdAddGradNoNeedBufferVarsInference);

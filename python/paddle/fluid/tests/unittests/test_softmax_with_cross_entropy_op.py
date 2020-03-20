@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle.fluid.core as core
 
 from op_test import OpTest
 from test_softmax_op import stable_softmax
@@ -58,7 +59,9 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
     def setUp(self):
         self.initParams()
 
-        logits = np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype)
+        logits = getattr(
+            self, "logits",
+            np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype))
         softmax = np.apply_along_axis(stable_softmax, self.axis, logits)
 
         if self.soft_label:
@@ -104,6 +107,8 @@ class TestSoftmaxWithCrossEntropyOpNoCudnn(TestSoftmaxWithCrossEntropyOp):
         self.dtype = np.float64
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestSoftmaxWithCrossEntropyOpFp16(TestSoftmaxWithCrossEntropyOp):
     def initParams(self):
         self.op_type = "softmax_with_cross_entropy"
@@ -119,7 +124,9 @@ class TestSoftmaxWithCrossEntropyOpFp16(TestSoftmaxWithCrossEntropyOp):
         self.op_type = "softmax_with_cross_entropy"
 
         # NOTE: numpy float16 have very low accuracy, use float32 for numpy check.
-        logits = np.random.uniform(0.1, 1.0, self.shape).astype(np.float32)
+        logits = getattr(
+            self, "logits",
+            np.random.uniform(0.1, 1.0, self.shape).astype(np.float64))
         softmax = np.apply_along_axis(stable_softmax, self.axis, logits)
 
         axis_dim = self.shape[self.axis]
@@ -128,10 +135,7 @@ class TestSoftmaxWithCrossEntropyOpFp16(TestSoftmaxWithCrossEntropyOp):
 
         loss = cross_entropy(softmax, labels, self.soft_label, self.axis)
 
-        self.inputs = {
-            "Logits": logits.astype(self.dtype).view(np.uint16),
-            "Label": labels
-        }
+        self.inputs = {"Logits": logits.astype(self.dtype), "Label": labels}
         self.outputs = {
             "Softmax": softmax.astype(self.dtype),
             "Loss": loss.astype(self.dtype)
@@ -276,6 +280,23 @@ class TestSoftmaxWithCrossEntropyOpAxis4(TestSoftmaxWithCrossEntropyOp):
         self.shape = [3, 5, 7, 11]
 
 
+class TestSoftmaxWithCrossEntropyOpAxisDimEqualOne(
+        TestSoftmaxWithCrossEntropyOp):
+    """
+    Test softmax with cross entropy operator with discreate one-hot labels.
+    Given axis != -1
+    """
+
+    def initParams(self):
+        self.op_type = "softmax_with_cross_entropy"
+        self.numeric_stable_mode = True
+        self.soft_label = False
+        self.dtype = np.float64
+        self.axis = -1
+        self.ignore_index = -1
+        self.shape = [3, 5, 7, 1]
+
+
 class TestSoftmaxWithCrossEntropyOpNoCudnnFp16Axis1(
         TestSoftmaxWithCrossEntropyOpNoCudnnFp16):
     def initParams(self):
@@ -406,6 +427,41 @@ class TestSoftmaxWithCrossEntropyOpIgnoreIndexNoCudnnAxis4(
         self.ignore_index = 3
         self.axis = 3
         self.dtype = np.float64
+
+
+class TestSoftmaxWithCrossEntropyOpBoundary0(TestSoftmaxWithCrossEntropyOp):
+    """
+    Test stable softmax with cross entropy operator will not product INF
+    with small logits value.
+    """
+
+    def initParams(self):
+        self.op_type = "softmax_with_cross_entropy"
+        self.numeric_stable_mode = True
+        self.soft_label = False
+        self.shape = [3, 5, 7, 11]
+        self.axis = -1
+        self.ignore_index = -1
+        self.dtype = np.float64
+        self.logits = np.full(self.shape, -500.0).astype(self.dtype)
+
+
+class TestSoftmaxWithCrossEntropyOpBoundary1(TestSoftmaxWithCrossEntropyOp):
+    """
+    Test stable softmax with cross entropy operator will not product INF
+    with small logits value.
+    """
+
+    def initParams(self):
+        self.op_type = "softmax_with_cross_entropy"
+        self.numeric_stable_mode = True
+        self.soft_label = False
+        self.shape = [3, 5, 7, 11]
+        self.axis = -1
+        self.ignore_index = -1
+        self.dtype = np.float64
+        self.logits = np.full(self.shape, 1000.0).astype(self.dtype)
+        self.logits[:, :, 0, :] = -1000.0
 
 
 if __name__ == "__main__":

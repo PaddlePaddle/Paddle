@@ -31,7 +31,7 @@ class LoDResetKernel : public framework::OpKernel<T> {
     auto* lod_t = ctx.Input<framework::LoDTensor>("Y");
     bool append = ctx.Attr<bool>("append");
 
-    out->ShareDataWith(*in);
+    framework::TensorCopy(*in, in->place(), out);
 
     std::vector<int> level0;
     if (lod_t) {
@@ -45,8 +45,8 @@ class LoDResetKernel : public framework::OpKernel<T> {
         return;  // early return, since lod already set
       } else {
         auto* lod = lod_t->data<int>();
-        if (platform::is_gpu_place(ctx.GetPlace())) {
-          framework::Tensor lod_cpu;
+        framework::Tensor lod_cpu;
+        if (platform::is_gpu_place(lod_t->place())) {
           framework::TensorCopySync(*lod_t, platform::CPUPlace(), &lod_cpu);
           lod = lod_cpu.data<int>();
         }
@@ -90,7 +90,7 @@ class LoDResetGradKernel : public framework::OpKernel<T> {
     auto* d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
 
-    d_x->ShareDataWith(*d_out);
+    framework::TensorCopy(*d_out, d_out->place(), d_x);
   }
 };
 }  // namespace operators

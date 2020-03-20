@@ -43,6 +43,12 @@ class TestPyReaderCombination(unittest.TestCase):
         self.assertTrue(np.array_equal(image1, image2))
         self.assertTrue(np.array_equal(label1, label2))
 
+    # FIXME(zjl): do not know why Python 35 would raise SIGABRT if not reset reader
+    # manually.
+    def _reset_iterable_reader(self, py_reader):
+        if py_reader.iterable:
+            py_reader._loader._reset()
+
     def main_impl(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             image = fluid.layers.data(
@@ -69,6 +75,9 @@ class TestPyReaderCombination(unittest.TestCase):
                     batch_num += 1
 
                 self.assertEqual(batch_num, max_num)
+
+            self._reset_iterable_reader(py_reader1)
+            self._reset_iterable_reader(py_reader2)
 
     def get_places(self):
         if fluid.is_compiled_with_cuda():

@@ -17,7 +17,6 @@ from __future__ import print_function
 from .. import core
 from ..framework import Variable, unique_name
 from .layer_function_generator import OpProtoHolder
-from ..initializer import force_init_on_cpu
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,
@@ -26,6 +25,8 @@ _supported_int_dtype_ = [
     core.VarDesc.VarType.INT32,
     core.VarDesc.VarType.INT64,
 ]
+
+compare_ops = ['__eq__', '__ne__', '__lt__', '__le__', '__gt__', '__ge__']
 
 
 def monkey_patch_variable():
@@ -40,7 +41,7 @@ def monkey_patch_variable():
         return dtype
 
     def current_block(var):
-        return var.block
+        return var.block.program.current_block()
 
     def create_new_tmp_var(block, dtype):
         tmp_name = unique_tmp_name()
@@ -56,7 +57,7 @@ def monkey_patch_variable():
                 'dtype': var.dtype,
                 'shape': shape,
                 'value': value,
-                'force_cpu': force_init_on_cpu()
+                'force_cpu': False
             },
             stop_gradient=True)
         var.stop_gradient = True
@@ -93,14 +94,48 @@ def monkey_patch_variable():
 
     def astype(self, dtype):
         """
+        **Notes**:
+            **The variable must be a** :ref:`api_fluid_Tensor`
+
         Cast a variable to a specified data type.
-        NOTE: The variable must be a Tensor
+
         Args:
+
             self(Variable): The source variable
-            dtype: The target dtype
+
+            dtype: The target data type
 
         Returns:
-            Variable with new dtype
+            Variable: Variable with new dtype
+
+        Examples:
+            In Static Graph Mode:
+
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                startup_prog = fluid.Program()
+                main_prog = fluid.Program()
+                with fluid.program_guard(startup_prog, main_prog):
+                    original_variable = fluid.data(name = "new_variable", shape=[2,2], dtype='float32')
+                    new_variable = original_variable.astype('int64')
+                    print("new var's dtype is: {}".format(new_variable.dtype))
+
+            In Dygraph Mode:
+
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
+
+                x = np.ones([2, 2], np.float32)
+                with fluid.dygraph.guard():
+                    original_variable = fluid.dygraph.to_variable(x)
+                    print("original var's dtype is: {}, numpy dtype is {}".format(original_variable.dtype, original_variable.numpy().dtype))
+                    new_variable = original_variable.astype('int64')
+                    print("new var's dtype is: {}, numpy dtype is {}".format(new_variable.dtype, new_variable.numpy().dtype))
+
         """
         block = current_block(self)
         out = create_new_tmp_var(block, dtype)
@@ -122,6 +157,9 @@ def monkey_patch_variable():
             attrs={"scale": scale,
                    "bias": bias})
         return out
+
+    def _neg_(var):
+        return _scalar_elementwise_op_(var, -1.0, 0.0)
 
     def _scalar_elementwise_add_(var, value):
         return _scalar_elementwise_op_(var, 1.0, value)
@@ -187,16 +225,15 @@ def monkey_patch_variable():
                 self = other_var
                 other_var = tmp
 
-            out = create_new_tmp_var(current_block(self), dtype=lhs_dtype)
+            # NOTE(zhiqiu): the output of compare operator should be bool.
+            if method_name in compare_ops:
+                out = create_new_tmp_var(current_block(self), dtype="bool")
+            else:
+                out = create_new_tmp_var(current_block(self), dtype=lhs_dtype)
 
             axis = -1
             if other_var.shape[0] == -1:
                 axis = 0
-            assert len(self.shape) >= len(other_var.shape), (
-                "The rank of the first argument of an binary operator cannot "
-                "be smaller than the rank of its second argument: %s vs %s" %
-                (len(self.shape), len(other_var.shape)))
-
             current_block(self).append_op(
                 type=op_type,
                 inputs={'X': [self],
@@ -248,4 +285,6 @@ def monkey_patch_variable():
                 _elemwise_method_creator_(method_name, op_type, reverse,
                                           scalar_method))
 
+    # b = -a
+    Variable.__neg__ = _neg_
     Variable.astype = astype

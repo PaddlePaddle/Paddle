@@ -428,8 +428,8 @@ class TestTrilinearInterpScale2(TestTrilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [2, 3, 5, 7, 9]
-        self.out_d = 82
-        self.out_h = 60
+        self.out_d = 60
+        self.out_h = 40
         self.out_w = 25
         self.scale = 1.
         self.align_corners = True
@@ -440,8 +440,8 @@ class TestTrilinearInterpScale3(TestTrilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [2, 3, 5, 7, 9]
-        self.out_d = 82
-        self.out_h = 60
+        self.out_d = 60
+        self.out_h = 40
         self.out_w = 25
         self.scale = 1.5
         self.align_corners = True
@@ -452,8 +452,8 @@ class TestTrilinearInterpZero(TestTrilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [2, 3, 5, 7, 11]
-        self.out_d = 82
-        self.out_h = 60
+        self.out_d = 60
+        self.out_h = 40
         self.out_w = 25
         self.scale = 0.2
         self.align_corners = False
@@ -568,27 +568,16 @@ class TestTrilinearInterp_attr_tensor_Case3(TestTrilinearInterpOp_attr_tensor):
         self.scale_by_1Dtensor = True
 
 
-class TestTrilinearInterpAPI(OpTest):
+class TestTrilinearInterpAPI(unittest.TestCase):
     def test_case(self):
-        x = fluid.layers.data(name="x", shape=[3, 6, 9, 4], dtype="float32")
-        y = fluid.layers.data(name="y", shape=[6, 9, 4, 3], dtype="float32")
+        x = fluid.data(name="x", shape=[2, 3, 6, 9, 4], dtype="float32")
+        y = fluid.data(name="y", shape=[2, 6, 9, 4, 3], dtype="float32")
 
-        dim = fluid.layers.data(name="dim", shape=[1], dtype="int32")
-        shape_tensor = fluid.layers.data(
-            name="shape_tensor",
-            shape=[3],
-            dtype="int32",
-            append_batch_size=False)
-        actual_size = fluid.layers.data(
-            name="actual_size",
-            shape=[3],
-            dtype="int32",
-            append_batch_size=False)
-        scale_tensor = fluid.layers.data(
-            name="scale_tensor",
-            shape=[1],
-            dtype="float32",
-            append_batch_size=False)
+        dim = fluid.data(name="dim", shape=[1], dtype="int32")
+        shape_tensor = fluid.data(name="shape_tensor", shape=[3], dtype="int32")
+        actual_size = fluid.data(name="actual_size", shape=[3], dtype="int32")
+        scale_tensor = fluid.data(
+            name="scale_tensor", shape=[1], dtype="float32")
 
         out1 = fluid.layers.resize_trilinear(
             y, out_shape=[12, 18, 8], data_format='NDHWC')
@@ -598,14 +587,18 @@ class TestTrilinearInterpAPI(OpTest):
             x, out_shape=[4, 4, 8], actual_shape=actual_size)
         out5 = fluid.layers.resize_trilinear(x, scale=scale_tensor)
 
-        x_data = np.random.random((1, 3, 6, 9, 4)).astype("float32")
+        x_data = np.random.random((2, 3, 6, 9, 4)).astype("float32")
         dim_data = np.array([18]).astype("int32")
         shape_data = np.array([12, 18, 8]).astype("int32")
         actual_size_data = np.array([12, 18, 8]).astype("int32")
         scale_data = np.array([2.0]).astype("float32")
 
-        place = core.CPUPlace()
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
         exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
         results = exe.run(fluid.default_main_program(),
                           feed={
                               "x": x_data,
@@ -625,15 +618,17 @@ class TestTrilinearInterpAPI(OpTest):
         for i in range(len(results) - 1):
             self.assertTrue(np.allclose(results[i + 1], expect_res))
 
+
+class TestTrilinearInterpOpException(unittest.TestCase):
     def test_exception(self):
-        input = fluid.layers.data(
-            name="input", shape=[3, 6, 9, 4], dtype="float32")
-        try:
+        input = fluid.data(name="input", shape=[2, 3, 6, 9, 4], dtype="float32")
+
+        def attr_data_format():
             # for 5-D input, data_format only can be NCDHW or NDHWC
             out = fluid.layers.resize_trilinear(
                 input, out_shape=[4, 8, 4], data_format='NHWC')
-        except:
-            pass
+
+        self.assertRaises(ValueError, attr_data_format)
 
 
 if __name__ == "__main__":

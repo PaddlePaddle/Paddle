@@ -162,7 +162,7 @@ class SampleLogitsOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("Logits"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Logits");
     framework::OpKernelType kt =
         framework::OpKernelType(data_type, ctx.device_context());
     return kt;
@@ -201,8 +201,8 @@ class SampleLogitsOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(
-        ctx.InputVar(framework::GradVarName("SampledLogits")));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("SampledLogits"));
     framework::OpKernelType kt =
         framework::OpKernelType(data_type, ctx.device_context());
     return kt;
@@ -210,22 +210,23 @@ class SampleLogitsOpGrad : public framework::OperatorWithKernel {
 };
 
 // UNDERSTAND: what's the rule for making a GradMaker TODO
-class SampleLogitsGradMaker : public framework::SingleGradOpDescMaker {
+
+template <typename T>
+class SampleLogitsGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* grad_op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("sample_logits_grad");
-    grad_op->SetInput("LogitsDim", Output("LogitsDim"));
-    grad_op->SetInput("LabelsDim", Output("LabelsDim"));
-    grad_op->SetInput("Samples", Output("Samples"));
+    grad_op->SetInput("LogitsDim", this->Output("LogitsDim"));
+    grad_op->SetInput("LabelsDim", this->Output("LabelsDim"));
+    grad_op->SetInput("Samples", this->Output("Samples"));
     grad_op->SetInput(framework::GradVarName("SampledLogits"),
-                      OutputGrad("SampledLogits"));
-    grad_op->SetOutput(framework::GradVarName("Logits"), InputGrad("Logits"));
-    grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+                      this->OutputGrad("SampledLogits"));
+    grad_op->SetOutput(framework::GradVarName("Logits"),
+                       this->InputGrad("Logits"));
+    grad_op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -235,7 +236,8 @@ class SampleLogitsGradMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(sample_logits, ops::SampleLogitsOp, ops::SampleLogitsOpMaker,
-                  ops::SampleLogitsGradMaker);
+                  ops::SampleLogitsGradMaker<paddle::framework::OpDesc>,
+                  ops::SampleLogitsGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sample_logits_grad, ops::SampleLogitsOpGrad);
 REGISTER_OP_CPU_KERNEL(sample_logits, ops::SampleLogitsKernel<float>,
                        ops::SampleLogitsKernel<double>);

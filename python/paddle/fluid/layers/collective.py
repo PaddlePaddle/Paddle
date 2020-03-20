@@ -134,7 +134,7 @@ def _c_reducescatter(x, nranks, ring_id=0, use_calc_stream=False):
     if not isinstance(x, Variable):
         raise TypeError('x must be a Variable')
 
-    if x.shape[0] % nranks != 0:
+    if x.shape[0] > 0 and x.shape[0] % nranks != 0:
         raise ValueError('x.shape[0](%d) cannot be evenly divided by nranks(%d)'
                          % (x.shape[0], nranks))
 

@@ -81,8 +81,8 @@ class AdamaxOp : public framework::OperatorWithKernel {
   }
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Param")->type(),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Param"), ctx.GetPlace());
   }
 };
 

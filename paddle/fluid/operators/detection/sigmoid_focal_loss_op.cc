@@ -63,8 +63,9 @@ class SigmoidFocalLossOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -116,8 +117,9 @@ class SigmoidFocalLossGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -170,22 +172,20 @@ We know that $$\sigma(X_j) = \\frac{1}{1 + \exp(-X_j)}$$.
   }
 };
 
-class SigmoidFocalLossGradOpDescMaker
-    : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SigmoidFocalLossGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("sigmoid_focal_loss_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("Label", Input("Label"));
-    op->SetInput("FgNum", Input("FgNum"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Label", this->Input("Label"));
+    op->SetInput("FgNum", this->Input("FgNum"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -195,7 +195,8 @@ class SigmoidFocalLossGradOpDescMaker
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sigmoid_focal_loss, ops::SigmoidFocalLossOp,
                   ops::SigmoidFocalLossOpMaker,
-                  ops::SigmoidFocalLossGradOpDescMaker);
+                  ops::SigmoidFocalLossGradOpMaker<paddle::framework::OpDesc>,
+                  ops::SigmoidFocalLossGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sigmoid_focal_loss_grad, ops::SigmoidFocalLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     sigmoid_focal_loss,

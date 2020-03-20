@@ -193,7 +193,7 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
 #pragma omp parallel for collapse(2)
 #endif
     for (int i = 0; i < box_num; ++i) {
-      for (int j = 0; j < variances.size(); ++j) {
+      for (size_t j = 0; j < variances.size(); ++j) {
         e_vars(i, j) = variances[j];
       }
     }

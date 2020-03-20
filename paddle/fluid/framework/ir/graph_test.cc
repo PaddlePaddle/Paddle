@@ -154,13 +154,13 @@ TEST(GraphTest, WriteAfterRead) {
       ASSERT_EQ(n->outputs[0]->Name(), "b");
       ASSERT_TRUE(ir::IsControlDepVar(*n->outputs[1]));
       control_dep1 = n->outputs[1];
-      ASSERT_EQ(n->outputs.size(), 2);
+      ASSERT_EQ(n->outputs.size(), 2UL);
     }
     if (n->Name() == "dummy") {
       ASSERT_EQ(n->inputs[0]->Name(), "c");
       ASSERT_TRUE(ir::IsControlDepVar(*n->inputs[1]));
       control_dep2 = n->inputs[1];
-      ASSERT_EQ(n->inputs.size(), 2);
+      ASSERT_EQ(n->inputs.size(), 2UL);
     }
   }
   ASSERT_EQ(control_dep1, control_dep2);
@@ -192,14 +192,14 @@ TEST(GraphTest, WriteAfterWrite) {
     if (n->Name() == "sum") {
       ASSERT_EQ(n->outputs[0]->Name(), "b");
       ASSERT_TRUE(ir::IsControlDepVar(*n->outputs[1]));
-      ASSERT_EQ(n->outputs.size(), 2);
+      ASSERT_EQ(n->outputs.size(), 2UL);
       control_dep1 = n->outputs[1];
     }
     if (n->Name() == "dummy") {
       ASSERT_EQ(n->inputs[0]->Name(), "c");
       ASSERT_TRUE(ir::IsControlDepVar(*n->inputs[1]));
       control_dep2 = n->inputs[1];
-      ASSERT_EQ(n->inputs.size(), 2);
+      ASSERT_EQ(n->inputs.size(), 2UL);
     }
   }
   ASSERT_NE(control_dep1, nullptr);

@@ -89,10 +89,8 @@ class RowConvOpMaker : public framework::OpProtoAndCheckerMaker {
              "future_context is the future context length and N is the data "
              "dimension.");
     AddOutput("Out",
-              "the output(Out) is a LodTensor, which supports "
-              "variable time-length input sequences. The underlying tensor "
-              "in this LodTensor is a matrix with shape T x N, i.e., the "
-              "same shape as X.");
+              "the output(Out) is a LodTensor or Tensor, which has same type"
+              " and same shape as X.");
     AddComment(R"DOC(
 :strong:`Row-convolution operator`
 
@@ -322,21 +320,20 @@ class RowConvGradKernel<platform::CPUDeviceContext, T>
   }
 };
 
-class RowConvGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class RowConvGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("row_conv_grad");
-    op->SetAttrMap(Attrs());
-    op->SetInput("X", Input("X"));
-    op->SetInput("Filter", Input("Filter"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
-    return op;
+    op->SetAttrMap(this->Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Filter", this->Input("Filter"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Filter"), this->InputGrad("Filter"));
   }
 };
 
@@ -345,7 +342,8 @@ class RowConvGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(row_conv, ops::RowConvOp, ops::RowConvOpMaker,
-                  ops::RowConvGradOpDescMaker);
+                  ops::RowConvGradOpMaker<paddle::framework::OpDesc>,
+                  ops::RowConvGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(row_conv_grad, ops::RowConvGradOp);
 REGISTER_OP_CPU_KERNEL(
     row_conv, ops::RowConvKernel<paddle::platform::CPUDeviceContext, float>);

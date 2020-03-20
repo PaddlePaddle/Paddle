@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 
 
 def l2_norm(x, axis, epsilon):
@@ -44,7 +44,7 @@ class TestNormOp(OpTest):
         self.check_grad(['X'], 'Out')
 
     def init_test_case(self):
-        self.shape = [2, 3, 4, 4]
+        self.shape = [2, 3, 4, 5]
         self.axis = 1
         self.epsilon = 1e-8
 
@@ -63,6 +63,8 @@ class TestNormOp3(TestNormOp):
         self.epsilon = 1e-8
 
 
+@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
+                    "however it is desirable to cover the forward pass")
 class TestNormOp4(TestNormOp):
     def init_test_case(self):
         self.shape = [128, 1024, 14, 14]
@@ -70,10 +72,11 @@ class TestNormOp4(TestNormOp):
         self.epsilon = 1e-8
 
     def test_check_grad(self):
-        # since the gradient check is very slow in large shape, so skip check_grad
         pass
 
 
+@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
+                    "however it is desirable to cover the forward pass")
 class TestNormOp5(TestNormOp):
     def init_test_case(self):
         self.shape = [2048, 2048]
@@ -81,7 +84,6 @@ class TestNormOp5(TestNormOp):
         self.epsilon = 1e-8
 
     def test_check_grad(self):
-        # since the gradient check is very slow in large shape, so skip check_grad
         pass
 
 

@@ -58,12 +58,14 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   const ir::Graph &Graph() const override { return *graph_; }
   // Run a SSAGraph by a thread pool
   // Use topological sort algorithm
-  FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
+  FetchResultType Run(const std::vector<std::string> &fetch_tensors,
+                      bool return_merged) override;
 
   ~ThreadedSSAGraphExecutor() final = default;
 
  private:
-  inline FeedFetchList RunImpl(const std::vector<std::string> &fetch_tensors);
+  inline FetchResultType RunImpl(const std::vector<std::string> &fetch_tensors,
+                                 bool return_merged);
   void RunOp(const std::shared_ptr<BlockingQueue<VarHandleBase *>> &ready_var_q,
              details::OpHandleBase *op);
 
@@ -99,7 +101,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
                       std::unordered_set<OpHandleBase *> *ready_ops,
                       std::unordered_map<OpHandleBase *, size_t> *pending_ops,
                       std::unordered_set<VarHandleBase *> *pending_vars,
-                      FeedFetchList *fetch_data);
+                      FetchResultType *fetch_data, bool return_merged);
 
   void PrepareOpDeps();
 
@@ -109,9 +111,9 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
 
   inline void ExecutionFinal(std::vector<OpHandleBase *> *fetch_ops);
 
-  inline void RunOpSync(OpHandleBase *op);
+  inline bool RunOpSync(OpHandleBase *op);
 
-  void RunTracedOps(const std::vector<OpHandleBase *> &traced_ops);
+  bool RunTracedOps(const std::vector<OpHandleBase *> &traced_ops);
 };
 
 }  // namespace details

@@ -14,8 +14,9 @@
 
 from __future__ import print_function
 
-import unittest
-from paddle.fluid.tests.unittests.test_momentum_op import TestMomentumOp1, TestMomentumOp2, TestLarsMomentumOp, TestSparseMomentumOp, TestSparseMomentumOp2
+import unittest, sys
+sys.path.append("../")
+from test_momentum_op import TestMomentumOp1, TestMomentumOp2, TestLarsMomentumOp, TestSparseMomentumOp, TestSparseMomentumOp2
 
 if __name__ == '__main__':
     unittest.main()

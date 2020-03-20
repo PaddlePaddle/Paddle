@@ -20,51 +20,92 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class ElementwiseMulOpGradDescMaker : public framework::SingleGradOpDescMaker {
- public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+template <typename T>
+struct SameDimsElemwiseMul<
+    platform::CPUDeviceContext, T,
+    typename std::enable_if<std::is_floating_point<T>::value>::type> {
+  void operator()(const framework::ExecutionContext &ctx,
+                  const framework::Tensor *x, const framework::Tensor *y,
+                  framework::Tensor *z) {
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
+    blas.VMUL(x->numel(), x->data<T>(), y->data<T>(), z->data<T>());
+  }
+};
 
- protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
-    op->SetType("elementwise_mul_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("Y", Input("Y"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetAttrMap(Attrs());
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
-    return op;
+template <typename T>
+struct SameDimsElemwiseMul<
+    platform::CPUDeviceContext, T,
+    typename std::enable_if<!std::is_floating_point<T>::value>::type> {
+  void operator()(const framework::ExecutionContext &ctx,
+                  const framework::Tensor *x, const framework::Tensor *y,
+                  framework::Tensor *z) {
+    auto eigen_x = framework::EigenVector<T>::Flatten(*x);
+    auto eigen_y = framework::EigenVector<T>::Flatten(*y);
+    auto eigen_z = framework::EigenVector<T>::Flatten(*z);
+    auto &place = *ctx.template device_context<platform::CPUDeviceContext>()
+                       .eigen_device();
+    eigen_z.device(place) = eigen_x * eigen_y;
   }
 };
 
 class ElementwiseMulOpMaker : public ElementwiseOpMaker {
  protected:
-  virtual std::string GetName() const { return "Mul"; }
-  virtual std::string GetEquation() const { return "Out = X \\\\odot Y"; }
+  std::string GetName() const override { return "Mul"; }
+  std::string GetEquation() const override { return "Out = X \\\\odot Y"; }
+
+  void AddInputX() override {
+    AddInput("X",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
+  }
+
+  void AddInputY() override {
+    AddInput("Y",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
+  }
+
+  std::string GetOpFuntionality() const override {
+    return "Multiply two tensors element-wise";
+  }
 };
 
-class ElementwiseMulDoubleGradDescMaker
-    : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ElementwiseMulOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("elementwise_mul_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetAttrMap(this->Attrs());
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+  }
+};
+
+template <typename T>
+class ElementwiseMulDoubleGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("elementwise_mul_grad_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("Y", Input("Y"));
-    op->SetInput("DOut", Input(framework::GradVarName("Out")));
-    op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
-    op->SetInput("DDY", OutputGrad(framework::GradVarName("Y")));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
+    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    op->SetInput("DDY", this->OutputGrad(framework::GradVarName("Y")));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
 
-    op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
-    return op;
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
   }
 };
 
@@ -72,13 +113,17 @@ class ElementwiseMulDoubleGradDescMaker
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(elementwise_mul, ops::ElementwiseOp,
+REGISTER_OPERATOR(elementwise_mul, ops::ElementwiseMulOp,
                   ops::ElementwiseMulOpMaker, ops::ElementwiseOpInferVarType,
-                  ops::ElementwiseMulOpGradDescMaker);
-REGISTER_OPERATOR(elementwise_mul_grad, ops::ElementwiseOpGrad,
-                  ops::ElementwiseMulDoubleGradDescMaker);
+                  ops::ElementwiseMulOpGradMaker<paddle::framework::OpDesc>,
+                  ops::ElementwiseMulOpGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(
+    elementwise_mul_grad, ops::ElementwiseOpGrad,
+    ops::ElementwiseMulDoubleGradMaker<paddle::framework::OpDesc>,
+    ops::ElementwiseMulDoubleGradMaker<paddle::imperative::OpBase>);
+
 REGISTER_OPERATOR(elementwise_mul_grad_grad, ops::ElementwiseOpDoubleGrad,
-                  ops::ElementwiseMulDoubleGradOpInplace);
+                  ops::ElementwiseDoubleGradOpInplace);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_mul,

@@ -52,8 +52,9 @@ class BprLossOp : public framework::OperatorWithKernel {
   // is determined by its input "X".
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   platform::CPUPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        platform::CPUPlace());
   }
 };
 
@@ -98,8 +99,9 @@ class BprLossGradientOp : public framework::OperatorWithKernel {
   // is determined by its input "X".
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   platform::CPUPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        platform::CPUPlace());
   }
 };
 
@@ -133,20 +135,19 @@ neural networks>(https://arxiv.org/abs/1511.06939)
   }
 };
 
-class BprLossGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class BprLossGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("bpr_loss_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("Label", Input("Label"));
-    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Label", this->Input("Label"));
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 }  // namespace operators
@@ -156,7 +157,8 @@ namespace ops = paddle::operators;
 using CPUCtx = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(bpr_loss, ops::BprLossOp, ops::BprLossOpMaker,
-                  ops::BprLossGradDescMaker);
+                  ops::BprLossGradMaker<paddle::framework::OpDesc>,
+                  ops::BprLossGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(bpr_loss_grad, ops::BprLossGradientOp);
 REGISTER_OP_CPU_KERNEL(bpr_loss, ops::BprLossOpKernel<CPUCtx, float>,
                        ops::BprLossOpKernel<CPUCtx, double>);

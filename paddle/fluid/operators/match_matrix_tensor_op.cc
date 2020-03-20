@@ -15,6 +15,7 @@ limitations under the License. */
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <vector>
 
 #include "paddle/fluid/operators/match_matrix_tensor_op.h"
@@ -56,8 +57,8 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(w_dims[2], y_dims[1],
                     "W 's shape must satisfy: W[2] = Y[1]");
 
-  int out_dim_0 = -1;
-  int tmp_dim_0 = -1;
+  int64_t out_dim_0 = -1;
+  int64_t tmp_dim_0 = -1;
   if (ctx->IsRuntime()) {
     framework::Variable* x_var =
         boost::get<framework::Variable*>(ctx->GetInputVarPtrs("X")[0]);
@@ -86,8 +87,8 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
 
     out_dim_0 = 0;
     for (size_t i = 1; i < x_lod_0.size(); i++) {
-      int x_len = x_lod_0[i] - x_lod_0[i - 1];
-      int y_len = y_lod_0[i] - y_lod_0[i - 1];
+      int64_t x_len = x_lod_0[i] - x_lod_0[i - 1];
+      int64_t y_len = y_lod_0[i] - y_lod_0[i - 1];
       out_dim_0 += (x_len * y_len);
     }
     out_dim_0 *= dim_t;
@@ -101,6 +102,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
     framework::VarDesc* y_desc =
         boost::get<framework::VarDesc*>(ctx->GetInputVarPtrs("Y")[0]);
     PADDLE_ENFORCE_GE(y_desc->GetLoDLevel(), 1);
+    ctx->ShareLoD("X", "Out");
   }
 
   std::vector<int64_t> out_dims_vec{out_dim_0};
@@ -173,17 +175,17 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
     auto* tmp = ctx.Output<LoDTensor>("Tmp");
 
     int dim_t = ctx.Attr<int>("dim_t");
-    int dim_in = x->dims()[1];
+    int64_t dim_in = x->dims()[1];
 
     const auto& offset_l = x->lod()[0];
     const auto& offset_r = y->lod()[0];
 
     std::vector<size_t> top_offset;
-    int top_size = 0;
+    size_t top_size = 0;
     top_offset.push_back(top_size);
     for (size_t b = 0; b < x->lod()[0].size() - 1; b++) {
-      int len_l = offset_l[b + 1] - offset_l[b];
-      int len_r = offset_r[b + 1] - offset_r[b];
+      size_t len_l = offset_l[b + 1] - offset_l[b];
+      size_t len_r = offset_r[b + 1] - offset_r[b];
       top_size += dim_t * len_l * len_r;
       top_offset.push_back(top_size);
     }
@@ -204,8 +206,8 @@ class CPUMatchMatrixTensorOPKernel : public framework::OpKernel<T> {
 
     for (size_t b = 0; b < x->lod()[0].size() - 1; b++) {
       for (int t = 0; t < dim_t; t++) {
-        int len_l = offset_l[b + 1] - offset_l[b];
-        int len_r = offset_r[b + 1] - offset_r[b];
+        size_t len_l = offset_l[b + 1] - offset_l[b];
+        size_t len_r = offset_r[b + 1] - offset_r[b];
         auto* top_data = out_data + top_offset[b] + t * len_l * len_r;
         const auto* l_t_data =
             bottom_l_trans_data + offset_l[b] * dim_t * dim_in + t * dim_in;
@@ -234,16 +236,16 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
     auto* tmp = ctx.Input<LoDTensor>("Tmp");
 
     int dim_t = ctx.Attr<int>("dim_t");
-    int dim_in = x->dims()[1];
+    int64_t dim_in = x->dims()[1];
 
     const auto& offset_l = x->lod()[0];
     const auto& offset_r = y->lod()[0];
-    std::vector<int> top_offset;
-    int top_size = 0;
+    std::vector<size_t> top_offset;
+    size_t top_size = 0;
     top_offset.push_back(top_size);
     for (size_t b = 0; b < x->lod()[0].size() - 1; b++) {
-      int len_l = offset_l[b + 1] - offset_l[b];
-      int len_r = offset_r[b + 1] - offset_r[b];
+      size_t len_l = offset_l[b + 1] - offset_l[b];
+      size_t len_r = offset_r[b + 1] - offset_r[b];
       top_size += dim_t * len_l * len_r;
       top_offset.push_back(top_size);
     }
@@ -270,11 +272,11 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
 
     for (size_t b = 0; b < x->lod()[0].size() - 1; b++) {
       for (int t = 0; t < dim_t; t++) {
-        int len_l = offset_l[b + 1] - offset_l[b];
-        int len_r = offset_r[b + 1] - offset_r[b];
+        size_t len_l = offset_l[b + 1] - offset_l[b];
+        size_t len_r = offset_r[b + 1] - offset_r[b];
 
-        for (int i = 0; i < len_l; i++) {
-          for (int j = 0; j < len_r; j++) {
+        for (size_t i = 0; i < len_l; i++) {
+          for (size_t j = 0; j < len_r; j++) {
             auto diff =
                 top_diff[top_offset[b] + t * len_l * len_r + i * len_r + j];
             auto* l_trans_data = bottom_l_trans_data +
@@ -286,8 +288,8 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
             auto* r_data = bottom_r_data + (offset_r[b] + j) * dim_in;
             auto* r_diff = bottom_r_diff + (offset_r[b] + j) * dim_in;
             if (diff != 0.0) {
-              sse_axpy(r_data, l_trans_diff, dim_in, diff);
-              sse_axpy(l_trans_data, r_diff, dim_in, diff);
+              avx_axpy(r_data, l_trans_diff, dim_in, diff);
+              avx_axpy(l_trans_data, r_diff, dim_in, diff);
             }
           }
         }
@@ -312,23 +314,41 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename T>
+class MatchMatrixTensorGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("match_matrix_tensor_grad");
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput("Y", this->Input("Y"));
+    grad_op->SetInput("W", this->Input("W"));
+    grad_op->SetInput("Tmp", this->Output("Tmp"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    grad_op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(match_matrix_tensor, ops::MatchMatrixTensorOP,
-                  ops::MatchMatrixTensorOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    match_matrix_tensor, ops::MatchMatrixTensorOP,
+    ops::MatchMatrixTensorOpMaker,
+    ops::MatchMatrixTensorGradOpMaker<paddle::framework::OpDesc>,
+    ops::MatchMatrixTensorGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(match_matrix_tensor_grad, ops::MatchMatrixTensorOpGrad);
 
 REGISTER_OP_CPU_KERNEL(match_matrix_tensor,
                        ops::CPUMatchMatrixTensorOPKernel<
                            paddle::platform::CPUDeviceContext, float>);
-//     ops::CPUMatchMatrixTensorOPKernel<paddle::platform::CPUDeviceContext,
-//                                       double>
 
 REGISTER_OP_CPU_KERNEL(match_matrix_tensor_grad,
                        ops::CPUMatchMatrixTensorOPGradKernel<
                            paddle::platform::CPUDeviceContext, float>);
-//     ops::CPUMatchMatrixTensorOPGradKernel<paddle::platform::CPUDeviceContext,
-//                                           double>

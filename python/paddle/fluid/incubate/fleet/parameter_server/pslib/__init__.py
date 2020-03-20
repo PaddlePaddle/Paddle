@@ -10,6 +10,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
+"""Defination of PSLib."""
 
 import os
 import sys
@@ -25,6 +26,8 @@ from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 
 
 class PSLib(Fleet):
+    """PSLib class."""
+
     def __init__(self):
         super(PSLib, self).__init__(Mode.PSLIB)
         self._opt_info = None
@@ -37,7 +40,9 @@ class PSLib(Fleet):
         self._client2client_max_retry = 3
 
     def init(self, role_maker=None):
-        super(PSLib, self).init(MPISymetricRoleMaker())
+        if role_maker is None:
+            role_maker = MPISymetricRoleMaker()
+        super(PSLib, self).init(role_maker)
         self._fleet_ptr = fluid.core.Fleet()
 
     def _set_client_communication_config(self, request_timeout_ms,
@@ -45,6 +50,9 @@ class PSLib(Fleet):
         self._client2client_request_timeout_ms = request_timeout_ms
         self._client2client_connect_timeout_ms = connect_timeout_ms
         self._client2client_max_retry = max_retry
+
+    def set_pull_local_thread_num(self, thread_num):
+        self._fleet_ptr.set_pull_local_thread_num(thread_num)
 
     def init_worker(self):
         """
@@ -72,9 +80,10 @@ class PSLib(Fleet):
             # barrier_all for init_server, wait for server starts
             self._role_maker._barrier_all()
             self.all_ips_ = self._role_maker._all_gather(self._local_ip)
+            # worker_index * 2 is for compatible with older versions of pslib
             self._fleet_ptr.init_worker(self._dist_desc_str, self.all_ips_,
                                         self._role_maker._get_size(),
-                                        self._role_maker._get_rank())
+                                        self._role_maker.worker_index() * 2)
             # barrier_all for init_worker
             self._role_maker._barrier_all()
             # prepare for client to client communication
@@ -89,7 +98,10 @@ class PSLib(Fleet):
             # barrier for init model
             self._role_maker._barrier_worker()
             if self._role_maker.is_first_worker():
-                tables = self._dist_desc.trainer_param.dense_table
+                tables = []
+                for tp in self._dist_desc.trainer_param:
+                    for i in tp.dense_table:
+                        tables.append(i)
                 for prog, scope in zip(self._main_programs, self._scopes):
                     prog_id = str(id(prog))
                     prog_conf = self._opt_info['program_configs'][prog_id]
@@ -154,9 +166,16 @@ class PSLib(Fleet):
             else:
                 raise Exception(
                     "You should run DistributedOptimizer.minimize() first")
+            # server_index * 2 is for compatible with older versions of pslib
             self._fleet_ptr.init_server(self._dist_desc_str,
-                                        self._role_maker._get_rank())
-            self._local_ip = self._fleet_ptr.run_server()
+                                        self._role_maker.server_index() * 2)
+            if isinstance(self._role_maker, MPISymetricRoleMaker):
+                self._local_ip = self._fleet_ptr.run_server()
+            else:
+                local_endpoint = self._role_maker.get_local_endpoint()
+                local_endpoint = local_endpoint.split(":")
+                self._local_ip = self._fleet_ptr.run_server(
+                    str(local_endpoint[0]), int(local_endpoint[1]))
 
             # barrier_all for init_server
             self._role_maker._barrier_all()
@@ -175,6 +194,10 @@ class PSLib(Fleet):
         stop(): will be called after a user finishes his/her training task. Fleet instance will be
             destroyed when stop() is called.
         """
+        self._role_maker._barrier_worker()
+        # all worker should be finalize first
+        if self._role_maker.is_worker():
+            self._fleet_ptr.finalize_worker()
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
             self._fleet_ptr.stop_server()
@@ -226,7 +249,26 @@ class PSLib(Fleet):
               fleet.save_inference_model(dirname="hdfs:/my/path")
 
         """
-        self._fleet_ptr.save_model(dirname)
+        self._fleet_ptr.save_model(dirname, 0)
+
+    def print_table_stat(self, table_id):
+        """
+        print stat info of table_id,
+        format: tableid, feasign size, mf size
+
+        Args:
+            table_id(int): the id of table
+
+        Example:
+            .. code-block:: python
+
+              fleet.print_table_stat(0)
+
+        """
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.print_table_stat(table_id)
+        self._role_maker._barrier_worker()
 
     def save_persistables(self, executor, dirname, main_program=None, **kwargs):
         """
@@ -244,7 +286,9 @@ class PSLib(Fleet):
                            3 means save batch model.
 
         Example:
-            >>> fleet.save_persistables(dirname="/you/path/to/model", mode = 0)
+            .. code-block:: python
+
+              fleet.save_persistables(dirname="/you/path/to/model", mode = 0)
 
         """
         mode = kwargs.get("mode", 0)
@@ -260,35 +304,43 @@ class PSLib(Fleet):
         when using fleet, it will save sparse cache table
 
         Args:
+            executor(Executor): fluid executor
             dirname(str): save path. It can be hdfs/afs path or local path
             main_program(Program): fluid program, default None
             kwargs: use define property, current support following
                 mode(int): define for feature extension in the future,
-                           currently no use, will pass a default value 0 
+                           currently no use, will pass a default value 0
+                table_id(int): which table to save cache, default is 0
+
+        Returns:
+            feasign_num(int): cache feasign num
 
         Example:
             .. code-block:: python
-            >>> fleet.save_cache_model(None, dirname="/you/path/to/model", mode = 0)
+
+              fleet.save_cache_model(None, dirname="/you/path/to/model", mode = 0)
 
         """
         mode = kwargs.get("mode", 0)
+        table_id = kwargs.get("table_id", 0)
         self._fleet_ptr.client_flush()
         self._role_maker._barrier_worker()
         cache_threshold = 0.0
 
         if self._role_maker.is_first_worker():
-            cache_threshold = self._fleet_ptr.get_cache_threshold()
+            cache_threshold = self._fleet_ptr.get_cache_threshold(table_id)
         #check cache threshold right or not
         self._role_maker._barrier_worker()
 
         if self._role_maker.is_first_worker():
-            self._fleet_ptr.cache_shuffle(0, dirname, mode, cache_threshold)
+            self._fleet_ptr.cache_shuffle(table_id, dirname, mode,
+                                          cache_threshold)
 
         self._role_maker._barrier_worker()
 
         feasign_num = -1
         if self._role_maker.is_first_worker():
-            feasign_num = self._fleet_ptr.save_cache(0, dirname, mode)
+            feasign_num = self._fleet_ptr.save_cache(table_id, dirname, mode)
 
         self._role_maker._barrier_worker()
         return feasign_num
@@ -304,8 +356,12 @@ class PSLib(Fleet):
         """
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
-            for i in self._opt_info["fleet_desc"].trainer_param.sparse_table:
-                self._fleet_ptr.shrink_sparse_table(i.table_id)
+            tables = []
+            for tp in self._opt_info["fleet_desc"].trainer_param:
+                for i in tp.sparse_table:
+                    tables.append(i.table_id)
+            for i in list(set(tables)):
+                self._fleet_ptr.shrink_sparse_table(i)
         self._role_maker._barrier_worker()
 
     def shrink_dense_table(self, decay, emb_dim=11, scope=None, table_id=None):
@@ -330,19 +386,20 @@ class PSLib(Fleet):
             scope = fluid.global_scope()
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
-            for i in self._opt_info["fleet_desc"].trainer_param.dense_table:
-                if table_id is not None and table_id != i.table_id:
-                    continue
-                var_list = [var for var in i.dense_variable_name]
-                skip = False
-                for var in var_list:
-                    if scope.find_var(var) is None:
-                        skip = True
-                        break
-                if skip:
-                    continue
-                self._fleet_ptr.shrink_dense_table(i.table_id, scope, var_list,
-                                                   decay, emb_dim)
+            for tp in self._opt_info["fleet_desc"].trainer_param:
+                for i in tp.dense_table:
+                    if table_id is not None and table_id != i.table_id:
+                        continue
+                    var_list = [var for var in i.dense_variable_name]
+                    skip = False
+                    for var in var_list:
+                        if scope.find_var(var) is None:
+                            skip = True
+                            break
+                    if skip:
+                        continue
+                    self._fleet_ptr.shrink_dense_table(i.table_id, scope,
+                                                       var_list, decay, emb_dim)
         self._role_maker._barrier_worker()
 
     def clear_model(self):
@@ -391,7 +448,7 @@ class PSLib(Fleet):
                     model_proto_file(str): path of program desc proto binary
                                            file, can be local or hdfs/afs file
                     var_names(list): var name list
-                    load_combine(bool): load from a file or splited param files
+                    load_combine(bool): load from a file or split param files
                                         default False.
 
         Examples:
@@ -445,7 +502,7 @@ class PSLib(Fleet):
             model_proto_file(str): path of program desc proto binary file,
                                    can be local or hdfs/afs file
             var_names(list): load var names
-            load_combine(bool): load from a file or splited param files
+            load_combine(bool): load from a file or split param files
 
         """
         self._role_maker._barrier_worker()
@@ -476,20 +533,21 @@ class PSLib(Fleet):
                 if ret != 0:
                     raise RuntimeError("download model proto file failed")
                 model_proto_file = dest
-            for i in self._opt_info["fleet_desc"].trainer_param.dense_table:
-                if table_id is not None and table_id != i.table_id:
-                    continue
-                table_var_names = [var for var in i.dense_variable_name]
-                skip = False
-                for var in table_var_names:
-                    if scope.find_var(var) is None:
-                        skip = True
-                        break
-                if skip:
-                    continue
-                self._fleet_ptr.load_from_paddle_model(
-                    scope, table_id, var_names, model_path, model_proto_file,
-                    table_var_names, load_combine)
+            for tp in self._opt_info["fleet_desc"].trainer_param:
+                for i in tp.dense_table:
+                    if table_id is not None and table_id != i.table_id:
+                        continue
+                    table_var_names = [var for var in i.dense_variable_name]
+                    skip = False
+                    for var in table_var_names:
+                        if scope.find_var(var) is None:
+                            skip = True
+                            break
+                    if skip:
+                        continue
+                    self._fleet_ptr.load_from_paddle_model(
+                        scope, table_id, var_names, model_path,
+                        model_proto_file, table_var_names, load_combine)
         self._role_maker._barrier_worker()
 
     def _set_opt_info(self, opt_info):
@@ -560,7 +618,7 @@ class DownpourOptimizer(DistributedOptimizer):
         """
         minimize a program through loss, loss can be a list in DistributedOptimizer.
         Note that in parameter server mode, a worker will not get anything about optimize_os
-        Because optmizer algorithms run on pserver side. We will make this usable in pserver
+        Because optimizer algorithms run on pserver side. We will make this usable in pserver
         process, but currently the optimization part is written into Fleet(). A user does not
         need to care about how to startup a pserver node.
 
@@ -587,7 +645,8 @@ class DownpourOptimizer(DistributedOptimizer):
                           parameter_list,
                           no_grad_set,
                           self._strategy)
-        opt_info["mpi_rank"] = fleet._role_maker._get_rank()
+        opt_info["mpi_rank"] = fleet.worker_index()
+        opt_info["mpi_size"] = fleet.worker_num()
         fleet._set_opt_info(opt_info)
 
         programs = [loss.block.program for loss in losses]

@@ -34,11 +34,11 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-class TestElementwiseAddGradGradWithoutDout
+class TestElementwiseAddGradGradWithoutDDX
     : public TestElementwiseOpGradGrad<T> {
  public:
-  TestElementwiseAddGradGradWithoutDout(const platform::Place &place,
-                                        const framework::DDim &dims)
+  TestElementwiseAddGradGradWithoutDDX(const platform::Place &place,
+                                       const framework::DDim &dims)
       : TestElementwiseOpGradGrad<T>("elementwise_add_grad_grad", place, dims,
                                      {"Y", "DOut", "DDY"}, {"DDOut"}) {}
 
@@ -67,14 +67,14 @@ class TestElementwiseAddGradGradWithoutDout
 TEST(test_elementwise_add_grad_grad_without_ddx, cpu_place) {
   framework::DDim dims({32, 64});
   platform::CPUPlace p;
-  TestElementwiseAddGradGradWithoutDout<float> test(p, dims);
+  TestElementwiseAddGradGradWithoutDDX<float> test(p, dims);
   ASSERT_TRUE(test.Check());
 }
 #ifdef PADDLE_WITH_CUDA
 TEST(test_elementwise_add_grad_grad_without_ddx, gpu_place) {
   framework::DDim dims({32, 64});
   platform::CUDAPlace p(0);
-  TestElementwiseAddGradGradWithoutDout<float> test(p, dims);
+  TestElementwiseAddGradGradWithoutDDX<float> test(p, dims);
   ASSERT_TRUE(test.Check());
 }
 #endif

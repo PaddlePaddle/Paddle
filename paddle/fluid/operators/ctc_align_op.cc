@@ -39,8 +39,9 @@ class CTCAlignOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
   }
 };
 
@@ -62,7 +63,7 @@ class CTCAlignOpMaker : public framework::OpProtoAndCheckerMaker {
               "sequence in Output.")
         .AsDispensable();
     AddAttr<int>("blank",
-                 "(int, default: 0), the blank label setted in Connectionist "
+                 "(int, default: 0), the blank label set in Connectionist "
                  "Temporal Classification (CTC) op.")
         .SetDefault(0);
     AddAttr<bool>("merge_repeated",
@@ -124,8 +125,10 @@ Then:
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(ctc_align, ops::CTCAlignOp, ops::CTCAlignOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    ctc_align, ops::CTCAlignOp, ops::CTCAlignOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     ctc_align, ops::CTCAlignKernel<paddle::platform::CPUDeviceContext, int>,
     ops::CTCAlignKernel<paddle::platform::CPUDeviceContext, int64_t>);

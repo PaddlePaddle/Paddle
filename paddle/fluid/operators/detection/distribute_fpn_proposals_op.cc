@@ -41,12 +41,17 @@ class DistributeFpnProposalsOp : public framework::OperatorWithKernel {
     }
     ctx->SetOutputsDim("MultiFpnRois", outs_dims);
     ctx->SetOutputDim("RestoreIndex", {-1, 1});
+    if (!ctx->IsRuntime()) {
+      for (size_t i = 0; i < num_out_rois; ++i) {
+        ctx->SetLoDLevel("MultiFpnRois", ctx->GetLoDLevel("FpnRois"), i);
+      }
+    }
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("FpnRois"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "FpnRois");
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
@@ -85,9 +90,11 @@ we return an array which indicate the original index of rois in
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(distribute_fpn_proposals, ops::DistributeFpnProposalsOp,
-                  ops::DistributeFpnProposalsOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    distribute_fpn_proposals, ops::DistributeFpnProposalsOp,
+    ops::DistributeFpnProposalsOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(distribute_fpn_proposals,
                        ops::DistributeFpnProposalsOpKernel<float>,
                        ops::DistributeFpnProposalsOpKernel<double>);

@@ -68,7 +68,7 @@ class TestTrainable(unittest.TestCase):
             test_trainable,
             feed_dict,
             op_count={'adam': 1,
-                      'scale': 2,
+                      'scale': 0,
                       'mul_grad': 0})
         self.check_trainable(
             test_trainable,
