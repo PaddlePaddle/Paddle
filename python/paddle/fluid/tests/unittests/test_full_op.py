@@ -110,14 +110,6 @@ class TestFullOpError(unittest.TestCase):
                 shape=[1],
                 fill_value=5,
                 dtype='uint8')
-            self.assertRaises(
-                ValueError,
-                fluid.layers.full,
-                shape=[1],
-                fill_value=5,
-                dtype='float64',
-                device='npu',
-                out=x2)
 
             # The argument shape's type of full_op  must be list, tuple or Variable.
             def test_shape_type():

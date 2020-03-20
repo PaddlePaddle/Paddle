@@ -1507,9 +1507,6 @@ def full(shape,
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
                 'full')
     check_type(shape, 'shape', (Variable, list, tuple), 'full')
-    if device is not None:
-        if device not in ['cpu', 'gpu']:
-            raise ValueError("device must be 'cpu' or 'gpu'.")
 
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
