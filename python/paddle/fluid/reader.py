@@ -645,10 +645,10 @@ class DygraphGeneratorLoader(DataLoaderBase):
         if process is not None:
             process.join()
             # erase process id
-            core._erase_process_pid(id(self))
+            core._erase_process_pids(id(self))
 
     def _set_child_signal_handler(self):
-        core._set_process_pid(id(self), self._process.pid)
+        core._set_process_pids(id(self), [self._process.pid])
         current_handler = signal.getsignal(signal.SIGCHLD)
         if not callable(current_handler):
             current_handler = None

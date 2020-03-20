@@ -20,6 +20,7 @@ limitations under the License. */
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -223,11 +224,22 @@ void BindImperative(py::module *m_ptr) {
 
 #ifndef _WIN32
   // Dygraph DataLoader signal handler
-  m.def("_set_process_pid", [](int64_t key, pid_t pid) {
-    imperative::SetLoadProcessPID(key, pid);
+  m.def("_set_process_pids", [](int64_t key, py::object &obj) {
+    PADDLE_ENFORCE(
+        py::isinstance<py::tuple>(obj) || py::isinstance<py::list>(obj),
+        platform::errors::InvalidArgument(
+            "The batch data read into DataLoader is illegal."
+            "Expected data type is tuple or list, but received %s",
+            obj.get_type()));
+    py::list pids = py::cast<py::list>(obj);
+    std::set<pid_t> pids_set = {};
+    for (size_t i = 0; i < pids.size(); i++) {
+      pids_set.insert(pids[i].cast<pid_t>());
+    }
+    imperative::SetLoadProcessPIDs(key, pids_set);
   });
-  m.def("_erase_process_pid",
-        [](int64_t key) { imperative::EraseLoadProcessPID(key); });
+  m.def("_erase_process_pids",
+        [](int64_t key) { imperative::EraseLoadProcessPIDs(key); });
   m.def("_set_process_signal_handler",
         []() { imperative::SetLoadProcessSignalHandler(); });
   m.def("_throw_error_if_process_failed",
