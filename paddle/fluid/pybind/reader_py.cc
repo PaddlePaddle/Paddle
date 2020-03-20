@@ -62,7 +62,7 @@ static boost::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
 
   PADDLE_ENFORCE_GE(tensor_shape[0], 0,
                     platform::errors::InvalidArgument(
-                        "Tensor shape must not be less than 0"));
+                        "Tensor shape at dim 0 must not be less than 0"));
 
   if (!tensor.lod().empty()) {
     tensor_shape[0] = -1;  // unknown shape
@@ -83,9 +83,10 @@ static boost::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
   }
 
   for (int64_t idx = 1; idx < rank; ++idx) {
-    PADDLE_ENFORCE_GE(tensor_shape[idx], 0,
-                      platform::errors::InvalidArgument(
-                          "Tensor shape must not be less than 0"));
+    PADDLE_ENFORCE_GE(
+        tensor_shape[idx], 0,
+        platform::errors::InvalidArgument(
+            "Tensor shape at dim %d must not be less than 0", idx));
     if (desc_shape[idx] >= 0 && tensor_shape[idx] != desc_shape[idx]) {
       return framework::vectorize<int64_t>(tensor_shape);
     }
@@ -112,6 +113,10 @@ class MultiDeviceFeedReader {
   using ResultDictList =
       std::vector<std::unordered_map<std::string, framework::LoDTensor>>;
   using ResultList = std::vector<std::vector<framework::LoDTensor>>;
+
+  static constexpr bool kKeepOrder =
+      std::is_same<QueueType,
+                   reader::OrderedMultiDeviceLoDTensorBlockingQueue>::value;
 
   MultiDeviceFeedReader(
       const std::shared_ptr<QueueType> &queue,
@@ -149,6 +154,7 @@ class MultiDeviceFeedReader {
       auto *holder = new framework::ReaderHolder();
       auto reader = create_or_get_reader(i);
       if (use_double_buffer) {
+        VLOG(10) << "Creating " << i << "-th BufferedReader";
         holder->Reset(
             framework::MakeDecoratedReader<operators::reader::BufferedReader>(
                 reader, p, 2));
@@ -172,12 +178,18 @@ class MultiDeviceFeedReader {
 
   ResultDictList ReadNext() {
     CheckNextStatus();
-    ResultDictList result(ret_.size());
+    ResultDictList result;
+    result.reserve(ret_.size());
     for (size_t i = 0; i < ret_.size(); ++i) {
-      if (!ret_[i].empty()) {
-        for (size_t j = 0; j < names_.size(); ++j) {
-          result[i].emplace(names_[j], std::move(ret_[i][j]));
-        }
+      if (ret_[i].empty()) {
+        if (!kKeepOrder) result.emplace_back();
+        continue;
+      }
+
+      result.emplace_back();
+      auto &ret = result.back();
+      for (size_t j = 0; j < names_.size(); ++j) {
+        ret.emplace(names_[j], std::move(ret_[i][j]));
       }
     }
     ReadAsync();
@@ -189,6 +201,7 @@ class MultiDeviceFeedReader {
     ResultList result;
     result.reserve(ret_.size());
     for (size_t i = 0; i < ret_.size(); ++i) {
+      if (kKeepOrder && ret_[i].empty()) continue;
       result.emplace_back(std::move(ret_[i]));
     }
     ReadAsync();
@@ -394,6 +407,7 @@ void BindReader(py::module *module) {
            },
            py::call_guard<py::gil_scoped_release>())
       .def("size", &reader::OrderedMultiDeviceLoDTensorBlockingQueue::Size)
+      .def("capacity", &reader::OrderedMultiDeviceLoDTensorBlockingQueue::Cap)
       .def("close", &reader::OrderedMultiDeviceLoDTensorBlockingQueue::Close)
       .def("kill", &reader::OrderedMultiDeviceLoDTensorBlockingQueue::Kill)
       .def("wait_for_inited",

@@ -673,6 +673,9 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
       member_->executor_.reset(pg_exe);
       member_->inference_executor_ = pg_exe;
     } else {
+      LOG_IF(WARNING, details::HasKeepLastReadOp(*graph))
+          << "drop_last=False for DataLoader is not supported in training "
+             "network. It is automatically turned to drop_last=True.";
       if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
         VLOG(3) << "use ThreadedSSAGraphExecutor";
         member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
@@ -805,21 +808,30 @@ FetchResultType ParallelExecutor::Run(
 void ParallelExecutor::FeedTensorsIntoLocalScopes(
     const std::vector<std::unordered_map<std::string, LoDTensor>> &tensors) {
   if (!member_->AllowPartialFeed()) {
-    PADDLE_ENFORCE_EQ(
-        member_->local_scopes_.size(), tensors.size(),
-        platform::errors::InvalidArgument(
-            "The feed tensor number does not match the device number"));
+    PADDLE_ENFORCE_EQ(tensors.size(), member_->local_scopes_.size(),
+                      platform::errors::Unimplemented(
+                          "The feed data number %d does not match the device "
+                          "number %d. If you are using DataLoader to feed "
+                          "data, this may be because you set drop_last=False "
+                          "in training network. Currently, drop_last=False for "
+                          "DataLoader is not supported for training network. "
+                          "Please set drop_last=True when defining DataLoader.",
+                          tensors.size(), member_->local_scopes_.size()));
   } else {
     PADDLE_ENFORCE_GE(member_->local_scopes_.size(), tensors.size(),
                       platform::errors::InvalidArgument(
                           "The feed tensor number exceeds the device number"));
   }
 
+  size_t feed_num = 0;
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &map = tensors[i];
-    if (!map.empty()) {
-      member_->SetHasFeed(i);
+    if (map.empty()) {
+      continue;
     }
+
+    member_->SetHasFeed(i);
+    ++feed_num;
     for (auto &pair : map) {
       bool is_persistable = member_->IsPersistable(pair.first);
       if (!is_persistable) {
@@ -833,6 +845,18 @@ void ParallelExecutor::FeedTensorsIntoLocalScopes(
       trg->ShareDataWith(pair.second);
       trg->set_lod(pair.second.lod());
     }
+  }
+
+  if (!member_->AllowPartialFeed()) {
+    PADDLE_ENFORCE_EQ(feed_num, member_->local_scopes_.size(),
+                      platform::errors::Unimplemented(
+                          "The feed data number %d does not match the device "
+                          "number %d. If you are using DataLoader to feed "
+                          "data, this may be because you set drop_last=False "
+                          "in training network. Currently, drop_last=False for "
+                          "DataLoader is not supported for training network. "
+                          "Please set drop_last=True when defining DataLoader.",
+                          feed_num, member_->local_scopes_.size()));
   }
 }
 

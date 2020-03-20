@@ -184,6 +184,8 @@ class DataLoader(object):
                        use_multiprocess=False,
                        drop_last=True):
         """
+        **Notes: the framework ensures that the data loading order of DataLoader is exactly the same as the user-defined data source.**
+
         Create a DataLoader object for loading data from Python generator. 
         Data would be prefetched using Python thread and be pushed
         into a queue asynchronously.
@@ -193,9 +195,6 @@ class DataLoader(object):
         :code:`set_batch_generator` . Please see the following example codes
         to know their usages.
         
-        Notice that the framework ensures that the data loading order is exactly 
-        the same as the user-defined data source.
-
         If iterable = True, the created DataLoader object is a Python generator
         object, which is iterable using for-range loop.
 
@@ -233,7 +232,7 @@ class DataLoader(object):
                 The Default value is False.
             drop_last (bool): whether to drop the last batches whose number is
                 less than the CPU core/GPU card number. The default value is 
-                True. In training phase, users should not set drop_last=True,
+                True. In training phase, users should not set drop_last=False,
                 because all CPU cores/GPU cards must read data from DataLoader. 
                 In inference phase, users can set drop_last=False, so that the
                 last batches whose number is less than the CPU core/GPU card

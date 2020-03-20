@@ -169,6 +169,8 @@ class OrderedMultiDeviceLoDTensorBlockingQueue {
     reset_methods_[idx] = reset_method;
   }
 
+  inline size_t Cap() const { return capacity_; }
+
  private:
   const std::shared_ptr<LoDTensorBlockingQueue>& CurQueue() {
     return queues_[(data_index_++) % queues_.size()];

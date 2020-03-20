@@ -25,6 +25,9 @@ namespace details {
 
 static constexpr size_t kUndefinedDevIdx = -1UL;
 
+// NOTE(paddle-dev): the following ops are related to multi-device
+// communication. If the graph contains any of the following ops,
+// it cannot separate into multiple graphs on each device.
 static std::unordered_set<std::string> kMultiDeviceOps{
     "sync_batch_norm",
     "sync_batch_norm_grad",
@@ -102,8 +105,22 @@ static size_t GetUniqueDeviceIdOfOp(const details::OpHandleBase &op) {
   return dev_idx;
 }
 
+/**
+ * This function tries to separate the original graph into multiple graphs, in
+ * which each graph would only run on single device. This is usually used to
+ * separate a data-parallel inference graph to multiple graphs on each device.
+ *
+ * The graph can be separated into multiple single device graphs if and only if:
+ *
+ *  - the graph does not contain any ops related to multi-devices communication,
+ *    such as allreduce, send, recv, sync_batch_norm, etc.
+ *
+ *  - ops on different devices do not depend on each other. That is to say, the
+ *    graph has several disconnected sub-graphs.
+ */
 std::vector<std::unique_ptr<ir::Graph>> TrySeparateToMultipleSingleDeviceGraphs(
     ir::Graph *graph) {
+  // If sub-block contains multi-devices ops, we cannot separate
   if (ContainMultiDeviceOp(graph->OriginProgram(), 1)) {
     return {};
   }
@@ -146,8 +163,13 @@ std::vector<std::unique_ptr<ir::Graph>> TrySeparateToMultipleSingleDeviceGraphs(
     }
   }
 
-  PADDLE_ENFORCE_GE(place_num, 1, platform::errors::NotFound(
-                                      "No place found, this may be a bug"));
+  PADDLE_ENFORCE_GE(
+      place_num, 1,
+      platform::errors::NotFound(
+          "No place found, this may be a bug.\nIt would be helpful if you "
+          "could inform us of how this conversion went by opening a github "
+          "issue at https://github.com/PaddlePaddle/Paddle/issues/new. And "
+          "we will resolve it with high priority."));
 
   std::vector<std::unique_ptr<ir::Graph>> graphs(place_num);
   for (auto &g : graphs) {
@@ -189,18 +211,26 @@ std::vector<std::unique_ptr<ir::Graph>> TrySeparateToMultipleSingleDeviceGraphs(
   return graphs;
 }
 
-bool HasDropLastReadOp(const ir::Graph &graph) {
+static bool HasDropLastReadOpImpl(const ir::Graph &graph, bool drop_last) {
   auto ops = ir::FilterByNodeWrapper<OpHandleBase>(graph);
   for (auto *op : ops) {
     auto *compute_op = dynamic_cast<ComputationOpHandle *>(op);
     if (compute_op && compute_op->GetOp()->Type() == "read" &&
-        compute_op->GetOp()->Attr<bool>("drop_last")) {
-      VLOG(10) << "The graph has drop_last=True read op";
+        compute_op->GetOp()->Attr<bool>("drop_last") == drop_last) {
+      VLOG(10) << "The graph has drop_last=" << drop_last << " read op";
       return true;
     }
   }
-  VLOG(10) << "The graph does not have drop_last=True read op";
+  VLOG(10) << "The graph does not have drop_last=" << drop_last << " read op";
   return false;
+}
+
+bool HasDropLastReadOp(const ir::Graph &graph) {
+  return HasDropLastReadOpImpl(graph, true);
+}
+
+bool HasKeepLastReadOp(const ir::Graph &graph) {
+  return HasDropLastReadOpImpl(graph, false);
 }
 
 }  // namespace details

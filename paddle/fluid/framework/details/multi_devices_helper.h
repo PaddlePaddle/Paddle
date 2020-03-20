@@ -106,6 +106,8 @@ std::vector<std::unique_ptr<ir::Graph>> TrySeparateToMultipleSingleDeviceGraphs(
 
 bool HasDropLastReadOp(const ir::Graph &graph);
 
+bool HasKeepLastReadOp(const ir::Graph &graph);
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
