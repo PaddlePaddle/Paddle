@@ -18,6 +18,16 @@ import paddle.fluid as fluid
 from paddle.fluid.dygraph.jit import dygraph_to_static_graph
 
 
+def add_fn(x):
+    x = x + 1
+    return x
+
+
+def loss_fn(x, lable):
+    loss = fluid.layers.cross_entropy(x, lable)
+    return loss
+
+
 def dyfunc_with_if_else(x_v, label=None):
     if fluid.layers.mean(x_v).numpy()[0] > 5:
         x_v = x_v - 1
@@ -63,6 +73,58 @@ def nested_if_else(x_v):
     else:
         y = x_v - bias
     return y
+
+
+def nested_if_else_2(x):
+    y = fluid.layers.reshape(x, [-1, 1])
+    b = 2
+    if b < 1:
+        # var `z` is not visible for outer scope
+        z = y
+    x_shape_0 = x.shape[0]
+    if x_shape_0 < 1:
+        if fluid.layers.shape(y).numpy()[0] < 1:
+            res = fluid.layers.fill_constant(
+                value=2, shape=x.shape, dtype="int32")
+            # `z` is a new var here.
+            z = y + 1
+        else:
+            res = fluid.layers.fill_constant(
+                value=3, shape=x.shape, dtype="int32")
+    else:
+        res = x
+    return res
+
+
+def nested_if_else_3(x):
+    y = fluid.layers.reshape(x, [-1, 1])
+    b = 2
+    # var `z` is visible for func.body
+    if b < 1:
+        z = y
+    else:
+        z = x
+
+    if b < 1:
+        res = x
+        # var `out` is only visible for current `if`
+        if b > 1:
+            out = x + 1
+        else:
+            out = x - 1
+    else:
+        y_shape = fluid.layers.shape(y)
+        if y_shape.numpy()[0] < 1:
+            res = fluid.layers.fill_constant(
+                value=2, shape=x.shape, dtype="int32")
+            # `z` is created in above code block.
+            z = y + 1
+        else:
+            res = fluid.layers.fill_constant(
+                value=3, shape=x.shape, dtype="int32")
+            # `out` is a new var.
+            out = x + 1
+    return res
 
 
 class NetWithControlFlowIf(fluid.dygraph.Layer):
