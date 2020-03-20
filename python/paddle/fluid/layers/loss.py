@@ -349,6 +349,112 @@ def square_error_cost(input, label):
     return square_out
 
 
+def l1_loss(input, label, size_average=None, reruce=None, reduction='mean'):
+    """
+    This op accepts input predictions and target label and returns the
+    mean absolute error.
+
+    For predictions label, and target label, the loss is calculated as follows.
+
+    If :attr:`reduction` set to ``'none'``, the unreduced loss is:
+
+    .. math::
+
+        Out = |input - label|
+
+    If :attr:`reduction` set to ``'mean'``, the reduced mean loss is:
+
+    .. math::
+
+        Out = MEAN(|input - label|)
+
+    If :attr:`reduction` set to ``'sum'``, the reduced sum loss is:
+
+    .. math::
+
+        Out = SUM(|input - label|)
+
+    Parameters:
+        input (Variable): Input tensor, the data type should be float32.
+        label (Variable): Label tensor, the data type should be float32.
+        size_average (bool, optional): Indicate how to average the loss by batch_size.
+            If :attr:`size_average` is ``'True'``, the reduced mean loss is returned; If :attr:`size_average` is ``'False'``,
+            the reduced sum loss is returned. Default is ``'None'``, the unreduced loss is returned.
+            :attr:`size_average` is deprecated, please use :attr:`reduction` instead.
+        reduce (bool, optional): Indicate whether to reduce the loss or not.
+            If :attr:`reduce` is ``'True'``, the loss is reduced (by sum or mean accroding to :attr:`size_average`); 
+            Default is ``'None'``, the unreduced loss is returned.  :attr:`reduce` is deprecated, please use :attr:`reduction` instead.
+        reduction (str, optional): Indicate how to average the loss by batch_size.
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned; If :attr:`size_average` is ``'sum'``,
+            the reduced sum loss is returned. Default is ``'None'``, the unreduced loss is returned.
+    Returns:
+        The tensor variable storing the l1_loss of input and label.
+
+    Return type: Variable.
+
+    Examples:
+
+        .. code-block:: python
+
+	    # declarative mode
+	    import paddle.fluid as fluid
+	    import numpy as np
+	    input = fluid.data(name="input", shape=[1])
+	    label = fluid.data(name="label", shape=[1])
+	    output = fluid.layers.l1_loss(input,label)
+	    place = fluid.CPUPlace()
+	    exe = fluid.Executor(place)
+	    exe.run(fluid.default_startup_program())
+ 
+	    input_data = np.array([1.5]).astype("float32")
+	    label_data = np.array([1.7]).astype("float32")
+	    output_data = exe.run(fluid.default_main_program(),
+                feed={"input":input_data, "label":label_data},
+                fetch_list=[output],
+                return_numpy=True)
+ 
+	    print(output_data)
+	    # [array([0.2], dtype=float32)]
+	    
+	    # imperative mode
+	    import paddle.fluid.dygraph as dg
+
+	    with dg.guard(place) as g:
+    		input = dg.to_variable(input_data)
+    		label = dg.to_variable(label_data)
+    		output = fluid.layers.l1_loss(input, label)
+    		print(output.numpy())
+	        
+	        # [0.2]
+    """
+
+    def determine_reduction():
+        if reduction in ['sum', 'mean', 'none']:
+            return reduction
+        if size_average is None:
+            size_average = True
+        if reduce is None:
+            reduce = True
+        if size_average and reduce:
+            reduction = 'mean'
+        elif reduce:
+            reduction = 'sum'
+        else:
+            reduction = 'none'
+        return reduction
+
+    redution = determine_reduction()
+
+    unreduced = nn.elementwise_sub(input, label, act='abs')
+
+    if reduction == 'sum':
+        return nn.reduce_sum(unreduced)
+    elif reduction == 'mean':
+        return nn.reduce_mean(unreduced)
+    else:
+        return unreduced
+
+
 def edit_distance(input,
                   label,
                   normalized=True,
