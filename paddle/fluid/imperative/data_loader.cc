@@ -123,7 +123,7 @@ void ThrowErrorIfLoadProcessFailed() {
         infop.si_status != EXIT_SUCCESS) {  // exit with error
       PADDLE_THROW(platform::errors::Fatal(
           "DataLoader process (pid %ld) exited unexpectedly with code %d. "
-          "Error detailed are lost due to multiprocessing. Rerunning with:\n "
+          "Error detailed are lost due to multiprocessing. Rerunning with:\n"
           "  1. If run DataLoader by DataLoader.from_generator(...), run with "
           "DataLoader.from_generator(..., use_multiprocess=False) may give "
           "better error trace.\n"

@@ -166,17 +166,16 @@ class DataLoader(object):
 
                 import numpy as np
                 import paddle.fluid as fluid
-                from fluid.io import Dataset, MnistDataset, BatchSampler, DataLoader
+                from paddle.fluid.io import Dataset, MnistDataset, BatchSampler, DataLoader
 
-                EPOCH = 4
-                BATCH_NUM = 10
+                BATCH_NUM = 20
                 BATCH_SIZE = 16
                 EPOCH_NUM = 4
 
                 IMAGE_SIZE = 784
                 CLASS_NUM = 10
 
-                USE_GPU = False
+                USE_GPU = False # whether use GPU to run model
 
                 # define a random dataset
                 class RandomDataset(Dataset):
@@ -184,8 +183,8 @@ class DataLoader(object):
                         self.num_samples = num_samples
 
                     def __getitem__(self, idx):
-                        image = np.random.random(size=image_shape).astype('float32')
-                        label = np.random.random(size=label_shape).astype('int64')
+                        image = np.random.random([IMAGE_SIZE]).astype('float32')
+                        label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
                         return image, label
 
                     def __len__(self):
@@ -197,7 +196,7 @@ class DataLoader(object):
                 # -------------------- static graph ---------------------
 
                 def simple_net(image, label):
-                    fc_tmp = fluid.layers.fc(image, size=CLASS_NUM)
+                    fc_tmp = fluid.layers.fc(image, size=CLASS_NUM, act='softmax')
                     cross_entropy = fluid.layers.softmax_with_cross_entropy(image, label)
                     loss = fluid.layers.reduce_mean(cross_entropy)
                     sgd = fluid.optimizer.SGD(learning_rate=1e-3)
@@ -216,30 +215,19 @@ class DataLoader(object):
 
                 dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
 
-                # get loader with return_list = False
                 loader = DataLoader(dataset,
                                     feed_list=[image, label],
-                                    return_list=False,
+                                    places=places,
                                     batch_size=BATCH_SIZE, 
+                                    shuffle=True,
                                     drop_last=True,
                                     num_workers=2)
 
-                for _ in range(EPOCH_NUM):
-                    for data in loader():
-                        l = exe.run(prog, feed=data, fetch_list=[loss])
+                for e in range(EPOCH_NUM):
+                    for i, data in enumerate(loader()):
+                        l = exe.run(prog, feed=data, fetch_list=[loss], return_numpy=True)
+                        print("Epoch {} batch {}: loss = {}".format(e, i, l[0][0]))
 
-                # get loader with return_list = False
-                loader = DataLoader(dataset,
-                                    feed_list=[image, label],
-                                    return_list=True,
-                                    batch_size=BATCH_SIZE, 
-                                    drop_last=True,
-                                    num_workers=2)
-
-                for _ in range(EPOCH_NUM):
-                    for image, label in loader():
-                        l = exe.run(prog, feed={'image': image, 'data': data}, fetch_list=[loss])
-                    
                 # -------------------------------------------------------
                     
                 # --------------------- dygraph mode --------------------
@@ -247,29 +235,32 @@ class DataLoader(object):
                 class SimpleNet(fluid.dygraph.Layer):
                     def __init__(self):
                         super(SimpleNet, self).__init__()
-                        self.fc = fluid.dygraph.nn.Linear(IMAGE_SIZE, CLASS_NUM)
+                        self.fc = fluid.dygraph.nn.Linear(IMAGE_SIZE, CLASS_NUM, act='softmax')
 
                     def forward(self, image, label=None):
                         return self.fc(image)
 
-                simple_net = SimpleNet()
-                opt = fluid.optimizer.SGD(learning_rate=1e-3,
-                                          parameter_list=simple_net.parameters())
+                with fluid.dygraph.guard(places[0]):
+                    simple_net = SimpleNet()
+                    opt = fluid.optimizer.SGD(learning_rate=1e-3,
+                                              parameter_list=simple_net.parameters())
 
-                loader = DataLoader(dataset,
-                                    places=places[0],
-                                    batch_size=BATCH_SIZE, 
-                                    drop_last=True,
-                                    num_workers=2)
+                    loader = DataLoader(dataset,
+                                        places=places[0],
+                                        batch_size=BATCH_SIZE,
+                                        shuffle=True,
+                                        drop_last=True,
+                                        num_workers=2)
 
-                for _ in range(EPOCH_NUM):
-                    for image, label in loader():
-                        out = simple_net(image)
-                        loss = fluid.layers.cross_entropy(out, label)
-                        avg_loss = fluid.layers.mean(loss)
-                        avg_loss.backward()
-                        optimizer.minimize(avg_loss)
-                        simple_net.clear_gradients()
+                    for e in range(EPOCH_NUM):
+                        for i, (image, label) in enumerate(loader()):
+                            out = simple_net(image)
+                            loss = fluid.layers.cross_entropy(out, label)
+                            avg_loss = fluid.layers.mean(loss)
+                            avg_loss.backward()
+                            opt.minimize(avg_loss)
+                            simple_net.clear_gradients()
+                            print("Epoch {} batch {}: loss = {}".format(e, i, np.mean(loss.numpy())))
 
                 # -------------------------------------------------------
 

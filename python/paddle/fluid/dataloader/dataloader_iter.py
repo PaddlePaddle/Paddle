@@ -207,6 +207,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
     def __init__(self, loader):
         super(_DataLoaderIterMultiProcess, self).__init__(loader)
 
+        assert self._num_workers > 0,  "Multi-process DataLoader " \
+                    "invalid num_workers({})".format(self._num_workers)
+
         # subprocess wrokers' result queue
         self._data_queue = None
 
@@ -480,7 +483,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     continue
 
     def _try_put_indices(self):
-        assert self._send_idx - self._rcvd_idx <= (2 * self._num_workers), \
+        assert self._send_idx - self._rcvd_idx <= self._outstanding_capacity, \
                     "too many indices have been put to queue"
         try:
             indices = next(self._sampler_iter)
@@ -510,23 +513,24 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     indices_queue_lens = [
                         q.qsize() for q in self._indices_queues
                     ]
-                    logging.warn(
-                        "Data drained for outstanding batches({})"
-                        " < places num({}) in multiprocessing, except "
-                        "send_idx({}) == rcvd_idx({}) but not, status:"
-                        "\n  reorder_dict indices: {}"
-                        "\n  blocking_queue size: {}"
-                        "\n  thread_event set: {}"
-                        "\n  worker_event set: {}"
-                        "\n  worker status: {}"
-                        "\n  indices_queue length: {}".format(
-                            self._batches_outstanding,
-                            len(self._places), self._send_idx, self._rcvd_idx,
-                            self._reorder_dict.keys(),
-                            self._blocking_queue.size(),
-                            self._thread_done_event.is_set(),
-                            self._workers_done_event.is_set(
-                            ), worker_status, indices_queue_lens))
+                    logging.warn("Data drained for outstanding batches({})"
+                                 " < places num({}) in multiprocessing, except "
+                                 "send_idx({}) == rcvd_idx({}) but not, status:"
+                                 "\n  outstanding capacity: {}"
+                                 "\n  reorder_dict indices: {}"
+                                 "\n  blocking_queue size: {}"
+                                 "\n  thread_event set: {}"
+                                 "\n  worker_event set: {}"
+                                 "\n  worker status: {}"
+                                 "\n  indices_queue length: {}".format(
+                                     self._batches_outstanding,
+                                     len(self._places), self._send_idx,
+                                     self._rcvd_idx, self._outstanding_capacity,
+                                     self._reorder_dict.keys(),
+                                     self._blocking_queue.size(),
+                                     self._thread_done_event.is_set(),
+                                     self._workers_done_event.is_set(
+                                     ), worker_status, indices_queue_lens))
                 self._thread_done_event.set()
                 self._blocking_queue.close()
 
