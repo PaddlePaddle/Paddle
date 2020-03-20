@@ -48,10 +48,6 @@ class TestDequantizeLogOp(OpTest):
     def test_check_output(self):
         self.check_output()
 
-    # this op is only for inference
-    def test_check_grad(self):
-        pass
-
 
 if __name__ == "__main__":
     unittest.main()

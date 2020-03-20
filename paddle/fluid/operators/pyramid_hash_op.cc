@@ -480,6 +480,7 @@ class CPUPyramidHashOPGradKernel : public framework::OpKernel<T> {
     auto& drop_pos_offset = drop_pos->lod()[0];
 
     const auto* top_diff = top->data<T>();
+    // in-place update weight, so need const_cast
     T* weights = const_cast<T*>(_blobs->data<T>());
     T mlr = -1.0 * _lr;
 
