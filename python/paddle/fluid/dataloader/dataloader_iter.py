@@ -441,7 +441,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 # still happen when data in queue is corrupted (e.g., due to 
                 # Queue.cancel_join_thread or unexpected exit). So we set a timeout whenever 
                 # we try to get data from `data_queue`
-                # NOTE: [ avoid failed quickly ] Here, the time setting of QUEUE_GET_TIMEOUT
+                # NOTE: [ avoid failed quickly ] default timeout setting QUEUE_GET_TIMEOUT
                 # is relatively long, currently it is 60 seconds, because in some models,
                 # if the reader child process starts with a heavy burden, the child process
                 # has no enough time to put the data in the queue when the main process

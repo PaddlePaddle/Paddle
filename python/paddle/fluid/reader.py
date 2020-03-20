@@ -21,7 +21,7 @@ import paddle
 from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode, cpu_places
 from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider
-from .multiprocess_utils import multiprocess_queue_set, CleanupFuncRegistrar, _cleanup_mmap, QUEUE_GET_TIMEOUT
+from .multiprocess_utils import multiprocess_queue_set, CleanupFuncRegistrar, _cleanup_mmap, _cleanup
 from .dataloader import *
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
 from .unique_name import UniqueNameGenerator
@@ -32,6 +32,15 @@ from .dataset import DatasetBase, InMemoryDataset
 import os
 import multiprocessing
 import signal
+
+# NOTE: queue has a different name in python2 and python3
+if six.PY2:
+    import Queue as queue
+else:
+    import queue
+
+# NOTE: [ avoid hanging & failed quickly ] These value is used in getting data from another process
+QUEUE_GET_TIMEOUT = 60
 
 __all__ = ['PyReader', 'DataLoader']
 
@@ -282,6 +291,12 @@ class DataLoader(object):
                     "Number of places must be 1 in dygraph mode"
 
         assert num_workers >= 0, "num_workers should be a non-negative value"
+        if num_workers > 0 and (sys.platform == 'darwin' or
+                                sys.platform == 'win32'):
+            logging.warning(
+                "multi-process mode not support MacOs and Windows currently." \
+                " use signle-process with num_workers = 0 instead")
+            num_workers = 0
         self.num_workers = num_workers
 
         assert timeout >= 0, "timeout should be a non-negative value"

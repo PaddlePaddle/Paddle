@@ -25,9 +25,6 @@ if six.PY2:
 else:
     import queue
 
-# NOTE: [ avoid hanging & failed quickly ] These value is used in getting data from another process
-QUEUE_GET_TIMEOUT = 60
-
 # NOTE: [ mmap files clear ] If there is still data in the multiprocess queue when the main process finishes reading,
 # the data in the queue needs to be popped. Then the LoDTensor read by the main process
 # from the child process will automatically clear the memory-mapped file.
@@ -45,7 +42,7 @@ def _clear_multiprocess_queue_set():
 
 
 # NOTE: main process clear function at exit
-def _cleanup_all():
+def _cleanup():
     # NOTE: inter-process Queue shared memory objects clear function
     _clear_multiprocess_queue_set()
     # NOTE: main process memory map files clear funciton
@@ -115,4 +112,4 @@ class CleanupFuncRegistrar():
 # to clean up shared memory objects in these two queues before the python interpreter exits.
 # NOTE: Currently multi-process DataLoader only supports Linux platform
 if not (sys.platform == 'darwin' or sys.platform == 'win32'):
-    CleanupFuncRegistrar.register(_cleanup_all)
+    CleanupFuncRegistrar.register(_cleanup)
