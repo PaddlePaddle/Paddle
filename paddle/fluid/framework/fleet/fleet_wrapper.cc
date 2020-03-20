@@ -214,7 +214,6 @@ void FleetWrapper::PullDenseVarsAsync(
     const Scope& scope, const uint64_t tid,
     const std::vector<std::string>& var_names,
     std::vector<::std::future<int32_t>>* pull_dense_status,
-    std::vector<std::vector<float>>& dense_region,
     const paddle::platform::Place& place) {
 #ifdef PADDLE_WITH_PSLIB
   auto& regions = _regions[tid];
@@ -229,10 +228,10 @@ void FleetWrapper::PullDenseVarsAsync(
       reg = paddle::ps::Region(w, tensor->numel());
     }
     else {
-      if (int(dense_region[i].size()) < tensor->numel()) {
-        dense_region[i].resize(tensor->numel());
-      }
-      reg = paddle::ps::Region(dense_region[i].data(), tensor->numel());
+      Variable* pin_var = scope.FindVar(var_names[i] + "pin");
+      LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();
+      float* pin_w = pin_tensor->data<float>();
+      reg = paddle::ps::Region(pin_w, pin_tensor->numel());
     }
     regions[i] = std::move(reg);
   }
@@ -312,7 +311,6 @@ void FleetWrapper::PushDenseVarsAsync(
     const std::vector<std::string>& var_names,
     std::vector<::std::future<int32_t>>* push_sparse_status,
     float scale_datanorm, int batch_size,
-    std::vector<std::vector<float>>& dense_grad_regions_,
     const paddle::platform::Place& place,
     cudaStream_t stream,
     cudaEvent_t event) {
@@ -334,9 +332,6 @@ void FleetWrapper::PushDenseVarsAsync(
       Variable *pin_var = scope.FindVar(t + "pin");
       LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();
       float *pin_g = pin_tensor->mutable_data<float>(tensor->dims(), platform::CUDAPinnedPlace());
-      //if (int(dense_grad_regions_[i].size()) < count) {
-      //  dense_grad_regions_[i].resize(count);
-      //}
       memory::Copy(
           platform::CUDAPinnedPlace(),
           pin_g,
@@ -380,7 +375,6 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     const int batch_size, const bool use_cvm, const bool dump_slot,
     std::vector<uint64_t>* sparse_push_keys, const bool no_cvm,
     const paddle::platform::Place& place,
-    std::vector<float>& sparse_grad_region,
     cudaStream_t stream,
     cudaEvent_t event) {
 #ifdef PADDLE_WITH_PSLIB
@@ -461,9 +455,6 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     }
     float* g = g_tensor->data<float>();
     if (!in_cpu) {
-      //if (sparse_grad_region.size() < (len * emb_dim)) {
-      //  sparse_grad_region.resize(len * emb_dim);
-      //}
       
       Variable *pin_var = scope.FindVar(sparse_grad_names[i] + "pin");
       LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();

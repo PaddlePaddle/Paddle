@@ -56,9 +56,6 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
       dense_value_names_[table_id][j] = table.dense_value_name(j);
     }
     dense_grad_names_[table_id].resize(table.dense_grad_name_size());
-    if (int(dense_grad_regions_.size()) < table.dense_grad_name_size()) {
-      dense_grad_regions_.resize(table.dense_grad_name_size());
-    }
     for (int j = 0; j < table.dense_grad_name_size(); ++j) {
       dense_grad_names_[table_id][j] = table.dense_grad_name(j);
     }
@@ -741,7 +738,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
             &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
-            dump_slot_, &sparse_push_keys_[tid], no_cvm_, place_, sparse_grad_region_, copy_stream_, event_);
+            dump_slot_, &sparse_push_keys_[tid], no_cvm_, place_, copy_stream_, event_);
         timeline.Pause();
         push_sparse_time += timeline.ElapsedSec();
         total_time += timeline.ElapsedSec();
@@ -756,7 +753,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
             param_.program_config(0).push_dense_table_id(i));
         fleet_ptr_->PushDenseVarsAsync(
             *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
-            scale_datanorm_, cur_batch, dense_grad_regions_, place_, copy_stream_, event_);
+            scale_datanorm_, cur_batch, place_, copy_stream_, event_);
       }
       timeline.Pause();
       push_dense_time += timeline.ElapsedSec();
@@ -813,7 +810,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
 
     if (thread_id_ == 0) {
       // should be configured here
-      if (batch_cnt > 0) {
+      if (batch_cnt > 0 && batch_cnt % 100 == 0) {
         double op_sum_time = 0;
         std::unordered_map<std::string, double> op_to_time;
         for (size_t i = 0; i < op_total_time.size(); ++i) {
@@ -971,7 +968,7 @@ void DownpourWorker::TrainFiles() {
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
             &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
-            dump_slot_, &sparse_push_keys_[tid], no_cvm_, place_, sparse_grad_region_, copy_stream_, event_);
+            dump_slot_, &sparse_push_keys_[tid], no_cvm_, place_, copy_stream_, event_);
       }
     }
 
@@ -982,7 +979,7 @@ void DownpourWorker::TrainFiles() {
             param_.program_config(0).push_dense_table_id(i));
         fleet_ptr_->PushDenseVarsAsync(
             *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
-            scale_datanorm_, cur_batch, dense_grad_regions_, place_, copy_stream_, event_);
+            scale_datanorm_, cur_batch, place_, copy_stream_, event_);
       }
       VLOG(3) << "push dense gradient done.";
 

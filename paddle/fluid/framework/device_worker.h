@@ -68,6 +68,7 @@ class PullDenseWorker {
   void SetPlace(const paddle::platform::Place& place) {
     place_ = place;
   }
+  void CreatePinVar();
   static std::shared_ptr<PullDenseWorker> GetInstance() {
     if (NULL == s_instance_) {
       s_instance_.reset(new paddle::framework::PullDenseWorker());
@@ -108,7 +109,6 @@ class PullDenseWorker {
   float squared_sum_epsilon_ = 1e-4;
   std::mutex mutex_for_mean_scale_;
   float total_batch_num_ = 0;
-  std::map<uint64_t, std::vector<std::vector<float>>> dense_regions_; 
   #ifdef PADDLE_WITH_CUDA
   cudaStream_t copy_stream_;
   #endif
@@ -247,12 +247,10 @@ class DownpourWorker : public HogwildWorker {
   std::map<uint64_t, std::vector<std::string>> sparse_grad_names_;
   std::map<uint64_t, std::vector<std::string>> dense_value_names_;
   std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
-  std::vector<std::vector<float>> dense_grad_regions_;
   #ifdef PADDLE_WITH_CUDA
   cudaEvent_t event_;
   cudaStream_t copy_stream_;
   #endif
-  std::vector<float> sparse_grad_region_;
   // actually pushed feasign of each table
   std::map<uint64_t, std::vector<uint64_t>> sparse_push_keys_;
 
