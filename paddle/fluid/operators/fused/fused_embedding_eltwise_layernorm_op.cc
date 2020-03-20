@@ -26,19 +26,20 @@ class EmbeddingEltWiseLayerNormOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* context) const override {
-    PADDLE_ENFORCE_GE(context->Inputs("Ids").size(), 2UL,
-                      platform::errors::InvalidArgument(
-                          "Input Ids of EmbeddingEltWiseLayerNormOp should "
-                          "have at least 2 tensors"));
-    PADDLE_ENFORCE_GE(context->Inputs("Embs").size(), 2UL,
-                      platform::errors::InvalidArgument(
-                          "Input Embs of EmbeddingEltWiseLayerNormOp should "
-                          "have at least 2 tensors"));
     PADDLE_ENFORCE_EQ(context->Inputs("Ids").size(),
                       context->Inputs("Embs").size(),
                       platform::errors::InvalidArgument(
                           "Two inputs of EmbeddingEltWiseLayerNormOp shoube be "
                           "the same size"));
+    PADDLE_ENFORCE_GE(context->Inputs("Embs").size(), 2UL,
+                      platform::errors::InvalidArgument(
+                          "Input Embs of EmbeddingEltWiseLayerNormOp should "
+                          "have at least 2 tensors"));
+    PADDLE_ENFORCE_GE(context->Inputs("Ids").size(), 2UL,
+                      platform::errors::InvalidArgument(
+                          "Input Ids of EmbeddingEltWiseLayerNormOp should "
+                          "have at least 2 tensors"));
+
     PADDLE_ENFORCE_EQ(
         context->HasInput("Bias"), true,
         platform::errors::InvalidArgument(
@@ -100,8 +101,8 @@ class EmbeddingEltWiseLayerNormOp : public framework::OperatorWithKernel {
       }
     }
     if (flag == 0) {
-      PADDLE_THROW(
-          "All Inputs of fused_embedding_eltwise_layernorm OP are Empty!");
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "All Inputs of fused_embedding_eltwise_layernorm OP are Empty!"));
     }
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
