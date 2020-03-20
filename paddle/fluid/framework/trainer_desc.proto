@@ -93,6 +93,7 @@ message SectionConfig {
   optional int32 concurrency = 3 [ default = 1 ];
   repeated string section_in_var_names = 4;
   repeated string section_out_var_names = 5;
+  optional int32 place_id = 6 [ default = -1 ];
 }
 
 message FetchConfig {

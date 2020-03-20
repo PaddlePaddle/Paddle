@@ -20,37 +20,38 @@
 namespace paddle {
 namespace framework {
 
+const int ModelParallelTrainer::concurrency_ = 2;
+
 void ModelParallelTrainer::Initialize(const TrainerDesc& trainer_desc,
                                       Dataset* dataset) {
-  // auto device_num_ = trainer_desc.thread_num();
   // Todo: (lilong12) set device_num_ correctly
-  int device_num_ = 2;
-  VLOG(3) << "device num: " << device_num_;
+  auto section_params = trainer_desc.section_param();
+  num_macrobatches_ = section_params.queue_size();
+  VLOG(3) << "number of macrobatches per minibatch: " << num_macrobatches_;
+  section_num_ = section_params.section_config_size();
+  VLOG(3) << "number of training devices: " << section_num_;
 
   SetDataset(dataset);
   const std::vector<paddle::framework::DataFeed*> readers =
       dataset->GetReaders();
-  VLOG(3) << "readers num: " << readers.size();
-  // Todo: (lilong12) add assert(readers.size() == 1)
-  auto reader = readers[0];
+  int num_readers = readers.size();
+  PADDLE_ENFORCE_EQ(num_readers, 1,
+                    "The number of dataset readers for model parallel"
+                    "should be 1.");
+  auto* reader = readers[0];
   feed_var_names_ = reader->GetUseSlotAlias();
 
-  pipeline_config_ = trainer_desc.section_param();
-
-  section_num_ = device_num_;
   workers_.resize(section_num_);
-
   for (int i = 0; i < section_num_; ++i) {
-    const auto& section_config = pipeline_config_.section_config(i);
-    // Todo: (lilong12) set concurrency_ correctly.
-    concurrency_ = 1;
+    const auto& section_config = section_params.section_config(i);
     platform::Place place;
+    int place_id = section_config.place_id();
     switch (section_config.place()) {
       case SectionConfig::CPUPlace:
         place = platform::CPUPlace();
         break;
       case SectionConfig::CUDAPlace:
-        place = platform::CUDAPlace(i);
+        place = platform::CUDAPlace(place_id);
         break;
       case SectionConfig::CUDAPinnedPlace:
         place = platform::CUDAPinnedPlace();
@@ -59,10 +60,11 @@ void ModelParallelTrainer::Initialize(const TrainerDesc& trainer_desc,
         PADDLE_ENFORCE(false, "Unkown place type in SectionConfig: %d",
                        section_config.place());
     }
-    VLOG(3) << "place: " << place;
+    VLOG(3) << "device worker place: " << place << ", id: " << place_id;
 
     workers_[i].resize(concurrency_);
     for (int j = 0; j < concurrency_; ++j) {
+      VLOG(3) << "set device worker " << i << ":" << j;
       workers_[i][j] = DeviceWorkerFactory::CreateDeviceWorker(
           trainer_desc.device_worker_name());
       auto this_worker =
@@ -72,29 +74,37 @@ void ModelParallelTrainer::Initialize(const TrainerDesc& trainer_desc,
         this_worker->SetDataFeed(reader);
         this_worker->SetReaderPlace(place);
       }
-      auto thread_index = i * concurrency_ + j;
+      int thread_index = i * concurrency_ + j;
+      VLOG(3) << "set thread index: " << thread_index;
       this_worker->SetThreadIndex(thread_index);
+      this_worker->SetSectionIndex(i);
+      VLOG(3) << "setting place: " << place;
       this_worker->SetPlace(place);
+      VLOG(3) << "setting trainer_desc";
       this_worker->Initialize(trainer_desc);
+      VLOG(3) << "setting number of macrobatches";
+      this_worker->SetMacrobatchNum(num_macrobatches_);
+      VLOG(3) << "initialized thread: " << thread_index;
     }
   }
+  VLOG(3) << "All device worker started.";
   // set debug here
   SetDebug(trainer_desc.debug());
 }
 
-// void ModelParallelTrainer::CopyParameters(const Scope& scope, int
-// macrobatch_id,
 void ModelParallelTrainer::CopyParameters(int macrobatch_id,
                                           const ProgramDesc& main_program) {
   auto& global_block = main_program.Block(0);
   for (auto& var : global_block.AllVars()) {
     int is_feed_var =
         std::count(feed_var_names_.begin(), feed_var_names_.end(), var->Name());
-    if ((var->Persistable() || is_feed_var) && macrobatch_id == 0) {
-      auto* ptr = root_scope_->Var(var->Name());
-      InitializeVariable(ptr, var->GetType());
-      VLOG(3) << "Create variable " << var->Name()
-              << " globally for root scope";
+    if (var->Persistable() || is_feed_var) {
+      if (macrobatch_id == 0) {
+        auto* ptr = root_scope_->Var(var->Name());
+        InitializeVariable(ptr, var->GetType());
+        VLOG(3) << "Create feed var " << var->Name()
+                << " for root scope, which pointer is " << ptr;
+      }
     } else {
       auto* ptr = macrobatch_scopes_[macrobatch_id]->Var(var->Name());
       InitializeVariable(ptr, var->GetType());
@@ -106,23 +116,17 @@ void ModelParallelTrainer::CopyParameters(int macrobatch_id,
 
 void ModelParallelTrainer::InitTrainerEnv(const ProgramDesc& main_program,
                                           const platform::Place& place) {
-  PADDLE_ENFORCE(root_scope_, "Null root_scope pointer");
-  // Todo: (lilong12) set num_macrobatches correctly
-  int num_macrobatches_ = 1;
+  PADDLE_ENFORCE_NOT_NULL(root_scope_,
+                          "root_scope_ for "
+                          "ModelParallelTrainer::InitTrainerEnv should not "
+                          "be null.");
   macrobatch_scopes_.resize(num_macrobatches_);
-  for (auto& var : main_program.Block(0).AllVars()) {
-    if (var->Persistable()) {
-      persistable_vars_.push_back(var->Name());
-    }
-  }
-
-  VLOG(3) << "create all scopes";
   // auto* scope = &root_scope_->NewScope();
   for (int i = 0; i < num_macrobatches_; ++i) {
     macrobatch_scopes_[i] = &root_scope_->NewScope();
-    // CopyParameters(*root_scope_, i, main_program);
     CopyParameters(i, main_program);
   }
+  VLOG(3) << "created macrobatch scopes.";
 
   for (int i = 0; i < section_num_; ++i) {
     for (size_t j = 0; j < workers_[i].size(); ++j) {
@@ -136,12 +140,11 @@ void ModelParallelTrainer::InitTrainerEnv(const ProgramDesc& main_program,
 }
 
 void ModelParallelTrainer::Run() {
-  VLOG(3) << "Going to run";
+  VLOG(3) << "Going to run model parallel device worker";
   for (int i = 0; i < section_num_; ++i) {
     for (size_t j = 0; j < workers_[i].size(); ++j) {
-      // if (!debug_) {
-      if (true) {
-        section_threads_.push_back(
+      if (!debug_) {
+        threads_.push_back(
             std::thread(&DeviceWorker::TrainFiles, workers_[i][j].get()));
       }
       // else {
@@ -154,8 +157,7 @@ void ModelParallelTrainer::Run() {
 }
 
 void ModelParallelTrainer::Finalize() {
-  VLOG(3) << "calling finalized. ";
-  for (auto& th : section_threads_) {
+  for (auto& th : threads_) {
     th.join();
   }
   VLOG(3) << "trainer finalized. ";

@@ -44,21 +44,22 @@ class DequeueOp : public framework::OperatorBase {
         queue_holder_var,
         "No LoDTensorBlockingQueueHolder variable with name %s found",
         queue_name);
-    const std::string& var_name = Input("lod_tensor");
-    auto* out_var = scope.FindVar(var_name);
-    PADDLE_ENFORCE_NOT_NULL(out_var, "No variable with name %s found",
-                            var_name);
-    auto* out_tensor = out_var->GetMutable<LoDTensor>();
-    PADDLE_ENFORCE_NOT_NULL(out_tensor, "No variable with name %s found",
-                            var_name);
     auto* queue_holder =
         queue_holder_var->template GetMutable<LoDTensorBlockingQueueHolder>();
+    std::vector<std::string> out_names =
+        Attr<std::vector<std::string>>("lod_tensors");
+    for (size_t i = 0; i < out_names.size(); ++i) {
+      auto* out_var = scope.FindVar(out_names[i]);
+      PADDLE_ENFORCE_NOT_NULL(out_var, "No variable with name %s found",
+                              out_names[i]);
+      auto* out_tensor = out_var->GetMutable<LoDTensor>();
 
-    std::vector<LoDTensor> lod_tensor_vec;
-    bool success = false;
-    lod_tensor_vec = queue_holder->GetQueue()->Pop(&success);
-    for (size_t i = 0; i < lod_tensor_vec.size(); ++i) {
-      TensorCopySync(lod_tensor_vec[i], dev_place, out_tensor);
+      std::vector<LoDTensor> lod_tensor_vec;
+      bool success = false;
+      lod_tensor_vec = queue_holder->GetQueue()->Pop(&success);
+      for (size_t i = 0; i < lod_tensor_vec.size(); ++i) {
+        TensorCopySync(lod_tensor_vec[i], dev_place, out_tensor);
+      }
     }
   }
 };
@@ -68,7 +69,8 @@ class DequeueOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("blocking_queue",
              "Name of the `LoDTensorBlockingQueueHolder` variable");
-    AddInput("lod_tensor", "Name of the `lod_tensor` to assign");
+    AddAttr<std::vector<std::string>>("lod_tensors",
+                                      "Names of the `lod_tensor` to assign");
     AddComment(R"DOC(
 			Dequeue.
       )DOC");

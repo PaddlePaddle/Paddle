@@ -173,7 +173,7 @@ class PipelineTrainer : public TrainerBase {
 
 class ModelParallelTrainer : public TrainerBase {
  public:
-  ModelParallelTrainer() { VLOG(3) << "constructor"; }
+  ModelParallelTrainer() {}
   ~ModelParallelTrainer() override {}
   void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set) override;
   void InitTrainerEnv(const ProgramDesc& main_program,
@@ -185,25 +185,17 @@ class ModelParallelTrainer : public TrainerBase {
 
  protected:
   int section_num_;
+  int num_macrobatches_;
   std::vector<std::string> feed_var_names_;
-  SectionWorkerParameter pipeline_config_;
 
-  // worker: [section_id][pipeline_id][thread_id]
+  // worker: [section_id][thread_id]
   std::vector<std::vector<std::shared_ptr<paddle::framework::DeviceWorker>>>
       workers_;
-  std::vector<std::thread> section_threads_;
-
-  // We use scope to maintain context info, and scopes
-  // will be deliverd between different sections.
+  std::vector<std::thread> threads_;
   std::vector<Scope*> macrobatch_scopes_;
 
-  std::vector<std::string> persistable_vars_;
-
-  std::vector<DataFeed*> readers_;
-
-  // void CopyParameters(const Scope& scope, int pipeline_id,
   void CopyParameters(int pipeline_id, const ProgramDesc& main_program);
-  int concurrency_;
+  static const int concurrency_;
 };
 
 }  // namespace framework

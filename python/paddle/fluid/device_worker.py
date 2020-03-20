@@ -365,18 +365,20 @@ class ModelParallel(DeviceWorker):
         trainer_desc.device_worker_name = "ModelParallelWorker"
         pipeline_opt = self._program._pipeline_opt
         section_param = trainer_desc.section_param
-        #section_param.queue_size = pipeline_opt["queue_size"]
+        section_param.queue_size = pipeline_opt["queue_size"]
         #section_param.sync_steps = pipeline_opt["sync_steps"]
         section_param.start_cpu_core_id = pipeline_opt["start_cpu_core_id"]
         #for e in pipeline_opt["param_need_sync"]:
         #    section_param.param_need_sync.append(e)
         for i, program in enumerate(pipeline_opt["section_program_list"]):
+            print("add section_config: ", i)
             cfg = section_param.section_config.add()
             cfg.program_desc.ParseFromString(program["program"]._get_desc()
                                              .serialize_to_string())
             # TODO: why does not work
             #cfg.program_desc.CopyFrom(program.program._get_desc())
             place = pipeline_opt["place_list"][i]
+            place_id = pipeline_opt["place_id_list"][i]
             if isinstance(place, core.CPUPlace):
                 cfg.place = cfg.CPUPlace
             elif isinstance(place, core.CUDAPlace):
@@ -387,6 +389,7 @@ class ModelParallel(DeviceWorker):
                 raise NotImplementedError(
                     "SectionWorker only supports CPUPlace, CUDAPlace and CUDAPinnedPlace now."
                 )
+            cfg.place_id = place_id
 
             #cfg.concurrency = pipeline_opt["concurrency_list"][i]
             #for var in program["input_set"]:

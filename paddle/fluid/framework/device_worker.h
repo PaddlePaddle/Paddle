@@ -388,7 +388,7 @@ class SectionWorker : public DeviceWorker {
 
 class ModelParallelWorker : public DeviceWorker {
  public:
-  ModelParallelWorker() { VLOG(3) << "worker construct."; }
+  ModelParallelWorker() {}
   ~ModelParallelWorker() override {}
 
   void Initialize(const TrainerDesc& desc) override;
@@ -396,7 +396,9 @@ class ModelParallelWorker : public DeviceWorker {
   void BindingDataFeedMemory() override {}
   void CreateDeviceResource(const ProgramDesc& main_prog) override{};
   void SetThreadIndex(int thread_id) { thread_id_ = thread_id; }
-  void SetDeviceIndex(int tid) override { pipeline_id_ = tid; }
+  void SetSectionIndex(int sec_id) { section_id_ = sec_id; }
+  void SetDeviceIndex(int tid) override {}
+  void SetMacrobatchNum(int num) { num_macrobatches_ = num; }
   void SetMacrobatchScopes(const std::vector<Scope*>& scope) {
     macrobatch_scopes_ = scope;
   }
@@ -412,7 +414,8 @@ class ModelParallelWorker : public DeviceWorker {
 
  protected:
   int thread_id_;
-  int pipeline_id_;
+  int section_id_;
+  int num_macrobatches_;
   std::vector<Scope*> macrobatch_scopes_;
   void AutoSetCPUAffinity(bool reuse);
   std::vector<std::unique_ptr<OperatorBase>> ops_;

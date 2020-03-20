@@ -4368,6 +4368,7 @@ class ModelParallelOptimizer(object):
                     renamed = unique_name.generate(var_name)
                     self._create_var(block, ref_var, renamed)
                     self._rename_arg(op, var_name, renamed)
+                    op_role = op.all_attrs()[self.op_role_key]
                     block._insert_op(
                         index=offset,
                         type='enqueue',
@@ -4375,15 +4376,19 @@ class ModelParallelOptimizer(object):
                             'blocking_queue': queue_name,
                             'lod_tensor': var_name
                         },
-                        attrs={'op_device': prev_device, })
+                        attrs={
+                            'op_device': prev_device,
+                            self.op_role_key: op_role
+                        })
                     block._insert_op(
                         index=offset + 1,
                         type='dequeue',
-                        inputs={
-                            'blocking_queue': queue_name,
-                            'lod_tensor': renamed
-                        },
-                        attrs={'op_device': cur_device, })
+                        inputs={'blocking_queue': queue_name, },
+                        attrs={
+                            'op_device': cur_device,
+                            'lod_tensors': [renamed],
+                            self.op_role_key: op_role
+                        })
                     offset += 2
             # Backward pass
             if self._is_backward_op(op) and \
@@ -4418,7 +4423,7 @@ class ModelParallelOptimizer(object):
                         },
                         attrs={
                             'op_device': cur_device,
-                            self.op_role_key: OpRole.Optimize
+                            self.op_role_key: OpRole.Backward
                         })
                     offset += 1
             # Optimizer pass
@@ -4446,12 +4451,10 @@ class ModelParallelOptimizer(object):
                 block._insert_op(
                     index=offset,
                     type='dequeue',
-                    inputs={
-                        'blocking_queue': queue_name,
-                        'lod_tensor': grad_names
-                    },
+                    inputs={'blocking_queue': queue_name, },
                     attrs={
                         'op_device': cur_device,
+                        'lod_tensors': grad_names,
                         self.op_role_key: OpRole.Optimize
                     })
                 block._insert_op(
@@ -4497,13 +4500,15 @@ class ModelParallelOptimizer(object):
                 self._create_vars(p["program"].block(0), program)
                 #print("sub program: ", p)
         place_list = sorted(place_list)
+        place_id_list = [-1, 0]
         program._pipeline_opt = {
             "trainer": "ModelParallelTrainer",
             "device_worker": "ModelParallel",
             "section_program_list": program_list,
             "place_list": place_list,
+            "place_id_list": place_id_list,
             "sync_steps": -1,
-            "concurrency_list": [2],
-            "num_macrobatches": self._num_macrobatches,
+            #"concurrency_list": [2],
+            "queue_size": self._num_macrobatches,
             "start_cpu_core_id": self._start_cpu_core_id,
         }

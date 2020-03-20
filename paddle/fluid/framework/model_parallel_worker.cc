@@ -25,12 +25,12 @@ namespace paddle {
 namespace framework {
 
 std::atomic<int> ModelParallelWorker::cpu_id_(0);
+
 void ModelParallelWorker::Initialize(const TrainerDesc& trainer_desc) {
-  VLOG(3) << "ModelParallelWorker::Initialize, place " << place_;
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
   std::shared_ptr<framework::ProgramDesc> program;
   program.reset(new ProgramDesc(
-      trainer_desc.section_param().section_config(thread_id_).program_desc()));
+      trainer_desc.section_param().section_config(section_id_).program_desc()));
   for (auto& op_desc : program->Block(0).AllOps()) {
     ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
@@ -73,39 +73,74 @@ void ModelParallelWorker::AutoSetCPUAffinity(bool reuse) {
 void ModelParallelWorker::TrainFiles() {
   AutoSetCPUAffinity(true);
 
-  int batch_size = 0;
-  VLOG(3) << "before set data reader_ ";
-  if (device_reader_ != nullptr) {
-    VLOG(3) << "set data reader_ ";
-    VLOG(3) << "start data reader_ ";
+  if (thread_id_ == 0) {
+    // For the first section.
+    PADDLE_ENFORCE_NOT_NULL(device_reader_,
+                            "The device reader for the first "
+                            "thread should not be null.");
     device_reader_->Start();
-    // const std::vector<std::string>& input_feed =
-    //    device_reader_->GetUseSlotAlias();
-    // for (auto name : input_feed) {
-    //  device_reader_->AddFeedVar(root_scope_->Var(name), name);
-    //}
-    VLOG(3) << "assign var for data reader_ ";
     device_reader_->AssignFeedVar(*root_scope_);
-    // VLOG(3) << "get batch_size for data reader_ ";
-    // batch_size = device_reader_->Next();
-    // VLOG(3) << "read batch size: " << batch_size;
-    while ((batch_size = device_reader_->Next()) > 0) {
-      VLOG(3) << "read batch size: " << batch_size;
-      VLOG(3) << "begin running ops";
-      for (auto& op : ops_) {
-        VLOG(3) << "running an op " << op->Type() << " for " << thread_id_;
-        op->Run(*macrobatch_scopes_[0], place_);
+    while (true) {
+      // Start a macrobatch.
+      // forward pass:
+      for (int i = 0; i < num_macrobatches_; ++i) {
+        device_reader_->Next();
+        for (auto& op : ops_) {
+          int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
+          if (op_role == static_cast<int>(OpRole::kForward) ||
+              op_role == (static_cast<int>(OpRole::kForward) |
+                          static_cast<int>(OpRole::kLoss))) {
+            VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
+                    << " for scope " << i;
+            op->Run(*macrobatch_scopes_[i], place_);
+          }
+        }
+      }
+      // backward pass
+      for (int i = 0; i < num_macrobatches_; ++i) {
+        for (auto& op : ops_) {
+          int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
+          if (op_role == static_cast<int>(OpRole::kBackward) ||
+              op_role == (static_cast<int>(OpRole::kBackward) |
+                          static_cast<int>(OpRole::kLoss))) {
+            VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
+                    << " for scope " << i;
+            op->Run(*macrobatch_scopes_[i], place_);
+          }
+        }
       }
       dev_ctx_->Wait();
     }
-  } else {
+  } else if (thread_id_ == 2) {
     while (true) {
-      for (auto& op : ops_) {
-        VLOG(3) << "running an op " << op->Type() << " for " << thread_id_;
-        op->Run(*macrobatch_scopes_[0], place_);
+      // forward pass:
+      for (int i = 0; i < num_macrobatches_; ++i) {
+        for (auto& op : ops_) {
+          int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
+          if (op_role == static_cast<int>(OpRole::kForward) ||
+              op_role == (static_cast<int>(OpRole::kForward) |
+                          static_cast<int>(OpRole::kLoss))) {
+            VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
+                    << " for scope " << i;
+            op->Run(*macrobatch_scopes_[i], place_);
+          }
+        }
       }
+      // backward pass
+      for (int i = 0; i < num_macrobatches_; ++i) {
+        for (auto& op : ops_) {
+          int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
+          if (op_role == static_cast<int>(OpRole::kBackward) ||
+              op_role == (static_cast<int>(OpRole::kBackward) |
+                          static_cast<int>(OpRole::kLoss))) {
+            VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
+                    << " for scope " << i;
+            op->Run(*macrobatch_scopes_[i], place_);
+          }
+        }
+      }
+      dev_ctx_->Wait();
     }
-    dev_ctx_->Wait();
   }
 }
 
