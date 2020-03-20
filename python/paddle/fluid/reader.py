@@ -184,7 +184,8 @@ class DataLoader(object):
                        use_multiprocess=False,
                        drop_last=True):
         """
-        **Notes: the framework ensures that the data loading order of DataLoader is exactly the same as the user-defined data source.**
+        .. note::
+          **The framework ensures that the data loading order of DataLoader is exactly the same as the user-defined data source.**
 
         Create a DataLoader object for loading data from Python generator. 
         Data would be prefetched using Python thread and be pushed
