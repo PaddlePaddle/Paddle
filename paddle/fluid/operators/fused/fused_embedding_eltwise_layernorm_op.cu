@@ -129,7 +129,7 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
     std::vector<int64_t> in1s, in2s;
     for (int i = 0; i < input_num; ++i) {
       in1s.push_back(reinterpret_cast<uintptr_t>(ids[i]->data<int64_t>()));
-      in2s.push_back(reinterpret_cast<uintptr_t>(embs[i]->data<float>()));
+      in2s.push_back(reinterpret_cast<uintptr_t>(embs[i]->data<T>()));
     }
 
     cudaMemcpyAsync(in_ids_d, in1s.data(), sizeof(int64_t) * input_num,
