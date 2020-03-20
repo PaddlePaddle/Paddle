@@ -172,7 +172,7 @@ class ProgramCache(object):
                     feed_name, type(batch_data))
                 feed_layer = data(
                     name=feed_name,
-                    shape=list(batch_data.shape[1:]),
+                    shape=[-1] + list(batch_data.shape[1:]),
                     dtype=str(batch_data.dtype))
                 self._inputs.append(feed_layer)
 
