@@ -3345,6 +3345,29 @@ class TestBook(LayerTest):
                         bidirectional=bidirectional,
                         batch_first=batch_first)
 
+    def test_L1Loss(self):
+        input_np = np.random.random(size=(10, 1)).astype(np.float32)
+        label_np = np.random.random(size=(10, 1)).astype(np.float32)
+        with self.static_graph():
+            input = layers.data(name='input', shape=[10, 1], dtype='float32')
+            label = layers.data(name='label', shape=[10, 1], dtype='float32')
+            l1_loss = paddle.nn.loss.L1Loss()
+            ret = l1_loss(input, label)
+            static_ret = self.get_static_graph_result(
+                feed={'input': input_np,
+                      'label': label_np}, fetch_list=[ret])[0]
+
+        with self.dynamic_graph():
+            l1_loss = paddle.nn.loss.L1Loss()
+            dy_ret = l1_loss(
+                base.to_variable(input_np), base.to_variable(label_np))
+            dy_ret_value = dy_ret.numpy()
+
+        expected = np.mean(np.abs(input_np - label_np))
+        self.assertTrue(np.allclose(static_ret, expected))
+        self.assertTrue(np.allclose(dy_ret_value, expected))
+        self.assertTrue(np.allclose(static_ret, dy_ret_value))
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -377,13 +377,6 @@ def l1_loss(input, label, size_average=None, reruce=None, reduction='mean'):
     Parameters:
         input (Variable): Input tensor, the data type should be float32.
         label (Variable): Label tensor, the data type should be float32.
-        size_average (bool, optional): Indicate how to average the loss by batch_size.
-            If :attr:`size_average` is ``'True'``, the reduced mean loss is returned; If :attr:`size_average` is ``'False'``,
-            the reduced sum loss is returned. Default is ``'None'``, the unreduced loss is returned.
-            :attr:`size_average` is deprecated, please use :attr:`reduction` instead.
-        reduce (bool, optional): Indicate whether to reduce the loss or not.
-            If :attr:`reduce` is ``'True'``, the loss is reduced (by sum or mean accroding to :attr:`size_average`); 
-            Default is ``'None'``, the unreduced loss is returned.  :attr:`reduce` is deprecated, please use :attr:`reduction` instead.
         reduction (str, optional): Indicate how to average the loss by batch_size.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned; If :attr:`size_average` is ``'sum'``,
             the reduced sum loss is returned. Default is ``'None'``, the unreduced loss is returned.
@@ -423,27 +416,15 @@ def l1_loss(input, label, size_average=None, reruce=None, reduction='mean'):
     		input = dg.to_variable(input_data)
     		label = dg.to_variable(label_data)
     		output = fluid.layers.l1_loss(input, label)
-    		print(output.numpy())
+        print(output.numpy())
 	        
 	        # [0.2]
     """
 
-    def determine_reduction():
-        if reduction in ['sum', 'mean', 'none']:
-            return reduction
-        if size_average is None:
-            size_average = True
-        if reduce is None:
-            reduce = True
-        if size_average and reduce:
-            reduction = 'mean'
-        elif reduce:
-            reduction = 'sum'
-        else:
-            reduction = 'none'
-        return reduction
-
-    redution = determine_reduction()
+    if reduction not in ['sum', 'mean', 'none']:
+        raise ValueError(
+            "The value of 'reduction' in l1_loss should be 'sum', 'mean' or 'none', but "
+            "received %s, which is not allowed." % reduction)
 
     unreduced = nn.elementwise_sub(input, label, act='abs')
 
