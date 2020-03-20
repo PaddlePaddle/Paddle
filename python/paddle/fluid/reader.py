@@ -175,7 +175,7 @@ class DataLoader(object):
                 IMAGE_SIZE = 784
                 CLASS_NUM = 10
 
-                USE_GPU = False # whether use GPU to run model
+                USE_GPU = True # whether use GPU to run model
 
                 # define a random dataset
                 class RandomDataset(Dataset):
@@ -256,7 +256,7 @@ class DataLoader(object):
                         for i, (image, label) in enumerate(loader()):
                             out = simple_net(image)
                             loss = fluid.layers.cross_entropy(out, label)
-                            avg_loss = fluid.layers.mean(loss)
+                            avg_loss = fluid.layers.reduce_mean(loss)
                             avg_loss.backward()
                             opt.minimize(avg_loss)
                             simple_net.clear_gradients()

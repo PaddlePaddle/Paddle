@@ -75,7 +75,7 @@ def simple_fc_net_static():
                                             act='softmax',
                                             param_attr=param_attr,
                                             bias_attr=bias_attr)
-            loss = fluid.layers.mean(
+            loss = fluid.layers.reduce_mean(
                 fluid.layers.cross_entropy(
                     input=predict_label, label=label))
 
@@ -239,7 +239,7 @@ class TestDygraphDataLoader(TestStaticDataLoader):
                 for image, label in dataloader():
                     out = fc_net(image)
                     loss = fluid.layers.cross_entropy(out, label)
-                    avg_loss = fluid.layers.mean(loss)
+                    avg_loss = fluid.layers.reduce_mean(loss)
                     avg_loss.backward()
                     optimizer.minimize(avg_loss)
                     fc_net.clear_gradients()

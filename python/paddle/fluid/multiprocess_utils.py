@@ -113,3 +113,14 @@ class CleanupFuncRegistrar():
 # NOTE: Currently multi-process DataLoader only supports Linux platform
 if not (sys.platform == 'darwin' or sys.platform == 'win32'):
     CleanupFuncRegistrar.register(_cleanup)
+
+# flag which record python shutdown status.
+python_exit_flag = False
+
+
+def _set_python_exit_flag():
+    global python_exit_status
+    python_exit_status = True
+
+
+atexit.register(_set_python_exit_flag)

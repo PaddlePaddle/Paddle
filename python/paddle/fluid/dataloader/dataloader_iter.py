@@ -30,7 +30,7 @@ else:
 
 from .. import core
 from ..framework import in_dygraph_mode
-from ..multiprocess_utils import multiprocess_queue_set, CleanupFuncRegistrar, _cleanup_mmap
+from ..multiprocess_utils import multiprocess_queue_set, CleanupFuncRegistrar, _cleanup_mmap, python_exit_flag
 
 # multi-process worker check indices queue interval, avoid
 # hanging in subprocess data loading
@@ -239,6 +239,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
     def _init_workers(self):
         # multiprocess worker and indice queue list initial as empty
         self._workers = []
+        self._worker_status = []
         self._indices_queues = []
         self._workers_idx_cycle = itertools.cycle(range(self._num_workers))
 
@@ -264,6 +265,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             worker.start()
             self._set_worker_signal_handler(worker)
             self._workers.append(worker)
+            self._worker_status.append(True)
 
     def _set_worker_signal_handler(self, worker):
         core._set_process_pid(id(worker), worker.pid)
@@ -312,25 +314,37 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._thread.daemon = True
         self._thread.start()
 
+    def _shutdown_worker(self, worker_id):
+        if self._worker_status[worker_id]:
+            self._indices_queues[worker_id].put(None)
+            self._worker_status[worker_id] = False
+
     def _wait_workers_ends(self):
         # 1. set _workers_done_event before close queue and end workers
         self._workers_done_event.set()
 
-        # 2. put None to indices_queue to exit workers, join workers
+        # 2. clear up mmap
+        _cleanup_mmap()
+
+        if python_exit_flag or python_exit_flag is None:
+            return
+
+        # 3. put None to indices_queue to exit workers, join workers
         #    and close indices_queue
-        for worker, queue in zip(self._workers, self._indices_queues):
-            # put None to indices queue, worker will exit if read None
-            queue.put(None)
+        for i in range(self._num_workers):
+            self._shutdown_worker(i)
 
-            # wait worker joined and erase pid
-            worker.join()
-            core._erase_process_pid(id(worker))
+        for w, q in zip(self._workers, self._indices_queues):
+            try:
+                # wait worker joined and erase pid
+                w.join()
+                # close indices_queue after worker exit
+                q.cancel_join_thread()
+                q.close()
+            finally:
+                core._erase_process_pid(id(w))
 
-            # close indices_queue after worker exit
-            queue.cancel_join_thread()
-            queue.close()
-
-        # 3. objects in _data_queue are on shared memory, need to read
+        # 4. objects in _data_queue are on shared memory, need to read
         #    them out and remove from global set
         self._clear_and_remove_data_queue()
 
@@ -475,6 +489,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             else:
                 idx, batch = data
                 if isinstance(batch, Exception):
+                    self._exit_thread_unexpectedly()
                     raise batch
                 if idx == self._rcvd_idx:
                     return data
@@ -494,6 +509,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._indices_queues[worker_idx].put((self._send_idx, indices))
         self._batches_outstanding += 1
         self._send_idx += 1
+
+    def __del__(self):
+        self._wait_workers_ends()
 
     def __next__(self):
         try:
