@@ -26,34 +26,19 @@ class EmbeddingEltWiseLayerNormOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* context) const override {
-    PADDLE_ENFORCE_EQ(context->HasInput("WordId"), true,
+    PADDLE_ENFORCE_GE(context->Inputs("Ids").size(), 2UL,
                       platform::errors::InvalidArgument(
-                          "Input(WordId) of EmbeddingEltWiseLayerNormOp should "
-                          "not be null."));
-
-    PADDLE_ENFORCE_EQ(
-        context->HasInput("PosId"), true,
-        platform::errors::InvalidArgument(
-            "Input(PosId) of EmbeddingEltWiseLayerNormOp should not be null."));
-
-    PADDLE_ENFORCE_EQ(context->HasInput("SentId"), true,
+                          "Input Ids of EmbeddingEltWiseLayerNormOp should "
+                          "have at least 2 tensors"));
+    PADDLE_ENFORCE_GE(context->Inputs("Embs").size(), 2UL,
                       platform::errors::InvalidArgument(
-                          "Input(SentId) of EmbeddingEltWiseLayerNormOp should "
-                          "not be null."));
-
-    PADDLE_ENFORCE_EQ(context->HasInput("WordEmb"), true,
+                          "Input Embs of EmbeddingEltWiseLayerNormOp should "
+                          "have at least 2 tensors"));
+    PADDLE_ENFORCE_EQ(context->Inputs("Ids").size(),
+                      context->Inputs("Embs").size(),
                       platform::errors::InvalidArgument(
-                          "Input(WordEmb) of EmbeddingEltWiseLayerNormOp "
-                          "should not be null."));
-    PADDLE_ENFORCE_EQ(context->HasInput("PosEmb"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(PosEmb) of EmbeddingEltWiseLayerNormOp should "
-                          "not be null."));
-    PADDLE_ENFORCE_EQ(context->HasInput("SentEmb"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(SentEmb) of EmbeddingEltWiseLayerNormOp "
-                          "should not be null."));
-
+                          "Two inputs of EmbeddingEltWiseLayerNormOp shoube be "
+                          "the same size"));
     PADDLE_ENFORCE_EQ(
         context->HasInput("Bias"), true,
         platform::errors::InvalidArgument(
@@ -70,55 +55,55 @@ class EmbeddingEltWiseLayerNormOp : public framework::OperatorWithKernel {
             "Output(Out) of EmbeddingEltWiseLayerNormOp should not be null."));
 
     // batch * seq_len * 1
-    auto dims_word_id = context->GetInputDim("WordId");
+    auto ids_dims = context->GetInputsDim("Ids");
     // word_num * hidden
-    auto dims_word_emb = context->GetInputDim("WordEmb");
-    auto dims_pos_emb = context->GetInputDim("PosEmb");
-    auto dims_sent_emb = context->GetInputDim("SentEmb");
+    auto embs_dims = context->GetInputsDim("Embs");
     // hidden
     auto dims_bias = context->GetInputDim("Bias");
-    PADDLE_ENFORCE_EQ(
-        dims_word_emb[1], dims_bias[0],
-        platform::errors::InvalidArgument(
-            "The second dims (%d) of the Word Embedding should be equal "
-            "to the Bias's size(%d).",
-            dims_word_emb[1], dims_bias[0]));
-    PADDLE_ENFORCE_EQ(dims_word_emb.size(), 2,
-                      platform::errors::InvalidArgument(
-                          "The WordEmb dim's size shoule be 2, but found %d.",
-                          dims_word_emb.size()));
-    PADDLE_ENFORCE_EQ(dims_pos_emb.size(), 2,
-                      platform::errors::InvalidArgument(
-                          "The PosEmb dim's size shoule be 2, but found %d.",
-                          dims_pos_emb.size()));
-    PADDLE_ENFORCE_EQ(dims_sent_emb.size(), 2,
-                      platform::errors::InvalidArgument(
-                          "The SentEmb dim's size shoule be 2, but found %d.",
-                          dims_sent_emb.size()));
-    PADDLE_ENFORCE_EQ(
-        dims_word_emb[1], dims_pos_emb[1],
-        platform::errors::InvalidArgument(
-            "The WordEmb first dim size(%d) shoule equal to PosEmb ones(%d).",
-            dims_word_emb[1], dims_pos_emb[1]));
-    PADDLE_ENFORCE_EQ(
-        dims_word_emb[1], dims_sent_emb[1],
-        platform::errors::InvalidArgument(
-            "The WordEmb first dim size(%d) shoule equal to SentEmb ones(%d).",
-            dims_word_emb[1], dims_sent_emb[1]));
+    int batch = ids_dims[0][0];
+    int seq_len = ids_dims[0][1];
+    int hidden = embs_dims[0][1];
+    for (size_t i = 0; i < embs_dims.size(); ++i) {
+      PADDLE_ENFORCE_EQ(embs_dims[i].size(), 2,
+                        platform::errors::InvalidArgument(
+                            "The Emb dim's size shoule be 2, but found %d.",
+                            embs_dims[i].size()));
+      PADDLE_ENFORCE_EQ(
+          embs_dims[i][1], dims_bias[0],
+          platform::errors::InvalidArgument(
+              "The second dims (%d) of the Embedding should be equal "
+              "to the Bias's size(%d).",
+              embs_dims[i][1], dims_bias[0]));
+      PADDLE_ENFORCE_EQ(
+          embs_dims[i][1], hidden,
+          platform::errors::InvalidArgument(
+              "The Emb first dim size(%d) shoule equal to hidden (%d).",
+              embs_dims[i][1], hidden));
+    }
 
-    int batch = dims_word_id[0];
-    int seq_len = dims_word_id[1];
-    int hidden = dims_word_emb[1];
     auto dim_output = framework::make_ddim({batch, seq_len, hidden});
     context->SetOutputDim("Out", dim_output);
-    context->ShareLoD("WordId", /*->*/ "Out");
+    context->ShareLoD("Ids", /*->*/ "Out");
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "WordEmb");
-    return framework::OpKernelType(data_type, ctx.device_context());
+    auto inputs = ctx.MultiInput<framework::Tensor>("Embs");
+    auto input_data_type = framework::proto::VarType::Type(0);
+    bool flag = 0;
+    for (auto* input : inputs) {
+      if (input->IsInitialized() && input->numel() > 0) {
+        input_data_type = input->type();
+        flag = 1;
+        break;
+      }
+    }
+    if (flag == 0) {
+      PADDLE_THROW(
+          "All Inputs of fused_embedding_eltwise_layernorm OP are Empty!");
+    }
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -126,15 +111,10 @@ class EmbeddingEltWiseLayerNormOpMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("WordId", "The word id input of EmbeddingEltWiseLayerNorm op");
-    AddInput("PosId", "The position id input of EmbeddingEltWiseLayerNorm op");
-    AddInput("SentId", "The sentence id input of EmbeddingEltWiseLayerNorm op");
-    AddInput("WordEmb",
-             "The Word embedding input of EmbeddingEltWiseLayerNorm op");
-    AddInput("PosEmb",
-             "The Position embedding input of EmbeddingEltWiseLayerNorm op");
-    AddInput("SentEmb",
-             "The Sent embedding input of EmbeddingEltWiseLayerNorm op");
+    AddInput("Ids", "Input id tensors of EmbeddingEltWiseLayerNorm op")
+        .AsDuplicable();
+    AddInput("Embs", "Input emb tensors of EmbeddingEltWiseLayerNorm op")
+        .AsDuplicable();
     AddInput("Bias", "The LayerNorm Bias of EmbeddingEltWiseLayerNorm op");
     AddInput("Scale", "The LayerNorm Scale of EmbeddingEltWiseLayerNorm op");
     AddOutput("Out", "The output of EmbeddingEltWiseLayerNorm op");
@@ -157,10 +137,11 @@ class EmbeddingEltWiseLayerNormOpMaker
 EmbeddingEltWiseLayerNorm Operator.
 
 This op is used for optimize the following structure in ernie model.
-wordid -> lookup_table_op -> word
-posid -> lookup_table_op -> pos
-sentdid -> lookup_table_op -> sent
-word + pos + sent -> Y
+id1 -> lookup_table_op -> data1
+id2 -> lookup_table_op -> data2
+           ...
+idn -> lookup_table_op -> data_n
+data1 + data2 + ... + data_n -> Y
 Y -> layer_norm -> Out
 
 Not suggest to use in other case except has same structure as ernie.
