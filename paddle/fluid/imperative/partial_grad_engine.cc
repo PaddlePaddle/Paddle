@@ -719,7 +719,7 @@ PartialGradTask::PartialGradTask(
     auto grad_accumulator_iter = grad_accumulators_.find(mapped_out_grad_var);
     if (grad_accumulator_iter == grad_accumulators_.end()) {
       ready_grad_vars_.Set(mapped_out_grad_var,
-                           std::make_shared<VarBase>(false, out_grad_var));
+                           std::make_shared<VarBase>(out_grad_var));
       VLOG(10) << "Fill 1.0f or user-provided gradient as ready var "
                << out_grad_var->Name();
     } else {
@@ -783,7 +783,7 @@ void PartialGradTask::RunEachOp(const OpBase *op) {
     if (!input_pair.second.IsGrad()) {
       for (auto &fwd_var : input_pair.second) {
         if (fwd_var) {
-          new_inputs.emplace_back(new VarBase(true, fwd_var));
+          new_inputs.emplace_back(new VarBase(fwd_var));
           VLOG(10) << "Unpacked forward var " << fwd_var->Name()
                    << ", grad ops: " << GradOpTypes(*new_inputs.back());
         } else {
@@ -813,7 +813,7 @@ void PartialGradTask::RunEachOp(const OpBase *op) {
       for (auto &fwd_var : output_pair.second) {
         // unpack forward var
         if (fwd_var) {
-          new_outputs.emplace_back(new VarBase(true, fwd_var));
+          new_outputs.emplace_back(new VarBase(fwd_var));
           VLOG(10) << "Unpacked forward var " << fwd_var->Name();
         } else {
           new_outputs.emplace_back();
