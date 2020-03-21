@@ -54,6 +54,8 @@ const std::unordered_set<std::string> op_has_unsed_vars_white_list = {
     "fused_batch_norm_act",            // 2
     "fused_batch_norm_act_grad",       // 2
     "ngraph_engine",                   // 3
+    "data_norm",
+    "data_norm_gard",
 };
 
 namespace paddle {
