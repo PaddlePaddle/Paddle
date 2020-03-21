@@ -408,7 +408,7 @@ class DistributeTranspiler(object):
                               startup_program=None,
                               main_program=None,
                               wait_port=True):
-        if isinstance(trainers, str):
+        if isinstance(trainers, six.string_types):
             endpoints = trainers.split(",")
         elif isinstance(trainers, list):
             endpoints = trainers
@@ -596,7 +596,7 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         self.origin_startup_program = self.startup_program.clone()
 
         if self.config.mode == "nccl2":
-            assert (isinstance(trainers, str))
+            assert (isinstance(trainers, six.string_type))
             self.origin_program._trainers_endpoints = trainers.split(",")
             self.origin_program._nccl_comm_num = self.config.nccl_comm_num
             self.origin_program._use_hierarchical_allreduce = self.config.use_hierarchical_allreduce
