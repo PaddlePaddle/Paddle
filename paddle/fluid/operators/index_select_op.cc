@@ -84,9 +84,10 @@ class IndexSelectGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out"));
-  };
-}
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
+  }
+};
 
 class IndexSelectOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -123,7 +124,7 @@ class IndexSelectGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
   }
-}
+};
 }  // namespace operators
 }  // namespace paddle
 
