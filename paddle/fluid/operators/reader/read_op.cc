@@ -157,8 +157,8 @@ class ReadOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(true);
     AddAttr<bool>("infer_out", "").SetDefault(true);
     AddAttr<bool>("drop_last",
-                  "Whether to drop last batches whose number is less than CPU "
-                  "cores/GPU cards number")
+                  "Whether to drop last batches whose number is less than "
+                  "actual used device number.")
         .SetDefault(true);
     AddComment(R"DOC(
       Read Operator
