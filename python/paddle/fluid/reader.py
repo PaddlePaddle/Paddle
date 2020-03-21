@@ -98,7 +98,7 @@ class DataLoader(object):
                  collate_fn=None,
                  num_workers=0,
                  use_buffer_reader=True,
-                 timeout=QUEUE_GET_TIMEOUT,
+                 timeout=5,
                  worker_init_fn=None):
         """
         DataLoader prodives an iterator over given dataset once by the
@@ -152,7 +152,7 @@ class DataLoader(object):
                 and occupies a little more CPU or GPU memory, i.e., the memory
                 of one batch input data. Default True.
             timeout(int): the timeout value for getting data form output queue
-                of subprocesses, 0 for no timeout. Default 60.
+                of subprocesses. Default 0.
             worker_init_fn(callable): init function which will be called with
                 worker id on each subproces starting if not set as None. Default
                 None.

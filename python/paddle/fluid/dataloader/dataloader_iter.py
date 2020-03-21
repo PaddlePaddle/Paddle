@@ -31,6 +31,7 @@ else:
 from .. import core
 from ..framework import in_dygraph_mode
 from ..multiprocess_utils import CleanupFuncRegistrar, _cleanup_mmap, python_exit_flag
+from ._utils import ParentWatchDog
 
 # multi-process worker check indices queue interval, avoid
 # hanging in subprocess data loading
@@ -58,7 +59,7 @@ class _DataLoaderIterBase(object):
         self._collate_fn = loader.collate_fn
         self._num_workers = loader.num_workers
         self._use_buffer_reader = loader.use_buffer_reader
-        self._timeout = loader.timeout
+        self._timeout = loader.timeout if loader.timeout > 0 else MP_INDICES_CHECK_INTERVAL
         self._worker_init_fn = loader.worker_init_fn
 
         # LoDTensorBlockingQueue instance for create_py_reader and a thread
@@ -313,8 +314,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             return
 
         try:
-            # set _workers_done_event should be set before put None to
-            # indices_queue, workers wll exit on reading None from
+            # set _workers_done_event should be set before put None
+            # to indices_queue, workers wll exit on reading None from
             # indices_queue
             self._workers_done_event.set()
             for i in range(self._num_workers):
@@ -360,19 +361,21 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     init_exception = Exception("init_fn failed in worker {}: " \
                                          "{}".format(worker_id, sys.exc_info()))
 
-            while True:
+            parent_watch_dog = ParentWatchDog()
+
+            while parent_watch_dog.is_alive():
                 try:
                     data = indices_queue.get(MP_INDICES_CHECK_INTERVAL)
                 except queue.Empty:
                     continue
 
-                # None as final signal, so worker event should be set
+                # None as poison piil, so worker event should be set
                 if data is None:
                     assert done_event.is_set()
                     return
                 # If worker done event is set but get still get data in
                 # indices_queue, remaining data should be get and skipped.
-                elif done_event.is_set():
+                if done_event.is_set():
                     continue
 
                 idx, indices = data
@@ -384,9 +387,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         batch = [dataset[i] for i in indices]
                         if self._collate_fn is not None:
                             batch = self._collate_fn(batch)
-                except:
-                    out_queue.put((idx, Exception("Get data failed in worker {}: " \
-                                   "{}".format(worker_id, sys.exc_info()))))
+                except Exception as e:
+                    out_queue.put((idx, e))
                 else:
                     # copy batch data to shared memory
                     slots = []
@@ -415,7 +417,11 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         while not self._thread_done_event.is_set():
             batch = self._get_data()
             if not self._thread_done_event.is_set():
-                if batch is not None:
+                if batch is None:
+                    self._exit_thread_expectedly()
+                elif isinstance(batch, Exception):
+                    self._exit_thread_unexpectedly()
+                else:
                     try:
                         array = core.LoDTensorArray()
                         for tensor in batch:
@@ -427,8 +433,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         six.reraise(*sys.exc_info())
                     finally:
                         self._rcvd_idx += 1
-                else:
-                    self._try_shutdown_all()
 
     def _get_data(self):
         if self._rcvd_idx in self._reorder_dict.keys():
@@ -436,44 +440,48 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
         while not self._thread_done_event.is_set():
             try:
-                # NOTE: [ avoid hanging ] Even with carefully designed data dependencies 
-                # (i.e., a put() always corresponding to a get()), hanging on get() can 
-                # still happen when data in queue is corrupted (e.g., due to 
-                # Queue.cancel_join_thread or unexpected exit). So we set a timeout whenever 
-                # we try to get data from `data_queue`
-                # NOTE: [ avoid failed quickly ] default timeout setting QUEUE_GET_TIMEOUT
-                # is relatively long, currently it is 60 seconds, because in some models,
-                # if the reader child process starts with a heavy burden, the child process
-                # has no enough time to put the data in the queue when the main process
-                # start trying to get data from queue. At this time, the child thread needs
-                # to wait slightly longer
-                if self._timeout > 0:
-                    data = self._data_queue.get(timeout=self._timeout)
-                else:
-                    data = self._data_queue.get()
-            except queue.Empty:
-                # when data drained, _data_queue.get may start before _thread_done_event set
-                # when get queue.Empty, check _thread_done_event is set or python exit, end
-                # thread quietly, otherwise raise exception
-                if self._thread_done_event.is_set():
-                    return
-                self._exit_thread_unexpectedly()
-                logging.error("DataLoader reader thread read workers' result queue get " \
-                              "Empty before reading finished.")
-                six.reraise(*sys.exc_info())
+                # [ avoid hang ]: main process may blocking at _reader.read_next when
+                # KeyboardInterrupt, we do following tradeoff:
+                # 1. get data with timeout, MP_INDICES_CHECK_INTERVAL(5s) as timeout
+                #    default, if KeyboardInterrupt blocking, failed workers will be
+                #    checked and raise RuntimeError to quit DataLoader in timeout
+                #    exception handling.
+                # 2. timeout will also trigger if workers' data drained, _send_idx 
+                #    will be equal to _rcvd_idx, continue to get data again
+                # 3. if workers' data drained, all outstanding batches will be put to
+                #     blocking_queue, there will be enough data to read_next
+                # 4. if load a min-batch data time cost > timeout, print logs to
+                #    remind user to increase num_workers or timeout
+                data = self._data_queue.get(timeout=self._timeout)
             except Exception as e:
-                # NOTE [ avoid handing ] After adding the shared memory mechanism, not only
-                # the queue. Empty exception will occur here, but other exceptions will also
-                # occur, such as mmap failure. If it is not handled here, it will hang.
+                failed_workers = []
+                for i, w in enumerate(self._workers):
+                    if self._worker_status[i] and not w.is_alive():
+                        failed_workers.append(w)
+                        self._shutdown_worker(i)
+                if len(failed_workers) > 0:
+                    self._exit_thread_unexpectedly()
+                    pids = ', '.join(str(w.pid) for w in failed_workers)
+                    raise RuntimeError("DataLoader {} workers exit unexpectedly, " \
+                                "pids: {}".format(len(failed_workers), pids))
+
+                # get(timeout) will call _poll(timeout) and may raise IOError
+                if isinstance(e, queue.Empty) or isinstance(e, IOError):
+                    # if data in workers are drained, wait main process to StopIteration
+                    if self._send_idx == self._rcvd_idx:
+                        continue
+                logging.error("Reading from workers' result queue timeout, " \
+                  "you can try:\n" \
+                  "  1. rerun with num_workers=0 to check data loading correctness\n" \
+                  "  2. increase 'num_workers' to speed up data loading\n" \
+                  "  3. increase 'timeout' for getting data")
+
                 self._exit_thread_unexpectedly()
                 logging.error("DataLoader reader thread failed({}) to read data from " \
                               "workers' result queue.".format(e))
                 six.reraise(*sys.exc_info())
             else:
                 idx, batch = data
-                if isinstance(batch, Exception):
-                    self._exit_thread_unexpectedly()
-                    raise batch
                 if idx == self._rcvd_idx:
                     return batch
                 else:

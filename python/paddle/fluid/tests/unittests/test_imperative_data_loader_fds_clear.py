@@ -74,30 +74,5 @@ class TestDygraphDataLoaderMmapFdsClear(unittest.TestCase):
                 self.run_one_epoch_with_break(loader)
 
 
-class RandomDataset(fluid.io.Dataset):
-    def __init__(self, sample_num):
-        self.sample_num = sample_num
-
-    def __getitem__(self, idx):
-        image = np.random.random([784]).astype('float32')
-        label = np.random.randint(0, 9, (1, )).astype('int64')
-        return image, label
-
-    def __len__(self):
-        return self.sample_num
-
-
-class TestMapDataLoaderMmapFdsClear(TestDygraphDataLoaderMmapFdsClear):
-    def prepare_data_loader(self):
-        dataset = RandomDataset(self.batch_size * self.batch_num)
-        loader = fluid.io.DataLoader(
-            dataset,
-            places=fluid.CPUPlace(),
-            num_workers=1,
-            batch_size=self.batch_size,
-            drop_last=True)
-        return loader
-
-
 if __name__ == '__main__':
     unittest.main()

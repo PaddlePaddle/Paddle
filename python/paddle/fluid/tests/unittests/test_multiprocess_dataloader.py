@@ -15,13 +15,14 @@
 from __future__ import division
 
 import os
+import sys
 import six
 import time
 import unittest
 import numpy as np
 
 import paddle.fluid as fluid
-from paddle.fluid.io import Dataset, MnistDataset, BatchSampler, DataLoader
+from paddle.fluid.io import Dataset, DataLoader
 from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.dygraph.base import to_variable
 
@@ -282,79 +283,6 @@ class TestDataLoaderSetXXXException(unittest.TestCase):
                 self.assertTrue(False)
             except:
                 pass
-
-
-# -------------- Dataset unittests --------------
-class TestDatasetAbstract(unittest.TestCase):
-    def test_main(self):
-        dataset = Dataset()
-        try:
-            d = dataset[0]
-            self.assertTrue(False)
-        except NotImplementedError:
-            pass
-
-        try:
-            l = len(dataset)
-            self.assertTrue(False)
-        except NotImplementedError:
-            pass
-
-
-class TestMnistDataset(unittest.TestCase):
-    def test_main(self):
-        md = MnistDataset(mode='test')
-        self.assertTrue(len(md) == 10000)
-
-        for i in range(len(md)):
-            image, label = md[i]
-            self.assertTrue(image.shape[0] == 784)
-            self.assertTrue(isinstance(label, int))
-
-
-# -------------- BatchSampler unittests --------------
-class TestBatchSampler(unittest.TestCase):
-    def setUp(self):
-        self.num_samples = 1000
-        self.batch_size = 32
-        self.shuffle = False
-        self.drop_last = False
-
-    def test_main(self):
-        bs = BatchSampler(
-            [0] * self.num_samples,
-            batch_size=self.batch_size,
-            shuffle=self.shuffle,
-            drop_last=self.drop_last)
-
-        # length check
-        bs_len = (self.num_samples + int(not self.drop_last) \
-                * (self.batch_size - 1)) // self.batch_size
-        self.assertTrue(bs_len == len(bs))
-
-        # output indices check
-        if not self.shuffle:
-            index = 0
-            for indices in bs:
-                for idx in indices:
-                    self.assertTrue(index == idx)
-                    index += 1
-
-
-class TestBatchSamplerDropLast(TestBatchSampler):
-    def setUp(self):
-        self.num_samples = 1000
-        self.batch_size = 32
-        self.shuffle = False
-        self.drop_last = True
-
-
-class TestBatchSamplerShuffle(TestBatchSampler):
-    def setUp(self):
-        self.num_samples = 1000
-        self.batch_size = 32
-        self.shuffle = True
-        self.drop_last = True
 
 
 if __name__ == '__main__':

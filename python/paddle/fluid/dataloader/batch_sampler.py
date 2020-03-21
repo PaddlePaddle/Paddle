@@ -35,20 +35,38 @@ class BatchSampler(object):
 
 
     Args:
-        data_source: this could be a `fluid.io.Dataset` implement
-                     or other python object which implemented
-                     `__len__` for BatchSampler to get sample
-                     number of data source.
-        batch_size(int): sample indice number in a mini-batch indices.
+        data_source(Dataset): this could be a `fluid.io.Dataset` 
+                implement or other python object which implemented
+                `__len__` for BatchSampler to get indices as the
+                range of :attr:`data_source` length. Default None.
+        indices (list|tuple): a substitution parameter for
+                :attr:`data_source` either :attr:`data_source` or
+                :attr:`indices` should be set, give the whole
+                indices to sampler from directly. Default None.
         shuffle(bool): whther to shuffle indices order before genrate
-            batch indices. Default False.
+                batch indices. :attr:`shuffle` should not be set if 
+                :attr:`sample_iter` is set. Default False.
+        batch_size(int): sample indice number in a mini-batch indices.
         drop_last(bool): whether drop the last incomplete batch dataset size
             is not divisible by the batch size. Default False
     """
 
-    def __init__(self, data_source, batch_size, shuffle=False, drop_last=False):
-        self.data_source = data_source
-        self.sample_iter = None
+    def __init__(self,
+                 data_source=None,
+                 indices=None,
+                 shuffle=False,
+                 batch_size=1,
+                 drop_last=False):
+        if data_source is None:
+            assert indices is not None, \
+                "either data_source or indices should be set"
+            assert isinstance(indices, list) or isinstance(indices, tuple), \
+                "indices should be a list or tuple"
+            self.indices = indices
+        else:
+            assert indices is None, \
+                "should not set both data_source and indices"
+            self.indices = range(len(data_source))
 
         assert isinstance(batch_size, int) and batch_size > 0, \
                 "batch_size should be a positive integer"
@@ -61,16 +79,12 @@ class BatchSampler(object):
         self.drop_last = drop_last
 
     def __iter__(self):
-        _sample_iter = self.sample_iter
-        if _sample_iter is None:
-            num_samples = len(self.data_source)
-            indices = np.arange(num_samples).tolist()
-            if self.shuffle:
-                np.random.shuffle(indices)
-            _sample_iter = iter(indices)
+        if self.shuffle:
+            np.random.shuffle(self.indices)
+        _iter = iter(self.indices)
 
         batch_indices = []
-        for idx in _sample_iter:
+        for idx in _iter:
             batch_indices.append(idx)
             if len(batch_indices) == self.batch_size:
                 yield batch_indices
@@ -79,6 +93,6 @@ class BatchSampler(object):
             yield batch_indices
 
     def __len__(self):
-        num_samples = len(self.data_source)
+        num_samples = len(self.indices)
         num_samples += int(not self.drop_last) * (self.batch_size - 1)
         return num_samples // self.batch_size
