@@ -36,7 +36,7 @@ IndexSelectInner(const framework::ExecutionContext& context,
 
   auto input_dim = input.dims();
   auto input_dim_size = input_dim.size();
-  auto output_dim = output.dims();
+  auto output_dim = output->dims();
 
   auto slice_size = 1;
   for (size_t i = dim + 1; i < input_dim_size; i++) {
@@ -121,7 +121,7 @@ IndexSelectGradInner(const framework::ExecutionContext& context,
 
   auto input_dim = input.dims();
   auto input_dim_size = input_dim.size();
-  auto output_dim = output.dims();
+  auto output_dim = output->dims();
 
   auto slice_size = 1;
   for (size_t i = dim + 1; i < input_dim_size; i++) {
