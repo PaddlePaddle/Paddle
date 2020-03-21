@@ -23,6 +23,7 @@ import objgraph
 
 __all__ = [
     'no_grad',
+    'grad',
     'guard',
     'enable_dygraph',
     'disable_dygraph',
@@ -256,6 +257,68 @@ def grad(outputs,
          no_grad_set=None,
          create_graph=False,
          backward_strategy=None):
+    ''' 
+    This API computes the sum of gradients of `outputs` with respect to each `inputs` .
+
+    Parameters:
+        outputs (Variable|list(Variable)): any variable or a list of any variables.
+        inputs (Variable|list(Variable)): any variable or a list of any variables.
+        grad_outputs (list(Variable|None), optional): initial gradient values of
+            `outputs` . If `grad_outputs` is None, the initial gradient values of
+            `outputs` would be a Tensor filled with 1; if `grad_outputs` is not
+            None, it must have the same length as `outputs` , and in this case,
+            the initial gradient value of the i-th `outputs` would be: (1) a
+            Tensor filled with 1 when the i-th element of `grad_outputs` is None;
+            (2) the i-th element of `grad_outputs` when i-th element of
+            `grad_outputs` is a Variable. Default None.
+        no_grad_set (Variable|list(Variable)|set(Variable), optional): the variables 
+            whose gradients are not needed to compute. Default None.
+        create_graph (bool, optional): whether to create the gradient graphs of
+            the computing process. When it is True, higher order derivatives are
+            supported to compute; when it is False, the gradient graphs of the
+            computing process would be discarded. Default False.
+        backward_strategy(BackwardStrategy, optional): The backward strategy to
+            compute gradients. See :ref:`api_fluid_dygraph_BackwardStrategy` for
+            details. Default None.
+
+    Returns:
+        tuple(Variable): a tuple of Variable, whose length is the same as the Variable
+            number inside `inputs`. The i-th returned Variable is the sum of gradients
+            of `outputs` with respect to the i-th `inputs`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            def test_dygraph_grad(create_graph):
+                with fluid.dygraph.guard(): 
+                    x = fluid.layers.ones(shape=[1], dtype='float32') 
+                    x.stop_gradient = False
+                    y = x * x
+
+                    # Since y = x * x, dx = 2 * x 
+                    dx = fluid.dygraph.grad(outputs=[y], inputs=[x], 
+                            create_graph=create_graph)[0]
+
+                    z = y + dx
+
+                    # If create_graph = False, the gradient of dx
+                    # would not be backpropagated. Therefore,
+                    # z = x * x + dx, and x.gradient() = 2 * x = 2.0
+                    
+                    # If create_graph = True, the gradient of dx
+                    # would be backpropagated. Therefore, 
+                    # z = x * x + dx = x * x + 2 * x, and
+                    # x.gradient() = 2 * x + 2 = 4.0 
+
+                    z.backward()
+                    return x.gradient() 
+
+            print(test_dygraph_grad(create_graph=False)) # [2.] 
+            print(test_dygraph_grad(create_graph=True)) # [4.]
+	'''
+
     def check_in_out(in_out_list, name):
         assert in_out_list is not None, "{} should not be None".format(name)
 
