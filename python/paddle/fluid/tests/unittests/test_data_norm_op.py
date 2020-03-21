@@ -305,8 +305,20 @@ class TestDataNormOpWithEnableScaleAndShift(OpTest):
             "enable_scale_and_shift": True
         }
 
+    def test_check_output(self):
+        """
+        test check forward, check output
+        """
+        self.check_output()
 
-class TestDataNormOpWithEnableScaleAndShift(OpTest):
+    def test_check_grad(self):
+        """
+        test check backward, check grad
+        """
+        self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
+
+
+class TestDataNormOpWithEnableScaleAndShift_1(OpTest):
     """
     test class for data norm op
     test forward and backward
@@ -354,6 +366,18 @@ class TestDataNormOpWithEnableScaleAndShift(OpTest):
             "slot_dim": slot_dim,
             "enable_scale_and_shift": True
         }
+
+    def test_check_output(self):
+        """
+        test check forward, check output
+        """
+        self.check_output()
+
+    def test_check_grad(self):
+        """
+        test check backward, check grad
+        """
+        self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
 
 
 class TestDataNormOpWithSlotDim(OpTest):

@@ -317,7 +317,9 @@ class DataNormKernel<platform::CPUDeviceContext, T>
           if (!ctx.Attr<bool>("enable_scale_and_shift") && slot_dim <= 0) {
             EigenArrayMap<T>(y_data, C, N) =
                 (ConstEigenArrayMap<T>(x->data<T>(), C, N).colwise() -
-                 means_arr).colwise() * scales_arr;
+                 means_arr)
+                    .colwise() *
+                 scales_arr;
           } else if (ctx.Attr<bool>("enable_scale_and_shift") &&
                      slot_dim <= 0) {
             const auto *scale_w = ctx.Input<Tensor>("scale_w");
@@ -332,7 +334,9 @@ class DataNormKernel<platform::CPUDeviceContext, T>
                 bias_arr - means_arr * scales_arr * scale_w_arr;
             EigenArrayMap<T>(y_data, C, N) =
                 (ConstEigenArrayMap<T>(x->data<T>(), C, N).colwise() *
-                new_scale).colwise() + new_bias;
+                 new_scale)
+                    .colwise() +
+                new_bias;
 
           } else {
             const int item_size = x->numel() / N;
