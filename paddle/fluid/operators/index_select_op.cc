@@ -43,8 +43,8 @@ class IndexSelectOp : public framework::OperatorWithKernel {
                       "But received select dim = %d.",
                       dim);
 
-    PADDLE_ENFORCE_EQ(index_dims.size() == 1 ||
-                          (index_dims.size() == 2 && index_dims[1] == 1),
+    PADDLE_ENFORCE_EQ(index_dim.size() == 1 ||
+                          (index_dim.size() == 2 && index_dim[1] == 1),
                       true,
                       "ShapeError: index must be 1-D tensor, "
                       "But received: the shape of index is [%s],the dimension "
@@ -67,7 +67,7 @@ class IndexSelectOp : public framework::OperatorWithKernel {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return framework::OpKernelType(data_type, ctx.device_context());
   }
-}
+};
 
 class IndexSelectGradOp : public framework::OperatorWithKernel {
  public:
@@ -105,10 +105,10 @@ class IndexSelectOpMaker : public framework::OpProtoAndCheckerMaker {
         have the same size as in the original tensor.
     )DOC");
   }
-}
+};
 
 template <typename T>
-class IndexSelectGradOpMaker : public framework::SingleGradOpMaker<T> {
+class IndexSelectGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
@@ -133,7 +133,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(index_select, ops::IndexSelectOp, ops::IndexSelectOpMaker,
                   ops::IndexSelectGradMaker<paddle::framework::OpDesc>,
                   ops::IndexSelectGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(index_select_grad, ops::IndexSelectOpGrad);
+REGISTER_OPERATOR(index_select_grad, ops::IndexSelectGradOp);
 
 REGISTER_OP_CPU_KERNEL(
     index_select,
