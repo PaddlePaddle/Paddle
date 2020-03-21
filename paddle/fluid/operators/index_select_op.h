@@ -187,9 +187,9 @@ class IndexSelectGradKernel : public framework::OpKernel<T> {
         paddle::framework::DataTypeToString(framework::proto::VarType::INT64));
 
     if (index_type == framework::proto::VarType::INT32) {
-      IndexSelectGradInner<T, int>(ctx, out_grad, index, x_grad, dim);
+      IndexSelectGradInner<T, int>(context, out_grad, index, x_grad, dim);
     } else if (index_type == framework::proto::VarType::INT64) {
-      IndexSelectGradInner<T, int64_t>(ctx, out_grad, index, x_grad, dim);
+      IndexSelectGradInner<T, int64_t>(context, out_grad, index, x_grad, dim);
     }
   }
 };

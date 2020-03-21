@@ -21,7 +21,7 @@ namespace operators {
 using framework::Tensor;
 using framework::DDim;
 
-inline bool CheckDims(const DDims& dims_x, const DDims& dims_y) {
+inline bool CheckDims(const DDim& dims_x, const DDim& dims_y) {
   if (dims_x.size() != dims_y.size()) {
     return false;
   }

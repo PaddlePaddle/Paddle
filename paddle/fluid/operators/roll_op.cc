@@ -34,14 +34,13 @@ class RollOp : public framework::OperatorWithKernel {
     auto dims = ctx->Attrs().Get<std::vector<int64_t>>("dims");
     auto shifts = ctx->Attrs().Get<std::vector<int64_t>>("shifts");
 
-    bool check_dim = CheckDims(dims, shifts);
     PADDLE_ENFORCE_EQ(dims.size(), shifts.size(),
                       "AttrError: Attr(dims).size() should be equl to "
-                      "Attr(shifts).size(). But received Attr(dims) = "
-                      "[%s], Attr(shifts) = [%s]",
-                      dims, shifts);
+                      "Attr(shifts).size(). But received Attr(dims).size()"
+                      " = %d, Attr(shifts).size() = %d",
+                      dims.size(), shifts.size());
 
-    ctx->SetOutputDim("Out", x_dim);
+    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     auto type = ctx->GetInputsVarType("X")[0];
     if (type == framework::proto::VarType::LOD_TENSOR) {
       ctx->ShareLoD("X", /*->*/ "Out");
@@ -85,11 +84,11 @@ class RollOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor), the output tensor.");
     AddAttr<std::vector<int64_t>>(
         "shifts", "The number of places by which the elements "
-        "of the tensor are shifted.",
+        "of the tensor are shifted.")
         .SetDefault({});
     AddAttr<std::vector<int64_t>>(
         "dims", "Axis along which to roll. It must have the same size "
-        "with shifts.",
+        "with shifts.")
         .SetDefault({});
     AddComment(R"DOC(
     Roll the tensor along the given dimension(s). 
