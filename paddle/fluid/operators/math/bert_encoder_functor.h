@@ -42,11 +42,9 @@ struct CUDATypeTraits<float> {
 template <typename T>
 class EmbEltwiseLayerNormFunctor {
  public:
-  void operator()(int batch, int seq_len, int hidden, const int64_t *word_id_d,
-                  const int64_t *pos_id_d, const int64_t *sent_id_d,
-                  const float *scale, const float *bias, const float *word_emb,
-                  const float *pos_emb, const float *sent_emb, T *output, T eps,
-                  cudaStream_t stream);
+  void operator()(int batch, int seq_len, int hidden, const int64_t *ids,
+                  const T *scale, const T *bias, const int64_t *embs, T *output,
+                  float eps, int input_num, cudaStream_t stream);
 };
 
 template <typename T>

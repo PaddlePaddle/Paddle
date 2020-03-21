@@ -32,17 +32,12 @@ namespace plugin {
 #if IS_TRT_VERSION_GE(6000)
 
 int EmbEltwiseLayernormPluginDynamic::initialize() {
-  cudaMalloc(&word_emb_gpu_, sizeof(float) * word_emb_size_);
-  cudaMemcpy(word_emb_gpu_, word_emb_, word_emb_size_ * sizeof(float),
-             cudaMemcpyHostToDevice);
-
-  cudaMalloc(&pos_emb_gpu_, sizeof(float) * pos_emb_size_);
-  cudaMemcpy(pos_emb_gpu_, pos_emb_, pos_emb_size_ * sizeof(float),
-             cudaMemcpyHostToDevice);
-
-  cudaMalloc(&sent_emb_gpu_, sizeof(float) * sent_emb_size_);
-  cudaMemcpy(sent_emb_gpu_, sent_emb_, sent_emb_size_ * sizeof(float),
-             cudaMemcpyHostToDevice);
+  embs_gpu_.reserve(embs_.size());
+  for (int i = 0; i < embs_.size(); i++) {
+    cudaMalloc(&embs_gpu_[i], sizeof(float) * emb_sizes_[i]);
+    cudaMemcpy(embs_gpu_[i], embs_[i], emb_sizes_[i] * sizeof(float),
+               cudaMemcpyHostToDevice);
+  }
 
   cudaMalloc(&bias_gpu_, sizeof(float) * bias_size_);
   cudaMemcpy(bias_gpu_, bias_, bias_size_ * sizeof(float),
@@ -133,14 +128,34 @@ int EmbEltwiseLayernormPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc *input_desc,
     const nvinfer1::PluginTensorDesc *output_desc, const void *const *inputs,
     void *const *outputs, void *workspace, cudaStream_t stream) {
-  auto word_id_dims = input_desc[0].dims;
-  int batch = word_id_dims.d[0];
-  int seq_len = word_id_dims.d[1];
+  auto id_dims = input_desc[0].dims;
+  int batch = id_dims.d[0];
+  int seq_len = id_dims.d[1];
+  int input_num = embs_.size();
+
+  framework::Tensor in_ptr_tensor, emb_ptr_tensor;
+  int device_id;
+  cudaGetDevice(&device_id);
+
+  in_ptr_tensor.Resize({input_num});
+  emb_ptr_tensor.Resize({input_num});
+  int64_t *in_ptr_gpu_d =
+      in_ptr_tensor.mutable_data<int64_t>(platform::CUDAPlace(device_id));
+  int64_t *emb_ptr_gpu_d =
+      emb_ptr_tensor.mutable_data<int64_t>(platform::CUDAPlace(device_id));
+
+  std::vector<int64_t> in_ptr, emb_ptr;
+  for (int i = 0; i < input_num; i++) {
+    in_ptr.push_back(reinterpret_cast<uintptr_t>(inputs[i]));
+    emb_ptr.push_back(reinterpret_cast<uintptr_t>(embs_gpu_[i]));
+  }
+
+  cudaMemcpyAsync(in_ptr_gpu_d, in_ptr.data(), sizeof(int64_t) * input_num,
+                  cudaMemcpyHostToDevice, stream);
+  cudaMemcpyAsync(emb_ptr_gpu_d, emb_ptr.data(), sizeof(int64_t) * input_num,
+                  cudaMemcpyHostToDevice, stream);
 
   auto out_type = output_desc[0].type;
-  const int64_t *word_id = static_cast<const int64_t *>(inputs[0]);
-  const int64_t *pos_id = static_cast<const int64_t *>(inputs[1]);
-  const int64_t *sent_id = static_cast<const int64_t *>(inputs[2]);
 
   const unsigned tpb = 256;
   const dim3 grid(seq_len, batch, 1);
@@ -152,10 +167,9 @@ int EmbEltwiseLayernormPluginDynamic::enqueue(
 
   float *output_d = static_cast<float *>(outputs[0]);
   operators::math::EmbEltwiseLayerNormFunctor<float> emb_eltwise_layernorm_func;
-  emb_eltwise_layernorm_func(batch, seq_len, hidden_size_, word_id, pos_id,
-                             sent_id, scale_gpu_, bias_gpu_, word_emb_gpu_,
-                             pos_emb_gpu_, sent_emb_gpu_, output_d, eps_,
-                             stream);
+  emb_eltwise_layernorm_func(batch, seq_len, hidden_size_, in_ptr_gpu_d,
+                             scale_gpu_, bias_gpu_, emb_ptr_gpu_d, output_d,
+                             eps_, input_num, stream);
   return cudaGetLastError() != cudaSuccess;
 }
 #endif

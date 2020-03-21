@@ -29,21 +29,15 @@ namespace plugin {
 #if IS_TRT_VERSION_GE(6000)
 class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
  public:
-  explicit EmbEltwiseLayernormPluginDynamic(float* word_emb, float* pos_emb,
-                                            float* sent_emb, float* bias,
-                                            float* scale, int64_t word_emb_size,
-                                            int64_t pos_emb_size,
-                                            int64_t sent_emb_size,
+  explicit EmbEltwiseLayernormPluginDynamic(std::vector<float*> input_embs,
+                                            float* bias, float* scale,
+                                            std::vector<int> emb_sizes,
                                             int bias_size, int scale_size,
                                             int hidden_size, float eps)
-      : word_emb_(word_emb),
-        pos_emb_(pos_emb),
-        sent_emb_(sent_emb),
+      : embs_(input_embs),
         bias_(bias),
         scale_(scale),
-        word_emb_size_(word_emb_size),
-        pos_emb_size_(pos_emb_size),
-        sent_emb_size_(sent_emb_size),
+        emb_sizes_(emb_sizes),
         bias_size_(bias_size),
         scale_size_(scale_size),
         hidden_size_(hidden_size),
@@ -57,8 +51,7 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
   ~EmbEltwiseLayernormPluginDynamic() {}
   nvinfer1::IPluginV2DynamicExt* clone() const override {
     return new EmbEltwiseLayernormPluginDynamic(
-        word_emb_, pos_emb_, sent_emb_, bias_, scale_, word_emb_size_,
-        pos_emb_size_, sent_emb_size_, bias_size_, scale_size_, hidden_size_,
+        embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_, hidden_size_,
         eps_);
   }
 
@@ -102,29 +95,22 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
   void destroy() override { delete this; }
 
  private:
-  float* word_emb_;
-  float* pos_emb_;
-  float* sent_emb_;
+  std::vector<float*> embs_;
   float* bias_;
   float* scale_;
 
   // data on devices
-  float* word_emb_gpu_;
-  float* pos_emb_gpu_;
-  float* sent_emb_gpu_;
   float* bias_gpu_;
   float* scale_gpu_;
+  std::vector<float*> embs_gpu_;
 
-  int64_t word_emb_size_;
-  int64_t pos_emb_size_;
-  int64_t sent_emb_size_;
+  std::vector<int> emb_sizes_;
   int bias_size_;
   int scale_size_;
   int hidden_size_;
   float eps_;
 };
 #endif
-
 }  // namespace plugin
 }  // namespace tensorrt
 }  // namespace inference

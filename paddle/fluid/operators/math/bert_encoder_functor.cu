@@ -76,64 +76,59 @@ __device__ inline void LayerNorm(const kvp<T> &thread_data, const int ld,
 }
 
 template <typename T, unsigned TPB>
-__global__ void EmbEltwiseLayernormKernel(
-    int hidden, const int64_t *word_id_d, const int64_t *pos_id_d,
-    const int64_t *sent_id_d, const float *scale, const float *bias,
-    const float *word_emb, const float *pos_emb, const float *sent_emb,
-    T *output, T eps) {
+__global__ void EmbEltwiseLayernormKernel(int hidden, const int64_t *ids,
+                                          const T *scale, const T *bias,
+                                          const int64_t *embs, T *output,
+                                          float eps, int input_num) {
   cub::Sum pair_sum;
   // blockIdx.x: position in the sequence
   // blockIdx.y: batch
   // gridDim.x: Seq
   // gridDim.y: Batch
-  __shared__ int64_t word_id;
-  __shared__ int64_t pos_id;
-  __shared__ int64_t sent_id;
+
+  extern __shared__ int64_t array_id[];
 
   const T rhidden = T(1.f) / T(hidden);
-  const int seq_pos = blockIdx.y + blockIdx.x * gridDim.y;
+  const int64_t seq_pos = blockIdx.y + blockIdx.x * gridDim.y;
   if (threadIdx.x == 0) {
-    word_id = word_id_d[seq_pos];
-    pos_id = pos_id_d[seq_pos];
-    sent_id = sent_id_d[seq_pos];
+    for (int i = 0; i < input_num; ++i) {
+      const int64_t *ids_p = reinterpret_cast<const int64_t *>(ids[i]);
+      array_id[i] = ids_p[seq_pos];
+    }
   }
   __syncthreads();
 
-  // load word, pos, sentence embeddings and add them toghether
-  const int64_t woffset = word_id * hidden;
-  const int64_t poffset = pos_id * hidden;
-  const int64_t soffset = sent_id * hidden;
   const int64_t out_offset = seq_pos * hidden;
 
   kvp<T> thread_data(0, 0);
 
 #pragma unroll
   for (int it = threadIdx.x; it < hidden; it += TPB) {
-    const T w(word_emb[woffset + it]);
-    const T p(pos_emb[poffset + it]);
-    const T s(sent_emb[soffset + it]);
-    const T val = w + s + p;
+    T val = 0;
+    for (int i = 0; i < input_num; ++i) {
+      val += reinterpret_cast<const T *>(embs[i])[array_id[i] * hidden + it];
+    }
 
     output[out_offset + it] = val;
     const T rhiddenval = rhidden * val;
-
     thread_data = pair_sum(thread_data, kvp<T>(rhiddenval, rhiddenval * val));
   }
   LayerNorm<T, TPB>(thread_data, hidden, out_offset, bias, scale, output, eps);
 }
 
 template <typename T>
-void EmbEltwiseLayerNormFunctor<T>::operator()(
-    int batch, int seq_len, int hidden, const int64_t *word_id_d,
-    const int64_t *pos_id_d, const int64_t *sent_id_d, const float *scale,
-    const float *bias, const float *word_emb, const float *pos_emb,
-    const float *sent_emb, T *output, T eps, cudaStream_t stream) {
+void EmbEltwiseLayerNormFunctor<T>::operator()(int batch, int seq_len,
+                                               int hidden, const int64_t *ids,
+                                               const T *scale, const T *bias,
+                                               const int64_t *embs, T *output,
+                                               float eps, int input_num,
+                                               cudaStream_t stream) {
   const unsigned tpb = 256;
   const dim3 grid(seq_len, batch, 1);
   const dim3 block(tpb, 1, 1);
-  EmbEltwiseLayernormKernel<T, tpb><<<grid, block, 0, stream>>>(
-      hidden, word_id_d, pos_id_d, sent_id_d, scale, bias, word_emb, pos_emb,
-      sent_emb, output, eps);
+  int shared_bytes = input_num * sizeof(int64_t);
+  EmbEltwiseLayernormKernel<T, tpb><<<grid, block, shared_bytes, stream>>>(
+      hidden, ids, scale, bias, embs, output, eps, input_num);
 }
 
 template class EmbEltwiseLayerNormFunctor<float>;

@@ -28,19 +28,26 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     VLOG(4) << "convert fluid swish op to tensorrt layer";
 
     framework::OpDesc op_desc(op, nullptr);
+    auto id_names = op_desc.Input("Ids");
+    auto emb_names = op_desc.Input("Embs");
+
+    PADDLE_ENFORCE_EQ(id_names.size(), emb_names.size(),
+                      platform::errors::InvalidArgument(
+                          "The id and emb size of fused EmbEltwiseLayerNormOp "
+                          "should be same "));
+    int input_num = id_names.size();
+
     // Declare inputs
-    std::vector<nvinfer1::ITensor*> inputs;
-    auto* word_id = engine_->GetITensor(op_desc.Input("WordId")[0]);
-    auto* pos_id = engine_->GetITensor(op_desc.Input("PosId")[0]);
-    auto* sent_id = engine_->GetITensor(op_desc.Input("SentId")[0]);
+    std::vector<nvinfer1::ITensor*> input_ids;
+    for (int i = 0; i < input_num; i++) {
+      input_ids.push_back(engine_->GetITensor(id_names[i]));
+    }
 
-    inputs.push_back(word_id);
-    inputs.push_back(pos_id);
-    inputs.push_back(sent_id);
+    std::vector<float*> input_embs;
+    std::vector<int> emb_sizes;
 
-    auto get_persistable_data = [&](const std::string& arg_name,
+    auto get_persistable_data = [&](const std::string& var_name,
                                     framework::DDim* dims) -> float* {
-      std::string var_name = op_desc.Input(arg_name).front();
       auto* temp_var = scope.FindVar(var_name);
       auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
       (*dims) = temp_tensor->dims();
@@ -49,29 +56,37 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
       return temp_data;
     };
 
-    framework::DDim word_emb_dims, pos_emb_dims, sent_emb_dims, bias_dims,
-        scale_dims;
+    int hidden = 0;
+    for (int i = 0; i < input_num; i++) {
+      framework::DDim emb_dims;
+      float* emb_data = get_persistable_data(emb_names[i], &emb_dims);
+      int64_t emb_size = framework::product(emb_dims);
+      input_embs.push_back(emb_data);
+      emb_sizes.push_back(emb_size);
+      PADDLE_ENFORCE_EQ(
+          emb_dims.size(), 2,
+          platform::errors::InvalidArgument(
+              "The fused EmbEltwiseLayerNorm's emb should be 2 dims."));
+      hidden = emb_dims[1];
+    }
 
-    auto* word_emb = get_persistable_data("WordEmb", &word_emb_dims);
-    auto* pos_emb = get_persistable_data("PosEmb", &pos_emb_dims);
-    auto* sent_emb = get_persistable_data("SentEmb", &sent_emb_dims);
-    auto* bias = get_persistable_data("Bias", &bias_dims);
-    auto* scale = get_persistable_data("Scale", &scale_dims);
-    int64_t word_emb_size = framework::product(word_emb_dims);
-    int64_t pos_emb_size = framework::product(pos_emb_dims);
-    int64_t sent_emb_size = framework::product(sent_emb_dims);
+    framework::DDim bias_dims, scale_dims;
+
+    auto* bias =
+        get_persistable_data(op_desc.Input("Bias").front(), &bias_dims);
+    auto* scale =
+        get_persistable_data(op_desc.Input("Scale").front(), &scale_dims);
     int64_t bias_size = framework::product(bias_dims);
     int64_t scale_size = framework::product(scale_dims);
-    int hidden = word_emb_dims[1];
     float eps = boost::get<float>(op_desc.GetAttr("epsilon"));
-
     nvinfer1::ILayer* layer = nullptr;
+
     if (engine_->with_dynamic_shape()) {
       plugin::EmbEltwiseLayernormPluginDynamic* plugin =
-          new plugin::EmbEltwiseLayernormPluginDynamic(
-              word_emb, pos_emb, sent_emb, bias, scale, word_emb_size,
-              pos_emb_size, sent_emb_size, bias_size, scale_size, hidden, eps);
-      layer = engine_->AddPluginV2(inputs.data(), 3, plugin);
+          new plugin::EmbEltwiseLayernormPluginDynamic(input_embs, bias, scale,
+                                                       emb_sizes, bias_size,
+                                                       scale_size, hidden, eps);
+      layer = engine_->AddPluginV2(input_ids.data(), input_num, plugin);
     } else {
       PADDLE_THROW(
           platform::errors::Fatal("There is no implement for Skip Layernorm "
