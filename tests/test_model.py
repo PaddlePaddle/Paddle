@@ -24,7 +24,7 @@ import contextlib
 import paddle
 from paddle import fluid
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
-from model import Model, CrossEntropy, Input
+from model import Model, CrossEntropy, Input, Loss
 from metrics import Accuracy
 from callbacks import ProgBarLogger
 
@@ -103,47 +103,65 @@ class MNIST(Model):
         return x
 
 
-def accuracy(pred, label, topk=(1, )):
-    maxk = max(topk)
-    pred = np.argsort(pred)[:, ::-1][:, :maxk]
-    correct = (pred == np.repeat(label, maxk, 1))
-
-    batch_size = label.shape[0]
-    res = []
-    for k in topk:
-        correct_k = correct[:, :k].sum()
-        res.append(100.0 * correct_k / batch_size)
-    return res
-
-
 @contextlib.contextmanager
 def null_guard():
     yield
 
 
+class MLP(Model):
+    def __init__(self):
+        super(MLP, self).__init__()
+        SIZE = 10
+        self._fc1 = Linear(784, 200, act="relu")
+        self._fc2 = Linear(200, 200, act="relu")
+        self._fc3 = Linear(200, 200, act="relu")
+        self._fc4 = Linear(200, 10, act="softmax")
+        self._fc5 = Linear(200, 10, act="softmax")
+
+    def forward(self, inputs):
+        x1 = self._fc1(inputs)
+        x2 = self._fc2(x1)
+        x3 = self._fc3(x2)
+        o1 = self._fc5(x3)
+        o2 = self._fc4(x2)
+        return o1, o2
+
+
+class MyCrossEntropy(Loss):
+    def __init__(self, average=True):
+        super(MyCrossEntropy, self).__init__()
+
+    def forward(self, outputs, labels):
+        loss1 = fluid.layers.cross_entropy(outputs[0], labels[0])
+        loss2 = fluid.layers.cross_entropy(outputs[1], labels[0])
+        return [loss1, loss2]
+
+
 class TestModel(unittest.TestCase):
-    def fit(self, dynamic):
+    def fit(self, dynamic, is_mlp=False):
+        im_shape = (-1, 784) if is_mlp else (-1, 1, 28, 28)
         guard = fluid.dygraph.guard() if dynamic else null_guard()
         batch_size = 128
         train_loader = fluid.io.xmap_readers(
-            lambda b: [np.array([x[0] for x in b]).reshape(-1, 1, 28, 28),
+            lambda b: [np.array([x[0] for x in b]).reshape(im_shape),
                        np.array([x[1] for x in b]).reshape(-1, 1)],
             paddle.batch(fluid.io.shuffle(paddle.dataset.mnist.train(), 6e4),
                          batch_size=batch_size, drop_last=True), 1, 1)
         val_loader = fluid.io.xmap_readers(
-            lambda b: [np.array([x[0] for x in b]).reshape(-1, 1, 28, 28),
+            lambda b: [np.array([x[0] for x in b]).reshape(im_shape),
                        np.array([x[1] for x in b]).reshape(-1, 1)],
             paddle.batch(paddle.dataset.mnist.test(),
                          batch_size=batch_size, drop_last=False), 1, 1)
         with guard:
-            inputs = [Input([None, 1, 28, 28], 'float32', name='image')]
+            inputs = [Input(im_shape, 'float32', name='image')]
             labels = [Input([None, 1], 'int64', name='label')]
-            model = MNIST()
+            model = MNIST() if not is_mlp else MLP()
             optim = fluid.optimizer.Momentum(
                 learning_rate=0.01,
                 momentum=.9,
                 parameter_list=model.parameters())
-            model.prepare(optim, CrossEntropy(), Accuracy(), inputs, labels)
+            loss = CrossEntropy() if not is_mlp else MyCrossEntropy()
+            model.prepare(optim, loss, Accuracy(), inputs, labels)
             cbk = ProgBarLogger(50)
             model.fit(train_loader, val_loader, epochs=2, callbacks=cbk)
 
@@ -152,6 +170,12 @@ class TestModel(unittest.TestCase):
 
     def test_fit_dygraph(self):
         self.fit(True)
+
+    def test_fit_static_multi_loss(self):
+        self.fit(False, MyCrossEntropy())
+
+    def test_fit_dygraph_multi_loss(self):
+        self.fit(True, MyCrossEntropy())
 
 
 if __name__ == '__main__':

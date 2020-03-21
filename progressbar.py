@@ -91,15 +91,17 @@ class ProgressBar(object):
             self._total_width = len(bar_chars)
             sys.stdout.write(bar_chars)
 
-            for k, v in values:
+            for k, val in values:
                 info += ' - %s:' % k
-                if isinstance(v, (float, np.float32, np.float64)):
-                    if abs(v) > 1e-3:
-                        info += ' %.4f' % v
+                val = val if isinstance(val, list) else [val]
+                for i, v in enumerate(val):
+                    if isinstance(v, (float, np.float32, np.float64)):
+                        if abs(v) > 1e-3:
+                            info += ' %.4f' % v
+                        else:
+                            info += ' %.4e' % v
                     else:
-                        info += ' %.4e' % v
-                else:
-                    info += ' %s' % v
+                        info += ' %s' % v
 
             if self._num is not None and current_num < self._num:
                 eta = time_per_unit * (self._num - current_num)
@@ -136,22 +138,24 @@ class ProgressBar(object):
                 count = 'step %3d' % current_num
             info = count + info
 
-            for k, v in values:
+            for k, val in values:
                 info += ' - %s:' % k
-                if isinstance(v, (float, np.float32, np.float64)):
-                    if abs(v) > 1e-3:
-                        info += ' %.4f' % v
+                val = val if isinstance(val, list) else [val]
+                for v in val:
+                    if isinstance(v, (float, np.float32, np.float64)):
+                        if abs(v) > 1e-3:
+                            info += ' %.4f' % v
+                        else:
+                            info += ' %.4e' % v
+                    elif isinstance(v, np.ndarray) and \
+                         isinstance(v.size, 1) and \
+                         isinstance(v.dtype, (np.float32, np.float64)):
+                        if abs(v[0]) > 1e-3:
+                            info += ' %.4f' % v[0]
+                        else:
+                            info += ' %.4e' % v[0]
                     else:
-                        info += ' %.4e' % v
-                elif isinstance(v, np.ndarray) and \
-                     isinstance(v.size, 1) and \
-                     isinstance(v.dtype, (np.float32, np.float64)):
-                    if abs(v[0]) > 1e-3:
-                        info += ' %.4f' % v[0]
-                    else:
-                        info += ' %.4e' % v[0]
-                else:
-                    info += ' %s' % v
+                        info += ' %s' % v
 
             info += fps
             info += '\n'

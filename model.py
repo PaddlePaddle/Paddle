@@ -18,7 +18,6 @@ import inspect
 import os
 import pickle
 import numpy as np
-import itertools
 from collections import Iterable
 from collections import OrderedDict
 
@@ -742,14 +741,17 @@ class Model(fluid.dygraph.Layer):
                 else:
                     outs = self.eval(*data)
 
-                metrics = list(itertools.chain.from_iterable(outs))
-                metrics = [np.mean(metrics[0])]
+                # losses
+                loss = outs[0] if self._metrics else outs
+                metrics = [[l[0] for l in loss]]
+
+                # metrics
                 for metric in self._metrics:
                     res = metric.accumulate()
                     metrics.extend(to_list(res))
                 assert len(metrics_name) == len(metrics)
                 for k, v in zip(metrics_name, metrics):
-                    logs[k] = np.mean(v)
+                    logs[k] = v
 
                 logs['step'] = step
                 logs['batch_size'] = data[0].shape[0]
@@ -761,7 +763,7 @@ class Model(fluid.dygraph.Layer):
         cbks.on_begin('train')
         for epoch in range(epochs):
             cbks.on_epoch_begin(epoch)
-            # FIXME: adapte to DataLoader
+            # FIXME: adapt to DataLoader
             loader = train_loader
             if not isinstance(train_loader, Iterable):
                 loader = train_loader()
@@ -770,7 +772,7 @@ class Model(fluid.dygraph.Layer):
 
             if do_eval and epoch % eval_freq == 0:
                 cbks.on_begin('eval', logs)
-                # FIXME: adapte to DataLoader
+                # FIXME: adapt to DataLoader
                 loader = eval_loader
                 if not isinstance(eval_loader, Iterable):
                     loader = eval_loader()
