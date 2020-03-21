@@ -27,7 +27,7 @@ class TestProgressBar(unittest.TestCase):
                 ['loss', 50.341673],
                 ['acc', 0.00256],
             ]
-            for step in xrange(1, num + 1):
+            for step in range(1, num + 1):
                 values[0][1] -= random.random() * 0.1
                 values[1][1] += random.random() * 0.1
                 if step % 10 == 0:
