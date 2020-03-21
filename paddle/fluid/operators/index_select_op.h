@@ -15,6 +15,7 @@
 #ifndef PADDLE_FLUID_OPERATORS_INDEX_SELECT_OP_H_
 #define PADDLE_FLUID_OPERATORS_INDEX_SELECT_OP_H_
 
+#pragma once
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -26,8 +27,8 @@ using DDim = framework::DDim;
 
 template <typename T, typename IndexT = int>
 void IndexSelectInner(const framework::ExecutionContext& context,
-                 const Tensor& input, const Tensor& index, Tensor* output,
-                 int dim) {
+                      const Tensor& input, const Tensor& index, Tensor* output,
+                      int dim) {
   auto index_size = index.dims()[0];
 
   const T* p_input = input.data<T>(context.GetPlace());
@@ -67,25 +68,29 @@ void IndexSelectInner(const framework::ExecutionContext& context,
              slice_bytes);
     }
   }
-};
+}
 
 template <typename DeviceContext, typename T>
 class IndexSelectOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) {
-    auto* inputs = context.Input<LoDTensor>("X");
-    auto* index = context.Input<LoDTensor>("Index");
-    auto* output = context.Output<LoDTensor>("Out");
+    auto* inputs_var = context.InputVar("X");
+    auto* index_var = context.InputVar("Index");
+    auto* output_var = context.OutputVar("Out");
+
+    auto& inputs = inputs_var->Get<LoDTensor>();
+    auto& index = index_var->Get<LoDTensor>();
+    auto* output = output_var->GetMutable<framework::LoDTensor>();
     int dim = context.Attr<int>("dim");
 
-    if (index->dims().size() == 2) {
+    if (index.dims().size() == 2) {
       PADDLE_ENFORCE_EQ(
-          index->dims()[1], 1,
+          index.dims()[1], 1,
           "index.dims()[1] should be 1 when index.dims().size() == "
           "2 in index_select_op.");
     } else {
       PADDLE_ENFORCE_EQ(
-          index->dims().size(), 1,
+          index.dims().size(), 1,
           "index.dims().size() should be 1 or 2 in index_select_op.");
     }
 
@@ -100,19 +105,17 @@ class IndexSelectOpKernel : public framework::OpKernel<T> {
         paddle::framework::DataTypeToString(framework::proto::VarType::INT64));
 
     if (index_type == framework::proto::VarType::INT32) {
-      IndexSelectInner<T, int>(context.device_context(), *inputs, *index, output,
-                               dim);
+      IndexSelectInner<T, int>(context, *inputs, *index, output, dim);
     } else if (index_type == framework::proto::VarType::INT64) {
-      IndexSelectInner<T, int64_t>(context.device_context(), *inputs, *index,
-                                   output, dim);
+      IndexSelectInner<T, int64_t>(context, *inputs, *index, output, dim);
     }
   }
 };
 
 template <typename T, typename IndexT = int>
 void IndexSelectGradInner(const framework::ExecutionContext& context,
-                     const Tensor& out_grad, const Tensor& index,
-                     Tensor* x_grad, int dim) {
+                          const Tensor& out_grad, const Tensor& index,
+                          Tensor* x_grad, int dim) {
   auto index_size = index.dims()[0];
 
   const T* p_input = out_grad.data<T>(context.GetPlace());
@@ -159,16 +162,20 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
       }
     }
   }
-};
+}
 
 template <typename DeviceContext, typename T>
 class IndexSelectGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* index = ctx.Input<LoDTensor>("Index");
-   // auto* x = ctx.Input<LoDTensor>("X");
-    auto* x_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
-    auto* out_grad = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
+    auto* index_var = ctx.InputVar("Index");
+    auto* x_grad_var = ctx.OutputVar(framework::GradVarName("X"));
+    auto* out_grad_var = ctx.InputVar(framework::GradVarName("Out"));
+
+    auto& index = index_var->Get<LoDTensor>();
+    auto& x_grad = x_grad_var->GetMutable<framework::LoDTensor>();
+    auto* out_grad = out_grad_var->Get<LoDTensor>();
+
     int dim = ctx.Attr<int>("dim");
 
     const auto& index_type = index->type();
@@ -181,11 +188,9 @@ class IndexSelectGradOpKernel : public framework::OpKernel<T> {
         paddle::framework::DataTypeToString(framework::proto::VarType::INT32),
         paddle::framework::DataTypeToString(framework::proto::VarType::INT64));
     if (index_type == framework::proto::VarType::INT32) {
-      IndexSelectGradInner<T, int>(ctx.device_context(), *out_grad, *index,
-                                   x_grad, dim);
+      IndexSelectGradInner<T, int>(ctx, *out_grad, *index, x_grad, dim);
     } else if (index_type == framework::proto::VarType::INT64) {
-      IndexSelectGradInner<T, int64_t>(ctx.device_context(), *out_grad, *index,
-                                       x_grad, dim);
+      IndexSelectGradInner<T, int64_t>(ctx, *out_grad, *index, x_grad, dim);
     }
   }
 };
