@@ -167,14 +167,14 @@ template <typename DeviceContext, typename T>
 class IndexSelectGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* index_var = ctx.InputVar("Index");
-    auto* x_grad_var = ctx.OutputVar(framework::GradVarName("X"));
-    auto* out_grad_var = ctx.InputVar(framework::GradVarName("Out"));
+    auto* index_var = context.InputVar("Index");
+    auto* x_grad_var = context.OutputVar(framework::GradVarName("X"));
+    auto* out_grad_var = context.InputVar(framework::GradVarName("Out"));
 
     auto& index = index_var->Get<LoDTensor>();
     auto& out_grad = out_grad_var->Get<LoDTensor>();
     auto* x_grad = x_grad_var->GetMutable<framework::LoDTensor>();
-    int dim = ctx.Attr<int>("dim");
+    int dim = context.Attr<int>("dim");
 
     const auto& index_type = index.type();
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
