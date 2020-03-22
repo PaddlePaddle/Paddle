@@ -498,7 +498,7 @@ void OpDesc::SetAttrMap(
   need_update_ = true;
 }
 
-Attribute OpDesc::GetAttr(const std::string &name) const {
+const Attribute &OpDesc::GetAttr(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
   return it->second;

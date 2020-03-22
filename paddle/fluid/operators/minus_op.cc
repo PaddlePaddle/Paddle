@@ -75,56 +75,26 @@ or not. But the output only shares the LoD information with input `X`.
   }
 };
 
-class MinusGradDescMaker : public framework::GradOpDescMakerBase {
+template <typename T>
+class MinusGradOpMaker : public framework::GradOpMakerBase<T> {
  public:
-  using framework::GradOpDescMakerBase::GradOpDescMakerBase;
+  using framework::GradOpMakerBase<T>::GradOpMakerBase;
 
-  std::vector<std::unique_ptr<framework::OpDesc>> operator()() const override {
-    std::vector<std::unique_ptr<framework::OpDesc>> ops;
-    auto x_g = this->InputGrad("X");
-    if (!x_g.empty()) {
-      auto *x_g_op = new framework::OpDesc();
-      x_g_op->SetType("scale");
-      x_g_op->SetInput("X", this->OutputGrad("Out"));
-      x_g_op->SetOutput("Out", x_g);
-      x_g_op->SetAttr("scale", 1.0f);
-      ops.emplace_back(x_g_op);
-    }
-
-    auto y_g = this->InputGrad("Y");
-    if (!y_g.empty()) {
-      auto *y_g_op = new framework::OpDesc();
-      y_g_op->SetType("scale");
-      y_g_op->SetInput("X", this->OutputGrad("Out"));
-      y_g_op->SetOutput("Out", y_g);
-      y_g_op->SetAttr("scale", -1.0f);
-      ops.emplace_back(y_g_op);
-    }
-
-    return ops;
-  }
-};
-
-class MinusGradMaker : public imperative::GradOpBaseMakerBase {
- public:
-  using imperative::GradOpBaseMakerBase::GradOpBaseMakerBase;
-
-  std::shared_ptr<imperative::GradOpNode> operator()() const override {
-    auto x_g = this->InputGrad("X");
-    auto y_g = this->InputGrad("Y");
-
+  framework::GradOpNode<T> operator()() const override {
     auto node = this->NewGradNode();
 
+    auto x_g = this->InputGrad("X");
     if (!x_g.empty()) {
-      imperative::TracedGradOp op(node);
+      framework::TracedGradOp<T> op(node);
       op.SetType("scale");
       op.SetInput("X", this->OutputGrad("Out"));
       op.SetOutput("Out", x_g);
       op.SetAttr("scale", 1.0f);
     }
 
+    auto y_g = this->InputGrad("Y");
     if (!y_g.empty()) {
-      imperative::TracedGradOp op(node);
+      framework::TracedGradOp<T> op(node);
       op.SetType("scale");
       op.SetInput("X", this->OutputGrad("Out"));
       op.SetOutput("Out", y_g);
@@ -140,6 +110,7 @@ class MinusGradMaker : public imperative::GradOpBaseMakerBase {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(minus, ops::MinusOp, ops::MinusOpMaker,
-                  ops::MinusGradDescMaker, ops::MinusGradMaker);
+                  ops::MinusGradOpMaker<paddle::framework::OpDesc>,
+                  ops::MinusGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     minus, ops::MinusKernel<paddle::platform::CPUDeviceContext, float>);

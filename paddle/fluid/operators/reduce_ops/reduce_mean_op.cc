@@ -40,45 +40,26 @@ class ReduceMeanOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-class ReduceMeanDoubleGradDescMaker : public framework::GradOpDescMakerBase {
+template <typename T>
+class ReduceMeanDoubleGradOpMaker : public framework::GradOpMakerBase<T> {
  public:
-  using framework::GradOpDescMakerBase::GradOpDescMakerBase;
+  using framework::GradOpMakerBase<T>::GradOpMakerBase;
 
-  std::vector<std::unique_ptr<framework::OpDesc>> operator()() const override {
-    std::vector<std::unique_ptr<framework::OpDesc>> ops;
-    auto x_gg = OutputGrad(framework::GradVarName("X"));  // input ddx
-    auto out_grads = InputGrad(framework::GradVarName("Out"));
+  framework::GradOpNode<T> operator()() const override {
+    auto out_grads = this->InputGrad(framework::GradVarName("Out"));
     if (!out_grads.empty()) {
-      auto* out_grad_op = new framework::OpDesc();
-      out_grad_op->SetType("reduce_mean");
-      out_grad_op->SetInput("X", x_gg);
-      out_grad_op->SetAttrMap(Attrs());
-      out_grad_op->SetOutput("Out", out_grads);
-      ops.emplace_back(out_grad_op);
-    }
-
-    return ops;
-  }
-};
-class ReduceMeanDoubleGradOpBaseMaker : public imperative::GradOpBaseMakerBase {
- public:
-  using imperative::GradOpBaseMakerBase::GradOpBaseMakerBase;
-
-  std::shared_ptr<imperative::GradOpNode> operator()() const override {
-    auto out_grads = InputGrad(framework::GradVarName("Out"));
-    if (!out_grads.empty()) {
-      auto x_gg = OutputGrad(framework::GradVarName("X"));  // input ddx
+      auto x_gg = this->OutputGrad(framework::GradVarName("X"));  // input ddx
       auto node = this->NewGradNode();
       {
-        imperative::TracedGradOp op(node);
+        framework::TracedGradOp<T> op(node);
         op.SetType("reduce_mean");
         op.SetInput("X", x_gg);
-        op.SetAttrMap(Attrs());
+        op.SetAttrMap(this->Attrs());
         op.SetOutput("Out", out_grads);
       }
       return node;
     } else {
-      return nullptr;
+      return this->EmptyGradNode();
     }
   }
 };
@@ -97,8 +78,8 @@ REGISTER_OPERATOR(reduce_mean, ops::ReduceOp, __reduce_meanMaker__,
                   ops::ReduceMeanOpGradMaker<paddle::framework::OpDesc>,
                   ops::ReduceMeanOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(reduce_mean_grad, ops::ReduceGradOp,
-                  ops::ReduceMeanDoubleGradDescMaker,
-                  ops::ReduceMeanDoubleGradOpBaseMaker,
+                  ops::ReduceMeanDoubleGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ReduceMeanDoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::ReduceMeanGradNoNeedBufferVarInference);
 REGISTER_OP_CPU_KERNEL(reduce_mean,
                        ops::ReduceKernel<paddle::platform::CPUDeviceContext,

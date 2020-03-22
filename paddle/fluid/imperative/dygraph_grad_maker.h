@@ -128,6 +128,10 @@ class GradOpBaseMakerBase {
 
   const std::string& ForwardOpType() const { return type_; }
 
+  static bool IsEmpty(const std::shared_ptr<GradOpNode>& node) {
+    return node->empty();
+  }
+
  protected:
   bool HasInput(const std::string& name) const {
     return var_base_map_in_.count(name) > 0;
@@ -139,6 +143,12 @@ class GradOpBaseMakerBase {
 
   static std::shared_ptr<GradOpNode> NewGradNode() {
     return std::make_shared<GradOpNode>();
+  }
+
+  static std::shared_ptr<GradOpNode> EmptyGradNode() { return nullptr; }
+
+  static void Reserve(std::shared_ptr<GradOpNode>* node, size_t size) {
+    (*node)->reserve(size);
   }
 
  private:

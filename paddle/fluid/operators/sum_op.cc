@@ -245,43 +245,21 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
   }
 };
 
-class SumGradDescMaker : public framework::GradOpDescMakerBase {
+template <typename T>
+class SumGradOpMaker : public framework::GradOpMakerBase<T> {
  public:
-  using framework::GradOpDescMakerBase::GradOpDescMakerBase;
+  using framework::GradOpMakerBase<T>::GradOpMakerBase;
 
-  std::vector<std::unique_ptr<framework::OpDesc>> operator()() const override {
-    auto x_grads = InputGrad("X", false);
-    std::vector<std::unique_ptr<framework::OpDesc>> grad_ops;
-    grad_ops.reserve(x_grads.size());
-    auto og = OutputGrad("Out");
-    std::transform(x_grads.begin(), x_grads.end(), std::back_inserter(grad_ops),
-                   [&og](const std::string& x_grad) {
-                     auto* grad_op = new framework::OpDesc();
-                     grad_op->SetType("scale");
-                     grad_op->SetInput("X", og);
-                     grad_op->SetOutput("Out", {x_grad});
-                     grad_op->SetAttr("scale", 1.0f);
-                     return std::unique_ptr<framework::OpDesc>(grad_op);
-                   });
-
-    return grad_ops;
-  }
-};
-
-class SumGradOpBaseMaker : public imperative::GradOpBaseMakerBase {
- public:
-  using imperative::GradOpBaseMakerBase::GradOpBaseMakerBase;
-
-  std::shared_ptr<imperative::GradOpNode> operator()() const override {
-    auto x_grads = InputGrad("X", false);
+  framework::GradOpNode<T> operator()() const override {
+    auto x_grads = this->InputGrad("X", false);
     using InputGradsType = decltype(x_grads);
 
     if (!x_grads.empty()) {
       auto node = this->NewGradNode();
-      node->reserve(x_grads.size());
-      auto og = OutputGrad("Out");
+      this->Reserve(&node, x_grads.size());
+      auto og = this->OutputGrad("Out");
       for (auto& x_grad : x_grads) {
-        imperative::TracedGradOp op(node);
+        framework::TracedGradOp<T> op(node);
         op.SetType("scale");
         op.SetInput("X", og);
         op.SetOutput("Out", InputGradsType{x_grad});
@@ -289,7 +267,7 @@ class SumGradOpBaseMaker : public imperative::GradOpBaseMakerBase {
       }
       return node;
     } else {
-      return nullptr;
+      return this->EmptyGradNode();
     }
   }
 };
@@ -301,9 +279,10 @@ DECLARE_INPLACE_OP_INFERER(SumInplace, {"X", "Out"});
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(sum, ops::SumOp, ops::SumOpMaker, ops::SumGradDescMaker,
-                  ops::SumGradOpBaseMaker, ops::SumOpVarTypeInference,
-                  ops::SumInplace);
+REGISTER_OPERATOR(sum, ops::SumOp, ops::SumOpMaker,
+                  ops::SumGradOpMaker<paddle::framework::OpDesc>,
+                  ops::SumGradOpMaker<paddle::imperative::OpBase>,
+                  ops::SumOpVarTypeInference, ops::SumInplace);
 
 REGISTER_OP_CPU_KERNEL(
     sum, ops::SumKernel<paddle::platform::CPUDeviceContext, float>,

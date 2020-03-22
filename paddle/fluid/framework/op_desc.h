@@ -79,7 +79,7 @@ class OpDesc {
 
   void SetBlocksAttr(const std::string &name, std::vector<BlockDesc *> blocks);
 
-  Attribute GetAttr(const std::string &name) const;
+  const Attribute &GetAttr(const std::string &name) const;
 
   template <typename T>
   T GetAttrIfExists(const std::string &name) const {
