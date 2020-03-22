@@ -15,6 +15,7 @@
 #include "paddle/fluid/operators/reduce_ops/reduce_mean_op.h"
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace paddle {
@@ -30,14 +31,12 @@ class ReduceMeanOpGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("reduce_mean_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetAttrMap(this->Attrs());
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    return op;
   }
 };
 
@@ -65,20 +64,22 @@ class ReduceMeanDoubleGradOpBaseMaker : public imperative::GradOpBaseMakerBase {
  public:
   using imperative::GradOpBaseMakerBase::GradOpBaseMakerBase;
 
-  std::vector<std::unique_ptr<imperative::OpBase>> operator()() const override {
-    std::vector<std::unique_ptr<imperative::OpBase>> ops;
-    auto x_gg = OutputGrad(framework::GradVarName("X"));  // input ddx
+  std::shared_ptr<imperative::GradOpNode> operator()() const override {
     auto out_grads = InputGrad(framework::GradVarName("Out"));
     if (!out_grads.empty()) {
-      auto* out_grad_op = new imperative::OpBase();
-      out_grad_op->SetType("reduce_mean");
-      out_grad_op->SetInput("X", x_gg);
-      out_grad_op->SetAttrMap(Attrs());
-      out_grad_op->SetOutput("Out", out_grads);
-      ops.emplace_back(out_grad_op);
+      auto x_gg = OutputGrad(framework::GradVarName("X"));  // input ddx
+      auto node = this->NewGradNode();
+      {
+        imperative::TracedGradOp op(node);
+        op.SetType("reduce_mean");
+        op.SetInput("X", x_gg);
+        op.SetAttrMap(Attrs());
+        op.SetOutput("Out", out_grads);
+      }
+      return node;
+    } else {
+      return nullptr;
     }
-
-    return ops;
   }
 };
 DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ReduceMeanGradNoNeedBufferVarInference,

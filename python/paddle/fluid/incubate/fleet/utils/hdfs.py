@@ -274,10 +274,10 @@ class HDFSClient(object):
     @staticmethod
     def make_local_dirs(local_path):
         """
-        create a directiory local, is same to mkdir
+        create a directory local, is same to mkdir
 
         Args:
-            local_path(str): local path that wants to create a directiory.
+            local_path(str): local path that wants to create a directory.
         """
         try:
             os.makedirs(local_path)

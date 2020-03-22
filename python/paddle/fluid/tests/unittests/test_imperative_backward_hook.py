@@ -37,40 +37,64 @@ class SimpleNet(fluid.Layer):
                 remove_hook2=False,
                 hook1=None,
                 hook2=None):
+        print("forward----")
         ret = self.linear1(x)
         if register_hook1:
             removable_hook1 = ret.register_hook(hook1)
+        print("forward1----")
         if register_hook2:
             removable_hook2 = ret.register_hook(hook2)
+        print("forward2----")
         if remove_hook1:
             removable_hook1.remove()
         if remove_hook2:
             removable_hook2.remove()
         ret = self.linear2(ret)
+        print("forward----end")
         return ret
 
 
 call_hook_fn1 = False
 call_hook_fn2 = False
+call_hook_fn3 = False
 
 
-def hook_fn1(grad3):
+def hook_fn1(grad1):
     global call_hook_fn1
     call_hook_fn1 = True
-    grad3 = grad3 * 2
-    # print(grad3)
-    return grad3
+    grad1 = grad1 * 2
+    # print(grad1)
+    return grad1
 
 
-def hook_fn2(grad4):
+def hook_fn2(grad2):
     global call_hook_fn2
     call_hook_fn2 = True
-    grad4 = grad4 * 4
-    # print(grad4)
-    return grad4
+    grad2 = grad2 * 4
+    # print(grad2)
+    return grad2
+
+
+def hook_fn3(grad3):
+    global call_hook_fn3
+    call_hook_fn3 = True
+    print(grad3 * 2)
+    return (grad3 * 2)
 
 
 class TestBackwardHook(unittest.TestCase):
+    def test_backeard_hook_for_leaf(self):
+        with fluid.dygraph.guard():
+            global call_hook_fn3
+            var = fluid.dygraph.to_variable(np.array([1, 2, 3, 4]))
+            var.stop_gradient = False
+            remove_hook3 = var.register_hook(hook_fn3)
+            var1 = var + 2
+            self.assertFalse(call_hook_fn3)
+            var1.backward()
+            self.assertTrue(call_hook_fn3)
+            print(var.gradient())
+
     def register_remove_hook(self, register_hook1, remove_hook1, register_hook2,
                              remove_hook2, hook1, hook2):
         seed = 100

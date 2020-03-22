@@ -24,23 +24,13 @@ namespace framework {
 namespace ir {
 namespace fusion_group {
 
-static std::unordered_set<std::string> binary_op_types;
-static std::unordered_set<std::string> unary_op_types;
+static std::unordered_set<std::string> elementwise_op_types;
 
-static std::unordered_set<std::string>& GetBinaryOpTypes() {
-  if (binary_op_types.empty()) {
-    binary_op_types =
-        OperationMap::Instance().Find(/* type= */ 0, /* num_operands= */ 2);
+static std::unordered_set<std::string>& GetElementwiseOpTypes() {
+  if (elementwise_op_types.empty()) {
+    elementwise_op_types = OperationMap::Instance().Find(/* type= */ 0);
   }
-  return binary_op_types;
-}
-
-static std::unordered_set<std::string>& GetUnaryOpTypes() {
-  if (unary_op_types.empty()) {
-    unary_op_types =
-        OperationMap::Instance().Find(/* type= */ 0, /* num_operands= */ 1);
-  }
-  return unary_op_types;
+  return elementwise_op_types;
 }
 
 static bool IsSpecifiedOp(const std::unordered_set<std::string>& op_types,
@@ -70,13 +60,41 @@ static bool IsEqualAndNotEmpty(const std::vector<int64_t>& l,
   return l.size() != 0U && r.size() != 0U && l == r;
 }
 
-static bool IsBinaryOp(const Node* n) {
-  if (IsSpecifiedOp(GetBinaryOpTypes(), n)) {
-    if ((!IsGradOp(n) && n->inputs.size() != 2U) || n->inputs.size() == 0U) {
-      return false;
-    }
+bool GroupDetector::CheckPrecondition(const Node* n) {
+  auto check_data_type = [&](const std::vector<Node*>& nodes) -> bool {
+    bool is_first = true;
+    proto::VarType::Type data_type_0;
+    for (auto* n : nodes) {
+      if (n && n->IsVar() && n->Var()) {
+        if (n->Var()->GetType() != proto::VarType::LOD_TENSOR) {
+          return false;
+        }
 
-    // The shape of all inputs should be the same.
+        proto::VarType::Type data_type_i = n->Var()->GetDataType();
+        if (data_type_i == proto::VarType::FP32 ||
+            data_type_i == proto::VarType::FP64 ||
+            data_type_i == proto::VarType::FP16) {
+          if (is_first) {
+            data_type_0 = data_type_i;
+            is_first = false;
+          } else if (data_type_0 != data_type_i) {
+            return false;
+          }
+        } else {
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+
+  return n && n->IsOp() && n->Op() && check_data_type(n->inputs) &&
+         check_data_type(n->outputs);
+}
+
+bool ElementwiseGroupDetector::IsElementwiseOp(const Node* n) {
+  if (IsSpecifiedOp(GetElementwiseOpTypes(), n)) {
+    // Check whether all inputs have the same shape.
     std::vector<int64_t> shape_0;
     for (size_t i = 0; i < n->inputs.size(); ++i) {
       auto* in_i = n->inputs[i];
@@ -98,17 +116,11 @@ static bool IsBinaryOp(const Node* n) {
   return false;
 }
 
-static bool IsUnaryOp(const Node* n) {
-  return IsSpecifiedOp(GetUnaryOpTypes(), n);
-}
-
-bool ElementwiseGroupDetector::IsElementwiseOp(const Node* n) {
-  return IsBinaryOp(n) || IsUnaryOp(n);
-}
-
 std::vector<std::vector<Node*>> ElementwiseGroupDetector::operator()(
     Graph* graph) {
-  auto teller = [&](const Node* n) -> bool { return IsElementwiseOp(n); };
+  auto teller = [&](const Node* n) -> bool {
+    return CheckPrecondition(n) && IsElementwiseOp(n);
+  };
 
   return SubgraphDetector(graph, teller)();
 }

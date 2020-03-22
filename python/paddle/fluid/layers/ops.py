@@ -142,7 +142,7 @@ The cumulative sum of the elements along a given axis. By default, the first ele
 
 Args:
     x (Variable): Input of cumsum operator, the Tensor/LoDTensor needed to be cumsumed. 
-    axis (int, optional): The dimenstion to accumulate along. -1 means the last dimenstion. Default is -1.
+    axis (int, optional): The dimension to accumulate along. -1 means the last dimension. Default is -1.
     exclusive (bool, optional): Whether to perform exclusive cumsum. Default is False.
     reverse (bool, optional): If true, the cumsum is performed in the reversed direction. Default is False.
 
@@ -245,7 +245,7 @@ __all__ += ['gelu']
 _gelu_ = generate_layer_fn('gelu')
 
 
-def gelu(x):
+def gelu(x, approximate=False):
     locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():
@@ -259,6 +259,11 @@ gelu.__doc__ = """
 For more details, see [Gaussian Error Linear Units](https://arxiv.org/abs/1606.08415).
 
 Equation:
+    if approximate is True
+    ..  math::
+        out = 0.5 * x * (1 + tanh(\\sqrt{\\frac{2}{\\pi}} * (x + 0.044715x^{3})))
+
+    else
     ..  math::
         out = 0.5 * x * (1 + erf(\\frac{x}{\\sqrt{2}}))
 

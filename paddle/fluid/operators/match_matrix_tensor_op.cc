@@ -320,8 +320,7 @@ class MatchMatrixTensorGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("match_matrix_tensor_grad");
     grad_op->SetInput("X", this->Input("X"));
     grad_op->SetInput("Y", this->Input("Y"));
@@ -332,7 +331,6 @@ class MatchMatrixTensorGradOpMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
     grad_op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
     grad_op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(grad_op);
   }
 };
 

@@ -51,7 +51,17 @@ class SubGraph {
     }
   }
 
-  bool IsEmpty() { return nodes_set_.empty(); }
+  bool IsValid(int min_subgraph_size) {
+    int num_operations = GetNumOperations();
+    if (num_operations < min_subgraph_size) {
+      VLOG(2) << "There are only " << num_operations
+              << " operations in the subgraph. Expected at least "
+              << min_subgraph_size;
+      return false;
+    }
+
+    return true;
+  }
 
   int GetType() const { return type_; }
 
@@ -203,6 +213,7 @@ class SubGraph {
 
  private:
   int type_{-1};
+  std::string data_type_;
   std::string func_name_;
   bool save_intermediate_out_{true};
 

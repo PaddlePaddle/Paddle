@@ -34,6 +34,8 @@ class ComputationOpHandle : public OpHandleBase {
 
   OperatorBase *GetOp() { return op_.get(); }
 
+  const OperatorBase *GetOp() const { return op_.get(); }
+
   std::string Name() const override;
 
   const Scope *GetScope() const { return scope_; }

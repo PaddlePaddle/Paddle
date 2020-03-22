@@ -75,6 +75,8 @@ void BindFleetWrapper(py::module* m) {
       .def("load_model_one_table", &framework::FleetWrapper::LoadModelOneTable)
       .def("set_client2client_config",
            &framework::FleetWrapper::SetClient2ClientConfig)
+      .def("set_pull_local_thread_num",
+           &framework::FleetWrapper::SetPullLocalThreadNum)
       .def("copy_table", &framework::FleetWrapper::CopyTable)
       .def("copy_table_by_feasign",
            &framework::FleetWrapper::CopyTableByFeasign);

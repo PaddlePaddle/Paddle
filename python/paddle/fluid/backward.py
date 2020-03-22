@@ -273,10 +273,13 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
                     args)))
 
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
+    op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
 
     if op_role_attr_name not in attrs:
         attrs[
             op_role_attr_name] = core.op_proto_and_checker_maker.OpRole.Backward
+    if op_device_attr_name not in attrs:
+        attrs[op_device_attr_name] = ""
     for name, val in six.iteritems(attrs):
         if isinstance(val, framework.Block):
             op_desc.set_block_attr(name, val.desc)
@@ -295,6 +298,8 @@ def _create_loss_op_desc_(loss):
             core.op_proto_and_checker_maker.kOpRoleAttrName():
             int(core.op_proto_and_checker_maker.OpRole.Backward) |
             int(core.op_proto_and_checker_maker.OpRole.Loss),
+            core.op_proto_and_checker_maker.kOpDeviceAttrName():
+            loss.op.attr(core.op_proto_and_checker_maker.kOpDeviceAttrName())
         })
     return op_desc
 
@@ -832,7 +837,7 @@ def _append_backward_ops_(block,
         target_block(Block): the block which is going to hold new generated grad ops
         no_grad_dict(dict):
             key(int)  block index
-            val(set) a set of varibale names. These varibales have no gradient
+            val(set) a set of variable names. These variables have no gradient
         grad_to_var(dict)(output argument):
             key(str): grad variable name
             val(str): corresponding forward variable name
@@ -875,6 +880,13 @@ def _append_backward_ops_(block,
         # Getting op's corresponding grad_op
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
             op.desc, cpt.to_text(no_grad_dict[block.idx]), grad_sub_block_list)
+
+        # Set device for grad_op according to forward Op
+        device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
+        if op.desc.has_attr(device_attr_name):
+            op_device = op.desc.attr(device_attr_name)
+            for op_desc in grad_op_desc:
+                op_desc._set_attr(device_attr_name, op_device)
 
         # If input_grad_names_set is not None, extend grad_op_descs only when
         # any input grad in outputs of previous grad ops.
@@ -1038,7 +1050,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
                     '''
                     if op_desc.type() not in ['rnn_memory_helper_grad']:
                         ops_to_remove.append(op_idx)
-                    continue
+                        continue
 
         new_vars = set()
         # create new gradient variables

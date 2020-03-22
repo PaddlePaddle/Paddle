@@ -28,7 +28,7 @@ namespace operators {
 //         x is Input,
 //         z is ResidualData,
 //         bias is Bias
-// When `split_channels` is set, y will be splitted into multiple outputs,
+// When `split_channels` is set, y will be split into multiple outputs,
 // each output has split_channels[i] number of channels.
 class Conv2DFusionOpMaker : public Conv2DOpMaker {
  protected:

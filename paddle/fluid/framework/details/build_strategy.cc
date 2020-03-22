@@ -66,6 +66,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPrintGraphPass("graph_viz_pass", "_fused_graph");
 
     AppendMultiDevPass();
+    AppendSetReaderDeviceIndexPass();
     AppendMultiGraphOptPasses();
 
     AppendPassToSetMkldnnAttr("mkldnn_placement_pass");
@@ -166,8 +167,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendPassWithCheck(strategy_.fuse_relu_depthwise_conv_,
                         "fuse_relu_depthwise_conv_pass");
     AppendPassWithCheck(strategy_.fuse_bn_act_ops_, "fuse_bn_act_pass");
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__)
     AppendPassWithCheck(strategy_.enable_auto_fusion_, "fusion_group_pass");
+#else
+    LOG(WARNING) << "fusion_group is not enabled for Windows/MacOS now, and "
+                    "only effective when running with CUDA GPU.";
 #endif
     AppendPassWithCheck(strategy_.fuse_elewise_add_act_ops_,
                         "fuse_elewise_add_act_pass");
@@ -222,6 +226,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
     multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",
                                                          &strategy_);
+  }
+
+  void AppendSetReaderDeviceIndexPass() {
+    AppendPass("set_reader_device_index_pass");
   }
 
   void AppendPrintGraphPass(const std::string &pass_name,
@@ -306,7 +314,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                                 const std::string &loss_var_name,
                                 const std::vector<Scope *> &local_scopes,
                                 const size_t &nranks,
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
                                 const bool use_cuda,
                                 platform::NCCLCommunicator *nccl_ctxs) const {
 #else
@@ -329,7 +337,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kNRanks);
       pass->Set<size_t>(kNRanks, new size_t(nranks));
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
       platform::NCCLCommunicator *nctx = use_cuda ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
       pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
@@ -342,7 +350,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kLocalScopes);
       pass->SetNotOwned<const std::vector<Scope *>>(kLocalScopes,
                                                     &local_scopes);
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
       platform::NCCLCommunicator *nctx = use_cuda ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
       pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
@@ -357,7 +365,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       LOG(INFO) << "set enable_sequential_execution:"
                 << enable_sequential_execution_;
     } else if (pass->Type() == "all_reduce_deps_pass") {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
       platform::NCCLCommunicator *nctx = use_cuda ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
       pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
@@ -394,6 +402,9 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                    "GPU, skipped.";
         continue;
       }
+    } else if (pass->Type() == "set_reader_device_index_pass") {
+      pass->Erase(kPlaces);
+      pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
     }
     VLOG(1) << "Start Apply Pass " << pass->Type();
     graph = pass->Apply(graph);
@@ -430,12 +441,13 @@ USE_PASS(fuse_sgd_op_pass);
 USE_PASS(fuse_momentum_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
+USE_PASS(set_reader_device_index_pass);
 #ifdef PADDLE_WITH_MKLDNN
 USE_PASS(mkldnn_placement_pass);
 #endif
 #ifdef PADDLE_WITH_NGRAPH
 USE_PASS(ngraph_subgraph_pass);
 #endif
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__)
 USE_PASS(fusion_group_pass);
 #endif

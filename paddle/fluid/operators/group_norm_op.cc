@@ -189,8 +189,7 @@ class GroupNormGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<T> Apply() const override {
-    auto *op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("group_norm_grad");
     op->SetInput("Scale", this->Input("Scale"));
     op->SetInput("Bias", this->Input("Bias"));
@@ -203,8 +202,6 @@ class GroupNormGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("Scale"), this->InputGrad("Scale"));
 
     op->SetAttrMap(this->Attrs());
-
-    return std::unique_ptr<T>(op);
   }
 };
 
