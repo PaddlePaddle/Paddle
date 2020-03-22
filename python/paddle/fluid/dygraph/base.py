@@ -258,33 +258,38 @@ def grad(outputs,
          create_graph=False,
          backward_strategy=None):
     ''' 
+    .. note::
+        **This API is ONLY available in Dygraph mode.**
+
     This API computes the sum of gradients of `outputs` with respect to each `inputs` .
 
     Parameters:
-        outputs (Variable|list(Variable)): any variable or a list of any variables.
-        inputs (Variable|list(Variable)): any variable or a list of any variables.
-        grad_outputs (list(Variable|None), optional): initial gradient values of
-            `outputs` . If `grad_outputs` is None, the initial gradient values of
-            `outputs` would be a Tensor filled with 1; if `grad_outputs` is not
-            None, it must have the same length as `outputs` , and in this case,
-            the initial gradient value of the i-th `outputs` would be: (1) a
-            Tensor filled with 1 when the i-th element of `grad_outputs` is None;
-            (2) the i-th element of `grad_outputs` when i-th element of
+        outputs (Variable|list(Variable)|tuple(Variable)): any Variable or a 
+            list/tuple of any Variables.
+        inputs (Variable|list(Variable)|tuple(Variable)): any Variable or a 
+            list/tuple of any Variables.
+        grad_outputs (Variable|list(Variable|None)|tuple(Variable|None), optional): 
+            initial gradient values of `outputs` . If `grad_outputs` is None, 
+            the initial gradient values of `outputs` would be Tensors filled with 1; 
+            if `grad_outputs` is not None, it must have the same length as `outputs` , 
+            and in this case, the initial gradient value of the i-th `outputs` would
+            be: (1) a Tensor filled with 1 when the i-th element of `grad_outputs` 
+            is None; (2) the i-th element of `grad_outputs` when i-th element of
             `grad_outputs` is a Variable. Default None.
-        no_grad_set (Variable|list(Variable)|set(Variable), optional): the variables 
-            whose gradients are not needed to compute. Default None.
+        no_grad_set (Variable|list(Variable)|tuple(Variable)|set(Variable), optional): 
+            the Variables whose gradients are not needed to compute. Default None.
         create_graph (bool, optional): whether to create the gradient graphs of
             the computing process. When it is True, higher order derivatives are
             supported to compute; when it is False, the gradient graphs of the
             computing process would be discarded. Default False.
-        backward_strategy(BackwardStrategy, optional): The backward strategy to
+        backward_strategy (BackwardStrategy, optional): The backward strategy to
             compute gradients. See :ref:`api_fluid_dygraph_BackwardStrategy` for
             details. Default None.
 
     Returns:
-        tuple(Variable): a tuple of Variable, whose length is the same as the Variable
-            number inside `inputs`. The i-th returned Variable is the sum of gradients
-            of `outputs` with respect to the i-th `inputs`.
+        tuple: a tuple of Variable, whose length is the same as the Variable number 
+        inside `inputs`, and the i-th returned Variable is the sum of gradients of 
+        `outputs` with respect to the i-th `inputs`.
 
     Examples:
         .. code-block:: python
