@@ -94,7 +94,7 @@ class PushSparseOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
+  std::unique_ptr<T> Apply() const {
     std::unique_ptr<T> op(new T());
     op->SetType("push_sparse");
     op->SetInput("Ids", this->Input("Ids"));
