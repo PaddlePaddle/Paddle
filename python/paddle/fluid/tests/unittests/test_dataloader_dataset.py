@@ -45,6 +45,7 @@ class TestMNIST(unittest.TestCase):
             image, label = mnist[i]
             self.assertTrue(image.shape[0] == 784)
             self.assertTrue(isinstance(label, int))
+            self.assertTrue(label >= 0 and label <= 9)
 
 
 class TestMnistDatasetTrain(unittest.TestCase):
@@ -56,6 +57,7 @@ class TestMnistDatasetTrain(unittest.TestCase):
             image, label = mnist[i]
             self.assertTrue(image.shape[0] == 784)
             self.assertTrue(isinstance(label, int))
+            self.assertTrue(label >= 0 and label <= 9)
 
 
 if __name__ == '__main__':
