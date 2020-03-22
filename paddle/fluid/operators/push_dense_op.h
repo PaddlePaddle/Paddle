@@ -38,38 +38,15 @@ void PushDenseFunctor(const framework::ExecutionContext& ctx) {
   const auto& ids = ctx.MultiInput<framework::LoDTensor>("Ids");
   int batch_size =
       ids[0]->lod().size() ? ids[0]->lod()[0].size() - 1 : ids[0]->dims()[0];
-  PADDLE_ENFORCE_GT(batch_size, 0, "batch size should > 0")
+  PADDLE_ENFORCE_GT(batch_size, 0, "batch size should > 0");
   
-  for (size_t index = 0; index < inputs.size(); ++index) {
-    framework::LoDTensor* tensor = const_cast<framework::LoDTensor*>(inputs[index]);
-    T* g = tensor->data<T>();
-    size_t count = tensor->numel();
-    const std::string& name = input_names[index];
-    if (scale_datanorm >= 0.0f) {
-      if (name.find(".batch_size@GRAD") != std::string::npos ||
-          name.find(".batch_sum@GRAD") != std::string::npos) {
-        Eigen::Map<Eigen::MatrixXf> mat(g, 1, count);
-        float scale = 1.0 / batch_size;
-        mat *= scale;
-      }
-    } else if (name.find(".batch_square_sum@GRAD") != std::string::npos) {
-      for (int i = 0; i < count; ++i) {
-        g[i] = (g[i] - batch_size * scale_datanorm) / batch_size +
-               batch_size * scale_datanorm;
-      }
-    }
-    paddle::ps::Region reg(g, count);
-    regions.emplace_back(std::move(reg));
-  }
+  auto fleet_ptr = framework::FleetWrapper::GetInstance();
+  fleet_ptr->PushDenseVarsAsync(ctx.scope(), table_id, input_names, nullptr,
+                                scale_datanorm, batch_size);
 
-  PADDLE_ENFORCE_NE(framework::FleetWrapper::pslib_ptr_, nullptr,
-                    "pslib_ptr_ should not be null");
-  auto status = framework::FleetWrapper::pslib_ptr_->_worker_ptr->push_dense(
-      regions.data(), regions.size(), table_id);
-
-  // not use GetInstance() here, because it's not thread-safe,
-  // s_instance_ should be already initialized in DistMultiTrainer
-  auto pull_dense_worker = framework::PullDenseWorker::s_instance_;
+  // note: GetInstance() is not thread-safe
+  // we assume PullDenseWorker has been already initialized in DistMultiTrainer
+  auto pull_dense_worker = framework::PullDenseWorker::GetInstance();
   PADDLE_ENFORCE_NE(pull_dense_worker, nullptr,
                     "pull_dense_worker should not be null");
   int thread_id = pull_dense_worker->GetThreadIdByScope(&ctx.scope());

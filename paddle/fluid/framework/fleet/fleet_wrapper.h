@@ -30,6 +30,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 
@@ -78,8 +79,9 @@ class FleetWrapper {
   void SetPullLocalThreadNum(int thread_num) {
     pull_local_thread_num_ = thread_num;
   }
+
   // Pull sparse variables from server in sync mode
-  // Param<in>: scope, table_id, var_names, fea_keys, fea_dim
+  // Param<in>: scope, table_id, var_names, fea_keys, fea_dim, var_emb_names
   // Param<out>: fea_values
   void PullSparseVarsSync(const Scope& scope, const uint64_t table_id,
                           const std::vector<std::string>& var_names,
@@ -87,12 +89,28 @@ class FleetWrapper {
                           std::vector<std::vector<float>>* fea_values,
                           int fea_dim,
                           const std::vector<std::string>& var_emb_names);
+
+  // Pull sparse variables from server in async mode
+  // Param<in>: scope, table_id, var_names, fea_keys, fea_dim
+  // Param<out>: fea_values std::future
   std::future<int32_t> PullSparseVarsAsync(
       const Scope& scope, const uint64_t table_id,
       const std::vector<std::string>& var_names,
       std::vector<uint64_t>* fea_keys,
       std::vector<std::vector<float>>* fea_values, int fea_dim);
+
+  // Pull sparse variables from server in sync mode
+  // pull immediately to tensors
+  void PullSparseToTensorSync(
+      const uint64_t table_id, int fea_dim, uint64_t padding_id,
+      platform::Place place, std::vector<LoDTensor*>& inputs,
+      std::vector<LoDTensor*>& outputs, std::vector<uint64_t>* fea_keys,
+      std::vector<float*>* pull_result_ptr,
+      std::vector<::std::future<int32_t>>* pull_sparse_status);
+
   // pull dense variables from server in sync mod
+  // Param<in>: scope, table_id, var_names
+  // Param<out>: void
   void PullDenseVarsSync(const Scope& scope, const uint64_t table_id,
                          const std::vector<std::string>& var_names);
 
@@ -134,6 +152,7 @@ class FleetWrapper {
   GetLocalTable() {
     return local_tables_;
   }
+
   // This is specially designed for click/show stats in server
   // Param<in>: scope, table_id, fea_keys, fea_labels, sparse_key_names,
   //            sparse_grad_names, batch_size, use_cvm, dump_slot
@@ -148,6 +167,18 @@ class FleetWrapper {
       std::vector<::std::future<int32_t>>* push_sparse_status,
       const int batch_size, const bool use_cvm, const bool dump_slot,
       std::vector<uint64_t>* sparse_push_keys, const bool no_cvm);
+
+  // Push sparse variables to server in async mode
+  void PushSparseFromTensorWithLabelAsync(
+      const Scope& scope, const uint64_t table_id, int fea_dim,
+      uint64_t padding_id, bool scale_sparse, const std::string& accesor,
+      const std::string& click_name, platform::Place place,
+      const std::vector<std::string>& input_names,
+      std::vector<LoDTensor*>& inputs,
+      std::vector<LoDTensor*>& outputs,
+      std::vector<uint64_t>* push_keys,
+      std::vector<std::vector<float>>* push_values,
+      std::vector<float>* fea_labels);
 
   // Push sparse variables to server in Async mode
   // Param<In>: scope, table_id, fea_keys, sparse_grad_names
@@ -252,6 +283,9 @@ class FleetWrapper {
 #ifdef PADDLE_WITH_PSLIB
   std::map<uint64_t, std::vector<paddle::ps::Region>> _regions;
 #endif
+
+  size_t GetAbsoluteSum(size_t start, size_t end, size_t level,
+                        const framework::LoD& lod);
 
  protected:
   static bool is_initialized_;
