@@ -14,15 +14,7 @@
 
 from __future__ import print_function
 
-from . import dataset
-from .dataset import *
+from . import mnist
+from .mnist import *
 
-from . import datasets
-from .datasets import *
-
-from . import batch_sampler
-from .batch_sampler import *
-
-__all__ = dataset.__all__ \
-        + datasets.__all__ \
-        + batch_sampler.__all__
+__all__ = mnist.__all__

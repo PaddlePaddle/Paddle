@@ -22,7 +22,8 @@ from .framework import Program, Variable, program_guard, default_main_program, d
 from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider
 from .multiprocess_utils import multiprocess_queue_set, CleanupFuncRegistrar, _cleanup_mmap, _cleanup
-from .dataloader import *
+from .dataloader import BatchSampler, Dataset
+from .dataloader.dataloader_iter import _DataLoaderIterSingleProcess, _DataLoaderIterMultiProcess
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
 from .unique_name import UniqueNameGenerator
 import logging
@@ -276,11 +277,14 @@ class DataLoader(object):
                 # -------------------------------------------------------
 
         """
-        self.dataset = dataset
         self.return_list = return_list
         self.collate_fn = collate_fn
         self.use_buffer_reader = use_buffer_reader
         self.worker_init_fn = worker_init_fn
+
+        assert isinstance(dataset, Dataset), \
+            "dataset should be subclass instance of fluid.io.Dataset"
+        self.dataset = dataset
 
         if not in_dygraph_mode():
             assert feed_list is not None, "feed_list should be set in static mode"
@@ -307,7 +311,7 @@ class DataLoader(object):
         if batch_sampler is not None:
             assert isinstance(batch_sampler, BatchSampler), \
                 "batch_sampler should be None or subclass instance " \
-                "of BatchSampler"
+                "of fluid.io.BatchSampler"
             assert batch_size == 1 and not shuffle and not drop_last, \
                 "batch_size/shuffle/drop_last should not be set when " \
                 "batch_sampler is given"

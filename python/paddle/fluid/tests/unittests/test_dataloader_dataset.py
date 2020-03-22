@@ -14,16 +14,10 @@
 
 from __future__ import division
 
-import os
-import six
-import time
 import unittest
-import numpy as np
 
 import paddle.fluid as fluid
-from paddle.fluid.io import Dataset, MnistDataset, BatchSampler, DataLoader
-from paddle.fluid.dygraph.nn import Linear
-from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.io import Dataset, MNIST
 
 
 class TestDatasetAbstract(unittest.TestCase):
@@ -42,24 +36,24 @@ class TestDatasetAbstract(unittest.TestCase):
             pass
 
 
-class TestMnistDataset(unittest.TestCase):
+class TestMNIST(unittest.TestCase):
     def test_main(self):
-        md = MnistDataset(mode='test')
-        self.assertTrue(len(md) == 10000)
+        mnist = MNIST(mode='test')
+        self.assertTrue(len(mnist) == 10000)
 
-        for i in range(len(md)):
-            image, label = md[i]
+        for i in range(len(mnist)):
+            image, label = mnist[i]
             self.assertTrue(image.shape[0] == 784)
             self.assertTrue(isinstance(label, int))
 
 
 class TestMnistDatasetTrain(unittest.TestCase):
     def test_main(self):
-        md = MnistDataset(mode='train')
-        self.assertTrue(len(md) == 60000)
+        mnist = MNIST(mode='train')
+        self.assertTrue(len(mnist) == 60000)
 
-        for i in range(len(md)):
-            image, label = md[i]
+        for i in range(len(mnist)):
+            image, label = mnist[i]
             self.assertTrue(image.shape[0] == 784)
             self.assertTrue(isinstance(label, int))
 

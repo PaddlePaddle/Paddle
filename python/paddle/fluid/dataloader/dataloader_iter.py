@@ -37,8 +37,6 @@ from ._utils import ParentWatchDog
 # hanging in subprocess data loading
 MP_INDICES_CHECK_INTERVAL = 5
 
-__all__ = ['_DataLoaderIterSingleProcess', '_DataLoaderIterMultiProcess']
-
 
 class _DataLoaderIterBase(object):
     """
@@ -259,9 +257,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._worker_status.append(True)
 
         core._set_process_pids(id(self), tuple(w.pid for w in self._workers))
-        self._set_worker_signal_handler(worker)
+        self._set_worker_signal_handler()
 
-    def _set_worker_signal_handler(self, worker):
+    def _set_worker_signal_handler(self):
         current_handler = signal.getsignal(signal.SIGCHLD)
         if not callable(current_handler):
             current_handler = None
