@@ -94,15 +94,13 @@ class PushSparseOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const {
-    std::unique_ptr<T> op(new T());
-    op->SetType("push_sparse");
-    op->SetInput("Ids", this->Input("Ids"));
-    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-    op->SetInput("W", this->Input("W"));
-    op->SetOutput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-    op->SetAttrMap(this->Attrs());
-    return op;
+  void Apply(GradOpPtr<T> retv) const override {
+    retv->SetType("push_sparse");
+    retv->SetInput("Ids", this->Input("Ids"));
+    retv->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    retv->SetInput("W", this->Input("W"));
+    retv->SetOutput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    retv->SetAttrMap(this->Attrs());
   }
 };
 
