@@ -93,7 +93,7 @@ class BatchSampler(object):
         else:
             assert indices is None, \
                 "should not set both data_source and indices"
-            self.indices = range(len(data_source))
+            self.indices = list(range(len(data_source)))
 
         assert isinstance(batch_size, int) and batch_size > 0, \
                 "batch_size should be a positive integer"
