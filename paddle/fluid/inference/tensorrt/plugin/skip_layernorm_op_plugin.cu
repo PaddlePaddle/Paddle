@@ -128,11 +128,12 @@ int SkipLayerNormPluginDynamic::enqueue(
     skip_layer_norm_func(num, hidden, input1, input2, scale_gpu_, bias_gpu_,
                          output, static_cast<half>(eps_), stream);
 #else
-    PADDLE_THROW("The cuda arch must greater than 600.");
+    PADDLE_THROW(platform::errors::Fatal(
+        "The cuda archs you specific should greater than 600."));
 #endif
   } else {
-    PADDLE_THROW(
-        "The SkipLayerNorm TRT Plugin's input type should be float or half.");
+    PADDLE_THROW(platform::errors::Fatal(
+        "The SkipLayerNorm TRT Plugin's input type should be float or half."));
   }
   return cudaGetLastError() != cudaSuccess;
 }

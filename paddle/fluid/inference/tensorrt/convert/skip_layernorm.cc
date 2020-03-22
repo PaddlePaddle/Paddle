@@ -33,9 +33,6 @@ class SkipLayerNormOpConverter : public OpConverter {
     inputs.push_back(input1);
     inputs.push_back(input2);
 
-    // Get output
-    size_t output_num = op_desc.Output("Out").size();
-    PADDLE_ENFORCE(output_num == 1);
     auto get_persistable_data = [&](const std::string& arg_name,
                                     framework::DDim* dims) -> float* {
       std::string var_name = op_desc.Input(arg_name).front();

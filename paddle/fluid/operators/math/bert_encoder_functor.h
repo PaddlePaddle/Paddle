@@ -43,8 +43,8 @@ template <typename T>
 class EmbEltwiseLayerNormFunctor {
  public:
   void operator()(int batch, int seq_len, int hidden, const int64_t *ids,
-                  const T *scale, const T *bias, const int64_t *embs, T *output,
-                  float eps, int input_num, cudaStream_t stream);
+                  const float *scale, const float *bias, const int64_t *embs,
+                  T *output, float eps, int input_num, cudaStream_t stream);
 };
 
 template <typename T>

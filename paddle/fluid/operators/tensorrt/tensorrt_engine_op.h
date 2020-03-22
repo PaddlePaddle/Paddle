@@ -258,7 +258,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
       } else if (type == framework::proto::VarType::INT64) {
         buffers[bind_index] = static_cast<void *>(t.data<int64_t>());
       } else {
-        PADDLE_THROW("The TRT Engine OP only support float and int64_t input.");
+        PADDLE_THROW(platform::errors::Fatal(
+            "The TRT Engine OP only support float and int64_t input."));
       }
     }
 

@@ -77,7 +77,7 @@ __device__ inline void LayerNorm(const kvp<T> &thread_data, const int ld,
 
 template <typename T, unsigned TPB>
 __global__ void EmbEltwiseLayernormKernel(int hidden, const int64_t *ids,
-                                          const T *scale, const T *bias,
+                                          const float *scale, const float *bias,
                                           const int64_t *embs, T *output,
                                           float eps, int input_num) {
   cub::Sum pair_sum;
@@ -117,12 +117,10 @@ __global__ void EmbEltwiseLayernormKernel(int hidden, const int64_t *ids,
 }
 
 template <typename T>
-void EmbEltwiseLayerNormFunctor<T>::operator()(int batch, int seq_len,
-                                               int hidden, const int64_t *ids,
-                                               const T *scale, const T *bias,
-                                               const int64_t *embs, T *output,
-                                               float eps, int input_num,
-                                               cudaStream_t stream) {
+void EmbEltwiseLayerNormFunctor<T>::operator()(
+    int batch, int seq_len, int hidden, const int64_t *ids, const float *scale,
+    const float *bias, const int64_t *embs, T *output, float eps, int input_num,
+    cudaStream_t stream) {
   const unsigned tpb = 256;
   const dim3 grid(seq_len, batch, 1);
   const dim3 block(tpb, 1, 1);

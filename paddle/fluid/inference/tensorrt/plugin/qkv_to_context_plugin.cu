@@ -291,10 +291,12 @@ int QkvToContextPluginDynamic::enqueue(
     transpose<half><<<grid, block, 0, stream>>>(tptr, output, batch, seq_len,
                                                 head_number_, head_size_);
 #else
-    PADDLE_THROW("The cuda arch must greater than 600.");
+    PADDLE_THROW(platform::errors::Fatal(
+        "The cuda archs you specific should greater than 600."));
 #endif
   } else {
-    PADDLE_THROW("The QKV TRT Plugin's input type should be float or half.");
+    PADDLE_THROW(platform::errors::Fatal(
+        "The QKV TRT Plugin's input type should be float or half."));
   }
   return cudaGetLastError() != cudaSuccess;
 }
