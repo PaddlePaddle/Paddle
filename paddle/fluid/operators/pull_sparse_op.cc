@@ -73,7 +73,6 @@ class PullSparseOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>("CtrLabelName", "(string, ctr label name").SetDefault("");
     AddAttr<int>("PaddingId", "(int, the padding id of this embedding").SetDefault(0);
     AddAttr<bool>("ScaleSparseGrad", "(bool, whether scale sparse gradient with batch size").SetDefault(true);
-    AddAttr<bool>("AsyncPush", "(bool, whether push sparse is async").SetDefault(true);
     AddAttr<std::vector<std::string>>("InputNames", "(vector, slot names").SetDefault(std::vector<std::string>());
     AddAttr<bool>("is_distributed", "(bool, it must be true").SetDefault(true);
     AddComment(R"DOC(

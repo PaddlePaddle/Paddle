@@ -23,7 +23,7 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-static void PullSparseFunctor(
+void PullSparseFunctor(
     const framework::ExecutionContext& ctx,
     const std::vector<uint64_t>* fea_keys_const,
     const std::vector<T*>* pull_result_ptr_const,
@@ -33,9 +33,13 @@ static void PullSparseFunctor(
   const auto& inputs = ctx.MultiInput<framework::LoDTensor>("Ids");
   const auto& outputs = ctx.MultiOutput<framework::LoDTensor>("Out");
 #ifdef PADDLE_WITH_PSLIB
-  std::vector<uint64_t>* fea_keys = const_cast<std::vector<uint64_t>*>(fea_keys_const);
-  std::vector<T*>* pull_result_ptr = const_cast<std::vector<T*>*>(pull_result_ptr_const);
-  std::vector<::std::future<int32_t>>* pull_sparse_status = const_cast<std::vector<::std::future<int32_t>>*>(pull_sparse_status_const);
+  std::vector<uint64_t>* fea_keys =
+      const_cast<std::vector<uint64_t>*>(fea_keys_const);
+  std::vector<T*>* pull_result_ptr =
+      const_cast<std::vector<T*>*>(pull_result_ptr_const);
+  std::vector<::std::future<int32_t>>* pull_sparse_status =
+      const_cast<std::vector<::std::future<int32_t>>*>(
+          pull_sparse_status_const);
   auto table_id = static_cast<uint32_t>(ctx.Attr<int>("TableId"));
   fea_keys->clear();
   fea_keys->reserve(max_feasign_num);
@@ -63,7 +67,8 @@ static void PullSparseFunctor(
         CHECK(output_data != nullptr);
       }
       if (ids[i] == padding_id) {
-        memcpy(output_data + output_len, init_value.data(), sizeof(T) * fea_dim);
+        memcpy(output_data + output_len, init_value.data(),
+               sizeof(T) * fea_dim);
         continue;
       }
       fea_keys->push_back(static_cast<uint64_t>(ids[i]));
@@ -99,21 +104,16 @@ static void PullSparseFunctor(
 #endif
 }
 
-size_t get_absolute_pos(size_t pos, size_t level, const framework::LoD& lod) {
-  if (level >= lod.size()) {
-    return 0;
-  } else if (level == lod.size() - 1) {
-    return pos;
+size_t get_absolute_sum(size_t start, size_t end, size_t level,
+                        const framework::LoD& lod) {
+  if (level >= lod.size() - 1) {
+    return end - start;
   }
   size_t ret = 0;
-  CHECK(pos < lod[level].back());
-  size_t cur_pos = lod[level][pos];
-  for(size_t i = 0; i < lod[level].size() - 1; ++i) {
-    auto start = lod[level][i];
-    size_t end = lod[level][i + 1];
-    for (size_t j = start; j <= cur_pos && j < end; ++j) {
-      ret += get_absolute_pos(j, level + 1, lod);
-    }
+  for (size_t i = start; i < end - 1; ++i) {
+    size_t pos1 = lod[level][i];
+    size_t pos2 = lod[level][i + 1];
+    ret += get_absolute_sum(pos1, pos2, level + 1, lod);
   }
   return ret;
 }
@@ -127,7 +127,8 @@ void PushSparseFunctor(
     uint32_t max_feasign_num) {
 #ifdef PADDLE_WITH_PSLIB
   auto inputs = ctx.MultiInput<framework::LoDTensor>("Ids");
-  auto outputs = ctx.MultiInput<framework::LoDTensor>(framework::GradVarName("Out"));
+  auto outputs =
+      ctx.MultiInput<framework::LoDTensor>(framework::GradVarName("Out"));
   uint32_t fea_dim = static_cast<uint32_t>(ctx.Attr<int>("EmbeddingDim"));
   std::string accesor = ctx.Attr<std::string>("AccessorClass");
   int show_index = 0;
@@ -156,11 +157,13 @@ void PushSparseFunctor(
 
   int batch_size = -1;
   for (auto* input : inputs) {    
-    int cur_batch_size = input->lod().size() ? input->lod()[0].size() - 1 : input->dims()[0];
+    int cur_batch_size =
+        input->lod().size() ? input->lod()[0].size() - 1 : input->dims()[0];
     if (batch_size == -1) {
       batch_size = cur_batch_size;
     } else {
-      PADDLE_ENFORCE_EQ(batch_size, cur_batch_size, "inputs batch_size must be the same");
+      PADDLE_ENFORCE_EQ(batch_size, cur_batch_size,
+                        "inputs batch_size must be the same");
     }
   }
   CHECK_GT(batch_size, 0);
@@ -169,7 +172,8 @@ void PushSparseFunctor(
   if (scale_sparse && grad_dim > 0) {
     size_t dim = static_cast<size_t>(grad_dim);
     for (const framework::LoDTensor* g_tensor_const : outputs) {
-      framework::LoDTensor* g_tensor = const_cast<framework::LoDTensor*>(g_tensor_const);
+      framework::LoDTensor* g_tensor =
+          const_cast<framework::LoDTensor*>(g_tensor_const);
       T* g = g_tensor->mutable_data<T>(ctx.GetPlace());
       Eigen::Map<
           Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
@@ -189,27 +193,32 @@ void PushSparseFunctor(
     CHECK(var != nullptr);
     framework::LoDTensor* label_tensor = var->GetMutable<framework::LoDTensor>();
     CHECK(label_tensor != nullptr);
-    T* label_ptr = label_tensor->data<T>();
+    int64_t* label_ptr = label_tensor->data<int64_t>();
 
     for (auto* tensor : inputs) {
+      VLOG(0) << "tensor";
       const int64_t* ids = tensor->data<int64_t>();
+      size_t fea_idx = 0;
       for (size_t lod_idx = 1; lod_idx < tensor->lod()[0].size(); ++lod_idx) {
-        size_t cur_num = get_absolute_pos(tensor->lod()[0][lod_idx], 0, tensor->lod());
-        for (size_t fea_idx = 0; fea_idx < cur_num; ++fea_idx) {
+        size_t cur = get_absolute_sum(tensor->lod()[0][lod_idx - 1],
+            tensor->lod()[0][lod_idx], 0, tensor->lod());
+        for (size_t i = 0; i < cur; ++i, ++fea_idx) {
           if (ids[fea_idx] == padding_id) {
             continue;
           }
-          fea_labels->push_back(static_cast<float>(label_ptr[lod_idx - 1]));
+          fea_labels->push_back(static_cast<T>(label_ptr[lod_idx - 1]));
           ++global_idx;
         }
       }
     }
   }
 
-  std::vector<uint64_t>* push_keys = const_cast<std::vector<uint64_t>*>(push_keys_const);
+  std::vector<uint64_t>* push_keys =
+      const_cast<std::vector<uint64_t>*>(push_keys_const);
   push_keys->clear();
   push_keys->reserve(max_feasign_num);
-  std::vector<std::vector<T>>* push_values = const_cast<std::vector<std::vector<T>>*>(push_values_const);
+  std::vector<std::vector<T>>* push_values =
+      const_cast<std::vector<std::vector<T>>*>(push_values_const);
   push_values->clear();
   push_values->reserve(max_feasign_num);
   push_values->clear();
@@ -251,33 +260,24 @@ void PushSparseFunctor(
         int slot = boost::lexical_cast<int>(input_names[index]);
         data[0] = static_cast<T>(slot);
       }
-      std::string str1;
-      for(int jjj = 0; jjj < fea_dim + slot_offset; ++jjj) {
-        str1 += " " + std::to_string(data[jjj]);
-      }
       ++input_idx;
     }
   }
 
   if (label_name != "") {
-    CHECK(input_idx == global_idx) << "input_idx=" << input_idx << " != global_idx=" << global_idx;
+    CHECK(input_idx == global_idx) << "input_idx=" << input_idx
+                                   << " != global_idx=" << global_idx;
   }
 
-  std::vector<float*> push_g_vec(input_idx, nullptr);
+  std::vector<T*> push_g_vec(input_idx, nullptr);
   for (auto i = 0u; i < push_keys->size(); ++i) {
     push_g_vec[i] = push_values->at(i).data();
   }
   CHECK(framework::FleetWrapper::pslib_ptr_ != nullptr);
   auto table_id = static_cast<uint32_t>(ctx.Attr<int>("TableId"));
   auto status = framework::FleetWrapper::pslib_ptr_->_worker_ptr->push_sparse(
-      table_id, push_keys->data(), (const float**)push_g_vec.data(),
+      table_id, push_keys->data(), (const T**)push_g_vec.data(),
       push_keys->size());
-
-  bool async_push = ctx.Attr<bool>("AsyncPush");
-  if (!async_push) {
-    status.wait();
-  }
-  
 #endif
 }
 
