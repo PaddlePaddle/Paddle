@@ -44,21 +44,33 @@ class Metric(object):
         """
         Reset states and result
         """
-        raise NotImplementedError("function 'reset' not implemented in {}.".format(self.__class__.__name__))
+        raise NotImplementedError("function 'reset' not implemented in {}.".
+                                  format(self.__class__.__name__))
 
     @abc.abstractmethod
     def update(self, *args, **kwargs):
         """
         Update states for metric
         """
-        raise NotImplementedError("function 'update' not implemented in {}.".format(self.__class__.__name__))
+        raise NotImplementedError("function 'update' not implemented in {}.".
+                                  format(self.__class__.__name__))
 
     @abc.abstractmethod
     def accumulate(self):
         """
         Accumulates statistics, computes and returns the metric value
         """
-        raise NotImplementedError("function 'accumulate' not implemented in {}.".format(self.__class__.__name__))
+        raise NotImplementedError(
+            "function 'accumulate' not implemented in {}.".format(
+                self.__class__.__name__))
+
+    @abc.abstractmethod
+    def name(self):
+        """
+        Returns metric name
+        """
+        raise NotImplementedError("function 'name' not implemented in {}.".
+                                  format(self.__class__.__name__))
 
     def add_metric_op(self, pred, label):
         """
@@ -72,11 +84,12 @@ class Accuracy(Metric):
     Encapsulates accuracy metric logic
     """
 
-    def __init__(self, topk=(1, ), *args, **kwargs):
-       super(Accuracy, self).__init__(*args, **kwargs) 
-       self.topk = topk
-       self.maxk = max(topk)
-       self.reset()
+    def __init__(self, topk=(1, ), name=None, *args, **kwargs):
+        super(Accuracy, self).__init__(*args, **kwargs)
+        self.topk = topk
+        self.maxk = max(topk)
+        self._init_name(name)
+        self.reset()
 
     def add_metric_op(self, pred, label, *args, **kwargs):
         pred = fluid.layers.argsort(pred[0], descending=True)[1][:, :self.maxk]
@@ -103,3 +116,12 @@ class Accuracy(Metric):
             res.append(float(t) / c)
         return res
 
+    def _init_name(self, name):
+        name = name or 'acc'
+        if self.maxk != 1:
+            self._name = ['{}_top{}'.format(name, k) for k in self.topk]
+        else:
+            self._name = ['acc']
+
+    def name(self):
+        return self._name
