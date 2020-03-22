@@ -77,6 +77,66 @@ class TestApiWhileLoop(unittest.TestCase):
             data = np.add(data, data_one)
         self.assertTrue(np.allclose(np.asarray(res[1]), data))
 
+    def test_var_dict(self):
+        def cond(i, ten, test_dict, test_list, test_list_dict):
+            return layers.less_than(i, ten)
+
+        def body(i, ten, test_dict, test_list, test_list_dict):
+            test_dict["test_key"] = i
+            test_dict["test_key"] += 1
+
+            test_list[0] = fluid.layers.reshape(test_list[0], [2, -1]) + 1
+
+            test_list_dict[0]["test_key"] += 1
+            test_list_dict[0]["test_key"] = fluid.layers.relu(test_list_dict[0][
+                "test_key"])
+
+            i = layers.increment(i)
+            return [i, ten, test_dict, test_list, test_list_dict]
+
+        main_program = Program()
+        startup_program = Program()
+        with program_guard(main_program, startup_program):
+            i = layers.zeros(shape=[1], dtype='int64')
+            ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
+            test_data = layers.fill_constant(shape=[1], dtype='int64', value=0)
+
+            test_dict = {"test_key": test_data}
+            test_list = [
+                layers.fill_constant(
+                    shape=[1, 2], dtype='int64', value=0)
+            ]
+            test_list_dict = [{
+                "test_key": layers.fill_constant(
+                    shape=[1], dtype='float32', value=0)
+            }]
+
+            i, ten, test_dict, test_list, test_list_dict = layers.while_loop(
+                cond, body, [i, ten, test_dict, test_list, test_list_dict])
+        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        res = exe.run(main_program,
+                      fetch_list=[
+                          test_dict["test_key"], test_list[0],
+                          test_list_dict[0]["test_key"]
+                      ])
+        self.assertTrue(
+            np.allclose(
+                np.asarray(res[0]),
+                np.full(
+                    shape=(1), fill_value=10, dtype=np.int64)))
+        self.assertTrue(
+            np.allclose(
+                np.asarray(res[1]),
+                np.full(
+                    shape=(2, 1), fill_value=10, dtype=np.int64)))
+        self.assertTrue(
+            np.allclose(
+                np.asarray(res[2]),
+                np.full(
+                    shape=(1), fill_value=10, dtype=np.float32)))
+
 
 class TestApiWhileLoop_Nested(unittest.TestCase):
     def test_nested_net(self):

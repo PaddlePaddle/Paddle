@@ -26,9 +26,11 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "paddle/fluid/imperative/backward_strategy.h"
+#include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/data_loader.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/nccl_context.h"
+#include "paddle/fluid/imperative/partial_grad_engine.h"
 #include "paddle/fluid/imperative/profiler.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
@@ -405,6 +407,100 @@ void BindImperative(py::module *m_ptr) {
            py::arg("zero_copy") = false, py::arg("name") = "")
       .def("__init__", &InitVarBaseFromNumpyWithArgDefault, py::arg("value"))
       .def("__init__", &InitVarBaseFromNumpyWithKwargs)
+      .def("__getitem__",
+           [](imperative::VarBase &self, py::handle _index) {
+             // We allow indexing by Integers, Slices, and tuples of those
+             // types.
+             // Ellipsis and None are not supported yet.
+             std::vector<int> slice_axes, slice_starts, slice_ends,
+                 slice_strides, decrease_axis;
+             // wrap to tuple
+             PyObject *index = !PyTuple_Check(_index.ptr())
+                                   ? PyTuple_Pack(1, _index.ptr())
+                                   : _index.ptr();
+             const auto &tensor = self.Var().Get<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(tensor.IsInitialized(), true,
+                               platform::errors::InvalidArgument(
+                                   "%s has not been initialized", self.Name()));
+             const auto &shape = tensor.dims();
+             const int rank = shape.size();
+             const int size = PyTuple_GET_SIZE(index);
+             PADDLE_ENFORCE_EQ(
+                 size <= rank, true,
+                 platform::errors::InvalidArgument(
+                     "too many indices (%d) for tensor of dimension %d", size,
+                     rank));
+             for (int dim = 0; dim < size; ++dim) {
+               PyObject *slice_item = PyTuple_GetItem(index, dim);
+               PADDLE_ENFORCE_EQ(
+                   PyNumber_Check(slice_item) || PySlice_Check(slice_item),
+                   true,
+                   platform::errors::InvalidArgument(
+                       "We allow indexing by Integers, Slices, and tuples of "
+                       "these types, but received %s in %dth slice item",
+                       std::string(Py_TYPE(slice_item)->tp_name), dim + 1));
+               int dim_len = shape[dim];
+               if (PyNumber_Check(slice_item)) {
+                 // integer
+                 int start = static_cast<int>(PyLong_AsLong(slice_item));
+                 start = start < 0 ? start + dim_len : start;
+                 slice_axes.push_back(dim);
+                 slice_starts.push_back(start);
+                 slice_ends.push_back(start + 1);
+                 slice_strides.push_back(1);
+                 decrease_axis.push_back(dim);
+               } else {
+                 // slice
+                 Py_ssize_t start, end, step;
+// The parameter type for the slice parameter was PySliceObject* before 3.2
+#if PY_VERSION_HEX >= 0x03020000
+                 PySlice_GetIndices(slice_item, dim_len, &start, &end, &step);
+#else
+                 PySlice_GetIndices(
+                     reinterpret_cast<PySliceObject *>(slice_item), dim_len,
+                     &start, &end, &step);
+#endif
+                 // :: or : or 0:dim_len:1
+                 if (start == 0 && end == dim_len && step == 1) continue;
+                 slice_axes.push_back(dim);
+                 slice_starts.push_back(start);
+                 slice_ends.push_back(end);
+                 slice_strides.push_back(step);
+               }
+             }
+             if (!PyTuple_Check(_index.ptr())) Py_DecRef(index);
+
+             // release gil and do tracing
+             py::gil_scoped_release release;
+             const auto &tracer = imperative::GetCurrentTracer();
+             auto _self = self.NewVarBase(tensor.place(), false);
+             if (slice_axes.empty()) {
+               return _self;
+             } else {
+               std::vector<int> infer_flags(size, 1);
+               imperative::NameVarBaseMap ins = {{"Input", {_self}}};
+               framework::AttributeMap attrs = {
+                   {"axes", slice_axes},
+                   {"starts", slice_starts},
+                   {"ends", slice_ends},
+                   {"infer_flags", infer_flags},
+                   {"decrease_axis", decrease_axis}};
+               auto out = std::shared_ptr<imperative::VarBase>(
+                   new imperative::VarBase(tracer->GenerateUniqueName()));
+               imperative::NameVarBaseMap outs = {{"Out", {out}}};
+               std::string op_type = "slice";
+               for (auto stride : slice_strides) {
+                 if (stride != 1) {
+                   op_type = "strided_slice";
+                   attrs.insert({"strides", slice_strides});
+                   attrs.erase("decrease_axis");
+                   break;
+                 }
+               }
+               tracer->TraceOp(op_type, ins, outs, std::move(attrs));
+               return out;
+             }
+           })
       .def("numpy",
            [](imperative::VarBase &self) -> py::array {
              const auto &tensor =
@@ -517,10 +613,9 @@ void BindImperative(py::module *m_ptr) {
               const imperative::Tracer &tracer) {
              // TODO(jiabin): when we impl more backward execution we can select
              // them
-
-             imperative::Engine *engine = tracer.GetDefaultEngine();
-             VLOG(3) << "Start backward";
+             auto *engine = tracer.GetEngine();
              engine->Init(&self, bckst);
+             VLOG(3) << "Start backward";
              engine->Execute();
              VLOG(3) << "Finish backward";
            },
@@ -690,6 +785,25 @@ void BindImperative(py::module *m_ptr) {
                     },
                     [](imperative::ParallelStrategy &self,
                        const std::string &ep) { self.current_endpoint_ = ep; });
+
+  m.def(
+      "dygraph_partial_grad",
+      [](const std::vector<std::shared_ptr<imperative::VarBase>> &input_targets,
+         const std::vector<std::shared_ptr<imperative::VarBase>>
+             &output_targets,
+         const std::vector<std::shared_ptr<imperative::VarBase>> &output_grads,
+         const std::vector<std::shared_ptr<imperative::VarBase>> &no_grad_vars,
+         const platform::Place &place,
+         const imperative::detail::BackwardStrategy &strategy,
+         bool create_graph) {
+        imperative::PartialGradEngine engine(input_targets, output_targets,
+                                             output_grads, no_grad_vars, place,
+                                             strategy, create_graph);
+        engine.Execute();
+        return engine.GetResult();
+      },
+      py::call_guard<py::gil_scoped_release>());
+
 #if defined(PADDLE_WITH_NCCL)
   py::class_<imperative::NCCLParallelContext> nccl_ctx(m,
                                                        "NCCLParallelContext");

@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,18 +14,18 @@
 
 from __future__ import print_function
 
-import numpy as np
 import paddle.fluid as fluid
-import unittest
-
 from paddle.fluid.dygraph.jit import dygraph_to_static_graph
 
-np.random.seed(1)
 
-if fluid.is_compiled_with_cuda():
-    place = fluid.CUDAPlace(0)
-else:
-    place = fluid.CPUPlace()
+def add_fn(x):
+    x = x + 1
+    return x
+
+
+def loss_fn(x, lable):
+    loss = fluid.layers.cross_entropy(x, lable)
+    return loss
 
 
 def dyfunc_with_if_else(x_v, label=None):
@@ -42,7 +42,6 @@ def dyfunc_with_if_else(x_v, label=None):
 
 def dyfunc_with_if_else2(x, col=100):
     row = 0
-    # plain if in python
     if abs(col) > x.shape[-1]:
         col = -1
     if fluid.layers.reduce_mean(x).numpy()[0] > x.numpy()[row][col]:
@@ -57,7 +56,6 @@ def nested_if_else(x_v):
     batch_size = 16
     feat_size = x_v.shape[-1]
     bias = fluid.layers.fill_constant([feat_size], dtype='float32', value=1)
-    # plain if in python
     if x_v.shape[0] != batch_size:
         batch_size = x_v.shape[0]
     if fluid.layers.mean(x_v).numpy()[0] < 0:
@@ -77,46 +75,56 @@ def nested_if_else(x_v):
     return y
 
 
-class TestDygraphIfElse(unittest.TestCase):
-    """
-    TestCase for the transformation from control flow `if/else`
-    dependent on tensor in Dygraph into Static `fluid.layers.cond`.
-    """
-
-    def setUp(self):
-        self.x = np.random.random([10, 16]).astype('float32')
-        self.dyfunc = dyfunc_with_if_else
-
-    def _run_static(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            x_v = fluid.layers.assign(self.x)
-            # Transform into static graph
-            out = dygraph_to_static_graph(self.dyfunc)(x_v)
-            exe = fluid.Executor(place)
-            ret = exe.run(main_program, fetch_list=out)
-            return ret
-
-    def _run_dygraph(self):
-        with fluid.dygraph.guard(place):
-            x_v = fluid.dygraph.to_variable(self.x)
-            ret = self.dyfunc(x_v)
-            return ret.numpy()
-
-    def test_ast_to_func(self):
-        self.assertTrue((self._run_dygraph() == self._run_static()).all())
+def nested_if_else_2(x):
+    y = fluid.layers.reshape(x, [-1, 1])
+    b = 2
+    if b < 1:
+        # var `z` is not visible for outer scope
+        z = y
+    x_shape_0 = x.shape[0]
+    if x_shape_0 < 1:
+        if fluid.layers.shape(y).numpy()[0] < 1:
+            res = fluid.layers.fill_constant(
+                value=2, shape=x.shape, dtype="int32")
+            # `z` is a new var here.
+            z = y + 1
+        else:
+            res = fluid.layers.fill_constant(
+                value=3, shape=x.shape, dtype="int32")
+    else:
+        res = x
+    return res
 
 
-class TestDygraphIfElse2(TestDygraphIfElse):
-    def setUp(self):
-        self.x = np.random.random([10, 16]).astype('float32')
-        self.dyfunc = dyfunc_with_if_else2
+def nested_if_else_3(x):
+    y = fluid.layers.reshape(x, [-1, 1])
+    b = 2
+    # var `z` is visible for func.body
+    if b < 1:
+        z = y
+    else:
+        z = x
 
-
-class TestDygraphIfElse3(TestDygraphIfElse):
-    def setUp(self):
-        self.x = np.random.random([10, 16]).astype('float32')
-        self.dyfunc = nested_if_else
+    if b < 1:
+        res = x
+        # var `out` is only visible for current `if`
+        if b > 1:
+            out = x + 1
+        else:
+            out = x - 1
+    else:
+        y_shape = fluid.layers.shape(y)
+        if y_shape.numpy()[0] < 1:
+            res = fluid.layers.fill_constant(
+                value=2, shape=x.shape, dtype="int32")
+            # `z` is created in above code block.
+            z = y + 1
+        else:
+            res = fluid.layers.fill_constant(
+                value=3, shape=x.shape, dtype="int32")
+            # `out` is a new var.
+            out = x + 1
+    return res
 
 
 class NetWithControlFlowIf(fluid.dygraph.Layer):
@@ -136,7 +144,6 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
     @dygraph_to_static_graph
     def forward(self, input):
         hidden_dim = input.shape[-1]
-        # Plain `if` statement in Python
         if hidden_dim != self.hidden_dim:
             raise ValueError(
                 "hidden_dim {} of input is not equal to FC.weight[0]: {}"
@@ -172,38 +179,53 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
         return loss
 
 
-class TestDygraphIfElseNet(unittest.TestCase):
-    """
-    TestCase for the transformation from control flow `if/else`
-    dependent on tensor in Dygraph into Static `fluid.layers.cond`.
-    """
+def if_with_and_or(x_v, label=None):
+    batch_size = fluid.layers.shape(x_v)
+    if x_v and (fluid.layers.mean(x_v).numpy()[0] > 0 or
+                label is not None) and batch_size[0] > 1 and True:
+        x_v = x_v - 1
+    else:
+        x_v = x_v + 1
 
-    def setUp(self):
-        self.x = np.random.random([10, 16]).astype('float32')
-        self.Net = NetWithControlFlowIf
-
-    def _run_static(self):
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program):
-            net = self.Net()
-            x_v = fluid.layers.assign(self.x)
-            # Transform into static graph
-            out = net(x_v)
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-            ret = exe.run(main_program, fetch_list=out)
-            return ret[0]
-
-    def _run_dygraph(self):
-        with fluid.dygraph.guard(place):
-            net = self.Net()
-            x_v = fluid.dygraph.to_variable(self.x)
-            ret = net(x_v)
-            return ret.numpy()
-
-    def test_ast_to_func(self):
-        self.assertTrue((self._run_dygraph() == self._run_static()).all())
+    if label is not None:
+        loss = fluid.layers.cross_entropy(x_v, label)
+        return loss
+    return x_v
 
 
-if __name__ == '__main__':
-    unittest.main()
+def if_with_and_or_1(x, y=None):
+    batch_size = fluid.layers.shape(x)
+    if batch_size[0] > 1 and y is not None:
+        x = x + 1
+    if y or batch_size[0] > 1:
+        x = x - 1
+    return x
+
+
+def if_with_and_or_2(x, y=None):
+    batch_size = fluid.layers.shape(x)
+    if x and batch_size[0] > 1 and y is not None:
+        x = x + 1
+    if batch_size[0] > 1 or y or x is not None:
+        x = x - 1
+    return x
+
+
+def if_with_and_or_3(x, y=None):
+    batch_size = fluid.layers.shape(x)
+    mean_res = fluid.layers.mean(x)
+    if x and batch_size[0] > 1 and y is not None and mean_res.numpy()[0] > 0:
+        x = x + 1
+    if mean_res.numpy()[0] > 0 and (x and batch_size[0] > 1) and y:
+        x = x - 1
+    return x
+
+
+def if_with_and_or_4(x, y=None):
+    batch_size = fluid.layers.shape(x)
+    mean_res = fluid.layers.mean(x)
+    if (x and batch_size[0] > 1) or (y is not None and mean_res.numpy()[0] > 0):
+        x = x + 1
+    if (x or batch_size[0] > 1) and (y is not None or mean_res.numpy()[0] > 0):
+        x = x - 1
+    return x

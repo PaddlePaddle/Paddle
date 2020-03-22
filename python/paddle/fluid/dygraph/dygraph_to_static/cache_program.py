@@ -20,8 +20,8 @@ import numpy
 import six
 
 from paddle.fluid import framework
-from paddle.fluid.layers import io
 from paddle.fluid import core, executor
+from paddle.fluid.data import data
 from paddle.fluid.dygraph.dygraph_to_static import convert_to_static
 
 __all__ = ['AutoTracer']
@@ -170,9 +170,9 @@ class ProgramCache(object):
                     batch_data, numpy.ndarray
                 ), "Input {} should be numpy.ndarray, but received {}.".format(
                     feed_name, type(batch_data))
-                feed_layer = io.data(
+                feed_layer = data(
                     name=feed_name,
-                    shape=list(batch_data.shape[1:]),
+                    shape=[-1] + list(batch_data.shape[1:]),
                     dtype=str(batch_data.dtype))
                 self._inputs.append(feed_layer)
 
@@ -310,8 +310,8 @@ class AutoTracer(object):
 
         if not isinstance(loss_name, six.string_types):
             raise ValueError(
-                "Type of input loss_name should type(str), but received {}."
-                .format(type(loss_name)))
+                "Type of input loss_name should type(str), but received {}.".
+                format(type(loss_name)))
         self._loss_name = loss_name
 
     def _add_optimizer(self):

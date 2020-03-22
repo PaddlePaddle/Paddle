@@ -14,14 +14,20 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include "paddle/fluid/framework/variable.h"
 
 namespace paddle {
 namespace imperative {
 
+class VarBase;
+class GradOpNode;
+
 class VariableWrapper {
  public:
+  friend class VarBase;
+
   explicit VariableWrapper(const std::string& name) : name_(name) {}
 
   const framework::Variable& Var() const { return var_; }
@@ -31,6 +37,10 @@ class VariableWrapper {
   // This is used for python api
   void SetOverridedStopGradient(bool stop_gradient) {
     overrided_stop_gradient_ = static_cast<int>(stop_gradient);
+
+    if (auto grad_var = grad_var_.lock()) {
+      grad_var->SetOverridedStopGradient(stop_gradient);
+    }
   }
 
   // This is used for python api
@@ -46,6 +56,10 @@ class VariableWrapper {
     } else {
       VLOG(6) << "Ignore Stop gradient conversion for Var: " << Name()
               << "Set value is: " << overrided_stop_gradient_;
+    }
+
+    if (auto grad_var = grad_var_.lock()) {
+      grad_var->InnerSetOverridedStopGradient(stop_gradient);
     }
   }
 
@@ -64,6 +78,18 @@ class VariableWrapper {
   void SetDataType(framework::proto::VarType::Type data_type) {
     data_type_ = data_type;
   }
+
+  std::shared_ptr<VariableWrapper> GetGradVar() const {
+    return grad_var_.lock();
+  }
+
+  const std::weak_ptr<VariableWrapper>& GetWeakGradVar() const {
+    return grad_var_;
+  }
+
+  std::shared_ptr<GradOpNode> GetGradNode() const { return grad_node_.lock(); }
+
+  bool HasGradNode() const { return !grad_node_.expired(); }
 
   framework::proto::VarType::Type DataType() const {
     const framework::Tensor* tensor = nullptr;
@@ -86,6 +112,32 @@ class VariableWrapper {
   }
 
  private:
+  void SetGradVar(const std::shared_ptr<VariableWrapper>& var) {
+    auto shared_var = grad_var_.lock();
+    if (shared_var != var) {
+      PADDLE_ENFORCE_EQ(shared_var, nullptr,
+                        platform::errors::PermissionDenied(
+                            "Cannot set gradient var wrapper twice"));
+      grad_var_ = var;
+    }
+  }
+
+  void SetGradNode(const std::shared_ptr<GradOpNode>& grad_node) {
+    if (!grad_node) {
+      grad_node_.reset();
+      return;
+    }
+
+    auto shared_node = grad_node_.lock();
+    if (shared_node != grad_node) {
+      PADDLE_ENFORCE_EQ(
+          shared_node, nullptr,
+          platform::errors::PermissionDenied("Cannot set gradient op twice"));
+      grad_node_ = grad_node;
+    }
+  }
+
+ private:
   framework::Variable var_;
   std::string name_;
 
@@ -96,6 +148,9 @@ class VariableWrapper {
 
   framework::proto::VarType::Type type_{framework::proto::VarType::LOD_TENSOR};
   framework::proto::VarType::Type data_type_{framework::proto::VarType::FP32};
+
+  std::weak_ptr<VariableWrapper> grad_var_;
+  std::weak_ptr<GradOpNode> grad_node_;
 };
 
 }  // namespace imperative

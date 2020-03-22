@@ -22,6 +22,7 @@
 #include <string>
 #include <vector>
 #include "gtest/gtest.h"
+#include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/memory/memcpy.h"
 
@@ -148,9 +149,9 @@ TEST(test_tracer, test_track_backward_output) {
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
   tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
-  ASSERT_EQ(x_in->GradVarBase()->GradOps().size(), 0UL);
-  ASSERT_EQ(y_in->GradVarBase()->GradOps().size(), 0UL);
-  ASSERT_EQ(vout->GradVarBase()->GradOps().size(), 1UL);
+  ASSERT_EQ(x_in->GradVarBase()->GradOpNum(), 0UL);
+  ASSERT_EQ(y_in->GradVarBase()->GradOpNum(), 0UL);
+  ASSERT_EQ(vout->GradVarBase()->GradOpNum(), 1UL);
 }
 
 TEST(test_tracer, test_track_backward_input) {
@@ -188,9 +189,9 @@ TEST(test_tracer, test_track_backward_input) {
   mul_attr_map["use_mkldnn"] = false;
   tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
 
-  ASSERT_EQ(x_in->GradVarBase()->GradOps().size(), 0UL);
-  ASSERT_EQ(y_in->GradVarBase()->GradOps().size(), 0UL);
-  ASSERT_EQ(vout->GradVarBase()->GradOps().size(), 1UL);
+  ASSERT_EQ(x_in->GradVarBase()->GradOpNum(), 0UL);
+  ASSERT_EQ(y_in->GradVarBase()->GradOpNum(), 0UL);
+  ASSERT_EQ(vout->GradVarBase()->GradOpNum(), 1UL);
 }
 #if defined(PADDLE_WITH_CUDA)
 TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
@@ -240,9 +241,9 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   tracer.TraceOp("reduce_sum", reduce_in, reduce_out, reduce_attr_map,
                  gpu_place, true);
   detail::BackwardStrategy back_st;
-  imperative::Engine* engine = tracer.GetDefaultEngine();
-  engine->Init(reduce_sum_out.get(), back_st);
-  engine->Execute();
+  imperative::BasicEngine engine;
+  engine.Init(reduce_sum_out.get(), back_st);
+  engine.Execute();
 
   framework::LoDTensor rlt;
   framework::TensorCopySync(vout->Var().Get<framework::LoDTensor>(), place,
@@ -346,14 +347,14 @@ TEST(test_tracer, test_var_without_grad_var) {
     ASSERT_EQ(out_tensor.data<float>()[i], 20.0);
   }
 
-  ASSERT_EQ(x_in->GradVarBase()->GradOps().size(), 0UL);
-  ASSERT_EQ(y_in->GradVarBase()->GradOps().size(), 0UL);
-  ASSERT_EQ(vout->GradVarBase()->GradOps().size(), 1UL);
+  ASSERT_EQ(x_in->GradVarBase()->GradOpNum(), 0UL);
+  ASSERT_EQ(y_in->GradVarBase()->GradOpNum(), 0UL);
+  ASSERT_EQ(vout->GradVarBase()->GradOpNum(), 1UL);
 
   detail::BackwardStrategy back_st;
-  imperative::Engine* engine = tracer.GetDefaultEngine();
-  engine->Init(vout.get(), back_st);
-  engine->Execute();
+  imperative::BasicEngine engine;
+  engine.Init(vout.get(), back_st);
+  engine.Execute();
 
   // check the grad
   framework::LoDTensor x_grad;
@@ -382,7 +383,7 @@ static void TestVarOpDestructionMain(const platform::Place& place,
                                      size_t loop_num = 10) {
   WeakPtrSet<VariableWrapper> var_wrappers;
   WeakPtrSet<VarBase> var_bases;
-  WeakPtrSet<OpBase> op_bases;
+  WeakPtrSet<GradOpNode> op_bases;
 
   Tracer tracer;
 
@@ -413,30 +414,31 @@ static void TestVarOpDestructionMain(const platform::Place& place,
                      NameVarBaseMap{{"Out", {z}}}, framework::AttributeMap{},
                      place, true);
 
-      ASSERT_EQ(z->GradOps().size(), 0UL);
-      ASSERT_EQ(z->GradVarBase()->GradOps().size(), 1UL);
-      auto new_op = z->GradVarBase()->GradOps()[0];
+      ASSERT_EQ(z->GradOpNum(), 0UL);
+      ASSERT_EQ(z->GradVarBase()->GradOpNum(), 1UL);
+      auto new_op = z->GradVarBase()->GradNode();
 
-      ASSERT_EQ(x->GradOps().size(), 0UL);
-      ASSERT_EQ(y->GradOps().size(), 0UL);
+      ASSERT_EQ(x->GradOpNum(), 0UL);
+      ASSERT_EQ(y->GradOpNum(), 0UL);
 
-      std::unordered_set<std::shared_ptr<OpBase>> expected_pending_ops;
+      std::unordered_set<std::shared_ptr<GradOpNode>> expected_pending_ops;
       if (i == 0) {
-        ASSERT_EQ(x->GradVarBase()->GradOps().size(), 0UL);
-        ASSERT_EQ(y->GradVarBase()->GradOps().size(), 0UL);
+        ASSERT_EQ(x->GradVarBase()->GradOpNum(), 0UL);
+        ASSERT_EQ(y->GradVarBase()->GradOpNum(), 0UL);
       } else {
-        ASSERT_EQ(x->GradVarBase()->GradOps().size(), 1UL);
-        ASSERT_EQ(y->GradVarBase()->GradOps().size(), 0UL);
+        ASSERT_EQ(x->GradVarBase()->GradOpNum(), 1UL);
+        ASSERT_EQ(y->GradVarBase()->GradOpNum(), 0UL);
 
-        for (auto& op : x->GradVarBase()->GradOps()) {
-          expected_pending_ops.emplace(op);
-        }
-        for (auto& op : y->GradVarBase()->GradOps()) {
-          expected_pending_ops.emplace(op);
+        if (x->GradVarBase()->GradNode()) {
+          expected_pending_ops.emplace(x->GradVarBase()->GradNode());
         }
 
-        std::unordered_set<std::shared_ptr<OpBase>> actual_pending_ops;
-        for (auto& op : new_op->GradPendingOps()) {
+        if (y->GradVarBase()->GradNode()) {
+          expected_pending_ops.emplace(y->GradVarBase()->GradNode());
+        }
+
+        std::unordered_set<std::shared_ptr<GradOpNode>> actual_pending_ops;
+        for (auto& op : new_op->GradPendingNodes()) {
           actual_pending_ops.emplace(op);
         }
 
