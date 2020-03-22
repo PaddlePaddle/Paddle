@@ -157,9 +157,9 @@ void ThrowErrorIfLoadProcessFailed() {
               "len(places).",
               process_pid, strsignal(infop.si_status)));
         } else {
-          VLOG(3) << "DataLoader process (pid " << process_pid
-                  << ") exited is killed by signal: "
-                  << strsignal(infop.si_status);
+          PADDLE_THROW(platform::errors::Fatal(
+              "DataLoader process (pid %ld) exited is killed by signal: %s.",
+              process_pid, strsignal(infop.si_status)));
         }
       }
     }
