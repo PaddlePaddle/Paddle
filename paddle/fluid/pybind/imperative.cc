@@ -227,8 +227,8 @@ void BindImperative(py::module *m_ptr) {
 #ifndef _WIN32
   // Dygraph DataLoader signal handler
   m.def("_set_process_pids", [](int64_t key, py::object &obj) {
-    PADDLE_ENFORCE(
-        py::isinstance<py::tuple>(obj) || py::isinstance<py::list>(obj),
+    PADDLE_ENFORCE_EQ(
+        py::isinstance<py::tuple>(obj) || py::isinstance<py::list>(obj), true,
         platform::errors::InvalidArgument(
             "The batch data read into DataLoader is illegal."
             "Expected data type is tuple or list, but received %s",

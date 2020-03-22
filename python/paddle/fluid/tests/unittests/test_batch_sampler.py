@@ -70,7 +70,7 @@ class TestBatchSamplerShuffle(TestBatchSampler):
 class TestBatchSamplerWithIndices(TestBatchSampler):
     def init_batch_sampler(self):
         bs = BatchSampler(
-            indices=range(self.num_samples),
+            indices=list(range(self.num_samples)),
             batch_size=self.batch_size,
             drop_last=self.drop_last)
         return bs

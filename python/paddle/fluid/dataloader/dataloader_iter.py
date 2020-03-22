@@ -122,10 +122,10 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             v.desc.need_check_feed() for v in self._feed_list
         ]
         self._blocking_queue = core.init_lod_tensor_blocking_queue(
-            core.Variable(), self._blocking_queue_capacity)
+            core.Variable(), self._blocking_queue_capacity, True)
         self._reader = core.create_py_reader(
             self._blocking_queue, self._var_names, self._shapes, self._dtypes,
-            self._need_check_feed, self._places, self._use_buffer_reader)
+            self._need_check_feed, self._places, self._use_buffer_reader, True)
 
         self._thread = threading.Thread(target=self._thread_loop)
         self._thread.daemon = True
@@ -292,10 +292,10 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             v.desc.need_check_feed() for v in self._feed_list
         ]
         self._blocking_queue = core.init_lod_tensor_blocking_queue(
-            core.Variable(), self._outstanding_capacity)
+            core.Variable(), self._outstanding_capacity, True)
         self._reader = core.create_py_reader(
             self._blocking_queue, self._var_names, self._shapes, self._dtypes,
-            self._need_check_feed, self._places, self._use_buffer_reader)
+            self._need_check_feed, self._places, self._use_buffer_reader, True)
 
         self._thread_done_event = threading.Event()
         self._thread = threading.Thread(target=self._thread_loop)
