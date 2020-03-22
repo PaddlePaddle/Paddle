@@ -16,7 +16,7 @@ import six
 import copy
 
 from progressbar import ProgressBar
-
+from distributed import get_local_rank
 
 def config_callbacks(callbacks=None,
                      model=None,
@@ -193,7 +193,7 @@ class ProgBarLogger(Callback):
         self.steps = self.params['steps']
         self.epoch = epoch
         self.train_step = 0
-        if self.verbose and self.epochs:
+        if self.verbose and self.epochs and get_local_rank() == 0:
             print('Epoch %d/%d' % (epoch + 1, self.epochs))
         self.train_progbar = ProgressBar(num=self.steps, verbose=self.verbose)
 
@@ -230,7 +230,8 @@ class ProgBarLogger(Callback):
         self.evaled_samples = 0
         self.eval_progbar = ProgressBar(
             num=self.eval_steps, verbose=self.verbose)
-        print('Eval begin...')
+        if get_local_rank() == 0:
+            print('Eval begin...')
 
     def on_eval_batch_end(self, step, logs=None):
         logs = logs or {}
@@ -240,7 +241,7 @@ class ProgBarLogger(Callback):
 
     def on_eval_end(self, logs=None):
         logs = logs or {}
-        if self.verbose:
+        if self.verbose and get_local_rank() == 0:
             self._updates(logs, 'eval')
             print('Eval samples: %d' % (self.evaled_samples))
 
@@ -254,13 +255,13 @@ class ModelCheckpoint(Callback):
         self.epoch = epoch
 
     def on_epoch_end(self, epoch, logs=None):
-        if self.model and self.epoch % self.save_freq == 0:
+        if self.model and self.epoch % self.save_freq == 0 and get_local_rank() == 0:
             path = '{}/{}'.format(self.save_file, epoch)
             print('save checkpoint at {}'.format(path))
             self.model.save(path)
 
     def on_train_end(self, logs=None):
-        if self.model:
+        if self.model and get_local_rank() == 0:
             path = '{}/final'.format(self.save_file)
             print('save checkpoint at {}'.format(path))
             self.model.save(path)

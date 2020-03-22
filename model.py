@@ -140,6 +140,7 @@ class StaticGraphAdapter(object):
         self._progs = {}
         self._compiled_progs = {}
 
+        self._merge_count = {'eval': 0, 'test': 0}
         self._nranks = distributed.Env().nranks
         self._local_rank = distributed.Env().local_rank
 
@@ -360,11 +361,16 @@ class StaticGraphAdapter(object):
         metrics = []
         for metric, state in zip(self.model._metrics, metric_states):
             # cut off padding size
-            if self.model._dataset is not None and self._nranks > 1:
-                total_size = len(self.model._dataset)
+            if self.mode != 'train' and self.model._test_dataloader is not None and self._nranks > 1:
+                total_size = len(self.model._test_dataloader.dataset)
                 samples = state[0].shape[0]
-                if metric.count[0] + samples > total_size:
-                    state = [s[:total_size - metric.count[0], ...] for s in state]
+                current_count = self._merge_count.get(self.mode, 0)
+                if current_count + samples > total_size:
+                    state = [s[:total_size - current_count, ...] for s in state]
+                    self._merge_count[self.mode] = 0
+                else:
+                    self._merge_count[self.mode] += samples
+
             metrics.append(metric.update(*state))
         return (losses, metrics) if len(metrics) > 0 else losses
 
@@ -422,7 +428,7 @@ class StaticGraphAdapter(object):
                         self.model._optimizer = fleet.distributed_optimizer(self.model._optimizer, strategy=dist_strategy)
                         
                     self.model._optimizer.minimize(self._loss_endpoint)
-            if self._nranks > 1 and mode != 'train' and self.model._dataset is not None:
+            if self._nranks > 1 and mode != 'train' and self.model._test_dataloader is not None:
                 outputs = [distributed._all_gather(o, self._nranks) for o in outputs]
                 if mode != 'test':
                     labels = [distributed._all_gather(l, self._nranks) for l in labels]
@@ -471,8 +477,9 @@ class StaticGraphAdapter(object):
             uninitialized = []
             for var_py in self._startup_prog.list_vars():
                 var = fluid.global_scope().find_var(var_py.name)
-                if var and var.get_tensor()._is_initialized():
+                if not var_py.name.startswith('nccl_id') and var and var.get_tensor()._is_initialized():
                     continue
+
                 uninitialized.append(var_py)
             if uninitialized:
                 startup_prog = self._startup_prog._prune(uninitialized)
@@ -498,6 +505,7 @@ class DynamicGraphAdapter(object):
         self.model = model
         self._nranks = distributed.Env().nranks
         self._local_rank = distributed.Env().local_rank
+        self._merge_count = {'eval': 0, 'test': 0}
 
         if self._nranks > 1:
             self.ddp_model = distributed.DistributedDataParallel(self.model)
@@ -560,12 +568,16 @@ class DynamicGraphAdapter(object):
         metrics = []
         for metric in self.model._metrics:
             # cut off padding value.
-            if self.model._dataset is not None and self._nranks > 1:
-                total_size = len(self.model._dataset)
+            if self.model._test_dataloader is not None and self._nranks > 1:
+                total_size = len(self.model._test_dataloader.dataset)
                 samples = outputs[0].shape[0]
-                if metric.count[0] + samples > total_size:
+                current_count = self._merge_count.get(self.mode, 0)
+                if current_count + samples > total_size:
                     outputs = [o[:total_size - metric.count[0]] for o in outputs]
                     labels = [l[:total_size - metric.count[0]] for l in labels]
+                    self._merge_count[self.mode] = 0
+                else:
+                    self._merge_count[self.mode] += samples
 
             metric_outs = metric.add_metric_op(to_list(outputs), labels)
             m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
@@ -664,8 +676,9 @@ class Model(fluid.dygraph.Layer):
         self._device = None
         self._device_ids = None
         self._optimizer = None
-        self._dataset = None
         self._distributed_sampler = None
+        self._test_dataloader = None
+
         if in_dygraph_mode():
             self._adapter = DynamicGraphAdapter(self)
         else:
@@ -696,7 +709,6 @@ class Model(fluid.dygraph.Layer):
                 metrics=None,
                 inputs=None,
                 labels=None,
-                dataset=None,
                 device=None,
                 device_ids=None):
         """
@@ -755,7 +767,7 @@ class Model(fluid.dygraph.Layer):
         self._inputs = inputs
         self._labels = labels
         self._device = device
-        self._dataset = dataset
+        
         if device is None:
             self._device = 'GPU' if fluid.is_compiled_with_cuda() else 'CPU'
         self._device_ids = device_ids
@@ -788,6 +800,7 @@ class Model(fluid.dygraph.Layer):
                 during training.
         """
         do_eval = eval_loader is not None
+        self._test_dataloader = eval_loader
         metrics_name = self._metrics_name()
         cbks = config_callbacks(
             callbacks,
@@ -806,6 +819,12 @@ class Model(fluid.dygraph.Layer):
                 'metrics_name': metrics_name,
             }
             for step, data in enumerate(data_loader):
+                if not fluid.in_dygraph_mode():
+                    data = data[0]
+                    batch_size = data[0].shape()[0]
+                else:
+                    batch_size = data[0].shape[0]
+
                 cbks.on_batch_begin(mode, step, logs)
                 if mode == 'train':
                     outs = self.train(*data)
@@ -820,12 +839,13 @@ class Model(fluid.dygraph.Layer):
                 for metric in self._metrics:
                     res = metric.accumulate()
                     metrics.extend(to_list(res))
+                    
                 assert len(metrics_name) == len(metrics)
                 for k, v in zip(metrics_name, metrics):
                     logs[k] = v
 
                 logs['step'] = step
-                logs['batch_size'] = data[0].shape[0]
+                logs['batch_size'] = batch_size
 
                 cbks.on_batch_end(mode, step, logs)
             self._reset_metrics()

@@ -28,7 +28,8 @@ from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 
 from model import Model, CrossEntropy, Input
 from metrics import Accuracy
-
+from distributed import prepare_context, all_gather, Env, get_nranks, get_local_rank, DistributedBatchSampler, to_numpy
+from paddle.fluid.io import BatchSampler, DataLoader, MnistDataset
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
     def __init__(self,
@@ -97,6 +98,7 @@ class MNIST(Model):
             act="softmax")
 
     def forward(self, inputs):
+        inputs = fluid.layers.reshape(inputs, [-1, 1, 28, 28])
         x = self._simple_img_conv_pool_1(inputs)
         x = self._simple_img_conv_pool_2(x)
         x = fluid.layers.flatten(x, axis=1)
@@ -104,17 +106,17 @@ class MNIST(Model):
         return x
 
 
-def accuracy(pred, label, topk=(1, )):
-    maxk = max(topk)
-    pred = np.argsort(pred)[:, ::-1][:, :maxk]
-    correct = (pred == np.repeat(label, maxk, 1))
+class CustromMnistDataset(MnistDataset):
+    def __init__(self,
+                 image_filename=None,
+                 label_filename=None,
+                 mode='train',
+                 download=True):
+        super(CustromMnistDataset, self).__init__(image_filename, label_filename, mode, download)
 
-    batch_size = label.shape[0]
-    res = []
-    for k in topk:
-        correct_k = correct[:, :k].sum()
-        res.append(100.0 * correct_k / batch_size)
-    return res
+
+    def __getitem__(self, idx):
+        return self.images[idx], [self.labels[idx]]
 
 
 def main():
@@ -122,63 +124,64 @@ def main():
     def null_guard():
         yield
 
-    guard = fluid.dygraph.guard() if FLAGS.dynamic else null_guard()
+    place = fluid.CUDAPlace(fluid.dygraph.parallel.Env().dev_id) \
+        if fluid.dygraph.parallel.Env().nranks > 1 else fluid.CUDAPlace(0)
+    guard = fluid.dygraph.guard(place) if FLAGS.dynamic else null_guard()
+    if fluid.dygraph.parallel.Env().nranks > 1:
+        prepare_context(place)
+
 
     if not os.path.exists('mnist_checkpoints'):
         os.mkdir('mnist_checkpoints')
 
-    train_loader = fluid.io.xmap_readers(
-        lambda b: [np.array([x[0] for x in b]).reshape(-1, 1, 28, 28),
-                   np.array([x[1] for x in b]).reshape(-1, 1)],
-        paddle.batch(fluid.io.shuffle(paddle.dataset.mnist.train(), 6e4),
-                     batch_size=FLAGS.batch_size, drop_last=True), 1, 1)
-    val_loader = fluid.io.xmap_readers(
-        lambda b: [np.array([x[0] for x in b]).reshape(-1, 1, 28, 28),
-                   np.array([x[1] for x in b]).reshape(-1, 1)],
-        paddle.batch(paddle.dataset.mnist.test(),
-                     batch_size=FLAGS.batch_size, drop_last=True), 1, 1)
+    # train_loader = fluid.io.xmap_readers(
+    #     lambda b: [np.array([x[0] for x in b]).reshape(-1, 1, 28, 28),
+    #                np.array([x[1] for x in b]).reshape(-1, 1)],
+    #     paddle.batch(fluid.io.shuffle(paddle.dataset.mnist.train(), 6e4),
+    #                  batch_size=FLAGS.batch_size, drop_last=True), 1, 1)
+    # val_loader = fluid.io.xmap_readers(
+    #     lambda b: [np.array([x[0] for x in b]).reshape(-1, 1, 28, 28),
+    #                np.array([x[1] for x in b]).reshape(-1, 1)],
+    #     paddle.batch(paddle.dataset.mnist.test(),
+    #                  batch_size=FLAGS.batch_size, drop_last=True), 1, 1)
 
     with guard:
+
+        train_dataset = CustromMnistDataset(mode='train')
+        val_dataset = CustromMnistDataset(mode='test')
+        
+        inputs = [Input([None, 784], 'float32', name='image')]
+        labels = [Input([None, 1], 'int64', name='label')]
+
+        if fluid.in_dygraph_mode():
+            feed_list = None
+        else:
+            feed_list = [x.forward() for x in inputs + labels]
+            
+        if get_nranks() > 1:
+            train_sampler = DistributedBatchSampler(train_dataset, batch_size=FLAGS.batch_size, shuffle=True)
+            train_loader = DataLoader(train_dataset, batch_sampler=train_sampler, places=place, 
+                                    feed_list=feed_list, num_workers=4, return_list=True)
+            val_sampler = DistributedBatchSampler(val_dataset, batch_size=FLAGS.batch_size)
+            val_loader = DataLoader(val_dataset, batch_sampler=val_sampler, places=place, 
+                                    feed_list=feed_list, num_workers=4, return_list=True)
+        else:
+            train_loader = DataLoader(train_dataset, batch_size=FLAGS.batch_size, places=place, 
+                                    feed_list=feed_list, num_workers=4, return_list=True)
+            val_loader = DataLoader(val_dataset, batch_size=FLAGS.batch_size, places=place, 
+                                    feed_list=feed_list, num_workers=4, return_list=True)
+                                    
         model = MNIST()
         optim = Momentum(
             learning_rate=FLAGS.lr,
             momentum=.9,
             parameter_list=model.parameters())
-        inputs = [Input([None, 1, 28, 28], 'float32', name='image')]
-        labels = [Input([None, 1], 'int64', name='label')]
+        
         model.prepare(optim, CrossEntropy(), Accuracy(topk=(1, 2)), inputs, labels)
         if FLAGS.resume is not None:
             model.load(FLAGS.resume)
 
-        for e in range(FLAGS.epoch):
-            train_loss = 0.0
-            val_loss = 0.0
-            print("======== train epoch {} ========".format(e))
-            for idx, batch in enumerate(train_loader()):
-                losses, metrics = model.train(batch[0], batch[1])
-
-                train_loss += np.sum(losses)
-                if idx % 10 == 0:
-                    print("{:04d}: loss {:0.3f} top1: {:0.3f}% top2: {:0.3f}%".format(
-                        idx, train_loss / (idx + 1), metrics[0][0], metrics[0][1]))
-            for metric in model._metrics:
-                res = metric.accumulate()
-                print("train epoch {:03d}: top1: {:0.3f}%, top2: {:0.3f}".format(e, res[0], res[1]))
-                metric.reset()
-
-            print("======== eval epoch {} ========".format(e))
-            for idx, batch in enumerate(val_loader()):
-                losses, metrics = model.eval(batch[0], batch[1])
-
-                val_loss += np.sum(losses)
-                if idx % 10 == 0:
-                    print("{:04d}: loss {:0.3f} top1: {:0.3f}% top2: {:0.3f}%".format(
-                        idx, val_loss / (idx + 1), metrics[0][0], metrics[0][1]))
-            for metric in model._metrics:
-                res = metric.accumulate()
-                print("eval epoch {:03d}: top1: {:0.3f}%, top2: {:0.3f}".format(e, res[0], res[1]))
-                metric.reset()
-            model.save('mnist_checkpoints/{:02d}'.format(e))
+        model.fit(train_loader, val_loader, epochs=FLAGS.epoch)
 
 
 if __name__ == '__main__':
