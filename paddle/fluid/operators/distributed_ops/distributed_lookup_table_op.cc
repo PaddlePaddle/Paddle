@@ -47,17 +47,7 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
                         "The last dimension of the 'Ids' tensor must be 1.");
     }
 
-    auto lookup_tables =
-        ctx->Attrs().Get<std::vector<std::string>>("table_names");
-    auto height_sections =
-        ctx->Attrs().Get<std::vector<int64_t>>("height_sections");
     auto endpoints = ctx->Attrs().Get<std::vector<std::string>>("endpoints");
-
-    PADDLE_ENFORCE(lookup_tables.size() == height_sections.size() &&
-                       lookup_tables.size() == endpoints.size() &&
-                       lookup_tables.size() != 0,
-                   "Attrs lookup_tables/height_sections/endpoints must have "
-                   "save size and can not be 0.");
 
     auto outputs_dims = std::vector<framework::DDim>();
 
@@ -89,9 +79,6 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
     auto embedding_name = context.InputNames("W").front();
     auto out_names = context.OutputNames("Outputs");
 
-    auto lookup_tables = context.Attr<std::vector<std::string>>("table_names");
-    auto height_sections =
-        context.Attr<std::vector<int64_t>>("height_sections");
     auto endpoints = context.Attr<std::vector<std::string>>("endpoints");
 
     operators::distributed::prefetchs(
@@ -115,16 +102,6 @@ class DistributedLookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Outputs",
               "(LoDTensor) The lookup results, which have the same type as W.")
         .AsDuplicable();
-
-    AddAttr<std::vector<std::string>>(
-        "table_names",
-        "(string vector, such as emb_block0, emb_block1)"
-        "Server endpoints in the order of input variables for mapping")
-        .SetDefault({""});
-
-    AddAttr<std::vector<int64_t>>("height_sections",
-                                  "Height for each output SelectedRows.")
-        .SetDefault(std::vector<int64_t>({}));
 
     AddAttr<std::vector<std::string>>(
         "endpoints",

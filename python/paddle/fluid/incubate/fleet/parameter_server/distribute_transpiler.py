@@ -46,8 +46,6 @@ from ..framework import Program, default_main_program, \
 from .details import wait_server_ready, UnionFind, VarStruct, VarsDistributed, VarBlock
 from .details import delete_ops, find_op_by_output_arg
 
-from paddle.fluid.incubate.fleet.base.role_maker import Role
-
 LOOKUP_TABLE_TYPE = "lookup_table"
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"
