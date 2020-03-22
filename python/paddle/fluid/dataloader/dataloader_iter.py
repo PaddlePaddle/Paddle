@@ -279,7 +279,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             while True:
                 try:
                     self._data_queue.get_nowait()
-                except queue.Empty:
+                # python3 will raise OSError if _data_queue closed
+                except (queue.Empty, OSError):
                     self._data_queue.cancel_join_thread()
                     self._data_queue.close()
                     break
