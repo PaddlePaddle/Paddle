@@ -17,8 +17,9 @@ from __future__ import absolute_import
 import inspect
 import os
 import pickle
-import six
 import numpy as np
+import six
+import warnings
 from collections import Iterable
 from collections import OrderedDict
 
@@ -192,46 +193,23 @@ class StaticGraphAdapter(object):
 
         _save(optim, optim_path)
 
-    def load(self, path, reset_optimizer=False, parameters=[]):
-        def _load(path):
-            if not os.path.exists(path):
-                return
-            with open(path, 'rb') as f:
-                return pickle.load(f) if six.PY2 else pickle.load(
-                    f, encoding='latin1')
-
-        param_path = path + ".pdparams"
-        param_state = _load(param_path)
-        assert param_state, "failed to load parameters, please check path"
-
+    def load(self, param_state_pairs, optim_state):
         if self._executor is None:
             executor = fluid.Executor(fluid.CPUPlace())._default_executor
         else:
             executor = self._executor._default_executor
 
-        param_names = [param.name for param in parameters]
-
+        # restore parameter states
         fluid.core._create_loaded_parameter(
-            list(parameters), global_scope(), executor)
+            [param for param, state in param_state_pairs],
+            global_scope(), executor)
+        for param, state in param_state_pairs:
+            self._set_var(param, state)
 
-        for key, var in self.model.state_dict().items():
-            if not param_names or var.name in param_names:
-                assert key in param_state, \
-                    "parameter [{}] is not found in model file [{}]".format(
-                        key, param_path)
-                self._set_var(var, param_state[key])
-
-        if reset_optimizer or parameters:
-            return
-
+        # restore optimizer states
         # FIXME what if a different optimizer is used?
-        if not self.model._optimizer:
+        if not self.model._optimizer or not optim_state:
             return
-        optim_path = path + ".pdopt"
-        optim_state = _load(optim_path)
-        if optim_state is None:
-            return
-
         self._load_optimizer(optim_state, executor)
 
     def _load_optimizer(self, state, executor):
@@ -539,22 +517,13 @@ class DynamicGraphAdapter(object):
             optim = self.model._optimizer.state_dict()
             fluid.save_dygraph(optim, path)
 
-    def load(self, path, reset_optimizer=False, parameters=[]):
-        param_state, optim_state = fluid.load_dygraph(path)
+    def load(self, param_state_pairs, optim_state):
+        # restore parameter states
+        for param, state in param_state_pairs:
+            param.set_value(state)
 
-        param_names = [param.name for param in parameters]
-
-        for key, var in self.model.state_dict().items():
-            if not param_names or var.name in param_names:
-                assert key in param_state, \
-                    "parameter [{}] is not found in model file [{}]".format(
-                        key, path + ".pdparams")
-                var.set_value(param_state[key])
-
-        if reset_optimizer or parameters:
-            return
-
-        if self.model._optimizer is None or optim_state is None:
+        # resotre optimizer states
+        if not self.model._optimizer or not optim_state:
             return
 
         # If optimizer performs set_dict when state vars haven't been created,
@@ -617,7 +586,6 @@ class Model(fluid.dygraph.Layer):
         self._optimizer = None
         self._device = None
         self._device_ids = None
-        self._optimizer = None
         if in_dygraph_mode():
             self._adapter = DynamicGraphAdapter(self)
         else:
@@ -635,79 +603,71 @@ class Model(fluid.dygraph.Layer):
     def save(self, *args, **kwargs):
         return self._adapter.save(*args, **kwargs)
 
-    def load(self, path, reset_optimizer=False, layers=None, weights=None):
+    def load(self, path, skip_mismatch=False, reset_optimizer=False):
         """
         Load from files storing the model states and optimizer states. The file
         for optimizer states is not necessary if no need to restore the optimizer.
 
-        `layers` and `weights` are useful for fine-tuning or transfer-learning
-        models where some of the layers have changed. If provided, only
-        parameters included in layers and weights would be loaded, and optimizer
-        would be reset. If both are None, make no effect and load all parameters.
-        NOTE: parameters are restored based on names, which are decided by the
-        network's topology if not given by `param_attr` explicitly. This means
-        the architecture should be the same as when the weights were saved.
-        Layers that don't have parameters are not taken into account in the
-        topological ordering, thus could be added or removed casually.
+        NOTE: parameters are retrieved out from the file storing model states
+        accoring to their structured names.
+
+        For fine-tuning or transfer-learning models where some of the layers have
+        changed, keep parameters needed to restore have same structured names in
+        the pre-trained model and fine-tuning model.
 
         Args:
             path (str): The prefix of files storing the model states and
                 optimizer states. The files would be `path.pdparams` and
                 `path.pdopt` separately, and the latter is not necessary
                 when no need to restore.
+            skip_mismatch (bool): Whether to skip the loading of mismatch
+                parameter or raise an error when mismatch happens (not found
+                the parameter in file storing model states of or receives a
+                mismatch shape).
             reset_optimizer (bool): If True, ignore the providing file storing
                 optimizer states and initialize optimizer states from scratch.
                 Otherwise, restore optimizer states from `path.pdopt` if
                 a optimizer has been set to the model. Default False.
-            layers (list|Layer|str|None): The layers to be restored. All
-                parameters in these layers would be loaded. `layers` is
-                composed of instances of Layer or string. A string corresponded
-                layer is the one whose `full_name()` equals to the string.
-                If None, make no effect to load. Default None.
-            weights (list|Parameter|str|None): The parameters to be loaded.
-                `weights` is composed of instances of Parameter or string.
-                A string corresponded parameter is the one whose name equals to
-                the string. If None, make no effect to load. Default None.
         """
-        load_param_vars = set()
-        if layers is not None:
-            model_layers = self.sublayers()
-            model_layers_dict = dict((layer.full_name(), layer)
-                                     for layer in model_layers)
-            for i, layer in enumerate(to_list(layers)):
-                if isinstance(layer, fluid.dygraph.Layer):
-                    assert layer in model_layers, (
-                        "The #%d layer in layers is not in model." % i)
-                    load_param_vars.update(layer.state_dict().values())
-                elif isinstance(layer, six.string_types):
-                    assert layer in model_layers_dict, (
-                        "The #%d layer in layers is not in model." % i)
-                    load_param_vars.update(model_layers_dict[layer].state_dict(
-                    ).values())
+
+        def _load_state_from_path(path):
+            if not os.path.exists(path):
+                return
+            with open(path, 'rb') as f:
+                return pickle.load(f) if six.PY2 else pickle.load(
+                    f, encoding='latin1')
+
+        def _check_match(key, param):
+            state = param_state.get(key, None)
+            if state is None:
+                raise ValueError(
+                    "{} is not found in the providing file.".format(key))
+            if list(state.shape) != list(param.shape):
+                raise ValueError(
+                    "{} receives a shape {}, but the expected shape is {}.".
+                    format(key, list(state.shape), list(param.shape)))
+            return param, state
+
+        param_state = _load_state_from_path(path + ".pdparams")
+        assert param_state, "Failed to load parameters, please check path."
+
+        matched_param_state = []
+        for key, param in self.state_dict().items():
+            try:
+                match_res = _check_match(key, param)
+            except ValueError as err:
+                if skip_mismatch:
+                    warnings.warn(
+                        ("Skip loading for {}. ".format(key) + err.message))
+                    # reset optimizer when mismatch happens
+                    reset_optimizer = True
                 else:
-                    raise TypeError(
-                        "The value in layers should be string or Layer.")
-        if weights is not None:
-            model_weights = self.parameters()
-            model_weights_dict = dict((weight.name, weight)
-                                      for weight in model_weights)
-            param_type = fluid.framework.ParamBase if in_dygraph_mode(
-            ) else fluid.framework.Parameter
-            for i, weight in enumerate(to_list(weights)):
-                if isinstance(weight, param_type):
-                    # var== has been overwrited, thus do not use `weight in`
-                    assert weight.name in model_weights_dict, (
-                        "The #%d weight in weights is not in model." % i)
-                    load_param_vars.add(weight)
-                elif isinstance(weight, six.string_types):
-                    assert weight in model_weights_dict, (
-                        "The #%d weight in weights is not in model." % i)
-                    load_param_vars.add(model_weights_dict[weight])
-                else:
-                    raise TypeError(
-                        "The value in weights should be string or %s." %
-                        param_type.__name__)
-        return self._adapter.load(path, reset_optimizer, list(load_param_vars))
+                    raise err
+            matched_param_state.append(match_res)
+
+        optim_state = None if reset_optimizer else _load_state_from_path(
+            path + ".pdopt")
+        return self._adapter.load(matched_param_state, optim_state)
 
     def parameters(self, *args, **kwargs):
         return self._adapter.parameters(*args, **kwargs)
