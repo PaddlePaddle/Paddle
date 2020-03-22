@@ -32,6 +32,7 @@ void PullSparseFunctor(
     uint32_t sleep_seconds_before_fail_exit) {
   const auto& inputs = ctx.MultiInput<framework::LoDTensor>("Ids");
   const auto& outputs = ctx.MultiOutput<framework::LoDTensor>("Out");
+  uint32_t fea_dim = static_cast<uint32_t>(ctx.Attr<int>("EmbeddingDim"));
 #ifdef PADDLE_WITH_PSLIB
   std::vector<uint64_t>* fea_keys =
       const_cast<std::vector<uint64_t>*>(fea_keys_const);
@@ -45,7 +46,6 @@ void PullSparseFunctor(
   fea_keys->reserve(max_feasign_num);
   
   uint64_t padding_id =static_cast<uint64_t>(ctx.Attr<int>("PaddingId"));
-  uint32_t fea_dim = static_cast<uint32_t>(ctx.Attr<int>("EmbeddingDim"));
   std::vector<T> init_value(fea_dim, 0);
   pull_result_ptr->clear();
   framework::LoDTensor* output = nullptr;
@@ -91,14 +91,13 @@ void PullSparseFunctor(
   }
 
 #else
-  for (size_t index = 0; index < input_size; ++index) {
-    auto* tensor = inputs[index];
-    int64_t* ids = tensor->data<int64_t>();
+  for (size_t index = 0; index < inputs.size(); ++index) {
+    const auto* tensor = inputs[index];
     size_t len = tensor->numel();
-    std::vector<T> init_data(fea_value_dim, 0);
+    std::vector<T> init_data(fea_dim, 0);
     for (size_t i = 0; i < len; ++i) {
       memcpy(outputs[index]->mutable_data<T>(ctx.GetPlace()),
-             init_data.data(), fea_value_dim);
+             init_data.data(), fea_dim);
     }
   }
 #endif
