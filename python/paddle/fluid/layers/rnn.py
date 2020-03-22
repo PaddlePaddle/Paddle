@@ -23,6 +23,7 @@ from . import control_flow
 from . import utils
 from . import sequence_lod
 from .utils import *
+from paddle.fluid import core
 from ..framework import default_main_program
 from ..data_feeder import convert_dtype
 from ..layer_helper import LayerHelper
