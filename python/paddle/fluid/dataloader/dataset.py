@@ -32,6 +32,8 @@ class Dataset(object):
     subprocesses.
     :math:`__len__`: return dataset sample number. This method is required
     by some implements of `fluid.io.BatchSampler`
+
+    see `fluid.io.DataLoader`.
     """
 
     def __getitem__(self, idx):

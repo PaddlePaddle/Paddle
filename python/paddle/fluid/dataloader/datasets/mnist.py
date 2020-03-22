@@ -61,8 +61,8 @@ class MNIST(Dataset):
     Examples:
         
         .. code-block:: python
-            
-            import paddle.fluid as fluid
+
+            from paddle.fluid.io import MNIST
 
             mnist = MNIST(mode='test')
 

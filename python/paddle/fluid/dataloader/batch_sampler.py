@@ -49,6 +49,33 @@ class BatchSampler(object):
         batch_size(int): sample indice number in a mini-batch indices.
         drop_last(bool): whether drop the last incomplete batch dataset size
             is not divisible by the batch size. Default False
+
+    Examples:
+        
+        .. code-block:: python
+            
+            from paddle.fluid.io import BatchSampler, MNIST
+
+            # init with indices
+            bs = BatchSampler(indices=list(range(1000)),
+                              shuffle=True,
+                              batch_size=8,
+                              drop_last=True)
+
+            for batch_indices in bs:
+                print(batch_indices)
+
+            # init with data_source
+            bs = BatchSampler(data_source=MNIST(mode='test')),
+                              shuffle=False,
+                              batch_size=16,
+                              drop_last=False)
+
+            for batch_indices in bs:
+                print(batch_indices)
+
+    see `fluid.io.DataLoader`
+
     """
 
     def __init__(self,
