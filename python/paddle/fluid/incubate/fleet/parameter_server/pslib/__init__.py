@@ -559,18 +559,6 @@ class PSLib(Fleet):
 
 fleet = PSLib()
 
-FLEET_GLOBAL_DICT = {
-    # global settings
-    "emb_to_table": {},
-    "emb_to_accessor": {},
-    "emb_to_size": {},
-    # current embedding settings
-    "cur_sparse_id": 0,
-    "cur_accessor": "",
-    "click_name": "",
-    "scale_sparse_grad": None,
-}
-
 def _prepare_params(input, size, is_sparse=False, is_distributed=False,
                     padding_idx=None, param_attr=None, dtype='float32'):
     if param_attr is None:
@@ -581,6 +569,8 @@ def _prepare_params(input, size, is_sparse=False, is_distributed=False,
     if not isinstance(size, list) and not isinstance(size, tuple):
         raise ValueError("embedding size must be list or tuple")
     size = size[-1]
+    global FLEET_GLOBAL_DICT
+    FLEET_GLOBAL_DICT["enable"] = True
     d_table = FLEET_GLOBAL_DICT["emb_to_table"]
     d_accessor = FLEET_GLOBAL_DICT["emb_to_accessor"]
     d_size = FLEET_GLOBAL_DICT["emb_to_size"]
@@ -625,6 +615,7 @@ def _fleet_embedding(input, size, is_sparse=False, is_distributed=False,
     size = size[-1]
     if padding_idx is None:
         padding_idx = 0
+    global FLEET_GLOBAL_DICT
     return fluid.layers.nn._pull_sparse(
         input=input,
         size=size,
@@ -634,8 +625,7 @@ def _fleet_embedding(input, size, is_sparse=False, is_distributed=False,
         ctr_label_name=FLEET_GLOBAL_DICT["click_name"],
         padding_id=padding_idx,
         dtype=dtype,
-        scale_sparse_grad=FLEET_GLOBAL_DICT["scale_sparse_grad"],
-        async_push=True)
+        scale_sparse_grad=FLEET_GLOBAL_DICT["scale_sparse_grad"])
 
 
 def _fleet_embedding_v2(input, size, is_sparse=False, is_distributed=False,
@@ -657,8 +647,7 @@ def _fleet_embedding_v2(input, size, is_sparse=False, is_distributed=False,
         ctr_label_name=FLEET_GLOBAL_DICT["click_name"],
         padding_id=padding_idx,
         dtype=dtype,
-        scale_sparse_grad=FLEET_GLOBAL_DICT["scale_sparse_grad"],
-        async_push=True)
+        scale_sparse_grad=FLEET_GLOBAL_DICT["scale_sparse_grad"])
 
 
 class fleet_embedding(object):
@@ -669,7 +658,6 @@ class fleet_embedding(object):
         self.accessor = "DownpourSparseValueAccessor"
 
     def __enter__(self):
-        self.origin_emb = fluid.layers.embedding
         fluid.layers.embedding = _fleet_embedding
         fluid.embedding = _fleet_embedding_v2
         FLEET_GLOBAL_DICT["cur_accessor"] = self.accessor
@@ -684,18 +672,15 @@ class fleet_embedding(object):
 
 
 class fleet_ctr_embedding(object):
-    def __init__(self, click_name=None, dump_slot=True, scale_sparse_grad=True):
+    def __init__(self, click_name=None, scale_sparse_grad=True):
         self.origin_emb = fluid.layers.embedding
         self.origin_emb_v2 = fluid.embedding
         self.click_name = "" if click_name is None else click_name
         self.scale_sparse_grad = scale_sparse_grad
-        if dump_slot:
-            self.accessor = "DownpourCtrAccessor"
-        else:
-            self.accessor = "DownpourFeatureValueAccessor"
+        # it's default value, will be modified in minimize
+        self.accessor = "DownpourCtrAccessor"
 
     def __enter__(self):
-        self.origin_emb = fluid.layers.embedding
         fluid.layers.embedding = _fleet_embedding
         fluid.embedding = _fleet_embedding_v2
         FLEET_GLOBAL_DICT["cur_accessor"] = self.accessor

@@ -507,8 +507,7 @@ def _pull_sparse(input,
                  ctr_label_name="",
                  padding_id = 0,
                  dtype='float32',
-                 scale_sparse_grad=True,
-                 async_push=True):
+                 scale_sparse_grad=True):
     helper = LayerHelper(name, **locals())
     inputs = helper.multiple_input()
     outs = [
@@ -522,7 +521,6 @@ def _pull_sparse(input,
         'CtrLabelName': ctr_label_name,
         'PaddingId': padding_id,
         'ScaleSparseGrad': scale_sparse_grad,
-        'AsyncPush': async_push,
         'InputNames': input_names,
         # this is only for compatible with embedding op
         'is_distributed': True
@@ -548,8 +546,7 @@ def _pull_sparse_v2(input,
                    ctr_label_name="",
                    padding_id = 0,
                    dtype='float32',
-                   scale_sparse_grad=True,
-                   async_push=True):
+                   scale_sparse_grad=True):
     helper = LayerHelper(name, **locals())
     inputs = helper.multiple_input()
     outs = [
@@ -563,7 +560,6 @@ def _pull_sparse_v2(input,
         'CtrLabelName': ctr_label_name,
         'PaddingId': padding_id,
         'ScaleSparseGrad': scale_sparse_grad,
-        'AsyncPush': async_push,
         'InputNames': input_names,
         # this is only for compatible with embedding op
         'is_distributed': True
