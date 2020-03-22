@@ -2,7 +2,6 @@ import sys
 import time
 import numpy as np
 
-from distributed import get_local_rank
 
 class ProgressBar(object):
     """progress bar """
@@ -60,106 +59,105 @@ class ProgressBar(object):
         else:
             fps = ' - %.0fus/%s' % (time_per_unit * 1e6, 'step')
 
-        if get_local_rank() == 0:
-            info = ''
-            if self._verbose == 1:
-                prev_total_width = self._total_width
+        info = ''
+        if self._verbose == 1:
+            prev_total_width = self._total_width
 
-                if self._dynamic_display:
-                    sys.stdout.write('\b' * prev_total_width)
-                    sys.stdout.write('\r')
-                else:
-                    sys.stdout.write('\n')
+            if self._dynamic_display:
+                sys.stdout.write('\b' * prev_total_width)
+                sys.stdout.write('\r')
+            else:
+                sys.stdout.write('\n')
 
-                if self._num is not None:
-                    numdigits = int(np.log10(self._num)) + 1
+            if self._num is not None:
+                numdigits = int(np.log10(self._num)) + 1
 
-                    bar_chars = ('step %' + str(numdigits) + 'd/%d [') % (
-                        current_num, self._num)
-                    prog = float(current_num) / self._num
-                    prog_width = int(self._width * prog)
+                bar_chars = ('step %' + str(numdigits) + 'd/%d [') % (
+                    current_num, self._num)
+                prog = float(current_num) / self._num
+                prog_width = int(self._width * prog)
 
-                    if prog_width > 0:
-                        bar_chars += ('=' * (prog_width - 1))
-                        if current_num < self._num:
-                            bar_chars += '>'
-                        else:
-                            bar_chars += '='
-                    bar_chars += ('.' * (self._width - prog_width))
-                    bar_chars += ']'
-                else:
-                    bar_chars = 'step %3d' % current_num
-
-                self._total_width = len(bar_chars)
-                sys.stdout.write(bar_chars)
-
-                for k, val in values:
-                    info += ' - %s:' % k
-                    val = val if isinstance(val, list) else [val]
-                    for i, v in enumerate(val):
-                        if isinstance(v, (float, np.float32, np.float64)):
-                            if abs(v) > 1e-3:
-                                info += ' %.4f' % v
-                            else:
-                                info += ' %.4e' % v
-                        else:
-                            info += ' %s' % v
-
-                if self._num is not None and current_num < self._num:
-                    eta = time_per_unit * (self._num - current_num)
-                    if eta > 3600:
-                        eta_format = '%d:%02d:%02d' % (eta // 3600, (eta % 3600) //
-                                                    60, eta % 60)
-                    elif eta > 60:
-                        eta_format = '%d:%02d' % (eta // 60, eta % 60)
+                if prog_width > 0:
+                    bar_chars += ('=' * (prog_width - 1))
+                    if current_num < self._num:
+                        bar_chars += '>'
                     else:
-                        eta_format = '%ds' % eta
+                        bar_chars += '='
+                bar_chars += ('.' * (self._width - prog_width))
+                bar_chars += ']'
+            else:
+                bar_chars = 'step %3d' % current_num
 
-                    info += ' - ETA: %s' % eta_format
+            self._total_width = len(bar_chars)
+            sys.stdout.write(bar_chars)
 
-                info += fps
-                self._total_width += len(info)
-                if prev_total_width > self._total_width:
-                    info += (' ' * (prev_total_width - self._total_width))
-
-                # newline for another epoch
-                if self._num is not None and current_num >= self._num:
-                    info += '\n'
-                if self._num is None:
-                    info += '\n'
-
-                sys.stdout.write(info)
-                sys.stdout.flush()
-                self._last_update = now
-            elif self._verbose == 2:
-                if self._num:
-                    numdigits = int(np.log10(self._num)) + 1
-                    count = ('step %' + str(numdigits) + 'd/%d') % (current_num,
-                                                                    self._num)
-                else:
-                    count = 'step %3d' % current_num
-                info = count + info
-
-                for k, val in values:
-                    info += ' - %s:' % k
-                    val = val if isinstance(val, list) else [val]
-                    for v in val:
-                        if isinstance(v, (float, np.float32, np.float64)):
-                            if abs(v) > 1e-3:
-                                info += ' %.4f' % v
-                            else:
-                                info += ' %.4e' % v
-                        elif isinstance(v, np.ndarray) and \
-                            isinstance(v.size, 1) and \
-                            isinstance(v.dtype, (np.float32, np.float64)):
-                            if abs(v[0]) > 1e-3:
-                                info += ' %.4f' % v[0]
-                            else:
-                                info += ' %.4e' % v[0]
+            for k, val in values:
+                info += ' - %s:' % k
+                val = val if isinstance(val, list) else [val]
+                for i, v in enumerate(val):
+                    if isinstance(v, (float, np.float32, np.float64)):
+                        if abs(v) > 1e-3:
+                            info += ' %.4f' % v
                         else:
-                            info += ' %s' % v
+                            info += ' %.4e' % v
+                    else:
+                        info += ' %s' % v
 
-                info += fps
+            if self._num is not None and current_num < self._num:
+                eta = time_per_unit * (self._num - current_num)
+                if eta > 3600:
+                    eta_format = '%d:%02d:%02d' % (eta // 3600, (eta % 3600) //
+                                                60, eta % 60)
+                elif eta > 60:
+                    eta_format = '%d:%02d' % (eta // 60, eta % 60)
+                else:
+                    eta_format = '%ds' % eta
+
+                info += ' - ETA: %s' % eta_format
+
+            info += fps
+            self._total_width += len(info)
+            if prev_total_width > self._total_width:
+                info += (' ' * (prev_total_width - self._total_width))
+
+            # newline for another epoch
+            if self._num is not None and current_num >= self._num:
                 info += '\n'
-                sys.stdout.write(info)
-                sys.stdout.flush()
+            if self._num is None:
+                info += '\n'
+
+            sys.stdout.write(info)
+            sys.stdout.flush()
+            self._last_update = now
+        elif self._verbose == 2:
+            if self._num:
+                numdigits = int(np.log10(self._num)) + 1
+                count = ('step %' + str(numdigits) + 'd/%d') % (current_num,
+                                                                self._num)
+            else:
+                count = 'step %3d' % current_num
+            info = count + info
+
+            for k, val in values:
+                info += ' - %s:' % k
+                val = val if isinstance(val, list) else [val]
+                for v in val:
+                    if isinstance(v, (float, np.float32, np.float64)):
+                        if abs(v) > 1e-3:
+                            info += ' %.4f' % v
+                        else:
+                            info += ' %.4e' % v
+                    elif isinstance(v, np.ndarray) and \
+                        isinstance(v.size, 1) and \
+                        isinstance(v.dtype, (np.float32, np.float64)):
+                        if abs(v[0]) > 1e-3:
+                            info += ' %.4f' % v[0]
+                        else:
+                            info += ' %.4e' % v[0]
+                    else:
+                        info += ' %s' % v
+
+            info += fps
+            info += '\n'
+            sys.stdout.write(info)
+            sys.stdout.flush()

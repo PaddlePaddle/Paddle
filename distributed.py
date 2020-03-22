@@ -32,7 +32,8 @@ from paddle.fluid.framework import Variable
 from paddle.fluid.executor import global_scope
 
 from paddle.fluid.dygraph.parallel import Env, DataParallel, ParallelStrategy
-from paddle.fluid.layers.collective import _c_allreduce, _c_allgather, _c_broadcast, _c_sync_comm_stream, _c_sync_calc_stream
+from paddle.fluid.layers.collective import _c_allreduce, _c_allgather, _c_broadcast, \
+                                            _c_sync_comm_stream, _c_sync_calc_stream
 from paddle.fluid.io import BatchSampler, DataLoader
 
 
@@ -52,7 +53,7 @@ class DistributedBatchSampler(BatchSampler):
                      `__len__` for BatchSampler to get sample
                      number of data source.
         batch_size(int): sample indice number in a mini-batch indices.
-        shuffle(bool): whther to shuffle indices order before genrate
+        shuffle(bool): whther to shuffle indices order before genrating
             batch indices. Default False.
         drop_last(bool): whether drop the last incomplete batch dataset size
             is not divisible by the batch size. Default False
@@ -88,7 +89,8 @@ class DistributedBatchSampler(BatchSampler):
                 np.random.RandomState(self.epoch).shuffle(indices)
                 self.epoch += 1
             # subsample
-            indices = indices[self.local_rank * self.num_samples: (self.local_rank + 1) * self.num_samples]
+            indices = indices[self.local_rank * self.num_samples: 
+                             (self.local_rank + 1) * self.num_samples]
             assert len(indices) == self.num_samples
             _sample_iter = iter(indices)
 
@@ -187,7 +189,7 @@ def wait_server_ready(endpoints):
             break
 
 
-def initCommunicator(program, rank, nranks, wait_port,
+def init_communicator(program, rank, nranks, wait_port,
                      current_endpoint, endpoints):
     if nranks < 2:
         return
@@ -234,12 +236,11 @@ def prepare_context(place):
 
     if isinstance(place, core.CUDAPlace):
         communicator_prog = framework.Program()
-        initCommunicator(communicator_prog, strategy.local_rank, strategy.nranks, True,
+        init_communicator(communicator_prog, strategy.local_rank, strategy.nranks, True,
                          strategy.current_endpoint, strategy.trainer_endpoints)
         exe = fluid.Executor(place)
         exe.run(communicator_prog)
     else:
-        # TODO(Yancey1989): add Gloo Parallel Context to support CPU parallel computation
         assert ("Only support CUDAPlace for now.")
     return strategy
 
@@ -273,10 +274,6 @@ class DistributedDataParallel(DataParallel):
                 assert g_var not in grad_var_set
                 grad_var_set.add(g_var)
 
-        # FIXME(zcd): the type of the var should be LoDTensor, i.e
-        # the gradients should be dense, otherwise, the following
-        # logic should be updated.
-        # 128 MB as a group
         mega_bytes = 128 * 1024 * 1024
         group_idx = 0
         memory_counter = 0

@@ -134,17 +134,6 @@ def main():
     if not os.path.exists('mnist_checkpoints'):
         os.mkdir('mnist_checkpoints')
 
-    # train_loader = fluid.io.xmap_readers(
-    #     lambda b: [np.array([x[0] for x in b]).reshape(-1, 1, 28, 28),
-    #                np.array([x[1] for x in b]).reshape(-1, 1)],
-    #     paddle.batch(fluid.io.shuffle(paddle.dataset.mnist.train(), 6e4),
-    #                  batch_size=FLAGS.batch_size, drop_last=True), 1, 1)
-    # val_loader = fluid.io.xmap_readers(
-    #     lambda b: [np.array([x[0] for x in b]).reshape(-1, 1, 28, 28),
-    #                np.array([x[1] for x in b]).reshape(-1, 1)],
-    #     paddle.batch(paddle.dataset.mnist.test(),
-    #                  batch_size=FLAGS.batch_size, drop_last=True), 1, 1)
-
     with guard:
 
         train_dataset = CustromMnistDataset(mode='train')

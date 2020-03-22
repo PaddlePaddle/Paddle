@@ -211,7 +211,7 @@ class ProgBarLogger(Callback):
         logs = logs or {}
         self.train_step = step
 
-        if self.train_step % self.log_freq == 0 and self.verbose:
+        if self.train_step % self.log_freq == 0 and self.verbose and get_local_rank() == 0:
             # if steps is not None, last step will update in on_epoch_end
             if self.steps and self.train_step < self.steps:
                 self._updates(logs, 'train')
