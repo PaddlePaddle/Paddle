@@ -40,16 +40,18 @@ class PushDenseOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("DenseGrads", "The dense gradient tensors").AsDuplicable();
     AddInput("Ids", "the tensor to get batch size").AsDuplicable();
-    AddAttr<int>("TableId", "(int, the table id of this embedding").SetDefault(-1);;
-    AddAttr<float>("ScaleDataNorm", "(float, scale data norm gradient").SetDefault(-1.0f);
-    AddAttr<std::vector<std::string>>("InputNames", "(vector, slot names").SetDefault(std::vector<std::string>());
+    AddAttr<int>("TableId", "(int, the table id of this embedding")
+        .SetDefault(-1);;
+    AddAttr<float>("ScaleDataNorm", "(float, scale data norm gradient")
+        .SetDefault(-1.0f);
+    AddAttr<std::vector<std::string>>("InputNames", "(vector, slot names")
+        .SetDefault(std::vector<std::string>());
     AddComment(R"DOC(
 Push Dense Operator.
 
 push dense gradients to PSLib's Parameter Server.
 
-The input gradients can carry the LoD (Level of Details) information,
-or not. And the output only shares the LoD information with input Ids.
+The input gradients is all dense gradient tensors in a table.
 
 )DOC");
   }
@@ -59,8 +61,8 @@ or not. And the output only shares the LoD information with input Ids.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(push_dense, ops::PushDenseOp,
-                  ops::PushDenseOpMaker,
-                  paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-                 paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(
+    push_dense, ops::PushDenseOp, ops::PushDenseOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(push_dense, ops::PushDenseCPUKernel<float>)

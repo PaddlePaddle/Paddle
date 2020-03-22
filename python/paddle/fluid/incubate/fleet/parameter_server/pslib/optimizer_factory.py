@@ -316,6 +316,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 for table in tables:
                     if table.table_id == sparse_table_to_index[key]:
                         accessor = table.accessor.accessor_class
+                        break
 
                 for loss in losses:
                     for op in loss.block.program.global_block().ops:
@@ -327,6 +328,9 @@ class DistributedAdam(DistributedOptimizerImplBase):
                                 one_slot = loss.block.program.\
                                     global_block().var(op.input("Ids")[0])
 
+                # if accessor is None, use default accessor in op definition
+                if accessor is None:
+                    accessor = emb_to_accessor[key]
                 # set sparse_embedx_dim in strategy,
                 # user do not have to set it in config_fleet
                 if accessor == "DownpourFeatureValueAccessor" \

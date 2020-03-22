@@ -75,7 +75,7 @@ class PullDenseWorker {
     return s_instance_;
   }
 
- static std::shared_ptr<PullDenseWorker> s_instance_;
+  static std::shared_ptr<PullDenseWorker> s_instance_;
 
  private:
   PullDenseWorker() : root_scope_(NULL) {}

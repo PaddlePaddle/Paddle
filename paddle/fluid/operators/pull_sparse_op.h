@@ -59,12 +59,15 @@ void PullSparseFunctor(
     for (size_t i = 0; i < len; ++i, output_len+=fea_dim) {
       if (!output || output_len == output->numel()) {
         ++output_index;
-        CHECK(output_index < outputs.size());
+        PADDLE_ENFORCE_LT(output_index, outputs.size(),
+                          "output_index should < outputs size");
         output = outputs[output_index];
         output_data = output->mutable_data<T>(ctx.GetPlace());
         output_len = 0;
-        CHECK(output->numel() % fea_dim == 0);
-        CHECK(output_data != nullptr);
+        PADDLE_ENFORCE_EQ(output->numel() % fea_dim, 0,
+                          "output->numel \% fea_dim should be 0");
+        PADDLE_ENFORCE_NE(output_data, nullptr,
+                          "output_data should not be null");
       }
       if (ids[i] == padding_id) {
         memcpy(output_data + output_len, init_value.data(),
@@ -75,8 +78,8 @@ void PullSparseFunctor(
       pull_result_ptr->push_back(output_data + output_len);
     }
   }
-
-  CHECK(framework::FleetWrapper::pslib_ptr_ != nullptr);
+  PADDLE_ENFORCE_NE(framework::FleetWrapper::pslib_ptr_, nullptr,
+                    "pslib_ptr_ should not be null");
   auto status = framework::FleetWrapper::pslib_ptr_->_worker_ptr->pull_sparse(
       pull_result_ptr->data(), table_id, fea_keys->data(), fea_keys->size());
   pull_sparse_status->clear();
@@ -152,7 +155,8 @@ void PushSparseFunctor(
     slot_offset = 0;
     grad_dim = fea_dim;
   }
-  CHECK_GE(grad_dim, 0);
+
+  PADDLE_ENFORCE_GE(grad_dim, 0, "grad_dim should >= 0");
 
   int batch_size = -1;
   for (auto* input : inputs) {    
@@ -165,7 +169,7 @@ void PushSparseFunctor(
                         "inputs batch_size must be the same");
     }
   }
-  CHECK_GT(batch_size, 0);
+  PADDLE_ENFORCE_GT(batch_size, 0, "batch_size should > 0");
 
   bool scale_sparse = ctx.Attr<bool>("ScaleSparseGrad");
   if (scale_sparse && grad_dim > 0) {
@@ -189,9 +193,9 @@ void PushSparseFunctor(
   framework::Variable* var = scope.FindVar(label_name);
   size_t global_idx = 0;
   if (label_name != "") {
-    CHECK(var != nullptr);
+    PADDLE_ENFORCE_NE(var, nullptr, "label var should not be null");
     framework::LoDTensor* label_tensor = var->GetMutable<framework::LoDTensor>();
-    CHECK(label_tensor != nullptr);
+    PADDLE_ENFORCE_NE(label_tensor, nullptr, "label tensor should not be null");
     int64_t* label_ptr = label_tensor->data<int64_t>();
 
     for (auto* tensor : inputs) {
@@ -235,12 +239,15 @@ void PushSparseFunctor(
     for (size_t i = 0; i < len; ++i, output_len+=fea_dim) {
       if (!output || output_len == output->numel()) {
         ++output_index;
-        CHECK(output_index < outputs.size());
+        PADDLE_ENFORCE_LT(output_index, outputs.size(),
+                          "output_index should < outputs size");
         output = const_cast<framework::LoDTensor*>(outputs[output_index]);
         output_data = output->mutable_data<T>(ctx.GetPlace());
         output_len = 0;
-        CHECK(output->numel() % fea_dim == 0);
-        CHECK(output_data != nullptr);
+        PADDLE_ENFORCE_EQ(output->numel() % fea_dim, 0,
+                          "output->numel \% fea_dim should == 0");
+        PADDLE_ENFORCE_NE(output_data, nullptr,
+                          "output_data should not be null");
       }
       if (ids[i] == padding_id) {
         continue;
@@ -264,15 +271,16 @@ void PushSparseFunctor(
   }
 
   if (label_name != "") {
-    CHECK(input_idx == global_idx) << "input_idx=" << input_idx
-                                   << " != global_idx=" << global_idx;
+    PADDLE_ENFORCE_EQ(input_idx, global_idx,
+                      "input_idx should == global_idx");
   }
 
   std::vector<T*> push_g_vec(input_idx, nullptr);
   for (auto i = 0u; i < push_keys->size(); ++i) {
     push_g_vec[i] = push_values->at(i).data();
   }
-  CHECK(framework::FleetWrapper::pslib_ptr_ != nullptr);
+  PADDLE_ENFORCE_NE(framework::FleetWrapper::pslib_ptr_, nullptr,
+                    "pslib_ptr_ should not be null");
   auto table_id = static_cast<uint32_t>(ctx.Attr<int>("TableId"));
   auto status = framework::FleetWrapper::pslib_ptr_->_worker_ptr->push_sparse(
       table_id, push_keys->data(), (const T**)push_g_vec.data(),

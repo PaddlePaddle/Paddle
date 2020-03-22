@@ -125,7 +125,7 @@ void DistMultiTrainer::FinalizeDumpEnv() {
 }
 
 void DistMultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
-                                  const platform::Place& place) {
+                                      const platform::Place& place) {
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i]->SetPlace(place);
     workers_[i]->SetReaderPlace(place);

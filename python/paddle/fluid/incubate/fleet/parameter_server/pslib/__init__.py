@@ -651,30 +651,10 @@ def _fleet_embedding_v2(input, size, is_sparse=False, is_distributed=False,
 
 
 class fleet_embedding(object):
-    def __init__(self, scale_sparse_grad=True):
+    def __init__(self, click_name, scale_sparse_grad=True):
         self.origin_emb = fluid.layers.embedding
         self.origin_emb_v2 = fluid.embedding
-        self.scale_sparse_grad = scale_sparse_grad
-        self.accessor = "DownpourSparseValueAccessor"
-
-    def __enter__(self):
-        fluid.layers.embedding = _fleet_embedding
-        fluid.embedding = _fleet_embedding_v2
-        FLEET_GLOBAL_DICT["cur_accessor"] = self.accessor
-        FLEET_GLOBAL_DICT["click_name"] = ""
-        FLEET_GLOBAL_DICT["scale_sparse_grad"] = self.scale_sparse_grad
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        fluid.layers.embedding = self.origin_emb
-        fluid.embedding = self.origin_emb_v2
-        FLEET_GLOBAL_DICT["cur_accessor"] = ""
-        FLEET_GLOBAL_DICT["scale_sparse_grad"] = None
-
-
-class fleet_ctr_embedding(object):
-    def __init__(self, click_name=None, scale_sparse_grad=True):
-        self.origin_emb = fluid.layers.embedding
-        self.origin_emb_v2 = fluid.embedding
+        # if user uses cvm layer after embedding, click_name can be None
         self.click_name = "" if click_name is None else click_name
         self.scale_sparse_grad = scale_sparse_grad
         # it's default value, will be modified in minimize
