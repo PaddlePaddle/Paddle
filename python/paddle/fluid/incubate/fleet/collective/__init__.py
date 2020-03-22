@@ -179,11 +179,6 @@ class Collective(Fleet):
 
         return r
 
-    def _is_hdfs_path(self, fs_path):
-        if fs_path.startswith("abs://") or fs_path.startswith("hdfs://"):
-            return True
-        return False
-
     def _get_last_checkpoint_no(self, root_path, fs):
         """
         only get the first depth
@@ -267,7 +262,7 @@ class Collective(Fleet):
         local_fs = LocalFS()
 
         cache_path = None
-        if fs.is_remote():
+        if fs.need_upload_download():
             cache_path = "{}/{}.{}.saved_cache".format(
                 local_cache_path, self._checkoint_prefix, max_no + 1)
             if not local_fs.stat(cache_path):
@@ -281,8 +276,8 @@ class Collective(Fleet):
             filename=self._param_file_name)
         self._save_train_status(path=saved_path, train_status=train_status)
 
-        if fs.is_remote():
-            fs.rm_dir_file(tmp_path)
+        if fs.need_upload_download():
+            fs.delete(tmp_path)
             fs.upload(cache_path, tmp_path)
         fs.mv(tmp_path, real_path)
 
@@ -308,7 +303,7 @@ class Collective(Fleet):
             return None
 
         local_fs = LocalFS()
-        if fs.is_remote():
+        if fs.need_upload_download():
             cache_path = "{}/{}.{}.load_cache".format(
                 local_cache_path, self._checkoint_prefix, max_no)
             if local_fs.stat(cache_path):
@@ -316,7 +311,7 @@ class Collective(Fleet):
 
         real_path = "{}/{}.{}".format(path, self._checkoint_prefix, max_no)
         load_path = real_path
-        if fs.is_remote():
+        if fs.need_upload_download():
             fs.download(real_path, cache_path)
             load_path = cache_path
 

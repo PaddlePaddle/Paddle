@@ -26,7 +26,7 @@ class FS(object):
         pass
 
     @abc.abstractmethod
-    def ls(self, fs_path):
+    def ls_dir(self, fs_path):
         pass
 
     @abc.abstractmethod
@@ -58,11 +58,11 @@ class FS(object):
         pass
 
     @abc.abstractmethod
-    def rm_dir_file(self, fs_path):
+    def delete(self, fs_path):
         pass
 
     @abc.abstractmethod
-    def is_remote(self):
+    def need_upload_download(self):
         pass
 
 
@@ -72,21 +72,11 @@ class LocalFS(FS):
             f for f in os.listdir(fs_path) if os.path.isdir(fs_path + "/" + f)
         ]
 
-    def ls(self, fs_path):
+    def ls_dir(self, fs_path):
         return [f for f in os.listdir(fs_path)]
 
     def stat(self, fs_path):
         return os.path.exists(fs_path)
-
-    """
-    def upload(self, local_path, fs_path):
-        #os.symlink(local_path, fs_path)
-        self.mv(local_path, fs_path)
-
-    def download(self, fs_path, local_path):
-        #os.symlink(fs_path, local_path)
-        self.mv(fs_path, local_path)
-    """
 
     def mkdir(self, fs_path):
         assert not os.path.isfile(fs_path), "{} is already a file".format(
@@ -102,17 +92,16 @@ class LocalFS(FS):
     def rm(self, fs_path):
         os.remove(fs_path)
 
-    def rm_dir_file(self, fs_path):
+    def delete(self, fs_path):
         if not self.stat(fs_path):
             return
 
         if os.path.isfile(fs_path):
-            self.rm(fs_path)
+            return self.rm(fs_path)
 
-        if os.path.isdir(fs_path):
-            self.rmr(fs_path)
+        return self.rmr(fs_path)
 
-    def is_remote(self):
+    def need_upload_download(self):
         return False
 
 
@@ -136,10 +125,10 @@ class BDFS(FS):
         return lines
 
     def list_dirs(self, fs_path):
-        dirs, _ = self.ls(fs_path)
+        dirs, _ = self.ls_dir(fs_path)
         return dirs
 
-    def ls(self, fs_path):
+    def ls_dir(self, fs_path):
         """
         list directory under fs_path, and only give the pure name, not include the fs_path
         """
@@ -164,14 +153,14 @@ class BDFS(FS):
 
         return dirs, files
 
-    def _is_dir_or_file(self, fs_path):
-        p = PurePosixPath(fs_path)
-        dirs, files = self.ls(str(p.parent))
-        if p.name in dirs:
-            return True, False
-        if p.name in files:
-            return False, True
-        return False, False
+    def is_dir(self, fs_path):
+        cmd = "{} -test -d {} ; echo $?".format(self._base_cmd, fs_path)
+
+        test = self._run_cmd(cmd)
+        if test[0].strip() == "0":
+            return True
+
+        return False
 
     def stat(self, fs_path):
         cmd = "{} -test -e {} ; echo $?".format(self._base_cmd, fs_path)
@@ -214,16 +203,15 @@ class BDFS(FS):
         cmd = "{} -rm {}".format(self._base_cmd, fs_path)
         return fluid.core.run_cmd(cmd, self._time_out, self._sleep_inter)
 
-    def rm_dir_file(self, fs_path):
+    def delete(self, fs_path):
         if not self.stat(fs_path):
             return
 
-        is_dir, is_file = self._is_dir_or_file(fs_path)
+        is_dir = self.is_dir(fs_path)
         if is_dir:
             return self.rmr(fs_path)
 
-        if is_file:
-            return self.rm(fs_path)
+        return self.rm(fs_path)
 
-    def is_remote(self):
+    def need_upload_download(self):
         return True
