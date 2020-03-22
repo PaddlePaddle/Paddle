@@ -210,15 +210,10 @@ std::string LayerDebugString(const std::string& op_type,
   return LayerDebugStringImpl<VariableWrapper>(op_type, ins, outs);
 }
 
-VarBase::VarBase(bool has_grad, const std::shared_ptr<VariableWrapper>& var)
+VarBase::VarBase(const std::shared_ptr<VariableWrapper>& var)
     : var_(var), grad_node_(var->GetGradNode()) {
-  if (has_grad) {
-    if (auto grad_var = var_->GetGradVar()) {
-      grad_var_ = std::make_shared<VarBase>(false, grad_var);
-    } else {
-      grad_var_ = std::make_shared<VarBase>(false, GradVarName());
-      var_->SetGradVar(grad_var_->var_);
-    }
+  if (auto grad_var = var_->GetGradVar()) {
+    grad_var_ = std::make_shared<VarBase>(grad_var);
   }
 
   if (IsDebugEnabled()) {
@@ -417,10 +412,10 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
 
   auto grad_node = info.dygraph_grad_op_maker_(op.Type(), ins, outs, attrs);
   if (grad_node && !grad_node->empty()) {
-    for (auto& op : *grad_node) {
-      op.SetId(OpBase::GenerateUniqueId());
-      op.SetPlace(place);
-      ClearNoNeedBufferInputs(&op);
+    for (auto& grad_op : *grad_node) {
+      grad_op.SetId(OpBase::GenerateUniqueId());
+      grad_op.SetPlace(place);
+      ClearNoNeedBufferInputs(&grad_op);
     }
     return grad_node;
   } else {
