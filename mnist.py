@@ -21,12 +21,12 @@ import os
 
 import numpy as np
 
-import paddle
 from paddle import fluid
 from paddle.fluid.optimizer import Momentum
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
+from paddle.fluid.io import MNIST as MnistDataset
 
-from model import Model, CrossEntropy, Input
+from model import Model, CrossEntropy, Input, init_context
 from metrics import Accuracy
 
 
@@ -97,6 +97,7 @@ class MNIST(Model):
             act="softmax")
 
     def forward(self, inputs):
+        inputs = fluid.layers.reshape(inputs, [-1, 1, 28, 28])
         x = self._simple_img_conv_pool_1(inputs)
         x = self._simple_img_conv_pool_2(x)
         x = fluid.layers.flatten(x, axis=1)
@@ -104,81 +105,26 @@ class MNIST(Model):
         return x
 
 
-def accuracy(pred, label, topk=(1, )):
-    maxk = max(topk)
-    pred = np.argsort(pred)[:, ::-1][:, :maxk]
-    correct = (pred == np.repeat(label, maxk, 1))
-
-    batch_size = label.shape[0]
-    res = []
-    for k in topk:
-        correct_k = correct[:, :k].sum()
-        res.append(100.0 * correct_k / batch_size)
-    return res
-
-
 def main():
-    @contextlib.contextmanager
-    def null_guard():
-        yield
-
-    guard = fluid.dygraph.guard() if FLAGS.dynamic else null_guard()
-
-    if not os.path.exists('mnist_checkpoints'):
-        os.mkdir('mnist_checkpoints')
-
-    train_loader = fluid.io.xmap_readers(
-        lambda b: [np.array([x[0] for x in b]).reshape(-1, 1, 28, 28),
-                   np.array([x[1] for x in b]).reshape(-1, 1)],
-        paddle.batch(fluid.io.shuffle(paddle.dataset.mnist.train(), 6e4),
-                     batch_size=FLAGS.batch_size, drop_last=True), 1, 1)
-    val_loader = fluid.io.xmap_readers(
-        lambda b: [np.array([x[0] for x in b]).reshape(-1, 1, 28, 28),
-                   np.array([x[1] for x in b]).reshape(-1, 1)],
-        paddle.batch(paddle.dataset.mnist.test(),
-                     batch_size=FLAGS.batch_size, drop_last=True), 1, 1)
-
-    with guard:
-        model = MNIST()
-        optim = Momentum(
-            learning_rate=FLAGS.lr,
-            momentum=.9,
-            parameter_list=model.parameters())
-        inputs = [Input([None, 1, 28, 28], 'float32', name='image')]
-        labels = [Input([None, 1], 'int64', name='label')]
-        model.prepare(optim, CrossEntropy(), Accuracy(topk=(1, 2)), inputs, labels)
-        if FLAGS.resume is not None:
-            model.load(FLAGS.resume)
-
-        for e in range(FLAGS.epoch):
-            train_loss = 0.0
-            val_loss = 0.0
-            print("======== train epoch {} ========".format(e))
-            for idx, batch in enumerate(train_loader()):
-                losses, metrics = model.train(batch[0], batch[1])
-
-                train_loss += np.sum(losses)
-                if idx % 10 == 0:
-                    print("{:04d}: loss {:0.3f} top1: {:0.3f}% top2: {:0.3f}%".format(
-                        idx, train_loss / (idx + 1), metrics[0][0], metrics[0][1]))
-            for metric in model._metrics:
-                res = metric.accumulate()
-                print("train epoch {:03d}: top1: {:0.3f}%, top2: {:0.3f}".format(e, res[0], res[1]))
-                metric.reset()
-
-            print("======== eval epoch {} ========".format(e))
-            for idx, batch in enumerate(val_loader()):
-                losses, metrics = model.eval(batch[0], batch[1])
-
-                val_loss += np.sum(losses)
-                if idx % 10 == 0:
-                    print("{:04d}: loss {:0.3f} top1: {:0.3f}% top2: {:0.3f}%".format(
-                        idx, val_loss / (idx + 1), metrics[0][0], metrics[0][1]))
-            for metric in model._metrics:
-                res = metric.accumulate()
-                print("eval epoch {:03d}: top1: {:0.3f}%, top2: {:0.3f}".format(e, res[0], res[1]))
-                metric.reset()
-            model.save('mnist_checkpoints/{:02d}'.format(e))
+    init_context('dynamic' if FLAGS.dynamic else 'static')
+    
+    train_dataset = MnistDataset(mode='train')
+    val_dataset = MnistDataset(mode='test')
+    
+    inputs = [Input([None, 784], 'float32', name='image')]
+    labels = [Input([None, 1], 'int64', name='label')]
+                                
+    model = MNIST()
+    optim = Momentum(
+        learning_rate=FLAGS.lr,
+        momentum=.9,
+        parameter_list=model.parameters())
+    
+    model.prepare(optim, CrossEntropy(), Accuracy(topk=(1, 2)), inputs, labels)
+    if FLAGS.resume is not None:
+        model.load(FLAGS.resume)
+    
+    model.fit(train_dataset, val_dataset, epochs=FLAGS.epoch, batch_size=FLAGS.batch_size)
 
 
 if __name__ == '__main__':
@@ -186,7 +132,7 @@ if __name__ == '__main__':
     parser.add_argument(
         "-d", "--dynamic", action='store_true', help="enable dygraph mode")
     parser.add_argument(
-        "-e", "--epoch", default=100, type=int, help="number of epoch")
+        "-e", "--epoch", default=2, type=int, help="number of epoch")
     parser.add_argument(
         '--lr',
         '--learning-rate',

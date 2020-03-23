@@ -23,14 +23,21 @@ import warnings
 from collections import Iterable
 from collections import OrderedDict
 
+from collections import OrderedDict
 from paddle import fluid
 from paddle.fluid.framework import in_dygraph_mode, Variable
 from paddle.fluid.executor import global_scope
 from paddle.fluid.io import is_belong_to_optimizer
 from paddle.fluid.dygraph.base import to_variable
 
+from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
+import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+import distributed
+from distributed import DistributedBatchSampler
+from paddle.fluid.io import DataLoader
 from metrics import Metric
 from callbacks import config_callbacks
+
 
 __all__ = ['Model', 'Loss', 'CrossEntropy', 'Input']
 
@@ -76,6 +83,18 @@ def extract_args(func):
         return inspect.getfullargspec(func)[0]
     else:
         return inspect.getargspec(func)[0]
+
+
+def init_context(backend):
+    assert isinstance(backend, str) and backend.lower() in ['dynamic', 'static'], \
+        "Expected backend in ['dynamic', 'static'], but got {}".format(backend)  
+
+    place = fluid.CUDAPlace(distributed.Env().dev_id) if \
+                distributed.Env().nranks > 1 else fluid.CUDAPlace(0)
+    distributed.prepare_distributed_context(place)
+    backend = backend.lower()
+    if backend == 'dynamic':
+        fluid.enable_dygraph(place)
 
 
 class Input(fluid.dygraph.Layer):
@@ -135,6 +154,12 @@ class StaticGraphAdapter(object):
         self._executor = None
         self._progs = {}
         self._compiled_progs = {}
+
+        self._merge_count = {'eval_total': 0, 'test_total': 0,
+                             'eval_batch': 0, 'test_batch': 0}
+        
+        self._nranks = distributed.Env().nranks
+        self._local_rank = distributed.Env().local_rank
 
     @property
     def mode(self):
@@ -336,6 +361,22 @@ class StaticGraphAdapter(object):
         metric_states = restore_flatten_list(rets[num_loss:], metric_splits)
         metrics = []
         for metric, state in zip(self.model._metrics, metric_states):
+            # cut off padding size
+            if self.mode != 'train' and self.model._test_dataloader is not None \
+                                    and isinstance(self.model._test_dataloader, DataLoader) \
+                                    and self._nranks > 1:
+                total_size = len(self.model._test_dataloader.dataset)
+                # TODO: fixme if have better way to get batch size
+                samples = state[0].shape[0]
+                current_count = self._merge_count.get(self.mode + '_total', 0)
+                if current_count + samples >= total_size:
+                    state = [s[:total_size - current_count, ...] for s in state]
+                    self._merge_count[self.mode + '_total'] = 0
+                    self._merge_count[self.mode + '_batch'] = total_size - current_count
+                else:
+                    self._merge_count[self.mode + '_total'] += samples
+                    self._merge_count[self.mode + '_batch'] = samples
+
             metrics.append(metric.update(*state))
         return (losses, metrics) if len(metrics) > 0 else losses
 
@@ -364,6 +405,7 @@ class StaticGraphAdapter(object):
             # HACK workaround learning rate map issue
             lr_var = self.model._optimizer._learning_rate_map[self._orig_prog]
             self.model._optimizer._learning_rate_map[prog] = lr_var
+                
         losses = []
         metrics = []
         with fluid.program_guard(prog, self._startup_prog):
@@ -375,27 +417,46 @@ class StaticGraphAdapter(object):
             lbls = self.model._labels if self.model._labels else []
             inputs = [k.forward() for k in to_list(ins)]
             labels = [k.forward() for k in to_list(lbls)]
+            self._label_vars[mode] = labels
             outputs = to_list(self.model.forward(*inputs))
-            if mode != 'test':
-                if self.model._loss_function:
+
+            if mode != 'test' and self.model._loss_function:
                     losses = self.model._loss_function(outputs, labels)
-                    for metric in self.model._metrics:
-                        metrics.append(
-                            to_list(metric.add_metric_op(outputs, labels)))
-                if mode == 'train' and self.model._optimizer:
-                    self._loss_endpoint = fluid.layers.sum(losses)
-                    self.model._optimizer.minimize(self._loss_endpoint)
+            
+            if self._nranks > 1 and mode != 'train':
+                outputs = [distributed._all_gather(o, self._nranks) for o in outputs]
+                if mode != 'test':
+                    labels = [distributed._all_gather(l, self._nranks) for l in labels]
+            
+            if mode != 'test':
+                for metric in self.model._metrics:
+                    metrics.append(to_list(metric.add_metric_op(outputs, labels)))  
+
+            if mode == 'train' and self.model._optimizer:
+                self._loss_endpoint = fluid.layers.sum(losses)
+                if self._nranks > 1:
+                    role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+                    fleet.init(role)
+                    dist_strategy = DistributedStrategy()
+                    dist_strategy.mode = "collective"
+                    dist_strategy.collective_mode = "grad_allreduce"
+                    self.model._optimizer = fleet.distributed_optimizer(self.model._optimizer, 
+                                                                        strategy=dist_strategy)
+                    
+                self.model._optimizer.minimize(self._loss_endpoint)
+                           
         if mode != 'train':  # clone again to put it in test mode
             prog = prog.clone(for_test=True)
 
         self._input_vars[mode] = inputs
-        self._label_vars[mode] = labels
+        
         self._progs[mode] = prog
         self._endpoints[mode] = {
             "output": outputs,
             "loss": losses,
             "metric": metrics
         }
+
 
     def _compile_and_initialize(self, prog, mode):
         compiled_prog = self._compiled_progs.get(mode, None)
@@ -414,19 +475,30 @@ class StaticGraphAdapter(object):
         # even if `forward()` may run different code path for different mode
         # therefore startup program only needs to run once
         if self._executor is None:
-            self._executor = fluid.Executor(places[0])
+            if self._nranks > 1 and device.lower() == 'gpu':
+                gpu_id = int(distributed.Env().dev_id)
+                place = fluid.CUDAPlace(gpu_id) if device.lower() == 'gpu' else fluid.CPUPlace()
+            else:
+                place = places[0]
+            self._executor = fluid.Executor(place)
             # XXX incremental initialization
             uninitialized = []
             for var_py in self._startup_prog.list_vars():
                 var = fluid.global_scope().find_var(var_py.name)
-                if var and var.get_tensor()._is_initialized():
+                if not var_py.name.startswith('nccl_id') and var and \
+                    var.get_tensor()._is_initialized():
                     continue
+
                 uninitialized.append(var_py)
             if uninitialized:
                 startup_prog = self._startup_prog._prune(uninitialized)
                 self._executor.run(startup_prog)
 
-        compiled_prog = fluid.CompiledProgram(prog)
+        if self._nranks < 2:
+            compiled_prog = fluid.CompiledProgram(prog)
+        else:
+            compiled_prog = prog#fleet.main_program
+
         if len(places) > 1:
             loss_name = None
             if mode == 'train' and self._loss_endpoint is not None:
@@ -440,6 +512,13 @@ class DynamicGraphAdapter(object):
     def __init__(self, model):
         super(DynamicGraphAdapter, self).__init__()
         self.model = model
+        self._nranks = distributed.Env().nranks
+        self._local_rank = distributed.Env().local_rank
+        self._merge_count = {'eval_total': 0, 'test_total': 0,
+                             'eval_batch': 0, 'test_batch': 0}
+
+        if self._nranks > 1:
+            self.ddp_model = distributed.DistributedDataParallel(self.model)
 
     @property
     def mode(self):
@@ -458,18 +537,27 @@ class DynamicGraphAdapter(object):
         inputs = to_list(inputs)
         if labels is not None:
             labels = [to_variable(l) for l in to_list(labels)]
-        outputs = to_list(
-            self.model.forward(* [to_variable(x) for x in inputs]))
-        losses = self.model._loss_function(outputs, labels)
-        final_loss = fluid.layers.sum(losses)
-        final_loss.backward()
+        if self._nranks > 1:
+            outputs = self.ddp_model.forward(*[to_variable(x) for x in inputs])
+            losses = self.model._loss_function(outputs, labels)
+            final_loss = fluid.layers.sum(losses)
+            final_loss = self.ddp_model.scale_loss(final_loss)
+            final_loss.backward()
+            self.ddp_model.apply_collective_grads()
+        else:
+            outputs = self.model.forward(*[to_variable(x) for x in inputs])
+            losses = self.model._loss_function(outputs, labels)
+            final_loss = fluid.layers.sum(losses)
+            final_loss.backward()
+
         self.model._optimizer.minimize(final_loss)
         self.model.clear_gradients()
         metrics = []
         for metric in self.model._metrics:
-            metric_outs = metric.add_metric_op(outputs, to_list(labels))
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            metric_outs = metric.add_metric_op(to_list(outputs), to_list(labels))
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
+
         return ([to_numpy(l) for l in losses], metrics) \
                 if len(metrics) > 0 else [to_numpy(l) for l in losses]
 
@@ -479,18 +567,34 @@ class DynamicGraphAdapter(object):
         inputs = to_list(inputs)
         if labels is not None:
             labels = [to_variable(l) for l in to_list(labels)]
-        outputs = to_list(
-            self.model.forward(* [to_variable(x) for x in inputs]))
-
+        outputs = self.model.forward(*[to_variable(x) for x in inputs])
         if self.model._loss_function:
             losses = self.model._loss_function(outputs, labels)
         else:
             losses = []
-
+        if self._nranks > 1:
+            outputs = [distributed._all_gather(o, self._nranks) for o in to_list(outputs)]
+            labels = [distributed._all_gather(l, self._nranks) for l in labels]
         metrics = []
         for metric in self.model._metrics:
-            metric_outs = metric.add_metric_op(outputs, labels)
-            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
+            # cut off padding value.
+            if self.model._test_dataloader is not None and self._nranks > 1 \
+                    and isinstance(self.model._test_dataloader, DataLoader):
+                total_size = len(self.model._test_dataloader.dataset)
+                samples = outputs[0].shape[0]
+                current_count = self._merge_count.get(self.mode + '_total', 0)
+                if current_count + samples >= total_size:
+                    outputs = [o[:total_size - metric.count[0]] for o in outputs]
+                    labels = [l[:total_size - metric.count[0]] for l in labels]
+                    self._merge_count[self.mode + '_total'] = 0
+                    self._merge_count[self.mode + '_batch'] = total_size - current_count
+                else:
+                    self._merge_count[self.mode + '_total'] += samples
+                    self._merge_count[self.mode + '_batch'] = samples
+
+
+            metric_outs = metric.add_metric_op(to_list(outputs), labels)
+            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         # To be consistent with static graph
@@ -503,6 +607,8 @@ class DynamicGraphAdapter(object):
         self.mode = 'test'
         inputs = [to_variable(x) for x in to_list(inputs)]
         outputs = self.model.forward(*inputs)
+        if self._nranks > 2:
+            outputs = [distributed._all_gather(o, self._nranks) for o in to_list(outputs)]
         return [to_numpy(o) for o in to_list(outputs)]
 
     def parameters(self, *args, **kwargs):
@@ -586,7 +692,15 @@ class Model(fluid.dygraph.Layer):
         self._optimizer = None
         self._device = None
         self._device_ids = None
-        if in_dygraph_mode():
+        self._optimizer = None
+        self._test_dataloader = None
+
+        # init multiple gpus context
+        self._place = fluid.CUDAPlace(distributed.Env().dev_id) \
+                    if distributed.Env().nranks > 1 else fluid.CUDAPlace(0)
+
+        # init backend
+        if fluid.in_dygraph_mode():
             self._adapter = DynamicGraphAdapter(self)
         else:
             self._adapter = StaticGraphAdapter(self)
@@ -601,7 +715,8 @@ class Model(fluid.dygraph.Layer):
         return self._adapter.test(*args, **kwargs)
 
     def save(self, *args, **kwargs):
-        return self._adapter.save(*args, **kwargs)
+        if distributed.get_local_rank() == 0:
+            return self._adapter.save(*args, **kwargs)
 
     def load(self, path, skip_mismatch=False, reset_optimizer=False):
         """
@@ -714,6 +829,7 @@ class Model(fluid.dygraph.Layer):
                 the variable to the environment variable and set its value to 1.
                 The default is None.
         """
+        
         self._optimizer = optimizer
         if loss_function:
             if not isinstance(loss_function, Loss):
@@ -736,6 +852,7 @@ class Model(fluid.dygraph.Layer):
         self._inputs = inputs
         self._labels = labels
         self._device = device
+        
         if device is None:
             self._device = 'GPU' if fluid.is_compiled_with_cuda() else 'CPU'
         self._device_ids = device_ids
@@ -744,13 +861,19 @@ class Model(fluid.dygraph.Layer):
 
     def fit(
             self,
+            train_dataset=None,
+            eval_dataset=None,
             train_loader=None,
             eval_loader=None,
+            batch_size=1,
             epochs=1,
             eval_freq=1,
             log_freq=10,
             save_freq=1,
             verbose=2,
+            drop_last=False,
+            shuffle=True,
+            num_workers=0,
             callbacks=None, ):
         """
         FIXME: add more comments and usage
@@ -767,7 +890,43 @@ class Model(fluid.dygraph.Layer):
             callbacks (Callback|None): list of `Callback` instances to apply
                 during training.
         """
+
+        assert train_dataset is not None or train_loader is not None, \
+                "train_dataset or train_loader must be given"
+
+        assert (train_loader is not None and train_dataset is None) or \
+               (train_loader is None and train_dataset is not None), \
+                "train_dataset should not be set when train_loader is given"
+
+        if fluid.in_dygraph_mode():
+            feed_list = None
+        else:
+            feed_list = [x.forward() for x in self._inputs + self._labels]
+
+        if train_loader is None:
+            train_sampler = DistributedBatchSampler(train_dataset, 
+                                                    batch_size=batch_size, 
+                                                    shuffle=shuffle,
+                                                    drop_last=drop_last)
+            train_loader = DataLoader(train_dataset, 
+                                        batch_sampler=train_sampler, 
+                                        places=self._place, 
+                                        feed_list=feed_list, 
+                                        num_workers=num_workers, 
+                                        return_list=True)
+
+        if eval_loader is None and eval_dataset is not None:
+            eval_sampler = DistributedBatchSampler(eval_dataset, 
+                                                   batch_size=batch_size)
+            eval_loader = DataLoader(eval_dataset, 
+                                        batch_sampler=eval_sampler, 
+                                        places=self._place, 
+                                        feed_list=feed_list, 
+                                        num_workers=num_workers, 
+                                        return_list=True)
+
         do_eval = eval_loader is not None
+        self._test_dataloader = eval_loader
         metrics_name = self._metrics_name()
         cbks = config_callbacks(
             callbacks,
@@ -786,6 +945,12 @@ class Model(fluid.dygraph.Layer):
                 'metrics_name': metrics_name,
             }
             for step, data in enumerate(data_loader):
+                if not fluid.in_dygraph_mode():
+                    data = data[0]
+                    batch_size = data[0].shape()[0]
+                else:
+                    batch_size = data[0].shape[0]
+
                 cbks.on_batch_begin(mode, step, logs)
                 if mode == 'train':
                     outs = self.train(*data)
@@ -800,12 +965,16 @@ class Model(fluid.dygraph.Layer):
                 for metric in self._metrics:
                     res = metric.accumulate()
                     metrics.extend(to_list(res))
+                    
                 assert len(metrics_name) == len(metrics)
                 for k, v in zip(metrics_name, metrics):
                     logs[k] = v
 
                 logs['step'] = step
-                logs['batch_size'] = data[0].shape[0]
+                if mode == 'train' or self._adapter._merge_count.get(mode + '_batch', 0) <= 0:
+                    logs['batch_size'] = batch_size * distributed.Env().nranks
+                else:
+                    logs['batch_size'] = self._adapter._merge_count[mode + '_batch']
 
                 cbks.on_batch_end(mode, step, logs)
             self._reset_metrics()
