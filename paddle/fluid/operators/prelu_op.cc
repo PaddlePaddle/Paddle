@@ -137,8 +137,7 @@ class PReluGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("prelu_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("Alpha", this->Input("Alpha"));
@@ -146,8 +145,6 @@ class PReluGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetOutput(framework::GradVarName("Alpha"), this->InputGrad("Alpha"));
     op->SetAttrMap(this->Attrs());
-
-    return op;
   }
 };
 

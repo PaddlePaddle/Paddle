@@ -586,8 +586,7 @@ class Conv2DGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("Input", this->Input("Input"));
     op->SetInput("Filter", this->Input("Filter"));
@@ -598,8 +597,6 @@ class Conv2DGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("Filter"), this->InputGrad("Filter"));
     op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
     op->SetAttrMap(this->Attrs());
-
-    return std::unique_ptr<T>(op);
   }
 };
 
@@ -608,8 +605,7 @@ class Conv3DGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("Input", this->Input("Input"));
     op->SetInput("Filter", this->Input("Filter"));
@@ -623,8 +619,6 @@ class Conv3DGradMaker : public framework::SingleGradOpMaker<T> {
     }
 
     op->SetAttrMap(this->Attrs());
-
-    return std::unique_ptr<T>(op);
   }
 };
 
@@ -637,8 +631,7 @@ class Conv2DDoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     // I, W, dO, ddI, ddW
     op->SetInput("Input", this->Input("Input"));
@@ -656,16 +649,14 @@ class Conv2DDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetOutput("DDOutput",
                   ddx.empty()
-                      ? this->Empty()
+                      ? this->EmptyInputGrad()
                       : this->InputGrad(framework::GradVarName("Output")));
-    op->SetOutput("DFilter",
-                  ddx.empty() ? this->Empty() : this->InputGrad("Filter"));
-    op->SetOutput("DInput",
-                  ddw.empty() ? this->Empty() : this->InputGrad("Input"));
+    op->SetOutput("DFilter", ddx.empty() ? this->EmptyInputGrad()
+                                         : this->InputGrad("Filter"));
+    op->SetOutput("DInput", ddw.empty() ? this->EmptyInputGrad()
+                                        : this->InputGrad("Input"));
 
     op->SetAttrMap(this->Attrs());
-
-    return std::unique_ptr<T>(op);
   }
 };
 
@@ -678,8 +669,7 @@ class Conv3DDoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     // I, W, dO, ddI, ddW
     op->SetInput("Input", this->Input("Input"));
@@ -694,16 +684,14 @@ class Conv3DDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetOutput("DDOutput",
                   ddx.empty()
-                      ? this->Empty()
+                      ? this->EmptyInputGrad()
                       : this->InputGrad(framework::GradVarName("Output")));
-    op->SetOutput("DFilter",
-                  ddx.empty() ? this->Empty() : this->InputGrad("Filter"));
-    op->SetOutput("DInput",
-                  ddw.empty() ? this->Empty() : this->InputGrad("Input"));
+    op->SetOutput("DFilter", ddx.empty() ? this->EmptyInputGrad()
+                                         : this->InputGrad("Filter"));
+    op->SetOutput("DInput", ddw.empty() ? this->EmptyInputGrad()
+                                        : this->InputGrad("Input"));
 
     op->SetAttrMap(this->Attrs());
-
-    return std::unique_ptr<T>(op);
   }
 };
 

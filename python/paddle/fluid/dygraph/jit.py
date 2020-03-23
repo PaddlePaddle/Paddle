@@ -16,21 +16,16 @@ from __future__ import print_function
 
 __all__ = ['TracedLayer', 'dygraph_to_static_output', 'dygraph_to_static_graph']
 
-import gast
-import inspect
-import textwrap
 import warnings
 
 from ..wrapped_decorator import wrap_decorator
 from .base import program_desc_tracing_guard, switch_to_static_graph
-from .dygraph_to_static import DygraphToStaticAst
-from .dygraph_to_static.ast_utils import ast_to_func
+from .dygraph_to_static import ProgramTranslator, convert_to_static
 from .layers import Layer
 from paddle.fluid import core
 from paddle.fluid.framework import Program, Block, Variable, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.compiler import CompiledProgram
-from paddle.fluid import program_guard, data, default_startup_program, default_main_program
 
 
 def create_program_from_desc(program_desc):
@@ -56,23 +51,6 @@ def extract_vars(inputs):
     return result_list
 
 
-def to_static_func(dygraph_func):
-    # Get AST from dygraph function
-    dygraph_code = inspect.getsource(dygraph_func)
-    dygraph_code = textwrap.dedent(dygraph_code)
-    root = gast.parse(dygraph_code)
-
-    # Transform AST
-    dygraph_to_static = DygraphToStaticAst()
-    root_wrapper = dygraph_to_static.get_static_ast(root)
-
-    # Get static_func from AST
-    func_name = dygraph_to_static.get_module_name()
-    static_func, file_name = ast_to_func(root_wrapper.node, func_name)
-
-    return static_func, dygraph_to_static
-
-
 def _dygraph_to_static_graph_(dygraph_func):
     def __impl__(*args, **kwargs):
         if in_dygraph_mode():
@@ -80,13 +58,18 @@ def _dygraph_to_static_graph_(dygraph_func):
                 "The decorator 'dygraph_to_static_graph' doesn't work in dygraph mode."
                 " Please use it in static mode.")
             return dygraph_func(*args, **kwargs)
-        static_func, dygraph_to_static = to_static_func(dygraph_func)
+        static_func, ast_transformer = convert_to_static(dygraph_func)
         return static_func(*args, **kwargs)
 
     return __impl__
 
 
+dygraph_to_static_graph = wrap_decorator(_dygraph_to_static_graph_)
+
+
 def _dygraph_to_static_output_(dygraph_func):
+    program_translator = ProgramTranslator()
+
     def __impl__(*args, **kwargs):
         if in_dygraph_mode():
             warnings.warn(
@@ -94,45 +77,20 @@ def _dygraph_to_static_output_(dygraph_func):
                 " Please use it in static mode.")
             return dygraph_func(*args, **kwargs)
 
-        static_func, dygraph_to_static = to_static_func(dygraph_func)
-        feed_name_to_idx = dygraph_to_static.get_feed_name_to_idx()
-        feed_dict = {}
-        for feed_name, idx in feed_name_to_idx.items():
-            feed_dict[feed_name] = args[idx]
+        program_cache = program_translator.get_program_cache()
+        outputs = program_cache.build_program_and_return_output(dygraph_func,
+                                                                *args, **kwargs)
 
-        # Run static_func in static mode
-        startup_program = default_main_program()
-        main_program = default_startup_program()
-        static_res = run_static_func(main_program, startup_program, static_func,
-                                     args, kwargs, feed_dict, feed_name_to_idx)
-        return static_res
+        # Run program to fetch output Tensors once building successfully.
+        if not program_cache.in_build_process:
+            outputs = program_translator.run(*args, **kwargs)
+
+        return outputs
 
     return __impl__
 
 
-def run_static_func(main_program, startup_program, static_func, args, kwargs,
-                    feed_dict, feed_name_to_idx):
-
-    with program_guard(main_program, startup_program):
-        args_list = list(args)
-        for var_name, value in feed_dict.items():
-            idx = feed_name_to_idx[var_name]
-            args_list[idx] = data(
-                name=var_name, shape=value.shape, dtype=str(value.dtype))
-        args = tuple(args_list)
-        static_out = static_func(*args, **kwargs)
-        if not isinstance(static_out, (list, tuple)):
-            static_out = [static_out]
-        exe = Executor(core.CPUPlace())
-        exe.run(startup_program)
-        static_res = exe.run(main_program,
-                             fetch_list=static_out,
-                             feed=feed_dict)
-    return static_res
-
-
 dygraph_to_static_output = wrap_decorator(_dygraph_to_static_output_)
-dygraph_to_static_graph = wrap_decorator(_dygraph_to_static_graph_)
 
 
 @dygraph_only
@@ -394,11 +352,11 @@ class TracedLayer(object):
                     in_var = to_variable(in_np)
                     out_dygraph, static_layer = TracedLayer.trace(layer, inputs=[in_var])
                     static_layer.save_inference_model(save_dirname, feed=[0], fetch=[0])
-                
-                place = fluid.CPUPlace() 
+
+                place = fluid.CPUPlace()
                 exe = fluid.Executor(place)
                 program, feed_vars, fetch_vars = fluid.io.load_inference_model(save_dirname,
-                                                    exe) 
+                                                    exe)
 
                 fetch, = exe.run(program, feed={feed_vars[0]: in_np}, fetch_list=fetch_vars)
                 print(fetch.shape) # (2, 10)

@@ -159,8 +159,7 @@ class SplitGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("concat");
     op->SetInput("X", this->OutputGrad("Out"));
     if (this->HasInput("AxisTensor")) {
@@ -168,7 +167,6 @@ class SplitGradMaker : public framework::SingleGradOpMaker<T> {
     }
     op->SetOutput("Out", this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(op);
   }
 };
 

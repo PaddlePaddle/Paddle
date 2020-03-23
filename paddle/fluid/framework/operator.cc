@@ -914,11 +914,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (!all_kernels_must_compute_runtime_shape_ &&
       HasAttr(kAllKernelsMustComputeRuntimeShape))
     all_kernels_must_compute_runtime_shape_ = true;
+  const Scope* cur_scope = &scope;
   if (!enable_cache_runtime_context_) {
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
+    pre_scope_ = cur_scope;
   } else {
-    const Scope* cur_scope = &scope;
     if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
       std::lock_guard<std::mutex> lock(cache_update_mutex_);
       if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
@@ -946,8 +947,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   {
     platform::RecordEvent record_event("prepare_data",
                                        platform::EventRole::kInnerOp);
-    transfer_scope = PrepareData(scope, *kernel_type_, &transfered_inplace_vars,
-                                 runtime_ctx);
+    if (need_prepare_data_) {
+      transfer_scope = PrepareData(scope, *kernel_type_,
+                                   &transfered_inplace_vars, runtime_ctx);
+    }
   }
   // exec scope is the scope that kernel actually executed on.
   const Scope& exec_scope =
@@ -1240,6 +1243,15 @@ Scope* OperatorWithKernel::PrepareData(
       SetTensorToVariable(*var, out, trans_var);
     }
   }
+  // If pre_scope = &scope, it means that scope is cached and the op is not in
+  // while block. If new_scope = nullptr, it means that for each input of this
+  // Op, there is no need to do PrepareData. So PrepareData could be skipped at
+  // the rest iterations to save the elapsed time.
+  // We do not support skipping PrepareData in while block, because the Op's
+  // input may be changed by subsequent Ops, which may cause an error.
+  if (pre_scope_ == &scope && new_scope == nullptr) {
+    need_prepare_data_ = false;
+  }
 
   return new_scope;
 }
@@ -1298,8 +1310,10 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
   for (auto& input : ctx.InNameList()) {
     ParseInputDataType(ctx, input, &data_type);
   }
-  PADDLE_ENFORCE_NE(data_type, dafault_data_type,
-                    "DataType should be indicated by input Variable.");
+  PADDLE_ENFORCE_NE(
+      data_type, dafault_data_type,
+      platform::errors::NotFound(
+          "DataType should be indicated by input Variable at %s.", Type()));
   return data_type;
 }
 

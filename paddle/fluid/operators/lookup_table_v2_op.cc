@@ -126,9 +126,7 @@ class LookupTableV2GradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
-
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("lookup_table_v2_grad");
 
     op->SetInput("W", this->Input("W"));
@@ -138,7 +136,6 @@ class LookupTableV2GradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
 
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 

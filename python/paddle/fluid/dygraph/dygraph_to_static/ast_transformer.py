@@ -13,80 +13,36 @@
 # limitations under the License.
 
 from __future__ import print_function
-from .utils import *
-import gast
+
+import astor
+import copy
 # gast is a generic AST to represent Python2 and Python3's Abstract Syntax Tree(AST).
 # It provides a compatibility layer between the AST of various Python versions,
 # as produced by ast.parse from the standard ast module.
 # See details in https://github.com/serge-sans-paille/gast/
-from .ast_utils import is_control_flow_if, create_cond_node, transform_if_else
-from paddle.fluid import unique_name
-from .static_analysis import AstNodeWrapper, StaticAnalysisVisitor
+import gast
+import inspect
+import textwrap
 
-__all__ = ['DygraphToStaticAst']
+from paddle.fluid import unique_name
+
+from paddle.fluid.dygraph.dygraph_to_static.break_continue_transformer import BreakContinueTransformer
+from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import IfElseTransformer
+from paddle.fluid.dygraph.dygraph_to_static.list_transformer import ListTransformer
+from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import LoopTransformer
+from paddle.fluid.dygraph.dygraph_to_static.tensor_shape_transformer import TensorShapeTransformer
+
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import NodeVarType
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
+from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
+from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_api, is_dygraph_api, is_to_variable
+from paddle.fluid.dygraph.dygraph_to_static.utils import to_assign_node, to_static_ast, update_args_of_func
+from paddle.fluid.dygraph.dygraph_to_static.utils import dygraph_class_to_static_api
+
+__all__ = ['DygraphToStaticAst', 'convert_to_static']
 
 DECORATOR_NAMES = ['dygraph_to_static_output', 'dygraph_to_static_graph']
-
-
-class IfElseTransformer(gast.NodeTransformer):
-    """
-    Transform if/else statement of Dygraph into Static Graph.
-    """
-
-    def __init__(self, wrapper_root):
-        assert isinstance(
-            wrapper_root, AstNodeWrapper
-        ), "Type of input node should be AstNodeWrapper, but received %s ." % type(
-            wrapper_root)
-        self.wrapper_root = wrapper_root
-        self.root = wrapper_root.node
-        self.new_func_nodes = []
-
-    def ast_visit(self):
-        """
-        Main function to transform AST.
-        """
-        self.visit(self.root)
-        self.after_visit(self.root)
-
-    def visit_If(self, node):
-        assert isinstance(node, gast.If)
-        need_transform = is_control_flow_if(node.test)
-        self.generic_visit(node)
-        if need_transform:
-            pred_node = node.test
-            true_func_node, false_func_node, return_name_ids = transform_if_else(
-                node, self.root)
-            self.new_func_nodes += [true_func_node, false_func_node]
-            # create layers.cond
-            new_node = create_cond_node(return_name_ids, pred_node,
-                                        true_func_node, false_func_node)
-            return new_node
-        else:
-            return node
-
-    def visit_Call(self, node):
-        # Remove `numpy()` statement, like `Tensor.numpy()[i]` -> `Tensor[i]`
-        # TODO: should be removed. it may be considered as basic api transformation.
-        if isinstance(node.func, gast.Attribute):
-            attribute = node.func
-            if attribute.attr == 'numpy':
-                node = attribute.value
-        return node
-
-    def after_visit(self, node):
-        """
-        This function will add some postprocessing operations with node.
-        It can be used to add the created `true_fn/false_fn` in front of
-        the node.body before they are called in cond layer.
-        """
-        assert hasattr(node, 'body')
-        # add new ast.funcDef of `if/else`
-        if self.new_func_nodes:
-            node.body = self.new_func_nodes + node.body
-
-    def get_new_func_nodes(self):
-        return self.new_func_nodes
 
 
 class DygraphToStaticAst(gast.NodeTransformer):
@@ -97,24 +53,38 @@ class DygraphToStaticAst(gast.NodeTransformer):
     def get_static_ast(self, root):
         # save root for some analysis may need global AST
         self.root = root
-        self.static_analysis_root = StaticAnalysisVisitor(
-            root).get_node_wrapper_root()
+        self.static_analysis_visitor = StaticAnalysisVisitor(root)
+        self.static_analysis_root = self.static_analysis_visitor.get_node_wrapper_root(
+        )
+
         self.decorate_func_name = None
         self.arg_name_to_idx = {}
         self.transfer_from_node_type(self.static_analysis_root)
         return self.static_analysis_root
 
-    def transfer_from_node_type(self, node):
+    def transfer_from_node_type(self, node_wrapper):
         # Generic transformation
-        self.visit(node.node)
+        self.visit(node_wrapper.node)
 
-        # Transform basic api of dygraph to static graph
-        basic_api_trans = BasicApiTransformer(node)
-        basic_api_trans.ast_visit()
+        # Transform basic api of dygraph to static graph and get feed_name_to_arg_name
+        basic_api_trans = BasicApiTransformer(node_wrapper)
+        basic_api_trans.transform()
         self.feed_name_to_arg_name = basic_api_trans.get_feed_name_to_arg_id()
 
+        # Transform Tensor.shape into fluid.layers.shape(Tensor)
+        TensorShapeTransformer(node_wrapper).transform()
+
+        # Transform list used in control flow
+        ListTransformer(node_wrapper).transform()
+
+        # Transform break/continue in loops
+        BreakContinueTransformer(node_wrapper).transform()
+
+        # Transform for loop and while loop
+        LoopTransformer(node_wrapper).transform()
+
         # Transform all if/else statement of Dygraph into Static Graph.
-        IfElseTransformer(node).ast_visit()
+        IfElseTransformer(node_wrapper).transform()
 
     def visit_FunctionDef(self, node):
         if self.decorate_func_name is None:
@@ -156,12 +126,16 @@ class BasicApiTransformer(gast.NodeTransformer):
         assert isinstance(
             wrapper_root, AstNodeWrapper
         ), "Input non-AstNodeWrapper node for the initialization of BasicApiTransformer."
+
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
         self.class_node_dict = {}
-        self.feed_name_to_arg_id = {}
 
-    def ast_visit(self):
+        # Used for transformation of data feed
+        self.feed_name_to_arg_id = {}
+        self.name_to_tensor_shape = {}
+
+    def transform(self):
         self.visit(self.root)
         return self.wrapper_root
 
@@ -178,11 +152,9 @@ class BasicApiTransformer(gast.NodeTransformer):
         if self._update_class_node_dict(node):
             return None
 
-        value_node = node.value
-        for child_node in gast.walk(value_node):
+        for child_node in gast.walk(node.value):
             if isinstance(child_node, gast.Call):
                 self._visit_Call(child_node)
-
         return node
 
     def visit_Expr(self, node):
@@ -193,12 +165,10 @@ class BasicApiTransformer(gast.NodeTransformer):
                     return
                 else:
                     self._visit_Call(child_node)
-
         return node
 
     def _visit_Call(self, node):
         assert isinstance(node, gast.Call)
-
         # Replace API `to_variable` with `fluid.layers.assign`
         if is_to_variable(node):
             self._update_feed_dict(node)
@@ -206,6 +176,7 @@ class BasicApiTransformer(gast.NodeTransformer):
             return node
 
         func_name = astor.to_source(gast.gast_to_ast(node.func))
+
         if self._is_dygraph_forward(func_name):
             class_node = self._get_class_node(func_name)
             static_node = to_static_ast(node, class_node)
@@ -241,15 +212,38 @@ class BasicApiTransformer(gast.NodeTransformer):
     def _update_feed_dict(self, node):
         assert isinstance(node, gast.Call)
 
-        var_name = None
+        value_node = None
         for kw in node.keywords:
             if kw.arg == 'value':
-                var_name = kw.value.id  # eg: 'a' for "value=a "
-        if not var_name:
-            var_name = node.args[0].id
+                value_node = kw.value  # eg: `a` for "value=a "
+        if not value_node:
+            value_node = node.args[0]
 
-        feed_var_name = unique_name.generate(var_name)  # eg: "a_0"
-        self.feed_name_to_arg_id[feed_var_name] = var_name  # eg: "a_0" : "a"
+        if not isinstance(value_node, gast.Name):
+            return
+        else:
+            var_name = value_node.id
+            feed_var_name = unique_name.generate(var_name)  # eg: "a_0"
+            self.feed_name_to_arg_id[
+                feed_var_name] = var_name  # eg: "a_0" : "a"
 
     def get_feed_name_to_arg_id(self):
         return self.feed_name_to_arg_id
+
+
+def convert_to_static(dyfunc):
+    """
+    Converts dygraph function into static function.
+    """
+    # Get AST from dygraph function
+    raw_code = inspect.getsource(dyfunc)
+    code = textwrap.dedent(raw_code)
+    root = gast.parse(code)
+
+    # Transform AST
+    dygraph_to_static = DygraphToStaticAst()
+    root_wrapper = dygraph_to_static.get_static_ast(root)
+
+    # Get static_func from AST
+    static_func, file_name = ast_to_func(root_wrapper.node, dyfunc)
+    return static_func, dygraph_to_static
