@@ -129,7 +129,7 @@ class BoxWrapper {
   void BeginFeedPass(int date, boxps::PSAgentBase** agent) const;
   void EndFeedPass(boxps::PSAgentBase* agent) const;
   void BeginPass() const;
-  void EndPass() const;
+  void EndPass(bool need_save_delta) const;
   void PullSparse(const paddle::platform::Place& place,
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,
@@ -503,10 +503,10 @@ class BoxHelper {
     box_ptr->BeginPass();
 #endif
   }
-  void EndPass() {
+  void EndPass(bool need_save_delta) {
 #ifdef PADDLE_WITH_BOX_PS
     auto box_ptr = BoxWrapper::GetInstance();
-    box_ptr->EndPass();
+    box_ptr->EndPass(need_save_delta);
 #endif
   }
   void LoadIntoMemory() {

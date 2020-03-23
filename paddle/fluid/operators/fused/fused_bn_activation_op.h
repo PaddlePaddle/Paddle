@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/var_type_inference.h"
 
 namespace paddle {
 namespace operators {

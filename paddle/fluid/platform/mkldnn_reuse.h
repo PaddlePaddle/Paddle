@@ -978,12 +978,14 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
       constexpr float scale = 1.0f;
       post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
                                      fuse_alpha, fuse_beta);
-    }
-
-    if (fuse_activation == "relu6") {
+    } else if (fuse_activation == "relu6") {
       constexpr float scale = 1.0f;
       post_operations.append_eltwise(scale,
                                      mkldnn::algorithm::eltwise_bounded_relu,
+                                     fuse_alpha, fuse_beta);
+    } else if (fuse_activation == "swish") {
+      constexpr float scale = 1.0f;
+      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_swish,
                                      fuse_alpha, fuse_beta);
     }
     conv_attr.set_post_ops(post_operations);

@@ -34,6 +34,7 @@ DECLARE_bool(free_idle_chunk);
 DECLARE_bool(free_when_no_cache_hit);
 #ifdef PADDLE_WITH_CUDA
 DECLARE_uint64(gpu_memory_limit_mb);
+DECLARE_bool(cudnn_deterministic);
 #endif
 DECLARE_string(allocator_strategy);
 DECLARE_bool(enable_parallel_graph);
@@ -180,6 +181,7 @@ static void RegisterGlobalVarGetterSetter() {
   REGISTER_GLOBAL_VAR_GETTER_ONLY(FLAGS_free_when_no_cache_hit);
 #ifdef PADDLE_WITH_CUDA
   REGISTER_GLOBAL_VAR_GETTER_SETTER(FLAGS_gpu_memory_limit_mb);
+  REGISTER_GLOBAL_VAR_GETTER_SETTER(FLAGS_cudnn_deterministic);
 #endif
 }
 
