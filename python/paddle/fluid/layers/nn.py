@@ -9069,7 +9069,7 @@ def stack(x, axis=0):
     Please refer to paddle.tensor.stack(x, axis)
     """
 
-    return tensor.stack(x, axis=0)
+    return tensor.stack(x, axis)
 
 
 @templatedoc(op_type="filter_by_instag")
