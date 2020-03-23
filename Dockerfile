@@ -117,7 +117,7 @@ RUN rm Python-$version.tgz setuptools-40.6.2.zip pip-18.0.tar.gz && \
     rm -r Python-$version setuptools-40.6.2 pip-18.0
 
 # Install Go and glide
-RUN wget -qO- https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz | \
+RUN wget -qO- https://dl.google.com/go/go1.14.1.linux-amd64.tar.gz | \
     tar -xz -C /usr/local && \
     mkdir /root/gopath && \
     mkdir /root/gopath/bin && \
