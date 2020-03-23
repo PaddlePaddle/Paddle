@@ -148,14 +148,12 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
     auto output_start_offset = i * output_width;
 
     for (auto j = 0; j < index_size; ++j) {
-      IndexT index_value = p_index[i];
-      memset(p_output + output_start_offset + slice_size * index_value, 0,
-             slice_bytes);
+      memset(p_output + output_start_offset + slice_size * j, 0, slice_bytes);
     }
     for (auto j = 0; j < index_size; j++) {
       IndexT index_value = p_index[j];
-      T* ou = p_output + output_start_offset + index_value * slice_size;
-      const T* in = p_input + input_start_offset + j * slice_size;
+      T* ou = p_output + output_start_offset + j * slice_size;
+      const T* in = p_input + input_start_offset + index_value * slice_size;
       for (auto k = 0; k < slice_size; k++) {
         *(ou + k) += *(in + k);
       }
