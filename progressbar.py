@@ -107,7 +107,7 @@ class ProgressBar(object):
                 eta = time_per_unit * (self._num - current_num)
                 if eta > 3600:
                     eta_format = '%d:%02d:%02d' % (eta // 3600, (eta % 3600) //
-                                                   60, eta % 60)
+                                                60, eta % 60)
                 elif eta > 60:
                     eta_format = '%d:%02d' % (eta // 60, eta % 60)
                 else:
@@ -148,8 +148,8 @@ class ProgressBar(object):
                         else:
                             info += ' %.4e' % v
                     elif isinstance(v, np.ndarray) and \
-                         isinstance(v.size, 1) and \
-                         isinstance(v.dtype, (np.float32, np.float64)):
+                        isinstance(v.size, 1) and \
+                        isinstance(v.dtype, (np.float32, np.float64)):
                         if abs(v[0]) > 1e-3:
                             info += ' %.4f' % v[0]
                         else:

@@ -18,15 +18,21 @@ from __future__ import print_function
 import unittest
 
 import os
+
+import sys
+sys.path.append('../')
+
 import numpy as np
 import contextlib
 
 import paddle
 from paddle import fluid
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
-from model import Model, CrossEntropy, Input, Loss
+from model import Model, CrossEntropy, Input, Loss, init_context
 from metrics import Accuracy
 from callbacks import ProgBarLogger
+from paddle.fluid.io import BatchSampler, DataLoader
+from paddle.fluid.io import MNIST as MnistDataset
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
@@ -96,16 +102,12 @@ class MNIST(Model):
             act="softmax")
 
     def forward(self, inputs):
+        inputs = fluid.layers.reshape(inputs, [-1, 1, 28, 28])
         x = self._simple_img_conv_pool_1(inputs)
         x = self._simple_img_conv_pool_2(x)
         x = fluid.layers.flatten(x, axis=1)
         x = self._fc(x)
         return x
-
-
-@contextlib.contextmanager
-def null_guard():
-    yield
 
 
 class MLP(Model):
@@ -139,31 +141,26 @@ class MyCrossEntropy(Loss):
 
 class TestModel(unittest.TestCase):
     def fit(self, dynamic, is_mlp=False):
-        im_shape = (-1, 784) if is_mlp else (-1, 1, 28, 28)
-        guard = fluid.dygraph.guard() if dynamic else null_guard()
+        init_context('dynamic' if dynamic else 'static')
+
+        im_shape = (-1, 784)
         batch_size = 128
-        train_loader = fluid.io.xmap_readers(
-            lambda b: [np.array([x[0] for x in b]).reshape(im_shape),
-                       np.array([x[1] for x in b]).reshape(-1, 1)],
-            paddle.batch(fluid.io.shuffle(paddle.dataset.mnist.train(), 6e4),
-                         batch_size=batch_size, drop_last=True), 1, 1)
-        val_loader = fluid.io.xmap_readers(
-            lambda b: [np.array([x[0] for x in b]).reshape(im_shape),
-                       np.array([x[1] for x in b]).reshape(-1, 1)],
-            paddle.batch(paddle.dataset.mnist.test(),
-                         batch_size=batch_size, drop_last=False), 1, 1)
-        with guard:
-            inputs = [Input(im_shape, 'float32', name='image')]
-            labels = [Input([None, 1], 'int64', name='label')]
-            model = MNIST() if not is_mlp else MLP()
-            optim = fluid.optimizer.Momentum(
-                learning_rate=0.01,
-                momentum=.9,
-                parameter_list=model.parameters())
-            loss = CrossEntropy() if not is_mlp else MyCrossEntropy()
-            model.prepare(optim, loss, Accuracy(), inputs, labels)
-            cbk = ProgBarLogger(50)
-            model.fit(train_loader, val_loader, epochs=2, callbacks=cbk)
+
+        inputs = [Input(im_shape, 'float32', name='image')]
+        labels = [Input([None, 1], 'int64', name='label')]
+
+        train_dataset = MnistDataset(mode='train')
+        val_dataset = MnistDataset(mode='test')
+    
+        model = MNIST() if not is_mlp else MLP()
+        optim = fluid.optimizer.Momentum(
+            learning_rate=0.01,
+            momentum=.9,
+            parameter_list=model.parameters())
+        loss = CrossEntropy() if not is_mlp else MyCrossEntropy()
+        model.prepare(optim, loss, Accuracy(), inputs, labels)
+        cbk = ProgBarLogger(50)
+        model.fit(train_dataset, val_dataset, epochs=2, batch_size=batch_size, callbacks=cbk)
 
     def test_fit_static(self):
         self.fit(False)
