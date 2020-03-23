@@ -140,6 +140,7 @@ class TestLearningRateDecay(unittest.TestCase):
         exe.run(startup_prog)
 
         for step in range(10):
+            # Step of NoamDecay starts from 1.
             if python_decay_fn.__name__ == 'noam_decay':
                 step += 1
             lr_val, = exe.run(main_prog, feed={}, fetch_list=[decayed_lr])
@@ -230,6 +231,9 @@ class TestLinearWamrupLearningRateDecay(TestLearningRateDecay):
         exe.run(startup_prog)
 
         for step in range(20):
+            # Step of NoamDecay starts from 1.
+            if fluid_decay_fn.__name__ == 'noam_decay':
+                step += 1
             lr_val, = exe.run(main_prog, feed={}, fetch_list=[decayed_lr])
             if step < warmup_steps:
                 python_decayed_lr = linear_lr_warmup(
