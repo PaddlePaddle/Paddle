@@ -141,8 +141,8 @@ class MyCrossEntropy(Loss):
 
 class TestModel(unittest.TestCase):
     def fit(self, dynamic, is_mlp=False):
-        init_context('dynamic' if FLAGS.dynamic else 'static')
-        
+        init_context('dynamic' if dynamic else 'static')
+
         im_shape = (-1, 784)
         batch_size = 128
 

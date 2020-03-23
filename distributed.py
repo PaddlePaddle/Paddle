@@ -80,20 +80,18 @@ class DistributedBatchSampler(BatchSampler):
         self.total_size = self.num_samples * self.nranks
 
     def __iter__(self):
-        _sample_iter = self.sample_iter
-        if _sample_iter is None:
-            num_samples = len(self.dataset)
-            indices = np.arange(num_samples).tolist()
-            indices += indices[:(self.total_size - len(indices))]
-            assert len(indices) == self.total_size
-            if self.shuffle:
-                np.random.RandomState(self.epoch).shuffle(indices)
-                self.epoch += 1
-            # subsample
-            indices = indices[self.local_rank * self.num_samples: 
-                             (self.local_rank + 1) * self.num_samples]
-            assert len(indices) == self.num_samples
-            _sample_iter = iter(indices)
+        num_samples = len(self.dataset)
+        indices = np.arange(num_samples).tolist()
+        indices += indices[:(self.total_size - len(indices))]
+        assert len(indices) == self.total_size
+        if self.shuffle:
+            np.random.RandomState(self.epoch).shuffle(indices)
+            self.epoch += 1
+        # subsample
+        indices = indices[self.local_rank * self.num_samples: 
+                            (self.local_rank + 1) * self.num_samples]
+        assert len(indices) == self.num_samples
+        _sample_iter = iter(indices)
 
         batch_indices = []
         for idx in _sample_iter:

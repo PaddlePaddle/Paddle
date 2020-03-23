@@ -220,7 +220,7 @@ class ProgBarLogger(Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
-        if self.verbose:
+        if self.verbose and get_local_rank() == 0:
             self._updates(logs, 'train')
 
     def on_eval_begin(self, logs=None):

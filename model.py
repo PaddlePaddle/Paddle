@@ -91,7 +91,7 @@ def init_context(backend):
 
     place = fluid.CUDAPlace(distributed.Env().dev_id) if \
                 distributed.Env().nranks > 1 else fluid.CUDAPlace(0)
-    distributed.prepare_distributed_context()
+    distributed.prepare_distributed_context(place)
     backend = backend.lower()
     if backend == 'dynamic':
         fluid.enable_dygraph(place)
@@ -419,22 +419,10 @@ class StaticGraphAdapter(object):
             labels = [k.forward() for k in to_list(lbls)]
             self._label_vars[mode] = labels
             outputs = to_list(self.model.forward(*inputs))
-            if mode != 'test':
-                if self.model._loss_function:
+
+            if mode != 'test' and self.model._loss_function:
                     losses = self.model._loss_function(outputs, labels)
-                    
-                if mode == 'train' and self.model._optimizer:
-                    self._loss_endpoint = fluid.layers.sum(losses)
-                    if self._nranks > 1:
-                        role = role_maker.PaddleCloudRoleMaker(is_collective=True)
-                        fleet.init(role)
-                        dist_strategy = DistributedStrategy()
-                        dist_strategy.mode = "collective"
-                        dist_strategy.collective_mode = "grad_allreduce"
-                        self.model._optimizer = fleet.distributed_optimizer(self.model._optimizer, 
-                                                                            strategy=dist_strategy)
-                        
-                    self.model._optimizer.minimize(self._loss_endpoint)
+            
             if self._nranks > 1 and mode != 'train':
                 outputs = [distributed._all_gather(o, self._nranks) for o in outputs]
                 if mode != 'test':
@@ -442,8 +430,21 @@ class StaticGraphAdapter(object):
             
             if mode != 'test':
                 for metric in self.model._metrics:
-                    metrics.append(to_list(metric.add_metric_op(outputs, labels)))   
-                     
+                    metrics.append(to_list(metric.add_metric_op(outputs, labels)))  
+
+            if mode == 'train' and self.model._optimizer:
+                self._loss_endpoint = fluid.layers.sum(losses)
+                if self._nranks > 1:
+                    role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+                    fleet.init(role)
+                    dist_strategy = DistributedStrategy()
+                    dist_strategy.mode = "collective"
+                    dist_strategy.collective_mode = "grad_allreduce"
+                    self.model._optimizer = fleet.distributed_optimizer(self.model._optimizer, 
+                                                                        strategy=dist_strategy)
+                    
+                self.model._optimizer.minimize(self._loss_endpoint)
+                           
         if mode != 'train':  # clone again to put it in test mode
             prog = prog.clone(for_test=True)
 
@@ -870,6 +871,8 @@ class Model(fluid.dygraph.Layer):
             log_freq=10,
             save_freq=1,
             verbose=2,
+            drop_last=False,
+            shuffle=True,
             num_workers=0,
             callbacks=None, ):
         """
@@ -901,43 +904,27 @@ class Model(fluid.dygraph.Layer):
             feed_list = [x.forward() for x in self._inputs + self._labels]
 
         if train_loader is None:
-            if distributed.get_nranks() > 1:
-                train_sampler = DistributedBatchSampler(train_dataset, 
-                                                        batch_size=batch_size, 
-                                                        shuffle=True)
-                train_loader = DataLoader(train_dataset, 
-                                          batch_sampler=train_sampler, 
-                                          places=self._place, 
-                                          feed_list=feed_list, 
-                                          num_workers=num_workers, 
-                                          return_list=True)
-
-            else:
-                train_loader = DataLoader(train_dataset, 
-                                          batch_size=batch_size, 
-                                          places=self._place, 
-                                          feed_list=feed_list, 
-                                          num_workers=4, 
-                                          return_list=True)
+            train_sampler = DistributedBatchSampler(train_dataset, 
+                                                    batch_size=batch_size, 
+                                                    shuffle=shuffle,
+                                                    drop_last=drop_last)
+            train_loader = DataLoader(train_dataset, 
+                                        batch_sampler=train_sampler, 
+                                        places=self._place, 
+                                        feed_list=feed_list, 
+                                        num_workers=num_workers, 
+                                        return_list=True)
 
         if eval_loader is None and eval_dataset is not None:
-            if distributed.get_nranks() > 1:
-                eval_sampler = DistributedBatchSampler(eval_dataset, 
-                                                       batch_size=batch_size)
-                eval_loader = DataLoader(eval_dataset, 
-                                         batch_sampler=eval_sampler, 
-                                         places=self._place, 
-                                         feed_list=feed_list, 
-                                         num_workers=num_workers, 
-                                         return_list=True)
-            else:
-                eval_loader = DataLoader(eval_dataset, 
-                                         batch_size=batch_size, 
-                                         places=self._place, 
-                                         feed_list=feed_list, 
-                                         num_workers=num_workers, 
-                                         return_list=True)
-        
+            eval_sampler = DistributedBatchSampler(eval_dataset, 
+                                                   batch_size=batch_size)
+            eval_loader = DataLoader(eval_dataset, 
+                                        batch_sampler=eval_sampler, 
+                                        places=self._place, 
+                                        feed_list=feed_list, 
+                                        num_workers=num_workers, 
+                                        return_list=True)
+
         do_eval = eval_loader is not None
         self._test_dataloader = eval_loader
         metrics_name = self._metrics_name()
