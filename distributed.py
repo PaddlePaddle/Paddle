@@ -110,6 +110,10 @@ class DistributedBatchSampler(BatchSampler):
         return num_samples // self.batch_size
 
 
+def _all_gather(x, nranks, ring_id=0, use_calc_stream=True):
+    return _c_allgather(x, nranks, ring_id=ring_id, use_calc_stream=use_calc_stream)
+
+
 def get_local_rank():
     return Env().local_rank
 
@@ -203,11 +207,7 @@ def prepare_distributed_context(place=None):
             exe.run(communicator_prog)
 
         if fluid.in_dygraph_mode():
-            cnt = 0
-            while fluid.in_dygraph_mode():
-                cnt += 1
-                print('debug', cnt)
-                fluid.disable_dygraph()
+            fluid.disable_dygraph()
             _init_context()
             fluid.enable_dygraph(place)
         else:
