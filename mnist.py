@@ -28,7 +28,7 @@ from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 
 from model import Model, CrossEntropy, Input
 from metrics import Accuracy
-from distributed import prepare_context, all_gather, Env, get_nranks, get_local_rank, DistributedBatchSampler, to_numpy
+from distributed import prepare_context, Env, get_nranks, DistributedBatchSampler
 from paddle.fluid.io import BatchSampler, DataLoader, MnistDataset
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
@@ -112,7 +112,8 @@ class CustromMnistDataset(MnistDataset):
                  label_filename=None,
                  mode='train',
                  download=True):
-        super(CustromMnistDataset, self).__init__(image_filename, label_filename, mode, download)
+        super(CustromMnistDataset, self).__init__(image_filename, 
+                                    label_filename, mode, download)
 
 
     def __getitem__(self, idx):
@@ -135,7 +136,6 @@ def main():
         os.mkdir('mnist_checkpoints')
 
     with guard:
-
         train_dataset = CustromMnistDataset(mode='train')
         val_dataset = CustromMnistDataset(mode='test')
         

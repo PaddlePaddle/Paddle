@@ -350,6 +350,7 @@ class StaticGraphAdapter(object):
             if self.mode != 'train' and self.model._test_dataloader is not None \
                                     and self._nranks > 1:
                 total_size = len(self.model._test_dataloader.dataset)
+                # TODO: fixme if have better way to get batch size
                 samples = state[0].shape[0]
                 current_count = self._merge_count.get(self.mode, 0)
                 if current_count + samples > total_size:
