@@ -1,4 +1,4 @@
-# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,16 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .plot import Ploter
-__all__ = ['dump_config', 'Ploter']
-
-#TODO: define new api under this directory
-# __all__ = ['profiler',
-#            'profiler.cuda_profiler',
-#            'profiler.profiler',
-#            'profiler.reset_profiler',
-#            'profiler.start_profiler',
-#            'profiler.stop_profiler',
-#            'unique_name',
-#            'load_op_library',
-#            'require_version']
+# TODO: define pooling functions
+# __all__ = ['pool2d',
+#            'pool3d',
+#            'adaptive_pool2d',
+#            'adaptive_pool3d']

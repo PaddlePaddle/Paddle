@@ -12,16 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .plot import Ploter
-__all__ = ['dump_config', 'Ploter']
-
-#TODO: define new api under this directory
-# __all__ = ['profiler',
-#            'profiler.cuda_profiler',
-#            'profiler.profiler',
-#            'profiler.reset_profiler',
-#            'profiler.start_profiler',
-#            'profiler.stop_profiler',
-#            'unique_name',
-#            'load_op_library',
-#            'require_version']
+#TODO: define new api of profiler
+# __all__ = ['cuda_profiler',
+#            'profiler',
+#            'reset_profiler',
+#            'start_profiler',
+#            'stop_profiler']
