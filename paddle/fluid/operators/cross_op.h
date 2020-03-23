@@ -42,7 +42,7 @@ class CrossKernel : public framework::OpKernel<T> {
           "AttrError: Input(X/Y).dims.size() must be greater than dim, and"
           "Input(X).dims()[dim] must be equal to 3. But received: "
           "Input(X).dims = [%s], Attr(dim) = %d",
-          input_x_dims, dim)
+          input_x_dims, dim);
     } else {
       for (size_t i = 0; i < input_x_dims.size(); i++) {
         if (input_x_dims[i] == 3) {
@@ -101,9 +101,9 @@ class CrossGradKernel : public framework::OpKernel<T> {
     auto& input_y = input_y_var->Get<LoDTensor>();
     auto& input_out_grad = input_out_grad_var->Get<LoDTensor>();
     auto* output_x_grad =
-        output_x_grad_var->GetMutable<LoDTensor>(context.GetPlace());
+        output_x_grad_var->GetMutable<LoDTensor>();
     auto* output_y_grad =
-        output_y_grad_var->GetMutable<LoDTensor>(context.GetPlace());
+        output_y_grad_var->GetMutable<LoDTensor>();
 
     int dim = context.Attr<int>("dim");
     auto input_x_dims = input_x.dims();
@@ -113,7 +113,7 @@ class CrossGradKernel : public framework::OpKernel<T> {
           "AttrError: Input(X/Y).dims.size() must be greater than dim, and"
           "Input(X).dims()[dim] must be equal to 3. But received: "
           "Input(X).dims = [%s], Attr(dim) = %d",
-          input_x_dims, dim)
+          input_x_dims, dim);
     } else {
       for (size_t i = 0; i < input_x_dims.size(); i++) {
         if (input_x_dims[i] == 3) {
