@@ -24,6 +24,7 @@ import paddle.fluid.layers as layers
 import os
 from op_test import OpTest
 from paddle.fluid.framework import grad_var_name
+from paddle.fluid import Program, program_guard
 
 
 def _reference_testing(x, batch_size, batch_sum, batch_square_sum, slot_dim=-1):
@@ -557,6 +558,14 @@ class TestDataNormOpWithSyncStats(unittest.TestCase):
 
         for f in filelist:
             os.remove(f)
+
+
+class TestDataNormOpErrorr(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            x2 = fluid.layers.data(name='x2', shape=[3, 4], dtype="int32")
+            #self.assertRaises(TypeError, fluid.data_norm, x2)
+            fluid.layers.data_norm(input=x2,param_attr={},enable_scale_and_shift=True)
 
 
 if __name__ == '__main__':

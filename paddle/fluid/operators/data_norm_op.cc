@@ -319,14 +319,13 @@ class DataNormKernel<platform::CPUDeviceContext, T>
                 (ConstEigenArrayMap<T>(x->data<T>(), C, N).colwise() -
                  means_arr)
                     .colwise() *
-                 scales_arr;
+                scales_arr;
           } else if (ctx.Attr<bool>("enable_scale_and_shift") &&
                      slot_dim <= 0) {
             const auto *scale_w = ctx.Input<Tensor>("scale_w");
             const auto *bias = ctx.Input<Tensor>("bias");
             ConstEigenVectorArrayMap<T> scale_w_arr(scale_w->data<T>(), C);
             ConstEigenVectorArrayMap<T> bias_arr(bias->data<T>(), C);
-
 
             Eigen::Array<T, Eigen::Dynamic, 1> new_scale =
                 scales_arr * scale_w_arr;
@@ -354,9 +353,10 @@ class DataNormKernel<platform::CPUDeviceContext, T>
                   memset(y_data + offset + i, 0, sizeof(T) * slot_dim);
                 } else {
                   for (int j = i; j < i + slot_dim; ++j) {
-                    y_data[offset + j] =
-                        ((x_data[offset + j] - means_data[j]) *
-                        scales_data[j]) * scale_w_data[j] + bias_data[j];
+                    y_data[offset + j] = ((x_data[offset + j] - means_data[j]) *
+                                          scales_data[j]) *
+                                             scale_w_data[j] +
+                                         bias_data[j];
                   }
                 }
               }  // end for i

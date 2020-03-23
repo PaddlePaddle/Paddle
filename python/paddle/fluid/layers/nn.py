@@ -2883,6 +2883,8 @@ def data_norm(input,
         bias_default = param_attr.get("bias", 0.0)
 
     # create scale and shift(bias) when enable_scale_and_shift is True
+    if name == None:
+        name = "dn"
     if enable_scale_and_shift:
         scale_w = helper.create_parameter(
             attr=ParamAttr(
