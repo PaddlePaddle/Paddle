@@ -87,7 +87,11 @@ ListenAndServOp::ListenAndServOp(const std::string &type,
                                  const framework::AttributeMap &attrs)
     : OperatorBase(type, inputs, outputs, attrs) {}
 
-ListenAndServOp::~ListenAndServOp() { Stop(); }
+ListenAndServOp::~ListenAndServOp() {
+  if (rpc_service_ != nullptr) {
+    Stop();
+  }
+}
 
 void ListenAndServOp::Stop() {
   rpc_service_->ShutDown();
