@@ -339,7 +339,7 @@ void FleetWrapper::PushDenseVarsAsync(
           g_data, sizeof(float) * count, stream);
       g = pin_g;
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, stream));
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(stream, event, 0));
+      cudaEventSynchronize(event);
     }
     #endif
     if (scale_datanorm >= 0) {
@@ -409,7 +409,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   if (!platform::is_cpu_place(place)) {
     
     in_cpu = false;
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(stream, event, 0));
+    cudaEventSynchronize(event);
     
     Variable* g_var = scope.FindVar(sparse_grad_names[0]);
     LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
@@ -459,8 +459,8 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       Variable *pin_var = scope.FindVar(sparse_grad_names[i] + "pin");
       LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();
       g = pin_tensor->data<float>();
-      
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(stream, event, 0));
+
+      cudaEventSynchronize(event);
       if (i + 1 < sparse_grad_names.size()) {
     
         Variable* next_g_var = scope.FindVar(sparse_grad_names[i + 1]);

@@ -683,6 +683,9 @@ void DownpourWorker::TrainFilesWithProfiler() {
     }
     VLOG(3) << "Fill sparse value for all sparse table done.";
 
+    #ifdef PADDLE_WITH_CUDA
+    cudaEventSynchronize(event_);
+    #endif
     int run_op_idx = 0;
     for (auto& op : ops_) {
       bool need_skip = false;
@@ -916,7 +919,7 @@ void DownpourWorker::TrainFiles() {
     }
     VLOG(3) << "fill sparse value for all sparse table done.";
     #ifdef PADDLE_WITH_CUDA
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamWaitEvent(copy_stream_, event_, 0));
+    cudaEventSynchronize(event_);
     #endif
     // do computation here
     for (auto& op : ops_) {
