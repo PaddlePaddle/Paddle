@@ -155,6 +155,22 @@ POD_IP (current node ip address, not needed for local training)
         help="The path for each process's log.If it's not set, the log will printed to default pipe."
     )
 
+    parser.add_argument(
+        "--hdfs_name",
+        type=str,
+        default=None,
+        help="The hdfs_name used for edl.")
+
+    parser.add_argument(
+        "--hdfs_ugi", type=str, default=None, help="The hdfs_ugi used for edl.")
+
+    # checkpoint will saved here
+    parser.add_argument(
+        "--hdfs_path",
+        type=str,
+        default=None,
+        help="The hdfs_path used for edl.")
+
     #positional
     parser.add_argument(
         "training_script",

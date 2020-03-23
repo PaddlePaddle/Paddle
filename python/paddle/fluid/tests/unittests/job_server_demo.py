@@ -22,6 +22,7 @@ add_arg('pod_num_of_node', int, 1, "")
 add_arg('del_pods_one_step', int, 1, "")
 add_arg('add_pods_one_step', int, 1, "")
 add_arg('time_interval_to_change', int, 900, "")
+add_arg('server_port', int, 6070, "")
 
 random.seed(10)
 
@@ -108,7 +109,6 @@ class JobInfoManager(object):
 
         thread = threading.Thread(target=self.run)
         self._t_id = thread.start()
-        #print("job manager started!")
 
     def get_job_pods(self, job_id):
         with self._lock:
@@ -121,7 +121,6 @@ class JobInfoManager(object):
                 pod_num)
             self.job[job_id] = pods[:-pod_num]
             self.job_stage[self._job_id] = step_id
-            #print("deleted pods {}".format(self.job[job_id]))
 
     def _add_tail(self, job_id, pod_num, step_id):
         with self._lock:
@@ -134,7 +133,6 @@ class JobInfoManager(object):
                                        self._gpu_num_of_pod)
             self.job[self._job_id] = pods
             self.job_stage[self._job_id] = step_id
-            #print("added pods {}".format(pods))
 
     def run(self):
         step_id = -1
@@ -143,12 +141,10 @@ class JobInfoManager(object):
             time.sleep(args.time_interval_to_change)  # 20minutes
             if modify:
                 step_id += 1
-                #print("del 2 pods")
                 self._del_tail(self._job_id, args.del_pods_one_step, step_id)
                 time.sleep(args.time_interval_to_change)
 
                 step_id += 1
-                #print("add 2 pods")
                 self._add_tail(self._job_id, args.add_pods_one_step, step_id)
                 #modify = False
 
@@ -170,12 +166,10 @@ def not_found(error):
 def get_job_pods():
     try:
         job_id = request.args.get('job_id')
-        #print("job_id:", job_id)
         job_id = "test_job_id_1234"
     except:
         return jsonify({'job_id': {}})
     job_pods, flag = job_manager.get_job_pods("test_job_id_1234")
-    #print("job_pods:", job_pods)
     return jsonify({'job_id': job_id, "pods": job_pods, "job_stage_flag": flag})
 
 
@@ -183,7 +177,6 @@ def get_job_pods():
 def update_job_static():
     if not request.json or not 'job_id' in request.json or not 'estimated_run_time' in request.json:
         abort(400)
-    #print(requests.json)
 
 
 class ScopeKV(object):
@@ -212,9 +205,8 @@ class ScopeKV(object):
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    #print("input_args:", args)
     job_manager.start(
         args.node_ips,
         gpu_num_of_node=args.gpu_num_of_node,
         pod_num_of_node=args.pod_num_of_node)
-    app.run(host='0.0.0.0', port=8180, threaded=True, processes=1)
+    app.run(host='0.0.0.0', port=args.server_port, threaded=True, processes=1)
