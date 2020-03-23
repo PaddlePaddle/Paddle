@@ -49,7 +49,8 @@ static void ClearNoNeedBufferInputs(OpBase* op) {
 
       auto& var = each_var->Var();
       PADDLE_ENFORCE_EQ(var.IsType<framework::LoDTensor>(), true,
-                        "Only support LoDTensor");
+                        platform::errors::InvalidArgument(
+                            "The type of Variable var should be LoDTensor."));
       // TODO(zjl): support higher order derivatives
       auto new_var = new VariableWrapper(each_var->Name());
       auto* new_tensor =
