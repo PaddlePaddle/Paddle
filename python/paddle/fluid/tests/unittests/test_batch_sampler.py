@@ -82,7 +82,6 @@ class TestBatchSamplerWithIndicesAndDataSource(unittest.TestCase):
             bs = BatchSampler(
                 data_source=[0] * self.num_samples,
                 indices=list(range(self.num_samples)),
-                sample_iter=iter(range(self.num_samples)),
                 batch_size=self.batch_size,
                 drop_last=self.drop_last)
             self.assertTrue(False)

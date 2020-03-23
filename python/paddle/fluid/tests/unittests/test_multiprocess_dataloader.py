@@ -22,7 +22,7 @@ import unittest
 import numpy as np
 
 import paddle.fluid as fluid
-from paddle.fluid.io import Dataset, DataLoader
+from paddle.fluid.io import Dataset, BatchSampler, DataLoader
 from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.dygraph.base import to_variable
 
@@ -136,6 +136,7 @@ class TestStaticDataLoader(unittest.TestCase):
                 batch_size=BATCH_SIZE,
                 shuffle=use_buffer_reader,
                 drop_last=True)
+            assert len(dataloader) == int(SAMPLE_NUM / BATCH_SIZE)
 
             exe = fluid.Executor(place=places[0])
             exe.run(startup_prog)
@@ -231,6 +232,7 @@ class TestDygraphDataLoader(TestStaticDataLoader):
                 batch_size=BATCH_SIZE,
                 shuffle=use_buffer_reader,
                 drop_last=True)
+            assert len(dataloader) == int(SAMPLE_NUM / BATCH_SIZE)
 
             step_list = []
             loss_list = []
@@ -283,6 +285,71 @@ class TestDataLoaderSetXXXException(unittest.TestCase):
                 self.assertTrue(False)
             except:
                 pass
+
+
+class TestDataLoaderAssert(unittest.TestCase):
+    def test_main(self):
+        place = fluid.cpu_places()[0]
+        with fluid.dygraph.guard(place):
+            dataset = RandomDataset(SAMPLE_NUM, CLASS_NUM)
+            batch_sampler = BatchSampler(data_source=dataset)
+
+            # dataset is not instance of Dataset
+            try:
+                loader = DataLoader(dataset=batch_sampler, places=place)
+                self.assertTrue(False)
+            except AssertionError:
+                pass
+
+            # places is None
+            try:
+                loader = DataLoader(dataset=dataset, places=None)
+                self.assertTrue(False)
+            except AssertionError:
+                pass
+
+            # num_workers < 0
+            try:
+                loader = DataLoader(
+                    dataset=dataset, places=place, num_workers=-1)
+                self.assertTrue(False)
+            except AssertionError:
+                pass
+
+            # timeout < 0
+            try:
+                loader = DataLoader(dataset=dataset, places=place, timeout=-1)
+                self.assertTrue(False)
+            except AssertionError:
+                pass
+
+            # batch_sampler is not instance of BatchSampler
+            try:
+                loader = DataLoader(
+                    dataset=dataset, places=place, batch_sampler=dataset)
+                self.assertTrue(False)
+            except AssertionError:
+                pass
+
+            # set batch_sampler and shuffle/batch_size/drop_last
+            try:
+                loader = DataLoader(
+                    dataset=dataset,
+                    places=place,
+                    batch_sampler=batch_sampler,
+                    shuffle=True,
+                    drop_last=True)
+                self.assertTrue(False)
+            except AssertionError:
+                pass
+
+            # set batch_sampler correctly
+            try:
+                loader = DataLoader(
+                    dataset=dataset, places=place, batch_sampler=batch_sampler)
+                self.assertTrue(True)
+            except AssertionError:
+                self.assertTrue(False)
 
 
 if __name__ == '__main__':

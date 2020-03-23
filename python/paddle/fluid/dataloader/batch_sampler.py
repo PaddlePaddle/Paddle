@@ -43,7 +43,7 @@ class BatchSampler(object):
                 :attr:`data_source` either :attr:`data_source` or
                 :attr:`indices` should be set, give the whole
                 indices to sampler from directly. Default None.
-        shuffle(bool): whther to shuffle indices order before genrate
+        shuffle(bool): whether to shuffle indices order before genrating
                 batch indices. :attr:`shuffle` should not be set if 
                 :attr:`sample_iter` is set. Default False.
         batch_size(int): sample indice number in a mini-batch indices.
