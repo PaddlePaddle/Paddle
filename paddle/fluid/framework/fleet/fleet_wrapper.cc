@@ -418,6 +418,7 @@ void FleetWrapper::PullSparseToTensorSync(
       memcpy(outputs[index]->mutable_data<float>(place), init_data.data(),
              fea_dim);
     }
+  }
 #endif
 }
 
