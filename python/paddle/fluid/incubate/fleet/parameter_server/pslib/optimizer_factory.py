@@ -23,6 +23,7 @@ from collections import OrderedDict
 from .node import DownpourWorker, DownpourServer
 from . import ps_pb2 as pslib
 
+# this dict is for store info about pull/push sparse ops.
 FLEET_GLOBAL_DICT = {
     # global settings
     "enable": False,

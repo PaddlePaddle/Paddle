@@ -503,11 +503,43 @@ def _pull_sparse(input,
                  size,
                  table_id,
                  accessor_class,
-                 name="embedding",
                  ctr_label_name="",
                  padding_id = 0,
                  dtype='float32',
                  scale_sparse_grad=True):
+    """
+    **Pull Fleet Sparse Layer**
+
+    This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
+    Fleet lookup table. The result of this lookup is the embedding of each ID in the
+    :attr:`input`.
+
+    Args:
+        input(Variable|list of Variable): Input is a Tensor<int64> Variable, which
+            contains the IDs information.
+        size(int): The embedding size parameter, which indicates the size of
+            each embedding vector respectively.
+        table_id(int): the fleet table id of this embedding.
+        accessor_class(str): the pslib accessor of the table, default is DownpourCtrAccessor.
+        ctr_label_name(str): the layer name of click.
+        padding_id(int): the padding id during lookup, default is 0.
+        dtype(str): The dtype refers to the data type of output tensor. Only supports
+            float32 now.
+        scale_sparse_grad(bool): whether to scale sparse gradient with batch size. default
+            is True.
+
+    Returns:
+        Variable|list of Variable: The tensor variable storing the embeddings of the \
+                  supplied inputs.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          emb = fluid.layers.nn._pull_sparse(
+              input=data, size=11, table_id=0, accessor_class="DownpourCtrAccessor")
+    """
     helper = LayerHelper(name, **locals())
     inputs = helper.multiple_input()
     outs = [
@@ -547,6 +579,40 @@ def _pull_sparse_v2(input,
                    padding_id = 0,
                    dtype='float32',
                    scale_sparse_grad=True):
+    """
+    **Pull Fleet Sparse Layer**
+
+    This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
+    Fleet lookup table. The result of this lookup is the embedding of each ID in the
+    :attr:`input`.
+
+    Args:
+        input(Variable|list of Variable): Input is a Tensor<int64> Variable, which
+            contains the IDs information.
+        size(int): The embedding size parameter, which indicates the size of
+            each embedding vector respectively.
+        table_id(int): the pslib table id of this embedding.
+        accessor_class(str): the fleet accessor of the table, default is DownpourCtrAccessor.
+        ctr_label_name(str): the layer name of click.
+        padding_id(int): the padding id during lookup, default is 0.
+        dtype(str): The dtype refers to the data type of output tensor. Only supports
+            float32 now.
+        scale_sparse_grad(bool): whether to scale sparse gradient with batch size. default
+            is True.
+
+    Returns:
+        Variable|list of Variable: The tensor variable storing the embeddings of the \
+                  supplied inputs.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          emb = fluid.layers.nn._pull_sparse_v2(
+              input=data, size=11, table_id=0, accessor_class="DownpourCtrAccessor")
+    """
+
     helper = LayerHelper(name, **locals())
     inputs = helper.multiple_input()
     outs = [
@@ -635,7 +701,7 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
     Args:
         input(${emission_type}): ${emission_comment} 
         label(${label_type}): ${label_comment}
-        Length(${length_type}): ${length_comment}
+        length(${length_type}): ${length_comment}
         param_attr(ParamAttr): The attribute of the learnable parameter for transition parameter.
 
     Returns:

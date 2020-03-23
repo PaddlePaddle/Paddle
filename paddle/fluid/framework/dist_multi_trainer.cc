@@ -24,8 +24,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
-                                  Dataset *dataset) {
+void DistMultiTrainer::Initialize(const TrainerDesc& trainer_desc,
+                                  Dataset* dataset) {
   thread_num_ = trainer_desc.thread_num();
   SetDataset(dataset);
 

@@ -41,7 +41,7 @@ class PushDenseOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("DenseGrads", "The dense gradient tensors").AsDuplicable();
     AddInput("Ids", "the tensor to get batch size").AsDuplicable();
     AddAttr<int>("TableId", "(int, the table id of this embedding")
-        .SetDefault(-1);;
+        .SetDefault(-1);
     AddAttr<float>("ScaleDataNorm", "(float, scale data norm gradient")
         .SetDefault(-1.0f);
     AddAttr<std::vector<std::string>>("InputNames", "(vector, slot names")

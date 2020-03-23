@@ -377,18 +377,15 @@ void FleetWrapper::PullSparseToTensorSync(
     framework::LoDTensor* tensor = inputs[index];
     int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
-    for (size_t i = 0; i < len; ++i, output_len+=fea_dim) {
+    for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
       if (!output || output_len == size_t(output->numel())) {
         ++output_index;
-        PADDLE_ENFORCE_LT(output_index, outputs.size(),
-                          "output_index should < outputs size");
+        CHECK(output_index < outputs.size());  // NOLINT
         output = outputs[output_index];
         output_data = output->mutable_data<float>(place);
         output_len = 0;
-        PADDLE_ENFORCE_EQ(output->numel() % fea_dim, 0,
-                          "output->numel \% fea_dim should be 0");
-        PADDLE_ENFORCE_NE(output_data, nullptr,
-                          "output_data should not be null");
+        CHECK(output->numel() % fea_dim, 0);  // NOLINT
+        CHECK(output_data != nullptr);       // NOLINT
       }
       uint64_t real_id = static_cast<uint64_t>(ids[i]);
       if (real_id == padding_id) {
@@ -400,9 +397,7 @@ void FleetWrapper::PullSparseToTensorSync(
       pull_result_ptr->push_back(output_data + output_len);
     }
   }
-  PADDLE_ENFORCE_NE(framework::FleetWrapper::pslib_ptr_, nullptr,
-                    "pslib_ptr_ should not be null");
-  auto status = framework::FleetWrapper::pslib_ptr_->_worker_ptr->pull_sparse(
+  auto status = pslib_ptr_->_worker_ptr->pull_sparse(
       pull_result_ptr->data(), table_id, fea_keys->data(), fea_keys->size());
   pull_sparse_status->clear();
   pull_sparse_status->push_back(std::move(status));
@@ -420,8 +415,8 @@ void FleetWrapper::PullSparseToTensorSync(
     size_t len = tensor->numel();
     std::vector<float> init_data(fea_dim, 0);
     for (size_t i = 0; i < len; ++i) {
-      memcpy(outputs[index]->mutable_data<float>(place),
-             init_data.data(), fea_dim);
+      memcpy(outputs[index]->mutable_data<float>(place), init_data.data(),
+             fea_dim);
     }
 #endif
 }

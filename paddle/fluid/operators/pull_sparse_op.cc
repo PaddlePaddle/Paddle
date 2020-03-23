@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <string>
 #include "paddle/fluid/operators/pull_sparse_op.h"
 
 namespace paddle {

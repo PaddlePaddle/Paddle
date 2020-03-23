@@ -561,6 +561,19 @@ fleet = PSLib()
 
 def _prepare_params(input, size, is_sparse=False, is_distributed=False,
                     padding_idx=None, param_attr=None, dtype='float32'):
+    """
+    preprocess params, this interface is not for users.
+
+    Args:
+        input(Variable|list of Variable): Input is a Tensor<int64> Variable
+        size(list of int): the embedding dim
+        is_sparse(bool): whether input is sparse ids
+        is_distributed(bool): whether in distributed mode
+        padding_idx(int): padding idx of input
+        param_attr(ParamAttr): To specify the weight parameter property
+        dtype(str): data type of output
+
+    """
     if param_attr is None:
         raise ValueError("param_attr must be set")
     name = param_attr.name
@@ -607,6 +620,19 @@ def _prepare_params(input, size, is_sparse=False, is_distributed=False,
 
 def _fleet_embedding(input, size, is_sparse=False, is_distributed=False,
                      padding_idx=None, param_attr=None, dtype='float32'):
+    """
+    add fleet embedding, this interface is not for users.
+
+    Args:
+        input(Variable|list of Variable): Input is a Tensor<int64> Variable
+        size(list of int): the embedding dim
+        is_sparse(bool): whether input is sparse ids
+        is_distributed(bool): whether in distributed mode
+        padding_idx(int): padding idx of input
+        param_attr(ParamAttr): To specify the weight parameter property
+        dtype(str): data type of output
+
+    """
     # check and set params
     _prepare_params(input, size, is_sparse, is_distributed, padding_idx,
                     param_attr, dtype)
@@ -621,7 +647,6 @@ def _fleet_embedding(input, size, is_sparse=False, is_distributed=False,
         size=size,
         table_id=FLEET_GLOBAL_DICT["emb_to_table"][name],
         accessor_class=FLEET_GLOBAL_DICT["emb_to_accessor"][name],
-        name=name,
         ctr_label_name=FLEET_GLOBAL_DICT["click_name"],
         padding_id=padding_idx,
         dtype=dtype,
@@ -630,6 +655,19 @@ def _fleet_embedding(input, size, is_sparse=False, is_distributed=False,
 
 def _fleet_embedding_v2(input, size, is_sparse=False, is_distributed=False,
                         padding_idx=None, param_attr=None, dtype='float32'):
+    """
+    add fleet embedding v2, this interface is not for users.
+
+    Args:
+        input(Variable|list of Variable): Input is a Tensor<int64> Variable
+        size(list of int): the embedding dim
+        is_sparse(bool): whether input is sparse ids
+        is_distributed(bool): whether in distributed mode
+        padding_idx(int): padding idx of input
+        param_attr(ParamAttr): To specify the weight parameter property
+        dtype(str): data type of output
+
+    """
     # check and set params
     _prepare_params(input, size, is_sparse, is_distributed, padding_idx,
                     param_attr, dtype)
@@ -643,7 +681,6 @@ def _fleet_embedding_v2(input, size, is_sparse=False, is_distributed=False,
         size=size,
         table_id=FLEET_GLOBAL_DICT["emb_to_table"][name],
         accessor_class=FLEET_GLOBAL_DICT["emb_to_accessor"][name],
-        name=name,
         ctr_label_name=FLEET_GLOBAL_DICT["click_name"],
         padding_id=padding_idx,
         dtype=dtype,
@@ -651,7 +688,24 @@ def _fleet_embedding_v2(input, size, is_sparse=False, is_distributed=False,
 
 
 class fleet_embedding(object):
+    """
+    fleet embedding class, it is used as a wrapper
+
+    Example:
+        .. code-block:: python
+
+          with fleet_embedding(click_name=label.name):
+              emb = fluid.layers.embedding(
+                  input=var,
+                  size=[-1, 11],
+                  is_sparse=True,
+                  is_distributed=True,
+                  param_attr=fluid.ParamAttr(name="embedding"))
+
+    """
+
     def __init__(self, click_name, scale_sparse_grad=True):
+        """Init."""
         self.origin_emb = fluid.layers.embedding
         self.origin_emb_v2 = fluid.embedding
         # if user uses cvm layer after embedding, click_name can be None
@@ -661,6 +715,7 @@ class fleet_embedding(object):
         self.accessor = "DownpourCtrAccessor"
 
     def __enter__(self):
+        """Enter."""
         fluid.layers.embedding = _fleet_embedding
         fluid.embedding = _fleet_embedding_v2
         FLEET_GLOBAL_DICT["cur_accessor"] = self.accessor
@@ -668,6 +723,7 @@ class fleet_embedding(object):
         FLEET_GLOBAL_DICT["scale_sparse_grad"] = self.scale_sparse_grad
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit."""
         fluid.layers.embedding = self.origin_emb
         fluid.embedding = self.origin_emb_v2
         FLEET_GLOBAL_DICT["cur_accessor"] = ""
