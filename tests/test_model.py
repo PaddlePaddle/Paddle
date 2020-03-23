@@ -28,7 +28,7 @@ import contextlib
 import paddle
 from paddle import fluid
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
-from model import Model, CrossEntropy, Input, Loss
+from model import Model, CrossEntropy, Input, Loss, init_context
 from metrics import Accuracy
 from callbacks import ProgBarLogger
 from paddle.fluid.io import BatchSampler, DataLoader
@@ -110,11 +110,6 @@ class MNIST(Model):
         return x
 
 
-@contextlib.contextmanager
-def null_guard():
-    yield
-
-
 class MLP(Model):
     def __init__(self):
         super(MLP, self).__init__()
@@ -146,12 +141,10 @@ class MyCrossEntropy(Loss):
 
 class TestModel(unittest.TestCase):
     def fit(self, dynamic, is_mlp=False):
+        init_context('dynamic' if FLAGS.dynamic else 'static')
+        
         im_shape = (-1, 784)
         batch_size = 128
-        
-        place = fluid.CUDAPlace(fluid.dygraph.parallel.Env().dev_id) \
-        if fluid.dygraph.parallel.Env().nranks > 1 else fluid.CUDAPlace(0)
-        fluid.enable_dygraph(place) if dynamic else None
 
         inputs = [Input(im_shape, 'float32', name='image')]
         labels = [Input([None, 1], 'int64', name='label')]

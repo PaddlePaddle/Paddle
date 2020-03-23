@@ -26,7 +26,7 @@ from paddle.fluid.optimizer import Momentum
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 from paddle.fluid.io import MNIST as MnistDataset
 
-from model import Model, CrossEntropy, Input
+from model import Model, CrossEntropy, Input, init_context
 from metrics import Accuracy
 
 
@@ -106,10 +106,8 @@ class MNIST(Model):
 
 
 def main():
-    place = fluid.CUDAPlace(fluid.dygraph.parallel.Env().dev_id) \
-        if fluid.dygraph.parallel.Env().nranks > 1 else fluid.CUDAPlace(0)
-    fluid.enable_dygraph(place) if FLAGS.dynamic else None
-
+    init_context('dynamic' if FLAGS.dynamic else 'static')
+    
     train_dataset = MnistDataset(mode='train')
     val_dataset = MnistDataset(mode='test')
     
