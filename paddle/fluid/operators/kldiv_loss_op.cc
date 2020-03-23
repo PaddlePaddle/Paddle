@@ -160,8 +160,7 @@ class KLDivLossOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(KLDivLossGradNoNeedBufferVarInference,
-                                      "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(KLDivLossGradNoNeedBufferVarInference, "X");
 
 }  // namespace operators
 }  // namespace paddle
