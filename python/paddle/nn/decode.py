@@ -1,4 +1,4 @@
-# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,16 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .plot import Ploter
-__all__ = ['dump_config', 'Ploter']
-
-#TODO: define new api under this directory
-# __all__ = ['profiler',
-#            'profiler.cuda_profiler',
-#            'profiler.profiler',
-#            'profiler.reset_profiler',
-#            'profiler.start_profiler',
-#            'profiler.stop_profiler',
-#            'unique_name',
-#            'load_op_library',
-#            'require_version']
+# TODO: define api to implement decoding algorithm  
+# __all__ = ['BeamSearchDecoder',
+#            'Decoder',
+#            'beam_search',
+#            'beam_search_decode',
+#            'crf_decoding',
+#            'ctc_greedy_decoder',
+#            'dynamic_decode',
+#            'gather_tree']
