@@ -3503,7 +3503,12 @@ class IrGraph(object):
             wrapped_adj_list[IrNode(k)] = {IrNode(n) for n in v}
         return wrapped_adj_list
 
-    def draw(self, save_path, name, marked_nodes=None, remove_ctr_var=True):
+    def draw(self,
+             save_path,
+             name,
+             marked_nodes=None,
+             remove_ctr_var=True,
+             convert_to_pdf=True):
         """
         Draw the graph. If `dot` command is installed, the drawn graph
         will be saved as pdf file type, otherwise dot file type is used.
@@ -3552,7 +3557,8 @@ class IrGraph(object):
         viz_pass = core.get_pass('graph_viz_pass')
         viz_pass.set('graph_viz_path', viz_dot_path)
         viz_pass.apply(self.graph)
-        _convert_to_pdf(viz_dot_path)
+        if convert_to_pdf is True:
+            _convert_to_pdf(viz_dot_path)
 
     def to_program(self):
         """
