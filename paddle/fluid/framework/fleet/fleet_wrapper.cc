@@ -1157,8 +1157,8 @@ int32_t FleetWrapper::CopyTableByFeasign(
 #endif
 }
 
-size_t FleetWrapper::GetAbsoluteSum(
-    size_t start, size_t end, size_t level, const framework::LoD& lod) {
+size_t FleetWrapper::GetAbsoluteSum(size_t start, size_t end, size_t level,
+                                    const framework::LoD& lod) {
   if (level >= lod.size() - 1) {
     return end - start;
   }
