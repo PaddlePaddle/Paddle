@@ -211,14 +211,6 @@ def manage_pods():
             logger.info("added_pods:{}".format([str(t) for t in added_pods]))
             pod_manager.start_local_pods(cluster2.job_server, cluster2.job_id,
                                          added_pods)
-            """
-            #gpu_rank = 0
-            for pod in added_pods:
-                pod_manager.start_local_pod(cluster2.job_server,
-                                            cluster2.job_id, pod)
-                #gpu_rank += 1
-            """
-
             cluster = cluster2
 
         time.sleep(3)

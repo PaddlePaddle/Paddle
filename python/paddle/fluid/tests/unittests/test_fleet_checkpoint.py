@@ -52,7 +52,7 @@ class FleetTest(unittest.TestCase):
         fleet.save_check_point(exe, dir_path, train_status=status, fs=fs)
         n1 = fleet._get_last_checkpoint_no(dir_path, fs=fs)
 
-        status2 = fleet.load_check_point(exe, dir_path, fs=fs)
+        status2 = fleet.load_check_point(exe, dir_path, trainer_id=0, fs=fs)
         assert status2 == status, "Checkpoint error!"
 
         fleet.save_check_point(exe, dir_path, train_status=status, fs=fs)

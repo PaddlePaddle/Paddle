@@ -68,6 +68,9 @@ class FS(object):
 
 class LocalFS(FS):
     def list_dirs(self, fs_path):
+        if not self.stat(fs_path):
+            return []
+
         return [
             f for f in os.listdir(fs_path) if os.path.isdir(fs_path + "/" + f)
         ]
@@ -125,6 +128,9 @@ class BDFS(FS):
         return lines
 
     def list_dirs(self, fs_path):
+        if not self.stat(fs_path):
+            return []
+
         dirs, _ = self.ls_dir(fs_path)
         return dirs
 

@@ -321,7 +321,21 @@ def get_cluster_from_args(args, selected_gpus):
     logger.debug("parsed from args:node_ips:{} node_ip:{} node_rank:{}".format(
         node_ips, node_ip, node_rank))
 
-    return get_cluster(node_ips, node_ip, args.started_port, selected_gpus)
+    free_ports = None
+    if not args.use_paddlecloud and len(
+            node_ips) <= 1 and args.started_port is None:
+        free_ports = find_free_ports(len(selected_gpus))
+        if free_ports is not None:
+            free_ports = list(free_ports)
+            #args.started_port = free_ports[0]
+    else:
+        free_ports = [
+            x
+            for x in range(args.started_port, args.started_port + len(
+                selected_gpus))
+        ]
+
+    return get_cluster(node_ips, node_ip, free_ports, selected_gpus)
 
 
 def get_hdfs_from_args(args):

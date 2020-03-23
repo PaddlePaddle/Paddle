@@ -334,7 +334,8 @@ def get_logger(log_level, name="root"):
     return logger
 
 
-def get_cluster(node_ips, node_ip, paddle_port, selected_gpus):
+def get_cluster(node_ips, node_ip, paddle_ports, selected_gpus):
+    assert type(paddle_ports) is list, "paddle_ports must be list"
     cluster = Cluster(hdfs=None)
     trainer_rank = 0
     for node_rank, ip in enumerate(node_ips):
@@ -343,8 +344,8 @@ def get_cluster(node_ips, node_ip, paddle_port, selected_gpus):
         pod.addr = ip
         for i in range(len(selected_gpus)):
             trainer = Trainer()
-            trainer.gpu.append(selected_gpus[i])
-            trainer.endpoint = "%s:%d" % (ip, paddle_port + i)
+            trainer.gpus.append(selected_gpus[i])
+            trainer.endpoint = "%s:%d" % (ip, paddle_ports[i])
             trainer.rank = trainer_rank
             trainer_rank += 1
 
@@ -406,3 +407,29 @@ def add_arguments(argname, type, default, help, argparser, **kwargs):
         type=type,
         help=help + ' Default: %(default)s.',
         **kwargs)
+
+
+def find_free_ports(num):
+    def __free_port():
+        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
+            s.bind(('', 0))
+            return s.getsockname()[1]
+
+    port_set = set()
+    step = 0
+    while True:
+        port = __free_port()
+        if port not in port_set:
+            port_set.add(port)
+
+        if len(port_set) >= num:
+            return port_set
+
+        step += 1
+        if step > 100:
+            print(
+                "can't find avilable port and use the specified static port now!"
+            )
+            return None
+
+    return None

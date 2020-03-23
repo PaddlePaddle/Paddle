@@ -330,6 +330,7 @@ std::string shell_get_command_output(const std::string& cmd, int time_out,
   int err_no = 0;
   ElapsedTime elapsed;
   do {
+    printf("exec cmd back:%s\n", cmd.c_str());
     err_no = 0;
     std::shared_ptr<FILE> pipe = shell_popen(cmd, "r", &err_no);
     string::LineFileReader reader;

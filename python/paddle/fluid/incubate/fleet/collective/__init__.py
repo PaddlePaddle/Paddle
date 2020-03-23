@@ -287,6 +287,7 @@ class Collective(Fleet):
     def load_check_point(self,
                          executor,
                          path,
+                         trainer_id,
                          main_program=None,
                          fs=LocalFS(),
                          local_cache_path=".cache",
@@ -304,10 +305,10 @@ class Collective(Fleet):
 
         local_fs = LocalFS()
         if fs.need_upload_download():
-            cache_path = "{}/{}.{}.load_cache".format(
-                local_cache_path, self._checkoint_prefix, max_no)
+            cache_path = "{}/{}.{}.load_cache.{}".format(
+                local_cache_path, self._checkoint_prefix, max_no, trainer_id)
             if local_fs.stat(cache_path):
-                local_fs.rm_dir_file(cache_path)
+                local_fs.delete(cache_path)
 
         real_path = "{}/{}.{}".format(path, self._checkoint_prefix, max_no)
         load_path = real_path

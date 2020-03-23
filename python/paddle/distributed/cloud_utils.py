@@ -61,7 +61,8 @@ paddlecloud environment.".format(args_node_ips, node_ips))
         node_ip:{} node_rank:{} started_port:{}"
                  .format(node_ips, node_ip, node_rank, started_port))
 
-    cluster = get_cluster(node_ips, node_ip, started_port, selected_gpus)
+    ports = [x for x in range(started_port, started_port + len(selected_gpus))]
+    cluster = get_cluster(node_ips, node_ip, ports, selected_gpus)
     return cluster, cluster.pods[node_rank]
 
 
