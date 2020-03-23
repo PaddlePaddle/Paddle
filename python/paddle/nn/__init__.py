@@ -14,4 +14,7 @@
 
 # TODO: import all neural network related api under this directory, 
 # including layers, linear, conv, rnn etc.
-# __all__ = [ ]
+import layer.loss as loss
+
+__all__ = []
+__all__ += [loss.__all__]
