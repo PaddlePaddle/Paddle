@@ -349,7 +349,7 @@ def square_error_cost(input, label):
     return square_out
 
 
-def l1_loss(input, label, size_average=None, reruce=None, reduction='mean'):
+def l1_loss(input, label, reduction='mean'):
     """
     This op accepts input predictions and target label and returns the
     mean absolute error.
@@ -375,8 +375,10 @@ def l1_loss(input, label, size_average=None, reruce=None, reduction='mean'):
         Out = SUM(|input - label|)
 
     Parameters:
-        input (Variable): Input tensor, the data type should be float32.
-        label (Variable): Label tensor, the data type should be float32.
+        input (Variable): Input tensor, the data type is float32,
+            float64, int32, int64.
+        label (Variable): Label tensor, the data type is float32,
+            float64, int32, int64.
         reduction (str, optional): Indicate how to average the loss by batch_size.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned; If :attr:`size_average` is ``'sum'``,
             the reduced sum loss is returned. Default is ``'None'``, the unreduced loss is returned.
@@ -389,36 +391,33 @@ def l1_loss(input, label, size_average=None, reruce=None, reduction='mean'):
 
         .. code-block:: python
 
-	    # declarative mode
-	    import paddle.fluid as fluid
-	    import numpy as np
-	    input = fluid.data(name="input", shape=[1])
-	    label = fluid.data(name="label", shape=[1])
-	    output = fluid.layers.l1_loss(input,label)
-	    place = fluid.CPUPlace()
-	    exe = fluid.Executor(place)
-	    exe.run(fluid.default_startup_program())
- 
-	    input_data = np.array([1.5]).astype("float32")
-	    label_data = np.array([1.7]).astype("float32")
-	    output_data = exe.run(fluid.default_main_program(),
-                feed={"input":input_data, "label":label_data},
-                fetch_list=[output],
-                return_numpy=True)
- 
-	    print(output_data)
-	    # [array([0.2], dtype=float32)]
-	    
-	    # imperative mode
-	    import paddle.fluid.dygraph as dg
+            # declarative mode
+            import paddle.fluid as fluid
+            import numpy as np
+            input = fluid.data(name="input", shape=[1])
+            label = fluid.data(name="label", shape=[1])
+            output = fluid.layers.l1_loss(input,label)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+    
+            input_data = np.array([1.5]).astype("float32")
+            label_data = np.array([1.7]).astype("float32")
+            output_data = exe.run(fluid.default_main_program(),
+                    feed={"input":input_data, "label":label_data},
+                    fetch_list=[output],
+                    return_numpy=True)
+    
+            print(output_data)  # [array([0.2], dtype=float32)]
+            
+            # imperative mode
+            import paddle.fluid.dygraph as dg
 
-	    with dg.guard(place) as g:
-    		input = dg.to_variable(input_data)
-    		label = dg.to_variable(label_data)
-    		output = fluid.layers.l1_loss(input, label)
-        print(output.numpy())
-	        
-	        # [0.2]
+            with dg.guard(place) as g:
+                input = dg.to_variable(input_data)
+                label = dg.to_variable(label_data)
+                output = fluid.layers.l1_loss(input, label)
+                print(output.numpy())  # [0.2]
     """
 
     if reduction not in ['sum', 'mean', 'none']:

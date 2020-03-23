@@ -54,40 +54,36 @@ class L1Loss(layers.Layer):
     Examples:
         .. code-block:: python
 
-	    # declarative mode
-	    import paddle.fluid as fluid
-        import paddle
-	    import numpy as np
-        l1_loss = paddle.loss.L1Loss()
-	    input = fluid.data(name="input", shape=[1])
-	    label = fluid.data(name="label", shape=[1])
-	    output = l1_loss(input, label)
-	    place = fluid.CPUPlace()
-	    exe = fluid.Executor(place)
-	    exe.run(fluid.default_startup_program())
+            # declarative mode
+            import paddle.fluid as fluid
+            import numpy as np
+            import paddle
+            input = fluid.data(name="input", shape=[1])
+            label = fluid.data(name="label", shape=[1])
+            l1_loss = paddle.nn.loss.L1Loss(reduction='mean')
+            output = l1_loss(input,label)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
     
-	    input_data = np.array([1.5]).astype("float32")
-	    label_data = np.array([1.7]).astype("float32")
-	    output_data = exe.run(fluid.default_main_program(),
-                feed={"input":input_data, "label":label_data},
-                fetch_list=[output],
-                return_numpy=True)
- 
-	    print(output_data)
-	    # [array([0.2], dtype=float32)]
-	    
-	    # imperative mode
-	    import paddle.fluid.dygraph as dg
-        import paddle
+            input_data = np.array([1.5]).astype("float32")
+            label_data = np.array([1.7]).astype("float32")
+            output_data = exe.run(fluid.default_main_program(),
+                    feed={"input":input_data, "label":label_data},
+                    fetch_list=[output],
+                    return_numpy=True)
+    
+            print(output_data)  # [array([0.2], dtype=float32)]
+            
+            # imperative mode
+            import paddle.fluid.dygraph as dg
 
-        l1_loss = paddle.loss.L1Loss()
-	    with dg.guard(place) as g:
-    		input = dg.to_variable(input_data)
-    		label = dg.to_variable(label_data)
-    		output = l1_loss(input, label)
-        print(output.numpy())
-	        
-	        # [0.2]
+            with dg.guard(place) as g:
+                input = dg.to_variable(input_data)
+                label = dg.to_variable(label_data)
+                l1_loss = paddle.nn.loss.L1Loss(reduction='mean')
+                output = l1_loss(input,label)
+                print(output.numpy())  # [0.2]
     """
 
     def __init__(self, reduction='mean'):
