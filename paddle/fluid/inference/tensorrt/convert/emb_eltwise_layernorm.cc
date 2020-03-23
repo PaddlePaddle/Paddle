@@ -46,6 +46,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     std::vector<float*> input_embs;
     std::vector<int> emb_sizes;
 
+    // get the presistable var's data
     auto get_persistable_data = [&](const std::string& var_name,
                                     framework::DDim* dims) -> float* {
       auto* temp_var = scope.FindVar(var_name);
@@ -88,9 +89,11 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
                                                        scale_size, hidden, eps);
       layer = engine_->AddPluginV2(input_ids.data(), input_num, plugin);
     } else {
-      PADDLE_THROW(
-          platform::errors::Fatal("There is no implement for Skip Layernorm "
-                                  "plugin for static shape input mode."));
+      PADDLE_THROW(platform::errors::Fatal(
+          "You are running the Ernie(Bert) model in static"
+          "shape mode, which is not supported for the time being.\n"
+          "You can use the config.SetTRTDynamicShapeInfo(...) interface"
+          " to set the shape information to run the dynamic shape mode."));
     }
 
     auto output_name = op_desc.Output("Out")[0];

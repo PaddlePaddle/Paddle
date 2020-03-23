@@ -381,10 +381,14 @@ if(WITH_GPU AND TENSORRT_FOUND)
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TEST_TRT_DYNAMIC_MODEL})
 
-    set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie")
+    set(TEST_TRT_ERNIE_MODEL "${TRT_MODEL_INSTALL_DIR}/ernie_test")
+    if (NOT EXISTS ${TEST_TRT_ERNIE_MODEL})
+        inference_download_and_uncompress(${TEST_TRT_ERNIE_MODEL} ${INFERENCE_URL}/tensorrt_test "ernie_model_4.tar.gz")
+    endif()
+
     inference_analysis_test(test_trt_dynamic_shape_ernie SRCS trt_dynamic_shape_ernie_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
-            ARGS --infer_model=${ERNIE_INSTALL_DIR}/model)
+            ARGS --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4)
 endif()
 
 set(LITE_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/lite")

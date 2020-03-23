@@ -71,9 +71,14 @@ bool SkipLayerNormPluginDynamic::supportsFormatCombination(
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
 #ifdef SUPPORT_CUDA_FP16
-    return (in.type == nvinfer1::DataType::kFLOAT ||
-            in.type == nvinfer1::DataType::kHALF) &&
-           (in.format == nvinfer1::TensorFormat::kLINEAR);
+    if (ban_fp16_) {
+      return (in.type == nvinfer1::DataType::kFLOAT) &&
+             (in.format == nvinfer1::TensorFormat::kLINEAR);
+    } else {
+      return (in.type == nvinfer1::DataType::kFLOAT ||
+              in.type == nvinfer1::DataType::kHALF) &&
+             (in.format == nvinfer1::TensorFormat::kLINEAR);
+    }
 #else
     return (in.type == nvinfer1::DataType::kFLOAT) &&
            (in.format == nvinfer1::TensorFormat::kLINEAR);

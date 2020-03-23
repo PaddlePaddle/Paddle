@@ -275,7 +275,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto dims = engine->engine()->getBindingDimensions(bind_index);
         ddim.push_back(runtime_batch);
         for (int i = 0; i < dims.nbDims; i++) {
-          if (dims.d[i] != 1 && i != 0) ddim.push_back(dims.d[i]);
+          ddim.push_back(dims.d[i]);
         }
       } else {
 #if IS_TRT_VERSION_GE(6000)

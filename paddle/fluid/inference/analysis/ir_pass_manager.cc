@@ -130,6 +130,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("optim_input_shape",
                 new std::map<std::string, std::vector<int>>(
                     argument->optim_input_shape()));
+      pass->Set("close_trt_plugin_fp16",
+                new bool(argument->close_trt_plugin_fp16()));
     }
     if (pass_name == "ngraph_subgraph_pass") {
       pass->Set("program",

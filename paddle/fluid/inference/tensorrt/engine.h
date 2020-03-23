@@ -124,6 +124,7 @@ class TensorRTEngine {
       const ShapeMapType min_input_shape = {},
       const ShapeMapType max_input_shape = {},
       const ShapeMapType optim_input_shape = {},
+      bool close_trt_plugin_fp16 = false,
       nvinfer1::ILogger& logger = NaiveLogger::Global())
       : max_batch_(max_batch),
         max_workspace_(max_workspace),
@@ -133,6 +134,7 @@ class TensorRTEngine {
         min_input_shape_(min_input_shape),
         max_input_shape_(max_input_shape),
         optim_input_shape_(optim_input_shape),
+        close_trt_plugin_fp16_(close_trt_plugin_fp16),
         logger_(logger) {
     if (min_input_shape_.size() != 0 && max_input_shape_.size() != 0 &&
         optim_input_shape_.size() != 0) {
@@ -271,7 +273,7 @@ class TensorRTEngine {
   ShapeMapType min_input_shape() { return min_input_shape_; }
   ShapeMapType max_input_shape() { return max_input_shape_; }
   ShapeMapType optim_input_shape() { return optim_input_shape_; }
-
+  bool close_trt_plugin_fp16() { return close_trt_plugin_fp16_; }
   bool with_dynamic_shape() { return with_dynamic_shape_; }
 
 #if IS_TRT_VERSION_GE(6000)
@@ -305,6 +307,7 @@ class TensorRTEngine {
   ShapeMapType min_input_shape_;
   ShapeMapType max_input_shape_;
   ShapeMapType optim_input_shape_;
+  bool close_trt_plugin_fp16_{false};
   nvinfer1::ILogger& logger_;
 
   // max data size for the buffers.
@@ -375,10 +378,12 @@ class TRTEngineManager {
       const std::map<std::string, std::vector<int>> min_input_shape = {},
       const std::map<std::string, std::vector<int>> max_input_shape = {},
       const std::map<std::string, std::vector<int>> optim_input_shape = {},
+      bool close_trt_plugin_fp16 = false,
       nvinfer1::ILogger& logger = NaiveLogger::Global()) {
-    auto* p = new TensorRTEngine(max_batch, max_workspace, precision,
-                                 calibrator, device_id, min_input_shape,
-                                 max_input_shape, optim_input_shape, logger);
+    auto* p =
+        new TensorRTEngine(max_batch, max_workspace, precision, calibrator,
+                           device_id, min_input_shape, max_input_shape,
+                           optim_input_shape, close_trt_plugin_fp16, logger);
     engines_[name].reset(p);
     return p;
   }

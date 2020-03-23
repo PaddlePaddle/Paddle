@@ -180,6 +180,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(min_input_shape, MinInputShape, input_shape_t);
   DECL_ARGUMENT_FIELD(max_input_shape, MaxInputShape, input_shape_t);
   DECL_ARGUMENT_FIELD(optim_input_shape, OptimInputShape, input_shape_t);
+  DECL_ARGUMENT_FIELD(close_trt_plugin_fp16, CloseTrtPluginFp16, bool);
 
   DECL_ARGUMENT_FIELD(use_tensorrt, UseTensorRT, bool);
   DECL_ARGUMENT_FIELD(tensorrt_max_batch_size, TensorRtMaxBatchSize, int);

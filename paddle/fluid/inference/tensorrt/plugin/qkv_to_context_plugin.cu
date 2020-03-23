@@ -113,8 +113,9 @@ inline void TransposeQKV(const int batch, const int seq_len,
 inline void TransposeQKV(const int batch, const int seq_len,
                          const int head_size, const int head_num,
                          const half *input, half *output, cudaStream_t stream) {
+  int scratch_size = batch * head_num * seq_len * seq_len;
   const dim3 grid(seq_len, batch, 3);
-  if (head_size % 2 == 0) {
+  if (head_size % 2 == 0 && scratch_size % 2 == 0) {
     const int h = head_size / 2;
     const half2 *input2 = reinterpret_cast<const half2 *>(input);
     half2 *output2 = reinterpret_cast<half2 *>(output);
@@ -188,9 +189,14 @@ bool QkvToContextPluginDynamic::supportsFormatCombination(
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
 #ifdef SUPPORT_CUDA_FP16
-    return (in.type == nvinfer1::DataType::kFLOAT ||
-            in.type == nvinfer1::DataType::kHALF) &&
-           (in.format == nvinfer1::TensorFormat::kLINEAR);
+    if (ban_fp16_) {
+      return (in.type == nvinfer1::DataType::kFLOAT) &&
+             (in.format == nvinfer1::TensorFormat::kLINEAR);
+    } else {
+      return (in.type == nvinfer1::DataType::kFLOAT ||
+              in.type == nvinfer1::DataType::kHALF) &&
+             (in.format == nvinfer1::TensorFormat::kLINEAR);
+    }
 #else
     return (in.type == nvinfer1::DataType::kFLOAT) &&
            (in.format == nvinfer1::TensorFormat::kLINEAR);

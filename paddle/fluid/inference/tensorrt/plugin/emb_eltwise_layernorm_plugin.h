@@ -44,11 +44,7 @@ class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
         eps_(eps) {}
 
   EmbEltwiseLayernormPluginDynamic(void const* serialData,
-                                   size_t serialLength) {
-    // deserializeBase(serialData, serialLength);
-    // DeserializeValue(&serialData, &serialLength, &beta_);
-  }
-  ~EmbEltwiseLayernormPluginDynamic() {}
+                                   size_t serialLength) {}
   nvinfer1::IPluginV2DynamicExt* clone() const override {
     return new EmbEltwiseLayernormPluginDynamic(
         embs_, bias_, scale_, emb_sizes_, bias_size_, scale_size_, hidden_size_,

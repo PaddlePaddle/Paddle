@@ -39,6 +39,19 @@ struct CUDATypeTraits<float> {
 };
 
 #ifdef PADDLE_WITH_CUDA
+// This functor involves a fusion calculation in Ernie or Bert.
+//  The fusion mode is as follows:
+//
+//      in_var  emb       in_var   emb
+//        |      |          |       |
+//      lookup_table      lookup_table
+//            |                 |
+//         lkt_var           lkt_var
+//             \                /
+//              elementwise_add
+//                     |
+//                elt_out_var
+//
 template <typename T>
 class EmbEltwiseLayerNormFunctor {
  public:
@@ -47,6 +60,19 @@ class EmbEltwiseLayerNormFunctor {
                   T *output, float eps, int input_num, cudaStream_t stream);
 };
 
+// This functor involves a fusion calculation in Ernie or Bert.
+// The fusion mode is as follows:
+//
+//         |    |
+//         matmul
+//           |
+//       eltwise_add
+//           |
+//        softmax    /
+//           \      /
+//             matmul
+//               |
+
 template <typename T>
 class MultiHeadGPUComputeFunctor {
  public:
@@ -54,6 +80,19 @@ class MultiHeadGPUComputeFunctor {
                   int seq_len, int head_num, int head_size, T *qkptr,
                   const T *bias_qk_ptr, T *tptr, T alpha, T beta);
 };
+
+// This functor involves a fusion calculation in Ernie or Bert.
+// The fusion mode is as follows:
+//
+// |           |
+// other_op1   other_op2
+//      |           |
+//      |------elementwise_add
+//                  |
+//              layer_norm
+//                  |
+//              other_op3
+//                  |
 
 template <typename T>
 class SkipLayerNormFunctor {

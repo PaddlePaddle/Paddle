@@ -26,43 +26,51 @@ void run(const AnalysisConfig& config, std::vector<float>* out_data) {
   auto input_names = predictor->GetInputNames();
 
   int run_batch = 1;
-  int run_seq_len = 5;
+  const int run_seq_len = 128;
 
   std::vector<int64_t> tmp_input;
   std::vector<float> tmp_four_input;
   tmp_input.reserve(run_batch * run_seq_len);
   tmp_four_input.reserve(run_batch * run_seq_len);
 
+  int64_t i0[run_seq_len] = {
+      1,    3558, 4,   75,  491, 89, 340, 313, 93,   4,   255,   10, 75,    321,
+      4095, 1902, 4,   134, 49,  75, 311, 14,  44,   178, 543,   15, 12043, 2,
+      75,   201,  340, 9,   14,  44, 486, 218, 1140, 279, 12043, 2};
+  int64_t i1[run_seq_len] = {
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  int64_t i2[run_seq_len] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
+                             10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+                             20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+                             30, 31, 32, 33, 34, 35, 36, 37, 38, 39};
+  float i3[run_seq_len] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+                           1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+                           1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+                           1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+
   // first input
-  for (int i = 0; i < run_batch * run_seq_len; i++) {
-    tmp_input[i] = i % 1800;
-  }
   auto input_t = predictor->GetInputTensor(input_names[0]);
   input_t->Reshape({run_batch, run_seq_len, 1});
-  input_t->copy_from_cpu(tmp_input.data());
+  input_t->copy_from_cpu(i0);
 
   // second input
-  for (int i = 0; i < run_batch * run_seq_len; i++) {
-    tmp_input[i] = i % 513;
-  }
   auto input_t2 = predictor->GetInputTensor(input_names[1]);
   input_t2->Reshape({run_batch, run_seq_len, 1});
-  input_t2->copy_from_cpu(tmp_input.data());
+  input_t2->copy_from_cpu(i1);
 
   // third input.
-  for (int i = 0; i < run_batch * run_seq_len; i++) {
-    tmp_input[i] = i % 3;
-  }
   auto input_t3 = predictor->GetInputTensor(input_names[2]);
   input_t3->Reshape({run_batch, run_seq_len, 1});
-  input_t3->copy_from_cpu(tmp_input.data());
+  input_t3->copy_from_cpu(i2);
 
-  for (int i = 0; i < run_batch * run_seq_len; i++) {
-    tmp_four_input[i] = (i % 255) / 255.;
-  }
   auto input_t4 = predictor->GetInputTensor(input_names[3]);
   input_t4->Reshape({run_batch, run_seq_len, 1});
-  input_t4->copy_from_cpu(tmp_four_input.data());
+  input_t4->copy_from_cpu(i3);
 
   ASSERT_TRUE(predictor->ZeroCopyRun());
 
@@ -93,28 +101,28 @@ void trt_ernie(bool with_fp16, std::vector<float> result) {
   std::vector<int> opt_shape = {batch, opt_seq_len, 1};
   // Set the input's min, max, opt shape
   std::map<std::string, std::vector<int>> min_input_shape = {
-      {"placeholder_0", min_shape},
-      {"placeholder_1", min_shape},
-      {"placeholder_2", min_shape},
+      {"read_file_0.tmp_0", min_shape},
+      {"read_file_0.tmp_1", min_shape},
+      {"read_file_0.tmp_2", min_shape},
       {"stack_0.tmp_0", {batch, head_number, min_seq_len, min_seq_len}}};
   std::map<std::string, std::vector<int>> max_input_shape = {
-      {"placeholder_0", max_shape},
-      {"placeholder_1", max_shape},
-      {"placeholder_2", max_shape},
+      {"read_file_0.tmp_0", max_shape},
+      {"read_file_0.tmp_1", max_shape},
+      {"read_file_0.tmp_2", max_shape},
       {"stack_0.tmp_0", {batch, head_number, max_seq_len, max_seq_len}}};
   std::map<std::string, std::vector<int>> opt_input_shape = {
-      {"placeholder_0", opt_shape},
-      {"placeholder_1", opt_shape},
-      {"placeholder_2", opt_shape},
+      {"read_file_0.tmp_0", opt_shape},
+      {"read_file_0.tmp_1", opt_shape},
+      {"read_file_0.tmp_2", opt_shape},
       {"stack_0.tmp_0", {batch, head_number, opt_seq_len, opt_seq_len}}};
 
   auto precision = AnalysisConfig::Precision::kFloat32;
   if (with_fp16) {
     precision = AnalysisConfig::Precision::kHalf;
   }
-  config.EnableTensorRtEngine(1 << 30, 1, 5, precision, false, true,
-                              min_input_shape, max_input_shape,
-                              opt_input_shape);
+  config.EnableTensorRtEngine(1 << 30, 1, 5, precision, false, true);
+  config.SetTRTDynamicShapeInfo(min_input_shape, max_input_shape,
+                                opt_input_shape);
   std::vector<float> out_data;
   run(config, &out_data);
   for (size_t i = 0; i < out_data.size(); i++) {
@@ -123,18 +131,16 @@ void trt_ernie(bool with_fp16, std::vector<float> result) {
 }
 
 TEST(AnalysisPredictor, no_fp16) {
-  std::vector<float> result = {-0.43203, 0.771308, -0.72201};
+  std::vector<float> result = {0.597841, 0.219972, 0.182187};
   trt_ernie(false, result);
 }
 
-/*
 TEST(AnalysisPredictor, fp16) {
 #ifdef SUPPORT_CUDA_FP16
- std::vector<float> result = {-0.43203, 0.771308, -0.72201};
- trt_ernie(true, result);
+  std::vector<float> result = {0.598336, 0.219558, 0.182106};
+  trt_ernie(true, result);
 #endif
 }
-*/
 
 }  // namespace inference
 }  // namespace paddle

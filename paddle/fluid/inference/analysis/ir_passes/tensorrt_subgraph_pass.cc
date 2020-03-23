@@ -288,12 +288,17 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
            "version, otherwise, there might be Segfault!";
   }
 
+  // When using TRT fp16, the precison of the output might have diff with fp32
+  // output.
+  // When set close_trt_plugin_fp16 to true, the plugin
+  bool close_trt_plugin_fp16 = Get<bool>("close_trt_plugin_fp16");
   tensorrt::TensorRTEngine *trt_engine =
       inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
           .Create(engine_key + std::to_string(predictor_id),
                   Get<int>("max_batch_size"), Get<int>("workspace_size"),
                   precision_mode, calibrator.get(), Get<int>("gpu_device_id"),
-                  min_input_shape, max_input_shape, opt_input_shape);
+                  min_input_shape, max_input_shape, opt_input_shape,
+                  close_trt_plugin_fp16);
 
   bool need_serialize = (use_static_engine && !load_from_memory);
   if (need_serialize) {

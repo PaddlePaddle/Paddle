@@ -112,7 +112,6 @@ class FcOpConverter : public OpConverter {
                                   static_cast<size_t>(Y_t->numel())};
     weight.dims.assign({n, m});
 
-    // DEBUG
     float* bias_data = nullptr;
     int bias_num = 0;
     if (with_bias) {

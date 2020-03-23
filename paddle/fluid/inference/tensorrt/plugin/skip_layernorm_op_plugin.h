@@ -30,17 +30,18 @@ namespace plugin {
 class SkipLayerNormPluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit SkipLayerNormPluginDynamic(float* bias, float* scale, int bias_size,
-                                      int scale_size, const float eps)
+                                      int scale_size, const float eps,
+                                      bool ban_fp16)
       : bias_(bias),
         scale_(scale),
         bias_size_(bias_size),
         scale_size_(scale_size),
-        eps_(eps) {}
+        eps_(eps),
+        ban_fp16_(ban_fp16) {}
   SkipLayerNormPluginDynamic(void const* serialData, size_t serialLength) {}
-  ~SkipLayerNormPluginDynamic() {}
   nvinfer1::IPluginV2DynamicExt* clone() const override {
     return new SkipLayerNormPluginDynamic(bias_, scale_, bias_size_,
-                                          scale_size_, eps_);
+                                          scale_size_, eps_, ban_fp16_);
   }
 
   const char* getPluginType() const override { return "skip_layernorm_plugin"; }
@@ -91,6 +92,7 @@ class SkipLayerNormPluginDynamic : public DynamicPluginTensorRT {
   int scale_size_;
 
   float eps_;
+  bool ban_fp16_;
 };
 #endif
 

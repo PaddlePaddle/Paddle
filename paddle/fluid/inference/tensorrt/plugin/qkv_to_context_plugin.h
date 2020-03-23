@@ -30,17 +30,17 @@ namespace plugin {
 class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
  public:
   explicit QkvToContextPluginDynamic(int hidden, int head_number, int head_size,
-                                     float scale)
+                                     float scale, bool ban_fp16)
       : hidden_(hidden),
         head_number_(head_number),
         head_size_(head_size),
-        scale_(scale) {}
+        scale_(scale),
+        ban_fp16_(ban_fp16) {}
 
   QkvToContextPluginDynamic(void const* serialData, size_t serialLength) {}
-  ~QkvToContextPluginDynamic() {}
   nvinfer1::IPluginV2DynamicExt* clone() const override {
     return new QkvToContextPluginDynamic(hidden_, head_number_, head_size_,
-                                         scale_);
+                                         scale_, ban_fp16_);
   }
 
   const char* getPluginType() const override { return "qkv_to_context_plugin"; }
@@ -85,6 +85,7 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
   int head_number_;
   int head_size_;
   float scale_;
+  bool ban_fp16_;
 };
 #endif
 
