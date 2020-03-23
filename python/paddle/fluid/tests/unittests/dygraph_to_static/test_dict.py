@@ -94,7 +94,6 @@ class MainNetWithDict(fluid.dygraph.Layer):
         for i in range(max_len):
             out = self.sub_net(out, cache)
             cache = self.update_cache(cache)
-
         return out
 
     def update_cache(self, cache):
