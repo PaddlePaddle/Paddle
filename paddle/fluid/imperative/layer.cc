@@ -37,7 +37,9 @@ void ThreadSafeNameSet::Insert(const std::string& name) {
 void ThreadSafeNameSet::Remove(const std::string& name) {
   std::lock_guard<std::mutex> guard(mtx_);
   auto iter = set_.find(name);
-  PADDLE_ENFORCE_EQ(iter != set_.end(), true, "%s does not exist", name);
+  PADDLE_ENFORCE_EQ(
+      iter != set_.end(), true,
+      platform::errors::NotFound("Name %s does not exist in set.", name));
   set_.erase(iter);
 }
 
@@ -76,8 +78,9 @@ static framework::VariableNameMap CreateVarNameMap(
     if (it == varbase_map.end()) {
       PADDLE_ENFORCE_EQ(
           var.dispensable(), true,
-          "Var: %s not dispensable and there are no such var in inputs",
-          var.name());
+          platform::errors::NotFound(
+              "Var %s is not dispensable and not found in inputs.",
+              var.name()));
       result[var.name()] = {};
     } else {
       auto& var_vector = it->second;
@@ -305,7 +308,9 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
                           const framework::AttributeMap& attrs,
                           const platform::Place& place) {
   auto* op_kernel = dynamic_cast<const framework::OperatorWithKernel*>(&op);
-  PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
+  PADDLE_ENFORCE_NOT_NULL(op_kernel,
+                          platform::errors::PermissionDenied(
+                              "Only support operator with kernel in dygraph."));
   auto& info = op.Info();
   if (info.infer_var_type_) {
     RuntimeInferVarTypeContext<VarType> infer_var_type_ctx(ins, &outs, attrs);

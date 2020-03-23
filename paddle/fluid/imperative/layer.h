@@ -402,8 +402,9 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
 
   framework::Attribute GetAttr(const std::string& name) const override {
     auto iter = attrs_.find(name);
-    PADDLE_ENFORCE_EQ(iter != attrs_.end(), true, "Cannot find attribute %s",
-                      name);
+    PADDLE_ENFORCE_EQ(
+        iter != attrs_.end(), true,
+        platform::errors::NotFound("Cannot find attribute %s", name));
     return iter->second;
   }
 
@@ -417,7 +418,10 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
   }
 
   bool HasOutput(const std::string& name) const override {
-    PADDLE_ENFORCE_NOT_NULL(outputs_);
+    PADDLE_ENFORCE_NOT_NULL(
+        outputs_,
+        platform::errors::InvalidArgument(
+            "The outputs_ in RuntimeInferVarTypeContext should not be null."));
     auto it = outputs_->find(name);
     return (it != outputs_->end() && it->second.size() > 0);
   }
@@ -425,8 +429,8 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
   const std::vector<std::string>& Input(
       const std::string& name) const override {
     auto iter = input_names_.find(name);
-    PADDLE_ENFORCE_EQ(iter != input_names_.end(), true, "Cannot find input %s",
-                      name);
+    PADDLE_ENFORCE_EQ(iter != input_names_.end(), true,
+                      platform::errors::NotFound("Cannot find input %s", name));
     return iter->second;
   }
 
@@ -434,8 +438,9 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
       const std::string& name) const override {
     auto iter = output_names_.find(name);
 
-    PADDLE_ENFORCE_EQ(iter != output_names_.end(), true,
-                      "Cannot find output %s", name);
+    PADDLE_ENFORCE_EQ(
+        iter != output_names_.end(), true,
+        platform::errors::NotFound("Cannot find output %s", name));
     return iter->second;
   }
 
@@ -443,8 +448,9 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
       const std::string& name) const override {
     auto iter = var_set_.find(name);
 
-    PADDLE_ENFORCE_EQ(iter != var_set_.end(), true,
-                      "Cannot find var %s in GetType", name);
+    PADDLE_ENFORCE_EQ(
+        iter != var_set_.end(), true,
+        platform::errors::NotFound("Cannot find var %s in GetType", name));
     return iter->second->Type();
   }
 
@@ -465,8 +471,9 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
       const std::string& name) const override {
     auto iter = var_set_.find(name);
 
-    PADDLE_ENFORCE_EQ(iter != var_set_.end(), true,
-                      "Cannot find var %s in GetDataType", name);
+    PADDLE_ENFORCE_EQ(
+        iter != var_set_.end(), true,
+        platform::errors::NotFound("Cannot find var %s in GetDataType", name));
     return iter->second->DataType();
   }
 
@@ -477,30 +484,36 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
 
   std::vector<framework::proto::VarType::Type> GetDataTypes(
       const std::string& name) const override {
-    PADDLE_THROW("GetDataTypes is not supported in runtime InferVarType");
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "GetDataTypes is not supported in runtime InferVarType"));
   }
 
   void SetDataTypes(const std::string& name,
                     const std::vector<framework::proto::VarType::Type>&
                         multiple_data_type) override {
-    PADDLE_THROW("SetDataTypes is not supported in runtime InferVarType");
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "SetDataTypes is not supported in runtime InferVarType"));
   }
 
   std::vector<int64_t> GetShape(const std::string& name) const override {
-    PADDLE_THROW("Do not handle Shape in runtime InferVarType");
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Do not handle Shape in runtime InferVarType"));
   }
 
   void SetShape(const std::string& name,
                 const std::vector<int64_t>& dims) override {
-    PADDLE_THROW("Do not handle Shape in runtime InferVarType");
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Do not handle Shape in runtime InferVarType"));
   }
 
   int32_t GetLoDLevel(const std::string& name) const override {
-    PADDLE_THROW("Do not handle LoDLevel in runtime InferVarType");
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Do not handle LoDLevel in runtime InferVarType"));
   }
 
   void SetLoDLevel(const std::string& name, int32_t lod_level) override {
-    PADDLE_THROW("Do not handle LoDLevel in runtime InferVarType");
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Do not handle LoDLevel in runtime InferVarType"));
   }
 
  private:

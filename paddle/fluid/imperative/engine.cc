@@ -57,8 +57,10 @@ void BasicEngine::Init(VarBase* var, const detail::BackwardStrategy& strategy) {
   var->GradVarBase()->ClearGradOps();
   VLOG(3) << "start backward";
 
-  PADDLE_ENFORCE_EQ(var->HasGradVar(), true,
-                    "Grad variable not exist for variable %s", var->Name());
+  PADDLE_ENFORCE_EQ(
+      var->HasGradVar(), true,
+      platform::errors::NotFound("Grad variable not exist for variable %s",
+                                 var->Name()));
 
   auto& fwd_var = var->Var().Get<framework::LoDTensor>();
   auto* grad_var =
@@ -121,9 +123,12 @@ void BasicEngine::PrepareGradAccumulators(OpBase* op) {
 }
 
 void BasicEngine::PrepareDeps() {
-  PADDLE_ENFORCE_EQ(op_deps_.empty(), true, "Op deps must be initialized here");
+  PADDLE_ENFORCE_EQ(
+      op_deps_.empty(), true,
+      platform::errors::InvalidArgument("Op deps must be initialized here."));
   PADDLE_ENFORCE_EQ(accumulators_.empty(), true,
-                    "Accumulators must be initialized here");
+                    platform::errors::InvalidArgument(
+                        "Accumulators must be initialized here."));
 
   std::queue<OpBase*> q;
   std::unordered_set<OpBase*> visited;
@@ -150,7 +155,10 @@ void BasicEngine::PrepareDeps() {
 
     const auto& grad_pending_ops = cur_op->GradPendingOps();
     for (auto& grad_pending_op : grad_pending_ops) {
-      PADDLE_ENFORCE_NOT_NULL(grad_pending_op);
+      PADDLE_ENFORCE_NOT_NULL(
+          grad_pending_op,
+          platform::errors::PreconditionNotMet(
+              "grad_pending_op of an operator should not be null."));
       ++op_deps_[grad_pending_op.get()];
       if (visited.count(grad_pending_op.get()) == 0) {
         visited.insert(grad_pending_op.get());
@@ -164,7 +172,8 @@ void BasicEngine::SumGradient(OpBase* op, std::shared_ptr<VariableWrapper> src,
                               VariableWrapper* dst) {
   auto iter = accumulators_.find(dst);
   PADDLE_ENFORCE_EQ(iter != accumulators_.end(), true,
-                    "Cannot find gradient of variable %s", dst->Name());
+                    platform::errors::NotFound(
+                        "Cannot find gradient of variable %s", dst->Name()));
   iter->second->Add(std::move(src), op->id());
 }
 
@@ -227,7 +236,10 @@ void BasicEngine::Execute() {
     // Step 3: Collect ready ops
 
     for (auto& grad_pending_op : cur_op->GradPendingOps()) {
-      PADDLE_ENFORCE_NOT_NULL(grad_pending_op);
+      PADDLE_ENFORCE_NOT_NULL(
+          grad_pending_op,
+          platform::errors::PreconditionNotMet(
+              "grad_pending_op of an operator should not be null."));
       auto iter = op_deps_.find(grad_pending_op.get());
       if (iter == op_deps_.end()) {
         continue;
