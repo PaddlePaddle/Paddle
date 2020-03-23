@@ -37,14 +37,13 @@ def batch_generator_creator(batch_size, batch_num):
 
 
 class RandomDataset(Dataset):
-    def __init__(self, sample_num, class_num):
+    def __init__(self, sample_num):
         self.sample_num = sample_num
-        self.class_num = class_num
 
     def __getitem__(self, idx):
         np.random.seed(idx)
-        image = np.random.random([IMAGE_SIZE]).astype('float32')
-        label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+        image = np.random.random([784]).astype('float32')
+        label = np.random.randint(0, 9, (1, )).astype('int64')
         return image, label
 
     def __len__(self):
@@ -90,9 +89,9 @@ class TestDygraphDataLoaderMmapFdsClear(unittest.TestCase):
                 self.run_one_epoch_with_break(loader)
 
 
-class TestMultiProcessDataLoaderMmapFdsClear(unittest.TestCase):
+class TestMultiProcessDataLoaderMmapFdsClear(TestDygraphDataLoaderMmapFdsClear):
     def prepare_data_loader(self):
-        place = fluid.cpu_places()
+        place = fluid.CPUPlace()
         with fluid.dygraph.guard(place):
             dataset = RandomDataset(self.batch_size * self.batch_num)
             loader = DataLoader(

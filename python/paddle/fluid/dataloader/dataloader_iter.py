@@ -328,14 +328,14 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
     def _worker_loop(self, dataset, indices_queue, out_queue, done_event,
                      collate_fn, init_fn, worker_id):
         try:
-            # set signal handler
-            core._set_process_signal_handler()
-
             # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
             # some shared memory objects may have been applied for but have not yet
             # been put into the inter-process Queue. This part of the object needs
             # to be cleaned up when the process ends.
             CleanupFuncRegistrar.register(_cleanup_mmap)
+
+            # set signal handler
+            core._set_process_signal_handler()
 
             init_exception = None
             if init_fn is not None:
