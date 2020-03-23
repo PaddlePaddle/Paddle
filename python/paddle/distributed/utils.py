@@ -62,7 +62,6 @@ class Cluster(object):
             self.job_stage_flag, self.hdfs)
 
     def __eq__(self, cluster):
-        #print("pods length:", len(self.pods), len(cluster.pods))
         if len(self.pods) != len(cluster.pods):
             return False
 

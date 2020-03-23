@@ -267,7 +267,7 @@ def main(net_type, use_cuda, is_local=True):
     save_dirname = "image_classification_" + net_type + ".inference.model"
 
     train(net_type, use_cuda, save_dirname, is_local)
-    infer(use_cuda, save_dirname)
+    #infer(use_cuda, save_dirname)
 
 
 class TestImageClassification(unittest.TestCase):

@@ -321,7 +321,7 @@ class ElapsedTime {
 };
 
 std::string shell_get_command_output(const std::string& cmd, int time_out,
-                                     int sleep_inter) {
+                                     int sleep_inter, bool print_cmd) {
 #if defined _WIN32 || defined __APPLE__
   PADDLE_THROW(
       "This function(shell_get_command_output) is not implemented under _WIN32 "
@@ -330,7 +330,9 @@ std::string shell_get_command_output(const std::string& cmd, int time_out,
   int err_no = 0;
   ElapsedTime elapsed;
   do {
-    printf("exec cmd back:%s\n", cmd.c_str());
+    if (print_cmd) {
+      printf("exec cmd back:%s\n", cmd.c_str());
+    }
     err_no = 0;
     std::shared_ptr<FILE> pipe = shell_popen(cmd, "r", &err_no);
     string::LineFileReader reader;

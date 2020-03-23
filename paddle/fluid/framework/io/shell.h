@@ -69,7 +69,8 @@ inline void shell_execute(const std::string& cmd) {
 // sleep_inter:ms, default -1 means not sleep.
 extern std::string shell_get_command_output(const std::string& cmd,
                                             int time_out = -1,
-                                            int sleep_inter = -1);
+                                            int sleep_inter = -1,
+                                            bool print_cmd = false);
 
 }  // namespace framework
 }  // namespace paddle

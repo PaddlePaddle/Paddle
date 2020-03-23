@@ -155,30 +155,6 @@ POD_IP (current node ip address, not needed for local training)
         help="The path for each process's log.If it's not set, the log will printed to default pipe."
     )
 
-    parser.add_argument(
-        "--hdfs_name",
-        type=str,
-        default=None,
-        help="The hdfs_name used for edl.")
-
-    parser.add_argument(
-        "--hdfs_ugi", type=str, default=None, help="The hdfs_ugi used for edl.")
-
-    # checkpoint will saved here
-    parser.add_argument(
-        "--hdfs_path",
-        type=str,
-        default=None,
-        help="The hdfs_path used for edl.")
-    """
-    #checkpoint path
-    parser.add_argument(
-        "--checkpoint",
-        type=str,
-        default="./checkpoint",
-        help="The hdfs_path used for edl.")
-    """
-
     #positional
     parser.add_argument(
         "training_script",
@@ -274,7 +250,6 @@ def start_local_trainers(cluster, pod):
 
 
 def watch_local_trainers(procs, nranks):
-    #print("procs num:", len(procs))
     try:
         error = False
         error_rank = []
@@ -282,7 +257,6 @@ def watch_local_trainers(procs, nranks):
         alive = False
         for p in procs:
             ret = p.proc.poll()
-            #print("proc poll ret:", ret)
             if ret is None:
                 alive = True
             elif ret != 0:
@@ -344,7 +318,6 @@ def get_hdfs_from_args(args):
     hdfs.hdfs_ugi = args.hdfs_ugi
     hdfs.hdfs_path = args.hdfs_path
 
-    #assert hdfs.is_valid()
     return hdfs
 
 
