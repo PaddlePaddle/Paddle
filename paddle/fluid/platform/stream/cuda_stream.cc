@@ -60,7 +60,7 @@ void CUDAStream::Destroy() {
   stream_ = nullptr;
 }
 
-const CUDAStream& CUDAStreamPool::GetStream(const enum Priority& priority) {
+const CUDAStream& CUDAStreamPool::NextStream(const enum Priority& priority) {
   if (priority == Priority::NORMAL) {
     const auto& stream =
         normal_priority_streams_[normal_priority_counters_ % kStreamsPerDevCtx];
@@ -76,8 +76,8 @@ const CUDAStream& CUDAStreamPool::GetStream(const enum Priority& priority) {
   }
 }
 
-const std::array<CUDAStream, kStreamsPerDevCtx>& CUDAStreamPool::GetStreams(
-    const enum Priority& priority) {
+const std::array<CUDAStream, kStreamsPerDevCtx>& CUDAStreamPool::Streams(
+    const enum Priority& priority) const {
   if (priority == Priority::NORMAL) {
     return normal_priority_streams_;
   } else if (priority == Priority::HIGH) {

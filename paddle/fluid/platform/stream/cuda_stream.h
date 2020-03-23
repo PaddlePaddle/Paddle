@@ -50,7 +50,7 @@ class CUDAStream final : public internal::StreamInterface {
 
   Place place() const { return place_; }
   cudaStream_t stream() const { return stream_; }
-  const Priority& priority() { return priority_; }
+  const Priority& priority() const { return priority_; }
   bool IsIdle() const;
   void Destroy();
 
@@ -65,17 +65,20 @@ class CUDAStream final : public internal::StreamInterface {
 
 class CUDAStreamPool final {
  public:
+  CUDAStreamPool() = default;
   explicit CUDAStreamPool(const Place& place) { Init(place); }
-  const CUDAStream& GetStream(const enum Priority& priority = Priority::NORMAL);
-  const std::array<CUDAStream, kStreamsPerDevCtx>& GetStreams(
-      const enum Priority& priority);
+  const CUDAStream& NextStream(
+      const enum Priority& priority = Priority::NORMAL);
+  const std::array<CUDAStream, kStreamsPerDevCtx>& Streams(
+      const enum Priority& priority) const;
+  const CUDAStream& NullStream() const { return null_stream_; }
 
  private:
   std::atomic<uint32_t> normal_priority_counters_{0};
   std::atomic<uint32_t> high_priority_counters_{0};
   std::array<CUDAStream, kStreamsPerDevCtx> normal_priority_streams_;
   std::array<CUDAStream, kStreamsPerDevCtx> high_priority_streams_;
-  CUDAStream null_stream_;
+  static CUDAStream null_stream_;
 
   void Init(const Place& place);
 
