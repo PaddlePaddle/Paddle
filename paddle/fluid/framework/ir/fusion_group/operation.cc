@@ -103,7 +103,7 @@ void OperationMap::InsertUnaryElementwiseOperations() {
   insert_handler("tanh", "2.0 / (1.0 + real_exp(-2.0 * ${0})) - 1.0",
                  {"${2} * (1.0 - ${1} * ${1})"});
 
-  // cast
+  // cast:
   // out = static_cast<T>(d)
   // dx = static_cast<T>(d_out)
   // TODO(wangchaochaohu): This is not the compelete definition of
@@ -172,6 +172,15 @@ void OperationMap::InsertMultivariateElementwiseOperations() {
   // if input list size of Sum Op is 3, It will expand as
   // ${0} + ${1} + ${2}
   insert_handler("sum", "${0}[ + ${?}]", {});
+
+  auto insert_handler_without_input = [&](std::string op_type, std::string expr,
+                                          std::vector<std::string> grad_exprs) {
+    int type = 0;
+    int num_oprands = -1;
+    Insert(type, num_oprands, op_type, expr, grad_exprs, {}, {"Out"});
+  };
+  // fill_constant:
+  insert_handler_without_input("fill_constant", "${value}", {});
 }
 
 }  // namespace fusion_group

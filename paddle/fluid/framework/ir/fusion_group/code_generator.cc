@@ -69,6 +69,7 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
   for (auto* node : subgraph->SortedNodes()) {
     if (node && node->IsOp() && node->Op()) {
       auto* op = node->Op();
+      auto attr = *(op->MutableAttrMap());
 
       // Input ids should be set in fixed order, like:
       //  - X, Y in forward operations
@@ -112,8 +113,10 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
 
       std::string lhs_type = ExtractDataType(node->outputs);
       std::string rhs_type = ExtractDataType(node->inputs);
-      expressions.emplace_back(OperationExpression(
-          node->Name(), input_ids, output_ids, rhs_type, lhs_type));
+      auto expression = OperationExpression(node->Name(), input_ids, output_ids,
+                                            rhs_type, lhs_type);
+      expression.SetAttr(attr);
+      expressions.push_back(expression);
     }
   }
   return expressions;
