@@ -28,7 +28,7 @@ def index_select(input, index, dim):
     helper.append_op(
         type='index_select',
         inputs={'X': input,
-                'index': index},
+                'Index': index},
         outputs={'Out': out},
         attrs={'dim': dim})
     return out
