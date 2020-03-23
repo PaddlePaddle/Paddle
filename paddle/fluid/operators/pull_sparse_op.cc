@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <string>
 #include "paddle/fluid/operators/pull_sparse_op.h"
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -84,8 +84,7 @@ class PullSparseOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(true);
     AddAttr<std::vector<std::string>>("InputNames", "(vector, slot names")
         .SetDefault(std::vector<std::string>());
-    AddAttr<bool>("is_distributed", "(bool, it must be true")
-        .SetDefault(true);
+    AddAttr<bool>("is_distributed", "(bool, it must be true").SetDefault(true);
     AddComment(R"DOC(
 Pull Sparse Operator.
 
@@ -133,8 +132,7 @@ class PushSparseOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(pull_sparse, ops::PullSparseOp,
-                  ops::PullSparseOpMaker,
+REGISTER_OPERATOR(pull_sparse, ops::PullSparseOp, ops::PullSparseOpMaker,
                   ops::PushSparseOpMaker<paddle::framework::OpDesc>,
                   ops::PushSparseOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(push_sparse, ops::PushSparseOp);

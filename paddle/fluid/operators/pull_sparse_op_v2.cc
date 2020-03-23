@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <string>
 #include "paddle/fluid/operators/pull_sparse_op_v2.h"
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -69,6 +69,7 @@ class PullSparseV2OpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("PaddingId", "(int, the padding id of this embedding").SetDefault(0);
     AddAttr<bool>("ScaleSparseGrad", "(bool, whether scale sparse gradient with batch size").SetDefault(true);
     AddAttr<std::vector<std::string>>("InputNames", "(vector, slot names").SetDefault(std::vector<std::string>());
+    AddAttr<bool>("is_distributed", "(bool, it must be true").SetDefault(true);
     AddComment(R"DOC(
 Pull Sparse V2 Operator.
 
@@ -118,8 +119,7 @@ class PushSparseV2Op : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(pull_sparse_v2, ops::PullSparseV2Op,
-                  ops::PullSparseV2OpMaker,
+REGISTER_OPERATOR(pull_sparse_v2, ops::PullSparseV2Op, ops::PullSparseV2OpMaker,
                   ops::PushSparseV2OpMaker<paddle::framework::OpDesc>,
                   ops::PushSparseV2OpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(push_sparse_v2, ops::PushSparseV2Op);
