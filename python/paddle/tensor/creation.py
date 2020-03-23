@@ -15,6 +15,8 @@
 
 # TODO: define functions to get create a tensor  
 # __all__ = ['create_tensor', 
+#            'create_lod_tensor', 
+#            'create_random_int_lodtensor',
 #            'crop_tensor', 
 #            'diag', 'eye', 
 #            'fill_constant', 
@@ -25,8 +27,6 @@
 #            'range', 
 #            'zeros', 
 #            'zeros_like', 
-#            'create_lod_tensor', 
-#            'create_random_int_lodtensor',
 #            'arrange',
 #            'eye',
 #            'full',
