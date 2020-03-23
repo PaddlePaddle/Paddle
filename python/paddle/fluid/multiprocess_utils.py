@@ -114,6 +114,7 @@ class CleanupFuncRegistrar():
 if not (sys.platform == 'darwin' or sys.platform == 'win32'):
     CleanupFuncRegistrar.register(_cleanup)
 
+# ------------ Python exit flag --------------------
 # flag which record python shutdown status.
 python_exit_flag = False
 
@@ -124,3 +125,27 @@ def _set_python_exit_flag():
 
 
 atexit.register(_set_python_exit_flag)
+
+# ------------ SIGCHLD handler setting --------------
+_SIGCHLD_handler_set = False
+
+
+def _set_SIGCHLD_handler():
+    global _SIGCHLD_handler_set
+    if _SIGCHLD_handler_set:
+        return
+
+    current_handler = signal.getsignal(signal.SIGCHLD)
+    if not callable(current_handler):
+        current_handler = None
+
+    def __handler__(signum, frame):
+        # NOTE: Here the signum is SIGCHLD, when the child process exits,
+        # this handler will be called whenever the child process exits
+        # normally or abnormally.
+        core._throw_error_if_process_failed()
+        if current_handler is not None:
+            current_handler(signum, frame)
+
+    signal.signal(signal.SIGCHLD, __handler__)
+    _SIGCHLD_handler_set = True

@@ -21,7 +21,7 @@ import paddle
 from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode, cpu_places
 from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider
-from .multiprocess_utils import multiprocess_queue_set, CleanupFuncRegistrar, _cleanup_mmap, _cleanup
+from .multiprocess_utils import multiprocess_queue_set, CleanupFuncRegistrar, _cleanup_mmap, _cleanup, _set_SIGCHLD_handler
 from .dataloader import BatchSampler, Dataset
 from .dataloader.dataloader_iter import _DataLoaderIterSingleProcess, _DataLoaderIterMultiProcess
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
@@ -98,6 +98,172 @@ class DataLoaderBase(object):
 
 
 class DataLoader(object):
+    """
+    DataLoader prodives an iterator over given dataset once by the
+    batch_sampler.
+
+    DataLoader supports single-process and multi-prcess data loading,
+    multi-process workers will be used to load data asynchronously if
+    num_workers is set as a positive number.
+
+    DataLoader only supports map-style dataset currently, for a 
+    map-style dataset, please see `fluid.io.Dataset`.
+
+    Args:  
+        dataset: the dataset to load data from, should be an instance
+            of subclass of `fluid.io.Dataset`.
+        feed_list (list(Variable)|tuple(Variable)): feed variable list.
+            The variables should be created by :code:`fluid.data()`.
+            This should be None in dygraph graph mode, but cannot be
+            None in static graph mode. Default None.
+        places(list(Place)|tuple(Place)): a list of Place, to put data
+            onto. Default None.
+        return_list (bool): whether the return value on each device is 
+            presented as a list. It is only valid when iterable=True. 
+            If return_list=False, the return value on each device would 
+            be a dict of str -> LoDTensor, where the key of the dict is 
+            the name of each fed variables. If return_list=True, the 
+            return value on each device would be a list(LoDTensor). It is
+            recommended to use return_list=False in static graph mode and
+            use return_list=True in dygraph mode.  
+        batch_sampler(BatchSampler): an instance of `fluid.io.BatchSampler`
+            to generate batch indices to draw samples from :attr:`dataset`
+            and combine a batch. Default None.
+        batch_size(int): sample number in a mini-batch, a substitution
+            parameter for :attr:`batch_sampler`, if :attr:`batch_sampler`
+            is not set, a default `fluid.io.BatchSampler` will be used
+            and initialize by :attr:`batch_size`, :attr:`shuffle` and
+            :attr:`drop_last`. Default 1.
+        shuffle(bool): whther to shuffle indices order before genrate
+            batch indices, a substitution parameter for :attr:`batch_sampler`
+            see :attr:`batch_size`. Default False.
+        drop_last(bool): whether drop the last incomplete batch dataset size
+            is not divisible by the batch size, a substitution parameter
+            for :attr:`batch_sampler`, see :attr:`batch_size`. Default False
+        collate_fn(callable): define the performations when merges mini-batch
+            by a list of samples, None for do nothing. Default None
+        num_workers(int): the number of subprocess to load data, 0 for no
+            subprocess used and loading data in main process. Default 0
+        use_buffer_reader (bool): whether to use bufferred reader. 
+            If use_buffer_reader=True, the DataLoader would prefetch next 
+            batch data asynchronously, so it would speed up data feeding 
+            and occupies a little more CPU or GPU memory, i.e., the memory
+            of one batch input data. Default True.
+        timeout(int): the timeout value for getting data form output queue
+            of subprocesses. Default 0.
+        worker_init_fn(callable): init function which will be called with
+            worker id on each subproces starting if not set as None. Default
+            None.
+
+    Returns:
+        loader: an iterable object for data iterating
+
+    Examples:
+        
+        .. code-block:: python
+
+            import numpy as np
+            import paddle.fluid as fluid
+            from paddle.fluid.io import Dataset, MnistDataset, BatchSampler, DataLoader
+
+            BATCH_NUM = 20
+            BATCH_SIZE = 16
+            EPOCH_NUM = 4
+
+            IMAGE_SIZE = 784
+            CLASS_NUM = 10
+
+            USE_GPU = True # whether use GPU to run model
+
+            # define a random dataset
+            class RandomDataset(Dataset):
+                def __init__(self, num_samples):
+                    self.num_samples = num_samples
+
+                def __getitem__(self, idx):
+                    image = np.random.random([IMAGE_SIZE]).astype('float32')
+                    label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+                    return image, label
+
+                def __len__(self):
+                    return self.num_samples
+
+            # get places
+            places = fluid.cuda_places() if USE_GPU else fluid.cpu_places()
+
+            # -------------------- static graph ---------------------
+
+            def simple_net(image, label):
+                fc_tmp = fluid.layers.fc(image, size=CLASS_NUM, act='softmax')
+                cross_entropy = fluid.layers.softmax_with_cross_entropy(image, label)
+                loss = fluid.layers.reduce_mean(cross_entropy)
+                sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+                sgd.minimize(loss)
+                return loss
+
+            image = fluid.data(name='image', shape=[None, IMAGE_SIZE], dtype='float32')
+            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+
+            loss = simple_net(image, label)
+
+            exe = fluid.Executor(places[0])
+            exe.run(fluid.default_startup_program())
+
+            prog = fluid.CompiledProgram(fluid.default_main_program()).with_data_parallel(loss_name=loss.name)
+
+            dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
+
+            loader = DataLoader(dataset,
+                                feed_list=[image, label],
+                                places=places,
+                                batch_size=BATCH_SIZE, 
+                                shuffle=True,
+                                drop_last=True,
+                                num_workers=2)
+
+            for e in range(EPOCH_NUM):
+                for i, data in enumerate(loader()):
+                    l = exe.run(prog, feed=data, fetch_list=[loss], return_numpy=True)
+                    print("Epoch {} batch {}: loss = {}".format(e, i, l[0][0]))
+
+            # -------------------------------------------------------
+                
+            # --------------------- dygraph mode --------------------
+
+            class SimpleNet(fluid.dygraph.Layer):
+                def __init__(self):
+                    super(SimpleNet, self).__init__()
+                    self.fc = fluid.dygraph.nn.Linear(IMAGE_SIZE, CLASS_NUM, act='softmax')
+
+                def forward(self, image, label=None):
+                    return self.fc(image)
+
+            with fluid.dygraph.guard(places[0]):
+                simple_net = SimpleNet()
+                opt = fluid.optimizer.SGD(learning_rate=1e-3,
+                                          parameter_list=simple_net.parameters())
+
+                loader = DataLoader(dataset,
+                                    places=places[0],
+                                    batch_size=BATCH_SIZE,
+                                    shuffle=True,
+                                    drop_last=True,
+                                    num_workers=2)
+
+                for e in range(EPOCH_NUM):
+                    for i, (image, label) in enumerate(loader()):
+                        out = simple_net(image)
+                        loss = fluid.layers.cross_entropy(out, label)
+                        avg_loss = fluid.layers.reduce_mean(loss)
+                        avg_loss.backward()
+                        opt.minimize(avg_loss)
+                        simple_net.clear_gradients()
+                        print("Epoch {} batch {}: loss = {}".format(e, i, np.mean(loss.numpy())))
+
+            # -------------------------------------------------------
+
+    """
+
     def __init__(self,
                  dataset,
                  feed_list=None,
@@ -112,171 +278,6 @@ class DataLoader(object):
                  use_buffer_reader=True,
                  timeout=5,
                  worker_init_fn=None):
-        """
-        DataLoader prodives an iterator over given dataset once by the
-        batch_sampler.
-
-        DataLoader supports single-process and multi-prcess data loading,
-        multi-process workers will be used to load data asynchronously if
-        num_workers is set as a positive number.
-
-        DataLoader only supports map-style dataset currently, for a 
-        map-style dataset, please see `fluid.io.Dataset`.
-
-        Args:  
-            dataset: the dataset to load data from, should be an instance
-                of subclass of `fluid.io.Dataset`.
-            feed_list (list(Variable)|tuple(Variable)): feed variable list.
-                The variables should be created by :code:`fluid.data()`.
-                This should be None in dygraph graph mode, but cannot be
-                None in static graph mode. Default None.
-            places(list(Place)|tuple(Place)): a list of Place, to put data
-                onto. Default None.
-            return_list (bool): whether the return value on each device is 
-                presented as a list. It is only valid when iterable=True. 
-                If return_list=False, the return value on each device would 
-                be a dict of str -> LoDTensor, where the key of the dict is 
-                the name of each fed variables. If return_list=True, the 
-                return value on each device would be a list(LoDTensor). It is
-                recommended to use return_list=False in static graph mode and
-                use return_list=True in dygraph mode.  
-            batch_sampler(BatchSampler): an instance of `fluid.io.BatchSampler`
-                to generate batch indices to draw samples from :attr:`dataset`
-                and combine a batch. Default None.
-            batch_size(int): sample number in a mini-batch, a substitution
-                parameter for :attr:`batch_sampler`, if :attr:`batch_sampler`
-                is not set, a default `fluid.io.BatchSampler` will be used
-                and initialize by :attr:`batch_size`, :attr:`shuffle` and
-                :attr:`drop_last`. Default 1.
-            shuffle(bool): whther to shuffle indices order before genrate
-                batch indices, a substitution parameter for :attr:`batch_sampler`
-                see :attr:`batch_size`. Default False.
-            drop_last(bool): whether drop the last incomplete batch dataset size
-                is not divisible by the batch size, a substitution parameter
-                for :attr:`batch_sampler`, see :attr:`batch_size`. Default False
-            collate_fn(callable): define the performations when merges mini-batch
-                by a list of samples, None for do nothing. Default None
-            num_workers(int): the number of subprocess to load data, 0 for no
-                subprocess used and loading data in main process. Default 0
-            use_buffer_reader (bool): whether to use bufferred reader. 
-                If use_buffer_reader=True, the DataLoader would prefetch next 
-                batch data asynchronously, so it would speed up data feeding 
-                and occupies a little more CPU or GPU memory, i.e., the memory
-                of one batch input data. Default True.
-            timeout(int): the timeout value for getting data form output queue
-                of subprocesses. Default 0.
-            worker_init_fn(callable): init function which will be called with
-                worker id on each subproces starting if not set as None. Default
-                None.
-
-        Returns:
-            loader: an iterable object for data iterating
-
-        Examples:
-            
-            .. code-block:: python
-
-                import numpy as np
-                import paddle.fluid as fluid
-                from paddle.fluid.io import Dataset, MnistDataset, BatchSampler, DataLoader
-
-                BATCH_NUM = 20
-                BATCH_SIZE = 16
-                EPOCH_NUM = 4
-
-                IMAGE_SIZE = 784
-                CLASS_NUM = 10
-
-                USE_GPU = True # whether use GPU to run model
-
-                # define a random dataset
-                class RandomDataset(Dataset):
-                    def __init__(self, num_samples):
-                        self.num_samples = num_samples
-
-                    def __getitem__(self, idx):
-                        image = np.random.random([IMAGE_SIZE]).astype('float32')
-                        label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
-                        return image, label
-
-                    def __len__(self):
-                        return self.num_samples
-
-                # get places
-                places = fluid.cuda_places() if USE_GPU else fluid.cpu_places()
-
-                # -------------------- static graph ---------------------
-
-                def simple_net(image, label):
-                    fc_tmp = fluid.layers.fc(image, size=CLASS_NUM, act='softmax')
-                    cross_entropy = fluid.layers.softmax_with_cross_entropy(image, label)
-                    loss = fluid.layers.reduce_mean(cross_entropy)
-                    sgd = fluid.optimizer.SGD(learning_rate=1e-3)
-                    sgd.minimize(loss)
-                    return loss
-
-                image = fluid.data(name='image', shape=[None, IMAGE_SIZE], dtype='float32')
-                label = fluid.data(name='label', shape=[None, 1], dtype='int64')
-
-                loss = simple_net(image, label)
-
-                exe = fluid.Executor(places[0])
-                exe.run(fluid.default_startup_program())
-
-                prog = fluid.CompiledProgram(fluid.default_main_program()).with_data_parallel(loss_name=loss.name)
-
-                dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-
-                loader = DataLoader(dataset,
-                                    feed_list=[image, label],
-                                    places=places,
-                                    batch_size=BATCH_SIZE, 
-                                    shuffle=True,
-                                    drop_last=True,
-                                    num_workers=2)
-
-                for e in range(EPOCH_NUM):
-                    for i, data in enumerate(loader()):
-                        l = exe.run(prog, feed=data, fetch_list=[loss], return_numpy=True)
-                        print("Epoch {} batch {}: loss = {}".format(e, i, l[0][0]))
-
-                # -------------------------------------------------------
-                    
-                # --------------------- dygraph mode --------------------
-
-                class SimpleNet(fluid.dygraph.Layer):
-                    def __init__(self):
-                        super(SimpleNet, self).__init__()
-                        self.fc = fluid.dygraph.nn.Linear(IMAGE_SIZE, CLASS_NUM, act='softmax')
-
-                    def forward(self, image, label=None):
-                        return self.fc(image)
-
-                with fluid.dygraph.guard(places[0]):
-                    simple_net = SimpleNet()
-                    opt = fluid.optimizer.SGD(learning_rate=1e-3,
-                                              parameter_list=simple_net.parameters())
-
-                    loader = DataLoader(dataset,
-                                        places=places[0],
-                                        batch_size=BATCH_SIZE,
-                                        shuffle=True,
-                                        drop_last=True,
-                                        num_workers=2)
-
-                    for e in range(EPOCH_NUM):
-                        for i, (image, label) in enumerate(loader()):
-                            out = simple_net(image)
-                            loss = fluid.layers.cross_entropy(out, label)
-                            avg_loss = fluid.layers.reduce_mean(loss)
-                            avg_loss.backward()
-                            opt.minimize(avg_loss)
-                            simple_net.clear_gradients()
-                            print("Epoch {} batch {}: loss = {}".format(e, i, np.mean(loss.numpy())))
-
-                # -------------------------------------------------------
-
-        """
         self.return_list = return_list
         self.collate_fn = collate_fn
         self.use_buffer_reader = use_buffer_reader
@@ -716,21 +717,6 @@ class DygraphGeneratorLoader(DataLoaderBase):
             # erase process id
             core._erase_process_pids(id(self))
 
-    def _set_child_signal_handler(self):
-        core._set_process_pids(id(self), [self._process.pid])
-        current_handler = signal.getsignal(signal.SIGCHLD)
-        if not callable(current_handler):
-            current_handler = None
-
-        def __handler__(signum, frame):
-            # NOTE: Here the signum is SIGDHLD, when the child process exits, this handler
-            # will be called whenever the child process exits normally or abnormally.
-            core._throw_error_if_process_failed()
-            if current_handler is not None:
-                current_handler(signum, frame)
-
-        signal.signal(signal.SIGCHLD, __handler__)
-
     def _init_iterable(self):
         self._wait_thread_ends()
         if self._use_multiprocess:
@@ -765,7 +751,8 @@ class DygraphGeneratorLoader(DataLoaderBase):
             # with SIGSEGV and SIGBUS of child process; 2. if the main process end before child
             # process, it shuts the all its daemonic children down with a SIGTERM (instead of 
             # joining them without a timeout), so here nedd to deal with SIGTERM.
-            self._set_child_signal_handler()
+            core._set_process_pids(id(self), [self._process.pid])
+            _set_SIGCHLD_handler()
 
             # Set reader_thread
             self._thread_done_event = threading.Event()

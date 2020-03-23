@@ -30,7 +30,7 @@ else:
 
 from .. import core
 from ..framework import in_dygraph_mode
-from ..multiprocess_utils import CleanupFuncRegistrar, _cleanup_mmap, python_exit_flag
+from ..multiprocess_utils import CleanupFuncRegistrar, _cleanup_mmap, python_exit_flag, _set_SIGCHLD_handler
 from ._utils import ParentWatchDog
 
 # multi-process worker check indices queue interval, avoid
@@ -257,22 +257,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._worker_status.append(True)
 
         core._set_process_pids(id(self), tuple(w.pid for w in self._workers))
-        self._set_worker_signal_handler()
-
-    def _set_worker_signal_handler(self):
-        current_handler = signal.getsignal(signal.SIGCHLD)
-        if not callable(current_handler):
-            current_handler = None
-
-        def __handler__(signum, frame):
-            # NOTE: Here the signum is SIGDHLD, when the child process
-            # exits, this handler will be called whenever the child
-            # process exits normally or abnormally.
-            core._throw_error_if_process_failed()
-            if current_handler is not None:
-                current_handler(signum, frame)
-
-        signal.signal(signal.SIGCHLD, __handler__)
+        _set_SIGCHLD_handler()
 
     def _clear_and_remove_data_queue(self):
         if self._data_queue is not None:

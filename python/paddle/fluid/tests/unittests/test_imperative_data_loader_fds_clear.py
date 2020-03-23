@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid import core
+from paddle.fluid.io import Dataset, DataLoader
 
 
 def get_random_images_and_labels(image_shape, label_shape):
@@ -33,6 +34,21 @@ def batch_generator_creator(batch_size, batch_num):
             yield batch_image, batch_label
 
     return __reader__
+
+
+class RandomDataset(Dataset):
+    def __init__(self, sample_num, class_num):
+        self.sample_num = sample_num
+        self.class_num = class_num
+
+    def __getitem__(self, idx):
+        np.random.seed(idx)
+        image = np.random.random([IMAGE_SIZE]).astype('float32')
+        label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+        return image, label
+
+    def __len__(self):
+        return self.sample_num
 
 
 class TestDygraphDataLoaderMmapFdsClear(unittest.TestCase):
@@ -72,6 +88,20 @@ class TestDygraphDataLoaderMmapFdsClear(unittest.TestCase):
             loader = self.prepare_data_loader()
             for _ in range(self.epoch_num):
                 self.run_one_epoch_with_break(loader)
+
+
+class TestMultiProcessDataLoaderMmapFdsClear(unittest.TestCase):
+    def prepare_data_loader(self):
+        place = fluid.cpu_places()
+        with fluid.dygraph.guard(place):
+            dataset = RandomDataset(self.batch_size * self.batch_num)
+            loader = DataLoader(
+                dataset,
+                places=place,
+                batch_size=self.batch_size,
+                drop_last=True,
+                num_workers=2)
+            return loader
 
 
 if __name__ == '__main__':
