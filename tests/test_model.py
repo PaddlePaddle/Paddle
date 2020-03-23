@@ -31,8 +31,9 @@ from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 from model import Model, CrossEntropy, Input, Loss
 from metrics import Accuracy
 from callbacks import ProgBarLogger
-from paddle.fluid.io import BatchSampler, DataLoader, MnistDataset
-from distributed import *
+from paddle.fluid.io import BatchSampler, DataLoader
+from paddle.fluid.io import MNIST as MnistDataset
+
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
     def __init__(self,
@@ -143,65 +144,30 @@ class MyCrossEntropy(Loss):
         return [loss1, loss2]
 
 
-class CustromMnistDataset(MnistDataset):
-    def __init__(self,
-                 image_filename=None,
-                 label_filename=None,
-                 mode='train',
-                 download=True):
-        super(CustromMnistDataset, self).__init__(image_filename, label_filename, mode, download)
-
-
-    def __getitem__(self, idx):
-        return self.images[idx], [self.labels[idx]]
-
-
-
 class TestModel(unittest.TestCase):
     def fit(self, dynamic, is_mlp=False):
         im_shape = (-1, 784)
-        guard = fluid.dygraph.guard() if dynamic else null_guard()
         batch_size = 128
+        
         place = fluid.CUDAPlace(fluid.dygraph.parallel.Env().dev_id) \
         if fluid.dygraph.parallel.Env().nranks > 1 else fluid.CUDAPlace(0)
-        guard = fluid.dygraph.guard(place) if dynamic else null_guard()
-        if fluid.dygraph.parallel.Env().nranks > 1:
-            prepare_context(place)
+        fluid.enable_dygraph(place) if dynamic else None
 
-        with guard:
-            inputs = [Input(im_shape, 'float32', name='image')]
-            labels = [Input([None, 1], 'int64', name='label')]
+        inputs = [Input(im_shape, 'float32', name='image')]
+        labels = [Input([None, 1], 'int64', name='label')]
 
-            if fluid.in_dygraph_mode():
-                feed_list = None
-            else:
-                feed_list = [x.forward() for x in inputs + labels]
-            train_dataset = CustromMnistDataset(mode='train')
-            val_dataset = CustromMnistDataset(mode='test')
-            
-            if get_nranks() > 1:
-                train_sampler = DistributedBatchSampler(train_dataset, batch_size=batch_size, shuffle=True)
-                train_loader = DataLoader(train_dataset, batch_sampler=train_sampler, places=place, 
-                                        feed_list=feed_list, num_workers=4, return_list=True)
-                val_sampler = DistributedBatchSampler(val_dataset, batch_size=batch_size)
-                val_loader = DataLoader(val_dataset, batch_sampler=val_sampler, places=place, 
-                                        feed_list=feed_list, num_workers=4, return_list=True)
-            else:
-                train_loader = DataLoader(train_dataset, batch_size=batch_size, places=place, 
-                                        feed_list=feed_list, num_workers=4, return_list=True)
-                val_loader = DataLoader(val_dataset, batch_size=batch_size, places=place, 
-                                        feed_list=feed_list, num_workers=4, return_list=True)
-                                        
-        
-            model = MNIST() if not is_mlp else MLP()
-            optim = fluid.optimizer.Momentum(
-                learning_rate=0.01,
-                momentum=.9,
-                parameter_list=model.parameters())
-            loss = CrossEntropy() if not is_mlp else MyCrossEntropy()
-            model.prepare(optim, loss, Accuracy(), inputs, labels)
-            cbk = ProgBarLogger(50)
-            model.fit(train_loader, val_loader, epochs=2, callbacks=cbk)
+        train_dataset = MnistDataset(mode='train')
+        val_dataset = MnistDataset(mode='test')
+    
+        model = MNIST() if not is_mlp else MLP()
+        optim = fluid.optimizer.Momentum(
+            learning_rate=0.01,
+            momentum=.9,
+            parameter_list=model.parameters())
+        loss = CrossEntropy() if not is_mlp else MyCrossEntropy()
+        model.prepare(optim, loss, Accuracy(), inputs, labels)
+        cbk = ProgBarLogger(50)
+        model.fit(train_dataset, val_dataset, epochs=2, batch_size=batch_size, callbacks=cbk)
 
     def test_fit_static(self):
         self.fit(False)

@@ -36,6 +36,7 @@ from paddle.fluid.layers.collective import _c_allreduce, _c_allgather, _c_broadc
                                             _c_sync_comm_stream, _c_sync_calc_stream
 from paddle.fluid.io import BatchSampler, DataLoader
 
+__parallel_context_init = False
 
 class DistributedBatchSampler(BatchSampler):
     """Sampler that restricts data loading to a subset of the dataset.
@@ -109,53 +110,6 @@ class DistributedBatchSampler(BatchSampler):
         return num_samples // self.batch_size
 
 
-@contextlib.contextmanager
-def null_guard():
-    yield
-
-
-def to_numpy(var):
-    assert isinstance(var, (Variable, fluid.core.VarBase)), "not a variable"
-    if isinstance(var, fluid.core.VarBase):
-        return var.numpy()
-    t = global_scope().find_var(var.name).get_tensor()
-    return np.array(t)
-
-
-def all_gather(input):
-    place = fluid.CUDAPlace(Env().dev_id) \
-        if Env().nranks > 1 else fluid.CUDAPlace(0)
-    guard = null_guard() if fluid.in_dygraph_mode() else fluid.dygraph.guard(place)
-
-    with guard:
-        input = to_variable(input)
-        output = _all_gather(input, Env().nranks)
-        return to_numpy(output)
-
-
-def _all_reduce(x, out=None, reduce_type="sum", sync_mode=True):
-    out = _c_allreduce(x, out, reduce_type)
-    if sync_mode:
-        return _c_sync_calc_stream(out)
-
-
-def _all_gather(x, nranks, ring_id=0, use_calc_stream=True):
-    return _c_allgather(x, nranks, ring_id=ring_id, use_calc_stream=use_calc_stream)
-
-
-def _bradcast(x, root=0, ring_id=0, use_calc_stream=True):
-    return _c_broadcast(x, root, ring_id, use_calc_stream)
-
-
-def _sync_comm_stream(x, ring_id):
-    return _c_sync_comm_stream(x, ring_id)
-
-
-def barrier():
-    pass
-
-
-
 def get_local_rank():
     return Env().local_rank
 
@@ -224,24 +178,45 @@ def init_communicator(program, rank, nranks, wait_port,
         })
 
 
-def prepare_context(place):
-
+def prepare_distributed_context(place=None):
+    if place is None:
+        place = fluid.CUDAPlace(Env().dev_id) if Env().nranks > 1 \
+            else fluid.CUDAPlace(0)
+    
     strategy = ParallelStrategy()
     strategy.nranks = Env().nranks
     strategy.local_rank = Env().local_rank
     strategy.trainer_endpoints = Env().trainer_endpoints
     strategy.current_endpoint = Env().current_endpoint
+
     if strategy.nranks < 2:
         return
 
-    if isinstance(place, core.CUDAPlace):
-        communicator_prog = framework.Program()
-        init_communicator(communicator_prog, strategy.local_rank, strategy.nranks, True,
-                         strategy.current_endpoint, strategy.trainer_endpoints)
-        exe = fluid.Executor(place)
-        exe.run(communicator_prog)
+    global __parallel_context_init
+
+    if not __parallel_context_init and isinstance(place, core.CUDAPlace):
+        def _init_context():
+            communicator_prog = framework.Program()
+            init_communicator(communicator_prog, strategy.local_rank, strategy.nranks, 
+                            True, strategy.current_endpoint, strategy.trainer_endpoints)
+            exe = fluid.Executor(place)
+            exe.run(communicator_prog)
+
+        if fluid.in_dygraph_mode():
+            cnt = 0
+            while fluid.in_dygraph_mode():
+                cnt += 1
+                print('debug', cnt)
+                fluid.disable_dygraph()
+            _init_context()
+            fluid.enable_dygraph(place)
+        else:
+            _init_context()
+
     else:
         assert ("Only support CUDAPlace for now.")
+
+    __parallel_context_init = True
     return strategy
 
 

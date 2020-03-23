@@ -21,15 +21,14 @@ import os
 
 import numpy as np
 
-import paddle
 from paddle import fluid
 from paddle.fluid.optimizer import Momentum
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
+from paddle.fluid.io import MNIST as MnistDataset
 
 from model import Model, CrossEntropy, Input
 from metrics import Accuracy
-from distributed import prepare_context, Env, get_nranks, DistributedBatchSampler
-from paddle.fluid.io import BatchSampler, DataLoader, MnistDataset
+
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
     def __init__(self,
@@ -106,71 +105,28 @@ class MNIST(Model):
         return x
 
 
-class CustromMnistDataset(MnistDataset):
-    def __init__(self,
-                 image_filename=None,
-                 label_filename=None,
-                 mode='train',
-                 download=True):
-        super(CustromMnistDataset, self).__init__(image_filename, 
-                                    label_filename, mode, download)
-
-
-    def __getitem__(self, idx):
-        return self.images[idx], [self.labels[idx]]
-
-
 def main():
-    @contextlib.contextmanager
-    def null_guard():
-        yield
-
     place = fluid.CUDAPlace(fluid.dygraph.parallel.Env().dev_id) \
         if fluid.dygraph.parallel.Env().nranks > 1 else fluid.CUDAPlace(0)
-    guard = fluid.dygraph.guard(place) if FLAGS.dynamic else null_guard()
-    if fluid.dygraph.parallel.Env().nranks > 1:
-        prepare_context(place)
+    fluid.enable_dygraph(place) if FLAGS.dynamic else None
 
-
-    if not os.path.exists('mnist_checkpoints'):
-        os.mkdir('mnist_checkpoints')
-
-    with guard:
-        train_dataset = CustromMnistDataset(mode='train')
-        val_dataset = CustromMnistDataset(mode='test')
-        
-        inputs = [Input([None, 784], 'float32', name='image')]
-        labels = [Input([None, 1], 'int64', name='label')]
-
-        if fluid.in_dygraph_mode():
-            feed_list = None
-        else:
-            feed_list = [x.forward() for x in inputs + labels]
-            
-        if get_nranks() > 1:
-            train_sampler = DistributedBatchSampler(train_dataset, batch_size=FLAGS.batch_size, shuffle=True)
-            train_loader = DataLoader(train_dataset, batch_sampler=train_sampler, places=place, 
-                                    feed_list=feed_list, num_workers=4, return_list=True)
-            val_sampler = DistributedBatchSampler(val_dataset, batch_size=FLAGS.batch_size)
-            val_loader = DataLoader(val_dataset, batch_sampler=val_sampler, places=place, 
-                                    feed_list=feed_list, num_workers=4, return_list=True)
-        else:
-            train_loader = DataLoader(train_dataset, batch_size=FLAGS.batch_size, places=place, 
-                                    feed_list=feed_list, num_workers=4, return_list=True)
-            val_loader = DataLoader(val_dataset, batch_size=FLAGS.batch_size, places=place, 
-                                    feed_list=feed_list, num_workers=4, return_list=True)
-                                    
-        model = MNIST()
-        optim = Momentum(
-            learning_rate=FLAGS.lr,
-            momentum=.9,
-            parameter_list=model.parameters())
-        
-        model.prepare(optim, CrossEntropy(), Accuracy(topk=(1, 2)), inputs, labels)
-        if FLAGS.resume is not None:
-            model.load(FLAGS.resume)
-
-        model.fit(train_loader, val_loader, epochs=FLAGS.epoch)
+    train_dataset = MnistDataset(mode='train')
+    val_dataset = MnistDataset(mode='test')
+    
+    inputs = [Input([None, 784], 'float32', name='image')]
+    labels = [Input([None, 1], 'int64', name='label')]
+                                
+    model = MNIST()
+    optim = Momentum(
+        learning_rate=FLAGS.lr,
+        momentum=.9,
+        parameter_list=model.parameters())
+    
+    model.prepare(optim, CrossEntropy(), Accuracy(topk=(1, 2)), inputs, labels)
+    if FLAGS.resume is not None:
+        model.load(FLAGS.resume)
+    
+    model.fit(train_dataset, val_dataset, epochs=FLAGS.epoch, batch_size=FLAGS.batch_size)
 
 
 if __name__ == '__main__':
@@ -178,7 +134,7 @@ if __name__ == '__main__':
     parser.add_argument(
         "-d", "--dynamic", action='store_true', help="enable dygraph mode")
     parser.add_argument(
-        "-e", "--epoch", default=100, type=int, help="number of epoch")
+        "-e", "--epoch", default=2, type=int, help="number of epoch")
     parser.add_argument(
         '--lr',
         '--learning-rate',
