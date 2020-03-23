@@ -385,7 +385,7 @@ void FleetWrapper::PullSparseToTensorSync(
         output_data = output->mutable_data<float>(place);
         output_len = 0;
         CHECK(output->numel() % fea_dim, 0);  // NOLINT
-        CHECK(output_data != nullptr);       // NOLINT
+        CHECK(output_data != nullptr);        // NOLINT
       }
       uint64_t real_id = static_cast<uint64_t>(ids[i]);
       if (real_id == padding_id) {
