@@ -51,7 +51,7 @@ def forward_pre_hook1(layer, input):
 
 class Test_Forward_Hook(unittest.TestCase):
     # test forward_pre_hook and forward_hook that have return value
-    def test_forward_hook_have_return_value(self):
+    def test_forward_hook_return_value(self):
         seed = 90
 
         places = [fluid.CPUPlace()]
@@ -106,7 +106,7 @@ class Test_Forward_Hook(unittest.TestCase):
                     np.array_equal(outs_pre_hook.numpy(), outs_origin.numpy()))
 
                 # register forward_hook
-                forward_hook_handle1 = simplenet.register_forward_hook(
+                forward_hook_handle1 = simplenet.register_forward_post_hook(
                     forward_hook1)
                 outs_forward_hook = simplenet(input, y)
                 self.assertTrue(
@@ -164,7 +164,7 @@ class Test_Forward_Hook(unittest.TestCase):
                 self.assertFalse(call_forward_pre_hook)
 
                 # register forward_hook and forward_pre_hook
-                forward_hook_handle = simplenet.register_forward_hook(
+                forward_hook_handle = simplenet.register_forward_post_hook(
                     forward_hook)
                 forward_pre_hook_handle = simplenet.register_forward_pre_hook(
                     forward_pre_hook)

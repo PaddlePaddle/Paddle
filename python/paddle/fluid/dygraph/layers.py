@@ -41,15 +41,15 @@ def _convert_camel_to_snake(name):
     return _all_cap_re.sub(r'\1_\2', s1).lower()
 
 
-class RemovableHook(object):
-    """ A RemovableHook that can be used to remove hook. """
+class HookEraseHelper(object):
+    """ A HookEraseHelper that can be used to remove hook. """
 
     next_hook_id = 0
 
     def __init__(self, hooks):
         self._hooks_ref = weakref.ref(hooks)
-        self._hook_id = RemovableHook.next_hook_id
-        RemovableHook.next_hook_id += 1
+        self._hook_id = HookEraseHelper.next_hook_id
+        HookEraseHelper.next_hook_id += 1
 
     def remove(self):
         hooks = self._hooks_ref()
@@ -104,31 +104,31 @@ class Layer(core.Layer):
         """
         return self._full_name
 
-    def register_forward_hook(self, hook):
-        """Register a forward hook for Layer. The hook will be called after `forward` function has been computed.
+    def register_forward_post_hook(self, hook):
+        """Register a forward post-hook for Layer. The hook will be called after `forward` function has been computed.
         The hook can modify the output. It should have the following form:
 
         hook(Layer, input, output) -> None or modified output
 
         Returns:
-            RemovableHook: a removablehook object that can be used to remove the added hook by calling `removablehook.renove()` .
+            HookEraseHelper: a HookEraseHelper object that can be used to remove the added hook by calling `hook_erase_helper.renove()` .
         """
-        removable_hook = RemovableHook(self._forward_hooks)
-        self._forward_hooks[removable_hook._hook_id] = hook
-        return removable_hook
+        hook_erase_helper = HookEraseHelper(self._forward_hooks)
+        self._forward_hooks[hook_erase_helper._hook_id] = hook
+        return hook_erase_helper
 
     def register_forward_pre_hook(self, hook):
-        """Register a forward pre-hook for Layer. The hook will be called before `forward` has been computed.
+        """Register a forward pre-hook for Layer. The hook will be called before `forward` function has been computed.
         The hook can modify the input. It should have the following form:
 
         hook(Layer, input) -> None or modified input
 
         Returns:
-            RemovableHook: a removablehook object that can be used to remove the added hook by calling `removablehook.renove()` .
+            HookEraseHelper: a HookEraseHelper object that can be used to remove the added hook by calling `hook_erase_helper.renove()` .
         """
-        removable_hook = RemovableHook(self._forward_pre_hooks)
-        self._forward_pre_hooks[removable_hook._hook_id] = hook
-        return removable_hook
+        hook_erase_helper = HookEraseHelper(self._forward_pre_hooks)
+        self._forward_pre_hooks[hook_erase_helper._hook_id] = hook
+        return hook_erase_helper
 
     def create_parameter(self,
                          shape,
