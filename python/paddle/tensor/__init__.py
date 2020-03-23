@@ -60,7 +60,7 @@ def cross(input, other, dim=-1):
     return out
 
 
-def roll(inputs, shifts, dims=None):
+def roll(input, shifts, dims=None):
     helper = LayerHelper("roll", **locals())
     out = helper.create_variable_for_type_inference(input.dtype)
 

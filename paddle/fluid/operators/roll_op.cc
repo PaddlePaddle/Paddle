@@ -82,12 +82,13 @@ class RollOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(Tensor) the input tensor.");
     AddOutput("Out", "(Tensor), the output tensor.");
-    AddAttr<std::vector<int64_t>>(
-        "shifts", "The number of places by which the elements "
-        "of the tensor are shifted.")
+    AddAttr<std::vector<int64_t>>("shifts",
+                                  "The number of places by which the elements "
+                                  "of the tensor are shifted.")
         .SetDefault({});
     AddAttr<std::vector<int64_t>>(
-        "dims", "Axis along which to roll. It must have the same size "
+        "dims",
+        "Axis along which to roll. It must have the same size "
         "with shifts.")
         .SetDefault({});
     AddComment(R"DOC(
@@ -109,6 +110,7 @@ class RollGradMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("roll_grad");
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput("X", this->Input("X"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
   }
