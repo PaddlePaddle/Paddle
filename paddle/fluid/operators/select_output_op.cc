@@ -89,14 +89,12 @@ class SelectOutputGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("select_input");
     grad_op->SetInput("Mask", this->Input("Mask"));
     grad_op->SetInput("X", this->OutputGrad("Out"));
     grad_op->SetOutput("Out", this->InputGrad("X"));
     grad_op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(grad_op);
   }
 };
 

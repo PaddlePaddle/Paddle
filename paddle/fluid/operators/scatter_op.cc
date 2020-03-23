@@ -113,8 +113,7 @@ class ScatterGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("scatter_grad");
     op->SetInput("Ids", this->Input("Ids"));
     op->SetInput("Updates", this->Input("Updates"));
@@ -123,7 +122,6 @@ class ScatterGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("Updates"),
                   this->InputGrad("Updates"));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 
