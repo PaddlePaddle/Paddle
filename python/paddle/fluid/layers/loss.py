@@ -379,9 +379,12 @@ def l1_loss(input, label, reduction='mean'):
             float64, int32, int64.
         label (Variable): Label tensor, the data type is float32,
             float64, int32, int64.
-        reduction (str, optional): Indicate how to average the loss by batch_size.
-            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned; If :attr:`size_average` is ``'sum'``,
-            the reduced sum loss is returned. Default is ``'None'``, the unreduced loss is returned.
+        reduction (str, optional): Indicate how to average the loss by batch_size, 
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned; 
+            If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned. 
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned. 
+            Default is ``'sum'``.
     Returns:
         The tensor variable storing the l1_loss of input and label.
 
@@ -419,6 +422,11 @@ def l1_loss(input, label, reduction='mean'):
                 output = fluid.layers.l1_loss(input, label)
                 print(output.numpy())  # [0.2]
     """
+    if not in_dygraph_mode():
+        check_variable_and_dtype(
+            input, 'input', ['float32', 'float64', 'int32', 'int64'], 'l1_loss')
+        check_variable_and_dtype(
+            label, 'label', ['float32', 'float64', 'int32', 'int64'], 'l1_loss')
 
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(

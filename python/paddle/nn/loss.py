@@ -44,9 +44,12 @@ class L1Loss(layers.Layer):
         Out = SUM(|input - label|)
 
     Parameters:
-        reduction (str, optional): Indicate how to average the loss by batch_size, the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
-            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned; If :attr:`size_average` is ``'sum'``,
-            the reduced sum loss is returned. If :attr:`reduction` is ``'none'``, the unreduced loss is returned. Default is ``'sum'``.
+        reduction (str, optional): Indicate how to average the loss by batch_size, 
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned; 
+            If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned. 
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned. 
+            Default is ``'sum'``.
 
     Returns:
         None
