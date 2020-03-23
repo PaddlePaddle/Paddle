@@ -28,7 +28,7 @@ from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, 
 from .. import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
-from .tensor import concat, assign, fill_constant, zeros
+from .tensor import concat, assign, fill_constant, zeros, tensor_array_to_tensor
 from . import utils
 from .. import unique_name
 from functools import reduce
@@ -4335,12 +4335,13 @@ def split(input, num_or_sections, dim=-1, name=None):
     if in_dygraph_mode():
         inputs = {'X': [input]}
         attrs = {}
-        if isinstance(dim, int):
-            dim = (len(input.shape) + dim) if dim < 0 else dim
-            attrs['axis'] = dim
-        else:
-            dim.stop_gradient = True
-            inputs['AxisTensor'] = [dim]
+        if isinstance(dim, Variable):
+            dim = dim.numpy()
+            assert dim.shape == (1,
+                                 ), "dim of type Variable should have shape [1]"
+            dim = dim[0]
+        dim = (len(input.shape) + dim) if dim < 0 else dim
+        attrs['axis'] = dim
 
         if isinstance(num_or_sections, int):
             num = num_or_sections
@@ -4717,16 +4718,22 @@ def topk(input, k, name=None):
     """
     inputs = {"X": [input]}
     attrs = {}
-    if isinstance(k, Variable):
-        inputs['K'] = [k]
-    else:
-        attrs = {'k': k}
 
     if in_dygraph_mode():
+        if isinstance(k, Variable):
+            k = k.numpy()
+            assert k.shape == (1, ), "k of type Variable should have shape [1]"
+            k = k[0]
+        attrs = {'k': k}
         outs = core.ops.top_k(inputs, attrs)
         outs['Out'][0].stop_gradient = True
         outs['Indices'][0].stop_gradient = True
         return outs['Out'][0], outs['Indices'][0]
+
+    if isinstance(k, Variable):
+        inputs['K'] = [k]
+    else:
+        attrs = {'k': k}
 
     helper = LayerHelper("top_k", **locals())
     values = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -5401,6 +5408,11 @@ def one_hot(input, depth, allow_out_of_range=False):
             one_hot_label = fluid.layers.one_hot(input=label, depth=4)
     """
     if in_dygraph_mode():
+        if isinstance(depth, Variable):
+            depth = depth.numpy()
+            assert depth.shape == (
+                1, ), "depth of type Variable should have shape [1]"
+            depth = depth[0]
         inputs = {'X': [input]}
         attrs = {'depth': depth, 'allow_out_of_range': allow_out_of_range}
         outs = core.ops.one_hot(inputs, attrs)
@@ -9137,11 +9149,25 @@ def stack(x, axis=0):
 
     if not isinstance(x, list) and not isinstance(x, tuple):
         x = [x]
-
     out = helper.create_variable_for_type_inference(x[0].dtype)
-    helper.append_op(
-        type='stack', inputs={'X': x}, outputs={'Y': out},
-        attrs={'axis': axis})
+    if not in_dygraph_mode() and \
+            x[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        assert len(x) == 1, "If the elements of 'x' in stack are Variable(LoDTensorArray), " \
+                            "number of the elements must be 1, but received %s." % len(x)
+        out_index = helper.create_variable_for_type_inference(dtype="int32")
+        helper.append_op(
+            type='tensor_array_to_tensor',
+            inputs={'X': x[0]},
+            outputs={'Out': [out],
+                     'OutIndex': [out_index]},
+            attrs={'axis': axis,
+                   'use_stack': True})
+    else:
+        helper.append_op(
+            type='stack',
+            inputs={'X': x},
+            outputs={'Y': out},
+            attrs={'axis': axis})
 
     return out
 

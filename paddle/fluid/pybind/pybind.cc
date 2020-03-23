@@ -51,7 +51,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/py_func_op.h"
-#include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
@@ -94,9 +93,6 @@ limitations under the License. */
 
 #include "pybind11/stl.h"
 
-DEFINE_bool(reader_queue_speed_test_mode, false,
-            "If set true, the queue.pop will only get data from queue but not "
-            "remove the data from queue for speed testing");
 DECLARE_bool(use_mkldnn);
 #ifdef PADDLE_WITH_NGRAPH
 DECLARE_bool(use_ngraph);
@@ -996,35 +992,6 @@ All parameter, weight, gradient are variables in Paddle.
            py::return_value_policy::reference);
 
   BindReader(&m);
-
-  using LoDTensorBlockingQueue =
-      ::paddle::operators::reader::LoDTensorBlockingQueue;
-  using LoDTensorBlockingQueueHolder =
-      ::paddle::operators::reader::LoDTensorBlockingQueueHolder;
-
-  py::class_<LoDTensorBlockingQueue, std::shared_ptr<LoDTensorBlockingQueue>>(
-      m, "LoDTensorBlockingQueue", "")
-      .def("push",
-           [](LoDTensorBlockingQueue &self,
-              const std::vector<framework::LoDTensor> &lod_tensor_vec) {
-             pybind11::gil_scoped_release release;
-             return self.Push(lod_tensor_vec);
-           })
-      .def("size", &LoDTensorBlockingQueue::Size)
-      .def("capacity", &LoDTensorBlockingQueue::Cap)
-      .def("close", &LoDTensorBlockingQueue::Close)
-      .def("kill", &LoDTensorBlockingQueue::Kill)
-      .def("is_closed", &LoDTensorBlockingQueue::IsClosed);
-
-  m.def("init_lod_tensor_blocking_queue",
-        [](Variable &var,
-           size_t capacity) -> std::shared_ptr<LoDTensorBlockingQueue> {
-          VLOG(1) << "init_lod_tensor_blocking_queue";
-          auto *holder = var.GetMutable<LoDTensorBlockingQueueHolder>();
-          holder->InitOnce(capacity, FLAGS_reader_queue_speed_test_mode);
-          return holder->GetQueue();
-        },
-        py::return_value_policy::copy);
 
   py::class_<Scope>(m, "_Scope", R"DOC(
     Scope is an association of a name to Variable. All variables belong to Scope.

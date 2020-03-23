@@ -16,6 +16,7 @@
 #include <paddle/fluid/platform/device_context.h>
 #include <algorithm>
 #include <cub/cub.cuh>  // NOLINT
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
@@ -57,32 +58,28 @@ __device__ inline void LayerNorm(const cv2<T> &thread_data, const int ld,
 }
 
 template <typename T, unsigned TPB>
-__global__ void EmbEltwiseLayernormKernel(
-    int hidden, const int64_t *word_id_d, const int64_t *pos_id_d,
-    const int64_t *sent_id_d, const T *scale, const T *bias, const T *word_emb,
-    const T *pos_emb, const T *sent_emb, T *output, float eps) {
+__global__ void EmbEltwiseLayernormKernel(int hidden, const int64_t *ids,
+                                          const T *scale, const T *bias,
+                                          const int64_t *embs, T *output,
+                                          float eps, int input_num) {
   cub::Sum pair_sum;
   // blockIdx.x: position in the sequence
   // blockIdx.y: batch
   // gridDim.x: Seq
   // gridDim.y: Batch
-  __shared__ int64_t word_id;
-  __shared__ int64_t pos_id;
-  __shared__ int64_t sent_id;
+
+  extern __shared__ int64_t array_id[];
 
   const T rhidden = T(1.f) / T(hidden);
   const int64_t seq_pos = blockIdx.y + blockIdx.x * gridDim.y;
   if (threadIdx.x == 0) {
-    word_id = word_id_d[seq_pos];
-    pos_id = pos_id_d[seq_pos];
-    sent_id = sent_id_d[seq_pos];
+    for (int i = 0; i < input_num; ++i) {
+      const int64_t *ids_p = reinterpret_cast<const int64_t *>(ids[i]);
+      array_id[i] = ids_p[seq_pos];
+    }
   }
   __syncthreads();
 
-  // load word, pos, sentence embeddings and add them toghether
-  const int64_t woffset = word_id * hidden;
-  const int64_t poffset = pos_id * hidden;
-  const int64_t soffset = sent_id * hidden;
   const int64_t out_offset = seq_pos * hidden;
 
   cv2<T> thread_data;
@@ -91,10 +88,10 @@ __global__ void EmbEltwiseLayernormKernel(
 
 #pragma unroll
   for (int it = threadIdx.x; it < hidden; it += TPB) {
-    const T w(word_emb[woffset + it]);
-    const T p(pos_emb[poffset + it]);
-    const T s(sent_emb[soffset + it]);
-    const T val = w + s + p;
+    T val = 0;
+    for (int i = 0; i < input_num; ++i) {
+      val += reinterpret_cast<const T *>(embs[i])[array_id[i] * hidden + it];
+    }
 
     output[out_offset + it] = val;
     const T rhiddenval = rhidden * val;
@@ -112,47 +109,58 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     using Tensor = framework::Tensor;
-    auto *word_id = context.Input<framework::Tensor>("WordId");
-    auto *pos_id = context.Input<framework::Tensor>("PosId");
-    auto *sent_id = context.Input<framework::Tensor>("SentId");
+    auto &device_ctx = context.template device_context<DeviceContext>();
+    auto ids = context.MultiInput<framework::Tensor>("Ids");
+    auto embs = context.MultiInput<framework::Tensor>("Embs");
+    int input_num = static_cast<int>(ids.size());
 
-    auto *word_emb = context.Input<framework::Tensor>("WordEmb");
-    auto *pos_emb = context.Input<framework::Tensor>("PosEmb");
-    auto *sent_emb = context.Input<framework::Tensor>("SentEmb");
+    framework::Tensor in_ids_(framework::proto::VarType::INT64),
+        in_embs_(framework::proto::VarType::INT64);
+    framework::DDim in_dim{input_num};
+    int device_id;
+    cudaGetDevice(&device_id);
+    in_ids_.Resize(in_dim);
+    in_embs_.Resize(in_dim);
+    int64_t *in_ids_d =
+        in_ids_.mutable_data<int64_t>(platform::CUDAPlace(device_id));
+    int64_t *in_embs_d =
+        in_embs_.mutable_data<int64_t>(platform::CUDAPlace(device_id));
+
+    std::vector<int64_t> in1s, in2s;
+    for (int i = 0; i < input_num; ++i) {
+      in1s.push_back(reinterpret_cast<uintptr_t>(ids[i]->data<int64_t>()));
+      in2s.push_back(reinterpret_cast<uintptr_t>(embs[i]->data<T>()));
+    }
+
+    cudaMemcpyAsync(in_ids_d, in1s.data(), sizeof(int64_t) * input_num,
+                    cudaMemcpyHostToDevice, device_ctx.stream());
+    cudaMemcpyAsync(in_embs_d, in2s.data(), sizeof(int64_t) * input_num,
+                    cudaMemcpyHostToDevice, device_ctx.stream());
 
     auto *bias = context.Input<framework::Tensor>("Bias");
     auto *scale = context.Input<framework::Tensor>("Scale");
     auto *out = context.Output<framework::Tensor>("Out");
 
-    auto *word_id_d = word_id->data<int64_t>();
-    auto *pos_id_d = pos_id->data<int64_t>();
-    auto *sent_id_d = sent_id->data<int64_t>();
+    // should be (B * S * hidden)
+    auto id0_dims = ids[0]->dims();
+    auto emb0_dims = embs[0]->dims();
 
-    auto *word_emb_d = word_emb->data<T>();
-    auto *pos_emb_d = pos_emb->data<T>();
-    auto *sent_emb_d = sent_emb->data<T>();
+    int batch = id0_dims[0];
+    int seq_len = id0_dims[1];
+    int hidden = emb0_dims[1];
 
     auto *bias_d = bias->data<T>();
     auto *scale_d = scale->data<T>();
     auto *output_d = out->mutable_data<T>(context.GetPlace());
-    // compute q*k with eltadd
-    auto &device_ctx = context.template device_context<DeviceContext>();
     float eps = context.Attr<float>("epsilon");
-
-    // should be (B * S * hidden)
-    auto word_id_dims = word_id->dims();
-    auto word_emb_dims = word_emb->dims();
-
-    int batch = word_id_dims[0];
-    int seq_len = word_id_dims[1];
-    int hidden = word_emb_dims[1];
 
     const unsigned tpb = 256;
     const dim3 grid(seq_len, batch, 1);
     const dim3 block(tpb, 1, 1);
-    EmbEltwiseLayernormKernel<T, tpb><<<grid, block, 0, device_ctx.stream()>>>(
-        hidden, word_id_d, pos_id_d, sent_id_d, scale_d, bias_d, word_emb_d,
-        pos_emb_d, sent_emb_d, output_d, eps);
+    int shared_bytes = input_num * sizeof(int64_t);
+    EmbEltwiseLayernormKernel<
+        T, tpb><<<grid, block, shared_bytes, device_ctx.stream()>>>(
+        hidden, in_ids_d, scale_d, bias_d, in_embs_d, output_d, eps, input_num);
   }
 };
 

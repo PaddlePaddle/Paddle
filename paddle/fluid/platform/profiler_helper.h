@@ -223,7 +223,6 @@ void DealWithShowName() {
           end_replace = event_name.find('%', start_replace + 1);
           prefix_str = origin_event_name.substr(0, start);
         }
-        VLOG(0) << event_name;
         r.set_name(event_name);
       }
     }

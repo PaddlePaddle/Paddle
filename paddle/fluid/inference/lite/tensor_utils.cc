@@ -166,10 +166,10 @@ void TensorCopyAsync(paddle::lite::Tensor* dst, const framework::LoDTensor& src,
 template <>
 void TensorCopyAsync(framework::LoDTensor* dst, const paddle::lite::Tensor& src,
                      const platform::DeviceContext& ctx) {
+  dst->Resize(paddle::framework::make_ddim(src.dims().Vectorize()));
   InitDstTensor(dst, src);
   const platform::Place& src_place = GetNativePlace(src.target());
   const platform::Place& dst_place = dst->place();
-  dst->Resize(paddle::framework::make_ddim(src.dims().Vectorize()));
   const size_t bytes =
       static_cast<size_t>(src.numel()) * framework::SizeOfType(dst->type());
   const void* src_data = src.raw_data();
