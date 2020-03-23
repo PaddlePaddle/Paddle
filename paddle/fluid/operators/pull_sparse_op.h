@@ -55,7 +55,7 @@ void PullSparseFunctor(
 
   auto fleet_ptr = framework::FleetWrapper::GetInstance();
   fleet_ptr->PullSparseToTensorSync(
-      table_id, fea_dim, padding_id, ctx.GetPlace(), inputs, outputs,
+      table_id, fea_dim, padding_id, ctx.GetPlace(), &inputs, &outputs,
       fea_keys, pull_result_ptr, pull_sparse_status);
 }
 
@@ -96,7 +96,8 @@ void PushSparseFunctor(
   auto fleet_ptr = framework::FleetWrapper::GetInstance();
   fleet_ptr->PushSparseFromTensorWithLabelAsync(
       scope, table_id, fea_dim, padding_id, scale_sparse, accesor, label_name,
-      ctx.GetPlace(), input_names, inputs, outputs, push_keys, push_values, fea_labels);
+      ctx.GetPlace(), input_names, &inputs, &outputs, push_keys, push_values,
+      fea_labels);
 }
 
 template <typename T>

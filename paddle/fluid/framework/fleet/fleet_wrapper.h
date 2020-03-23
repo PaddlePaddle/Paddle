@@ -103,8 +103,8 @@ class FleetWrapper {
   // pull immediately to tensors
   void PullSparseToTensorSync(
       const uint64_t table_id, int fea_dim, uint64_t padding_id,
-      platform::Place place, std::vector<LoDTensor*>& inputs,             // NOLINT
-      std::vector<LoDTensor*>& outputs, std::vector<uint64_t>* fea_keys,  // NOLINT
+      platform::Place place, std::vector<LoDTensor*>* inputs,             // NOLINT
+      std::vector<LoDTensor*>* outputs, std::vector<uint64_t>* fea_keys,  // NOLINT
       std::vector<float*>* pull_result_ptr,                               // NOLINT
       std::vector<::std::future<int32_t>>* pull_sparse_status);           // NOLINT
 
@@ -174,8 +174,8 @@ class FleetWrapper {
       uint64_t padding_id, bool scale_sparse, const std::string& accesor,
       const std::string& click_name, platform::Place place,
       const std::vector<std::string>& input_names,
-      std::vector<LoDTensor*>& inputs,   // NOLINT
-      std::vector<LoDTensor*>& outputs,  // NOLINT
+      std::vector<LoDTensor*>* inputs,   // NOLINT
+      std::vector<LoDTensor*>* outputs,  // NOLINT
       std::vector<uint64_t>* push_keys,
       std::vector<std::vector<float>>* push_values,
       std::vector<float>* fea_labels);
