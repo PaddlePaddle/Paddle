@@ -46,26 +46,27 @@ inline void shift_along_dim(const T* input_data, T* output_data,
 template <typename DeviceContext, typename T>
 class RollKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {}
-  auto* input_var = context.InputVar("X");
-  auto* output_var = context.OutputVar("Out");
-  auto& input = input_var -> Get<LoDTensor>();
-  auto* output = input_var -> GetMutable<LoDTensor>();
-  std::vector<int64_t> shifts = context.Attr<std::vecotr<int64_t>>("shifts");
-  std::vector<int64_t> dims = context.Attr<std::vecotr<int64_t>>("dims");
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* input_var = context.InputVar("X");
+    auto* output_var = context.OutputVar("Out");
+    auto& input = input_var->Get<LoDTensor>();
+    auto* output = input_var->GetMutable<LoDTensor>();
+    std::vector<int64_t> shifts = context.Attr<std::vecotr<int64_t>>("shifts");
+    std::vector<int64_t> dims = context.Attr<std::vecotr<int64_t>>("dims");
 
-  PADDLE_ENFORCE_EQ(shifts.size(), dims.size(),
-                    "AttrError: Attr<shifts>.size() must be equal "
-                    "to Attr<dims>.size(). But received: Attr<shift>"
-                    ".size = %d, Attr<dims>.size() = %d",
-                    shift.size(), dims.size());
-  size_t nums = shifts.size();
-  const T* input_data = input.data<T>();
-  T* output_data = output->mutable_data<T>(context.GetPlace());
-  const DDim input_dim = input.dims();
+    PADDLE_ENFORCE_EQ(shifts.size(), dims.size(),
+                      "AttrError: Attr<shifts>.size() must be equal "
+                      "to Attr<dims>.size(). But received: Attr<shift>"
+                      ".size = %d, Attr<dims>.size() = %d",
+                      shift.size(), dims.size());
+    size_t nums = shifts.size();
+    const T* input_data = input.data<T>();
+    T* output_data = output->mutable_data<T>(context.GetPlace());
+    const DDim input_dim = input.dims();
 
-  for (size_t i = 0; i < num; i++) {
-    shift_along_dim(input_data, output_data, input_dim, dims[i], shifts[i]);
+    for (size_t i = 0; i < num; i++) {
+      shift_along_dim(input_data, output_data, input_dim, dims[i], shifts[i]);
+    }
   }
 };
 
