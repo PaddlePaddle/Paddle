@@ -62,7 +62,6 @@ class DistributedBatchSampler(BatchSampler):
 
     def __init__(self, dataset, batch_size, shuffle=False, drop_last=False):
         self.dataset = dataset
-        self.sample_iter = None
 
         assert isinstance(batch_size, int) and batch_size > 0, \
                 "batch_size should be a positive integer"
