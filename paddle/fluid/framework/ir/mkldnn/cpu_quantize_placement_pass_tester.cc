@@ -113,15 +113,11 @@ void MainTest(std::initializer_list<std::string> quantize_enabled_op_types,
 
 void DefaultAttrTest(unsigned expected_use_quantizer_true_count) {
   auto prog = BuildProgramDesc();
-
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
-
   auto pass = PassRegistry::Instance().Get("cpu_quantize_placement_pass");
-
   graph.reset(pass->Apply(graph.release()));
 
   unsigned use_quantizer_true_count = 0;
-
   for (auto* node : graph->Nodes()) {
     if (node->IsOp()) {
       auto* op = node->Op();
@@ -131,7 +127,6 @@ void DefaultAttrTest(unsigned expected_use_quantizer_true_count) {
       }
     }
   }
-
   EXPECT_EQ(use_quantizer_true_count, expected_use_quantizer_true_count);
 }
 

@@ -105,7 +105,8 @@ class Pass {
                         platform::errors::InvalidArgument(
                             "Attribute %s already set in the pass", attr_name));
     } else {
-      VLOG(3) << "Default pass attr " << attr_name << "is updated";
+      VLOG(3) << "Setting the attribute " << attr_name << " for the pass "
+              << type_;
     }
     attrs_[attr_name] = attr;
     attr_dels_[attr_name] = [attr, attr_name]() {
@@ -219,19 +220,19 @@ struct PassRegistrar : public Registrar {
           pass->RegisterRequiredPassAttrs(this->required_pass_attrs_);
           pass->RegisterRequiredGraphAttrs(this->required_graph_attrs_);
           pass->RegisterDefaultPassAttrs(this->default_pass_attrs_);
-          pass->CopyDefaultAttrs(this->default_attrs_);
+          pass->CopyDefaultAttrs(this->default_attrs_values_);
           pass->RegisterType(pass_type);
           return pass;
         });
   }
 
   ~PassRegistrar() {
-    for (auto &attr : default_attrs_) {
+    for (auto &attr : default_attrs_values_) {
       if (default_attr_dels_.find(attr.first) != default_attr_dels_.end()) {
         default_attr_dels_[attr.first]();
       }
     }
-    default_attrs_.clear();
+    default_attrs_values_.clear();
     default_attr_dels_.clear();
   }
 
@@ -245,7 +246,7 @@ struct PassRegistrar : public Registrar {
   PassRegistrar<PassType> &DefaultPassAttr(const std::string &attr,
                                            AttrType &&default_attr_value) {
     default_pass_attrs_.insert(attr);
-    default_attrs_[attr] = default_attr_value;
+    default_attrs_values_[attr] = default_attr_value;
     default_attr_dels_[attr] = [default_attr_value, attr]() {
       delete default_attr_value;
     };
@@ -261,7 +262,7 @@ struct PassRegistrar : public Registrar {
   std::unordered_set<std::string> required_pass_attrs_;
   std::unordered_set<std::string> default_pass_attrs_;
   std::unordered_set<std::string> required_graph_attrs_;
-  std::map<std::string, boost::any> default_attrs_;
+  std::map<std::string, boost::any> default_attrs_values_;
   std::map<std::string, std::function<void(void)>> default_attr_dels_;
 };
 
