@@ -37,6 +37,7 @@ from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.log_helper import get_logger
 from . import reader
 from .reader import *
+from . import dataloader
 from .dataloader import *
 from . import core
 from .. import compat as cpt
@@ -59,7 +60,7 @@ __all__ = [
     'set_program_state',
     'get_program_parameter',
     'get_program_persistable_vars',
-] + reader.__all__ + paddle.reader.__all__
+] + reader.__all__ + paddle.reader.__all__ + dataloader.__all__
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
