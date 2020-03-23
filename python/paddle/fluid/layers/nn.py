@@ -838,10 +838,11 @@ def dropout(x,
             seed = default_main_program().random_seed
         seed = seed if seed is not None else 0
         _is_test = not _dygraph_tracer()._train_mode
-        return core.ops.dropout(x, 'dropout_prob', dropout_prob, 'is_test',
-                                _is_test, 'fix_seed', seed is not None, 'seed',
-                                seed, 'dropout_implementation',
-                                dropout_implementation)
+        out, musk = core.ops.dropout(x, 'dropout_prob', dropout_prob, 'is_test',
+                                     _is_test, 'fix_seed', seed is not None,
+                                     'seed', seed, 'dropout_implementation',
+                                     dropout_implementation)
+        return out
 
     helper = LayerHelper('dropout', **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
@@ -4724,7 +4725,7 @@ def topk(input, k, name=None):
     """
     if in_dygraph_mode():
         _k = k.numpy().item() if isinstance(k, Variable) else k
-        out, indices = core.ops.top_k(x, 'k', _k)
+        out, indices = core.ops.top_k(input, 'k', _k)
         out.stop_gradient = True
         indices.stop_gradient = True
         return out, indices

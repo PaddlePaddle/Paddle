@@ -256,8 +256,9 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
 
 def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
     if in_dygraph_mode():
-        return core.ops.cross_entropy2(input, label, 'ignore_index',
-                                       ignore_index)
+        loss, _, _ = core.ops.cross_entropy2(input, label, 'ignore_index',
+                                             ignore_index)
+        return loss
 
     inputs = {'X': [input], 'Label': [label]}
     attrs = {'ignore_index': ignore_index}

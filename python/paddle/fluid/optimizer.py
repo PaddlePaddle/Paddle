@@ -981,11 +981,10 @@ class MomentumOptimizer(Optimizer):
         lr = self._create_param_lr(param_and_grad)
 
         if framework.in_dygraph_mode():
-            _param_out, _volcity_out = core.ops.momentum(
-                param_and_grad[0], param_and_grad[1], velocity_acc, lr, 'mu',
-                self._momentum, 'use_nesterov', self._use_nesterov)
-            param_and_grad[0] = _param_out
-            velocity_acc = _volcity_out
+            _, _ = core.ops.momentum(param_and_grad[0], param_and_grad[1],
+                                     velocity_acc, lr, param_and_grad[0],
+                                     velocity_acc, 'mu', self._momentum,
+                                     'use_nesterov', self._use_nesterov)
             return None
 
         attrs = {"mu": self._momentum, "use_nesterov": self._use_nesterov}
@@ -1821,11 +1820,12 @@ class AdamOptimizer(Optimizer):
                 self._beta1, Variable) else self._beta1.numpy().item()
             _beta2 = self._beta2 if not isinstance(
                 self._beta2, Variable) else self._beta2.numpy().item()
-            param_and_grad[0], _, _, _, _ = core.ops.adam(
+            _, _, _, _, _ = core.ops.adam(
                 param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
-                beta1_pow_acc, beta2_pow_acc, 'epsilon', self._epsilon,
-                'lazy_mode', self._lazy_mode, 'min_row_size_to_use_multithread',
-                1000, 'beta1', _beta1, 'beta2', _beta2)
+                beta1_pow_acc, beta2_pow_acc, param_and_grad[0], 'epsilon',
+                self._epsilon, 'lazy_mode', self._lazy_mode,
+                'min_row_size_to_use_multithread', 1000, 'beta1', _beta1,
+                'beta2', _beta2)
 
             return None
 

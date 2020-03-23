@@ -219,11 +219,9 @@ class Conv2D(layers.Layer):
 
     def forward(self, input):
         if in_dygraph_mode() and self._l_type == 'conv2d':
-            attrs = {
-                'strides', self._stride, 'paddings', self._padding, 'dilations',
-                self._dilation, 'groups', self._groups
-                if self._groups else 1, 'use_cudnn', self._use_cudnn
-            }
+            attrs = ('strides', self._stride, 'paddings', self._padding,
+                     'dilations', self._dilation, 'groups', self._groups
+                     if self._groups else 1, 'use_cudnn', self._use_cudnn)
             out = core.ops.conv2d(input, self.weight, *attrs)
             pre_bias = out
 
@@ -828,13 +826,11 @@ class Pool2D(layers.Layer):
 
     def forward(self, input):
         if in_dygraph_mode():
-            attrs = {
-                'pooling_type', self._pool_type, 'ksize', self._pool_size,
-                'global_pooling', self._global_pooling, 'strides',
-                self._pool_stride, 'paddings', self._pool_padding, 'use_cudnn',
-                self._use_cudnn, 'ceil_mode', self._ceil_mode, 'use_mkldnn',
-                False, 'exclusive', self._exclusive
-            }
+            attrs = ('pooling_type', self._pool_type, 'ksize', self._pool_size,
+                     'global_pooling', self._global_pooling, 'strides',
+                     self._pool_stride, 'paddings', self._pool_padding,
+                     'use_cudnn', self._use_cudnn, 'ceil_mode', self._ceil_mode,
+                     'use_mkldnn', False, 'exclusive', self._exclusive)
             return core.ops.pool2d(input, *attrs)
 
         attrs = {
@@ -937,7 +933,7 @@ class Linear(layers.Layer):
         inputs = {"X": [input], "Y": [self.weight]}
 
         if in_dygraph_mode():
-            pre_bias = core.ops.mul(x, self.weight, 'x_num_col_dims',
+            pre_bias = core.ops.mul(input, self.weight, 'x_num_col_dims',
                                     len(input.shape) - 1, 'y_num_col_dims', 1)
 
             pre_act = dygraph_utils._append_bias_in_dygraph(
@@ -1139,18 +1135,15 @@ class BatchNorm(layers.Layer):
         variance_out = self._variance
 
         if in_dygraph_mode():
-            attrs = {
-                "momentum", self._momentum, "epsilon", self._epsilon, "is_test",
-                self._is_test, "data_layout", self._data_layout, "use_mkldnn",
-                False, "fuse_with_relu", self._fuse_with_relu,
-                "use_global_stats", self._use_global_stats,
-                "trainable_statistics", self._trainable_statistics
-            }
-            batch_norm_out, mean_out, variance_out, saved_mean, saved_variance = core.ops.batch_norm(
+            attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
+                     "is_test", self._is_test, "data_layout", self._data_layout,
+                     "use_mkldnn", False, "fuse_with_relu",
+                     self._fuse_with_relu, "use_global_stats",
+                     self._use_global_stats, "trainable_statistics",
+                     self._trainable_statistics)
+            batch_norm_out, _, _, _, _ = core.ops.batch_norm(
                 input, self.weight, self.bias, self._mean, self._variance,
-                *attrs)
-
-            outs = core.ops.batch_norm(inputs, attrs, outputs)
+                mean_out, variance_out, *attrs)
             return dygraph_utils._append_activation_in_dygraph(
                 batch_norm_out, act=self._act)
 

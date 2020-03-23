@@ -32,7 +32,9 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
 };
 std::map<std::string, std::set<std::string>> op_passing_out_map = {
     {"sgd", {"ParamOut"}},
-};
+    {"adam", {"ParamOut"}},
+    {"momentum", {"ParamOut", "VelocityOut"}},
+    {"batch_norm", {"MeanOut", "VarianceOut"}}};
 // clang-format off
 const char* OUT_INITIALIZER_TEMPLATE =
     R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase(tracer->GenerateUniqueName()))}})";
