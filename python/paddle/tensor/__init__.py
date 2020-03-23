@@ -41,8 +41,13 @@ def nonzero(inputs, as_tuple=False):
         list_out = []
         shape = inputs.shape
         rank = len(shape)
-        for i in range(rank):
-            list_out.append(slice(outs, axes=rank - 1, starts=i, ends=i + 1))
+        if rank == 1:
+            list_out.append(outs)
+        else:
+            for i in range(rank):
+                list_out.append(
+                    slice(
+                        outs, axes=[rank - 1], starts=[i], ends=[i + 1]))
         return tuple(list_out)
     else:
         return outs

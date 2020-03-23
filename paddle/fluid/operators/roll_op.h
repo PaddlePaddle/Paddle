@@ -38,9 +38,13 @@ inline void shift_along_dim(const T* input_data, T* output_data,
   const size_t slice_bytes = slice_width * sizeof(T);
 
   for (auto i = 0; i < outer_loops; i++) {
-    auto input_pos = i * slice_width;
-    auto output_pos = ((i + dim) % input_dim[dim]) * slice_width;
-    memcpy(output_data + output_pos, input_data + input_pos, slice_bytes);
+    auto input_pos = i * input_dim[dim] * slice_width;
+    auto output_pos =
+        ((i + shift) % input_dim[dim]) * input_dim[dim] * slice_width;
+    for (auto j = 0; j < input_dim[dim]; j++) {
+      memcpy(output_data + output_pos + j * slice_width,
+             input_data + input_pos + j * slice_width, slice_bytes);
+    }
   }
 }
 
