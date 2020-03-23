@@ -1211,6 +1211,8 @@ All parameter, weight, gradient are variables in Paddle.
         []() { return std::string(framework::kEmptyVarName); });
   m.def("grad_var_suffix",
         []() { return std::string(framework::kGradVarSuffix); });
+  m.def("loaded_var_suffix",
+        []() { return std::string(framework::kLoadedVarSuffix); });
   m.def_submodule(
        "var_names",
        "The module will return special predefined variable name in Paddle")
@@ -1605,8 +1607,6 @@ All parameter, weight, gradient are variables in Paddle.
                    t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                    arr.append(t)
            )DOC")
-      .def("_resize",
-           [](LoDTensorArray &self, size_t size) { self.resize(size); })
       .def("_move_to_list",
            [](LoDTensorArray &self) -> py::list {
              py::list res(self.size());

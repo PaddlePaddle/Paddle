@@ -65,6 +65,9 @@ constexpr char kZeroVarSuffix[] = "@ZERO";
 /// Variables with this suffix are the new Gradient.
 constexpr char kNewGradSuffix[] = "@NEWGRAD@";
 
+/// Variables with this suffix are the loaded from pre-train model.
+constexpr char kLoadedVarSuffix[] = "@LOADED";
+
 /// RuntimeContext is used to relate input/output names of Operator with
 /// the corresponding variables in name scope.
 /// If an Op has attribute kEnableCacheRuntimeContext, it means that in a same

@@ -56,8 +56,6 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
         self.epoch_num = 1
         self.batch_size = 128
         self.batch_num = 50
-        self.save_dirname = "mnist.inference.model"
-        self.params_filename = "mnist.params"
 
     def reader_decorator(self, reader):
         def _reader_impl():
@@ -106,8 +104,8 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
         fluid.io.save_inference_model(
             self.save_dirname, ["img"], [prediction],
             exe,
-            model_filename=None,
-            params_filename=None)
+            model_filename=self.model_filename,
+            params_filename=self.params_filename)
 
     def load_and_train_dygraph(self):
         place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
@@ -118,7 +116,10 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
             backward_strategy = fluid.dygraph.BackwardStrategy()
             backward_strategy.sort_sum_gradient = True
 
-            mnist = fluid.dygraph.StaticModelRunner(model_dir=self.save_dirname)
+            mnist = fluid.dygraph.StaticModelRunner(
+                model_dir=self.save_dirname,
+                model_filename=self.model_filename,
+                params_filename=self.params_filename)
 
             sgd = fluid.optimizer.SGD(learning_rate=0.001,
                                       parameter_list=mnist.parameters())
@@ -190,7 +191,8 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
             fluid.io.load_params(
                 exe,
                 self.save_dirname,
-                main_program=fluid.default_main_program())
+                main_program=fluid.default_main_program(),
+                filename=self.params_filename)
 
             static_param_init_value = {}
             static_param_name_list = []
@@ -230,6 +232,9 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
         return static_x_data, static_out, static_param_init_value, static_param_value
 
     def test_mnist_no_params_filename(self):
+        self.save_dirname = "mnist.inference.model.noname"
+        self.model_filename = None
+        self.params_filename = None
         # Phase 1. run and save static model
         self.train_and_save_model()
 
@@ -244,11 +249,40 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
         self.assertTrue(np.array_equal(static_x_data, dy_x_data))
 
         for key, value in six.iteritems(static_param_init_value):
+            key += core.loaded_var_suffix()
             self.assertTrue(np.array_equal(value, dy_param_init_value[key]))
 
         self.assertTrue(np.allclose(static_out, dy_out))
 
         for key, value in six.iteritems(static_param_value):
+            key += core.loaded_var_suffix()
+            self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-5))
+
+    def test_mnist_with_params_filename(self):
+        self.save_dirname = "mnist.inference.model"
+        self.model_filename = "mnist.model"
+        self.params_filename = "mnist.params"
+        # Phase 1. run and save static model
+        self.train_and_save_model()
+
+        # Phase 2. load model & train dygraph
+        dy_x_data, dy_out, dy_param_init_value, dy_param_value = \
+            self.load_and_train_dygraph()
+
+        static_x_data, static_out, static_param_init_value, static_param_value = \
+            self.load_and_train_static()
+
+        # Phase 3. compare
+        self.assertTrue(np.array_equal(static_x_data, dy_x_data))
+
+        for key, value in six.iteritems(static_param_init_value):
+            key += core.loaded_var_suffix()
+            self.assertTrue(np.array_equal(value, dy_param_init_value[key]))
+
+        self.assertTrue(np.allclose(static_out, dy_out))
+
+        for key, value in six.iteritems(static_param_value):
+            key += core.loaded_var_suffix()
             self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-5))
 
 

@@ -4829,10 +4829,8 @@ class ParamBase(core.VarBase):
                                                                bool)
         tensor = self.value().get_tensor()
         if tensor._is_initialized():
-            # return 'name %s, dtype: %s shape: %s %s' % (self.name, self.dtype,
-            #                                             self.shape, str(tensor))
-            return 'name %s, dtype: %s shape: %s' % (self.name, self.dtype,
-                                                     self.shape)
+            return 'name %s, dtype: %s shape: %s %s' % (self.name, self.dtype,
+                                                        self.shape, str(tensor))
         else:
             return 'name %s, shape: %s, not inited' % (self.name, self.shape)
 
@@ -5059,18 +5057,6 @@ def _dygraph_place_guard(place):
     _dygraph_current_expected_place_ = tmp_place
 
 
-@signature_safe_contextmanager
-def _static_guard():
-    global _dygraph_tracer_
-    tmp_trace = _dygraph_tracer_
-    _dygraph_tracer_ = None
-    logging.info("_static_guard")
-
-    yield
-
-    _dygraph_tracer_ = tmp_trace
-
-
 def load_op_library(lib_filename):
     """
     Load a dynamic library, including custom operators and kernels.
@@ -5150,3 +5136,14 @@ def device_guard(device=None):
     pre_device = switch_device(device)
     yield
     switch_device(pre_device)
+
+
+@signature_safe_contextmanager
+def _static_graph_guard():
+    global _dygraph_tracer_
+    tmp_trace = _dygraph_tracer_
+    _dygraph_tracer_ = None
+
+    yield
+
+    _dygraph_tracer_ = tmp_trace
