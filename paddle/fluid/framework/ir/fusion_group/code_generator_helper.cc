@@ -69,11 +69,13 @@ static std::string RefineTemplateWithAttr(const std::string& op_type,
   };
 
   if (!IsNumber()) {
-    // Get attr with different type
+    // Get attr with different type, Now we only support the simple attr
+    // condition
     auto it = attrs.find(attr_name);
     Attribute attr = it->second;
-    proto::AttrType attr_type = static_cast<proto::AttrType>(attr.which() - 1);
-    if (attr_type == proto::AttrType::BOOLEANS) {
+    proto::AttrType attr_type =
+        static_cast<proto::AttrType>(it->second.which() - 1);
+    if (attr_type == proto::AttrType::BOOLEAN) {
       bool result = boost::get<bool>(attr);
       if (result) {
         ret = "true";
@@ -81,26 +83,26 @@ static std::string RefineTemplateWithAttr(const std::string& op_type,
         ret = "false";
       }
     }
-    if (attr_type == proto::AttrType::INTS) {
+    if (attr_type == proto::AttrType::INT) {
       int result = boost::get<int>(attr);
       str_cvt << result;
       ret = str_cvt.str();
     }
-    if (attr_type == proto::AttrType::LONGS) {
+    if (attr_type == proto::AttrType::LONG) {
       int64_t result = boost::get<int64_t>(attr);
       str_cvt << result;
       ret = str_cvt.str();
     }
-    if (attr_type == proto::AttrType::FLOATS) {
+    if (attr_type == proto::AttrType::FLOAT) {
       float result = boost::get<float>(attr);
       str_cvt << result;
       ret = str_cvt.str();
     }
-    if (attr_type == proto::AttrType::STRINGS) {
+    if (attr_type == proto::AttrType::STRING) {
       std::string result = boost::get<std::string>(attr);
-      str_cvt << result;
-      ret = str_cvt.str();
+      ret = result;
     }
+
   } else {
     ret = attr_name;
   }
@@ -166,6 +168,9 @@ std::string OperationExpression::GetRHS(std::unordered_set<int>* used,
         }
         rhs.replace(pos, length + 3, var_name);
         used->insert(input_ids_[index]);
+      } else {
+        std::string var_name = refine_str;
+        rhs.replace(pos, length + 3, var_name);
       }
     }
   }

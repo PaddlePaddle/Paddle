@@ -190,5 +190,26 @@ class FusionGroupPassCastTest(FusionGroupPassTest):
         self.fused_op_type = "fusion_group"
 
 
+class FusionGroupPassFillConstantTest(FusionGroupPassTest):
+    def build_program(self, dtype):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            self.feed_vars = self._prepare_feed_vars([2, 2], dtype, 2)
+
+            tmp_0 = layers.elementwise_add(self.feed_vars[0], self.feed_vars[1])
+            tmp_1 = layers.fill_constant(shape=[2, 2], dtype=dtype, value=2.0)
+            tmp_2 = layers.elementwise_mul(tmp_1, tmp_0)
+
+        self.append_gradients(tmp_2)
+
+        self.num_fused_ops = 1
+        self.fetch_list = [tmp_2, self.grad(tmp_0)]
+
+    def setUp(self):
+        self.build_program("float32")
+        self.feeds = self._feed_random_data(self.feed_vars)
+        self.pass_names = "fusion_group_pass"
+        self.fused_op_type = "fusion_group"
+
+
 if __name__ == "__main__":
     unittest.main()

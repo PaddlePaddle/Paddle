@@ -193,7 +193,7 @@ void OperationMap::InsertMultivariateElementwiseOperations() {
     Insert(type, num_oprands, op_type, expr, grad_exprs, {}, {"Out"});
   };
   // fill_constant:
-  insert_handler_without_input("fill_constant", "${value}", {});
+  insert_handler_without_input("fill_constant", "${str_value}", {});
 }
 
 }  // namespace fusion_group
