@@ -32,7 +32,7 @@ void PullSparseFunctor(
   const auto& inputs_const = ctx.MultiInput<framework::LoDTensor>("Ids");
   const auto& outputs_const = ctx.MultiOutput<framework::LoDTensor>("Out");
   uint32_t fea_dim = static_cast<uint32_t>(ctx.Attr<int>("EmbeddingDim"));
-  uint64_t padding_id =static_cast<uint64_t>(ctx.Attr<int>("PaddingId"));
+  uint64_t padding_id = static_cast<uint64_t>(ctx.Attr<int>("PaddingId"));
   auto table_id = static_cast<uint32_t>(ctx.Attr<int>("TableId"));
 
   std::vector<uint64_t>* fea_keys =
@@ -54,18 +54,17 @@ void PullSparseFunctor(
   }
 
   auto fleet_ptr = framework::FleetWrapper::GetInstance();
-  fleet_ptr->PullSparseToTensorSync(
-      table_id, fea_dim, padding_id, ctx.GetPlace(), &inputs, &outputs,
-      fea_keys, pull_result_ptr, pull_sparse_status);
+  fleet_ptr->PullSparseToTensorSync(table_id, fea_dim, padding_id,
+                                    ctx.GetPlace(), &inputs, &outputs, fea_keys,
+                                    pull_result_ptr, pull_sparse_status);
 }
 
 
 template <typename T>
-void PushSparseFunctor(
-    const framework::ExecutionContext& ctx,
-    const std::vector<uint64_t>* push_keys_const,
-    const std::vector<std::vector<T>>* push_values_const,
-    const std::vector<T>* fea_labels_const) {
+void PushSparseFunctor(const framework::ExecutionContext& ctx,
+                       const std::vector<uint64_t>* push_keys_const,
+                       const std::vector<std::vector<T>>* push_values_const,
+                       const std::vector<T>* fea_labels_const) {
   const auto& inputs_const = ctx.MultiInput<framework::LoDTensor>("Ids");
   const auto& outputs_const =
       ctx.MultiInput<framework::LoDTensor>(framework::GradVarName("Out"));
