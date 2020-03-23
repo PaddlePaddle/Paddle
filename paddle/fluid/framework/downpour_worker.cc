@@ -397,7 +397,7 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
           ptr,
           platform::CUDAPinnedPlace(),
           pin_ptr,
-          len * table.emb_dim(), copy_stream_);
+          len * table.emb_dim() * sizeof(float), copy_stream_);
     }
     #endif
   }
