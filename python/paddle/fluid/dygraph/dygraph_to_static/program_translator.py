@@ -13,16 +13,21 @@
 # limitations under the License.
 
 from __future__ import print_function
+import gast
 import inspect
-import textwrap
-import threading
 import numpy
 import six
+import textwrap
+import threading
+import warnings
 
 from paddle.fluid import framework
 from paddle.fluid import core, executor
 from paddle.fluid.data import data
-from paddle.fluid.dygraph.dygraph_to_static import convert_to_static
+from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import convert_to_static
+from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStaticAst
+from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+from paddle.fluid.framework import in_dygraph_mode
 
 __all__ = ['ProgramTranslator']
 
@@ -89,8 +94,8 @@ class ProgramCache(object):
         self._feed_name_to_idx = {}
         self._is_repeated = False
         # Indicates whether the function call is still building program.
-        # Because `__call__` can be called recursively when `Net` has
-        # sub class in `forward()`.
+        # Because user can call recursively when `Net` has sub class in
+        # `forward()`.
         self._in_build_process = True
 
     def build_program_and_return_output(self, dyfunc, *args, **kwargs):
@@ -242,6 +247,52 @@ class ProgramTranslator(object):
         # Once main_program is changed, should run startup_program.
         self._need_startup = True
 
+    def get_output(self, dygraph_func, *args, **kwargs):
+        """
+        Returns the output tensors for dygraph function and its arguments
+        """
+        if in_dygraph_mode():
+            warnings.warn(
+                "The decorator 'dygraph_to_static_output' doesn't work in dygraph mode."
+                " Please use it in static mode.")
+            return dygraph_func(*args, **kwargs)
+
+        program_cache = self.get_program_cache()
+        outputs = program_cache.build_program_and_return_output(dygraph_func,
+                                                                *args, **kwargs)
+        if not program_cache.in_build_process:
+            outputs = self.run(*args, **kwargs)
+        return outputs
+
+    def get_func(self, dygraph_func):
+        """
+        Returns the translated static function from dygraph function
+        """
+        if in_dygraph_mode():
+            warnings.warn(
+                "The decorator 'dygraph_to_static_graph' doesn't work in dygraph mode."
+                " Please use it in static mode.")
+            return dygraph_func
+        static_func, ast_transformer = convert_to_static(dygraph_func)
+        return static_func
+
+    def get_code(self, dygraph_func):
+        """
+        Returns the translated static function code from dygraph code
+        """
+        # Get AST from dygraph function
+        raw_code = inspect.getsource(dygraph_func)
+        code = textwrap.dedent(raw_code)
+        root = gast.parse(code)
+
+        # Transform AST
+        dygraph_to_static = DygraphToStaticAst()
+        root_wrapper = dygraph_to_static.get_static_ast(root)
+
+        # Get source_code
+        source_code = ast_to_source_code(root_wrapper.node)
+        return source_code
+
     def run(self, *args, **kwargs):
         """
         Executes main_program and returns output Tensors.
@@ -254,6 +305,19 @@ class ProgramTranslator(object):
                                 fetch_list=fetch_list)
 
         return outputs
+
+    def set_optimizer(self, optimizer, loss_name):
+        """
+        Supports to set or update the optimizer used to minimize loss.
+        """
+        self._check_cache_valid()
+        self._optimizer = optimizer
+
+        if not isinstance(loss_name, six.string_types):
+            raise ValueError(
+                "Type of input loss_name should type(str), but received {}.".
+                format(type(loss_name)))
+        self._loss_name = loss_name
 
     def _prepare(self, args):
         """
@@ -297,19 +361,6 @@ class ProgramTranslator(object):
             feed_dict[feed_var.name] = args[idx]
 
         return feed_dict
-
-    def set_optimizer(self, optimizer, loss_name):
-        """
-        Supports to set or update the optimizer used to minimize loss.
-        """
-        self._check_cache_valid()
-        self._optimizer = optimizer
-
-        if not isinstance(loss_name, six.string_types):
-            raise ValueError(
-                "Type of input loss_name should type(str), but received {}.".
-                format(type(loss_name)))
-        self._loss_name = loss_name
 
     def _add_optimizer(self):
         """
