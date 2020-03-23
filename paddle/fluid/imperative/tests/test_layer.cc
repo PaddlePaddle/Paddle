@@ -37,6 +37,72 @@ using vb_vector = std::vector<std::shared_ptr<imperative::VarBase>>;
 
 using var_pair = std::pair<std::string, vb_vector>;
 
+class TestRuntimeInferVarTypeContext : public RuntimeInferVarTypeContext {
+ public:
+  TestRuntimeInferVarTypeContext(const NameVarBaseMap& inputs,
+                                 const NameVarBaseMap* outputs,
+                                 const framework::AttributeMap& attrs_map)
+      : RuntimeInferVarTypeContext(inputs, outputs, attrs_map) {}
+
+  bool HasVar(const std::string& name) const {
+    return RuntimeInferVarTypeContext::HasVar(name);
+  }
+
+  const std::vector<std::string>& InputVars(const std::string& name) const {
+    return RuntimeInferVarTypeContext::InputVars(name);
+  }
+
+  const std::vector<std::string>& OutputVars(const std::string& name) const {
+    return RuntimeInferVarTypeContext::OutputVars(name);
+  }
+
+  framework::proto::VarType::Type GetVarType(const std::string& name) const {
+    return RuntimeInferVarTypeContext::GetVarType(name);
+  }
+
+  void SetVarType(const std::string& name,
+                  framework::proto::VarType::Type type) {
+    RuntimeInferVarTypeContext::SetVarType(name, type);
+  }
+
+  framework::proto::VarType::Type GetVarDataType(
+      const std::string& name) const {
+    return RuntimeInferVarTypeContext::GetVarDataType(name);
+  }
+
+  void SetVarDataType(const std::string& name,
+                      framework::proto::VarType::Type type) {
+    RuntimeInferVarTypeContext::SetVarDataType(name, type);
+  }
+
+  std::vector<framework::proto::VarType::Type> GetVarDataTypes(
+      const std::string& name) const {
+    return RuntimeInferVarTypeContext::GetVarDataTypes(name);
+  }
+
+  void SetVarDataTypes(
+      const std::string& name,
+      const std::vector<framework::proto::VarType::Type>& multiple_data_type) {
+    RuntimeInferVarTypeContext::SetVarDataTypes(name, multiple_data_type);
+  }
+
+  std::vector<int64_t> GetVarShape(const std::string& name) const {
+    return RuntimeInferVarTypeContext::GetVarShape(name);
+  }
+
+  void SetVarShape(const std::string& name, const std::vector<int64_t>& dims) {
+    RuntimeInferVarTypeContext::SetVarShape(name, dims);
+  }
+
+  int32_t GetVarLoDLevel(const std::string& name) const {
+    return RuntimeInferVarTypeContext::GetVarLoDLevel(name);
+  }
+
+  void SetVarLoDLevel(const std::string& name, int32_t lod_level) {
+    RuntimeInferVarTypeContext::SetVarLoDLevel(name, lod_level);
+  }
+};
+
 TEST(test_layer, test_runtime_context) {
   std::shared_ptr<imperative::VarBase> vin(
       new imperative::VarBase(false, "vin"));
@@ -84,21 +150,23 @@ TEST(test_layer, test_runtime_context) {
   ASSERT_EQ(framework::proto::VarType::FP64, ctx->GetOutputDataType("Out", 1));
 
   // no throw, but do nothing
-  ASSERT_NO_THROW(ctx->SetType("vout", framework::proto::VarType::LOD_TENSOR));
+  ASSERT_NO_THROW(
+      ctx->InsertVar("vout", framework::proto::VarType::LOD_TENSOR));
   ASSERT_EQ(framework::proto::VarType::LOD_TENSOR_ARRAY, vout->Type());
 
   ASSERT_ANY_THROW(ctx->HasVar("vin"));
-  ASSERT_ANY_THROW(ctx->Input("X"));
-  ASSERT_ANY_THROW(ctx->Output("Out"));
-  ASSERT_ANY_THROW(ctx->GetType("vin"));
-  ASSERT_ANY_THROW(ctx->GetDataType("vin"));
-  ASSERT_ANY_THROW(ctx->SetDataType("vout", framework::proto::VarType::FP32));
+  ASSERT_ANY_THROW(ctx->InputVars("X"));
+  ASSERT_ANY_THROW(ctx->OutputVars("Out"));
+  ASSERT_ANY_THROW(ctx->GetVarType("vin"));
+  ASSERT_ANY_THROW(ctx->GetVarDataType("vin"));
+  ASSERT_ANY_THROW(
+      ctx->SetVarDataType("vout", framework::proto::VarType::FP32));
   ASSERT_ANY_THROW(ctx->GetInputDataType("vin"));
   std::vector<framework::proto::VarType::Type> NullType;
-  ASSERT_ANY_THROW(ctx->SetDataTypes("vin", NullType));
-  ASSERT_ANY_THROW(ctx->GetShape("vin"));
-  ASSERT_ANY_THROW(ctx->GetLoDLevel("vin"));
-  ASSERT_ANY_THROW(ctx->SetLoDLevel("vin", 2));
+  ASSERT_ANY_THROW(ctx->SetVarDataTypes("vin", NullType));
+  ASSERT_ANY_THROW(ctx->GetVarShape("vin"));
+  ASSERT_ANY_THROW(ctx->GetVarLoDLevel("vin"));
+  ASSERT_ANY_THROW(ctx->SetVarLoDLevel("vin", 2));
 
   ASSERT_TRUE(ctx->IsDygraph());
 }

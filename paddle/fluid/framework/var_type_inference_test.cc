@@ -24,13 +24,13 @@ namespace framework {
 
 class NOP : public OperatorBase {
  public:
-  NOP(const std::string &type, const VariableNameMap &inputs,
-      const VariableNameMap &outputs, const AttributeMap &attrs)
+  NOP(const std::string& type, const VariableNameMap& inputs,
+      const VariableNameMap& outputs, const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
  private:
-  void RunImpl(const Scope &scope,
-               const platform::Place &place) const override {}
+  void RunImpl(const Scope& scope,
+               const platform::Place& place) const override {}
 };
 
 class SumOpMaker : public OpProtoAndCheckerMaker {
@@ -44,7 +44,7 @@ class SumOpMaker : public OpProtoAndCheckerMaker {
 
 class SumOpVarTypeInference : public VarTypeInference {
  public:
-  void operator()(framework::InferVarTypeContext *ctx) const override {
+  void operator()(framework::InferVarTypeContext* ctx) const override {
     auto default_var_type = proto::VarType::SELECTED_ROWS;
 
     if (ctx->InputTypeAnyOf("X", proto::VarType::LOD_TENSOR)) {
@@ -65,9 +65,79 @@ REGISTER_OPERATOR(sum_without_infer_var_type, paddle::framework::NOP,
 namespace paddle {
 namespace framework {
 
+class TestStaticGraphVarTypeInference : public StaticGraphVarTypeInference {
+ public:
+  void operator()(InferVarTypeContext* context) const override {}
+
+  bool HasVar(InferVarTypeContext* ctx, const std::string& name) const {
+    return StaticGraphVarTypeInference::HasVar(ctx, name);
+  }
+
+  const std::vector<std::string>& Input(InferVarTypeContext* ctx,
+                                        const std::string& name) const {
+    return StaticGraphVarTypeInference::Input(ctx, name);
+  }
+
+  const std::vector<std::string>& Output(InferVarTypeContext* ctx,
+                                         const std::string& name) const {
+    return StaticGraphVarTypeInference::Output(ctx, name);
+  }
+
+  proto::VarType::Type GetType(InferVarTypeContext* ctx,
+                               const std::string& name) const {
+    return StaticGraphVarTypeInference::GetType(ctx, name);
+  }
+
+  void SetType(InferVarTypeContext* ctx, const std::string& name,
+               proto::VarType::Type type) const {
+    StaticGraphVarTypeInference::SetType(ctx, name, type);
+  }
+
+  proto::VarType::Type GetDataType(InferVarTypeContext* ctx,
+                                   const std::string& name) const {
+    return StaticGraphVarTypeInference::GetDataType(ctx, name);
+  }
+
+  void SetDataType(InferVarTypeContext* ctx, const std::string& name,
+                   proto::VarType::Type type) const {
+    StaticGraphVarTypeInference::SetDataType(ctx, name, type);
+  }
+
+  std::vector<proto::VarType::Type> GetDataTypes(
+      InferVarTypeContext* ctx, const std::string& name) const {
+    return StaticGraphVarTypeInference::GetDataTypes(ctx, name);
+  }
+
+  void SetDataTypes(
+      InferVarTypeContext* ctx, const std::string& name,
+      const std::vector<proto::VarType::Type>& multiple_data_type) {
+    return StaticGraphVarTypeInference::SetDataTypes(ctx, name,
+                                                     multiple_data_type);
+  }
+
+  std::vector<int64_t> GetShape(InferVarTypeContext* ctx,
+                                const std::string& name) const {
+    return StaticGraphVarTypeInference::GetShape(ctx, name);
+  }
+
+  void SetShape(InferVarTypeContext* ctx, const std::string& name,
+                const std::vector<int64_t>& dims) const {
+    StaticGraphVarTypeInference::SetShape(ctx, name, dims);
+  }
+
+  int32_t GetLoDLevel(InferVarTypeContext* ctx, const std::string& name) const {
+    return StaticGraphVarTypeInference::GetLoDLevel(ctx, name);
+  }
+
+  void SetLoDLevel(InferVarTypeContext* ctx, const std::string& name,
+                   int32_t lod_level) const {
+    StaticGraphVarTypeInference::SetLoDLevel(ctx, name, lod_level);
+  }
+};
+
 TEST(InferVarType, sum_op) {
   ProgramDesc prog;
-  auto *op = prog.MutableBlock(0)->AppendOp();
+  auto* op = prog.MutableBlock(0)->AppendOp();
   op->SetType("sum");
   op->SetInput("X", {"test_a", "test_b", "test_c"});
   op->SetOutput("Out", {"test_out"});
@@ -90,7 +160,7 @@ TEST(InferVarType, sum_op) {
 
 TEST(InferVarType, sum_op_without_infer_var_type) {
   ProgramDesc prog;
-  auto *op = prog.MutableBlock(0)->AppendOp();
+  auto* op = prog.MutableBlock(0)->AppendOp();
   op->SetType("sum_without_infer_var_type");
   op->SetInput("X", {"test2_a", "test2_b", "test2_c"});
   op->SetOutput("Out", {"test2_out"});
@@ -109,8 +179,8 @@ TEST(InferVarType, sum_op_without_infer_var_type) {
 TEST(InferVarType, multiple_api) {
   ProgramDesc prog;
 
-  auto *block = prog.MutableBlock(0);
-  auto *op = block->AppendOp();
+  auto* block = prog.MutableBlock(0);
+  auto* op = block->AppendOp();
   op->SetType("sum_without_infer_var_type");
   op->SetInput("X", {"test2_a", "test2_b"});
   op->SetOutput("Out", {"test2_a_out", "test2_b_out"});
@@ -123,7 +193,6 @@ TEST(InferVarType, multiple_api) {
   InferVarTypeContext ctx(op, block);
 
   ASSERT_EQ(proto::VarType::SELECTED_ROWS, ctx.GetInputType("X"));
-  ASSERT_EQ(ctx.GetInputType("X"), ctx.GetType("test2_a"));
 
   ASSERT_TRUE(ctx.InputTypeAllOf("X", proto::VarType::SELECTED_ROWS));
   ASSERT_FALSE(ctx.InputTypeAnyOf("X", proto::VarType::LOD_TENSOR));
@@ -150,6 +219,32 @@ TEST(InferVarType, multiple_api) {
   ASSERT_EQ(proto::VarType::INT8, ctx.GetOutputDataType("Out", 1));
 
   ASSERT_FALSE(ctx.IsDygraph());
+
+  // test StaticGraphVarTypeInference
+  TestStaticGraphVarTypeInference infer;
+  ASSERT_TRUE(infer.HasVar(&ctx, "test2_a"));
+  ASSERT_EQ(infer.Input(&ctx, "X").size(), infer.Output(&ctx, "Out").size());
+
+  ASSERT_EQ(proto::VarType::FP32, infer.GetDataType(&ctx, "test2_a_out"));
+  infer.SetDataType(&ctx, "test2_a_out", proto::VarType::FP64);
+  ASSERT_EQ(proto::VarType::FP64, infer.GetDataType(&ctx, "test2_a_out"));
+
+  ASSERT_EQ(proto::VarType::SELECTED_ROWS, infer.GetType(&ctx, "test2_a_out"));
+  infer.SetType(&ctx, "test2_a_out", proto::VarType::LOD_TENSOR);
+  ASSERT_EQ(proto::VarType::LOD_TENSOR, infer.GetType(&ctx, "test2_a_out"));
+
+  ASSERT_ANY_THROW(infer.GetDataTypes(&ctx, "test2_a_out"));
+  ASSERT_ANY_THROW(infer.SetDataTypes(&ctx, "test2_a_out", {}));
+
+  ASSERT_EQ(0u, infer.GetShape(&ctx, "test2_a_out").size());
+  infer.SetShape(&ctx, "test2_a_out", {
+                                          1, 3, 3,
+                                      });
+  ASSERT_EQ(3u, infer.GetShape(&ctx, "test2_a_out").size());
+
+  ASSERT_EQ(0, infer.GetLoDLevel(&ctx, "test2_a_out"));
+  infer.SetLoDLevel(&ctx, "test2_a_out", 2);
+  ASSERT_EQ(2, infer.GetLoDLevel(&ctx, "test2_a_out"));
 }
 
 }  // namespace framework

@@ -100,8 +100,8 @@ void FileReaderInferShape::operator()(framework::InferShapeContext* ctx) const {
 
 void FileReaderInferVarType::operator()(
     framework::InferVarTypeContext* ctx) const {
-  std::string reader_name = ctx->Output("Out")[0];
-  ctx->SetType(reader_name, framework::proto::VarType::READER);
+  // std::string reader_name = ctx->Output("Out")[0];
+  ctx->SetOutputType("Out", framework::proto::VarType::READER);
 }
 
 void DecoratedReaderInferShape::operator()(
@@ -125,10 +125,10 @@ void DecoratedReaderInferShape::operator()(
 
 void DecoratedReaderInferVarType::operator()(
     framework::InferVarTypeContext* ctx) const {
-  const std::string& in_reader_name = ctx->Input("UnderlyingReader")[0];
-  const std::string& out_reader_name = ctx->Output("Out")[0];
-  ctx->SetType(out_reader_name, framework::proto::VarType::READER);
-  ctx->SetDataTypes(out_reader_name, ctx->GetDataTypes(in_reader_name));
+  // const std::string& in_reader_name = ctx->Input("UnderlyingReader")[0];
+  // const std::string& out_reader_name = ctx->Output("Out")[0];
+  ctx->SetOutputType("Out", framework::proto::VarType::READER);
+  ctx->SetOutputDataTypes("Out", ctx->GetInputDataTypes("UnderlyingReader"));
 }
 
 void DecoratedReaderMakerBase::Make() {

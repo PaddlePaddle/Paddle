@@ -212,9 +212,10 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
   void operator()(framework::InferVarTypeContext* ctx) const override {
     if (!ctx->IsDygraph()) {
       auto var_type = framework::proto::VarType::SELECTED_ROWS;
-      if (VLOG_IS_ON(10) && !ctx->IsDygraph()) {
-        for (auto& name : ctx->Input("X")) {
-          VLOG(10) << name << " " << ctx->GetType(name);
+      if (VLOG_IS_ON(10)) {
+        for (size_t ind = 0; ind < ctx->InputSize("X"); ++ind) {
+          VLOG(10) << ctx->InputVarName("X", ind) << " "
+                   << ctx->GetInputType("X", ind);
         }
       }
 
@@ -223,10 +224,9 @@ class SumOpVarTypeInference : public framework::VarTypeInference {
         if (!ctx->InputTypeAllOf("X",
                                  framework::proto::VarType::LOD_TENSOR_ARRAY)) {
           std::ostringstream os;
-          if (!ctx->IsDygraph()) {
-            for (auto& each : ctx->Input("X")) {
-              os << "    " << each << " type is " << ctx->GetType(each) << "\n";
-            }
+          for (size_t ind = 0; ind < ctx->InputSize("X"); ++ind) {
+            os << "    " << ctx->InputVarName("X", ind) << " type is "
+               << ctx->GetInputType("X", ind) << "\n";
           }
           PADDLE_THROW(platform::errors::InvalidArgument(
               "Not all inputs are tensor array:\n%s", os.str()));
