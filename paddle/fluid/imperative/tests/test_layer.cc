@@ -124,7 +124,6 @@ TEST(test_layer, test_runtime_context) {
   auto* ctx =
       new imperative::TestRuntimeInferVarTypeContext<imperative::VarBase>(
           ins, outs, attrs);
-  ASSERT_TRUE(ctx->HasVar("vin"));
 
   ASSERT_TRUE(ctx->HasInput("X"));
   ASSERT_TRUE(ctx->HasOutput("Out"));
