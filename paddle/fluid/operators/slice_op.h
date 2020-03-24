@@ -103,7 +103,40 @@ class SliceKernel : public framework::OpKernel<T> {
     auto ends = context.Attr<std::vector<int>>("ends");
     auto decrease_axis = context.Attr<std::vector<int>>("decrease_axis");
     auto infer_flags = context.Attr<std::vector<int>>("infer_flags");
+    auto list_new_ends_tensor =
+        context.MultiInput<framework::Tensor>("EndsTensorList");
+    auto list_new_starts_tensor =
+        context.MultiInput<framework::Tensor>("StartsTensorList");
 
+    bool need_infer = false;
+    if (context.HasInput("StartsTensor") || context.HasInput("EndsTensor")) {
+      need_infer = true;
+    }
+    if (list_new_starts_tensor.size() > 0 || list_new_ends_tensor.size() > 0) {
+      need_infer = true;
+    }
+    if (need_infer) {
+      if (context.HasInput("StartsTensor")) {
+        auto* starts_tensor = context.Input<framework::Tensor>("StartsTensor");
+        starts = get_new_data_from_tensor(starts_tensor);
+      } else if (list_new_starts_tensor.size() > 0) {
+        starts = get_new_data_from_tensorlist(list_new_starts_tensor);
+      }
+      if (context.HasInput("EndsTensor")) {
+        auto* ends_tensor = context.Input<framework::Tensor>("EndsTensor");
+        ends = get_new_data_from_tensor(ends_tensor);
+      } else if (list_new_ends_tensor.size() > 0) {
+        ends = get_new_data_from_tensorlist(list_new_ends_tensor);
+      }
+    }
+    PADDLE_ENFORCE_EQ(
+        starts.size(), axes.size(),
+        platform::errors::InvalidArgument(
+            "The size of starts must be equal to the size of axes."));
+    PADDLE_ENFORCE_EQ(
+        ends.size(), axes.size(),
+        platform::errors::InvalidArgument(
+            "The size of ends must be equal to the size of axes."));
     if (input_is_tensor_array) {
       auto in_array = context.Input<framework::LoDTensorArray>("Input");
       // If the input is LoDTensorArray, the rank of input is 1.
@@ -150,38 +183,9 @@ class SliceKernel : public framework::OpKernel<T> {
     auto in = context.Input<framework::Tensor>("Input");
     auto out = context.Output<framework::Tensor>("Out");
 
-    auto list_new_ends_tensor =
-        context.MultiInput<framework::Tensor>("EndsTensorList");
-    auto list_new_starts_tensor =
-        context.MultiInput<framework::Tensor>("StartsTensorList");
-
-    bool need_infer = false;
-    if (context.HasInput("StartsTensor") || context.HasInput("EndsTensor")) {
-      need_infer = true;
-    }
-    if (list_new_starts_tensor.size() > 0 || list_new_ends_tensor.size() > 0) {
-      need_infer = true;
-    }
     auto out_dims = out->dims();
     auto in_dims = in->dims();
     if (need_infer) {
-      if (context.HasInput("StartsTensor")) {
-        auto* starts_tensor = context.Input<framework::Tensor>("StartsTensor");
-        starts = get_new_data_from_tensor(starts_tensor);
-      } else if (list_new_starts_tensor.size() > 0) {
-        starts = get_new_data_from_tensorlist(list_new_starts_tensor);
-      }
-      PADDLE_ENFORCE_EQ(
-          starts.size(), axes.size(),
-          "The size of starts must be equal to the size of axes.");
-      if (context.HasInput("EndsTensor")) {
-        auto* ends_tensor = context.Input<framework::Tensor>("EndsTensor");
-        ends = get_new_data_from_tensor(ends_tensor);
-      } else if (list_new_ends_tensor.size() > 0) {
-        ends = get_new_data_from_tensorlist(list_new_ends_tensor);
-      }
-      PADDLE_ENFORCE_EQ(ends.size(), axes.size(),
-                        "The size of ends must be equal to the size of axes.");
       out_dims = in_dims;
       int dim_value, start, end;
       for (size_t i = 0; i < axes.size(); ++i) {
@@ -323,7 +327,24 @@ class SliceGradKernel : public framework::OpKernel<T> {
     auto axes = context.Attr<std::vector<int>>("axes");
     auto starts = context.Attr<std::vector<int>>("starts");
     auto ends = context.Attr<std::vector<int>>("ends");
+    auto list_new_ends_tensor =
+        context.MultiInput<framework::Tensor>("EndsTensorList");
+    auto list_new_starts_tensor =
+        context.MultiInput<framework::Tensor>("StartsTensorList");
 
+    if (list_new_starts_tensor.size() > 0) {
+      starts = get_new_data_from_tensorlist(list_new_starts_tensor);
+    } else if (context.HasInput("StartsTensor")) {
+      auto* starts_tensor = context.Input<framework::Tensor>("StartsTensor");
+      starts = get_new_data_from_tensor(starts_tensor);
+    }
+
+    if (list_new_ends_tensor.size() > 0) {
+      ends = get_new_data_from_tensorlist(list_new_ends_tensor);
+    } else if (context.HasInput("EndsTensor")) {
+      auto* ends_tensor = context.Input<framework::Tensor>("EndsTensor");
+      ends = get_new_data_from_tensor(ends_tensor);
+    }
     framework::Variable* d_input_var =
         context.OutputVar(framework::GradVarName("Input"));
     const framework::Variable* d_out_var =
@@ -372,25 +393,6 @@ class SliceGradKernel : public framework::OpKernel<T> {
         TensorCopy(*d_out, context.GetPlace(), &(d_input_array->at(start)));
       }
       return;
-    }
-
-    auto list_new_ends_tensor =
-        context.MultiInput<framework::Tensor>("EndsTensorList");
-    auto list_new_starts_tensor =
-        context.MultiInput<framework::Tensor>("StartsTensorList");
-
-    if (list_new_starts_tensor.size() > 0) {
-      starts = get_new_data_from_tensorlist(list_new_starts_tensor);
-    } else if (context.HasInput("StartsTensor")) {
-      auto* starts_tensor = context.Input<framework::Tensor>("StartsTensor");
-      starts = get_new_data_from_tensor(starts_tensor);
-    }
-
-    if (list_new_ends_tensor.size() > 0) {
-      ends = get_new_data_from_tensorlist(list_new_ends_tensor);
-    } else if (context.HasInput("EndsTensor")) {
-      auto* ends_tensor = context.Input<framework::Tensor>("EndsTensor");
-      ends = get_new_data_from_tensor(ends_tensor);
     }
 
     auto* d_out =

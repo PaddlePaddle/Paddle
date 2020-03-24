@@ -531,7 +531,7 @@ class TestSliceAPI(unittest.TestCase):
 
 class TestSliceApiWithLoDTensorArray(unittest.TestCase):
     def setUp(self):
-        self.shape = [3, 4]
+        self.shape = (3, 4)
         self.data = np.random.random(size=self.shape).astype('float32')
         self.idx = 0
         self.start = 0
@@ -564,7 +564,9 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
                 self.sliced_arr = output = arr[0]
 
             elif case_num == 2:
-                self.sliced_arr = slice_arr = arr[self.start:self.end]
+                end = fluid.layers.array_length(arr) - 1
+                end = fluid.layers.cast(end, "int32")
+                self.sliced_arr = slice_arr = arr[self.start:end]
                 output, _ = fluid.layers.tensor_array_to_tensor(
                     slice_arr, axis=self.axis, use_stack=True)
 
@@ -585,6 +587,7 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
         self.set_program_and_run(main_program, 1)
 
         self.assertTrue(self.sliced_arr.type == core.VarDesc.VarType.LOD_TENSOR)
+        self.assertEqual(self.sliced_arr.shape, self.shape)
         self.assertTrue(np.array_equal(self.out, self.data))
         self.assertTrue(np.array_equal(self.g_x0, np.ones_like(self.data)))
         self.assertTrue(np.array_equal(self.g_x1, np.zeros_like(self.data)))
@@ -596,6 +599,7 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
 
         self.assertTrue(
             self.sliced_arr.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY)
+        self.assertEqual(self.sliced_arr.shape, self.shape)
         self.assertTrue(
             np.array_equal(
                 self.out, np.stack(

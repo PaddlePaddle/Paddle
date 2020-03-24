@@ -34,18 +34,31 @@ class SliceOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
                       "Output (Out) of slice op should not be null.");
     auto x_var_type = ctx->GetInputsVarType("Input")[0];
-    if (x_var_type == framework::proto::VarType::LOD_TENSOR_ARRAY &&
-        ctx->IsRuntime()) {
-      // If the var type of input is LOD_TENSOR_ARRAY,
-      // the output shape is determined by SliceKernel:Compute in runtime.
-      return;
+    auto axes = ctx->Attrs().Get<std::vector<int>>("axes");
+    if (x_var_type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
+      PADDLE_ENFORCE_EQ(axes.size(), 1,
+                        platform::errors::InvalidArgument(
+                            "The size of axes must be 1 when the Input of "
+                            "SliceOp is LoDTensorArray, "
+                            "but received %d.",
+                            axes.size()));
+      if (ctx->IsRuntime()) {
+        // If the var type of input is LOD_TENSOR_ARRAY,
+        // the output shape is determined by SliceKernel:Compute in runtime.
+        return;
+      } else {
+        // NOTE: A better way is needed to get accurate dims of tensor array.
+        // The resulted dim of GetInputDim("Input") is the dim of the
+        // last item written into TensorArray "Input". Maybe it's a bug to fix.
+        ctx->SetOutputDim("Out", ctx->GetInputDim("Input"));
+        return;
+      }
     }
     auto in_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_LT(in_dims.size(), 7,
                       "The rank of input should be less than 7.");
     framework::DDim out_dims(in_dims);
 
-    auto axes = ctx->Attrs().Get<std::vector<int>>("axes");
     auto starts = ctx->Attrs().Get<std::vector<int>>("starts");
     auto ends = ctx->Attrs().Get<std::vector<int>>("ends");
     auto infer_flags = ctx->Attrs().Get<std::vector<int>>("infer_flags");
@@ -265,7 +278,9 @@ class SliceOpGrad : public framework::OperatorWithKernel {
     if (x_var_type == framework::proto::VarType::LOD_TENSOR_ARRAY) {
       // If the var type of input is LOD_TENSOR_ARRAY,
       // the output shape is determined by SliceGradKernel:Compute in runtime.
-      if (ctx->IsRuntime()) return;
+      if (ctx->IsRuntime()) {
+        return;
+      }
     }
     auto x_dims = ctx->GetInputDim("Input");
     auto x_grad_name = framework::GradVarName("Input");
