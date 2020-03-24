@@ -20,7 +20,6 @@ import time
 import os
 import signal
 
-#loggers={}
 logger = logging.getLogger("root")
 logger.propagate = False
 
@@ -211,115 +210,6 @@ class Pod(object):
         return r
 
 
-class Gloo(object):
-    def __init__(self):
-        self._gloo = fluid.core.Gloo()
-        self._clear()
-
-    def _clear(self):
-        self._endpoints = None
-        self._job_id = None
-        self._hdfs = None
-        self._rank = None
-
-    def _is_changed(self, job_id, hdfs, endpoints, rank):
-        return self._job_id == job_id and \
-            self._hdfs == hdfs and \
-            self._endpoints == endpoints and \
-            self._rank == rank
-
-    def _init(self, job_id, hdfs, endpoints, rank, try_num=3):
-        if not self._is_changed(job_id, hdfs, endpoints, rank):
-            self._job_id = job_id
-            self._hdfs = hdfs
-            self._endpoints = endpoints
-            self._rank = rank
-            self._try_num = try_num
-
-            iface = self.__get_default_iface()
-            try:
-                self._gloo.init(rank,
-                                len(self._endpoints),
-                                hdfs.hdfs_path.rstrip("/") + "/edl_job_gloo",
-                                hdfs.hdfs_name, hdfs.hdfs_ugi, iface,
-                                self._job_id)
-            except Exception as e:
-                self._clear()
-                logger.warning("can't init gloo")
-                raise e
-
-    def _loop(self, func, name):
-        step = 0
-        err = None
-        while True:
-            try:
-                ret = func()
-                return True
-            except Exception as e:
-                err = e
-                time.sleep(3)
-                step += 1
-                if step >= self._try_num:
-                    break
-
-        logger.warning("gloo {} error exception:{}".format(name, err))
-        return False
-
-    def init(self, job_id, hdfs, endpoints, rank, try_num=3):
-        func = functools.partial(
-            self._init,
-            job_id=job_id,
-            hdfs=hdfs,
-            endpoints=endpoints,
-            rank=rank,
-            try_num=try_num)
-        return self._loop(func, "init")
-
-    def barrier(self, timeout):
-        #func = functools.partial(self._gloo.barrier, timeout=timeout)
-        func = functools.partial(self._gloo.barrier)
-        return self._loop(func, "barrier")
-
-    def allgather(self, input, output, timeout):
-        func = functools.partial(
-            self._gloo.allgather, input=input, output=output, timeout=timeout)
-        return self._loop(func, "allgather")
-
-    def __get_default_iface(self):
-        """
-        get default physical interface
-        """
-        default1 = self.__get_default_iface_from_gateway()
-        default2 = self.__get_default_iface_from_interfaces()
-        return default2 if default1 == "lo" else default1
-
-    def __get_default_iface_from_gateway(self):
-        """
-        get default physical interface
-        """
-        import netifaces
-        gateways = netifaces.gateways()
-        if gateways.get(netifaces.AF_INET) != None:
-            gateway = gateways[netifaces.AF_INET]
-            if len(gateway) > 0 and len(gateway[0]) > 1:
-                return gateway[0][1]
-        return "lo"
-
-    def __get_default_iface_from_interfaces(self):
-        """
-        get default physical interface
-        """
-        import netifaces
-        for intf_name in netifaces.interfaces():
-            addresses = netifaces.ifaddresses(intf_name)
-            if netifaces.AF_INET in addresses:
-                ipv4_addresses = addresses[netifaces.AF_INET]
-                for ipv4_address in ipv4_addresses:
-                    if 'broadcast' in ipv4_address:
-                        return intf_name
-        return "lo"
-
-
 def get_logger(log_level, name="root"):
     logger = logging.getLogger(name)
     logger.setLevel(log_level)
@@ -432,3 +322,105 @@ def find_free_ports(num):
             return None
 
     return None
+
+
+class TrainerProc(object):
+    def __init__(self):
+        self.proc = None
+        self.log_fn = None
+        self.rank = None
+        self.cmd = None
+
+
+def start_local_trainers(cluster, pod):
+    current_env = copy.copy(os.environ.copy())
+    #paddle broadcast ncclUniqueId use socket, and
+    #proxy maybe make trainers unreachable, so delete them.
+    #if we set them to "", grpc will log error message "bad uri"
+    #so just delete them.
+    current_env.pop("http_proxy", None)
+    current_env.pop("https_proxy", None)
+
+    procs = []
+    for idx, t in enumerate(pod.trainers):
+        proc_env = {
+            "FLAGS_selected_gpus": "%s" % ",".join([str(g) for g in t.gpus]),
+            "PADDLE_TRAINER_ID": "%d" % t.rank,
+            "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
+            "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
+            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
+        }
+
+        current_env.update(proc_env)
+
+        logger.debug("trainer proc env:{}".format(current_env))
+
+        cmd = [sys.executable, "-u", args.training_script
+               ] + args.training_script_args
+
+        logger.info("start trainer proc:{} env:{}".format(cmd, proc_env))
+
+        fn = None
+        if args.log_dir is not None:
+            os.system("mkdir -p {}".format(args.log_dir))
+            fn = open("%s/workerlog.%d" % (args.log_dir, idx), "a")
+            proc = subprocess.Popen(cmd, env=current_env, stdout=fn, stderr=fn)
+        else:
+            proc = subprocess.Popen(cmd, env=current_env)
+
+        tp = TrainerProc()
+        tp.proc = proc
+        tp.rank = t.rank
+        tp.log_fn = fn
+        tp.cmd = cmd
+
+        procs.append(tp)
+
+    return procs
+
+
+def watch_local_trainers(procs, nranks):
+    try:
+        error = False
+        error_rank = []
+        # wait all process finish or one error
+        alive = False
+        for p in procs:
+            ret = p.proc.poll()
+            if ret is None:
+                alive = True
+            elif ret != 0:
+                error = True
+                error_rank.append(p.rank)
+
+        if error:
+            terminate_local_procs(procs)
+            exit(1)
+
+    except KeyboardInterrupt:
+        logger.warning("KeyboardInterrupt, exit")
+        terminate_local_procs(procs)
+        raise
+    except SystemExit:
+        logger.error(
+            "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log.".
+            format(nranks, error_rank))
+        terminate_local_procs(procs)
+        raise
+    except:
+        logger.error(
+            "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log.".
+            format(nranks, error_rank))
+        terminate_local_procs(procs)
+        raise
+
+    return alive
+
+
+def get_hdfs_from_args(args):
+    hdfs = Hdfs()
+    hdfs.hdfs_name = args.hdfs_name
+    hdfs.hdfs_ugi = args.hdfs_ugi
+    hdfs.hdfs_path = args.hdfs_path
+
+    return hdfs
