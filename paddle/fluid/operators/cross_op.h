@@ -141,12 +141,21 @@ class CrossGradKernel : public framework::OpKernel<T> {
     auto input_x_dims = input_x.dims();
     if (dim != kDefaultDim) {
       PADDLE_ENFORCE_EQ(
-          input_x_dims.size() > dim && input_x_dims[dim] == 3, true,
+          dim < input_x_dims.size() && dim >= (0 - input_x_dims.size()), true,
+          platform::errors::OutOfRange(
+              "Attr(dim) is out of range, It's expected "
+              "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
+              input_x_dims.size(), input_x_dims.size() - 1, dim));
+      if (dim < 0) {
+        dim += input_x_dims.size();
+      }
+
+      PADDLE_ENFORCE_EQ(
+          input_x_dims[dim] == 3, true,
           platform::errors::InvalidArgument(
-              "Input(X/Y).dims.size() must be greater than dim, and"
-              "Input(X).dims()[dim] must be equal to 3. But received: "
-              "Input(X).dims = [%s], Attr(dim) = %d",
-              input_x_dims, dim));
+              "Input(X/Y).dims[dim] must be equal to 3. But received: "
+              "Input(X/Y).dims[dim] = [%d].",
+              input_x_dims[dim]));
     } else {
       for (size_t i = 0; i < input_x_dims.size(); i++) {
         if (input_x_dims[i] == 3) {

@@ -55,6 +55,9 @@ class IndexSelectOp : public framework::OperatorWithKernel {
                   index_dim, index_dim.size()));
 
     auto output_dim = framework::vectorize(input_dim);
+    if (dim < 0) {
+      dim += input_dim.size();
+    }
     output_dim[dim] = index_dim[0];
     ctx->SetOutputDim("Out", framework::make_ddim(output_dim));
     auto type = ctx->GetInputsVarType("X")[0];
