@@ -23,3 +23,20 @@
 #            'cross',
 #            'cholesky',
 #            'tensordot']
+from __future__ import print_function
+
+from ..fluid.layer_helper import LayerHelper
+
+__all__ = ['cross']
+
+
+def cross(input, other, dim=-1):
+    helper = LayerHelper("cross", **locals())
+    out = helper.create_variable_for_type_inference(input.dtype)
+    helper.append_op(
+        type='cross',
+        inputs={'X': input,
+                'Y': other},
+        outputs={'Out': out},
+        attrs={'dim': dim})
+    return out

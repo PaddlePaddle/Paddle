@@ -39,3 +39,28 @@
 #            'flip',
 #            'unbind',
 #            'roll']
+from __future__ import print_function
+
+from ..fluid.layer_helper import LayerHelper
+
+__all__ = ['roll']
+
+
+def roll(input, shifts, dims=None):
+    helper = LayerHelper("roll", **locals())
+    out = helper.create_variable_for_type_inference(input.dtype)
+
+    if type(shifts) == int:
+        shifts = [shifts]
+    if type(dims) == int:
+        dims = [dims]
+    if dims is None:
+        dims = [0]
+
+    helper.append_op(
+        type='roll',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={'dims': dims,
+               'shifts': shifts})
+    return out
