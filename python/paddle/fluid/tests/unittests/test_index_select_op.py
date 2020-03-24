@@ -22,7 +22,7 @@ import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 
-class TestIndexSelectOp(OpTest):
+class TestIndexSelectOp1(OpTest):
     def setUp(self):
         self.op_type = "index_select"
         self.dtype = np.float64
@@ -32,6 +32,28 @@ class TestIndexSelectOp(OpTest):
             'Index': np.arange(4).astype(np.int64)
         }
         self.attrs = {'dim': 1}
+        self.outputs = {'Out': self.inputs['X']}
+
+    def init_dtype_type(self):
+        pass
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestIndexSelectOp2(OpTest):
+    def setUp(self):
+        self.op_type = "index_select"
+        self.dtype = np.float64
+        self.init_dtype_type()
+        self.inputs = {
+            'X': np.random.random((100, 4, 5)).astype(self.dtype),
+            'Index': np.arange(5).astype(np.int32)
+        }
+        self.attrs = {'dim': -1}
         self.outputs = {'Out': self.inputs['X']}
 
     def init_dtype_type(self):

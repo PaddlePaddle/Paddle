@@ -28,7 +28,7 @@ class TestRollOp(OpTest):
         self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {'X': np.random.random((100, 4, 5)).astype(self.dtype)}
-        self.attrs = {'shifts': [101, -1], 'dims': [0, 1]}
+        self.attrs = {'shifts': [101, -1], 'dims': [0, -2]}
         self.outputs = {
             'Out': np.roll(self.inputs['X'], self.attrs['shifts'],
                            self.attrs['dims'])

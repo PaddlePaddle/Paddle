@@ -22,6 +22,31 @@ import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 
+class TestCrossDefaultOp(OpTest):
+    def setUp(self):
+        self.op_type = "cross"
+        self.dtype = np.float64
+        self.inputs = {
+            'X': np.random.random((100, 3, 1)).astype(self.dtype),
+            'Y': np.random.random((100, 3, 1)).astype(self.dtype)
+        }
+        self.init_output()
+
+    def init_output(self):
+        x = np.squeeze(self.inputs['X'], 2)
+        y = np.squeeze(self.inputs['Y'], 2)
+        z_list = []
+        for i in range(100):
+            z_list.append(np.cross(x[i], y[i]))
+        self.outputs = {'Out': np.array(z_list).reshape(100, 3, 1)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out')
+
+
 class TestCrossOp(OpTest):
     def setUp(self):
         self.op_type = "cross"
@@ -30,6 +55,7 @@ class TestCrossOp(OpTest):
             'X': np.random.random((100, 3, 1)).astype(self.dtype),
             'Y': np.random.random((100, 3, 1)).astype(self.dtype)
         }
+        self.attrs = {'dim': -2}
         self.init_output()
 
     def init_output(self):
