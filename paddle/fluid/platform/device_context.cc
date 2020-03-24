@@ -176,15 +176,14 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
 
   void* scratchpad() const override {
     if (scratch_ == NULL) {
-      scratch_ = allocate(Eigen::kCudaScratchSize + sizeof(unsigned int));
+      scratch_ = allocate(Eigen::kGpuScratchSize + sizeof(unsigned int));
     }
     return scratch_;
   }
 
   unsigned int* semaphore() const override {
     if (semaphore_ == NULL) {
-      char* scratch =
-          static_cast<char*>(scratchpad()) + Eigen::kCudaScratchSize;
+      char* scratch = static_cast<char*>(scratchpad()) + Eigen::kGpuScratchSize;
       semaphore_ = reinterpret_cast<unsigned int*>(scratch);
       PADDLE_ENFORCE_CUDA_SUCCESS(
           cudaMemsetAsync(semaphore_, 0, sizeof(unsigned int), *stream_));
