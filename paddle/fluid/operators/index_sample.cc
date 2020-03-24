@@ -101,13 +101,19 @@ class IndexSampleGradOP : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-
 REGISTER_OPERATOR(
     index_sample, ops::IndexSampleOp, ops::IndexSampleOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(index_sample_grad, ops::IndexSampleGradOp);
 REGISTER_OP_CPU_KERNEL(
     index_sample, ops::IndexSampleKernel<paddle::platform::CPUPlace, float>,
     ops::IndexSampleKernel<paddle::platform::CPUPlace, double>,
     ops::IndexSampleKernel<paddle::platform::CPUPlace, int>,
     ops::IndexSampleKernel<paddle::platform::CPUPlace, int64_t>);
+REGISTER_OP_CPU_KERNEL(
+    index_sample_grad,
+    ops::IndexSampleGradKernel<paddle::platform::CPUPlace, float>,
+    ops::IndexSampleGradKernel<paddle::platform::CPUPlace, double>,
+    ops::IndexSampleGradKernel<paddle::platform::CPUPlace, int>,
+    ops::IndexSampleGradKernel<paddle::platform::CPUPlace, int64_t>);
