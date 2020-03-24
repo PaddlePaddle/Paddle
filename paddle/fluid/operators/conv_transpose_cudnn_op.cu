@@ -220,8 +220,6 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
     bool deterministic = FLAGS_cudnn_deterministic;
 
     auto dtype = platform::CudnnDataType<T>::type;
-    // VLOG(0) << "transpose forward: "<< transformed_output.dims() << "; " <<
-    // filter->dims() << "; " << transformed_input.dims();
     // ------------------- cudnn descriptors ---------------------
     ConvArgs args{&transformed_output, filter,   &transformed_input, strides,
                   padding_common,      dilations};
