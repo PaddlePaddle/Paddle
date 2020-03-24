@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/dequantize_log_op.h"
+#include "paddle/fluid/operators/math.h"
+#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
 namespace operators {
@@ -23,9 +26,9 @@ __global__ void KeDequantize(const T* in, const float* dict, int num,
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < num) {
     if (in[idx] < 0) {
-      out[idx] = -pow(2.0, dict[in[idx] + 128]);
+      out[idx] = -std::pow(2.0, dict[in[idx] + 128]);
     } else {
-      out[idx] = pow(2.0, dict[in[idx]]);
+      out[idx] = std::pow(2.0, dict[in[idx]]);
     }
   }
 }
