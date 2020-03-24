@@ -75,8 +75,9 @@ def noam_decay(d_model, warmup_steps, learning_rate=1.0):
 
         warmup_steps(Variable): A super parameter.
 
-        learning_rate(Variable|float): The initial learning rate. It should be a Variable
-                                       or a float, default 1.0
+        learning_rate(Variable|float|int): The initial learning rate. If the type
+            is Variable, it's a tensor with shape [1], the data type can be
+            float32 or float64. It also can be set to python int number. Default 1.0
 
     Returns:
         The decayed learning rate.
@@ -93,7 +94,8 @@ def noam_decay(d_model, warmup_steps, learning_rate=1.0):
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            decay = imperate_lr.NoamDecay(d_model, warmup_steps, learning_rate)
+            decay = imperate_lr.NoamDecay(
+                d_model, warmup_steps, learning_rate=learning_rate)
             return decay
         else:
             global_step = _decay_step_counter(1)
