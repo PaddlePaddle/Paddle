@@ -63,12 +63,12 @@ function(inference_qat2_int8_image_classification_test target model_dir fp32_mod
                  OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
                  FLAGS_use_mkldnn=true
             ARGS --qat_model ${model_dir}/float
-		 --fp32_model ${fp32_model}
                  --infer_data ${data_path}
+		  --fp32_model ${fp32_model}
                  --batch_size 10
                  --batch_num 2
                  --acc_diff_threshold 0.1
-		         --qat2)
+		  --qat2)
 endfunction()
 
 # set batch_size 10 for UT only (avoid OOM). For whole dataset, use batch_size 20 
