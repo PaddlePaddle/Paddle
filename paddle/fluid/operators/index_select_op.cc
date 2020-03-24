@@ -137,5 +137,23 @@ REGISTER_OP_CPU_KERNEL(
     index_select,
     ops::IndexSelectKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
+    index_select,
+    ops::IndexSelectKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    index_select,
+    ops::IndexSelectKernel<paddle::platform::CPUDeviceContext, int>);
+REGISTER_OP_CPU_KERNEL(
+    index_select,
+    ops::IndexSelectKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(
     index_select_grad,
     ops::IndexSelectGradKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    index_select_grad,
+    ops::IndexSelectGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    index_select_grad,
+    ops::IndexSelectGradKernel<paddle::platform::CPUDeviceContext, int>);
+REGISTER_OP_CPU_KERNEL(
+    index_select_grad,
+    ops::IndexSelectGradKernel<paddle::platform::CPUDeviceContext, int64_t>);

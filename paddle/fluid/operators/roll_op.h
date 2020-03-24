@@ -25,8 +25,8 @@ using LoDTensor = framework::LoDTensor;
 using DDim = framework::DDim;
 
 template <typename T>
-inline void shift_along_dim(const T* input_data, T* output_data,
-                            const DDim& input_dim, int64_t dim, int64_t shift) {
+inline void shift_along_dim(T* data, const DDim& input_dim, int64_t dim,
+                            int64_t shift) {
   int64_t outer_loops = 1;
   for (auto i = 0; i < dim; i++) {
     outer_loops *= input_dim[i];
@@ -37,15 +37,31 @@ inline void shift_along_dim(const T* input_data, T* output_data,
   }
   const size_t slice_bytes = slice_width * sizeof(T);
 
-  for (auto i = 0; i < outer_loops; i++) {
-    auto input_pos = i * input_dim[dim] * slice_width;
-    auto output_pos =
-        ((i + shift) % input_dim[dim]) * input_dim[dim] * slice_width;
-    for (auto j = 0; j < input_dim[dim]; j++) {
-      memcpy(output_data + output_pos + j * slice_width,
-             input_data + input_pos + j * slice_width, slice_bytes);
-    }
+  shift = shift % input_dim[dim];
+  if (shift < 0) {
+    shift += input_dim[dim];
   }
+  VLOG(1) << "shift_along_dim_debug: input_dim: " << input_dim
+          << "; dim: " << dim << "; shift: " << shift
+          << "; outer_loops: " << outer_loops
+          << "; slice_width: " << slice_width;
+  if (shift == 0) {
+    return;
+  }
+
+  T* head = new T[slice_width * (input_dim[dim] - shift)];
+  for (auto i = 0; i < outer_loops; i++) {
+    memcpy(head, data + i * input_dim[dim] * slice_width,
+           slice_width * (input_dim[dim] - shift) * sizeof(T));
+    for (auto j = input_dim[dim] - shift; j < input_dim[dim]; j++) {
+      auto dst_pos = j - input_dim[dim] + shift;
+      memcpy(data + (i * input_dim[dim] + dst_pos) * slice_width,
+             data + (i * input_dim[dim] + j) * slice_width, slice_bytes);
+    }
+    memcpy(data + (i * input_dim[dim] + shift) * slice_width, head,
+           slice_width * (input_dim[dim] - shift) * sizeof(T));
+  }
+  delete[] head;
 }
 
 template <typename DeviceContext, typename T>
@@ -69,8 +85,12 @@ class RollKernel : public framework::OpKernel<T> {
     T* output_data = output->mutable_data<T>(context.GetPlace());
     const DDim input_dim = input.dims();
 
+    for (size_t i = 0; i < input.numel(); i++) {
+      *(output_data + i) = *(input_data + i);
+    }
+
     for (size_t i = 0; i < nums; i++) {
-      shift_along_dim(input_data, output_data, input_dim, dims[i], shifts[i]);
+      shift_along_dim(output_data, input_dim, dims[i], shifts[i]);
     }
   }
 };
@@ -96,9 +116,12 @@ class RollGradKernel : public framework::OpKernel<T> {
     T* output_data = output->mutable_data<T>(context.GetPlace());
     const DDim input_dim = input.dims();
 
+    for (size_t i = 0; i < input.numel(); i++) {
+      *(output_data + i) = *(input_data + i);
+    }
+
     for (size_t i = 0; i < nums; i++) {
-      shift_along_dim(input_data, output_data, input_dim, dims[i],
-                      0 - shifts[i]);
+      shift_along_dim(output_data, input_dim, dims[i], 0 - shifts[i]);
     }
   }
 };
