@@ -245,7 +245,7 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
             CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
             workspace_size_limit, &algo));
 
-    if (algo == 0 && FLAGS_cudnn_deterministic) {
+    if (FLAGS_cudnn_deterministic) {
       algo = static_cast<cudnnConvolutionBwdDataAlgo_t>(1);
     }
 
@@ -261,7 +261,7 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
     int output_offset =
         transformed_output.numel() / transformed_output.dims()[0] / groups;
     int filter_offset = filter->numel() / groups;
-    T alpha = 1.0f, beta = 0.0f;
+    T alpha = static_cast<T>(1.0), beta = static_cast<T>(0.0);
     auto workspace_handle = dev_ctx.cudnn_workspace_handle();
     for (int g = 0; g < groups; g++) {
       auto cudnn_func = [&](void* cudnn_workspace) {
@@ -476,6 +476,10 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
               handle, cudnn_output_desc, cudnn_filter_desc, cudnn_conv_desc,
               cudnn_input_desc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
               workspace_size_limit, &data_algo));
+
+      if (FLAGS_cudnn_deterministic) {
+        data_algo = static_cast<cudnnConvolutionFwdAlgo_t>(1);
+      }
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
               handle, cudnn_output_desc, cudnn_filter_desc, cudnn_conv_desc,
@@ -492,6 +496,9 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
               CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT,
               workspace_size_limit, &filter_algo));
 
+      if (FLAGS_cudnn_deterministic) {
+        filter_algo = static_cast<cudnnConvolutionBwdFilterAlgo_t>(1);
+      }
       // get workspace for backwards filter algorithm
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnGetConvolutionBackwardFilterWorkspaceSize(
@@ -507,7 +514,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
     int output_grad_offset = transformed_output_grad.numel() /
                              transformed_output_grad.dims()[0] / groups;
     int filter_offset = filter->numel() / groups;
-    T alpha = 1.0f, beta = 0.0f;
+    T alpha = static_cast<T>(1.0), beta = static_cast<T>(0.0);
     auto workspace_handle = dev_ctx.cudnn_workspace_handle();
     if (input_grad) {
       T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
@@ -569,17 +576,22 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
 REGISTER_OP_KERNEL(conv2d_transpose, CUDNN, ::paddle::platform::CUDAPlace,
+                   ops::CUDNNConvTransposeOpKernel<plat::float16>,
                    ops::CUDNNConvTransposeOpKernel<float>,
                    ops::CUDNNConvTransposeOpKernel<double>);
 REGISTER_OP_KERNEL(conv2d_transpose_grad, CUDNN, ::paddle::platform::CUDAPlace,
+                   ops::CUDNNConvTransposeGradOpKernel<plat::float16>,
                    ops::CUDNNConvTransposeGradOpKernel<float>,
                    ops::CUDNNConvTransposeGradOpKernel<double>);
 
 REGISTER_OP_KERNEL(conv3d_transpose, CUDNN, ::paddle::platform::CUDAPlace,
+                   ops::CUDNNConvTransposeOpKernel<plat::float16>,
                    ops::CUDNNConvTransposeOpKernel<float>,
                    ops::CUDNNConvTransposeOpKernel<double>);
 REGISTER_OP_KERNEL(conv3d_transpose_grad, CUDNN, ::paddle::platform::CUDAPlace,
+                   ops::CUDNNConvTransposeGradOpKernel<plat::float16>,
                    ops::CUDNNConvTransposeGradOpKernel<float>,
                    ops::CUDNNConvTransposeGradOpKernel<double>);

@@ -32,7 +32,6 @@ class TestDistCTR2x2(TestDistBase):
             "dist_ctr.py", delta=1e-2, check_error_log=True, log_name=flag_name)
 
 
-@unittest.skip(reason="Skip unstable ci")
 class TestDistCTRWithL2Decay2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
@@ -48,6 +47,7 @@ class TestDistCTRWithL2Decay2x2(TestDistBase):
             log_name=flag_name)
 
 
+@unittest.skip(reason="Skip unstable ci")
 class TestDistCTR2x2_ASYNC(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
@@ -69,6 +69,7 @@ class TestDistCTR2x2_ASYNC(TestDistBase):
             log_name=flag_name)
 
 
+@unittest.skip(reason="Skip unstable ci")
 class TestDistCTR2x2_ASYNCWithLRDecay2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
@@ -91,6 +92,7 @@ class TestDistCTR2x2_ASYNCWithLRDecay2x2(TestDistBase):
             log_name=flag_name)
 
 
+@unittest.skip(reason="Skip unstable ci")
 class TestDistCTR2x2_ASYNC2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False

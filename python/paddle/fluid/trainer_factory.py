@@ -23,7 +23,7 @@ logging.basicConfig(level=logging.INFO, format=FORMAT)
 local_logger = logging.getLogger(__name__)
 
 from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer
-from .device_worker import Hogwild, DownpourSGD, Section
+from .device_worker import Hogwild, DownpourSGD, Section, DownpourSGDOPT
 from .framework import Variable
 from multiprocessing import Process, Manager
 
@@ -43,7 +43,7 @@ class TrainerFactory(object):
     def _create_trainer(self, opt_info=None):
         trainer = None
         device_worker = None
-        if opt_info == None:
+        if not opt_info:
             # default is MultiTrainer + Hogwild
             trainer = MultiTrainer()
             device_worker = Hogwild()
@@ -53,15 +53,9 @@ class TrainerFactory(object):
             device_worker_class = opt_info["device_worker"]
             trainer = globals()[trainer_class]()
             device_worker = globals()[device_worker_class]()
-            if "fleet_desc" in opt_info:
-                device_worker._set_fleet_desc(opt_info["fleet_desc"])
-                trainer._set_fleet_desc(opt_info["fleet_desc"])
-                if opt_info.get("use_cvm") is not None:
-                    trainer._set_use_cvm(opt_info["use_cvm"])
-                if opt_info.get("no_cvm") is not None:
-                    trainer._set_no_cvm(opt_info["no_cvm"])
-                if opt_info.get("scale_datanorm") is not None:
-                    trainer._set_scale_datanorm(opt_info["scale_datanorm"])
+
+            # for debug tools
+            if opt_info is not None:
                 if opt_info.get("dump_slot") is not None:
                     trainer._set_dump_slot(opt_info["dump_slot"])
                 if opt_info.get("mpi_rank") is not None:
@@ -76,6 +70,18 @@ class TrainerFactory(object):
                     trainer._set_dump_file_num(opt_info["dump_file_num"])
                 if opt_info.get("dump_converter") is not None:
                     trainer._set_dump_converter(opt_info["dump_converter"])
+                if opt_info.get("dump_param") is not None:
+                    trainer._set_dump_param(opt_info["dump_param"])
+
+            if "fleet_desc" in opt_info:
+                device_worker._set_fleet_desc(opt_info["fleet_desc"])
+                trainer._set_fleet_desc(opt_info["fleet_desc"])
+                if opt_info.get("use_cvm") is not None:
+                    trainer._set_use_cvm(opt_info["use_cvm"])
+                if opt_info.get("no_cvm") is not None:
+                    trainer._set_no_cvm(opt_info["no_cvm"])
+                if opt_info.get("scale_datanorm") is not None:
+                    trainer._set_scale_datanorm(opt_info["scale_datanorm"])
                 if opt_info.get("adjust_ins_weight") is not None:
                     trainer._set_adjust_ins_weight(opt_info[
                         "adjust_ins_weight"])
@@ -84,8 +90,8 @@ class TrainerFactory(object):
                 if opt_info.get("check_nan_var_names") is not None:
                     trainer._set_check_nan_var_names(opt_info[
                         "check_nan_var_names"])
-                if opt_info.get("dump_param") is not None:
-                    trainer._set_dump_param(opt_info["dump_param"])
+                if opt_info.get("loss_names") is not None:
+                    trainer._set_loss_names(opt_info["loss_names"])
             trainer._set_device_worker(device_worker)
         return trainer
 

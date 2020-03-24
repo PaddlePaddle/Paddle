@@ -270,7 +270,7 @@ class TestAdagradOptimizer(unittest.TestCase):
 
         # Check init_program
         init_ops = init_program.global_block().ops
-        self.assertEqual(len(init_ops), 3)
+        self.assertEqual(len(init_ops), 2)
         self.assertEqual(init_ops[0].type, "fill_constant")
         self.assertAlmostEqual(init_ops[0].attr('value'), learning_rate)
         self.assertEqual(init_ops[1].type, "fill_constant")
@@ -791,8 +791,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
             mean_out,
             startup_program=None,
             parameter_list=None,
-            no_grad_set=None,
-            checkpoints=[b1_out])
+            no_grad_set=None)
 
         # apply gradient
         program = mean_out.block.program

@@ -38,7 +38,7 @@ from ..framework import Program, default_main_program, \
 from .details import wait_server_ready, VarsDistributed
 from .details import delete_ops
 from ..distribute_lookup_table import find_distributed_lookup_table
-from .distribute_transpiler import DistributeTranspiler, DistributeTranspilerConfig, slice_variable, same_or_split_var, ServerRuntimeConfig
+from .distribute_transpiler import DistributeTranspiler, DistributeTranspilerConfig, slice_variable, same_or_split_var, ServerRuntimeConfig, DistributedMode
 
 RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
 )
@@ -108,15 +108,15 @@ class GeoSgdTranspiler(DistributeTranspiler):
         self.sparse_var_list = []
         self.sparse_var_splited_list = []
 
-        # split and create vars, then put splited vars in dicts for later use.
-        # step 1. split and create vars, then put splited vars in dicts for later use.
+        # split and create vars, then put split vars in dicts for later use.
+        # step 1. split and create vars, then put split vars in dicts for later use.
         self._init_splited_vars()
 
         # step 3. create send recv var (param after optimize)
         send_vars = []
         ps_dispatcher.reset()
         param_var_mapping_items = list(six.iteritems(self.param_var_mapping))
-        # send_vars is the parameter which splited by communicator and send to pserver,not the origin parameter
+        # send_vars is the parameter which split by communicator and send to pserver,not the origin parameter
         for _, splited_vars in param_var_mapping_items:
             for _, var in enumerate(splited_vars):
                 send_vars.append(var)
@@ -247,7 +247,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
             "optimize_blocks": optimize_block,
             "endpoint": endpoint,
             "Fanin": self.trainer_num,
-            "sync_mode": self.sync_mode,
+            "distributed_mode": DistributedMode.GEO,
             "grad_to_block_id": param_to_block_id,
             "sparse_grad_to_param": sparse_grad_to_param,
             "rpc_get_thread_num": self.server_config._rpc_get_thread_num,
@@ -292,7 +292,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
                                       len(self.pserver_endpoints),
                                       self.config.min_block_size)
 
-        # step 3. Create splited param from split blocks
+        # step 3. Create split param from split blocks
         # origin_param_name -> [splited_param_vars]
         # Todo: update _create_vars_from_blocklist
         self.param_var_mapping = self._create_vars_from_blocklist(
@@ -308,7 +308,7 @@ class GeoSgdTranspiler(DistributeTranspiler):
             }) for ep in self.pserver_endpoints
         ]
 
-        # step 5. Create delta var of Geo-Sgd & record vars infomation
+        # step 5. Create delta var of Geo-Sgd & record vars information
         for origin_name, splited_vars in self.param_var_mapping.items():
             origin_var = self.origin_program.global_block().var(origin_name)
             self.vars_info[origin_name] = collections.OrderedDict()

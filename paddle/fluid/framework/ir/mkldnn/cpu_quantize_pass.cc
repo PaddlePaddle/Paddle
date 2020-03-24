@@ -66,6 +66,9 @@ void CPUQuantizePass::QuantizeInput(Graph* g, Node* op, Node* input,
                    std::vector<std::string>({quantize_out_node->Name()}));
   q_desc.SetAttr("Scale", scale);
   q_desc.SetAttr("is_negative_input", !is_unsigned);
+
+  q_desc.SetAttr("output_format",
+                 Has("data_layout") ? Get<std::string>("data_layout") : "NHWC");
   auto quantize_op = g->CreateOpNode(&q_desc);  // OpDesc will be copied.
 
   // update op's input

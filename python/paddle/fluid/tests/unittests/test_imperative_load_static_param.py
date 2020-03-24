@@ -18,8 +18,6 @@ import paddle.fluid.framework as framework
 from paddle.fluid.dygraph.nn import *
 import numpy as np
 
-print("11")
-
 
 class TestDygraphLoadStatic(unittest.TestCase):
     def testLoadStaticModel(self):

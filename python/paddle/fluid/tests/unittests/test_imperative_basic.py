@@ -20,11 +20,12 @@ import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid import Linear
 from test_imperative_base import new_program_scope
+import paddle.fluid.dygraph_utils as dygraph_utils
 
 
 class MyLayer(fluid.Layer):
-    def __init__(self, name_scope):
-        super(MyLayer, self).__init__(name_scope)
+    def __init__(self):
+        super(MyLayer, self).__init__()
 
     def forward(self, inputs):
         x = fluid.layers.relu(inputs)
@@ -37,6 +38,7 @@ class MyLayer(fluid.Layer):
 class MLP(fluid.Layer):
     def __init__(self, input_size):
         super(MLP, self).__init__()
+        self._linear1 = None
         self._linear1 = Linear(
             input_size,
             3,
@@ -60,19 +62,18 @@ class MLP(fluid.Layer):
 
 
 class SimpleRNNCell(fluid.Layer):
-    def __init__(self, name_scope, step_input_size, hidden_size, output_size,
-                 param_attr):
-        super(SimpleRNNCell, self).__init__(name_scope)
+    def __init__(self, step_input_size, hidden_size, output_size, param_attr):
+        super(SimpleRNNCell, self).__init__()
         self.step_input_size = step_input_size
         self.hidden_size = hidden_size
         self.output_size = output_size
         self._dtype = core.VarDesc.VarType.FP32
         self.param_attr = param_attr
 
-    def _build_once(self, inputs, pre_hidden):
         i2h_param_shape = [self.step_input_size, self.hidden_size]
         h2h_param_shape = [self.hidden_size, self.hidden_size]
         h2o_param_shape = [self.output_size, self.hidden_size]
+        self._i2h_w = None
         self._i2h_w = self.create_parameter(
             attr=self.param_attr,
             shape=i2h_param_shape,
@@ -90,7 +91,6 @@ class SimpleRNNCell(fluid.Layer):
             is_bias=False)
 
     def forward(self, input, pre_hidden):
-
         tmp_i2h = self.create_variable(dtype=self._dtype)
         tmp_h2h = self.create_variable(dtype=self._dtype)
         hidden = self.create_variable(dtype=self._dtype)
@@ -147,11 +147,10 @@ class SimpleRNNCell(fluid.Layer):
 
 
 class SimpleRNN(fluid.Layer):
-    def __init__(self, name_scope):
-        super(SimpleRNN, self).__init__(name_scope)
+    def __init__(self):
+        super(SimpleRNN, self).__init__()
         self.seq_len = 4
         self._cell = SimpleRNNCell(
-            self.full_name(),
             3,
             3,
             3,
@@ -179,6 +178,31 @@ class SimpleRNN(fluid.Layer):
 
 
 class TestImperative(unittest.TestCase):
+    def test_functional_dygraph_context(self):
+        self.assertFalse(fluid.dygraph.enabled())
+        fluid.enable_dygraph()
+        self.assertTrue(fluid.dygraph.enabled())
+        np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
+        var_inp = fluid.dygraph.base.to_variable(np_inp)
+        mlp = MLP(input_size=2)
+        out = mlp(var_inp)
+        dy_out1 = out.numpy()
+        out.backward()
+        dy_grad1 = mlp._linear1.weight.gradient()
+        fluid.disable_dygraph()
+        self.assertFalse(fluid.dygraph.enabled())
+        with fluid.dygraph.guard():
+            self.assertTrue(fluid.dygraph.enabled())
+            var_inp = fluid.dygraph.base.to_variable(np_inp)
+            mlp = MLP(input_size=2)
+            out = mlp(var_inp)
+            dy_out2 = out.numpy()
+            out.backward()
+            dy_grad2 = mlp._linear1.weight.gradient()
+        self.assertFalse(fluid.dygraph.enabled())
+        self.assertTrue(np.array_equal(dy_out1, dy_out2))
+        self.assertTrue(np.array_equal(dy_grad1, dy_grad2))
+
     def test_isinstance(self):
         var = fluid.layers.data(shape=[1], name='x', dtype='float32')
         self.assertTrue(isinstance(var, fluid.Variable))
@@ -297,7 +321,7 @@ class TestImperative(unittest.TestCase):
         with fluid.dygraph.guard():
             var_inp = fluid.dygraph.base.to_variable(np_inp)
             var_inp.stop_gradient = False
-            l = MyLayer("my_layer")
+            l = MyLayer()
             print(var_inp)
             x = l(var_inp)[0]
             self.assertIsNotNone(x)
@@ -308,7 +332,7 @@ class TestImperative(unittest.TestCase):
         with fluid.dygraph.guard():
             var_inp2 = fluid.dygraph.base.to_variable(np_inp)
             var_inp2.stop_gradient = False
-            l2 = MyLayer("my_layer")
+            l2 = MyLayer()
             x2 = l2(var_inp2)[0]
             self.assertIsNotNone(x2)
             dy_out2 = x2.numpy()
@@ -320,7 +344,7 @@ class TestImperative(unittest.TestCase):
         with new_program_scope():
             inp = fluid.layers.data(
                 name="inp", shape=[3], append_batch_size=False)
-            l = MyLayer("my_layer")
+            l = MyLayer()
             x = l(inp)[0]
             param_grads = fluid.backward.append_backward(
                 x, parameter_list=[l._x_for_debug.name])[0]
@@ -447,7 +471,7 @@ class TestImperative(unittest.TestCase):
         with fluid.dygraph.guard():
             var_inp = fluid.dygraph.base.to_variable(np_inp)
             var_inp = fluid.layers.reshape(var_inp, shape=[1, 4, 3])
-            simple_rnn = SimpleRNN("simple_rnn")
+            simple_rnn = SimpleRNN()
             outs, pre_hiddens = simple_rnn.forward(var_inp)
             dy_out = outs[3].numpy()
             outs[3].backward()
@@ -458,7 +482,7 @@ class TestImperative(unittest.TestCase):
         with fluid.dygraph.guard():
             var_inp2 = fluid.dygraph.base.to_variable(np_inp)
             var_inp2 = fluid.layers.reshape(var_inp2, shape=[1, 4, 3])
-            simple_rnn2 = SimpleRNN("simple_rnn")
+            simple_rnn2 = SimpleRNN()
             outs2, pre_hiddens2 = simple_rnn2.forward(var_inp2)
             dy_out2 = outs2[3].numpy()
             backward_strategy = fluid.dygraph.BackwardStrategy()
@@ -471,7 +495,7 @@ class TestImperative(unittest.TestCase):
         with new_program_scope():
             inp = fluid.layers.data(
                 name="inp", shape=[1, 4, 3], append_batch_size=False)
-            simple_rnn = SimpleRNN("simple_rnn")
+            simple_rnn = SimpleRNN()
             outs, pre_hiddens = simple_rnn(inp)
             param_grads = fluid.backward.append_backward(outs[3])
             exe = fluid.Executor(fluid.CPUPlace())
@@ -498,6 +522,62 @@ class TestImperative(unittest.TestCase):
         self.assertFalse(hasattr(layer, "whatever"))
         self.assertTrue(hasattr(layer, "test_attr"))
         self.assertEqual(layer.test_attr, 1)
+
+        my_layer = MyLayer()
+        my_layer.w1 = my_layer.create_parameter([3, 3])
+        my_layer.add_parameter('w2', None)
+        self.assertEqual(len(my_layer.parameters()), 1)
+        self.assertRaises(TypeError, my_layer.__setattr__, 'w1', 'str')
+        my_layer.w1 = None
+        self.assertEqual(len(my_layer.parameters()), 0)
+        my_layer.l1 = fluid.dygraph.Linear(3, 3)
+        self.assertEqual(len(my_layer.sublayers()), 1)
+        self.assertRaises(TypeError, my_layer.__setattr__, 'l1', 'str')
+        my_layer.l1 = None
+        self.assertEqual(len(my_layer.sublayers()), 0)
+
+
+class TestDygraphUtils(unittest.TestCase):
+    def test_append_activation_in_dygraph_exception(self):
+        with new_program_scope():
+            np_inp = np.random.random(size=(10, 20, 30)).astype(np.float32)
+            a = fluid.layers.data("a", [10, 20])
+            func = dygraph_utils._append_activation_in_dygraph
+            self.assertRaises(AssertionError, func, a, act="sigmoid")
+
+    def test_append_activation_in_dygraph1(self):
+        a_np = np.random.random(size=(10, 20, 30)).astype(np.float32)
+        func = dygraph_utils._append_activation_in_dygraph
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            res1 = func(a, act="hard_sigmoid")
+            res2 = fluid.layers.hard_sigmoid(a)
+            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+
+    def test_append_activation_in_dygraph2(self):
+        a_np = np.random.random(size=(10, 20, 30)).astype(np.float32)
+        func = dygraph_utils._append_activation_in_dygraph
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            res1 = func(a, act="sigmoid", use_mkldnn=True, use_cudnn=True)
+            res2 = fluid.layers.sigmoid(a)
+            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+
+    def test_append_bias_in_dygraph_exception(self):
+        with new_program_scope():
+            np_inp = np.random.random(size=(10, 20, 30)).astype(np.float32)
+            a = fluid.layers.data("a", [10, 20])
+            func = dygraph_utils._append_bias_in_dygraph
+            self.assertRaises(AssertionError, func, a)
+
+    def test_append_bias_in_dygraph(self):
+        a_np = np.random.random(size=(10, 20, 30)).astype(np.float32)
+        func = dygraph_utils._append_bias_in_dygraph
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            res1 = func(a, bias=a)
+            res2 = a + a
+            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
 
 
 if __name__ == '__main__':

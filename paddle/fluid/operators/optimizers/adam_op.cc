@@ -19,7 +19,7 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-void AdamOp::InferShape(framework::InferShapeContext* ctx) const {
+void AdamOp::InferShape(framework::InferShapeContext *ctx) const {
   PADDLE_ENFORCE_EQ(
       ctx->HasInput("Param"), true,
       platform::errors::NotFound("Input(Param) of AdamOp should not be null."));
@@ -126,9 +126,20 @@ void AdamOp::InferShape(framework::InferShapeContext* ctx) const {
 }
 
 framework::OpKernelType AdamOp::GetExpectedKernelType(
-    const framework::ExecutionContext& ctx) const {
+    const framework::ExecutionContext &ctx) const {
   auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Param");
   return framework::OpKernelType(input_data_type, ctx.GetPlace());
+}
+
+framework::OpKernelType AdamOp::GetKernelTypeForVar(
+    const std::string &var_name, const framework::Tensor &tensor,
+    const framework::OpKernelType &expected_kernel_type) const {
+  if (var_name == "Beta1Pow" || var_name == "Beta2Pow") {
+    return expected_kernel_type;
+  } else {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
+  }
 }
 
 class AdamOpMaker : public framework::OpProtoAndCheckerMaker {

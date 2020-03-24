@@ -68,6 +68,31 @@ static void FullSort(Type input_height, Type input_width, int input_dim,
     }
   }
 }
+
+template <typename T, typename Type>
+static void FullAssign(Type input_height, Type input_width, int input_dim,
+                       const framework::Tensor* input,
+                       const framework::Tensor* indices, T* t_out) {
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+  for (Type i = 0; i < input_height; ++i) {
+    if (input_dim == 1) {
+      auto e_input = EigenVector<T>::Flatten(*input);
+      auto e_indices = EigenVector<Type>::Flatten(*indices);
+      for (Type j = 0; j < input_width; ++j) {
+        t_out[i * input_width + e_indices(j)] = e_input(j);
+      }
+    } else {
+      auto e_input = EigenMatrix<T>::Reshape(*input, input_dim - 1);
+      auto e_indices = EigenMatrix<Type>::Reshape(*indices, input_dim - 1);
+      for (Type j = 0; j < input_width; ++j) {
+        t_out[i * input_width + e_indices(i, j)] = e_input(i, j);
+      }
+    }
+  }
+}
+
 template <typename DeviceContext, typename T>
 class ArgsortKernel : public framework::OpKernel<T> {
  public:
@@ -138,6 +163,78 @@ class ArgsortKernel : public framework::OpKernel<T> {
       // transpose back
       TransCompute<platform::CPUDeviceContext, T>(ndims, dev_ctx, tmp_out,
                                                   output, trans);
+    }
+  }
+};
+
+template <typename DeviceContext, typename T>
+class ArgsortGradientKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* indices = ctx.Input<Tensor>("Indices");
+    auto* dX = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dO = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    int axis = ctx.Attr<int>("axis");
+
+    auto in_dims = indices->dims();
+    axis = (axis < 0) ? (in_dims.size() + axis) : axis;
+
+    dX->mutable_data<T>(ctx.GetPlace());
+    auto dxt = framework::EigenVector<T>::Flatten(*dX);
+    auto& place = *ctx.template device_context<platform::CPUDeviceContext>()
+                       .eigen_device();
+    dxt.device(place) = dxt.constant(static_cast<T>(0));
+    if (dO->numel() == 0) return;
+
+    // Do full assign
+    if (axis == -1 || axis + 1 == in_dims.size()) {
+      const int64_t input_height = framework::product(
+          framework::slice_ddim(in_dims, 0, in_dims.size() - 1));
+      const int64_t input_width = in_dims[in_dims.size() - 1];
+
+      FullAssign<T, int64_t>(input_height, input_width, in_dims.size(), dO,
+                             indices, dX->data<T>());
+    } else {
+      // If not full assign do transpose
+      std::vector<int> trans;
+      for (int i = 0; i < axis; i++) {
+        trans.push_back(i);
+      }
+      trans.push_back(in_dims.size() - 1);
+      for (int i = axis + 1; i < in_dims.size() - 1; i++) {
+        trans.push_back(i);
+      }
+      trans.push_back(axis);
+      framework::DDim trans_dims(in_dims);
+      for (size_t i = 0; i < trans.size(); i++) {
+        trans_dims[i] = in_dims[trans[i]];
+      }
+
+      Tensor trans_dO;
+      trans_dO.mutable_data<T>(trans_dims, ctx.GetPlace());
+      Tensor trans_ind;
+      trans_ind.mutable_data<int64_t>(trans_dims, ctx.GetPlace());
+      int ndims = trans.size();
+      auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+      // Do transpose
+      TransCompute<platform::CPUDeviceContext, T>(ndims, dev_ctx, *dO,
+                                                  &trans_dO, trans);
+      TransCompute<platform::CPUDeviceContext, int64_t>(
+          ndims, dev_ctx, *indices, &trans_ind, trans);
+
+      const int64_t input_height = framework::product(
+          framework::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
+      const int64_t input_width = trans_dims[trans_dims.size() - 1];
+
+      Tensor tmp_out;
+      T* t_out = tmp_out.mutable_data<T>(trans_dims, ctx.GetPlace());
+
+      FullAssign<T, int64_t>(input_height, input_width, in_dims.size(),
+                             &trans_dO, &trans_ind, t_out);
+
+      // transpose back
+      TransCompute<platform::CPUDeviceContext, T>(ndims, dev_ctx, tmp_out, dX,
+                                                  trans);
     }
   }
 };

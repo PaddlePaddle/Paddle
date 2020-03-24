@@ -60,9 +60,9 @@ FUNCTION(cache_third_party TARGET)
         MESSAGE(FATAL_ERROR    "Download link (Git repo or URL) must be specified for cache!")
     ENDIF()
     IF(WITH_TP_CACHE)
-	IF(NOT cache_third_party_DIR)
-	    MESSAGE(FATAL_ERROR   "Please input the ${TARGET_NAME}_SOURCE_DIR for overwriting when -DWITH_TP_CACHE=ON")
-	ENDIF()
+        IF(NOT cache_third_party_DIR)
+            MESSAGE(FATAL_ERROR   "Please input the ${TARGET_NAME}_SOURCE_DIR for overwriting when -DWITH_TP_CACHE=ON")
+        ENDIF()
         # Generate and verify cache dir for third_party source code
         SET(cache_third_party_REPOSITORY ${cache_third_party_REPOSITORY} ${cache_third_party_URL})
         IF(cache_third_party_REPOSITORY AND cache_third_party_TAG)
@@ -87,8 +87,8 @@ FUNCTION(cache_third_party TARGET)
             IF(files_len GREATER 0)
                 list(APPEND ${TARGET_NAME}_DOWNLOAD_CMD DOWNLOAD_COMMAND "")
             ENDIF()
-            SET(${cache_third_party_DIR} ${${cache_third_party_DIR}} PARENT_SCOPE)
         ENDIF()
+        SET(${cache_third_party_DIR} ${${cache_third_party_DIR}} PARENT_SCOPE)
     ENDIF()
 
     # Pass ${TARGET_NAME}_DOWNLOAD_CMD to parent scope, the double quotation marks can't be removed
@@ -174,7 +174,7 @@ if(${CMAKE_VERSION} VERSION_GREATER "3.5.2")
     set(SHALLOW_CLONE "GIT_SHALLOW TRUE") # adds --depth=1 arg to git clone of External_Projects
 endif()
 
-########################### include third_party accoring to flags ###############################
+########################### include third_party according to flags ###############################
 include(external/zlib)      # download, build, install zlib
 include(external/gflags)    # download, build, install gflags
 include(external/glog)      # download, build, install glog
@@ -240,6 +240,11 @@ if(WITH_PSLIB)
         list(APPEND third_party_deps extern_pslib_brpc)
     endif()
 endif(WITH_PSLIB)
+
+if(NOT WIN32 AND NOT APPLE)
+    include(external/gloo)
+    list(APPEND third_party_deps extern_gloo)
+endif()
 
 if(WITH_BOX_PS)
     include(external/box_ps)

@@ -25,10 +25,11 @@ class TestPostTrainingForResnet50(TestPostTrainingQuantization):
             'http://paddle-inference-dist.bj.bcebos.com/int8/resnet50_int8_model.tar.gz'
         ]
         data_md5s = ['4a5194524823d9b76da6e738e1367881']
+        quantizable_op_type = ["conv2d", "mul"]
         is_full_quantize = False
-        is_use_cache_file = True
-        self.run_test(model, algo, data_urls, data_md5s, is_full_quantize,
-                      is_use_cache_file)
+        is_use_cache_file = False
+        self.run_test(model, algo, data_urls, data_md5s, quantizable_op_type,
+                      is_full_quantize, is_use_cache_file)
 
 
 if __name__ == '__main__':

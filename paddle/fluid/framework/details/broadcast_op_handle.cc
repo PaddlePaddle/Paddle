@@ -73,7 +73,7 @@ void BroadcastOpHandle::BroadcastOneVar(
       });
     }
   } else {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
     VarHandle *out_handle = nullptr;
     int root_id = boost::get<platform::CUDAPlace>(in_tensor.place()).device;
     std::vector<std::function<void()>> broadcast_calls;

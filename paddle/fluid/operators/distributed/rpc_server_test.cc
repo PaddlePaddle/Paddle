@@ -131,7 +131,8 @@ void StartServer(const std::string& rpc_name) {
 TEST(PREFETCH, CPU) {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
-  g_req_handler.reset(new distributed::RequestPrefetchHandler(true));
+  g_req_handler.reset(new distributed::RequestPrefetchHandler(
+      distributed::DistributedMode::kSync));
   g_rpc_service.reset(new RPCSERVER_T("127.0.0.1:0", 1));
   distributed::RPCClient* client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
@@ -173,7 +174,8 @@ TEST(PREFETCH, CPU) {
 TEST(COMPLETE, CPU) {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
-  g_req_handler.reset(new distributed::RequestSendHandler(true));
+  g_req_handler.reset(
+      new distributed::RequestSendHandler(distributed::DistributedMode::kSync));
   g_rpc_service.reset(new RPCSERVER_T("127.0.0.1:0", 2));
   distributed::RPCClient* client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);

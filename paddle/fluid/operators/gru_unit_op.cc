@@ -97,7 +97,7 @@ class GRUUnitOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate();
     AddOutput("ResetHiddenPrev",
               "(Tensor) Matrix with shape [batch_size, frame_size] for the "
-              "reseted hidden state of previous time step.")
+              "reset hidden state of previous time step.")
         .AsIntermediate();
     AddOutput("Hidden",
               "(Tensor) The GRU hidden state of the current time step "
@@ -155,8 +155,6 @@ class GRUUnitGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("ResetHiddenPrev"),
                    "Input(%s) of GRUUnitGradOp should not be null.",
                    "ResetHiddenPrev");
-    PADDLE_ENFORCE(ctx->HasInput("Hidden"),
-                   "Input(%s) of GRUUnitGradOp should not be null.", "Hidden");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Hidden")),
                    "Input(%s@GRAD) of GRUUnitGradOp should not be null.",
                    "Hidden");
@@ -199,6 +197,13 @@ class GRUUnitGradOp : public framework::OperatorWithKernel {
     if (ctx->HasOutput(weight_grad_name))
       ctx->SetOutputDim(weight_grad_name, weight_dims);
   }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Hidden")),
+                                   ctx.device_context());
+  }
 };
 
 template <typename T>
@@ -207,8 +212,7 @@ class GRUUnitGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("gru_unit_grad");
 
     op->SetInput("Input", this->Input("Input"));
@@ -216,7 +220,6 @@ class GRUUnitGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Weight", this->Input("Weight"));
     op->SetInput("Bias", this->Input("Bias"));
 
-    op->SetInput("Hidden", this->Output("Hidden"));
     op->SetInput("Gate", this->Output("Gate"));
     op->SetInput("ResetHiddenPrev", this->Output("ResetHiddenPrev"));
     op->SetInput(framework::GradVarName("Hidden"), this->OutputGrad("Hidden"));
@@ -228,9 +231,11 @@ class GRUUnitGradOpMaker : public framework::SingleGradOpMaker<T> {
                   this->InputGrad("HiddenPrev"));
     op->SetOutput(framework::GradVarName("Weight"), this->InputGrad("Weight"));
     op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
-    return std::unique_ptr<T>(op);
   }
 };
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(GRUUnitGradOpNoNeedBufferVarInference,
+                                      "Bias");
 
 }  // namespace operators
 }  // namespace paddle
@@ -240,7 +245,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(gru_unit, ops::GRUUnitOp, ops::GRUUnitOpMaker,
                   ops::GRUUnitGradOpMaker<paddle::framework::OpDesc>,
                   ops::GRUUnitGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(gru_unit_grad, ops::GRUUnitGradOp);
+REGISTER_OPERATOR(gru_unit_grad, ops::GRUUnitGradOp,
+                  ops::GRUUnitGradOpNoNeedBufferVarInference);
 
 REGISTER_OP_CPU_KERNEL(
     gru_unit, ops::GRUUnitKernel<paddle::platform::CPUDeviceContext, float>,

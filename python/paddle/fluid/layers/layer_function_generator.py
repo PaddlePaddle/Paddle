@@ -22,7 +22,7 @@ from six.moves import cStringIO
 from ..proto import framework_pb2
 from ..framework import OpProtoHolder, Variable, core, convert_np_dtype_to_dtype_, in_dygraph_mode
 from ..layer_helper import LayerHelper
-from ..data_feeder import check_type_and_dtype
+from ..data_feeder import check_variable_and_dtype
 
 __all__ = [
     'deprecated', 'generate_layer_fn', 'generate_activation_fn', 'autodoc',
@@ -258,8 +258,8 @@ def generate_activation_fn(op_type):
             outs = op(inputs)
             return outs['Out'][0]
 
-        check_type_and_dtype(x, 'x', Variable,
-                             ['float16', 'float32', 'float64'], op_type)
+        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                                 op_type)
         helper = LayerHelper(op_type, **locals())
 
         output = helper.create_variable_for_type_inference(dtype=x.dtype)

@@ -267,14 +267,12 @@ class PrintOpGradientMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<T> Apply() const override {
-    auto *op_desc_ptr = new T();
+  void Apply(GradOpPtr<T> op_desc_ptr) const override {
     op_desc_ptr->SetType("print");
     op_desc_ptr->SetInput("In", this->OutputGrad("Out"));
     op_desc_ptr->SetOutput("Out", this->InputGrad("In"));
     op_desc_ptr->SetAttrMap(this->Attrs());
     op_desc_ptr->SetAttr("is_forward", false);
-    return std::unique_ptr<T>(op_desc_ptr);
   }
 };
 

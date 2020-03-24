@@ -147,13 +147,13 @@ class SplitLoDTensorInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE(context->HasInput("X"),
-                   "SplitLoDTensorOp must has input X.");
+                   "SplitLoDTensorOp must have input X.");
     PADDLE_ENFORCE(context->HasInput("Mask"),
-                   "SplitLoDTensorOp must has input Mask.");
+                   "SplitLoDTensorOp must have input Mask.");
     PADDLE_ENFORCE(context->HasOutput("OutTrue"),
-                   "SplitLoDTensorOp must has output OutTrue.");
+                   "SplitLoDTensorOp must have output OutTrue.");
     PADDLE_ENFORCE(context->HasOutput("OutFalse"),
-                   "SplitLoDTensorOp must has output OutFalse.");
+                   "SplitLoDTensorOp must have output OutFalse.");
 
     auto mask_dim = context->GetInputDim("Mask");
     PADDLE_ENFORCE_EQ(mask_dim.size(), 2,
@@ -186,8 +186,7 @@ class SplitLoDTensorArrayGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("merge_lod_tensor");
     grad_op->SetInput("InTrue", this->OutputGrad("OutTrue"));
     grad_op->SetInput("InFalse", this->OutputGrad("OutFalse"));
@@ -195,7 +194,6 @@ class SplitLoDTensorArrayGradMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetInput("X", this->Input("X"));
     grad_op->SetOutput("Out", this->InputGrad("X"));
     grad_op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(grad_op);
   }
 };
 

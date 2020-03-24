@@ -332,7 +332,7 @@ void ResidualConnectionMKLDNNFusePass::ApplyImpl(graph_ptr graph) const {
       FuseConvAsX(name_scope_,
                   FuseProjectionConv(name_scope_, std::make_pair(graph, 0))));
 
-  std::cout << "Fused graph " << fused_graph_with_stats.second << std::endl;
+  LOG(INFO) << "Fused graph " << fused_graph_with_stats.second << "\n";
   AddStatis(fused_graph_with_stats.second);
 }
 }  // namespace ir

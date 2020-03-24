@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
 from paddle.fluid.tests.unittests.test_conv2d_op import TestConv2dOp, TestConv2dOp_v2
 
 
@@ -104,6 +104,8 @@ class TestConv2dMKLDNNOp(TestConv2dOp):
         self.outputs['Output'] = output
 
 
+@skip_check_grad_ci(
+    reason="Fusion is for inference only, check_grad is not required.")
 class TestWithbreluFusion(TestConv2dMKLDNNOp):
     def init_test_case(self):
         TestConv2dMKLDNNOp.init_test_case(self)
@@ -111,16 +113,9 @@ class TestWithbreluFusion(TestConv2dMKLDNNOp):
         self.fuse_alpha = 6.0
         self.dsttype = np.float32
 
-    def test_check_grad(self):
-        pass
 
-    def test_check_grad_no_filter(self):
-        pass
-
-    def test_check_grad_no_input(self):
-        pass
-
-
+@skip_check_grad_ci(
+    reason="Fusion is for inference only, check_grad is not required.")
 class TestWithFuse(TestConv2dMKLDNNOp):
     def init_test_case(self):
         TestConv2dMKLDNNOp.init_test_case(self)
@@ -129,15 +124,6 @@ class TestWithFuse(TestConv2dMKLDNNOp):
         self.bias_size = [6]
         self.fuse_residual_connection = True
         self.input_residual_size = [2, 6, 5, 5]
-
-    def test_check_grad(self):
-        pass
-
-    def test_check_grad_no_filter(self):
-        pass
-
-    def test_check_grad_no_input(self):
-        pass
 
 
 class TestWithPadWithBias(TestConv2dMKLDNNOp):
@@ -156,6 +142,14 @@ class TestWithStride(TestConv2dMKLDNNOp):
 
 
 class TestWithGroup(TestConv2dMKLDNNOp):
+    def init_test_case(self):
+        self.pad = [0, 0]
+        self.stride = [1, 1]
+        self.input_size = [2, 6, 5, 5]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [6, f_c, 3, 3]
+
     def init_group(self):
         self.groups = 3
 
@@ -163,13 +157,13 @@ class TestWithGroup(TestConv2dMKLDNNOp):
 class TestWith1x1(TestConv2dMKLDNNOp):
     def init_test_case(self):
         TestConv2dMKLDNNOp.init_test_case(self)
-        self.filter_size = [6, 3, 1, 1]
+        self.filter_size = [40, 3, 1, 1]
 
 
 class TestWithInput1x1Filter1x1(TestConv2dMKLDNNOp):
     def init_test_case(self):
         TestConv2dMKLDNNOp.init_test_case(self)
-        self.input_size = [2, 3, 1, 1]  # NCHW
+        self.input_size = [2, 60, 1, 1]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 1, 1]

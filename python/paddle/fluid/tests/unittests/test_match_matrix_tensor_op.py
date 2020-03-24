@@ -79,7 +79,7 @@ class TestMatchMatrixTensorOp(OpTest):
 
 class TestMatchMatrixTensorOpCase1(TestMatchMatrixTensorOp):
     def set_data(self):
-        ix, iy, h, dim_t = [5, 8, 16, 4]
+        ix, iy, h, dim_t = [5, 8, 25, 4]
         x_lod = [[5]]
         y_lod = [[8]]
         self.init_data(ix, x_lod, iy, y_lod, h, dim_t)

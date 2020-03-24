@@ -102,9 +102,9 @@ class AucKernel : public framework::OpKernel<T> {
                               "The predict data must gather or equal 0."));
 
         uint32_t binIdx = static_cast<uint32_t>(predict_data * num_thresholds);
-        if (label_data[i]) {
+        if (label_data[i] > 0) {
           origin_stat_pos[binIdx] += 1;
-        } else {
+        } else if (label_data[i] == 0) {
           origin_stat_neg[binIdx] += 1;
         }
       }
@@ -142,9 +142,9 @@ class AucKernel : public framework::OpKernel<T> {
                             "The predict data must gather or equal 0."));
 
       uint32_t binIdx = static_cast<uint32_t>(predict_data * num_thresholds);
-      if (label_data[i]) {
+      if (label_data[i] > 0) {
         origin_stat_pos[cur_step_begin + binIdx] += 1;
-      } else {
+      } else if (label_data[i] == 0) {
         origin_stat_neg[cur_step_begin + binIdx] += 1;
       }
     }

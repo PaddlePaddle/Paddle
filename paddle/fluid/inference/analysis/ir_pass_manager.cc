@@ -123,6 +123,13 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
       pass->Set("use_static_engine", new bool(use_static_engine));
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
+      pass->Set("max_input_shape", new std::map<std::string, std::vector<int>>(
+                                       argument->max_input_shape()));
+      pass->Set("min_input_shape", new std::map<std::string, std::vector<int>>(
+                                       argument->min_input_shape()));
+      pass->Set("optim_input_shape",
+                new std::map<std::string, std::vector<int>>(
+                    argument->optim_input_shape()));
     }
     if (pass_name == "ngraph_subgraph_pass") {
       pass->Set("program",
@@ -139,66 +146,22 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("enable_int8", new bool(enable_int8));
       pass->Set("use_gpu", new bool(argument->use_gpu()));
     }
-    if (pass_name == "anakin_subgraph_pass") {
-      pass->Set("program",
-                new framework::ProgramDesc *(&argument->main_program()));
-      pass->Set("use_gpu", new bool(argument->use_gpu()));
-      pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
-      pass->Set("model_from_memory", new bool(argument->model_from_memory()));
-      pass->Set("predictor_id", new int(argument->predictor_id()));
-      pass->Set("max_input_shape", new std::map<std::string, std::vector<int>>(
-                                       argument->anakin_max_input_shape()));
-      pass->Set("max_batch_size", new int(argument->anakin_max_batch_size()));
-      bool enable_int8 =
-          argument->anakin_precision_mode() == AnalysisConfig::Precision::kInt8;
-      pass->Set("enable_int8", new bool(enable_int8));
-      pass->Set("anakin_ops_filter",
-                new std::vector<std::string>(argument->anakin_ops_filter()));
-      pass->Set("auto_config_layout",
-                new bool(argument->anakin_auto_config_layout()));
-    }
     disable_logs_ = argument->disable_logs();
     if (pass_name == "fc_fuse_pass") {
       pass->Set("use_gpu", new bool(argument->use_gpu()));
+      bool fc_mkldnn_pass = 0;
+      for (const std::string &pass_n : passes) {
+        if (pass_n == "fc_mkldnn_pass") {
+          fc_mkldnn_pass = 1;
+        }
+      }
+      bool use_fc_padding = !fc_mkldnn_pass && argument->use_fc_padding();
+      pass->Set("use_fc_padding", new bool(use_fc_padding));
     }
 
     pre_pass = pass_name;
 
     passes_.emplace_back(std::move(pass));
-  }
-}
-
-bool IRPassManager::HasPass(const std::string &pass_type) {
-  if (passes_.empty()) return false;
-  auto it = std::find_if(
-      passes_.begin(), passes_.end(),
-      [&](std::unique_ptr<Pass> &pass) { return pass->Type() == pass_type; });
-  return it != passes_.end();
-}
-
-std::unique_ptr<Pass> &IRPassManager::GetPass(const std::string &pass_type) {
-  PADDLE_ENFORCE_EQ(passes_.empty(), false,
-                    platform::errors::PreconditionNotMet(
-                        "The list of passes cannot be empty."));
-  auto it = std::find_if(passes_.begin(), passes_.end(),
-                         [&](const std::unique_ptr<Pass> &pass) {
-                           return pass->Type() == pass_type;
-                         });
-  PADDLE_ENFORCE_NE(it, passes_.end(),
-                    platform::errors::PermissionDenied(
-                        "You cannot get pass which was not added earlier."));
-  return *it;
-}
-
-// Some passes depend on each other. This method serves for exchanging
-// information between them.
-void IRPassManager::UpdatePasses() {
-  // Update padding settings for fc_fuse_pass. Skipp adding padding for
-  // MKL-DNN-based FC
-  bool use_fc_padding = !HasPass("fc_mkldnn_pass");
-  if (HasPass("fc_fuse_pass")) {
-    auto &fc_fuse_pass = GetPass("fc_fuse_pass");
-    fc_fuse_pass->Set<bool>("use_fc_padding", new bool(use_fc_padding));
   }
 }
 
@@ -208,7 +171,6 @@ std::unique_ptr<Graph> IRPassManager::Apply(std::unique_ptr<Graph> graph) {
   }
   PADDLE_ENFORCE_NOT_NULL(graph.get(), platform::errors::PreconditionNotMet(
                                            "Graph cannot be NULL."));
-  UpdatePasses();
   // Apply all the passes
   for (const auto &pass : passes_) {
     if (pass->Type() != "graph_viz_pass" && !disable_logs_) {

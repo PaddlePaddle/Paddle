@@ -294,9 +294,6 @@ class DataNormGradOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim(framework::GradVarName("BatchSize"), {C});
     ctx->SetOutputDim(framework::GradVarName("BatchSum"), {C});
     ctx->SetOutputDim(framework::GradVarName("BatchSquareSum"), {C});
-    ctx->SetOutputDim("BatchSize", {C});
-    ctx->SetOutputDim("BatchSum", {C});
-    ctx->SetOutputDim("BatchSquareSum", {C});
   }
 
  protected:
@@ -464,8 +461,7 @@ class DataNormGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("data_norm_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
@@ -485,8 +481,6 @@ class DataNormGradMaker : public framework::SingleGradOpMaker<T> {
                   this->InputGrad("BatchSum"));
     op->SetOutput(framework::GradVarName("BatchSquareSum"),
                   this->InputGrad("BatchSquareSum"));
-
-    return std::unique_ptr<T>(op);
   }
 };
 

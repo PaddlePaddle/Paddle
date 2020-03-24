@@ -250,14 +250,13 @@ class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
 
     auto use_stack = Attr<bool>("use_stack");
 
-    auto grad_op =
-        use_stack
-            ? framework::OpRegistry::CreateOp(
-                  "stack_grad", {{"X", names}, {"Y@GRAD", {dout_name}}},
-                  {{"X@GRAD", grad_names}}, attrs)
-            : framework::OpRegistry::CreateOp(
-                  "concat_grad", {{"X", names}, {"Out@GRAD", {dout_name}}},
-                  {{"X@GRAD", grad_names}}, attrs);
+    auto grad_op = use_stack ? framework::OpRegistry::CreateOp(
+                                   "stack_grad", {{"Y@GRAD", {dout_name}}},
+                                   {{"X@GRAD", grad_names}}, attrs)
+                             : framework::OpRegistry::CreateOp(
+                                   "concat_grad",
+                                   {{"X", names}, {"Out@GRAD", {dout_name}}},
+                                   {{"X@GRAD", grad_names}}, attrs);
 
     grad_op->Run(scope, place);
 
@@ -279,14 +278,12 @@ class TensorArrayToTensorGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("tensor_array_to_tensor_grad");
     op->SetAttrMap(this->Attrs());
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    return op;
   }
 };
 

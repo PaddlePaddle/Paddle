@@ -16,10 +16,10 @@ import os
 import re
 import logging
 import numpy as np
-from ....executor import global_scope
 from .... import io
 from .... import core
 from .... import framework
+from ....executor import global_scope, Executor
 from ....framework import IrGraph
 from ....log_helper import get_logger
 from .quantization_pass import QuantizationTransformPass
@@ -27,25 +27,46 @@ from .quantization_pass import QuantizationFreezePass
 from .quantization_pass import AddQuantDequantPass
 from .quantization_pass import _op_real_in_out_name
 
-__all__ = ['PostTrainingQuantization']
+__all__ = ['PostTrainingQuantization', 'WeightQuantization']
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
+def _load_variable_data(scope, var_name):
+    '''
+    Load variable value from scope
+    '''
+    return np.array(scope.find_var(var_name).get_tensor())
+
+
+def _set_variable_data(scope, place, var_name, np_value):
+    '''
+    Set the value of var node by name, if the node exits,
+    '''
+    assert isinstance(np_value, np.ndarray), \
+        'The type of value should be numpy array.'
+    var_node = scope.find_var(var_name)
+    if var_node != None:
+        tensor = var_node.get_tensor()
+        tensor.set(np_value, place)
+
+
 class PostTrainingQuantization(object):
     def __init__(self,
-                 executor,
-                 sample_generator,
-                 model_dir,
+                 executor=None,
+                 scope=None,
+                 model_dir=None,
                  model_filename=None,
                  params_filename=None,
+                 sample_generator=None,
                  batch_size=10,
                  batch_nums=None,
-                 scope=None,
                  algo="KL",
                  quantizable_op_type=["conv2d", "depthwise_conv2d", "mul"],
                  is_full_quantize=False,
+                 weight_bits=8,
+                 activation_bits=8,
                  is_use_cache_file=False,
                  cache_dir="./temp_post_training"):
         '''
@@ -57,9 +78,8 @@ class PostTrainingQuantization(object):
         Args:
             executor(fluid.Executor): The executor to load, run and save the 
                 quantized model.
-            sample_generator(Python Generator): The sample generator provides 
-                calibrate data for DataLoader, and it only returns a sample every 
-                time.
+            scope(fluid.Scope, optional): The scope of the program, use it to load 
+                and save variables. If scope=None, get scope by global_scope(). 
             model_dir(str): The path of the fp32 model that will be quantized, 
                 and the model and params files are under the path.
             model_filename(str, optional): The name of file to load the inference 
@@ -69,12 +89,13 @@ class PostTrainingQuantization(object):
                 When all parameters were saved in a single binary file, set it 
                 as the real filename. If parameters were saved in separate files, 
                 set it as 'None'. Default is 'None'.
+            sample_generator(Python Generator): The sample generator provides 
+                calibrate data for DataLoader, and it only returns a sample every 
+                time.
             batch_size(int, optional): The batch size of DataLoader. Default is 10.
             batch_nums(int, optional): If batch_nums is not None, the number of 
                 calibrate data is batch_size*batch_nums. If batch_nums is None, use 
                 all data provided by sample_generator as calibrate data.
-            scope(fluid.Scope, optional): The scope of the program, use it to load 
-                and save variables. If scope=None, get scope by global_scope(). 
             algo(str, optional): If algo=KL, use KL-divergenc method to 
                 get the more precise scale factor. If algo='direct', use 
                 abs_max methon to get the scale factor. Default is KL.
@@ -85,6 +106,8 @@ class PostTrainingQuantization(object):
                 apply quantization to all supported quantizable op type. If set
                 is_full_quantized as False, only apply quantization to the op type 
                 according to the input quantizable_op_type.
+            weight_bits(int, optional): quantization bit number for weights.
+            activation_bits(int): quantization bit number for activation.
             is_use_cache_file(bool, optional): If set is_use_cache_file as False,
                 all temp data will be saved in memory. If set is_use_cache_file as True,
                 it will save temp data to disk. When the fp32 model is complex or
@@ -131,14 +154,20 @@ class PostTrainingQuantization(object):
             ptq.quantize()
             ptq.save_quantized_model(save_model_path)
         '''
+
+        assert executor is not None, "The executor cannot be None."
+        assert model_dir is not None, "The model_dir cannot be None."
+        assert sample_generator is not None, \
+                "The sample_generator cannot be None."
+
         self._executor = executor
-        self._sample_generator = sample_generator
+        self._scope = global_scope() if scope == None else scope
         self._model_dir = model_dir
         self._model_filename = model_filename
         self._params_filename = params_filename
+        self._sample_generator = sample_generator
         self._batch_size = batch_size
         self._batch_nums = batch_nums
-        self._scope = global_scope() if scope == None else scope
         self._algo = algo
         self._is_use_cache_file = is_use_cache_file
         self._cache_dir = cache_dir
@@ -244,7 +273,9 @@ class PostTrainingQuantization(object):
             drop_last=True,
             places=self._place)
 
-        # collect the variable names for sampling
+        # collect the variable names for sampling.
+        # TODO(juncaipeng), consider the name_scope of skip_quant and
+        # reduce the variables for sampling
         persistable_var_names = []
         for var in self._program.list_vars():
             if var.persistable:
@@ -257,16 +288,18 @@ class PostTrainingQuantization(object):
                     self._quantized_act_var_name.add(op.input("Input")[0])
                     self._quantized_weight_var_name.add(op.input("Filter")[0])
                     self._quantized_act_var_name.add(op.output("Output")[0])
-                elif op_type == "mul":
-                    if self._is_input_all_not_persistable(
-                            op, persistable_var_names):
-                        op._set_attr("skip_quant", True)
-                        _logger.warning("Skip quant a mul op for two "
-                                        "input variables are not persistable")
+                elif op_type in ["mul", "matmul"]:
+                    x_var_name = op.input("X")[0]
+                    if x_var_name in persistable_var_names:
+                        self._quantized_weight_var_name.add(x_var_name)
                     else:
-                        self._quantized_act_var_name.add(op.input("X")[0])
-                        self._quantized_weight_var_name.add(op.input("Y")[0])
-                        self._quantized_act_var_name.add(op.output("Out")[0])
+                        self._quantized_act_var_name.add(x_var_name)
+                    y_var_name = op.input("Y")[0]
+                    if y_var_name in persistable_var_names:
+                        self._quantized_weight_var_name.add(y_var_name)
+                    else:
+                        self._quantized_act_var_name.add(y_var_name)
+                    self._quantized_act_var_name.add(op.output("Out")[0])
                 else:
                     # process other quantizable op type, the input must all not persistable
                     if self._is_input_all_not_persistable(
@@ -293,12 +326,12 @@ class PostTrainingQuantization(object):
         '''
         for var_name in self._quantized_weight_var_name:
             if var_name not in self._sampling_data:
-                var_tensor = self._load_var_value(var_name)
+                var_tensor = _load_variable_data(self._scope, var_name)
                 self._sampling_data[var_name] = var_tensor
 
         if self._is_use_cache_file:
             for var_name in self._quantized_act_var_name:
-                var_tensor = self._load_var_value(var_name)
+                var_tensor = _load_variable_data(self._scope, var_name)
                 var_tensor = var_tensor.ravel()
                 save_path = os.path.join(self._cache_dir,
                                          var_name + "_" + str(iter) + ".npy")
@@ -307,7 +340,7 @@ class PostTrainingQuantization(object):
             for var_name in self._quantized_act_var_name:
                 if var_name not in self._sampling_data:
                     self._sampling_data[var_name] = []
-                var_tensor = self._load_var_value(var_name)
+                var_tensor = _load_variable_data(self._scope, var_name)
                 var_tensor = var_tensor.ravel()
                 self._sampling_data[var_name].append(var_tensor)
 
@@ -393,11 +426,17 @@ class PostTrainingQuantization(object):
 
         # save scale factor to scale var node
         for key, val in self._quantized_var_scale_factor.items():
-            self._set_var_node_value(
-                key + ".scale", np.array(
+            _set_variable_data(
+                self._scope,
+                self._place,
+                key + ".scale",
+                np.array(
                     [val], dtype=np.float32))
-            self._set_var_node_value(
-                key + ".quant_dequant.scale", np.array(
+            _set_variable_data(
+                self._scope,
+                self._place,
+                key + ".quant_dequant.scale",
+                np.array(
                     [val], dtype=np.float32))
 
         # apply QuantizationFreezePass, and obtain the final quant model
@@ -425,23 +464,6 @@ class PostTrainingQuantization(object):
                             op._set_attr(output_scale_name,
                                          self._quantized_var_scale_factor[
                                              output_var_name])
-
-    def _load_var_value(self, var_name):
-        '''
-        Load variable value from scope
-        '''
-        return np.array(self._scope.find_var(var_name).get_tensor())
-
-    def _set_var_node_value(self, var_node_name, np_value):
-        '''
-        Set the value of var node by name, if the node exits,
-        '''
-        assert isinstance(np_value, np.ndarray), \
-            'The type of value should be numpy array.'
-        var_node = self._scope.find_var(var_node_name)
-        if var_node != None:
-            tensor = var_node.get_tensor()
-            tensor.set(np_value, self._place)
 
     def _is_input_all_not_persistable(self, op, persistable_var_names):
         '''
@@ -562,3 +584,131 @@ class PostTrainingQuantization(object):
                 tmp_sum1 += p_idx * (math.log(Q_sum * p_idx))
                 tmp_sum2 += p_idx * (math.log(P_sum * q_idx))
         return (tmp_sum1 - tmp_sum2) / P_sum
+
+
+class WeightQuantization(object):
+    _supported_quantizable_op_type = ['conv2d', 'depthwise_conv2d', 'mul']
+
+    def __init__(self, model_dir, model_filename=None, params_filename=None):
+        '''
+        This class quantizes the weight of some ops to reduce the size of model
+        or improve the perforemace.
+
+        Args:
+            model_dir(str): The path of the fp32 model that will be quantized,
+                and the model and params files are under the path.
+            model_filename(str, optional): The name of file to load the inference
+                program. If it is None, the default filename '__model__' will
+                be used. Default is 'None'.
+            params_filename(str, optional): The name of file to load all parameters.
+                When all parameters were saved in a single binary file, set it
+                as the real filename. If parameters were saved in separate files,
+                set it as 'None'. Default is 'None'.
+        '''
+        self._model_dir = model_dir
+        self._model_filename = model_filename
+        self._params_filename = params_filename
+
+    def quantize_weight_to_int(self,
+                               save_model_dir,
+                               save_model_filename=None,
+                               save_params_filename=None,
+                               quantizable_op_type=["conv2d", "mul"],
+                               weight_bits=8,
+                               threshold_rate=0.0):
+        '''
+        In order to reduce the size of model, this api quantizes the weight
+        of some ops from float32 to int8/16. In the inference stage, the 
+        quantized weight will be dequantized to float32 again.
+        
+        Args:
+            save_model_dir(str): The path to save the quantized model.
+            save_model_filename(str, optional): The name of file to 
+                save the inference program. If it is None, the default 
+                filename '__model__' will be used. Default is 'None'.
+            save_params_filename(str, optional): The name of file to 
+                save all parameters. If it is None, parameters were 
+                saved in separate files. If it is not None, all 
+                parameters were saved in a single binary file.
+            quantizable_op_type(list[str], optional): The list of ops 
+                that will be quantized, and the quantized ops should be
+                contained in ["conv2d", "depthwise_conv2d", "mul"]. 
+                Default is ["conv2d","mul"].
+            weight_bits(int, optional): The bits for the quantized weight, 
+                and it should be 8 or 16. Default is 8.
+            threshold_rate(float, optional): This api uses abs_max methd to 
+                quantize the weight from float32 to int8/16, and the abs max 
+                value is important for quantization diff. When the abs_max 
+                value is far away from the center of the numerical distribution, 
+                we can set threshold_rate between 1e-6 and 1e-8, so the abs max 
+                value will be optimized. Default is 0.0.
+        '''
+        for op_type in quantizable_op_type:
+            assert op_type in self._supported_quantizable_op_type, \
+                "input error:" + op_type + \
+                " is not supported for weight quantization."
+        assert weight_bits in [8, 16], \
+            "input error: weight_bits should be 8 or 16."
+        quantize_range = (1 << (weight_bits - 1)) - 1
+        save_weight_dtype = np.int8 if weight_bits == 8 else np.int16
+
+        place = core.CPUPlace()
+        exe = Executor(place)
+        scope = global_scope()
+        [program, feed_list, fetch_list] = \
+            io.load_inference_model(dirname=self._model_dir,
+                                    executor=exe,
+                                    model_filename=self._model_filename,
+                                    params_filename=self._params_filename)
+
+        persistable_var_names = []
+        for var in program.list_vars():
+            if var.persistable:
+                persistable_var_names.append(var.name)
+        for op in program.global_block().ops:
+            if op.type in quantizable_op_type:
+                for var_name in op.input_arg_names:
+                    if var_name in persistable_var_names:
+                        var_tensor_data = _load_variable_data(scope, var_name)
+                        if abs(threshold_rate) < 1e-10:
+                            threshold_value = np.max(np.abs(var_tensor_data))
+                        else:
+                            threshold_value = self._calculate_threshold(\
+                                var_tensor_data, threshold_rate)
+                            var_tensor_data[var_tensor_data >
+                                            threshold_value] = threshold_value
+                            var_tensor_data[var_tensor_data <
+                                            -threshold_value] = -threshold_value
+                        scale = threshold_value / quantize_range
+                        quantized_var_tensor_data = \
+                            np.around(var_tensor_data / scale)
+                        quantized_var_tensor_data = \
+                            quantized_var_tensor_data.astype(save_weight_dtype)
+                        _set_variable_data(scope, place, var_name,
+                                           quantized_var_tensor_data)
+                        op._set_attr(var_name + "_quant_scale", [scale])
+                        op._set_attr('quantize_weight_bits', weight_bits)
+
+        io.save_inference_model(
+            dirname=save_model_dir,
+            feeded_var_names=feed_list,
+            target_vars=fetch_list,
+            executor=exe,
+            main_program=program,
+            model_filename=save_model_filename,
+            params_filename=save_params_filename)
+
+    def _calculate_threshold(self, input, threshold_rate, histogram_bins=5000):
+        input_abs = np.abs(input)
+        hist, hist_edeges = np.histogram(
+            input_abs, bins=histogram_bins, range=(0, np.max(input_abs)))
+        hist = hist / float(sum(hist))
+        hist_sum = 0
+        hist_index = 0
+        for i in range(len(hist)):
+            hist_sum += hist[i]
+            if hist_sum >= 1.0 - threshold_rate:
+                hist_index = i + 1
+                break
+        bin_width = hist_edeges[1] - hist_edeges[0]
+        return hist_index * bin_width

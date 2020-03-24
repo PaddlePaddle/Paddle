@@ -48,7 +48,7 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
   using RpcCtxMap = operators::distributed::RpcCtxMap;
   VLOG(3) << "ProcessGraph";
   RpcCtxMap send_varname_to_ctx;
-  RpcCtxMap recv_varname_to_ctx;
+
   for (auto &node : graphs[0]->Nodes()) {
     VLOG(3) << "node name " << node->Name();
     if (node && node->IsOp()) {
@@ -74,30 +74,19 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
             merge_add, use_send_handler);
         VLOG(3) << "find and init an send op: "
                 << send_varname_to_ctx[send_var_name];
-      } else if (node->Name() == "recv") {
-        auto recv_var_name = node->Op()->Output("Out")[0];
-        auto recv_varnames = boost::get<std::vector<std::string>>(
-            node->Op()->GetNullableAttr("recv_varnames"));
-        auto epmap = boost::get<std::vector<std::string>>(
-            node->Op()->GetNullableAttr("epmap"));
-        auto trainer_id =
-            boost::get<int>(node->Op()->GetNullableAttr("trainer_id"));
-        recv_varname_to_ctx[recv_var_name] = operators::distributed::RpcContext(
-            recv_var_name, recv_varnames, epmap, {}, trainer_id);
-        VLOG(3) << "find and remove an recv op: "
-                << recv_varname_to_ctx[recv_var_name];
       }
     }
   }
 
   // init communicator here
   if (send_varname_to_ctx.size() > 0) {
-    VLOG(3) << "this is distribute mode, will use communicator";
-
-    auto *instance = operators::distributed::Communicator::InitInstance<
-        operators::distributed::AsyncCommunicator>(send_varname_to_ctx,
-                                                   recv_varname_to_ctx, scope);
-    if (!instance->IsRunning()) instance->Start();
+    auto *instance = operators::distributed::Communicator::GetInstance();
+    auto initialized = instance ? true : false;
+    PADDLE_ENFORCE_EQ(initialized, true,
+                      platform::errors::InvalidArgument(
+                          "Communicator is not Initialized, you may use "
+                          "FleetAPI(https://github.com/PaddlePaddle/Fleet/tree/"
+                          "develop/markdown_doc/transpiler)"));
   }
 #endif
 }
@@ -143,14 +132,14 @@ AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
   ProcessGraph(graphs_, local_scopes_[0]);
 }
 
-void AsyncSSAGraphExecutor::StartOffPythonTrainLoop() {
+void AsyncSSAGraphExecutor::StartOffPythonTrainLoop(bool return_merged) {
   VLOG(3) << "StartOffPythonTrainLoop size = " << places_.size();
   for (size_t i = 1; i < places_.size(); ++i) {
-    auto call = [this, i]() -> void {
+    auto call = [this, i, return_merged]() -> void {
       VLOG(3) << "start off python thread " << i;
       try {
         while (true) {
-          executors_[i]->Run({});
+          executors_[i]->Run({}, return_merged);
         }
       } catch (...) {
         exception_holder_.Catch(std::current_exception());
@@ -175,25 +164,32 @@ void AsyncSSAGraphExecutor::HandleException() {
   }
 }
 
-FeedFetchList AsyncSSAGraphExecutor::Run(
-    const std::vector<std::string> &fetch_tensors) {
+FetchResultType AsyncSSAGraphExecutor::Run(
+    const std::vector<std::string> &fetch_tensors, bool return_merged) {
+  PADDLE_ENFORCE_EQ(return_merged, true,
+                    platform::errors::InvalidArgument(
+                        "AsyncSSAGraphExecutor does not support unmerged "
+                        "results to be fetched!"));
   // init once
   if (run_futures_.size() == 0 && places_.size() > 1) {
+    if (strategy_.thread_barrier_) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+      operators::distributed::Communicator::GetInstance()->BarrierTriggerReset(
+          places_.size());
+#endif
+    }
     exception_holder_.Clear();
-    StartOffPythonTrainLoop();
+    StartOffPythonTrainLoop(return_merged);
   }
 
   if (places_.size() == 1) {
     exception_holder_.Clear();
-  } else {
-    HandleException();
   }
 
-  FeedFetchList fetch_data;
-  fetch_data.reserve(fetch_tensors.size());
+  FetchResultType fetch_data;
 
   try {
-    fetch_data = executors_[0]->Run(fetch_tensors);
+    fetch_data = executors_[0]->Run(fetch_tensors, return_merged);
   } catch (...) {
     exception_holder_.Catch(std::current_exception());
   }
@@ -201,9 +197,10 @@ FeedFetchList AsyncSSAGraphExecutor::Run(
   HandleException();
 
   FeedFetchList ret;
+  auto &val = boost::get<FeedFetchList>(fetch_data);
   for (size_t fetch_idx = 0; fetch_idx < fetch_tensors.size(); ++fetch_idx) {
     std::vector<const LoDTensor *> lodtensor_ptrs;
-    lodtensor_ptrs.push_back(&fetch_data.at(fetch_idx));
+    lodtensor_ptrs.push_back(&val.at(fetch_idx));
     ret.emplace_back();
     ret.back().MergeLoDTensor(lodtensor_ptrs, platform::CPUPlace());
   }

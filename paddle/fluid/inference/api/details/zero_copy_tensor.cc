@@ -138,7 +138,8 @@ void ZeroCopyTensor::copy_to_cpu(T *data) {
         static_cast<const platform::CUDADeviceContext *>(pool.Get(gpu_place));
     memory::Copy(platform::CPUPlace(), static_cast<void *>(data), gpu_place,
                  t_data, ele_num * sizeof(T), dev_ctx->stream());
-    cudaDeviceSynchronize();
+
+    cudaStreamSynchronize(dev_ctx->stream());
 #else
     PADDLE_THROW("Not compile with CUDA, should not reach here.");
 #endif

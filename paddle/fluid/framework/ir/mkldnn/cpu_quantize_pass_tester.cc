@@ -431,7 +431,7 @@ void MainTestReshape(const ProgramDesc& prog, int transpose_count,
       } else if (op->Type() == "dequantize") {
         dequantize_nodes_count++;
         auto op_name = op->GetAttrIfExists<std::string>("name");
-        std::cout << op_name << " \n";
+        VLOG(3) << op_name << "\n";
         if (op_name != "Dequantize1") {
           dequant_scale = boost::get<float>(op->GetAttr("Scale"));
           EXPECT_EQ(dequant_scale, scale)
