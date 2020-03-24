@@ -19,6 +19,7 @@ import paddle.fluid.framework as framework
 from paddle.fluid.incubate.fleet.parameter_server.ir.program_utils import delete_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _is_opt_role_op
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_param_grads
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
 
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"
@@ -36,21 +37,6 @@ class DistributedMode:
 
 
 def delete_optimizer_pass(program):
-    def _get_optimize_ops(_program):
-        block = _program.global_block()
-        opt_ops = []
-        for op in block.ops:
-            if _is_opt_role_op(op):
-                # delete clip op from opt_ops when run in Parameter Server mode
-                if OP_NAME_SCOPE in op.all_attrs() \
-                        and CLIP_OP_NAME_SCOPE in op.attr(OP_NAME_SCOPE):
-                    op._set_attr(
-                        "op_role",
-                        int(core.op_proto_and_checker_maker.OpRole.Backward))
-                    continue
-                opt_ops.append(op)
-        return opt_ops
-
     def _delete_optimizer_op_and_vars(_program, optimize_ops):
         optimize_vars = []
         optimize_op_role_vars = []

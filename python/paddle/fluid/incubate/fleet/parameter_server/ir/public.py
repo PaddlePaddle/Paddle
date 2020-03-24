@@ -44,6 +44,32 @@ def _is_opt_role_op(op):
     return False
 
 
+def _get_optimize_ops(_program):
+    block = _program.global_block()
+    opt_ops = []
+    for op in block.ops:
+        if _is_opt_role_op(op):
+            # delete clip op from opt_ops when run in Parameter Server mode
+            if OP_NAME_SCOPE in op.all_attrs() \
+                    and CLIP_OP_NAME_SCOPE in op.attr(OP_NAME_SCOPE):
+                op._set_attr(
+                    "op_role",
+                    int(core.op_proto_and_checker_maker.OpRole.Backward))
+                continue
+            opt_ops.append(op)
+    return opt_ops
+
+
+def clone_variable(block, var, persistable=True):
+    return block.create_var(
+        name=var.name,
+        shape=var.shape,
+        dtype=var.dtype,
+        type=var.type,
+        lod_level=var.lod_level,
+        persistable=persistable)
+
+
 def get_param_grads(origin_program):
     def _get_params_grads(sparse_varnames):
         block = origin_program.global_block()
