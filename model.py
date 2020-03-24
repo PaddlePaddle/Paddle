@@ -975,7 +975,8 @@ class Model(fluid.dygraph.Layer):
             metrics=self._metrics_name(), )
 
         def _run_one_epoch(data_loader, callbacks, mode):
-            size = data_loader.size if hasattr(data_loader, 'size') else None
+            size = len(data_loader) if hasattr(data_loader,
+                                               '__len__') else None
             logs = {
                 'steps': size,
                 'metrics_name': metrics_name,
