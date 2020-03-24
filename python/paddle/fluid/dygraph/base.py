@@ -254,8 +254,10 @@ def _print_debug_msg(parameter_list, limit=5, is_test=False):
 def grad(outputs,
          inputs,
          grad_outputs=None,
-         no_grad_set=None,
+         retain_graph=None,
          create_graph=False,
+         allow_unused=False,
+         no_grad_vars=None,
          backward_strategy=None):
     ''' 
     .. note::
@@ -276,12 +278,22 @@ def grad(outputs,
             be: (1) a Tensor filled with 1 when the i-th element of `grad_outputs` 
             is None; (2) the i-th element of `grad_outputs` when i-th element of
             `grad_outputs` is a Variable. Default None.
-        no_grad_set (Variable|list(Variable)|tuple(Variable)|set(Variable), optional): 
-            the Variables whose gradients are not needed to compute. Default None.
+        retain_graph (bool, optional): whether to retain the forward graph which 
+            is used to calculate the gradient. When it is True, the graph would 
+            be retained, in which way users can calculate backward twice for the 
+            same graph. When it is False, the graph would be freed. Default None,
+            which means it is equal to `create_graph` . 
         create_graph (bool, optional): whether to create the gradient graphs of
             the computing process. When it is True, higher order derivatives are
             supported to compute; when it is False, the gradient graphs of the
             computing process would be discarded. Default False.
+        allow_unused (bool, optional): whether to raise error or return None as 
+            the gradient of the unreachable `inputs` . If some variables of 
+            `inputs` are unreachable in the graph (i.e., their gradients are None),  
+            error would be raised if allow_unused=False, or None would be returned
+            if allow_unused=True. Default False.
+        no_grad_vars (Variable|list(Variable)|tuple(Variable)|set(Variable), optional): 
+            the Variables whose gradients are not needed to compute. Default None.
         backward_strategy (BackwardStrategy, optional): The backward strategy to
             compute gradients. See :ref:`api_fluid_dygraph_BackwardStrategy` for
             details. Default None.
@@ -303,8 +315,11 @@ def grad(outputs,
                     y = x * x
 
                     # Since y = x * x, dx = 2 * x 
-                    dx = fluid.dygraph.grad(outputs=[y], inputs=[x], 
-                            create_graph=create_graph)[0]
+                    dx = fluid.dygraph.grad(
+                            outputs=[y],
+                            inputs=[x], 
+                            create_graph=create_graph, 
+                            retain_graph=True)[0]
 
                     z = y + dx
 
@@ -361,18 +376,18 @@ def grad(outputs,
         assert len(grad_outputs) == len(
             outputs), "The length of grad_outputs must be equal to outputs"
 
-    if no_grad_set is None:
-        no_grad_set = []
-    elif isinstance(no_grad_set, core.VarBase):
-        no_grad_set = [no_grad_set]
-    elif isinstance(no_grad_set, (list, tuple, set)):
-        no_grad_set = list(no_grad_set)
-        for var in no_grad_set:
+    if no_grad_vars is None:
+        no_grad_vars = []
+    elif isinstance(no_grad_vars, core.VarBase):
+        no_grad_vars = [no_grad_vars]
+    elif isinstance(no_grad_vars, (list, tuple, set)):
+        no_grad_vars = list(no_grad_vars)
+        for var in no_grad_vars:
             assert isinstance(
-                var, core.VarBase), "no_grad_set can only contains Variable"
+                var, core.VarBase), "no_grad_vars can only contains Variable"
     else:
         raise AssertionError(
-            "no_grad_set must be None, Variable or list/tuple/set of Variables")
+            "no_grad_vars must be None, Variable or list/tuple/set of Variables")
 
     if backward_strategy is None:
         backward_strategy = core.BackwardStrategy()
@@ -382,10 +397,19 @@ def grad(outputs,
 
     assert isinstance(create_graph, bool), "create_graph must be True or False"
 
+    if retain_graph is None:
+        retain_graph = create_graph
+
+    assert isinstance(retain_graph,
+                      bool), "retain_graph must be None, True or False"
+
+    assert isinstance(allow_unused, bool), "allow_unused must be True or False"
+
     place = core.Place()
     place.set_place(framework._current_expected_place())
-    return core.dygraph_partial_grad(inputs, outputs, grad_outputs, no_grad_set,
-                                     place, backward_strategy, create_graph)
+    return core.dygraph_partial_grad(inputs, outputs, grad_outputs,
+                                     no_grad_vars, place, backward_strategy,
+                                     create_graph, retain_graph, allow_unused)
 
 
 @framework.dygraph_only
