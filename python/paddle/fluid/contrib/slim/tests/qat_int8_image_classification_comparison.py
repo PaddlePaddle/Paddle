@@ -57,7 +57,7 @@ def parse_args():
     parser.add_argument(
         '--qat2',
         action='store_true',
-        help='By default use qat2 solution. If it is set to False, use qat1 solution'
+        help='If used, the QAT model is treated as a second generation model for performance optimization.'
     )
     parser.add_argument('--infer_data', type=str, default='', help='Data file.')
     parser.add_argument(
@@ -254,7 +254,6 @@ class QatInt8ImageClassificationComparisonTest(unittest.TestCase):
                     outputs.append(out[0])
                     batch_acc1, batch_acc5 = self._get_batch_accuracy(out[0],
                                                                       labels)
-
                 infer_accs1.append(batch_acc1)
                 infer_accs5.append(batch_acc5)
                 samples = len(data)
@@ -268,8 +267,6 @@ class QatInt8ImageClassificationComparisonTest(unittest.TestCase):
                              'latency: {3:.4f} ms, fps: {4:.2f}'.format(
                                  iters, batch_acc1, batch_acc5, batch_time /
                                  batch_size, fps, appx))
-                # _logger.info('batch {0}{3}, latency: {1:.4f} ms, fps: {2:.2f}'.
-                #              format(iters, batch_time / batch_size, fps, appx))
 
             # Postprocess benchmark data
             batch_latencies = batch_times[skip_batch_num:]

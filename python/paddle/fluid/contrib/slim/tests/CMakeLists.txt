@@ -63,7 +63,7 @@ function(inference_qat2_int8_image_classification_test target model_dir fp32_mod
                  OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
                  FLAGS_use_mkldnn=true
             ARGS --qat_model ${model_dir}/float
-				 --fp32_model ${fp32_model}
+		 --fp32_model ${fp32_model}
                  --infer_data ${data_path}
                  --batch_size 10
                  --batch_num 2
@@ -78,7 +78,7 @@ function(inference_qat2_int8_nlp_test target model_dir fp32_model data_path labe
                  OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
                  FLAGS_use_mkldnn=true
             ARGS --qat_model ${model_dir}/float
-				 --fp32_model ${fp32_model}
+		 --fp32_model ${fp32_model}
                  --infer_data ${data_path}
 		 --labels ${labels_path}
                  --batch_size 10
@@ -210,14 +210,14 @@ if(LINUX AND WITH_MKLDNN)
 
 	# QAT2 ResNet50
         set(QAT2_RESNET50_MODEL_DIR "${QAT_INSTALL_DIR}/ResNet50_qat_perf")
-		set(FP32_RESNET50_MODEL_DIR "${INT8_INSTALL_DIR}/resnet50")
+	set(FP32_RESNET50_MODEL_DIR "${INT8_INSTALL_DIR}/resnet50")
 	set(QAT2_RESNET50_MODEL_ARCHIVE "ResNet50_qat_perf.tar.gz")
 	download_qat_model(${QAT2_RESNET50_MODEL_DIR} ${QAT2_RESNET50_MODEL_ARCHIVE})
 	inference_qat2_int8_image_classification_test(test_qat2_int8_resnet50_mkldnn ${QAT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf ${FP32_RESNET50_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
 
 	# QAT2 MobileNetV1
         set(QAT2_MOBILENETV1_MODEL_DIR "${QAT_INSTALL_DIR}/MobileNet_qat_perf")
-		set(FP32_MOBILENETV1_MODEL_DIR "${INT8_INSTALL_DIR}/mobilenetv1")
+	set(FP32_MOBILENETV1_MODEL_DIR "${INT8_INSTALL_DIR}/mobilenetv1")
 	set(QAT2_MOBILENETV1_MODEL_ARCHIVE "MobileNet_qat_perf.tar.gz")
 	download_qat_model(${QAT2_MOBILENETV1_MODEL_DIR} ${QAT2_MOBILENETV1_MODEL_ARCHIVE})
 	inference_qat2_int8_image_classification_test(test_qat2_int8_mobilenetv1_mkldnn ${QAT2_MOBILENETV1_MODEL_DIR}/MobileNet_qat_perf ${FP32_MOBILENETV1_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
