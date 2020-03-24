@@ -183,12 +183,11 @@ LoDTensor CPUQuantizePass::GetScaleTensorForNode(const Node* node) const {
   return GetScaleDataForNode(node).second;
 }
 
-double CPUQuantizePass::GetScaleValueForNode(const Node* node) const {
-  return GetScaleTensorForNode(node).data<double>()[0];
-}
-
-bool CPUQuantizePass::GetIsScaleUnsignedForNode(const Node* node) const {
-  return GetScaleDataForNode(node).first;
+double CPUQuantizePass::GetScaleValueForNode(const Node* node,
+                                             bool* is_unsigned) const {
+  auto scale_data = GetScaleDataForNode(node);
+  if (is_unsigned != nullptr) *is_unsigned = scale_data.first;
+  return scale_data.second.data<double>()[0];
 }
 
 void CPUQuantizePass::QuantizeConv(Graph* graph,
@@ -212,8 +211,8 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
     GET_IR_NODE_FROM_SUBGRAPH(conv_input, conv_input, conv_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(conv_output, conv_output, conv_pattern);
 
-    auto input_scale = GetScaleValueForNode(conv_input);
-    bool is_input_unsigned = GetIsScaleUnsignedForNode(conv_input);
+    bool is_input_unsigned{false};
+    auto input_scale = GetScaleValueForNode(conv_input, &is_input_unsigned);
     QuantizeInput(g, conv_op, conv_input, "Input", input_scale,
                   is_input_unsigned, "Scale_in");
 
@@ -230,15 +229,16 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
     if (with_residual_data) {
       GET_IR_NODE_FROM_SUBGRAPH(conv_residual_data, conv_residual_data,
                                 conv_pattern);
-      auto residual_scale = GetScaleValueForNode(conv_residual_data);
-      bool is_residual_unsigned = GetIsScaleUnsignedForNode(conv_residual_data);
+      bool is_residual_unsigned{false};
+      auto residual_scale =
+          GetScaleValueForNode(conv_residual_data, &is_residual_unsigned);
 
       QuantizeInput(g, conv_op, conv_residual_data, "ResidualData",
                     residual_scale, is_residual_unsigned, "Scale_in_eltwise");
     }
 
-    auto output_scale = GetScaleValueForNode(conv_output);
-    bool is_output_unsigned = GetIsScaleUnsignedForNode(conv_output);
+    bool is_output_unsigned{false};
+    auto output_scale = GetScaleValueForNode(conv_output, &is_output_unsigned);
     DequantizeOutput(g, conv_op, conv_output, "Output", output_scale,
                      is_output_unsigned, "Scale_out");
 
@@ -288,8 +288,8 @@ void CPUQuantizePass::QuantizeFc(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(input, input, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(output, output, fc_pattern);
 
-    auto input_scale = GetScaleValueForNode(input);
-    bool is_input_unsigned = GetIsScaleUnsignedForNode(input);
+    bool is_input_unsigned{false};
+    auto input_scale = GetScaleValueForNode(input, &is_input_unsigned);
     QuantizeInput(g, fc, input, "Input", input_scale, is_input_unsigned,
                   "Scale_in");
 
@@ -303,8 +303,8 @@ void CPUQuantizePass::QuantizeFc(Graph* graph) const {
 
     fc->Op()->SetAttr("Scale_weights", filter_scale);
 
-    auto output_scale = GetScaleValueForNode(output);
-    bool is_output_unsigned = GetIsScaleUnsignedForNode(output);
+    bool is_output_unsigned{false};
+    auto output_scale = GetScaleValueForNode(output, &is_output_unsigned);
     DequantizeOutput(g, fc, output, "Out", output_scale, is_output_unsigned,
                      "Scale_out");
 
@@ -338,12 +338,12 @@ void CPUQuantizePass::QuantizePool(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(pool_input, pool_input, pool_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(pool_output, pool_output, pool_pattern);
 
-    auto input_scale = GetScaleValueForNode(pool_input);
-    bool is_input_unsigned = GetIsScaleUnsignedForNode(pool_input);
+    bool is_input_unsigned{false};
+    auto input_scale = GetScaleValueForNode(pool_input, &is_input_unsigned);
     QuantizeInput(g, pool_op, pool_input, "X", input_scale, is_input_unsigned);
 
-    auto output_scale = GetScaleValueForNode(pool_output);
-    bool is_output_unsigned = GetIsScaleUnsignedForNode(pool_output);
+    bool is_output_unsigned{false};
+    auto output_scale = GetScaleValueForNode(pool_output, &is_output_unsigned);
     DequantizeOutput(g, pool_op, pool_output, "Out", output_scale,
                      is_output_unsigned);
 
@@ -376,10 +376,11 @@ void CPUQuantizePass::QuantizeConcat(Graph* graph) const {
 
     // if all inputs were unsigned, then the output was set to unsigned
     // during the scale calculation step
-    bool are_all_inputs_unsigned = GetIsScaleUnsignedForNode(concat_out);
-    QuantizeInputs(g, concat_op, "X", are_all_inputs_unsigned);
+    bool are_all_inputs_unsigned{false};
+    auto output_scale =
+        GetScaleValueForNode(concat_out, &are_all_inputs_unsigned);
 
-    auto output_scale = GetScaleValueForNode(concat_out);
+    QuantizeInputs(g, concat_op, "X", are_all_inputs_unsigned);
 
     DequantizeOutput(g, concat_op, concat_out, "Out", output_scale,
                      are_all_inputs_unsigned);
@@ -412,8 +413,9 @@ void CPUQuantizePass::QuantizePriorBox(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(prior_box_input, prior_box_input,
                               prior_box_pattern);
 
-    auto input_scale = GetScaleValueForNode(prior_box_input);
-    bool is_input_unsigned = GetIsScaleUnsignedForNode(prior_box_input);
+    bool is_input_unsigned{false};
+    auto input_scale =
+        GetScaleValueForNode(prior_box_input, &is_input_unsigned);
     QuantizeInput(g, prior_box_op, prior_box_input, "Input", input_scale,
                   is_input_unsigned);
 
@@ -457,13 +459,14 @@ void CPUQuantizePass::QuantizeTranspose(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(transpose_in, transpose_in, transpose_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(transpose_out, transpose_out, transpose_pattern);
 
-    auto input_scale = GetScaleValueForNode(transpose_in);
-    bool is_input_unsigned = GetIsScaleUnsignedForNode(transpose_in);
+    bool is_input_unsigned{false};
+    auto input_scale = GetScaleValueForNode(transpose_in, &is_input_unsigned);
     QuantizeInput(g, transpose_op, transpose_in, "X", input_scale,
                   is_input_unsigned);
 
-    auto output_scale = GetScaleValueForNode(transpose_out);
-    bool is_output_unsigned = GetIsScaleUnsignedForNode(transpose_out);
+    bool is_output_unsigned{false};
+    auto output_scale =
+        GetScaleValueForNode(transpose_out, &is_output_unsigned);
     DequantizeOutput(g, transpose_op, transpose_out, "Out", output_scale,
                      is_output_unsigned);
 
@@ -508,13 +511,13 @@ void CPUQuantizePass::QuantizeReshape(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(reshape_in, reshape_in, reshape_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(reshape_out, reshape_out, reshape_pattern);
 
-    auto input_scale = GetScaleValueForNode(reshape_in);
-    bool is_input_unsigned = GetIsScaleUnsignedForNode(reshape_in);
+    bool is_input_unsigned{false};
+    auto input_scale = GetScaleValueForNode(reshape_in, &is_input_unsigned);
     QuantizeInput(g, reshape_op, reshape_in, "X", input_scale,
                   is_input_unsigned);
 
-    auto output_scale = GetScaleValueForNode(reshape_out);
-    bool is_output_unsigned = GetIsScaleUnsignedForNode(reshape_out);
+    bool is_output_unsigned{false};
+    auto output_scale = GetScaleValueForNode(reshape_out, &is_output_unsigned);
     DequantizeOutput(g, reshape_op, reshape_out, "Out", output_scale,
                      is_output_unsigned);
 

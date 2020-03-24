@@ -74,8 +74,8 @@ class CPUQuantizePass : public FusePassBase {
 
   std::pair<bool, LoDTensor> GetScaleDataForNode(const Node* node) const;
   LoDTensor GetScaleTensorForNode(const Node* node) const;
-  double GetScaleValueForNode(const Node* node) const;
-  bool GetIsScaleUnsignedForNode(const Node* node) const;
+  double GetScaleValueForNode(const Node* node,
+                              bool* is_unsigned = nullptr) const;
 
   const std::string name_scope_{"quantize"};
 };
