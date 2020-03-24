@@ -31,10 +31,8 @@ class TestIndexSampleOp(OpTest):
         index_array = []
         for i in range(self.index_shape[0]):
             for j in indexnp[i]:
-                idx = np.array([i, j])
-                index_array.append(idx)
-        out = xnp[index_array]
-        out = np.reshape(out, self.index_shape)
+                index_array.append(xnp[i, j])
+        out = np.reshape(index_array, self.index_shape)
         self.outputs = {'Out': out}
 
     def test_check_output(self):
@@ -60,7 +58,7 @@ class TestCase1(TestIndexSampleOp):
         """
         self.x_shape = (100, 1)
         self.x_type = "float64"
-        self.index = (100, 1)
+        self.index_shape = (100, 1)
         self.index_type = "int32"
 
 
@@ -71,7 +69,7 @@ class TestCase2(TestIndexSampleOp):
         """
         self.x_shape = (10, 100)
         self.x_type = "float64"
-        self.index = (10, 10)
+        self.index_shape = (10, 10)
         self.index_type = "int64"
 
 
@@ -82,7 +80,7 @@ class TestCase3(TestIndexSampleOp):
         """
         self.x_shape = (10, 100)
         self.x_type = "float64"
-        self.index = (10, 10)
+        self.index_shape = (10, 10)
         self.index_type = "int32"
 
 
@@ -93,7 +91,7 @@ class TestCase4(TestIndexSampleOp):
         """
         self.x_shape = (10, 100)
         self.x_type = "float32"
-        self.index = (10, 10)
+        self.index_shape = (10, 10)
         self.index_type = "int32"
 
 
@@ -104,7 +102,7 @@ class TestCase5(TestIndexSampleOp):
         """
         self.x_shape = (10, 100)
         self.x_type = "int32"
-        self.index = (10, 10)
+        self.index_shape = (10, 10)
         self.index_type = "int32"
 
 
@@ -115,7 +113,7 @@ class TestCase6(TestIndexSampleOp):
         """
         self.x_shape = (10, 100)
         self.x_type = "int64"
-        self.index = (10, 10)
+        self.index_shape = (10, 10)
         self.index_type = "int32"
 
 
