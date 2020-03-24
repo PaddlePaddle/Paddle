@@ -211,25 +211,112 @@ void CudnnWorkspaceHandle::ReallocWorkspace(size_t required_workspace_bytes) {
   allocation_ = memory::Alloc(device_context_, required_workspace_bytes);
 }
 
-void CUDAContext::ResetEigenContext(const cudaStream_t& stream) {
+using stream::CUDAStream;
+
+void CUDAContext::InitEigenContext(const CUDAStream& stream) {
   eigen_stream_.reset(new EigenCudaStreamDevice());
-  eigen_stream_->Reinitialize(&stream, place_);
+  eigen_stream_->Reinitialize(&(stream.stream()), place_);
   eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
 }
 
-CUDAContext::CUDAContext(const CUDAPlace& place) {
-  place_ = place;
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream_));
-  ResetEigenContext(stream_);
-  ResetCuBlasContext(stream_);
-  ResetCallbackManager(stream_);
-  ResetCuDNNContext(stream_);
+CUDAContext::CUDAContext(const CUDAPlace& place,
+                         const enum stream::Priority& priority) {
+  Init(place, priority);
 }
 
-CUDAContext::~CUDAContext() {
+CUDAContext::~CUDAContext() { Destory(); }
+
+void CUDAContext::Init(const CUDAPlace& place,
+                       const enum stream::Priority& priority) {
+  place_ = place;
+  stream_.Init(place, priority);
+  InitEigenContext(stream_);
+  InitCuBlasContext(stream_);
+  InitCallbackManager(stream_);
+  InitCuDNNContext(stream_);
+}
+
+void CUDAContext::Destory() {
   DestoryCuDNNContext();
   DestoryCuBlasContext();
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(stream_));
+}
+
+void CUDAContext::Reset(const CUDAPlace& place,
+                        const enum stream::Priority& priority) {
+  Destory();
+  Init(place, priority);
+}
+
+void CUDAContext::InitCuBlasContext(const stream::CUDAStream& stream) {
+  cublas_handle_.reset(
+      new CublasHandleHolder(stream.stream(), CUBLAS_DEFAULT_MATH));
+  if (TensorCoreAvailable()) {
+#if CUDA_VERSION >= 9000
+    cublas_tensor_core_handle_.reset(
+        new CublasHandleHolder(stream.stream(), CUBLAS_TENSOR_OP_MATH));
+#endif
+  }
+}
+
+void CUDAContext::InitCallbackManager(const stream::CUDAStream& stream) {
+  callback_manager_.reset(new StreamCallbackManager(stream.stream()));
+}
+
+void CUDAContext::InitCuDNNContext(const stream::CUDAStream& stream) {
+  if (dynload::HasCUDNN()) {
+    auto local_cudnn_version = dynload::cudnnGetVersion() / 100;
+    auto compile_cudnn_version = CUDNN_VERSION / 100;
+    if (local_cudnn_version < static_cast<size_t>(compile_cudnn_version)) {
+      LOG_FIRST_N(WARNING, 1)
+          << "WARNING: device: " << place_.device
+          << ". The installed Paddle is compiled with CUDNN "
+          << compile_cudnn_version / 10 << "." << compile_cudnn_version % 10
+          << ", but CUDNN version in your machine is "
+          << local_cudnn_version / 10 << "." << local_cudnn_version % 10
+          << ", which may cause serious incompatible bug. "
+          << "Please recompile or reinstall Paddle with compatible CUDNN "
+             "version.";
+    }
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cudnnCreate(&cudnn_handle_),
+        "Failed to create Cudnn handle in DeviceContext");
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cudnnSetStream(cudnn_handle_, stream.stream()),
+        "Failed to set stream for Cudnn handle in DeviceContext");
+  } else {
+    cudnn_handle_ = nullptr;
+  }
+}
+
+void CUDAContext::DestoryCuDNNContext() {
+  if (cudnn_handle_) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_),
+                                "Failed to destory Cudnn handle");
+  }
+}
+
+void CUDAContext::DestoryCuBlasContext() {
+  if (cudnn_handle_) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_),
+                                "Failed to destory Cudnn handle");
+  }
+}
+
+void CUDAContext::Wait() const {
+  cudaError_t e_sync = cudaSuccess;
+#if !defined(_WIN32)
+  e_sync = cudaStreamSynchronize(stream_.stream());
+#else
+  while (e_sync = cudaStreamQuery(stream_.stream())) {
+    if (e_sync == cudaErrorNotReady) continue;
+    break;
+  }
+#endif
+
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      e_sync, platform::errors::Fatal(
+                  "cudaStreamSynchronize raises error: %s, errono: %d",
+                  cudaGetErrorString(e_sync), static_cast<int>(e_sync)));
 }
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place)

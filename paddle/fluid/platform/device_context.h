@@ -40,6 +40,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/stream_callback_manager.h"
 #endif
+#include "paddle/fluid/platform/stream/cuda_stream.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
@@ -83,7 +84,9 @@ class CudnnWorkspaceHandle;
 class CUDAContext {
  public:
   CUDAContext() = default;
-  explicit CUDAContext(const CUDAPlace& place);
+  explicit CUDAContext(
+      const CUDAPlace& place,
+      const enum stream::Priority& priority = stream::Priority::NORMAL);
 
   ~CUDAContext();
 
@@ -97,7 +100,7 @@ class CUDAContext {
     return eigen_stream_;
   }
 
-  const cudaStream_t& Stream() const { return stream_; }
+  const cudaStream_t& Stream() const { return stream_.stream(); }
 
   const cudnnHandle_t& CudnnHandle() const { return cudnn_handle_; }
 
@@ -132,7 +135,7 @@ class CUDAContext {
   template <typename Callback>
   void RecordEvent(cudaEvent_t ev, Callback callback) {
     callback();
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(ev, stream_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(ev, stream_.stream()));
   }
 
   template <typename Callback>
@@ -142,84 +145,23 @@ class CUDAContext {
 
   void WaitStreamCallback() const { callback_manager_->Wait(); }
 
-  void Wait() const {
-    cudaError_t e_sync = cudaSuccess;
-#if !defined(_WIN32)
-    e_sync = cudaStreamSynchronize(stream_);
-#else
-    while (e_sync = cudaStreamQuery(stream_)) {
-      if (e_sync == cudaErrorNotReady) continue;
-      break;
-    }
-#endif
-
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        e_sync, platform::errors::Fatal(
-                    "cudaStreamSynchronize raises error: %s, errono: %d",
-                    cudaGetErrorString(e_sync), static_cast<int>(e_sync)));
-  }
+  void Wait() const;
 
  private:
-  void ResetEigenContext(const cudaStream_t& stream);
-
-  void ResetCuBlasContext(const cudaStream_t& stream) {
-    cublas_handle_.reset(new CublasHandleHolder(stream, CUBLAS_DEFAULT_MATH));
-    if (TensorCoreAvailable()) {
-#if CUDA_VERSION >= 9000
-      cublas_tensor_core_handle_.reset(
-          new CublasHandleHolder(stream, CUBLAS_TENSOR_OP_MATH));
-#endif
-    }
-  }
-
-  void ResetCallbackManager(const cudaStream_t& stream) {
-    callback_manager_.reset(new StreamCallbackManager(stream));
-  }
-
-  void ResetCuDNNContext(const cudaStream_t& stream) {
-    if (dynload::HasCUDNN()) {
-      auto local_cudnn_version = dynload::cudnnGetVersion() / 100;
-      auto compile_cudnn_version = CUDNN_VERSION / 100;
-      if (local_cudnn_version < static_cast<size_t>(compile_cudnn_version)) {
-        LOG_FIRST_N(WARNING, 1)
-            << "WARNING: device: " << place_.device
-            << ". The installed Paddle is compiled with CUDNN "
-            << compile_cudnn_version / 10 << "." << compile_cudnn_version % 10
-            << ", but CUDNN version in your machine is "
-            << local_cudnn_version / 10 << "." << local_cudnn_version % 10
-            << ", which may cause serious incompatible bug. "
-            << "Please recompile or reinstall Paddle with compatible CUDNN "
-               "version.";
-      }
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          dynload::cudnnCreate(&cudnn_handle_),
-          "Failed to create Cudnn handle in DeviceContext");
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          dynload::cudnnSetStream(cudnn_handle_, stream),
-          "Failed to set stream for Cudnn handle in DeviceContext");
-    } else {
-      cudnn_handle_ = nullptr;
-    }
-  }
-
-  void DestoryCuDNNContext() {
-    if (cudnn_handle_) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_),
-                                  "Failed to destory Cudnn handle");
-    }
-  }
-
-  void DestoryCuBlasContext() {
-    if (cudnn_handle_) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_),
-                                  "Failed to destory Cudnn handle");
-    }
-  }
+  void Init(const CUDAPlace& place, const enum stream::Priority& priority);
+  void Destory();
+  void Reset(const CUDAPlace& place, const enum stream::Priority& priority);
+  void InitEigenContext(const stream::CUDAStream& stream);
+  void InitCuBlasContext(const stream::CUDAStream& stream);
+  void InitCallbackManager(const stream::CUDAStream& stream);
+  void InitCuDNNContext(const stream::CUDAStream& stream);
+  void DestoryCuDNNContext();
+  void DestoryCuBlasContext();
 
   CUDAPlace place_;
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
-  cudaStream_t stream_;
+  stream::CUDAStream stream_;
   cudnnHandle_t cudnn_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;

@@ -55,7 +55,7 @@ IF(WITH_DGC)
 ENDIF()
 
 IF(WITH_GPU)
-    set(GPU_CTX_DEPS dynload_cuda dynamic_loader)
+    set(GPU_CTX_DEPS dynload_cuda dynamic_loader cuda_stream)
 ENDIF()
 
 IF(WITH_MKLDNN)

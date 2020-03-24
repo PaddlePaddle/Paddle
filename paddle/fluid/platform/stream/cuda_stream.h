@@ -14,9 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include <cuda_runtime.h>
 #include <atomic>
 #include <cstdint>
+#include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/stream/stream_internal.h"
@@ -24,6 +24,8 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 namespace stream {
+
+#ifdef PADDLE_WITH_CUDA
 
 namespace internal {
 class StreamInterface;
@@ -49,7 +51,7 @@ class CUDAStream final : public internal::StreamInterface {
   bool Init(const Place& place, const enum Priority& priority = Priority::NIL);
 
   Place place() const { return place_; }
-  cudaStream_t stream() const { return stream_; }
+  const cudaStream_t& stream() const { return stream_; }
   const Priority& priority() const { return priority_; }
   bool IsIdle() const;
   void Destroy();
@@ -84,6 +86,8 @@ class CUDAStreamPool final {
 
   DISABLE_COPY_AND_ASSIGN(CUDAStreamPool);
 };
+
+#endif
 
 }  // namespace stream
 }  // namespace platform
