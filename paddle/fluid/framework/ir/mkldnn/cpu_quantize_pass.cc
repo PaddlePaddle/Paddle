@@ -171,7 +171,7 @@ void CPUQuantizePass::DequantizeOutput(Graph* g, Node* op, Node* output,
 
 std::pair<bool, LoDTensor> CPUQuantizePass::GetScaleDataForNode(
     const Node* node) const {
-  auto scales = Get<VarQuantScale>("quant_var_scales");
+  auto& scales = Get<VarQuantScale>("quant_var_scales");
   PADDLE_ENFORCE_EQ(
       scales.count(node->Name()), 1,
       platform::errors::InvalidArgument(
