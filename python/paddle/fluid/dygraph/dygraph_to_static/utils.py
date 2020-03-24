@@ -93,8 +93,10 @@ def is_control_flow_to_transform(node, var_name_to_type):
         "The type of input node must be gast.AST, but received %s." % type(node)
 
     if isinstance(node, gast.If):
-        # TODO: make a better condition
-        return True
+        from .ifelse_transformer import IfConditionVisitor
+        if_visitor = IfConditionVisitor(
+            node.test, node_var_type_map=var_name_to_type)
+        return if_visitor.is_control_flow()
 
     if isinstance(node, gast.For):
         # TODO: make a better condition
