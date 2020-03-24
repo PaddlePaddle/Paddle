@@ -139,13 +139,14 @@ class CrossGradKernel : public framework::OpKernel<T> {
 
     int dim = context.Attr<int>("dim");
     auto input_x_dims = input_x.dims();
-    if (dim != -1) {
+    if (dim != kDefaultDim) {
       PADDLE_ENFORCE_EQ(
           input_x_dims.size() > dim && input_x_dims[dim] == 3, true,
-          "AttrError: Input(X/Y).dims.size() must be greater than dim, and"
-          "Input(X).dims()[dim] must be equal to 3. But received: "
-          "Input(X).dims = [%s], Attr(dim) = %d",
-          input_x_dims, dim);
+          platform::errors::InvalidArgument(
+              "Input(X/Y).dims.size() must be greater than dim, and"
+              "Input(X).dims()[dim] must be equal to 3. But received: "
+              "Input(X).dims = [%s], Attr(dim) = %d",
+              input_x_dims, dim));
     } else {
       for (size_t i = 0; i < input_x_dims.size(); i++) {
         if (input_x_dims[i] == 3) {
@@ -153,11 +154,12 @@ class CrossGradKernel : public framework::OpKernel<T> {
           break;
         }
       }
-      PADDLE_ENFORCE_EQ(dim == -1, false,
-                        "ShapeError: If Attr(dim) == -1, there must be a "
-                        "dimension d for Input(X/Y).dims()[d] to be equal to 3."
-                        "But received: Input(X/Y).dims() == [%s].",
-                        input_x_dims);
+      PADDLE_ENFORCE_EQ(dim == kDefaultDim, false,
+                        platform::errors::InvalidArgument(
+                            "There must be at least one dimension 'd' "
+                            "so that Input(X/Y).dims()[d] is equal to 3. "
+                            "But received: Input(X/Y).dims() == [%s].",
+                            input_x_dims));
     }
     auto outer_loops = 1;
     for (size_t i = 0; i < dim; i++) {
@@ -190,10 +192,10 @@ class CrossGradKernel : public framework::OpKernel<T> {
         T* out_x_grad = output_x_grad_data + (3 * i + j) * slice_size;
         T* out_y_grad = output_y_grad_data + (3 * i + j) * slice_size;
         for (size_t k = 0; k < slice_size; k++) {
-          *(out_x_grad + k) = (*(out2_grad_data + k)) / (*(y1_data + k)) -
-                              (*(out1_grad_data + k)) / (*(y2_data + k));
-          *(out_y_grad + k) = (*(out1_grad_data + k)) / (*(x2_data + k)) -
-                              (*(out2_grad_data + k)) / (*(x1_data + k));
+          *(out_x_grad + k) = (*(out2_grad_data + k)) * (*(y1_data + k)) -
+                              (*(out1_grad_data + k)) * (*(y2_data + k));
+          *(out_y_grad + k) = (*(out1_grad_data + k)) * (*(x2_data + k)) -
+                              (*(out2_grad_data + k)) * (*(x1_data + k));
         }
       }
     }

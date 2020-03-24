@@ -127,6 +127,7 @@ class IndexSelectGradMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("index_select_grad");
 
+    op->SetInput("X", this->Input("X"));
     op->SetInput("Index", this->Input("Index"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
