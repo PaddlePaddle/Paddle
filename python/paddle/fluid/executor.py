@@ -364,6 +364,9 @@ def _to_name_str(var):
         else:
             raise TypeError(str(var) + " should be Variable, Operator or str")
 
+    # The item in fetch_list may be tuple returned by Optimizer.minimize()
+    if isinstance(var, tuple):
+        var = var[0]
     if isinstance(var, list):
         s = [_to_str(item) for item in var]
         return ','.join(s)
@@ -378,7 +381,6 @@ def _get_strong_program_cache_key(program, feed, fetch_list):
 def _get_program_cache_key(feed, fetch_list):
     feed_var_names = list(feed.keys())
     fetch_var_names = list(map(_to_name_str, fetch_list))
-
     return str(feed_var_names + fetch_var_names)
 
 
@@ -649,8 +651,9 @@ class Executor(object):
                 origin_program = program._program
             else:
                 warnings.warn(
-                    "The program holds no _program, maybe it is constructed by graph."
+                    "The program holds no _program, maybe it is constructed by graph, which can't be pruned yet."
                 )
+            return
         else:
             origin_program = program
 
@@ -661,8 +664,6 @@ class Executor(object):
             feed_names = []
             for i, each in enumerate(feed):
                 feed_names += list(each.keys())
-
-        print(feed_names)
 
         def _is_optimize_op(op):
             op_maker = core.op_proto_and_checker_maker
@@ -675,7 +676,8 @@ class Executor(object):
 
         targets = []
         has_optimize = False
-        for item in fetch_list:
+
+        def _get_targets(item):
             if isinstance(item, Variable) or isinstance(
                     item, str) or isinstance(item, six.string_types):
                 targets.append(item)
@@ -683,15 +685,16 @@ class Executor(object):
                 if _is_optimize_op(item):
                     has_optimize = True
                 targets.append(item)
-            elif isinstance(item, list):
+
+        for item in fetch_list:
+            if isinstance(item, list):
                 for i in item:
-                    if isinstance(i, Variable) or isinstance(
-                            i, str) or isinstance(item, six.string_types):
-                        res.append(i)
-                    elif isinstance(i, Operator):
-                        if _is_optimize_op(i):
-                            has_optimize = True
-                        targets.append(i)
+                    _get_targets(i)
+            elif isinstance(item, tuple):
+                for i in item[0]:
+                    _get_targets(i)
+            else:
+                _get_targets(item)
 
         # get all optimize op 
         if not has_optimize:
@@ -727,6 +730,7 @@ class Executor(object):
         Returns:
             feed:(list|dict)  updated feed.
         """
+        print('type', type(program))
         compiled = isinstance(program, compiler.CompiledProgram)
         if compiled:
             if program._program:
