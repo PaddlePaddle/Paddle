@@ -360,8 +360,6 @@ std::string shell_get_command_output(const std::string& cmd, int time_out,
     pipe = nullptr;
   } while (err_no);
 
-  // nothing returned
-  // printf("reached unkown place!\n");
   return "";
 #endif
 }
