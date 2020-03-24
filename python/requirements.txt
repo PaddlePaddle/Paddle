@@ -19,5 +19,4 @@ decorator
 prettytable
 objgraph
 astor
-flask
 pathlib
