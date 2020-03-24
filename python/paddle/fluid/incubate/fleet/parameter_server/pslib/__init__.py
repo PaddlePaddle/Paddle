@@ -603,12 +603,9 @@ def _prepare_params(input, size, is_sparse=False, is_distributed=False,
                          % (d_accessor[name], accessor))
 
     # check embedding table id
-    table_id = None
     if d_table.get(name) is None:
         d_table[name] = FLEET_GLOBAL_DICT["cur_sparse_id"]
         FLEET_GLOBAL_DICT["cur_sparse_id"] += 1
-    else:
-        table_id = d_table[name]
 
     # check other params
     if not is_sparse:
@@ -647,6 +644,7 @@ def _fleet_embedding(input, size, is_sparse=False, is_distributed=False,
         size=size,
         table_id=FLEET_GLOBAL_DICT["emb_to_table"][name],
         accessor_class=FLEET_GLOBAL_DICT["emb_to_accessor"][name],
+        name=name,
         ctr_label_name=FLEET_GLOBAL_DICT["click_name"],
         padding_id=padding_idx,
         dtype=dtype,
@@ -681,6 +679,7 @@ def _fleet_embedding_v2(input, size, is_sparse=False, is_distributed=False,
         size=size,
         table_id=FLEET_GLOBAL_DICT["emb_to_table"][name],
         accessor_class=FLEET_GLOBAL_DICT["emb_to_accessor"][name],
+        name=name,
         ctr_label_name=FLEET_GLOBAL_DICT["click_name"],
         padding_id=padding_idx,
         dtype=dtype,

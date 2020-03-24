@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/pull_sparse_op_v2.h"
+#include "paddle/fluid/operators/pull_sparse_v2_op.h"
 #include <string>
 
 namespace paddle {
@@ -34,7 +34,6 @@ class PullSparseV2Op : public framework::OperatorWithKernel {
     outs_dims.resize(n_ids);
     for (size_t i = 0; i < n_ids; ++i) {
       const auto ids_dims = all_ids_dim[i];
-      int ids_rank = ids_dims.size();
       auto out_dim = framework::vectorize(ids_dims);
       out_dim.push_back(hidden_size);
       outs_dims[i] = framework::make_ddim(out_dim);
@@ -89,15 +88,13 @@ class PushSparseV2OpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
-    op->SetType("push_sparse_v2");
-    op->SetInput("Ids", this->Input("Ids"));
-    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-    op->SetInput("W", this->Input("W"));
-    op->SetOutput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-    op->SetAttrMap(this->Attrs());
-    return op;
+  void Apply(GradOpPtr<T> retv) const override {
+    retv->SetType("push_sparse_v2");
+    retv->SetInput("Ids", this->Input("Ids"));
+    retv->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    retv->SetInput("W", this->Input("W"));
+    retv->SetOutput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    retv->SetAttrMap(this->Attrs());
   }
 };
 

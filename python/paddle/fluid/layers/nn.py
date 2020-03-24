@@ -503,6 +503,7 @@ def _pull_sparse(input,
                  size,
                  table_id,
                  accessor_class,
+                 name="embedding",
                  ctr_label_name="",
                  padding_id = 0,
                  dtype='float32',
@@ -612,7 +613,6 @@ def _pull_sparse_v2(input,
           emb = fluid.layers.nn._pull_sparse_v2(
               input=data, size=11, table_id=0, accessor_class="DownpourCtrAccessor")
     """
-
     helper = LayerHelper(name, **locals())
     inputs = helper.multiple_input()
     outs = [

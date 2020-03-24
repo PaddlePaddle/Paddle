@@ -29,30 +29,25 @@ class PullSparseV2CPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PullSparseFunctor<T>(ctx, &fea_keys_, &pull_result_ptr_,
-                         &pull_sparse_status_, max_feasign_num_,
-                         sleep_seconds_before_fail_exit_);
+                         &pull_sparse_status_);
   }
  protected:
    std::vector<uint64_t> fea_keys_;
    std::vector<T*> pull_result_ptr_;
    std::vector<::std::future<int32_t>> pull_sparse_status_;
-   uint32_t max_feasign_num_ = 10240000;
-   uint32_t sleep_seconds_before_fail_exit_ = 300;
 };
 
 template <typename T>
 class PushSparseV2CPUKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    PushSparseFunctor<T>(ctx, &push_keys_, &push_values_,
-                        &fea_labels_, max_feasign_num_);
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    PushSparseFunctor<T>(ctx, &push_keys_, &push_values_, &fea_labels_);
   }
 
  protected:
   std::vector<uint64_t> push_keys_;
   std::vector<std::vector<T>> push_values_;
   std::vector<T> fea_labels_;
-  uint32_t max_feasign_num_ = 10240000;
 };
 }  // namespace operators
 }  // namespace paddle

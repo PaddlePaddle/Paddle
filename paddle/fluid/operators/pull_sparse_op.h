@@ -59,7 +59,6 @@ void PullSparseFunctor(
                                     pull_result_ptr, pull_sparse_status);
 }
 
-
 template <typename T>
 void PushSparseFunctor(const framework::ExecutionContext& ctx,
                        const std::vector<uint64_t>* push_keys_const,
@@ -71,7 +70,7 @@ void PushSparseFunctor(const framework::ExecutionContext& ctx,
   uint32_t fea_dim = static_cast<uint32_t>(ctx.Attr<int>("EmbeddingDim"));
   std::string accesor = ctx.Attr<std::string>("AccessorClass");
   bool scale_sparse = ctx.Attr<bool>("ScaleSparseGrad");
-  uint64_t padding_id =static_cast<uint64_t>(ctx.Attr<int>("PaddingId"));
+  uint64_t padding_id = static_cast<uint64_t>(ctx.Attr<int>("PaddingId"));
   const std::string& label_name = ctx.Attr<std::string>("CtrLabelName");
   const framework::Scope& scope = ctx.scope();
   auto input_names = ctx.Attr<std::vector<std::string>>("InputNames");
@@ -106,16 +105,17 @@ class PullSparseCPUKernel : public framework::OpKernel<T> {
     PullSparseFunctor<T>(ctx, &fea_keys_, &pull_result_ptr_,
                          &pull_sparse_status_);
   }
+
  protected:
-   std::vector<uint64_t> fea_keys_;
-   std::vector<T*> pull_result_ptr_;
-   std::vector<::std::future<int32_t>> pull_sparse_status_;
+  std::vector<uint64_t> fea_keys_;
+  std::vector<T*> pull_result_ptr_;
+  std::vector<::std::future<int32_t>> pull_sparse_status_;
 };
 
 template <typename T>
 class PushSparseCPUKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
+  void Compute(const framework::ExecutionContext& ctx) const override {
     PushSparseFunctor<T>(ctx, &push_keys_, &push_values_, &fea_labels_);
   }
 
