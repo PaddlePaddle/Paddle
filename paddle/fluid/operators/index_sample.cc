@@ -1,0 +1,113 @@
+/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+#include "paddle/fluid/operators/index_sample.h"
+#include <vector>
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/enforce.h"
+
+namespace paddle {
+namespace operators {
+class IndexSampleOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() {
+    AddInput("X", "Input(Tensor), dtype support int32/int64/float/double");
+    AddInput("Index", "Index(Tensor), dtype support int32/int64");
+    AddOutput("Out", "Return the element of input at index");
+
+    AddComment(R"DOC(
+    IndexSample OP returns the element of the specified location of X, 
+    and the location is specified by Index. 
+
+    X tensor and Index tensor's shape must be 2-D, 
+    dimension at 0 which usually is batch size must be equal.
+
+    The returned tensor has the same shape and dimensions as the Index tensor.
+    )DOC");
+  }
+};
+
+class IndexSampleOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "Inputs(Input) of FindByIndex should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Index"), true,
+                      "Inputs(Index) of FindByIndex should not be null.");
+
+    auto input_dims = ctx->GetInputDim("X");
+    PADDLE_ENFORCE_EQ(input_dims.size(), 2,
+                      "Inputs(X) shape of IndexSample op must be 2-D, but "
+                      "got %d, please check X shape.",
+                      input_dims.size());
+
+    auto index_dims = ctx->GetInputDim("Index");
+    PADDLE_ENFORCE_EQ(input_dims.size(), 2,
+                      "Inputs(Index) shape of IndexSample op must be 2-D, but "
+                      "got %d , please check index shape.",
+                      input_dims.size());
+
+    PADDLE_ENFORCE_EQ(input_dims[0], index_dims[0],
+                      "Inputs(X)'s value of dimension 0 must same with "
+                      "Inputs(Index)'s value of dimension 0, but "
+                      "got %d of Inputs(X), and got %d of Inputs(Index), "
+                      "please check Inputs shape.",
+                      input_dims[0], index_dims[0]);
+    ctx->SetOutputDim("Out", index_dims);
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(data_type, ctx.device_context());
+  }
+};
+
+class IndexSampleGradOP : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void Infershape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("Index"), "Input(Index) should be not null.");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input(Out@GRAD) should be not null.");
+    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output(X@GRAD) should be not null.");
+
+    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Out");
+    return framework::OpKernelType(data_type, ctx.device_context());
+  }
+}
+}  // namespace operators
+}  // namespace paddle
+
+namespace ops = paddle::operators;
+
+REGISTER_OPERATOR(
+    index_sample, ops::IndexSampleOp, ops::IndexSampleOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OP_CPU_KERNEL(
+    index_sample, ops::IndexSampleKernel<paddle::platform::CPUPlace, float>,
+    ops::IndexSampleKernel<paddle::platform::CPUPlace, double>,
+    ops::IndexSampleKernel<paddle::platform::CPUPlace, int>,
+    ops::IndexSampleKernel<paddle::platform::CPUPlace, int64_t>);
