@@ -35,6 +35,17 @@ def while_loop_dyfunc(x):
     return i
 
 
+def while_loop_dyfunc_with_none(x):
+    i = fluid.dygraph.to_variable(x)\
+        if x is not None \
+        else fluid.dygraph.to_variable(x+1)
+    flag = 1
+    while x < 10:
+        i = i + x if flag is not None else x + i
+        x = x + 1
+    return i
+
+
 def for_loop_dyfunc(max_len):
     for i in range(max_len):
         ret = fluid.layers.zeros(shape=[1], dtype='float32')
@@ -58,9 +69,14 @@ def var_create_in_for_loop(max_len):
 
 class TestNameVisitor(unittest.TestCase):
     def setUp(self):
-        self.loop_funcs = [while_loop_dyfunc, for_loop_dyfunc]
-        self.loop_var_names = [set(["i", "x"]), set(["i", "ret", "max_len"])]
-        self.create_var_names = [set(), set(["ret"])]
+        self.loop_funcs = [
+            while_loop_dyfunc, for_loop_dyfunc, while_loop_dyfunc_with_none
+        ]
+        self.loop_var_names = [
+            set(["i", "x"]), set(["i", "ret", "max_len"]),
+            set(["i", "x", "flag"])
+        ]
+        self.create_var_names = [set(), set(["ret"]), set()]
 
     def test_loop_vars(self):
         for i in range(len(self.loop_funcs)):
@@ -113,6 +129,11 @@ class TestTransformWhileLoop(unittest.TestCase):
         #
         # self._run_dygraph()
         # self.assertTrue(np.allclose(self._run_dygraph(), self._run_static()))
+
+
+class TestTransformWhileLoopWithNone(TestTransformWhileLoop):
+    def _init_dyfunc(self):
+        self.dyfunc = while_loop_dyfunc_with_none
 
 
 class TestWhileLoopBoolOp(TestTransformWhileLoop):
