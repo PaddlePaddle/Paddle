@@ -56,8 +56,7 @@ def parse_args():
     )
     parser.add_argument(
         '--qat2',
-        type=bool,
-        default=True,
+        action='store_true',
         help='By default use qat2 solution. If it is set to False, use qat1 solution'
     )
     parser.add_argument('--infer_data', type=str, default='', help='Data file.')
@@ -212,11 +211,12 @@ class QatInt8ImageClassificationComparisonTest(unittest.TestCase):
             outputs = []
             infer_accs1 = []
             infer_accs5 = []
+            batch_acc1 = 0.0
+            batch_acc5 = 0.0
             fpses = []
             batch_times = []
+            batch_time = 0.0
             total_samples = 0
-            top1 = 0.0
-            top5 = 0.0
             iters = 0
             infer_start_time = time.time()
             for data in test_reader():
@@ -232,14 +232,29 @@ class QatInt8ImageClassificationComparisonTest(unittest.TestCase):
                 images = np.array(images).astype('float32')
                 labels = np.array([x[1] for x in data]).astype('int64')
 
-                start = time.time()
-                out = exe.run(inference_program,
-                              feed={feed_target_names[0]: images},
-                              fetch_list=fetch_targets)
-                batch_time = (time.time() - start) * 1000  # in miliseconds
-                outputs.append(out[0])
-                batch_acc1, batch_acc5 = self._get_batch_accuracy(out[0],
-                                                                  labels)
+                if (test_case_args.fp32_model and transform_to_int8 == False):
+                    labels = labels.reshape([-1, 1])
+                    start = time.time()
+                    _, batch_acc1, batch_acc5 = exe.run(
+                        inference_program,
+                        feed={
+                            feed_target_names[0]: images,
+                            feed_target_names[1]: labels
+                        },
+                        fetch_list=fetch_targets)
+                    batch_time = (time.time() - start) * 1000  # in miliseconds
+                    batch_acc1, batch_acc5 = batch_acc1[0], batch_acc5[0]
+                    outputs.append(batch_acc1)
+                else:
+                    start = time.time()
+                    out = exe.run(inference_program,
+                                  feed={feed_target_names[0]: images},
+                                  fetch_list=fetch_targets)
+                    batch_time = (time.time() - start) * 1000  # in miliseconds
+                    outputs.append(out[0])
+                    batch_acc1, batch_acc5 = self._get_batch_accuracy(out[0],
+                                                                      labels)
+
                 infer_accs1.append(batch_acc1)
                 infer_accs5.append(batch_acc5)
                 samples = len(data)
@@ -253,6 +268,8 @@ class QatInt8ImageClassificationComparisonTest(unittest.TestCase):
                              'latency: {3:.4f} ms, fps: {4:.2f}'.format(
                                  iters, batch_acc1, batch_acc5, batch_time /
                                  batch_size, fps, appx))
+                # _logger.info('batch {0}{3}, latency: {1:.4f} ms, fps: {2:.2f}'.
+                #              format(iters, batch_time / batch_size, fps, appx))
 
             # Postprocess benchmark data
             batch_latencies = batch_times[skip_batch_num:]
