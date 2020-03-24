@@ -516,7 +516,7 @@ class PartialGradTask {
                   const std::vector<std::shared_ptr<VarBase>> &no_grad_vars,
                   const platform::Place &place,
                   const detail::BackwardStrategy &strategy, bool create_graph,
-                  bool retain_graph, bool allow_unused);
+                  bool retain_graph, bool allow_unused, bool only_inputs);
 
   std::vector<std::shared_ptr<VarBase>> Run();
 
@@ -561,6 +561,7 @@ class PartialGradTask {
   bool create_graph_;
   bool retain_graph_;
   bool allow_unused_;
+  bool only_inputs_;
   detail::BackwardStrategy strategy_;
 };
 
@@ -570,13 +571,18 @@ PartialGradTask::PartialGradTask(
     const std::vector<std::shared_ptr<VarBase>> &output_grads,
     const std::vector<std::shared_ptr<VarBase>> &no_grad_vars,
     const platform::Place &place, const detail::BackwardStrategy &strategy,
-    bool create_graph, bool retain_graph, bool allow_unused) {
+    bool create_graph, bool retain_graph, bool allow_unused, bool only_inputs) {
   input_targets_ = input_targets;
   place_ = place;
   create_graph_ = create_graph;
   retain_graph_ = retain_graph;
   allow_unused_ = allow_unused;
+  only_inputs_ = only_inputs;
   strategy_ = strategy;
+
+  PADDLE_ENFORCE_EQ(only_inputs_, true,
+                    platform::errors::Unimplemented(
+                        "only_inputs=False is not supported yet"));
 
   for (auto &var : no_grad_vars) {
     if (var && var->GradVarBase()) {
@@ -1008,7 +1014,7 @@ PartialGradEngine::PartialGradEngine(
     const std::vector<std::shared_ptr<VarBase>> &output_grads,
     const std::vector<std::shared_ptr<VarBase>> &no_grad_vars,
     const platform::Place &place, const detail::BackwardStrategy &strategy,
-    bool create_graph, bool retain_graph, bool allow_unused)
+    bool create_graph, bool retain_graph, bool allow_unused, bool only_inputs)
     : input_targets_(input_targets),
       output_targets_(output_targets),
       output_grads_(output_grads),
@@ -1017,7 +1023,8 @@ PartialGradEngine::PartialGradEngine(
       strategy_(strategy),
       create_graph_(create_graph),
       retain_graph_(retain_graph),
-      allow_unused_(allow_unused) {}
+      allow_unused_(allow_unused),
+      only_inputs_(only_inputs) {}
 
 std::vector<std::shared_ptr<VarBase>> PartialGradEngine::GetResult() const {
   return results_;
@@ -1033,7 +1040,7 @@ void PartialGradEngine::Clear() {
 void PartialGradEngine::Execute() {
   PartialGradTask task(input_targets_, output_targets_, output_grads_,
                        no_grad_vars_, place_, strategy_, create_graph_,
-                       retain_graph_, allow_unused_);
+                       retain_graph_, allow_unused_, only_inputs_);
   VLOG(10) << "Starts to execute PartialGradEngine";
   results_ = task.Run();
   Clear();

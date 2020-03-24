@@ -256,6 +256,7 @@ def grad(outputs,
          grad_outputs=None,
          retain_graph=None,
          create_graph=False,
+         only_inputs=True,
          allow_unused=False,
          no_grad_vars=None,
          backward_strategy=None):
@@ -287,6 +288,12 @@ def grad(outputs,
             the computing process. When it is True, higher order derivatives are
             supported to compute; when it is False, the gradient graphs of the
             computing process would be discarded. Default False.
+        only_inputs (bool, optional): whether to only compute the gradients of
+            `inputs` . If it is False, the gradients of all remaining leaf 
+            Variables in the graph would be also computed and accumulated. 
+            If it is True, only the gradients of `inputs` would be computed.
+            Default True. only_inputs=False is under development, and it is
+            not supported yet.    
         allow_unused (bool, optional): whether to raise error or return None as 
             the gradient of the unreachable `inputs` . If some variables of 
             `inputs` are unreachable in the graph (i.e., their gradients are None),  
@@ -405,11 +412,14 @@ def grad(outputs,
 
     assert isinstance(allow_unused, bool), "allow_unused must be True or False"
 
+    assert isinstance(only_inputs, bool), "only_inputs must be True or False"
+    assert only_inputs, "only_inputs=False is not supported yet"
+
     place = core.Place()
     place.set_place(framework._current_expected_place())
-    return core.dygraph_partial_grad(inputs, outputs, grad_outputs,
-                                     no_grad_vars, place, backward_strategy,
-                                     create_graph, retain_graph, allow_unused)
+    return core.dygraph_partial_grad(
+        inputs, outputs, grad_outputs, no_grad_vars, place, backward_strategy,
+        create_graph, retain_graph, allow_unused, only_inputs)
 
 
 @framework.dygraph_only
