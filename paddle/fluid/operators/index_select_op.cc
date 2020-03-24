@@ -135,25 +135,13 @@ REGISTER_OPERATOR(index_select, ops::IndexSelectOp, ops::IndexSelectOpMaker,
 REGISTER_OPERATOR(index_select_grad, ops::IndexSelectGradOp);
 REGISTER_OP_CPU_KERNEL(
     index_select,
-    ops::IndexSelectKernel<paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(
-    index_select,
-    ops::IndexSelectKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    index_select,
-    ops::IndexSelectKernel<paddle::platform::CPUDeviceContext, int>);
-REGISTER_OP_CPU_KERNEL(
-    index_select,
+    ops::IndexSelectKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::IndexSelectKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::IndexSelectKernel<paddle::platform::CPUDeviceContext, int>,
     ops::IndexSelectKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     index_select_grad,
-    ops::IndexSelectGradKernel<paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(
-    index_select_grad,
-    ops::IndexSelectGradKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    index_select_grad,
-    ops::IndexSelectGradKernel<paddle::platform::CPUDeviceContext, int>);
-REGISTER_OP_CPU_KERNEL(
-    index_select_grad,
+    ops::IndexSelectGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::IndexSelectGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::IndexSelectGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::IndexSelectGradKernel<paddle::platform::CPUDeviceContext, int64_t>);

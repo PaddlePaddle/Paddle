@@ -124,19 +124,12 @@ REGISTER_OPERATOR(roll, ops::RollOp, ops::RollOpMaker,
                   ops::RollGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(roll_grad, ops::RollGradOp);
 REGISTER_OP_CPU_KERNEL(
-    roll, ops::RollKernel<paddle::platform::CPUDeviceContext, float>);
+    roll, ops::RollKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::RollKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::RollKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::RollKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
-    roll, ops::RollKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    roll, ops::RollKernel<paddle::platform::CPUDeviceContext, int>);
-REGISTER_OP_CPU_KERNEL(
-    roll, ops::RollKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    roll_grad, ops::RollGradKernel<paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(
-    roll_grad, ops::RollGradKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    roll_grad, ops::RollGradKernel<paddle::platform::CPUDeviceContext, int>);
-REGISTER_OP_CPU_KERNEL(
-    roll_grad,
+    roll_grad, ops::RollGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::RollGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::RollGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::RollGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
