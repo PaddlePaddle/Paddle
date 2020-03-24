@@ -42,7 +42,7 @@ def monkey_patch_math_varbase():
         out = core.ops.fill_constant('dtype', dtype, 'shape', shape, 'value',
                                      value, 'force_cpu', False)
         out.stop_gradient = True
-        return outs
+        return out
 
     def create_scalar(value, dtype):
         return create_tensor(value, dtype, shape=[1])

@@ -117,8 +117,8 @@ void BoxWrapper::BeginPass() const {
                                 "BeginPass failed in BoxPS."));
 }
 
-void BoxWrapper::EndPass() const {
-  int ret = boxps_ptr_->EndPass();
+void BoxWrapper::EndPass(bool need_save_delta) const {
+  int ret = boxps_ptr_->EndPass(need_save_delta);
   PADDLE_ENFORCE_EQ(
       ret, 0, platform::errors::PreconditionNotMet("EndPass failed in BoxPS."));
 }

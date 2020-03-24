@@ -242,10 +242,11 @@ struct OpInfoFiller<T, kGradOpBaseMaker> {
             "GradOpBaseMaker of %s has been registered", op_type));
 
     info->dygraph_grad_op_maker_ = [](
-        const imperative::OpBase* fw_op_base,
+        const std::string& type,
         const imperative::NameVarBaseMap& var_base_map_in,
-        const imperative::NameVarBaseMap& var_base_map_out) {
-      T maker(fw_op_base, var_base_map_in, var_base_map_out);
+        const imperative::NameVarBaseMap& var_base_map_out,
+        const framework::AttributeMap& attrs) {
+      T maker(type, var_base_map_in, var_base_map_out, attrs);
       return maker();
     };
   }

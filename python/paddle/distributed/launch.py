@@ -46,6 +46,8 @@ import six
 import copy
 from argparse import ArgumentParser, REMAINDER
 import paddle.fluid as fluid
+from contextlib import closing
+import socket
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -61,6 +63,32 @@ def _print_arguments(args):
     for arg, value in sorted(six.iteritems(vars(args))):
         print("%s: %s" % (arg, value))
     print("------------------------------------------------")
+
+
+def find_free_ports(num):
+    def __free_port():
+        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
+            s.bind(('', 0))
+            return s.getsockname()[1]
+
+    port_set = set()
+    step = 0
+    while True:
+        port = __free_port()
+        if port not in port_set:
+            port_set.add(port)
+
+        if len(port_set) >= num:
+            return port_set
+
+        step += 1
+        if step > 100:
+            print(
+                "can't find avilable port and use the specified static port now!"
+            )
+            return None
+
+    return None
 
 
 def _parse_args():
@@ -101,7 +129,7 @@ POD_IP (current node ip address, not needed for local training)
     parser.add_argument(
         "--started_port",
         type=int,
-        default=6170,
+        default=None,
         help="The trainer's started port on a single node")
 
     parser.add_argument(
@@ -212,12 +240,29 @@ paddlecloud environment.".format(args.cluster_node_ips, node_ips))
                 logger.warning("Use Cloud specified port:{}.".format(
                     cloud_paddle_port))
 
+    free_ports = None
+    if not args.use_paddlecloud and num_nodes <= 1 and args.started_port is None:
+        free_ports = find_free_ports(selected_gpus_num)
+        if free_ports is not None:
+            free_ports = list(free_ports)
+            args.started_port = free_ports[0]
+
+    if args.started_port is None:
+        args.started_port = 6170
+
+    if free_ports is None:
+        free_ports = [
+            x
+            for x in range(args.started_port, args.started_port +
+                           selected_gpus_num)
+        ]
+
     trainers_endpoints = ""
     for ip in node_ips:
-        for i in range(selected_gpus_num):
+        for i in range(0, selected_gpus_num):
             if trainers_endpoints != "":
                 trainers_endpoints += ","
-            trainers_endpoints += "%s:%d" % (ip, args.started_port + i)
+            trainers_endpoints += "%s:%d" % (ip, free_ports[i])
 
     nranks = num_nodes * selected_gpus_num
 
@@ -244,7 +289,7 @@ paddlecloud environment.".format(args.cluster_node_ips, node_ips))
             "FLAGS_selected_gpus": "%s" % selected_gpus[i],
             "PADDLE_TRAINER_ID": "%d" % rank,
             "PADDLE_CURRENT_ENDPOINT":
-            "%s:%d" % (current_node_ip, args.started_port + i),
+            "%s:%d" % (current_node_ip, free_ports[i]),
             "PADDLE_TRAINERS_NUM": "%d" % nranks,
             "PADDLE_TRAINER_ENDPOINTS": trainers_endpoints
         })

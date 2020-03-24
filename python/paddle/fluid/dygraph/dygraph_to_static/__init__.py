@@ -20,6 +20,18 @@ from .ast_transformer import *
 from . import static_analysis
 from .static_analysis import *
 
+from . import loop_transformer
+from .loop_transformer import *
+
+from . import variable_trans_func
+from .variable_trans_func import *
+
+from . import program_translator
+from .program_translator import *
+
 __all__ = []
 __all__ += ast_transformer.__all__
+__all__ += loop_transformer.__all__
 __all__ += static_analysis.__all__
+__all__ += variable_trans_func.__all__
+__all__ += program_translator.__all__

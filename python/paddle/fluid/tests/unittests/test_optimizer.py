@@ -94,6 +94,7 @@ class TestOptimizerBackwardApplygrad(unittest.TestCase):
             return opts
 
         opts = check_sgd_optimizer({'learning_rate': 1.1})
+        print(opts)
         self.assertEqual(len(opts), 2)
         self.assertEqual([op.type for op in opts], ["scale", "sgd"])
 
@@ -791,8 +792,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
             mean_out,
             startup_program=None,
             parameter_list=None,
-            no_grad_set=None,
-            checkpoints=[b1_out])
+            no_grad_set=None)
 
         # apply gradient
         program = mean_out.block.program

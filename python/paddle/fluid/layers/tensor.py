@@ -18,7 +18,7 @@ from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator
 from ..framework import Variable
-from ..initializer import Constant, force_init_on_cpu
+from ..initializer import Constant
 from ..core import VarDesc
 from .. import core
 from .layer_function_generator import templatedoc
@@ -255,9 +255,11 @@ def concat(input, axis=0, name=None):
     """
 
     if in_dygraph_mode():
-        if not isinstance(axis, int):
-            raise TypeError(
-                "Input 'axis' in concat must be int in Dygraph mode.")
+        if isinstance(axis, Variable):
+            axis = axis.numpy()
+            assert axis.shape == (
+                1, ), "axis of type Variable should have shape [1]"
+            axis = axis[0]
         return core.ops.concat(input, 'axis', axis)
 
     if not isinstance(input, list):
@@ -270,18 +272,32 @@ def concat(input, axis=0, name=None):
             x, 'input[' + str(id) + ']',
             ['float16', 'float32', 'float64', 'int32', 'int64'], 'concat')
     check_type(axis, 'axis', (int, Variable), 'concat')
-    inputs = {'X': input}
-    attrs = {}
-    if isinstance(axis, Variable):
-        axis.stop_gradient = True
-        inputs['AxisTensor'] = axis
-    else:
-        attrs['axis'] = axis
 
     helper = LayerHelper('concat', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    helper.append_op(
-        type='concat', inputs=inputs, outputs={'Out': [out]}, attrs=attrs)
+
+    if input[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        assert len(input) == 1, "If the elements of 'input' in concat are Variable(LoDTensorArray), " \
+                            "number of the elements must be 1, but received %s." % len(x)
+        out_index = helper.create_variable_for_type_inference(dtype="int32")
+        helper.append_op(
+            type='tensor_array_to_tensor',
+            inputs={'X': input[0]},
+            outputs={'Out': [out],
+                     'OutIndex': [out_index]},
+            attrs={'axis': axis,
+                   'use_stack': False})
+    else:
+        inputs = {'X': input}
+        attrs = {}
+        if isinstance(axis, Variable):
+            axis.stop_gradient = True
+            inputs['AxisTensor'] = axis
+        else:
+            attrs['axis'] = axis
+
+        helper.append_op(
+            type='concat', inputs=inputs, outputs={'Out': [out]}, attrs=attrs)
     return out
 
 
@@ -550,10 +566,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
           shape = fluid.layers.fill_constant([1,2], "int32", 2) # shape=[2,2]
           data4 = fluid.layers.fill_constant(shape=shape, dtype='bool', value=True) # data4=[[True,True],[True,True]]
     """
-    attrs = {
-        'value': float(value),
-        'force_cpu': force_cpu or force_init_on_cpu()
-    }
+    attrs = {'value': float(value), 'force_cpu': force_cpu}
 
     if convert_dtype(dtype) in ['int64', 'int32']:
         attrs['str_value'] = str(int(value))
@@ -562,21 +575,16 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
 
     if in_dygraph_mode():
         if isinstance(shape, (list, tuple)):
-            if utils._contain_var(shape):
-                raise TypeError(
-                    "The type of 'shape' in fill_constant must be list[int] or tuple(int) in Dygraph mode, but "
-                    "received %s, which contains Variable." % type(shape))
-            attrs['shape'] = shape
+            shape = list(
+                map(lambda x: x.numpy()[0] if isinstance(x, Variable) else x,
+                    shape))
         else:
-            raise TypeError(
-                "The type of 'shape' in fill_constant must be list[int] or tuple(int) in Dygraph mode, but "
-                "received %s." % type(shape))
+            shape = list(shape.numpy().astype(int))
         dtype = convert_np_dtype_to_dtype_(dtype)
         out = core.ops.fill_constant('value',
-                                     float(value), 'force_cpu', force_cpu or
-                                     force_init_on_cpu(), 'dtype', dtype,
-                                     'str_value', attrs['str_value'], 'shape',
-                                     attrs['shape'])
+                                     float(value), 'force_cpu', force_cpu,
+                                     'dtype', dtype, 'str_value',
+                                     attrs['str_value'], 'shape', shape)
         out.stop_gradient = True
         return out
 
@@ -586,10 +594,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
                 'fill_constant')
     check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
     inputs = {}
-    attrs = {
-        'value': float(value),
-        'force_cpu': force_cpu or force_init_on_cpu()
-    }
+    attrs = {'value': float(value), 'force_cpu': force_cpu}
 
     if convert_dtype(dtype) in ['int64', 'int32']:
         attrs['str_value'] = str(int(value))
@@ -707,7 +712,7 @@ def fill_constant_batch_size_like(input,
         'value': float(value),
         'input_dim_idx': input_dim_idx,
         'output_dim_idx': output_dim_idx,
-        'force_cpu': force_cpu or force_init_on_cpu()
+        'force_cpu': force_cpu
     }
     if convert_dtype(dtype) in ['int64', 'int32']:
         attrs['str_value'] = str(int(value))

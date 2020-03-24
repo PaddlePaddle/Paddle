@@ -60,8 +60,41 @@ static bool IsEqualAndNotEmpty(const std::vector<int64_t>& l,
   return l.size() != 0U && r.size() != 0U && l == r;
 }
 
+bool GroupDetector::CheckPrecondition(const Node* n) {
+  auto check_data_type = [&](const std::vector<Node*>& nodes) -> bool {
+    bool is_first = true;
+    proto::VarType::Type data_type_0;
+    for (auto* n : nodes) {
+      if (n && n->IsVar() && n->Var()) {
+        if (n->Var()->GetType() != proto::VarType::LOD_TENSOR) {
+          return false;
+        }
+
+        proto::VarType::Type data_type_i = n->Var()->GetDataType();
+        if (data_type_i == proto::VarType::FP32 ||
+            data_type_i == proto::VarType::FP64 ||
+            data_type_i == proto::VarType::FP16) {
+          if (is_first) {
+            data_type_0 = data_type_i;
+            is_first = false;
+          } else if (data_type_0 != data_type_i) {
+            return false;
+          }
+        } else {
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+
+  return n && n->IsOp() && n->Op() && check_data_type(n->inputs) &&
+         check_data_type(n->outputs);
+}
+
 bool ElementwiseGroupDetector::IsElementwiseOp(const Node* n) {
   if (IsSpecifiedOp(GetElementwiseOpTypes(), n)) {
+    // Check whether all inputs have the same shape.
     std::vector<int64_t> shape_0;
     for (size_t i = 0; i < n->inputs.size(); ++i) {
       auto* in_i = n->inputs[i];
@@ -85,7 +118,9 @@ bool ElementwiseGroupDetector::IsElementwiseOp(const Node* n) {
 
 std::vector<std::vector<Node*>> ElementwiseGroupDetector::operator()(
     Graph* graph) {
-  auto teller = [&](const Node* n) -> bool { return IsElementwiseOp(n); };
+  auto teller = [&](const Node* n) -> bool {
+    return CheckPrecondition(n) && IsElementwiseOp(n);
+  };
 
   return SubgraphDetector(graph, teller)();
 }

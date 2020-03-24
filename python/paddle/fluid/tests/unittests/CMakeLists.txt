@@ -197,9 +197,11 @@ list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
 if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
   list(REMOVE_ITEM TEST_OPS test_dataset_dataloader)
-  list(REMOVE_ITEM TEST_OPS test_imperative_data_loader)
+  list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_base)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_process)
+  list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_fds_clear)
+  list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exit_func)
   list(REMOVE_ITEM TEST_OPS test_imperative_signal_handler)
 endif()
 
@@ -214,11 +216,9 @@ set(TEST_OPS_WITH_GC
   test_concat_op
   test_elementwise_add_op
   test_elementwise_sub_op
-  test_fill_constant_batch_size_like_op
   test_fill_zeros_like2_op
   test_gather_op
   test_gather_nd_op
-  test_gaussian_random_batch_size_like_op
   test_linear_chain_crf_op
   test_lod_reset_op
   test_lookup_table_op
@@ -236,8 +236,7 @@ set(TEST_OPS_WITH_GC
   test_sequence_slice_op
   test_slice_op
   test_space_to_depth_op
-  test_squared_l2_distance_op
-  test_uniform_random_batch_size_like_op)
+  test_squared_l2_distance_op)
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
@@ -360,5 +359,14 @@ set_tests_properties(test_parallel_executor_test_while_train test_parallel_execu
         test_parallel_executor_feed_persistable_var
         test_parallel_executor_crf_auto_growth test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
         test_data_norm_op test_imperative_using_non_zero_gpu test_fuse_bn_act_pass
-        test_optimizer_in_control_flow
+        test_optimizer_in_control_flow test_dataloader_keep_order
+        test_dataloader_unkeep_order
+        test_parallel_executor_inference_feed_partial_data
+        test_fetch_unmerged
         test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
+
+if(NOT WIN32 AND NOT APPLE)
+    set_tests_properties(test_imperative_data_loader_base PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+    set_tests_properties(test_imperative_data_loader_exception PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+    set_tests_properties(test_imperative_data_loader_fds_clear PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+endif()

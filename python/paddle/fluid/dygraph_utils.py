@@ -41,7 +41,6 @@ def _append_activation_in_dygraph(input,
         attrs += ('use_mkldnn', use_mkldnn)
 
     act_op = getattr(core.ops, act)
-
     return act_op(input, *attrs)
 
 

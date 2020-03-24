@@ -28,7 +28,7 @@ from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, 
 from .. import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
-from .tensor import concat, assign, fill_constant, zeros
+from .tensor import concat, assign, fill_constant, zeros, tensor_array_to_tensor
 from . import utils
 from .. import unique_name
 from functools import reduce
@@ -4336,25 +4336,20 @@ def split(input, num_or_sections, dim=-1, name=None):
             # x2.shape [3, 4, 5]
     """
     if in_dygraph_mode():
-        inputs = {'X': [input]}
-        attrs = {}
-        axis_tensor = None
-        axis = None
         num = None
-        sections = None
         attrs = ()
-        if isinstance(dim, int):
-            dim = (len(input.shape) + dim) if dim < 0 else dim
-            #attrs['axis'] = dim
-            attrs += ('axis', dim)
-        else:
-            raise TypeError(
-                "The type of 'dim' in split must be int or int in Dygraph mode")
+
+        if isinstance(dim, Variable):
+            dim = dim.numpy()
+            assert dim.shape == (1,
+                                 ), "dim of type Variable should have shape [1]"
+            dim = dim[0]
+        dim = (len(input.shape) + dim) if dim < 0 else dim
+        attrs += ('axis', dim)
 
         if isinstance(num_or_sections, int):
             num = num_or_sections
             attrs += ('num', num_or_sections)
-            #attrs['num'] = num_or_sections
         elif isinstance(num_or_sections, (list, tuple)):
             num = len(num_or_sections)
             if utils._contain_var(num_or_sections):
@@ -4364,7 +4359,6 @@ def split(input, num_or_sections, dim=-1, name=None):
                     (type(num_or_sections)))
             else:
                 attrs += ('sections', list(num_or_sections))
-                #attrs['sections'] = list(num_or_sections)
         else:
             raise TypeError(
                 "The type of 'num_or_sections' in split must be int or list in Dygraph mode, but "
@@ -4736,6 +4730,7 @@ def topk(input, k, name=None):
         inputs['K'] = [k]
     else:
         attrs = {'k': k}
+
     helper = LayerHelper("top_k", **locals())
     values = helper.create_variable_for_type_inference(dtype=input.dtype)
     indices = helper.create_variable_for_type_inference(dtype="int64")
@@ -5407,6 +5402,11 @@ def one_hot(input, depth, allow_out_of_range=False):
             one_hot_label = fluid.layers.one_hot(input=label, depth=4)
     """
     if in_dygraph_mode():
+        if isinstance(depth, Variable):
+            depth = depth.numpy()
+            assert depth.shape == (
+                1, ), "depth of type Variable should have shape [1]"
+            depth = depth[0]
         out = core.ops.one_hot(input, 'depth', depth, 'allow_out_of_range',
                                allow_out_of_range)
         out.stop_gradient = True
@@ -9136,17 +9136,31 @@ def stack(x, axis=0):
 
     if not isinstance(x, list) and not isinstance(x, tuple):
         x = [x]
-
     out = helper.create_variable_for_type_inference(x[0].dtype)
-    helper.append_op(
-        type='stack', inputs={'X': x}, outputs={'Y': out},
-        attrs={'axis': axis})
+    if not in_dygraph_mode() and \
+            x[0].desc.type() == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        assert len(x) == 1, "If the elements of 'x' in stack are Variable(LoDTensorArray), " \
+                            "number of the elements must be 1, but received %s." % len(x)
+        out_index = helper.create_variable_for_type_inference(dtype="int32")
+        helper.append_op(
+            type='tensor_array_to_tensor',
+            inputs={'X': x[0]},
+            outputs={'Out': [out],
+                     'OutIndex': [out_index]},
+            attrs={'axis': axis,
+                   'use_stack': True})
+    else:
+        helper.append_op(
+            type='stack',
+            inputs={'X': x},
+            outputs={'Y': out},
+            attrs={'axis': axis})
 
     return out
 
 
 @templatedoc(op_type="filter_by_instag")
-def filter_by_instag(ins, ins_tag, filter_tag, is_lod):
+def filter_by_instag(ins, ins_tag, filter_tag, is_lod, out_val_if_empty=0):
     """
     **Filter By Instag Layer**
    
@@ -9183,6 +9197,8 @@ def filter_by_instag(ins, ins_tag, filter_tag, is_lod):
         filter_tag (Variable): Input Variable (1D Tensor/List), usually it is 
                         list that holds the tags.
         is_lod (Bool): Boolean value to indicate ins is lod tensor or not.
+        out_val_if_empty(Int64): If the output after filter is empty, this value
+                        will be set to Output tensor.
 
     Returns:
         Variable: filtered ins (LoDTensor) and loss weight (Tensor)
@@ -9210,7 +9226,8 @@ def filter_by_instag(ins, ins_tag, filter_tag, is_lod):
         outputs={'Out': out,
                  'LossWeight': loss_weight,
                  'IndexMap': mmap},
-        attrs={'is_lod': is_lod})
+        attrs={'is_lod': is_lod,
+               'out_val_if_empty': out_val_if_empty})
 
     return [out, loss_weight]
 
@@ -10798,7 +10815,7 @@ Examples:
 
         x = fluid.data(name="x", shape=[3], dtype='float32')
         y = fluid.data(name="y", shape=[3], dtype='float32')
-        z = fluid.layers.elementwise_max(x, y)
+        z = fluid.layers.elementwise_min(x, y)
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -10820,7 +10837,7 @@ Examples:
 
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[3,4], dtype='float32')
-        z = fluid.layers.elementwise_max(x, y, axis=1)
+        z = fluid.layers.elementwise_min(x, y, axis=1)
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)

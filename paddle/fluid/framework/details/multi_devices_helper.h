@@ -47,6 +47,7 @@ constexpr char kGraphVars[] = "vars";
 constexpr char kNRanks[] = "nranks";
 
 constexpr char kPlaces[] = "places";
+constexpr char kGlobalScope[] = "global_scope";
 constexpr char kLocalScopes[] = "local_scopes";
 constexpr char kNCCLCtxs[] = "nccl_ctxs";
 constexpr char kUseHierarchicalAllReduce[] = "use_hierarchical_allreduce";
@@ -99,6 +100,13 @@ inline std::vector<std::string> GetOpRoleVarsOrEmpty(const OpDesc &op) {
           OpProtoAndCheckerMaker::OpRoleVarAttrName(), ret.size()));
   return boost::get<std::vector<std::string>>(iter->second);
 }
+
+std::vector<std::unique_ptr<ir::Graph>> TrySeparateToMultipleSingleDeviceGraphs(
+    ir::Graph *graph);
+
+bool HasDropLastReadOp(const ir::Graph &graph);
+
+bool HasKeepLastReadOp(const ir::Graph &graph);
 
 }  // namespace details
 }  // namespace framework

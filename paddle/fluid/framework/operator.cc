@@ -173,7 +173,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       platform::RecordEvent op_type_record_event(Type());
       auto op_name = platform::OpName(outputs_, Type());
       platform::RecordEvent op_name_record_event(
-          op_name, platform::RecordRole::kUniqueOp);
+          op_name, platform::EventRole::kUniqueOp);
       RunImpl(scope, place);
     }
 
@@ -924,11 +924,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (!all_kernels_must_compute_runtime_shape_ &&
       HasAttr(kAllKernelsMustComputeRuntimeShape))
     all_kernels_must_compute_runtime_shape_ = true;
+  const Scope* cur_scope = &scope;
   if (!enable_cache_runtime_context_) {
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
+    pre_scope_ = cur_scope;
   } else {
-    const Scope* cur_scope = &scope;
     if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
       std::lock_guard<std::mutex> lock(cache_update_mutex_);
       if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
@@ -957,9 +958,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   Scope* transfer_scope = nullptr;
   {
     platform::RecordEvent record_event("prepare_data",
-                                       platform::RecordRole::kInnerOp);
-    transfer_scope = PrepareData(scope, *kernel_type_, &transfered_inplace_vars,
-                                 runtime_ctx);
+                                       platform::EventRole::kInnerOp);
+    if (need_prepare_data_) {
+      transfer_scope = PrepareData(scope, *kernel_type_,
+                                   &transfered_inplace_vars, runtime_ctx);
+    }
   }
   // exec scope is the scope that kernel actually executed on.
   const Scope& exec_scope =
@@ -971,7 +974,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   if (!all_kernels_must_compute_runtime_shape_) {
     platform::RecordEvent record_event("infer_shape",
-                                       platform::RecordRole::kInnerOp);
+                                       platform::EventRole::kInnerOp);
     RuntimeInferShapeContext infer_shape_ctx(*this, *runtime_ctx);
     this->InferShape(&infer_shape_ctx);
   }
@@ -984,7 +987,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // not Scope. Imperative mode only pass inputs and get outputs.
   {
     platform::RecordEvent record_event("compute",
-                                       platform::RecordRole::kInnerOp);
+                                       platform::EventRole::kInnerOp);
     (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
                                      kernel_configs));
   }
@@ -1056,6 +1059,22 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
 
   auto expected_kernel_key = this->GetExpectedKernelType(
       ExecutionContext(*this, scope, *dev_ctx, ctx, nullptr));
+  if (HasAttr("op_device")) {
+    if (Attr<std::string>("op_device") == "cpu") {
+      expected_kernel_key.place_ = platform::CPUPlace();
+    } else if (Attr<std::string>("op_device") == "gpu") {
+      // when the Op that only has CPUKernel is assigned to GPU, the CPUKernel
+      // will be executed and a warning will be given at the same time.
+      if (SupportGPU()) {
+        expected_kernel_key.place_ = dev_ctx->GetPlace();
+      } else {
+        expected_kernel_key.place_ = platform::CPUPlace();
+        LOG_FIRST_N(WARNING, 1)
+            << "Op(" << type_
+            << ") has no CUDA implementation. It will be assigned to CPUPlace.";
+      }
+    }
+  }
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
@@ -1236,6 +1255,15 @@ Scope* OperatorWithKernel::PrepareData(
       SetTensorToVariable(*var, out, trans_var);
     }
   }
+  // If pre_scope = &scope, it means that scope is cached and the op is not in
+  // while block. If new_scope = nullptr, it means that for each input of this
+  // Op, there is no need to do PrepareData. So PrepareData could be skipped at
+  // the rest iterations to save the elapsed time.
+  // We do not support skipping PrepareData in while block, because the Op's
+  // input may be changed by subsequent Ops, which may cause an error.
+  if (pre_scope_ == &scope && new_scope == nullptr) {
+    need_prepare_data_ = false;
+  }
 
   return new_scope;
 }
@@ -1294,8 +1322,10 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
   for (auto& input : ctx.InNameList()) {
     ParseInputDataType(ctx, input, &data_type);
   }
-  PADDLE_ENFORCE_NE(data_type, dafault_data_type,
-                    "DataType should be indicated by input Variable.");
+  PADDLE_ENFORCE_NE(
+      data_type, dafault_data_type,
+      platform::errors::NotFound(
+          "DataType should be indicated by input Variable at %s.", Type()));
   return data_type;
 }
 
