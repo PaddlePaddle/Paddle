@@ -46,6 +46,17 @@ const char* OUT_DUPLICABLE_INITIALIZER_TEMPLATE =
 const char* INPUT_INITIALIZER_TEMPLATE =
     R"({"%s", {%s}})";
 
+const char* INPUT_INITIALIZER_TEMPLATE_WITH_NULL = R"(
+    if (%s != nullptr) {
+      ins_["%s"] = {%s};
+    }
+)";
+const char* INPUT_INITIALIZER_TEMPLATE_WITH_NULL_LIST = R"(
+    if (%s != nullptr) {
+      ins_["%s"] = %s;
+    }
+)";
+
 // if inputs is list, no need {}
 const char* INPUT_LIST_INITIALIZER_TEMPLATE =
     R"({"%s", %s})";
@@ -137,7 +148,9 @@ R"(
     auto tracer = imperative::GetCurrentTracer();
     imperative::NameVarBaseMap outs_ = %s;
     imperative::NameVarBaseMap ins_ = %s;
-
+    
+    %s
+    
     tracer->TraceOp("%s", ins_, outs_, attrs_);
     return %s; 
   }   
@@ -196,6 +209,7 @@ GenerateOpFunctions2(const std::string& module_name) {
 
     std::string input_args = "";
     std::string ins_initializer = "{";
+    std::string ins_initializer_with_null = "";
     std::string py_arg = "";
     for (auto& input : op_proto->inputs()) {
       auto& in_name = input.name();
@@ -210,10 +224,19 @@ GenerateOpFunctions2(const std::string& module_name) {
       input_args += input_arg;
       input_args += ",";
 
-      auto in_template = input.duplicable() ? INPUT_LIST_INITIALIZER_TEMPLATE
-                                            : INPUT_INITIALIZER_TEMPLATE;
-      ins_initializer += paddle::string::Sprintf(in_template, in_name, in_name);
-      ins_initializer += ",";
+      if (input.dispensable()) {
+        auto in_template = input.duplicable()
+                               ? INPUT_INITIALIZER_TEMPLATE_WITH_NULL_LIST
+                               : INPUT_INITIALIZER_TEMPLATE_WITH_NULL;
+        ins_initializer_with_null +=
+            paddle::string::Sprintf(in_template, in_name, in_name, in_name);
+      } else {
+        auto in_template = input.duplicable() ? INPUT_LIST_INITIALIZER_TEMPLATE
+                                              : INPUT_INITIALIZER_TEMPLATE;
+        ins_initializer +=
+            paddle::string::Sprintf(in_template, in_name, in_name);
+        ins_initializer += ",";
+      }
       // py_arg += paddle::string::Sprintf(PYBIND_PY_ARG_TEMPLATE, in_name);
       // py_arg += ",";
     }
@@ -309,7 +332,8 @@ GenerateOpFunctions2(const std::string& module_name) {
     // op_name, return_str
     auto op_function_str = paddle::string::Sprintf(
         OP_FUNCTION_TEMPLATE2, return_type, func_name, function_args,
-        outs_initializer, ins_initializer, op_type, return_str);
+        outs_initializer, ins_initializer, ins_initializer_with_null, op_type,
+        return_str);
     // std::cout << op_function_str << std::endl;
 
     // generate pybind item

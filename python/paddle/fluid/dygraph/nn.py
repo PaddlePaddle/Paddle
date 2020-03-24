@@ -1655,7 +1655,7 @@ class GRUUnit(layers.Layer):
             gate, reset_hidden_pre, updated_hidden = core.ops.gru_unit(
                 input, hidden, self.weight, self.bias, 'activation',
                 self.activation, 'gate_activation', self.gate_activation)
-            return hidden, reset, gate
+            return updated_hidden, reset_hidden_pre, gate
 
         inputs = {
             'Input': [input],

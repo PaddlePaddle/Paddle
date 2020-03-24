@@ -3892,8 +3892,8 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
         dim = [dim]
 
     if in_dygraph_mode():
-        dim = dim if dim != None and dim != [] else [0]
         reduce_all = True if dim == None or dim == [] else False
+        dim = dim if dim != None and dim != [] else [0]
         return core.ops.reduce_sum(input, 'dim', dim, 'keep_dim', keep_dim,
                                    'reduce_all', reduce_all)
     attrs = {
@@ -3967,8 +3967,8 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
         dim = [dim]
 
     if in_dygraph_mode():
-        dim = dim if dim != None and dim != [] else [0]
         reduce_all = True if dim == None or dim == [] else False
+        dim = dim if dim != None and dim != [] else [0]
         return core.ops.reduce_mean(input, 'dim', dim, 'keep_dim', keep_dim,
                                     'reduce_all', reduce_all)
     attrs = {
@@ -9327,7 +9327,6 @@ def expand(x, expand_times, name=None):
                 raise TypeError(
                     "The type of 'expand_times' in expand must be list[int] or tuple(int) in Dygraph mode, but "
                     "received %s, which contains Variable." % type(shape))
-            attrs['expand_times'] = expand_times
         else:
             raise TypeError(
                 "The type of 'expand_times' in expand must be list[int] or tuple(int) in Dygraph mode, but "
