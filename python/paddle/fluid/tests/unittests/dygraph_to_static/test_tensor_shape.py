@@ -58,17 +58,118 @@ def dyfunc_tensor_shape_5(x):
     return res
 
 
-test_funcs = [
-    dyfunc_tensor_shape_1, dyfunc_tensor_shape_2, dyfunc_tensor_shape_3,
-    dyfunc_tensor_shape_4, dyfunc_tensor_shape_5
-]
+def dyfunc_with_if_1(x):
+    x = fluid.dygraph.to_variable(x)
+    res = fluid.layers.reshape(x, [-1, 1])
+    x_shape_0 = x.shape[0]
+    if x_shape_0 < 1:
+        # `res.shape[0] > 1` is transformed into `if fluid.layers.shape(res)[0] > 1`
+        if res.shape[0] > 1:
+            res = fluid.layers.fill_constant(
+                value=2, shape=x.shape, dtype="int32")
+        else:
+            res = fluid.layers.fill_constant(
+                value=3, shape=x.shape, dtype="int32")
+    return res
 
 
-class TestTensorShape(unittest.TestCase):
+def dyfunc_with_if_2(x):
+    x = fluid.dygraph.to_variable(x)
+    # `len(x.shape)` will not be transformed.
+    if len(x.shape) < 1:
+        res = x
+    else:
+        res = fluid.layers.fill_constant(value=8, shape=x.shape, dtype="int32")
+
+    return res
+
+
+def dyfunc_with_for_1(x):
+    x = fluid.dygraph.to_variable(x)
+    res = fluid.layers.fill_constant(value=0, shape=[1], dtype="int32")
+    # `x.shape[0]` is transformed into `fluid.layers.shape(x)[0]`
+    for i in range(x.shape[0]):
+        res += 1
+    return res
+
+
+def dyfunc_with_for_2(x):
+    x = fluid.dygraph.to_variable(x)
+    x_shape_0 = x.shape[0]
+    res = fluid.layers.fill_constant(value=0, shape=[1], dtype="int32")
+
+    # `x_shape_0` is transformed into `fluid.layers.shape(x)[0]`
+    for i in range(x_shape_0):
+        res += 1
+    return res
+
+
+def dyfunc_with_for_3(x):
+    # TODO(liym27):
+    #  It will fail to run because `for i in range(len(x.shape))` will be transformed into Paddle while_loop.
+    #  Here the python list x.shape will be added to loop_vars. However, loop_vars doesn't support python list.
+    #  And the condition of `for i in range(len(x.shape))` only uses the length of x.shape, so it doesn't have to be transformed into Paddle while_loop.
+    #  After the AST tranformation of for loop is improved, add TestTensorShapeInFor3.
+    x = fluid.dygraph.to_variable(x)
+    res = fluid.layers.fill_constant(value=0, shape=[1], dtype="int32")
+    # `len(x.shape)` is not transformed.
+    for i in range(len(x.shape)):
+        res += 1
+
+    return res
+
+
+def dyfunc_with_while_1(x):
+    x = fluid.dygraph.to_variable(x)
+    res = fluid.layers.fill_constant(value=0, shape=[1], dtype="int32")
+    # `x.shape[0]` is transformed into `fluid.layers.shape(x)[0]`
+    i = 1
+    while i < x.shape[0]:
+        res += 1
+        i = i + 2
+    return res
+
+
+def dyfunc_with_while_2(x):
+    x = fluid.dygraph.to_variable(x)
+    x_shape_0 = x.shape[0]
+    res = fluid.layers.fill_constant(value=0, shape=[1], dtype="int32")
+    i = 1
+    # `x_shape_0` is transformed into `fluid.layers.shape(x)[0]`
+    # TODO(liym27): If `x_shape_0` is at right like `while i < x_shape_0`, it will not be transformed.
+    #  Fix this bug next PR.
+    while x_shape_0 > i:
+        res += 1
+        i = i + 2
+    return res
+
+
+def dyfunc_with_while_3(x):
+    # TODO(liym27):
+    #  It will fail to run because the same problem as `dyfunc_with_for_3`.
+    #  After the AST tranformation of for loop is improved, add TestTensorShapeInWhile3.
+    x = fluid.dygraph.to_variable(x)
+    x_shape = x.shape
+    res = fluid.layers.fill_constant(value=0, shape=[1], dtype="int32")
+    i = 1
+
+    # `len(x.shape)` is not transformed.
+    while len(x_shape) > i:
+        res += 1
+        i += 1
+    return res
+
+
+# 1. Basic tests without control flow
+class TestTensorShapeBasic(unittest.TestCase):
     def setUp(self):
         self.input = numpy.ones(5).astype("int32")
         self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
+        self.init_test_func()
+
+    def init_test_func(self):
+        self.dygraph_func = dyfunc_tensor_shape_1
 
     def get_dygraph_output(self):
         with fluid.dygraph.guard():
@@ -86,14 +187,65 @@ class TestTensorShape(unittest.TestCase):
         return static_res[0]
 
     def test_transformed_static_result(self):
-        for func in test_funcs:
-            self.dygraph_func = func
-            static_res = self.get_static_output()
-            dygraph_res = self.get_dygraph_output()
-            self.assertTrue(
-                numpy.allclose(dygraph_res, static_res),
-                msg='dygraph res is {}\nstatic_res is {}'.format(dygraph_res,
-                                                                 static_res))
+        static_res = self.get_static_output()
+        dygraph_res = self.get_dygraph_output()
+        self.assertTrue(
+            numpy.allclose(dygraph_res, static_res),
+            msg='dygraph res is {}\nstatic_res is {}'.format(dygraph_res,
+                                                             static_res))
+
+
+class TestTensorShapeBasic2(TestTensorShapeBasic):
+    def init_test_func(self):
+        self.dygraph_func = dyfunc_tensor_shape_2
+
+
+class TestTensorShapeBasic3(TestTensorShapeBasic):
+    def init_test_func(self):
+        self.dygraph_func = dyfunc_tensor_shape_3
+
+
+class TestTensorShapeBasic4(TestTensorShapeBasic):
+    def init_test_func(self):
+        self.dygraph_func = dyfunc_tensor_shape_4
+
+
+class TestTensorShapeBasic5(TestTensorShapeBasic):
+    def init_test_func(self):
+        self.dygraph_func = dyfunc_tensor_shape_5
+
+
+# 2. Tests with control flow if
+class TestTensorShapeInIf1(TestTensorShapeBasic):
+    def init_test_func(self):
+        self.dygraph_func = dyfunc_with_if_1
+
+
+class TestTensorShapeInIf2(TestTensorShapeBasic):
+    def init_test_func(self):
+        self.dygraph_func = dyfunc_with_if_2
+
+
+# 3. Tests with control flow for loop
+class TestTensorShapeInFor1(TestTensorShapeBasic):
+    def init_test_func(self):
+        self.dygraph_func = dyfunc_with_for_1
+
+
+class TestTensorShapeInFor2(TestTensorShapeBasic):
+    def init_test_func(self):
+        self.dygraph_func = dyfunc_with_for_2
+
+
+# 4. Tests with control flow while loop
+class TestTensorShapeInWhile1(TestTensorShapeBasic):
+    def init_test_func(self):
+        self.dygraph_func = dyfunc_with_while_1
+
+
+class TestTensorShapeInWhile2(TestTensorShapeBasic):
+    def init_test_func(self):
+        self.dygraph_func = dyfunc_with_while_2
 
 
 if __name__ == '__main__':

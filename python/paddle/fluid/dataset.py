@@ -832,7 +832,7 @@ class BoxPSDataset(InMemoryDataset):
         """
         self.boxps.begin_pass()
 
-    def end_pass(self):
+    def end_pass(self, need_save_delta):
         """
         End Pass
         Notify BoxPS that current pass ended 
@@ -841,9 +841,9 @@ class BoxPSDataset(InMemoryDataset):
 
               import paddle.fluid as fluid
               dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
-              dataset.end_pass()
+              dataset.end_pass(True)
         """
-        self.boxps.end_pass()
+        self.boxps.end_pass(need_save_delta)
 
     def wait_preload_done(self):
         """

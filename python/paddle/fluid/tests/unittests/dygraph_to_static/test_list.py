@@ -44,7 +44,6 @@ def test_list_in_if(x):
 
 
 def test_list_in_for_loop(x, iter_num):
-    # Note: for_loop can't be transformed before PR22867 merged.
     x = fluid.dygraph.to_variable(x)
     a = []
     for i in range(iter_num):
@@ -53,7 +52,6 @@ def test_list_in_for_loop(x, iter_num):
 
 
 def test_list_in_for_loop_with_concat(x, iter_num):
-    # Note: for_loop can't be transformed before PR22867 merged.
     x = fluid.dygraph.to_variable(x)
     a = []
     for i in range(iter_num):

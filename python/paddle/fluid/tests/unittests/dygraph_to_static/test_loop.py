@@ -42,6 +42,20 @@ def for_loop_dyfunc(max_len):
     return ret
 
 
+def while_loop_bool_op(x):
+    i = fluid.dygraph.to_variable(x)
+    while (x >= 0 and x < 10) or x <= -1 or x < -3 or (x < -7 or x < -5):
+        i = i + x
+        x = x + 1
+    return i
+
+
+def var_create_in_for_loop(max_len):
+    for i in range(max_len):
+        ret = fluid.layers.zeros(shape=[3, 4, 5], dtype='float64')
+    return ret
+
+
 class TestNameVisitor(unittest.TestCase):
     def setUp(self):
         self.loop_funcs = [while_loop_dyfunc, for_loop_dyfunc]
@@ -67,12 +81,16 @@ class TestTransformWhileLoop(unittest.TestCase):
         self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         self.x = np.zeros(shape=(1), dtype=np.int32)
+        self._init_dyfunc()
+
+    def _init_dyfunc(self):
+        self.dyfunc = while_loop_dyfunc
 
     def _run_static(self):
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
             x_var = fluid.layers.assign(self.x)
-            static_func = dygraph_to_static_graph(while_loop_dyfunc)
+            static_func = dygraph_to_static_graph(self.dyfunc)
 
             out = static_func(x_var)
             exe = fluid.Executor(self.place)
@@ -81,7 +99,7 @@ class TestTransformWhileLoop(unittest.TestCase):
 
     def _run_dygraph(self):
         with fluid.dygraph.guard(self.place):
-            ret = while_loop_dyfunc(fluid.dygraph.to_variable(self.x))
+            ret = self.dyfunc(fluid.dygraph.to_variable(self.x))
             return ret.numpy()
 
     def test_ast_to_func(self):
@@ -97,16 +115,25 @@ class TestTransformWhileLoop(unittest.TestCase):
         # self.assertTrue(np.allclose(self._run_dygraph(), self._run_static()))
 
 
+class TestWhileLoopBoolOp(TestTransformWhileLoop):
+    def _init_dyfunc(self):
+        self.dyfunc = while_loop_bool_op
+
+
 class TestTransformForLoop(unittest.TestCase):
     def setUp(self):
         self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         self.len = 100
+        self._init_dyfunc()
+
+    def _init_dyfunc(self):
+        self.dyfunc = for_loop_dyfunc
 
     def _run_static(self):
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
-            static_func = dygraph_to_static_graph(for_loop_dyfunc)
+            static_func = dygraph_to_static_graph(self.dyfunc)
             out = static_func(self.len)
             exe = fluid.Executor(self.place)
             ret = exe.run(main_program, fetch_list=out)
@@ -114,17 +141,18 @@ class TestTransformForLoop(unittest.TestCase):
 
     def _run_dygraph(self):
         with fluid.dygraph.guard(self.place):
-            ret = for_loop_dyfunc(self.len)
+            ret = self.dyfunc(self.len)
             return ret.numpy()
 
     def test_ast_to_func(self):
         static_numpy = self._run_static()
-        self.assertTrue(
-            np.allclose(
-                np.full(
-                    shape=(1), fill_value=2, dtype=np.int32), static_numpy))
         self._run_dygraph()
         self.assertTrue(np.allclose(self._run_dygraph(), self._run_static()))
+
+
+class TestVarCreateInForLoop(TestTransformForLoop):
+    def _init_dyfunc(self):
+        self.dyfunc = var_create_in_for_loop
 
 
 if __name__ == '__main__':

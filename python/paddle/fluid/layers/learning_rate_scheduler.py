@@ -29,7 +29,6 @@ from . import control_flow
 from . import nn
 from . import ops
 from . import tensor
-from ..initializer import init_on_cpu
 from ..framework import default_main_program, Parameter, unique_name, name_scope
 from ..framework import Variable
 from ..framework import in_dygraph_mode

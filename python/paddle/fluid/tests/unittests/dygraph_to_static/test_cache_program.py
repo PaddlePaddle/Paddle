@@ -20,7 +20,7 @@ from collections import Counter
 
 import paddle.fluid as fluid
 
-from paddle.fluid.dygraph.dygraph_to_static import AutoTracer
+from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.jit import dygraph_to_static_output
 
 from test_fetch_feed import Pool2D, Linear
@@ -77,8 +77,8 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
             adam = fluid.optimizer.AdamOptimizer(learning_rate=0.001)
             # set optimizer
             # TODO: Need a better interfaces to set optimizer.
-            auto_tracer = AutoTracer()
-            auto_tracer.set_optimizer(adam, 'avg_loss')
+            program_translator = ProgramTranslator()
+            program_translator.set_optimizer(adam, 'avg_loss')
 
             for batch_id in range(self.batch_num):
                 pred, avg_loss = static_net(self.data)
