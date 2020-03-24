@@ -20,7 +20,7 @@ from .tensor import assign, cast, fill_constant
 from .. import core
 from ..framework import Program, Variable, Operator, in_dygraph_mode
 from ..layer_helper import LayerHelper, unique_name
-from .nn import logical_and, logical_not, logical_or
+from .nn import logical_and, logical_not, logical_or, concat, split
 from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars
 import numpy
 import warnings
@@ -1284,6 +1284,26 @@ def array_write(x, i, array=None):
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
 
     """
+    if in_dygraph_mode():
+        assert isinstance(
+            x, Variable), "The input data 'x' in array_write must be Variable"
+        assert isinstance(
+            i, Variable), "The index 'i' in array_write must be Variable"
+        assert i.shape == [1], "The shape of index 'i' should be [1]"
+        i = i.numpy()[0]
+        if array is None:
+            array = create_array(x.dtype)
+        assert isinstance(array,
+                          list), "The 'array' in array_write must be a list"
+        assert i <= len(
+            array
+        ), "The index 'i' should not be greater than the length of 'array'"
+        if i < len(array):
+            array[i] = x
+        else:
+            array.append(x)
+        return array
+
     helper = LayerHelper('array_write', **locals())
     if array is None:
         array = helper.create_variable(
@@ -1319,6 +1339,9 @@ def create_array(dtype):
           data = fluid.layers.create_array(dtype='float32') # Create a float32 LoDTensorArray.
 
     """
+    if in_dygraph_mode():
+        return []
+
     helper = LayerHelper("array", **locals())
     return helper.create_variable(
         name="{0}.out".format(helper.name),
@@ -1640,6 +1663,15 @@ def array_read(array, i):
             #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux, 
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
+    if in_dygraph_mode():
+        assert isinstance(
+            array, Variable), "The 'array' in array_read must be Variable"
+        assert isinstance(
+            i, Variable), "The index 'i' in array_read must be Variable"
+        assert i.shape == [1], "The shape of index 'i' should be [1]"
+        i = i.numpy()[0]
+        return array[i]
+
     helper = LayerHelper('array_read', **locals())
     if not isinstance(
             array,
@@ -1736,6 +1768,11 @@ def array_length(array):
             #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux, 
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
+    if in_dygraph_mode():
+        assert isinstance(array,
+                          list), "The 'array' in array_write must be a list"
+        return len(array)
+
     helper = LayerHelper('array_length', **locals())
     tmp = helper.create_variable_for_type_inference(dtype='int64')
     tmp.stop_gradient = True
