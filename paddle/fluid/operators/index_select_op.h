@@ -35,7 +35,7 @@ void IndexSelectInner(const framework::ExecutionContext& context,
   auto output_dim = output->dims();
 
   auto slice_size = 1;
-  for (size_t i = dim + 1; i < input_dim_size; i++) {
+  for (auto i = dim + 1; i < input_dim_size; i++) {
     slice_size *= input_dim[i];
   }
   const size_t slice_bytes = slice_size * sizeof(T);
