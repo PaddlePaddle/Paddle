@@ -27,7 +27,8 @@ class PullSparseV2Op : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(), 1UL,
                       "Output(Out) of PullSparseV2Op should not be null.");
 
-    auto hidden_size = static_cast<uint32_t>(ctx->Attrs().Get<int>("EmbeddingDim"));
+    auto hidden_size =
+        static_cast<uint32_t>(ctx->Attrs().Get<int>("EmbeddingDim"));
     auto all_ids_dim = ctx->GetInputsDim("Ids");
     const size_t n_ids = all_ids_dim.size();
     std::vector<framework::DDim> outs_dims;
@@ -61,13 +62,21 @@ class PullSparseV2OpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
     AddInput("W", "The lookup table tensors.").AsDuplicable();
     AddOutput("Out", "The lookup results tensors.").AsDuplicable();
-    AddAttr<int>("EmbeddingDim", "(int, the embedding hidden size").SetDefault(11);
-    AddAttr<int>("TableId", "(int, the table id of this embedding").SetDefault(0);
-    AddAttr<std::string>("AccessorClass", "(string, the class name of accessor").SetDefault("");
-    AddAttr<std::string>("CtrLabelName", "(string, ctr label name").SetDefault("");
-    AddAttr<int>("PaddingId", "(int, the padding id of this embedding").SetDefault(0);
-    AddAttr<bool>("ScaleSparseGrad", "(bool, whether scale sparse gradient with batch size").SetDefault(true);
-    AddAttr<std::vector<std::string>>("InputNames", "(vector, slot names").SetDefault(std::vector<std::string>());
+    AddAttr<int>("EmbeddingDim", "(int, the embedding hidden size")
+        .SetDefault(11);
+    AddAttr<int>("TableId", "(int, the table id of this embedding")
+        .SetDefault(0);
+    AddAttr<std::string>("AccessorClass", "(string, the class name of accessor")
+        .SetDefault("");
+    AddAttr<std::string>("CtrLabelName", "(string, ctr label name")
+        .SetDefault("");
+    AddAttr<int>("PaddingId", "(int, the padding id of this embedding")
+        .SetDefault(0);
+    AddAttr<bool>("ScaleSparseGrad",
+                  "(bool, whether scale sparse gradient with batch size")
+        .SetDefault(true);
+    AddAttr<std::vector<std::string>>("InputNames", "(vector, slot names")
+        .SetDefault(std::vector<std::string>());
     AddAttr<bool>("is_distributed", "(bool, it must be true").SetDefault(true);
     AddComment(R"DOC(
 Pull Sparse V2 Operator.

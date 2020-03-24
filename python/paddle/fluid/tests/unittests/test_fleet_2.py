@@ -26,9 +26,7 @@ from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
 
 
 class TestFleet2(unittest.TestCase):
-    """
-    Test cases for fleet ops.
-    """
+    """Test cases for fleet ops."""
     
     def test_in_memory_dataset_run_fleet(self):
         """
@@ -68,11 +66,8 @@ class TestFleet2(unittest.TestCase):
                 emb = fluid.layers.reshape(emb, [-1, 11])
                 embs.append(emb)
         concat = fluid.layers.concat([embs[0], embs[3]], axis=1)
-        fluid.layers.Print(concat)
         fc = fluid.layers.fc(input=concat, size=1, act=None)
         label_cast = fluid.layers.cast(slots_vars[1], dtype='float32')
-        fluid.layers.Print(label_cast)
-        fluid.layers.Print(fc)
         cost = fluid.layers.log_loss(fc, label_cast)
         cost = fluid.layers.mean(cost)
 

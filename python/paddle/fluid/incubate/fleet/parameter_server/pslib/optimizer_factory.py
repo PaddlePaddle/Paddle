@@ -419,7 +419,6 @@ class DistributedAdam(DistributedOptimizerImplBase):
                         cur_prog.global_block().append_op(
                             type="push_dense",
                             inputs={
-                                "DenseGrads": grads,
                                 "Ids": one_slot
                             },
                             attrs={
@@ -464,7 +463,6 @@ class DistributedAdam(DistributedOptimizerImplBase):
                             cur_prog.global_block().append_op(
                                 type="push_dense",
                                 inputs={
-                                    "DenseGrads": data_norm_grads,
                                     "Ids": one_slot
                                 },
                                 attrs={

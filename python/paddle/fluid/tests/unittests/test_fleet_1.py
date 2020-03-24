@@ -20,9 +20,7 @@ import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
 
 class TestFleet2(unittest.TestCase):
-    """
-    Test cases for fleet ops.
-    """
+    """Test cases for fleet ops."""
 
     def setUp(self):
         """Set up, set envs."""

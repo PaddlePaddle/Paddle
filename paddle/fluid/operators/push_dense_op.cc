@@ -22,8 +22,6 @@ class PushDenseOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_GE(ctx->Inputs("DenseGrads").size(), 1UL,
-                      "Input(DenseGrads) of PushDenseOp should not be null.");
     PADDLE_ENFORCE_GE(ctx->Inputs("Ids").size(), 1UL,
                       "Input(Ids) of PushDenseOp should not be null.");
   }
@@ -39,7 +37,6 @@ class PushDenseOp : public framework::OperatorWithKernel {
 class PushDenseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("DenseGrads", "The dense gradient tensors").AsDuplicable();
     AddInput("Ids", "the tensor to get batch size").AsDuplicable();
     AddAttr<int>("TableId", "(int, the table id of this embedding")
         .SetDefault(-1);

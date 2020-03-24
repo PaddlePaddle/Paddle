@@ -27,12 +27,10 @@ namespace operators {
 template <typename T>
 void PushDenseFunctor(const framework::ExecutionContext& ctx) {
 #ifdef PADDLE_WITH_PSLIB
-  const auto& inputs = ctx.MultiInput<framework::LoDTensor>("DenseGrads");
   const auto& input_names = ctx.Attr<std::vector<std::string>>("InputNames");
   auto table_id = static_cast<uint32_t>(ctx.Attr<int>("TableId"));
   PADDLE_ENFORCE_GT(table_id, 0, "table id should > 0");
   float scale_datanorm = ctx.Attr<float>("ScaleDataNorm");
-  std::vector<paddle::ps::Region> regions;
   PADDLE_ENFORCE_EQ(inputs.size(), input_names.size(),
                     "inputs size should be equal to input_names size");
 
