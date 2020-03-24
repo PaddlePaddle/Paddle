@@ -1034,9 +1034,9 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         try:
             assert_same_structure(output_vars, loop_vars, check_types=False)
         except ValueError as e:
-            raise ValueError(
-                "body in while_loop should return the same arity "
-                "(length and structure) and types as loop_vars: {0}".format(e))
+            raise ValueError("body in while_loop should return the same arity "
+                             "(length and structure) as loop_vars: {0}".format(
+                                 e))
         now_cond = cond(*output_vars)
         map_structure(assign, output_vars, loop_vars)
         assign(now_cond, pre_cond)
