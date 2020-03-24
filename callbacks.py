@@ -18,6 +18,7 @@ import copy
 from progressbar import ProgressBar
 from distributed import get_local_rank
 
+
 def config_callbacks(callbacks=None,
                      model=None,
                      batch_size=None,
@@ -26,6 +27,7 @@ def config_callbacks(callbacks=None,
                      log_freq=2,
                      verbose=2,
                      save_freq=1,
+                     save_dir=None,
                      metrics=None,
                      mode='train'):
     cbks = callbacks or []
@@ -34,7 +36,7 @@ def config_callbacks(callbacks=None,
         cbks = cbks + [ProgBarLogger(log_freq, verbose=verbose)]
 
     if not any(isinstance(k, ModelCheckpoint) for k in cbks):
-        cbks = cbks + [ModelCheckpoint(save_freq)]
+        cbks = cbks + [ModelCheckpoint(save_freq, save_dir)]
 
     cbk_list = CallbackList(cbks)
     cbk_list.set_model(model)
@@ -209,9 +211,10 @@ class ProgBarLogger(Callback):
 
     def on_train_batch_end(self, step, logs=None):
         logs = logs or {}
-        self.train_step = step
+        self.train_step += 1
 
-        if self.train_step % self.log_freq == 0 and self.verbose and get_local_rank() == 0:
+        if self.train_step % self.log_freq == 0 and self.verbose and get_local_rank(
+        ) == 0:
             # if steps is not None, last step will update in on_epoch_end
             if self.steps and self.train_step < self.steps:
                 self._updates(logs, 'train')
@@ -247,21 +250,24 @@ class ProgBarLogger(Callback):
 
 
 class ModelCheckpoint(Callback):
-    def __init__(self, save_freq=1, save_file='output'):
+    def __init__(self, save_freq=1, save_dir=None):
         self.save_freq = save_freq
-        self.save_file = save_file
+        self.save_dir = save_dir
 
     def on_epoch_begin(self, epoch=None, logs=None):
         self.epoch = epoch
 
+    def _is_save(self):
+        return self.model and self.save_dir and get_local_rank() == 0
+
     def on_epoch_end(self, epoch, logs=None):
-        if self.model and self.epoch % self.save_freq == 0 and get_local_rank() == 0:
-            path = '{}/{}'.format(self.save_file, epoch)
+        if self._is_save() and self.epoch % self.save_freq == 0:
+            path = '{}/{}'.format(self.save_dir, epoch)
             print('save checkpoint at {}'.format(path))
             self.model.save(path)
 
     def on_train_end(self, logs=None):
-        if self.model and get_local_rank() == 0:
-            path = '{}/final'.format(self.save_file)
+        if self._is_save():
+            path = '{}/final'.format(self.save_dir)
             print('save checkpoint at {}'.format(path))
             self.model.save(path)
