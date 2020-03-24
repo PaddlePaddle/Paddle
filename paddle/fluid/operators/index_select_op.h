@@ -81,27 +81,22 @@ class IndexSelectKernel : public framework::OpKernel<T> {
     auto* output = output_var->GetMutable<framework::LoDTensor>();
 
     int dim = context.Attr<int>("dim");
-
-    if (index.dims().size() == 2) {
-      PADDLE_ENFORCE_EQ(
-          index.dims()[1], 1,
-          "index.dims()[1] should be 1 when index.dims().size() == "
-          "2 in index_select_op.");
-    } else {
-      PADDLE_ENFORCE_EQ(
-          index.dims().size(), 1,
-          "index.dims().size() should be 1 or 2 in index_select_op.");
+    if (dim < 0) {
+      dim += inputs.dims().size();
     }
 
     const auto& index_type = index.type();
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE(
-        index_type_match,
-        "Index holds the wrong type, it holds %s, but desires to be %s or %s",
-        paddle::framework::DataTypeToString(index_type),
-        paddle::framework::DataTypeToString(framework::proto::VarType::INT32),
-        paddle::framework::DataTypeToString(framework::proto::VarType::INT64));
+    PADDLE_ENFORCE_EQ(index_type_match, true,
+                      platform::errors::InvalidArgument(
+                          "Input(Index) holds the wrong type, it holds %s, but "
+                          "desires to be %s or %s",
+                          paddle::framework::DataTypeToString(index_type),
+                          paddle::framework::DataTypeToString(
+                              framework::proto::VarType::INT32),
+                          paddle::framework::DataTypeToString(
+                              framework::proto::VarType::INT64)));
 
     if (index_type == framework::proto::VarType::INT32) {
       IndexSelectInner<T, int>(context, inputs, index, output, dim);
@@ -173,16 +168,22 @@ class IndexSelectGradKernel : public framework::OpKernel<T> {
     auto& out_grad = out_grad_var->Get<LoDTensor>();
     auto* x_grad = x_grad_var->GetMutable<framework::LoDTensor>();
     int dim = context.Attr<int>("dim");
+    if (dim < 0) {
+      dim += out_grad.dims().size();
+    }
 
     const auto& index_type = index.type();
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE(
-        index_type_match,
-        "Index holds the wrong type, it holds %s, but desires to be %s or %s",
-        paddle::framework::DataTypeToString(index_type),
-        paddle::framework::DataTypeToString(framework::proto::VarType::INT32),
-        paddle::framework::DataTypeToString(framework::proto::VarType::INT64));
+    PADDLE_ENFORCE_EQ(index_type_match, true,
+                      platform::errors::InvalidArgument(
+                          "Input(Index) holds the wrong type, it holds %s, but "
+                          "desires to be %s or %s",
+                          paddle::framework::DataTypeToString(index_type),
+                          paddle::framework::DataTypeToString(
+                              framework::proto::VarType::INT32),
+                          paddle::framework::DataTypeToString(
+                              framework::proto::VarType::INT64)));
 
     if (index_type == framework::proto::VarType::INT32) {
       IndexSelectGradInner<T, int>(context, out_grad, index, x_grad, dim);

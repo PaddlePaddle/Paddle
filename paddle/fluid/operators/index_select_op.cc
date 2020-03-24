@@ -26,36 +26,38 @@ class IndexSelectOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of IndexSelectOp should not be null.");
+                      platform::errors::InvalidArgument(
+                          "Input(X) of IndexSelectOp should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("Index"), true,
-                      "Input(Index) of IndexSelectOp should not be null.");
+                      platform::errors::InvalidArgument(
+                          "Input(Index) of IndexSelectOp should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of IndexSelectOp should not be null.");
+                      platform::errors::InvalidArgument(
+                          "Output(Out) of IndexSelectOp should not be null."));
 
     auto input_dim = ctx->GetInputDim("X");
     auto index_dim = ctx->GetInputDim("Index");
     auto dim = ctx->Attrs().Get<int>("dim");
 
-    PADDLE_ENFORCE_LT(dim, input_dim.size(),
-                      "ShapeError: dim must be less than the dimensions "
-                      "of the input(X). But received select dim = %d, "
-                      "input(X)'s dimensions = [%s].",
-                      dim, input_dim.size());
-    PADDLE_ENFORCE_GE(dim, 0,
-                      "ShapeError: dim must be greater or equal to 0. "
-                      "But received select dim = %d.",
-                      dim);
+    PADDLE_ENFORCE_EQ(
+        dim < input_dim.size() && dim >= (0 - input_dim.size()), true,
+        platform::errors::OutOfRange(
+            "Attr(dim) is out of range, It's expected "
+            "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
+            input_dim.size(), input_dim.size() - 1, dim));
+
     PADDLE_ENFORCE_EQ(
         index_dim.size() == 1 || (index_dim.size() == 2 && index_dim[1] == 1),
-        true,
-        "ShapeError: index must be 1-D tensor, "
-        "But received: the shape of index is [%s],the dimension "
-        "of index is [%d]",
-        index_dim, index_dim.size());
+        true, platform::errors::InvalidArgument(
+                  "The 'shape' of Input(Index) must be 1-D tensor. "
+                  "But received: the 'shape' of Input(Index) is [%s], "
+                  "the dimension of Input(Index) is [%d].",
+                  index_dim, index_dim.size()));
 
     auto output_dim = framework::vectorize(input_dim);
     output_dim[dim] = index_dim[0];
     ctx->SetOutputDim("Out", framework::make_ddim(output_dim));
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:
@@ -71,11 +73,15 @@ class IndexSelectGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Index"), "Input(Index) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output(X@GRAD) should be not null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Index"), true,
+        platform::errors::InvalidArgument("Input(Index) should be not null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+                      platform::errors::InvalidArgument(
+                          "Input(Out@GRAD) should be not null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
+                      platform::errors::InvalidArgument(
+                          "Output(X@GRAD) should be not null."));
 
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
@@ -102,7 +108,7 @@ class IndexSelectOpMaker : public framework::OpProtoAndCheckerMaker {
     is a Tensor.
 
     The returned tensor has the same number of dimensions
-    as the original tensor (input). The dimth dimension
+    as the original tensor (input). The dim-th dimension
     has the same size as the length of index; other dimensions
     have the same size as in the original tensor.
     )DOC");
@@ -118,7 +124,6 @@ class IndexSelectGradMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("index_select_grad");
 
-    op->SetInput("X", this->Input("X"));
     op->SetInput("Index", this->Input("Index"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
