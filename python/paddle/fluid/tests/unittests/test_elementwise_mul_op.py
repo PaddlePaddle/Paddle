@@ -179,6 +179,83 @@ class TestElementwiseMulOp_broadcast_5(ElementwiseMulOp):
         self.init_kernel_type()
 
 
+class TestElementwiseMulOp_broadcast_6(ElementwiseMulOp):
+    def setUp(self):
+        self.op_type = "elementwise_mul"
+        self.inputs = {
+            'Y': np.random.rand(10, 2, 11).astype(np.float64),
+            'X': np.random.rand(10, 1, 11).astype(np.float64)
+        }
+        self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        self.init_kernel_type()
+
+
+class TestElementwiseMulOp_broadcast_7(ElementwiseMulOp):
+    def setUp(self):
+        self.op_type = "elementwise_mul"
+        self.inputs = {
+            'X': np.random.rand(10, 2, 11).astype(np.float64),
+            'Y': np.random.rand(10, 2, 1).astype(np.float64)
+        }
+        self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        self.init_kernel_type()
+
+
+class TestElementwiseMulOp_broadcast_8(ElementwiseMulOp):
+    def setUp(self):
+        self.op_type = "elementwise_mul"
+        self.inputs = {
+            'Y': np.random.rand(10, 2, 11).astype(np.float64),
+            'X': np.random.rand(10, 2, 1).astype(np.float64)
+        }
+        self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        self.init_kernel_type()
+
+
+class TestElementwiseMulOp_broadcast_9(ElementwiseMulOp):
+    def setUp(self):
+        self.op_type = "elementwise_mul"
+        self.inputs = {
+            'X': np.random.rand(10, 2, 11).astype(np.float64),
+            'Y': np.random.rand(1, 2, 11).astype(np.float64)
+        }
+        self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        self.init_kernel_type()
+
+
+class TestElementwiseMulOp_broadcast_10(ElementwiseMulOp):
+    def setUp(self):
+        self.op_type = "elementwise_mul"
+        self.inputs = {
+            'Y': np.random.rand(10, 2, 11).astype(np.float64),
+            'X': np.random.rand(1, 2, 11).astype(np.float64)
+        }
+        self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        self.init_kernel_type()
+
+
+class TestElementwiseMulOp_broadcast_11(ElementwiseMulOp):
+    def setUp(self):
+        self.op_type = "elementwise_mul"
+        self.inputs = {
+            'X': np.random.rand(10, 10, 1, 11).astype(np.float64),
+            'Y': np.random.rand(1, 16, 11).astype(np.float64)
+        }
+        self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        self.init_kernel_type()
+
+
+class TestElementwiseMulOp_broadcast_12(ElementwiseMulOp):
+    def setUp(self):
+        self.op_type = "elementwise_mul"
+        self.inputs = {
+            'Y': np.random.rand(10, 10, 1, 11).astype(np.float64),
+            'X': np.random.rand(1, 16, 11).astype(np.float64)
+        }
+        self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        self.init_kernel_type()
+
+
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestElementwiseMulOpFp16(ElementwiseMulOp):
@@ -203,17 +280,6 @@ class TestElementwiseMulOp_commonuse_2(ElementwiseMulOp):
         self.inputs = {
             'X': np.random.rand(30, 3, 1, 5).astype(np.float64),
             'Y': np.random.rand(30, 1, 4, 1).astype(np.float64)
-        }
-        self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
-        self.init_kernel_type()
-
-
-class TestElementwiseMulOp_commonuse_3(ElementwiseMulOp):
-    def setUp(self):
-        self.op_type = "elementwise_mul"
-        self.inputs = {
-            'X': np.random.rand(32, 16, 1, 5).astype(np.float64),
-            'Y': np.random.rand(16, 5).astype(np.float64)
         }
         self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
         self.init_kernel_type()
