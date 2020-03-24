@@ -1032,7 +1032,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         if not isinstance(output_vars, (list, tuple)):
             output_vars = [output_vars]
         try:
-            assert_same_structure(output_vars, loop_vars, check_types=True)
+            assert_same_structure(output_vars, loop_vars, check_types=False)
         except ValueError as e:
             raise ValueError(
                 "body in while_loop should return the same arity "
