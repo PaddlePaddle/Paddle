@@ -69,19 +69,20 @@ def fill_constant(shape, dtype, value, force_cpu=False, device=None, out=None):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+          import paddle
           # attr shape is a list which doesn't contain Variable Tensor.
-          data1 = fluid.layers.fill_constant(shape=[2,1], value=0, dtype='int64') # data1=[[0],[0]]
-          data2 = fluid.layers.fill_constant(shape=[2,1], value=5, dtype='int64', out=data1)
-          # data1=[[0], [0]] data2=[[5], [5]]
+          data1 = paddle.tensor.fill_constant(shape=[2,1], value=0, dtype='int64') # data1=[[0],[0]]
+          data2 = paddle.tensor.fill_constant(shape=[2,1], value=5, dtype='int64', out=data1)
+          data3 = paddle.tensor.fill_constant(shape=[2,1], value=6, dtype='int64', out=data1, device='cpu')
+          # data1=[[0], [0]] data2=[[5], [5]] data3=[[6], [6]]
 
           # attr shape is a list which contains Variable Tensor.
-          positive_2 = fluid.layers.fill_constant([1], "int32", 2)
-          data3 = fluid.layers.fill_constant(shape=[1, positive_2], dtype='float32', value=1.5) # data3=[1.5, 1.5]
+          positive_2 = paddle.tensor.fill_constant([1], "int32", 2)
+          data3 = paddle.tensor.fill_constant(shape=[1, positive_2], dtype='float32', value=1.5) # data3=[1.5, 1.5]
 
           # attr shape is an Variable Tensor.
-          shape = fluid.layers.fill_constant([1,2], "int32", 2) # shape=[2,2]
-          data4 = fluid.layers.fill_constant(shape=shape, dtype='bool', value=True) # data4=[[True,True],[True,True]]
+          shape = paddle.tensor.fill_constant([1,2], "int32", 2) # shape=[2,2]
+          data4 = paddle.tensor.fill_constant(shape=shape, dtype='bool', value=True) # data4=[[True,True],[True,True]]
     """
     attrs = {'value': float(value), 'force_cpu': force_cpu}
 
@@ -209,9 +210,9 @@ def ones(shape, dtype, out=None, device=None):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          data = fluid.layers.ones(shape=[3, 2], dtype='float32') # [[1., 1.], [1., 1.], [1., 1.]]
-          data = fluid.layers.ones(shape=[2, 2], dtype='float32', device='cpu') # [[1., 1.], [1., 0.]]
+          import paddle
+          data = paddle.tensor.ones(shape=[3, 2], dtype='float32') # [[1., 1.], [1., 1.], [1., 1.]]
+          data = paddle.tensor.ones(shape=[2, 2], dtype='float32', device='cpu') # [[1., 1.], [1., 0.]]
     """
     check_dtype(dtype, 'create data type',
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
@@ -242,9 +243,9 @@ def zeros(shape, dtype, out=None, device=None):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          data = fluid.layers.zeros(shape=[3, 2], dtype='float32') # [[0., 0.], [0., 0.], [0., 0.]]
-          data = fluid.layers.zeros(shape=[2, 2], dtype='float32', device='cpu') # [[0., 0.], [0., 0.]]
+          import paddle
+          data = paddle.tensor.zeros(shape=[3, 2], dtype='float32') # [[0., 0.], [0., 0.], [0., 0.]]
+          data = paddle.tensor.zeros(shape=[2, 2], dtype='float32', device='cpu') # [[0., 0.], [0., 0.]]
     """
     check_dtype(dtype, 'create data type',
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],

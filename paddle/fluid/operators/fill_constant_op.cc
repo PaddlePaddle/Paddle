@@ -56,8 +56,6 @@ class FillConstantOp : public framework::OperatorWithKernel {
     }
     return framework::OpKernelType(
         framework::proto::VarType::Type(ctx.Attr<int>("dtype")), place);
-    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
-    return kt;
   }
 
   framework::OpKernelType GetKernelTypeForVar(

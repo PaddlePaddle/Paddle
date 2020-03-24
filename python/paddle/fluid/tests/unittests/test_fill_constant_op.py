@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+import paddle
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
@@ -342,7 +343,7 @@ class TestFillConstantOpError(unittest.TestCase):
 
             # The device of fill_constant must be in 'cpu', 'gpu' or None 
             def test_device_value():
-                fluid.layers.fill_constant(
+                paddle.tensor.fill_constant(
                     shape=[100], dtype="float32", value=1, device='xpu')
 
             self.assertRaises(ValueError, test_device_value)
