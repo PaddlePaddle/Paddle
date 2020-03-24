@@ -19,6 +19,11 @@ import socket
 import time
 import os
 import signal
+import copy
+import sys
+import subprocess
+from contextlib import closing
+import socket
 
 logger = logging.getLogger("root")
 logger.propagate = False
@@ -332,7 +337,11 @@ class TrainerProc(object):
         self.cmd = None
 
 
-def start_local_trainers(cluster, pod):
+def start_local_trainers(cluster,
+                         pod,
+                         training_script,
+                         training_script_args,
+                         log_dir=None):
     current_env = copy.copy(os.environ.copy())
     #paddle broadcast ncclUniqueId use socket, and
     #proxy maybe make trainers unreachable, so delete them.
@@ -355,15 +364,14 @@ def start_local_trainers(cluster, pod):
 
         logger.debug("trainer proc env:{}".format(current_env))
 
-        cmd = [sys.executable, "-u", args.training_script
-               ] + args.training_script_args
+        cmd = [sys.executable, "-u", training_script] + training_script_args
 
         logger.info("start trainer proc:{} env:{}".format(cmd, proc_env))
 
         fn = None
-        if args.log_dir is not None:
-            os.system("mkdir -p {}".format(args.log_dir))
-            fn = open("%s/workerlog.%d" % (args.log_dir, idx), "a")
+        if log_dir is not None:
+            os.system("mkdir -p {}".format(log_dir))
+            fn = open("%s/workerlog.%d" % (log_dir, idx), "a")
             proc = subprocess.Popen(cmd, env=current_env, stdout=fn, stderr=fn)
         else:
             proc = subprocess.Popen(cmd, env=current_env)
@@ -417,10 +425,26 @@ def watch_local_trainers(procs, nranks):
     return alive
 
 
-def get_hdfs_from_args(args):
-    hdfs = Hdfs()
-    hdfs.hdfs_name = args.hdfs_name
-    hdfs.hdfs_ugi = args.hdfs_ugi
-    hdfs.hdfs_path = args.hdfs_path
+def get_gpus(selected_gpus):
+    if selected_gpus is None:
+        gpus_num = fluid.core.get_cuda_device_count()
+        selected_gpus = [str(x) for x in range(0, gpus_num)]
+    else:
+        cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
+        if cuda_visible_devices is None or cuda_visible_devices == "":
+            selected_gpus = [x.strip() for x in selected_gpus.split(',')]
+        else:
+            # change selected_gpus into relative values
+            # e.g. CUDA_VISIBLE_DEVICES=4,5,6,7; args.selected_gpus=4,5,6,7;
+            # therefore selected_gpus=0,1,2,3
+            cuda_visible_devices_list = cuda_visible_devices.split(',')
+            for x in selected_gpus.split(','):
+                assert x in cuda_visible_devices_list, "Can't find "\
+                "your selected_gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
+                % (x, cuda_visible_devices)
+            selected_gpus = [
+                cuda_visible_devices_list.index(x.strip())
+                for x in selected_gpus.split(',')
+            ]
 
-    return hdfs
+    return selected_gpus

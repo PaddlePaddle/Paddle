@@ -45,8 +45,6 @@ import six
 import copy
 from argparse import ArgumentParser, REMAINDER
 import paddle.fluid as fluid
-from contextlib import closing
-import socket
 
 from utils import *
 
@@ -60,32 +58,6 @@ def _print_arguments(args):
     for arg, value in sorted(six.iteritems(vars(args))):
         print("%s: %s" % (arg, value))
     print("------------------------------------------------")
-
-
-def find_free_ports(num):
-    def __free_port():
-        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
-            s.bind(('', 0))
-            return s.getsockname()[1]
-
-    port_set = set()
-    step = 0
-    while True:
-        port = __free_port()
-        if port not in port_set:
-            port_set.add(port)
-
-        if len(port_set) >= num:
-            return port_set
-
-        step += 1
-        if step > 100:
-            print(
-                "can't find avilable port and use the specified static port now!"
-            )
-            return None
-
-    return None
 
 
 def _parse_args():
@@ -169,31 +141,6 @@ POD_IP (current node ip address, not needed for local training)
     return parser.parse_args()
 
 
-def get_gpus():
-    if args.selected_gpus is None:
-        gpus_num = fluid.core.get_cuda_device_count()
-        selected_gpus = [str(x) for x in range(0, gpus_num)]
-    else:
-        cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
-        if cuda_visible_devices is None or cuda_visible_devices == "":
-            selected_gpus = [x.strip() for x in args.selected_gpus.split(',')]
-        else:
-            # change selected_gpus into relative values
-            # e.g. CUDA_VISIBLE_DEVICES=4,5,6,7; args.selected_gpus=4,5,6,7;
-            # therefore selected_gpus=0,1,2,3
-            cuda_visible_devices_list = cuda_visible_devices.split(',')
-            for x in args.selected_gpus.split(','):
-                assert x in cuda_visible_devices_list, "Can't find "\
-                "your selected_gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
-                % (x, cuda_visible_devices)
-            selected_gpus = [
-                cuda_visible_devices_list.index(x.strip())
-                for x in args.selected_gpus.split(',')
-            ]
-
-    return selected_gpus
-
-
 def get_cluster_from_args(args, selected_gpus):
     node_ips = [x.strip() for x in args.cluster_node_ips.split(',')]
     node_ip = args.node_ip
@@ -208,7 +155,6 @@ def get_cluster_from_args(args, selected_gpus):
         free_ports = find_free_ports(len(selected_gpus))
         if free_ports is not None:
             free_ports = list(free_ports)
-            #args.started_port = free_ports[0]
     else:
         free_ports = [
             x
@@ -221,7 +167,7 @@ def get_cluster_from_args(args, selected_gpus):
 
 def launch(args):
     # parse arguments, used for cloud-single-machine and local
-    selected_gpus = get_gpus()
+    selected_gpus = get_gpus(args.selected_gpus)
     trainers_num = cloud_utils.get_trainers_num()
     logger.debug("parsed from args trainerss_num:{} selected_gpus:{}".format(
         trainers_num, selected_gpus))
@@ -231,13 +177,19 @@ def launch(args):
 
     if args.use_paddlecloud and trainers_num != 1:
         cluster, pod = cloud_utils.get_cloud_cluster(
-            arges.node_ips, args.node_ip, args.started_port, selected_gpus)
+            args.cluster_node_ips, args.node_ip, args.started_port,
+            selected_gpus)
         logger.info("get cluster from cloud:{}".format(cluster))
     else:
         cluster, pod = get_cluster_from_args(args, selected_gpus)
         logger.info("get cluster from args:{}".format(cluster))
 
-    procs = start_local_trainers(cluster, pod)
+    procs = start_local_trainers(
+        cluster,
+        pod,
+        training_script=args.training_script,
+        training_script_args=args.training_script_args,
+        log_dir=args.log_dir)
 
     while True:
         alive = watch_local_trainers(procs, cluster.trainers_nranks())
