@@ -37,69 +37,72 @@ using vb_vector = std::vector<std::shared_ptr<imperative::VarBase>>;
 
 using var_pair = std::pair<std::string, vb_vector>;
 
-class TestRuntimeInferVarTypeContext : public RuntimeInferVarTypeContext {
+template <typename VarType>
+class TestRuntimeInferVarTypeContext
+    : public RuntimeInferVarTypeContext<VarType> {
  public:
-  TestRuntimeInferVarTypeContext(const NameVarBaseMap& inputs,
-                                 const NameVarBaseMap* outputs,
+  TestRuntimeInferVarTypeContext(const NameVarMap<VarType>& inputs,
+                                 const NameVarMap<VarType>& outputs,
                                  const framework::AttributeMap& attrs_map)
-      : RuntimeInferVarTypeContext(inputs, outputs, attrs_map) {}
+      : RuntimeInferVarTypeContext<VarType>(inputs, outputs, attrs_map) {}
 
   bool HasVar(const std::string& name) const {
-    return RuntimeInferVarTypeContext::HasVar(name);
+    return RuntimeInferVarTypeContext<VarType>::HasVar(name);
   }
 
   const std::vector<std::string>& InputVars(const std::string& name) const {
-    return RuntimeInferVarTypeContext::InputVars(name);
+    return RuntimeInferVarTypeContext<VarType>::InputVars(name);
   }
 
   const std::vector<std::string>& OutputVars(const std::string& name) const {
-    return RuntimeInferVarTypeContext::OutputVars(name);
+    return RuntimeInferVarTypeContext<VarType>::OutputVars(name);
   }
 
   framework::proto::VarType::Type GetVarType(const std::string& name) const {
-    return RuntimeInferVarTypeContext::GetVarType(name);
+    return RuntimeInferVarTypeContext<VarType>::GetVarType(name);
   }
 
   void SetVarType(const std::string& name,
                   framework::proto::VarType::Type type) {
-    RuntimeInferVarTypeContext::SetVarType(name, type);
+    RuntimeInferVarTypeContext<VarType>::SetVarType(name, type);
   }
 
   framework::proto::VarType::Type GetVarDataType(
       const std::string& name) const {
-    return RuntimeInferVarTypeContext::GetVarDataType(name);
+    return RuntimeInferVarTypeContext<VarType>::GetVarDataType(name);
   }
 
   void SetVarDataType(const std::string& name,
                       framework::proto::VarType::Type type) {
-    RuntimeInferVarTypeContext::SetVarDataType(name, type);
+    RuntimeInferVarTypeContext<VarType>::SetVarDataType(name, type);
   }
 
   std::vector<framework::proto::VarType::Type> GetVarDataTypes(
       const std::string& name) const {
-    return RuntimeInferVarTypeContext::GetVarDataTypes(name);
+    return RuntimeInferVarTypeContext<VarType>::GetVarDataTypes(name);
   }
 
   void SetVarDataTypes(
       const std::string& name,
       const std::vector<framework::proto::VarType::Type>& multiple_data_type) {
-    RuntimeInferVarTypeContext::SetVarDataTypes(name, multiple_data_type);
+    RuntimeInferVarTypeContext<VarType>::SetVarDataTypes(name,
+                                                         multiple_data_type);
   }
 
   std::vector<int64_t> GetVarShape(const std::string& name) const {
-    return RuntimeInferVarTypeContext::GetVarShape(name);
+    return RuntimeInferVarTypeContext<VarType>::GetVarShape(name);
   }
 
   void SetVarShape(const std::string& name, const std::vector<int64_t>& dims) {
-    RuntimeInferVarTypeContext::SetVarShape(name, dims);
+    RuntimeInferVarTypeContext<VarType>::SetVarShape(name, dims);
   }
 
   int32_t GetVarLoDLevel(const std::string& name) const {
-    return RuntimeInferVarTypeContext::GetVarLoDLevel(name);
+    return RuntimeInferVarTypeContext<VarType>::GetVarLoDLevel(name);
   }
 
   void SetVarLoDLevel(const std::string& name, int32_t lod_level) {
-    RuntimeInferVarTypeContext::SetVarLoDLevel(name, lod_level);
+    RuntimeInferVarTypeContext<VarType>::SetVarLoDLevel(name, lod_level);
   }
 };
 
@@ -118,8 +121,9 @@ TEST(test_layer, test_runtime_context) {
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap attrs;
 
-  auto *ctx = new imperative::RuntimeInferVarTypeContext<imperative::VarBase>(
-      ins, outs, attrs);
+  auto* ctx =
+      new imperative::TestRuntimeInferVarTypeContext<imperative::VarBase>(
+          ins, outs, attrs);
   ASSERT_TRUE(ctx->HasVar("vin"));
 
   ASSERT_TRUE(ctx->HasInput("X"));
@@ -171,9 +175,9 @@ TEST(test_layer, test_runtime_context) {
   ASSERT_TRUE(ctx->IsDygraph());
 }
 
-std::string LayerDebugString(const std::string &op_type,
-                             const NameVarBaseMap &ins,
-                             const NameVarBaseMap &outs);
+std::string LayerDebugString(const std::string& op_type,
+                             const NameVarBaseMap& ins,
+                             const NameVarBaseMap& outs);
 
 TEST(test_layer, test_debug_string) {
   platform::CPUPlace place;
@@ -181,7 +185,7 @@ TEST(test_layer, test_debug_string) {
       new imperative::VarBase(false, "vin"));
   var_pair in_pair = var_pair("X", vb_vector(1, vin));
 
-  auto test_func = [&](std::shared_ptr<imperative::VarBase> &vout) {
+  auto test_func = [&](std::shared_ptr<imperative::VarBase>& vout) {
     var_pair out_pair = var_pair("Out", vb_vector(1, vout));
     imperative::NameVarBaseMap ins = {in_pair};
     imperative::NameVarBaseMap outs = {out_pair};
@@ -234,26 +238,26 @@ TEST(test_layer, test_debug_string) {
 }
 
 static std::shared_ptr<imperative::GradOpNode> CreateGradNode(
-    size_t id, const std::string &type, const imperative::NameVarBaseMap &ins,
-    const imperative::NameVarBaseMap &outs,
-    const framework::AttributeMap &attrs, const platform::Place &place) {
+    size_t id, const std::string& type, const imperative::NameVarBaseMap& ins,
+    const imperative::NameVarBaseMap& outs,
+    const framework::AttributeMap& attrs, const platform::Place& place) {
   auto node = std::make_shared<imperative::GradOpNode>();
-  auto *op = &(node->emplace_back());
+  auto* op = &(node->emplace_back());
   op->SetId(id);
   op->SetPlace(place);
   op->SetType(type);
   op->SetAttrMap(attrs);
-  for (auto &pair : ins) {
+  for (auto& pair : ins) {
     std::vector<std::shared_ptr<VariableWrapper>> vars;
-    for (auto &var : pair.second) {
+    for (auto& var : pair.second) {
       vars.emplace_back(var->SharedVar());
     }
     op->SetInput(pair.first, vars, false);
   }
 
-  for (auto &pair : outs) {
+  for (auto& pair : outs) {
     std::vector<std::shared_ptr<VariableWrapper>> vars;
-    for (auto &var : pair.second) {
+    for (auto& var : pair.second) {
       vars.emplace_back(var->SharedVar());
     }
     op->SetOutput(pair.first, vars, false);
@@ -283,7 +287,7 @@ TEST(test_layer, test_clear_backward_info) {
   node->InsertGradPendingNode(pending_node);
 
   ASSERT_EQ(node->size(), 1UL);
-  auto *op = &(node->back());
+  auto* op = &(node->back());
 
   ASSERT_GT(op->GetInsMap().size(), 0UL);
   ASSERT_GT(op->GetOutsMap().size(), 0UL);
@@ -306,10 +310,10 @@ TEST(test_layer, test_varbase_basic) {
   std::shared_ptr<imperative::VarBase> vin_with_grad(
       new imperative::VarBase(true, "vin"));
   ASSERT_ANY_THROW(vin->MutableGradVar());
-  ASSERT_NO_THROW(ASSERT_TRUE(dynamic_cast<framework::Variable *>(
+  ASSERT_NO_THROW(ASSERT_TRUE(dynamic_cast<framework::Variable*>(
                                   vin_with_grad->MutableGradVar()) != 0));
-  ASSERT_TRUE(dynamic_cast<framework::Variable *>(
-                  vin_with_grad->MutableGradVar()) != 0);
+  ASSERT_TRUE(
+      dynamic_cast<framework::Variable*>(vin_with_grad->MutableGradVar()) != 0);
   vin_with_grad->SetOverridedStopGradient(false);
   ASSERT_FALSE(vin_with_grad->OverridedStopGradient());
   ASSERT_NO_FATAL_FAILURE(vin_with_grad->SetPersistable(true));
@@ -338,9 +342,9 @@ TEST(test_layer, test_dygraph_execution_context) {
   auto op = framework::OpRegistry::CreateOp("mul", {}, {}, {}, false);
   paddle::platform::CPUPlace cpu_place;
 
-  paddle::platform::DeviceContextPool &pool =
+  paddle::platform::DeviceContextPool& pool =
       paddle::platform::DeviceContextPool::Instance();
-  auto *dev_ctx = pool.Get(cpu_place);
+  auto* dev_ctx = pool.Get(cpu_place);
   paddle::framework::RuntimeContext ctx({}, {});
   framework::Scope scope;
 
