@@ -189,6 +189,44 @@ class TestFillConstantOp1_ShapeTensor(OpTest):
         self.check_output()
 
 
+class TeseFillConstantOp1_device(OpTest):
+    def setUp(self):
+        '''Test fill_constant op with specified value
+        '''
+        self.op_type = "fill_constant"
+        self.init_data()
+
+        self.inputs = {"ShapeTensor": np.array(self.shape).astype("int32")}
+        self.attrs = {'value': self.value, 'device': 'cpu'}
+        self.outputs = {'Out': np.full(self.shape, self.value)}
+
+    def init_data(self):
+        self.shape = [123, 92]
+        self.value = 0
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TeseFillConstantOp1_device(OpTest):
+    def setUp(self):
+        '''Test fill_constant op with specified value
+        '''
+        self.op_type = "fill_constant"
+        self.init_data()
+
+        self.inputs = {"ShapeTensor": np.array(self.shape).astype("int32")}
+        self.attrs = {'value': self.value, 'device': 'gpu'}
+        self.outputs = {'Out': np.full(self.shape, self.value)}
+
+    def init_data(self):
+        self.shape = [123, 92]
+        self.value = 0
+
+    def test_check_output(self):
+        self.check_output()
+
+
 # Test python API
 class TestFillConstantAPI(unittest.TestCase):
     def test_api(self):
@@ -301,6 +339,13 @@ class TestFillConstantOpError(unittest.TestCase):
                     shape=[shape, 2], dtype="float32", value=1)
 
             self.assertRaises(TypeError, test_shape_tensor_list_dtype)
+
+            # The device of fill_constant must be in 'cpu', 'gpu' or None 
+            def test_device_value():
+                fluid.layers.fill_constant(
+                    shape=[100], dtype="float32", value=1, device='xpu')
+
+            self.assertRaises(ValueError, test_device_value)
 
 
 if __name__ == "__main__":
