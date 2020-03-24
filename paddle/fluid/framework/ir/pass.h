@@ -141,18 +141,18 @@ class Pass {
     required_pass_attrs_.insert(attrs.begin(), attrs.end());
   }
 
-  void RegisterDefaultPassAttrs(const std::unordered_set<std::string> &attrs) {
-    default_pass_attrs_.insert(attrs.begin(), attrs.end());
-  }
-
   void RegisterRequiredGraphAttrs(
       const std::unordered_set<std::string> &attrs) {
     required_graph_attrs_.insert(attrs.begin(), attrs.end());
   }
 
   // Pass doesn't take ownership. PassRegistrar should delete default_attrs
-  void CopyDefaultAttrs(std::map<std::string, boost::any> default_attrs_) {
-    attrs_.insert(default_attrs_.begin(), default_attrs_.end());
+  void RegisterDefaultPassAttrs(
+      std::map<std::string, boost::any> default_attr_values) {
+    for (auto const &attr_name : default_attr_values) {
+      default_pass_attrs_.insert(attr_name.first);
+    }
+    attrs_.insert(default_attr_values.begin(), default_attr_values.end());
   }
 
   void RegisterType(const std::string &type) { type_ = type; }
@@ -219,20 +219,19 @@ struct PassRegistrar : public Registrar {
           std::unique_ptr<Pass> pass(new PassType());
           pass->RegisterRequiredPassAttrs(this->required_pass_attrs_);
           pass->RegisterRequiredGraphAttrs(this->required_graph_attrs_);
-          pass->RegisterDefaultPassAttrs(this->default_pass_attrs_);
-          pass->CopyDefaultAttrs(this->default_attrs_values_);
+          pass->RegisterDefaultPassAttrs(this->default_attr_values_);
           pass->RegisterType(pass_type);
           return pass;
         });
   }
 
   ~PassRegistrar() {
-    for (auto &attr : default_attrs_values_) {
+    for (auto &attr : default_attr_values_) {
       if (default_attr_dels_.find(attr.first) != default_attr_dels_.end()) {
         default_attr_dels_[attr.first]();
       }
     }
-    default_attrs_values_.clear();
+    default_attr_values_.clear();
     default_attr_dels_.clear();
   }
 
@@ -245,8 +244,7 @@ struct PassRegistrar : public Registrar {
   template <typename AttrType>
   PassRegistrar<PassType> &DefaultPassAttr(const std::string &attr,
                                            AttrType &&default_attr_value) {
-    default_pass_attrs_.insert(attr);
-    default_attrs_values_[attr] = default_attr_value;
+    default_attr_values_[attr] = default_attr_value;
     default_attr_dels_[attr] = [default_attr_value, attr]() {
       delete default_attr_value;
     };
@@ -260,9 +258,8 @@ struct PassRegistrar : public Registrar {
 
  private:
   std::unordered_set<std::string> required_pass_attrs_;
-  std::unordered_set<std::string> default_pass_attrs_;
   std::unordered_set<std::string> required_graph_attrs_;
-  std::map<std::string, boost::any> default_attrs_values_;
+  std::map<std::string, boost::any> default_attr_values_;
   std::map<std::string, std::function<void(void)>> default_attr_dels_;
 };
 
