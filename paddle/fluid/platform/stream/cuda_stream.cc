@@ -37,7 +37,8 @@ bool CUDAStream::Init(const Place& place, const enum Priority& priority) {
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreateWithPriority(
           &stream_, kDefaultFlag, kNormalPriority));
     }
-    VLOG(3) << "CUDAStream Init stream:" << stream_;
+    LOG(INFO) << "CUDAStream Init stream: " << stream_
+              << ", priority: " << static_cast<int>(priority);
   });
   return true;
 }
@@ -58,40 +59,6 @@ void CUDAStream::Destroy() {
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(stream_));
   }
   stream_ = nullptr;
-}
-
-const CUDAStream& CUDAStreamPool::NextStream(const enum Priority& priority) {
-  if (priority == Priority::NORMAL) {
-    const auto& stream =
-        normal_priority_streams_[normal_priority_counters_ % kStreamsPerDevCtx];
-    normal_priority_counters_++;
-    return stream;
-  } else if (priority == Priority::HIGH) {
-    const auto& stream =
-        high_priority_streams_[high_priority_counters_ % kStreamsPerDevCtx];
-    high_priority_counters_++;
-    return stream;
-  } else {
-    return null_stream_;
-  }
-}
-
-const std::array<CUDAStream, kStreamsPerDevCtx>& CUDAStreamPool::Streams(
-    const enum Priority& priority) const {
-  if (priority == Priority::NORMAL) {
-    return normal_priority_streams_;
-  } else if (priority == Priority::HIGH) {
-    return high_priority_streams_;
-  } else {
-    LOG(FATAL);
-  }
-}
-
-void CUDAStreamPool::Init(const Place& place) {
-  for (size_t i = 0; i < kStreamsPerDevCtx; ++i) {
-    normal_priority_streams_[i].Init(place, Priority::NORMAL);
-    high_priority_streams_[i].Init(place, Priority::HIGH);
-  }
 }
 
 }  // namespace stream

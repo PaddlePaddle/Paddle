@@ -212,6 +212,10 @@ void CudnnWorkspaceHandle::ReallocWorkspace(size_t required_workspace_bytes) {
 }
 
 using stream::CUDAStream;
+thread_local std::once_flag CUDADeviceContext::init_flag_;
+thread_local std::map<const CUDADeviceContext*, std::unique_ptr<CUDAContext>>
+    CUDADeviceContext::context_;
+thread_local std::mutex CUDADeviceContext::ctx_mtx_;
 
 void CUDAContext::InitEigenContext(const CUDAStream& stream) {
   eigen_stream_.reset(new EigenCudaStreamDevice());
@@ -239,6 +243,7 @@ void CUDAContext::Init(const CUDAPlace& place,
 void CUDAContext::Destory() {
   DestoryCuDNNContext();
   DestoryCuBlasContext();
+  DestoryCallbackManager();
 }
 
 void CUDAContext::Reset(const CUDAPlace& place,
@@ -288,20 +293,6 @@ void CUDAContext::InitCuDNNContext(const stream::CUDAStream& stream) {
   }
 }
 
-void CUDAContext::DestoryCuDNNContext() {
-  if (cudnn_handle_) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_),
-                                "Failed to destory Cudnn handle");
-  }
-}
-
-void CUDAContext::DestoryCuBlasContext() {
-  if (cudnn_handle_) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_),
-                                "Failed to destory Cudnn handle");
-  }
-}
-
 void CUDAContext::Wait() const {
   cudaError_t e_sync = cudaSuccess;
 #if !defined(_WIN32)
@@ -319,8 +310,7 @@ void CUDAContext::Wait() const {
                   cudaGetErrorString(e_sync), static_cast<int>(e_sync)));
 }
 
-CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
-    : place_(place), context_(new CUDAContext(place)) {
+CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   CUDADeviceGuard guard(place_.device);
   compute_capability_ = GetCUDAComputeCapability(place_.device);
   multi_process_ = GetCUDAMultiProcessors(place_.device);
@@ -377,7 +367,7 @@ CUDADeviceContext::~CUDADeviceContext() {
 
 Place CUDADeviceContext::GetPlace() const { return place_; }
 
-void CUDADeviceContext::Wait() const { context_->Wait(); }
+void CUDADeviceContext::Wait() const { context()->Wait(); }
 
 int CUDADeviceContext::GetComputeCapability() const {
   return compute_capability_;
@@ -394,11 +384,11 @@ int CUDADeviceContext::GetMaxThreadsPerBlock() const {
 }
 
 Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
-  return context_->EigenDevice().get();
+  return context()->EigenDevice().get();
 }
 
 bool CUDADeviceContext::tensor_core_available() const {
-  return context_->CublasTensorCoreHandle() != nullptr;
+  return context()->CublasTensorCoreHandle() != nullptr;
 }
 
 dim3 CUDADeviceContext::GetCUDAMaxGridDimSize() const {
@@ -406,14 +396,12 @@ dim3 CUDADeviceContext::GetCUDAMaxGridDimSize() const {
 }
 
 cudnnHandle_t CUDADeviceContext::cudnn_handle() const {
-  return context_->CudnnHandle();
+  return context()->CudnnHandle();
 }
 
 CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
   return CudnnWorkspaceHandle(*this, &cudnn_handle_mtx_);
 }
-
-cudaStream_t CUDADeviceContext::stream() const { return context_->Stream(); }
 
 CUDAPinnedDeviceContext::CUDAPinnedDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());

@@ -155,8 +155,17 @@ class CUDAContext {
   void InitCuBlasContext(const stream::CUDAStream& stream);
   void InitCallbackManager(const stream::CUDAStream& stream);
   void InitCuDNNContext(const stream::CUDAStream& stream);
-  void DestoryCuDNNContext();
-  void DestoryCuBlasContext();
+  void DestoryCuDNNContext() {
+    if (cudnn_handle_) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_),
+                                  "Failed to destory Cudnn handle");
+    }
+  }
+  void DestoryCuBlasContext() {
+    cublas_handle_.reset();
+    cublas_tensor_core_handle_.reset();
+  }
+  void DestoryCallbackManager() { callback_manager_.reset(); }
 
   CUDAPlace place_;
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
@@ -201,7 +210,7 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Call cublas function safely. */
   template <typename Callback>
   inline void CublasCall(Callback&& callback) const {
-    return context_->CublasCall(callback);
+    return context()->CublasCall(callback);
   }
 
   /*! \brief  Check whether tensor core is supported */
@@ -211,7 +220,7 @@ class CUDADeviceContext : public DeviceContext {
       Tensor Core is not available, use DEFAULT_MATH instead. */
   template <typename Callback>
   inline void TensorCoreCublasCallIfAvailable(Callback&& callback) const {
-    return context_->TensorCoreCublasCallIfAvailable(callback);
+    return context()->TensorCoreCublasCallIfAvailable(callback);
   }
 
   /*! \brief  Return cudnn  handle in the device context. */
@@ -227,7 +236,7 @@ class CUDADeviceContext : public DeviceContext {
   CudnnWorkspaceHandle cudnn_workspace_handle() const;
 
   /*! \brief  Return cuda stream in the device context. */
-  cudaStream_t stream() const;
+  cudaStream_t stream() const { return context()->Stream(); }
 
 #if defined(PADDLE_WITH_NCCL)
   /*! \brief  Return nccl communicators. */
@@ -239,19 +248,36 @@ class CUDADeviceContext : public DeviceContext {
 
   template <typename Callback>
   void RecordEvent(cudaEvent_t ev, Callback callback) {
-    return context_->RecordEvent(ev, callback);
+    return context()->RecordEvent(ev, callback);
   }
 
   template <typename Callback>
   void AddStreamCallback(Callback&& callback) const {
-    return context_->AddStreamCallback(callback);
+    return context()->AddStreamCallback(callback);
   }
 
-  void WaitStreamCallback() const { return context_->WaitStreamCallback(); }
+  void WaitStreamCallback() const { return context()->WaitStreamCallback(); }
+
+  void ResetCurrentThreadCtx(const enum stream::Priority& priority) {
+    std::lock_guard<std::mutex> guard(ctx_mtx_);
+    context_[this].reset(new CUDAContext(place_, priority));
+  }
+
+  const std::unique_ptr<CUDAContext>& context() const {
+    std::call_once(init_flag_, [this]() {
+      std::lock_guard<std::mutex> guard(ctx_mtx_);
+      context_[this].reset(new CUDAContext(place_, stream::Priority::NIL));
+    });
+    return context_.at(this);
+  }
 
  private:
   CUDAPlace place_;
-  std::unique_ptr<CUDAContext> context_;
+  static thread_local std::once_flag init_flag_;
+  static thread_local std::map<const CUDADeviceContext*,
+                               std::unique_ptr<CUDAContext>>
+      context_;
+  static thread_local std::mutex ctx_mtx_;
 
   mutable std::mutex cudnn_handle_mtx_;
 
