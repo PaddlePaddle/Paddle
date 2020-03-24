@@ -129,19 +129,19 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
         "CustomDistProbs",
         "(Tensor) It is used in 'CostumDist' sampler. "
         "It is a tensor with shape [num_total_classes]."
-        "The i-th element is the probsbility of the i-th class being sampled.")
+        "The i-th element is the probability of the i-th class being sampled.")
         .AsDispensable();
     AddInput(
         "CustomDistAlias",
         "(Tensor) It is used in 'CostumDist' sampler. "
         "It is a tensor with shape [num_total_classes]."
-        "The i-th element is the probsbility of the i-th class being sampled.")
+        "The i-th element is the probability of the i-th class being sampled.")
         .AsDispensable();
     AddInput(
         "CustomDistAliasProbs",
         "(Tensor) It is used in 'CostumDist' sampler. "
         "It is a tensor with shape [num_total_classes]."
-        "The i-th element is the probsbility of the i-th class being sampled.")
+        "The i-th element is the probability of the i-th class being sampled.")
         .AsDispensable();
 
     AddOutput("Cost",
@@ -192,7 +192,7 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<std::vector<std::string>>(
         "table_names",
-        "(string vector, the splited table names that will be fetched from "
+        "(string vector, the split table names that will be fetched from "
         "parameter server)"
         "in the order of input variables for mapping")
         .SetDefault({});
@@ -217,8 +217,7 @@ template <typename T>
 class NCEGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-  std::unique_ptr<T> Apply() const override {
-    auto *op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("Input", this->Input("Input"));
     op->SetInput("Label", this->Input("Label"));
@@ -235,7 +234,6 @@ class NCEGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
     op->SetOutput(framework::GradVarName("Weight"), this->InputGrad("Weight"));
     op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(op);
   }
 };
 

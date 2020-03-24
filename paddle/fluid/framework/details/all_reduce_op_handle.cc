@@ -20,7 +20,7 @@
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/profiler.h"
 
-#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_NCCL
 DECLARE_bool(sync_nccl_allreduce);
 #endif
 

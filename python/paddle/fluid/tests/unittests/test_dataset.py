@@ -124,6 +124,7 @@ class TestDataset(unittest.TestCase):
         dataset.set_filelist(["a.txt", "b.txt", "c.txt"])
         dataset.set_trainer_num(4)
         dataset.set_hdfs_config("my_fs_name", "my_fs_ugi")
+        dataset.set_download_cmd("./read_from_afs my_fs_name my_fs_ugi")
 
         thread_num = dataset.get_thread_num()
         self.assertEqual(thread_num, 12)
@@ -140,6 +141,62 @@ class TestDataset(unittest.TestCase):
         name, ugi = dataset.get_hdfs_config()
         self.assertEqual(name, "my_fs_name")
         self.assertEqual(ugi, "my_fs_ugi")
+
+        download_cmd = dataset.get_download_cmd()
+        self.assertEqual(download_cmd, "./read_from_afs my_fs_name my_fs_ugi")
+
+    def test_set_download_cmd(self):
+        """
+        Testcase for InMemoryDataset from create to run.
+        """
+        filename1 = "afs:test_in_memory_dataset_run_a.txt"
+        filename2 = "afs:test_in_memory_dataset_run_b.txt"
+        with open(filename1, "w") as f:
+            data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
+            data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
+            data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
+            f.write(data)
+        with open(filename2, "w") as f:
+            data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
+            data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
+            data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
+            data += "1 7 2 3 6 4 8 8 8 8 1 7\n"
+            f.write(data)
+
+        slots = ["slot1", "slot2", "slot3", "slot4"]
+        slots_vars = []
+        for slot in slots:
+            var = fluid.layers.data(
+                name=slot, shape=[1], dtype="int64", lod_level=1)
+            slots_vars.append(var)
+
+        dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+        dataset.set_batch_size(32)
+        dataset.set_thread(3)
+        dataset.set_filelist([filename1, filename2])
+        dataset.set_pipe_command("cat")
+        dataset.set_download_cmd("cat")
+        dataset.set_use_var(slots_vars)
+        dataset.load_into_memory()
+        exe = fluid.Executor(fluid.CPUPlace())
+        exe.run(fluid.default_startup_program())
+        if self.use_data_loader:
+            data_loader = fluid.io.DataLoader.from_dataset(dataset,
+                                                           fluid.cpu_places(),
+                                                           self.drop_last)
+            for i in range(self.epoch_num):
+                for data in data_loader():
+                    exe.run(fluid.default_main_program(), feed=data)
+        else:
+            for i in range(self.epoch_num):
+                try:
+                    exe.train_from_dataset(fluid.default_main_program(),
+                                           dataset)
+                except Exception as e:
+                    self.assertTrue(False)
+
+        os.remove(filename1)
+        os.remove(filename2)
 
     def test_in_memory_dataset_run(self):
         """
@@ -177,7 +234,8 @@ class TestDataset(unittest.TestCase):
         dataset.set_fea_eval(10000, True)
         dataset.slots_shuffle(["slot1"])
         dataset.local_shuffle()
-
+        dataset.set_generate_unique_feasigns(True, 15)
+        dataset.generate_local_tables_unlock(0, 11, 1, 25, 15)
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())
         if self.use_data_loader:

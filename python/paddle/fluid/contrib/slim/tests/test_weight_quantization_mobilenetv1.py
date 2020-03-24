@@ -42,8 +42,8 @@ class TestWeightQuantization(unittest.TestCase):
                                                           zip_path)
             os.system(cmd)
 
-    def run_test(self, model_name, model_data_url, model_data_md5,
-                 quantize_weight_bits, quantizable_op_type, threshold_rate):
+    def run_test(self, model_name, model_data_url, model_data_md5, weight_bits,
+                 quantizable_op_type, threshold_rate):
 
         model_dir = self.download_model(model_name, model_data_url,
                                         model_data_md5)
@@ -51,11 +51,11 @@ class TestWeightQuantization(unittest.TestCase):
         timestamp = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
         save_model_dir = os.path.join(
             os.getcwd(),
-            model_name + "_wq_" + str(quantize_weight_bits) + "_" + timestamp)
+            model_name + "_wq_" + str(weight_bits) + "_" + timestamp)
         weight_quant = WeightQuantization(model_dir=model_dir + "/model")
         weight_quant.quantize_weight_to_int(
             save_model_dir=save_model_dir,
-            quantize_weight_bits=quantize_weight_bits,
+            weight_bits=weight_bits,
             quantizable_op_type=quantizable_op_type,
             threshold_rate=threshold_rate)
         print("finish weight quantization for " + model_name + "\n")
@@ -73,18 +73,18 @@ class TestWeightQuantizationMobilenetv1(TestWeightQuantization):
     model_data_md5 = "13892b0716d26443a8cdea15b3c6438b"
 
     def test_weight_quantization_mobilenetv1_8bit(self):
-        quantize_weight_bits = 8
+        weight_bits = 8
         quantizable_op_type = ['conv2d', 'depthwise_conv2d', 'mul']
         threshold_rate = 0.0
         self.run_test(self.model_name, self.model_data_url, self.model_data_md5,
-                      quantize_weight_bits, quantizable_op_type, threshold_rate)
+                      weight_bits, quantizable_op_type, threshold_rate)
 
     def test_weight_quantization_mobilenetv1_16bit(self):
-        quantize_weight_bits = 16
+        weight_bits = 16
         quantizable_op_type = ['conv2d', 'depthwise_conv2d', 'mul']
         threshold_rate = 1e-9
         self.run_test(self.model_name, self.model_data_url, self.model_data_md5,
-                      quantize_weight_bits, quantizable_op_type, threshold_rate)
+                      weight_bits, quantizable_op_type, threshold_rate)
 
 
 if __name__ == '__main__':

@@ -521,11 +521,11 @@ class GenerateProposalLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
         "each element is a bounding box with [xmin, ymin, xmax, ymax] format.");
     AddOutput("LabelsInt32",
               "(LoDTensor), This output is a 2D LoDTensor with shape [P, 1], "
-              "each element repersents a class label of a roi");
+              "each element represents a class label of a roi");
     AddOutput("BboxTargets",
               "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4 * "
               "class_nums], "
-              "each element repersents a box label of a roi");
+              "each element represents a box label of a roi");
     AddOutput(
         "BboxInsideWeights",
         "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4 * "

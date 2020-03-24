@@ -11,7 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 #include <nccl.h>
 #endif
 #include <stdint.h>
@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
@@ -52,7 +52,7 @@ class CCommInitAllOp : public framework::OperatorBase {
     PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
                       "CCommInitAllOp can run on gpu place only.");
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
     std::vector<int> devices = Attr<std::vector<int>>("devices");
     if (devices.empty()) {
       devices = platform::GetSelectedDevices();

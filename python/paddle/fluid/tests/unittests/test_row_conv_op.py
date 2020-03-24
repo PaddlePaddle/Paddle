@@ -50,7 +50,7 @@ class TestRowConvOp1(OpTest):
         lod = [[2, 3, 2]]
         T = sum(lod[0])
         D = 16
-        context_length = 2
+        context_length = 8
 
         x = np.random.random((T, D)).astype("float32")
         wt = np.random.random((context_length, D)).astype("float32")
@@ -139,11 +139,11 @@ def row_conv_foward_Tensor(x, wt):
 class TestRowOpWithTensorInput(OpTest):
     def setUp(self):
         self.op_type = "row_conv"
-        length = [3, 2, 4]
+        length = [1, 2, 3]
         B = 2
         T = sum(length)
-        D = 16
-        context_length = 2
+        D = 20
+        context_length = 6
 
         x = np.random.random((B, T, D)).astype("float32")
         wt = np.random.random((context_length, D)).astype("float32")

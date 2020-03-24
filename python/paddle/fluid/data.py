@@ -27,7 +27,7 @@ def data(name, shape, dtype='float32', lod_level=0):
 
     This function creates a variable on the global block. The global variable
     can be accessed by all the following operators in the graph. The variable
-    is a placeholder that could be feeded with input, such as Executor can feed
+    is a placeholder that could be fed with input, such as Executor can feed
     input into the variable.
 
     Note: 
@@ -35,8 +35,8 @@ def data(name, shape, dtype='float32', lod_level=0):
         future version. Please use this `paddle.fluid.data`. 
        
         The `paddle.fluid.layers.data` set shape and dtype at compile time but
-        does NOT check the shape or the dtype of feeded data, this
-        `paddle.fluid.data` checks the shape and the dtype of data feeded by
+        does NOT check the shape or the dtype of fed data, this
+        `paddle.fluid.data` checks the shape and the dtype of data fed by
         Executor or ParallelExecutor during run time.
 
         To feed variable size inputs, users can set -1 on the variable
@@ -54,7 +54,7 @@ def data(name, shape, dtype='float32', lod_level=0):
            for more details.
        shape (list|tuple): List|Tuple of integers declaring the shape. You can
            set "None" at a dimension to indicate the dimension can be of any
-           size. For example, it is useful to set changable batch size as "None" 
+           size. For example, it is useful to set changeable batch size as "None" 
        dtype (np.dtype|VarType|str, optional): The type of the data. Supported
            dtype: bool, float16, float32, float64, int8, int16, int32, int64,
            uint8. Default: float32
@@ -75,7 +75,7 @@ def data(name, shape, dtype='float32', lod_level=0):
           # User can only feed data of the same shape to x
           x = fluid.data(name='x', shape=[3, 2, 1], dtype='float32')
 
-          # Creates a variable with changable batch size.
+          # Creates a variable with changeable batch size.
           # Users can feed data of any batch size into y,
           # but size of each data sample has to be [2, 1]
           y = fluid.data(name='y', shape=[None, 2, 1], dtype='float32')

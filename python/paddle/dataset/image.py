@@ -27,7 +27,7 @@ the image layout as follows.
 
   OpenCV use BGR color format. PIL use RGB color format. Both
   formats can be used for training. Noted that, the format should
-  be keep consistent between the training and inference peroid.
+  be keep consistent between the training and inference period.
 """
 
 from __future__ import print_function

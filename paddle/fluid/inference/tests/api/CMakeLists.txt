@@ -226,15 +226,18 @@ if(WITH_MKLDNN)
 
   set(INT8_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8v2")
 
-  ### Image classification tests
-  set(IMAGENET_DATA_PATH "${INT8_DATA_DIR}/data.bin")
-  set(INT8_IMG_CLASS_TEST_APP "test_analyzer_int8_image_classification")
-  set(INT8_IMG_CLASS_TEST_APP_SRC "analyzer_int8_image_classification_tester.cc")
+  ## Image classification models
 
-  # download dataset if necessary
-  download_int8_data(${INT8_DATA_DIR} "imagenet_val_100_tail.tar.gz")
+  # ImageNet small dataset
+  # May be already downloaded for INT8 QAT unit tests
+  set(IMAGENET_DATA_ARCHIVE "imagenet_val_100_tail.tar.gz")
+  set(IMAGENET_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/imagenet")
+  set(IMAGENET_DATA_PATH "${IMAGENET_DATA_DIR}/data.bin")
+  download_int8_data(${IMAGENET_DATA_DIR} ${IMAGENET_DATA_ARCHIVE})
 
   # build test binary to be used in subsequent tests
+  set(INT8_IMG_CLASS_TEST_APP "test_analyzer_int8_image_classification")
+  set(INT8_IMG_CLASS_TEST_APP_SRC "analyzer_int8_image_classification_tester.cc")
   inference_analysis_api_test_build(${INT8_IMG_CLASS_TEST_APP} ${INT8_IMG_CLASS_TEST_APP_SRC})
 
   # resnet50 int8
@@ -296,7 +299,7 @@ if(WITH_MKLDNN)
 
   ### optimized FP32 vs. QAT INT8 tests
   
-  set(QAT_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8v2")
+  set(QAT_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/qat")
   set(QAT_IMG_CLASS_TEST_APP "test_analyzer_qat_image_classification")
   set(QAT_IMG_CLASS_TEST_APP_SRC "analyzer_qat_image_classification_tester.cc")
 
@@ -304,8 +307,8 @@ if(WITH_MKLDNN)
   inference_analysis_api_test_build(${QAT_IMG_CLASS_TEST_APP} ${QAT_IMG_CLASS_TEST_APP_SRC})
 
   # MobileNet FP32 vs. QAT INT8
+  # The FP32 model should already be downloaded for slim QAT unit tests
   set(QAT2_MobileNet_MODEL_DIR "${QAT_DATA_DIR}/MobileNet_qat_perf")
-  download_qat_data(${QAT2_MobileNet_MODEL_DIR} "MobileNet_qat_perf.tar.gz")
   set(QAT2_INT8_MobileNet_MODEL_DIR "${QAT_DATA_DIR}/MobileNet_qat_perf_int8")
   download_qat_data(${QAT2_INT8_MobileNet_MODEL_DIR} "MobileNet_qat_perf_int8.tar.gz")
   inference_analysis_api_qat_test_run(test_analyzer_qat_performance_benchmark ${QAT_IMG_CLASS_TEST_APP} ${QAT2_MobileNet_MODEL_DIR}/MobileNet_qat_perf/float ${QAT2_INT8_MobileNet_MODEL_DIR}/MobileNet_qat_perf_int8 ${IMAGENET_DATA_PATH})
@@ -371,6 +374,14 @@ if(WITH_GPU AND TENSORRT_FOUND)
     inference_analysis_test(trt_quant_int8_test SRCS trt_quant_int8_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_QUANT_RESNET_DIR})
+
+    set(TEST_TRT_DYNAMIC_MODEL "${TRT_MODEL_INSTALL_DIR}/test_trt_dy_conv")
+    if (NOT EXISTS ${TEST_TRT_DYNAMIC_MODEL})
+        inference_download_and_uncompress(${TEST_TRT_DYNAMIC_MODEL} ${INFERENCE_URL}/tensorrt_test "test_trt_dy_conv.tar.gz")
+    endif()
+    inference_analysis_test(trt_dynamic_shape_test SRCS trt_dynamic_shape_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+            ARGS --infer_model=${TEST_TRT_DYNAMIC_MODEL})
 endif()
 
 set(LITE_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/lite")
@@ -396,3 +407,7 @@ if(WITH_MKLDNN)
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
             ARGS --infer_model=${INT8_DATA_DIR}/resnet50/model)
  endif()
+
+inference_analysis_test(test_analyzer_capi_ner SRCS analyzer_capi_ner_tester.cc 
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
+        ARGS --infer_model=${CHINESE_NER_INSTALL_DIR}/model)

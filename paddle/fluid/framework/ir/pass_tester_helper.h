@@ -33,8 +33,9 @@ struct Layers {
   const ProgramDesc& main_program() { return program_; }
 
   VarDesc* data(std::string name, std::vector<int64_t> shape = {},
-                bool is_persistable = false) {
-    return lod_tensor(name, shape, is_persistable);
+                bool is_persistable = false,
+                proto::VarType::Type data_type = proto::VarType::FP32) {
+    return lod_tensor(name, shape, is_persistable, data_type);
   }
 
   VarDesc* conv2d(VarDesc* input, VarDesc* filter, VarDesc* bias,
@@ -118,6 +119,62 @@ struct Layers {
     op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                 static_cast<int>(OpRole::kForward));
     return out;
+  }
+
+  void lstm(VarDesc* input, VarDesc* w, VarDesc* bias, VarDesc* cell,
+            VarDesc* batch_gate, VarDesc* hidden, VarDesc* batch_cell_pre_act,
+            VarDesc* h0 = nullptr, VarDesc* c0 = nullptr,
+            bool use_peepholes = true, bool is_reverse = false,
+            std::string gate_activation = "sigmoid",
+            std::string cell_activation = "tanh",
+            std::string candidate_activation = "tanh") {
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("lstm");
+    op->SetInput("Input", {input->Name()});
+    op->SetInput("Weight", {w->Name()});
+    op->SetInput("Bias", {bias->Name()});
+    if (h0) {
+      op->SetInput("H0", {h0->Name()});
+    }
+    if (c0) {
+      op->SetInput("C0", {c0->Name()});
+    }
+    op->SetOutput("Hidden", {hidden->Name()});
+    op->SetOutput("Cell", {cell->Name()});
+    op->SetOutput("BatchGate", {batch_gate->Name()});
+    op->SetOutput("BatchCellPreAct", {batch_cell_pre_act->Name()});
+    op->SetAttr("use_peepholes", use_peepholes);
+    op->SetAttr("is_reverse", is_reverse);
+    op->SetAttr("gate_activation", gate_activation);
+    op->SetAttr("cell_activation", cell_activation);
+    op->SetAttr("candidate_activation", candidate_activation);
+    op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(OpRole::kForward));
+  }
+
+  void gru(VarDesc* input, VarDesc* w, VarDesc* bias, VarDesc* batch_gate,
+           VarDesc* batch_reset_hidden_prev, VarDesc* batch_hidden,
+           VarDesc* hidden, VarDesc* h0 = nullptr, bool origin_mode = false,
+           bool is_reverse = false, std::string activation = "tanh",
+           std::string gate_activation = "sigmoid") {
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("gru");
+    op->SetInput("Input", {input->Name()});
+    op->SetInput("Weight", {w->Name()});
+    op->SetInput("Bias", {bias->Name()});
+    if (h0) {
+      op->SetInput("H0", {h0->Name()});
+    }
+    op->SetOutput("BatchGate", {batch_gate->Name()});
+    op->SetOutput("BatchResetHiddenPrev", {batch_reset_hidden_prev->Name()});
+    op->SetOutput("BatchHidden", {batch_hidden->Name()});
+    op->SetOutput("Hidden", {hidden->Name()});
+    op->SetAttr("origin_mode", origin_mode);
+    op->SetAttr("is_reverse", is_reverse);
+    op->SetAttr("activation", activation);
+    op->SetAttr("gate_activation", gate_activation);
+    op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(OpRole::kForward));
   }
 
   VarDesc* mul(VarDesc* x, VarDesc* y, VarDesc* out = nullptr,
@@ -270,6 +327,16 @@ struct Layers {
     return outs;
   }
 
+  VarDesc* embedding(VarDesc* x, VarDesc* weights) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("lookup_table");
+    op->SetInput("Ids", {x->Name()});
+    op->SetInput("W", {weights->Name()});
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
   void backward(std::vector<VarDesc*> targets) {
     // This function is designed to simulate the structure of training program,
     //  but is constructed differently as the actual program.
@@ -323,9 +390,11 @@ struct Layers {
 
  private:
   VarDesc* lod_tensor(std::string name, std::vector<int64_t> shape = {},
-                      bool is_persistable = false) {
+                      bool is_persistable = false,
+                      proto::VarType::Type data_type = proto::VarType::FP32) {
     auto* var = program_.MutableBlock(0)->Var(name);
     var->SetType(proto::VarType::LOD_TENSOR);
+    var->SetDataType(data_type);
     var->SetShape(shape);
     var->SetPersistable(is_persistable);
     return var;

@@ -22,8 +22,7 @@ class SyncBatchNormGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
@@ -44,8 +43,6 @@ class SyncBatchNormGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetOutput(framework::GradVarName("Scale"), this->InputGrad("Scale"));
     op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
-
-    return std::unique_ptr<T>(op);
   }
 };
 

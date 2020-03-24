@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,11 @@ import subprocess
 import multiprocessing
 import math
 import platform
+import inspect
+import paddle
+import paddle.fluid
+import json
+import re
 """
 please make sure to run in the tools path
 usage: python sample_test.py {arg1} 
@@ -79,6 +84,32 @@ def check_indent(cdline):
     return indent
 
 
+def return_sample(htype, srccom, mode):
+    """
+    this function will return sample code or sample result.
+
+    Args:
+        htype(str): the type of hint banners, def/class/method.
+        srccom(str): the source comment of some API whose
+                     example codes will be extracted and run.
+        mode(str): return mode. python/text.
+
+    Returns:
+        r: sample code or sample result. 
+    """
+    if htype == 'method':
+        strings = '^ code-block:: %s\n(.*?)\n        [^ ]' % mode
+        pattern = re.compile(strings, re.MULTILINE | re.DOTALL)
+    else:
+        strings = '^ code-block:: %s\n(.*?)\n    [^ ]' % mode
+        pattern = re.compile(strings, re.MULTILINE | re.DOTALL)
+    if pattern.search(srccom) == None:
+        r = None
+    else:
+        r = pattern.search(srccom).group(1)
+    return r
+
+
 # srccom: raw comments in the source,including ''' and original indent
 def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
     """
@@ -117,12 +148,14 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
         print("execution result:")
 
     sampcd_begins = find_all(srccom, " code-block:: python")
+    sampre_begins = find_all(srccom, " code-block:: text")
+
     if len(sampcd_begins) == 0:
-        print_header(htype, hname)
         '''
         detect sample codes using >>> to format
         and consider this situation as wrong
         '''
+        print_header(htype, hname)
         if srccom.find("Examples:") != -1:
             print("----example code check----\n")
             if srccom.find(">>>") != -1:
@@ -134,70 +167,115 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
         else:
             print("Error: No sample code!\n")
             result = False
+    if len(sampcd_begins) != len(sampre_begins) and hname not in wlist_return:
+        print_header(htype, hname)
+        if len(sampre_begins) == 0:
+            print("Error: Cannot find the return result of the sample code.")
+        else:
+            print("Error: Found %s result but %s python file." %
+                  (len(sampre_begins), len(sampcd_begins)))
+            print(
+                "If you think the sample code of this api is not suitable for the return result, please add the white list in FIle: tools/wlist_return.json first. And you must have one TPM(saxon-zh or swtkiwi or Boyan-Liu) approve for the white list."
+            )
+        result = False
+    else:
+        for y in range(1, len(sampcd_begins) + 1):
+            sampcd_begin = sampcd_begins[y - 1]
+            sampcd = srccom[sampcd_begin:]
+            sampcd = return_sample(htype, sampcd, 'python')
+            if sampcd == None:
+                sampcd = srccom[sampcd_begin + len(" code-block:: python") + 1:]
+            sampcd = sampcd.split("\n")
+            # remove starting empty lines
+            while sampcd[0].replace(' ', '').replace('\t', '') == '':
+                sampcd.pop(0)
 
-    for y in range(1, len(sampcd_begins) + 1):
-        sampcd_begin = sampcd_begins[y - 1]
-        sampcd = srccom[sampcd_begin + len(" code-block:: python") + 1:]
-        sampcd = sampcd.split("\n")
-        # remove starting empty lines
-        while sampcd[0].replace(' ', '').replace('\t', '') == '':
-            sampcd.pop(0)
+            # the minimum indent, which is the indent of the first
+            # non-empty line
+            min_indent = check_indent(sampcd[0])
+            sampcd_to_write = []
+            for i in range(0, len(sampcd)):
+                cdline = sampcd[i]
+                # handle empty lines or those only with spaces/tabs
+                if cdline.strip() == '':
+                    continue
+                this_indent = check_indent(cdline)
+                if this_indent < min_indent:
+                    break
+                else:
+                    cdline = cdline.replace('\t', '    ')
+                    sampcd_to_write.append(cdline[min_indent:])
 
-        # the minimum indent, which is the indent of the first
-        # non-empty line
-        min_indent = check_indent(sampcd[0])
-        sampcd_to_write = []
-        for i in range(0, len(sampcd)):
-            cdline = sampcd[i]
-            # handle empty lines or those only with spaces/tabs
-            if cdline.strip() == '':
-                continue
-            this_indent = check_indent(cdline)
-            if this_indent < min_indent:
-                break
+            sampcd = '\n'.join(sampcd_to_write)
+            if sys.argv[1] == "cpu":
+                sampcd = '\nimport os\n' + 'os.environ["CUDA_VISIBLE_DEVICES"] = ""\n' + sampcd
+            if sys.argv[1] == "gpu":
+                sampcd = '\nimport os\n' + 'os.environ["CUDA_VISIBLE_DEVICES"] = "0"\n' + sampcd
+
+            if len(sampcd_begins) > 1:
+                tfname = name + "_example_" + str(y) + ".py"
             else:
-                cdline = cdline.replace('\t', '    ')
-                sampcd_to_write.append(cdline[min_indent:])
+                tfname = name + "_example" + ".py"
+            tempf = open("samplecode_temp/" + tfname, 'w')
+            tempf.write(sampcd)
+            tempf.close()
+            if platform.python_version()[0] == "2":
+                cmd = ["python", "samplecode_temp/" + tfname]
+            elif platform.python_version()[0] == "3":
+                cmd = ["python3", "samplecode_temp/" + tfname]
+            else:
+                print("Error: fail to parse python version!")
+                result = False
+                exit(1)
+            subprc = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            output, error = subprc.communicate()
+            if output == "" and len(sampre_begins) != 0:
+                print_header(htype, hname)
+                print(
+                    "Error: Your sample code have returned a result, but execute sample code don't get result!"
+                )
+                print(
+                    "If you think the sample code of this api is not suitable for the return result, please add the white list in FIle: tools/wlist_return.json first. And you must have one TPM(saxon-zh or swtkiwi or Boyan-Liu) approve for the white list."
+                )
+                result = False
+            elif len(sampcd_begins) == len(sampre_begins):
+                sampre_begin = sampre_begins[y - 1]
+                sampre = return_sample(htype, srccom[sampre_begin:], 'text')
+                if output != sampre:
+                    print_header(htype, hname)
+                    print(
+                        "Error: Mistake found in the return result of sample code."
+                    )
+                    print("There maybe three reasons for this error:")
+                    print(
+                        "1. The input of the sample code is a random number.Please add the white list in FIle: tools/return_white_list.txt first .And you must have one TPM(saxon-zh or swtkiwi or Boyan-Liu) approve for the white list."
+                    )
+                    print(
+                        "2. The return value of the sample code is incorrect. Please check the code and reset the return value."
+                    )
+                    print(
+                        "3. If you think the sample code of this api is not suitable for the return result, please add the white list in FIle: tools/wlist_return.json first. And you must have one TPM(saxon-zh or swtkiwi or Boyan-Liu) approve for the white list."
+                    )
+                    result = False
+            else:
+                if name not in wlist_return:
+                    print_header(htype, hname)
+                    print(
+                        "Error: If you think the sample code of this api is not suitable for the return result, please add the white list in FIle: tools/wlist_return.json first. And you must have one TPM(saxon-zh or swtkiwi or Boyan-Liu) approve for the white list."
+                    )
+                    result = False
+            msg = "".join(output.decode(encoding='utf-8'))
+            err = "".join(error.decode(encoding='utf-8'))
+            if subprc.returncode != 0:
+                print("\nSample code error found in ", name, ":\n")
+                sampcd_header_print(name, sampcd, htype, hname)
+                print("subprocess return code: ", str(subprc.returncode))
+                print("Error Raised from Sample Code ", name, " :\n")
+                print(err)
+                print(msg)
+                result = False
 
-        sampcd = '\n'.join(sampcd_to_write)
-        if sys.argv[1] == "cpu":
-            sampcd = '\nimport os\n' + 'os.environ["CUDA_VISIBLE_DEVICES"] = ""\n' + sampcd
-        if sys.argv[1] == "gpu":
-            sampcd = '\nimport os\n' + 'os.environ["CUDA_VISIBLE_DEVICES"] = "0"\n' + sampcd
-        sampcd += '\nprint(' + '\"' + name + ' sample code is executed successfully!\")'
-
-        if len(sampcd_begins) > 1:
-            tfname = name + "_example_" + str(y) + ".py"
-        else:
-            tfname = name + "_example" + ".py"
-        tempf = open("samplecode_temp/" + tfname, 'w')
-        tempf.write(sampcd)
-        tempf.close()
-        if platform.python_version()[0] == "2":
-            cmd = ["python", "samplecode_temp/" + tfname]
-        elif platform.python_version()[0] == "3":
-            cmd = ["python3", "samplecode_temp/" + tfname]
-        else:
-            print("Error: fail to parse python version!")
-            result = False
-            exit(1)
-
-        subprc = subprocess.Popen(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, error = subprc.communicate()
-        msg = "".join(output.decode(encoding='utf-8'))
-        err = "".join(error.decode(encoding='utf-8'))
-
-        if subprc.returncode != 0:
-            print("\nSample code error found in ", name, ":\n")
-            sampcd_header_print(name, sampcd, htype, hname)
-            print("subprocess return code: ", str(subprc.returncode))
-            print("Error Raised from Sample Code ", name, " :\n")
-            print(err)
-            print(msg)
-            result = False
-        # msg is the returned code execution report
-        os.remove("samplecode_temp/" + tfname)
     return result
 
 
@@ -271,12 +349,10 @@ def srccoms_extract(srcfile, wlist):
         wlist(list): white list
 
     Returns:
-    result: True or False
+        result: True or False
     """
-
     process_result = True
     srcc = srcfile.read()
-
     # 2. get defs and classes header line number
     # set file pointer to its beginning
     srcfile.seek(0, 0)
@@ -284,7 +360,12 @@ def srccoms_extract(srcfile, wlist):
 
     # 1. fetch__all__ list
     allidx = srcc.find("__all__")
-
+    srcfile_new = srcfile.name
+    srcfile_new = srcfile_new.replace('.py', '')
+    srcfile_list = srcfile_new.split('/')
+    srcfile_str = ''
+    for i in range(4, len(srcfile_list)):
+        srcfile_str = srcfile_str + srcfile_list[i] + '.'
     if allidx != -1:
         alllist = []
         # get all list for layers/ops.py
@@ -312,7 +393,6 @@ def srccoms_extract(srcfile, wlist):
         api_alllist_count = len(alllist)
         api_count = 0
         handled = []
-
         # get src contents in layers/ops.py
         if srcfile.name.find("ops.py") != -1:
             for i in range(0, len(srcls)):
@@ -329,8 +409,6 @@ def srccoms_extract(srcfile, wlist):
                         opcom += srcls[j]
                         if srcls[j].find("\"\"\"") != -1:
                             break
-                    process_result = sampcd_extract_and_run(opcom, opname,
-                                                            "def", opname)
                     api_count += 1
                     handled.append(
                         opname)  # ops.py also has normal formatted functions
@@ -342,6 +420,8 @@ def srccoms_extract(srcfile, wlist):
                     'def '):  # a function header is detected in line i
                 f_header = srcls[i].replace(" ", '')
                 fn = f_header[len('def'):f_header.find('(')]  # function name
+                if "%s%s" % (srcfile_str, fn) not in methods:
+                    continue
                 if fn in handled:
                     continue
                 if fn in alllist:
@@ -350,7 +430,6 @@ def srccoms_extract(srcfile, wlist):
                         continue
                     fcombody = single_defcom_extract(i, srcls)
                     if fcombody == "":  # if no comment
-                        print_header("def", fn)
                         print("WARNING: no comments in function ", fn,
                               ", but it deserves.")
                         continue
@@ -360,6 +439,8 @@ def srccoms_extract(srcfile, wlist):
             if srcls[i].startswith('class '):
                 c_header = srcls[i].replace(" ", '')
                 cn = c_header[len('class'):c_header.find('(')]  # class name
+                if '%s%s' % (srcfile_str, cn) not in methods:
+                    continue
                 if cn in handled:
                     continue
                 if cn in alllist:
@@ -371,6 +452,7 @@ def srccoms_extract(srcfile, wlist):
                     if classcom != "":
                         if not sampcd_extract_and_run(classcom, cn, "class",
                                                       cn):
+
                             process_result = False
                     else:
                         print("WARNING: no comments in class itself ", cn,
@@ -392,6 +474,10 @@ def srccoms_extract(srcfile, wlist):
                                 mn = thisl[indent + len('def '):thisl.find(
                                     '(')]  # method name
                                 name = cn + "." + mn  # full name
+                                if '%s%s' % (
+                                        srcfile_str, name
+                                ) not in methods:  # class method not in api.spec 
+                                    continue
                                 if mn.startswith('_'):
                                     continue
                                 if name in wlist or name + "@" + srcfile.name in wlist:
@@ -430,185 +516,121 @@ def test(file_list):
     return process_result
 
 
-'''
-Important constant lists:
+def get_filenames():
+    '''
+    this function will get the modules that pending for check.
 
-    filenames : the modules pending for check .
-    wlist : a list of API that should not trigger the example check .
-            It is composed of wlist_temp + wlist_inneed + wlist_ignore.
-    srcfile: the source .py code file
-'''
+    Returns:
 
-filenames = [
-    "../python/paddle/fluid/layers/control_flow.py",
-    "../python/paddle/fluid/layers/io.py",
-    "../python/paddle/fluid/layers/nn.py",
-    "../python/paddle/fluid/layers/ops.py",
-    "../python/paddle/fluid/layers/tensor.py",
-    "../python/paddle/fluid/layers/learning_rate_scheduler.py",
-    "../python/paddle/fluid/layers/detection.py",
-    "../python/paddle/fluid/layers/metric_op.py"
-]
-filenames += [
-    "../python/paddle/fluid/dygraph/layers.py",
-    "../python/paddle/fluid/dygraph/base.py",
-    "../python/paddle/fluid/dygraph/nn.py",
-    "../python/paddle/fluid/dygraph/tracer.py",
-    "../python/paddle/fluid/dygraph/profiler.py",
-    "../python/paddle/fluid/dygraph/parallel.py",
-    "../python/paddle/fluid/dygraph/checkpoint.py",
-    "../python/paddle/fluid/dygraph/learning_rate_scheduler.py",
-    "../python/paddle/fluid/dygraph/backward_strategy.py"
-]
-filenames += [
-    "../python/paddle/fluid/data_feeder.py",
-    "../python/paddle/fluid/dataset.py", "../python/paddle/fluid/clip.py",
-    "../python/paddle/fluid/metrics.py", "../python/paddle/fluid/executor.py",
-    "../python/paddle/fluid/initializer.py", "../python/paddle/fluid/io.py",
-    "../python/paddle/fluid/nets.py", "../python/paddle/fluid/optimizer.py",
-    "../python/paddle/fluid/profiler.py",
-    "../python/paddle/fluid/regularizer.py",
-    "../python/paddle/fluid/backward.py", "../python/paddle/fluid/average.py",
-    "../python/paddle/fluid/unique_name.py",
-    "../python/paddle/fluid/framework.py",
-    "../python/paddle/fluid/evaluator.py",
-    "../python/paddle/fluid/param_attr.py"
-]
-wlist_inneed = [
-    "append_LARS", "BuildStrategy.debug_graphviz_path",
-    "BuildStrategy.enable_sequential_execution",
-    "BuildStrategy.fuse_elewise_add_act_ops",
-    "BuildStrategy.fuse_relu_depthwise_conv",
-    "BuildStrategy.gradient_scale_strategy", "BuildStrategy.reduce_strategy",
-    "BuildStrategy.remove_unnecessary_lock", "BuildStrategy.sync_batch_norm",
-    "DynamicRNN.step_input", "DynamicRNN.static_input", "DynamicRNN.block",
-    "DynamicRNN.update_memory", "DynamicRNN.output",
-    "transpiler.DistributeTranspilerConfig",
-    "transpiler.DistributeTranspilerConfig.slice_var_up",
-    "transpiler.DistributeTranspilerConfig.split_method",
-    "transpiler.DistributeTranspilerConfig.min_block_size",
-    "DistributeTranspilerConfig.slice_var_up",
-    "DistributeTranspilerConfig.split_method", "ModelAverage.apply",
-    "ModelAverage.restore", "DistributeTranspilerConfig",
-    "DistributeTranspilerConfig.min_block_size",
-    "ExecutionStrategy.allow_op_delay", "load", "Accuracy.update",
-    "ChunkEvaluator.update", "ExecutionStrategy.num_iteration_per_drop_scope",
-    "ExecutionStrategy.num_threads", "CompiledProgram._with_inference_optimize",
-    "CompositeMetric.add_metric", "CompositeMetric.update",
-    "CompositeMetric.eval", "DetectionMAP.get_map_var", "MetricBase",
-    "MetricBase.reset", "MetricBase.get_config", "MetricBase.update",
-    "MetricBase.eval", "Accuracy.eval", "Auc.update", "Auc.eval",
-    "EditDistance.update", "EditDistance.eval",
-    "ExponentialMovingAverage.apply", "ExponentialMovingAverage.restore",
-    "ExponentialMovingAverage.update", "StaticRNN.step", "StaticRNN.step_input",
-    "StaticRNN.step_output", "StaticRNN.update_memory", "DetectionMAP.reset",
-    'StaticRNN.output', "cuda_places", "CUDAPinnedPlace", "CUDAPlace",
-    "Program.parse_from_string"
-]
-wlist_temp = [
-    'ChunkEvaluator',
-    'EditDistance',
-    'ErrorClipByValue',
-    'Program.clone',
-    'cuda_pinned_places',
-    'DataFeeder',
-    'elementwise_floordiv',
-    'Layer',
-    'Layer.create_parameter',
-    'Layer.create_variable',
-    'Layer.sublayers',
-    'Layer.add_parameter',
-    'Layer.add_sublayer',
-    'Layer.parameters',
-    'Tracer',
-    'Layer.full_name',
-    'InMemoryDataset',
-    'layer_norm',
-    'bipartite_match',
-    'double_buffer',
-    'cumsum',
-    'thresholded_relu',
-    'group_norm',
-    'random_crop',
-    'py_func',
-    'row_conv',
-    'hard_shrink',
-    'ssd_loss',
-    'retinanet_target_assign',
-    'InMemoryDataset.global_shuffle',
-    'InMemoryDataset.get_memory_data_size',
-    'DetectionMAP',
-    'hash',
-    'InMemoryDataset.set_queue_num',
-    'LayerNorm',
-    'Preprocessor',
-    'chunk_eval',
-    'GRUUnit',
-    'ExponentialMovingAverage',
-    'QueueDataset.global_shuffle',
-    'NumpyArrayInitializer',
-    'create_py_reader_by_data',
-    'InMemoryDataset.local_shuffle',
-    'InMemoryDataset.get_shuffle_data_size',
-    'size',
-    'edit_distance',
-    'nce',
-    'BilinearInitializer',
-    'NaturalExpDecay',
-    'noam_decay',
-    'retinanet_detection_output',
-    'Pool2D',
-    'PipelineOptimizer',
-    'generate_mask_labels',
-    'isfinite',
-    'InMemoryDataset.set_fleet_send_batch_size',
-    'cuda_profiler',
-    'unfold',
-    'Executor',
-    'InMemoryDataset.load_into_memory',
-    'ExponentialDecay',
-    'BatchNorm',
-    'deformable_conv',
-    'InMemoryDataset.preload_into_memory',
-    'py_reader',
-    'linear_lr_warmup',
-    'InMemoryDataset.wait_preload_done',
-    'CosineDecay',
-    'roi_perspective_transform',
-    'unique',
-    'ones_like',
-    'LambOptimizer',
-    'InMemoryDataset.release_memory',
-    'Conv2DTranspose',
-    'QueueDataset.local_shuffle',
-    # wrong in dygraph/checkpoint.py  ok in io.py [duplicated name]
-    'save_persistables@dygraph/checkpoint.py',
-    'load_persistables@dygraph/checkpoint.py'
-]
-'''
-white list of private API/ redundant API
-'''
-wlist_ignore = [
-    'elementwise_pow', 'WeightedAverage.reset', 'ChunkEvaluator.eval',
-    'NCE.forward', 'elementwise_div', 'BilinearTensorProduct.forward',
-    'NoamDecay.step', 'elementwise_min', 'PiecewiseDecay.step',
-    'Conv3DTranspose.forward', 'elementwise_add', 'IfElse.output',
-    'IfElse.true_block', 'InverseTimeDecay.step', 'PolynomialDecay.step',
-    'Precision.eval', 'enabled', 'elementwise_max', 'stop_gperf_profiler',
-    'IfElse.false_block', 'WeightedAverage.add', 'Auc.trapezoid_area',
-    'elementwise_mul', 'GroupNorm.forward', 'SpectralNorm.forward',
-    'elementwise_sub', 'Switch.case', 'IfElse.input', 'prepare_context',
-    'PRelu.forward', 'Recall.update', 'start_gperf_profiler',
-    'TreeConv.forward', 'Conv2D.forward', 'Switch.default', 'elementwise_mod',
-    'Precision.update', 'WeightedAverage.eval', 'Conv3D.forward',
-    'Embedding.forward', 'Recall.eval', 'FC.forward', 'While.block'
-]
+        list: the modules pending for check .
+
+    '''
+    filenames = []
+    global methods
+    methods = []
+    get_incrementapi()
+    API_spec = 'dev_pr_diff_api.spec'
+    with open(API_spec) as f:
+        for line in f.readlines():
+            api = line.replace('\n', '')
+            try:
+                module = eval(api).__module__
+            except AttributeError:
+                continue
+            if len(module.split('.')) > 2:
+                filename = '../python/'
+                module_py = '%s.py' % module.split('.')[-1]
+                for i in range(0, len(module.split('.')) - 1):
+                    filename = filename + '%s/' % module.split('.')[i]
+                filename = filename + module_py
+            else:
+                print("\n----Exception in get api filename----\n")
+                print("\n" + api + 'module is ' + module + "\n")
+            if filename not in filenames:
+                filenames.append(filename)
+            # get all methods
+            method = ''
+            if inspect.isclass(eval(api)):
+                name = api.split('.')[-1]
+            elif inspect.isfunction(eval(api)):
+                name = api.split('.')[-1]
+            elif inspect.ismethod(eval(api)):
+                name = '%s.%s' % (api.split('.')[-2], api.split('.')[-1])
+            else:
+                name = ''
+                print("\n----Exception in get api methods----\n")
+                print("\n" + line + "\n")
+                print("\n" + api + ' method is None!!!' + "\n")
+            for j in range(2, len(module.split('.'))):
+                method = method + '%s.' % module.split('.')[j]
+            method = method + name
+            if method not in methods:
+                methods.append(method)
+    os.remove(API_spec)
+    return filenames
+
+
+def get_incrementapi():
+    '''
+    this function will get the apis that difference between API_DEV.spec and API_PR.spec.
+    '''
+
+    def get_api_md5(path):
+        api_md5 = {}
+        API_spec = '%s/%s' % (os.path.abspath(os.path.join(os.getcwd(), "..")),
+                              path)
+        with open(API_spec) as f:
+            for line in f.readlines():
+                api = line.split(' ', 1)[0]
+                if line.find('document') != -1:
+                    md5 = line.split("'document', ")[1].replace(
+                        ')', '').replace('\n', '')
+                    api_md5[api] = md5
+        return api_md5
+
+    dev_api = get_api_md5('paddle/fluid/API_DEV.spec')
+    pr_api = get_api_md5('paddle/fluid/API_PR.spec')
+    with open('dev_pr_diff_api.spec', 'w') as f:
+        for key in pr_api:
+            if key in dev_api:
+                if dev_api[key] != pr_api[key]:
+                    f.write(key)
+                    f.write('\n')
+            else:
+                f.write(key)
+                f.write('\n')
+
+
 # only white on CPU
 gpu_not_white = [
     "deformable_conv", "cuda_places", "CUDAPinnedPlace", "CUDAPlace",
-    "cuda_profiler"
+    "cuda_profiler", 'DGCMomentumOptimizer'
 ]
-wlist = wlist_temp + wlist_inneed + wlist_ignore
+
+
+def get_wlist(file_name):
+    '''
+    this function will get the white list of API.
+
+    Args:
+        file_name(file): white file name.
+
+    Returns:
+
+        wlist: a list of API that should not trigger the example check .
+
+    '''
+    wlist = []
+    with open(file_name, 'r') as load_f:
+        load_dict = json.load(load_f)
+        for key in load_dict:
+            wlist = wlist + load_dict[key]
+    return wlist
+
+
+wlist = get_wlist('wlist.json')
+
+wlist_return = get_wlist('wlist_return.json')
 
 if len(sys.argv) < 2:
     print("Error: inadequate number of arguments")
@@ -629,17 +651,27 @@ else:
     print("sample_test running under python", platform.python_version())
     if not os.path.isdir("./samplecode_temp"):
         os.mkdir("./samplecode_temp")
-
     cpus = multiprocessing.cpu_count()
+    filenames = get_filenames()
+    if len(filenames) == 0:
+        print("-----API_PR.spec is the same as API_DEV.spec-----")
+        exit(0)
+    elif '../python/paddle/fluid/core_avx.py' in filenames:
+        filenames.remove('../python/paddle/fluid/core_avx.py')
+    print("API_PR is diff from API_DEV: %s" % filenames)
     one_part_filenum = int(math.ceil(len(filenames) / cpus))
+    if one_part_filenum == 0:
+        one_part_filenum = 1
     divided_file_list = [
         filenames[i:i + one_part_filenum]
         for i in range(0, len(filenames), one_part_filenum)
     ]
+
     po = multiprocessing.Pool()
     results = po.map_async(test, divided_file_list)
     po.close()
     po.join()
+
     result = results.get()
 
     # delete temp files

@@ -66,13 +66,11 @@ class CReduceScatterOpGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> retv(new T());
+  void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("c_allgather");
     retv->SetInput("X", this->OutputGrad("Out"));
     retv->SetOutput("Out", this->InputGrad("X"));
     retv->SetAttrMap(this->Attrs());
-    return retv;
   }
 };
 
