@@ -31,9 +31,9 @@ struct DequantizeFunctor<platform::CPUDeviceContext, T> {
     int ind = in->numel();
     for (size_t i = 0; i < (unsigned)ind; i++) {
       if (input_data[i] < 0) {
-        output_data[i] = -pow(2, dict_data[input_data[i] + 128]);
+        output_data[i] = -pow(2.0, dict_data[input_data[i] + 128]);
       } else {
-        output_data[i] = pow(2, dict_data[input_data[i]]);
+        output_data[i] = pow(2.0, dict_data[input_data[i]]);
       }
     }
   }
