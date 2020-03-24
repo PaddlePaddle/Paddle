@@ -107,24 +107,26 @@ class MNIST(Model):
 
 def main():
     init_context('dynamic' if FLAGS.dynamic else 'static')
-    
+
     train_dataset = MnistDataset(mode='train')
     val_dataset = MnistDataset(mode='test')
-    
+
     inputs = [Input([None, 784], 'float32', name='image')]
     labels = [Input([None, 1], 'int64', name='label')]
-                                
+
     model = MNIST()
     optim = Momentum(
-        learning_rate=FLAGS.lr,
-        momentum=.9,
-        parameter_list=model.parameters())
-    
+        learning_rate=FLAGS.lr, momentum=.9, parameter_list=model.parameters())
+
     model.prepare(optim, CrossEntropy(), Accuracy(topk=(1, 2)), inputs, labels)
     if FLAGS.resume is not None:
         model.load(FLAGS.resume)
-    
-    model.fit(train_dataset, val_dataset, epochs=FLAGS.epoch, batch_size=FLAGS.batch_size)
+
+    model.fit(train_dataset,
+              val_dataset,
+              epochs=FLAGS.epoch,
+              batch_size=FLAGS.batch_size,
+              save_dir='mnist_checkpoint')
 
 
 if __name__ == '__main__':
