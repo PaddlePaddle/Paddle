@@ -41,15 +41,15 @@ class CrossOp : public framework::OperatorWithKernel {
     auto dim = ctx->Attrs().Get<int>("dim");
 
     bool dims_match = CheckDims(x_dim, y_dim);
-    PADDLE_ENFORCE_EQ(dims_match,
-                      true platform::errors::InvalidArgument(
+    PADDLE_ENFORCE_EQ(dims_match, true,
+                      platform::errors::InvalidArgument(
                           "The 'shape' of Input(X) should be equal to "
                           "the 'shape' of Input(Y). But received "
                           "Input(X).dimensions = [%s], "
                           "Input(Y).dimensions = [%s]",
                           x_dim, y_dim));
 
-    if (dim != framework::DDim::kMaxRank) {
+    if (dim != kDefaultDim) {
       PADDLE_ENFORCE_EQ(
           dim < x_dim.size() && dim >= (0 - x_dim.size()), true,
           platform::errors::OutOfRange(
@@ -57,9 +57,9 @@ class CrossOp : public framework::OperatorWithKernel {
               "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
               x_dim.size(), x_dim.size() - 1, dim));
       if (dim < 0) {
-        dim += input_x_dims.size();
+        dim += x_dim.size();
       }
-      PADDLE_ENFORCE_EQ(x_dim[dim] == 3 && y_dim[dim] == 3,
+      PADDLE_ENFORCE_EQ(x_dim[dim] == 3 && y_dim[dim] == 3, true,
                         platform::errors::InvalidArgument(
                             "Input(X/Y).dims()[dim] should be equal to 3."
                             "But received Input(X/Y).dims()[dim] = %d.",
@@ -122,7 +122,7 @@ class CrossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Y", "(Tensor) the second input tensor.");
     AddOutput("Out", "(Tensor), the output tensor.");
     AddAttr<int>("dim", "the dimension to take the cross-product in.")
-        .SetDefault(framework::DDim::kMaxRank);
+        .SetDefault(kDefaultDim);
     AddComment(R"DOC(
     Returns the cross product of vectors in dimension dim of
     input and other. Input and other must have the same size,

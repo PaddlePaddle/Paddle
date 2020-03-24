@@ -21,6 +21,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 using DDim = framework::DDim;
+const int kDefaultDim = framework::DDim::kMaxRank;
 
 inline bool CheckDims(const DDim& dims_x, const DDim& dims_y) {
   if (dims_x.size() != dims_y.size()) {
@@ -56,9 +57,9 @@ class CrossKernel : public framework::OpKernel<T> {
                           "the 'shape' of Input(Y). But received "
                           "Input(X).dimensions = [%s], "
                           "Input(Y).dimensions = [%s]",
-                          x_dim, y_dim));
+                          input_x_dims, input_x_dims));
 
-    if (dim != framework::DDim::kMaxRank) {
+    if (dim != kDefaultDim) {
       PADDLE_ENFORCE_EQ(
           dim < input_x_dims.size() && dim >= (0 - input_x_dims.size()), true,
           platform::errors::OutOfRange(
@@ -82,7 +83,7 @@ class CrossKernel : public framework::OpKernel<T> {
           break;
         }
       }
-      PADDLE_ENFORCE_EQ(dim == framework::DDim::kMaxRank, false,
+      PADDLE_ENFORCE_EQ(dim == kDefaultDim, false,
                         platform::errors::InvalidArgument(
                             "There must be at least one dimension 'd' so that "
                             "Input(X/Y).dims()[d] is equal to 3. "
