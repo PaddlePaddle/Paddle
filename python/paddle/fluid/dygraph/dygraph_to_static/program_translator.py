@@ -29,7 +29,7 @@ from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStat
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.framework import in_dygraph_mode
 
-__all__ = ['ProgramTranslator']
+__all__ = ['ProgramTranslator', 'convert_function_with_cache']
 
 
 class FunctionCache(object):
@@ -64,6 +64,19 @@ class FunctionCache(object):
     def exist(self, func):
         return self._dycode_to_static_func.get(
             self._get_dedent_code_string(func), None) is not None
+
+
+_CACHE_LOCK = threading.Lock()
+_FUNCTION_CACHE = FunctionCache()
+
+
+def convert_function_with_cache(dygraph_func):
+    """
+    Transform function of dygraph into static function using the cache mechanism.
+    """
+    with _CACHE_LOCK:
+        static_func = _FUNCTION_CACHE.get_or_cache_func(dygraph_func)
+        return static_func
 
 
 def synchronized(func):
