@@ -118,6 +118,16 @@ void OperationMap::InsertUnaryElementwiseOperations() {
   //  out = x^2
   //  dx = dout * 2.0 * x
   insert_handler("square", "${0} * ${0}", {"${2} * 2.0 * ${0}"});
+
+  // scale
+  // out = (bias_after_scale) ? scale * X +  bias : scale(X + bias)
+  // here we use '=' operator to seperate th default value
+  // TODO(wangchaochaohu): Later we need to support Tensor input for scale and
+  // bias.
+  insert_handler("scale",
+                 "${bias_after_scale=true} ? (${scale=1.0} * ${0} + "
+                 "${bias=0.0}) : (${scale=1.0} * (${0} + ${bias=0.0}))",
+                 {});
 }
 
 void OperationMap::InsertBinaryElementwiseOperations() {

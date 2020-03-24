@@ -58,20 +58,32 @@ static std::string ExpandMultivariateTemplate(const std::string& rhs,
 }
 
 static std::string RefineTemplateWithAttr(const std::string& op_type,
-                                          const std::string& attr_name,
+                                          const std::string& exp_definition,
                                           const AttributeMap& attrs) {
   std::string ret;
   // here str_cvt convert string to number in some attr
   // for example in fill_constant str_value
   std::stringstream str_cvt;
-  auto IsNumber = [attr_name]() -> bool {
-    return attr_name.find_first_not_of("0123456789") == std::string::npos;
+  auto IsNumber = [exp_definition]() -> bool {
+    return exp_definition.find_first_not_of("0123456789") == std::string::npos;
   };
 
   if (!IsNumber()) {
     // Get attr with different type, Now we only support the simple attr
     // condition
+    std::string attr_name, default_value;
+    if (exp_definition.find("=") != std::string::npos) {
+      attr_name = exp_definition.substr(0, exp_definition.find("="));
+      default_value = exp_definition.substr(exp_definition.rfind("=") + 1,
+                                            exp_definition.length() - 1);
+      ret = default_value;
+    } else {
+      attr_name = exp_definition;
+    }
     auto it = attrs.find(attr_name);
+    if (it == attrs.end()) {
+      return ret;
+    }
     Attribute attr = it->second;
     proto::AttrType attr_type =
         static_cast<proto::AttrType>(it->second.which() - 1);
@@ -82,29 +94,24 @@ static std::string RefineTemplateWithAttr(const std::string& op_type,
       } else {
         ret = "false";
       }
-    }
-    if (attr_type == proto::AttrType::INT) {
+    } else if (attr_type == proto::AttrType::INT) {
       int result = boost::get<int>(attr);
       str_cvt << result;
       ret = str_cvt.str();
-    }
-    if (attr_type == proto::AttrType::LONG) {
+    } else if (attr_type == proto::AttrType::LONG) {
       int64_t result = boost::get<int64_t>(attr);
       str_cvt << result;
       ret = str_cvt.str();
-    }
-    if (attr_type == proto::AttrType::FLOAT) {
+    } else if (attr_type == proto::AttrType::FLOAT) {
       float result = boost::get<float>(attr);
       str_cvt << result;
       ret = str_cvt.str();
-    }
-    if (attr_type == proto::AttrType::STRING) {
+    } else if (attr_type == proto::AttrType::STRING) {
       std::string result = boost::get<std::string>(attr);
       ret = result;
     }
-
   } else {
-    ret = attr_name;
+    ret = exp_definition;
   }
 
   return ret;

@@ -165,7 +165,7 @@ class FusionGroupPassSumTest(FusionGroupPassTest):
 
         self.append_gradients(tmp_3)
 
-        self.num_fused_ops = 3
+        self.num_fused_ops = 4
         self.fetch_list = [tmp_3, self.grad(tmp_0)]
 
 
@@ -197,9 +197,11 @@ class FusionGroupPassFillConstantTest(FusionGroupPassTest):
 
             tmp_0 = layers.elementwise_add(self.feed_vars[0], self.feed_vars[1])
             tmp_1 = layers.fill_constant(shape=[2, 2], dtype=dtype, value=2.0)
-            tmp_2 = layers.elementwise_mul(tmp_1, tmp_0)
+            tmp_2 = layers.scale(
+                tmp_1, scale=3.0, bias=1.0, bias_after_scale=True)
+            tmp_3 = layers.elementwise_mul(tmp_2, tmp_0)
 
-        self.append_gradients(tmp_2)
+        self.append_gradients(tmp_3)
 
         self.num_fused_ops = 1
         self.fetch_list = [tmp_2, self.grad(tmp_0)]
