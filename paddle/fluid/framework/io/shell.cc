@@ -323,9 +323,9 @@ class ElapsedTime {
 std::string shell_get_command_output(const std::string& cmd, int time_out,
                                      int sleep_inter, bool print_cmd) {
 #if defined _WIN32 || defined __APPLE__
-  PADDLE_THROW(
+  PADDLE_THROW(platform::errors::Unimplemented(
       "This function(shell_get_command_output) is not implemented under _WIN32 "
-      "or __APPLE__.");
+      "or __APPLE__."));
 #else
   int err_no = 0;
   ElapsedTime elapsed;
@@ -350,7 +350,10 @@ std::string shell_get_command_output(const std::string& cmd, int time_out,
     }
 
     if (time_out > 0 && elapsed.GetElapsedMS() >= time_out) {
-      PADDLE_THROW("shell_get_command_output execute error errno:%d", errno);
+      PADDLE_THROW(paddle::platform::errors::ExecutionTimeout(
+          "shell_get_command_output execute  error errno:%d and try until "
+          "timeout.",
+          errno));
       return "";
     }
 
