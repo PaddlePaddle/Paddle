@@ -50,8 +50,8 @@ class CrossKernel : public framework::OpKernel<T> {
     auto input_x_dims = input_x.dims();
     auto input_y_dims = input_y.dims();
     bool dims_match = CheckDims(input_x_dims, input_y_dims);
-    PADDLE_ENFORCE_EQ(dims_match,
-                      true platform::errors::InvalidArgument(
+    PADDLE_ENFORCE_EQ(dims_match, true,
+                      platform::errors::InvalidArgument(
                           "The 'shape' of Input(X) should be equal to "
                           "the 'shape' of Input(Y). But received "
                           "Input(X).dimensions = [%s], "
@@ -60,11 +60,11 @@ class CrossKernel : public framework::OpKernel<T> {
 
     if (dim != framework::DDim::kMaxRank) {
       PADDLE_ENFORCE_EQ(
-          dim < x_dim.size() && dim >= (0 - x_dim.size()), true,
+          dim < input_x_dims.size() && dim >= (0 - input_x_dims.size()), true,
           platform::errors::OutOfRange(
               "Attr(dim) is out of range, It's expected "
               "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
-              x_dim.size(), x_dim.size() - 1, dim));
+              input_x_dims.size(), input_x_dims.size() - 1, dim));
       if (dim < 0) {
         dim += input_x_dims.size();
       }
