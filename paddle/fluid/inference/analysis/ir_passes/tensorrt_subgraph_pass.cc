@@ -288,9 +288,10 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
            "version, otherwise, there might be Segfault!";
   }
 
-  // When using TRT fp16, the precison of the output might have diff with fp32
-  // output.
-  // When set close_trt_plugin_fp16 to true, the plugin
+  // Setting the close_trt_plugin_fp16 to true means that TRT plugin will not
+  // run fp16.
+  // When running fp16, the output accuracy of the model will be affected,
+  // closing the plugin fp16 may bring some improvement on accuracy.
   bool close_trt_plugin_fp16 = Get<bool>("close_trt_plugin_fp16");
   tensorrt::TensorRTEngine *trt_engine =
       inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()

@@ -130,6 +130,9 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("optim_input_shape",
                 new std::map<std::string, std::vector<int>>(
                     argument->optim_input_shape()));
+      // Setting the close_trt_plugin_fp16 to true means that TRT plugin will
+      // not
+      // run fp16.
       pass->Set("close_trt_plugin_fp16",
                 new bool(argument->close_trt_plugin_fp16()));
     }

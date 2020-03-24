@@ -174,7 +174,7 @@ struct AnalysisConfig {
    *  @param min_input_shape the min input shape of the subgraph input
    *  @param max_input_shape the max input shape of the subgraph input
    *  @param opt_input_shape the opt input shape of the subgraph input
-   *  #param close_trt_plugin_fp16, setting this variable to true
+   *  @param close_trt_plugin_fp16, setting this variable to true
    *  means that TRT plugin will not run fp16
    */
   void SetTRTDynamicShapeInfo(
