@@ -110,8 +110,24 @@ class Layer(core.Layer):
 
         hook(Layer, input, output) -> None or modified output
 
+        Parameters:
+            hook(function): a forward post-hook
+
         Returns:
-            HookEraseHelper: a HookEraseHelper object that can be used to remove the added hook by calling `hook_erase_helper.renove()` .
+            HookEraseHelper: a HookEraseHelper object that can be used to remove the added hook by calling `hook_erase_helper.remove()` .
+
+        Examples:
+            .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            def forward_post_hook(layer, input, output):
+                return output * 2
+
+            with fluid.dygraph.guard():
+                linear = fluid.Linear(13, 5, dtype="float32")
+                forward_post_hook_handle = linear.register_forward_post_hook(forward_hook)
+                forward_post_hook_handle.remove()
         """
         hook_erase_helper = HookEraseHelper(self._forward_hooks)
         self._forward_hooks[hook_erase_helper._hook_id] = hook
@@ -123,8 +139,25 @@ class Layer(core.Layer):
 
         hook(Layer, input) -> None or modified input
 
+        Parameters:
+            hook(function): a forward pre-hook
+
         Returns:
-            HookEraseHelper: a HookEraseHelper object that can be used to remove the added hook by calling `hook_erase_helper.renove()` .
+            HookEraseHelper: a HookEraseHelper object that can be used to remove the added hook by calling `hook_erase_helper.remove()` .
+
+        Examples:
+            .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            def forward_pre_hook(layer, input):
+                input_return = (input[0] * 2, input[1])
+                return input_return
+
+            with fluid.dygraph.guard():
+                linear = fluid.Linear(13, 5, dtype="float32")
+                forward_pre_hook_handle = linear.register_forward_pre_hook(forward_pre_hook)
+                forward_pre_hook_handle.remove()
         """
         hook_erase_helper = HookEraseHelper(self._forward_pre_hooks)
         self._forward_pre_hooks[hook_erase_helper._hook_id] = hook
