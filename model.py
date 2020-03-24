@@ -29,6 +29,7 @@ from paddle.fluid.framework import in_dygraph_mode, Variable
 from paddle.fluid.executor import global_scope
 from paddle.fluid.io import is_belong_to_optimizer
 from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.layers.utils import flatten
 
 from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
@@ -415,11 +416,7 @@ class StaticGraphAdapter(object):
         losses = []
         metrics = []
         with fluid.program_guard(prog, self._startup_prog):
-            if isinstance(self.model._inputs, dict):
-                ins = [self.model._inputs[n] \
-                    for n in extract_args(self.model.forward) if n != 'self']
-            else:
-                ins = self.model._inputs
+            ins = self.model._inputs
             lbls = self.model._labels if self.model._labels else []
             inputs = [k.forward() for k in to_list(ins)]
             labels = [k.forward() for k in to_list(lbls)]
@@ -554,14 +551,15 @@ class DynamicGraphAdapter(object):
         if labels is not None:
             labels = [to_variable(l) for l in to_list(labels)]
         if self._nranks > 1:
-            outputs = self.ddp_model.forward(*[to_variable(x) for x in inputs])
+            outputs = self.ddp_model.forward(
+                * [to_variable(x) for x in inputs])
             losses = self.model._loss_function(outputs, labels)
             final_loss = fluid.layers.sum(losses)
             final_loss = self.ddp_model.scale_loss(final_loss)
             final_loss.backward()
             self.ddp_model.apply_collective_grads()
         else:
-            outputs = self.model.forward(*[to_variable(x) for x in inputs])
+            outputs = self.model.forward(* [to_variable(x) for x in inputs])
             losses = self.model._loss_function(outputs, labels)
             final_loss = fluid.layers.sum(losses)
             final_loss.backward()
@@ -572,7 +570,7 @@ class DynamicGraphAdapter(object):
         for metric in self.model._metrics:
             metric_outs = metric.add_metric_op(
                 to_list(outputs), to_list(labels))
-            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         return ([to_numpy(l) for l in losses], metrics) \
@@ -584,7 +582,7 @@ class DynamicGraphAdapter(object):
         inputs = to_list(inputs)
         if labels is not None:
             labels = [to_variable(l) for l in to_list(labels)]
-        outputs = self.model.forward(*[to_variable(x) for x in inputs])
+        outputs = self.model.forward(* [to_variable(x) for x in inputs])
         if self.model._loss_function:
             losses = self.model._loss_function(outputs, labels)
         else:
@@ -616,7 +614,7 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_batch'] = samples
 
             metric_outs = metric.add_metric_op(to_list(outputs), labels)
-            m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
+            m = metric.update(* [to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
         # To be consistent with static graph
@@ -874,8 +872,10 @@ class Model(fluid.dygraph.Layer):
                 "{} is not sub class of Metric".format(metric.__class__.__name__)
         self._metrics = to_list(metrics)
 
-        self._inputs = inputs
-        self._labels = labels
+        self._inputs = to_list(inputs) if not isinstance(inputs, dict) else [
+            inputs[n] for n in extract_args(self.forward) if n != 'self'
+        ]
+        self._labels = to_list(labels)
         self._device = device
 
         if device is None:
@@ -982,17 +982,30 @@ class Model(fluid.dygraph.Layer):
                 'metrics_name': metrics_name,
             }
             for step, data in enumerate(data_loader):
-                if not fluid.in_dygraph_mode():
-                    data = data[0]
-                    batch_size = data[0].shape()[0]
-                else:
-                    batch_size = data[0].shape[0]
+                # data might come from different types of data_loader and have
+                # different format, as following:
+                # 1. DataLoader in static graph:
+                #    [[input1, input2, ..., label1, lable2, ...]]
+                # 2. DataLoader in dygraph
+                #    [input1, input2, ..., label1, lable2, ...]
+                # 3. custumed iterator yield concated inputs and labels:
+                #   [input1, input2, ..., label1, lable2, ...]
+                # 4. custumed iterator yield seperated inputs and labels:
+                #   ([input1, input2, ...], [label1, lable2, ...])
+                # To handle all of these, flatten (nested) list to list.
+                data = flatten(data)
+                # LoDTensor.shape is callable, where LoDTensor comes from
+                # DataLoader in static graph
+                batch_size = data[0].shape()[0] if callable(data[
+                    0].shape) else data[0].shape[0]
 
                 cbks.on_batch_begin(mode, step, logs)
                 if mode == 'train':
-                    outs = self.train(*data)
+                    outs = self.train(data[:len(self._inputs)],
+                                      data[len(self._inputs):])
                 else:
-                    outs = self.eval(*data)
+                    outs = self.eval(data[:len(self._inputs)],
+                                     data[len(self._inputs):])
 
                 # losses
                 loss = outs[0] if self._metrics else outs
