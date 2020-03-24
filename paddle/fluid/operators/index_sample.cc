@@ -21,7 +21,7 @@ namespace paddle {
 namespace operators {
 class IndexSampleOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "Input(Tensor), dtype support int32/int64/float/double");
     AddInput("Index", "Index(Tensor), dtype support int32/int64");
     AddOutput("Out", "Return the element of input at index");
@@ -76,7 +76,7 @@ class IndexSampleOp : public framework::OperatorWithKernel {
   }
 };
 
-class IndexSampleGradOP : public framework::OperatorWithKernel {
+class IndexSampleGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -96,15 +96,30 @@ class IndexSampleGradOP : public framework::OperatorWithKernel {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Out");
     return framework::OpKernelType(data_type, ctx.device_context());
   }
-}
+};
+
+template <typename T>
+class IndexSampleGradMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("index_sample_grad");
+
+    op->SetInput("Index", this->Input("Index"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(
-    index_sample, ops::IndexSampleOp, ops::IndexSampleOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(index_sample, ops::IndexSampleOp, ops::IndexSampleOpMaker,
+                  ops::IndexSampleGradMaker<paddle::framework::OpDesc>,
+                  ops::IndexSampleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(index_sample_grad, ops::IndexSampleGradOp);
 REGISTER_OP_CPU_KERNEL(
     index_sample, ops::IndexSampleKernel<paddle::platform::CPUPlace, float>,
