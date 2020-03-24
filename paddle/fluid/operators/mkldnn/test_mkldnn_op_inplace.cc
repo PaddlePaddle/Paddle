@@ -54,12 +54,11 @@ bool TestMain(const platform::Place &place, const framework::DDim &dims) {
     y_ptr[i] = static_cast<T>(0);
   }
 
-  auto& pool = platform::DeviceContextPool::Instance();
+  auto &pool = platform::DeviceContextPool::Instance();
 
   // Out of place (reference) computation
-  auto op_ref = framework::OpRegistry::CreateOp("softmax",
-                                            {{"X", {"x"}}},
-                                            {{"Out", {"y"}}}, {{"use_mkldnn", {true}}});
+  auto op_ref = framework::OpRegistry::CreateOp(
+      "softmax", {{"X", {"x"}}}, {{"Out", {"y"}}}, {{"use_mkldnn", {true}}});
   op_ref->Run(scope, place);
   pool.Get(place)->Wait();
 
@@ -67,9 +66,8 @@ bool TestMain(const platform::Place &place, const framework::DDim &dims) {
   auto &ref_tensor = scope.FindVar("y")->Get<framework::LoDTensor>();
 
   // In-place (to be tested) computation
-  auto op = framework::OpRegistry::CreateOp("softmax",
-                                            {{"X", {"x"}}},
-                                            {{"Out", {"x"}}}, {{"use_mkldnn", {true}}});
+  auto op = framework::OpRegistry::CreateOp(
+      "softmax", {{"X", {"x"}}}, {{"Out", {"x"}}}, {{"use_mkldnn", {true}}});
   op->Run(scope, place);
   platform::DeviceContextPool::Instance().Get(place)->Wait();
 
