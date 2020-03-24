@@ -20,27 +20,26 @@ import pickle
 import numpy as np
 import six
 import warnings
-from collections import Iterable
-from collections import OrderedDict
 
-from collections import OrderedDict
+from collections import Iterable, OrderedDict
 from paddle import fluid
 from paddle.fluid.framework import in_dygraph_mode, Variable
 from paddle.fluid.executor import global_scope
 from paddle.fluid.io import is_belong_to_optimizer
 from paddle.fluid.dygraph.base import to_variable
-
+from paddle.fluid.dygraph.parallel import Env
 from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-import distributed
-from distributed import DistributedBatchSampler
+from paddle.fluid.incubate.fleet.base import role_maker
 from paddle.fluid.io import DataLoader
+
+from distributed import DistributedBatchSampler, _all_gather
 from metrics import Metric
 from callbacks import config_callbacks
 
 
 __all__ = ['Model', 'Loss', 'CrossEntropy', 'Input']
 
+_parallel_context_inited = False
 
 def to_list(value):
     if value is None:
@@ -83,18 +82,6 @@ def extract_args(func):
         return inspect.getfullargspec(func)[0]
     else:
         return inspect.getargspec(func)[0]
-
-
-def init_context(backend):
-    assert isinstance(backend, str) and backend.lower() in ['dynamic', 'static'], \
-        "Expected backend in ['dynamic', 'static'], but got {}".format(backend)  
-
-    place = fluid.CUDAPlace(distributed.Env().dev_id) if \
-                distributed.Env().nranks > 1 else fluid.CUDAPlace(0)
-    distributed.prepare_distributed_context(place)
-    backend = backend.lower()
-    if backend == 'dynamic':
-        fluid.enable_dygraph(place)
 
 
 class Input(fluid.dygraph.Layer):
@@ -158,8 +145,8 @@ class StaticGraphAdapter(object):
         self._merge_count = {'eval_total': 0, 'test_total': 0,
                              'eval_batch': 0, 'test_batch': 0}
         
-        self._nranks = distributed.Env().nranks
-        self._local_rank = distributed.Env().local_rank
+        self._nranks = Env().nranks
+        self._local_rank = Env().local_rank
 
     @property
     def mode(self):
@@ -424,9 +411,9 @@ class StaticGraphAdapter(object):
                     losses = self.model._loss_function(outputs, labels)
             
             if self._nranks > 1 and mode != 'train':
-                outputs = [distributed._all_gather(o, self._nranks) for o in outputs]
+                outputs = [_all_gather(o, self._nranks) for o in outputs]
                 if mode != 'test':
-                    labels = [distributed._all_gather(l, self._nranks) for l in labels]
+                    labels = [_all_gather(l, self._nranks) for l in labels]
             
             if mode != 'test':
                 for metric in self.model._metrics:
@@ -476,7 +463,7 @@ class StaticGraphAdapter(object):
         # therefore startup program only needs to run once
         if self._executor is None:
             if self._nranks > 1 and device.lower() == 'gpu':
-                gpu_id = int(distributed.Env().dev_id)
+                gpu_id = int(Env().dev_id)
                 place = fluid.CUDAPlace(gpu_id) if device.lower() == 'gpu' else fluid.CPUPlace()
             else:
                 place = places[0]
@@ -512,13 +499,18 @@ class DynamicGraphAdapter(object):
     def __init__(self, model):
         super(DynamicGraphAdapter, self).__init__()
         self.model = model
-        self._nranks = distributed.Env().nranks
-        self._local_rank = distributed.Env().local_rank
+        self._nranks = Env().nranks
+        self._local_rank = Env().local_rank
         self._merge_count = {'eval_total': 0, 'test_total': 0,
                              'eval_batch': 0, 'test_batch': 0}
 
         if self._nranks > 1:
-            self.ddp_model = distributed.DistributedDataParallel(self.model)
+            stradegy = fluid.dygraph.parallel.ParallelStrategy()
+            stradegy.nranks = Env().nranks
+            stradegy.local_rank = Env().local_rank
+            stradegy.trainer_endpoints = Env().trainer_endpoints
+            stradegy.current_endpoint = Env().current_endpoint
+            self.ddp_model = fluid.dygraph.parallel.DataParallel(self.model, stradegy)
 
     @property
     def mode(self):
@@ -573,8 +565,8 @@ class DynamicGraphAdapter(object):
         else:
             losses = []
         if self._nranks > 1:
-            outputs = [distributed._all_gather(o, self._nranks) for o in to_list(outputs)]
-            labels = [distributed._all_gather(l, self._nranks) for l in labels]
+            outputs = [_all_gather(o, self._nranks) for o in to_list(outputs)]
+            labels = [_all_gather(l, self._nranks) for l in labels]
         metrics = []
         for metric in self.model._metrics:
             # cut off padding value.
@@ -608,7 +600,7 @@ class DynamicGraphAdapter(object):
         inputs = [to_variable(x) for x in to_list(inputs)]
         outputs = self.model.forward(*inputs)
         if self._nranks > 2:
-            outputs = [distributed._all_gather(o, self._nranks) for o in to_list(outputs)]
+            outputs = [_all_gather(o, self._nranks) for o in to_list(outputs)]
         return [to_numpy(o) for o in to_list(outputs)]
 
     def parameters(self, *args, **kwargs):
@@ -696,8 +688,20 @@ class Model(fluid.dygraph.Layer):
         self._test_dataloader = None
 
         # init multiple gpus context
-        self._place = fluid.CUDAPlace(distributed.Env().dev_id) \
-                    if distributed.Env().nranks > 1 else fluid.CUDAPlace(0)
+        self._place = fluid.CUDAPlace(Env().dev_id) \
+                    if Env().nranks > 1 else fluid.CUDAPlace(0)
+
+        global _parallel_context_inited
+        if Env().nranks > 1 and not _parallel_context_inited:
+            if fluid.in_dygraph_mode():
+                fluid.disable_dygraph()
+                fluid.enable_dygraph(self._place)
+                fluid.dygraph.parallel.prepare_context()
+            else:
+                fluid.enable_dygraph(self._place)
+                fluid.dygraph.parallel.prepare_context()
+                fluid.disable_dygraph()
+            _parallel_context_inited = True
 
         # init backend
         if fluid.in_dygraph_mode():
@@ -715,7 +719,7 @@ class Model(fluid.dygraph.Layer):
         return self._adapter.test(*args, **kwargs)
 
     def save(self, *args, **kwargs):
-        if distributed.get_local_rank() == 0:
+        if Env().local_rank == 0:
             return self._adapter.save(*args, **kwargs)
 
     def load(self, path, skip_mismatch=False, reset_optimizer=False):
@@ -829,7 +833,7 @@ class Model(fluid.dygraph.Layer):
                 the variable to the environment variable and set its value to 1.
                 The default is None.
         """
-        
+
         self._optimizer = optimizer
         if loss_function:
             if not isinstance(loss_function, Loss):
@@ -972,7 +976,7 @@ class Model(fluid.dygraph.Layer):
 
                 logs['step'] = step
                 if mode == 'train' or self._adapter._merge_count.get(mode + '_batch', 0) <= 0:
-                    logs['batch_size'] = batch_size * distributed.Env().nranks
+                    logs['batch_size'] = batch_size * Env().nranks
                 else:
                     logs['batch_size'] = self._adapter._merge_count[mode + '_batch']
 
