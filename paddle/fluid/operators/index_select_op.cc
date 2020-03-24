@@ -57,7 +57,10 @@ class IndexSelectOp : public framework::OperatorWithKernel {
     auto output_dim = framework::vectorize(input_dim);
     output_dim[dim] = index_dim[0];
     ctx->SetOutputDim("Out", framework::make_ddim(output_dim));
-    ctx->ShareLoD("X", /*->*/ "Out");
+    auto type = ctx->GetInputsVarType("X")[0];
+    if (type == framework::proto::VarType::LOD_TENSOR) {
+      ctx->ShareLoD("X", /*->*/ "Out");
+    }
   }
 
  protected:

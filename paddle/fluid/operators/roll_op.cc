@@ -27,18 +27,21 @@ class RollOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of RollOp should not be null.");
+                      platform::errors::InvalidArgument(
+                          "Input(X) of RollOp should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of RollOp should not be null.");
+                      platform::errors::InvalidArgument(
+                          "Output(Out) of RollOp should not be null."));
 
     auto dims = ctx->Attrs().Get<std::vector<int64_t>>("dims");
     auto shifts = ctx->Attrs().Get<std::vector<int64_t>>("shifts");
 
     PADDLE_ENFORCE_EQ(dims.size(), shifts.size(),
-                      "AttrError: Attr(dims).size() should be equl to "
-                      "Attr(shifts).size(). But received Attr(dims).size()"
-                      " = %d, Attr(shifts).size() = %d",
-                      dims.size(), shifts.size());
+                      platform::errors::InvalidArgument(
+                          "Attr(dims).size() should be equl to "
+                          "Attr(shifts).size(). But received "
+                          "Attr(dims).size() = %d, Attr(shifts).size() = %d",
+                          dims.size(), shifts.size()));
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     auto type = ctx->GetInputsVarType("X")[0];
@@ -61,9 +64,11 @@ class RollGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      "Input(Out@GRAD) should be not null.");
+                      platform::errors::InvalidArgument(
+                          "Input(Out@GRAD) should be not null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
-                      "Output(X@GRAD) should be not null.");
+                      platform::errors::InvalidArgument(
+                          "Output(X@GRAD) should be not null."));
 
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
@@ -109,7 +114,6 @@ class RollGradMaker : public framework::SingleGradOpMaker<T> {
  protected:
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("roll_grad");
-    op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());

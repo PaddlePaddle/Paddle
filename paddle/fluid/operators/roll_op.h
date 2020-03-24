@@ -27,6 +27,14 @@ using DDim = framework::DDim;
 template <typename T>
 inline void shift_along_dim(T* data, const DDim& input_dim, int64_t dim,
                             int64_t shift) {
+  if (dim < 0) {
+    dim += input_dim.size();
+  }
+  shift = shift % input_dim[dim];
+  if (shift < 0) {
+    shift += input_dim[dim];
+  }
+
   int64_t outer_loops = 1;
   for (auto i = 0; i < dim; i++) {
     outer_loops *= input_dim[i];
@@ -37,10 +45,6 @@ inline void shift_along_dim(T* data, const DDim& input_dim, int64_t dim,
   }
   const size_t slice_bytes = slice_width * sizeof(T);
 
-  shift = shift % input_dim[dim];
-  if (shift < 0) {
-    shift += input_dim[dim];
-  }
   VLOG(1) << "shift_along_dim_debug: input_dim: " << input_dim
           << "; dim: " << dim << "; shift: " << shift
           << "; outer_loops: " << outer_loops
@@ -75,11 +79,6 @@ class RollKernel : public framework::OpKernel<T> {
     std::vector<int64_t> shifts = context.Attr<std::vector<int64_t>>("shifts");
     std::vector<int64_t> dims = context.Attr<std::vector<int64_t>>("dims");
 
-    PADDLE_ENFORCE_EQ(shifts.size(), dims.size(),
-                      "AttrError: Attr<shifts>.size() must be equal "
-                      "to Attr<dims>.size(). But received: Attr<shift>"
-                      ".size = %d, Attr<dims>.size() = %d",
-                      shifts.size(), dims.size());
     size_t nums = shifts.size();
     const T* input_data = input.data<T>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
@@ -90,6 +89,12 @@ class RollKernel : public framework::OpKernel<T> {
     }
 
     for (size_t i = 0; i < nums; i++) {
+      PADDLE_ENFORCE_EQ(
+          dims[i] < input_dim.size() && dims[i] >= (0 - input_dim.size()), true,
+          platform::errors::OutOfRange(
+              "Attr(dims[%d]) is out of range, It's expected "
+              "to be in range of [-%d, %d]. But received Attr(dims[%d]) = %d.",
+              i, input_dim.size(), input_dim.size() - 1, i, dims[i]));
       shift_along_dim(output_data, input_dim, dims[i], shifts[i]);
     }
   }
@@ -106,11 +111,6 @@ class RollGradKernel : public framework::OpKernel<T> {
     std::vector<int64_t> shifts = context.Attr<std::vector<int64_t>>("shifts");
     std::vector<int64_t> dims = context.Attr<std::vector<int64_t>>("dims");
 
-    PADDLE_ENFORCE_EQ(shifts.size(), dims.size(),
-                      "AttrError: Attr<shifts>.size() must be equal "
-                      "to Attr<dims>.size(). But received: Attr<shift>"
-                      ".size = %d, Attr<dims>.size() = %d",
-                      shifts.size(), dims.size());
     size_t nums = shifts.size();
     const T* input_data = input.data<T>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
