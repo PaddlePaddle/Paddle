@@ -21,61 +21,51 @@ namespace operators {
 using framework::Tensor;
 using framework::DDim;
 
-inline bool CheckDims(const DDim& dims_x, const DDim& dims_y) {
-  if (dims_x.size() != dims_y.size()) {
-    return false;
-  }
-  for (int i = 0; i < dims_x.size(); i++) {
-    if (dims_x[i] != dims_y[i]) {
-      return false;
-    }
-  }
-  return true;
-}
-
 class CrossOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of CrossOp should not be null.");
+                      platform::errors::InvalidArgument(
+                          "Input(X) of CrossOp should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("Y"), true,
-                      "Input(Index) of CrossOp should not be null.");
+                      platform::errors::InvalidArgument(
+                          "Input(Index) of CrossOp should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of CrossOp should not be null.");
+                      platform::errors::InvalidArgument(
+                          "Output(Out) of CrossOp should not be null."));
 
     auto x_dim = ctx->GetInputDim("X");
     auto y_dim = ctx->GetInputDim("Y");
     auto dim = ctx->Attrs().Get<int>("dim");
 
-    bool check_dim = CheckDims(x_dim, y_dim);
-    PADDLE_ENFORCE_EQ(check_dim, true,
-                      "ShapeError: Input(X).dims() should be equal to "
-                      "Input(Y).dims(). But received Input(X).dimensions"
-                      " = [%s], Input(Y).dimensions = [%s]",
-                      x_dim, y_dim);
+    bool dims_match = CheckDims(x_dim, y_dim);
+    PADDLE_ENFORCE_EQ(dims_match,
+                      true platform::errors::InvalidArgument(
+                          "The 'shape' of Input(X) should be equal to "
+                          "the 'shape' of Input(Y). But received "
+                          "Input(X).dimensions = [%s], "
+                          "Input(Y).dimensions = [%s]",
+                          x_dim, y_dim));
 
-    if (dim != -1) {
-      PADDLE_ENFORCE_GT(
-          x_dim.size(), dim,
-          "ShapeError: Input(X).dims().size() should be greater than Attr(dim)."
-          "But received Input(X).dimensions = [%s], Attr(dim) = %d.",
-          x_dim, dim);
-      PADDLE_ENFORCE_GT(
-          y_dim.size(), dim,
-          "ShapeError: Input(Y).dims().size() should be greater than Attr(dim)."
-          "But received Input(Y).dimensions = [%s], Attr(dim) = %d.",
-          y_dim, dim);
-      PADDLE_ENFORCE_EQ(x_dim[dim], 3,
-                        "ShapeError: Input(X).dims()[dim] should be equal to 3."
-                        "But received Input(X).dims()[dim] = %d.",
-                        x_dim[dim]);
-      PADDLE_ENFORCE_EQ(y_dim[dim], 3,
-                        "ShapeError: Input(Y).dims()[dim] should be equal to 3."
-                        "But received Input(Y).dims()[dim] = %d.",
-                        y_dim[dim]);
+    if (dim != framework::DDim::kMaxRank) {
+      PADDLE_ENFORCE_EQ(
+          dim < x_dim.size() && dim >= (0 - x_dim.size()), true,
+          platform::errors::OutOfRange(
+              "Attr(dim) is out of range, It's expected "
+              "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
+              x_dim.size(), x_dim.size() - 1, dim));
+      if (dim < 0) {
+        dim += input_x_dims.size();
+      }
+      PADDLE_ENFORCE_EQ(x_dim[dim] == 3 && y_dim[dim] == 3,
+                        platform::errors::InvalidArgument(
+                            "Input(X/Y).dims()[dim] should be equal to 3."
+                            "But received Input(X/Y).dims()[dim] = %d.",
+                            x_dim[dim]));
     }
+
     ctx->SetOutputDim("Out", x_dim);
     auto type = ctx->GetInputsVarType("X")[0];
     if (type == framework::proto::VarType::LOD_TENSOR) {
@@ -96,14 +86,21 @@ class CrossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) should be not null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Y"), true, "Input(Y) should be not null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"), true,
+        platform::errors::InvalidArgument("Input(X) should be not null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Y"), true,
+        platform::errors::InvalidArgument("Input(Y) should be not null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      "Input(Out@GRAD) should be not null.");
+                      platform::errors::InvalidArgument(
+                          "Input(Out@GRAD) should be not null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
-                      "Output(X@GRAD) should be not null.");
+                      platform::errors::InvalidArgument(
+                          "Output(X@GRAD) should be not null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("Y")), true,
-                      "Output(Y@GRAD) should be not null.");
+                      platform::errors::InvalidArgument(
+                          "Output(Y@GRAD) should be not null."));
 
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
     ctx->SetOutputDim(framework::GradVarName("Y"), ctx->GetInputDim("Y"));
@@ -125,7 +122,7 @@ class CrossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Y", "(Tensor) the second input tensor.");
     AddOutput("Out", "(Tensor), the output tensor.");
     AddAttr<int>("dim", "the dimension to take the cross-product in.")
-        .SetDefault(-1);
+        .SetDefault(framework::DDim::kMaxRank);
     AddComment(R"DOC(
     Returns the cross product of vectors in dimension dim of
     input and other. Input and other must have the same size,
@@ -166,8 +163,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::CrossKernel<paddle::platform::CPUDeviceContext, int>,
     ops::CrossKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
-    cross_grad,
-    ops::CrossGradKernel<paddle::platform::CPUDeviceContext, float>,
+    cross_grad, ops::CrossGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::CrossGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::CrossGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::CrossGradKernel<paddle::platform::CPUDeviceContext, int64_t>);

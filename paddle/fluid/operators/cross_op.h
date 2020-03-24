@@ -22,6 +22,18 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 using DDim = framework::DDim;
 
+inline bool CheckDims(const DDim& dims_x, const DDim& dims_y) {
+  if (dims_x.size() != dims_y.size()) {
+    return false;
+  }
+  for (int i = 0; i < dims_x.size(); i++) {
+    if (dims_x[i] != dims_y[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
 template <typename DeviceContext, typename T>
 class CrossKernel : public framework::OpKernel<T> {
  public:
@@ -36,13 +48,33 @@ class CrossKernel : public framework::OpKernel<T> {
     int dim = context.Attr<int>("dim");
 
     auto input_x_dims = input_x.dims();
-    if (dim != -1) {
+    auto input_y_dims = input_y.dims();
+    bool dims_match = CheckDims(input_x_dims, input_y_dims);
+    PADDLE_ENFORCE_EQ(dims_match,
+                      true platform::errors::InvalidArgument(
+                          "The 'shape' of Input(X) should be equal to "
+                          "the 'shape' of Input(Y). But received "
+                          "Input(X).dimensions = [%s], "
+                          "Input(Y).dimensions = [%s]",
+                          x_dim, y_dim));
+
+    if (dim != framework::DDim::kMaxRank) {
       PADDLE_ENFORCE_EQ(
-          input_x_dims.size() > dim && input_x_dims[dim] == 3, true,
-          "AttrError: Input(X/Y).dims.size() must be greater than dim, and"
-          "Input(X).dims()[dim] must be equal to 3. But received: "
-          "Input(X).dims = [%s], Attr(dim) = %d",
-          input_x_dims, dim);
+          dim < x_dim.size() && dim >= (0 - x_dim.size()), true,
+          platform::errors::OutOfRange(
+              "Attr(dim) is out of range, It's expected "
+              "to be in range of [-%d, %d]. But received Attr(dim) = %d.",
+              x_dim.size(), x_dim.size() - 1, dim));
+      if (dim < 0) {
+        dim += input_x_dims.size();
+      }
+
+      PADDLE_ENFORCE_EQ(
+          input_x_dims[dim] == 3, true,
+          platform::errors::InvalidArgument(
+              "Input(X/Y).dims[dim] must be equal to 3. But received: "
+              "Input(X/Y).dims[dim] = [%d].",
+              input_x_dims[dim]));
     } else {
       for (size_t i = 0; i < input_x_dims.size(); i++) {
         if (input_x_dims[i] == 3) {
@@ -50,11 +82,12 @@ class CrossKernel : public framework::OpKernel<T> {
           break;
         }
       }
-      PADDLE_ENFORCE_EQ(dim == -1, false,
-                        "ShapeError: If Attr(dim) == -1, there must be a "
-                        "dimension d for Input(X/Y).dims()[d] to be equal to 3."
-                        "But received: Input(X/Y).dims() == [%s].",
-                        input_x_dims);
+      PADDLE_ENFORCE_EQ(dim == framework::DDim::kMaxRank, false,
+                        platform::errors::InvalidArgument(
+                            "There must be at least one dimension 'd' so that "
+                            "Input(X/Y).dims()[d] is equal to 3. "
+                            "But received: Input(X/Y).dims() == [%s].",
+                            input_x_dims));
     }
     auto outer_loops = 1;
     for (size_t i = 0; i < dim; i++) {
@@ -100,10 +133,8 @@ class CrossGradKernel : public framework::OpKernel<T> {
     auto& input_x = input_x_var->Get<LoDTensor>();
     auto& input_y = input_y_var->Get<LoDTensor>();
     auto& input_out_grad = input_out_grad_var->Get<LoDTensor>();
-    auto* output_x_grad =
-        output_x_grad_var->GetMutable<LoDTensor>();
-    auto* output_y_grad =
-        output_y_grad_var->GetMutable<LoDTensor>();
+    auto* output_x_grad = output_x_grad_var->GetMutable<LoDTensor>();
+    auto* output_y_grad = output_y_grad_var->GetMutable<LoDTensor>();
 
     int dim = context.Attr<int>("dim");
     auto input_x_dims = input_x.dims();
