@@ -208,6 +208,17 @@ class TestElementwiseMulOp_commonuse_2(ElementwiseMulOp):
         self.init_kernel_type()
 
 
+class TestElementwiseMulOp_commonuse_3(ElementwiseMulOp):
+    def setUp(self):
+        self.op_type = "elementwise_mul"
+        self.inputs = {
+            'X': np.random.rand(32, 16, 1, 5).astype(np.float64),
+            'Y': np.random.rand(16, 5).astype(np.float64)
+        }
+        self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        self.init_kernel_type()
+
+
 class TestElementwiseMulOp_xsize_lessthan_ysize(ElementwiseMulOp):
     def setUp(self):
         self.op_type = "elementwise_mul"
