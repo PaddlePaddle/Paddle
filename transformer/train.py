@@ -32,9 +32,35 @@ from utils.check import check_gpu, check_version
 import reader
 from transformer import Transformer, CrossEntropyCriterion, NoamDecay
 from model import Input
+from callbacks import ProgBarLogger
+
+
+class LoggerCallback(ProgBarLogger):
+    def __init__(self, log_freq=1, verbose=2, loss_normalizer=0.):
+        super(LoggerCallback, self).__init__(log_freq, verbose)
+        self.loss_normalizer = loss_normalizer
+
+    def on_train_begin(self, logs=None):
+        super(LoggerCallback, self).on_train_begin(logs)
+        self.train_metrics += ["normalized loss", "ppl"]
+
+    def on_train_batch_end(self, step, logs=None):
+        logs["normalized loss"] = logs["loss"][0] - self.loss_normalizer
+        logs["ppl"] = np.exp(min(logs["loss"][0], 100))
+        super(LoggerCallback, self).on_train_batch_end(step, logs)
+
+    def on_eval_begin(self, logs=None):
+        super(LoggerCallback, self).on_eval_begin(logs)
+        self.eval_metrics += ["normalized loss", "ppl"]
+
+    def on_eval_batch_end(self, step, logs=None):
+        logs["normalized loss"] = logs["loss"][0] - self.loss_normalizer
+        logs["ppl"] = np.exp(min(logs["loss"][0], 100))
+        super(LoggerCallback, self).on_eval_batch_end(step, logs)
 
 
 def do_train(args):
+    init_context('dynamic' if FLAGS.dynamic else 'static')
     trainer_count = 1  #get_nranks()
 
     @contextlib.contextmanager
@@ -102,24 +128,31 @@ def do_train(args):
         # define model
         inputs = [
             Input(
-                [None, None], "int64", name="src_word"), Input(
-                    [None, None], "int64", name="src_pos"), Input(
-                        [None, args.n_head, None, None],
-                        "float32",
-                        name="src_slf_attn_bias"), Input(
-                            [None, None], "int64", name="trg_word"), Input(
-                                [None, None], "int64", name="trg_pos"), Input(
-                                    [None, args.n_head, None, None],
-                                    "float32",
-                                    name="trg_slf_attn_bias"), Input(
-                                        [None, args.n_head, None, None],
-                                        "float32",
-                                        name="trg_src_attn_bias")
+                [None, None], "int64", name="src_word"),
+            Input(
+                [None, None], "int64", name="src_pos"),
+            Input(
+                [None, args.n_head, None, None],
+                "float32",
+                name="src_slf_attn_bias"),
+            Input(
+                [None, None], "int64", name="trg_word"),
+            Input(
+                [None, None], "int64", name="trg_pos"),
+            Input(
+                [None, args.n_head, None, None],
+                "float32",
+                name="trg_slf_attn_bias"),
+            Input(
+                [None, args.n_head, None, None],
+                "float32",
+                name="trg_src_attn_bias"),
         ]
         labels = [
             Input(
-                [None, 1], "int64", name="label"), Input(
-                    [None, 1], "float32", name="weight")
+                [None, 1], "int64", name="label"),
+            Input(
+                [None, 1], "float32", name="weight"),
         ]
 
         transformer = Transformer(
@@ -149,7 +182,8 @@ def do_train(args):
         ## init from some pretrain models, to better solve the current task
         if args.init_from_pretrain_model:
             transformer.load(
-                os.path.join(args.init_from_pretrain_model, "transformer"))
+                os.path.join(args.init_from_pretrain_model, "transformer"),
+                reset_optimizer=True)
 
         # the best cross-entropy value with label smoothing
         loss_normalizer = -(
@@ -157,63 +191,17 @@ def do_train(args):
                 (1. - args.label_smooth_eps)) + args.label_smooth_eps *
             np.log(args.label_smooth_eps / (args.trg_vocab_size - 1) + 1e-20))
 
-        step_idx = 0
-        # train loop
-        for pass_id in range(args.epoch):
-            pass_start_time = time.time()
-            batch_id = 0
-            for input_data in train_loader():
-                losses = transformer.train(input_data[:-2], input_data[-2:])
-
-                if step_idx % args.print_step == 0:
-                    total_avg_cost = np.sum(losses)
-
-                    if step_idx == 0:
-                        logging.info(
-                            "step_idx: %d, epoch: %d, batch: %d, avg loss: %f, "
-                            "normalized loss: %f, ppl: %f" %
-                            (step_idx, pass_id, batch_id, total_avg_cost,
-                             total_avg_cost - loss_normalizer,
-                             np.exp([min(total_avg_cost, 100)])))
-                        avg_batch_time = time.time()
-                    else:
-                        logging.info(
-                            "step_idx: %d, epoch: %d, batch: %d, avg loss: %f, "
-                            "normalized loss: %f, ppl: %f, speed: %.2f step/s"
-                            %
-                            (step_idx, pass_id, batch_id, total_avg_cost,
-                             total_avg_cost - loss_normalizer,
-                             np.exp([min(total_avg_cost, 100)]),
-                             args.print_step / (time.time() - avg_batch_time)))
-                        avg_batch_time = time.time()
-
-                if step_idx % args.save_step == 0 and step_idx != 0:
-                    # validation: how to accumulate with Model loss
-                    if args.validation_file:
-                        total_avg_cost = 0
-                        for idx, input_data in enumerate(val_loader()):
-                            losses = transformer.eval(input_data[:-2],
-                                                      input_data[-2:])
-                            total_avg_cost += np.sum(losses)
-                        total_avg_cost /= idx + 1
-                        logging.info("validation, step_idx: %d, avg loss: %f, "
-                                     "normalized loss: %f, ppl: %f" %
-                                     (step_idx, total_avg_cost,
-                                      total_avg_cost - loss_normalizer,
-                                      np.exp([min(total_avg_cost, 100)])))
-
-                    transformer.save(
-                        os.path.join(args.save_model, "step_" + str(step_idx),
-                                     "transformer"))
-
-                batch_id += 1
-                step_idx += 1
-
-        time_consumed = time.time() - pass_start_time
-
-        if args.save_model:
-            transformer.save(
-                os.path.join(args.save_model, "step_final", "transformer"))
+        transformer.fit(train_loader=train_loader,
+                        eval_loader=val_loader,
+                        epochs=1,
+                        eval_freq=1,
+                        save_freq=1,
+                        verbose=2,
+                        callbacks=[
+                            LoggerCallback(
+                                log_freq=args.print_step,
+                                loss_normalizer=loss_normalizer)
+                        ])
 
 
 if __name__ == "__main__":

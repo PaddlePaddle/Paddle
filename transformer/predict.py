@@ -88,14 +88,17 @@ def do_predict(args):
         # define model
         inputs = [
             Input(
-                [None, None], "int64", name="src_word"), Input(
-                    [None, None], "int64", name="src_pos"), Input(
-                        [None, args.n_head, None, None],
-                        "float32",
-                        name="src_slf_attn_bias"), Input(
-                            [None, args.n_head, None, None],
-                            "float32",
-                            name="trg_src_attn_bias")
+                [None, None], "int64", name="src_word"),
+            Input(
+                [None, None], "int64", name="src_pos"),
+            Input(
+                [None, args.n_head, None, None],
+                "float32",
+                name="src_slf_attn_bias"),
+            Input(
+                [None, args.n_head, None, None],
+                "float32",
+                name="trg_src_attn_bias"),
         ]
         transformer = InferTransformer(
             args.src_vocab_size,
