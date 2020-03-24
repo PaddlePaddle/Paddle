@@ -16,7 +16,9 @@ from __future__ import print_function
 
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
-from paddle.fluid.incubate.fleet.parameter_server.details.program_utils import delete_ops
+from paddle.fluid.incubate.fleet.parameter_server.ir.program_utils import delete_ops
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import _is_opt_role_op
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_param_grads
 
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"
@@ -31,17 +33,6 @@ class DistributedMode:
     ASYNC = 1
     HALF_ASYNC = 2
     GEO = 3
-
-
-def _is_opt_role_op(op):
-    # NOTE: depend on oprole to find out whether this op is for
-    # optimize
-    op_maker = core.op_proto_and_checker_maker
-    optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
-    if op_maker.kOpRoleAttrName() in op.attr_names and \
-            int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize_role):
-        return True
-    return False
 
 
 def delete_optimizer_pass(program):
@@ -158,47 +149,6 @@ def distributed_ops_pass(program, trainer_id, pserver_endpoints):
 
 def append_send_ops_pass(program, origin_program, mode, trainer_id,
                          pserver_endpoints):
-    def _get_params_grads(sparse_varnames):
-        block = origin_program.global_block()
-
-        dense_param_grads = []
-        sparse_param_grads = []
-
-        optimize_params = set()
-        origin_var_dict = origin_program.global_block().vars
-        role_id = int(core.op_proto_and_checker_maker.OpRole.Backward)
-        for op in block.ops:
-            if _is_opt_role_op(op):
-                # delete clip op from opt_ops when run in Parameter Server mode
-                if OP_NAME_SCOPE in op.all_attrs() \
-                        and CLIP_OP_NAME_SCOPE in op.attr(OP_NAME_SCOPE):
-                    op._set_attr("op_role", role_id)
-                    continue
-                if op.attr(OP_ROLE_VAR_ATTR_NAME):
-                    param_name = op.attr(OP_ROLE_VAR_ATTR_NAME)[0]
-                    grad_name = op.attr(OP_ROLE_VAR_ATTR_NAME)[1]
-                    if param_name not in optimize_params:
-                        optimize_params.add(param_name)
-                        param_grad = (origin_var_dict[param_name],
-                                      origin_var_dict[grad_name])
-
-                        if param_name in sparse_varnames:
-                            sparse_param_grads.append(param_grad)
-                        else:
-                            dense_param_grads.append(param_grad)
-        return sparse_param_grads, dense_param_grads
-
-    def _get_sparse_varnames():
-        sparse_varnames = []
-        op_types = {"lookup_table": "W"}
-        for op in origin_program.global_block().ops:
-            if op.type in op_types.keys() \
-                    and op.attr('remote_prefetch') is True:
-                param_name = op.input(op.input_names[op_types[op.type]])[0]
-                sparse_varnames.append(param_name)
-
-        return list(set(sparse_varnames))
-
     def _append_send_op(union_vars, queue):
         send_input_vars = [
             program.global_block().vars[union_var] for union_var in union_vars
@@ -234,10 +184,10 @@ def append_send_ops_pass(program, origin_program, mode, trainer_id,
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
             })
 
-    sparse_varnames = _get_sparse_varnames()
-    sparse_param_grads, dense_param_grads = _get_params_grads(sparse_varnames)
-
     dummys = []
+
+    sparse_param_grads, dense_param_grads = get_param_grads(origin_program)
+
     for sparse_union in sparse_param_grads:
         dummys.append(_append_send_op(sparse_union, "Q1"))
     for dense_union in dense_param_grads:
@@ -253,11 +203,57 @@ def lr_decay_pass(program):
     pass
 
 
-def fake_init_ops_pass(program):
+def init_from_server_pass(program, excludes=[]):
+    program.global_block().append_op(
+        type="recv",
+        inputs={"X": []},
+        outputs={"Out": []},
+        attrs={
+            "communicator": True,
+            "exclude_vars": excludes,
+            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+        })
+
+
+def fake_init_ops_pass(program, origin_program):
+    def _get_sparse_table_names():
+        sparse_table_names = []
+        for op in origin_program.global_block().ops:
+            if op.type == "lookup_table" and op.attr('is_sparse') is True:
+                sparse_table_names.append(op.input("W")[0])
+
+            if op.type == "distributed_lookup_table":
+                sparse_table_names.append(op.input("W")[0])
+
+        return list(set(sparse_table_names))
+
+    def _fake_init_sparsetable(sparse_table_names):
+        # delete table init op
+        for table_name in sparse_table_names:
+            table_var = program.global_block().vars[table_name]
+            table_param_init_op = []
+            for op in program.global_block().ops:
+                if table_name in op.output_arg_names:
+                    table_param_init_op.append(op)
+            init_op_num = len(table_param_init_op)
+            if init_op_num != 1:
+                raise ValueError("table init op num should be 1, now is " + str(
+                    init_op_num))
+            table_init_op = table_param_init_op[0]
+            program.global_block().append_op(
+                type="fake_init",
+                inputs={},
+                outputs={"Out": table_var},
+                attrs={"shape": table_init_op.attr('shape')})
+            delete_ops(program.global_block(), table_param_init_op)
+
+    sparse_tables = _get_sparse_table_names()
+    _fake_init_sparsetable(sparse_tables)
+
     return program
 
 
 def get_communicator_context(program):
-    send_context = []
-    recv_context = []
-    return send_context, recv_context
+    send_contexts = []
+    recv_contexts = []
+    return send_contexts, recv_contexts

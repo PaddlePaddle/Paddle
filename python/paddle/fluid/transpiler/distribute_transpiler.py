@@ -1181,8 +1181,6 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         )
         # step1
         pserver_program = Program()
-        pserver_program.random_seed = self.origin_program.random_seed
-        pserver_program._copy_dist_param_info_from(self.origin_program)
 
         # step2: Create vars to receive vars at parameter servers.
         recv_inputs = []
