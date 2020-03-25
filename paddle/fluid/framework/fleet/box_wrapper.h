@@ -455,9 +455,10 @@ class BoxWrapper {
   void InitMetric(const std::string& method, const std::string& name,
                   const std::string& label_varname,
                   const std::string& pred_varname,
-                  const std::string& cmatch_rank_varname, bool is_join,
+                  const std::string& cmatch_rank_varname,
+                  const std::string& mask_varname, bool is_join,
                   const std::string& cmatch_rank_group,
-                  const std::string& mask_varname, int bucket_size = 1000000) {
+                  int bucket_size = 1000000) {
     if (method == "AucCalculator") {
       metric_lists_.emplace(name, new MetricMsg(label_varname, pred_varname,
                                                 is_join ? 1 : 0, bucket_size));
