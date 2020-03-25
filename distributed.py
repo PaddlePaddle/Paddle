@@ -13,6 +13,7 @@
 # limitations under the License.
 import os
 import sys
+import six
 import time
 import math
 import socket
@@ -21,8 +22,11 @@ import numpy as np
 
 from paddle import fluid
 from paddle.fluid.layers import collective
-from paddle.fluid.dygraph.parallel import Env
+from paddle.fluid.dygraph.parallel import Env, ParallelStrategy
 from paddle.fluid.io import BatchSampler
+
+
+_parallel_context_initialized = False
 
 
 class DistributedBatchSampler(BatchSampler):
@@ -100,3 +104,97 @@ class DistributedBatchSampler(BatchSampler):
 
 def _all_gather(x, nranks, ring_id=0, use_calc_stream=True):
     return collective._c_allgather(x, nranks, ring_id=ring_id, use_calc_stream=use_calc_stream)
+
+
+def wait_server_ready(endpoints):
+    assert not isinstance(endpoints, six.string_types)
+    while True:
+        all_ok = True
+        not_ready_endpoints = []
+        for ep in endpoints:
+            ip_port = ep.split(":")
+            with contextlib.closing(
+                    socket.socket(socket.AF_INET,
+                                  socket.SOCK_STREAM)) as sock:
+                sock.settimeout(2)
+                result = sock.connect_ex((ip_port[0], int(ip_port[1])))
+                if result != 0:
+                    all_ok = False
+                    not_ready_endpoints.append(ep)
+        if not all_ok:
+            time.sleep(3)
+        else:
+            break
+
+
+def init_communicator(program, rank, nranks, wait_port,
+                     current_endpoint, endpoints):
+    if nranks < 2:
+        return
+    other_endpoints = endpoints[:]
+    other_endpoints.remove(current_endpoint)
+    if rank == 0 and wait_port:
+        wait_server_ready(other_endpoints)
+    block = program.global_block()
+    nccl_id_var = block.create_var(
+        name=fluid.unique_name.generate('nccl_id'),
+        persistable=True,
+        type=fluid.core.VarDesc.VarType.RAW)
+
+    block.append_op(
+        type='c_gen_nccl_id',
+        inputs={},
+        outputs={'Out': nccl_id_var},
+        attrs={
+            'rank': rank,
+            'endpoint': current_endpoint,
+            'other_endpoints': other_endpoints
+        })
+
+    block.append_op(
+        type='c_comm_init',
+        inputs={'X': nccl_id_var},
+        outputs={},
+        attrs={
+            'nranks': nranks,
+            'rank': rank,
+            'ring_id': 0,
+        })
+
+
+def prepare_distributed_context(place=None):
+    if place is None:
+        place = fluid.CUDAPlace(Env().dev_id) if Env().nranks > 1 \
+            else fluid.CUDAPlace(0)
+    
+    strategy = ParallelStrategy()
+    strategy.nranks = Env().nranks
+    strategy.local_rank = Env().local_rank
+    strategy.trainer_endpoints = Env().trainer_endpoints
+    strategy.current_endpoint = Env().current_endpoint
+
+    if strategy.nranks < 2:
+        return
+
+    global _parallel_context_initialized
+
+    if not _parallel_context_initialized and isinstance(place, fluid.CUDAPlace):
+        def _init_context():
+            communicator_prog = fluid.Program()
+            init_communicator(communicator_prog, strategy.local_rank, strategy.nranks, 
+                            True, strategy.current_endpoint, strategy.trainer_endpoints)
+            exe = fluid.Executor(place)
+            exe.run(communicator_prog)
+
+        if fluid.in_dygraph_mode():
+            fluid.disable_dygraph()
+            _init_context()
+            fluid.enable_dygraph(place)
+        else:
+            _init_context()
+
+    else:
+        assert ("Only support CUDAPlace for now.")
+
+    _parallel_context_initialized = True
+    return strategy

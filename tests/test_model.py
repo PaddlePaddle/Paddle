@@ -151,16 +151,18 @@ class TestModel(unittest.TestCase):
 
         train_dataset = MnistDataset(mode='train')
         val_dataset = MnistDataset(mode='test')
-    
+
         model = MNIST() if not is_mlp else MLP()
         optim = fluid.optimizer.Momentum(
-            learning_rate=0.01,
-            momentum=.9,
-            parameter_list=model.parameters())
+            learning_rate=0.01, momentum=.9, parameter_list=model.parameters())
         loss = CrossEntropy() if not is_mlp else MyCrossEntropy()
         model.prepare(optim, loss, Accuracy(), inputs, labels)
         cbk = ProgBarLogger(50)
-        model.fit(train_dataset, val_dataset, epochs=2, batch_size=batch_size, callbacks=cbk)
+        model.fit(train_dataset,
+                  val_dataset,
+                  epochs=2,
+                  batch_size=batch_size,
+                  callbacks=cbk)
 
     def test_fit_static(self):
         self.fit(False)
