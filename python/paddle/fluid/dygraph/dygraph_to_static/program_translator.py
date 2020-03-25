@@ -286,7 +286,7 @@ class ProgramTranslator(object):
                 "The decorator 'dygraph_to_static_graph' doesn't work in dygraph mode."
                 " Please use it in static mode.")
             return dygraph_func
-        static_func, ast_transformer = convert_to_static(dygraph_func)
+        static_func = convert_function_with_cache(dygraph_func)
         return static_func
 
     def get_code(self, dygraph_func):
