@@ -58,8 +58,8 @@ def test_list_in_for_loop_with_concat(x, iter_num):
     a = []
     for i in range(iter_num):
         a.append(x)
-    out = fluid.layers.concat(a, axis=0)
-    return out
+    a = fluid.layers.concat(a, axis=0)
+    return a
 
 
 def test_list_in_while_loop(x, iter_num):
