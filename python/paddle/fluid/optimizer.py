@@ -4258,14 +4258,17 @@ class ModelParallelOptimizer(object):
         op_maker = core.op_proto_and_checker_maker
         op_device = op_maker.kOpDeviceAttrName()
         for op in block.ops:
-            if not op.has_attr(op_device):
-                cur_device = "gpu"
-            else:
-                cur_device = op.attr(op_device)
-            if cur_device is None:
-                cur_device = "gpu"
-            if cur_device == "":
-                cur_device = "cpu"
+            assert op.has_attr(op_device)
+            #if not op.has_attr(op_device):
+            #    cur_device = "gpu"
+            #else:
+            #    cur_device = op.attr(op_device)
+            cur_device = op.attr(op_device)
+            assert cur_device
+            #if cur_device is None:
+            #    cur_device = "gpu"
+            #if cur_device == "":
+            #    cur_device = "cpu"
             if cur_device not in device_program_map:
                 program = {
                     "program": Program(),
@@ -4332,12 +4335,15 @@ class ModelParallelOptimizer(object):
             type = op.type
             if not op._has_kernel(type):
                 continue
-            if not op.has_attr(op_device) or op.attr(op_device) == "":
-                cur_device = "cpu"
-            else:
-                cur_device = op.attr(op_device)
-            if type == "fill_constant":
-                cur_device = "gpu"
+            #if not op.has_attr(op_device) or op.attr(op_device) == "":
+            #    cur_device = "cpu"
+            #else:
+            #    cur_device = op.attr(op_device)
+            assert op.has_attr(op_device)
+            cur_device = op.attr(op_device)
+            assert cur_device
+            #if type == "fill_constant":
+            #    cur_device = "gpu"
             devices.add(cur_device)
             for var_name in op.input_arg_names:
                 prev_op = self._find_real_prev_op(block.ops, op, var_name)
@@ -4345,13 +4351,16 @@ class ModelParallelOptimizer(object):
                     continue
                 if not prev_op._has_kernel(prev_op.type):
                     continue
-                if not prev_op.has_attr(op_device) or prev_op.attr(
-                        op_device) == "":
-                    prev_device = "cpu"
-                else:
-                    prev_device = prev_op.attr(op_device)
-                if prev_op.type == "fill_constant":
-                    prev_device = "gpu"
+                #if not prev_op.has_attr(op_device) or prev_op.attr(
+                #        op_device) == "":
+                #    prev_device = "cpu"
+                #else:
+                #    prev_device = prev_op.attr(op_device)
+                assert prev_op.has_attr(op_device)
+                prev_device = prev_op.attr(op_device)
+                assert prev_device, "%s has no op_device" % prev_op
+                #if prev_op.type == "fill_constant":
+                #    prev_device = "gpu"
                 if prev_device != cur_device:
                     print("generate and insert queue for var %s" % var_name)
                     print("prev_op %s, device %s, cur_op %s, device %s" %
@@ -4363,11 +4372,15 @@ class ModelParallelOptimizer(object):
                         persistable=True,
                         type=core.VarDesc.VarType.RAW)
                     startup_block.append_op(
-                        type='gen_queue', attrs={'queue_names': [queue_name]})
-                    ref_var = block._var_recursive(var_name)
-                    renamed = unique_name.generate(var_name)
-                    self._create_var(block, ref_var, renamed)
-                    self._rename_arg(op, var_name, renamed)
+                        type='gen_queue',
+                        attrs={
+                            'queue_names': [queue_name],
+                            'queue_size': self._num_macrobatches
+                        })
+                    #ref_var = block._var_recursive(var_name)
+                    #renamed = unique_name.generate(var_name)
+                    #self._create_var(block, ref_var, renamed)
+                    #self._rename_arg(op, var_name, renamed)
                     op_role = op.all_attrs()[self.op_role_key]
                     block._insert_op(
                         index=offset,
@@ -4386,7 +4399,8 @@ class ModelParallelOptimizer(object):
                         inputs={'blocking_queue': queue_name, },
                         attrs={
                             'op_device': cur_device,
-                            'lod_tensors': [renamed],
+                            #'lod_tensors': [renamed],
+                            'lod_tensors': [var_name],
                             self.op_role_key: op_role
                         })
                     offset += 2
@@ -4413,7 +4427,10 @@ class ModelParallelOptimizer(object):
                             type=core.VarDesc.VarType.RAW)
                         startup_block.append_op(
                             type='gen_queue',
-                            attrs={'queue_names': [queue_name]})
+                            attrs={
+                                'queue_names': [queue_name],
+                                'queue_size': self._num_macrobatches
+                            })
                     block._insert_op(
                         index=offset + 1,
                         type='enqueue',
@@ -4443,7 +4460,11 @@ class ModelParallelOptimizer(object):
                     persistable=True,
                     type=core.VarDesc.VarType.RAW)
                 startup_block.append_op(
-                    type='gen_queue', attrs={'queue_names': [queue_name]})
+                    type='gen_queue',
+                    attrs={
+                        'queue_names': [queue_name],
+                        'queue_size': self._num_macrobatches
+                    })
                 for _ in range(self._num_macrobatches):
                     u_grad_name = unique_name.generate(grad_name)
                     self._create_var(block, ref_var, u_grad_name)

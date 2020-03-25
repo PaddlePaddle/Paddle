@@ -17,6 +17,7 @@ limitations under the License. */
 #include <fstream>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <set>
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
@@ -187,15 +188,20 @@ class ModelParallelTrainer : public TrainerBase {
   int section_num_;
   int num_macrobatches_;
   std::vector<std::string> feed_var_names_;
+  std::set<std::string> persistable_var_names_;
+  std::set<std::string> persistable_var_grad_names_;
+  TrainerDesc trainer_desc_;
 
-  // worker: [section_id][thread_id]
-  std::vector<std::vector<std::shared_ptr<paddle::framework::DeviceWorker>>>
-      workers_;
+  // worker: [section_id]
+  std::vector<std::shared_ptr<paddle::framework::DeviceWorker>> workers_;
   std::vector<std::thread> threads_;
-  std::vector<Scope*> macrobatch_scopes_;
+  // macrobatch_scope: [macrobatch_id][section_id]
+  std::vector<std::vector<Scope*>> macrobatch_scopes_;
+  Scope* minibatch_scope_;
 
-  void CopyParameters(int pipeline_id, const ProgramDesc& main_program);
-  static const int concurrency_;
+  void CopyParameters(int section_id, int macrobatch_id,
+                      const ProgramDesc& program);
+  bool isPersistableVarGrad(std::string name);
 };
 
 }  // namespace framework

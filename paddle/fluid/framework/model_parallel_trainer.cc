@@ -20,24 +20,23 @@
 namespace paddle {
 namespace framework {
 
-const int ModelParallelTrainer::concurrency_ = 2;
-
 void ModelParallelTrainer::Initialize(const TrainerDesc& trainer_desc,
                                       Dataset* dataset) {
-  // Todo: (lilong12) set device_num_ correctly
   auto section_params = trainer_desc.section_param();
   num_macrobatches_ = section_params.queue_size();
-  VLOG(3) << "number of macrobatches per minibatch: " << num_macrobatches_;
+  VLOG(3) << "Number of macrobatches per minibatch: " << num_macrobatches_;
   section_num_ = section_params.section_config_size();
-  VLOG(3) << "number of training devices: " << section_num_;
+  VLOG(3) << "Number of training devices: " << section_num_;
+  trainer_desc_ = trainer_desc;
 
   SetDataset(dataset);
   const std::vector<paddle::framework::DataFeed*> readers =
       dataset->GetReaders();
   int num_readers = readers.size();
   PADDLE_ENFORCE_EQ(num_readers, 1,
-                    "The number of dataset readers for model parallel"
-                    "should be 1.");
+                    "Number of dataset readers for model parallel"
+                    "must be 1, but the one you give is %d.",
+                    num_readers);
   auto* reader = readers[0];
   feed_var_names_ = reader->GetUseSlotAlias();
 
@@ -57,59 +56,73 @@ void ModelParallelTrainer::Initialize(const TrainerDesc& trainer_desc,
         place = platform::CUDAPinnedPlace();
         break;
       default:
-        PADDLE_ENFORCE(false, "Unkown place type in SectionConfig: %d",
+        PADDLE_ENFORCE(false, "Unkown place type in SectionConfig: %d.",
                        section_config.place());
     }
-    VLOG(3) << "device worker place: " << place << ", id: " << place_id;
+    VLOG(3) << "Device worker place: " << place << ", id: " << place_id
+            << " for section: " << section_num_;
 
-    workers_[i].resize(concurrency_);
-    for (int j = 0; j < concurrency_; ++j) {
-      VLOG(3) << "set device worker " << i << ":" << j;
-      workers_[i][j] = DeviceWorkerFactory::CreateDeviceWorker(
-          trainer_desc.device_worker_name());
-      auto this_worker =
-          std::dynamic_pointer_cast<paddle::framework::ModelParallelWorker>(
-              workers_[i][j]);
-      if (i == 0 && j == 0) {
-        this_worker->SetDataFeed(reader);
-        this_worker->SetReaderPlace(place);
-      }
-      int thread_index = i * concurrency_ + j;
-      VLOG(3) << "set thread index: " << thread_index;
-      this_worker->SetThreadIndex(thread_index);
-      this_worker->SetSectionIndex(i);
-      VLOG(3) << "setting place: " << place;
-      this_worker->SetPlace(place);
-      VLOG(3) << "setting trainer_desc";
-      this_worker->Initialize(trainer_desc);
-      VLOG(3) << "setting number of macrobatches";
-      this_worker->SetMacrobatchNum(num_macrobatches_);
-      VLOG(3) << "initialized thread: " << thread_index;
+    workers_[i] = DeviceWorkerFactory::CreateDeviceWorker(
+        trainer_desc.device_worker_name());
+    auto this_worker =
+        std::dynamic_pointer_cast<paddle::framework::ModelParallelWorker>(
+            workers_[i]);
+    if (i == 0) {
+      // for the first section
+      this_worker->SetDataFeed(reader);
+      this_worker->SetReaderPlace(place);
     }
+    this_worker->SetThreadIndex(i);
+    this_worker->SetSectionIndex(i);
+    this_worker->SetPlace(place);
+    this_worker->Initialize(trainer_desc);
+    this_worker->SetMacrobatchNum(num_macrobatches_);
   }
-  VLOG(3) << "All device worker started.";
+  VLOG(3) << "Constructed all device workers.";
   // set debug here
   SetDebug(trainer_desc.debug());
 }
 
-void ModelParallelTrainer::CopyParameters(int macrobatch_id,
-                                          const ProgramDesc& main_program) {
-  auto& global_block = main_program.Block(0);
+bool ModelParallelTrainer::isPersistableVarGrad(std::string name) {
+  std::size_t pos = name.rfind(framework::kGradVarSuffix);
+  if (pos == std::string::npos) {
+    return false;
+  }
+  std::string var_name = name.substr(0, pos);
+  if (persistable_var_names_.find(var_name) != persistable_var_names_.end()) {
+    return true;
+  }
+  return false;
+}
+
+void ModelParallelTrainer::CopyParameters(int section_id, int macrobatch_id,
+                                          const ProgramDesc& program) {
+  auto& global_block = program.Block(0);
   for (auto& var : global_block.AllVars()) {
     int is_feed_var =
         std::count(feed_var_names_.begin(), feed_var_names_.end(), var->Name());
-    if (var->Persistable() || is_feed_var) {
-      if (macrobatch_id == 0) {
-        auto* ptr = root_scope_->Var(var->Name());
-        InitializeVariable(ptr, var->GetType());
-        VLOG(3) << "Create feed var " << var->Name()
-                << " for root scope, which pointer is " << ptr;
-      }
-    } else {
-      auto* ptr = macrobatch_scopes_[macrobatch_id]->Var(var->Name());
+    if (var->Persistable() && macrobatch_id == 0) {
+      auto* ptr = root_scope_->Var(var->Name());
       InitializeVariable(ptr, var->GetType());
-      VLOG(3) << "Create variable " << var->Name() << " for macrobatch "
-              << macrobatch_id;
+      VLOG(3) << "Create persistable var " << var->Name()
+              << " for root scope, which pointer is " << ptr;
+    } else if (is_feed_var && macrobatch_id == 0) {
+      auto* ptr = minibatch_scope_->Var(var->Name());
+      InitializeVariable(ptr, var->GetType());
+      VLOG(3) << "Create feed var " << var->Name()
+              << " for minibatch scope, which pointer is " << ptr;
+    } else if (isPersistableVarGrad(var->Name())) {
+      auto* ptr = minibatch_scope_->Var(var->Name());
+      InitializeVariable(ptr, var->GetType());
+      VLOG(3) << "Create feed var " << var->Name()
+              << " for minibatch scope, which pointer is " << ptr;
+    } else if (!var->Persistable() && !is_feed_var) {
+      auto* ptr =
+          macrobatch_scopes_[section_id][macrobatch_id]->Var(var->Name());
+      InitializeVariable(ptr, var->GetType());
+      VLOG(3) << "Create variable " << var->Name() << " for section "
+              << section_id << " macrobatch " << macrobatch_id
+              << ", which pointer is " << ptr;
     }
   }
 }
@@ -120,39 +133,49 @@ void ModelParallelTrainer::InitTrainerEnv(const ProgramDesc& main_program,
                           "root_scope_ for "
                           "ModelParallelTrainer::InitTrainerEnv should not "
                           "be null.");
-  macrobatch_scopes_.resize(num_macrobatches_);
-  // auto* scope = &root_scope_->NewScope();
-  for (int i = 0; i < num_macrobatches_; ++i) {
-    macrobatch_scopes_[i] = &root_scope_->NewScope();
-    CopyParameters(i, main_program);
+  macrobatch_scopes_.resize(section_num_);
+  minibatch_scope_ = &root_scope_->NewScope();
+  auto& global_block = main_program.Block(0);
+  for (auto& var : global_block.AllVars()) {
+    if (var->Persistable()) {
+      persistable_var_names_.insert(var->Name());
+      persistable_var_grad_names_.insert(framework::GradVarName(var->Name()));
+    }
   }
-  VLOG(3) << "created macrobatch scopes.";
+  for (int i = 0; i < section_num_; ++i) {
+    std::shared_ptr<framework::ProgramDesc> program;
+    program.reset(new ProgramDesc(
+        trainer_desc_.section_param().section_config(i).program_desc()));
+    macrobatch_scopes_[i].resize(num_macrobatches_);
+    for (int j = 0; j < num_macrobatches_; ++j) {
+      macrobatch_scopes_[i][j] = &minibatch_scope_->NewScope();
+      CopyParameters(i, j, *program);
+    }
+  }
+  VLOG(3) << "Created all scopes.";
 
   for (int i = 0; i < section_num_; ++i) {
-    for (size_t j = 0; j < workers_[i].size(); ++j) {
-      auto this_worker =
-          std::dynamic_pointer_cast<paddle::framework::ModelParallelWorker>(
-              workers_[i][j]);
-      this_worker->SetRootScope(root_scope_);
-      this_worker->SetMacrobatchScopes(macrobatch_scopes_);
-    }
+    auto this_worker =
+        std::dynamic_pointer_cast<paddle::framework::ModelParallelWorker>(
+            workers_[i]);
+    this_worker->SetRootScope(root_scope_);
+    this_worker->SetMinibatchScope(minibatch_scope_);
+    this_worker->SetMacrobatchScopes(macrobatch_scopes_[i]);
   }
 }
 
 void ModelParallelTrainer::Run() {
   VLOG(3) << "Going to run model parallel device worker";
   for (int i = 0; i < section_num_; ++i) {
-    for (size_t j = 0; j < workers_[i].size(); ++j) {
-      if (!debug_) {
-        threads_.push_back(
-            std::thread(&DeviceWorker::TrainFiles, workers_[i][j].get()));
-      }
-      // else {
-      //  section_threads_.push_back(std::thread(
-      //      &DeviceWorker::TrainFilesWithProfiler, workers_[i][j].get()));
-      //}
-      //}
+    if (!debug_) {
+      threads_.push_back(
+          std::thread(&DeviceWorker::TrainFiles, workers_[i].get()));
     }
+    // else {
+    //  section_threads_.push_back(std::thread(
+    //      &DeviceWorker::TrainFilesWithProfiler, workers_[i][j].get()));
+    //}
+    //}
   }
 }
 
@@ -165,7 +188,7 @@ void ModelParallelTrainer::Finalize() {
 }
 
 Scope* ModelParallelTrainer::GetWorkerScope(int thread_id) {
-  return macrobatch_scopes_[thread_id];
+  return macrobatch_scopes_[thread_id][0];
 }
 
 }  // end namespace framework

@@ -79,7 +79,7 @@ void ModelParallelWorker::TrainFiles() {
                             "The device reader for the first "
                             "thread should not be null.");
     device_reader_->Start();
-    device_reader_->AssignFeedVar(*root_scope_);
+    device_reader_->AssignFeedVar(*minibatch_scope_);
     while (true) {
       // Start a macrobatch.
       // forward pass:
@@ -109,9 +109,19 @@ void ModelParallelWorker::TrainFiles() {
           }
         }
       }
+      // update pass
+      for (auto& op : ops_) {
+        int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
+        if (op_role == static_cast<int>(OpRole::kOptimize) ||
+            op_role == static_cast<int>(OpRole::kLRSched)) {
+          VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
+                  << " for minibatch scope";
+          op->Run(*minibatch_scope_, place_);
+        }
+      }
       dev_ctx_->Wait();
     }
-  } else if (thread_id_ == 2) {
+  } else {
     while (true) {
       // forward pass:
       for (int i = 0; i < num_macrobatches_; ++i) {
@@ -137,6 +147,16 @@ void ModelParallelWorker::TrainFiles() {
                     << " for scope " << i;
             op->Run(*macrobatch_scopes_[i], place_);
           }
+        }
+      }
+      // update pass
+      for (auto& op : ops_) {
+        int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
+        if (op_role == static_cast<int>(OpRole::kOptimize) ||
+            op_role == static_cast<int>(OpRole::kLRSched)) {
+          VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
+                  << " for minibatch scope ";
+          op->Run(*minibatch_scope_, place_);
         }
       }
       dev_ctx_->Wait();

@@ -402,6 +402,7 @@ class ModelParallelWorker : public DeviceWorker {
   void SetMacrobatchScopes(const std::vector<Scope*>& scope) {
     macrobatch_scopes_ = scope;
   }
+  void SetMinibatchScope(const Scope* scope) { minibatch_scope_ = scope; }
 
   void TrainFiles() override;
   void TrainFilesWithProfiler() override;
@@ -417,6 +418,7 @@ class ModelParallelWorker : public DeviceWorker {
   int section_id_;
   int num_macrobatches_;
   std::vector<Scope*> macrobatch_scopes_;
+  const Scope* minibatch_scope_;
   void AutoSetCPUAffinity(bool reuse);
   std::vector<std::unique_ptr<OperatorBase>> ops_;
 
