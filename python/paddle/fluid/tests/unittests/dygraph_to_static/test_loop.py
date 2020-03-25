@@ -20,7 +20,7 @@ import numpy as np
 import paddle.fluid as fluid
 import unittest
 
-from paddle.fluid.dygraph.jit import dygraph_to_static_graph
+from paddle.fluid.dygraph.jit import dygraph_to_static_func
 from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import NameVisitor
 
 SEED = 2020
@@ -90,7 +90,7 @@ class TestTransformWhileLoop(unittest.TestCase):
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
             x_var = fluid.layers.assign(self.x)
-            static_func = dygraph_to_static_graph(self.dyfunc)
+            static_func = dygraph_to_static_func(self.dyfunc)
 
             out = static_func(x_var)
             exe = fluid.Executor(self.place)
@@ -133,7 +133,7 @@ class TestTransformForLoop(unittest.TestCase):
     def _run_static(self):
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
-            static_func = dygraph_to_static_graph(self.dyfunc)
+            static_func = dygraph_to_static_func(self.dyfunc)
             out = static_func(self.len)
             exe = fluid.Executor(self.place)
             ret = exe.run(main_program, fetch_list=out)
