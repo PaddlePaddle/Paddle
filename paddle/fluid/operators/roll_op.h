@@ -79,7 +79,7 @@ class RollKernel : public framework::OpKernel<T> {
     std::vector<int64_t> shifts = context.Attr<std::vector<int64_t>>("shifts");
     std::vector<int64_t> dims = context.Attr<std::vector<int64_t>>("dims");
 
-    auto nums = shifts.size();
+    size_t nums = shifts.size();
     const T* input_data = input.data<T>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
     const DDim input_dim = input.dims();
@@ -88,7 +88,7 @@ class RollKernel : public framework::OpKernel<T> {
       *(output_data + i) = *(input_data + i);
     }
 
-    for (auto i = 0; i < nums; i++) {
+    for (size_t i = 0; i < nums; i++) {
       PADDLE_ENFORCE_EQ(
           dims[i] < input_dim.size() && dims[i] >= (0 - input_dim.size()), true,
           platform::errors::OutOfRange(
@@ -120,7 +120,7 @@ class RollGradKernel : public framework::OpKernel<T> {
       *(output_data + i) = *(input_data + i);
     }
 
-    for (auto i = 0; i < nums; i++) {
+    for (size_t i = 0; i < nums; i++) {
       shift_along_dim(output_data, input_dim, dims[i], 0 - shifts[i]);
     }
   }
