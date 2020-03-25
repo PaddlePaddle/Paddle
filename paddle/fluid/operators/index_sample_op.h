@@ -40,7 +40,7 @@ void IndexSampleInner(const framework::ExecutionContext &context,
   int batch_size = input_dims[0];
   auto value_length = input_dims[1];
   auto index_length = index_dims[1];
-  int index_ids_num = index_tensor.numel();
+  int index_ids_num = index.numel();
   auto *input_data = input.data<T>();
   auto *index_data = index.data<IndexT>();
 
@@ -126,7 +126,7 @@ void IndexSampleGradInner(const framework::ExecutionContext &context,
 
   memset(x_grad_data, 0, batch_size * value_length * sizeof(T));
 
-  for (int i = 0; i < index_ids_num, i++) {
+  for (int i = 0; i < index_ids_num; i++) {
     int b = floor(i / index_length);
     PADDLE_ENFORCE_LT(
         -1, index_data[i],

@@ -80,7 +80,7 @@ class IndexSampleGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void Infershape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Index"), "Input(Index) should be not null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should be not null.");
@@ -110,7 +110,6 @@ class IndexSampleGradMaker : public framework::OpProtoAndCheckerMaker {
     op->SetInput("Index", this->Input("Index"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    op->SetAttrMap(this->Attrs());
   }
 };
 }  // namespace operators
