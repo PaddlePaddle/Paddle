@@ -11,6 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import paddle.tensor
+import paddle.sysconfig
+import paddle.distributed
+import paddle.compat
+import paddle.batch
+import paddle.dataset
+import paddle.reader
 import os
 from paddle.check_import_scipy import check_import_scipy
 
@@ -26,10 +33,4 @@ except ImportError:
      import paddle from the source directory; please install paddlepaddle*.whl firstly.'''
                      )
 
-import paddle.reader
-import paddle.dataset
-import paddle.batch
-import paddle.compat
-import paddle.distributed
 batch = batch.batch
-import paddle.sysconfig
