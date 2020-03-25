@@ -36,7 +36,18 @@ from distributed import DistributedBatchSampler, _all_gather, prepare_distribute
 from metrics import Metric
 from callbacks import config_callbacks
 
-__all__ = ['Model', 'Loss', 'CrossEntropy', 'Input']
+__all__ = ['Model', 'Loss', 'CrossEntropy', 'Input', 'set_device']
+
+
+def set_device(device):
+    assert isinstance(device, six.string_types) and device.lower() in ['cpu', 'gpu'], \
+    "Expected device in ['cpu', 'gpu'], but got {}".format(device)
+
+    place = fluid.CUDAPlace(ParallelEnv().dev_id) \
+            if device.lower() == 'gpu' and fluid.is_compiled_with_cuda() \
+                else fluid.CUDAPlace(0)
+
+    return place
 
 
 def to_list(value):
@@ -458,24 +469,21 @@ class StaticGraphAdapter(object):
         if compiled_prog is not None:
             return compiled_prog
 
-        device = self.model._device
-        device_ids = self.model._device_ids
+        assert self.model._place is not None, \
+            "model not ready, please call `model.prepare()` first"
 
-        if device.lower() == 'gpu':
-            places = fluid.cuda_places(device_ids)
-        else:
-            places = fluid.cpu_places(len(device_ids) if device_ids else None)
-
+        place = self.model._place
+        fluid.cpu_places
         # XXX *ALL WEIGHTS* should be initialized upon model construction
         # even if `forward()` may run different code path for different mode
         # therefore startup program only needs to run once
         if self._executor is None:
-            if self._nranks > 1 and device.lower() == 'gpu':
-                gpu_id = int(ParallelEnv().dev_id)
-                place = fluid.CUDAPlace(gpu_id) if device.lower(
-                ) == 'gpu' else fluid.CPUPlace()
-            else:
-                place = places[0]
+            # if self._nranks > 1 and device.lower() == 'gpu':
+            #     gpu_id = int(ParallelEnv().dev_id)
+            #     place = fluid.CUDAPlace(gpu_id) if device.lower(
+            #     ) == 'gpu' else fluid.CPUPlace()
+            # else:
+            #     place = places[0]
             self._executor = fluid.Executor(place)
             # XXX incremental initialization
             uninitialized = []
@@ -495,12 +503,6 @@ class StaticGraphAdapter(object):
         else:
             compiled_prog = prog
 
-        if len(places) > 1:
-            loss_name = None
-            if mode == 'train' and self._loss_endpoint is not None:
-                loss_name = self._loss_endpoint.name
-            compiled_prog = compiled_prog.with_data_parallel(
-                loss_name=loss_name, places=places)
         self._compiled_progs[mode] = compiled_prog
 
 
@@ -704,21 +706,6 @@ class Model(fluid.dygraph.Layer):
         self._optimizer = None
         self._test_dataloader = None
 
-        # init multiple gpus context
-        self._place = fluid.CUDAPlace(ParallelEnv().dev_id) \
-            if ParallelEnv().nranks > 1 else fluid.CUDAPlace(0)
-
-        global _parallel_context_initialized
-        if ParallelEnv().nranks > 1 and not _parallel_context_initialized:
-            if fluid.in_dygraph_mode():
-                fluid.disable_dygraph()
-                fluid.enable_dygraph(self._place)
-                fluid.dygraph.parallel.prepare_context()
-            else:
-                prepare_distributed_context(self._place)
-
-            _parallel_context_initialized = True
-
         # init backend
         if fluid.in_dygraph_mode():
             self._adapter = DynamicGraphAdapter(self)
@@ -850,6 +837,35 @@ class Model(fluid.dygraph.Layer):
                 The default is None.
         """
 
+        if isinstance(device, fluid.CUDAPlace) or \
+            (isinstance(device, six.string_types) and device.lower() == 'gpu') \
+            or (device is None and fluid.is_compiled_with_cuda()):
+            if isinstance(device, fluid.CUDAPlace):
+                self._place = device
+            else:
+                self._place = fluid.CUDAPlace(ParallelEnv().dev_id) \
+                    if ParallelEnv().nranks > 1 else fluid.CUDAPlace(0)
+
+            global _parallel_context_initialized
+            if ParallelEnv().nranks > 1 and not _parallel_context_initialized:
+                if fluid.in_dygraph_mode():
+                    fluid.disable_dygraph()
+                    fluid.enable_dygraph(self._place)
+                    fluid.dygraph.parallel.prepare_context()
+                else:
+                    prepare_distributed_context(self._place)
+
+                _parallel_context_initialized = True
+        elif isinstance(device, fluid.CPUPlace):
+            self._place = device
+        elif (isinstance(device, six.string_types) and device.lower() == 'cpu') \
+            or (device is None):
+            self._place = fluid.CPUPlace()
+        else:
+            raise ValueError(
+                "Expected device in ('gpu', 'cpu', fluid.CUDAPlace, fluid.CPUPlace, None), \
+                but got {}".format(device))
+
         self._optimizer = optimizer
         if loss_function:
             if not isinstance(loss_function, Loss):
@@ -872,11 +888,7 @@ class Model(fluid.dygraph.Layer):
 
         self._inputs = inputs
         self._labels = labels
-        self._device = device
 
-        if device is None:
-            self._device = 'GPU' if fluid.is_compiled_with_cuda() else 'CPU'
-        self._device_ids = device_ids
         if not in_dygraph_mode():
             self._adapter.prepare()
 
@@ -1046,7 +1058,7 @@ class Model(fluid.dygraph.Layer):
                 loader = eval_loader
                 if not isinstance(eval_loader, Iterable):
                     loader = eval_loader()
-                logs = _run_one_epoch(eval_loader, cbks, 'eval')
+                logs = _run_one_epoch(loader, cbks, 'eval')
                 cbks.on_end('eval', logs)
 
         cbks.on_end('train', logs)
