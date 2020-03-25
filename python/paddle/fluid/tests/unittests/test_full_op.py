@@ -52,7 +52,10 @@ class TestFullAPI(unittest.TestCase):
             device='gpu')
 
         out_4 = fluid.layers.full(
-            shape=shape_tensor_int32, dtype="float32", fill_value=1.1)
+            shape=shape_tensor_int32,
+            dtype="float32",
+            fill_value=1.2,
+            out=out_3)
 
         out_5 = fluid.layers.full(
             shape=shape_tensor_int64,
@@ -75,8 +78,8 @@ class TestFullAPI(unittest.TestCase):
 
         assert np.array_equal(res_1, np.full([1, 2], 1.1, dtype="float32"))
         assert np.array_equal(res_2, np.full([1, 2], 1.1, dtype="float32"))
-        assert np.array_equal(res_3, np.full([1, 2], 1.1, dtype="float32"))
-        assert np.array_equal(res_4, np.full([1, 2], 1.1, dtype="float32"))
+        assert np.array_equal(res_3, np.full([1, 2], 1.2, dtype="float32"))
+        assert np.array_equal(res_4, np.full([1, 2], 1.2, dtype="float32"))
         assert np.array_equal(res_5, np.full([1, 2], 1.1, dtype="float32"))
         assert np.array_equal(res_6, np.full([1, 2], 1.1, dtype="float32"))
 

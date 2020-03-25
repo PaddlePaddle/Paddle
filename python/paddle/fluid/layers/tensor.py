@@ -1496,8 +1496,8 @@ def full(shape,
         name(str, optional): The default value is None.  Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
 
-
     """
+
     helper = LayerHelper("full", **locals())
 
     if dtype is None:
@@ -1514,9 +1514,10 @@ def full(shape,
     out.stop_gradient = stop_gradient
 
     if device is None:
-        out = fill_constant(shape=shape, dtype=dtype, value=fill_value)
+        out = fill_constant(shape=shape, dtype=dtype, value=fill_value, out=out)
     else:
         with device_guard(device):
-            out = fill_constant(shape=shape, dtype=dtype, value=fill_value)
+            out = fill_constant(
+                shape=shape, dtype=dtype, value=fill_value, out=out)
 
     return out
