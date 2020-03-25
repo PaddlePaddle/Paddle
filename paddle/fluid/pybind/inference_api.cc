@@ -421,7 +421,7 @@ void BindAnalysisConfig(py::module *m) {
                std::map<std::string, std::vector<int>>({}),
            py::arg("optim_input_shape") =
                std::map<std::string, std::vector<int>>({}),
-           py::arg("close_trt_plugin_fp16") = false)
+           py::arg("disable_trt_plugin_fp16") = false)
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
       .def("switch_ir_debug", &AnalysisConfig::SwitchIrDebug,
            py::arg("x") = true)

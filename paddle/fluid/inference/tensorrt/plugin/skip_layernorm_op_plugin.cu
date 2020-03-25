@@ -70,7 +70,7 @@ bool SkipLayerNormPluginDynamic::supportsFormatCombination(
 
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
-#ifdef SUPPORT_CUDA_FP16
+#ifdef SUPPORTS_CUDA_FP16
     if (ban_fp16_) {
       return (in.type == nvinfer1::DataType::kFLOAT) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
@@ -125,7 +125,7 @@ int SkipLayerNormPluginDynamic::enqueue(
     skip_layer_norm_func(num, hidden, input1, input2, scale_gpu_, bias_gpu_,
                          output, eps_, stream);
   } else if (input_type == nvinfer1::DataType::kHALF) {
-#ifdef SUPPORT_CUDA_FP16
+#ifdef SUPPORTS_CUDA_FP16
     const half *input1 = static_cast<const half *>(inputs[0]);
     const half *input2 = static_cast<const half *>(inputs[1]);
     half *output = static_cast<half *>(outputs[0]);

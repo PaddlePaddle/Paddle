@@ -53,7 +53,7 @@ class SkipLayerNormOpConverter : public OpConverter {
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
-      bool ban_fp16 = engine_->close_trt_plugin_fp16();
+      bool ban_fp16 = engine_->disable_trt_plugin_fp16();
       plugin::SkipLayerNormPluginDynamic* plugin =
           new plugin::SkipLayerNormPluginDynamic(bias, scale, bias_size,
                                                  scale_size, eps, ban_fp16);

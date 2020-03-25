@@ -109,7 +109,7 @@ inline void TransposeQKV(const int batch, const int seq_len,
   }
 }
 
-#ifdef SUPPORT_CUDA_FP16
+#ifdef SUPPORTS_CUDA_FP16
 inline void TransposeQKV(const int batch, const int seq_len,
                          const int head_size, const int head_num,
                          const half *input, half *output, cudaStream_t stream) {
@@ -188,7 +188,7 @@ bool QkvToContextPluginDynamic::supportsFormatCombination(
 
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
   if (pos == 0) {
-#ifdef SUPPORT_CUDA_FP16
+#ifdef SUPPORTS_CUDA_FP16
     if (ban_fp16_) {
       return (in.type == nvinfer1::DataType::kFLOAT) &&
              (in.format == nvinfer1::TensorFormat::kLINEAR);
@@ -268,7 +268,7 @@ int QkvToContextPluginDynamic::enqueue(
                                                  head_number_, head_size_);
 
   } else if (input_type == nvinfer1::DataType::kHALF) {
-#ifdef SUPPORT_CUDA_FP16
+#ifdef SUPPORTS_CUDA_FP16
     auto *multihead_temp_data =
         multihead_temp_tensor.mutable_data<int16_t>(  // NOLINT
             platform::CUDAPlace(device_id));

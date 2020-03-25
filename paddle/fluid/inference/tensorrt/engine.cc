@@ -162,12 +162,12 @@ void TensorRTEngine::FreezeNetwork() {
     infer_builder_config_->addOptimizationProfile(optim_profile_.get());
     if (WithFp16()) {
       infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
-      if (close_trt_plugin_fp16()) {
+      if (disable_trt_plugin_fp16()) {
         LOG(INFO) << "NOTE: In order to achieve higher accuracy, you have "
                      "disabled the fp16 mode of TRT Plugin,\n"
                   << "you can reopen it with "
                      "'config.SetDynamicShapeInfo(min_shape, max_shape, "
-                     "opt_shape, false /*close_trt_plugin_fp16*/)'";
+                     "opt_shape, false /*disable_trt_plugin_fp16*/)'";
       }
     }
     infer_engine_.reset(infer_builder_->buildEngineWithConfig(

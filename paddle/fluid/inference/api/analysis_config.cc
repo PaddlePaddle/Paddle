@@ -128,7 +128,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(min_input_shape_);
   CP_MEMBER(max_input_shape_);
   CP_MEMBER(optim_input_shape_);
-  CP_MEMBER(close_trt_plugin_fp16_);
+  CP_MEMBER(disable_trt_plugin_fp16_);
 
   CP_MEMBER(use_lite_);
   CP_MEMBER(lite_precision_mode_);
@@ -253,11 +253,11 @@ void AnalysisConfig::SetTRTDynamicShapeInfo(
     std::map<std::string, std::vector<int>> min_input_shape,
     std::map<std::string, std::vector<int>> max_input_shape,
     std::map<std::string, std::vector<int>> optim_input_shape,
-    bool close_trt_plugin_fp16) {
+    bool disable_trt_plugin_fp16) {
   min_input_shape_ = min_input_shape;
   max_input_shape_ = max_input_shape;
   optim_input_shape_ = optim_input_shape;
-  close_trt_plugin_fp16_ = close_trt_plugin_fp16;
+  disable_trt_plugin_fp16_ = disable_trt_plugin_fp16;
 }
 
 // TODO(Superjomn) refactor this, buggy.

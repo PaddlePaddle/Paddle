@@ -131,7 +131,7 @@ void EmbEltwiseLayerNormFunctor<T>::operator()(
 
 template class EmbEltwiseLayerNormFunctor<float>;
 
-#ifdef SUPPORT_CUDA_FP16
+#ifdef SUPPORTS_CUDA_FP16
 template class EmbEltwiseLayerNormFunctor<half>;
 #endif
 
@@ -260,7 +260,7 @@ void MultiHeadGPUComputeFunctor<T>::operator()(
 
 template class MultiHeadGPUComputeFunctor<float>;
 
-#ifdef SUPPORT_CUDA_FP16
+#ifdef SUPPORTS_CUDA_FP16
 template class MultiHeadGPUComputeFunctor<half>;
 #endif
 
@@ -332,7 +332,7 @@ void SkipLayerNormFunctor<T>::operator()(const int num, const int hidden,
 
 template class SkipLayerNormFunctor<float>;
 
-#ifdef SUPPORT_CUDA_FP16
+#ifdef SUPPORTS_CUDA_FP16
 template class SkipLayerNormFunctor<half>;
 #endif
 

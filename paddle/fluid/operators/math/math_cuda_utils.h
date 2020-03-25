@@ -41,7 +41,7 @@ __device__ __forceinline__ float FromFloat<float>(float a) {
   return a;
 }
 
-#ifdef SUPPORT_CUDA_FP16
+#ifdef SUPPORTS_CUDA_FP16
 template <>
 __device__ __forceinline__ half FromFloat<half>(float a) {
   return __float2half(a);
@@ -54,7 +54,7 @@ __device__ __forceinline__ float ToFloat<float>(float a) {
   return a;
 }
 
-#ifdef SUPPORT_CUDA_FP16
+#ifdef SUPPORTS_CUDA_FP16
 template <>
 __device__ __forceinline__ float ToFloat<half>(half a) {
   return __half2float(a);
@@ -66,7 +66,7 @@ __device__ __forceinline__ float exp_func<float>(float a) {
   return expf(a);
 }
 
-#ifdef SUPPORT_CUDA_FP16
+#ifdef SUPPORTS_CUDA_FP16
 template <>
 __device__ __forceinline__ half exp_func<half>(half a) {
 #if __CUDA_ARCH__ >= 600
@@ -97,7 +97,7 @@ struct KeyValuePair<float> {
   }
 };
 
-#ifdef SUPPORT_CUDA_FP16
+#ifdef SUPPORTS_CUDA_FP16
 template <>
 struct KeyValuePair<half> {
   __device__ __forceinline__ KeyValuePair() {}

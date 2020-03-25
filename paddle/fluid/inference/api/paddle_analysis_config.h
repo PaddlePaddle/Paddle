@@ -174,14 +174,14 @@ struct AnalysisConfig {
    *  @param min_input_shape the min input shape of the subgraph input
    *  @param max_input_shape the max input shape of the subgraph input
    *  @param opt_input_shape the opt input shape of the subgraph input
-   *  @param close_trt_plugin_fp16, setting this variable to true
+   *  @param disable_trt_plugin_fp16, setting this variable to true
    *  means that TRT plugin will not run fp16
    */
   void SetTRTDynamicShapeInfo(
       std::map<std::string, std::vector<int>> min_input_shape,
       std::map<std::string, std::vector<int>> max_input_shape,
       std::map<std::string, std::vector<int>> optim_input_shape,
-      bool close_trt_plugin_fp16 = false);
+      bool disable_trt_plugin_fp16 = false);
 
   /**
    *  \brief Turn on the usage of Lite sub-graph engine.
@@ -340,7 +340,7 @@ struct AnalysisConfig {
   std::map<std::string, std::vector<int>> min_input_shape_{};
   std::map<std::string, std::vector<int>> max_input_shape_{};
   std::map<std::string, std::vector<int>> optim_input_shape_{};
-  bool close_trt_plugin_fp16_{false};
+  bool disable_trt_plugin_fp16_{false};
 
   // memory reuse related.
   bool enable_memory_optim_{false};
