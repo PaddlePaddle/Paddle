@@ -70,10 +70,12 @@ def index_sample(x, index):
             import paddle.fluid as fluid
             import numpy as np
 
+            # create x value
             x_shape = (2, 5)
             x_type = "float64"
             x_np = np.random.random(x_shape).astype(x_type)
 
+            # create index value
             index_shape = (2, 3)
             index_type = "int32"
             index_np = np.random.randint(low=0, 
