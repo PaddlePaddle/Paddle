@@ -151,7 +151,7 @@ class SequenceUnpadGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(
     SequenceUnpadGradOpNoNeedBufferVarsInference, "X");
 
 }  // namespace operators
