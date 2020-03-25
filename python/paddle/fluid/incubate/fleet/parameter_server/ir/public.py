@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-import six
+import os
 
 from paddle.fluid import core
 
@@ -31,6 +31,16 @@ class DistributedMode:
     ASYNC = 1
     HALF_ASYNC = 2
     GEO = 3
+
+
+class ServerRuntimeConfig(object):
+    def __init__(self):
+        self._rpc_send_thread_num = int(
+            os.getenv("FLAGS_rpc_send_thread_num", "12"))
+        self._rpc_get_thread_num = int(
+            os.getenv("FLAGS_rpc_get_thread_num", "12"))
+        self._rpc_prefetch_thread_num = int(
+            os.getenv("FLAGS_rpc_prefetch_thread_num", "12"))
 
 
 def _is_opt_role_op(op):
