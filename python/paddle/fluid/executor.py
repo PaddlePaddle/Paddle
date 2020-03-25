@@ -393,11 +393,13 @@ def _as_lodtensor(data, place, dtype):
                 ndarray to LoDTensor. Please convert data to LoDTensor \
                 directly before feeding the data.\
                 ")
+
     #NOTE(zhiqiu): convert python builtin ,like float and int, to numpy array
     if not isinstance(data, np.ndarray):
-        dtype = convert_dtype(dtype) if isinstance(
-            dtype, core.VarDesc.VarType) else dtype
-        data = np.array(data).astype(dtype)
+        if np.isscalar(data):
+            dtype = convert_dtype(dtype) if isinstance(
+                dtype, core.VarDesc.VarType) else dtype
+            data = np.array([data]).astype(dtype)
 
     # single tensor case
     tensor = core.LoDTensor()
@@ -579,7 +581,6 @@ class Executor(object):
                 var = global_block.var(feed_target_name)
                 if not isinstance(cur_feed, core.LoDTensor):
                     cur_feed = _as_lodtensor(cur_feed, self.place, var.dtype)
-
                 check_feed_shape_type(var, cur_feed)
                 idx = op.desc.attr('col')
                 core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
