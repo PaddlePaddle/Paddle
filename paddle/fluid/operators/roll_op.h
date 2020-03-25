@@ -16,7 +16,6 @@ limitations under the License. */
 #include <memory>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -25,9 +24,9 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 using DDim = framework::DDim;
 
-template <typename DeviceContext, typename T>
-inline void shift_along_dim(const math::BlasT<DeviceContext, T>& blas, T* data,
-                            const DDim& input_dim, int64_t dim, int64_t shift) {
+template <typename T>
+inline void shift_along_dim(T* data, const DDim& input_dim, int64_t dim,
+                            int64_t shift) {
   if (dim < 0) {
     dim += input_dim.size();
   }
@@ -44,7 +43,6 @@ inline void shift_along_dim(const math::BlasT<DeviceContext, T>& blas, T* data,
   for (auto i = dim + 1; i < input_dim.size(); i++) {
     slice_width *= input_dim[i];
   }
-  const size_t slice_bytes = slice_width * sizeof(T);
 
   VLOG(1) << "shift_along_dim_debug: input_dim: " << input_dim
           << "; dim: " << dim << "; shift: " << shift
@@ -58,23 +56,16 @@ inline void shift_along_dim(const math::BlasT<DeviceContext, T>& blas, T* data,
   head.resize(slice_width * (input_dim[dim] - shift));
 
   for (auto i = 0; i < outer_loops; i++) {
-    blas.VCOPY(slice_width * (input_dim[dim] - shift),
-               data + i * input_dim[dim] * slice_width, head.data())
-        // memcpy(head, data + i * input_dim[dim] * slice_width,
-        //       slice_width * (input_dim[dim] - shift) * sizeof(T));
-        for (auto j = input_dim[dim] - shift; j < input_dim[dim]; j++) {
+    memcpy(head, data + i * input_dim[dim] * slice_width,
+           slice_width * (input_dim[dim] - shift) * sizeof(T));
+    for (auto j = input_dim[dim] - shift; j < input_dim[dim]; j++) {
       auto dst_pos = j - input_dim[dim] + shift;
-      blas.VCOPY(slice_width, data + (i * input_dim[dim] + j) * slice_width,
-                 data + (i * input_dim[dim] + dst_pos) * slice_width);
-      // memcpy(data + (i * input_dim[dim] + dst_pos) * slice_width,
-      //       data + (i * input_dim[dim] + j) * slice_width, slice_bytes);
+      memcpy(data + (i * input_dim[dim] + dst_pos) * slice_width,
+             data + (i * input_dim[dim] + j) * slice_width, slice_bytes);
     }
-    blas.VCOPY(slice_width * (input_dim[dim] - shift), head.data(),
-               data + (i * input_dim[dim] + shift) * slice_width);
-    // memcpy(data + (i * input_dim[dim] + shift) * slice_width, head,
-    //       slice_width * (input_dim[dim] - shift) * sizeof(T));
+    memcpy(data + (i * input_dim[dim] + shift) * slice_width, head,
+           slice_width * (input_dim[dim] - shift) * sizeof(T));
   }
-  // delete[] head;
 }
 
 template <typename DeviceContext, typename T>
@@ -88,14 +79,13 @@ class RollKernel : public framework::OpKernel<T> {
     std::vector<int64_t> shifts = context.Attr<std::vector<int64_t>>("shifts");
     std::vector<int64_t> dims = context.Attr<std::vector<int64_t>>("dims");
 
-    framework::TensorCopy(input, context.GetPlace(), output);
+    std::vector<T> out_vec;
+    TensorToVector(input, context.device_context(), &out_vec);
 
     size_t nums = shifts.size();
-    T* output_data = output->mutable_data<T>(context.GetPlace());
+    output->mutable_data<T>(context.GetPlace());
     const DDim input_dim = input.dims();
 
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
     for (size_t i = 0; i < nums; i++) {
       PADDLE_ENFORCE_EQ(
           dims[i] < input_dim.size() && dims[i] >= (0 - input_dim.size()), true,
@@ -103,8 +93,9 @@ class RollKernel : public framework::OpKernel<T> {
               "Attr(dims[%d]) is out of range, It's expected "
               "to be in range of [-%d, %d]. But received Attr(dims[%d]) = %d.",
               i, input_dim.size(), input_dim.size() - 1, i, dims[i]));
-      shift_along_dim(output_data, input_dim, dims[i], shifts[i]);
+      shift_along_dim(out_vec.data(), input_dim, dims[i], shifts[i]);
     }
+    framework::TensorFromVector(out_vec, context.device_context(), output);
   }
 };
 
@@ -119,18 +110,17 @@ class RollGradKernel : public framework::OpKernel<T> {
     std::vector<int64_t> shifts = context.Attr<std::vector<int64_t>>("shifts");
     std::vector<int64_t> dims = context.Attr<std::vector<int64_t>>("dims");
 
+    std::vector<T> out_vec;
+    TensorToVector(input, context.device_context(), &out_vec);
+
     size_t nums = shifts.size();
-    const T* input_data = input.data<T>();
-    T* output_data = output->mutable_data<T>(context.GetPlace());
+    output->mutable_data<T>(context.GetPlace());
     const DDim input_dim = input.dims();
 
-    for (auto i = 0; i < input.numel(); i++) {
-      *(output_data + i) = *(input_data + i);
-    }
-
     for (size_t i = 0; i < nums; i++) {
-      shift_along_dim(output_data, input_dim, dims[i], 0 - shifts[i]);
+      shift_along_dim(out_vec.data(), input_dim, dims[i], 0 - shifts[i]);
     }
+    framework::TensorFromVector(out_vec, context.device_context(), output);
   }
 };
 
