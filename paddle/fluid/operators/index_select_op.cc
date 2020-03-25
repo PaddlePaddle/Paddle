@@ -137,6 +137,9 @@ class IndexSelectGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
   }
 };
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(IndexSelectGradNoNeedBufferVarsInference,
+                                      "X");
 }  // namespace operators
 }  // namespace paddle
 
@@ -144,7 +147,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(index_select, ops::IndexSelectOp, ops::IndexSelectOpMaker,
                   ops::IndexSelectGradMaker<paddle::framework::OpDesc>,
                   ops::IndexSelectGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(index_select_grad, ops::IndexSelectGradOp);
+REGISTER_OPERATOR(index_select_grad, ops::IndexSelectGradOp,
+                  ops::IndexSelectGradNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(
     index_select,
     ops::IndexSelectKernel<paddle::platform::CPUDeviceContext, float>,

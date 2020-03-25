@@ -120,6 +120,8 @@ class RollGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
   }
 };
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(RollGradNoNeedBufferVarsInference, "X");
 }  // namespace operators
 }  // namespace paddle
 
@@ -127,7 +129,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(roll, ops::RollOp, ops::RollOpMaker,
                   ops::RollGradMaker<paddle::framework::OpDesc>,
                   ops::RollGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(roll_grad, ops::RollGradOp);
+REGISTER_OPERATOR(roll_grad, ops::RollGradOp,
+                  ops::RollGradNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(
     roll, ops::RollKernel<paddle::platform::CPUDeviceContext, float>,
     ops::RollKernel<paddle::platform::CPUDeviceContext, double>,
