@@ -27,7 +27,9 @@ def test_list_without_control_flow(x):
     # Python list will not be transformed.
     x = fluid.dygraph.to_variable(x)
     a = []
-    a.append(x)
+    # It's a plain python control flow which won't be transformed
+    if 2 > 1:
+        a.append(x)
     return a
 
 

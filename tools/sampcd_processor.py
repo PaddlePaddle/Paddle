@@ -22,6 +22,7 @@ import inspect
 import paddle
 import paddle.fluid
 import json
+import re
 """
 please make sure to run in the tools path
 usage: python sample_test.py {arg1} 
@@ -83,6 +84,32 @@ def check_indent(cdline):
     return indent
 
 
+def return_sample(htype, srccom, mode):
+    """
+    this function will return sample code or sample result.
+
+    Args:
+        htype(str): the type of hint banners, def/class/method.
+        srccom(str): the source comment of some API whose
+                     example codes will be extracted and run.
+        mode(str): return mode. python/text.
+
+    Returns:
+        r: sample code or sample result. 
+    """
+    if htype == 'method':
+        strings = '^ code-block:: %s\n(.*?)\n        [^ ]' % mode
+        pattern = re.compile(strings, re.MULTILINE | re.DOTALL)
+    else:
+        strings = '^ code-block:: %s\n(.*?)\n    [^ ]' % mode
+        pattern = re.compile(strings, re.MULTILINE | re.DOTALL)
+    if pattern.search(srccom) == None:
+        r = None
+    else:
+        r = pattern.search(srccom).group(1)
+    return r
+
+
 # srccom: raw comments in the source,including ''' and original indent
 def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
     """
@@ -121,12 +148,14 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
         print("execution result:")
 
     sampcd_begins = find_all(srccom, " code-block:: python")
+    sampre_begins = find_all(srccom, " code-block:: text")
+
     if len(sampcd_begins) == 0:
-        print_header(htype, hname)
         '''
         detect sample codes using >>> to format
         and consider this situation as wrong
         '''
+        print_header(htype, hname)
         if srccom.find("Examples:") != -1:
             print("----example code check----\n")
             if srccom.find(">>>") != -1:
@@ -138,70 +167,114 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
         else:
             print("Error: No sample code!\n")
             result = False
+    if len(sampcd_begins) != len(sampre_begins) and hname not in wlist_return:
+        print_header(htype, hname)
+        if len(sampre_begins) == 0:
+            print("Error: Cannot find the return result of the sample code.")
+        else:
+            print("Error: Found %s result but %s python file." %
+                  (len(sampre_begins), len(sampcd_begins)))
+            print(
+                "If you think the sample code of this api is not suitable for the return result, please add the white list in FIle: tools/wlist_return.json first. And you must have one TPM(saxon-zh or swtkiwi or Boyan-Liu) approve for the white list."
+            )
+        result = False
+    else:
+        for y in range(1, len(sampcd_begins) + 1):
+            sampcd_begin = sampcd_begins[y - 1]
+            sampcd = srccom[sampcd_begin:]
+            sampcd = return_sample(htype, sampcd, 'python')
+            if sampcd == None:
+                sampcd = srccom[sampcd_begin + len(" code-block:: python") + 1:]
+            sampcd = sampcd.split("\n")
+            # remove starting empty lines
+            while sampcd[0].replace(' ', '').replace('\t', '') == '':
+                sampcd.pop(0)
 
-    for y in range(1, len(sampcd_begins) + 1):
-        sampcd_begin = sampcd_begins[y - 1]
-        sampcd = srccom[sampcd_begin + len(" code-block:: python") + 1:]
-        sampcd = sampcd.split("\n")
-        # remove starting empty lines
-        while sampcd[0].replace(' ', '').replace('\t', '') == '':
-            sampcd.pop(0)
+            # the minimum indent, which is the indent of the first
+            # non-empty line
+            min_indent = check_indent(sampcd[0])
+            sampcd_to_write = []
+            for i in range(0, len(sampcd)):
+                cdline = sampcd[i]
+                # handle empty lines or those only with spaces/tabs
+                if cdline.strip() == '':
+                    continue
+                this_indent = check_indent(cdline)
+                if this_indent < min_indent:
+                    break
+                else:
+                    cdline = cdline.replace('\t', '    ')
+                    sampcd_to_write.append(cdline[min_indent:])
 
-        # the minimum indent, which is the indent of the first
-        # non-empty line
-        min_indent = check_indent(sampcd[0])
-        sampcd_to_write = []
-        for i in range(0, len(sampcd)):
-            cdline = sampcd[i]
-            # handle empty lines or those only with spaces/tabs
-            if cdline.strip() == '':
-                continue
-            this_indent = check_indent(cdline)
-            if this_indent < min_indent:
-                break
+            sampcd = '\n'.join(sampcd_to_write)
+            if sys.argv[1] == "cpu":
+                sampcd = '\nimport os\n' + 'os.environ["CUDA_VISIBLE_DEVICES"] = ""\n' + sampcd
+            if sys.argv[1] == "gpu":
+                sampcd = '\nimport os\n' + 'os.environ["CUDA_VISIBLE_DEVICES"] = "0"\n' + sampcd
+
+            if len(sampcd_begins) > 1:
+                tfname = name + "_example_" + str(y) + ".py"
             else:
-                cdline = cdline.replace('\t', '    ')
-                sampcd_to_write.append(cdline[min_indent:])
-
-        sampcd = '\n'.join(sampcd_to_write)
-        if sys.argv[1] == "cpu":
-            sampcd = '\nimport os\n' + 'os.environ["CUDA_VISIBLE_DEVICES"] = ""\n' + sampcd
-        if sys.argv[1] == "gpu":
-            sampcd = '\nimport os\n' + 'os.environ["CUDA_VISIBLE_DEVICES"] = "0"\n' + sampcd
-        sampcd += '\nprint(' + '\"' + name + ' sample code is executed successfully!\")'
-
-        if len(sampcd_begins) > 1:
-            tfname = name + "_example_" + str(y) + ".py"
-        else:
-            tfname = name + "_example" + ".py"
-        tempf = open("samplecode_temp/" + tfname, 'w')
-        tempf.write(sampcd)
-        tempf.close()
-        if platform.python_version()[0] == "2":
-            cmd = ["python", "samplecode_temp/" + tfname]
-        elif platform.python_version()[0] == "3":
-            cmd = ["python3", "samplecode_temp/" + tfname]
-        else:
-            print("Error: fail to parse python version!")
-            result = False
-            exit(1)
-
-        subprc = subprocess.Popen(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, error = subprc.communicate()
-        msg = "".join(output.decode(encoding='utf-8'))
-        err = "".join(error.decode(encoding='utf-8'))
-
-        if subprc.returncode != 0:
-            print("\nSample code error found in ", name, ":\n")
-            sampcd_header_print(name, sampcd, htype, hname)
-            print("subprocess return code: ", str(subprc.returncode))
-            print("Error Raised from Sample Code ", name, " :\n")
-            print(err)
-            print(msg)
-            result = False
-        # msg is the returned code execution report
-        #os.remove("samplecode_temp/" + tfname)
+                tfname = name + "_example" + ".py"
+            tempf = open("samplecode_temp/" + tfname, 'w')
+            tempf.write(sampcd)
+            tempf.close()
+            if platform.python_version()[0] == "2":
+                cmd = ["python", "samplecode_temp/" + tfname]
+            elif platform.python_version()[0] == "3":
+                cmd = ["python3", "samplecode_temp/" + tfname]
+            else:
+                print("Error: fail to parse python version!")
+                result = False
+                exit(1)
+            subprc = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            output, error = subprc.communicate()
+            if output == "" and len(sampre_begins) != 0:
+                print_header(htype, hname)
+                print(
+                    "Error: Your sample code have returned a result, but execute sample code don't get result!"
+                )
+                print(
+                    "If you think the sample code of this api is not suitable for the return result, please add the white list in FIle: tools/wlist_return.json first. And you must have one TPM(saxon-zh or swtkiwi or Boyan-Liu) approve for the white list."
+                )
+                result = False
+            elif len(sampcd_begins) == len(sampre_begins):
+                sampre_begin = sampre_begins[y - 1]
+                sampre = return_sample(htype, srccom[sampre_begin:], 'text')
+                if output != sampre:
+                    print_header(htype, hname)
+                    print(
+                        "Error: Mistake found in the return result of sample code."
+                    )
+                    print("There maybe three reasons for this error:")
+                    print(
+                        "1. The input of the sample code is a random number.Please add the white list in FIle: tools/return_white_list.txt first .And you must have one TPM(saxon-zh or swtkiwi or Boyan-Liu) approve for the white list."
+                    )
+                    print(
+                        "2. The return value of the sample code is incorrect. Please check the code and reset the return value."
+                    )
+                    print(
+                        "3. If you think the sample code of this api is not suitable for the return result, please add the white list in FIle: tools/wlist_return.json first. And you must have one TPM(saxon-zh or swtkiwi or Boyan-Liu) approve for the white list."
+                    )
+                    result = False
+            else:
+                if name not in wlist_return:
+                    print_header(htype, hname)
+                    print(
+                        "Error: If you think the sample code of this api is not suitable for the return result, please add the white list in FIle: tools/wlist_return.json first. And you must have one TPM(saxon-zh or swtkiwi or Boyan-Liu) approve for the white list."
+                    )
+                    result = False
+            msg = "".join(output.decode(encoding='utf-8'))
+            err = "".join(error.decode(encoding='utf-8'))
+            if subprc.returncode != 0:
+                print("\nSample code error found in ", name, ":\n")
+                sampcd_header_print(name, sampcd, htype, hname)
+                print("subprocess return code: ", str(subprc.returncode))
+                print("Error Raised from Sample Code ", name, " :\n")
+                print(err)
+                print(msg)
+                result = False
 
     return result
 
@@ -278,7 +351,6 @@ def srccoms_extract(srcfile, wlist):
     Returns:
         result: True or False
     """
-
     process_result = True
     srcc = srcfile.read()
     # 2. get defs and classes header line number
@@ -342,6 +414,7 @@ def srccoms_extract(srcfile, wlist):
                         opname)  # ops.py also has normal formatted functions
                     # use list 'handled'  to mark the functions have been handled here
                     # which will be ignored in the following step
+
         for i in range(0, len(srcls)):
             if srcls[i].startswith(
                     'def '):  # a function header is detected in line i
@@ -357,14 +430,12 @@ def srccoms_extract(srcfile, wlist):
                         continue
                     fcombody = single_defcom_extract(i, srcls)
                     if fcombody == "":  # if no comment
-                        print_header("def", fn)
                         print("WARNING: no comments in function ", fn,
                               ", but it deserves.")
                         continue
                     else:
                         if not sampcd_extract_and_run(fcombody, fn, "def", fn):
                             process_result = False
-
             if srcls[i].startswith('class '):
                 c_header = srcls[i].replace(" ", '')
                 cn = c_header[len('class'):c_header.find('(')]  # class name
@@ -433,7 +504,6 @@ def srccoms_extract(srcfile, wlist):
                                     if not sampcd_extract_and_run(
                                             thismtdcom, name, "method", name):
                                         process_result = False
-
     return process_result
 
 
@@ -512,9 +582,10 @@ def get_incrementapi():
         with open(API_spec) as f:
             for line in f.readlines():
                 api = line.split(' ', 1)[0]
-                md5 = line.split("'document', ")[1].replace(')', '').replace(
-                    '\n', '')
-                api_md5[api] = md5
+                if line.find('document') != -1:
+                    md5 = line.split("'document', ")[1].replace(
+                        ')', '').replace('\n', '')
+                    api_md5[api] = md5
         return api_md5
 
     dev_api = get_api_md5('paddle/fluid/API_DEV.spec')
@@ -537,9 +608,12 @@ gpu_not_white = [
 ]
 
 
-def get_wlist():
+def get_wlist(file_name):
     '''
     this function will get the white list of API.
+
+    Args:
+        file_name(file): white file name.
 
     Returns:
 
@@ -547,14 +621,16 @@ def get_wlist():
 
     '''
     wlist = []
-    with open("wlist.json", 'r') as load_f:
+    with open(file_name, 'r') as load_f:
         load_dict = json.load(load_f)
         for key in load_dict:
             wlist = wlist + load_dict[key]
     return wlist
 
 
-wlist = get_wlist()
+wlist = get_wlist('wlist.json')
+
+wlist_return = get_wlist('wlist_return.json')
 
 if len(sys.argv) < 2:
     print("Error: inadequate number of arguments")

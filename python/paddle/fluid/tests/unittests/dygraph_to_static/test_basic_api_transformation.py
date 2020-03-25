@@ -15,11 +15,14 @@
 from __future__ import print_function
 
 import numpy as np
-import paddle.fluid as fluid
 import unittest
 import inspect
 import gast
 
+import paddle.fluid as fluid
+import paddle.fluid.dygraph as dygraph
+
+from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph.jit import dygraph_to_static_func
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_dygraph_api
 
@@ -33,14 +36,21 @@ def dyfunc_to_variable(x):
 
 
 def dyfunc_to_variable_2(x):
-    res = fluid.dygraph.to_variable(value=np.zeros(shape=(1), dtype=np.int32))
+    res = dygraph.to_variable(value=np.zeros(shape=(1), dtype=np.int32))
+    return res
+
+
+def dyfunc_to_variable_3(x):
+    res = to_variable(x, name=None, zero_copy=None)
     return res
 
 
 class TestDygraphBasicApi_ToVariable(unittest.TestCase):
     def setUp(self):
         self.input = np.ones(5).astype("int32")
-        self.test_funcs = [dyfunc_to_variable, dyfunc_to_variable_2]
+        self.test_funcs = [
+            dyfunc_to_variable, dyfunc_to_variable_2, dyfunc_to_variable_3
+        ]
         self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
 
@@ -72,8 +82,6 @@ class TestDygraphBasicApi_ToVariable(unittest.TestCase):
 
 
 # 1. test Apis that inherit from layers.Layer
-
-
 def dyfunc_BilinearTensorProduct(layer1, layer2):
     bilinearTensorProduct = fluid.dygraph.nn.BilinearTensorProduct(
         input1_dim=5,
