@@ -75,8 +75,8 @@ from .transpiler import DistributeTranspiler, \
     memory_optimize, release_memory, DistributeTranspilerConfig
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
 from . import clip
-from . import dygraph_grad_clip
 from . import profiler
+from .dygraph_grad_clip import *
 from . import unique_name
 from . import parallel_executor
 from .parallel_executor import *

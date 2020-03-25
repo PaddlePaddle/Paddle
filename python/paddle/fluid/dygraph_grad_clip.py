@@ -13,9 +13,10 @@
 # limitations under the License.
 
 from __future__ import print_function
-
+from types import FunctionType
 import copy
 import six
+import warnings
 
 import functools
 
@@ -23,24 +24,47 @@ from . import layers
 from . import framework
 from . import core
 from .dygraph import base as imperative_base
+from .clip import _correct_clip_op_role_var
 
 __all__ = [
-    'GradClipByValue',
-    'GradClipByNorm',
-    'GradClipByGlobalNorm',
+    'GradClipBase', 'GradClipByValue', 'GradClipByNorm', 'GradClipByGlobalNorm',
+    'ClipByValue', 'ClipByNorm', 'ClipByGlobalNorm'
 ]
 
 
 class GradClipBase(object):
+    def __init__(self, need_clip=None):
+        if need_clip is not None and not isinstance(need_clip, FunctionType):
+            raise TypeError(
+                "The type of need_clip must be funciton, and it can filter "
+                "out parameter that does't need gradient clip, please refer to "
+                "documention of API:fluid.ClipByValue/fluid.ClipByGlobalNorm/"
+                "fluid.ClipByNorm!")
+        self._need_clip_func = need_clip
+
     def __str__(self):
         raise NotImplementedError()
 
-    def _clip(self, para_and_grad):
+    @imperative_base.no_grad
+    def _dygraph_clip(self, params_grads):
         raise NotImplementedError
 
-    @imperative_base.no_grad
-    def __call__(self, para_and_grad):
-        return self._clip(para_and_grad)
+    def _static_clip(self, params_grads):
+        raise NotImplementedError
+
+    def __call__(self, params_grads):
+        assert len(
+            params_grads
+        ) > 0, "The number of trainable parameters should be greater than 0."
+        if getattr(params_grads[0][0], 'gradient_clip_attr', None) is not None:
+            warnings.warn(
+                "'set_gradient_clip' will be ineffective, because you have "
+                "pass 'grad_clip' into 'minimize'. So, 'set_gradient_clip' "
+                "is redundant and you can remove it.")
+        if framework.in_dygraph_mode():
+            return self._dygraph_clip(params_grads)
+        else:
+            return self._static_clip(params_grads)
 
 
 class GradClipByValue(GradClipBase):
@@ -88,33 +112,50 @@ class GradClipByValue(GradClipBase):
             
     """
 
-    @imperative_base.no_grad
-    def __init__(self, min_value, max_value=None):
-
+    def __init__(self, min_value, max_value, need_clip=None):
+        super(GradClipByValue, self).__init__(need_clip)
         if min_value is None:
             assert (max_value > 0.0)
             min_value = -max_value
-        else:
-            min_value = float(min_value)
-        self.max_value = max_value
-        self.min_value = min_value
+        self.max_value = float(max_value)
+        self.min_value = float(min_value)
 
     def __str__(self):
-        return "ClipByValue, min = %f, max=%f" % (self.min_value,
-                                                  self.max_value)
+        return "Gradient Clip By Value, min = %f, max=%f" % (self.min_value,
+                                                             self.max_value)
 
-    def _clip(self, para_and_grad):
-        out = []
-        for p, g in para_and_grad:
+    @imperative_base.no_grad
+    def _dygraph_clip(self, params_grads):
+        params_and_grads = []
+        for p, g in params_grads:
             if g is None:
-                out.append((p, g))
+                params_and_grads.append((p, g))
                 continue
-
+            if self._need_clip_func is not None and not self._need_clip_func(p):
+                params_and_grads.append((p, g))
+                continue
             new_grad = layers.clip(x=g, min=self.min_value, max=self.max_value)
+            params_and_grads.append((p, new_grad))
+        return params_and_grads
 
-            out.append((p, new_grad))
+    def _static_clip(self, params_grads):
+        params_and_grads = []
+        with framework.name_scope('gradient_clip'):
+            for p, g in params_grads:
+                if g is None:
+                    params_and_grads.append((p, g))
+                    continue
+                if self._need_clip_func is not None and not self._need_clip_func(
+                        p):
+                    params_and_grads.append((p, g))
+                    continue
 
-        return out
+                with p.block.program._optimized_guard([p, g]):
+                    new_grad = layers.clip(
+                        x=g, min=self.min_value, max=self.max_value)
+                params_and_grads.append((p, new_grad))
+        _correct_clip_op_role_var(params_and_grads)
+        return params_and_grads
 
 
 class GradClipByNorm(GradClipBase):
@@ -167,25 +208,44 @@ class GradClipByNorm(GradClipBase):
 
     """
 
-    @imperative_base.no_grad
-    def __init__(self, clip_norm):
-        self.clip_norm = clip_norm
+    def __init__(self, clip_norm, need_clip=None):
+        self.clip_norm = float(clip_norm)
+        super(GradClipByNorm, self).__init__(need_clip)
 
     def __str__(self):
-        return "ClipByNorm, clip_norm=%f" % self.clip_norm
+        return "Gradient Clip By Norm, clip_norm=%f" % self.clip_norm
 
-    def _clip(self, para_and_grad):
-        out = []
-
-        for p, g in para_and_grad:
+    @imperative_base.no_grad
+    def _dygraph_clip(self, params_grads):
+        params_and_grads = []
+        for p, g in params_grads:
             if g is None:
-                out.append((p, g))
+                params_and_grads.append((p, g))
                 continue
-            new_g = layers.clip_by_norm(x=g, max_norm=self.clip_norm)
+            if self._need_clip_func is not None and not self._need_clip_func(p):
+                params_and_grads.append((p, g))
+                continue
+            new_grad = layers.clip_by_norm(x=g, max_norm=self.clip_norm)
+            params_and_grads.append((p, new_grad))
+        return params_and_grads
 
-            out.append((p, new_g))
+    def _static_clip(self, params_grads):
+        params_and_grads = []
+        with framework.name_scope('gradient_clip'):
+            for p, g in params_grads:
+                if g is None:
+                    params_and_grads.append((p, g))
+                    continue
+                if self._need_clip_func is not None and not self._need_clip_func(
+                        p):
+                    params_and_grads.append((p, g))
+                    continue
 
-        return out
+                with p.block.program._optimized_guard([p, g]):
+                    new_grad = layers.clip_by_norm(x=g, max_norm=self.clip_norm)
+                params_and_grads.append((p, new_grad))
+        _correct_clip_op_role_var(params_and_grads)
+        return params_and_grads
 
 
 class GradClipByGlobalNorm(GradClipBase):
@@ -242,48 +302,105 @@ class GradClipByGlobalNorm(GradClipBase):
 
                 loss.backward()
                 sgd.minimize(loss, grad_clip = gloabl_norm_clip)
-   
-
     """
 
-    @imperative_base.no_grad
-    def __init__(self, max_global_norm, dtype='float32'):
-        self.max_global_norm = layers.fill_constant(
-            shape=[1], dtype=dtype, value=max_global_norm)
+    def __init__(self, clip_norm, need_clip=None):
+        self.clip_norm = float(clip_norm)
+        super(GradClipByGlobalNorm, self).__init__(need_clip)
 
     def __str__(self):
-        return "ClipByGlobalNorm, max_global_norm=%f" % (self.max_global_norm)
+        return "Gradient Clip By GlobalNorm, global_norm=%f" % (self.clip_norm)
 
-    def _clip(self, para_and_grad):
-
-        out = []
-
-        norm_arr = []
-        for p, g in para_and_grad:
+    @imperative_base.no_grad
+    def _dygraph_clip(self, params_grads):
+        params_and_grads = []
+        sum_square_list = []
+        for p, g in params_grads:
             if g is None:
+                continue
+            if self._need_clip_func is not None and not self._need_clip_func(p):
                 continue
             merge_grad = g
             if g.type == core.VarDesc.VarType.SELECTED_ROWS:
                 merge_grad = layers.merge_selected_rows(g)
                 merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
-            power = layers.square(merge_grad)
-            sum_t = layers.reduce_sum(power)
-            norm_arr.append(sum_t)
+            square = layers.square(merge_grad)
+            sum_square = layers.reduce_sum(square)
+            sum_square_list.append(sum_square)
 
-        norm_global = layers.concat(norm_arr)
-        norm_global = layers.reduce_sum(norm_global)
-        norm_global = layers.sqrt(norm_global)
+        if len(sum_square_list) == 0:
+            return params_grads
 
-        clip_scale = self.max_global_norm / (layers.elementwise_max(
-            x=norm_global, y=self.max_global_norm))
-
-        for p, g in para_and_grad:
+        global_norm_var = layers.concat(sum_square_list)
+        global_norm_var = layers.reduce_sum(global_norm_var)
+        global_norm_var = layers.sqrt(global_norm_var)
+        max_global_norm = layers.fill_constant(
+            shape=[1], dtype='float32', value=self.clip_norm)
+        clip_var = max_global_norm / (layers.elementwise_max(
+            x=global_norm_var, y=max_global_norm))
+        for p, g in params_grads:
             if g is None:
-                out.append((p, g))
+                params_and_grads.append((p, g))
                 continue
+            if self._need_clip_func is not None and not self._need_clip_func(p):
+                params_and_grads.append((p, g))
+                continue
+            new_grad = g * clip_var
+            params_and_grads.append((p, new_grad))
 
-            new_grad = g * clip_scale
+        return params_and_grads
 
-            out.append((p, new_grad))
+    def _static_clip(self, params_grads):
+        params_and_grads = []
+        sum_square_list = []
+        with framework.name_scope('gradient_clip'):
+            for p, g in params_grads:
+                if g is None:
+                    continue
+                if self._need_clip_func is not None and not self._need_clip_func(
+                        p):
+                    continue
+                merge_grad = g
+                with p.block.program._optimized_guard([p, g]):
+                    if g.type == core.VarDesc.VarType.SELECTED_ROWS:
+                        merge_grad = layers.merge_selected_rows(g)
+                        merge_grad = layers.get_tensor_from_selected_rows(
+                            merge_grad)
 
-        return out
+                    square = layers.square(merge_grad)
+                    sum_square = layers.reduce_sum(input=square)
+                    sum_square_list.append(sum_square)
+
+            # all parameters have been filterd out
+            if len(sum_square_list) == 0:
+                return params_grads
+            with p.block.program._optimized_guard([p, g]):
+                global_norm_var = layers.sums(sum_square_list)
+                global_norm_var = layers.sqrt(x=global_norm_var)
+                max_global_norm = layers.fill_constant(
+                    shape=[1], dtype="float32", value=self.clip_norm)
+                scale_var = layers.elementwise_div(
+                    x=max_global_norm,
+                    y=layers.elementwise_max(
+                        x=max_global_norm, y=global_norm_var))
+
+            for p, g in params_grads:
+                if g is None:
+                    params_and_grads.append((p, g))
+                    continue
+                if self._need_clip_func is not None and not self._need_clip_func(
+                        p):
+                    params_and_grads.append((p, g))
+                    continue
+
+                with p.block.program._optimized_guard([p, g]):
+                    new_grad = layers.elementwise_mul(x=g, y=scale_var)
+                params_and_grads.append((p, new_grad))
+
+        _correct_clip_op_role_var(params_and_grads)
+        return params_and_grads
+
+
+ClipByValue = GradClipByValue
+ClipByNorm = GradClipByNorm
+ClipByGlobalNorm = GradClipByGlobalNorm

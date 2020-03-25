@@ -200,7 +200,6 @@ class TestGradClipByValue(unittest.TestCase):
 
     def get_dygrap_clip_result(self):
         with fluid.dygraph.guard():
-
             value_clip = GradClipByValue(self.min_value, self.max_value)
             p_g_var = []
             for p, g in self.para_and_grad:

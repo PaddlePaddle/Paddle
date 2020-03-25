@@ -24,7 +24,8 @@ from . import framework
 from . import layers
 from . import unique_name
 from .backward import append_backward, _some_in_set_, _append_grad_suffix_, _get_no_grad_set_name
-from .clip import append_gradient_clip_ops, error_clip_callback
+from .clip import error_clip_callback, append_gradient_clip_ops
+from .dygraph_grad_clip import *
 from .framework import program_guard
 from .initializer import Constant
 from .layer_helper import LayerHelper
@@ -109,6 +110,8 @@ class Optimizer(object):
         self._opti_name_list = []
         self._accumulators_holder = {}
         self._param_device_map = dict()
+        # note: minimize(grad_clip):True, Default:False
+        self._has_grad_clip = False
 
     @framework.dygraph_only
     def state_dict(self):
@@ -690,12 +693,15 @@ class Optimizer(object):
                 # ...
                 optimizer.apply_gradients(params_grads)
         """
+
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
 
         params_grads, table_param_and_grad, table_optimize_op = \
             self._process_distribute_lookuptable(params_grads)
 
-        params_grads = append_gradient_clip_ops(params_grads)
+        # clip gradient has done before
+        if not self._has_grad_clip:
+            params_grads = append_gradient_clip_ops(params_grads)
 
         # Add regularization if any
         params_grads = append_regularization_ops(params_grads,
@@ -712,13 +718,11 @@ class Optimizer(object):
         """
         Second part of `minimize`, appending optimization operators for
         given `params_grads` pairs.
-
         Args:
             loss (Variable): loss variable to run optimizations.
             startup_program (Program): startup_program for initializing parameters
                 in `parameter_list`.
             params_grads (list): list of (param, grad) pair to do optimization.
-
         Returns:
             list: A list of operators appended to the current program.
         """
@@ -795,11 +799,9 @@ class Optimizer(object):
                 will be updated.
             no_grad_set (set, optional): Set of ``Variable``  or ``Variable.name`` that don't need
                 to be updated. The default value is None.
-            grad_clip (GradClipBase, optional) : Gradient clipping strategy, static
-                graph mode does not need to use this argument. Currently, this argument
-                only supports gradient clipping in dygraph mode. In the future, this
-                argument my be adjusted. The default value is None.
-
+            gradient_clip_attr (GradClipBase, optional): The gradient clip 
+                strategy which will be applied on gradient of all trainable parameters. 
+                Default: None.
         Returns:
             tuple: tuple (optimize_ops, params_grads), A list of operators appended
             by minimize and a list of (param, grad) variable pairs, param is
@@ -809,14 +811,18 @@ class Optimizer(object):
             Please refer to the example of current Optimizer.
         """
         assert isinstance(loss, Variable), "The loss should be an Variable."
+
         params_grads = self.backward(
             loss,
             startup_program=startup_program,
             parameter_list=parameter_list,
             no_grad_set=no_grad_set)
 
-        if grad_clip is not None and framework.in_dygraph_mode():
-            # TODO(hongyu): FIX later, this is only for dygraph, should be work for static mode
+        if grad_clip is not None:
+            assert isinstance(
+                grad_clip, GradClipBase
+            ), "'grad_clip' should be an instance of GradClipBase's derived class"
+            self._has_grad_clip = True
             params_grads = grad_clip(params_grads)
 
         optimize_ops = self.apply_optimize(
@@ -1406,9 +1412,9 @@ class DGCMomentumOptimizer(Optimizer):
         dgc_op._set_attr(op_maker.kOpRoleVarAttrName(),
                          [param_var.name, grad_var.name])
 
+    @imperative_base.no_grad
     def apply_gradients(self, params_grads):
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
-
         params_grads, table_param_and_grad, table_optimize_op = \
             self._process_distribute_lookuptable(params_grads)
 
@@ -1420,10 +1426,11 @@ class DGCMomentumOptimizer(Optimizer):
             else:
                 dgc_params_grads.append((param, grad))
 
-        # DGC clip and regularization in local
-        not_dgc_params_grads = append_gradient_clip_ops(not_dgc_params_grads)
+        # clip gradient has done before
+        if not self._has_grad_clip:
+            not_dgc_params_grads = append_gradient_clip_ops(
+                not_dgc_params_grads)
 
-        # Add regularization if any
         not_dgc_params_grads = append_regularization_ops(not_dgc_params_grads,
                                                          self.regularization)
 
@@ -1436,6 +1443,41 @@ class DGCMomentumOptimizer(Optimizer):
             params_grads.append(table_param_and_grad)
 
         return optimize_ops
+
+    @imperative_base.no_grad
+    def minimize(self,
+                 loss,
+                 startup_program=None,
+                 parameter_list=None,
+                 no_grad_set=None,
+                 grad_clip=None):
+        assert isinstance(loss, Variable), "The loss should be an Variable."
+
+        params_grads = self.backward(
+            loss,
+            startup_program=startup_program,
+            parameter_list=parameter_list,
+            no_grad_set=no_grad_set)
+
+        # (note) dgc gradients will be locally clip in optimizer.backward
+        if grad_clip is not None:
+            assert isinstance(
+                grad_clip, GradClipBase
+            ), "'grad_clip' should be an instance of GradClipBase's derived class"
+            not_dgc_params_grads = []
+            dgc_params_grads = []
+            for param, grad in params_grads:
+                if not self._is_use_dgc(param, grad):
+                    not_dgc_params_grads.append((param, grad))
+                else:
+                    dgc_params_grads.append((param, grad))
+            not_dgc_params_grads = grad_clip(not_dgc_params_grads)
+            params_grads = not_dgc_params_grads + dgc_params_grads
+
+        optimize_ops = self.apply_optimize(
+            loss, startup_program=startup_program, params_grads=params_grads)
+
+        return optimize_ops, params_grads
 
 
 class LarsMomentumOptimizer(Optimizer):
@@ -3933,16 +3975,13 @@ class RecomputeOptimizer(Optimizer):
     def apply_optimize(self, loss, startup_program, params_grads):
         """
         call the apply_optimize function of self._optimizer
-
         Args:
             loss (Variable): loss variable to run optimizations.
             startup_program (Program): startup_program for initializing parameters
                 in `parameter_list`.
             params_grads (list): list of (param, grad) pair to do optimization.
-
         Examples:
             .. code-block:: python
-
                 import paddle.fluid as fluid
                 
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
@@ -3970,7 +4009,6 @@ class RecomputeOptimizer(Optimizer):
                     cost, startup_program=None, params_grads=params_grads)
                 
                 print("Finished apply_optimize")
-
         """
 
         return self._optimizer.apply_optimize(
@@ -3982,8 +4020,7 @@ class RecomputeOptimizer(Optimizer):
                  parameter_list=None,
                  no_grad_set=None,
                  grad_clip=None):
-
-        assert (isinstance(loss, Variable)), "The loss should be an Variable."
+        assert isinstance(loss, Variable), "The loss should be an Variable."
         assert (self._checkpoints is not None
                 ), "You should call _set_checkpoints first"
         if framework.in_dygraph_mode():
@@ -3996,9 +4033,12 @@ class RecomputeOptimizer(Optimizer):
             parameter_list=parameter_list,
             no_grad_set=no_grad_set)
 
-        if grad_clip:
-            # TODO(guru4elephant): should add grad_clip for static graph
-            pass
+        if grad_clip is not None:
+            assert isinstance(
+                grad_clip, GradClipBase
+            ), "'grad_clip' should be an instance of GradClipBase's derived class"
+            self._optimizer._has_grad_clip = True
+            params_grads = grad_clip(params_grads)
 
         optimize_ops = self.apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads)

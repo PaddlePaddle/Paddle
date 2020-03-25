@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import copy
 import six
+import warnings
 
 import functools
 from . import layers
@@ -486,12 +487,29 @@ def set_gradient_clip(clip, param_list=None, program=None):
                 sgd = fluid.optimizer.SGD(learning_rate=1e-3)
                 sgd.minimize(loss)
     """
+    warnings.warn("Caution! 'set_gradient_clip' is not recommended "
+                  "and may be deprecated in future! "
+                  "We recommend a new strategy: clip gradient by "
+                  "'optimizer.minimize(loss, grad_clip=clip)'. "
+                  "This method can reduce the mistakes, please "
+                  "see documention of 'minimize'.")
+
     if not isinstance(clip, BaseGradientClipAttr):
         raise TypeError(
             "'clip' should be an instance of BaseGradientClipAttr's derived class"
         )
     if program is None:
         program = framework.default_main_program()
+
+    for op in program.block(0).ops:
+        if 'op_namescope' in op.all_attrs() and "optimizer" in op.attr(
+                "op_namescope"):
+            warnings.warn(
+                "'minimize' has been invoked before, this will make 'set_gradient_clip' "
+                "be ineffective! Please invoke 'set_gradient_clip' before 'minimize'."
+            )
+            break
+
     if param_list is None:
         param_list = program.block(0).all_parameters()
     if all(isinstance(elem, six.string_types) for elem in param_list):
@@ -511,7 +529,7 @@ def append_gradient_clip_ops(param_grads):
         if g is None:
             continue
         with p.block.program._optimized_guard(
-            [p, g]), framework.name_scope('append_clip_@CLIP'):
+            [p, g]), framework.name_scope('gradient_clip_@CLIP'):
             clip_attr = getattr(p, 'gradient_clip_attr', NullGradientClipAttr())
             if clip_attr is None:
                 clip_attr = NullGradientClipAttr()
@@ -523,36 +541,31 @@ def append_gradient_clip_ops(param_grads):
             clip_attr._process_context(context=context, param=p, grad=g)
 
     res = []
-    param_new_grad_dict = dict()
     for p, g in param_grads:
         if g is None:
             continue
         with p.block.program._optimized_guard(
-            [p, g]), framework.name_scope('append_graident_clip_@CLIP'):
+            [p, g]), framework.name_scope('graident_clip_@CLIP'):
             param, new_grad = clip_attr._create_operators(param=p, grad=g)
-            param_new_grad_dict[param.name] = new_grad.name
             res.append([param, new_grad])
 
-    # change wrong mapping relation between param & grad in clip op
-    clip_flag = '@CLIP'
-    block_id_list = []
-    for p, g in param_grads:
-        if g is None:
-            continue
-        block_id = p.block.idx
-        if block_id in block_id_list:
-            continue
-        block_id_list.append(block_id)
-        for op in p.block.program.global_block().ops:
-            if 'op_namescope' in op.all_attrs() and clip_flag in op.attr(
-                    "op_namescope"):
-                if op.attr('op_role_var'):
-                    param_name = op.attr('op_role_var')[0]
-                    correct_p_g = [param_name, param_new_grad_dict[param_name]]
-                    op._set_attr('op_role_var', correct_p_g)
+    _correct_clip_op_role_var(res)
     return res
 
 
-ClipByValue = GradientClipByValue
-ClipByNorm = GradientClipByNorm
-ClipByGlobalNorm = GradientClipByGlobalNorm
+# change wrong mapping relation between param & grad in clip op
+def _correct_clip_op_role_var(params_grads):
+    for param, grad in params_grads:
+        if grad is None:
+            continue
+        for op in param.block.program.global_block().ops:
+            if 'op_namescope' in op.all_attrs() and "gradient_clip" in op.attr(
+                    "op_namescope"):
+                if op.attr('op_role_var'):
+                    param_name = op.attr('op_role_var')[0]
+                    index = 0
+                    for i in range(len(params_grads)):
+                        if params_grads[i][0].name == param_name:
+                            index = i
+                    correct_p_g = [param_name, params_grads[index][1].name]
+                    op._set_attr('op_role_var', correct_p_g)

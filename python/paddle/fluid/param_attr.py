@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import six
+import warnings
 
 from .initializer import Initializer, Xavier, Constant
 from .regularizer import WeightDecayRegularizer
@@ -43,8 +44,6 @@ class ParamAttr(object):
         regularizer (WeightDecayRegularizer, optional): Regularization factor. Default None, meaning
                 there is no regularization.
         trainable (bool): Whether this parameter is trainable. Default True.
-        gradient_clip (BaseGradientClipAttr, optional): The method to clip this parameter's
-                gradient. Default None, meaning that there is no gradient clip.
         do_model_average (bool): Whether this parameter should do model average
                 when model average is enabled. Default False.
 
@@ -78,8 +77,16 @@ class ParamAttr(object):
         self.learning_rate = learning_rate
         self.regularizer = regularizer
         self.trainable = trainable
-        self.gradient_clip = gradient_clip
         self.do_model_average = do_model_average
+
+        if gradient_clip is not None:
+            warnings.warn(
+                "Caution! 'gradient_clip' of paddle.fluid.ParamAttr() is "
+                "deprecated since 2.0 and not maintained any more, because "
+                "it is easily to be misused.\n"
+                "After that, We recommend a new strategy: clip gradient by "
+                "'optimizer.minimize(loss, grad_clip=clip)'. This method can "
+                "reduce the mistakes, please see documention of 'minimize'.")
 
     def _set_default_initializer(self, initializer):
         """
@@ -176,7 +183,6 @@ class ParamAttr(object):
             },
             'regularizer': self.regularizer,
             'trainable': self.trainable,
-            'gradient_clip_attr': self.gradient_clip,
             'do_model_average': self.do_model_average
         }
         if with_initializer:
