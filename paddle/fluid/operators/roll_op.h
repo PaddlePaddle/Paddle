@@ -16,6 +16,7 @@ limitations under the License. */
 #include <memory>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -24,9 +25,9 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 using DDim = framework::DDim;
 
-template <typename T>
-inline void shift_along_dim(T* data, const DDim& input_dim, int64_t dim,
-                            int64_t shift) {
+template <typename DeviceContext, typename T>
+inline void shift_along_dim(const math::BlasT<DeviceContext, T>& blas, T* data,
+                            const DDim& input_dim, int64_t dim, int64_t shift) {
   if (dim < 0) {
     dim += input_dim.size();
   }
@@ -53,19 +54,27 @@ inline void shift_along_dim(T* data, const DDim& input_dim, int64_t dim,
     return;
   }
 
-  T* head = new T[slice_width * (input_dim[dim] - shift)];
+  std::vector<T> head;
+  head.resize(slice_width * (input_dim[dim] - shift));
+
   for (auto i = 0; i < outer_loops; i++) {
-    memcpy(head, data + i * input_dim[dim] * slice_width,
-           slice_width * (input_dim[dim] - shift) * sizeof(T));
-    for (auto j = input_dim[dim] - shift; j < input_dim[dim]; j++) {
+    blas.VCOPY(slice_width * (input_dim[dim] - shift),
+               data + i * input_dim[dim] * slice_width, head.data())
+        // memcpy(head, data + i * input_dim[dim] * slice_width,
+        //       slice_width * (input_dim[dim] - shift) * sizeof(T));
+        for (auto j = input_dim[dim] - shift; j < input_dim[dim]; j++) {
       auto dst_pos = j - input_dim[dim] + shift;
-      memcpy(data + (i * input_dim[dim] + dst_pos) * slice_width,
-             data + (i * input_dim[dim] + j) * slice_width, slice_bytes);
+      blas.VCOPY(slice_width, data + (i * input_dim[dim] + j) * slice_width,
+                 data + (i * input_dim[dim] + dst_pos) * slice_width);
+      // memcpy(data + (i * input_dim[dim] + dst_pos) * slice_width,
+      //       data + (i * input_dim[dim] + j) * slice_width, slice_bytes);
     }
-    memcpy(data + (i * input_dim[dim] + shift) * slice_width, head,
-           slice_width * (input_dim[dim] - shift) * sizeof(T));
+    blas.VCOPY(slice_width * (input_dim[dim] - shift), head.data(),
+               data + (i * input_dim[dim] + shift) * slice_width);
+    // memcpy(data + (i * input_dim[dim] + shift) * slice_width, head,
+    //       slice_width * (input_dim[dim] - shift) * sizeof(T));
   }
-  delete[] head;
+  // delete[] head;
 }
 
 template <typename DeviceContext, typename T>
@@ -79,15 +88,14 @@ class RollKernel : public framework::OpKernel<T> {
     std::vector<int64_t> shifts = context.Attr<std::vector<int64_t>>("shifts");
     std::vector<int64_t> dims = context.Attr<std::vector<int64_t>>("dims");
 
+    framework::TensorCopy(input, context.GetPlace(), output);
+
     size_t nums = shifts.size();
-    const T* input_data = input.data<T>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
     const DDim input_dim = input.dims();
 
-    for (auto i = 0; i < input.numel(); i++) {
-      *(output_data + i) = *(input_data + i);
-    }
-
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
     for (size_t i = 0; i < nums; i++) {
       PADDLE_ENFORCE_EQ(
           dims[i] < input_dim.size() && dims[i] >= (0 - input_dim.size()), true,
