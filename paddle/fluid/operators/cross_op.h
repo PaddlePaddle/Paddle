@@ -77,7 +77,7 @@ class CrossKernel : public framework::OpKernel<T> {
               "Input(X/Y).dims[dim] = [%d].",
               input_x_dims[dim]));
     } else {
-      for (size_t i = 0; i < input_x_dims.size(); i++) {
+      for (auto i = 0; i < input_x_dims.size(); i++) {
         if (input_x_dims[i] == 3) {
           dim = i;
           break;
@@ -91,11 +91,11 @@ class CrossKernel : public framework::OpKernel<T> {
                             input_x_dims));
     }
     auto outer_loops = 1;
-    for (size_t i = 0; i < dim; i++) {
+    for (auto i = 0; i < dim; i++) {
       outer_loops *= input_x_dims[i];
     }
     auto slice_size = 1;
-    for (size_t i = dim + 1; i < input_x_dims.size(); i++) {
+    for (auto i = dim + 1; i < input_x_dims.size(); i++) {
       slice_size *= input_x_dims[i];
     }
 
@@ -103,8 +103,8 @@ class CrossKernel : public framework::OpKernel<T> {
     const T* input_y_data = input_y.data<T>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
 
-    for (size_t i = 0; i < outer_loops; i++) {
-      for (size_t j = 0; j < 3; j++) {
+    for (auto i = 0; i < outer_loops; i++) {
+      for (auto j = 0; j < 3; j++) {
         const T* x1_data = input_x_data + (3 * i + ((j + 1) % 3)) * slice_size;
         const T* x2_data = input_x_data + (3 * i + ((j + 2) % 3)) * slice_size;
 
@@ -112,7 +112,7 @@ class CrossKernel : public framework::OpKernel<T> {
         const T* y2_data = input_y_data + (3 * i + ((j + 2) % 3)) * slice_size;
 
         T* out = output_data + (3 * i + j) * slice_size;
-        for (size_t k = 0; k < slice_size; k++) {
+        for (auto k = 0; k < slice_size; k++) {
           *(out + k) = (*(x1_data + k)) * (*(y2_data + k)) -
                        (*(x2_data + k)) * (*(y1_data + k));
         }
@@ -157,7 +157,7 @@ class CrossGradKernel : public framework::OpKernel<T> {
               "Input(X/Y).dims[dim] = [%d].",
               input_x_dims[dim]));
     } else {
-      for (size_t i = 0; i < input_x_dims.size(); i++) {
+      for (auto i = 0; i < input_x_dims.size(); i++) {
         if (input_x_dims[i] == 3) {
           dim = i;
           break;
@@ -171,11 +171,11 @@ class CrossGradKernel : public framework::OpKernel<T> {
                             input_x_dims));
     }
     auto outer_loops = 1;
-    for (size_t i = 0; i < dim; i++) {
+    for (auto i = 0; i < dim; i++) {
       outer_loops *= input_x_dims[i];
     }
     auto slice_size = 1;
-    for (size_t i = dim + 1; i < input_x_dims.size(); i++) {
+    for (auto i = dim + 1; i < input_x_dims.size(); i++) {
       slice_size *= input_x_dims[i];
     }
 
@@ -185,8 +185,8 @@ class CrossGradKernel : public framework::OpKernel<T> {
     T* output_x_grad_data = output_x_grad->mutable_data<T>(context.GetPlace());
     T* output_y_grad_data = output_y_grad->mutable_data<T>(context.GetPlace());
 
-    for (size_t i = 0; i < outer_loops; i++) {
-      for (size_t j = 0; j < 3; j++) {
+    for (auto i = 0; i < outer_loops; i++) {
+      for (auto j = 0; j < 3; j++) {
         const T* x1_data = input_x_data + (3 * i + ((j + 1) % 3)) * slice_size;
         const T* x2_data = input_x_data + (3 * i + ((j + 2) % 3)) * slice_size;
 
@@ -200,7 +200,7 @@ class CrossGradKernel : public framework::OpKernel<T> {
 
         T* out_x_grad = output_x_grad_data + (3 * i + j) * slice_size;
         T* out_y_grad = output_y_grad_data + (3 * i + j) * slice_size;
-        for (size_t k = 0; k < slice_size; k++) {
+        for (auto k = 0; k < slice_size; k++) {
           *(out_x_grad + k) = (*(out2_grad_data + k)) * (*(y1_data + k)) -
                               (*(out1_grad_data + k)) * (*(y2_data + k));
           *(out_y_grad + k) = (*(out1_grad_data + k)) * (*(x2_data + k)) -

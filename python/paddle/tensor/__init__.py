@@ -15,6 +15,7 @@
 # TODO: import all tensor api under this directory, 
 # including tensor creation, manipulation, math, etc.
 # __all__ = [ ]
+from __future__ import print_function
 
 from . import manipulation
 from . import linalg

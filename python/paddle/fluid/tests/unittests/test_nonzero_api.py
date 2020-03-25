@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
-import paddle.tensor as tensor
+from paddle.tensor import nonzero
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
@@ -28,9 +28,9 @@ class TestMulOpError(unittest.TestCase):
         startup_program = Program()
         with program_guard(main_program, startup_program):
             x = fluid.layers.data(name='x', shape=[-1, 2])
-            y_tuple = tensor.nonzero(x, as_tuple=True)
+            y_tuple = nonzero(x, as_tuple=True)
             self.assertEqual(len(y_tuple), 2)
-            y = tensor.nonzero(x, as_tuple=False)
+            y = nonzero(x, as_tuple=False)
             z = fluid.layers.concat(list(y_tuple), axis=1)
         data = np.array([[True, False], [False, True]])
         exe = fluid.Executor(fluid.CPUPlace())
