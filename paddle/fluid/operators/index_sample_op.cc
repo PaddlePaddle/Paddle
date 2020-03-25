@@ -66,6 +66,10 @@ class IndexSampleOp : public framework::OperatorWithKernel {
                       "please check Inputs shape.",
                       input_dims[0], index_dims[0]);
     ctx->SetOutputDim("Out", index_dims);
+    auto type = ctx->GetInputsVarType("Index")[0];
+    if (type == framework::proto::VarType::LOD_TENSOR) {
+      ctx->ShareLoD("Index", /*->*/ "Out");
+    }
   }
 
  protected:
@@ -93,7 +97,8 @@ class IndexSampleGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Out");
+    auto data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
