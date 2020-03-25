@@ -1100,7 +1100,7 @@ void CommonElementwiseBroadcastBackward(
 
   // for inplace strategy. memset will make dx and dout clear and get wrong
   // result.
-  if (dx && dout.Holder() == dx->Holder()) {
+  if (dx && dx->IsSharedBufferWith(dout)) {
     dx->clear();
     dx->mutable_data<T>(x_dims, ctx.GetPlace());
   }
