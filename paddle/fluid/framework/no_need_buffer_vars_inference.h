@@ -81,7 +81,7 @@ class NoNeedBufferVarsInference {
   }
 };
 
-#define DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(class_type, ...)        \
+#define DECLARE_NO_NEED_BUFFER_VARS_INFERER(class_type, ...)          \
   class class_type final                                              \
       : public ::paddle::framework::NoNeedBufferVarsInference {       \
    public:                                                            \
@@ -95,9 +95,6 @@ class NoNeedBufferVarsInference {
       return __ret__;                                                 \
     }                                                                 \
   }
-
-#define DECLARE_NO_NEED_BUFFER_VARS_INFERER \
-  DECLARE_NO_NEED_BUFFER_VARS_INFERENCE
 
 class InferNoNeedBufferVarsFN {
  public:
