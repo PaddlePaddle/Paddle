@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -26,10 +28,6 @@ template <typename T, typename IndexT = int>
 void IndexSelectInner(const framework::ExecutionContext& context,
                       const LoDTensor& input, const LoDTensor& index,
                       LoDTensor* output, int dim) {
-  const T* p_input = input.data<T>();
-  const IndexT* p_index = index.data<IndexT>();
-  T* p_output = output->mutable_data<T>(context.GetPlace());
-
   auto input_dim = input.dims();
   auto input_dim_size = input_dim.size();
   auto output_dim = output->dims();
@@ -50,6 +48,16 @@ void IndexSelectInner(const framework::ExecutionContext& context,
 
   auto index_size = index.dims()[0];
 
+  std::vector<T> input_vec, index_vec;
+  TensorToVector(input, context.device_context(), &input_vec);
+  TensorToVector(index, context.device_context(), &index_vec);
+  // const T* p_input = input.data<T>();
+  // const IndexT* p_index = index.data<IndexT>();
+  T* p_output = output->mutable_data<T>(context.GetPlace());
+
+  auto& dev_ctx = context.template device_context<DeviceContext>();
+  auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+
   VLOG(1) << "Index_Select_Debug; outer_nums: " << outer_nums
           << "; slice_size: " << slice_size << "; input_width: " << input_width
           << "; output_width: " << output_width
@@ -60,10 +68,14 @@ void IndexSelectInner(const framework::ExecutionContext& context,
     auto output_start_offset = i * output_width;
 
     for (auto j = 0; j < index_size; j++) {
-      IndexT index_value = p_index[j];
-      memcpy(p_output + output_start_offset + j * slice_size,
-             p_input + input_start_offset + index_value * slice_size,
-             slice_bytes);
+      // IndexT index_value = p_index[j];
+      IndexT index_value = index_vec[j];
+      blas.VCOPY(slice_size, input_vec.data() + input_start_offset +
+                                 index_value * slice_size,
+                 p_output + output_start_offset + j * slice_size);
+      // memcpy(p_output + output_start_offset + j * slice_size,
+      //       p_input + input_start_offset + index_value * slice_size,
+      //       slice_bytes);
     }
   }
 }
@@ -110,8 +122,13 @@ template <typename T, typename IndexT = int>
 void IndexSelectGradInner(const framework::ExecutionContext& context,
                           const LoDTensor& out_grad, const LoDTensor& index,
                           LoDTensor* x_grad, int dim) {
-  const T* p_input = out_grad.data<T>();
-  const IndexT* p_index = index.data<IndexT>();
+  std::vector<T> input_vec, index_vec;
+  TensorToVector(out_grad, context.device_context(), &input_vec);
+  TensorToVector(index, context.device_context(), &index_vec);
+  math::set_constant(context.device_context(), x_grad, 0.0);
+
+  // const T* p_input = out_grad.data<T>();
+  // const IndexT* p_index = index.data<IndexT>();
   T* p_output = x_grad->mutable_data<T>(context.GetPlace());
 
   auto input_dim = out_grad.dims();
@@ -138,20 +155,28 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
           << "; output_width: " << output_width
           << "; index_size: " << index_size;
 
+  auto& dev_ctx = context.template device_context<DeviceContext>();
+  auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+
   for (auto i = 0; i < outer_nums; i++) {
     auto input_start_offset = i * input_width;
     auto output_start_offset = i * output_width;
 
-    for (auto j = 0; j < index_size; ++j) {
-      memset(p_output + output_start_offset + slice_size * j, 0, slice_bytes);
-    }
+    // for (auto j = 0; j < index_size; ++j) {
+    //  memset(p_output + output_start_offset + slice_size * j, 0, slice_bytes);
+    //}
     for (auto j = 0; j < index_size; j++) {
-      IndexT index_value = p_index[j];
-      T* ou = p_output + output_start_offset + index_value * slice_size;
-      const T* in = p_input + input_start_offset + j * slice_size;
-      for (auto k = 0; k < slice_size; k++) {
-        *(ou + k) += *(in + k);
-      }
+      // IndexT index_value = p_index[j];
+      IndexT index_value = index_vec[j];
+      blas.VADD(slice_size,
+                input_vec.data() + input_start_offset + j * slice_size,
+                p_output + output_start_offset + index_value * slice_size,
+                p_output + output_start_offset + index_value * slice_size)
+      // T* ou = p_output + output_start_offset + index_value * slice_size;
+      // const T* in = p_input + input_start_offset + j * slice_size;
+      // for (auto k = 0; k < slice_size; k++) {
+      //  *(ou + k) += *(in + k);
+      //}
     }
   }
 }
