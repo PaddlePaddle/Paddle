@@ -32,7 +32,7 @@ __all__ = [
     'fused_elemwise_activation', 'sequence_topk_avg_pooling', 'var_conv_2d',
     'match_matrix_tensor', 'tree_conv', 'fused_embedding_seq_pool',
     'multiclass_nms2', 'search_pyramid_hash', 'shuffle_batch', 'partial_concat',
-    'partial_sum'
+    'partial_sum', 'tdm_child'
 ]
 
 
@@ -817,7 +817,7 @@ def partial_concat(input, start_index=0, length=-1):
     performed along the second dimension.
 
     .. code-block:: text
-        
+
         Given:
             x = [[0, 1, 2],
                  [3, 4, 5]]
@@ -826,7 +826,7 @@ def partial_concat(input, start_index=0, length=-1):
             output = partial_concat([x, y], start_index=0, length=2)
 
           we get:
-             
+
             output = [[0, 1, 6, 7],
                       [3, 4, 9, 10]]
 
@@ -878,7 +878,7 @@ def partial_sum(input, start_index=0, length=-1):
     Only 2-D Tensor or LodTensor input is supported. Slice and concat can only be 
     performed along the second dimension.
     .. code-block:: text
-        
+
         Given:
             x = [[0, 1, 2],
                  [3, 4, 5]]
@@ -886,7 +886,7 @@ def partial_sum(input, start_index=0, length=-1):
                  [9, 10, 11]]
             output = partial_sum([x, y], start_index=0, length=2)
           we get:
-             
+
             output = [[6, 8],
                       [12, 14]]
     Args:
@@ -922,3 +922,34 @@ def partial_sum(input, start_index=0, length=-1):
     helper.append_op(
         type='partial_sum', inputs=inputs, outputs={'Out': [out]}, attrs=attrs)
     return out
+
+
+def tdm_child(x,
+              node_nums,
+              child_nums,
+              param_attr=None,
+              tree_info_dtype='int32',
+              child_dtype='int32'):
+    """
+    used for tdm infer
+    """
+    helper = LayerHelper("tdm_child", **locals())
+    tree_info = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=[node_nums, 3 + child_nums],
+        dtype=tree_info_dtype,
+        default_initializer=Constant(0))
+    tree_info.stop_gradient = True
+
+    child = helper.create_variable_for_type_inference(dtype=child_dtype)
+    leaf_mask = helper.create_variable_for_type_inference(dtype=child_dtype)
+
+    helper.append_op(
+        type='tdm_child',
+        inputs={'X': x,
+                'Tree_info': tree_info},
+        outputs={'Child': child,
+                 'Leaf_mask': leaf_mask},
+        attrs={'Child_nums': child_nums},
+        stop_gradient=True)
+    return child, leaf_mask
