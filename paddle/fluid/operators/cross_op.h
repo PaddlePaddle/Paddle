@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
 namespace operators {
@@ -99,23 +101,42 @@ class CrossKernel : public framework::OpKernel<T> {
       slice_size *= input_x_dims[i];
     }
 
-    const T* input_x_data = input_x.data<T>();
-    const T* input_y_data = input_y.data<T>();
+    std::vector<T> input_x_vec, input_y_vec, out_vec;
+    framework::TensorToVector(input_x, context.device_context(), &input_x_vec);
+    framework::TensorToVector(input_y, context.device_context(), &input_y_vec);
+    out_vec.resize(slice_size);
+
+    // const T* input_x_data = input_x.data<T>();
+    // const T* input_y_data = input_y.data<T>();
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+
     T* output_data = output->mutable_data<T>(context.GetPlace());
 
     for (auto i = 0; i < outer_loops; i++) {
       for (auto j = 0; j < 3; j++) {
-        const T* x1_data = input_x_data + (3 * i + ((j + 1) % 3)) * slice_size;
-        const T* x2_data = input_x_data + (3 * i + ((j + 2) % 3)) * slice_size;
+        // const T* x1_data = input_x_data + (3 * i + ((j + 1) % 3)) *
+        // slice_size;
+        // const T* x2_data = input_x_data + (3 * i + ((j + 2) % 3)) *
+        // slice_size;
 
-        const T* y1_data = input_y_data + (3 * i + ((j + 1) % 3)) * slice_size;
-        const T* y2_data = input_y_data + (3 * i + ((j + 2) % 3)) * slice_size;
+        // const T* y1_data = input_y_data + (3 * i + ((j + 1) % 3)) *
+        // slice_size;
+        // const T* y2_data = input_y_data + (3 * i + ((j + 2) % 3)) *
+        // slice_size;
 
-        T* out = output_data + (3 * i + j) * slice_size;
+        auto dst_pos = (3 * i + j) * slice_size;
+        auto in_pos1 = (3 * i + ((j + 1) % 3)) * slice_size;
+        auto in_pos2 = (3 * i + ((j + 2) % 3)) * slice_size;
+
+        // T* out = output_data + (3 * i + j) * slice_size;
         for (auto k = 0; k < slice_size; k++) {
-          *(out + k) = (*(x1_data + k)) * (*(y2_data + k)) -
-                       (*(x2_data + k)) * (*(y1_data + k));
+          out_vec[k] = input_x_vec[in_pos1 + k] * input_y_vec[in_pos2 + k] -
+                       input_x_vec[in_pos2 + k] * input_y_vec[in_pos1 + k];
+          // *(out + k) = (*(x1_data + k)) * (*(y2_data + k)) -
+          //             (*(x2_data + k)) * (*(y1_data + k));
         }
+        blas.VCOPY(slice_size, out_vec.data(), output_data + dst_pos);
       }
     }
   }
@@ -179,33 +200,61 @@ class CrossGradKernel : public framework::OpKernel<T> {
       slice_size *= input_x_dims[i];
     }
 
-    const T* input_x_data = input_x.data<T>();
-    const T* input_y_data = input_y.data<T>();
-    const T* input_out_grad_data = input_out_grad.data<T>();
+    std::vector<T> input_x_vec, input_y_vec, input_dout_vec, out_dx_vec,
+        out_dy_vec;
+    framework::TensorToVector(input_x, context.device_context(), &input_x_vec);
+    framework::TensorToVector(input_y, context.device_context(), &input_y_vec);
+    framework::TensorToVector(input_out_grad, context.device_context(),
+                              &input_dout_vec);
+    out_dx_vec.resize(slice_size);
+    out_dy_vec.resize(slice_size);
+
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+
+    // const T* input_x_data = input_x.data<T>();
+    // const T* input_y_data = input_y.data<T>();
+    // const T* input_out_grad_data = input_out_grad.data<T>();
     T* output_x_grad_data = output_x_grad->mutable_data<T>(context.GetPlace());
     T* output_y_grad_data = output_y_grad->mutable_data<T>(context.GetPlace());
 
     for (auto i = 0; i < outer_loops; i++) {
       for (auto j = 0; j < 3; j++) {
-        const T* x1_data = input_x_data + (3 * i + ((j + 1) % 3)) * slice_size;
-        const T* x2_data = input_x_data + (3 * i + ((j + 2) % 3)) * slice_size;
+        // const T* x1_data = input_x_data + (3 * i + ((j + 1) % 3)) *
+        // slice_size;
+        // const T* x2_data = input_x_data + (3 * i + ((j + 2) % 3)) *
+        // slice_size;
 
-        const T* y1_data = input_y_data + (3 * i + ((j + 1) % 3)) * slice_size;
-        const T* y2_data = input_y_data + (3 * i + ((j + 2) % 3)) * slice_size;
+        // const T* y1_data = input_y_data + (3 * i + ((j + 1) % 3)) *
+        // slice_size;
+        // const T* y2_data = input_y_data + (3 * i + ((j + 2) % 3)) *
+        // slice_size;
 
-        const T* out1_grad_data =
-            input_out_grad_data + (3 * i + ((j + 1) % 3)) * slice_size;
-        const T* out2_grad_data =
-            input_out_grad_data + (3 * i + ((j + 2) % 3)) * slice_size;
+        // const T* out1_grad_data =
+        //    input_out_grad_data + (3 * i + ((j + 1) % 3)) * slice_size;
+        // const T* out2_grad_data =
+        //    input_out_grad_data + (3 * i + ((j + 2) % 3)) * slice_size;
 
-        T* out_x_grad = output_x_grad_data + (3 * i + j) * slice_size;
-        T* out_y_grad = output_y_grad_data + (3 * i + j) * slice_size;
+        auto dst_pos = (3 * i + j) * slice_size;
+        auto in_pos1 = (3 * i + ((j + 1) % 3)) * slice_size;
+        auto in_pos2 = (3 * i + ((j + 2) % 3)) * slice_size;
+
+        // T* out_x_grad = output_x_grad_data + (3 * i + j) * slice_size;
+        // T* out_y_grad = output_y_grad_data + (3 * i + j) * slice_size;
         for (auto k = 0; k < slice_size; k++) {
-          *(out_x_grad + k) = (*(out2_grad_data + k)) * (*(y1_data + k)) -
-                              (*(out1_grad_data + k)) * (*(y2_data + k));
-          *(out_y_grad + k) = (*(out1_grad_data + k)) * (*(x2_data + k)) -
-                              (*(out2_grad_data + k)) * (*(x1_data + k));
+          out_dx_vec[k] =
+              input_dout_vec[in_pos2 + k] * input_y_vec[in_pos1 + k] -
+              input_dout_vec[in_pos1 + k] * input_y_vec[in_pos2 + k];
+          out_dy_vec[k] =
+              input_dout_vec[in_pos1 + k] * input_x_vec[in_pos2 + k] -
+              input_dout_vec[in_pos2 + k] * input_x_vec[in_pos1 + k];
+          // *(out_x_grad + k) = (*(out2_grad_data + k)) * (*(y1_data + k)) -
+          //                    (*(out1_grad_data + k)) * (*(y2_data + k));
+          // *(out_y_grad + k) = (*(out1_grad_data + k)) * (*(x2_data + k)) -
+          //                    (*(out2_grad_data + k)) * (*(x1_data + k));
         }
+        blas.VCOPY(slice_size, out_dx_vec.data(), output_x_grad_data + dst_pos);
+        blas.VCOPY(slice_size, out_dy_vec.data(), output_y_grad_data + dst_pos);
       }
     }
   }
