@@ -556,7 +556,11 @@ class Qat2Int8MkldnnPass(object):
                     activation = "relu"
                 elif op.op().has_attr("fuse_brelu") and op.op().attr(
                         "fuse_brelu"):
-                    activation = "brelu"
+                    activation = "relu6"
+                    alpha = 6.0
+                    if op.op().has_attr("fuse_brelu_threshold"):
+                        alpha = op.op().attr("fuse_brelu_threshold")
+                    op.set_attr("fuse_alpha", alpha)
                 op.set_attr("fuse_activation", activation)
         return graph
 
