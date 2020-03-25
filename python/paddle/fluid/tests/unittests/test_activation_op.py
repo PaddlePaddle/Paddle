@@ -618,6 +618,23 @@ class TestLog(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
+class TestLog1p(TestActivation):
+    def setUp(self):
+        self.op_type = "log1p"
+        self.init_dtype()
+
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
+        out = np.log1p(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out')
+
+
 class TestSquare(TestActivation):
     def setUp(self):
         self.op_type = "square"
