@@ -125,18 +125,18 @@ class InferVarTypeContext {
     return this->GetVarType(op_->Input(name).at(index));
   }
 
+  virtual proto::VarType::Type GetOutputType(const std::string& name,
+                                             const int& index = 0) const {
+    PADDLE_ENFORCE_NOT_NULL(
+        op_, platform::errors::PreconditionNotMet("op_ should not be null"));
+    return this->GetVarType(op_->Output(name).at(index));
+  }
+
   virtual proto::VarType::Type GetInputDataType(const std::string& name,
                                                 const int& index = 0) const {
     PADDLE_ENFORCE_NOT_NULL(
         op_, platform::errors::PreconditionNotMet("op_ should not be null"));
     return this->GetVarDataType(op_->Input(name).at(index));
-  }
-
-  virtual proto::VarType::Type GetOutputDataType(const std::string& name,
-                                                 const int& index = 0) const {
-    PADDLE_ENFORCE_NOT_NULL(
-        op_, platform::errors::PreconditionNotMet("op_ should not be null"));
-    return this->GetVarDataType(op_->Output(name).at(index));
   }
 
   virtual void SetOutputDataType(const std::string& name,

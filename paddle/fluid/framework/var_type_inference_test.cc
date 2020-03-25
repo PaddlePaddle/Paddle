@@ -192,6 +192,12 @@ TEST(InferVarType, multiple_api) {
 
   InferVarTypeContext ctx(op, block);
 
+  ASSERT_TRUE(ctx.HasInput("X"));
+  ASSERT_TRUE(ctx.HasOutput("Out"));
+
+  ASSERT_EQ(2u, ctx.InputSize("X"));
+  ASSERT_EQ("test2_a", ctx.InputVarName("X", 0));
+
   ASSERT_EQ(proto::VarType::SELECTED_ROWS, ctx.GetInputType("X"));
 
   ASSERT_TRUE(ctx.InputTypeAllOf("X", proto::VarType::SELECTED_ROWS));
@@ -199,24 +205,22 @@ TEST(InferVarType, multiple_api) {
 
   ctx.SyncTypeAndDataType("X", "Out");
 
-  ASSERT_EQ(proto::VarType::SELECTED_ROWS,
-            prog.MutableBlock(0)->Var("test2_a_out")->GetType());
-  ASSERT_EQ(proto::VarType::LOD_TENSOR,
-            prog.MutableBlock(0)->Var("test2_b_out")->GetType());
+  ASSERT_EQ(proto::VarType::SELECTED_ROWS, ctx.GetOutputType("Out"));
+  ASSERT_EQ(proto::VarType::LOD_TENSOR, ctx.GetOutputType("Out", 1));
 
   ctx.SetOutputType("Out", proto::VarType::SELECTED_ROWS, ALL_ELEMENTS);
   ctx.SetOutputType("Out", proto::VarType::LOD_TENSOR, 1);
-  ASSERT_EQ(proto::VarType::SELECTED_ROWS,
-            prog.MutableBlock(0)->Var("test2_a_out")->GetType());
-  ASSERT_EQ(proto::VarType::LOD_TENSOR,
-            prog.MutableBlock(0)->Var("test2_b_out")->GetType());
+  ASSERT_EQ(proto::VarType::SELECTED_ROWS, ctx.GetOutputType("Out"));
+  ASSERT_EQ(proto::VarType::LOD_TENSOR, ctx.GetOutputType("Out", 1));
 
   ASSERT_EQ(0, ctx.GetInputDataType("X"));
 
   ctx.SetOutputDataType("Out", proto::VarType::FP32, ALL_ELEMENTS);
   ctx.SetOutputDataType("Out", proto::VarType::INT8, 1);
-  ASSERT_EQ(proto::VarType::FP32, ctx.GetOutputDataType("Out"));
-  ASSERT_EQ(proto::VarType::INT8, ctx.GetOutputDataType("Out", 1));
+  ASSERT_EQ(proto::VarType::FP32,
+            prog.MutableBlock(0)->Var("test2_a_out")->GetDataType());
+  ASSERT_EQ(proto::VarType::INT8,
+            prog.MutableBlock(0)->Var("test2_b_out")->GetDataType());
 
   ASSERT_FALSE(ctx.IsDygraph());
 

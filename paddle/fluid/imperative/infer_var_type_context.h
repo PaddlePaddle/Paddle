@@ -128,14 +128,14 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
     return inputs_.at(name)[index]->Type();
   }
 
+  framework::proto::VarType::Type GetOutputType(
+      const std::string& name, const int& index = 0) const override {
+    return outputs_.at(name)[index]->Type();
+  }
+
   framework::proto::VarType::Type GetInputDataType(
       const std::string& name, const int& index = 0) const override {
     return inputs_.at(name)[index]->DataType();
-  }
-
-  framework::proto::VarType::Type GetOutputDataType(
-      const std::string& name, const int& index = 0) const override {
-    return outputs_.at(name)[index]->DataType();
   }
 
   void SetOutputDataType(const std::string& name,

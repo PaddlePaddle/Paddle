@@ -127,6 +127,10 @@ TEST(test_layer, test_runtime_context) {
 
   ASSERT_TRUE(ctx->HasInput("X"));
   ASSERT_TRUE(ctx->HasOutput("Out"));
+
+  ASSERT_EQ(2u, ctx->InputSize("X"));
+  ASSERT_EQ("vin", ctx->InputVarName("X", 0));
+
   ASSERT_TRUE(ctx->InputTypeAnyOf("X", framework::proto::VarType::LOD_TENSOR));
   ASSERT_TRUE(ctx->InputTypeAllOf("X", framework::proto::VarType::LOD_TENSOR));
 
@@ -135,9 +139,9 @@ TEST(test_layer, test_runtime_context) {
 
   ctx->SyncTypeAndDataType("X", "Out");
 
-  ASSERT_EQ(framework::proto::VarType::FP32, ctx->GetOutputDataType("Out"));
+  ASSERT_EQ(framework::proto::VarType::FP32, vout->DataType());
 
-  ASSERT_EQ(framework::proto::VarType::LOD_TENSOR, vout->Type());
+  ASSERT_EQ(framework::proto::VarType::LOD_TENSOR, ctx->GetOutputType("Out"));
 
   ctx->SetOutputType("Out", framework::proto::VarType::SELECTED_ROWS,
                      framework::ALL_ELEMENTS);
@@ -149,8 +153,8 @@ TEST(test_layer, test_runtime_context) {
                          framework::ALL_ELEMENTS);
   ctx->SetOutputDataType("Out", framework::proto::VarType::INT8);
 
-  ASSERT_EQ(framework::proto::VarType::INT8, ctx->GetOutputDataType("Out"));
-  ASSERT_EQ(framework::proto::VarType::FP64, ctx->GetOutputDataType("Out", 1));
+  ASSERT_EQ(framework::proto::VarType::INT8, vout->DataType());
+  ASSERT_EQ(framework::proto::VarType::FP64, vout_b->DataType());
 
   // no throw, but do nothing
   ASSERT_NO_THROW(
@@ -161,13 +165,17 @@ TEST(test_layer, test_runtime_context) {
   ASSERT_ANY_THROW(ctx->InputVars("X"));
   ASSERT_ANY_THROW(ctx->OutputVars("Out"));
   ASSERT_ANY_THROW(ctx->GetVarType("vin"));
+  ASSERT_ANY_THROW(
+      ctx->SetVarType("vin", framework::proto::VarType::LOD_TENSOR));
   ASSERT_ANY_THROW(ctx->GetVarDataType("vin"));
   ASSERT_ANY_THROW(
       ctx->SetVarDataType("vout", framework::proto::VarType::FP32));
-  ASSERT_ANY_THROW(ctx->GetInputDataType("vin"));
+
+  ASSERT_ANY_THROW(ctx->GetVarDataTypes("vin"));
   std::vector<framework::proto::VarType::Type> NullType;
   ASSERT_ANY_THROW(ctx->SetVarDataTypes("vin", NullType));
   ASSERT_ANY_THROW(ctx->GetVarShape("vin"));
+  ASSERT_ANY_THROW(ctx->SetVarShape("vin", {}));
   ASSERT_ANY_THROW(ctx->GetVarLoDLevel("vin"));
   ASSERT_ANY_THROW(ctx->SetVarLoDLevel("vin", 2));
 
