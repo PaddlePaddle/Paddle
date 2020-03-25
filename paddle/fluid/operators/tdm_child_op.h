@@ -36,12 +36,12 @@ template <typename T, typename InfoT = int, typename ChildT = int>
 void TDMChildInner(const framework::ExecutionContext &context,
                    const LoDTensor &input, const LoDTensor &tree_info,
                    LoDTensor *child, LoDTensor *mask) {
+  auto child_nums = context.Attr<int>("Child_nums");
   auto info_dims = tree_info.dims();
-  int node_nums = dims[0];
-  int length = dims[1];
+  int node_nums = info_dims[0];
+  int length = info_dims[1];
 
   int input_ids_num = input.numel();
-  int batch_size = input.dims()[0];
   VLOG(4) << "TDM child : input numel -> " << input_ids_num;
 
   std::vector<ChildT> child_vec{};
@@ -69,7 +69,7 @@ void TDMChildInner(const framework::ExecutionContext &context,
 
     bool has_child =
         (input_data[input_ids] == 0 ||
-         tree_emb_data[static_cast<int>(input_data[input_ids]) * length + 3] ==
+         tree_info_data[static_cast<int>(input_data[input_ids]) * length + 3] ==
              0)
             ? false
             : true;
@@ -77,11 +77,11 @@ void TDMChildInner(const framework::ExecutionContext &context,
     if (has_child) {
       for (int child_ids = 0; child_ids < child_nums; ++child_ids) {
         ChildT child_id =
-            tree_emb_data[static_cast<int>(input_data[input_ids]) * length + 3 +
-                          child_ids];
+            tree_info_data[static_cast<int>(input_data[input_ids]) * length +
+                           3 + child_ids];
         child_vec.push_back(child_id);
         ChildT child_is_item =
-            tree_emb_data[static_cast<int>(child_id) * length] == 0 ? 0 : 1;
+            tree_info_data[static_cast<int>(child_id) * length] == 0 ? 0 : 1;
         item_mask_vec.push_back(child_is_item);
       }
     } else {
@@ -106,12 +106,11 @@ class TDMChildKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *input_var = ctx.InputVar("X");
     auto *tree_info_var = ctx.InputVar("Tree_info");
-    auto child_nums = ctx.Attr<int>("Child_nums");
 
     auto &input_tensor = input_var->Get<LoDTensor>();
     const auto &input_type = input_tensor.type();
-    bool input_type_match = info_type == framework::proto::VarType::INT32 ||
-                            info_type == framework::proto::VarType::INT64;
+    bool input_type_match = input_type == framework::proto::VarType::INT32 ||
+                            input_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(input_type_match, true,
                       platform::errors::InvalidArgument(
                           "Input(X) holds the wrong type, it holds %s, but "
@@ -142,9 +141,9 @@ class TDMChildKernel : public framework::OpKernel<T> {
     auto *child_tensor = child_var->GetMutable<framework::LoDTensor>();
     auto *leaf_mask_tensor = leaf_mask_var->GetMutable<framework::LoDTensor>();
 
-    const auto &child_type = child_tensor.type();
-    bool child_type_match = info_type == framework::proto::VarType::INT32 ||
-                            info_type == framework::proto::VarType::INT64;
+    const auto &child_type = child_tensor->type();
+    bool child_type_match = child_type == framework::proto::VarType::INT32 ||
+                            child_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(
         child_type_match, true,
         platform::errors::InvalidArgument(
