@@ -366,7 +366,7 @@ def _get_program_cache_key(feed, fetch_list):
     return str(feed_var_names + fetch_var_names)
 
 
-def _as_lodtensor(data, place, dtype):
+def _as_lodtensor(data, place, dtype=None):
     """
         Convert numpy.ndarray to Tensor, its only support Tensor without LoD information.
         For higher dimensional sequence data, please use LoDTensor directly.
@@ -396,7 +396,7 @@ def _as_lodtensor(data, place, dtype):
 
     #NOTE(zhiqiu): convert python builtin ,like float and int, to numpy array
     if not isinstance(data, np.ndarray):
-        if np.isscalar(data):
+        if np.isscalar(data) and dtype:
             dtype = convert_dtype(dtype) if isinstance(
                 dtype, core.VarDesc.VarType) else dtype
             data = np.array([data]).astype(dtype)
@@ -635,12 +635,13 @@ class Executor(object):
             feed_tensor_dict = dict()
             for feed_name in feed:
                 feed_tensor = feed[feed_name]
-                var = global_block.var(feed_name)
+                var = global_block.var(feed_name) if need_check_feed else None
                 if not isinstance(feed_tensor, core.LoDTensor):
                     # always set to CPU place, since the tensor need to be split
                     # it is fast in CPU
                     feed_tensor = _as_lodtensor(feed[feed_name],
-                                                core.CPUPlace(), var.dtype)
+                                                core.CPUPlace(), var.dtype
+                                                if var else None)
                 if need_check_feed:
                     check_feed_shape_type(var, feed_tensor, exe.device_count())
                 feed_tensor_dict[feed_name] = feed_tensor
@@ -655,10 +656,12 @@ class Executor(object):
                 res_dict = dict()
                 for feed_name in each:
                     tensor = each[feed_name]
-                    var = global_block.var(feed_name)
+                    var = global_block.var(
+                        feed_name) if need_check_feed else None
                     if not isinstance(tensor, core.LoDTensor):
                         tensor = _as_lodtensor(each[feed_name],
-                                               program._places[i], var.dtype)
+                                               program._places[i], var.dtype
+                                               if var else None)
                     if need_check_feed:
                         check_feed_shape_type(var, tensor)
                     res_dict[feed_name] = tensor
