@@ -157,8 +157,8 @@ class SequencePoolGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
-    SequencePoolGradOpNoNeedBufferVarsInference, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequencePoolGradOpNoNeedBufferVarsInference,
+                                    "X");
 
 }  // namespace operators
 }  // namespace paddle
