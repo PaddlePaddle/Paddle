@@ -82,16 +82,26 @@ $$A[i] = T$$
 class WriteToArrayInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("I"), "Must set the subscript index");
+    PADDLE_ENFORCE_EQ(
+        context->HasInput("I"), true,
+        platform::errors::InvalidArgument(
+            "Write to array operation must set the subscript index."));
     if (context->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(framework::product(context->GetInputDim("I")), 1,
-                        "The number of element of subscript index must be 1");
+      PADDLE_ENFORCE_EQ(
+          framework::product(context->GetInputDim("I")), 1,
+          platform::errors::InvalidArgument(
+              "The number of element of subscript index must be 1, but get %d",
+              framework::product(context->GetInputDim("I"))));
     }
     if (!context->HasInput("X")) {
       return;
     }
 
-    PADDLE_ENFORCE(context->HasOutput("Out"), NotHasOutError());
+    PADDLE_ENFORCE_EQ(
+        context->HasOutput("Out"), true,
+        platform::errors::InvalidArgument(
+            "Do array operation (write/read)must set the output Tensor "
+            "to get the result."));
     context->SetOutputDim("Out", context->GetInputDim("X"));
 
     // When compile time, we need to:
@@ -105,13 +115,6 @@ class WriteToArrayInferShape : public framework::InferShapeBase {
     if (!context->IsRuntime()) {
       context->ShareLoD("X", /*->*/ "Out");
     }
-  }
-
- protected:
-  virtual const char *NotHasXError() const { return "Must set the lod tensor"; }
-
-  virtual const char *NotHasOutError() const {
-    return "Must set the lod tensor array";
   }
 };
 
@@ -140,10 +143,16 @@ class ReadFromArrayOp : public ArrayOp {
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
     auto *x = scope.FindVar(Input("X"));
-    PADDLE_ENFORCE(x != nullptr, "X must be set");
+    PADDLE_ENFORCE_NOT_NULL(
+        x,
+        platform::errors::InvalidArgument(
+            "X(Input Variable) must be set when we do read array operation"));
     auto &x_array = x->Get<framework::LoDTensorArray>();
     auto *out = scope.FindVar(Output("Out"));
-    PADDLE_ENFORCE(out != nullptr, "Out must be set");
+    PADDLE_ENFORCE_NOT_NULL(
+        out,
+        platform::errors::InvalidArgument(
+            "Out(Output Varibale) must be set when we do read read operation"));
     size_t offset = GetOffset(scope, place);
     if (offset < x_array.size()) {
       auto *out_tensor = out->GetMutable<framework::LoDTensor>();
@@ -199,15 +208,7 @@ $$T = A[i]$$
   }
 };
 
-class ReadFromArrayInferShape : public WriteToArrayInferShape {
- protected:
-  const char *NotHasXError() const override {
-    return "The input array X must be set";
-  }
-  const char *NotHasOutError() const override {
-    return "The output tensor out must be set";
-  }
-};
+class ReadFromArrayInferShape : public WriteToArrayInferShape {};
 
 template <typename T>
 class WriteToArrayGradMaker : public framework::SingleGradOpMaker<T> {
