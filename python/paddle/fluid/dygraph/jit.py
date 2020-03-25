@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 __all__ = [
-    'TracedLayer', 'dygraph_to_static_code', 'dygraph_to_static_graph',
+    'TracedLayer', 'dygraph_to_static_code', 'dygraph_to_static_func',
     'dygraph_to_static_output'
 ]
 
