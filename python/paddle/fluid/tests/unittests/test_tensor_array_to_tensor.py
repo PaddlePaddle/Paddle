@@ -204,17 +204,35 @@ class TestLoDTensorArrayStack(unittest.TestCase):
 
 
 class TestTensorArrayToTensorAPI(unittest.TestCase):
-    def test_case(self):
-        x0 = fluid.layers.assign(numpy.random.rand(2, 3, 4).astype("float32"))
-        x1 = fluid.layers.assign(numpy.random.rand(2, 3, 4).astype("float32"))
+    def _test_case(self, inp1, inp2):
+        x0 = fluid.layers.assign(inp1)
+        x0.stop_gradient = False
+        x1 = fluid.layers.assign(inp2)
+        x1.stop_gradient = False
         i = fluid.layers.fill_constant(shape=[1], dtype="int64", value=0)
         array = fluid.layers.create_array(dtype='float32')
         fluid.layers.array_write(x0, i, array)
         fluid.layers.array_write(x1, i + 1, array)
-        output, output_index = fluid.layers.tensor_array_to_tensor(
+        output_stack, output_index_stack = fluid.layers.tensor_array_to_tensor(
             input=array, axis=1, use_stack=True)
-        output, output_index = fluid.layers.tensor_array_to_tensor(
+        output_concat, output_index_concat = fluid.layers.tensor_array_to_tensor(
             input=array, axis=1, use_stack=False)
+        return output_stack, output_index_stack, output_concat, output_index_concat
+
+    def test_case(self):
+        inp0 = numpy.random.rand(2, 3, 4).astype("float32")
+        inp1 = numpy.random.rand(2, 3, 4).astype("float32")
+
+        _outs_static = self._test_case(inp0, inp1)
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        outs_static = exe.run(fetch_list=list(_outs_static))
+
+        with fluid.dygraph.guard(place):
+            outs_dynamic = self._test_case(inp0, inp1)
+
+        for s, d in zip(outs_static, outs_dynamic):
+            self.assertTrue(numpy.array_equal(s, d.numpy()))
 
 
 if __name__ == '__main__':
