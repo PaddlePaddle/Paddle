@@ -14,7 +14,10 @@
 
 from __future__ import print_function
 
-__all__ = ['TracedLayer', 'dygraph_to_static_output', 'dygraph_to_static_graph']
+__all__ = [
+    'TracedLayer', 'dygraph_to_static_code', 'dygraph_to_static_graph',
+    'dygraph_to_static_output'
+]
 
 import warnings
 
@@ -51,6 +54,22 @@ def extract_vars(inputs):
     return result_list
 
 
+def _dygraph_to_static_code_(dygraph_func):
+    def __impl__(*args, **kwargs):
+        if in_dygraph_mode():
+            warnings.warn(
+                "The decorator 'dygraph_to_static_code' doesn't work in dygraph mode."
+                " Please use it in static mode.")
+            return dygraph_func(*args, **kwargs)
+        program_translator = ProgramTranslator()
+        return program_translator.get_code(dygraph_func)
+
+    return __impl__
+
+
+dygraph_to_static_code = wrap_decorator(_dygraph_to_static_code_)
+
+
 def _dygraph_to_static_graph_(dygraph_func):
     def __impl__(*args, **kwargs):
         if in_dygraph_mode():
@@ -58,7 +77,8 @@ def _dygraph_to_static_graph_(dygraph_func):
                 "The decorator 'dygraph_to_static_graph' doesn't work in dygraph mode."
                 " Please use it in static mode.")
             return dygraph_func(*args, **kwargs)
-        static_func, ast_transformer = convert_to_static(dygraph_func)
+        program_translator = ProgramTranslator()
+        static_func = program_translator.get_func(dygraph_func)
         return static_func(*args, **kwargs)
 
     return __impl__
@@ -68,24 +88,9 @@ dygraph_to_static_graph = wrap_decorator(_dygraph_to_static_graph_)
 
 
 def _dygraph_to_static_output_(dygraph_func):
-    program_translator = ProgramTranslator()
-
     def __impl__(*args, **kwargs):
-        if in_dygraph_mode():
-            warnings.warn(
-                "The decorator 'dygraph_to_static_output' doesn't work in dygraph mode."
-                " Please use it in static mode.")
-            return dygraph_func(*args, **kwargs)
-
-        program_cache = program_translator.get_program_cache()
-        outputs = program_cache.build_program_and_return_output(dygraph_func,
-                                                                *args, **kwargs)
-
-        # Run program to fetch output Tensors once building successfully.
-        if not program_cache.in_build_process:
-            outputs = program_translator.run(*args, **kwargs)
-
-        return outputs
+        program_translator = ProgramTranslator()
+        return program_translator.get_output(dygraph_func, *args, **kwargs)
 
     return __impl__
 
