@@ -57,6 +57,7 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
 
     VLOG(10) << "Create new double buffer reader on " << place;
 
+    out->Clear();
     out->Reset(framework::MakeDecoratedReader<BufferedReader>(underlying_reader,
                                                               place, 2));
   }
