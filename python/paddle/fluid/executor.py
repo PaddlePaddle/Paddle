@@ -634,16 +634,13 @@ class Executor(object):
             feed_tensor_dict = dict()
             for feed_name in feed:
                 feed_tensor = feed[feed_name]
+                var = global_block.var(feed_name)
                 if not isinstance(feed_tensor, core.LoDTensor):
-                    feed_tensor = core.LoDTensor()
                     # always set to CPU place, since the tensor need to be split
                     # it is fast in CPU
-                    assert isinstance( feed[feed_name], np.ndarray ), \
-                        "The input({}) should be numpy.array or Tensor, but not {}.".format(
-                        feed_name, type(feed[feed_name]))
-                    feed_tensor.set(feed[feed_name], core.CPUPlace())
+                    feed_tensor = _as_lodtensor(feed[feed_name],
+                                                core.CPUPlace(), var.dtype)
                 if need_check_feed:
-                    var = global_block.var(feed_name)
                     check_feed_shape_type(var, feed_tensor, exe.device_count())
                 feed_tensor_dict[feed_name] = feed_tensor
 
@@ -657,15 +654,11 @@ class Executor(object):
                 res_dict = dict()
                 for feed_name in each:
                     tensor = each[feed_name]
+                    var = global_block.var(feed_name)
                     if not isinstance(tensor, core.LoDTensor):
-                        tmp = core.LoDTensor()
-                        assert isinstance(each[feed_name], np.ndarray), \
-                            "The input({}) should be numpy.array or Tensor, but not {}.".format(
-                            feed_name, type(each[feed_name]))
-                        tmp.set(tensor, program._places[i])
-                        tensor = tmp
+                        tensor = _as_lodtensor(each[feed_name],
+                                               program._places[i], var.dtype)
                     if need_check_feed:
-                        var = global_block.var(feed_name)
                         check_feed_shape_type(var, tensor)
                     res_dict[feed_name] = tensor
                 res.append(res_dict)

@@ -19,7 +19,6 @@ import unittest
 import numpy
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from test_eager_deletion_padding_rnn import RNNConfig, PaddingRNNTestBase
 
 
 class TestExecutor(unittest.TestCase):
@@ -38,13 +37,10 @@ class TestExecutor(unittest.TestCase):
 
         return lr, avg_cost
 
-    #NOTE(zhiqiu): Historically, Program supports feeding scalar.
-    def test_program_feed_scalar(self):
+    def test_program_feed_float(self):
         main_program = fluid.Program()
         startup_program = fluid.Program()
         scope = fluid.Scope()
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
         with fluid.program_guard(main_program, startup_program):
             with fluid.scope_guard(scope):
                 cpu = fluid.CPUPlace()
@@ -55,40 +51,66 @@ class TestExecutor(unittest.TestCase):
                     [[1.0], [2.0], [3.0], [4.0]]).astype('float32')
                 y_true = numpy.array(
                     [[2.0], [4.0], [6.0], [8.0]]).astype('float32')
-                _lr, _, _ = exe.run(
-                    feed={'x': train_data,
-                          'y': y_true,
-                          'lr': 0.01},
-                    fetch_list=[lr, cost])
+                a = 0.01
+                _lr, _ = exe.run(feed={'x': train_data,
+                                       'y': y_true,
+                                       'lr': a},
+                                 fetch_list=[lr, cost],
+                                 return_numpy=False)
             self.assertEqual(_lr._dtype(), lr.dtype)
+            self.assertEqual(_lr._dtype(), fluid.core.VarDesc.VarType.FP32)
+            self.assertEqual(type(a), float)
 
-    #NOTE(zhiqiu): CompiledProgram does not support feeding scalar.
-    def test_program_feed_scalar(self):
+    def test_program_feed_int(self):
         main_program = fluid.Program()
         startup_program = fluid.Program()
         scope = fluid.Scope()
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
         with fluid.program_guard(main_program, startup_program):
             with fluid.scope_guard(scope):
                 cpu = fluid.CPUPlace()
                 exe = fluid.Executor(cpu)
                 lr, cost = self.net()
+                exe.run(startup_program)
+                train_data = numpy.array(
+                    [[1.0], [2.0], [3.0], [4.0]]).astype('float32')
+                y_true = numpy.array(
+                    [[2.0], [4.0], [6.0], [8.0]]).astype('float32')
+                a = 0
+                _lr, _ = exe.run(feed={'x': train_data,
+                                       'y': y_true,
+                                       'lr': a},
+                                 fetch_list=[lr, cost],
+                                 return_numpy=False)
+            self.assertEqual(_lr._dtype(), lr.dtype)
+            self.assertEqual(_lr._dtype(), fluid.core.VarDesc.VarType.FP32)
+            self.assertEqual(type(a), int)
+
+    def test_compiled_program_feed_scalar(self):
+        main_program = fluid.Program()
+        startup_program = fluid.Program()
+        scope = fluid.Scope()
+        with fluid.program_guard(main_program, startup_program):
+            with fluid.scope_guard(scope):
+                lr, cost = self.net()
+                cpu = fluid.CPUPlace()
+                exe = fluid.Executor(cpu)
+                exe.run(startup_program)
                 compiled_prog = fluid.CompiledProgram(
                     main_program).with_data_parallel(loss_name=cost.name)
-                exe.run(startup_program)
                 train_data = numpy.array(
                     [[1.0], [2.0], [3.0], [4.0]]).astype('float32')
                 y_true = numpy.array(
                     [[2.0], [4.0], [6.0], [8.0]]).astype('float32')
-            self.assertRaises(
-                AssertionError,
-                exe.run,
-                compiled_prog,
-                feed={'x': train_data,
-                      'y': y_true,
-                      'lr': 0.01},
-                fetch_list=[lr, cost])
+                a = 0.01
+                _lr, _ = exe.run(compiled_prog,
+                                 feed={'x': train_data,
+                                       'y': y_true,
+                                       'lr': a},
+                                 fetch_list=[lr, cost],
+                                 return_numpy=False)
+                self.assertEqual(_lr._dtype(), lr.dtype)
+                self.assertEqual(_lr._dtype(), fluid.core.VarDesc.VarType.FP32)
+                self.assertEqual(type(a), float)
 
 
 if __name__ == '__main__':
