@@ -54,24 +54,24 @@ class IndexSampleOp : public framework::OperatorWithKernel {
         input_dims.size(), 2,
         platform::errors::InvalidArgument(
             "Inputs(X) shape of IndexSample op should be 2-D, but "
-            "got X's shape = [%s], please check X shape."),
-        input_dims);
+            "got X's shape = [%s], please check X shape.",
+            input_dims));
 
     auto index_dims = ctx->GetInputDim("Index");
     PADDLE_ENFORCE_EQ(
         input_dims.size(), 2,
         platform::errors::InvalidArgument(
             "Inputs(Index) shape of IndexSample op should be 2-D, but "
-            "got Index's shape [%s] , please check index shape."),
-        input_dims);
+            "got Index's shape [%s] , please check index shape.",
+            input_dims));
 
     PADDLE_ENFORCE_EQ(input_dims[0], index_dims[0],
                       platform::errors::InvalidArgument(
                           "Inputs(X)'s value of dimension 0 must same with "
                           "Inputs(Index)'s value of dimension 0, but "
                           "got %d of Inputs(X), and got %d of Inputs(Index), "
-                          "please check Inputs shape."),
-                      input_dims[0], index_dims[0]);
+                          "please check Inputs shape.",
+                          input_dims[0], index_dims[0]));
     ctx->SetOutputDim("Out", index_dims);
     auto type = ctx->GetInputsVarType("Index")[0];
     if (type == framework::proto::VarType::LOD_TENSOR) {
