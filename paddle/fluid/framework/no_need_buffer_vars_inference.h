@@ -96,6 +96,9 @@ class NoNeedBufferVarsInference {
     }                                                                 \
   }
 
+#define DECLARE_NO_NEED_BUFFER_VARS_INFERER \
+  DECLARE_NO_NEED_BUFFER_VARS_INFERENCE
+
 class InferNoNeedBufferVarsFN {
  public:
   inline const std::unordered_set<std::string> &operator()(
