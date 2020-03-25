@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 __all__ = [
-    'TracedLayer', 'dygraph_to_static_code', 'dygraph_to_static_graph',
+    'TracedLayer', 'dygraph_to_static_code', 'dygraph_to_static_func',
     'dygraph_to_static_output'
 ]
 
@@ -70,11 +70,11 @@ def _dygraph_to_static_code_(dygraph_func):
 dygraph_to_static_code = wrap_decorator(_dygraph_to_static_code_)
 
 
-def _dygraph_to_static_graph_(dygraph_func):
+def _dygraph_to_static_func_(dygraph_func):
     def __impl__(*args, **kwargs):
         if in_dygraph_mode():
             warnings.warn(
-                "The decorator 'dygraph_to_static_graph' doesn't work in dygraph mode."
+                "The decorator 'dygraph_to_static_func' doesn't work in dygraph mode."
                 " Please use it in static mode.")
             return dygraph_func(*args, **kwargs)
         program_translator = ProgramTranslator()
@@ -84,7 +84,7 @@ def _dygraph_to_static_graph_(dygraph_func):
     return __impl__
 
 
-dygraph_to_static_graph = wrap_decorator(_dygraph_to_static_graph_)
+dygraph_to_static_func = wrap_decorator(_dygraph_to_static_func_)
 
 
 def _dygraph_to_static_output_(dygraph_func):
