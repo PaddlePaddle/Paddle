@@ -20,7 +20,7 @@ from .tensor import assign, cast, fill_constant
 from .. import core
 from ..framework import Program, Variable, Operator, in_dygraph_mode
 from ..layer_helper import LayerHelper, unique_name
-from .nn import logical_and, logical_not, logical_or, concat, split
+from .nn import logical_and, logical_not, logical_or
 from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars
 import numpy
 import warnings
@@ -1664,8 +1664,7 @@ def array_read(array, i):
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
     if in_dygraph_mode():
-        assert isinstance(
-            array, Variable), "The 'array' in array_read must be Variable"
+        assert isinstance(array, list), "The 'array' in array_read must be list"
         assert isinstance(
             i, Variable), "The index 'i' in array_read must be Variable"
         assert i.shape == [1], "The shape of index 'i' should be [1]"
