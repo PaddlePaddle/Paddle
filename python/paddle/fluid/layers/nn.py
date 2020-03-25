@@ -36,6 +36,7 @@ from .. import core
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
 __all__ = [
+    'flip',
     'fc',
     'embedding',
     'linear_chain_crf',
@@ -357,6 +358,54 @@ def fc(input,
     pre_activation = helper.append_bias_op(pre_bias, dim_start=num_flatten_dims)
     # add activation
     return helper.append_activation(pre_activation)
+
+
+def flip(input, dims, name=None):
+    """
+
+    Reverse the order of a n-D tensor along given axis in dims.
+
+    Args:
+        input (Variable): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor
+            should be float32, float64, int32, int64, bool.
+        dims(list): The axis to flip on.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Variable: Tensor or LoDTensor calculated by flip layer. The data type is same with input.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import numpy as np
+          input = fluid.data(name="x", shape=[-1, 2, 2], dtype='float32')
+          output = fluid.layers.flip(input, dims=[0, 1])
+          exe = fluid.Executor(fluid.CPUPlace())
+          exe.run(fluid.default_startup_program())
+          img = np.arange(12).reshape((3,2,2)).astype(np.float32)
+          res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
+          print(res) # [[[10,11][8, 9]],[[6, 7],[4, 5]] [[2, 3],[0, 1]]]
+    """
+    helper = LayerHelper("flip", **locals())
+    check_type(input, 'X', (Variable), 'flip')
+    dtype = helper.input_dtype()
+    check_dtype(dtype, 'X',
+                ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+                'flip')
+    assert len(dims) > 0, 'len(dims) must be greater than 0.'
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype)
+    else:
+        out = helper.create_variable(name=name, dtype=dtype, persistable=False)
+
+    helper.append_op(
+        type="flip",
+        inputs={"X": input},
+        outputs={"Out": out},
+        attrs={"dims": dims})
+    return out
 
 
 def embedding(input,
