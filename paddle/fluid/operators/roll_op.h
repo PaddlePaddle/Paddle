@@ -44,6 +44,8 @@ inline void shift_along_dim(T* data, const DDim& input_dim, int64_t dim,
     slice_width *= input_dim[i];
   }
 
+  auto slice_bytes = slice_width * sizeof(T);
+
   VLOG(1) << "shift_along_dim_debug: input_dim: " << input_dim
           << "; dim: " << dim << "; shift: " << shift
           << "; outer_loops: " << outer_loops
@@ -56,14 +58,14 @@ inline void shift_along_dim(T* data, const DDim& input_dim, int64_t dim,
   head.resize(slice_width * (input_dim[dim] - shift));
 
   for (auto i = 0; i < outer_loops; i++) {
-    memcpy(head, data + i * input_dim[dim] * slice_width,
+    memcpy(head.data(), data + i * input_dim[dim] * slice_width,
            slice_width * (input_dim[dim] - shift) * sizeof(T));
     for (auto j = input_dim[dim] - shift; j < input_dim[dim]; j++) {
       auto dst_pos = j - input_dim[dim] + shift;
       memcpy(data + (i * input_dim[dim] + dst_pos) * slice_width,
              data + (i * input_dim[dim] + j) * slice_width, slice_bytes);
     }
-    memcpy(data + (i * input_dim[dim] + shift) * slice_width, head,
+    memcpy(data + (i * input_dim[dim] + shift) * slice_width, head.data(),
            slice_width * (input_dim[dim] - shift) * sizeof(T));
   }
 }

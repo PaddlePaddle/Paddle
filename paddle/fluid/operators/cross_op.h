@@ -114,8 +114,9 @@ class CrossKernel : public framework::OpKernel<T> {
         auto in_pos2 = (3 * i + ((j + 2) % 3)) * slice_size;
 
         for (auto k = 0; k < slice_size; k++) {
-          out_vec[k] = input_x_vec[in_pos1 + k] * input_y_vec[in_pos2 + k] -
-                       input_x_vec[in_pos2 + k] * input_y_vec[in_pos1 + k];
+          out_vec[dst_pos + k] =
+              input_x_vec[in_pos1 + k] * input_y_vec[in_pos2 + k] -
+              input_x_vec[in_pos2 + k] * input_y_vec[in_pos1 + k];
         }
       }
     }
@@ -186,8 +187,8 @@ class CrossGradKernel : public framework::OpKernel<T> {
     framework::TensorToVector(input_y, context.device_context(), &input_y_vec);
     framework::TensorToVector(input_out_grad, context.device_context(),
                               &input_dout_vec);
-    std::vector<T> out_dx_vec(out_x_grad->numel());
-    std::vector<T> out_dy_vec(out_y_grad->numel());
+    std::vector<T> out_dx_vec(output_x_grad->numel());
+    std::vector<T> out_dy_vec(output_y_grad->numel());
 
     output_x_grad->mutable_data<T>(context.GetPlace());
     output_y_grad->mutable_data<T>(context.GetPlace());
@@ -198,10 +199,10 @@ class CrossGradKernel : public framework::OpKernel<T> {
         auto in_pos1 = (3 * i + ((j + 1) % 3)) * slice_size;
         auto in_pos2 = (3 * i + ((j + 2) % 3)) * slice_size;
         for (auto k = 0; k < slice_size; k++) {
-          out_dx_vec[k] =
+          out_dx_vec[dst_pos + k] =
               input_dout_vec[in_pos2 + k] * input_y_vec[in_pos1 + k] -
               input_dout_vec[in_pos1 + k] * input_y_vec[in_pos2 + k];
-          out_dy_vec[k] =
+          out_dy_vec[dst_pos + k] =
               input_dout_vec[in_pos1 + k] * input_x_vec[in_pos2 + k] -
               input_dout_vec[in_pos2 + k] * input_x_vec[in_pos1 + k];
         }

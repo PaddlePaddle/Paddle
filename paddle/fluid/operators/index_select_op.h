@@ -50,7 +50,7 @@ void IndexSelectInner(const framework::ExecutionContext& context,
   TensorToVector(input, context.device_context(), &input_vec);
   TensorToVector(index, context.device_context(), &index_vec);
   std::vector<T> out_vec(output->numel());
-  output->mutable_data<T>(context.GetPlace()));
+  output->mutable_data<T>(context.GetPlace());
 
   VLOG(1) << "Index_Select_Debug; outer_nums: " << outer_nums
           << "; slice_size: " << slice_size << "; input_width: " << input_width
