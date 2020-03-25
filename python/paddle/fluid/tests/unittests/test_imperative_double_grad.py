@@ -118,16 +118,29 @@ class TestDygraphDoubleGrad(TestCase):
 
     @dygraph_guard
     def test_none_one_initial_gradient(self):
-        x = random_var(self.shape)
+        numel = 1
+        for s in self.shape:
+            numel *= s
+
+        half_numel = int(numel / 2)
+        half_x_positive = np.random.uniform(low=1, high=2, size=[half_numel])
+        half_x_negative = np.random.uniform(
+            low=-2, high=-1, size=[numel - half_numel])
+        x_np = np.array(list(half_x_positive) + list(half_x_negative)).astype(
+            'float32')
+        np.random.shuffle(x_np)
+
+        x = fluid.dygraph.to_variable(x_np)
         x.stop_gradient = False
 
-        y = fluid.layers.relu(x)
+        alpha = 0.2
+        y = fluid.layers.leaky_relu(x, alpha=alpha)
         y = y * y
         z = y * y
 
         x_np = x.numpy()
-        relu_x_np = np.maximum(x_np, 0).astype('float32')
-        relu_x_grad_np = (x_np > 0).astype('float32')
+        relu_x_np = np.maximum(x_np, alpha * x_np).astype('float32')
+        relu_x_grad_np = ((x_np > 0) + (x_np < 0) * alpha).astype('float32')
         dy_expected = (relu_x_np * relu_x_grad_np * 2).astype('float32')
         dz_expected = (np.power(relu_x_np, 3) * relu_x_grad_np *
                        4).astype('float32')

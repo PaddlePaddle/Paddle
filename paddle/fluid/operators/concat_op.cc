@@ -176,8 +176,7 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ConcatOpGradNoNeedBufferVarInference,
-                                      "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ConcatOpGradNoNeedBufferVarInference, "X");
 
 template <typename T>
 class ConcatGradOpMaker : public framework::SingleGradOpMaker<T> {
