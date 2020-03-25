@@ -73,7 +73,10 @@ bool TestMain(const platform::Place &place, const framework::DDim &dims) {
 
   // Get in-place result
   auto &out_tensor = scope.FindVar("x")->Get<framework::LoDTensor>();
-  PADDLE_ENFORCE_EQ(&out_tensor, x);
+  PADDLE_ENFORCE_EQ(
+      &out_tensor, x,
+      platform::errors::InvalidArgument(
+          "Input and output vars should share tensor for In-place test"));
 
   // compare results
   auto *ref_ptr = ref_tensor.data<T>();
