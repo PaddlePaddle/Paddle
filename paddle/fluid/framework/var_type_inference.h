@@ -41,32 +41,37 @@ class InferVarTypeContext {
   virtual ~InferVarTypeContext() {}
 
   virtual Attribute GetAttr(const std::string& name) const {
-    PADDLE_ENFORCE_NOT_NULL(op_);
+    PADDLE_ENFORCE_NOT_NULL(
+        op_, platform::errors::PreconditionNotMet("op_ should not be null"));
     return op_->GetAttr(name);
   }
 
   virtual bool HasInput(const std::string& name) const {
-    PADDLE_ENFORCE_NOT_NULL(op_);
+    PADDLE_ENFORCE_NOT_NULL(
+        op_, platform::errors::PreconditionNotMet("op_ should not be null"));
     auto& inputs = op_->Inputs();
     auto input = inputs.find(name);
     return input != inputs.end() && !input->second.empty();
   }
 
   virtual bool HasOutput(const std::string& name) const {
-    PADDLE_ENFORCE_NOT_NULL(op_);
+    PADDLE_ENFORCE_NOT_NULL(
+        op_, platform::errors::PreconditionNotMet("op_ should not be null"));
     auto& outputs = op_->Outputs();
     auto output = outputs.find(name);
     return output != outputs.end() && !output->second.empty();
   }
 
   virtual size_t InputSize(const std::string& name) const {
-    PADDLE_ENFORCE_NOT_NULL(op_);
+    PADDLE_ENFORCE_NOT_NULL(
+        op_, platform::errors::PreconditionNotMet("op_ should not be null"));
     return op_->Inputs().at(name).size();
   }
 
   virtual const std::string& InputVarName(const std::string& name,
                                           const int index = 0) const {
-    PADDLE_ENFORCE_NOT_NULL(op_);
+    PADDLE_ENFORCE_NOT_NULL(
+        op_, platform::errors::PreconditionNotMet("op_ should not be null"));
     return op_->Inputs().at(name)[index];
   }
 
@@ -108,6 +113,8 @@ class InferVarTypeContext {
 
   virtual void SetOutputType(const std::string& name, proto::VarType::Type type,
                              int index = 0) {
+    PADDLE_ENFORCE_NOT_NULL(
+        op_, platform::errors::PreconditionNotMet("op_ should not be null"));
     if (ALL_ELEMENTS == index) {
       for (const auto& var_name : op_->Output(name)) {
         this->SetVarType(var_name, type);
@@ -214,7 +221,8 @@ class InferVarTypeContext {
 
  protected:
   virtual bool HasVar(const std::string& name) const {
-    PADDLE_ENFORCE_NOT_NULL(block_);
+    PADDLE_ENFORCE_NOT_NULL(block_, platform::errors::PreconditionNotMet(
+                                        "block_ should not be null"));
     return block_->FindVarRecursive(name) != nullptr;
   }
 

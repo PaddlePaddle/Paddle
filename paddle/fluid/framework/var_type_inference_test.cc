@@ -251,5 +251,37 @@ TEST(InferVarType, multiple_api) {
   ASSERT_EQ(2, infer.GetLoDLevel(&ctx, "test2_a_out"));
 }
 
+TEST(InferVarType, test_enforce_check) {
+  InferVarTypeContext ctx(nullptr, nullptr);
+  ASSERT_ANY_THROW(ctx.HasInput("X"));
+  ASSERT_ANY_THROW(ctx.HasOutput("Out"));
+
+  ASSERT_ANY_THROW(ctx.InputSize("X"));
+  ASSERT_ANY_THROW(ctx.InputVarName("X"));
+
+  ASSERT_ANY_THROW(ctx.InputTypeAnyOf("X", proto::VarType::LOD_TENSOR));
+  ASSERT_ANY_THROW(ctx.InputTypeAllOf("X", proto::VarType::LOD_TENSOR));
+
+  ASSERT_ANY_THROW(ctx.SyncTypeAndDataType("X", "Out"));
+
+  ASSERT_ANY_THROW(ctx.SetOutputType("Out", proto::VarType::LOD_TENSOR));
+  ASSERT_ANY_THROW(ctx.GetInputType("X"));
+  ASSERT_ANY_THROW(ctx.GetOutputType("Out"));
+
+  ASSERT_ANY_THROW(ctx.GetInputDataType("X"));
+  ASSERT_ANY_THROW(ctx.SetOutputDataType("Out", proto::VarType::LOD_TENSOR));
+
+  ASSERT_ANY_THROW(ctx.GetInputDataTypes("X"));
+  ASSERT_ANY_THROW(ctx.SetOutputDataTypes("Out", {}));
+
+  ASSERT_ANY_THROW(ctx.GetInputShape("X"));
+  ASSERT_ANY_THROW(ctx.SetOutputShape("Out", {}));
+
+  ASSERT_ANY_THROW(ctx.GetInputLoDLevel("X"));
+  ASSERT_ANY_THROW(ctx.SetOutputLoDLevel("Out", 1));
+
+  ASSERT_ANY_THROW(ctx.InsertVar("var", proto::VarType::LOD_TENSOR));
+}
+
 }  // namespace framework
 }  // namespace paddle
