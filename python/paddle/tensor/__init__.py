@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: import all tensor api under this directory, 
+# TODO: import all tensor api under this directory,
 # including tensor creation, manipulation, math, etc.
-# __all__ = [ ]
+from .search import search
+__all__ = search.__all__

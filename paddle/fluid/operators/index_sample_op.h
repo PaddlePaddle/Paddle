@@ -47,17 +47,19 @@ void IndexSampleInner(const framework::ExecutionContext &context,
   std::vector<T> res{};
   for (int i = 0; i < index_ids_num; i++) {
     int b = floor(i / index_length);
-    PADDLE_ENFORCE_LT(
-        -1, index_data[i],
-        "Variable value (index) of OP(index_sample) "
-        "expected >= 0 and < %ld, but got %ld. Please check input "
-        "value.",
+    PADDLE_ENFORCE_GE(
+        index_data[i], 0,
+        platform::errors::InvalidArgument(
+            "Variable value (index) of OP(index_sample) "
+            "expected >= 0 and < %ld, but got %ld. Please check input "
+            "value."),
         value_length, index_data[i]);
     PADDLE_ENFORCE_LT(
         index_data[i], value_length,
-        "Variable value (index) of OP(index_sample) "
-        "expected >= 0 and < %ld, but got %ld. Please check input "
-        "value.",
+        platform::errors::InvalidArgument(
+            "Variable value (index) of OP(index_sample) "
+            "expected >= 0 and < %ld, but got %ld. Please check input "
+            "value."),
         value_length, index_data[i]);
 
     int v_i = b * value_length + static_cast<int>(index_data[i]);
@@ -128,17 +130,19 @@ void IndexSampleGradInner(const framework::ExecutionContext &context,
 
   for (int i = 0; i < index_ids_num; i++) {
     int b = floor(i / index_length);
-    PADDLE_ENFORCE_LT(
-        -1, index_data[i],
-        "Variable value (index) of OP(index_sample_grad) "
-        "expected >= 0 and < %ld, but got %ld. Please check input "
-        "value.",
+    PADDLE_ENFORCE_GE(
+        index_data[i], 0,
+        platform::errors::InvalidArgument(
+            "Variable value (index) of OP(index_sample_grad) "
+            "expected >= 0 and < %ld, but got %ld. Please check input "
+            "value."),
         value_length, index_data[i]);
     PADDLE_ENFORCE_LT(
         index_data[i], value_length,
-        "Variable value (index) of OP(index_sample_grad) "
-        "expected >= 0 and < %ld, but got %ld. Please check input "
-        "value.",
+        platform::errors::InvalidArgument(
+            "Variable value (index) of OP(index_sample_grad) "
+            "expected >= 0 and < %ld, but got %ld. Please check input "
+            "value."),
         value_length, index_data[i]);
     int v_i = b * value_length + static_cast<int>(index_data[i]);
     x_grad_data[v_i] += out_grad_data[i];

@@ -32,7 +32,58 @@ __all__ = ['index_sample']
 
 def index_sample(x, index):
     """
-    used for tdm infer
+    **IndexSample Layer**
+
+    IndexSample OP returns the element of the specified location of X, 
+    and the location is specified by Index. 
+
+    .. code-block:: text
+
+
+                Given:
+
+                X = [[1, 2, 3, 4, 5],
+                     [6, 7, 8, 9, 10]]
+
+                Index = [[0, 1, 3],
+                         [0, 2, 4]]
+
+                Then:
+
+                Out = [[1, 2, 4],
+                       [6, 8, 10]]
+
+    Args:
+        x (Variable): The source input tensor with 2-D shape. Supported data type is 
+            int32, int64, float32, float64.
+        index (Variable): The index input tensor with 2-D shape, first dimension should be same with X. 
+            Data type is int32 or int64.
+
+    Returns:
+        output (Variable): The output is a tensor with the same shape as index.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.tensor as tensor
+            import paddle.fluid as fluid
+            import numpy as np
+
+            x_shape = (2, 5)
+            x_type = "float64"
+            x_np = np.random.random(x_shape).astype(x_type)
+
+            index_shape = (2, 3)
+            index_type = "int32"
+            index_np = np.random.randint(low=0, 
+                                         high=x_shape[1],
+                                         size=index_shape).astype(index_type)
+
+            x = fluid.data(name='x', shape=[-1, 5], dtype='float64')
+            index = fluid.data(name='index', shape=[-1, 3], dtype='int32')
+            output = tensor.index_sample(x=x, index=index)
+
     """
     helper = LayerHelper("index_sample", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],

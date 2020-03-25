@@ -87,34 +87,12 @@ class TestCase3(TestIndexSampleOp):
 class TestCase4(TestIndexSampleOp):
     def config(self):
         """
-        For double x type
+        For int64 index type
         """
         self.x_shape = (10, 100)
-        self.x_type = "float32"
+        self.x_type = "float64"
         self.index_shape = (10, 10)
-        self.index_type = "int32"
-
-
-class TestCase5(TestIndexSampleOp):
-    def config(self):
-        """
-        For int x type
-        """
-        self.x_shape = (10, 100)
-        self.x_type = "int32"
-        self.index_shape = (10, 10)
-        self.index_type = "int32"
-
-
-class TestCase6(TestIndexSampleOp):
-    def config(self):
-        """
-        For int64_t x type
-        """
-        self.x_shape = (10, 100)
-        self.x_type = "int64"
-        self.index_shape = (10, 10)
-        self.index_type = "int32"
+        self.index_type = "int64"
 
 
 if __name__ == "__main__":

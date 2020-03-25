@@ -43,27 +43,34 @@ class IndexSampleOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Inputs(Input) of FindByIndex should not be null.");
+                      platform::errors::InvalidArgument(
+                          "Inputs(Input) of FindByIndex should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("Index"), true,
-                      "Inputs(Index) of FindByIndex should not be null.");
+                      platform::errors::InvalidArgument(
+                          "Inputs(Index) of FindByIndex should not be null."));
 
     auto input_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(input_dims.size(), 2,
-                      "Inputs(X) shape of IndexSample op must be 2-D, but "
-                      "got %d, please check X shape.",
-                      input_dims.size());
+    PADDLE_ENFORCE_EQ(
+        input_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "Inputs(X) shape of IndexSample op should be 2-D, but "
+            "got X's shape = [%s], please check X shape."),
+        input_dims);
 
     auto index_dims = ctx->GetInputDim("Index");
-    PADDLE_ENFORCE_EQ(input_dims.size(), 2,
-                      "Inputs(Index) shape of IndexSample op must be 2-D, but "
-                      "got %d , please check index shape.",
-                      input_dims.size());
+    PADDLE_ENFORCE_EQ(
+        input_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "Inputs(Index) shape of IndexSample op should be 2-D, but "
+            "got Index's shape [%s] , please check index shape."),
+        input_dims);
 
     PADDLE_ENFORCE_EQ(input_dims[0], index_dims[0],
-                      "Inputs(X)'s value of dimension 0 must same with "
-                      "Inputs(Index)'s value of dimension 0, but "
-                      "got %d of Inputs(X), and got %d of Inputs(Index), "
-                      "please check Inputs shape.",
+                      platform::errors::InvalidArgument(
+                          "Inputs(X)'s value of dimension 0 must same with "
+                          "Inputs(Index)'s value of dimension 0, but "
+                          "got %d of Inputs(X), and got %d of Inputs(Index), "
+                          "please check Inputs shape."),
                       input_dims[0], index_dims[0]);
     ctx->SetOutputDim("Out", index_dims);
     auto type = ctx->GetInputsVarType("Index")[0];
@@ -85,11 +92,15 @@ class IndexSampleGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Index"), "Input(Index) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output(X@GRAD) should be not null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Index"), true,
+        platform::errors::InvalidArgument("Input(Index) should be not null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+                      platform::errors::InvalidArgument(
+                          "Input(Out@GRAD) should be not null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
+                      platform::errors::InvalidArgument(
+                          "Output(X@GRAD) should be not null."));
 
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
