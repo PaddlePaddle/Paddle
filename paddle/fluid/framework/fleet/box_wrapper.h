@@ -435,10 +435,6 @@ class BoxWrapper {
       get_data<int64_t>(exe_scope, mask_varname_, &mask_data);
       auto cal = GetCalculator();
       auto batch_size = label_data.size();
-      std::string out = "";
-      for (size_t i = 0; i < batch_size; ++i) {
-        out += std::to_string(mask_data[i]) + " ";
-      }
       for (size_t i = 0; i < batch_size; ++i) {
         if (mask_data[i] == 1) {
           cal->add_data(pred_data[i], label_data[i]);
