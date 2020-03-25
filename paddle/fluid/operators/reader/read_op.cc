@@ -156,6 +156,10 @@ class ReadOpMaker : public framework::OpProtoAndCheckerMaker {
         " and it is set by ParallelExecutor instance, not users.")
         .SetDefault(true);
     AddAttr<bool>("infer_out", "").SetDefault(true);
+    AddAttr<bool>("drop_last",
+                  "Whether to drop last batches whose number is less than "
+                  "actual used device number.")
+        .SetDefault(true);
     AddComment(R"DOC(
       Read Operator
 

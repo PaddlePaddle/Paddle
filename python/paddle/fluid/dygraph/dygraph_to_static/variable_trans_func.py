@@ -29,7 +29,7 @@ def to_static_variable_gast_node(name):
 
 
 def create_static_variable_gast_node(name):
-    func_code = "{} = fluid.layers.data(name='{}', shape=[-1], dtype='float32')".format(
+    func_code = "{} = fluid.data(name='{}', shape=[-1], dtype='float32')".format(
         name, name)
     return gast.parse(func_code).body[0]
 

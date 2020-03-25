@@ -38,13 +38,13 @@ static std::string ExpandMultivariateTemplate(const std::string rhs,
   int start_pos = rhs.find("[", 0);
   int end_pos = rhs.find("]", 0);
   std::string sum_rhs = rhs.substr(0, start_pos);
-  std::string sum_rhs_component =
+  std::string repeated_component =
       rhs.substr(start_pos + 1, (end_pos - start_pos - 1));
-  int replace_pos = sum_rhs_component.find("?", 0);
+  int replace_pos = repeated_component.find("?", 0);
 
   for (size_t i = 1; i < input_size; i++) {
-    std::string append_str =
-        sum_rhs_component.replace(replace_pos, 1, std::to_string(i));
+    std::string append_str = repeated_component;
+    append_str.replace(replace_pos, 1, std::to_string(i));
     sum_rhs = sum_rhs + append_str;
   }
   return sum_rhs;
