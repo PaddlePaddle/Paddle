@@ -28,6 +28,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("fused_embedding_eltwise_layernorm");
     teller_set.insert("multihead_matmul");
     teller_set.insert("skip_layernorm");
+    teller_set.insert("slice");
 #endif
   }
 
