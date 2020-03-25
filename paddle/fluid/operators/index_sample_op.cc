@@ -99,14 +99,14 @@ class IndexSampleGradOp : public framework::OperatorWithKernel {
 };
 
 template <typename T>
-class IndexSampleGradMaker : public framework::OpProtoAndCheckerMaker {
+class IndexSampleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("index_sample_grad");
-
+    op->SetInput("X", this->Input("X"));
     op->SetInput("Index", this->Input("Index"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
