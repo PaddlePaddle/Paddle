@@ -59,8 +59,8 @@ void IndexSampleInner(const framework::ExecutionContext &context,
         platform::errors::InvalidArgument(
             "Variable value (index) of OP(index_sample) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
-            "value.")),
-        value_length, index_data[i]);
+            "value.",
+            value_length, index_data[i]));
 
     int v_i = b * value_length + static_cast<int>(index_data[i]);
     T v = input_data[v_i];
