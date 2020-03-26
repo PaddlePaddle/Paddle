@@ -14,62 +14,61 @@
 
 # TODO: define math functions  
 __all__ = [# 'abs',
-#            'acos',
-#            'asin',
-#            'atan',
-#            'ceil',
-#            'cos',
-#            'cumsum',
-#            'elementwise_add',
-#            'elementwise_div',
-#            'elementwise_floordiv',
-#            'elementwise_max',
-#            'elementwise_min',
-#            'elementwise_mod',
-#            'elementwise_mul',
-#            'elementwise_pow',
-#            'elementwise_sub',
-#            'exp',
-#            'floor',
-#            'increment',
-#            'log',
+    #            'acos',
+    #            'asin',
+    #            'atan',
+    #            'ceil',
+    #            'cos',
+    #            'cumsum',
+    #            'elementwise_add',
+    #            'elementwise_div',
+    #            'elementwise_floordiv',
+    #            'elementwise_max',
+    #            'elementwise_min',
+    #            'elementwise_mod',
+    #            'elementwise_mul',
+    #            'elementwise_pow',
+    #            'elementwise_sub',
+    #            'exp',
+    #            'floor',
+    #            'increment',
+    #            'log',
             'mul',
-#            'multiplex',
+    #            'multiplex',
             'pow',
-#            'reciprocal',
-#            'reduce_max',
-#            'reduce_min',
-#            'reduce_prod',
-#            'reduce_sum',
-#            'round',
-#            'rsqrt',
-#            'scale',
-#            'sign',
-#            'sin',
-#            'sqrt',
-#            'square',
-#            'stanh',
-#            'sum',
-#            'sums',
-#            'tanh',
-#            'elementwise_sum',
-#            'max',
-#            'min',
-#            'mm',
-#            'div',
-#            'add',
-#            'atan',
-#            'logsumexp',
-#            'inverse',
-#            'log1p',
-#            'erf',
-#            'addcmul',
-#            'addmm'
+    #            'reciprocal',
+    #            'reduce_max',
+    #            'reduce_min',
+    #            'reduce_prod',
+    #            'reduce_sum',
+    #            'round',
+    #            'rsqrt',
+    #            'scale',
+    #            'sign',
+    #            'sin',
+    #            'sqrt',
+    #            'square',
+    #            'stanh',
+    #            'sum',
+    #            'sums',
+    #            'tanh',
+    #            'elementwise_sum',
+    #            'max',
+    #            'min',
+    #            'mm',
+    #            'div',
+    #            'add',
+    #            'atan',
+    #            'logsumexp',
+    #            'inverse',
+    #            'log1p',
+    #            'erf',
+    #            'addcmul',
+    #            'addmm'
             ]
 
 from paddle.common_ops_import import *
 from paddle.fluid.layers.layer_function_generator import templatedoc
-
 
 
 @templatedoc()
@@ -118,21 +117,26 @@ def pow(input, exponent, out=None, name=None):
 
     if out is None:
         if name:
-            out =  helper.create_variable(name=name, dtype=input.dtype, persistable=False)
+            out = helper.create_variable(
+                name=name, dtype=input.dtype, persistable=False)
         else:
             out = helper.create_variable_for_type_inference(dtype=input.dtype)
     else:
         check_dtype(
             out.dtype, out.name,
             convert_dtype(input.dtype), 'pow',
-            '(The out data type in pow must be the same with input data type.)'
-        )
+            '(The out data type in pow must be the same with input data type.)')
         if name:
-            warning.warn("The output Variable name of the paddle.tensor.pow operation can only be given by parameter out or name. When parameter out and name are set at the same time, out has a higher priority than name. Finally, the output Variable name is same as the out name %s" % out.name, category=UserWarning,stacklevel=2)
+            warning.warn(
+                "The output Variable name of the paddle.tensor.pow operation can only be given by parameter out or name. When parameter out and name are set at the same time, out has a higher priority than name. Finally, the output Variable name is same as the out name %s"
+                % out.name,
+                category=UserWarning,
+                stacklevel=2)
 
     helper.append_op(
         type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
+
 
 def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, out=None, name=None):
     """
@@ -183,19 +187,22 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, out=None, name=None):
 
     if out is None:
         if name:
-            out =  helper.create_variable(name=name, dtype=x.dtype, persistable=False)
+            out = helper.create_variable(
+                name=name, dtype=x.dtype, persistable=False)
         else:
             out = helper.create_variable_for_type_inference(dtype=x.dtype)
     else:
         check_dtype(
             out.dtype, out.name,
             convert_dtype(x.dtype), 'mul',
-            '(The out data type in pow must be the same with input data type.)'
-        )
+            '(The out data type in pow must be the same with input data type.)')
         if name:
-            warning.warn("The output Variable name of the paddle.tensor.pow operation can only be given by parameter out or name. When parameter out and name are set at the same time, out has a higher priority than name. Finally, the output Variable name is same as the out name %s" % out.name, category=UserWarning,stacklevel=2)
+            warning.warn(
+                "The output Variable name of the paddle.tensor.pow operation can only be given by parameter out or name. When parameter out and name are set at the same time, out has a higher priority than name. Finally, the output Variable name is same as the out name %s"
+                % out.name,
+                category=UserWarning,
+                stacklevel=2)
     helper.append_op(
         type="mul", inputs={"X": x,
                             "Y": y}, attrs=attrs, outputs={"Out": out})
     return out
-
