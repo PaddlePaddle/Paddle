@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/roll_op.h"
 #include <memory>
 #include <vector>
+#include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 
 namespace paddle {
 namespace operators {

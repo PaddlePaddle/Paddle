@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/cross_op.h"
 #include <memory>
+#include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 
 namespace paddle {
 namespace operators {
