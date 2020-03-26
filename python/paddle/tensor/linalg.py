@@ -126,7 +126,7 @@ def bmm(x, y, name=None):
         if len(x_shape) != 3 or len(y_shape) != 3: 
             raise ValueError(
                 "Both of the two matrix should be 3 dimensions,"
-                "But received X shape: %s, Y shape: %s." % (len(x_shape), len(y_shape))
+                "But received X shape: %s, Y shape: %s." % (len(x_shape), len(y_shape)))
 
         # check the inner 2 dimensions
         if x_shape[-1] != y_shape[-2]:
