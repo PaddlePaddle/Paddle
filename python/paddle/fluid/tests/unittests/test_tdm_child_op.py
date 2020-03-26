@@ -25,7 +25,7 @@ import random
 import six
 
 
-class TestPartialSumOp(OpTest):
+class TestTDMChildOp(OpTest):
     def setUp(self):
         self.op_type = "tdm_child"
         self.config()
@@ -44,6 +44,11 @@ class TestPartialSumOp(OpTest):
             children_res += children
             leaf_mask_res += mask
         children_res_np = np.array(children_res).astype(self.child_type)
+        leaf_mask_res_np = np.array(leaf_mask_res).astype(self.child_type)
+
+        child_shape = self.x_shape.append(2)
+        child = np.reshape(children_res_np, child_shape)
+        leaf_mask = np.reshape(leaf_mask_res_np, child_shape)
 
         self.inputs = {'X': x, 'Tree_info': tree_info_np, 'Child_nums': 2}
         self.outputs = {'Child': child, 'Leaf_mask': leaf_mask}
@@ -89,33 +94,6 @@ class TestPartialSumOp(OpTest):
 
     def test_check_output(self):
         self.check_output()
-
-
-class TestPartialSumOp2(TestPartialSumOp):
-    def init_para(self):
-        self.batch_size = random.randint(1, 10)
-        self.column = random.randint(101, 200)
-        self.start_index = random.randint(0, self.column - 1)
-        self.length = -1
-        self.var_num = 3
-
-
-class TestPartialSumOp3(TestPartialSumOp):
-    def init_para(self):
-        self.batch_size = random.randint(1, 10)
-        self.column = random.randint(101, 200)
-        self.start_index = self.column - 1
-        self.length = 1
-        self.var_num = 2
-
-
-class TestPartialSumOp4(TestPartialSumOp):
-    def init_para(self):
-        self.batch_size = random.randint(1, 10)
-        self.column = random.randint(101, 200)
-        self.start_index = self.column - 1
-        self.length = 1
-        self.var_num = 1
 
 
 if __name__ == "__main__":
