@@ -18,6 +18,7 @@ import sys
 from functools import partial, reduce
 
 from . import nn
+from . import core
 from . import tensor
 from . import control_flow
 from . import utils
