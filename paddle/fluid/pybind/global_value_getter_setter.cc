@@ -85,13 +85,13 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
   using Setter = std::function<void(const py::object &)>;
   using Getter = std::function<py::object()>;
 
-  struct Flag_Getter {
-    bool flag;
+  struct FlagGetter {
+    bool is_public;
     Getter getter;
   };
 
-  struct Flag_Setter {
-    bool flag;
+  struct FlagSetter {
+    bool is_public;
     Setter setter;
   };
 
@@ -99,20 +99,22 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
 
   static GlobalVarGetterSetterRegistry *MutableInstance() { return &instance_; }
 
-  void RegisterGetter(const std::string &name, const bool flag, Getter func) {
+  void RegisterGetter(const std::string &name, const bool is_public,
+                      Getter func) {
     PADDLE_ENFORCE_EQ(
         getters_.count(name), 0,
         platform::errors::AlreadyExists(
             "Getter of global variable %s has been registered", name));
     PADDLE_ENFORCE_NOT_NULL(func, platform::errors::InvalidArgument(
                                       "Getter of %s should not be null", name));
-    Flag_Getter temp;
-    temp.flag = flag;
+    FlagGetter temp;
+    temp.is_public = is_public;
     temp.getter = func;
     getters_[name] = std::move(temp);
   }
 
-  void RegisterSetter(const std::string &name, const bool flag, Setter func) {
+  void RegisterSetter(const std::string &name, const bool is_public,
+                      Setter func) {
     PADDLE_ENFORCE_EQ(
         HasGetterMethod(name), true,
         platform::errors::NotFound(
@@ -124,13 +126,13 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
             "Setter of global variable %s has been registered", name));
     PADDLE_ENFORCE_NOT_NULL(func, platform::errors::InvalidArgument(
                                       "Setter of %s should not be null", name));
-    Flag_Setter temp;
-    temp.flag = flag;
+    FlagSetter temp;
+    temp.is_public = is_public;
     temp.setter = func;
     setters_[name] = std::move(temp);
   }
 
-  const Flag_Getter &GetterMethod(const std::string &name) const {
+  const FlagGetter &GetterMethod(const std::string &name) const {
     PADDLE_ENFORCE_EQ(
         HasGetterMethod(name), true,
         platform::errors::NotFound("Cannot find global variable %s", name));
@@ -167,7 +169,7 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
 
   py::object GetPublic(const std::string &name) const {
     PADDLE_ENFORCE_EQ(
-        GetterMethod(name).flag, true,
+        GetterMethod(name).is_public, true,
         platform::errors::NotFound(
             "Flag %s is private, cann't get it's value through this function.",
             name));
@@ -176,14 +178,14 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
 
   py::object GetPrivate(const std::string &name) const {
     PADDLE_ENFORCE_EQ(
-        GetterMethod(name).flag, false,
+        GetterMethod(name).is_public, false,
         platform::errors::NotFound(
             "Flag %s is public, cann't get it's value through this function.",
             name));
     return GetterMethod(name).getter();
   }
 
-  const Flag_Setter &SetterMethod(const std::string &name) const {
+  const FlagSetter &SetterMethod(const std::string &name) const {
     PADDLE_ENFORCE_EQ(
         HasSetterMethod(name), true,
         platform::errors::NotFound("Global variable %s is not writable", name));
@@ -192,7 +194,7 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
 
   void SetPublic(const std::string &name, const py::object &value) const {
     PADDLE_ENFORCE_EQ(
-        SetterMethod(name).flag, true,
+        SetterMethod(name).is_public, true,
         platform::errors::NotFound(
             "Flag %s is private, cann't set it's value through this function.",
             name));
@@ -201,7 +203,7 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
 
   void SetPrivate(const std::string &name, const py::object &value) const {
     PADDLE_ENFORCE_EQ(
-        SetterMethod(name).flag, false,
+        SetterMethod(name).is_public, false,
         platform::errors::NotFound(
             "Flag %s is public, cann't set it's value through this function.",
             name));
@@ -227,8 +229,8 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
  private:
   static GlobalVarGetterSetterRegistry instance_;
 
-  std::unordered_map<std::string, Flag_Getter> getters_;
-  std::unordered_map<std::string, Flag_Setter> setters_;
+  std::unordered_map<std::string, FlagGetter> getters_;
+  std::unordered_map<std::string, FlagSetter> setters_;
 };
 
 GlobalVarGetterSetterRegistry GlobalVarGetterSetterRegistry::instance_;
@@ -241,10 +243,10 @@ void BindGlobalValueGetterSetter(pybind11::module *module) {
   py::class_<GlobalVarGetterSetterRegistry>(*module,
                                             "GlobalVarGetterSetterRegistry")
       .def("__getpublic__", &GlobalVarGetterSetterRegistry::GetPublic)
-      .def("__getprivate__", &GlobalVarGetterSetterRegistry::GetPrivate)
       .def("__setpublic__", &GlobalVarGetterSetterRegistry::SetPublic)
-      .def("__setprivate__", &GlobalVarGetterSetterRegistry::SetPrivate)
       .def("__contains__", &GlobalVarGetterSetterRegistry::HasGetterMethod)
+      .def("getprivate", &GlobalVarGetterSetterRegistry::GetPrivate)
+      .def("setprivate", &GlobalVarGetterSetterRegistry::SetPrivate)
       .def("keys", &GlobalVarGetterSetterRegistry::Keys)
       .def("getpublic",
            &GlobalVarGetterSetterRegistry::GetPublicOrReturnDefaultValue,
@@ -257,23 +259,23 @@ void BindGlobalValueGetterSetter(pybind11::module *module) {
               py::return_value_policy::reference);
 }
 
-#define REGISTER_PRIVATE_GLOBAL_VAR_GETTER_ONLY(var, flag)          \
+#define REGISTER_PRIVATE_GLOBAL_VAR_GETTER_ONLY(var, is_public)     \
   GlobalVarGetterSetterRegistry::MutableInstance()->RegisterGetter( \
-      #var, flag, []() -> py::object { return py::cast(var); })
+      #var, is_public, []() -> py::object { return py::cast(var); })
 
-#define REGISTER_PRIVATE_GLOBAL_VAR_SETTER_ONLY(var, flag)            \
+#define REGISTER_PRIVATE_GLOBAL_VAR_SETTER_ONLY(var, is_public)       \
   GlobalVarGetterSetterRegistry::MutableInstance()->RegisterSetter(   \
-      #var, flag, [](const py::object &obj) {                         \
+      #var, is_public, [](const py::object &obj) {                    \
         using ValueType = std::remove_reference<decltype(var)>::type; \
         var = py::cast<ValueType>(obj);                               \
       })
-#define REGISTER_PRIVATE_GLOBAL_VAR_GETTER_SETTER(var, flag) \
-  REGISTER_PRIVATE_GLOBAL_VAR_GETTER_ONLY(var, flag);        \
-  REGISTER_PRIVATE_GLOBAL_VAR_SETTER_ONLY(var, flag)
+#define REGISTER_PRIVATE_GLOBAL_VAR_GETTER_SETTER(var, is_public) \
+  REGISTER_PRIVATE_GLOBAL_VAR_GETTER_ONLY(var, is_public);        \
+  REGISTER_PRIVATE_GLOBAL_VAR_SETTER_ONLY(var, is_public)
 
-#define REGISTER_PUBLIC_GLOBAL_VAR_GETTER_SETTER(var, flag) \
-  REGISTER_PRIVATE_GLOBAL_VAR_GETTER_ONLY(var, flag);       \
-  REGISTER_PRIVATE_GLOBAL_VAR_SETTER_ONLY(var, flag)
+#define REGISTER_PUBLIC_GLOBAL_VAR_GETTER_SETTER(var, is_public) \
+  REGISTER_PRIVATE_GLOBAL_VAR_GETTER_ONLY(var, is_public);       \
+  REGISTER_PRIVATE_GLOBAL_VAR_SETTER_ONLY(var, is_public)
 
 static void RegisterGlobalVarGetterSetter() {
   REGISTER_PRIVATE_GLOBAL_VAR_GETTER_ONLY(FLAGS_use_mkldnn, false);
@@ -309,8 +311,8 @@ static void RegisterGlobalVarGetterSetter() {
   REGISTER_PUBLIC_GLOBAL_VAR_GETTER_SETTER(FLAGS_inner_op_parallelism, true);
   REGISTER_PUBLIC_GLOBAL_VAR_GETTER_SETTER(FLAGS_tracer_profile_fname, true);
 #ifdef PADDLE_WITH_CUDA
-  REGISTER_GLOBAL_VAR_GETTER_SETTER(FLAGS_gpu_memory_limit_mb);
-  REGISTER_GLOBAL_VAR_GETTER_SETTER(FLAGS_cudnn_deterministic);
+  REGISTER_PUBLIC_GLOBAL_VAR_GETTER_SETTER(FLAGS_gpu_memory_limit_mb, true);
+  REGISTER_PUBLIC_GLOBAL_VAR_GETTER_SETTER(FLAGS_cudnn_deterministic, true);
   REGISTER_PUBLIC_GLOBAL_VAR_GETTER_SETTER(FLAGS_gpu_memory_limit_mb, true);
   REGISTER_PUBLIC_GLOBAL_VAR_GETTER_SETTER(FLAGS_cudnn_deterministic, true);
   REGISTER_PUBLIC_GLOBAL_VAR_GETTER_SETTER(FLAGS_conv_workspace_size_limit,

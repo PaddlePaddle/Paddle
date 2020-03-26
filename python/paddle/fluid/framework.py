@@ -5158,7 +5158,7 @@ def set_flags(flags):
     for key, value in flags.items():
         if not isinstance(key, str):
             key = str(key)
-        core.globals().__setpublic__(key, value)
+        core.globals()(key, value)
 
 
 def get_flags(flags):
