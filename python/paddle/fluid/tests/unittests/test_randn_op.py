@@ -25,16 +25,16 @@ from paddle.fluid import compiler, Program, program_guard
 
 class TestRandnOp(unittest.TestCase):
     def test_api(self):
-        x1 = fluid.layers.randn(shape=[1000, 784], dtype='float32')
-        x2 = fluid.layers.randn(shape=[1000, 784], dtype='float64')
+        x1 = paddle.tensor.randn(shape=[1000, 784], dtype='float32')
+        x2 = paddle.tensor.randn(shape=[1000, 784], dtype='float64')
         x3 = fluid.layers.fill_constant(
             shape=[1000, 784], dtype='float32', value=0)
-        fluid.layers.randn(shape=[1000, 784], out=x3, dtype='float32')
-        x4 = fluid.layers.randn(
+        paddle.tensor.randn(shape=[1000, 784], out=x3, dtype='float32')
+        x4 = paddle.tensor.randn(
             shape=[1000, 784], dtype='float32', device='cpu')
-        x5 = fluid.layers.randn(
+        x5 = paddle.tensor.randn(
             shape=[1000, 784], dtype='float32', device='gpu')
-        x6 = fluid.layers.randn(
+        x6 = paddle.tensor.randn(
             shape=[1000, 784],
             dtype='float32',
             device='gpu',
@@ -67,43 +67,43 @@ class TestRandnOpError(unittest.TestCase):
 
             # The argument shape's size of randn_op should not be 0.
             def test_shape_size():
-                out = fluid.layers.randn(shape=[])
+                out = paddle.tensor.randn(shape=[])
 
             self.assertRaises(AssertionError, test_shape_size)
 
             # The argument shape's type of randn_op should be list or tuple.
             def test_shape_type():
-                out = fluid.layers.randn(shape=1)
+                out = paddle.tensor.randn(shape=1)
 
             self.assertRaises(TypeError, test_shape_type)
 
             # The argument dtype of randn_op should be float32 or float64.
             def test_dtype_float16():
-                out = fluid.layers.randn(shape=[1, 2], dtype='float16')
+                out = paddle.tensor.randn(shape=[1, 2], dtype='float16')
 
             self.assertRaises(TypeError, test_dtype_float16)
 
             # The argument dtype of randn_op should be float32 or float64.
             def test_dtype_int32():
-                out = fluid.layers.randn(shape=[1, 2], dtype='int32')
+                out = paddle.tensor.randn(shape=[1, 2], dtype='int32')
 
             self.assertRaises(TypeError, test_dtype_int32)
 
             # The argument dtype of randn_op should be float32 or float64.
             def test_dtype_int64():
-                out = fluid.layers.randn(shape=[1, 2], dtype='int64')
+                out = paddle.tensor.randn(shape=[1, 2], dtype='int64')
 
             self.assertRaises(TypeError, test_dtype_int64)
 
             # The argument dtype of randn_op should be float32 or float64.
             def test_dtype_uint8():
-                out = fluid.layers.randn(shape=[1, 2], dtype='uint8')
+                out = paddle.tensor.randn(shape=[1, 2], dtype='uint8')
 
             self.assertRaises(TypeError, test_dtype_uint8)
 
             # The argument dtype of randn_op should be float32 or float64.
             def test_dtype_bool():
-                out = fluid.layers.randn(shape=[1, 2], dtype='bool')
+                out = paddle.tensor.randn(shape=[1, 2], dtype='bool')
 
             self.assertRaises(TypeError, test_dtype_bool)
 
