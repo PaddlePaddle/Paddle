@@ -924,12 +924,7 @@ def partial_sum(input, start_index=0, length=-1):
     return out
 
 
-def tdm_child(x,
-              node_nums,
-              child_nums,
-              param_attr=None,
-              tree_info_dtype='int32',
-              child_dtype='int32'):
+def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
     """
     used for tdm infer
     """
@@ -937,12 +932,12 @@ def tdm_child(x,
     tree_info = helper.create_parameter(
         attr=helper.param_attr,
         shape=[node_nums, 3 + child_nums],
-        dtype=tree_info_dtype,
+        dtype=dtype,
         default_initializer=Constant(0))
     tree_info.stop_gradient = True
 
-    child = helper.create_variable_for_type_inference(dtype=child_dtype)
-    leaf_mask = helper.create_variable_for_type_inference(dtype=child_dtype)
+    child = helper.create_variable_for_type_inference(dtype=dtype)
+    leaf_mask = helper.create_variable_for_type_inference(dtype=dtype)
 
     helper.append_op(
         type='tdm_child',
