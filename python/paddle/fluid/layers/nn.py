@@ -2677,7 +2677,6 @@ def inplace_abn(input,
                 moving_mean_name=None,
                 moving_variance_name=None,
                 do_model_average_for_mean_and_var=True,
-                fuse_with_relu=False,
                 use_global_stats=False,
                 act_alpha=1.0):
     """
@@ -2712,12 +2711,12 @@ def inplace_abn(input,
         epsilon(float, Default 1e-05): A value added to the denominator for
             numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
-             of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
+             of inplace_abn. If it is set to None or one attribute of ParamAttr, inplace_abn 
 	     will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
 	     If the Initializer of the param_attr is not set, the parameter is initialized 
 	     with Xavier. Default: None.
-        bias_attr(ParamAttr|None): The parameter attribute for the bias of batch_norm.
-             If it is set to None or one attribute of ParamAttr, batch_norm
+        bias_attr(ParamAttr|None): The parameter attribute for the bias of inplace_abn.
+             If it is set to None or one attribute of ParamAttr, inplace_abn 
 	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
 	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
 	     Default: None.
@@ -2728,10 +2727,10 @@ def inplace_abn(input,
         name(str|None): For detailed information, please refer to :ref:`api_guide_Name`. 
             Usually name is no need to set and None by default. 
         moving_mean_name(str, Default None): The name of moving_mean which store the global Mean. If it 
-            is set to None, batch_norm will save global mean with a random name, otherwise, batch_norm 
+            is set to None, inplace_abn will save global mean with a random name, otherwise, inplace_abn 
             will save global mean with the string.
         moving_variance_name(str, Default None): The name of the moving_variance which store the global Variance.
-            If it is set to None, batch_norm will save global variance with a random name, otherwise, batch_norm 
+            If it is set to None, inplace_abn, will save global variance with a random name, otherwise, inplace_abn 
             will save global variance with the string.
         do_model_average_for_mean_and_var(bool, Default True): Whether parameter mean and variance should do model
             average when model average is enabled.
@@ -2740,11 +2739,11 @@ def inplace_abn(input,
             or is_test to true, and the behavior is equivalent.
             In train mode, when setting use_global_stats True, the global mean
             and variance are also used during train period.
-        act_alpha(float, Default 1.0): when :attr:`in_palce` is set in build strategy and activation is in 
-            ['elu', 'identity', 'leaky_relu'], inplace activative batch normalization will be used, and alpha
-            parameter for activation can be given by this parameter.
+        act_alpha(float, Default 1.0): when activation is in ['elu', 'identity', 'leaky_relu'],
+            inplace activative batch normalization will be used, and alpha parameter for activation
+            can be given by this parameter.
     Returns:
-        A Variable holding Tensor which is the result after applying batch normalization on the input, 
+        A Variable holding Tensor which is the result after applying batch normalization and activation on the input, 
         has same shape and data type with input. 
 
     Examples:
@@ -2761,8 +2760,8 @@ def inplace_abn(input,
     assert act in [None, 'identity', 'leaky_relu', 'elu'], \
         "inplace_abn only support act as None, 'identity', " \
         "'leaky_relu', 'elu' currently"
-    assert bias_attr is not False, "bias_attr should not be False in batch_norm."
-    helper = LayerHelper('batch_norm', **locals())
+    assert bias_attr is not False, "bias_attr should not be False in inplace_abn."
+    helper = LayerHelper('inplace_abn', **locals())
 
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              'inplace_abn')

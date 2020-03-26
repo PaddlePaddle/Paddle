@@ -216,7 +216,7 @@ void BatchNormOpMaker::Make() {
                 "'epsilon' should be greater or equal than 0.0."));
         PADDLE_ENFORCE_LE(epsilon, 0.001f,
                           platform::errors::InvalidArgument(
-                              "'epsilon' should be less or euqal than 0.001."));
+                              "'epsilon' should be less or equal than 0.001."));
       });
   AddAttr<std::string>("data_layout", "").SetDefault("NCHW");
   AddInput("X", "The input tensor");
@@ -589,6 +589,10 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
 
+    auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
+    auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+
     // batch_norm with inplace as false will take X as grad input, which
     // is same as cuDNN batch_norm backward calculation, batch_norm
     // with inplace as true only take Y as input and X should be calculate
@@ -598,9 +602,15 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     if (ctx.HasInput("Y")) {
       x = ctx.Input<Tensor>("Y");
       is_inplace = true;
+      PADDLE_ENFORCE_EQ(d_x, d_y,
+                        platform::errors::InvalidArgument(
+                            "X@GRAD and Y@GRAD not inplace in inplace mode"));
     } else {
       x = ctx.Input<Tensor>("X");
       is_inplace = false;
+      PADDLE_ENFORCE_NE(d_x, d_y,
+                        platform::errors::InvalidArgument(
+                            "X@GRAD and Y@GRAD inplaced in non-inplace mode"));
     }
 
     PADDLE_ENFORCE_EQ(
@@ -626,10 +636,6 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     const int sample_size = x->numel() / N / C;
 
     // init output
-    auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
-    auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
-
     d_x->mutable_data<T>(ctx.GetPlace());
 
     const T *mean_data = saved_mean->data<T>();

@@ -117,8 +117,8 @@ class TestInplaceANBOpTraining(unittest.TestCase):
             ]
             if not only_forward:
                 others = [
-                    'batch_norm_0.tmp_0',
-                    'batch_norm_0.tmp_1',
+                    'inplace_abn_0.tmp_0' if inplace else 'batch_norm_0.tmp_0',
+                    'inplace_abn_0.tmp_1' if inplace else 'batch_norm_0.tmp_1',
                     'bn_scale@GRAD',
                     'bn_bias@GRAD',
                     'input@GRAD',

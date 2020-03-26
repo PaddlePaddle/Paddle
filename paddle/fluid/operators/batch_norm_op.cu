@@ -464,6 +464,10 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
 
+    auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
+    auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+
     // batch_norm with inplace as false will take X as grad input, which
     // is same as cuDNN batch_norm backward calculation, batch_norm
     // with inplace as true only take Y as input and X should be calculate
@@ -473,9 +477,15 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     if (ctx.HasInput("Y")) {
       x = ctx.Input<Tensor>("Y");
       is_inplace = true;
+      PADDLE_ENFORCE_EQ(d_x, d_y,
+                        platform::errors::InvalidArgument(
+                            "X@GRAD and Y@GRAD not inplace in inplace mode"));
     } else {
       x = ctx.Input<Tensor>("X");
       is_inplace = false;
+      PADDLE_ENFORCE_NE(d_x, d_y,
+                        platform::errors::InvalidArgument(
+                            "X@GRAD and Y@GRAD inplaced in non-inplace mode"));
     }
 
     const bool is_test = ctx.Attr<bool>("is_test");
@@ -494,11 +504,8 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
     // init output
-    auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
-    auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
-
     d_x->mutable_data<T>(ctx.GetPlace());
+
     if (d_scale && d_bias) {
       d_scale->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
       d_bias->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
