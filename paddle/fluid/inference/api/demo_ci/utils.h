@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <math.h>
 #include <algorithm>
 #include <fstream>
 #include <iostream>

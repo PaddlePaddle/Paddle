@@ -212,14 +212,13 @@ void CudnnWorkspaceHandle::ReallocWorkspace(size_t required_workspace_bytes) {
 }
 
 using stream::CUDAStream;
-thread_local std::once_flag CUDADeviceContext::init_flag_;
 thread_local std::map<const CUDADeviceContext*, std::unique_ptr<CUDAContext>>
-    CUDADeviceContext::context_;
+    CUDADeviceContext::thread_ctx_;
 thread_local std::mutex CUDADeviceContext::ctx_mtx_;
 
 void CUDAContext::InitEigenContext(const CUDAStream& stream) {
   eigen_stream_.reset(new EigenCudaStreamDevice());
-  eigen_stream_->Reinitialize(&(stream.stream()), place_);
+  eigen_stream_->Reinitialize(&stream.stream(), place_);
   eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
 }
 
@@ -230,19 +229,27 @@ CUDAContext::CUDAContext(const CUDAPlace& place,
 
 CUDAContext::~CUDAContext() { Destory(); }
 
+void CUDAContext::DestoryEigenContext() {
+  eigen_stream_.reset();
+  eigen_device_.reset();
+}
+
 void CUDAContext::Init(const CUDAPlace& place,
                        const enum stream::Priority& priority) {
+  CUDADeviceGuard guard(place_.device);
   place_ = place;
   stream_.Init(place, priority);
   InitEigenContext(stream_);
   InitCuBlasContext(stream_);
-  InitCallbackManager(stream_);
   InitCuDNNContext(stream_);
+  InitCallbackManager(stream_);
 }
 
 void CUDAContext::Destory() {
-  DestoryCuDNNContext();
+  CUDADeviceGuard guard(place_.device);
   DestoryCuBlasContext();
+  DestoryEigenContext();
+  DestoryCuDNNContext();
   DestoryCallbackManager();
 }
 
@@ -351,6 +358,7 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
              "version.";
     }
   }
+  default_ctx_.reset(new CUDAContext(place_, stream::Priority::NORMAL));
 }
 
 CUDADeviceContext::~CUDADeviceContext() {

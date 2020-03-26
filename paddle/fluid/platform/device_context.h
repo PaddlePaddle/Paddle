@@ -87,27 +87,20 @@ class CUDAContext {
   explicit CUDAContext(
       const CUDAPlace& place,
       const enum stream::Priority& priority = stream::Priority::NORMAL);
-
   ~CUDAContext();
 
   const CUDAPlace& Place() const { return place_; }
-
   const std::unique_ptr<Eigen::GpuDevice>& EigenDevice() const {
     return eigen_device_;
   }
-
   const std::unique_ptr<EigenCudaStreamDevice>& EigenStream() const {
     return eigen_stream_;
   }
-
   const cudaStream_t& Stream() const { return stream_.stream(); }
-
   const cudnnHandle_t& CudnnHandle() const { return cudnn_handle_; }
-
   const std::unique_ptr<CublasHandleHolder>& CublasHandle() const {
     return cublas_handle_;
   }
-
   const std::unique_ptr<CublasHandleHolder>& CublasTensorCoreHandle() const {
     return cublas_tensor_core_handle_;
   }
@@ -144,12 +137,11 @@ class CUDAContext {
   }
 
   void WaitStreamCallback() const { callback_manager_->Wait(); }
-
   void Wait() const;
+  void Destory();
 
  private:
   void Init(const CUDAPlace& place, const enum stream::Priority& priority);
-  void Destory();
   void Reset(const CUDAPlace& place, const enum stream::Priority& priority);
   void InitEigenContext(const stream::CUDAStream& stream);
   void InitCuBlasContext(const stream::CUDAStream& stream);
@@ -160,11 +152,13 @@ class CUDAContext {
       PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_),
                                   "Failed to destory Cudnn handle");
     }
+    cudnn_handle_ = nullptr;
   }
   void DestoryCuBlasContext() {
     cublas_handle_.reset();
     cublas_tensor_core_handle_.reset();
   }
+  void DestoryEigenContext();
   void DestoryCallbackManager() { callback_manager_.reset(); }
 
   CUDAPlace place_;
@@ -260,24 +254,23 @@ class CUDADeviceContext : public DeviceContext {
 
   void ResetCurrentThreadCtx(const enum stream::Priority& priority) {
     std::lock_guard<std::mutex> guard(ctx_mtx_);
-    context_[this].reset(new CUDAContext(place_, priority));
+    thread_ctx_[this].reset(new CUDAContext(place_, priority));
   }
 
   const std::unique_ptr<CUDAContext>& context() const {
-    std::call_once(init_flag_, [this]() {
-      std::lock_guard<std::mutex> guard(ctx_mtx_);
-      context_[this].reset(new CUDAContext(place_, stream::Priority::NIL));
-    });
-    return context_.at(this);
+    if (!thread_ctx_.count(this)) {
+      return default_ctx_;
+    }
+    return thread_ctx_.at(this);
   }
 
  private:
   CUDAPlace place_;
-  static thread_local std::once_flag init_flag_;
   static thread_local std::map<const CUDADeviceContext*,
                                std::unique_ptr<CUDAContext>>
-      context_;
+      thread_ctx_;
   static thread_local std::mutex ctx_mtx_;
+  std::unique_ptr<CUDAContext> default_ctx_;
 
   mutable std::mutex cudnn_handle_mtx_;
 
