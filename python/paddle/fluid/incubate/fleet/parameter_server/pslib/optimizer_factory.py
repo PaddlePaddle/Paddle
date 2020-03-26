@@ -82,11 +82,10 @@ class DistributedAdam(DistributedOptimizerImplBase):
             ".batch_size@GRAD", ".batch_square_sum@GRAD", ".batch_sum@GRAD"
         ]
         self.supported_embedding_types = [
-            "lookup_table", "lookup_table_v2", "pull_sparse", "pull_sparse_v2"
+            "lookup_table", "pull_sparse", "pull_sparse_v2"
         ]
         self.supported_embedding_grad_types = [
-            "lookup_table_grad", "lookup_table_v2_grad", "push_sparse",
-            "push_sparse_v2"
+            "lookup_table_grad", "push_sparse", "push_sparse_v2"
         ]
 
     def _find_distributed_lookup_table_inputs(self, program, table_names):
