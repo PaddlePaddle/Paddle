@@ -678,24 +678,30 @@ class TestPow_factor_tensor(TestActivation):
         self.check_grad(['X'], 'Out')
 
     def test_api(self):
+        import paddle
         import paddle.fluid as fluid
 
         input = np.random.uniform(1, 2, [11, 17]).astype("float32")
         x = fluid.layers.data(
             name="x", shape=[11, 17], append_batch_size=False, dtype="float32")
+        res = fluid.layers.data(name="res", shape=[11, 17], append_batch_size=False, dtype="float32")
 
         factor_1 = 2.0
         factor_2 = fluid.layers.fill_constant([1], "float32", 3.0)
         out_1 = fluid.layers.pow(x, factor=factor_1)
         out_2 = fluid.layers.pow(x, factor=factor_2)
+        out_3 = paddle.tensor.pow(x, factor_1, out=res)
+        out_4 = paddle.tensor.pow(x, factor_1, name='pow_res')
+        self.assertEqual(out_4.name, 'pow_res')
 
         exe = fluid.Executor(place=fluid.CPUPlace())
-        res_1, res_2 = exe.run(fluid.default_main_program(),
+        res_1, res_2, res_3, res= exe.run(fluid.default_main_program(),
                                feed={"x": input},
-                               fetch_list=[out_1, out_2])
+                               fetch_list=[out_1, out_2, out_3, res])
 
         assert np.array_equal(res_1, np.power(input, 2))
         assert np.array_equal(res_2, np.power(input, 3))
+        assert np.array_equal(res_3, res)
 
 
 class TestSTanh(TestActivation):

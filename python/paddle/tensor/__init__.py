@@ -15,3 +15,4 @@
 # TODO: import all tensor api under this directory, 
 # including tensor creation, manipulation, math, etc.
 # __all__ = [ ]
+from .math import *
