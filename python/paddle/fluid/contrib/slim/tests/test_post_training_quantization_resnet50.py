@@ -20,7 +20,7 @@ from test_post_training_quantization_mobilenetv1 import TestPostTrainingQuantiza
 class TestPostTrainingForResnet50(TestPostTrainingQuantization):
     def test_post_training_resnet50(self):
         model = "ResNet-50"
-        algo = "direct"
+        algo = "min_max"
         data_urls = [
             'http://paddle-inference-dist.bj.bcebos.com/int8/resnet50_int8_model.tar.gz'
         ]
@@ -28,8 +28,9 @@ class TestPostTrainingForResnet50(TestPostTrainingQuantization):
         quantizable_op_type = ["conv2d", "mul"]
         is_full_quantize = False
         is_use_cache_file = False
+        diff_threshold = 0.025
         self.run_test(model, algo, data_urls, data_md5s, quantizable_op_type,
-                      is_full_quantize, is_use_cache_file)
+                      is_full_quantize, is_use_cache_file, diff_threshold)
 
 
 if __name__ == '__main__':

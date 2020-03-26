@@ -71,8 +71,7 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(SquaredL2DistanceGradOpNoBuffer, "X",
-                                      "Y");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SquaredL2DistanceGradOpNoBuffer, "X", "Y");
 
 template <typename T>
 class SquaredL2DistanceGradOpMaker : public framework::SingleGradOpMaker<T> {
