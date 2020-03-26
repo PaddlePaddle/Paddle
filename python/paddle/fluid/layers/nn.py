@@ -562,27 +562,24 @@ def _pull_sparse(input,
         name=name, shape=[size], dtype=dtype, is_bias=False, persistable=True)
     helper.append_op(
         type='pull_sparse',
-        inputs={
-            'Ids': inputs,
-            'W': w
-        },
+        inputs={'Ids': inputs,
+                'W': w},
         outputs={'Out': outs},
-        attrs=attrs
-    )
+        attrs=attrs)
     if len(outs) == 1:
         return outs[0]
     return outs
 
 
 def _pull_sparse_v2(input,
-                   size,
-                   table_id,
-                   accessor_class,
-                   name="embedding",
-                   ctr_label_name="",
-                   padding_id=0,
-                   dtype='float32',
-                   scale_sparse_grad=True):
+                    size,
+                    table_id,
+                    accessor_class,
+                    name="embedding",
+                    ctr_label_name="",
+                    padding_id=0,
+                    dtype='float32',
+                    scale_sparse_grad=True):
     """
     **Pull Fleet Sparse Layer**
 
@@ -636,13 +633,10 @@ def _pull_sparse_v2(input,
         name=name, shape=[size], dtype=dtype, is_bias=False, persistable=True)
     helper.append_op(
         type='pull_sparse_v2',
-        inputs={
-            'Ids': inputs,
-            'W': w
-        },
+        inputs={'Ids': inputs,
+                'W': w},
         outputs={'Out': outs},
-        attrs=attrs
-    )
+        attrs=attrs)
     if len(outs) == 1:
         return outs[0]
     return outs
