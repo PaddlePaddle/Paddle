@@ -13,30 +13,21 @@
 # limitations under the License.
 import os
 import sys
+import six
 import time
 import math
 import socket
 import contextlib
-from contextlib import closing
-from six import string_types
 import numpy as np
-from collections import OrderedDict
+
 from paddle import fluid
-import paddle.fluid.unique_name as nameGen
-from paddle.fluid import core
-
-from paddle.fluid import framework
 from paddle.fluid.layers import collective
-from paddle.fluid.dygraph import to_variable, no_grad, layers
-from paddle.fluid.framework import Variable
-from paddle.fluid.executor import global_scope
+from paddle.fluid.dygraph.parallel import ParallelEnv, ParallelStrategy
+from paddle.fluid.io import BatchSampler
 
-from paddle.fluid.dygraph.parallel import Env, DataParallel, ParallelStrategy
-from paddle.fluid.layers.collective import _c_allreduce, _c_allgather, _c_broadcast, \
-                                            _c_sync_comm_stream, _c_sync_calc_stream
-from paddle.fluid.io import BatchSampler, DataLoader
 
-__parallel_context_init = False
+_parallel_context_initialized = False
+
 
 class DistributedBatchSampler(BatchSampler):
     """Sampler that restricts data loading to a subset of the dataset.
@@ -71,9 +62,10 @@ class DistributedBatchSampler(BatchSampler):
         self.shuffle = shuffle
         assert isinstance(drop_last, bool), \
                 "drop_last should be a boolean number"
+
         self.drop_last = drop_last
-        self.nranks = get_nranks()
-        self.local_rank = get_local_rank()
+        self.nranks = ParallelEnv().nranks
+        self.local_rank = ParallelEnv().local_rank
         self.epoch = 0
         self.num_samples = int(math.ceil(len(self.dataset) * 1.0 / self.nranks))
         self.total_size = self.num_samples * self.nranks
@@ -106,27 +98,22 @@ class DistributedBatchSampler(BatchSampler):
         num_samples += int(not self.drop_last) * (self.batch_size - 1)
         return num_samples // self.batch_size
 
+    def set_epoch(self, epoch):
+        self.epoch = epoch
+
 
 def _all_gather(x, nranks, ring_id=0, use_calc_stream=True):
-    return _c_allgather(x, nranks, ring_id=ring_id, use_calc_stream=use_calc_stream)
-
-
-def get_local_rank():
-    return Env().local_rank
-
-
-def get_nranks():
-    return Env().nranks
+    return collective._c_allgather(x, nranks, ring_id=ring_id, use_calc_stream=use_calc_stream)
 
 
 def wait_server_ready(endpoints):
-    assert not isinstance(endpoints, string_types)
+    assert not isinstance(endpoints, six.string_types)
     while True:
         all_ok = True
         not_ready_endpoints = []
         for ep in endpoints:
             ip_port = ep.split(":")
-            with closing(
+            with contextlib.closing(
                     socket.socket(socket.AF_INET,
                                   socket.SOCK_STREAM)) as sock:
                 sock.settimeout(2)
@@ -135,10 +122,6 @@ def wait_server_ready(endpoints):
                     all_ok = False
                     not_ready_endpoints.append(ep)
         if not all_ok:
-            sys.stderr.write("server not ready, wait 3 sec to retry...\n")
-            sys.stderr.write("not ready endpoints:" + str(
-                not_ready_endpoints) + "\n")
-            sys.stderr.flush()
             time.sleep(3)
         else:
             break
@@ -154,9 +137,9 @@ def init_communicator(program, rank, nranks, wait_port,
         wait_server_ready(other_endpoints)
     block = program.global_block()
     nccl_id_var = block.create_var(
-        name=nameGen.generate('nccl_id'),
+        name=fluid.unique_name.generate('nccl_id'),
         persistable=True,
-        type=core.VarDesc.VarType.RAW)
+        type=fluid.core.VarDesc.VarType.RAW)
 
     block.append_op(
         type='c_gen_nccl_id',
@@ -181,23 +164,23 @@ def init_communicator(program, rank, nranks, wait_port,
 
 def prepare_distributed_context(place=None):
     if place is None:
-        place = fluid.CUDAPlace(Env().dev_id) if Env().nranks > 1 \
+        place = fluid.CUDAPlace(ParallelEnv().dev_id) if ParallelEnv().nranks > 1 \
             else fluid.CUDAPlace(0)
     
     strategy = ParallelStrategy()
-    strategy.nranks = Env().nranks
-    strategy.local_rank = Env().local_rank
-    strategy.trainer_endpoints = Env().trainer_endpoints
-    strategy.current_endpoint = Env().current_endpoint
+    strategy.nranks = ParallelEnv().nranks
+    strategy.local_rank = ParallelEnv().local_rank
+    strategy.trainer_endpoints = ParallelEnv().trainer_endpoints
+    strategy.current_endpoint = ParallelEnv().current_endpoint
 
     if strategy.nranks < 2:
         return
 
-    global __parallel_context_init
+    global _parallel_context_initialized
 
-    if not __parallel_context_init and isinstance(place, core.CUDAPlace):
+    if not _parallel_context_initialized and isinstance(place, fluid.CUDAPlace):
         def _init_context():
-            communicator_prog = framework.Program()
+            communicator_prog = fluid.Program()
             init_communicator(communicator_prog, strategy.local_rank, strategy.nranks, 
                             True, strategy.current_endpoint, strategy.trainer_endpoints)
             exe = fluid.Executor(place)
@@ -213,57 +196,5 @@ def prepare_distributed_context(place=None):
     else:
         assert ("Only support CUDAPlace for now.")
 
-    __parallel_context_init = True
+    _parallel_context_initialized = True
     return strategy
-
-
-class DistributedDataParallel(DataParallel):
-    def __init__(self, layers, strategy=None):
-        if strategy is None:
-            strategy = ParallelStrategy()
-            strategy.nranks = Env().nranks
-            strategy.local_rank = Env().local_rank
-            strategy.trainer_endpoints = Env().trainer_endpoints
-            strategy.current_endpoint = Env().current_endpoint
-
-        super(DistributedDataParallel, self).__init__(layers, strategy)
-
-    @no_grad
-    def apply_collective_grads(self):
-        """
-        AllReduce the Parameters' gradient.
-        """
-        if not self._is_data_parallel_mode():
-            return
-
-        grad_var_set = set()
-        grad_vars = []
-        for param in self._layers.parameters():
-            # NOTE(zcd): The grad_ivar maybe no generated.
-            if param.trainable and param._grad_ivar():
-                g_var = param._grad_ivar()
-                grad_vars.append(g_var)
-                assert g_var not in grad_var_set
-                grad_var_set.add(g_var)
-
-        mega_bytes = 128 * 1024 * 1024
-        group_idx = 0
-        memory_counter = 0
-        grad_var_groups = OrderedDict()
-        dtype = grad_vars[0].dtype
-        for g_var in grad_vars:
-            # Note: the dtype of the same group should be the same.
-            bytes = np.prod(g_var.shape) * core.size_of_dtype(g_var.dtype)
-            if memory_counter < mega_bytes and dtype == g_var.dtype:
-                memory_counter += bytes
-            else:
-                memory_counter = bytes
-                group_idx += 1
-            grad_var_groups.setdefault(group_idx, []).append(g_var)
-
-        coalesced_grads_and_vars = self._coalesce_tensors(grad_var_groups)
-
-        for coalesced_grad, _, _ in coalesced_grads_and_vars:
-            collective._c_allreduce(coalesced_grad, coalesced_grad, use_calc_stream=True)
-
-        self._split_tensors(coalesced_grads_and_vars)

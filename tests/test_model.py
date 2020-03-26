@@ -28,7 +28,7 @@ import contextlib
 import paddle
 from paddle import fluid
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
-from model import Model, CrossEntropy, Input, Loss, init_context
+from model import Model, CrossEntropy, Input, Loss, set_device
 from metrics import Accuracy
 from callbacks import ProgBarLogger
 from paddle.fluid.io import BatchSampler, DataLoader
@@ -141,7 +141,8 @@ class MyCrossEntropy(Loss):
 
 class TestModel(unittest.TestCase):
     def fit(self, dynamic, is_mlp=False):
-        init_context('dynamic' if dynamic else 'static')
+        device = set_device('gpu')
+        fluid.enable_dygraph(device) if dynamic else None
 
         im_shape = (-1, 784)
         batch_size = 128
@@ -156,7 +157,7 @@ class TestModel(unittest.TestCase):
         optim = fluid.optimizer.Momentum(
             learning_rate=0.01, momentum=.9, parameter_list=model.parameters())
         loss = CrossEntropy() if not is_mlp else MyCrossEntropy()
-        model.prepare(optim, loss, Accuracy(), inputs, labels)
+        model.prepare(optim, loss, Accuracy(), inputs, labels, device=device)
         cbk = ProgBarLogger(50)
         model.fit(train_dataset,
                   val_dataset,
