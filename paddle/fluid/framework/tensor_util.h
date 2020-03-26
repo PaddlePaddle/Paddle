@@ -86,17 +86,21 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst);
 template <typename T>
 void TensorFromVector(const std::vector<T>& src,
                       const platform::DeviceContext& ctx, Tensor* dst) {
+  VLOG(4) << " -------- TensorFromVector start -------" << std::endl;
   auto dst_place = ctx.GetPlace();
   auto src_ptr = static_cast<const void*>(src.data());
   platform::CPUPlace src_place;
   dst->Resize({static_cast<int64_t>(src.size())});
   auto dst_ptr = static_cast<void*>(dst->mutable_data<T>(dst_place));
   auto size = src.size() * sizeof(T);
+  VLOG(4) << " -------- TensorFromVector before get -------" << std::endl;
 
   if (platform::is_cpu_place(dst_place)) {
     memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr, src_place,
                  src_ptr, size);
   }
+  VLOG(4) << " -------- TensorFromVector after get -------" << std::endl;
+
 #ifdef PADDLE_WITH_CUDA
   else if (platform::is_gpu_place(dst_place)) {  // NOLINT
     memory::Copy(

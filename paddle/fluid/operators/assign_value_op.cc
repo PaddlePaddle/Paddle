@@ -53,8 +53,11 @@ class AssignValueOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("dtype", "data type of values")
         .InEnum({framework::proto::VarType::INT32,
                  framework::proto::VarType::FP32,
-                 framework::proto::VarType::INT64});
+                 framework::proto::VarType::INT64,
+                 framework::proto::VarType::FP64});
     AddAttr<std::vector<float>>("fp32_values", "store the float32 values")
+        .SetDefault({});
+    AddAttr<std::vector<float>>("fp64_values", "store the float64 values")
         .SetDefault({});
     AddAttr<std::vector<int>>("int32_values", "store the int32 values")
         .SetDefault({});
@@ -79,4 +82,5 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(assign_value, ops::AssignValueKernel<int>,
                        ops::AssignValueKernel<float>,
+                       ops::AssignValueKernel<double>,
                        ops::AssignValueKernel<int64_t>);

@@ -267,6 +267,7 @@ class ExecutionContext {
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
+    VLOG(4) << " ctx.Attr  " << std::endl;
     return boost::get<T>(GetAttr(name));
   }
 

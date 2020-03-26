@@ -99,11 +99,15 @@ class DygraphExecutionContext : public framework::ExecutionContext {
   const framework::AttributeMap& Attrs() const override { return attrs_; }
 
   const framework::Attribute& GetAttr(const std::string& name) const override {
+    VLOG(4) << " GetAttr 0  " << std::endl;
+
     auto it = attrs_.find(name);
+    VLOG(4) << " GetAttr 1  " << std::endl;
 
     PADDLE_ENFORCE_NE(
         it, attrs_.end(),
         platform::errors::NotFound("can not find [%s] in attrs", name));
+    VLOG(4) << " GetAttr 2  " << std::endl;
 
     return it->second;
   }

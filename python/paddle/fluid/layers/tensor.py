@@ -499,6 +499,9 @@ def assign(input, output=None):
         if dtype == VarDesc.VarType.FP32:
             value_name = "fp32_values"
             values = [float(v) for v in input.flat]
+        elif dtype == VarDesc.VarType.FP64:
+            value_name = "fp64_values"
+            values = [float(v) for v in input.flat]
         elif dtype == VarDesc.VarType.INT32:
             value_name = "int32_values"
             values = [int(v) for v in input.flat]
@@ -508,7 +511,7 @@ def assign(input, output=None):
         else:
             raise TypeError(
                 "When the type of 'input' in assign is numpy.ndarray, "
-                "the data type of 'input' must be float32, int32 or int64, but "
+                "the data type of 'input' must be float32, float64, int32 or int64, but "
                 "received %s." % convert_dtype(dtype))
         if input.size > 1024 * 1024:
             raise ValueError("The size of input is too big. Please consider "
