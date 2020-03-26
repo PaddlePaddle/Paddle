@@ -144,7 +144,7 @@ class CudnnLSTM(Layer):
 class CudnnGRU(Layer):
     """
     ****
-    CUDNN LSTM implementation for dynamic graph. References:
+    CUDNN GRU implementation for dynamic graph. References:
     Learning Phrase Representations using RNN Encoder Decoder for Statistical
     Machine Translation:
       [Cho et al., 2014]
