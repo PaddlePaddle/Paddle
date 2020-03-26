@@ -256,14 +256,23 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
     int64_t* ids = tensor->data<int64_t>();
     size_t fea_idx = 0;
     // tensor->lod()[0].size() == batch_size + 1
-    for (auto lod_idx = 1u; lod_idx < tensor->lod()[0].size(); ++lod_idx) {
-      for (; fea_idx < tensor->lod()[0][lod_idx]; ++fea_idx) {
-        // should be skipped feasign defined in protobuf
-        if (ids[fea_idx] == 0u) {
-          continue;
+    if (tensor->lod().size() > 0) {
+      for (auto lod_idx = 1u; lod_idx < tensor->lod()[0].size(); ++lod_idx) {
+        for (; fea_idx < tensor->lod()[0][lod_idx]; ++fea_idx) {
+          // should be skipped feasign defined in protobuf
+          if (ids[fea_idx] == 0u) {
+            continue;
+          }
+          feature_label[global_index++] =
+              static_cast<float>(label_ptr[lod_idx - 1]);
         }
-        feature_label[global_index++] =
-            static_cast<float>(label_ptr[lod_idx - 1]);
+      }
+    } else {
+      for (auto lod_idx = 0; lod_idx < tensor->dims()[0]; lod_idx++) {
+        if (ids[fea_idx] != 0u) {
+          feature_label[global_index++] = static_cast<float>(label_ptr[lod_idx]);
+        }
+        fea_idx++;
       }
     }
   }
