@@ -40,7 +40,9 @@ class TestRandnOp(unittest.TestCase):
             device='gpu',
             stop_gradient=False)
 
-        exe = fluid.Executor(fluid.CUDAPlace(1))
+        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        exe = fluid.Executor(place)
         res = exe.run(fluid.default_main_program(),
                       feed={},
                       fetch_list=[x1, x2, x3, x4, x5, x6])
