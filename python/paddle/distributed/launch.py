@@ -163,6 +163,31 @@ def get_cluster_from_args(args, selected_gpus):
     return get_cluster(node_ips, node_ip, free_ports, selected_gpus)
 
 
+def get_gpus(selected_gpus):
+    if selected_gpus is None:
+        gpus_num = fluid.core.get_cuda_device_count()
+        selected_gpus = [str(x) for x in range(0, gpus_num)]
+    else:
+        cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
+        if cuda_visible_devices is None or cuda_visible_devices == "":
+            selected_gpus = [x.strip() for x in selected_gpus.split(',')]
+        else:
+            # change selected_gpus into relative values
+            # e.g. CUDA_VISIBLE_DEVICES=4,5,6,7; args.selected_gpus=4,5,6,7;
+            # therefore selected_gpus=0,1,2,3
+            cuda_visible_devices_list = cuda_visible_devices.split(',')
+            for x in selected_gpus.split(','):
+                assert x in cuda_visible_devices_list, "Can't find "\
+                "your selected_gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
+                % (x, cuda_visible_devices)
+            selected_gpus = [
+                cuda_visible_devices_list.index(x.strip())
+                for x in selected_gpus.split(',')
+            ]
+
+    return selected_gpus
+
+
 def launch(args):
     # parse arguments, used for cloud-single-machine and local
     selected_gpus = get_gpus(args.selected_gpus)
