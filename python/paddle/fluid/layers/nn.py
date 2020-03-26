@@ -10311,11 +10311,19 @@ def _elementwise_op(helper):
     axis = helper.kwargs.get('axis', -1)
     use_mkldnn = helper.kwargs.get('use_mkldnn', False)
     name = helper.kwargs.get('name', None)
-    if name is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        out = helper.create_variable(
-            name=name, dtype=x.dtype, persistable=False)
+    out = helper.kwargs.get('out', None)
+    if out is None:
+        if name is None:
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        else:
+            out = helper.create_variable(
+                name=name, dtype=x.dtype, persistable=False)
+    elif name is not None:
+        warnings.warn(
+            "Both name and out parameters have been set in fluid.layers.%s(), only out will take effect to specify the result storage. "
+            "You can discard either one to solve this warning." % op_type,
+            category=UserWarning,
+            stacklevel=2)
 
     helper.append_op(
         type=op_type,
