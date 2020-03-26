@@ -28,8 +28,6 @@ class FleetTest(unittest.TestCase):
         os.environ["PADDLE_TRAINER_ID"] = "0"
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:6070"
 
-        #fs=LocalFS()
-
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
 
@@ -53,11 +51,11 @@ class FleetTest(unittest.TestCase):
         n1 = fleet._get_last_checkpoint_no(dir_path, fs=fs)
 
         status2 = fleet.load_check_point(exe, dir_path, trainer_id=0, fs=fs)
-        assert status2 == status, "Checkpoint error!"
+        self.assertEqual(status2 == status)
 
         fleet.save_check_point(exe, dir_path, train_status=status, fs=fs)
         n2 = fleet._get_last_checkpoint_no(dir_path, fs=fs)
-        assert n2 == n1 + 1, "checkpoint increment error:{} {}".format(n1, n2)
+        self.assertEqual(n2 == n1 + 1)
 
         fleet.clean_redundant_check_points(dir_path, fs=fs)
 

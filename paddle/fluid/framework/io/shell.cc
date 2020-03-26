@@ -16,6 +16,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/timer.h"
 
 namespace paddle {
 namespace framework {
@@ -299,27 +300,6 @@ std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>> shell_p2open(
 #endif
 }
 
-class ElapsedTime {
- public:
-  ElapsedTime() { gettimeofday(&begin_, 0); }
-  virtual ~ElapsedTime() {}
-
-  int64_t GetElapsedMS() {
-    double elapsed = 0;
-
-    gettimeofday(&end_, 0);
-    // compute and print the elapsed time in millisec
-    elapsed = (end_.tv_sec - begin_.tv_sec) * 1000.0;     // sec to ms
-    elapsed += (end_.tv_usec - begin_.tv_usec) / 1000.0;  // us to ms
-
-    return int64_t(elapsed);
-  }
-
- private:
-  struct timeval begin_;
-  struct timeval end_;
-};
-
 std::string shell_get_command_output(const std::string& cmd, int time_out,
                                      int sleep_inter, bool print_cmd) {
 #if defined _WIN32 || defined __APPLE__
@@ -328,10 +308,10 @@ std::string shell_get_command_output(const std::string& cmd, int time_out,
       "or __APPLE__."));
 #else
   int err_no = 0;
-  ElapsedTime elapsed;
+  platform::Timer timer;
   do {
     if (print_cmd) {
-      printf("exec cmd back:%s\n", cmd.c_str());
+      LOG(INFO) << "exec cmd:[" << cmd << "]";
     }
     err_no = 0;
     std::shared_ptr<FILE> pipe = shell_popen(cmd, "r", &err_no);
@@ -349,13 +329,15 @@ std::string shell_get_command_output(const std::string& cmd, int time_out,
       usleep(sleep_inter);
     }
 
-    if (time_out > 0 && elapsed.GetElapsedMS() >= time_out) {
+    timer.Pause();
+    if (time_out > 0 && timer.ElapsedMS() >= time_out) {
       PADDLE_THROW(paddle::platform::errors::ExecutionTimeout(
           "shell_get_command_output execute  error errno:%d and try until "
           "timeout.",
           errno));
       return "";
     }
+    timer.Resume();
 
     pipe = nullptr;
   } while (err_no);

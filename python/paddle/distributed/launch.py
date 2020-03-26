@@ -49,8 +49,6 @@ import paddle.fluid as fluid
 from utils import *
 
 import cloud_utils
-import edl_utils
-from http_store import kv_server
 
 
 def _print_arguments(args):
