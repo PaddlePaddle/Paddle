@@ -291,10 +291,12 @@ void CUDAContext::InitCuDNNContext(const stream::CUDAStream& stream) {
     }
     PADDLE_ENFORCE_CUDA_SUCCESS(
         dynload::cudnnCreate(&cudnn_handle_),
-        "Failed to create Cudnn handle in DeviceContext");
+        platform::errors::Fatal(
+            "Failed to create Cudnn handle in DeviceContext"));
     PADDLE_ENFORCE_CUDA_SUCCESS(
         dynload::cudnnSetStream(cudnn_handle_, stream.stream()),
-        "Failed to set stream for Cudnn handle in DeviceContext");
+        platform::errors::Fatal(
+            "Failed to set stream for Cudnn handle in DeviceContext"));
   } else {
     cudnn_handle_ = nullptr;
   }

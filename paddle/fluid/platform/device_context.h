@@ -128,7 +128,9 @@ class CUDAContext {
   template <typename Callback>
   void RecordEvent(cudaEvent_t ev, Callback callback) {
     callback();
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(ev, stream_.stream()));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaEventRecord(ev, stream_.stream()),
+        platform::errors::Fatal("Cuda event recording failed."));
   }
 
   template <typename Callback>
@@ -149,8 +151,9 @@ class CUDAContext {
   void InitCuDNNContext(const stream::CUDAStream& stream);
   void DestoryCuDNNContext() {
     if (cudnn_handle_) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_),
-                                  "Failed to destory Cudnn handle");
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          dynload::cudnnDestroy(cudnn_handle_),
+          platform::errors::Fatal("Failed to destory Cudnn handle"));
     }
     cudnn_handle_ = nullptr;
   }

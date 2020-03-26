@@ -22,7 +22,7 @@ namespace stream {
 
 constexpr int64_t kHighPriority = -1;
 constexpr int64_t kNormalPriority = 0;
-constexpr unsigned int kDefaultFlag = cudaStreamNonBlocking;
+constexpr unsigned int kDefaultFlag = cudaStreamDefault;
 
 bool CUDAStream::Init(const Place& place, const enum Priority& priority) {
   std::call_once(once_flag_, [&]() {
@@ -33,10 +33,14 @@ bool CUDAStream::Init(const Place& place, const enum Priority& priority) {
     CUDADeviceGuard guard(boost::get<CUDAPlace>(place_).device);
     if (priority == Priority::HIGH) {
       PADDLE_ENFORCE_CUDA_SUCCESS(
-          cudaStreamCreateWithPriority(&stream_, kDefaultFlag, kHighPriority));
+          cudaStreamCreateWithPriority(&stream_, kDefaultFlag, kHighPriority),
+          platform::errors::Fatal(
+              "High priority cuda stream creation failed."));
     } else if (priority == Priority::NORMAL) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreateWithPriority(
-          &stream_, kDefaultFlag, kNormalPriority));
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          cudaStreamCreateWithPriority(&stream_, kDefaultFlag, kNormalPriority),
+          platform::errors::Fatal(
+              "Normal priority cuda stream creation failed."));
     }
     VLOG(3) << "CUDAStream Init stream: " << stream_
             << ", priority: " << static_cast<int>(priority);
@@ -57,7 +61,9 @@ bool CUDAStream::IsIdle() const {
 
 void CUDAStream::Destroy() {
   if (stream_) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(stream_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaStreamDestroy(stream_),
+        platform::errors::Fatal("Cuda stream destruction failed."));
   }
   stream_ = nullptr;
 }

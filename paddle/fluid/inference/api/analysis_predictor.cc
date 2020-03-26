@@ -37,6 +37,7 @@
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -212,6 +213,21 @@ bool AnalysisPredictor::CreateExecutor() {
   if (config_.use_gpu_) {
     status_use_gpu_ = true;
     place_ = paddle::platform::CUDAPlace(config_.device_id_);
+#ifdef PADDLE_WITH_CUDA
+    if (config_.thread_local_stream_) {
+      auto *ctx = static_cast<platform::CUDADeviceContext *>(
+          platform::DeviceContextPool::Instance().Get(place_));
+      if (config_.high_priority_stream_) {
+        VLOG(3) << "The prediction process will be completed using a separate "
+                   "high-priority stream on each thread.";
+        ctx->ResetCurrentThreadCtx(platform::stream::Priority::HIGH);
+      } else {
+        VLOG(3) << "The prediction process will be completed using a separate "
+                   "normal-priority stream on each thread.";
+        ctx->ResetCurrentThreadCtx(platform::stream::Priority::NORMAL);
+      }
+    }
+#endif
   } else {
     place_ = paddle::platform::CPUPlace();
   }
