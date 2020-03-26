@@ -33,29 +33,31 @@ class TestGlobalVarGetterSetter(unittest.TestCase):
 
         g = fluid.core.globals()
         for var in var_infos:
-            self.assertTrue(var.name in g)
             self.assertTrue(var.name in g.keys())
-            value1 = g[var.name]
-            value2 = g.get(var.name, None)
+            if var.writable:
+                value1 = g.__getpublic__(var.name)
+                value2 = g.getpublic(var.name, None)
+            else:
+                value1 = g.__getprivate__(var.name)
+                value2 = g.getprivate(var.name, None)
             self.assertTrue(value1 is not None)
             self.assertEqual(value1, value2)
             self.assertEqual(type(value1), var.type)
             self.assertEqual(type(value2), var.type)
 
             if var.writable:
-                g[var.name] = -1
+                g.__setpublic__(var.name) = -1
             else:
                 try:
-                    g[var.name] = False
+                    g.__setpublic__(var.name) = False
                     self.assertTrue(False)
                 except:
                     self.assertTrue(True)
 
         name = "__any_non_exist_name__"
-        self.assertFalse(name in g)
         self.assertFalse(name in g.keys())
-        self.assertTrue(g.get(name, None) is None)
-        self.assertEquals(g.get(name, -1), -1)
+        self.assertTrue(g.getpublic(name, None) is None)
+        self.assertEquals(g.getpublic(name, -1), -1)
 
 
 if __name__ == '__main__':

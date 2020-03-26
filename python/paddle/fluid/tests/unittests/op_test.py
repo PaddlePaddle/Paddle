@@ -39,9 +39,9 @@ from white_list import op_threshold_white_list, no_grad_set_white_list
 
 def _set_use_system_allocator(value=None):
     USE_SYSTEM_ALLOCATOR_FLAG = "FLAGS_use_system_allocator"
-    old_value = core.globals()[USE_SYSTEM_ALLOCATOR_FLAG]
+    old_value = fluid.get_flags(USE_SYSTEM_ALLOCATOR_FLAG)
     value = old_value if value is None else value
-    core.globals()[USE_SYSTEM_ALLOCATOR_FLAG] = value
+    fluid.set_flags({USE_SYSTEM_ALLOCATOR_FLAG: value})
     return old_value
 
 
@@ -322,7 +322,7 @@ class OpTest(unittest.TestCase):
                     self.attrs["use_mkldnn"] == True):
             self.__class__.use_mkldnn = True
         if fluid.core.is_compiled_with_ngraph() and \
-            fluid.core.globals()['FLAGS_use_ngraph']:
+            fluid.core.globals().__getprivate__('FLAGS_use_ngraph'):
             self.__class__.use_ngraph = True
 
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
@@ -937,11 +937,13 @@ class OpTest(unittest.TestCase):
             else:
                 # TODO(zhiqiu): enhance inplace_grad test for ops (sum and activation) using mkldnn/ngraph
                 # skip op that use_mkldnn and use_ngraph currently
-                flags_use_mkldnn = fluid.core.globals()["FLAGS_use_mkldnn"]
+                flags_use_mkldnn = fluid.core.globals().__getprivate__(
+                    "FLAGS_use_mkldnn")
                 attrs_use_mkldnn = hasattr(
                     self,
                     'attrs') and bool(self.attrs.get('use_mkldnn', False))
-                flags_use_ngraph = fluid.core.globals()["FLAGS_use_ngraph"]
+                flags_use_ngraph = fluid.core.globals().__getprivate__(
+                    "FLAGS_use_ngraph")
                 attrs_use_ngraph = hasattr(
                     self,
                     'attrs') and bool(self.attrs.get('use_ngraph', False))
@@ -1178,7 +1180,7 @@ class OpTest(unittest.TestCase):
         places = [fluid.CPUPlace()]
         cpu_only = self._cpu_only if hasattr(self, '_cpu_only') else False
         use_ngraph = fluid.core.is_compiled_with_ngraph(
-        ) and fluid.core.globals()['FLAGS_use_ngraph']
+        ) and fluid.core.globals().__getprivate__('FLAGS_use_ngraph')
         if use_ngraph:
             cpu_only = True
         if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type)\
@@ -1198,7 +1200,7 @@ class OpTest(unittest.TestCase):
                     self.attrs["use_mkldnn"] == True):
             self.__class__.use_mkldnn = True
         if fluid.core.is_compiled_with_ngraph() and \
-            fluid.core.globals()['FLAGS_use_ngraph']:
+            fluid.core.globals().__getprivate__('FLAGS_use_ngraph'):
             self.__class__.use_ngraph = True
 
         places = self._get_places()
