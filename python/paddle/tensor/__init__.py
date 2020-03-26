@@ -16,4 +16,5 @@
 # including tensor creation, manipulation, math, etc.
 # __all__ = [ ]
 
-from .creation import *
+#from .creation import *
+from .math import *
