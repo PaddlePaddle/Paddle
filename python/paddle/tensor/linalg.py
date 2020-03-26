@@ -130,11 +130,10 @@ def bmm(x, y, name=None):
 
         # check the inner 2 dimensions
         if x_shape[-1] != y_shape[-2]:
-            assert (x_shape[-1] == -1) or (y_shape[-2] == -1),                         \
-                "After performing an optional transpose, Input X's width should be "   \
-                "equal to Y's width for multiplication "                               \
-                "prerequisites. But received X's shape: %s, Y's shape: %s\n" %         \
-                (x_shape, y_shape)
+            raise ValueError((x_shape[-1] == -1) or (y_shape[-2] == -1),                         
+                "After performing an optional transpose, Input X's width should be "   
+                "equal to Y's width for multiplication prerequisites."         
+                "But received X's shape: %s, Y's shape: %s\n" % (x_shape, y_shape))
 
         
         for i, dim_x in enumerate(x_shape[:-2]):
