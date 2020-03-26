@@ -384,8 +384,8 @@ void FleetWrapper::PullSparseToTensorSync(
         output = outputs->at(output_index);
         output_data = output->mutable_data<float>(place);
         output_len = 0;
-        CHECK(output->numel() % fea_dim, 0);  // NOLINT
-        CHECK(output_data != nullptr);        // NOLINT
+        CHECK(output->numel() % fea_dim == 0);  // NOLINT
+        CHECK(output_data != nullptr);          // NOLINT
       }
       uint64_t real_id = static_cast<uint64_t>(ids[i]);
       if (real_id == padding_id) {
@@ -518,6 +518,7 @@ void FleetWrapper::PushDenseVarsAsync(
     paddle::ps::Region reg(g, count);
     regions.emplace_back(std::move(reg));
   }
+
   auto status = pslib_ptr_->_worker_ptr->push_dense(regions.data(),
                                                     regions.size(), table_id);
   if (push_sparse_status) {

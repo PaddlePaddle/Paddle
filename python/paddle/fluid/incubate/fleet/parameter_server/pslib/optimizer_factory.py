@@ -422,7 +422,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                                 "Ids": one_slot
                             },
                             attrs={
-                                "InputNames": [i.name for i in params],
+                                "InputNames": [i.name for i in grads],
                                 "TableId": dense_table_index,
                                 "ScaleDataNorm": strategy.get("scale_datanorm", -1)
                             })
@@ -466,7 +466,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                                     "Ids": one_slot
                                 },
                                 attrs={
-                                    "InputNames": [i.name for i in data_norm_params],
+                                    "InputNames": [i.name for i in data_norm_grads],
                                     "TableId": dense_table_index,
                                     "ScaleDataNorm": strategy.get("scale_datanorm", -1)
                                 })

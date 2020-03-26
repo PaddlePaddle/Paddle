@@ -32,9 +32,9 @@ class PullSparseV2CPUKernel : public framework::OpKernel<T> {
                          &pull_sparse_status_);
   }
  protected:
-   std::vector<uint64_t> fea_keys_;
-   std::vector<T*> pull_result_ptr_;
-   std::vector<::std::future<int32_t>> pull_sparse_status_;
+  std::vector<uint64_t> fea_keys_;
+  std::vector<T*> pull_result_ptr_;
+  std::vector<::std::future<int32_t>> pull_sparse_status_;
 };
 
 template <typename T>

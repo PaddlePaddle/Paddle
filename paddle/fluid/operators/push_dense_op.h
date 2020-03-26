@@ -31,8 +31,6 @@ void PushDenseFunctor(const framework::ExecutionContext& ctx) {
   auto table_id = static_cast<uint32_t>(ctx.Attr<int>("TableId"));
   PADDLE_ENFORCE_GT(table_id, 0, "table id should > 0");
   float scale_datanorm = ctx.Attr<float>("ScaleDataNorm");
-  PADDLE_ENFORCE_EQ(inputs.size(), input_names.size(),
-                    "inputs size should be equal to input_names size");
 
   const auto& ids = ctx.MultiInput<framework::LoDTensor>("Ids");
   int batch_size =
@@ -56,7 +54,7 @@ void PushDenseFunctor(const framework::ExecutionContext& ctx) {
 template <typename T>
 class PushDenseCPUKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
+  void Compute(const framework::ExecutionContext& ctx) const override {
     PushDenseFunctor<T>(ctx);
   }
 };
