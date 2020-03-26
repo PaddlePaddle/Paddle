@@ -5145,20 +5145,20 @@ def set_flags(flags):
     This function sets the GFlags value in Paddle.
 
     Args:
-        flags (dict): A dict contains flags and it's value.
+        flags (dict): A dict contains flags and its value.
 
     Examples:
             .. code-block:: python
 
                 import paddle.fluid as fluid
-                fluid.set_flags({'FLAGS_FLAGS_eager_delete_tensor_gb': 1.0})
+                fluid.set_flags({'FLAGS_eager_delete_tensor_gb': 1.0})
     """
     if not isinstance(flags, dict):
         raise TypeError('flags in set_flags should be a dict')
     for key, value in flags.items():
         if not isinstance(key, str):
             key = str(key)
-        core.globals()(key, value)
+        core.globals()[key] = value
 
 
 def get_flags(flags):
@@ -5183,11 +5183,11 @@ def get_flags(flags):
     flags_value = {}
     if isinstance(flags, (list, tuple)):
         for key in flags:
-            value = core.globals().__getpublic__(key)
+            value = core.globals()[key]
             temp = {key: value}
             flags_value.update(temp)
     elif isinstance(flags, str):
-        value = core.globals().__getpublic__(flags)
+        value = core.globals()[flags]
         temp = {flags: value}
         flags_value.update(temp)
     else:

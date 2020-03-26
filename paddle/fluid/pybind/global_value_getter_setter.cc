@@ -143,7 +143,7 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
       const std::string &name, const py::object &default_value) const {
     if (HasGetterMethod(name)) {
       PADDLE_ENFORCE_EQ(
-          GetterMethod(name).flag, true,
+          GetterMethod(name).is_public, true,
           platform::errors::NotFound(
               "Flag %s is public, cann't get it's value through this function.",
               name));
@@ -157,7 +157,7 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
       const std::string &name, const py::object &default_value) const {
     if (HasGetterMethod(name)) {
       PADDLE_ENFORCE_EQ(
-          GetterMethod(name).flag, false,
+          GetterMethod(name).is_public, false,
           platform::errors::NotFound("Flag %s is private, cann't get it's "
                                      "value through this function.",
                                      name));
@@ -242,16 +242,16 @@ void BindGlobalValueGetterSetter(pybind11::module *module) {
 
   py::class_<GlobalVarGetterSetterRegistry>(*module,
                                             "GlobalVarGetterSetterRegistry")
-      .def("__getpublic__", &GlobalVarGetterSetterRegistry::GetPublic)
-      .def("__setpublic__", &GlobalVarGetterSetterRegistry::SetPublic)
+      .def("__getitem__", &GlobalVarGetterSetterRegistry::GetPublic)
+      .def("__setitem__", &GlobalVarGetterSetterRegistry::SetPublic)
       .def("__contains__", &GlobalVarGetterSetterRegistry::HasGetterMethod)
-      .def("getprivate", &GlobalVarGetterSetterRegistry::GetPrivate)
-      .def("setprivate", &GlobalVarGetterSetterRegistry::SetPrivate)
+      .def("get_private", &GlobalVarGetterSetterRegistry::GetPrivate)
+      .def("set_private", &GlobalVarGetterSetterRegistry::SetPrivate)
       .def("keys", &GlobalVarGetterSetterRegistry::Keys)
-      .def("getpublic",
+      .def("get_public_or_return_default_value",
            &GlobalVarGetterSetterRegistry::GetPublicOrReturnDefaultValue,
            py::arg("key"), py::arg("default") = py::cast<py::none>(Py_None))
-      .def("getprivate",
+      .def("get_private_or_return_default_value",
            &GlobalVarGetterSetterRegistry::GetPrivateOrReturnDefaultValue,
            py::arg("key"), py::arg("default") = py::cast<py::none>(Py_None));
 
@@ -311,8 +311,6 @@ static void RegisterGlobalVarGetterSetter() {
   REGISTER_PUBLIC_GLOBAL_VAR_GETTER_SETTER(FLAGS_inner_op_parallelism, true);
   REGISTER_PUBLIC_GLOBAL_VAR_GETTER_SETTER(FLAGS_tracer_profile_fname, true);
 #ifdef PADDLE_WITH_CUDA
-  REGISTER_PUBLIC_GLOBAL_VAR_GETTER_SETTER(FLAGS_gpu_memory_limit_mb, true);
-  REGISTER_PUBLIC_GLOBAL_VAR_GETTER_SETTER(FLAGS_cudnn_deterministic, true);
   REGISTER_PUBLIC_GLOBAL_VAR_GETTER_SETTER(FLAGS_gpu_memory_limit_mb, true);
   REGISTER_PUBLIC_GLOBAL_VAR_GETTER_SETTER(FLAGS_cudnn_deterministic, true);
   REGISTER_PUBLIC_GLOBAL_VAR_GETTER_SETTER(FLAGS_conv_workspace_size_limit,
