@@ -31,6 +31,7 @@ SET(PSLIB_ROOT          ${PSLIB_INSTALL_DIR})
 SET(PSLIB_INC_DIR       ${PSLIB_ROOT}/include)
 SET(PSLIB_LIB_DIR       ${PSLIB_ROOT}/lib)
 SET(PSLIB_LIB           ${PSLIB_LIB_DIR}/libps.so)
+SET(PSLIB_VERSION_PY    ${PSLIB_DOWNLOAD_DIR}/pslib/version.py)
 SET(PSLIB_IOMP_LIB      ${PSLIB_LIB_DIR}/libiomp5.so) #todo what is this
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${PSLIB_ROOT}/lib")
 
