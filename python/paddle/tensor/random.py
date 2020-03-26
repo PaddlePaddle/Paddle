@@ -24,19 +24,9 @@
 from __future__ import print_function
 
 import numpy as np
-import warnings
-import six
-import os
-import inspect
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.initializer import Normal, Constant, NumpyArrayInitializer
-from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program, device_guard
-from ..fluid import dygraph_utils
-from ..fluid.param_attr import ParamAttr
-from ..fluid import unique_name
-from ..fluid import core
-from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
-from ..fluid.layers.nn import gaussian_random
+from ..fluid.framework import device_guard
+from ..fluid.data_feeder import check_type, check_dtype, convert_np_dtype_to_dtype_
 
 __all__ = ['randn']
 
@@ -54,11 +44,11 @@ def randn(shape,
     Args:
         shape(list|tuple): Shape of the generated random tensor.
         out(Variable, optional): Optional output which can be any created Variable that meets the requirements to store the result of operation. If
-            the out is `None`, a new Variable wiil be create to store the result. Default is None.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output tensor, which can be float16, float32, float64, int32, int64, bool.
+            the out is `None`, a new Variable wiil be returned to store the result. Default is None.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output tensor, which can be float32, float64.
             if dtype is `None`, the data type of output tensor is `float32`. Default is None.
         device(str, optional): This parameter specifies that the Tensor is created on the GPU or CPU. Default is None.
-        stop_gradient(bool, optional): Indicating if we stop gradient from current(out) Variable. Default is None.
+        stop_gradient(bool, optional): Indicating if we stop gradient from current(out) Variable. Default is True.
         name(str, optional): Normally there is no need for user to set this property. For more information, please refer to :refer:`api_guide_Name` .
             Default is None.
 
@@ -95,12 +85,32 @@ def randn(shape,
 
     out.stop_gradient = stop_gradient
 
+    dtype = convert_np_dtype_to_dtype_(dtype)
     seed = np.random.randint(0, 100)
 
     if device is None:
-        gaussian_random(shape=shape, out=out, seed=seed, dtype=dtype)
+        helper.append_op(
+            type='gaussian_random',
+            outputs={'Out': out},
+            attrs={
+                'shape': shape,
+                'mean': 0.0,
+                'std': 1.0,
+                'seed': seed,
+                'dtype': dtype,
+                'use_mkldnn': False
+            })
     else:
         with device_guard(device):
-            gaussian_random(shape=shape, out=out, seed=seed, dtype=dtype)
-
+            helper.append_op(
+                type='gaussian_random',
+                outputs={'Out': out},
+                attrs={
+                    'shape': shape,
+                    'mean': 0.0,
+                    'std': 1.0,
+                    'seed': seed,
+                    'dtype': dtype,
+                    'use_mkldnn': False
+                })
     return out

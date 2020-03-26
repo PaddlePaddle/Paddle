@@ -24,7 +24,7 @@ import os
 import inspect
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
-from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program
+from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program, device_guard
 from .. import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
@@ -36,6 +36,7 @@ from .. import core
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
 __all__ = [
+    'randn',
     'fc',
     'embedding',
     'linear_chain_crf',
@@ -9582,18 +9583,13 @@ def uniform_random_batch_size_like(input,
 
 
 @templatedoc()
-def gaussian_random(shape, out=None, mean=0.0, std=1.0, seed=0,
-                    dtype='float32'):
+def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
     """
     Generate a random tensor whose data is drawn from a Gaussian distribution.
 
     Args:
         shape (Tuple[int] | List[int]): Shape of the generated random tensor.
         
-        out(Variable, optional): Optional output which can be any created Variable that meets
-            the requirements to store the result of operation. If the out is `None`, a new Variable
-            wiil be create to store the result. Default is None.
-
         mean (float): Mean of the random tensor, defaults to 0.0.
             
         std (float): Standard deviation of the random tensor, defaults to 1.0.
@@ -9643,10 +9639,9 @@ def gaussian_random(shape, out=None, mean=0.0, std=1.0, seed=0,
     """
 
     helper = LayerHelper('gaussian_random', **locals())
+    out = helper.create_variable_for_type_inference(dtype)
     check_type(shape, 'shape', (list, tuple), 'gaussian_random')
 
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype)
     c_dtype = convert_np_dtype_to_dtype_(dtype)
     helper.append_op(
         type='gaussian_random',
