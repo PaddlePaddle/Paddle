@@ -419,13 +419,12 @@ class DistributedAdam(DistributedOptimizerImplBase):
                         cur_prog = losses[loss_index].block.program
                         cur_prog.global_block().append_op(
                             type="push_dense",
-                            inputs={
-                                "Ids": one_slot
-                            },
+                            inputs={"Ids": one_slot},
                             attrs={
                                 "InputNames": [i.name for i in grads],
                                 "TableId": dense_table_index,
-                                "ScaleDataNorm": strategy.get("scale_datanorm", -1)
+                                "ScaleDataNorm":
+                                strategy.get("scale_datanorm", -1)
                             })
 
                     if "pull_dense" in program_configs[
@@ -463,13 +462,13 @@ class DistributedAdam(DistributedOptimizerImplBase):
                             cur_prog = losses[loss_index].block.program
                             cur_prog.global_block().append_op(
                                 type="push_dense",
-                                inputs={
-                                    "Ids": one_slot
-                                },
+                                inputs={"Ids": one_slot},
                                 attrs={
-                                    "InputNames": [i.name for i in data_norm_grads],
+                                    "InputNames":
+                                    [i.name for i in data_norm_grads],
                                     "TableId": dense_table_index,
-                                    "ScaleDataNorm": strategy.get("scale_datanorm", -1)
+                                    "ScaleDataNorm":
+                                    strategy.get("scale_datanorm", -1)
                                 })
 
                     program_configs[program_id]["pull_dense"].extend(
