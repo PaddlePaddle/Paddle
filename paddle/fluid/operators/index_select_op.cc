@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/index_select_op.h"
 #include <memory>
-#include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 
 namespace paddle {
 namespace operators {
@@ -139,8 +138,8 @@ class IndexSelectGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(IndexSelectGradNoNeedBufferVarsInference,
-                                      "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(IndexSelectGradNoNeedBufferVarsInference,
+                                    "X");
 }  // namespace operators
 }  // namespace paddle
 
