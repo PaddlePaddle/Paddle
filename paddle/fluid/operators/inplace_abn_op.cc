@@ -95,7 +95,7 @@ class InplaceABNOpMaker : public paddle::operators::BatchNormOpMaker {
     BatchNormOpMaker::Make();
     AddAttr<std::string>(
         "activation",
-        "(enum string, default identity, can be identity|elu|leakyrelu) "
+        "(enum string, default identity, can be identity|elu|leaky-relu) "
         "The activation type used for output candidate {h}_t.")
         .SetDefault("");
     AddAttr<float>("alpha",
@@ -141,17 +141,15 @@ class InplaceABNOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_INPLACE_OP_INFERER(InplaceABNInplaceInferer, {"X", "Y"});
-DECLARE_INPLACE_OP_INFERER(InplaceABNGradInplaceInferer,
-                           {framework::GradVarName("Y"),
-                            framework::GradVarName("X")});
-
 template <typename DeviceContext, typename T>
 class InplaceABNKernel
     : public paddle::operators::BatchNormKernel<DeviceContext, T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
     auto* y = ctx.Output<Tensor>("Y");
+    PADDLE_ENFORCE_EQ(x, y, platform::errors::InvalidArgument(
+                                "X and Y not inplaced in inplace mode"));
     auto activation =
         GetInplaceABNActivationType(ctx.Attr<std::string>("activation"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
@@ -170,6 +168,10 @@ class InplaceABNGradKernel
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* y = ctx.Input<Tensor>("Y");
     auto* d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    auto* d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+    PADDLE_ENFORCE_EQ(d_x, d_y,
+                      platform::errors::InvalidArgument(
+                          "X@GRAD and Y@GRAD not inplaced in inplace mode"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
     auto activation =
         GetInplaceABNActivationType(ctx.Attr<std::string>("activation"));
@@ -193,10 +195,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(inplace_abn, ops::InplaceABNOp, ops::InplaceABNOpMaker,
                   ops::BatchNormOpInferVarType,
                   ops::InplaceABNOpGradMaker<paddle::framework::OpDesc>,
-                  ops::InplaceABNOpGradMaker<paddle::imperative::OpBase>,
-                  ops::InplaceABNInplaceInferer)
-REGISTER_OPERATOR(inplace_abn_grad, ops::InplaceABNGradOp,
-                  ops::InplaceABNGradInplaceInferer)
+                  ops::InplaceABNOpGradMaker<paddle::imperative::OpBase>)
+REGISTER_OPERATOR(inplace_abn_grad, ops::InplaceABNGradOp)
 
 REGISTER_OP_CPU_KERNEL(
     inplace_abn,

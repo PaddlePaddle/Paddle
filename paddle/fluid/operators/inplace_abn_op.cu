@@ -26,6 +26,9 @@ class InplaceABNKernel
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* y = ctx.Output<Tensor>("Y");
+    auto* x = ctx.Input<Tensor>("X");
+    PADDLE_ENFORCE_EQ(x, y, platform::errors::InvalidArgument(
+                                "X and Y not inplaced in inplace mode"));
     auto activation =
         GetInplaceABNActivationType(ctx.Attr<std::string>("activation"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
@@ -52,6 +55,10 @@ class InplaceABNGradKernel
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* y = ctx.Input<Tensor>("Y");
     auto* d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
+    auto* d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+    PADDLE_ENFORCE_EQ(d_x, d_y,
+                      platform::errors::InvalidArgument(
+                          "X@GRAD and Y@GRAD not inplaced in inplace mode"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
     auto activation =
         GetInplaceABNActivationType(ctx.Attr<std::string>("activation"));
