@@ -12,11 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: import all neural network related api under this directory, 
-# including layers, linear, conv, rnn etc.
-# __all__ = [ ]
+from . import common
 
-from .layer import common
-
-__all__ = []
-__all__ += common.__all__
+__all__ = [common]

@@ -33,3 +33,4 @@ import paddle.compat
 import paddle.distributed
 batch = batch.batch
 import paddle.sysconfig
+import paddle.nn

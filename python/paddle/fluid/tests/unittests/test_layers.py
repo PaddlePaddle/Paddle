@@ -125,8 +125,15 @@ class TestLayer(LayerTest):
                 32, 4, bias_attr=fluid.initializer.ConstantInitializer(value=1))
             dy_ret = linear(t)
             dy_ret_value = dy_ret.numpy()
+        with self.dynamic_graph():
+            t = base.to_variable(inp)
+            linear = paddle.nn.Linear(
+                32, 4, bias_attr=fluid.initializer.ConstantInitializer(value=1))
+            dy_ret = linear(t)
+            dy_ret_value2 = dy_ret.numpy()
 
         self.assertTrue(np.array_equal(static_ret, dy_ret_value))
+        self.assertTrue(np.array_equal(static_ret, dy_ret_value2))
 
     def test_layer_norm(self):
         inp = np.ones([3, 32, 32], dtype='float32')
