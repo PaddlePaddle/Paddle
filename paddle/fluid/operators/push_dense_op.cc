@@ -23,8 +23,8 @@ class PushDenseOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_GE(ctx->Inputs("Ids").size(), 1UL,
-                          platform::errors::InvalidArgument(
-                              "Input(Ids) of PushDenseOp can not be null."));
+                      platform::errors::InvalidArgument(
+                        "Input(Ids) of PushDenseOp can not be null."));
   }
 
  protected:
