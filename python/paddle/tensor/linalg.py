@@ -81,6 +81,7 @@ def t(input, name=None):
         .. code-block:: python
 
             import paddle
+            import paddle.fluid as fluid
             x = fluid.data(name='x', shape=[2, 3],
                             dtype='float32')
             x_transposed = paddle.tensor.t(x)
@@ -112,7 +113,7 @@ def t(input, name=None):
     out = helper.create_variable_for_type_inference(input.dtype)
     input_shape = helper.create_variable_for_type_inference(input.dtype)
     if len(input.shape) == 1:
-        out = input_shape
+        out = input
     elif input.shape[0] == 1 or input.shape[1] == 1:
         out = input
     else:

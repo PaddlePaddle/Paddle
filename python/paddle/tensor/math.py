@@ -243,12 +243,13 @@ def log1p(x, out=None, name=None):
 
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import numpy as np
 
             # Graph Organizing
-            x = fluid.layers.data(name="x", shape=[1], dtype="float32")
-            res = fluid.layers.log1p(x)
+            x = fluid.data(name="x", shape=[1], dtype="float32")
+            res = paddle.tensor.log1p(x)
 
             # Create an executor using CPU as an example
             exe = fluid.Executor(fluid.CPUPlace())
