@@ -208,8 +208,10 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, out=None, name=None):
             '(The out data type in pow must be the same with input data type.)')
         if name:
             warning.warn(
-                "The output Variable name of the paddle.tensor.pow operation can only be given by parameter out or name. When parameter out and name are set at the same time, out has a higher priority than name. Finally, the output Variable name is same as the out name %s"
-                % out.name,
+                "The output Variable name of the paddle.tensor.pow operation can only be given by parameter out or name.\
+                When parameter out and name are set at the same time, out has a higher priority than name. \
+                Finally, the output Variable name is same as the out name %s" %
+                out.name,
                 category=UserWarning,
                 stacklevel=2)
     helper.append_op(
