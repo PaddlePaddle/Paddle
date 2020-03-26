@@ -798,6 +798,8 @@ void PartialGradTask::RunEachOp(const OpBase *op) {
               ready_grad_vars_.Get(grad_var.get(), op->place(), &is_last));
           VLOG(10) << "Got ready grad var " << grad_var->Name() << " "
                    << new_inputs.back().get();
+          // call backward_hooks
+          grad_var->InvokeBackwardHooks();
         } else {
           new_inputs.emplace_back();
         }
