@@ -105,8 +105,9 @@ def enable_dygraph(place=None):
             print(fluid.in_dygraph_mode())  # False
     """
     global _functional_dygraph_context_manager
-    _functional_dygraph_context_manager = guard(place=place)
-    _functional_dygraph_context_manager.__enter__()
+    if _functional_dygraph_context_manager is None:
+        _functional_dygraph_context_manager = guard(place=place)
+        _functional_dygraph_context_manager.__enter__()
 
 
 def disable_dygraph():
