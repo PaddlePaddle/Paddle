@@ -198,7 +198,6 @@ TEST(SendRecvOp, CPUDense) {
   for (int64_t i = 0; i < target->numel(); ++i) {
     EXPECT_EQ(expected[i] * 2, actual[i]);
   }
-  listen_and_serv_op->Stop();
   server_thread.join();
   listen_and_serv_op.reset(nullptr);
   paddle::operators::ListenAndServOp::ResetPort();
@@ -250,8 +249,7 @@ TEST(SendRecvOp, CPUSparse) {
     EXPECT_EQ(expect_value->mutable_data<float>(place)[i],
               actual->mutable_data<float>(place)[i]);
   }
-  listen_and_serv_op->Stop();
   server_thread.join();
-  listen_and_serv_op.reset();
+  listen_and_serv_op.reset(nullptr);
   paddle::operators::ListenAndServOp::ResetPort();
 }
