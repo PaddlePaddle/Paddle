@@ -13,17 +13,17 @@
 # limitations under the License.
 
 # TODO: define functions of linear algebra   
-# __all__ = ['matmul', 
-#            'dot',
-#            'einsum',
-#            'morm',
-#            'transpose',
-#            'dist',
-#            't',
-#            'cross',
-#            'cholesky',
-#            'tensordot',
-#            'bmm']
+ __all__ = ['matmul', 
+            'dot',
+            'einsum',
+            'morm',
+            'transpose',
+            'dist',
+            't',
+            'cross',
+            'cholesky',
+            'tensordot',
+            'bmm']
 
 
 def transpose(x, perm, name=None):
