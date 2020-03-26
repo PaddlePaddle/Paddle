@@ -31,6 +31,7 @@ class PullSparseV2CPUKernel : public framework::OpKernel<T> {
     PullSparseFunctor<T>(ctx, &fea_keys_, &pull_result_ptr_,
                          &pull_sparse_status_);
   }
+
  protected:
   std::vector<uint64_t> fea_keys_;
   std::vector<T*> pull_result_ptr_;

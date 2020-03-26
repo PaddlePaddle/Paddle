@@ -32,12 +32,11 @@ void PushDenseFunctor(const framework::ExecutionContext& ctx) {
   auto table_id = static_cast<uint32_t>(ctx.Attr<int>("TableId"));
   PADDLE_ENFORCE_GT(table_id, 0, "table id should > 0");
   float scale_datanorm = ctx.Attr<float>("ScaleDataNorm");
-
   const auto& ids = ctx.MultiInput<framework::LoDTensor>("Ids");
   int batch_size =
       ids[0]->lod().size() ? ids[0]->lod()[0].size() - 1 : ids[0]->dims()[0];
   PADDLE_ENFORCE_GT(batch_size, 0, "batch size should > 0");
-  
+
   auto fleet_ptr = framework::FleetWrapper::GetInstance();
   fleet_ptr->PushDenseVarsAsync(ctx.scope(), table_id, input_names, nullptr,
                                 scale_datanorm, batch_size);

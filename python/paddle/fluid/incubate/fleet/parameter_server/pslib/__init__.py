@@ -559,8 +559,13 @@ class PSLib(Fleet):
 
 fleet = PSLib()
 
-def _prepare_params(input, size, is_sparse=False, is_distributed=False,
-                    padding_idx=None, param_attr=None, dtype='float32'):
+def _prepare_params(input,
+                    size,
+                    is_sparse=False,
+                    is_distributed=False,
+                    padding_idx=None,
+                    param_attr=None,
+                    dtype='float32'):
     """
     preprocess params, this interface is not for users.
 
@@ -615,8 +620,13 @@ def _prepare_params(input, size, is_sparse=False, is_distributed=False,
     elif dtype != "float32":
         raise ValueError("dtype must be float32")
 
-def _fleet_embedding(input, size, is_sparse=False, is_distributed=False,
-                     padding_idx=None, param_attr=None, dtype='float32'):
+def _fleet_embedding(input,
+                     size,
+                     is_sparse=False,
+                     is_distributed=False,
+                     padding_idx=None,
+                     param_attr=None,
+                     dtype='float32'):
     """
     add fleet embedding, this interface is not for users.
 
@@ -651,8 +661,13 @@ def _fleet_embedding(input, size, is_sparse=False, is_distributed=False,
         scale_sparse_grad=FLEET_GLOBAL_DICT["scale_sparse_grad"])
 
 
-def _fleet_embedding_v2(input, size, is_sparse=False, is_distributed=False,
-                        padding_idx=None, param_attr=None, dtype='float32'):
+def _fleet_embedding_v2(input,
+                        size,
+                        is_sparse=False,
+                        is_distributed=False,
+                        padding_idx=None,
+                        param_attr=None,
+                        dtype='float32'):
     """
     add fleet embedding v2, this interface is not for users.
 

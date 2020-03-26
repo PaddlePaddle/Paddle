@@ -78,6 +78,7 @@ class TestFleet2(unittest.TestCase):
             adam.minimize([cost], [scope])
         except:
             print("do not support pslib test, skip")
+            return
 
         dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
         dataset.set_batch_size(1)
