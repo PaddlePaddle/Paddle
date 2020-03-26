@@ -1,16 +1,16 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.   
-#   
-# Licensed under the Apache License, Version 2.0 (the "License");   
-# you may not use this file except in compliance with the License.  
-# You may obtain a copy of the License at   
-#   
-#     http://www.apache.org/licenses/LICENSE-2.0    
-#   
-# Unless required by applicable law or agreed to in writing, software   
-# distributed under the License is distributed on an "AS IS" BASIS, 
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  
-# See the License for the specific language governing permissions and   
-# limitations under the License.    
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 from __future__ import print_function
 
@@ -57,8 +57,8 @@ def generate_compatible_shapes(dim_X, dim_Y, transpose_X, transpose_Y):
 
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
     """Reference forward implementation using np.matmul."""
-    # np.matmul does not support the transpose flags, so we manually    
-    # transpose X and Y appropriately.  
+    # np.matmul does not support the transpose flags, so we manually
+    # transpose X and Y appropriately.
     if transpose_X:
         if X.ndim == 1:
             X = X.reshape((X.size, 1))
@@ -78,10 +78,10 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
 
     Out = np.matmul(X, Y)
     if not Out.shape:
-        # We do not support 0-dimensional Tensors (scalars). So where   
-        # np.matmul outputs a scalar, we must convert to a Tensor of    
-        # shape (1, ) instead.  
-        # Everywhere else, we are compatible with np.matmul.    
+        # We do not support 0-dimensional Tensors (scalars). So where
+        # np.matmul outputs a scalar, we must convert to a Tensor of
+        # shape (1, ) instead.
+        # Everywhere else, we are compatible with np.matmul.
         Out = np.array([Out], dtype="float32")
     return Out
 
@@ -117,10 +117,10 @@ class Generator(object):
 class TestMatmulOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            # The inputs type of matmul_op must be Variable.    
+            # The inputs type of matmul_op must be Variable.
             input1 = 12
             self.assertRaises(TypeError, fluid.layers.matmul, input1, input1)
-            # The inputs dtype of matmul_op must be float32, float64.   
+            # The inputs dtype of matmul_op must be float32, float64.
             input2 = fluid.layers.data(
                 name='input2', shape=[10, 10], dtype="int32")
             self.assertRaises(TypeError, fluid.layers.matmul, input2, input2)
@@ -129,7 +129,7 @@ class TestMatmulOpError(unittest.TestCase):
             fluid.layers.matmul(input3, input3)
 
 
-# Negative dimension generation 
+# Negative dimension generation
 def generate_negative_dims(in_shape):
     from itertools import combinations
     size = len(in_shape)
@@ -143,7 +143,7 @@ def generate_negative_dims(in_shape):
     return shapes
 
 
-# Build program with inputs sizes that contain negative numbers 
+# Build program with inputs sizes that contain negative numbers
 def test_negative_dims_program(obj):
     for shape_x in generate_negative_dims(obj.shape_X):
         for shape_y in generate_negative_dims(obj.shape_Y):
@@ -167,7 +167,7 @@ def test_negative_dims_program(obj):
                 np.allclose(res, Ref, atol=1e-5)
 
 
-# Generate program api cases for all negative possibilities 
+# Generate program api cases for all negative possibilities
 def api_test(dim_x, dim_y, trans_x, trans_y):
     test_name = ('TestMatMulAPI_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
         dim_x, dim_y, trans_x, trans_y))
@@ -182,7 +182,7 @@ def api_test(dim_x, dim_y, trans_x, trans_y):
     })
 
 
-# Generate operators cases for all possibilities    
+# Generate operators cases for all possibilities
 def inject_test(dim_x, dim_y, trans_x, trans_y):
     test_name = ('TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
         dim_x, dim_y, trans_x, trans_y))
@@ -204,7 +204,7 @@ for dim_X in (1, 2, 3):
                 api_test(dim_X, dim_Y, transose_x, transose_y)
 
 
-# Test case n-dim   
+# Test case n-dim
 def generate_compatible_shapes(dim, transpose_X, transpose_Y):
     M = 2
     N = 4
@@ -225,7 +225,7 @@ def generate_compatible_shapes(dim, transpose_X, transpose_Y):
     return shape_X, shape_Y
 
 
-# # Test case n-dim 
+# # Test case n-dim
 for dim in [4]:
     for transpose_X in [False, True]:
         for transpose_Y in [False, True]:
