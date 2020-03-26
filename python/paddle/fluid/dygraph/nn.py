@@ -1138,7 +1138,6 @@ class BatchNorm(layers.Layer):
             "use_mkldnn": False,
             "fuse_with_relu": self._fuse_with_relu,
             "use_global_stats": self._use_global_stats,
-            "trainable_statistics": self._trainable_statistics
         }
 
         inputs = {
@@ -1150,7 +1149,8 @@ class BatchNorm(layers.Layer):
         }
 
         if in_dygraph_mode():
-            attrs['is_test'] = not _dygraph_tracer()._train_mode
+            attrs['is_test'] = (not _dygraph_tracer()._train_mode) and (
+                not self._trainable_statistics)
             saved_mean = _varbase_creator(dtype=self._dtype)
             saved_variance = _varbase_creator(dtype=self._dtype)
             batch_norm_out = _varbase_creator(dtype=self._dtype)
