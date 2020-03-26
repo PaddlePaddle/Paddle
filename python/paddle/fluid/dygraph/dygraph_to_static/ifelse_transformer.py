@@ -62,8 +62,6 @@ class IfElseTransformer(gast.NodeTransformer):
         self.after_visit(self.root)
 
     def visit_If(self, node):
-        if 'numpy' not in ast_to_source_code(node):
-            return node
         if_condition_visitor = IfConditionVisitor(node.test,
                                                   self.static_analysis_visitor)
         need_transform = if_condition_visitor.is_control_flow()
@@ -97,15 +95,6 @@ class IfElseTransformer(gast.NodeTransformer):
             return new_node
         else:
             return node
-
-    # def visit_Call(self, node):
-    #     # self.generic_visit(node)
-    #     # Remove `numpy()` statement, like `Tensor.numpy()[i]` -> `Tensor[i]`
-    #     if isinstance(node.func, gast.Attribute):
-    #         attribute = node.func
-    #         if attribute.attr == 'numpy':
-    #             node = attribute.value
-    #     return node
 
     def after_visit(self, node):
         """
