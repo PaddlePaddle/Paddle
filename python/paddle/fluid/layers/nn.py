@@ -499,13 +499,14 @@ def embedding(input,
         })
     return tmp
 
+
 def _pull_sparse(input,
                  size,
                  table_id,
                  accessor_class,
                  name="embedding",
                  ctr_label_name="",
-                 padding_id = 0,
+                 padding_id=0,
                  dtype='float32',
                  scale_sparse_grad=True):
     """
@@ -543,11 +544,9 @@ def _pull_sparse(input,
     """
     helper = LayerHelper(name, **locals())
     inputs = helper.multiple_input()
-    outs = [
-        helper.create_variable_for_type_inference(dtype)
-    ]
+    outs = [helper.create_variable_for_type_inference(dtype)]
     input_names = [i.name for i in inputs]
-    attrs={
+    attrs = {
         'EmbeddingDim': size,
         'TableId': table_id,
         'AccessorClass': accessor_class,
@@ -563,7 +562,10 @@ def _pull_sparse(input,
         name=name, shape=[size], dtype=dtype, is_bias=False, persistable=True)
     helper.append_op(
         type='pull_sparse',
-        inputs={'Ids': inputs, 'W': w},
+        inputs={
+            'Ids': inputs,
+            'W': w
+        },
         outputs={'Out': outs},
         attrs=attrs
     )
@@ -571,13 +573,14 @@ def _pull_sparse(input,
         return outs[0]
     return outs
 
+
 def _pull_sparse_v2(input,
                    size,
                    table_id,
                    accessor_class,
                    name="embedding",
                    ctr_label_name="",
-                   padding_id = 0,
+                   padding_id=0,
                    dtype='float32',
                    scale_sparse_grad=True):
     """
@@ -615,9 +618,7 @@ def _pull_sparse_v2(input,
     """
     helper = LayerHelper(name, **locals())
     inputs = helper.multiple_input()
-    outs = [
-        helper.create_variable_for_type_inference(dtype)
-    ]
+    outs = [helper.create_variable_for_type_inference(dtype)]
     input_names = [i.name for i in inputs]
     attrs={
         'EmbeddingDim': size,
@@ -635,13 +636,17 @@ def _pull_sparse_v2(input,
         name=name, shape=[size], dtype=dtype, is_bias=False, persistable=True)
     helper.append_op(
         type='pull_sparse_v2',
-        inputs={'Ids': inputs, 'W': w},
+        inputs={
+            'Ids': inputs,
+            'W': w
+        },
         outputs={'Out': outs},
         attrs=attrs
     )
     if len(outs) == 1:
         return outs[0]
     return outs
+
 
 def _pull_box_sparse(input, size, dtype='float32'):
     """
