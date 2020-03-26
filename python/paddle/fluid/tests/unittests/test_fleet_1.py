@@ -86,8 +86,8 @@ class TestFleet2(unittest.TestCase):
                 strategy={
                     "embedding": {
                         "sparse_accessor_class": "DownpourSparseValueAccessor"
-                }
-            })
+                    }
+                })
             adam.minimize([cost], [scope])
         except:
             print("do not support pslib test, skip")
@@ -98,64 +98,66 @@ class TestFleet2(unittest.TestCase):
         except:
             print("catch expected exception of param_attr=None")
         try:
-            _prepare_params(input=show, size=[1, 1],
-                            param_attr=fluid.ParamAttr())
+            _prepare_params(
+                input=show, size=[1, 1], param_attr=fluid.ParamAttr())
         except:
             print("catch expected exception of name=None")
         try:
-            _prepare_params(input=show, size=1,
-                            param_attr=fluid.ParamAttr(name="embedding"))
+            tmp = fluid.ParamAttr(name="embedding")
+            _prepare_params(input=show, size=1, param_attr=tmp)
         except:
             print("catch expected exception of size not list")
         try:
-            _prepare_params(input=show, size=[-1, 12],
-                            param_attr=fluid.ParamAttr(name="embedding"))
+            tmp = fluid.ParamAttr(name="embedding")
+            _prepare_params(input=show, size=[-1, 12], param_attr=tmp)
         except:
             print("catch expected exception of size not equal")
         try:
-            _prepare_params(input=show, size=[-1, 1],
-                            param_attr=fluid.ParamAttr(name="embedding"),
-                            is_sparse=False)
+            tmp = fluid.ParamAttr(name="embedding")
+            _prepare_params(
+                input=show, size=[-1, 1], param_attr=tmp, is_sparse=False)
         except:
             print("catch expected exception of is_sparse=False")
         try:
-            _prepare_params(input=show, size=[-1, 1],
-                            param_attr=fluid.ParamAttr(name="embedding"),
+            tmp = fluid.ParamAttr(name="embedding")
+            _prepare_params(input=show, size=[-1, 1], param_attr=tmp, \
                             is_sparse=True, is_distributed=False)
         except:
             print("catch expected exception of is_distributed=False")
         try:
-            _prepare_params(input=show, size=[-1, 1],
-                            param_attr=fluid.ParamAttr(name="embedding"),
+            _prepare_params(input=show, size=[-1, 1], \
+                            param_attr=fluid.ParamAttr(name="embedding"), \
                             is_sparse=True, is_distributed=True, dtype="abc")
         except:
             print("catch expected exception of unknown dtype")
         try:
             FLEET_GLOBAL_DICT["emb_to_accessor"]["embedding"] = "unknown"
-            _prepare_params(input=show, size=[-1, 1],
-                            param_attr=fluid.ParamAttr(name="embedding"))
+            tmp = fluid.ParamAttr(name="embedding")
+            _prepare_params(input=show, size=[-1, 1], param_attr=tmp)
         except:
             print("catch expected exception of unknown accessor")
         FLEET_GLOBAL_DICT["cur_accessor"] = "DownpourCtrAccessor"
         try:
-            _fleet_embedding(input=show, size=[-1, 1], is_sparse=True,
-                             is_distributed=True, dtype="float32",
+            _fleet_embedding(input=show, size=[-1, 1], is_sparse=True, \
+                             is_distributed=True, dtype="float32", \
                              param_attr=fluid.ParamAttr(name="embedding"))
         except:
             print("catch expected exception of unknown accessor")
         try:
-            _fleet_embedding_v2(input=show, size=[-1, 1], is_sparse=True,
-                                is_distributed=True, dtype="float32",
+            _fleet_embedding_v2(input=show, size=[-1, 1], is_sparse=True, \
+                                is_distributed=True, dtype="float32", \
                                 param_attr=fluid.ParamAttr(name="embedding"))
         except:
             print("catch expected exception of unknown accessor")
 
         adam1 = fluid.optimizer.Adam(learning_rate=0.000005)
-        adam1 = fleet.distributed_optimizer(adam1, strategy={
-            "embedding": {
-                "sparse_accessor_class": "DownpourSparseValueAccessor"
-            }
-        })
+        adam1 = fleet.distributed_optimizer(
+            adam1,
+            strategy={
+                "embedding": {
+                    "sparse_accessor_class": "DownpourSparseValueAccessor"
+                }
+            })
         try:
             pre = FLEET_GLOBAL_DICT["emb_to_table"]
             FLEET_GLOBAL_DICT["emb_to_table"] = {}
@@ -181,24 +183,28 @@ class TestFleet2(unittest.TestCase):
             print("catch expected exception of embedding_types")
         try:
             adam3 = fluid.optimizer.Adam(learning_rate=0.000005)
-            adam3 = fleet.distributed_optimizer(adam3, strategy={
-                "embedding": {
-                    "sparse_accessor_class": "DownpourSparseValueAccessor",
-                    "sparse_embedx_dim": 999
-                }
-            })
+            adam3 = fleet.distributed_optimizer(
+                adam3,
+                strategy={
+                    "embedding": {
+                        "sparse_accessor_class": "DownpourSparseValueAccessor",
+                        "sparse_embedx_dim": 999
+                    }
+                })
             adam3.minimize([cost], [scope])
         except:
             print("catch expected exception of embedx_dim error")
 
         try:
             adam4 = fluid.optimizer.Adam(learning_rate=0.000005)
-            adam4 = fleet.distributed_optimizer(adam4, strategy={
-                "embedding": {
-                    "sparse_accessor_class": "DownpourCtrAccessor",
-                    "sparse_embedx_dim": 999
-                }
-            })
+            adam4 = fleet.distributed_optimizer(
+                adam4,
+                strategy={
+                    "embedding": {
+                        "sparse_accessor_class": "DownpourCtrAccessor",
+                        "sparse_embedx_dim": 999
+                    }
+                })
             adam4.minimize([cost], [scope])
         except:
             print("catch expected exception of embedx_dim error")
