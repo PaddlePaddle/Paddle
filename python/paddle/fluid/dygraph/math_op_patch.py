@@ -121,27 +121,27 @@ def monkey_patch_math_varbase():
 
     def _float_(var):
         numel = np.prod(var.shape)
-        assert numel == 1, "If you want to convert Variable to float, Variable can only contain one element."
+        assert numel == 1, "only one element variable can be converted to float."
         tensor = var.value().get_tensor()
-        assert tensor._is_initialized(), "tensor not initialized"
-        return float(np.reshape(tensor.__array__(), (1, 1))[0][0])
+        assert tensor._is_initialized(), "variable's tensor is not initialized"
+        return float(var.numpy().flatten()[0])
 
     def _long_(var):
         numel = np.prod(var.shape)
-        assert numel == 1, "If you want to convert Variable to long, Variable can only contain one element."
+        assert numel == 1, "only one element variable can be converted to long."
         tensor = var.value().get_tensor()
-        assert tensor._is_initialized(), "tensor not initialized"
+        assert tensor._is_initialized(), "variable's tensor is not initialized"
         if six.PY2:
-            return long(np.reshape(tensor.__array__(), (1, 1))[0][0])
+            return long(var.numpy().flatten()[0])
         else:
-            return int(np.reshape(tensor.__array__(), (1, 1))[0][0])
+            return int(var.numpy().flatten()[0])
 
     def _int_(var):
         numel = np.prod(var.shape)
-        assert numel == 1, "If you want to convert Variable to int, Variable can only contain one element."
+        assert numel == 1, "only one element variable can be converted to int."
         tensor = var.value().get_tensor()
-        assert tensor._is_initialized(), "tensor not initialized"
-        return int(np.reshape(tensor.__array__(), (1, 1))[0][0])
+        assert tensor._is_initialized(), "variable's tensor is not initialized"
+        return int(var.numpy().flatten()[0])
 
     def _len_(var):
         tensor = var.value().get_tensor()
@@ -150,13 +150,13 @@ def monkey_patch_math_varbase():
 
     def _index_(var):
         numel = np.prod(var.shape)
-        assert numel == 1, "If you want to convert Variable to Python index, Variable can only contain one element."
+        assert numel == 1, "only one element variable can be converted to python index."
         tensor = var.value().get_tensor()
-        assert tensor._is_initialized(), "tensor not initialized"
+        assert tensor._is_initialized(), "variable's tensor is not initialized"
         if six.PY2:
-            return long(np.reshape(tensor.__array__(), (1, 1))[0][0])
+            return long(var.numpy().flatten()[0])
         else:
-            return int(np.reshape(tensor.__array__(), (1, 1))[0][0])
+            return int(var.numpy().flatten()[0])
 
     def _scalar_elementwise_add_(var, value):
         return _scalar_elementwise_op_(var, 1.0, value)
