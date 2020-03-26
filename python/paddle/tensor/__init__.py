@@ -18,12 +18,12 @@
 from __future__ import print_function
 
 from . import manipulation
-from manipulation import *
+from .manipulation import *
 
 from . import linalg
-from linalg import *
+from .linalg import *
 
 from . import search
-from search import *
+from .search import *
 
 __all__ = manipulation.__all__ + linalg.__all__ + search.__all__
