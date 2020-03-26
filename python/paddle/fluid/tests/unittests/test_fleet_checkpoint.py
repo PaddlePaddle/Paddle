@@ -51,11 +51,11 @@ class FleetTest(unittest.TestCase):
         n1 = fleet._get_last_checkpoint_no(dir_path, fs=fs)
 
         status2 = fleet.load_check_point(exe, dir_path, trainer_id=0, fs=fs)
-        self.assertEqual(status2 == status)
+        self.assertEqual(status2, status)
 
         fleet.save_check_point(exe, dir_path, train_status=status, fs=fs)
         n2 = fleet._get_last_checkpoint_no(dir_path, fs=fs)
-        self.assertEqual(n2 == n1 + 1)
+        self.assertEqual(n2, n1 + 1)
 
         fleet.clean_redundant_check_points(dir_path, fs=fs)
 
