@@ -617,7 +617,7 @@ def _pull_sparse_v2(input,
     inputs = helper.multiple_input()
     outs = [helper.create_variable_for_type_inference(dtype)]
     input_names = [i.name for i in inputs]
-    attrs={
+    attrs = {
         'EmbeddingDim': size,
         'TableId': table_id,
         'AccessorClass': accessor_class,

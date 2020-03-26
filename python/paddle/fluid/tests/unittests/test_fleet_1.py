@@ -71,8 +71,8 @@ class TestFleet2(unittest.TestCase):
                 epsilon=1e-4,
                 param_attr={
                     "batch_size": 1e4,
-                    "batch_sum_default":0.0,
-                    "batch_square":1e4
+                    "batch_sum_default": 0.0,
+                    "batch_square": 1e4
                 })
             fc = fluid.layers.fc(input=emb, size=1, act=None)
             label = fluid.layers.data(name="click", shape=[-1, 1], \
@@ -81,9 +81,11 @@ class TestFleet2(unittest.TestCase):
             cost = fluid.layers.log_loss(fc, label_cast)
         try:
             adam = fluid.optimizer.Adam(learning_rate=0.000005)
-            adam = fleet.distributed_optimizer(adam, strategy={
-                "embedding": {
-                    "sparse_accessor_class": "DownpourSparseValueAccessor"
+            adam = fleet.distributed_optimizer(
+                adam,
+                strategy={
+                    "embedding": {
+                        "sparse_accessor_class": "DownpourSparseValueAccessor"
                 }
             })
             adam.minimize([cost], [scope])
