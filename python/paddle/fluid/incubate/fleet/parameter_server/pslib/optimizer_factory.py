@@ -282,7 +282,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
             if len(sparse_table_to_index) != len(emb_to_table):
                 raise ValueError(
                     "sparse tables from  program != sparse tables from op: %s "
-                    "vs %s" %(len(sparse_table_to_index), len(emb_to_table)))
+                    "vs %s" % (len(sparse_table_to_index), len(emb_to_table)))
             for key in sparse_table_to_index:
                 if key not in emb_to_table or \
                         sparse_table_to_index[key] != emb_to_table[key]:
@@ -324,17 +324,17 @@ class DistributedAdam(DistributedOptimizerImplBase):
                     if st.get("sparse_embedx_dim") is not None \
                             and st["sparse_embedx_dim"] != emb_to_size[key] - 3:
                         raise ValueError("fleet config sparse_embedx_dim=%s not"
-                                         " equal to embedding size - 3 = %s"
-                                         % (st["sparse_embedx_dim"],
-                                            emb_to_size[key] - 3))
+                                         " equal to embedding size - 3 = %s" %
+                                         (st["sparse_embedx_dim"],
+                                          emb_to_size[key] - 3))
                     st["sparse_embedx_dim"] = emb_to_size[key] - 3
                 elif accessor == "DownpourSparseValueAccessor":
                     if st.get("sparse_embedx_dim") is not None \
                             and st["sparse_embedx_dim"] != emb_to_size[key]:
                         raise ValueError("fleet config sparse_embedx_dim=%s not"
-                                         " equal to embedding size = %s"
-                                         % (st["sparse_embedx_dim"],
-                                            emb_to_size[key]))
+                                         " equal to embedding size = %s" %
+                                         (st["sparse_embedx_dim"],
+                                          emb_to_size[key]))
                     st["sparse_embedx_dim"] = emb_to_size[key]
 
         # ServerParameter add all sparse tables
