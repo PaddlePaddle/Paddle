@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # TODO: define functions of linear algebra   
-from paddle.common_ops_import import *
+from ..common_ops_import import *
 
 __all__ = ['matmul']
 
