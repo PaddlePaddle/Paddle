@@ -1,0 +1,103 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from __future__ import print_function
+
+import unittest
+import numpy
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid.dygraph.rnn import CudnnLSTM
+
+import numpy as np
+
+np.random.seed = 123
+
+def sigmoid(x):
+    return 1. / (1. + np.exp(-x))
+
+def tanh(x):
+    return 2. * sigmoid(2. * x) - 1.
+
+def step(step_in, pre_hidden, pre_cell, gate_w, gate_b, forget_bias=1.0):
+    concat_1 = np.concatenate([step_in, pre_hidden], 1)
+
+    gate_input = np.matmul(concat_1, gate_w)
+    gate_input += gate_b
+    i, j, f, o = np.split(gate_input, indices_or_sections=4, axis=1)
+
+    new_cell = pre_cell * sigmoid(f + forget_bias) + sigmoid(i) * tanh(j)
+    new_hidden = tanh(new_cell) * sigmoid(o)
+
+    return new_hidden, new_cell
+
+
+class TestCudnnLSTM(unittest.TestCase):
+    def setUp(self):
+        self.input_size = 100
+        self.hidden_size = 200
+        self.batch_size = 128
+
+    def test_run(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+
+        with fluid.dygraph.guard(place):
+            
+            cudnn_lstm = CudnnLSTM(self.hidden_size, self.input_size)
+
+            param_list = cudnn_lstm.state_dict()
+
+            # process weight and bias
+
+            gate_w_name = "_weight"
+            gate_b_name = "_bias"
+
+            gate_w = param_list[gate_w_name].numpy()
+            gate_w = np.random.uniform(
+                -0.1, 0.1, size=gate_w.shape).astype('float64')
+            param_list[gate_w_name].set_value(gate_w)
+
+            gate_b = param_list[gate_b_name].numpy()
+            gate_b = np.random.uniform(
+                -0.1, 0.1, size=gate_b.shape).astype('float64')
+            param_list[gate_b_name].set_value(gate_b)
+            
+            step_input_np = np.random.uniform(-0.1, 0.1, (
+                self.batch_size, self.input_size)).astype('float64')
+            pre_hidden_np = np.random.uniform(-0.1, 0.1, (
+                self.batch_size, self.hidden_size)).astype('float64')
+            pre_cell_np = np.random.uniform(-0.1, 0.1, (
+                self.batch_size, self.hidden_size)).astype('float64')
+
+            step_input_var = fluid.dygraph.to_variable(step_input_np)
+            pre_hidden_var = fluid.dygraph.to_variable(pre_hidden_np)
+            pre_cell_var = fluid.dygraph.to_variable(pre_cell_np)
+            api_out = cudnn_lstm(step_input_var, pre_hidden_var, pre_cell_var)
+
+            api_hidden_out = api_out[0]
+            api_cell_out = api_out[1]
+
+            np_hidden_out, np_cell_out = step(step_input_np, pre_hidden_np,
+                                            pre_cell_np, gate_w, gate_b)
+
+            self.assertTrue(np.allclose(api_hidden_out.numpy(), np_hidden_out, rtol=1e-5, atol=0))
+            self.assertTrue(np.allclose(api_cell_out.numpy(), np_cell_out, rtol=1e-5, atol=0))
+
+
+if __name__ == '__main__':
+    unittest.main()
+
