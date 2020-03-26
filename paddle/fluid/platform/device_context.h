@@ -210,10 +210,8 @@ class CUDAContext {
   }
 
   void DestoryCuBlasContext() {
-    if (cudnn_handle_) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_),
-                                  "Failed to destory Cudnn handle");
-    }
+    cublas_handle_.reset();
+    cublas_tensor_core_handle_.reset();
   }
 
   CUDAPlace place_;
