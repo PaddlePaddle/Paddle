@@ -55,9 +55,19 @@ class PullDenseWorker {
  public:
   virtual ~PullDenseWorker() {}
   virtual void Initialize(const TrainerDesc& param);
+  
   #ifdef PADDLE_WITH_CUDA
-  void SetStream(cudaStream_t stream) { copy_stream_ = stream; }
+  void AddStream(const cudaStream_t stream) { 
+    copy_streams_.push_back(stream);
+  }
+
+  void AddPlace(const paddle::platform::Place place) {
+      places_.push_back(place);
+  }
   #endif
+  void AddThreadScope(Scope* scope) {
+    thread_scopes_.push_back(scope);
+  }
   int Start();
   void Stop();
   void SetRootScope(Scope* scope) { root_scope_ = scope; }
@@ -65,9 +75,6 @@ class PullDenseWorker {
   void ResetThreadVersion(uint64_t table_id);
   void Wait(std::vector<::std::future<int32_t>>* status_vec);
   void PullDense(bool force_update = false);
-  void SetPlace(const paddle::platform::Place& place) {
-    place_ = place;
-  }
   void CreatePinVar();
   static std::shared_ptr<PullDenseWorker> GetInstance() {
     if (NULL == s_instance_) {
@@ -87,7 +94,6 @@ class PullDenseWorker {
   PullDenseWorkerParameter param_;
   DownpourWorkerParameter dwp_param_;
   Scope* root_scope_;
-  paddle::platform::Place place_;
   bool running_;
   
   static std::map<uint64_t, uint64_t> last_versions_;
@@ -109,8 +115,11 @@ class PullDenseWorker {
   float squared_sum_epsilon_ = 1e-4;
   std::mutex mutex_for_mean_scale_;
   float total_batch_num_ = 0;
+  
   #ifdef PADDLE_WITH_CUDA
-  cudaStream_t copy_stream_;
+  std::vector<cudaStream_t> copy_streams_;
+  std::vector<paddle::platform::Place> places_;
+  std::vector<Scope*> thread_scopes_;
   #endif
 };
 
@@ -136,6 +145,8 @@ class DeviceWorker {
   virtual void SetChannelWriter(ChannelObject<std::string>* queue) {}
   virtual const platform::Place& place() const { return place_; }
   virtual void CreatePinVar() {};
+  virtual void CreateEvent() {};
+  virtual void CreateThreadParam() {};
   #ifdef PADDLE_WITH_CUDA
   virtual void SetStream(cudaStream_t stream) {}
   #endif
@@ -143,8 +154,7 @@ class DeviceWorker {
     place_ = place;
   }
   virtual void SetReaderPlace(const paddle::platform::Place& place) {
-    //device_reader_->SetPlace(place);
-    device_reader_->SetPlace(platform::CPUPlace());
+    device_reader_->SetPlace(place);
   }
   virtual Scope* GetThreadScope() { return thread_scope_; }
 
@@ -211,11 +221,13 @@ class DownpourWorker : public HogwildWorker {
   virtual void TrainFiles();
   #ifdef PADDLE_WITH_CUDA
   virtual void SetStream(cudaStream_t stream) { copy_stream_ = stream; }
+  virtual void CreateEvent();
   #endif
   virtual void TrainFilesWithProfiler();
   virtual void SetNeedDump(bool need_dump_field);
   virtual void SetChannelWriter(ChannelObject<std::string>* queue);
   virtual void CreatePinVar();
+  virtual void CreateThreadParam();
 
  protected:
   std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;

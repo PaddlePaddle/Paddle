@@ -188,7 +188,7 @@ endif()
 cc_library(executor_gc_helper SRCS executor_gc_helper.cc DEPS scope proto_desc operator garbage_collector)
 if(WITH_DISTRIBUTE)
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
-  dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
+  dist_multi_trainer.cc heter_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
   data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto trainer_desc_proto glog fs shell fleet_wrapper lodtensor_printer
@@ -198,7 +198,7 @@ set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor 
 set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 else()
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
-  dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
+  dist_multi_trainer.cc heter_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
   data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto data_feed_proto trainer_desc_proto glog

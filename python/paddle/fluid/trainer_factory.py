@@ -22,7 +22,7 @@ FORMAT = '%(asctime)s-%(levelname)s: %(message)s'
 logging.basicConfig(level=logging.INFO, format=FORMAT)
 local_logger = logging.getLogger(__name__)
 
-from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer
+from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer, HeterTrainer
 from .device_worker import Hogwild, DownpourSGD, Section
 from .framework import Variable
 from multiprocessing import Process, Manager
@@ -86,6 +86,8 @@ class TrainerFactory(object):
                         "check_nan_var_names"])
                 if opt_info.get("dump_param") is not None:
                     trainer._set_dump_param(opt_info["dump_param"])
+                if opt_info.get("worker_places") is not None:
+                    trainer._set_worker_places(opt_info["worker_places"])
             trainer._set_device_worker(device_worker)
         return trainer
 

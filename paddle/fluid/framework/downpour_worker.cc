@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
 
 #if defined _WIN32 || defined __APPLE__
 #else
@@ -65,9 +66,6 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   for (int i = 0; i < param_.skip_ops_size(); ++i) {
     skip_ops_[i] = param_.skip_ops(i);
   }
-  #ifdef PADDLE_WITH_CUDA
-  PADDLE_ENFORCE(cudaEventCreateWithFlags(&event_, cudaEventDisableTiming));
-  #endif
   for (int i = 0; i < param_.stat_var_names_size(); ++i) {
     stat_var_name_map_[param_.stat_var_names(i)] = 1;
   }
@@ -129,6 +127,14 @@ void DownpourWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
 
 void DownpourWorker::SetNeedDump(bool need_dump_field) {
   need_dump_field_ = need_dump_field;
+}
+
+void DownpourWorker::CreateEvent() {
+  #ifdef PADDLE_WITH_CUDA
+  auto dev_id = boost::get<platform::CUDAPlace>(place_).device;
+  platform::CUDADeviceGuard guard(dev_id);
+  PADDLE_ENFORCE(cudaEventCreateWithFlags(&event_, cudaEventDisableTiming));
+  #endif
 }
 
 void DownpourWorker::CreatePinVar() {
@@ -401,9 +407,6 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
     }
     #endif
   }
-  #ifdef PADDLE_WITH_CUDA
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event_, copy_stream_));
-  #endif
 }
 
 void DownpourWorker::AdjustInsWeight() {
@@ -543,6 +546,19 @@ void DownpourWorker::CopyDenseTable() {
   }
 }
 
+void DownpourWorker::CreateThreadParam() {
+  for (auto& v : dense_value_names_) {
+    for (auto& name : v.second) {
+      Variable* var = root_scope_->FindVar(name);
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      auto *ptr = thread_scope_->Var(name);
+      InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
+      LoDTensor* thread_tensor = ptr->GetMutable<LoDTensor>();
+      thread_tensor->mutable_data<float>(tensor->dims(), place_);
+    }
+  }
+}
+
 void DownpourWorker::CopyDenseVars() {
   if (thread_id_ != 0) {
     return;
@@ -579,6 +595,8 @@ void DownpourWorker::CopyDenseVars() {
 }
 
 void DownpourWorker::TrainFilesWithProfiler() {
+  auto dev_id = boost::get<platform::CUDAPlace>(place_).device;
+  platform::SetDeviceId(dev_id);
   VLOG(3) << "Begin to train files with profiler";
   platform::SetNumThreads(1);
   device_reader_->Start();
@@ -684,6 +702,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
     VLOG(3) << "Fill sparse value for all sparse table done.";
 
     #ifdef PADDLE_WITH_CUDA
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event_, copy_stream_));
     cudaEventSynchronize(event_);
     #endif
     int run_op_idx = 0;
@@ -737,11 +756,19 @@ void DownpourWorker::TrainFilesWithProfiler() {
           }
         }
         timeline.Start();
+        #ifdef PADDLE_WITH_CUDA
         fleet_ptr_->PushSparseVarsWithLabelAsync(
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
             &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
             dump_slot_, &sparse_push_keys_[tid], no_cvm_, place_, copy_stream_, event_);
+        #else
+        fleet_ptr_->PushSparseVarsWithLabelAsync(
+            *thread_scope_, tid, features_[tid], feature_labels_[tid],
+            sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
+            &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
+            dump_slot_, &sparse_push_keys_[tid], no_cvm_);
+        #endif
         timeline.Pause();
         push_sparse_time += timeline.ElapsedSec();
         total_time += timeline.ElapsedSec();
@@ -754,9 +781,15 @@ void DownpourWorker::TrainFilesWithProfiler() {
            ++i) {
         uint64_t tid = static_cast<uint64_t>(
             param_.program_config(0).push_dense_table_id(i));
+        #ifdef PADDLE_WITH_CUDA
         fleet_ptr_->PushDenseVarsAsync(
             *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
             scale_datanorm_, cur_batch, place_, copy_stream_, event_);
+        #else
+        fleet_ptr_->PushDenseVarsAsync(
+            *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
+            scale_datanorm_, cur_batch);
+        #endif
       }
       timeline.Pause();
       push_dense_time += timeline.ElapsedSec();
@@ -873,6 +906,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
 }
 
 void DownpourWorker::TrainFiles() {
+  auto dev_id = boost::get<platform::CUDAPlace>(place_).device;
+  platform::SetDeviceId(dev_id);
   VLOG(3) << "Begin to train files";
   platform::SetNumThreads(1);
   device_reader_->Start();
@@ -917,8 +952,10 @@ void DownpourWorker::TrainFiles() {
         AdjustInsWeight();
       }
     }
+    
     VLOG(3) << "fill sparse value for all sparse table done.";
     #ifdef PADDLE_WITH_CUDA
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event_, copy_stream_));
     cudaEventSynchronize(event_);
     #endif
     // do computation here
@@ -967,11 +1004,19 @@ void DownpourWorker::TrainFiles() {
             break;
           }
         }
+        #ifdef PADDLE_WITH_CUDA
         fleet_ptr_->PushSparseVarsWithLabelAsync(
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
             &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
             dump_slot_, &sparse_push_keys_[tid], no_cvm_, place_, copy_stream_, event_);
+        #else
+        fleet_ptr_->PushSparseVarsWithLabelAsync(
+            *thread_scope_, tid, features_[tid], feature_labels_[tid],
+            sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
+            &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
+            dump_slot_, &sparse_push_keys_[tid], no_cvm_);
+        #endif
       }
     }
 
@@ -980,9 +1025,15 @@ void DownpourWorker::TrainFiles() {
            ++i) {
         uint64_t tid = static_cast<uint64_t>(
             param_.program_config(0).push_dense_table_id(i));
+        #ifdef PADDLE_WITH_CUDA
         fleet_ptr_->PushDenseVarsAsync(
             *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
             scale_datanorm_, cur_batch, place_, copy_stream_, event_);
+        #else
+        fleet_ptr_->PushDenseVarsAsync(
+            *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
+            scale_datanorm_, cur_batch);
+        #endif
       }
       VLOG(3) << "push dense gradient done.";
 

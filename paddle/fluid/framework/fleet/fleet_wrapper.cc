@@ -210,11 +210,18 @@ void FleetWrapper::PullSparseVarsSync(
 #endif
 }
 
+#ifdef PADDLE_WITH_CUDA
 void FleetWrapper::PullDenseVarsAsync(
     const Scope& scope, const uint64_t tid,
     const std::vector<std::string>& var_names,
     std::vector<::std::future<int32_t>>* pull_dense_status,
-    const paddle::platform::Place& place) {
+    bool in_cpu) {
+#else
+void FleetWrapper::PullDenseVarsAsync(
+    const Scope& scope, const uint64_t tid,
+    const std::vector<std::string>& var_names,
+    std::vector<::std::future<int32_t>>* pull_dense_status) {
+#endif
 #ifdef PADDLE_WITH_PSLIB
   auto& regions = _regions[tid];
   regions.clear();
@@ -224,7 +231,7 @@ void FleetWrapper::PullDenseVarsAsync(
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     float* w = tensor->data<float>();
     paddle::ps::Region reg;
-    if (platform::is_cpu_place(place)) {
+    if (in_cpu) {
       reg = paddle::ps::Region(w, tensor->numel());
     }
     else {
@@ -306,6 +313,7 @@ void FleetWrapper::PushDenseVarsSync(
     Scope* scope, const uint64_t table_id,
     const std::vector<std::string>& var_names) {}
 
+#ifdef PADDLE_WITH_CUDA
 void FleetWrapper::PushDenseVarsAsync(
     const Scope& scope, const uint64_t table_id,
     const std::vector<std::string>& var_names,
@@ -314,6 +322,13 @@ void FleetWrapper::PushDenseVarsAsync(
     const paddle::platform::Place& place,
     cudaStream_t stream,
     cudaEvent_t event) {
+#else
+void FleetWrapper::PushDenseVarsAsync(
+    const Scope& scope, const uint64_t table_id,
+    const std::vector<std::string>& var_names,
+    std::vector<::std::future<int32_t>>* push_sparse_status,
+    float scale_datanorm, int batch_size) {
+#endif
 #ifdef PADDLE_WITH_PSLIB
   if (!platform::is_cpu_place(place)) {
     //platform::DeviceContextPool::Instance().Get(place)->Wait();
@@ -365,6 +380,7 @@ void FleetWrapper::PushDenseVarsAsync(
 #endif
 }
 
+#ifdef PADDLE_WITH_CUDA
 void FleetWrapper::PushSparseVarsWithLabelAsync(
     const Scope& scope, const uint64_t table_id,
     const std::vector<uint64_t>& fea_keys, const std::vector<float>& fea_labels,
@@ -377,6 +393,17 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     const paddle::platform::Place& place,
     cudaStream_t stream,
     cudaEvent_t event) {
+#else
+void FleetWrapper::PushSparseVarsWithLabelAsync(
+    const Scope& scope, const uint64_t table_id,
+    const std::vector<uint64_t>& fea_keys, const std::vector<float>& fea_labels,
+    const std::vector<std::string>& sparse_key_names,
+    const std::vector<std::string>& sparse_grad_names, const int emb_dim,
+    std::vector<std::vector<float>>* push_values,
+    std::vector<::std::future<int32_t>>* push_sparse_status,
+    const int batch_size, const bool use_cvm, const bool dump_slot,
+    std::vector<uint64_t>* sparse_push_keys, const bool no_cvm) {
+#endif
 #ifdef PADDLE_WITH_PSLIB
   int offset = 2;
   int slot_offset = 0;

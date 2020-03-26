@@ -48,6 +48,7 @@ message TrainerDesc {
   optional AdjustInsWeightConfig adjust_ins_weight_config = 20;
   optional bool no_cvm = 21 [ default = false ];
   optional bool thread_barrier = 22;
+  repeated int32 worker_places = 23;
 
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;

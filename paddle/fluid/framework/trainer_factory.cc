@@ -65,6 +65,7 @@ REGISTER_TRAINER_CLASS(MultiTrainer);
 REGISTER_TRAINER_CLASS(DistMultiTrainer);
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 REGISTER_TRAINER_CLASS(PipelineTrainer);
+REGISTER_TRAINER_CLASS(HeterTrainer);
 #endif
 }  // namespace framework
 }  // namespace paddle

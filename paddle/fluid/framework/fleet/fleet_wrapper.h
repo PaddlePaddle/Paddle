@@ -88,19 +88,12 @@ class FleetWrapper {
   // pull dense variables from server in async mod
   // Param<in>: scope, table_id, var_names
   // Param<out>: pull_dense_status
+  #ifdef PADDLE_WITH_CUDA
   void PullDenseVarsAsync(
       const Scope& scope, const uint64_t table_id,
       const std::vector<std::string>& var_names,
       std::vector<::std::future<int32_t>>* pull_dense_status,
-      const paddle::platform::Place& place);
-
-  // push dense parameters(not gradients) to server in sync mode
-  void PushDenseParamSync(const Scope& scope, const uint64_t table_id,
-                          const std::vector<std::string>& var_names);
-
-  // Push dense variables to server in async mode
-  // Param<in>: scope, table_id, var_names, scale_datanorm, batch_size
-  // Param<out>: push_sparse_status
+      bool in_cpu);
   void PushDenseVarsAsync(
       const Scope& scope, const uint64_t table_id,
       const std::vector<std::string>& var_names,
@@ -109,10 +102,33 @@ class FleetWrapper {
       const paddle::platform::Place& place,
       cudaStream_t stream, cudaEvent_t event);
 
-  // push dense variables to server in sync mode
-  void PushDenseVarsSync(Scope* scope, const uint64_t table_id,
-                         const std::vector<std::string>& var_names);
-
+  void PushSparseVarsWithLabelAsync(
+      const Scope& scope, const uint64_t table_id,
+      const std::vector<uint64_t>& fea_keys,
+      const std::vector<float>& fea_labels,
+      const std::vector<std::string>& sparse_key_names,
+      const std::vector<std::string>& sparse_grad_names, const int emb_dim,
+      std::vector<std::vector<float>>* push_values,
+      std::vector<::std::future<int32_t>>* push_sparse_status,
+      const int batch_size, const bool use_cvm, const bool dump_slot,
+      std::vector<uint64_t>* sparse_push_keys, const bool no_cvm,
+      const paddle::platform::Place& place,
+      cudaStream_t stream, cudaEvent_t event);
+  #else
+  void PullDenseVarsAsync(
+      const Scope& scope, const uint64_t table_id,
+      const std::vector<std::string>& var_names,
+      std::vector<::std::future<int32_t>>* pull_dense_status);
+  
+  // Push dense variables to server in async mode
+  // Param<in>: scope, table_id, var_names, scale_datanorm, batch_size
+  // Param<out>: push_sparse_status
+  void PushDenseVarsAsync(
+      const Scope& scope, const uint64_t table_id,
+      const std::vector<std::string>& var_names,
+      std::vector<::std::future<int32_t>>* push_sparse_status,
+      float scale_datanorm, int batch_size);
+  
   // Push sparse variables with labels to server in async mode
   // This is specially designed for click/show stats in server
   // Param<in>: scope, table_id, fea_keys, fea_labels, sparse_key_names,
@@ -127,9 +143,15 @@ class FleetWrapper {
       std::vector<std::vector<float>>* push_values,
       std::vector<::std::future<int32_t>>* push_sparse_status,
       const int batch_size, const bool use_cvm, const bool dump_slot,
-      std::vector<uint64_t>* sparse_push_keys, const bool no_cvm,
-      const paddle::platform::Place& place,
-      cudaStream_t stream, cudaEvent_t event);
+      std::vector<uint64_t>* sparse_push_keys, const bool no_cvm);
+  #endif
+  // push dense parameters(not gradients) to server in sync mode
+  void PushDenseParamSync(const Scope& scope, const uint64_t table_id,
+                          const std::vector<std::string>& var_names);
+
+  // push dense variables to server in sync mode
+  void PushDenseVarsSync(Scope* scope, const uint64_t table_id,
+                         const std::vector<std::string>& var_names);
 
   // Push sparse variables to server in Async mode
   // Param<In>: scope, table_id, fea_keys, sparse_grad_names

@@ -51,7 +51,7 @@ class TrainerBase {
   virtual void Run() = 0;
   virtual void Finalize() = 0;
   virtual Scope* GetWorkerScope(int thread_id) = 0;
-
+  void CreateThreadParam(Scope* scope);
  protected:
   Scope* root_scope_;
   bool debug_;
@@ -112,6 +112,39 @@ class DistMultiTrainer : public MultiTrainer {
   cudaStream_t copy_stream_;
   #endif
 };
+
+#ifdef PADDLE_WITH_CUDA
+class HeterTrainer : public MultiTrainer {
+ public:
+  HeterTrainer() {}
+  virtual ~HeterTrainer() {}
+  virtual void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set);
+  virtual void InitOtherEnv(const ProgramDesc& main_program);
+  virtual void Run();
+  virtual void Finalize();
+  template <typename T>
+  void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
+  virtual void FinalizeDumpEnv();
+  virtual void InitDumpEnv();
+  virtual Scope* GetWorkerScope(int thread_id);
+  virtual void DumpWork(int tid);
+
+ protected:
+  std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
+  std::vector<std::thread> dump_thread_;
+  int dump_thread_num_;
+  std::shared_ptr<paddle::framework::ChannelObject<std::string>> queue_;
+
+  bool need_dump_field_;
+  std::string dump_fields_path_;
+  std::string dump_converter_;
+  int mpi_rank_;
+  int mpi_size_;
+  int dump_file_num_;
+  std::vector<cudaStream_t> copy_streams_;
+  std::vector<platform::Place> places_;
+};
+#endif
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 class PipelineTrainer : public TrainerBase {

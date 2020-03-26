@@ -52,7 +52,6 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
       root_scope_, "root_scope should be set before creating thread scope");
 
   thread_scope_ = &root_scope_->NewScope();
-
   for (auto &var : block.AllVars()) {
     if (var->Persistable()) {
       auto *ptr = root_scope_->Var(var->Name());

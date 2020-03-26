@@ -20,15 +20,26 @@ limitations under the License. */
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/trainer.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
 
 namespace paddle {
 namespace framework {
 
-void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
+void HeterTrainer::Initialize(const TrainerDesc &trainer_desc,
                                   Dataset *dataset) {
   thread_num_ = trainer_desc.thread_num();
   SetDataset(dataset);
-
+  
+  for (int i = 0; i < trainer_desc.worker_places_size(); ++i) {
+    int num = trainer_desc.worker_places(i);
+    platform::CUDAPlace place = platform::CUDAPlace(num);
+    platform::CUDADeviceGuard guard(place.device);
+    cudaStream_t stream;
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream));
+    copy_streams_.push_back(stream);
+    places_.push_back(place);
+  }
+  
   dump_fields_path_ = trainer_desc.dump_fields_path();
   dump_converter_ = trainer_desc.dump_converter();
   need_dump_field_ = false;
@@ -71,7 +82,7 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
   SetDebug(trainer_desc.debug());
 }
 
-void DistMultiTrainer::DumpWork(int tid) {
+void HeterTrainer::DumpWork(int tid) {
 #ifdef _LINUX
   int err_no = 0;
   std::string path = string::format_string(
@@ -98,7 +109,7 @@ void DistMultiTrainer::DumpWork(int tid) {
 #endif
 }
 
-void DistMultiTrainer::InitDumpEnv() {
+void HeterTrainer::InitDumpEnv() {
   queue_ = paddle::framework::MakeChannel<std::string>();
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i]->SetChannelWriter(queue_.get());
@@ -112,11 +123,11 @@ void DistMultiTrainer::InitDumpEnv() {
   }
   for (int i = 0; i < dump_thread_num_; i++) {
     dump_thread_.push_back(
-        std::thread(std::bind(&DistMultiTrainer::DumpWork, this, i)));
+        std::thread(std::bind(&HeterTrainer::DumpWork, this, i)));
   }
 }
 
-void DistMultiTrainer::FinalizeDumpEnv() {
+void HeterTrainer::FinalizeDumpEnv() {
   queue_->Close();
   for (auto &th : dump_thread_) {
     th.join();
@@ -124,17 +135,29 @@ void DistMultiTrainer::FinalizeDumpEnv() {
   queue_.reset();
 }
 
-void DistMultiTrainer::InitOtherEnv(const ProgramDesc &main_program) {
+void HeterTrainer::InitOtherEnv(const ProgramDesc &main_program) {
   if (need_dump_field_) {
     InitDumpEnv();
   }
   pull_dense_worker_->SetRootScope(root_scope_);
   pull_dense_worker_->CreatePinVar();
+  size_t place_len = places_.size();
+  for (int i = 0; i < thread_num_; ++i) {
+    workers_[i]->CreatePinVar();
+    workers_[i]->SetPlace(places_[i % place_len]);
+    workers_[i]->SetStream(copy_streams_[i % place_len]);
+    workers_[i]->SetReaderPlace(platform::CPUPlace());
+    workers_[i]->CreateThreadParam();
+    workers_[i]->CreateEvent();
+    pull_dense_worker_->AddThreadScope(workers_[i]->GetThreadScope());
+    pull_dense_worker_->AddPlace(places_[i % place_len]);
+    pull_dense_worker_->AddStream(copy_streams_[i % place_len]);
+  }
   pull_dense_worker_->Start();
   VLOG(3) << "init other env done.";
 }
 
-void DistMultiTrainer::Run() {
+void HeterTrainer::Run() {
   for (int thidx = 0; thidx < thread_num_; ++thidx) {
     if (!debug_) {
       threads_.push_back(
@@ -146,11 +169,11 @@ void DistMultiTrainer::Run() {
   }
 }
 
-Scope *DistMultiTrainer::GetWorkerScope(int thread_id) {
+Scope *HeterTrainer::GetWorkerScope(int thread_id) {
   return workers_[thread_id]->GetThreadScope();
 }
 
-void DistMultiTrainer::Finalize() {
+void HeterTrainer::Finalize() {
   for (auto &th : threads_) {
     th.join();
   }
@@ -197,7 +220,7 @@ void DistMultiTrainer::Finalize() {
 }
 
 template <typename T>
-void DistMultiTrainer::MergeToRootScope(LoDTensor *root_tensor,
+void HeterTrainer::MergeToRootScope(LoDTensor *root_tensor,
                                         LoDTensor *tensor) {
   T *root_data = root_tensor->data<T>();
   T *data = tensor->data<T>();

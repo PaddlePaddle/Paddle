@@ -15,7 +15,7 @@
 
 import sys
 from os import path
-__all__ = ['TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer']
+__all__ = ['TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer', 'HeterTrainer']
 
 
 class TrainerDesc(object):
@@ -107,6 +107,10 @@ class TrainerDesc(object):
     def _set_dump_param(self, dump_param):
         for param in dump_param:
             self.proto_desc.dump_param.append(param)
+
+    def _set_worker_places(self, worker_places):
+        for place in worker_places:
+            self.proto_desc.worker_places.append(place)
 
     def _set_thread_barrier(self, thread_barrier):
         self.proto_desc.thread_barrier = thread_barrier
@@ -246,6 +250,30 @@ class DistMultiTrainer(TrainerDesc):
     def _gen_trainer_desc(self):
         super(DistMultiTrainer, self)._gen_trainer_desc()
         self.proto_desc.class_name = "DistMultiTrainer"
+        if self._program == None:
+            raise RuntimeError("None Program")
+        self._device_worker._set_infer(self._infer)
+        self._device_worker._set_program(self._program)
+        self._device_worker._gen_worker_desc(self.proto_desc)
+
+
+class HeterTrainer(TrainerDesc):
+    """
+    Implement of HeterTrainer.
+    It's for Distributed training.
+    """
+
+    def __init__(self):
+        super(HeterTrainer, self).__init__()
+        pass
+
+    def _set_program(self, program):
+        super(HeterTrainer, self)._set_program(program)
+        self._program = program
+
+    def _gen_trainer_desc(self):
+        super(HeterTrainer, self)._gen_trainer_desc()
+        self.proto_desc.class_name = "HeterTrainer"
         if self._program == None:
             raise RuntimeError("None Program")
         self._device_worker._set_infer(self._infer)
