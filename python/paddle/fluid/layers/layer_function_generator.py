@@ -251,7 +251,7 @@ def generate_activation_fn(op_type):
     """
     op_proto = OpProtoHolder.instance().get_op_proto(op_type)
 
-    def func(x, name=None):
+    def func(x, name=None, out=None):
         if in_dygraph_mode():
             inputs = {'X': [x]}
             op = getattr(core.ops, op_type)
@@ -262,15 +262,23 @@ def generate_activation_fn(op_type):
                                  op_type)
         helper = LayerHelper(op_type, **locals())
 
-        output = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type=op_type, inputs={"X": x}, outputs={"Out": output})
-        return output
+        if name and out:
+            warnings.warn(
+                "Both name and out parameters have been set in fluid.layers.%s(), only out will take effect to specify the result storage. "
+                "You can discard either one to solve this warning." % op_type,
+                category=UserWarning,
+                stacklevel=2)
+        if not out:
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(type=op_type, inputs={"X": x}, outputs={"Out": out})
+        return out
 
     func.__name__ = op_type
     func.__doc__ = _generate_doc_string_(
         op_proto,
         additional_args_lines=[
             "name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` ."
+            "out(Variable, optional): The default value is None. Optional output can be any created Variable that meets the requirements to store the result of operation. if out is None, a new Varibale will be create to store the result."
         ])
     func.__doc__ = func.__doc__ + """
 

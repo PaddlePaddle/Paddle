@@ -66,7 +66,30 @@ class TestActivation(OpTest):
         pass
 
 
-class TestSigmoid(TestActivation):
+class TestActivationNoattr(TestActivation):
+    def test_out(self):
+        with fluid.program_guard(fluid.Program()):
+            data = fluid.layers.data(name="X", shape=[1])
+            out = eval("fluid.layers.%s(data, out=data)" % self.op_type)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            result = exe.run(feed={"X": np.array([0.1])},
+                             fetch_list=[data, out])
+            self.assertEqual(result[0], result[1])
+
+    def test_out_name(self):
+        with fluid.program_guard(fluid.Program()):
+            data = fluid.layers.data(name="X", shape=[1])
+            out = eval("fluid.layers.%s(data, name='Y', out=data)" %
+                       self.op_type)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            result = exe.run(feed={"X": np.array([0.1])},
+                             fetch_list=[data, out])
+            self.assertEqual(result[0], result[1])
+
+
+class TestSigmoid(TestActivationNoattr):
     def setUp(self):
         self.op_type = "sigmoid"
         self.init_dtype()
@@ -86,7 +109,7 @@ class TestSigmoid(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.01)
 
 
-class TestLogSigmoid(TestActivation):
+class TestLogSigmoid(TestActivationNoattr):
     def setUp(self):
         self.op_type = "logsigmoid"
         self.init_dtype()
@@ -103,7 +126,7 @@ class TestLogSigmoid(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
 
-class TestTanh(TestActivation):
+class TestTanh(TestActivationNoattr):
     def setUp(self):
         self.op_type = "tanh"
         self.init_dtype()
@@ -125,7 +148,7 @@ class TestTanh(TestActivation):
         self.dtype = np.float32
 
 
-class TestAtan(TestActivation):
+class TestAtan(TestActivationNoattr):
     def setUp(self):
         self.op_type = "atan"
         self.init_dtype()
@@ -142,7 +165,7 @@ class TestAtan(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestTanhShrink(TestActivation):
+class TestTanhShrink(TestActivationNoattr):
     def setUp(self):
         self.op_type = "tanh_shrink"
         self.init_dtype()
@@ -200,7 +223,7 @@ class TestSoftShrink(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestSqrt(TestActivation):
+class TestSqrt(TestActivationNoattr):
     def setUp(self):
         self.op_type = "sqrt"
         self.init_dtype()
@@ -217,7 +240,7 @@ class TestSqrt(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestRsqrt(TestActivation):
+class TestRsqrt(TestActivationNoattr):
     def setUp(self):
         self.op_type = "rsqrt"
         self.init_dtype()
@@ -234,7 +257,7 @@ class TestRsqrt(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.0005)
 
 
-class TestAbs(TestActivation):
+class TestAbs(TestActivationNoattr):
     def setUp(self):
         self.op_type = "abs"
         self.init_dtype()
@@ -256,7 +279,7 @@ class TestAbs(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestCeil(TestActivation):
+class TestCeil(TestActivationNoattr):
     def setUp(self):
         self.op_type = "ceil"
         self.init_dtype()
@@ -272,7 +295,7 @@ class TestCeil(TestActivation):
         pass
 
 
-class TestFloor(TestActivation):
+class TestFloor(TestActivationNoattr):
     def setUp(self):
         self.op_type = "floor"
         self.init_dtype()
@@ -290,7 +313,7 @@ class TestFloor(TestActivation):
         pass
 
 
-class TestCos(TestActivation):
+class TestCos(TestActivationNoattr):
     def setUp(self):
         self.op_type = "cos"
         self.init_dtype()
@@ -307,7 +330,7 @@ class TestCos(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestAcos(TestActivation):
+class TestAcos(TestActivationNoattr):
     def setUp(self):
         self.op_type = "acos"
         self.init_dtype()
@@ -324,7 +347,7 @@ class TestAcos(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestSin(TestActivation):
+class TestSin(TestActivationNoattr):
     def setUp(self):
         self.op_type = "sin"
         self.init_dtype()
@@ -341,7 +364,7 @@ class TestSin(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestAsin(TestActivation):
+class TestAsin(TestActivationNoattr):
     def setUp(self):
         self.op_type = "asin"
         self.init_dtype()
@@ -358,7 +381,7 @@ class TestAsin(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestRound(TestActivation):
+class TestRound(TestActivationNoattr):
     def setUp(self):
         self.op_type = "round"
         self.init_dtype()
@@ -512,7 +535,7 @@ class TestHardSwish(TestActivation):
         threshold = 6.0
         scale = 6.0
         offset = 3.0
-        #the same with TestAbs
+        # the same with TestAbs
         x[np.abs(x + offset) < 0.005] = 0.02
         x[np.abs(x - threshold + offset) < 0.005] = threshold - offset + 0.02
         out = x * np.minimum(np.maximum(x + offset, 0), threshold) / scale
@@ -584,7 +607,7 @@ class TestELUOpError(unittest.TestCase):
             self.assertRaises(TypeError, fluid.layers.elu, x2)
 
 
-class TestReciprocal(TestActivation):
+class TestReciprocal(TestActivationNoattr):
     def setUp(self):
         self.op_type = "reciprocal"
         self.init_dtype()
@@ -618,7 +641,7 @@ class TestLog(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestSquare(TestActivation):
+class TestSquare(TestActivationNoattr):
     def setUp(self):
         self.op_type = "square"
         self.init_dtype()
@@ -718,7 +741,7 @@ class TestSTanh(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestSoftplus(TestActivation):
+class TestSoftplus(TestActivationNoattr):
     def setUp(self):
         self.op_type = "softplus"
         self.init_dtype()
@@ -736,7 +759,7 @@ class TestSoftplus(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestSoftsign(TestActivation):
+class TestSoftsign(TestActivationNoattr):
     def setUp(self):
         self.op_type = "softsign"
         self.init_dtype()
