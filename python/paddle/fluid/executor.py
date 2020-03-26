@@ -436,8 +436,10 @@ class Executor(object):
 
     Args:
         place(fluid.CPUPlace()|fluid.CUDAPlace(n)|None): This parameter represents
-            the executor run on which device. When this parameter is None, Paddle
-	    would choose the device independtantly. Default is None.
+            which device the executor run on. When this parameter is None, PaddlePaddle
+            will set the default device according to its installation version. If Paddle
+            is CPU version, the default device would set to CPUPlace(). If Paddle is GPU
+            version, the default device would set to CUDAPlace(0). Default is None.
 
     Returns:
         Executor
@@ -455,7 +457,7 @@ class Executor(object):
           # place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
           # exe = fluid.Executor(place)
 
-          # place=None, Paddle chooses the device.
+          # If you don't set place, PaddlePaddle set the default device.
           exe = fluid.Executor()
 
           train_program = fluid.Program()
