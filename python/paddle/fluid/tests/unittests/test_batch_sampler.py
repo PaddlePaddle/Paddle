@@ -17,19 +17,36 @@ from __future__ import division
 import unittest
 
 import paddle.fluid as fluid
-from paddle.fluid.io import BatchSampler
+from paddle.fluid.io import BatchSampler, Dataset
+
+
+class RandomDataset(Dataset):
+    def __init__(self, sample_num, class_num):
+        self.sample_num = sample_num
+        self.class_num = class_num
+
+    def __getitem__(self, idx):
+        np.random.seed(idx)
+        image = np.random.random([IMAGE_SIZE]).astype('float32')
+        label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+        return image, label
+
+    def __len__(self):
+        return self.sample_num
 
 
 class TestBatchSampler(unittest.TestCase):
     def setUp(self):
         self.num_samples = 1000
+        self.num_classes = 10
         self.batch_size = 32
         self.shuffle = False
         self.drop_last = False
 
     def init_batch_sampler(self):
+        dataset = RandomDataset(self.num_samples, self.num_classes)
         bs = BatchSampler(
-            data_source=[0] * self.num_samples,
+            dataset=dataset,
             batch_size=self.batch_size,
             shuffle=self.shuffle,
             drop_last=self.drop_last)
@@ -54,6 +71,7 @@ class TestBatchSampler(unittest.TestCase):
 class TestBatchSamplerDropLast(TestBatchSampler):
     def setUp(self):
         self.num_samples = 1000
+        self.num_classes = 10
         self.batch_size = 32
         self.shuffle = False
         self.drop_last = True
@@ -62,6 +80,7 @@ class TestBatchSamplerDropLast(TestBatchSampler):
 class TestBatchSamplerShuffle(TestBatchSampler):
     def setUp(self):
         self.num_samples = 1000
+        self.num_classes = 10
         self.batch_size = 32
         self.shuffle = True
         self.drop_last = True
@@ -77,15 +96,23 @@ class TestBatchSamplerWithIndices(TestBatchSampler):
 
 
 class TestBatchSamplerWithIndicesAndDataSource(unittest.TestCase):
+    def setUp(self):
+        self.num_samples = 1000
+        self.num_classes = 10
+        self.batch_size = 32
+        self.shuffle = False
+        self.drop_last = True
+
     def test_main(self):
         try:
+            dataset = RandomDataset(self.num_samples, self.num_classes)
             bs = BatchSampler(
-                data_source=[0] * self.num_samples,
+                dataset=dataset,
                 indices=list(range(self.num_samples)),
                 batch_size=self.batch_size,
                 drop_last=self.drop_last)
             self.assertTrue(False)
-        except:
+        except AssertionError:
             pass
 
 

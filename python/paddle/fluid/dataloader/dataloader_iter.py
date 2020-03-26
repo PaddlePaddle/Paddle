@@ -73,7 +73,7 @@ class _DataLoaderIterBase(object):
         return self
 
     def __len__(self):
-        return len(self.batch_sampler)
+        return len(self._batch_sampler)
 
     def __next__(self):
         raise NotImplementedError("'{}' not implement in class "\
@@ -137,7 +137,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                 # read data from dataset in mini-batch
                 batch = [self._dataset[i] for i in indices]
                 if self._collate_fn is not None:
-                    batch = _collate_fn(batch)
+                    batch = self._collate_fn(batch)
 
                 # batch each field
                 slots = []
@@ -332,7 +332,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             # some shared memory objects may have been applied for but have not yet
             # been put into the inter-process Queue. This part of the object needs
             # to be cleaned up when the process ends.
-            CleanupFuncRegistrar.register(_cleanup_mmap)
+            CleanupFuncRegistrar.register(_cleanup_mmap, signals=[])
 
             # set signal handler
             core._set_process_signal_handler()
@@ -430,12 +430,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 #    default, if KeyboardInterrupt blocking, failed workers will be
                 #    checked and raise RuntimeError to quit DataLoader in timeout
                 #    exception handling.
-                # 2. timeout will also trigger if workers' data drained, _send_idx 
-                #    will be equal to _rcvd_idx, continue to get data again
-                # 3. if workers' data drained, all outstanding batches will be put to
-                #     blocking_queue, there will be enough data to read_next
-                # 4. if load a min-batch data time cost > timeout, print logs to
-                #    remind user to increase num_workers or timeout
+                # 2. if get data timeout and check workers all alive, continue to
+                #    get data again
                 data = self._data_queue.get(timeout=self._timeout)
             except Exception as e:
                 failed_workers = []
@@ -451,14 +447,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
                 # get(timeout) will call _poll(timeout) and may raise IOError
                 if isinstance(e, queue.Empty) or isinstance(e, IOError):
-                    # if data in workers are drained, wait main process to StopIteration
-                    if self._send_idx == self._rcvd_idx:
-                        continue
-                logging.error("Reading from workers' result queue timeout, " \
-                  "you can try:\n" \
-                  "  1. rerun with num_workers=0 to check data loading correctness\n" \
-                  "  2. increase 'num_workers' to speed up data loading\n" \
-                  "  3. increase 'timeout' for getting data")
+                    # continue on timeout to keep getting data from queue
+                    continue
 
                 self._exit_thread_unexpectedly()
                 logging.error("DataLoader reader thread failed({}) to read data from " \

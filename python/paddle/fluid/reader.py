@@ -276,7 +276,7 @@ class DataLoader(object):
                  collate_fn=None,
                  num_workers=0,
                  use_buffer_reader=True,
-                 timeout=5,
+                 timeout=0,
                  worker_init_fn=None):
         self.return_list = return_list
         self.collate_fn = collate_fn
@@ -322,7 +322,7 @@ class DataLoader(object):
                 "batch_size should be a positive value when " \
                 "batch_sampler is not given"
             self.batch_sampler = BatchSampler(
-                data_source=dataset,
+                dataset=dataset,
                 batch_size=batch_size,
                 shuffle=shuffle,
                 drop_last=drop_last)

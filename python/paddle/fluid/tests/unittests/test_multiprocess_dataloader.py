@@ -292,7 +292,7 @@ class TestDataLoaderAssert(unittest.TestCase):
         place = fluid.cpu_places()[0]
         with fluid.dygraph.guard(place):
             dataset = RandomDataset(SAMPLE_NUM, CLASS_NUM)
-            batch_sampler = BatchSampler(data_source=dataset)
+            batch_sampler = BatchSampler(dataset=dataset)
 
             # dataset is not instance of Dataset
             try:

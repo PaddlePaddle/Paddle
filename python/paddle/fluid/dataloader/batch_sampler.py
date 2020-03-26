@@ -16,6 +16,7 @@ from __future__ import print_function
 from __future__ import division
 
 import numpy as np
+from .dataset import Dataset
 
 __all__ = ["BatchSampler"]
 
@@ -35,12 +36,12 @@ class BatchSampler(object):
 
 
     Args:
-        data_source(Dataset): this could be a `fluid.io.Dataset` 
+        dataset(Dataset): this could be a `fluid.io.Dataset` 
                 implement or other python object which implemented
                 `__len__` for BatchSampler to get indices as the
-                range of :attr:`data_source` length. Default None.
+                range of :attr:`dataset` length. Default None.
         indices (list|tuple): a substitution parameter for
-                :attr:`data_source` either :attr:`data_source` or
+                :attr:`dataset` either :attr:`dataset` or
                 :attr:`indices` should be set, give the whole
                 indices to sampler from directly. Default None.
         shuffle(bool): whether to shuffle indices order before genrating
@@ -65,8 +66,8 @@ class BatchSampler(object):
             for batch_indices in bs:
                 print(batch_indices)
 
-            # init with data_source
-            bs = BatchSampler(data_source=MNIST(mode='test')),
+            # init with dataset
+            bs = BatchSampler(dataset=MNIST(mode='test')),
                               shuffle=False,
                               batch_size=16,
                               drop_last=False)
@@ -79,30 +80,32 @@ class BatchSampler(object):
     """
 
     def __init__(self,
-                 data_source=None,
+                 dataset=None,
                  indices=None,
                  shuffle=False,
                  batch_size=1,
                  drop_last=False):
-        if data_source is None:
+        if dataset is None:
             assert indices is not None, \
-                "either data_source or indices should be set"
+                "either dataset or indices should be set"
             assert isinstance(indices, list) or isinstance(indices, tuple), \
-                "indices should be a list or tuple"
+                "indices should be a list or tuple, but got {}".format(type(indices))
             self.indices = indices
         else:
+            assert isinstance(dataset, Dataset), \
+                "dataset should be an instance of fluid.io.Dataset"
             assert indices is None, \
-                "should not set both data_source and indices"
-            self.indices = list(range(len(data_source)))
+                "should not set both dataset and indices"
+            self.indices = list(range(len(dataset)))
 
         assert isinstance(batch_size, int) and batch_size > 0, \
-                "batch_size should be a positive integer"
+            "batch_size should be a positive integer, but got {}".format(batch_size)
         self.batch_size = batch_size
         assert isinstance(shuffle, bool), \
-                "shuffle should be a boolean value"
+            "shuffle should be a boolean value, but got {}".format(type(shuffle))
         self.shuffle = shuffle
         assert isinstance(drop_last, bool), \
-                "drop_last should be a boolean number"
+            "drop_last should be a boolean value, but got {}".format(type(drop_last))
         self.drop_last = drop_last
 
     def __iter__(self):

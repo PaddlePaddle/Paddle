@@ -230,7 +230,7 @@ void BindImperative(py::module *m_ptr) {
     PADDLE_ENFORCE_EQ(
         py::isinstance<py::tuple>(obj) || py::isinstance<py::list>(obj), true,
         platform::errors::InvalidArgument(
-            "The batch data read into DataLoader is illegal."
+            "The subprocess ids set in DataLoader is illegal."
             "Expected data type is tuple or list, but received %s",
             obj.get_type()));
     py::list pids = py::cast<py::list>(obj);

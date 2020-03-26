@@ -24,6 +24,7 @@
 #include <map>
 #include <set>
 
+#include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -55,17 +56,21 @@ void EraseLoadProcessPIDs(int64_t key) {
 // siginfo_t doc: https://www.mkssoftware.com/docs/man5/siginfo_t.5.asp
 // waitid doc: https://linux.die.net/man/2/waitid
 
-#define SIGNAL_HANDLE(SIGNAL)                   \
-  do {                                          \
-    struct sigaction sa;                        \
-    sa.sa_handler = SIG_DFL;                    \
-    sa.sa_flags = 0;                            \
-    if (sigemptyset(&sa.sa_mask) != 0 ||        \
-        sigaction(SIGNAL, &sa, nullptr) != 0) { \
-      _exit(EXIT_FAILURE);                      \
-    } else {                                    \
-      raise(SIGNAL);                            \
-    }                                           \
+// clear mmap fds on signal handler, make sure mmap clear will be called
+// on signal handling and no need to register mmap clear up handler on
+// python side. If shared memory is not used Clear() will do nothing.
+#define SIGNAL_HANDLE(SIGNAL)                               \
+  do {                                                      \
+    memory::allocation::MemoryMapFdSet::Instance().Clear(); \
+    struct sigaction sa;                                    \
+    sa.sa_handler = SIG_DFL;                                \
+    sa.sa_flags = 0;                                        \
+    if (sigemptyset(&sa.sa_mask) != 0 ||                    \
+        sigaction(SIGNAL, &sa, nullptr) != 0) {             \
+      _exit(EXIT_FAILURE);                                  \
+    } else {                                                \
+      raise(SIGNAL);                                        \
+    }                                                       \
   } while (0)
 
 #define REGISTER_SIGNAL_HANDLER(SIGNAL, HANDLER_NAME)             \

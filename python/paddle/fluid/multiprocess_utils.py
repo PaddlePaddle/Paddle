@@ -63,7 +63,7 @@ class CleanupFuncRegistrar():
     _registered_func_set = set()
 
     @classmethod
-    def register(cls, function, signals=[signal.SIGTERM]):
+    def register(cls, function, signals=[]):
         def _func_exectuor():
             if function not in cls._executed_func_set:
                 try:
