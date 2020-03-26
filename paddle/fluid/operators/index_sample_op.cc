@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/index_sample_op.h"
 #include <vector>
+#include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -129,7 +130,7 @@ class IndexSampleGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(IndexSampleGradNoNeedBufferVarsInference,
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(IndexSampleGradNoNeedBufferVarInference,
                                       "X");
 }  // namespace operators
 }  // namespace paddle
@@ -139,7 +140,7 @@ REGISTER_OPERATOR(index_sample, ops::IndexSampleOp, ops::IndexSampleOpMaker,
                   ops::IndexSampleGradMaker<paddle::framework::OpDesc>,
                   ops::IndexSampleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(index_sample_grad, ops::IndexSampleGradOp,
-                  ops::IndexSampleGradNoNeedBufferVarsInference);
+                  ops::IndexSampleGradNoNeedBufferVarInference);
 REGISTER_OP_CPU_KERNEL(
     index_sample, ops::IndexSampleKernel<paddle::platform::CPUPlace, float>,
     ops::IndexSampleKernel<paddle::platform::CPUPlace, double>,
