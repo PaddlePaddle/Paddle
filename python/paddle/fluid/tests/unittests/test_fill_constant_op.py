@@ -82,6 +82,28 @@ class TestFillConstantOp4(OpTest):
         self.check_output()
 
 
+class TestFillConstantOp5(unittest.TestCase):
+    def test_errors(self):
+        with fluid.program_guard(fluid.Program()):
+            data = fluid.data(name="X", shape=[1], dtype="float32")
+            out = paddle.tensor.zeros(shape=[1], out=data, dtype="float32")
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            result = exe.run(feed={"X": np.array(
+                [0.1], dtype="float32")},
+                             fetch_list=[data, out])
+            self.assertEqual(result[0], result[1])
+        with fluid.program_guard(fluid.Program()):
+            data = fluid.data(name="X", shape=[1], dtype="float32")
+            out = paddle.tensor.ones(shape=[1], out=data, dtype="float32")
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            result = exe.run(feed={"X": np.array(
+                [0.1], dtype="float32")},
+                             fetch_list=[data, out])
+            self.assertEqual(result[0], result[1])
+
+
 class TestFillConstantOpWithSelectedRows(unittest.TestCase):
     def check_with_place(self, place):
         scope = core.Scope()
@@ -185,44 +207,6 @@ class TestFillConstantOp1_ShapeTensor(OpTest):
     def init_data(self):
         self.shape = [123, 92]
         self.value = 3.8
-
-    def test_check_output(self):
-        self.check_output()
-
-
-class TeseFillConstantOp1_device(OpTest):
-    def setUp(self):
-        '''Test fill_constant op with specified value
-        '''
-        self.op_type = "fill_constant"
-        self.init_data()
-
-        self.inputs = {"ShapeTensor": np.array(self.shape).astype("int32")}
-        self.attrs = {'value': self.value, 'device': 'cpu'}
-        self.outputs = {'Out': np.full(self.shape, self.value)}
-
-    def init_data(self):
-        self.shape = [123, 92]
-        self.value = 0
-
-    def test_check_output(self):
-        self.check_output()
-
-
-class TeseFillConstantOp1_device(OpTest):
-    def setUp(self):
-        '''Test fill_constant op with specified value
-        '''
-        self.op_type = "fill_constant"
-        self.init_data()
-
-        self.inputs = {"ShapeTensor": np.array(self.shape).astype("int32")}
-        self.attrs = {'value': self.value, 'device': 'gpu'}
-        self.outputs = {'Out': np.full(self.shape, self.value)}
-
-    def init_data(self):
-        self.shape = [123, 92]
-        self.value = 0
 
     def test_check_output(self):
         self.check_output()
@@ -340,13 +324,6 @@ class TestFillConstantOpError(unittest.TestCase):
                     shape=[shape, 2], dtype="float32", value=1)
 
             self.assertRaises(TypeError, test_shape_tensor_list_dtype)
-
-            # The device of fill_constant must be in 'cpu', 'gpu' or None 
-            def test_device_value():
-                paddle.tensor.fill_constant(
-                    shape=[100], dtype="float32", value=1, device='xpu')
-
-            self.assertRaises(ValueError, test_device_value)
 
 
 if __name__ == "__main__":
