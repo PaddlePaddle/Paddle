@@ -50,6 +50,13 @@ class Conv2DReLU6FusePass : public ConvActivationFusePass {
  public:
   std::string activation_type() const { return "relu6"; }
 };
+/*
+ * Fuse Conv and Swish class
+ */
+class Conv2DSwishFusePass : public ConvActivationFusePass {
+ public:
+  std::string activation_type() const { return "swish"; }
+};
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

@@ -140,9 +140,7 @@ class WarpCTCGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
-
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("warpctc_grad");
 
     op->SetInput("WarpCTCGrad", this->Output("WarpCTCGrad"));
@@ -154,7 +152,6 @@ class WarpCTCGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("Logits"), this->InputGrad("Logits"));
 
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 
@@ -181,8 +178,8 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(WarpCTCGradOpNoNeedBufferVarInference,
-                                      "Logits");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(WarpCTCGradOpNoNeedBufferVarInference,
+                                    "Logits");
 
 }  // namespace operators
 }  // namespace paddle

@@ -105,8 +105,9 @@ def enable_dygraph(place=None):
             print(fluid.in_dygraph_mode())  # False
     """
     global _functional_dygraph_context_manager
-    _functional_dygraph_context_manager = guard(place=place)
-    _functional_dygraph_context_manager.__enter__()
+    if _functional_dygraph_context_manager is None:
+        _functional_dygraph_context_manager = guard(place=place)
+        _functional_dygraph_context_manager.__enter__()
 
 
 def disable_dygraph():
@@ -247,6 +248,77 @@ def _print_debug_msg(parameter_list, limit=5, is_test=False):
         objgraph.show_growth(limit=limit)
     else:
         return unique_name_size, tracer_var_size, alive_cpp_var_size
+
+
+@framework.dygraph_only
+def grad(outputs,
+         inputs,
+         grad_outputs=None,
+         no_grad_set=None,
+         create_graph=False,
+         backward_strategy=None):
+    def check_in_out(in_out_list, name):
+        assert in_out_list is not None, "{} should not be None".format(name)
+
+        if isinstance(in_out_list, (list, tuple)):
+            assert len(in_out_list) > 0, "{} cannot be empty".format(name)
+            for each_var in in_out_list:
+                assert isinstance(
+                    each_var,
+                    core.VarBase), "Elements of {} must be Variable".format(
+                        name)
+            return in_out_list
+        else:
+            assert isinstance(
+                in_out_list,
+                core.VarBase), "{} must be Variable or list of Variable".format(
+                    name)
+            return [in_out_list]
+
+    outputs = check_in_out(outputs, 'outputs')
+    inputs = check_in_out(inputs, 'inputs')
+
+    if grad_outputs is not None:
+        if not isinstance(grad_outputs, (list, tuple)):
+            grad_outputs = [grad_outputs]
+
+        for each_var in grad_outputs:
+            if each_var is not None:
+                assert isinstance(
+                    each_var, core.VarBase
+                ), "grad_outputs must be None, a Variable or a list containing None or Variables"
+    else:
+        grad_outputs = []
+
+    if len(grad_outputs) > 0:
+        assert len(grad_outputs) == len(
+            outputs), "The length of grad_outputs must be equal to outputs"
+
+    if no_grad_set is None:
+        no_grad_set = []
+    elif isinstance(no_grad_set, core.VarBase):
+        no_grad_set = [no_grad_set]
+    elif isinstance(no_grad_set, (list, tuple, set)):
+        no_grad_set = list(no_grad_set)
+        for var in no_grad_set:
+            assert isinstance(
+                var, core.VarBase), "no_grad_set can only contains Variable"
+    else:
+        raise AssertionError(
+            "no_grad_set must be None, Variable or list/tuple/set of Variables")
+
+    if backward_strategy is None:
+        backward_strategy = core.BackwardStrategy()
+
+    assert isinstance(backward_strategy, core.BackwardStrategy), \
+        "backward_strategy must be type paddle.fluid.dygraph.BackwardStrategy"
+
+    assert isinstance(create_graph, bool), "create_graph must be True or False"
+
+    place = core.Place()
+    place.set_place(framework._current_expected_place())
+    return core.dygraph_partial_grad(inputs, outputs, grad_outputs, no_grad_set,
+                                     place, backward_strategy, create_graph)
 
 
 @framework.dygraph_only

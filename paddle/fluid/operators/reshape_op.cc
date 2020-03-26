@@ -440,14 +440,12 @@ class Reshape2GradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<T> Apply() const override {
-    auto *grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("reshape2_grad");
     grad_op->SetInput("XShape", this->Output("XShape"));
     grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     grad_op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(grad_op);
   }
 };
 
@@ -456,14 +454,12 @@ class Reshape2DoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<T> Apply() const override {
-    auto *grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("reshape2_grad_grad");
     grad_op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
     grad_op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
     grad_op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
     grad_op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(grad_op);
   }
 };
 
@@ -546,8 +542,8 @@ DECLARE_INPLACE_OP_INFERER(ReshapeGradInplaceInToOut,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
 DECLARE_INPLACE_OP_INFERER(ReshapeDoubleGradInplaceInToOut, {"DDX", "DDOut"});
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
-    ReshapeDoubleGradOpNoNeedBufferVarInference, "DOut");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReshapeDoubleGradOpNoNeedBufferVarInference,
+                                    "DOut");
 
 }  // namespace operators
 }  // namespace paddle

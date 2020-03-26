@@ -309,6 +309,8 @@ static void RegisterGlobalVarGetterSetter() {
   REGISTER_PUBLIC_GLOBAL_VAR_GETTER_SETTER(FLAGS_inner_op_parallelism, true);
   REGISTER_PUBLIC_GLOBAL_VAR_GETTER_SETTER(FLAGS_tracer_profile_fname, true);
 #ifdef PADDLE_WITH_CUDA
+  REGISTER_GLOBAL_VAR_GETTER_SETTER(FLAGS_gpu_memory_limit_mb);
+  REGISTER_GLOBAL_VAR_GETTER_SETTER(FLAGS_cudnn_deterministic);
   REGISTER_PUBLIC_GLOBAL_VAR_GETTER_SETTER(FLAGS_gpu_memory_limit_mb, true);
   REGISTER_PUBLIC_GLOBAL_VAR_GETTER_SETTER(FLAGS_cudnn_deterministic, true);
   REGISTER_PUBLIC_GLOBAL_VAR_GETTER_SETTER(FLAGS_conv_workspace_size_limit,

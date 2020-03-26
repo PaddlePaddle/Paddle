@@ -118,7 +118,7 @@ or not. And the output only shares the LoD information with input Ids.
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(LookupTableV2GradOpNoBuffer, "W");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(LookupTableV2GradOpNoBuffer, "W");
 
 template <typename T>
 class LookupTableV2GradOpMaker : public framework::SingleGradOpMaker<T> {
@@ -126,9 +126,7 @@ class LookupTableV2GradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
-
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("lookup_table_v2_grad");
 
     op->SetInput("W", this->Input("W"));
@@ -138,7 +136,6 @@ class LookupTableV2GradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
 
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 

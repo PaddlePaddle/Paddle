@@ -48,6 +48,17 @@ __all__ = ['PyReader', 'DataLoader']
 
 data_loader_unique_name_generator = UniqueNameGenerator()
 
+KEEP_DATA_LOADER_ORDER = True
+
+
+def keep_data_loader_order(*args):
+    global KEEP_DATA_LOADER_ORDER
+    if len(args) == 0:
+        return KEEP_DATA_LOADER_ORDER
+    else:
+        assert len(args) == 1 and isinstance(args[0], bool)
+        KEEP_DATA_LOADER_ORDER = args[0]
+
 
 def _convert_places(places):
     if not isinstance(places, (list, tuple)):
@@ -137,7 +148,9 @@ class CleanupFuncRegistrar():
 # BlockingQueue) may not be completely released, resulting in the corresponding
 # memory-mapped file remaining on the disk (/dev/shm), so register this function
 # to clean up shared memory objects in these two queues before the python interpreter exits.
-CleanupFuncRegistrar.register(_cleanup)
+# NOTE: Currently multi-process DataLoader only supports Linux platform
+if not (sys.platform == 'darwin' or sys.platform == 'win32'):
+    CleanupFuncRegistrar.register(_cleanup)
 
 
 class DataLoaderBase(object):
@@ -170,8 +183,12 @@ class DataLoader(object):
                        use_double_buffer=True,
                        iterable=True,
                        return_list=False,
-                       use_multiprocess=False):
+                       use_multiprocess=False,
+                       drop_last=True):
         """
+        .. note::
+          **The framework ensures that the data loading order of DataLoader is exactly the same as the user-defined data source.**
+
         Create a DataLoader object for loading data from Python generator. 
         Data would be prefetched using Python thread and be pushed
         into a queue asynchronously.
@@ -180,7 +197,7 @@ class DataLoader(object):
         :code:`set_sample_generator` , :code:`set_sample_list_generator` and 
         :code:`set_batch_generator` . Please see the following example codes
         to know their usages.
-
+        
         If iterable = True, the created DataLoader object is a Python generator
         object, which is iterable using for-range loop.
 
@@ -216,11 +233,18 @@ class DataLoader(object):
                 can be used in the dygraph mode. In the static graph mode,
                 whether this parameter is set or not has no effect.
                 The Default value is False.
+            drop_last (bool): whether to drop the last batches whose number is
+                less than the CPU core/GPU card number. The default value is 
+                True. In training phase, users should not set drop_last=False,
+                because all CPU cores/GPU cards must read data from DataLoader. 
+                In inference phase, users can set drop_last=False, so that the
+                last batches whose number is less than the CPU core/GPU card
+                number can be tested. 
 
         Returns:
             loader (DataLoader): the created DataLoader object.
 
-        Examples:
+        Examples 1:
             
             .. code-block:: python
 
@@ -352,6 +376,49 @@ class DataLoader(object):
                         assert image.shape == [BATCH_SIZE, 784] 
                         assert label.shape == [BATCH_SIZE, 1]
                         assert relu.shape == [BATCH_SIZE, 784]
+
+        Examples 2:
+
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
+                import os
+
+                # We use 2 CPU cores to run inference network 
+                os.environ['CPU_NUM'] = '2'
+
+                # The data source has only 3 batches, which can not be
+                # divided evenly to each CPU core
+                def batch_generator():  
+                    for i in range(3):
+                        yield np.array([i+1]).astype('float32'), 
+
+                x = fluid.data(name='x', shape=[None], dtype='float32')  
+                y = x * x
+
+                def run_inference(drop_last): 
+                    loader = fluid.io.DataLoader.from_generator(feed_list=[x],
+                            capacity=8, drop_last=drop_last)
+                    loader.set_batch_generator(batch_generator, fluid.cpu_places())
+
+                    exe = fluid.Executor(fluid.CPUPlace())
+                    prog = fluid.CompiledProgram(fluid.default_main_program())
+                    prog = prog.with_data_parallel()
+
+                    result = []
+                    for data in loader():
+                        each_ret, = exe.run(prog, feed=data, fetch_list=[y])
+                        result.extend(each_ret)
+                    return result
+
+                # Set drop_last to True, so that the last batch whose
+                # number is less than CPU core number would be discarded.
+                print(run_inference(drop_last=True)) # [1.0, 4.0]
+
+                # Set drop_last to False, so that the last batch whose
+                # number is less than CPU core number can be tested.
+                print(run_inference(drop_last=False)) # [1.0, 4.0, 9.0]
         """
         if in_dygraph_mode():
             return DygraphGeneratorLoader(feed_list, capacity,
@@ -359,7 +426,7 @@ class DataLoader(object):
                                           return_list, use_multiprocess)
         else:
             return GeneratorLoader(feed_list, capacity, use_double_buffer,
-                                   iterable, return_list)
+                                   iterable, return_list, drop_last)
 
     @staticmethod
     def from_dataset(dataset, places, drop_last=True):
@@ -512,10 +579,11 @@ class DygraphGeneratorLoader(DataLoaderBase):
         self._dtypes = []
         self._need_check_feed = []
         self._blocking_queue = core.init_lod_tensor_blocking_queue(
-            core.Variable(), self._capacity)
+            core.Variable(), self._capacity, False)
+        self._reader = None
         self._reader = core.create_py_reader(
             self.queue, self._var_names, self._shapes, self._dtypes,
-            self._need_check_feed, self._places, self._use_double_buffer)
+            self._need_check_feed, self._places, self._use_double_buffer, True)
 
     def _start(self):
         if self._use_multiprocess:
@@ -542,11 +610,12 @@ class DygraphGeneratorLoader(DataLoaderBase):
             # Set reader_thread
             self._thread_done_event = threading.Event()
             self._thread = threading.Thread(
-                target=self._reader_thread_loop_with_process)
+                target=self._reader_thread_loop_for_multiprocess)
             self._thread.daemon = True
             self._thread.start()
         else:
-            self._thread = threading.Thread(target=self._reader_thread_loop)
+            self._thread = threading.Thread(
+                target=self._reader_thread_loop_for_singleprocess)
             self._thread.daemon = True
             self._thread.start()
 
@@ -619,7 +688,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
         except:
             six.reraise(*sys.exc_info())
 
-    def _reader_thread_loop_with_process(self):
+    def _reader_thread_loop_for_multiprocess(self):
         while not self._thread_done_event.is_set():
             try:
                 # NOTE: [ avoid hanging ] Even with carefully designed data dependencies 
@@ -634,11 +703,15 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 # start trying to get data from queue. At this time, the child thread needs
                 # to wait slightly longer
                 tensor_list = self._data_queue.get(timeout=QUEUE_GET_TIMEOUT)
-            except queue.Empty:
+            except:
+                # NOTE [ avoid handing ] After adding the shared memory mechanism, not only
+                # the queue.Empty exception will occur here, but other exceptions will also
+                # occur, such as mmap failure. If it is not handled here, it will hang.
                 self._exit_thread_unexpectedly()
-                raise RuntimeError(
-                    "DataLoader reader thread has not read data for a long time (60s)."
+                logging.error(
+                    "DataLoader reader thread failed to read data from the multiprocessing.Queue."
                 )
+                six.reraise(*sys.exc_info())
 
             if not self._thread_done_event.is_set():
                 if tensor_list is not None:
@@ -654,7 +727,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 else:
                     self._exit_thread_expectedly()
 
-    def _reader_thread_loop(self):
+    def _reader_thread_loop_for_singleprocess(self):
         try:
             for sample in self._batch_reader():
                 array = core.LoDTensorArray()
@@ -721,12 +794,16 @@ class GeneratorLoader(DataLoaderBase):
                  capacity=None,
                  use_double_buffer=True,
                  iterable=True,
-                 return_list=False):
+                 return_list=False,
+                 drop_last=True):
         self._tensor_reader = None
         self._places = None
         self._thread = None
         self._queue = None
         self._feed_list = feed_list
+        self._exited = False
+        self._drop_last = drop_last
+        self._keep_order = keep_data_loader_order()
         if not capacity:
             raise ValueError("Please give value to capacity.")
         self._iterable = iterable
@@ -754,11 +831,13 @@ class GeneratorLoader(DataLoaderBase):
         self._need_check_feed = [
             v.desc.need_check_feed() for v in self._feed_list
         ]
-        self._queue = core.init_lod_tensor_blocking_queue(core.Variable(),
-                                                          self._capacity)
+        self._queue = core.init_lod_tensor_blocking_queue(
+            core.Variable(), self._capacity, self._keep_order)
+        self._reader = None
         self._reader = core.create_py_reader(
             self.queue, self._var_names, self._shapes, self._dtypes,
-            self._need_check_feed, self._places, self._use_double_buffer)
+            self._need_check_feed, self._places, self._use_double_buffer,
+            self._drop_last)
 
     def _init_non_iterable(self):
         lod_levels = []
@@ -782,16 +861,21 @@ class GeneratorLoader(DataLoaderBase):
         double_buffer_name = data_loader_unique_name_generator('double_buffer')
 
         var = global_scope().var(queue_name)
-        self._queue = core.init_lod_tensor_blocking_queue(var, self._capacity)
+        self._queue = core.init_lod_tensor_blocking_queue(var, self._capacity,
+                                                          self._keep_order)
 
-        startup_blk = default_startup_program().current_block()
-        startup_var = startup_blk.create_var(name=reader_name)
+        if self._keep_order:
+            block = default_main_program().current_block()
+        else:
+            block = default_startup_program().current_block()
+
+        reader_var = block.create_var(name=reader_name)
 
         dtype_int = [int(t) for t in dtypes]
-        startup_blk.append_op(
+        block.append_op(
             type='create_py_reader',
             inputs={'blocking_queue': [queue_name]},
-            outputs={'Out': [startup_var]},
+            outputs={'Out': [reader_var]},
             attrs={
                 'shape_concat': shape_concat,
                 'lod_levels': lod_levels,
@@ -800,16 +884,23 @@ class GeneratorLoader(DataLoaderBase):
                 'ranks': ranks
             })
 
-        startup_var.desc.set_dtypes(dtypes)
-        startup_var.persistable = True
+        reader_var.desc.set_dtypes(dtypes)
+        reader_var.persistable = True
+        reader_var.stop_gradient = True
 
-        main_prog_var = _copy_reader_var_(
-            default_main_program().current_block(), startup_var)
+        if self._keep_order:
+            main_prog_var = reader_var
+            reader = main_prog_var
+            reader.reset = self._queue.reset
+        else:
+            main_prog_var = _copy_reader_var_(
+                default_main_program().current_block(), reader_var)
 
-        main_prog_var.stop_gradient = True
-        main_prog_var.persistable = True
+            main_prog_var.stop_gradient = True
+            main_prog_var.persistable = True
 
-        reader = monkey_patch_reader_methods(main_prog_var)
+            reader = monkey_patch_reader_methods(main_prog_var)
+
         if self._use_double_buffer:
             double_buffer_reader = double_buffer(
                 reader, name=double_buffer_name)
@@ -823,7 +914,8 @@ class GeneratorLoader(DataLoaderBase):
         default_main_program().current_block().append_op(
             type='read',
             inputs={'Reader': [self._reader]},
-            outputs={'Out': self._feed_list})
+            outputs={'Out': self._feed_list},
+            attrs={'drop_last': self._drop_last})
 
     @property
     def queue(self):
@@ -872,14 +964,20 @@ class GeneratorLoader(DataLoaderBase):
                 " to locate the data causes this issue.\n\t* Please consider using "
                 "'fluid.create_lod_tensor' to convert it to a LoD-Tensor."))
 
+        return arr
+
     def _start(self):
         def __thread_main__():
             try:
+                while not self._queue.wait_for_inited(1):
+                    if self._exited:
+                        return
+
                 for tensors in self._tensor_reader():
                     array = core.LoDTensorArray()
                     for item in tensors:
                         if not isinstance(item, core.LoDTensor):
-                            self._check_input_array(item)
+                            item = self._check_input_array(item)
                             tmp = core.LoDTensor()
                             tmp.set(item, core.CPUPlace())
                             item = tmp
@@ -903,10 +1001,12 @@ class GeneratorLoader(DataLoaderBase):
 
     def _reset(self):
         self._queue.close()
+        self._exited = True
         thread = self._thread
         if thread is not None:
             thread.join()
 
+        self._exited = False
         self._reader.reset()
 
     def set_sample_generator(self,
