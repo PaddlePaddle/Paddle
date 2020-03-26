@@ -396,7 +396,8 @@ def _as_lodtensor(data, place, dtype=None):
 
     #NOTE(zhiqiu): convert python builtin ,like float and int, to numpy array
     if not isinstance(data, np.ndarray):
-        if np.isscalar(data) and dtype:
+        if np.isscalar(data):
+            assert dtype is not None, 'dtype should be given when casting python scalar to tensor'
             dtype = convert_dtype(dtype) if isinstance(
                 dtype, core.VarDesc.VarType) else dtype
             data = np.array([data]).astype(dtype)

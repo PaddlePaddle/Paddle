@@ -112,5 +112,23 @@ class TestExecutor(unittest.TestCase):
                 self.assertEqual(type(a), float)
 
 
+class TestAsLodTensor(unittest.TestCase):
+    def test_as_lodtensor_int32(self):
+        cpu = fluid.CPUPlace()
+        tensor = fluid.executor._as_lodtensor(1.0, cpu,
+                                              fluid.core.VarDesc.VarType.INT32)
+        self.assertEqual(tensor._dtype(), fluid.core.VarDesc.VarType.INT32)
+
+    def test_as_lodtensor_fp64(self):
+        cpu = fluid.CPUPlace()
+        tensor = fluid.executor._as_lodtensor(1, cpu,
+                                              fluid.core.VarDesc.VarType.FP64)
+        self.assertEqual(tensor._dtype(), fluid.core.VarDesc.VarType.FP64)
+
+    def test_as_lodtensor_error(self):
+        cpu = fluid.CPUPlace()
+        self.assertRaises(AssertionError, fluid.executor._as_lodtensor, 1, cpu)
+
+
 if __name__ == '__main__':
     unittest.main()
