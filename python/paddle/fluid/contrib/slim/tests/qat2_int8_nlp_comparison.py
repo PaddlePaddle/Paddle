@@ -70,7 +70,7 @@ def parse_args():
     parser.add_argument(
         '--quantized_ops',
         type=str,
-        default='fc,reshape2,transpose2',
+        default='',
         help='A comma separated list of quantized operators.')
 
     test_args, args = parser.parse_known_args(namespace=unittest)
