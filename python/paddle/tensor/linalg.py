@@ -13,7 +13,8 @@
 # limitations under the License.
 
 # TODO: define functions of linear algebra   
-from ..common_ops_import import *
+from paddle.common_ops_import import *
+from paddle.fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
 __all__ = ['matmul']
 

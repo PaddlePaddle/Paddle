@@ -15,7 +15,7 @@
 # TODO: import all tensor api under this directory, 
 # including tensor creation, manipulation, math, etc.
 from . import linalg
-from linalg import *
+from .linalg import *
 
 __all__ = []
 __all__ += linalg.__all__
