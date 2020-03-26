@@ -192,7 +192,7 @@ class TestMulOpAttr(TestMulOp):
                                            'y': data2},
                                      fetch_list=[res, y_1])
 
-            self.assertEqual(np_res.any(), np_y_1.any())
+            self.assertEqual((np_res == np_y_1).all(), True)
 
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
@@ -200,7 +200,7 @@ class TestMulOpAttr(TestMulOp):
             y = fluid.data(name='y', shape=[3, 2], dtype='float32')
 
             y_1 = paddle.tensor.mul(x, y, name='mul_res')
-            self.assertEqual(y_1.name, 'mul_res')
+            self.assertEqual(('mul_res' in y_1.name), True)
 
 
 if __name__ == "__main__":

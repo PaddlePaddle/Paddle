@@ -696,7 +696,7 @@ class TestPow_factor_tensor(TestActivation):
         out_2 = fluid.layers.pow(x, factor=factor_2)
         out_3 = paddle.tensor.pow(x, factor_1, out=res)
         out_4 = paddle.tensor.pow(x, factor_1, name='pow_res')
-        self.assertEqual(out_4.name, 'pow_res')
+        self.assertEqual(('pow_res' in out_4.name), True)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
         res_1, res_2, res_3, res = exe.run(
