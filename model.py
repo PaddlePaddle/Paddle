@@ -696,7 +696,6 @@ class Model(fluid.dygraph.Layer):
         self._loss_weights = None
         self._optimizer = None
         self._device = None
-        self._device_ids = None
         self._optimizer = None
         self._test_dataloader = None
 
@@ -794,8 +793,7 @@ class Model(fluid.dygraph.Layer):
                 metrics=None,
                 inputs=None,
                 labels=None,
-                device=None,
-                device_ids=None):
+                device=None):
         """
         FIXME: add comments
         Args:
@@ -818,17 +816,6 @@ class Model(fluid.dygraph.Layer):
             device (str|None): specify device type, 'CPU' or 'GPU'.
                 If None, automatically select device according to
                 installation package version.
-            device_ids (list[int]|None): specify device index. If None,
-                the available device will be obtained from the environment
-                variable when the model is executed: If the GPU is used, the
-                currently available device ID is obtained from the environment
-                variable FLAGS_selected_gpus or CUDA_VISIBLE_DEVICES when the
-                model is executed; CPU, when the model is executed,
-                the currently available CPU number is obtained from the
-                environment variable CPU_NUM. For example, export CPU_NUM=4,
-                if the environment variable is not set, the executor will add
-                the variable to the environment variable and set its value to 1.
-                The default is None.
         """
 
         if isinstance(device, fluid.CUDAPlace) or \
@@ -991,71 +978,163 @@ class Model(fluid.dygraph.Layer):
             verbose=verbose,
             metrics=self._metrics_name(), )
 
-        def _run_one_epoch(data_loader, callbacks, mode):
-            size = len(data_loader) if hasattr(data_loader,
-                                               '__len__') else None
-            logs = {
-                'steps': size,
-                'metrics_name': metrics_name,
-            }
-            for step, data in enumerate(data_loader):
-                if not fluid.in_dygraph_mode():
-                    data = data[0]
-                    batch_size = data[0].shape()[0]
-                else:
-                    batch_size = data[0].shape[0]
-
-                cbks.on_batch_begin(mode, step, logs)
-                if mode == 'train':
-                    outs = self.train(*data)
-                else:
-                    outs = self.eval(*data)
-
-                # losses
-                loss = outs[0] if self._metrics else outs
-                metrics = [[l[0] for l in loss]]
-
-                # metrics
-                for metric in self._metrics:
-                    res = metric.accumulate()
-                    metrics.extend(to_list(res))
-
-                assert len(metrics_name) == len(metrics)
-                for k, v in zip(metrics_name, metrics):
-                    logs[k] = v
-
-                logs['step'] = step
-                if mode == 'train' or self._adapter._merge_count.get(
-                        mode + '_batch', 0) <= 0:
-                    logs['batch_size'] = batch_size * ParallelEnv().nranks
-                else:
-                    logs['batch_size'] = self._adapter._merge_count[mode +
-                                                                    '_batch']
-
-                cbks.on_batch_end(mode, step, logs)
-            self._reset_metrics()
-            return logs
-
         cbks.on_begin('train')
         for epoch in range(epochs):
-            cbks.on_epoch_begin(epoch)
+
             # FIXME: adapt to DataLoader
             loader = train_loader
             if not isinstance(train_loader, Iterable):
                 loader = train_loader()
-            logs = _run_one_epoch(loader, cbks, 'train')
+            logs = self._run_one_epoch(
+                loader, cbks, 'train', metrics_name, epoch=epoch)
             cbks.on_epoch_end(epoch, logs)
 
             if do_eval and epoch % eval_freq == 0:
-                cbks.on_begin('eval', logs)
                 # FIXME: adapt to DataLoader
                 loader = eval_loader
                 if not isinstance(eval_loader, Iterable):
                     loader = eval_loader()
-                logs = _run_one_epoch(loader, cbks, 'eval')
+                logs = self._run_one_epoch(loader, cbks, 'eval', metrics_name)
                 cbks.on_end('eval', logs)
 
         cbks.on_end('train', logs)
+        self._test_dataloader = None
+
+    def evaluate(
+            self,
+            eval_data,
+            batch_size=1,
+            log_freq=10,
+            verbose=2,
+            num_workers=0,
+            callbacks=None, ):
+        """
+        FIXME: add more comments and usage
+        Args:
+            eval_data (Dataset|DataLoader): An iterable data loader is used for
+                evaluation at the end of epoch. If None, will not do evaluation. 
+                An instance of paddle.fluid.io.Dataset or paddle.fluid.io.Dataloader 
+                is recomended.
+            batch_size (int): Integer number. The batch size of train_data and eval_data. 
+                When train_data and eval_data are both the instance of Dataloader, this 
+                parameter will be ignored.
+            verbose (int): The verbosity mode, should be 0, 1, or 2.
+                0 = silent, 1 = progress bar, 2 = one line per epoch.
+            num_workers (int): the number of subprocess to load data, 0 for no subprocess 
+                used and loading data in main process. When train_data and eval_data are
+                both the instance of Dataloader, this parameter will be ignored.
+            callbacks (Callback|None): A list of `Callback` instances to apply
+                during training. If None, `ProgBarLogger` and `ModelCheckpoint`
+                are automatically inserted.
+        """
+
+        if fluid.in_dygraph_mode():
+            feed_list = None
+        else:
+            feed_list = [x.forward() for x in self._inputs + self._labels]
+
+        if eval_data is not None and isinstance(eval_data, Dataset):
+            eval_sampler = DistributedBatchSampler(
+                eval_data, batch_size=batch_size)
+            eval_loader = DataLoader(
+                eval_data,
+                batch_sampler=eval_sampler,
+                places=self._place,
+                feed_list=feed_list,
+                num_workers=num_workers,
+                return_list=True)
+        elif eval_data is not None:
+            eval_loader = eval_data
+        else:
+            eval_loader = None
+
+        self._test_dataloader = eval_loader
+        metrics_name = self._metrics_name()
+
+        steps = len(eval_loader)
+
+        cbks = config_callbacks(
+            callbacks,
+            model=self,
+            steps=steps,
+            log_freq=log_freq,
+            verbose=verbose,
+            metrics=self._metrics_name(), )
+
+        loader = eval_loader
+        if not isinstance(eval_loader, Iterable):
+            loader = eval_loader()
+        logs = self._run_one_epoch(loader, cbks, 'eval', metrics_name)
+        cbks.on_end('eval', logs)
+
+        self._test_dataloader = None
+
+    def set_eval_data(self, eval_data):
+        """
+        Args:
+            eval_data (Dataset|DataLoader|None): An iterable data loader is used for 
+                eval. An instance of paddle.fluid.io.Dataset or 
+                paddle.fluid.io.Dataloader is recomended. 
+        """
+        assert isinstance(
+            eval_data,
+            DataLoader), "eval_data must be a instance of Dataloader!"
+        self._test_dataloader = eval_data
+
+    def _run_one_epoch(self,
+                       data_loader,
+                       callbacks,
+                       mode,
+                       metrics_name,
+                       epoch=None):
+        size = len(data_loader) if hasattr(data_loader, '__len__') else None
+        logs = {
+            'steps': size,
+            'metrics_name': metrics_name,
+        }
+
+        callbacks.on_begin(mode, logs)
+        if mode == 'train':
+            assert epoch is not None, 'when mode is train, '
+            callbacks.on_epoch_begin(epoch)
+
+        for step, data in enumerate(data_loader):
+            if not fluid.in_dygraph_mode():
+                data = data[0]
+                batch_size = data[0].shape()[0]
+            else:
+                batch_size = data[0].shape[0]
+
+            callbacks.on_batch_begin(mode, step, logs)
+            if mode == 'train':
+                outs = self.train(*data)
+            else:
+                outs = self.eval(*data)
+
+            # losses
+            loss = outs[0] if self._metrics else outs
+            metrics = [[l[0] for l in loss]]
+
+            # metrics
+            for metric in self._metrics:
+                res = metric.accumulate()
+                metrics.extend(to_list(res))
+
+            assert len(metrics_name) == len(metrics)
+            for k, v in zip(metrics_name, metrics):
+                logs[k] = v
+
+            logs['step'] = step
+            if mode == 'train' or self._adapter._merge_count.get(
+                    mode + '_batch', 0) <= 0:
+                logs['batch_size'] = batch_size * ParallelEnv().nranks
+            else:
+                logs['batch_size'] = self._adapter._merge_count[mode +
+                                                                '_batch']
+
+            callbacks.on_batch_end(mode, step, logs)
+        self._reset_metrics()
+        return logs
 
     def _reset_metrics(self):
         for metric in self._metrics:

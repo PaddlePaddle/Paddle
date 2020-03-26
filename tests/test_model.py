@@ -159,11 +159,14 @@ class TestModel(unittest.TestCase):
         loss = CrossEntropy() if not is_mlp else MyCrossEntropy()
         model.prepare(optim, loss, Accuracy(), inputs, labels, device=device)
         cbk = ProgBarLogger(50)
+
         model.fit(train_dataset,
                   val_dataset,
                   epochs=2,
                   batch_size=batch_size,
                   callbacks=cbk)
+
+        model.evaluate(val_dataset, batch_size=batch_size)
 
     def test_fit_static(self):
         self.fit(False)
