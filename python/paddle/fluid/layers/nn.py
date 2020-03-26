@@ -10379,7 +10379,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     if in_dygraph_mode():
         _scale = scale.numpy().item() if isinstance(scale, Variable) else scale
         out = core.ops.scale(x, 'scale',
-                             float(scale), 'bias',
+                             float(_scale), 'bias',
                              float(bias), 'bias_after_scale', bias_after_scale)
         return dygraph_utils._append_activation_in_dygraph(out)
 

@@ -903,7 +903,7 @@ class SGDOptimizer(Optimizer):
             inputs={
                 "Param": param_and_grad[0],
                 "Grad": param_and_grad[1],
-                "LearningRate": self._create_param_lr(param_and_grad)
+                "LearningRate": lr
             },
             outputs={"ParamOut": param_and_grad[0]},
             stop_gradient=True)
@@ -1019,7 +1019,7 @@ class MomentumOptimizer(Optimizer):
             "Param": [param_and_grad[0]],
             "Grad": [param_and_grad[1]],
             "Velocity": [velocity_acc],
-            "LearningRate": [self._create_param_lr(param_and_grad)]
+            "LearningRate": [lr]
         }
 
         outputs = {
@@ -1858,10 +1858,10 @@ class AdamOptimizer(Optimizer):
                 self._beta2, Variable) else self._beta2.numpy().item()
             _, _, _, _, _ = core.ops.adam(
                 param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
-                beta1_pow_acc, beta2_pow_acc, param_and_grad[0], 'epsilon',
-                self._epsilon, 'lazy_mode', self._lazy_mode,
-                'min_row_size_to_use_multithread', 1000, 'beta1', _beta1,
-                'beta2', _beta2)
+                beta1_pow_acc, beta2_pow_acc, param_and_grad[0], moment1,
+                moment2, beta1_pow_acc, beta2_pow_acc, 'epsilon', self._epsilon,
+                'lazy_mode', self._lazy_mode, 'min_row_size_to_use_multithread',
+                1000, 'beta1', _beta1, 'beta2', _beta2)
 
             return None
 

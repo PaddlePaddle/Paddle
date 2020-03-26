@@ -30,8 +30,8 @@
 
 namespace py = pybind11;
 namespace paddle {
-static void ConstructAttrMapFromPyArgs(framework::AttributeMap* attrs,
-                                       const py::args& args) {
+static inline void ConstructAttrMapFromPyArgs(framework::AttributeMap* attrs,
+                                              const py::args& args) {
   for (size_t i = 0; i < args.size(); i += 2) {
     auto name = args[i].cast<std::string>();
     auto value = args[i + 1].cast<framework::Attribute>();
@@ -39,7 +39,7 @@ static void ConstructAttrMapFromPyArgs(framework::AttributeMap* attrs,
   }
 }
 
-static std::vector<std::shared_ptr<imperative::VarBase>>
+static inline std::vector<std::shared_ptr<imperative::VarBase>>
 ConstructDuplicableOutput(const size_t num) {
   auto tracer = imperative::GetCurrentTracer();
   std::vector<std::shared_ptr<imperative::VarBase>> res;
@@ -54,4 +54,3 @@ ConstructDuplicableOutput(const size_t num) {
 
 // This include must be the last line
 #include "paddle/fluid/pybind/op_function_impl.h"
-// #include "paddle/fluid/pybind/op_function_impl2.h"

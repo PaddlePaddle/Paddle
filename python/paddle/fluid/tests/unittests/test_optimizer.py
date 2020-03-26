@@ -94,7 +94,6 @@ class TestOptimizerBackwardApplygrad(unittest.TestCase):
             return opts
 
         opts = check_sgd_optimizer({'learning_rate': 1.1})
-        print(opts)
         self.assertEqual(len(opts), 2)
         self.assertEqual([op.type for op in opts], ["scale", "sgd"])
 

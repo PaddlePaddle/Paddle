@@ -32,9 +32,12 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
 };
 std::map<std::string, std::set<std::string>> op_passing_out_map = {
     {"sgd", {"ParamOut"}},
-    {"adam", {"ParamOut"}},
+    {"adam",
+     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
     {"momentum", {"ParamOut", "VelocityOut"}},
-    {"batch_norm", {"MeanOut", "VarianceOut"}}};
+    {"batch_norm", {"MeanOut", "VarianceOut"}},
+    {"fill_constant", {"Out"}}};
+
 // clang-format off
 const char* OUT_INITIALIZER_TEMPLATE =
     R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase(tracer->GenerateUniqueName()))}})";
@@ -46,11 +49,16 @@ const char* OUT_DUPLICABLE_INITIALIZER_TEMPLATE =
 const char* INPUT_INITIALIZER_TEMPLATE =
     R"({"%s", {%s}})";
 
+// if inputs is list, no need {}
+const char* INPUT_LIST_INITIALIZER_TEMPLATE =
+    R"({"%s", %s})";
+
 const char* INPUT_INITIALIZER_TEMPLATE_WITH_NULL = R"(
     if (%s != nullptr) {
       ins_["%s"] = {%s};
     }
 )";
+
 const char* INPUT_INITIALIZER_TEMPLATE_WITH_NULL_LIST = R"(
     if (%s != nullptr) {
       ins_["%s"] = %s;
@@ -58,38 +66,10 @@ const char* INPUT_INITIALIZER_TEMPLATE_WITH_NULL_LIST = R"(
 )";
 
 // if inputs is list, no need {}
-const char* INPUT_LIST_INITIALIZER_TEMPLATE =
-    R"({"%s", %s})";
-
-// if inputs is list, no need {}
 const char* ARG_OUT_NUM =
     R"(%sNum)";
 const char* ARG_OUT_NUM_TYPE =
     R"(size_t )";
-
-const char* OP_FUNCTION_TEMPLATE =
-R"(
-inline imperative::NameVarBaseMap %s(const imperative::NameVarBaseMap& ins, const framework::AttributeMap& attrs, 
-  imperative::NameVarBaseMap outs, const std::map<std::string, size_t>& out_nums)
-{
-  auto tracer = imperative::GetCurrentTracer();
-  if (outs.size() == 0) {
-    if (out_nums.size() == 0) {
-      imperative::NameVarBaseMap outs_ = %s;
-      outs = std::move(outs_);
-    } else {
-      for (auto &pair : out_nums) {
-        for (size_t i = 0; i < pair.second; i ++) {
-          auto var_base_name = tracer->GenerateUniqueName();
-          outs[pair.first].emplace_back(new imperative::VarBase(var_base_name));
-        }
-      }
-    }
-  }
-  
-  tracer->TraceOp("%s", std::move(ins), std::move(outs), std::move(attrs));
-  return outs;
-})";
 
 const char* VAR_TYPE = R"(std::shared_ptr<imperative::VarBase>)";
 const char* VAR_LIST_TYPE = R"(std::vector<std::shared_ptr<imperative::VarBase>>)";
@@ -104,38 +84,9 @@ const char* RETURN_TUPLE_TEMPLATE = R"(std::make_tuple(%s))";
 const char* RETURN_LIST_TEMPLATE = R"(outs_["%s"])";
 const char* RETURN_TEMPLATE = R"(outs_["%s"][0])";
 
-// like elementwise_*, no list in args and only one result in return.
-const char* OP_FUNCTION_NO_LIST_SINGLE_RETURN_TEMPLATE =
-R"(
-inline std::shared_ptr<imperative::VarBase> %s(%s, const framework::AttributeMap& attrs, 
-  imperative::NameVarBaseMap outs, const std::map<std::string, size_t>& out_nums)
-{
-  auto tracer = imperative::GetCurrentTracer();
-  if (outs.size() == 0) {
-    if (out_nums.size() == 0) {
-      imperative::NameVarBaseMap outs_ = %s;
-      outs = std::move(outs_);
-    } else {
-      for (auto &pair : out_nums) {
-        for (size_t i = 0; i < pair.second; i ++) {
-          auto var_base_name = tracer->GenerateUniqueName();
-          outs[pair.first].emplace_back(new imperative::VarBase(var_base_name));
-        }
-      }
-    }
-  }
-  
-  tracer->TraceOp("%s", std::move(ins), std::move(outs), std::move(attrs));
-  return outs;
-})";
-
-
 const char* FUNCTION_ARGS = R"(%s, const py::args& args)";
 const char* FUNCTION_ARGS_NO_INPUT = R"(const py::args& args)";
 
-// like elementwise_*, no list in args and only one result in return.
-// return_type, func_name, inputs_args, outs_initializer, ins_initializer,
-//   op_name, return_str
 const char* OP_FUNCTION_TEMPLATE2 =
 R"(
 %s %s(%s)
@@ -161,19 +112,6 @@ R"(
   %s.def("%s", &%s);)";
 const char* PYBIND_PY_ARG_TEMPLATE = R"(py::arg("%s"))";
 // clang-format on
-
-const std::vector<std::string> specialization = {
-    "concat", "elementwise_add", "elementwise_div", "elementwise_max",
-    "elementwise_mul",
-    //  "fill_constant",
-    //  "lookup_table",
-    "matmul", "reduce_mean", "reduce_sum", "reshape2", "sgd", "sigmoid",
-    "slice", "softmax_with_cross_entropy", "split", "square", "sqrt", "tanh",
-    "transpose2",
-    //  "uniform_random"
-    "conv2d", "cross_entropy2", "mean", "pool2d", "relu", "softmax",
-    // "batch_norm", "top_k", "accuracy", "gaussian_random"
-};
 
 static bool FindInputInSpecialization(const std::string op_type,
                                       const std::string in_name) {
@@ -237,8 +175,6 @@ GenerateOpFunctions2(const std::string& module_name) {
             paddle::string::Sprintf(in_template, in_name, in_name);
         ins_initializer += ",";
       }
-      // py_arg += paddle::string::Sprintf(PYBIND_PY_ARG_TEMPLATE, in_name);
-      // py_arg += ",";
     }
 
     if (ins_initializer.back() == ',') {
@@ -248,7 +184,6 @@ GenerateOpFunctions2(const std::string& module_name) {
 
     if (input_args.back() == ',') {
       input_args.pop_back();
-      // py_arg.pop_back();
     }
 
     // Generate outs initializer
@@ -269,7 +204,9 @@ GenerateOpFunctions2(const std::string& module_name) {
       auto& out_name = output.name();
       std::string out_initializer_str;
       if (FindOutoutInSpecialization(op_type, out_name)) {
-        input_args += ",";
+        if (input_args != "") {
+          input_args += ",";
+        }
         input_args += out_type;
         input_args += out_name;
         auto out_template = output.duplicable()
@@ -278,6 +215,9 @@ GenerateOpFunctions2(const std::string& module_name) {
         out_initializer_str +=
             paddle::string::Sprintf(out_template, out_name, out_name);
       } else {
+        // There are few Operators that have duplicable output, like `Out` in
+        // split op. We need to specify the number of variables for the
+        // duplicable output, as the argument OutNum;
         if (output.duplicable()) {
           if (input_args != "") {
             input_args += ",";
@@ -298,9 +238,6 @@ GenerateOpFunctions2(const std::string& module_name) {
       return_str += paddle::string::Sprintf(return_template, out_name);
       return_str += ",";
       outs_num += 1;
-      // There are few Operators that have duplicable output, like `Out` in
-      // split op. We need to specify the number of variables for the duplicable
-      // output, as the argument OutNum;
 
       outs_initializer += out_initializer_str;
       outs_initializer += ",";

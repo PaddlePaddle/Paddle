@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 from .. import core
-from ..framework import Variable, convert_np_dtype_to_dtype_
+from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator
 from ..layers.layer_function_generator import OpProtoHolder
 from . import to_variable, no_grad
 
@@ -39,8 +39,9 @@ def monkey_patch_math_varbase():
 
     @no_grad
     def create_tensor(value, dtype, shape):
-        out = core.ops.fill_constant('dtype', dtype, 'shape', shape, 'value',
-                                     value, 'force_cpu', False)
+        out = _varbase_creator(dtype=dtype)
+        out = core.ops.fill_constant(out, 'dtype', dtype, 'shape', shape,
+                                     'value', value, 'force_cpu', False)
         out.stop_gradient = True
         return out
 
