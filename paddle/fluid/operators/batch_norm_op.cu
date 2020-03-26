@@ -384,7 +384,8 @@ class InplaceHelper {
                   const BatchNormParamType<T> *variance, double epsilon, int C,
                   int M, const int num, const T *y, int grid2, const int block,
                   const cudaStream_t &stream) {
-    PADDLE_ENFORCE_EQ(x, y, "X and Y should be inplaced in inplace mode");
+    PADDLE_ENFORCE_EQ(x, y, platform::errors::InvalidArgument(
+                                "X and Y should be inplaced in inplace mode"));
     KeBNRestoreData<<<grid2, block, 0, stream>>>(
         layout, x, scale, bias, mean, variance, epsilon, C, M, num, y);
   }
