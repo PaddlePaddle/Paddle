@@ -24,6 +24,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
+from paddle.fluid.io import DataLoader
 
 from utils.configure import PDConfig
 from utils.check import check_gpu, check_version
@@ -38,6 +39,7 @@ from callbacks import ProgBarLogger
 class LoggerCallback(ProgBarLogger):
     def __init__(self, log_freq=1, verbose=2, loss_normalizer=0.):
         super(LoggerCallback, self).__init__(log_freq, verbose)
+        # TODO: wrap these override function to simplify
         self.loss_normalizer = loss_normalizer
 
     def on_train_begin(self, logs=None):
@@ -60,148 +62,111 @@ class LoggerCallback(ProgBarLogger):
 
 
 def do_train(args):
-    init_context('dynamic' if FLAGS.dynamic else 'static')
-    trainer_count = 1  #get_nranks()
+    # init_context('dynamic' if FLAGS.dynamic else 'static')
 
-    @contextlib.contextmanager
-    def null_guard():
-        yield
+    # set seed for CE
+    random_seed = eval(str(args.random_seed))
+    if random_seed is not None:
+        fluid.default_main_program().random_seed = random_seed
+        fluid.default_startup_program().random_seed = random_seed
 
-    guard = fluid.dygraph.guard() if args.eager_run else null_guard()
+    # define model
+    inputs = [
+        Input(
+            [None, None], "int64", name="src_word"), Input(
+                [None, None], "int64", name="src_pos"), Input(
+                    [None, args.n_head, None, None],
+                    "float32",
+                    name="src_slf_attn_bias"), Input(
+                        [None, None], "int64", name="trg_word"), Input(
+                            [None, None], "int64", name="trg_pos"), Input(
+                                [None, args.n_head, None, None],
+                                "float32",
+                                name="trg_slf_attn_bias"), Input(
+                                    [None, args.n_head, None, None],
+                                    "float32",
+                                    name="trg_src_attn_bias")
+    ]
+    labels = [
+        Input(
+            [None, 1], "int64", name="label"),
+        Input(
+            [None, 1], "float32", name="weight"),
+    ]
 
-    # define the data generator
-    processor = reader.DataProcessor(
+    dataset = reader.Seq2SeqDataset(
         fpattern=args.training_file,
         src_vocab_fpath=args.src_vocab_fpath,
         trg_vocab_fpath=args.trg_vocab_fpath,
         token_delimiter=args.token_delimiter,
+        start_mark=args.special_token[0],
+        end_mark=args.special_token[1],
+        unk_mark=args.special_token[2])
+    args.src_vocab_size, args.trg_vocab_size, args.bos_idx, args.eos_idx, \
+        args.unk_idx = dataset.get_vocab_summary()
+    batch_sampler = reader.Seq2SeqBatchSampler(
+        dataset=dataset,
         use_token_batch=args.use_token_batch,
         batch_size=args.batch_size,
-        device_count=trainer_count,
         pool_size=args.pool_size,
         sort_type=args.sort_type,
         shuffle=args.shuffle,
         shuffle_batch=args.shuffle_batch,
-        start_mark=args.special_token[0],
-        end_mark=args.special_token[1],
-        unk_mark=args.special_token[2],
-        max_length=args.max_length,
-        n_head=args.n_head)
-    batch_generator = processor.data_generator(phase="train")
-    if trainer_count > 1:  # for multi-process gpu training
-        batch_generator = fluid.contrib.reader.distributed_batch_reader(
-            batch_generator)
-    if args.validation_file:
-        val_processor = reader.DataProcessor(
-            fpattern=args.validation_file,
-            src_vocab_fpath=args.src_vocab_fpath,
-            trg_vocab_fpath=args.trg_vocab_fpath,
-            token_delimiter=args.token_delimiter,
-            use_token_batch=args.use_token_batch,
-            batch_size=args.batch_size,
-            device_count=trainer_count,
-            pool_size=args.pool_size,
-            sort_type=args.sort_type,
-            shuffle=False,
-            shuffle_batch=False,
-            start_mark=args.special_token[0],
-            end_mark=args.special_token[1],
-            unk_mark=args.special_token[2],
-            max_length=args.max_length,
-            n_head=args.n_head)
-        val_batch_generator = val_processor.data_generator(phase="train")
-    args.src_vocab_size, args.trg_vocab_size, args.bos_idx, args.eos_idx, \
-        args.unk_idx = processor.get_vocab_summary()
+        max_length=args.max_length)
+    train_loader = DataLoader(
+        dataset=dataset,
+        batch_sampler=batch_sampler,
+        places=None,
+        feed_list=[x.forward() for x in inputs + labels],
+        num_workers=0,
+        return_list=True)
 
-    with guard:
-        # set seed for CE
-        random_seed = eval(str(args.random_seed))
-        if random_seed is not None:
-            fluid.default_main_program().random_seed = random_seed
-            fluid.default_startup_program().random_seed = random_seed
+    transformer = Transformer(
+        args.src_vocab_size, args.trg_vocab_size, args.max_length + 1,
+        args.n_layer, args.n_head, args.d_key, args.d_value, args.d_model,
+        args.d_inner_hid, args.prepostprocess_dropout, args.attention_dropout,
+        args.relu_dropout, args.preprocess_cmd, args.postprocess_cmd,
+        args.weight_sharing, args.bos_idx, args.eos_idx)
 
-        # define data loader
-        train_loader = batch_generator
-        if args.validation_file:
-            val_loader = val_batch_generator
+    transformer.prepare(
+        fluid.optimizer.Adam(
+            learning_rate=fluid.layers.noam_decay(
+                args.d_model, args.warmup_steps),  # args.learning_rate),
+            beta1=args.beta1,
+            beta2=args.beta2,
+            epsilon=float(args.eps),
+            parameter_list=transformer.parameters()),
+        CrossEntropyCriterion(args.label_smooth_eps),
+        inputs=inputs,
+        labels=labels)
 
-        # define model
-        inputs = [
-            Input(
-                [None, None], "int64", name="src_word"),
-            Input(
-                [None, None], "int64", name="src_pos"),
-            Input(
-                [None, args.n_head, None, None],
-                "float32",
-                name="src_slf_attn_bias"),
-            Input(
-                [None, None], "int64", name="trg_word"),
-            Input(
-                [None, None], "int64", name="trg_pos"),
-            Input(
-                [None, args.n_head, None, None],
-                "float32",
-                name="trg_slf_attn_bias"),
-            Input(
-                [None, args.n_head, None, None],
-                "float32",
-                name="trg_src_attn_bias"),
-        ]
-        labels = [
-            Input(
-                [None, 1], "int64", name="label"),
-            Input(
-                [None, 1], "float32", name="weight"),
-        ]
+    ## init from some checkpoint, to resume the previous training
+    if args.init_from_checkpoint:
+        transformer.load(
+            os.path.join(args.init_from_checkpoint, "transformer"))
+    ## init from some pretrain models, to better solve the current task
+    if args.init_from_pretrain_model:
+        transformer.load(
+            os.path.join(args.init_from_pretrain_model, "transformer"),
+            reset_optimizer=True)
 
-        transformer = Transformer(
-            args.src_vocab_size, args.trg_vocab_size, args.max_length + 1,
-            args.n_layer, args.n_head, args.d_key, args.d_value, args.d_model,
-            args.d_inner_hid, args.prepostprocess_dropout,
-            args.attention_dropout, args.relu_dropout, args.preprocess_cmd,
-            args.postprocess_cmd, args.weight_sharing, args.bos_idx,
-            args.eos_idx)
+    # the best cross-entropy value with label smoothing
+    loss_normalizer = -(
+        (1. - args.label_smooth_eps) * np.log(
+            (1. - args.label_smooth_eps)) + args.label_smooth_eps *
+        np.log(args.label_smooth_eps / (args.trg_vocab_size - 1) + 1e-20))
 
-        transformer.prepare(
-            fluid.optimizer.Adam(
-                learning_rate=fluid.layers.noam_decay(
-                    args.d_model, args.warmup_steps),  # args.learning_rate),
-                beta1=args.beta1,
-                beta2=args.beta2,
-                epsilon=float(args.eps),
-                parameter_list=transformer.parameters()),
-            CrossEntropyCriterion(args.label_smooth_eps),
-            inputs=inputs,
-            labels=labels)
-
-        ## init from some checkpoint, to resume the previous training
-        if args.init_from_checkpoint:
-            transformer.load(
-                os.path.join(args.init_from_checkpoint, "transformer"))
-        ## init from some pretrain models, to better solve the current task
-        if args.init_from_pretrain_model:
-            transformer.load(
-                os.path.join(args.init_from_pretrain_model, "transformer"),
-                reset_optimizer=True)
-
-        # the best cross-entropy value with label smoothing
-        loss_normalizer = -(
-            (1. - args.label_smooth_eps) * np.log(
-                (1. - args.label_smooth_eps)) + args.label_smooth_eps *
-            np.log(args.label_smooth_eps / (args.trg_vocab_size - 1) + 1e-20))
-
-        transformer.fit(train_loader=train_loader,
-                        eval_loader=val_loader,
-                        epochs=1,
-                        eval_freq=1,
-                        save_freq=1,
-                        verbose=2,
-                        callbacks=[
-                            LoggerCallback(
-                                log_freq=args.print_step,
-                                loss_normalizer=loss_normalizer)
-                        ])
+    transformer.fit(train_loader=train_loader,
+                    eval_loader=None,
+                    epochs=1,
+                    eval_freq=1,
+                    save_freq=1,
+                    verbose=2,
+                    callbacks=[
+                        LoggerCallback(
+                            log_freq=args.print_step,
+                            loss_normalizer=loss_normalizer)
+                    ])
 
 
 if __name__ == "__main__":
