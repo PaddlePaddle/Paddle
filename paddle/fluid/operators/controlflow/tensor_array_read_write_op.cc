@@ -86,13 +86,10 @@ class WriteToArrayInferShape : public framework::InferShapeBase {
         context->HasInput("I"), true,
         platform::errors::InvalidArgument(
             "Write to array operation must set the subscript index."));
-    if (context->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(
-          framework::product(context->GetInputDim("I")), 1,
-          platform::errors::InvalidArgument(
-              "The number of element of subscript index must be 1, but get %d",
-              framework::product(context->GetInputDim("I"))));
-    }
+
+    // TODO(wangchaochaohu) control flow Op do not support runtime infer shape
+    // Later we add [ontext->GetInputDim("I")) == 1] check when it's supported
+
     if (!context->HasInput("X")) {
       return;
     }
