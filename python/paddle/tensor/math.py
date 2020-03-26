@@ -12,60 +12,76 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
+import numpy as np
+import warnings
+import six
+import os
+import inspect
+from ..fluid.layer_helper import LayerHelper
+from ..fluid.param_attr import ParamAttr
+from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, convert_np_dtype_to_dtype_
+from ..fluid import core
+from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..fluid.layers import utils
+
 # TODO: define math functions  
-# __all__ = ['abs',
-#            'acos',
-#            'asin',
-#            'atan',
-#            'ceil',
-#            'cos',
-#            'cumsum',
-#            'elementwise_add',
-#            'elementwise_div',
-#            'elementwise_floordiv',
-#            'elementwise_max',
-#            'elementwise_min',
-#            'elementwise_mod',
-#            'elementwise_mul',
-#            'elementwise_pow',
-#            'elementwise_sub',
-#            'exp',
-#            'floor',
-#            'increment',
-#            'log',
-#            'mul',
-#            'multiplex',
-#            'pow',
-#            'reciprocal',
-#            'reduce_max',
-#            'reduce_min',
-#            'reduce_prod',
-#            'reduce_sum',
-#            'round',
-#            'rsqrt',
-#            'scale',
-#            'sign',
-#            'sin',
-#            'sqrt',
-#            'square',
-#            'stanh',
-#            'sum',
-#            'sums',
-#            'tanh',
-#            'elementwise_sum',
-#            'max',
-#            'min',
-#            'mm',
-#            'div',
-#            'add',
-#            'atan',
-#            'logsumexp',
-#            'inverse',
-#            'log1p',
+__all__ = [
+    #	     'abs',
+    #            'acos',
+    #            'asin',
+    #            'atan',
+    #            'ceil',
+    #            'cos',
+    #            'cumsum',
+    #            'elementwise_add',
+    #            'elementwise_div',
+    #            'elementwise_floordiv',
+    #            'elementwise_max',
+    #            'elementwise_min',
+    #            'elementwise_mod',
+    #            'elementwise_mul',
+    #            'elementwise_pow',
+    #            'elementwise_sub',
+    #            'exp',
+    #            'floor',
+    #            'increment',
+    #            'log',
+    #            'mul',
+    #            'multiplex',
+    #            'pow',
+    #            'reciprocal',
+    #            'reduce_max',
+    #            'reduce_min',
+    #            'reduce_prod',
+    #            'reduce_sum',
+    #            'round',
+    #            'rsqrt',
+    #            'scale',
+    #            'sign',
+    #            'sin',
+    #            'sqrt',
+    #            'square',
+    #            'stanh',
+    #            'sum',
+    #            'sums',
+    #            'tanh',
+    #            'elementwise_sum',
+    'max',
+    'min',
+    #            'mm',
+    #            'div',
+    #            'add',
+    #            'atan',
+    #            'logsumexp',
+    #            'inverse',
+    'log1p'
+]
+
 #            'erf',
 #            'addcmul',
-#            'addmm']
-from paddle.common_ops_import import *
+#            'addmm'
 
 
 def max(input, dim=None, keep_dim=False, out=None, name=None):
