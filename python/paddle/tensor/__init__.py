@@ -14,4 +14,9 @@
 
 # TODO: import all tensor api under this directory, 
 # including tensor creation, manipulation, math, etc.
-# __all__ = [ ]
+
+from .manipulation import *
+
+__all__ = []
+
+__all__ += manipulation.__all__

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # TODO: define functions to manipulate a tensor  
-# __all__ = ['cast',
+# __all__ = [#'cast',
 #            'concat',
 #            'expand',
 #            'expand_as',
@@ -43,6 +43,8 @@
 from __future__ import print_function
 
 from ..fluid.layer_helper import LayerHelper
+from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, convert_np_dtype_to_dtype_
+from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
 __all__ = ['flip']
 
@@ -65,10 +67,11 @@ def flip(input, dims, name=None):
     Examples:
         .. code-block:: python
 
+          import paddle
           import paddle.fluid as fluid
           import numpy as np
           input = fluid.data(name="x", shape=[-1, 2, 2], dtype='float32')
-          output = fluid.layers.flip(input, dims=[0, 1])
+          output = paddle.tensor.flip(input, dims=[0, 1])
           exe = fluid.Executor(fluid.CPUPlace())
           exe.run(fluid.default_startup_program())
           img = np.arange(12).reshape((3,2,2)).astype(np.float32)
