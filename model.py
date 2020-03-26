@@ -45,7 +45,7 @@ def set_device(device):
 
     place = fluid.CUDAPlace(ParallelEnv().dev_id) \
             if device.lower() == 'gpu' and fluid.is_compiled_with_cuda() \
-                else fluid.CUDAPlace(0)
+                else fluid.CPUPlace()
 
     return place
 
@@ -470,20 +470,14 @@ class StaticGraphAdapter(object):
             return compiled_prog
 
         assert self.model._place is not None, \
-            "model not ready, please call `model.prepare()` first"
+            "device is not set, please call `model.prepare()` first"
 
         place = self.model._place
-        fluid.cpu_places
+
         # XXX *ALL WEIGHTS* should be initialized upon model construction
         # even if `forward()` may run different code path for different mode
         # therefore startup program only needs to run once
         if self._executor is None:
-            # if self._nranks > 1 and device.lower() == 'gpu':
-            #     gpu_id = int(ParallelEnv().dev_id)
-            #     place = fluid.CUDAPlace(gpu_id) if device.lower(
-            #     ) == 'gpu' else fluid.CPUPlace()
-            # else:
-            #     place = places[0]
             self._executor = fluid.Executor(place)
             # XXX incremental initialization
             uninitialized = []
