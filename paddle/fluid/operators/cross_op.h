@@ -121,6 +121,7 @@ class CrossKernel : public framework::OpKernel<T> {
       }
     }
     framework::TensorFromVector(out_vec, context.device_context(), output);
+    output->Resize(input_x_dims);
   }
 };
 
@@ -212,6 +213,8 @@ class CrossGradKernel : public framework::OpKernel<T> {
                                 output_x_grad);
     framework::TensorFromVector(out_dy_vec, context.device_context(),
                                 output_y_grad);
+    output_x_grad->Resize(input_x_dims);
+    output_y_grad->Resize(input_x_dims);
   }
 };
 

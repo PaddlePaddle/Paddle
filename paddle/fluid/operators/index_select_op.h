@@ -23,7 +23,7 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 using DDim = framework::DDim;
 
-template <typename DeviceContext, typename T, typename IndexT = int>
+template <typename T, typename IndexT = int>
 void IndexSelectInner(const framework::ExecutionContext& context,
                       const LoDTensor& input, const LoDTensor& index,
                       LoDTensor* output, int dim) {
@@ -46,11 +46,11 @@ void IndexSelectInner(const framework::ExecutionContext& context,
 
   auto index_size = index.dims()[0];
 
-  std::vector<T> input_vec, index_vec;
+  std::vector<T> input_vec;
+  std::vector<IndexT> index_vec;
   TensorToVector(input, context.device_context(), &input_vec);
   TensorToVector(index, context.device_context(), &index_vec);
   std::vector<T> out_vec(output->numel());
-  output->mutable_data<T>(context.GetPlace());
 
   VLOG(1) << "Index_Select_Debug; outer_nums: " << outer_nums
           << "; slice_size: " << slice_size << "; input_width: " << input_width
@@ -69,7 +69,9 @@ void IndexSelectInner(const framework::ExecutionContext& context,
       }
     }
   }
+  output->mutable_data<T>(context.GetPlace());
   framework::TensorFromVector(out_vec, context.device_context(), output);
+  output->Resize(output_dim);
 }
 
 template <typename DeviceContext, typename T>
@@ -103,26 +105,24 @@ class IndexSelectKernel : public framework::OpKernel<T> {
                               framework::proto::VarType::INT64)));
 
     if (index_type == framework::proto::VarType::INT32) {
-      IndexSelectInner<DeviceContext, T, int>(context, inputs, index, output,
-                                              dim);
+      IndexSelectInner<T, int>(context, inputs, index, output, dim);
     } else if (index_type == framework::proto::VarType::INT64) {
-      IndexSelectInner<DeviceContext, T, int64_t>(context, inputs, index,
-                                                  output, dim);
+      IndexSelectInner<T, int64_t>(context, inputs, index, output, dim);
     }
   }
 };
 
-template <typename DeviceContext, typename T, typename IndexT = int>
+template <typename T, typename IndexT = int>
 void IndexSelectGradInner(const framework::ExecutionContext& context,
                           const LoDTensor& out_grad, const LoDTensor& index,
                           LoDTensor* x_grad, int dim) {
-  std::vector<T> input_vec, index_vec;
+  std::vector<T> input_vec;
+  std::vector<IndexT> index_vec;
   TensorToVector(out_grad, context.device_context(), &input_vec);
   TensorToVector(index, context.device_context(), &index_vec);
 
   // const T* p_input = out_grad.data<T>();
   // const IndexT* p_index = index.data<IndexT>();
-  x_grad->mutable_data<T>(context.GetPlace());
 
   auto input_dim = out_grad.dims();
   auto input_dim_size = input_dim.size();
@@ -155,11 +155,15 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
 
     for (auto j = 0; j < index_size; j++) {
       IndexT index_value = index_vec[j];
-      out_vec[output_start_offset + index_value * slice_size] +=
-          input_vec[input_start_offset + j * slice_size];
+      for (auto k = 0; k < slice_size; k++) {
+        out_vec[output_start_offset + index_value * slice_size + k] +=
+            input_vec[input_start_offset + j * slice_size + k];
+      }
     }
   }
+  x_grad->mutable_data<T>(context.GetPlace());
   framework::TensorFromVector(out_vec, context.device_context(), x_grad);
+  x_grad->Resize(output_dim);
 }
 
 template <typename DeviceContext, typename T>
@@ -192,11 +196,9 @@ class IndexSelectGradKernel : public framework::OpKernel<T> {
                               framework::proto::VarType::INT64)));
 
     if (index_type == framework::proto::VarType::INT32) {
-      IndexSelectGradInner<DeviceContext, T, int>(context, out_grad, index,
-                                                  x_grad, dim);
+      IndexSelectGradInner<T, int>(context, out_grad, index, x_grad, dim);
     } else if (index_type == framework::proto::VarType::INT64) {
-      IndexSelectGradInner<DeviceContext, T, int64_t>(context, out_grad, index,
-                                                      x_grad, dim);
+      IndexSelectGradInner<T, int64_t>(context, out_grad, index, x_grad, dim);
     }
   }
 };

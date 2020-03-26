@@ -44,7 +44,7 @@ inline void shift_along_dim(T* data, const DDim& input_dim, int64_t dim,
     slice_width *= input_dim[i];
   }
 
-  auto slice_bytes = slice_width * sizeof(T);
+  // auto slice_bytes = slice_width * sizeof(T);
 
   VLOG(1) << "shift_along_dim_debug: input_dim: " << input_dim
           << "; dim: " << dim << "; shift: " << shift
@@ -55,18 +55,29 @@ inline void shift_along_dim(T* data, const DDim& input_dim, int64_t dim,
   }
 
   std::vector<T> head;
-  head.resize(slice_width * (input_dim[dim] - shift));
+  auto head_size = slice_width * (input_dim[dim] - shift);
+  head.resize(head_size);
 
   for (auto i = 0; i < outer_loops; i++) {
-    memcpy(head.data(), data + i * input_dim[dim] * slice_width,
-           slice_width * (input_dim[dim] - shift) * sizeof(T));
+    for (auto j = 0; j < head_size; j++) {
+      head[j] = data[i * input_dim[dim] * slice_width + j];
+    }
+    // memcpy(head.data(), data + i * input_dim[dim] * slice_width,
+    //       slice_width * (input_dim[dim] - shift) * sizeof(T));
     for (auto j = input_dim[dim] - shift; j < input_dim[dim]; j++) {
       auto dst_pos = j - input_dim[dim] + shift;
-      memcpy(data + (i * input_dim[dim] + dst_pos) * slice_width,
-             data + (i * input_dim[dim] + j) * slice_width, slice_bytes);
+      for (auto k = 0; k < slice_width; k++) {
+        data[(i * input_dim[dim] + dst_pos) * slice_width + k] =
+            data[(i * input_dim[dim] + j) * slice_width + k];
+      }
+      // memcpy(data + (i * input_dim[dim] + dst_pos) * slice_width,
+      //       data + (i * input_dim[dim] + j) * slice_width, slice_bytes);
     }
-    memcpy(data + (i * input_dim[dim] + shift) * slice_width, head.data(),
-           slice_width * (input_dim[dim] - shift) * sizeof(T));
+    for (auto j = 0; j < head_size; j++) {
+      data[(i * input_dim[dim] + shift) * slice_width + j] = head[j];
+    }
+    // memcpy(data + (i * input_dim[dim] + shift) * slice_width, head.data(),
+    //       slice_width * (input_dim[dim] - shift) * sizeof(T));
   }
 }
 
@@ -85,7 +96,6 @@ class RollKernel : public framework::OpKernel<T> {
     TensorToVector(input, context.device_context(), &out_vec);
 
     size_t nums = shifts.size();
-    output->mutable_data<T>(context.GetPlace());
     const DDim input_dim = input.dims();
 
     for (size_t i = 0; i < nums; i++) {
@@ -97,7 +107,9 @@ class RollKernel : public framework::OpKernel<T> {
               i, input_dim.size(), input_dim.size() - 1, i, dims[i]));
       shift_along_dim(out_vec.data(), input_dim, dims[i], shifts[i]);
     }
+    output->mutable_data<T>(context.GetPlace());
     framework::TensorFromVector(out_vec, context.device_context(), output);
+    output->Resize(input_dim);
   }
 };
 
@@ -116,13 +128,14 @@ class RollGradKernel : public framework::OpKernel<T> {
     TensorToVector(input, context.device_context(), &out_vec);
 
     size_t nums = shifts.size();
-    output->mutable_data<T>(context.GetPlace());
     const DDim input_dim = input.dims();
 
     for (size_t i = 0; i < nums; i++) {
       shift_along_dim(out_vec.data(), input_dim, dims[i], 0 - shifts[i]);
     }
+    output->mutable_data<T>(context.GetPlace());
     framework::TensorFromVector(out_vec, context.device_context(), output);
+    output->Resize(input_dim);
   }
 };
 
