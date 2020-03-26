@@ -26,7 +26,7 @@ from paddle.fluid.optimizer import Momentum
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 from paddle.fluid.io import MNIST as MnistDataset
 
-from model import Model, CrossEntropy, Input, init_context
+from model import Model, CrossEntropy, Input, set_device
 from metrics import Accuracy
 
 
@@ -106,7 +106,8 @@ class MNIST(Model):
 
 
 def main():
-    init_context('dynamic' if FLAGS.dynamic else 'static')
+    device = set_device(FLAGS.device)
+    fluid.enable_dygraph(device) if FLAGS.dynamic else None
 
     train_dataset = MnistDataset(mode='train')
     val_dataset = MnistDataset(mode='test')
@@ -118,7 +119,13 @@ def main():
     optim = Momentum(
         learning_rate=FLAGS.lr, momentum=.9, parameter_list=model.parameters())
 
-    model.prepare(optim, CrossEntropy(), Accuracy(topk=(1, 2)), inputs, labels)
+    model.prepare(
+        optim,
+        CrossEntropy(),
+        Accuracy(topk=(1, 2)),
+        inputs,
+        labels,
+        device=FLAGS.device)
     if FLAGS.resume is not None:
         model.load(FLAGS.resume)
 
@@ -131,6 +138,8 @@ def main():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("CNN training on MNIST")
+    parser.add_argument(
+        "--device", type=str, default='gpu', help="device to use, gpu or cpu")
     parser.add_argument(
         "-d", "--dynamic", action='store_true', help="enable dygraph mode")
     parser.add_argument(
