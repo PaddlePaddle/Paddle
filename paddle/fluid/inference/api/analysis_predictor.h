@@ -84,7 +84,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \brief Construct a new Analysis Predictor object
   ///
-  /// \param[in] AnalysisConfig
+  /// \param[in] AnalysisConfig config
   ///
   explicit AnalysisPredictor(const AnalysisConfig &config) : config_(config) {
     predictor_id_ = inference::GetUniqueId();
@@ -102,9 +102,9 @@ class AnalysisPredictor : public PaddlePredictor {
   /// variables required by the executor, getting the feed_target_names and
   /// fetch_target_names, etc.
   ///
-  /// \param[in] parent_scope
-  /// \param[in] program
-  /// \param[out] Whether the init function executed successfully
+  /// \param[in] parent_scope parent scope
+  /// \param[in] program program
+  /// \param[out] bool Whether the init function executed successfully
   ///
   bool Init(const std::shared_ptr<framework::Scope> &parent_scope,
             const std::shared_ptr<framework::ProgramDesc> &program = nullptr);
@@ -115,7 +115,7 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \param[in] inputs input tensors
   /// \param[in] output_data output tensors
   /// \param[in] batch_size data's batch size
-  /// \param[out] Whether the function executed successfully
+  /// \param[out] bool Whether the function executed successfully
   ///
   bool Run(const std::vector<PaddleTensor> &inputs,
            std::vector<PaddleTensor> *output_data,
@@ -161,7 +161,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \brief Run the prediction engine
   ///
-  /// \param[out] Whether the function executed successfully
+  /// \param[out] bool Whether the function executed successfully
   ///
   bool ZeroCopyRun() override;
 
@@ -223,7 +223,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \brief Initialize mkldnn quantizer and execute mkldnn quantization pass
   ///
-  /// \param[out] Whether the function executed successfully
+  /// \param[out] bool Whether the function executed successfully
   ///
   bool MkldnnQuantize();
 
@@ -239,40 +239,40 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \brief Prepare predictor's required programs, including loading model
   /// information, graph optimization, and executor creation variables, etc.
   ///
-  /// \param[in] program
-  /// \param[out] Whether the function executed successfully
+  /// \param[in] program paddle program
+  /// \param[out] bool Whether the function executed successfully
   ///
   bool PrepareProgram(const std::shared_ptr<framework::ProgramDesc> &program);
   ///
   /// \brief Prepare scope environment, each predictor has its own scope
   ///
   /// \param[in] parent_scope The scope of the predictor to be cloned, or null
-  /// \param[out] Whether the function executed successfully
+  /// \param[out] bool Whether the function executed successfully
   ///
   bool PrepareScope(const std::shared_ptr<framework::Scope> &parent_scope);
   ///
   /// \brief Create an Executor object
   ///
-  /// \param[out] Whether the function executed successfully
+  /// \param[out] bool Whether the function executed successfully
   ///
   bool CreateExecutor();
   ///
   /// \brief According to the model's program, the executor creates ops
   ///
-  /// \param[out] Whether the function executed successfully
+  /// \param[out] bool Whether the function executed successfully
   ///
   bool PrepareExecutor();
 
   ///
   /// \brief Load model program.
   ///
-  /// \param[out] Whether the function executed successfully
+  /// \param[out] bool Whether the function executed successfully
   ///
   bool LoadProgramDesc();
   ///
   /// \brief Load model parameters.
   ///
-  /// \param[out] Whether the function executed successfully
+  /// \param[out] bool Whether the function executed successfully
   ///
   bool LoadParameters();
 
@@ -281,7 +281,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \param[in] input_datas inpute tensors
   /// \param[in] scope the scope used by predictor
-  /// \param[out] Whether the function executed successfully
+  /// \param[out] bool Whether the function executed successfully
   ///
   bool SetFeed(const std::vector<PaddleTensor> &input_datas,
                framework::Scope *scope);
@@ -290,7 +290,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \param[in] output_data output tensors
   /// \param[in] scope the scope used by predictor
-  /// \param[out] Whether the function executed successfully
+  /// \param[out] bool Whether the function executed successfully
   ///
   bool GetFetch(std::vector<PaddleTensor> *output_data,
                 framework::Scope *scope);
@@ -307,7 +307,7 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \brief PreSet for Mkldnn multi-thread and dynamic shape input.
   ///
   /// Used in AnalysisPredictor::Run(), do not support
-  /// AnalysisPredictor::ZeroRun() now.
+  /// AnalysisPredictor::ZeroCopyRun() now.
   ///
   /// \param[in] inputs tensors
   ///
@@ -316,14 +316,14 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \brief PostReset for Mkldnn multi-thread and dynamic shape input.
   ///
   /// Used in AnalysisPredictor::Run(), do not support
-  /// AnalysisPredictor::ZeroRun() now.
+  /// AnalysisPredictor::ZeroCopyRun() now.
   ///
   void MkldnnPostReset();
   ///
   /// \brief Compute compatibility based on model version information and
   /// operator version information
   ///
-  /// \param[out] Compatible information
+  /// \param[out] bool Compatible information
   ///
   bool CheckOperatorCompatible();
 

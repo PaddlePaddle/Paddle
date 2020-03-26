@@ -121,7 +121,7 @@ struct MkldnnQuantizerConfig {
   ///
   /// Set the batch size for warm-up iteration.
   ///
-  /// \param[in] batch_size
+  /// \param[in] batch_size warm-up batch size
   ///
   void SetWarmupBatchSize(int batch_size) { warmup_bs_ = batch_size; }
 
@@ -130,7 +130,7 @@ struct MkldnnQuantizerConfig {
   ///
   /// Get the batch size for warm-up iteration.
   ///
-  /// \param[out] int, the warm up batch size
+  /// \param[out] int the warm up batch size
   int warmup_batch_size() const { return warmup_bs_; }
 
   ///
@@ -147,7 +147,7 @@ struct MkldnnQuantizerConfig {
   ///
   /// \brief Get quantized op list
   ///
-  /// \param[out] const std::unordered_set<std::string>&, list of quantized ops
+  /// \param[out] const std::unordered_set<std::string>& list of quantized ops
   ///
   const std::unordered_set<std::string>& enabled_op_types() const {
     return enabled_op_types_;
@@ -165,7 +165,7 @@ struct MkldnnQuantizerConfig {
   ///
   /// \brief Get the excluded op ids
   ///
-  /// \param[out] const std::unordered_set<int>&, exclude op ids
+  /// \param[out] const std::unordered_set<int>& exclude op ids
   ///
   const std::unordered_set<int>& excluded_op_ids() const {
     return excluded_op_ids_;
@@ -181,7 +181,7 @@ struct MkldnnQuantizerConfig {
   ///
   /// \brief Get default scale algorithm
   ///
-  /// \param[out] ScaleAlgo, Method for calculating scale in quantization
+  /// \param[out] ScaleAlgo Method for calculating scale in quantization
   /// process
   ///
   ScaleAlgo default_scale_algo() const { return default_scale_algo_; }
