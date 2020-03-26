@@ -55,7 +55,7 @@ The input gradients is all dense gradient tensors in a table.
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(PushDenseNoNeedBufferVarsInference, "Ids");
+DECLARE_NO_NEED_BUFFER_VARS_INFER(PushDenseNoNeedBufferVarsInference, "Ids");
 
 }  // namespace operators
 }  // namespace paddle
