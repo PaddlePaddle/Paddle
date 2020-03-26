@@ -14,5 +14,8 @@
 
 # TODO: import all tensor api under this directory,
 # including tensor creation, manipulation, math, etc.
+from __future__ import print_function
+from . import search
 from search import *
+
 __all__ = search.__all__

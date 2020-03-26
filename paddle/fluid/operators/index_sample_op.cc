@@ -128,6 +128,9 @@ class IndexSampleGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   }
 };
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(IndexSampleGradNoNeedBufferVarsInference,
+                                      "X");
 }  // namespace operators
 }  // namespace paddle
 
