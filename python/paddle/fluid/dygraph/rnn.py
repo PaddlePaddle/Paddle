@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .layers import Layer
 from paddle.fluid import layers
-from ..layers import Layer
 
 __all__ = [
     'CudnnLSTM', 'CudnnGRU'
