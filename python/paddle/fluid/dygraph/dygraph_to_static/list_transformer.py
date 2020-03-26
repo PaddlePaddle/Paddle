@@ -196,6 +196,7 @@ class ListTransformer(gast.NodeTransformer):
             self.list_name_to_updated[target_id] = False
             self.list_nodes.add(node)
             return True
-        elif target_id in self.list_name_to_updated:
+        elif target_id in self.list_name_to_updated and \
+                self.list_name_to_updated[target_id] == False:
             del self.list_name_to_updated[target_id]
         return False

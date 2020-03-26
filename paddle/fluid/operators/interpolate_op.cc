@@ -447,8 +447,8 @@ class InterpolateGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(InterpolateGradNoNeedBufferVarsInference,
-                                      "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(InterpolateGradNoNeedBufferVarsInference,
+                                    "X");
 
 }  // namespace operators
 }  // namespace paddle
