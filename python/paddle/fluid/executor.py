@@ -432,12 +432,12 @@ handler = FetchHandlerExample(var_dict=var_dict)
 class Executor(object):
     """
     An Executor in Python, supports single/multiple-GPU running,
-    and single/multiple-CPU running. When construction the Executor,
-    the device is required.
+    and single/multiple-CPU running.
 
     Args:
-        place(fluid.CPUPlace()|fluid.CUDAPlace(n)): This parameter represents
-            the executor run on which device.
+        place(fluid.CPUPlace()|fluid.CUDAPlace(n)|None): This parameter represents
+            the executor run on which device. When this parameter is None, Paddle
+	    would choose the device independtantly. Default is None.
 
     Returns:
         Executor
@@ -450,9 +450,13 @@ class Executor(object):
           import numpy
           import os
 
-          use_cuda = True
-          place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-          exe = fluid.Executor(place)
+          # Set place explicitly.
+          # use_cuda = True
+          # place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+          # exe = fluid.Executor(place)
+
+          # place=None, Paddle chooses the device.
+          exe = fluid.Executor()
 
           train_program = fluid.Program()
           startup_program = fluid.Program()
@@ -475,14 +479,16 @@ class Executor(object):
 
           # Or, compiled the program and run. See `CompiledProgram`
           # for more detail.
-          # NOTE: If you use CPU to run the program, you need
-          # to specify the CPU_NUM, otherwise, fluid will use
-          # all the number of the logic core as the CPU_NUM,
-          # in that case, the batch size of the input should be
-          # greater than CPU_NUM, if not, the process will be
+          # NOTE: If you use CPU to run the program or Paddle is
+          # CPU version, you need to specify the CPU_NUM, otherwise,
+          # fluid will use all the number of the logic core as
+          # the CPU_NUM, in that case, the batch size of the input
+          # should be greater than CPU_NUM, if not, the process will be
           # failed by an exception.
-          if not use_cuda:
-              os.environ['CPU_NUM'] = str(2)
+
+          # Set place explicitly.
+          # if not use_cuda:
+          #     os.environ['CPU_NUM'] = str(2)
 
           compiled_prog = compiler.CompiledProgram(
               train_program).with_data_parallel(
