@@ -16,6 +16,6 @@
 # including tensor creation, manipulation, math, etc.
 from __future__ import print_function
 from . import search
-from search import *
+from .search import *
 
 __all__ = search.__all__
