@@ -622,6 +622,7 @@ def _prepare_params(input,
     elif dtype != "float32":
         raise ValueError("dtype must be float32")
 
+
 def _fleet_embedding(input,
                      size,
                      is_sparse=False,
@@ -645,7 +646,6 @@ def _fleet_embedding(input,
     # check and set params
     _prepare_params(input, size, is_sparse, is_distributed, padding_idx,
                     param_attr, dtype)
-    
     name = param_attr.name
     size = size[-1]
     if padding_idx is None:
