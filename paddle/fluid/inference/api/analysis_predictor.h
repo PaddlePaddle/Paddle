@@ -104,7 +104,7 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \param[in] parent_scope parent scope
   /// \param[in] program program
-  /// \param[out] bool Whether the init function executed successfully
+  /// \return Whether the init function executed successfully
   ///
   bool Init(const std::shared_ptr<framework::Scope> &parent_scope,
             const std::shared_ptr<framework::ProgramDesc> &program = nullptr);
@@ -113,9 +113,9 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \brief Run the prediction engine. Deprecated. Please refer to ZeroCopyRun
   ///
   /// \param[in] inputs input tensors
-  /// \param[in] output_data output tensors
+  /// \param[out] output_data output tensors
   /// \param[in] batch_size data's batch size
-  /// \param[out] bool Whether the function executed successfully
+  /// \return Whether the function executed successfully
   ///
   bool Run(const std::vector<PaddleTensor> &inputs,
            std::vector<PaddleTensor> *output_data,
@@ -124,13 +124,13 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \brief Get the input names
   ///
-  /// \param[out] std::vector<std::string> input names
+  /// \return input names
   ///
   std::vector<std::string> GetInputNames();
   ///
   /// \brief Get the output names
   ///
-  /// \param[out] std::vector<std::string>  output names
+  /// \return output names
   ///
   std::vector<std::string> GetOutputNames();
 
@@ -138,7 +138,7 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \brief Get the Input Tensor object
   ///
   /// \param[in] name input name
-  /// \param[out] std::unique_ptr<ZeroCopyTensor> input tensor
+  /// \return input tensor
   ///
   std::unique_ptr<ZeroCopyTensor> GetInputTensor(
       const std::string &name) override;
@@ -146,22 +146,21 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \brief Get the Output Tensor object
   ///
   /// \param[in] name otuput name
-  /// \param[out] std::unique_ptr<ZeroCopyTensor> output tensor
+  /// \return output tensor
   ///
   std::unique_ptr<ZeroCopyTensor> GetOutputTensor(
       const std::string &name) override;
   ///
   /// \brief Get all input names and their corresponding shapes
   ///
-  /// \param[out] std::map<std::string, std::vector<int64_t>> the map of input
-  /// names and shapes
+  /// \return the map of input names and shapes
   ///
   std::map<std::string, std::vector<int64_t>> GetInputTensorShape() override;
 
   ///
   /// \brief Run the prediction engine
   ///
-  /// \param[out] bool Whether the function executed successfully
+  /// \return Whether the function executed successfully
   ///
   bool ZeroCopyRun() override;
 
@@ -191,39 +190,39 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \brief Get the argument used by predictor
   ///
-  /// \param[out] Argument& the argument obtained by config
+  /// \return the argument obtained by config
   ///
   Argument &analysis_argument() { return argument_; }
   ///
   /// \brief Clone to get the new predictor. thread safe.
   ///
-  /// \param[out] std::unique_ptr<PaddlePredictor> get a new predictor
+  /// \return get a new predictor
   ///
   std::unique_ptr<PaddlePredictor> Clone() override;
   ///
   /// \brief Get the scope used by predictor
   ///
-  /// \param[out] framework::Scope* scope
+  /// \return scope
   ///
   framework::Scope *scope() { return scope_.get(); }
   ///
   /// \brief Get the inference program
   ///
-  /// \param[out] framework::ProgramDesc& the inference program
+  /// \return the inference program
   ///
   framework::ProgramDesc &program() { return *inference_program_; }
 
   ///
   /// \brief Get the serialized program
   ///
-  /// \param[out] std::string the serialized program
+  /// \return the serialized program
   ///
   std::string GetSerializedProgram() const override;
 
   ///
   /// \brief Initialize mkldnn quantizer and execute mkldnn quantization pass
   ///
-  /// \param[out] bool Whether the function executed successfully
+  /// \return Whether the function executed successfully
   ///
   bool MkldnnQuantize();
 
@@ -240,39 +239,39 @@ class AnalysisPredictor : public PaddlePredictor {
   /// information, graph optimization, and executor creation variables, etc.
   ///
   /// \param[in] program paddle program
-  /// \param[out] bool Whether the function executed successfully
+  /// \return Whether the function executed successfully
   ///
   bool PrepareProgram(const std::shared_ptr<framework::ProgramDesc> &program);
   ///
   /// \brief Prepare scope environment, each predictor has its own scope
   ///
   /// \param[in] parent_scope The scope of the predictor to be cloned, or null
-  /// \param[out] bool Whether the function executed successfully
+  /// \return Whether the function executed successfully
   ///
   bool PrepareScope(const std::shared_ptr<framework::Scope> &parent_scope);
   ///
   /// \brief Create an Executor object
   ///
-  /// \param[out] bool Whether the function executed successfully
+  /// \return Whether the function executed successfully
   ///
   bool CreateExecutor();
   ///
   /// \brief According to the model's program, the executor creates ops
   ///
-  /// \param[out] bool Whether the function executed successfully
+  /// \return Whether the function executed successfully
   ///
   bool PrepareExecutor();
 
   ///
   /// \brief Load model program.
   ///
-  /// \param[out] bool Whether the function executed successfully
+  /// \return Whether the function executed successfully
   ///
   bool LoadProgramDesc();
   ///
   /// \brief Load model parameters.
   ///
-  /// \param[out] bool Whether the function executed successfully
+  /// \return Whether the function executed successfully
   ///
   bool LoadParameters();
 
@@ -281,16 +280,16 @@ class AnalysisPredictor : public PaddlePredictor {
   ///
   /// \param[in] input_datas inpute tensors
   /// \param[in] scope the scope used by predictor
-  /// \param[out] bool Whether the function executed successfully
+  /// \return Whether the function executed successfully
   ///
   bool SetFeed(const std::vector<PaddleTensor> &input_datas,
                framework::Scope *scope);
   ///
   /// \brief Get the output data, only used in Run()
   ///
-  /// \param[in] output_data output tensors
+  /// \param[out] output_data output tensors
   /// \param[in] scope the scope used by predictor
-  /// \param[out] bool Whether the function executed successfully
+  /// \return Whether the function executed successfully
   ///
   bool GetFetch(std::vector<PaddleTensor> *output_data,
                 framework::Scope *scope);
@@ -298,7 +297,7 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \brief Get the output data, only used in GetFetch()
   ///
   /// \param[in] tensor for fetch op
-  /// \param[in] output_data output tensor
+  /// \param[out] output_data output tensor
   ///
   template <typename T>
   void GetFetchOne(const framework::LoDTensor &fetchs,
@@ -323,7 +322,7 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \brief Compute compatibility based on model version information and
   /// operator version information
   ///
-  /// \param[out] bool Compatible information
+  /// \return Compatible information
   ///
   bool CheckOperatorCompatible();
 
@@ -340,7 +339,7 @@ class AnalysisPredictor : public PaddlePredictor {
   /// 2. Builds a calibration table from the histograms.
   /// After step 2, we need to store the calibration table on disk.
   ///
-  /// \param[out] Whether the function executed successfully
+  /// \return Whether the function executed successfully
   ///
   bool SaveTrtCalibToDisk();
 #endif

@@ -89,7 +89,7 @@ struct MkldnnQuantizerConfig {
   /// \param[in] op_type_name the operator's name.
   /// \param[in] conn_name name of the connection (input/output) of the
   /// operator.
-  /// \param[out] ScaleAlgo the scale algo.
+  /// \return the scale algo.
   ///
   ScaleAlgo scale_algo(const std::string& op_type_name,
                        const std::string& conn_name) const;
@@ -110,7 +110,7 @@ struct MkldnnQuantizerConfig {
   ///
   /// Get the batch of data used for warm-up iteration.
   ///
-  /// \param[out] std::shared_ptr<std::vector<PaddleTensor>> the warm up data
+  /// \return the warm up data
   ///
   std::shared_ptr<std::vector<PaddleTensor>> warmup_data() const {
     return warmup_data_;
@@ -130,7 +130,7 @@ struct MkldnnQuantizerConfig {
   ///
   /// Get the batch size for warm-up iteration.
   ///
-  /// \param[out] int the warm up batch size
+  /// \return the warm up batch size
   int warmup_batch_size() const { return warmup_bs_; }
 
   ///
@@ -147,7 +147,7 @@ struct MkldnnQuantizerConfig {
   ///
   /// \brief Get quantized op list
   ///
-  /// \param[out] const std::unordered_set<std::string>& list of quantized ops
+  /// \return list of quantized ops
   ///
   const std::unordered_set<std::string>& enabled_op_types() const {
     return enabled_op_types_;
@@ -165,7 +165,7 @@ struct MkldnnQuantizerConfig {
   ///
   /// \brief Get the excluded op ids
   ///
-  /// \param[out] const std::unordered_set<int>& exclude op ids
+  /// \return exclude op ids
   ///
   const std::unordered_set<int>& excluded_op_ids() const {
     return excluded_op_ids_;
@@ -181,7 +181,7 @@ struct MkldnnQuantizerConfig {
   ///
   /// \brief Get default scale algorithm
   ///
-  /// \param[out] ScaleAlgo Method for calculating scale in quantization
+  /// \return Method for calculating scale in quantization
   /// process
   ///
   ScaleAlgo default_scale_algo() const { return default_scale_algo_; }
