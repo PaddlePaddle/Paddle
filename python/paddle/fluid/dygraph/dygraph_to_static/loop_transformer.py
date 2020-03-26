@@ -169,7 +169,7 @@ class NameVisitor(gast.NodeVisitor):
         if self._is_call_func_name_node(node):
             self.generic_visit(node)
             return
-        if node.id == "False" or node.id == "True":
+        if node.id == "False" or node.id == "True" or node.id == "None":
             self.generic_visit(node)
             return
 
@@ -187,7 +187,6 @@ class NameVisitor(gast.NodeVisitor):
     def visit_Attribute(self, node):
         if self._is_call_func_name_node(node):
             return
-
         attr_full_name = get_attribute_full_name(node)
         self.current_seen_vars.add(node)
         for loop_node in self.current_loop:
