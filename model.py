@@ -20,6 +20,7 @@ import pickle
 import numpy as np
 import six
 import warnings
+import tqdm
 
 from collections import Iterable
 from paddle import fluid
@@ -587,10 +588,8 @@ class DynamicGraphAdapter(object):
                 samples = outputs[0].shape[0]
                 current_count = self._merge_count.get(self.mode + '_total', 0)
                 if current_count + samples >= total_size:
-                    outputs = [
-                        o[:total_size - metric.count[0]] for o in outputs
-                    ]
-                    labels = [l[:total_size - metric.count[0]] for l in labels]
+                    outputs = [o[:total_size - current_count] for o in outputs]
+                    labels = [l[:total_size - current_count] for l in labels]
                     self._merge_count[self.mode + '_total'] = 0
                     self._merge_count[self.mode +
                                       '_batch'] = total_size - current_count
@@ -612,8 +611,9 @@ class DynamicGraphAdapter(object):
         self.mode = 'test'
         inputs = [to_variable(x) for x in to_list(inputs)]
         outputs = self.model.forward(*inputs)
-        if self._nranks > 2:
+        if self._nranks > 1 and isinstance(self.model._place, fluid.CUDAPlace):
             outputs = [_all_gather(o, self._nranks) for o in to_list(outputs)]
+
         return [to_numpy(o) for o in to_list(outputs)]
 
     def parameters(self, *args, **kwargs):
@@ -1012,12 +1012,13 @@ class Model(fluid.dygraph.Layer):
         FIXME: add more comments and usage
         Args:
             eval_data (Dataset|DataLoader): An iterable data loader is used for
-                evaluation at the end of epoch. If None, will not do evaluation. 
-                An instance of paddle.fluid.io.Dataset or paddle.fluid.io.Dataloader 
-                is recomended.
+                evaluation. An instance of paddle.fluid.io.Dataset or 
+                paddle.fluid.io.Dataloader is recomended.
             batch_size (int): Integer number. The batch size of train_data and eval_data. 
                 When train_data and eval_data are both the instance of Dataloader, this 
                 parameter will be ignored.
+            log_freq (int): The frequency, in number of steps, the training logs
+                is printed.
             verbose (int): The verbosity mode, should be 0, 1, or 2.
                 0 = silent, 1 = progress bar, 2 = one line per epoch.
             num_workers (int): the number of subprocess to load data, 0 for no subprocess 
@@ -1043,10 +1044,8 @@ class Model(fluid.dygraph.Layer):
                 feed_list=feed_list,
                 num_workers=num_workers,
                 return_list=True)
-        elif eval_data is not None:
-            eval_loader = eval_data
         else:
-            eval_loader = None
+            eval_loader = eval_data
 
         self._test_dataloader = eval_loader
         metrics_name = self._metrics_name()
@@ -1068,6 +1067,74 @@ class Model(fluid.dygraph.Layer):
         cbks.on_end('eval', logs)
 
         self._test_dataloader = None
+
+        eval_result = {}
+        for k in self._metrics_name():
+            eval_result[k] = logs[k]
+
+        return eval_result
+
+    def predict(self, test_data, batch_size=1, num_workers=0, callbacks=None):
+        """
+        FIXME: add more comments and usage
+        Args:
+            test_data (Dataset|DataLoader): An iterable data loader is used for
+                predict. An instance of paddle.fluid.io.Dataset or paddle.fluid.io.Dataloader 
+                is recomended.
+            batch_size (int): Integer number. The batch size of train_data and eval_data. 
+                When train_data and eval_data are both the instance of Dataloader, this 
+                parameter will be ignored.
+            num_workers (int): the number of subprocess to load data, 0 for no subprocess 
+                used and loading data in main process. When train_data and eval_data are
+                both the instance of Dataloader, this parameter will be ignored.
+            callbacks (Callback|None): A list of `Callback` instances to apply
+                during training. If None, `ProgBarLogger` and `ModelCheckpoint`
+                are automatically inserted.
+        """
+
+        if fluid.in_dygraph_mode():
+            feed_list = None
+        else:
+            feed_list = [x.forward() for x in self._inputs + self._labels]
+
+        if test_data is not None and isinstance(test_data, Dataset):
+            test_sampler = DistributedBatchSampler(
+                test_data, batch_size=batch_size)
+            test_loader = DataLoader(
+                test_data,
+                batch_sampler=test_sampler,
+                places=self._place,
+                feed_list=feed_list,
+                num_workers=num_workers,
+                return_list=True)
+        else:
+            test_loader = test_data
+
+        self._test_dataloader = test_loader
+
+        loader = test_loader
+        if not isinstance(test_loader, Iterable):
+            loader = test_loader()
+
+        outputs = None
+        for data in tqdm.tqdm(loader):
+            if not fluid.in_dygraph_mode():
+                data = data[0]
+
+            outs = self.test(*data)
+
+            if outputs is None:
+                outputs = outs
+            else:
+                outputs = [
+                    np.vstack([x, outs[i]]) for i, x in enumerate(outputs)
+                ]
+
+        self._test_dataloader = None
+        if test_loader is not None and self._adapter._nranks > 1 \
+                    and isinstance(test_loader, DataLoader):
+            outputs = [o[:len(test_loader.dataset)] for o in outputs]
+        return outputs
 
     def set_eval_data(self, eval_data):
         """
