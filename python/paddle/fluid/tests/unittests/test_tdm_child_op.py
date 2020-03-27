@@ -30,27 +30,36 @@ class TestTDMChildOp(OpTest):
         self.op_type = "tdm_child"
         self.config()
         tree_info = self.create_tdm_tree()
+        tree_info_np = np.array(tree_info).astype(self.info_type)
 
         x_np = np.random.randint(
             low=0, high=26, size=self.x_shape).astype(self.x_type)
         children_res = []
         leaf_mask_res = []
-        for node in x_np:
-            children = tree_info[node, 3:]
-            mask = []
-            for child in children:
-                m = int(tree_info[child, 0] != 0)
-                mask.append(m)
-            children_res += children
-            leaf_mask_res += mask
-        children_res_np = np.array(children_res).astype(self.child_type)
-        leaf_mask_res_np = np.array(leaf_mask_res).astype(self.child_type)
+        for batch in x_np:
+            for node in batch:
+                children = []
+                if node != 0:
+                    children.append(tree_info[node][3])
+                    children.append(tree_info[node][4])
+                else:
+                    children.append(0)
+                    children.append(0)
+                mask = []
+                for child in children:
+                    m = int(tree_info[child, 0] != 0)
+                    mask.append(m)
+                children_res += children
+                leaf_mask_res += mask
+        children_res_np = np.array(children_res).astype(self.info_type)
+        leaf_mask_res_np = np.array(leaf_mask_res).astype(self.info_type)
 
-        child_shape = self.x_shape.append(2)
+        child_shape = tuple(list(self.x_shape).append(2))
         child = np.reshape(children_res_np, child_shape)
         leaf_mask = np.reshape(leaf_mask_res_np, child_shape)
 
-        self.inputs = {'X': x, 'Tree_info': tree_info_np, 'Child_nums': 2}
+        self.attrs = {'Child_nums': 2}
+        self.inputs = {'X': x, 'Tree_info': tree_info_np}
         self.outputs = {'Child': child, 'Leaf_mask': leaf_mask}
 
     def create_tdm_tree(self):
@@ -90,7 +99,6 @@ class TestTDMChildOp(OpTest):
         self.x_shape = (10, 20)
         self.x_type = 'int32'
         self.info_type = 'int32'
-        self.child_type = 'int32'
 
     def test_check_output(self):
         self.check_output()
