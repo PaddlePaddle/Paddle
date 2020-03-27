@@ -268,17 +268,18 @@ def grad(outputs,
     This API computes the sum of gradients of `outputs` with respect to each `inputs` .
 
     Parameters:
-        outputs (Variable|list(Variable)|tuple(Variable)): any Variable or a 
-            list/tuple of any Variables.
-        inputs (Variable|list(Variable)|tuple(Variable)): any Variable or a 
-            list/tuple of any Variables.
+        outputs (Variable|list(Variable)|tuple(Variable)): the output Variable or 
+            Variable list/tuple of the graph to compute gradients.
+        inputs (Variable|list(Variable)|tuple(Variable)): the input Variable or 
+            Variable list/tuple of the graph to compute gradients. The returned
+            values of this API are the gradients of `inputs` . 
         grad_outputs (Variable|list(Variable|None)|tuple(Variable|None), optional): 
             initial gradient values of `outputs` . If `grad_outputs` is None, 
             the initial gradient values of `outputs` would be Tensors filled with 1; 
             if `grad_outputs` is not None, it must have the same length as `outputs` , 
             and in this case, the initial gradient value of the i-th `outputs` would
             be: (1) a Tensor filled with 1 when the i-th element of `grad_outputs` 
-            is None; (2) the i-th element of `grad_outputs` when i-th element of
+            is None; (2) the i-th element of `grad_outputs` when the i-th element of
             `grad_outputs` is a Variable. Default None.
         retain_graph (bool, optional): whether to retain the forward graph which 
             is used to calculate the gradient. When it is True, the graph would 
@@ -295,11 +296,11 @@ def grad(outputs,
             If it is True, only the gradients of `inputs` would be computed.
             Default True. only_inputs=False is under development, and it is
             not supported yet.    
-        allow_unused (bool, optional): whether to raise error or return None as 
-            the gradient of the unreachable `inputs` . If some variables of 
+        allow_unused (bool, optional): whether to raise error or return None if some 
+            Variables of `inputs` are unreachable in the graph. If some Variables of 
             `inputs` are unreachable in the graph (i.e., their gradients are None),  
-            error would be raised if allow_unused=False, or None would be returned
-            if allow_unused=True. Default False.
+            error would be raised if allow_unused=False, or None would be returned as
+            their gradients if allow_unused=True. Default False.
         no_grad_vars (Variable|list(Variable)|tuple(Variable)|set(Variable), optional): 
             the Variables whose gradients are not needed to compute. Default None.
         backward_strategy (BackwardStrategy, optional): The backward strategy to
@@ -311,7 +312,7 @@ def grad(outputs,
         inside `inputs`, and the i-th returned Variable is the sum of gradients of 
         `outputs` with respect to the i-th `inputs`.
 
-    Examples:
+    Examples 1:
         .. code-block:: python
 
             import paddle.fluid as fluid
@@ -345,6 +346,52 @@ def grad(outputs,
 
             print(test_dygraph_grad(create_graph=False)) # [2.] 
             print(test_dygraph_grad(create_graph=True)) # [4.]
+
+    Examples 2:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            fluid.enable_dygraph()
+
+            def test_dygraph_grad(grad_outputs=None):
+                x = fluid.layers.fill_constant(shape=[1], value=2.0, dtype='float32')
+                x.stop_gradient = False
+
+                y1 = x * x
+                y2 = x * 3 
+
+                # If grad_outputs=None, dy1 = [1], dy2 = [1].
+                # If grad_outputs=[g1, g2], then:
+                #    - dy1 = [1] if g1 is None else g1
+                #    - dy2 = [1] if g2 is None else g2
+
+                # Since y1 = x * x, dx = 2 * x * dy1.
+                # Since y2 = x * 3, dx = 3 * dy2.
+                # Therefore, the final result would be:
+                # dx = 2 * x * dy1 + 3 * dy2 = 4 * dy1 + 3 * dy2.
+
+                dx = fluid.dygraph.grad(
+                    outputs=[y1, y2], 
+                    inputs=[x],
+                    grad_outputs=grad_outputs)[0]
+
+                return dx.numpy()
+
+            THREE = fluid.layers.fill_constant(shape=[1], value=3.0, dtype='float32')
+            FOUR = fluid.layers.fill_constant(shape=[1], value=4.0, dtype='float32')
+
+            # dy1 = [1], dy2 = [1]
+            print(test_dygraph_grad(None)) # [7.]
+
+            # dy1 = [1], dy2 = [4]
+            print(test_dygraph_grad([None, FOUR])) # [16.] 
+
+            # dy1 = [4], dy2 = [1]
+            print(test_dygraph_grad([FOUR, None])) # [19.]
+
+            # dy1 = [3], dy2 = [4]
+            print(test_dygraph_grad([THREE, FOUR])) # [24.]
 	'''
 
     def check_in_out(in_out_list, name):
