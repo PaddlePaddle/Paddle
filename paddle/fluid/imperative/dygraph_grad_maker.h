@@ -151,6 +151,13 @@ class GradOpBaseMakerBase {
 
       for (auto& var_base_temp : iterator->second) {
         if (kRole == TracedVarRole::kBackward) {
+          if (var_base_temp->OverridedStopGradient()) {
+            VLOG(6) << "var " << var_base_temp->Name()
+                    << "'s OverridedStopGradient is "
+                    << var_base_temp->OverridedStopGradient()
+                    << ", don't create its grad_var";
+            continue;
+          }
           if (!var_base_temp->HasGradVar()) {
             VLOG(6) << "GradVarBase of var " << var_base_temp->Name()
                     << " in OP " << type_ << " is null";

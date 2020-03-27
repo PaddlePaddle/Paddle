@@ -27,46 +27,57 @@ class RunProgramOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasInputs("X"), true,
                       platform::errors::NotFound(
                           "Input(X) of RunProgramOp should not be null."));
-    // PADDLE_ENFORCE_EQ(
-    //     ctx->HasInputs("Params"), true,
-    //     platform::errors::NotFound("Input(Params) of RunProgramOp should not
-    //     be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInputs("Params"), true,
+                      platform::errors::NotFound(
+                          "Input(Params) of RunProgramOp should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutputs("Out"), true,
                       platform::errors::NotFound(
                           "Output(Out) of RunProgramOp should not be null."));
-
-    // TODO(chenweihang): feed targets shape check
-    // get var dims, compare to var desc shape
   }
 };
 
 class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(vector<LoDTensor>), The feed targets of executed program.")
+    AddInput("X",
+             "(vector<LoDTensor>)"
+             "The input tensors of RunProgram operator, also the feed targets "
+             "of loaded program.")
         .AsDuplicable();
     AddInput("Params",
-             "(vector<LoDTensor>), The parameters of executed program.")
+             "(vector<LoDTensor or SelecetedRows>)"
+             "The input parameter of RunProgram operator, also the parameters "
+             "of the loaded program.")
         .AsDuplicable();
     AddOutput("Out",
-              "，(vector<LoDTensor>), The fetch targets of executed program.")
+              "(vector<LoDTensor>)"
+              "The output tensors of RunProgram operator, also the fetch "
+              "targets of the loaded program.")
         .AsDuplicable();
-    AddOutput("OutScope", "(StepScopeVar), execution scope");
-    AddAttr<BlockDesc*>("fwd_block", "The froward progarm desc.");
-    AddAttr<BlockDesc*>("bwd_block", "The froward progarm desc.");
-    AddAttr<std::vector<std::string>>("input_var_names", "input var names")
-        .SetDefault({});
-    AddAttr<std::vector<std::string>>("param_names", "param var names")
-        .SetDefault({});
-    AddAttr<std::vector<std::string>>("output_var_names", "output var names")
-        .SetDefault({});
-    // AddAttr<std::string>(
-    //     "feed_var_name", "The feed var name")
-    //     .SetDefault("feed");
-    // AddAttr<std::string>(
-    //     "fetch_var_name", "The fetch var name")
-    //     .SetDefault("fetch");
-    AddComment(R"DOC(Run static model in dygraph model.)DOC");
+    AddOutput("OutScope",
+              "(StepScopeVar)"
+              "A vector of execution scope in RunProgram operator, which "
+              "contains at most one scope."
+              "NOTE: Do not use Scope directly because Scope output is not "
+              "currently supported.");
+    AddAttr<BlockDesc*>("fwd_block",
+                        "(BlockDesc *)"
+                        "The global block of froward progarm desc.");
+    AddAttr<BlockDesc*>("bwd_block",
+                        "(BlockDesc *)"
+                        "The global block of backward progarm desc.");
+    AddComment(R"DOC(
+RunProgram operator.
+
+The RunProgram operator receives a program's feed targets, fetch targets, 
+and parameters, and receives the forward and backward program desc 
+as attributes, and then executes the program by executor.
+
+NOTE: This operator is added so that the inference model stored by 
+`fluid.io.save_inference_model` under the static graph mode can be loaded 
+under the dynamic graph mode for fine-tuning or inferencing.
+      
+)DOC");
   }
 };
 
@@ -86,8 +97,8 @@ class RunProgramGradOp : public framework::OperatorWithKernel {
         ctx->HasInputs(framework::GradVarName("Out")), true,
         platform::errors::NotFound(
             "Input(Out@GRAD) of RunProgramGradOp should not be null."));
-
-    // TODO(chenweihang): set output dims
+    // NOTE: The X@GRAD and Params@GRAD may not exist,
+    // because they can be set stop_gradient = True
   }
 };
 

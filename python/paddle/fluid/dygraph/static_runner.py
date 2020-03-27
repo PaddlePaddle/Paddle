@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import collections
+import copy
 import logging
 import numpy as np
 import os
@@ -27,10 +28,7 @@ from .. import executor
 from .. import framework
 from .. import backward
 
-from ..proto import framework_pb2
 from ... import compat as cpt
-
-from ..transpiler.details import program_utils
 
 __all__ = ["StaticModelRunner"]
 
@@ -58,23 +56,46 @@ logging.getLogger().setLevel(logging.ERROR)
 #   Because the dynamic graph op performs the forward and backward separately,
 #   the forward program is used as the execution object of the forward op,
 #   and the reverse program is used as the execution object of the grad op.
-#
-# TODO:
-# - add prefix for all params
-# - insert feed, fetch into bwd_program
-# - sort var in feed and fetch
-# - self and non-self design
-# - 
 
 
 class StaticModelRunner(layers.Layer):
+    """
+    A Dynamic graph Layer for loading inference program and related parameters,
+    and then performing fine-tune training or inference.
+
+    The loaded program and parameters are saved by `fluid.io.save_inference_model`.
+
+    .. note::
+        **1. Dynamic graph mode do not support LoDTensor. 
+             All original static graph model's feed targets or parametars 
+             that depend on LoD are temporarily unavailable.**
+        **2. All saved inference model's feed targets need be given.**
+        **3. The ``stop_gradient`` information is lost and can not be recovered.**
+        **4. The parameter's ``trainable`` information is lost and can not be recovered.**
+        **5. Double gradient model is not supported now.**
+        **6. Now only supports loading models saved by `fluid.io.save_inference_model`.**
+
+    Args:
+        model_dir(str): The directory path where the model is saved.
+        model_filename(str, optional): The file name of saved inference program. 
+                                       If set to None, a default filename is
+                                       :code:`__model__`.
+                                       The default value is None.
+        params_filename(str, optional): The file name of saved all related parameters.
+                                        If set to None, parameters are saved
+                                        in separate files. 
+                                        The default value is None.
+
+    Returns:
+        Layer: A Layer can run loaded program.
+    """
+
     def __init__(self, model_dir, model_filename=None, params_filename=None):
         super(StaticModelRunner, self).__init__()
 
         # Step 0. key variable definitions
-        # the variable name of the feed & fetch itself
-        # self._feed_var_name = None
-        # self._fetch_var_name = None
+        self._program_desc = None
+        self._bwd_program_desc = None
         # the layer outputs var desc
         self._output_descs = []
         # input, output, params name list
@@ -83,36 +104,40 @@ class StaticModelRunner(layers.Layer):
         self._param_names = []
 
         # Step 1. load program desc from disk
-        # the saved model hold feed, fetch op, no need, can be remove
+        # the saved model hold feed, fetch & scale op, no need, can be remove
         self._program_desc = self._load_static_model(model_dir, model_filename)
-        # self._print_program_desc(self._program_desc)
-        # logging.info("feed: %s" % self._feed_var_name)
-        # logging.info("fetch: %s" % self._fetch_var_name)
 
-        # Step 2. load all parameters
+        # Step 2. set all `is_test` attributes to False
+        self._change_is_test_status(False)
+
+        # Step 3. load all parameters
         self._load_persisitable_dict(model_dir, params_filename)
 
-        # Step 3. generate backwar program desc
-        self._bwd_program_desc = self._generate_backward(self._program_desc,
-                                                         self._output_descs)
-        # self._bwd_program_desc = self._generate_backward_desc()
-        # self._print_program_desc(self._bwd_program_desc)
+        # Step 4. generate backwar program desc
+        self._bwd_program_desc = self._generate_backward_desc()
+
+        # Step 5. recheck parameters stop gradients
+        self._recheck_stop_gradients()
+
+        # For Debug
+        DescParser.program_desc_to_log(self._program_desc)
+        DescParser.program_desc_to_log(self._bwd_program_desc)
+
+    def train(self):
+        framework._dygraph_tracer().train_mode()
+        self._change_is_test_status(False)
+
+    def eval(self):
+        framework._dygraph_tracer().eval_mode()
+        self._change_is_test_status(True)
 
     def forward(self, inputs):
-        # Step 1. check inputs
-        if not isinstance(inputs, dict):
-            raise TypeError(
-                "The type of inputs in StaticModelRunner.forward must be dict, but received %s."
-                % type(inputs))
-        for key, value in inputs.items():
-            if not isinstance(key, six.string_types):
-                raise TypeError(
-                    "The type of inputs.key in StaticModelRunner.forward must be str, but received %s."
-                    % type(key))
-            # key should be valid name
-            if key not in self._all_var_names():
-                raise ValueError(
-                    "The variable name %s is not in the loaded program." % key)
+        # Step 1. check inputs, may affect performance
+        if not isinstance(inputs, (list, tuple)):
+            inputs = [inputs]
+
+        input_vars = []
+        for i, value in enumerate(inputs):
             if not isinstance(value, (np.ndarray, core.VarBase)):
                 raise TypeError(
                     "The type of inputs.value in StaticModelRunner.forward must be numpy array or Variable(VarBase), but received %s."
@@ -121,414 +146,49 @@ class StaticModelRunner(layers.Layer):
             if isinstance(value, np.ndarray):
                 var = core.VarBase(
                     value=value,
-                    name=key,
+                    name=self._input_names[i],
                     persistable=False,
                     place=framework._current_expected_place(),
                     zero_copy=True)
                 var.stop_gradient = True
-                inputs[key] = var
-
-        # Step 2. run prorgam by op
-        # build inputs, outputs and attrs
-        input_vars = []
-        params = []
-        output_vars = []
-        for var_name, var in inputs.items():
-            self._input_names.append(var_name)
+            else:
+                var = value
+                var.name = self._input_names[i]
             input_vars.append(var)
-        for param_name, param in self._parameters.items():
+
+        params = []
+        for param in self._parameters.values():
             params.append(param)
+
+        output_vars = []
         for var_desc in self._output_descs:
             var = core.VarBase(var_desc.dtype(),
                                var_desc.shape(),
                                var_desc.name(), var_desc.type(), False)
             var.stop_gradient = False
             output_vars.append(var)
+
         # hold forward variables
         out_scope = core.VarBase(core.VarDesc.VarType.FP32, [],
                                  "program_out_scope",
                                  core.VarDesc.VarType.STEP_SCOPES, True)
 
-        # NOTE: TraceOp attr checker receive attr=[] check failed
-        op_attrs = {}
-        op_attrs['fwd_block'] = self._program_desc.block(0)
-        op_attrs['bwd_block'] = self._bwd_program_desc.block(0)
-        if len(self._input_names) > 0:
-            op_attrs['input_var_names'] = self._input_names
-        if len(self._param_names) > 0:
-            op_attrs['param_names'] = self._param_names
-        if len(self._output_names) > 0:
-            op_attrs['output_var_names'] = self._output_names
-
-        # run op
+        # Step 2. run prorgam by op
         framework._dygraph_tracer().trace_op(
             type='run_program',
             inputs={'X': input_vars,
                     'Params': params},
             outputs={'Out': output_vars,
-                     'OutScope': [out_scope]},
-            attrs=op_attrs)
+                     'OutScope': out_scope},
+            attrs={
+                'fwd_block': self._program_desc.block(0),
+                'bwd_block': self._bwd_program_desc.block(0)
+            })
 
         outs = output_vars
         if len(output_vars) == 1:
             outs = output_vars[0]
         return outs
-
-    def _generate_backward_desc(self):
-        with framework._static_graph_guard():
-            # Step 1. create backward program desc
-            assert self._program_desc is not None
-            bwd_program_desc = core.ProgramDesc()
-            for i in six.moves.range(1, self._program_desc.num_blocks()):
-                parent_idx = self._program_desc.block(i).parent
-                bwd_program_desc.append_block(
-                    bwd_program_desc.block(parent_idx))
-
-            # Step 2. prepare program and related var
-            # NOTE: To reuse backward interfaces, build Program firstly.
-            # Originally, there is no need to build a program, but need to almost
-            # rewrite a series of methods for append_backward for program_desc. 
-            # Therefore, in order to reuse the method of backward.py, build the program here.
-            fwd_program = self._build_program_by_desc(self._program_desc)
-            bwd_program = self._build_program_by_desc(bwd_program_desc)
-
-            # targets = []
-            # for var in fwd_program.list_vars():
-            #     if var.name in self._output_names:
-            #         targets.append(var)
-
-            targets = []
-            for out in self._output_descs:
-                targets.append(fwd_program.global_block().var(out.name()))
-
-            # Step 3. calc gradients
-            block = targets[0].block
-            block_idx = block.idx
-            target_block = bwd_program.block(block_idx)
-
-            # target_gradients = [None] * len(targets)
-            no_grad_dict = backward._get_stop_gradients_(fwd_program)
-
-            # target_grad_map = {}
-            # for i, grad in enumerate(target_gradients):
-            #     target = targets[i]
-            #     grad_name = backward._append_grad_suffix_(target.name)
-            #     target_shape = target.name + '_shape'
-            #     block.desc.append_op().copy_from(
-            #         backward._create_op_desc_("shape", {'Input': [target.name]},
-            #                         {"Out": [target_shape]}, {}))
-            #     op_desc = backward._create_op_desc_("fill_constant",
-            #                             {"ShapeTensor": [target_shape]},
-            #                             {"Out": [grad_name]}, {
-            #                                 "shape": target.shape,
-            #                                 "value": 1.0,
-            #                                 "dtype": target.dtype,
-            #                             })
-            #     block.desc.append_op().copy_from(op_desc)
-
-            block_no_grad_set = set(
-                map(backward._strip_grad_suffix_, no_grad_dict[0]))
-            op_path = backward._find_op_path_(block, targets, [],
-                                              block_no_grad_set)
-            no_grad_dict[0].update(
-                list(map(backward._append_grad_suffix_, block_no_grad_set)))
-
-            grad_to_var = dict()
-            grad_info_map = dict()
-            backward._append_backward_ops_(block, op_path, target_block,
-                                           no_grad_dict, grad_to_var)
-
-            backward._rename_grad_(target_block, 0, grad_to_var, {})
-
-            self._generate_backward_vars(target_block, 0, grad_to_var,
-                                         grad_info_map)
-
-            self._append_output_grad_vars(bwd_program)
-
-            # Step 5. sync two program
-            fwd_program._sync_with_cpp()
-            bwd_program._sync_with_cpp()
-
-            return bwd_program.desc
-
-    def _generate_backward(self, fwd_program_desc, outputs):
-        with framework._static_graph_guard():
-            # Step 1. create backward program desc
-            bwd_program_desc = core.ProgramDesc()
-            # for i in six.moves.range(1, fwd_program_desc.num_blocks()):
-            #     parent_idx = fwd_program_desc.block(i).parent
-            #     bwd_program_desc.append_block(bwd_program_desc.block(parent_idx))
-
-            # Step 2. prepare program and related var
-            # NOTE: To reuse backward interfaces, build Program firstly.
-            # Originally, there is no need to build a program, but need to almost
-            # rewrite a series of methods for append_backward for program_desc. 
-            # Therefore, in order to reuse the method of backward.py, build the program here.
-            fwd_program = self._build_program_by_desc(fwd_program_desc)
-            bwd_program = self._build_program_by_desc(bwd_program_desc)
-
-            out_vars = []
-            for out in outputs:
-                out_vars.append(fwd_program.global_block().var(out.name()))
-
-            block = fwd_program.block(0)
-            target_block = bwd_program.block(0)
-
-            # TODO: no_grad_dict? stop_gradient attr is not in desc 
-            no_grad_dict = backward._get_stop_gradients_(fwd_program)
-
-            #logging.info("no grad dict: {}".format(no_grad_dict))
-
-            # Step 3. generate backward program
-            block_no_grad_set = set(
-                map(backward._strip_grad_suffix_, no_grad_dict[0]))
-            op_path = backward._find_op_path_(block, out_vars, [],
-                                              block_no_grad_set)
-
-            # logging.info("block_no_grad_set: {}".format(block_no_grad_set))
-            logging.info("------------------------\nop path:")
-            for op in op_path:
-                logging.info(program_utils.op_to_code(op))
-            logging.info("------------------------")
-
-            no_grad_vars = backward._find_no_grad_vars(block, op_path, out_vars,
-                                                       block_no_grad_set)
-
-            # logging.info("no_grad_vars: {}".format(no_grad_vars))
-
-            block_no_grad_set.update(no_grad_vars)
-            no_grad_dict[0].update(
-                list(map(backward._append_grad_suffix_, block_no_grad_set)))
-
-            # logging.info("block_no_grad_set: {}".format(block_no_grad_set))
-            # logging.info("no grad dict: {}".format(no_grad_dict))
-
-            grad_to_var = dict()
-
-            # backward._append_backward_ops_(
-            #     block,  # the block where forward ops are in
-            #     op_path,
-            #     target_block,
-            #     no_grad_dict,
-            #     grad_to_var)
-            self._generate_backward_ops(
-                block,  # the block where forward ops are in
-                op_path,
-                target_block,
-                no_grad_dict,
-                grad_to_var)
-
-            logging.info("grad_to_var: {}".format(grad_to_var))
-
-            grad_info_map = dict()
-
-            # Because append_backward may be called multiple times,
-            # we need rename the internal gradient variables so that they have
-            # different names.
-            backward._rename_grad_(target_block, 0, grad_to_var, {})
-
-            self._generate_backward_vars(target_block, 0, grad_to_var,
-                                         grad_info_map)
-
-            # Step 4. insert feed, fetch op for backward
-            # feed, fetch_list, feed_var_name, fetch_var_name = \
-            #     self._prepare_feed_fetch_var()
-            # bwd_program = self._insert_feed_fetch_ops(bwd_program, feed, fetch_list, 
-            #     feed_var_name, fetch_var_name)
-            self._append_output_grad_vars(bwd_program)
-
-            # Step 5. sync two program
-            fwd_program._sync_with_cpp()
-            bwd_program._sync_with_cpp()
-
-            return bwd_program.desc
-
-    def _append_output_grad_vars(self, bwd_program):
-        global_block = bwd_program.global_block()
-
-        output_grad_names = list(
-            map(backward._append_grad_suffix_, self._output_names))
-
-        for i, name in enumerate(output_grad_names):
-            global_block.create_var(
-                name=name,
-                shape=self._output_descs[i].shape(),
-                dtype=self._output_descs[i].dtype(),
-                type=self._output_descs[i].type(),
-                persistable=False)
-
-    def _build_program_by_desc(self, program_desc):
-        with framework._static_graph_guard():
-            prog = framework.Program()
-            prog.desc = program_desc
-            prog.blocks = [
-                framework.Block(prog, i)
-                for i in six.moves.range(prog.desc.num_blocks())
-            ]
-            prog._sync_with_cpp()
-        return prog
-
-    def _generate_backward_ops(self, block, ops, target_block, no_grad_dict,
-                               grad_to_var):
-
-        # grad_op_descs holds created grad_op, and will be appended to target_block
-        grad_op_descs = []
-        program = block.program
-        target_program = target_block.program
-
-        # add grad_op_desc by reversed ops
-        for op in reversed(ops):
-            grad_sub_block_list = []
-            # If the op has its own sub-block, deal with the sub-block first
-            if op.has_attr("sub_block"):
-                sub_block = program.block(op._block_attr_id("sub_block"))
-                grad_sub_block = target_program._create_block()
-                # TODO: no forward block, set to parent block temporarily
-                grad_sub_block._set_forward_block_idx(sub_block.parent_idx)
-                sub_block_path = backward._get_sub_block_path(
-                    sub_block, op, no_grad_dict[sub_block.idx])
-                self._generate_backward_ops(sub_block, sub_block_path,
-                                            grad_sub_block, no_grad_dict,
-                                            grad_to_var)
-
-                program._rollback()
-                grad_sub_block_list.append(grad_sub_block.desc)
-
-            # Getting op's corresponding grad_op
-            grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-                op.desc,
-                cpt.to_text(no_grad_dict[block.idx]), grad_sub_block_list)
-
-            # Set device for grad_op according to forward Op
-            device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName(
-            )
-            op_device = op.desc.attr(device_attr_name)
-            for op_desc in grad_op_desc:
-                op_desc._set_attr(device_attr_name, op_device)
-
-            grad_op_descs.extend(grad_op_desc)
-            grad_to_var.update(op_grad_to_var)
-
-        # sum parameter's gradients' var given multiple var gradient
-        grad_op_descs = backward._addup_repetitive_outputs_(grad_op_descs,
-                                                            block.idx)
-
-        # if all outputs of the grad op are in no_grad_set, then just remove and fill zero
-        # if all inputs of the grad op are in no_grad_set, just remove this op
-        grad_op_descs = backward._remove_no_grad_branch_(
-            grad_op_descs, no_grad_dict[block.idx])
-
-        # remove some backward ops
-        not_need_ops = backward._find_not_need_ops(grad_op_descs, ops, {})
-
-        grad_op_descs = [
-            op_desc for op_desc in grad_op_descs if op_desc not in not_need_ops
-        ]
-
-        # append op_desc in grad_op_descs to target_block
-        op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
-        backward_role = core.op_proto_and_checker_maker.OpRole.Backward
-        for op_desc in grad_op_descs:
-            new_op_desc = target_block.desc.append_op()
-            new_op_desc.copy_from(op_desc)
-            new_op_desc._set_attr(op_role_attr_name, backward_role)
-            grad_to_var["__current_op_desc__"] = new_op_desc
-
-    def _generate_backward_vars(self, block, start_op_idx, grad_to_var,
-                                grad_info_map):
-        ops_to_remove = []
-        '''
-        NOTE(paddle-dev): while_grad op may hold some inputs which are not found 
-        in the parent/forward block, and they are also the outputs of while_grad 
-        op. These kinds of inputs are the recursive outputs inside while_grad op. 
-        They should be considered as "already created" when scanning the inner 
-        ops of while_grad ops.  
-        '''
-        parent_op = backward._find_parent_op_(block)
-        parent_op_vars = []
-        if parent_op is not None:
-            input_args = parent_op.input_arg_names()
-            output_args = parent_op.output_arg_names()
-            for in_arg in input_args:
-                if in_arg in output_args:
-                    parent_op_vars.append(in_arg)
-
-        for op_idx in range(start_op_idx, block.desc.op_size()):
-            op_desc = block.desc.op(op_idx)
-            if op_desc.has_attr("sub_block"):
-                sub_block = block.program.block(
-                    op_desc._block_attr_id("sub_block"))
-                self._generate_backward_vars(sub_block, 0, grad_to_var,
-                                             grad_info_map)
-
-            grad_var_ins = [
-                var for var in op_desc.input_arg_names()
-                if backward._is_grad_var_(var)
-            ]
-            grad_var_outs = [
-                var for var in op_desc.output_arg_names()
-                if backward._is_grad_var_(var)
-            ]
-
-            inputs = [
-                var for var in op_desc.input_arg_names()
-                if var != core.empty_var_name()
-            ]
-            outputs = [
-                var for var in op_desc.output_arg_names()
-                if var != core.empty_var_name()
-            ]
-
-            # If the outputs of grad op is empty, just remove it 
-            if not outputs:
-                ops_to_remove.append(op_idx)
-                continue
-
-            new_vars = set()
-            # create new gradient variables
-            for grad_var_name in op_desc.output_arg_names():
-                if block.desc.has_var_recursive(cpt.to_bytes(
-                        grad_var_name)) or grad_var_name == core.empty_var_name(
-                        ):
-                    continue
-                block.desc.var(cpt.to_bytes(grad_var_name))
-                new_vars.add(grad_var_name)
-                if grad_var_name not in grad_to_var:
-                    continue
-                grad_info_map[grad_to_var[grad_var_name]] = (grad_var_name,
-                                                             block)
-            # infer_shape and infer_type
-            # op_desc.infer_var_type(block.desc)
-            # op_desc.infer_shape(block.desc)
-
-            # for arg in op_desc.output_arg_names():
-            #     if arg in new_vars:
-            #         backward._infer_var_data_type_shape_(arg, block)
-
-        for op_idx in reversed(ops_to_remove):
-            block.desc._remove_op(op_idx, op_idx + 1)
-
-    def _var_desc(self, block_idx, name):
-        cur_blcok_idx = block_idx
-        name = cpt.to_bytes(name)
-        var_desc = self._program_desc.block(cur_blcok_idx).find_var(name)
-        while var_desc is None:
-            parent_blcok_idx = self._program_desc.block(cur_blcok_idx).parent
-            logging.info("cur_blcok_idx: %d" % parent_blcok_idx)
-            if cur_blcok_idx == -1:
-                logging.info("var %s is not find." % name)
-                break
-            var_desc = self._program_desc.block(parent_blcok_idx).find_var(name)
-            cur_blcok_idx = parent_blcok_idx
-        return var_desc
-
-    def _all_var_names(self):
-        var_names = set()
-        for i in six.moves.range(self._program_desc.num_blocks()):
-            block = self._program_desc.block(i)
-            for var in block.all_vars():
-                var_names.add(var.name())
-        return var_names
 
     def _load_static_model(self, model_dir, model_filename=None):
         # Step 1. dir and filename check
@@ -551,112 +211,78 @@ class StaticModelRunner(layers.Layer):
             raise ValueError("Unsupported program version: %d\n" %
                              program_desc._version())
 
-        # Step 3. set all `is_test` attributes to False
-        self._change_is_test_status(program_desc)
-
-        # Step 4. record feed, fetch and remove useless scale-1 op
+        # Step 3. 
+        # - remove feed, fetch and useless scale-1 op
+        # - remove op_callstack attr
         ops_to_remove = []
-        # replace_name_dict = {}
         root_block = program_desc.block(0)
         for i in six.moves.range(root_block.op_size()):
             op = root_block.op(i)
             if op.type() == 'feed':
                 ops_to_remove.append(i)
-                # feed_in_var_name = op.input('X')[0]
-                # if self._feed_var_name is not None:
-                #     assert self._feed_var_name == feed_in_var_name
-                # self._feed_var_name = feed_in_var_name
-            # remove useless scale-1 op
-            if op.type() == 'scale' and op.output('Out')[0].startswith(
+                feed_var_name = cpt.to_bytes(op.input('X')[0])
+                root_block._remove_var(feed_var_name)
+                self._input_names.append(cpt.to_bytes(op.output('Out')[0]))
+            elif op.type() == 'scale' and op.output('Out')[0].startswith(
                     'save_infer_model/scale_'):
                 ops_to_remove.append(i)
                 out_var_name = cpt.to_bytes(op.output('Out')[0])
                 root_block._remove_var(out_var_name)
-                # if hold fetch, record dict info
-                # replace_name_dict[out_var_name] = [cpt.to_bytes(x) for x in op.input('X')]
-                # record fetch targets var desc
                 self._output_names.append(cpt.to_bytes(op.input('X')[0]))
                 self._output_descs.append(
                     root_block.find_var(cpt.to_bytes(op.input('X')[0])))
-            if op.type() == 'fetch' and op.input('X')[0].startswith(
+            elif op.type() == 'fetch' and op.input('X')[0].startswith(
                     'save_infer_model/scale_'):
                 ops_to_remove.append(i)
-                # if hold fetch, record dict info
-                # in_var_name = cpt.to_bytes(op.input('X')[0])
-                # op.set_input('X', replace_name_dict[in_var_name])
-                # fetch_out_var_name = op.output('Out')[0]
-                # if self._fetch_var_name is not None:
-                #     assert self._fetch_var_name == fetch_out_var_name
-                # self._fetch_var_name = fetch_out_var_name
+                fetch_var_name = cpt.to_bytes(op.output('Out')[0])
+                root_block._remove_var(fetch_var_name)
+            else:
+                if op.has_attr("op_callstack"):
+                    op.remove_attr("op_callstack")
 
         for op_idx in reversed(ops_to_remove):
             root_block._remove_op(op_idx, op_idx + 1)
 
         return program_desc
 
-    def _is_persistable(self, var_desc):
-        if var_desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
-                var_desc.type() == core.VarDesc.VarType.FETCH_LIST or \
-                var_desc.type() == core.VarDesc.VarType.READER or \
-                var_desc.type() == core.VarDesc.VarType.RAW:
-            return False
-        return var_desc.persistable()
+    def _generate_backward_desc(self):
+        with framework._static_graph_guard():
+            assert self._program_desc is not None, "The StaticModelRunner not initialized properly."
+            program_desc_copy = core.ProgramDesc(self._program_desc)
 
-    def _is_parameter(self, persis_var_desc):
-        assert self._program_desc is not None
-        for block_idx in six.moves.range(self._program_desc.num_blocks()):
-            block = self._program_desc.block(block_idx)
-            for op_idx in six.moves.range(block.op_size()):
-                op = block.op(op_idx)
-                # NOTE: parameter is not the output of any op (no optimizer)
-                if persis_var_desc.name() in op.output_arg_names():
-                    return False
-        for block_idx in six.moves.range(self._program_desc.num_blocks()):
-            block = self._program_desc.block(block_idx)
-            for op_idx in six.moves.range(block.op_size()):
-                op = block.op(op_idx)
-                # NOTE: parameter is the input of a certain op
-                if persis_var_desc.name() in op.input_arg_names():
-                    return True
-        return False
+            # Step 1. prepare program and related var
+            # NOTE: To reuse backward interfaces, build Program firstly.
+            # Originally, there is no need to build a program, but need to almost
+            # rewrite a series of methods for append_backward for program_desc. 
+            # Therefore, in order to reuse the method of backward.py, build the program here.
+            fwd_op_num = program_desc_copy.block(0).op_size()
+            program = self._build_program_by_desc(program_desc_copy)
 
-    def _change_is_test_status(self, program_desc):
-        # change all `is_test` attributes to True
-        for i in six.moves.range(program_desc.num_blocks()):
-            block = program_desc.block(i)
-            for j in six.moves.range(block.op_size()):
-                op = block.op(j)
-                if op.has_attr('is_test'):
-                    op._set_attr('is_test', False)
+            # TODO: sub block?
+            targets = []
+            for out in self._output_descs:
+                targets.append(program.global_block().var(out.name()))
 
-    def _append_loaded_suffix(self, name):
-        """
-        Append grad suffix to the given variable name
-        e.g. x ==> x@LOADED
-        """
-        return cpt.to_text(name) + core.loaded_var_suffix()
+            # Step 2. append backward
+            backward.gradients(targets=targets, inputs=[])
 
-    def _append_loaded_suffix_to_param(self, param_desc):
-        old_name = param_desc.name()
-        new_name = self._append_loaded_suffix(param_desc.name())
-        param_desc.set_name(new_name)
-        for block_idx in six.moves.range(self._program_desc.num_blocks()):
-            block = self._program_desc.block(block_idx)
-            for op_idx in six.moves.range(block.op_size()):
-                op = block.op(op_idx)
-                op._rename_input(old_name, new_name)
-                op._rename_output(old_name, new_name)
+            # Step 3. split backward desc
+            program_desc = program.desc
+            bwd_program_desc = core.ProgramDesc()
+            self._copy_bwd_block(program_desc, bwd_program_desc,
+                                 program_desc.block(0),
+                                 bwd_program_desc.block(0), fwd_op_num + 2)
+            return bwd_program_desc
 
     def _load_persisitable_dict(self, model_dir, params_filename=None):
         load_dirname = os.path.normpath(model_dir)
-        assert self._program_desc is not None
-        # TODO: other blocks?
-        persis_vars = list(
-            filter(self._is_persistable, self._program_desc.block(0).all_vars(
-            )))
+        assert self._program_desc is not None, "The StaticModelRunner not initialized properly."
+
+        persis_vars = self._get_persis_vars(self._program_desc)
         load_var_map = {}
         for each_var in persis_vars:
             orig_each_name = each_var.name()
+            # append suffix
             self._append_loaded_suffix_to_param(each_var)
             # create output varbase
             new_var = framework.ParamBase(
@@ -703,128 +329,277 @@ class StaticModelRunner(layers.Layer):
                 self.add_parameter(name=param.name, parameter=param)
                 self._param_names.append(param.name)
 
-    def _fill_param_with_var(self, param, var):
-        param.value().get_tensor().set(var.numpy(),
-                                       framework._current_expected_place())
+    def _recheck_stop_gradients(self):
+        assert self._bwd_program_desc is not None, "The StaticModelRunner not initialized properly."
+        # NOTE: After loading the model, the stop_gradient information 
+        # of the original variable is lost, but if a parameter does not
+        # have a corresponding @GRAD variable in the backward program,
+        # it can be said that it is also stop_gradient
+        all_grad_var_names = self._get_all_var_names(self._bwd_program_desc)
+        for param_name in self._parameters:
+            param_grad_name = param_name + core.grad_var_suffix()
+            if param_grad_name not in all_grad_var_names:
+                logging.info("set %s stop gradient = True" % param_grad_name)
+                self._parameters[param_name].stop_gradient = True
 
-    # def _prepare_feed_fetch_var(self):
-    #     # Step 1. prepare feed fetch var name
-    #     feed_grad_var_name = backward._append_grad_suffix_(self._feed_var_name)
-    #     fetch_grad_var_name = backward._append_grad_suffix_(self._fetch_var_name)
+    def _get_all_var_names(self, program_desc):
+        all_var_names = set()
+        for i in six.moves.range(program_desc.num_blocks()):
+            block = program_desc.block(i)
+            for var in block.all_vars():
+                logging.info(var.name())
+                all_var_names.add(var.name())
+        return all_var_names
 
-    #     logging.info("feed grad var: %s" % feed_grad_var_name)
-    #     logging.info("fetch grad var: %s" % fetch_grad_var_name)
+    def _get_persis_vars(self, program_desc):
+        persis_vars = []
+        for i in six.moves.range(program_desc.num_blocks()):
+            block = program_desc.block(i)
+            persis_vars.extend(
+                list(filter(self._is_persistable, block.all_vars())))
+        return persis_vars
 
-    #     # prepare outputs grad var name
-    #     out_grad_name_list = []
-    #     for out_desc in self._output_descs:
-    #         out_grad_name_list.append(out_desc.name())
-    #     out_grad_name_list = list(map(backward._append_grad_suffix_, out_grad_name_list))
+    def _copy_bwd_block(self, src_program, tgt_program, src_block, tgt_block,
+                        grad_op_start_idx):
+        # copy ops
+        for i in six.moves.range(grad_op_start_idx, src_block.op_size()):
+            src_op = src_block.op(i)
+            if src_op.has_attr("sub_block"):
+                src_sub_block = src_program.block(
+                    src_op._block_attr_id("sub_block"))
+                tgt_sub_block = tgt_program.append_block(tgt_block)
+                logging.info("copy whole block %d to bwd program desc block %d"
+                             % (src_sub_block.id, tgt_sub_block.id))
+                self._copy_bwd_block(src_program, tgt_program, src_sub_block,
+                                     tgt_sub_block, 0)
+            tgt_op = tgt_block.append_op()
+            tgt_op.copy_from(src_op)
+        # copy vars
+        for src_var in src_block.all_vars():
+            if core.grad_var_suffix() in src_var.name():
+                tgt_var = tgt_block.var(cpt.to_bytes(src_var.name()))
+                self._copy_var(src_var, tgt_var)
+        # copy omitted vars
+        for i in six.moves.range(tgt_block.op_size()):
+            op = tgt_block.op(i)
+            for var_name in op.output_arg_names():
+                var_name = cpt.to_bytes(var_name)
+                if not tgt_block.has_var(var_name):
+                    logging.info("add extra output var %s to block %d" %
+                                 (var_name, tgt_block.id))
+                    src_var = src_block.find_var_recursive(var_name)
+                    if src_var is not None:
+                        tgt_var = tgt_block.var(var_name)
+                        self._copy_var(src_var, tgt_var)
+                    else:
+                        logging.warning("var %s can't find in whole program!" %
+                                        var_name)
 
-    #     logging.info(out_grad_name_list)
+    def _copy_var(self, src_var, tgt_var):
+        tgt_var.set_type(src_var.type())
+        tgt_var.set_shape(src_var.get_shape())
+        tgt_var.set_dtype(src_var.dtype())
+        tgt_var.set_lod_level(src_var.lod_level())
+        tgt_var.set_persistable(src_var.persistable())
+        tgt_var.set_need_check_feed(src_var.need_check_feed())
 
-    #     # prepare param grad var
-    #     param_grad_name_list = []
-    #     for param_name in self._parameters:
-    #         param_grad_name_list.append(param_name)
-    #     param_grad_name_list = list(map(backward._append_grad_suffix_, param_grad_name_list))
-
-    #     logging.info(param_grad_name_list)
-
-    #     return out_grad_name_list, param_grad_name_list, feed_grad_var_name, fetch_grad_var_name
-
-    # def _insert_feed_fetch_ops(self, program, feed, fetch_list, feed_var_name,
-    #                         fetch_var_name):
-    #     tmp_program = program.clone()
-
-    #     global_block = tmp_program.global_block()
-
-    #     if feed_var_name in global_block.vars:
-    #         feed_var = global_block.var(feed_var_name)
-    #     else:
-    #         feed_var = global_block.create_var(
-    #             name=feed_var_name,
-    #             type=core.VarDesc.VarType.FEED_MINIBATCH,
-    #             persistable=True)
-
-    #     if fetch_var_name in global_block.vars:
-    #         fetch_var = global_block.var(fetch_var_name)
-    #     else:
-    #         fetch_var = global_block.create_var(
-    #             name=fetch_var_name,
-    #             type=core.VarDesc.VarType.FETCH_LIST,
-    #             persistable=True)
-
-    #     # prepend feed operators
-    #     if not executor.has_feed_operators(global_block, feed, feed_var_name):
-    #         for i, name in enumerate(feed):
-    #             out = global_block.create_var(
-    #                 name=name,
-    #                 shape=self._output_descs[i].shape(),
-    #                 dtype=self._output_descs[i].dtype(),
-    #                 type=self._output_descs[i].type(),
-    #                 persistable=False)
-    #             global_block._prepend_op(
-    #                 type='feed',
-    #                 inputs={'X': [feed_var]},
-    #                 outputs={'Out': [out]},
-    #                 attrs={'col': i})
-
-    #     # append fetch_operators
-    #     if not executor.has_fetch_operators(global_block, fetch_list, fetch_var_name):
-    #         for i, name in enumerate(fetch_list):
-    #             # assert isinstance(var, Variable) or isinstance(
-    #             #     var, six.string_types), (
-    #             #         "Wrong type for fetch_list[%s]: %s" % (i, type(var)))
-    #             var = global_block.var(name)
-    #             global_block.append_op(
-    #                 type='fetch',
-    #                 inputs={'X': [var]},
-    #                 outputs={'Out': [fetch_var]},
-    #                 attrs={'col': i})
-
-    #     return tmp_program
-
-    ##### Debug Functions #####
-
-    def _op_desc_to_string(self, desc):
-        protostr = desc.serialize_to_string()
-        proto = framework_pb2.OpDesc.FromString(six.binary_type(protostr))
-        return framework._debug_string_(proto, True)
-
-    def _var_desc_to_string(self, desc):
-        protostr = desc.serialize_to_string()
-        proto = framework_pb2.VarDesc.FromString(six.binary_type(protostr))
-        return framework._debug_string_(proto, True)
-
-    def _print_program_desc(self, desc):
+    def _build_program_by_desc(self, program_desc):
         with framework._static_graph_guard():
-            p = framework.Program()
-            p.desc = desc
-            p.blocks = [
-                framework.Block(p, i)
-                for i in six.moves.range(p.desc.num_blocks())
+            prog = framework.Program()
+            prog.desc = program_desc
+            prog.blocks = [
+                framework.Block(prog, i)
+                for i in six.moves.range(prog.desc.num_blocks())
             ]
-            p._sync_with_cpp()
-            program_utils.program_to_code(p)
+            prog._sync_with_cpp()
+        return prog
 
-    def _print_all_op_info(self):
+    def _is_persistable(self, var_desc):
+        if var_desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
+                var_desc.type() == core.VarDesc.VarType.FETCH_LIST or \
+                var_desc.type() == core.VarDesc.VarType.READER or \
+                var_desc.type() == core.VarDesc.VarType.RAW:
+            return False
+        return var_desc.persistable()
+
+    def _is_parameter(self, persis_var_desc):
+        assert self._program_desc is not None, "The StaticModelRunner not initialized properly."
+        # 1. firstly, param should be input of op
+        input_ops = []  # op can be repeated
+        for block_idx in six.moves.range(self._program_desc.num_blocks()):
+            block = self._program_desc.block(block_idx)
+            for op_idx in six.moves.range(block.op_size()):
+                op = block.op(op_idx)
+                # NOTE: parameter is the input of a certain op
+                if persis_var_desc.name() in op.input_arg_names():
+                    input_ops.append(op)
+        # 2. secondly, param should not be output of op or be same op's output
+        for block_idx in six.moves.range(self._program_desc.num_blocks()):
+            block = self._program_desc.block(block_idx)
+            for op_idx in six.moves.range(block.op_size()):
+                op = block.op(op_idx)
+                if persis_var_desc.name() in op.output_arg_names():
+                    # such as batch_norm_op
+                    if op in input_ops:
+                        continue
+                    else:
+                        return False
+        return True
+
+    def _change_is_test_status(self, is_test):
+        # change all `is_test` attributes
+        assert self._program_desc is not None, "The StaticModelRunner not initialized properly."
         for i in six.moves.range(self._program_desc.num_blocks()):
             block = self._program_desc.block(i)
             for j in six.moves.range(block.op_size()):
                 op = block.op(j)
-                print(self._op_desc_to_string(op))
+                if op.has_attr('is_test'):
+                    op._set_attr('is_test', is_test)
 
-    def _print_execute_op_info(self, op_type, inputs, outputs, attrs):
-        logging.info("-------------------------")
-        logging.info("Op Name: {}".format(op_type))
-        logging.info("Inputs: {}".format(inputs))
-        logging.info("Outputs: {}".format(outputs))
-        logging.info("Attrs: {}".format(attrs))
-        logging.info("-------------------------")
+    def _append_loaded_suffix(self, name):
+        """
+        Append grad suffix to the given variable name
+        e.g. x ==> x@LOADED
+        """
+        suffix = core.loaded_var_suffix()
+        name = cpt.to_text(name)
+        if suffix not in name:
+            name = name + suffix
+        return name
 
-    def _print_outputs_info(self):
-        logging.info("---------output names-----------")
-        for out in self._output_descs:
-            logging.info(self._var_desc_to_string(out))
-        logging.info("--------------------")
+    def _append_loaded_suffix_to_param(self, param_desc):
+        old_name = param_desc.name()
+        new_name = self._append_loaded_suffix(param_desc.name())
+        param_desc.set_name(new_name)
+        for block_idx in six.moves.range(self._program_desc.num_blocks()):
+            block = self._program_desc.block(block_idx)
+            for op_idx in six.moves.range(block.op_size()):
+                op = block.op(op_idx)
+                op._rename_input(old_name, new_name)
+                op._rename_output(old_name, new_name)
+
+
+######### Debug Functions ##########
+
+
+# NOTE: The StaticModelRunner is still unstable at this stage. 
+# I hope to keep this debugging tool, and it can be deleted 
+# after the function is stable.
+class DescParser():
+    @classmethod
+    def program_desc_to_log(cls, prog, skip_op_callstack=True):
+        block_idx = 0
+        for i in six.moves.range(prog.num_blocks()):
+            block = prog.block(i)
+            cls.block_desc_to_log(block, block_idx, skip_op_callstack)
+            block_idx += 1
+
+    @classmethod
+    def block_desc_to_log(cls, block, block_idx, skip_op_callstack=True):
+        indent = 0
+
+        print("{0}{1} // block {2}".format(
+            cls._get_indent_space(indent), '{', block_idx))
+
+        indent += 1
+        # sort all vars
+        all_vars = block.all_vars()
+        for var in all_vars:
+            print("{}{}".format(
+                cls._get_indent_space(indent), cls.var_desc_to_code(var)))
+
+        if len(all_vars) > 0:
+            print("")
+
+        for i in six.moves.range(block.op_size()):
+            op = block.op(i)
+            print("{}{}".format(
+                cls._get_indent_space(indent),
+                cls.op_desc_to_code(op, skip_op_callstack)))
+        indent -= 1
+
+        print("{0}{1}".format(cls._get_indent_space(indent), '}'))
+
+    @classmethod
+    def var_desc_to_code(cls, var):
+        if var.type() == core.VarDesc.VarType.SELECTED_ROWS or var.type(
+        ) == core.VarDesc.VarType.LOD_TENSOR:
+            var_str = "{name} : fluid.{type}.shape{shape}.astype({dtype})".\
+                format(i="{", e="}", name=var.name(), type=var.type(), shape=var.shape(), dtype=var.dtype())
+        else:
+            var_str = "{name} : fluid.{type})".\
+                format(i="{", e="}", name=var.name(), type=var.type())
+
+        var_str = "var " + var_str
+
+        if var.persistable():
+            var_str = "persist " + var_str
+
+        return var_str
+
+    @classmethod
+    def op_desc_to_code(cls, op, skip_op_callstack=True):
+        outputs_str = "{"
+        for i in range(0, len(op.output_names())):
+            outputs_str += "{name}=".format(name=op.output_names()[i])
+            o = op.output(op.output_names()[i])
+            outputs_str += "{value}".format(value=o)
+            if i != len(op.output_names()) - 1:
+                outputs_str += ", "
+        outputs_str += "}"
+
+        inputs_str = "{"
+        for i in range(0, len(op.input_names())):
+            inputs_str += "{name}=".format(name=op.input_names()[i])
+            o = op.input(op.input_names()[i])
+            inputs_str += "{value}".format(value=o)
+
+            if i != len(op.input_names()) - 1:
+                inputs_str += ", "
+        inputs_str += "}"
+
+        attr_names = sorted(op.attr_names())
+        attrs_str = ""
+        for i in range(0, len(attr_names)):
+            name = attr_names[i]
+            if skip_op_callstack and name == "op_callstack":
+                continue
+
+            attr_type = op.attr_type(name)
+            if attr_type == core.AttrType.BLOCK:
+                a = "{name} = block[{value}]".format(
+                    name=name, type=attr_type, value=op._block_attr_id(name))
+                attrs_str += a
+                if i != len(attr_names) - 1:
+                    attrs_str += ", "
+                continue
+
+            if attr_type == core.AttrType.BLOCKS:
+                a = "{name} = blocks{value}".format(
+                    name=name, type=attr_type, value=op._blocks_attr_ids(name))
+                attrs_str += a
+                if i != len(attr_names) - 1:
+                    attrs_str += ", "
+                continue
+
+            a = "{name} = {value}".format(
+                name=name, type=attr_type, value=op.attr(name))
+            attrs_str += a
+            if i != len(attr_names) - 1:
+                attrs_str += ", "
+
+        if outputs_str != "{}":
+            op_str = "{outputs} = {op_type}(inputs={inputs}, {attrs})".\
+                format(outputs = outputs_str, op_type=op.type(), inputs=inputs_str, attrs=attrs_str)
+        else:
+            op_str = "{op_type}(inputs={inputs}, {attrs})".\
+                format(op_type=op.type(), inputs=inputs_str, attrs=attrs_str)
+        return op_str
+
+    @classmethod
+    def _get_indent_space(cls, indent, space_num=4):
+        ret = ""
+        for i in range(0, indent * space_num):
+            ret += " "
+
+        return ret

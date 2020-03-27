@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <iterator>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/executor.h"
@@ -25,6 +26,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/var_type_traits.h"
+#include "paddle/fluid/framework/variable.h"
 
 namespace paddle {
 namespace operators {
@@ -32,11 +35,15 @@ namespace operators {
 using StepScopeVar = std::vector<framework::Scope *>;
 using ProgramDesc = framework::ProgramDesc;
 using BlockDesc = framework::BlockDesc;
+
+using Variable = framework::Variable;
 using LoDTensor = framework::LoDTensor;
+using SelectedRows = framework::SelectedRows;
 
 using FeedFetchList = framework::FeedFetchList;
 
-namespace {  // NOLINT
+namespace details {
+
 static std::string GetSkipEagerDeletionVarsDebugString(
     const std::vector<std::string> &vars) {
   std::string str = "Skip " + std::to_string(vars.size()) +
@@ -47,7 +54,147 @@ static std::string GetSkipEagerDeletionVarsDebugString(
   }
   return str;
 }
-}  // NOLINT
+
+static void VariableShare(Variable *src_var, Variable *dst_var) {
+  // The previous check ensures that the variable type can only be LoDTensor or
+  // SelectedRows
+  if (src_var->IsType<LoDTensor>()) {
+    auto *lod_tensor = dst_var->GetMutable<LoDTensor>();
+    lod_tensor->ShareDataWith(src_var->Get<LoDTensor>());
+    lod_tensor->set_lod(src_var->Get<LoDTensor>().lod());
+  } else if (src_var->IsType<SelectedRows>()) {
+    auto *selected_rows = dst_var->GetMutable<SelectedRows>();
+    selected_rows->mutable_value()->ShareDataWith(
+        src_var->Get<SelectedRows>().value());
+    selected_rows->set_rows(src_var->Get<SelectedRows>().rows());
+    selected_rows->set_height(src_var->Get<SelectedRows>().height());
+  }
+}
+
+static void VariableCopy(Variable *src_var, const platform::Place &dst_place,
+                         Variable *dst_var) {
+  // The previous check ensures that the variable type can only be LoDTensor or
+  // SelectedRows
+  if (src_var->IsType<LoDTensor>()) {
+    auto *lod_tensor = dst_var->GetMutable<LoDTensor>();
+    TensorCopySync(src_var->Get<LoDTensor>(), dst_place, lod_tensor);
+    lod_tensor->set_lod(src_var->Get<LoDTensor>().lod());
+  } else if (src_var->IsType<SelectedRows>()) {
+    auto *selected_rows = dst_var->GetMutable<SelectedRows>();
+    TensorCopySync(src_var->Get<SelectedRows>().value(), dst_place,
+                   selected_rows->mutable_value());
+    selected_rows->set_rows(src_var->Get<SelectedRows>().rows());
+    selected_rows->set_height(src_var->Get<SelectedRows>().height());
+  }
+}
+
+static void ShareVarsIntoScope(const std::vector<Variable *> vars,
+                               const std::vector<std::string> &var_names,
+                               framework::Scope *scope) {
+  for (size_t i = 0; i < vars.size(); ++i) {
+    auto *var = scope.Var(var_names[i]);
+    if (vars[i]->IsType<LoDTensor>()) {
+      PADDLE_ENFORCE_EQ(
+          vars[i]->Get<LoDTensor>().IsInitialized(), true,
+          platform::errors::InvalidArgument(
+              "The tensor in input variable %s of "
+              "RunProgram(Grad)Op(StaticModelRunner) is not initialized.",
+              var_names[i]));
+      VariableShare(vars[i], var);
+    } else if (vars[i]->IsType<SelectedRows>()) {
+      PADDLE_ENFORCE_EQ(
+          vars[i]->Get<SelectedRows>().value().IsInitialized(), true,
+          platform::errors::InvalidArgument(
+              "The tensor in input variable %s of "
+              "RunProgram(Grad)Op(StaticModelRunner) is not initialized.",
+              var_names[i]));
+      VariableShare(vars[i], var);
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "The RunProgram(Grad)Op(StaticModelRunner) only support input "
+          "variable of type LoDTensor or SelectedRows, "
+          "but received variable %s's type is %s",
+          var_names[i],
+          platform::demangle(framework::ToTypeName(vars[i]->Type()))));
+    }
+  }
+}
+
+static void CheckOutputVarStatus(Variable *src_var, Variable *dst_var,
+                                 const std::string &var_name) {
+  if (dst_var->IsType<LoDTensor>()) {
+    PADDLE_ENFORCE_EQ(
+        src_var->IsType<LoDTensor>(), true,
+        platform::errors::InvalidArgument(
+            "The output variable %s get from "
+            "RunProgram(Grad)Op(StaticModelRunner)'s internal scope holds "
+            "wrong type. Expect type is LoDTensor, but receive type is %s.",
+            var_name,
+            platform::demangle(framework::ToTypeName(src_var->Type()))));
+    PADDLE_ENFORCE_EQ(src_var->Get<LoDTensor>().IsInitialized(), true,
+                      platform::errors::InvalidArgument(
+                          "The tensor in output variable % get from "
+                          "RunProgram(Grad)Op(StaticModelRunner)'s internal "
+                          "scope is not initialized.",
+                          var_name));
+  } else if (dst_var->IsType<SelectedRows>()) {
+    PADDLE_ENFORCE_EQ(
+        src_var->IsType<SelectedRows>(), true,
+        platform::errors::InvalidArgument(
+            "The output variable %s get from "
+            "RunProgram(Grad)Op(StaticModelRunner)'s internal scope holds "
+            "wrong type. Expect type is SelectedRows, but receive type is %s.",
+            var_name,
+            platform::demangle(framework::ToTypeName(src_var->Type()))));
+    PADDLE_ENFORCE_EQ(src_var->Get<SelectedRows>().value().IsInitialized(),
+                      true, platform::errors::InvalidArgument(
+                                "The tensor in output variable % get from "
+                                "RunProgram(Grad)Op(StaticModelRunner)'s "
+                                "internal scope is not initialized.",
+                                var_name));
+
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The RunProgram(Grad)Op(StaticModelRunner) only support output "
+        "variable of type LoDTensor or SelectedRows, "
+        "but received variable %s's type is %s",
+        var_name, platform::demangle(framework::ToTypeName(dst_var->Type()))));
+  }
+}
+
+static void ShareVarsFromScope(std::vector<Variable *> vars,
+                               const std::vector<std::string> &var_names,
+                               framework::Scope *scope) {
+  for (size_t i = 0; i < vars.size(); ++i) {
+    auto *var = scope.FindVar(var_names[i]);
+    PADDLE_ENFORCE_NOT_NULL(
+        var, platform::errors::NotFound("The output variable %s is not in "
+                                        "RunProgram(Grad)Op(StaticModelRunner)'"
+                                        "s internal scope.",
+                                        var_names[i]));
+    CheckOutputVarStatus(var, vars[i], var_names[i]);
+    VariableShare(var, vars[i]);
+  }
+}
+
+static void CopyVarsFromScope(std::vector<Variable *> vars,
+                              const std::vector<std::string> &var_names,
+                              const platform::Place &dst_place,
+                              framework::Scope *scope) {
+  for (size_t i = 0; i < vars.size(); ++i) {
+    auto *var = scope.FindVar(var_names[i]);
+    if (nullptr == var) {
+      // need remove not find output?
+      VLOG(2) << "Can't find variable " << var_names[i]
+              << "in RunProgram(Grad)Op(StaticModelRunner)'s internal scope.";
+      continue;
+    } else {
+      CheckOutputVarStatus(var, vars[i], var_names[i]);
+      VariableCopy(var, dst_place, vars[i]);
+    }
+  }
+}
+}  // namespace details
 
 template <typename DeviceContext, typename T>
 class RunProgramOpKernel : public framework::OpKernel<T> {
@@ -59,16 +206,15 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     auto &param_vars = ctx.MultiInputVar("Params");
     auto output_vars = ctx.MultiOutputVar("Out");
 
-    auto &input_var_names =
-        ctx.Attr<std::vector<std::string>>("input_var_names");
-    auto &param_names = ctx.Attr<std::vector<std::string>>("param_names");
-    auto &output_var_names =
-        ctx.Attr<std::vector<std::string>>("output_var_names");
+    auto input_var_names = ctx.InputNames("X");
+    auto param_names = ctx.InputNames("Params");
+    auto output_var_names = ctx.OutputNames("Out");
 
     auto *block = ctx.Attr<BlockDesc *>("fwd_block");
     auto *fwd_program = block->Program();
 
-    // NOTE: In order not to add new variable type, use vector here.
+    // NOTE(chenweihang): In order not to add new variable type, use vector
+    // here.
     // Originally, here can use scope directly.
     auto *out_scope_vec = ctx.Output<StepScopeVar>("OutScope");
 
@@ -82,57 +228,17 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     out_scope_vec->emplace_back(new framework::Scope());
     framework::Scope &scope = *(out_scope_vec->front());
 
-    // share input_vars to scope
-    // auto *feed_var = scope.Var("feed");
-    // auto &feed_inputs = *(feed_var->GetMutable<FeedFetchList>());
-    // feed_inputs.resize(input_vars.size());
-    for (size_t i = 0; i < input_vars.size(); ++i) {
-      PADDLE_ENFORCE_EQ(input_vars[i]->IsType<LoDTensor>(), true);
-      PADDLE_ENFORCE_EQ(input_vars[i]->Get<LoDTensor>().IsInitialized(), true);
-      auto *var = scope.Var(input_var_names[i]);
-      var->GetMutable<LoDTensor>()->ShareDataWith(
-          input_vars[i]->Get<LoDTensor>());
-      VLOG(3) << "Create Variable " << param_names[i]
-              << " global, which pointer is " << var;
-      PADDLE_ENFORCE_EQ(var->Get<LoDTensor>().IsInitialized(), true);
-    }
-
-    // share paramters to scope
-    for (size_t i = 0; i < param_vars.size(); ++i) {
-      PADDLE_ENFORCE_EQ(param_vars[i]->IsType<LoDTensor>(), true);
-      PADDLE_ENFORCE_EQ(param_vars[i]->Get<LoDTensor>().IsInitialized(), true);
-      auto *var = scope.Var(param_names[i]);
-      var->GetMutable<LoDTensor>()->ShareDataWith(
-          param_vars[i]->Get<LoDTensor>());
-      VLOG(3) << "Create Variable " << param_names[i]
-              << " global, which pointer is " << var;
-      PADDLE_ENFORCE_EQ(var->Get<LoDTensor>().IsInitialized(), true);
-    }
+    // share input_vars & parameters into scope
+    details::ShareVarsIntoScope(input_vars, input_var_names, &scope);
+    details::ShareVarsIntoScope(param_vars, param_names, &scope);
 
     // Step 3. run ops
-    exe.Run(*fwd_program, &scope, 0, false, true, {}, true);
+    exe.Run(*fwd_program, &scope, 0, false, true, {}, true, true);
 
-    // find outputs
-    // auto *fetch_var = scope.FindVar("fetch");
-    // PADDLE_ENFORCE_NOT_NULL(fetch_var);
-    // PADDLE_ENFORCE(fetch_var->IsType<FeedFetchList>(),
-    //               "Only %s can be invoked by GetFetchVariable",
-    //               typeid(FeedFetchList).name());
-    // auto& fetch_outputs = *(fetch_var->GetMutable<FeedFetchList>());
-    for (size_t i = 0; i < output_vars.size(); ++i) {
-      PADDLE_ENFORCE_EQ(output_vars[i]->IsType<LoDTensor>(), true);
-      auto *var = scope.FindVar(output_var_names[i]);
-      PADDLE_ENFORCE_NOT_NULL(var);
-      PADDLE_ENFORCE_EQ(var->IsType<LoDTensor>(), true);
-      PADDLE_ENFORCE_EQ(var->Get<LoDTensor>().IsInitialized(), true);
-      // TODO(chenweihang): MKLDNN
-      // TensorCopySync(fetch_outputs[i], ctx.GetPlace(),
-      //     output_vars[i]->GetMutable<LoDTensor>());
-      output_vars[i]->GetMutable<LoDTensor>()->ShareDataWith(
-          var->Get<LoDTensor>());
-      PADDLE_ENFORCE_EQ(output_vars[i]->Get<LoDTensor>().IsInitialized(), true);
-    }
+    // Step 4. Get Output
+    details::ShareVarsFromScope(output_vars, output_var_names, &scope);
 
+    // Debug info: scope info when run end
     VLOG(3) << framework::GenScopeTreeDebugInfo(out_scope_vec->front());
   }
 };
@@ -144,106 +250,81 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
     VLOG(2) << "RunProgramGradOpKernel Compute";
     // Step 1. prepare inputs and outputs
     auto &output_grad_vars = ctx.MultiInputVar(framework::GradVarName("Out"));
-    // TODO(chenweihang): whether X is stop_gradient?
-    // auto &input_grad_vars = ctx.MultiOutputVar(framework::GradVarName("X"));
+    auto input_grad_vars = ctx.MultiOutputVar(framework::GradVarName("X"));
     auto param_grad_vars = ctx.MultiOutputVar(framework::GradVarName("Params"));
 
-    std::vector<std::string> output_grad_var_names;
-    std::vector<std::string> param_grad_names;
-    auto &output_var_names =
-        ctx.Attr<std::vector<std::string>>("output_var_names");
-    auto &params_names = ctx.Attr<std::vector<std::string>>("param_names");
-    std::transform(output_var_names.begin(), output_var_names.end(),
-                   std::back_inserter(output_grad_var_names),
-                   [this](const std::string &name) {
-                     return framework::GradVarName(name);
-                   });
-    std::transform(params_names.begin(), params_names.end(),
-                   std::back_inserter(param_grad_names),
-                   [this](const std::string &name) {
-                     return framework::GradVarName(name);
-                   });
+    auto output_grad_var_names = ctx.InputNames(framework::GradVarName("Out"));
+    auto input_grad_var_names = ctx.OutputNames(framework::GradVarName("X"));
+    auto param_grad_names = ctx.OutputNames(framework::GradVarName("Params"));
+    // remove prefix Gtmp@
+    auto rm_prefix_func = [](std::string &name) {
+      name = std::move(name.substr(5));
+    };
+    std::for_each(input_grad_var_names.begin(), input_grad_var_names.end(),
+                  rm_prefix_func);
+    std::for_each(param_grad_names.begin(), param_grad_names.end(),
+                  rm_prefix_func);
 
     std::stringstream ss;
-    ss << "output_grad_vars size: " << output_grad_vars.size() << "\n";
-    for (size_t i = 0; i < output_grad_vars.size(); ++i) {
-      ss << output_grad_vars[i] << " init: ";
-      ss << output_grad_vars[i]->Get<LoDTensor>().IsInitialized() << "\n";
+    ss << "Maker names: ";
+    for (size_t i = 0; i < input_grad_var_names.size(); ++i) {
+      ss << input_grad_var_names[i] << ", ";
     }
-    VLOG(3) << ss.str();
+    for (size_t i = 0; i < param_grad_names.size(); ++i) {
+      ss << param_grad_names[i] << ", ";
+    }
+    VLOG(2) << ss.str();
+
+    auto output_names = ctx.OutputNames(framework::GradVarName("Params"));
+    std::stringstream ss2;
+    ss2 << "Output names: ";
+    for (size_t i = 0; i < output_names.size(); ++i) {
+      ss2 << output_names[i] << ", ";
+    }
+    VLOG(2) << ss2.str();
 
     auto *block = ctx.Attr<BlockDesc *>("bwd_block");
     auto *bwd_program = block->Program();
 
-    auto *scope_vec = ctx.Input<StepScopeVar>("OutScope");
-    auto &scope = *(scope_vec->front());
+    auto *out_scope_vec = ctx.Input<StepScopeVar>("OutScope");
+    PADDLE_ENFORCE_EQ(out_scope_vec->size(), 1,
+                      "The StepScope should only hold one scope.");
+
+    // Step 2. prepare executor and scope
+    framework::Executor exe(ctx.GetPlace());
+    auto &scope = *(out_scope_vec->front());
 
     // skip delete vars, out@grad & params@grad
+    /*
     std::vector<std::string> skip_vars;
     std::copy(output_grad_var_names.begin(), output_grad_var_names.end(),
               std::back_inserter(skip_vars));
     std::copy(param_grad_names.begin(), param_grad_names.end(),
               std::back_inserter(skip_vars));
-    VLOG(2) << GetSkipEagerDeletionVarsDebugString(skip_vars);
+    VLOG(2) << details::GetSkipEagerDeletionVarsDebugString(skip_vars);
+    */
 
-    // Step 2. prepare executor and scope
-    framework::Executor exe(ctx.GetPlace());
+    details::ShareVarsIntoScope(output_grad_vars, output_grad_var_names,
+                                &scope);
 
-    VLOG(3) << framework::GenScopeTreeDebugInfo(scope_vec->front());
-
-    // auto *feed_grad_var = scope.Var(framework::GradVarName("feed"));
-    // auto &feed_grad_inputs = *(feed_grad_var->GetMutable<FeedFetchList>());
-    // VLOG(3) << "Create Variable " << "feed@GRAD"
-    //             << " global, which pointer is " << feed_grad_var;
-    // feed_grad_inputs.resize(output_grad_vars.size());
-    for (size_t i = 0; i < output_grad_vars.size(); ++i) {
-      PADDLE_ENFORCE_EQ(output_grad_vars[i]->IsType<LoDTensor>(), true);
-      PADDLE_ENFORCE_EQ(output_grad_vars[i]->Get<LoDTensor>().IsInitialized(),
-                        true);
-      auto *var = scope.Var(output_grad_var_names[i]);
-      var->GetMutable<LoDTensor>()->ShareDataWith(
-          output_grad_vars[i]->Get<LoDTensor>());
-      PADDLE_ENFORCE_EQ(var->Get<LoDTensor>().IsInitialized(), true);
-    }
+    // Debug info: scope info when run end
+    VLOG(3) << framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 
     // Step 3. run ops
-    exe.Run(*bwd_program, &scope, 0, false, true, skip_vars);
+    // exe.Run(*bwd_program, &scope, 0, false, true, skip_vars);
+    exe.Run(*bwd_program, &scope, 0, false, true, {}, true, true);
 
-    // find outputs
-    // auto *fetch_grad_var = scope.FindVar(framework::GradVarName("fetch"));
-    // PADDLE_ENFORCE_NOT_NULL(fetch_grad_var);
-    // PADDLE_ENFORCE(fetch_grad_var->IsType<FeedFetchList>(),
-    //               "Only %s can be invoked by GetFetchVariable",
-    //               typeid(FeedFetchList).name());
-    // auto& fetch_grad_outputs =
-    // *(fetch_grad_var->GetMutable<FeedFetchList>());
-    // for (size_t i = 0; i < input_grad_vars.size(); ++i) {
-    //   PADDLE_ENFORCE_EQ(input_grad_vars[i]->IsType<LoDTensor>(), true);
-    //   input_grad_vars[i]->GetMutable<LoDTensor>()->ShareDataWith(fetch_grad_outputs[i]);
-    // }
-    for (size_t i = 0; i < param_grad_vars.size(); ++i) {
-      PADDLE_ENFORCE_EQ(param_grad_vars[i]->IsType<LoDTensor>(), true);
-      auto *var = scope.FindVar(param_grad_names[i]);
-      PADDLE_ENFORCE_NOT_NULL(var);
-      PADDLE_ENFORCE_EQ(var->IsType<LoDTensor>(), true);
-      PADDLE_ENFORCE_EQ(var->Get<LoDTensor>().IsInitialized(), true);
-      // TODO(chenweihang): MKLDNN
-      TensorCopySync(var->Get<LoDTensor>(), ctx.GetPlace(),
-                     param_grad_vars[i]->GetMutable<LoDTensor>());
-      // param_grad_vars[i]->GetMutable<LoDTensor>()->ShareDataWith(var->Get<LoDTensor>());
-      PADDLE_ENFORCE_EQ(param_grad_vars[i]->Get<LoDTensor>().IsInitialized(),
-                        true);
-    }
+    // Step 4. copy outputs
+    // TODO(chenweihang): need copy?
+    details::CopyVarsFromScope(input_grad_vars, input_grad_var_names,
+                               ctx.GetPlace(), &scope);
+    details::CopyVarsFromScope(param_grad_vars, param_grad_names,
+                               ctx.GetPlace(), &scope);
 
-    std::stringstream ss2;
-    ss2 << "param_grad_vars size: " << param_grad_vars.size() << "\n";
-    for (size_t i = 0; i < param_grad_vars.size(); ++i) {
-      ss2 << param_grad_vars[i] << "\n";
-      ss2 << param_grad_vars[i]->Get<LoDTensor>() << "\n";
-    }
-    VLOG(3) << ss2.str();
+    // Debug info: scope info when run end
+    VLOG(3) << framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 
-    // Step 4. clear
+    // Step 5. clear
     // scope_vec->clear();
   }
 };

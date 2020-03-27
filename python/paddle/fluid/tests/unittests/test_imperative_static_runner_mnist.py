@@ -26,12 +26,7 @@ from paddle.fluid import core
 from test_imperative_base import new_program_scope
 
 
-def softmax_regression(img, label):
-    prediction = fluid.layers.fc(input=img, size=10, act='softmax')
-    return prediction
-
-
-def convolutional_neural_network(img, label):
+def convolutional_neural_network(img):
     conv_pool_1 = fluid.nets.simple_img_conv_pool(
         input=img,
         filter_size=5,
@@ -39,6 +34,7 @@ def convolutional_neural_network(img, label):
         pool_size=2,
         pool_stride=2,
         act="relu")
+    conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
     conv_pool_2 = fluid.nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
@@ -48,6 +44,18 @@ def convolutional_neural_network(img, label):
         act="relu")
     prediction = fluid.layers.fc(input=conv_pool_2, size=10, act='softmax')
     return prediction
+
+
+def static_train_net(img, label):
+    prediction = convolutional_neural_network(img)
+
+    loss = fluid.layers.cross_entropy(input=prediction, label=label)
+    avg_loss = fluid.layers.mean(loss)
+
+    optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+    optimizer.minimize(avg_loss)
+
+    return prediction, avg_loss
 
 
 class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
@@ -73,14 +81,7 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
         img = fluid.data(name='img', shape=[None, 1, 28, 28], dtype='float32')
         label = fluid.data(name='label', shape=[None, 1], dtype='int64')
 
-        prediction = convolutional_neural_network(img, label)
-        # prediction = softmax_regression(img, label)
-
-        loss = fluid.layers.cross_entropy(input=prediction, label=label)
-        avg_loss = fluid.layers.mean(loss)
-
-        optimizer = fluid.optimizer.SGD(learning_rate=0.001)
-        optimizer.minimize(avg_loss)
+        prediction, avg_loss = static_train_net(img, label)
 
         place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
@@ -96,10 +97,13 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
             batch_size=self.batch_size)
 
         for _ in range(0, self.epoch_num):
-            for data in train_reader():
+            for batch_id, data in enumerate(train_reader()):
                 exe.run(main_program,
                         feed=feeder.feed(data),
                         fetch_list=[avg_loss])
+
+                if batch_id > self.batch_num:
+                    break
 
         fluid.io.save_inference_model(
             self.save_dirname, ["img"], [prediction],
@@ -121,6 +125,10 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
                 model_filename=self.model_filename,
                 params_filename=self.params_filename)
 
+            dy_param_init_value = {}
+            for param in mnist.parameters():
+                dy_param_init_value[param.name] = param.numpy()
+
             sgd = fluid.optimizer.SGD(learning_rate=0.001,
                                       parameter_list=mnist.parameters())
 
@@ -132,35 +140,31 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
             train_loader.set_sample_list_generator(train_reader, places=place)
 
             mnist.train()
-            dy_param_init_value = {}
 
             for epoch in range(self.epoch_num):
                 for batch_id, data in enumerate(train_loader()):
-                    if batch_id >= self.batch_num:
-                        break
                     img = data[0]
-                    dy_x_data = img.numpy()
                     label = data[1]
                     label.stop_gradient = True
 
-                    cost = mnist(inputs={"img": img})
+                    cost = mnist(inputs=img)
 
                     loss = fluid.layers.cross_entropy(cost, label)
                     avg_loss = fluid.layers.mean(loss)
-
-                    dy_out = avg_loss.numpy()
-
-                    if epoch == 0 and batch_id == 0:
-                        for param in mnist.parameters():
-                            dy_param_init_value[param.name] = param.numpy()
 
                     avg_loss.backward(backward_strategy)
                     sgd.minimize(avg_loss)
                     mnist.clear_gradients()
 
-                    dy_param_value = {}
-                    for param in mnist.parameters():
-                        dy_param_value[param.name] = param.numpy()
+                    if batch_id >= self.batch_num:
+                        break
+
+            dy_x_data = img.numpy()
+            dy_out = avg_loss.numpy()
+
+            dy_param_value = {}
+            for param in mnist.parameters():
+                dy_param_value[param.name] = param.numpy()
 
         return dy_x_data, dy_out, dy_param_init_value, dy_param_value
 
@@ -173,14 +177,7 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
                 name='img', shape=[None, 1, 28, 28], dtype='float32')
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
 
-            prediction = convolutional_neural_network(img, label)
-            # prediction = softmax_regression(img, label)
-
-            loss = fluid.layers.cross_entropy(input=prediction, label=label)
-            avg_loss = fluid.layers.mean(loss)
-
-            optimizer = fluid.optimizer.SGD(learning_rate=0.001)
-            optimizer.minimize(avg_loss)
+            prediction, avg_loss = static_train_net(img, label)
 
             place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
             ) else fluid.CPUPlace()
@@ -208,9 +205,6 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
 
             for epoch in range(self.epoch_num):
                 for batch_id, data in enumerate(train_reader()):
-                    if batch_id >= self.batch_num:
-                        break
-
                     static_x_data = np.array([x[0] for x in data])
                     y_data = np.array([x[1] for x in data]).reshape(
                         [self.batch_size, 1])
@@ -223,11 +217,13 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
                                         "label": y_data},
                                   fetch_list=fetch_list)
 
-                    static_param_value = {}
-                    static_out = out[0]
-                    for i in range(1, len(out)):
-                        static_param_value[static_param_name_list[i - 1]] = out[
-                            i]
+                    if batch_id >= self.batch_num:
+                        break
+
+            static_param_value = {}
+            static_out = out[0]
+            for i in range(1, len(out)):
+                static_param_value[static_param_name_list[i - 1]] = out[i]
 
         return static_x_data, static_out, static_param_init_value, static_param_value
 
