@@ -436,10 +436,10 @@ class Executor(object):
 
     Args:
         place(fluid.CPUPlace()|fluid.CUDAPlace(n)|None): This parameter represents
-            which device the executor run on. When this parameter is None, PaddlePaddle
+            which device the executor runs on. When this parameter is None, PaddlePaddle
             will set the default device according to its installation version. If Paddle
-            is CPU version, the default device would set to CPUPlace(). If Paddle is GPU
-            version, the default device would set to CUDAPlace(0). Default is None.
+            is CPU version, the default device would be set to CPUPlace(). If Paddle is GPU
+            version, the default device would be set to CUDAPlace(0). Default is None.
 
     Returns:
         Executor
