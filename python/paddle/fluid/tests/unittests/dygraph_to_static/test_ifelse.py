@@ -18,7 +18,7 @@ import numpy as np
 import paddle.fluid as fluid
 import unittest
 
-from paddle.fluid.dygraph.jit import dygraph_to_static_graph
+from paddle.fluid.dygraph.jit import dygraph_to_static_func
 
 from ifelse_simple_func import *
 
@@ -45,7 +45,7 @@ class TestDygraphIfElse(unittest.TestCase):
         with fluid.program_guard(main_program):
             x_v = fluid.layers.assign(self.x)
             # Transform into static graph
-            out = dygraph_to_static_graph(self.dyfunc)(x_v)
+            out = dygraph_to_static_func(self.dyfunc)(x_v)
             exe = fluid.Executor(place)
             ret = exe.run(main_program, fetch_list=out)
             return ret
@@ -166,7 +166,7 @@ class TestAst2FuncWithExternalFunc(TestDygraphIfElse):
 
 
 class NetWithExternalFunc(fluid.dygraph.Layer):
-    @dygraph_to_static_graph
+    @dygraph_to_static_func
     def forward(self, x, label=None):
         if fluid.layers.mean(x).numpy()[0] > 5:
             x_v = x - 1

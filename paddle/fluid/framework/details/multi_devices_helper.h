@@ -108,6 +108,15 @@ bool HasDropLastReadOp(const ir::Graph &graph);
 
 bool HasKeepLastReadOp(const ir::Graph &graph);
 
+template <typename T>
+void CopyGraphAttrIfExists(const ir::Graph &src, ir::Graph *dst,
+                           const std::string &name) {
+  if (src.Has(name)) {
+    auto &attr = src.Get<T>(name);
+    dst->Set(name, new T(attr));
+  }
+}
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
