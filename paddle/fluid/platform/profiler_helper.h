@@ -558,9 +558,9 @@ void PrintProfiler(
           table.push_back(it->second);
         }
       }
-      if (!table.empty()) child_table.push_back(table);
 
       std::sort(table.begin(), table.end(), sorted_func);
+      if (!table.empty()) child_table.push_back(table);
 
       auto name_len = event_item.name.length();
       int remove_len = 0;
