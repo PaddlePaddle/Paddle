@@ -695,16 +695,16 @@ def create_cond_node(return_name_ids,
     original `python if/else` statement.
     """
 
-    def create_lambda_node(func_node, is_if_expr=False):
-        body = func_node
+    def create_lambda_node(func_or_expr_node, is_if_expr=False):
+        body = func_or_expr_node
         if not is_if_expr:
             body = gast.Call(
                 func=gast.Name(
-                    id=func_node.name,
+                    id=func_or_expr_node.name,
                     ctx=gast.Load(),
                     annotation=None,
                     type_comment=None),
-                args=[func_node.args],
+                args=[func_or_expr_node.args],
                 keywords=[])
 
         lambda_node = gast.Lambda(

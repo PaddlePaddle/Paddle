@@ -28,28 +28,6 @@ def loss_fn(x, lable):
     return loss
 
 
-def dyfunc_ifExp_with_while(x):
-    y = [x]
-
-    def cond(i, ten, y):
-        return i < ten
-
-    def map_func(func, tensor_list):
-        return [func(x) for x in tensor_list]
-
-    def body(i, ten, y):
-        # It will be converted into `layers.cond` as followed.
-        # map_func(lambda x: fluid.layers.cond(i==0, lambda: x, lambda: add_fn(x), y)
-        y = map_func(lambda x: x if i == 0 else add_fn(x), y)
-        i += 1
-        return [i, ten, y]
-
-    i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
-    ten = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-    i, ten, y = fluid.layers.while_loop(cond, body, [i, ten, y])
-    return y[0]
-
-
 def dyfunc_with_if_else(x_v, label=None):
     if fluid.layers.mean(x_v).numpy()[0] > 5:
         x_v = x_v - 1
