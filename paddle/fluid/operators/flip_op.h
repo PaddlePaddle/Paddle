@@ -57,6 +57,9 @@ class FlipKernel<platform::CPUDeviceContext, T>
     auto numel = x->numel();
     const T* x_data = x->data<T>();
     T* out_data = out->mutable_data<T>(ctx.GetPlace());
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
     for (int64_t i = 0; i < numel; ++i) {
       int64_t cur_indices = i;
       int64_t rem = 0;

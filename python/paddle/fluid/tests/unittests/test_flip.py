@@ -16,10 +16,8 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-import paddle.fluid.core as core
+
 from op_test import OpTest
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 
 
 class TestFlipOp(OpTest):
@@ -28,7 +26,7 @@ class TestFlipOp(OpTest):
         self.init_test_case()
         self.inputs = {'X': np.random.random(self.in_shape).astype('float64')}
         self.init_attrs()
-        self.outputs = {'Out': np.flip(self.inputs['X'], self.dims)}
+        self.outputs = {'Out': self.calc_ref_res()}
 
     def init_attrs(self):
         self.attrs = {"dims": self.dims}
@@ -42,6 +40,12 @@ class TestFlipOp(OpTest):
     def init_test_case(self):
         self.in_shape = (6, 4, 2, 3)
         self.dims = [0, 1]
+
+    def calc_ref_res(self):
+        res = self.inputs['X']
+        for axis in self.dims:
+            res = np.flip(res, axis)
+        return res
 
 
 class TestFlipOpAxis1(TestFlipOp):

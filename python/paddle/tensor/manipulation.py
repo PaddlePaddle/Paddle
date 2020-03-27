@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # TODO: define functions to manipulate a tensor  
-# __all__ = [#'cast',
+# __all__ = ['cast',
 #            'concat',
 #            'expand',
 #            'expand_as',
