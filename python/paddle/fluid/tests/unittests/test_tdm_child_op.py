@@ -27,7 +27,7 @@ import six
 
 class TestTDMChildOp(OpTest):
     def setUp(self):
-        self.op_type = "tdm_child"
+        self.__class__.op_type = "tdm_child"
         self.config()
         tree_info = self.create_tdm_tree()
         tree_info_np = np.array(tree_info).astype(self.info_type)
@@ -47,19 +47,18 @@ class TestTDMChildOp(OpTest):
                     children.append(0)
                 mask = []
                 for child in children:
-                    m = int(tree_info[child, 0] != 0)
+                    m = int(tree_info[child][0] != 0)
                     mask.append(m)
                 children_res += children
                 leaf_mask_res += mask
         children_res_np = np.array(children_res).astype(self.info_type)
         leaf_mask_res_np = np.array(leaf_mask_res).astype(self.info_type)
 
-        child_shape = tuple(list(self.x_shape).append(2))
-        child = np.reshape(children_res_np, child_shape)
-        leaf_mask = np.reshape(leaf_mask_res_np, child_shape)
+        child = np.reshape(children_res_np, self.child_shape)
+        leaf_mask = np.reshape(leaf_mask_res_np, self.child_shape)
 
         self.attrs = {'Child_nums': 2}
-        self.inputs = {'X': x, 'Tree_info': tree_info_np}
+        self.inputs = {'X': x_np, 'Tree_info': tree_info_np}
         self.outputs = {'Child': child, 'Leaf_mask': leaf_mask}
 
     def create_tdm_tree(self):
@@ -97,11 +96,48 @@ class TestTDMChildOp(OpTest):
     def config(self):
         """set test shape & type"""
         self.x_shape = (10, 20)
+        self.child_shape = (10, 20, 2)
         self.x_type = 'int32'
         self.info_type = 'int32'
 
     def test_check_output(self):
         self.check_output()
+
+
+class TestCase1(TestTDMChildOp):
+    def config(self):
+        """check int int64_t """
+        self.x_shape = (10, 20)
+        self.child_shape = (10, 20, 2)
+        self.x_type = 'int32'
+        self.info_type = 'int64'
+
+
+class TestCase2(TestTDMChildOp):
+    def config(self):
+        """check int64_t int64_t """
+        self.x_shape = (10, 20)
+        self.child_shape = (10, 20, 2)
+        self.x_type = 'int64'
+        self.info_type = 'int64'
+
+
+class TestCase3(TestTDMChildOp):
+    def config(self):
+        """check int64 int32 """
+        self.x_shape = (10, 20)
+        self.child_shape = (10, 20, 2)
+        self.x_type = 'int64'
+        self.info_type = 'int32'
+
+
+class TestCase4(TestTDMChildOp):
+    def config(self):
+        """check large shape """
+        self.x_shape = (100, 20)
+        self.child_shape = (100, 20, 2)
+        self.x_type = 'int32'
+        self.info_type = 'int32'
 
 
 if __name__ == "__main__":
