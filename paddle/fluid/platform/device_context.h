@@ -98,7 +98,7 @@ class CUDAContext {
     return eigen_stream_;
   }
 
-  const cudaStream_t& Stream() const { return stream_->stream(); }
+  const cudaStream_t& Stream() const { return stream_.stream(); }
 
   const cudnnHandle_t& CudnnHandle() const { return cudnn_handle_; }
 
@@ -133,7 +133,7 @@ class CUDAContext {
   template <typename Callback>
   void RecordEvent(cudaEvent_t ev, Callback callback) {
     callback();
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(ev, stream_->stream()));
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(ev, stream_.stream()));
   }
 
   template <typename Callback>
@@ -146,9 +146,9 @@ class CUDAContext {
   void Wait() const {
     cudaError_t e_sync = cudaSuccess;
 #if !defined(_WIN32)
-    e_sync = cudaStreamSynchronize(stream_->stream());
+    e_sync = cudaStreamSynchronize(stream_.stream());
 #else
-    while (e_sync = cudaStreamQuery(stream_->stream())) {
+    while (e_sync = cudaStreamQuery(stream_.stream())) {
       if (e_sync == cudaErrorNotReady) continue;
       break;
     }
@@ -218,8 +218,7 @@ class CUDAContext {
   CUDAPlace place_;
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
-  std::unique_ptr<stream::CUDAStream> stream_;
-  // cudaStream_t stream_;
+  stream::CUDAStream stream_;
   cudnnHandle_t cudnn_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;

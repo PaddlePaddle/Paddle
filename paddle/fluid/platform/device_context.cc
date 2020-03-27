@@ -222,11 +222,11 @@ void CUDAContext::ResetEigenContext(const cudaStream_t& stream) {
 CUDAContext::CUDAContext(const CUDAPlace& place) {
   place_ = place;
   CUDADeviceGuard guard(place_.device);
-  stream_.reset(new CUDAStream(place));
-  ResetEigenContext(stream_->stream());
-  ResetCuBlasContext(stream_->stream());
-  ResetCuDNNContext(stream_->stream());
-  ResetCallbackManager(stream_->stream());
+  stream_.Init(place);
+  ResetEigenContext(stream_.stream());
+  ResetCuBlasContext(stream_.stream());
+  ResetCuDNNContext(stream_.stream());
+  ResetCallbackManager(stream_.stream());
 }
 
 CUDAContext::~CUDAContext() {
@@ -236,7 +236,7 @@ CUDAContext::~CUDAContext() {
 }
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
-    : place_(place), context_(new CUDAContext(place)) {
+    : place_(place) {
   CUDADeviceGuard guard(place_.device);
   compute_capability_ = GetCUDAComputeCapability(place_.device);
   multi_process_ = GetCUDAMultiProcessors(place_.device);
@@ -277,6 +277,7 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
              "version.";
     }
   }
+  context_.reset(new CUDAContext(place_));
 }
 
 CUDADeviceContext::~CUDADeviceContext() {

@@ -43,7 +43,7 @@ class CUDAStream final {
 
   bool Init(const Place& place, const enum Priority& priority = Priority::NORMAL);
 
-  cudaStream_t& stream() { return stream_; }
+  const cudaStream_t& stream() const { return stream_; }
   void Destroy();
 
  private:
