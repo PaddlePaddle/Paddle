@@ -24,48 +24,23 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-void PullSparseFunctor(
-    const framework::ExecutionContext& ctx,
-    const std::vector<uint64_t>* fea_keys_const,
-    const std::vector<T*>* pull_result_ptr_const,
-    const std::vector<::std::future<int32_t>>* pull_sparse_status_const) {
-  const auto& inputs_const = ctx.MultiInput<framework::LoDTensor>("Ids");
-  const auto& outputs_const = ctx.MultiOutput<framework::LoDTensor>("Out");
+void PullSparseFunctor(const framework::ExecutionContext& ctx) {
+  auto inputs = ctx.MultiInput<framework::LoDTensor>("Ids");
+  auto outputs = ctx.MultiOutput<framework::LoDTensor>("Out");
   uint32_t fea_dim = static_cast<uint32_t>(ctx.Attr<int>("EmbeddingDim"));
   uint64_t padding_id = static_cast<uint64_t>(ctx.Attr<int>("PaddingId"));
   auto table_id = static_cast<uint32_t>(ctx.Attr<int>("TableId"));
-
-  std::vector<uint64_t>* fea_keys =
-      const_cast<std::vector<uint64_t>*>(fea_keys_const);
-  std::vector<T*>* pull_result_ptr =
-      const_cast<std::vector<T*>*>(pull_result_ptr_const);
-  std::vector<::std::future<int32_t>>* pull_sparse_status =
-      const_cast<std::vector<::std::future<int32_t>>*>(
-          pull_sparse_status_const);
-  std::vector<framework::LoDTensor*> inputs;
-  inputs.reserve(inputs_const.size());
-  for (const framework::LoDTensor* i : inputs_const) {
-    inputs.push_back(const_cast<framework::LoDTensor*>(i));
-  }
-  std::vector<framework::LoDTensor*> outputs;
-  outputs.reserve(outputs_const.size());
-  for (const framework::LoDTensor* i : outputs_const) {
-    outputs.push_back(const_cast<framework::LoDTensor*>(i));
-  }
-
+  // note: GetInstance() is not thread-safe
+  // we assume FleetWrapper has been already initialized
   auto fleet_ptr = framework::FleetWrapper::GetInstance();
   fleet_ptr->PullSparseToTensorSync(table_id, fea_dim, padding_id,
-                                    ctx.GetPlace(), &inputs, &outputs, fea_keys,
-                                    pull_result_ptr, pull_sparse_status);
+                                    ctx.GetPlace(), &inputs, &outputs);
 }
 
 template <typename T>
-void PushSparseFunctor(const framework::ExecutionContext& ctx,
-                       const std::vector<uint64_t>* push_keys_const,
-                       const std::vector<std::vector<T>>* push_values_const,
-                       const std::vector<T>* fea_labels_const) {
-  const auto& inputs_const = ctx.MultiInput<framework::LoDTensor>("Ids");
-  const auto& outputs_const =
+void PushSparseFunctor(const framework::ExecutionContext& ctx) {
+  auto inputs = ctx.MultiInput<framework::LoDTensor>("Ids");
+  auto grads_const =
       ctx.MultiInput<framework::LoDTensor>(framework::GradVarName("Out"));
   uint32_t fea_dim = static_cast<uint32_t>(ctx.Attr<int>("EmbeddingDim"));
   std::string accesor = ctx.Attr<std::string>("AccessorClass");
@@ -75,54 +50,33 @@ void PushSparseFunctor(const framework::ExecutionContext& ctx,
   const framework::Scope& scope = ctx.scope();
   auto input_names = ctx.Attr<std::vector<std::string>>("InputNames");
   auto table_id = static_cast<uint32_t>(ctx.Attr<int>("TableId"));
-  std::vector<uint64_t>* push_keys =
-      const_cast<std::vector<uint64_t>*>(push_keys_const);
-  std::vector<std::vector<T>>* push_values =
-      const_cast<std::vector<std::vector<T>>*>(push_values_const);
-  std::vector<T>* fea_labels = const_cast<std::vector<T>*>(fea_labels_const);
-  std::vector<framework::LoDTensor*> inputs;
-  inputs.reserve(inputs_const.size());
-  for (const framework::LoDTensor* i : inputs_const) {
-    inputs.push_back(const_cast<framework::LoDTensor*>(i));
+  // the grads tensor may be modified in place
+  std::vector<framework::LoDTensor*> grads(grads_const.size(), nullptr);
+  for (size_t i = 0; i < grads_const.size(); ++i) {
+    grads[i] = const_cast<framework::LoDTensor*>(grads_const[i]);
   }
-  std::vector<framework::LoDTensor*> outputs;
-  outputs.reserve(outputs_const.size());
-  for (const framework::LoDTensor* i : outputs_const) {
-    outputs.push_back(const_cast<framework::LoDTensor*>(i));
-  }
-
+  // note: GetInstance() is not thread-safe
+  // we assume FleetWrapper has been already initialized
   auto fleet_ptr = framework::FleetWrapper::GetInstance();
   fleet_ptr->PushSparseFromTensorWithLabelAsync(
       scope, table_id, fea_dim, padding_id, scale_sparse, accesor, label_name,
-      ctx.GetPlace(), input_names, &inputs, &outputs, push_keys, push_values,
-      fea_labels);
+      ctx.GetPlace(), input_names, &inputs, &grads);
 }
 
 template <typename T>
 class PullSparseCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PullSparseFunctor<T>(ctx, &fea_keys_, &pull_result_ptr_,
-                         &pull_sparse_status_);
+    PullSparseFunctor<T>(ctx);
   }
-
- protected:
-  std::vector<uint64_t> fea_keys_;
-  std::vector<T*> pull_result_ptr_;
-  std::vector<::std::future<int32_t>> pull_sparse_status_;
 };
 
 template <typename T>
 class PushSparseCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PushSparseFunctor<T>(ctx, &push_keys_, &push_values_, &fea_labels_);
+    PushSparseFunctor<T>(ctx);
   }
-
- protected:
-  std::vector<uint64_t> push_keys_;
-  std::vector<std::vector<T>> push_values_;
-  std::vector<T> fea_labels_;
 };
 }  // namespace operators
 }  // namespace paddle

@@ -360,22 +360,21 @@ void FleetWrapper::PullSparseVarsSync(
 
 void FleetWrapper::PullSparseToTensorSync(
     const uint64_t table_id, int fea_dim, uint64_t padding_id,
-    platform::Place place, std::vector<LoDTensor*>* inputs,
-    std::vector<LoDTensor*>* outputs, std::vector<uint64_t>* fea_keys,
-    std::vector<float*>* pull_result_ptr,
-    std::vector<::std::future<int32_t>>* pull_sparse_status) {
+    platform::Place place, std::vector<const LoDTensor*>* inputs,
+    std::vector<LoDTensor*>* outputs) {
 #ifdef PADDLE_WITH_PSLIB
-  fea_keys->clear();
-  fea_keys->reserve(MAX_FEASIGN_NUM);
-  pull_result_ptr->clear();
+  std::vector<uint64_t> fea_keys;
+  std::vector<float*> pull_result_ptr;
+  fea_keys.reserve(MAX_FEASIGN_NUM / 100);
+  pull_result_ptr.reserve(MAX_FEASIGN_NUM / 100);
   std::vector<float> init_value(fea_dim, 0);
   framework::LoDTensor* output = nullptr;
   float* output_data = nullptr;
   size_t output_index = -1;
   size_t output_len = 0;
   for (size_t index = 0; index < inputs->size(); ++index) {
-    framework::LoDTensor* tensor = inputs->at(index);
-    int64_t* ids = tensor->data<int64_t>();
+    const framework::LoDTensor* tensor = inputs->at(index);
+    const int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
       if (!output || output_len == size_t(output->numel())) {
@@ -393,21 +392,17 @@ void FleetWrapper::PullSparseToTensorSync(
                sizeof(float) * fea_dim);
         continue;
       }
-      fea_keys->push_back(real_id);
-      pull_result_ptr->push_back(output_data + output_len);
+      fea_keys.push_back(real_id);
+      pull_result_ptr.push_back(output_data + output_len);
     }
   }
   auto status = pslib_ptr_->_worker_ptr->pull_sparse(
-      pull_result_ptr->data(), table_id, fea_keys->data(), fea_keys->size());
-  pull_sparse_status->clear();
-  pull_sparse_status->push_back(std::move(status));
-  for (auto& t : *pull_sparse_status) {
-    t.wait();
-    auto status = t.get();
-    if (status != 0) {
-      LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
-      sleep(sleep_seconds_before_fail_exit_);
-    }
+      pull_result_ptr.data(), table_id, fea_keys.data(), fea_keys.size());
+  status.wait();
+  auto ret = status.get();
+  if (ret != 0) {
+    LOG(ERROR) << "fleet pull sparse failed, status[" << ret << "]";
+    sleep(sleep_seconds_before_fail_exit_);
   }
 #else
   for (size_t index = 0; index < inputs->size(); ++index) {
@@ -670,10 +665,8 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
     uint64_t padding_id, bool scale_sparse, const std::string& accesor,
     const std::string& click_name, platform::Place place,
     const std::vector<std::string>& input_names,
-    std::vector<LoDTensor*>* inputs, std::vector<LoDTensor*>* outputs,
-    std::vector<uint64_t>* push_keys,
-    std::vector<std::vector<float>>* push_values,
-    std::vector<float>* fea_labels) {
+    std::vector<const LoDTensor*>* inputs,
+    std::vector<LoDTensor*>* outputs) {
 #ifdef PADDLE_WITH_PSLIB
   int show_index = 0;
   int click_index = 1;
@@ -722,7 +715,8 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
     }
   }
 
-  fea_labels->clear();
+  std::vector<float> fea_labels;
+  fea_labels.reserve(MAX_FEASIGN_NUM / 100);
   framework::Variable* var = scope.FindVar(click_name);
   size_t global_idx = 0;
   if (click_name != "") {
@@ -743,24 +737,23 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
           if (static_cast<uint64_t>(ids[fea_idx]) == padding_id) {
             continue;
           }
-          fea_labels->push_back(static_cast<float>(label_ptr[lod_idx - 1]));
+          fea_labels.push_back(static_cast<float>(label_ptr[lod_idx - 1]));
           ++global_idx;
         }
       }
     }
   }
-
-  push_keys->clear();
-  push_keys->reserve(MAX_FEASIGN_NUM);
-  push_values->clear();
-  push_values->reserve(MAX_FEASIGN_NUM);
+  std::vector<uint64_t> push_keys;
+  push_keys.reserve(MAX_FEASIGN_NUM / 100);
+  std::vector<std::vector<float>> push_values;
+  push_values.reserve(MAX_FEASIGN_NUM /  100);
   framework::LoDTensor* output = nullptr;
   float* output_data = nullptr;
   size_t output_index = -1;
   size_t output_len = 0;
   size_t input_idx = 0;
   for (size_t index = 0; index < inputs->size(); ++index) {
-    framework::LoDTensor* tensor = inputs->at(index);
+    const framework::LoDTensor* tensor = inputs->at(index);
     const int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
@@ -776,9 +769,9 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
       if (static_cast<uint64_t>(ids[i]) == padding_id) {
         continue;
       }
-      push_keys->emplace_back(ids[i]);
-      push_values->emplace_back(fea_dim + slot_offset);
-      float* data = push_values->back().data();
+      push_keys.emplace_back(ids[i]);
+      push_values.emplace_back(fea_dim + slot_offset);
+      float* data = push_values.back().data();
       if (!var) {
         memcpy(data + slot_offset, output_data + output_len,
                sizeof(float) * fea_dim);
@@ -786,7 +779,7 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
         memcpy(data + slot_offset, output_data + output_len,
                sizeof(float) * grad_dim);
         data[show_index] = 1.0f;
-        data[click_index] = static_cast<float>(fea_labels->at(input_idx));
+        data[click_index] = static_cast<float>(fea_labels.at(input_idx));
       }
       if (dump_slot) {
         int slot = boost::lexical_cast<int>(input_names[index]);
@@ -801,12 +794,12 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
   }
 
   std::vector<float*> push_g_vec(input_idx, nullptr);
-  for (auto i = 0u; i < push_keys->size(); ++i) {
-    push_g_vec[i] = push_values->at(i).data();
+  for (auto i = 0u; i < push_keys.size(); ++i) {
+    push_g_vec[i] = push_values.at(i).data();
   }
   auto status = pslib_ptr_->_worker_ptr->push_sparse(
-      table_id, push_keys->data(), (const float**)push_g_vec.data(),
-      push_keys->size());
+      table_id, push_keys.data(), (const float**)push_g_vec.data(),
+      push_keys.size());
 #endif
 }
 

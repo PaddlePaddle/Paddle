@@ -28,27 +28,16 @@ template <typename T>
 class PullSparseV2CPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PullSparseFunctor<T>(ctx, &fea_keys_, &pull_result_ptr_,
-                         &pull_sparse_status_);
+    PullSparseFunctor<T>(ctx);
   }
-
- protected:
-  std::vector<uint64_t> fea_keys_;
-  std::vector<T*> pull_result_ptr_;
-  std::vector<::std::future<int32_t>> pull_sparse_status_;
 };
 
 template <typename T>
 class PushSparseV2CPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PushSparseFunctor<T>(ctx, &push_keys_, &push_values_, &fea_labels_);
+    PushSparseFunctor<T>(ctx);
   }
-
- protected:
-  std::vector<uint64_t> push_keys_;
-  std::vector<std::vector<T>> push_values_;
-  std::vector<T> fea_labels_;
 };
 }  // namespace operators
 }  // namespace paddle
