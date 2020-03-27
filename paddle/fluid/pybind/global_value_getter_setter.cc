@@ -316,15 +316,31 @@ static void RegisterGlobalVarGetterSetter() {
 
   REGISTER_PUBLIC_GLOBAL_VAR(
       FLAGS_eager_delete_tensor_gb, FLAGS_enable_parallel_graph,
-      FLAGS_allocator_strategy, FLAGS_use_system_allocator);
+      FLAGS_allocator_strategy, FLAGS_use_system_allocator, FLAGS_check_nan_inf,
+      FLAGS_cpu_deterministic, FLAGS_enable_rpc_profiler,
+      FLAGS_multiple_of_cupti_buffer_size, FLAGS_reader_queue_speed_test_mode,
+      FLAGS_pe_profile_fname, FLAGS_print_sub_graph_dir,
+      FLAGS_fraction_of_cpu_memory_to_use, FLAGS_fuse_parameter_groups_size,
+      FLAGS_fuse_parameter_memory_size, FLAGS_init_allocated_mem,
+      FLAGS_initial_cpu_memory_in_mb, FLAGS_memory_fraction_of_eager_deletion,
+      FLAGS_use_pinned_memory, FLAGS_benchmark, FLAGS_inner_op_parallelism,
+      FLAGS_tracer_profile_fname);
 
 #ifdef PADDLE_WITH_CUDA
-  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_gpu_memory_limit_mb,
-                             FLAGS_cudnn_deterministic);
+  REGISTER_PUBLIC_GLOBAL_VAR(
+      FLAGS_gpu_memory_limit_mb, FLAGS_cudnn_deterministic,
+      FLAGS_conv_workspace_size_limit, FLAGS_cudnn_batchnorm_spatial_persistent,
+      FLAGS_cudnn_exhaustive_search, FLAGS_eager_delete_scope,
+      FLAGS_fast_eager_deletion_mode,
+      FLAGS_fraction_of_cuda_pinned_memory_to_use,
+      FLAGS_fraction_of_gpu_memory_to_use, FLAGS_initial_gpu_memory_in_mb,
+      FLAGS_reallocate_gpu_memory_in_mb, FLAGS_enable_cublas_tensor_op_math,
+      FLAGS_selected_gpus, FLAGS_sync_nccl_allreduce);
 #endif
 #ifdef PADDLE_WITH_DITRIBUTE
-  FLAGS_rpc_send_thread_num, FLAGS_rpc_get_thread_num,
-      FLAGS_rpc_prefetch_thread_num
+  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_rpc_send_thread_num,
+                             FLAGS_rpc_get_thread_num,
+                             FLAGS_rpc_prefetch_thread_num)
 #endif
 }
 }  // namespace pybind
