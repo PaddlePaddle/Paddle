@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/global_value_getter_setter.h"
+#include <cctype>
 #include <functional>
 #include <string>
 #include <unordered_map>
@@ -289,10 +290,12 @@ static void RegisterGlobalVarGetterSetter() {
 
   REGISTER_PUBLIC_GLOBAL_VAR(
       FLAGS_eager_delete_tensor_gb, FLAGS_enable_parallel_graph,
-#ifdef PADDLE_WITH_CUDA
-      FLAGS_gpu_memory_limit_mb, FLAGS_cudnn_deterministic,
-#endif
       FLAGS_allocator_strategy, FLAGS_use_system_allocator);
+
+#ifdef PADDLE_WITH_CUDA
+  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_gpu_memory_limit_mb,
+                             FLAGS_cudnn_deterministic);
+#endif
 }
 
 }  // namespace pybind
