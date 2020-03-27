@@ -258,7 +258,7 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Call cublas function safely. */
   template <typename Callback>
   inline void CublasCall(Callback&& callback) const {
-    return context_->CublasCall(callback);
+    return context()->CublasCall(callback);
   }
 
   /*! \brief  Check whether tensor core is supported */
@@ -268,7 +268,7 @@ class CUDADeviceContext : public DeviceContext {
       Tensor Core is not available, use DEFAULT_MATH instead. */
   template <typename Callback>
   inline void TensorCoreCublasCallIfAvailable(Callback&& callback) const {
-    return context_->TensorCoreCublasCallIfAvailable(callback);
+    return context()->TensorCoreCublasCallIfAvailable(callback);
   }
 
   /*! \brief  Return cudnn  handle in the device context. */
@@ -296,19 +296,36 @@ class CUDADeviceContext : public DeviceContext {
 
   template <typename Callback>
   void RecordEvent(cudaEvent_t ev, Callback callback) {
-    return context_->RecordEvent(ev, callback);
+    return context()->RecordEvent(ev, callback);
   }
 
   template <typename Callback>
   void AddStreamCallback(Callback&& callback) const {
-    return context_->AddStreamCallback(callback);
+    return context()->AddStreamCallback(callback);
   }
 
-  void WaitStreamCallback() const { return context_->WaitStreamCallback(); }
+  void WaitStreamCallback() const { return context()->WaitStreamCallback(); }
+
+  void ResetCurrentThreadCtx(const enum stream::Priority& priority) {
+    std::lock_guard<std::mutex> guard(ctx_mtx_);
+    thread_ctx_[this].reset(new CUDAContext(place_));
+  }
+
+  const std::unique_ptr<CUDAContext>& context() const {
+    if (!thread_ctx_.count(this)) {
+      return context_;
+    }
+    return thread_ctx_.at(this);
+  }
 
  private:
   CUDAPlace place_;
   std::unique_ptr<CUDAContext> context_;
+
+  static thread_local std::map<const CUDADeviceContext*,
+                               std::unique_ptr<CUDAContext>>
+      thread_ctx_;
+  static thread_local std::mutex ctx_mtx_;
 
   mutable std::mutex cudnn_handle_mtx_;
 

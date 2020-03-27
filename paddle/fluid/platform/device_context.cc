@@ -56,6 +56,11 @@ namespace platform {
 
 DeviceContextPool* DeviceContextPool::pool = nullptr;
 
+thread_local std::map<const CUDADeviceContext*,
+                              std::unique_ptr<CUDAContext>>
+    CUDADeviceContext::thread_ctx_;
+thread_local std::mutex CUDADeviceContext::ctx_mtx_;
+
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   auto it = device_contexts_.find(place);
   if (it == device_contexts_.end()) {
@@ -293,7 +298,7 @@ CUDADeviceContext::~CUDADeviceContext() {
 
 Place CUDADeviceContext::GetPlace() const { return place_; }
 
-void CUDADeviceContext::Wait() const { context_->Wait(); }
+void CUDADeviceContext::Wait() const { context()->Wait(); }
 
 int CUDADeviceContext::GetComputeCapability() const {
   return compute_capability_;
@@ -310,11 +315,11 @@ int CUDADeviceContext::GetMaxThreadsPerBlock() const {
 }
 
 Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
-  return context_->EigenDevice().get();
+  return context()->EigenDevice().get();
 }
 
 bool CUDADeviceContext::tensor_core_available() const {
-  return context_->CublasTensorCoreHandle() != nullptr;
+  return context()->CublasTensorCoreHandle() != nullptr;
 }
 
 dim3 CUDADeviceContext::GetCUDAMaxGridDimSize() const {
@@ -322,14 +327,14 @@ dim3 CUDADeviceContext::GetCUDAMaxGridDimSize() const {
 }
 
 cudnnHandle_t CUDADeviceContext::cudnn_handle() const {
-  return context_->CudnnHandle();
+  return context()->CudnnHandle();
 }
 
 CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
   return CudnnWorkspaceHandle(*this, &cudnn_handle_mtx_);
 }
 
-cudaStream_t CUDADeviceContext::stream() const { return context_->Stream(); }
+cudaStream_t CUDADeviceContext::stream() const { return context()->Stream(); }
 
 CUDAPinnedDeviceContext::CUDAPinnedDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
