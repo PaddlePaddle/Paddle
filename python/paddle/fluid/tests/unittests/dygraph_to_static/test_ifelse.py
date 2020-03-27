@@ -84,6 +84,12 @@ class TestDygraphIfElse5(TestDygraphIfElse):
         self.dyfunc = nested_if_else_3
 
 
+class TestDygraphIfElse6(TestDygraphIfElse):
+    def setUp(self):
+        self.x = np.random.random([10, 16]).astype('float32')
+        self.dyfunc = dyfunc_ifExp_with_while
+
+
 class TestDygraphIfElseWithAndOr(TestDygraphIfElse):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')

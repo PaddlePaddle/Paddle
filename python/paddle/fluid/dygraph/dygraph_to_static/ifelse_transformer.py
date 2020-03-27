@@ -83,7 +83,6 @@ class IfElseTransformer(gast.NodeTransformer):
         """
         Transformation with `true_fn(x) if Tensor > 0 else false_fn(x)`
         """
-        return node
         if_condition_visitor = IfConditionVisitor(node.test,
                                                   self.static_analysis_visitor)
         need_transform = if_condition_visitor.is_control_flow()
