@@ -87,8 +87,8 @@ class Layer(core.Layer):
         self._sub_layers = collections.OrderedDict()
         self._loaddict_holder = collections.OrderedDict()
 
-        self._forward_hooks = collections.OrderedDict()
         self._forward_pre_hooks = collections.OrderedDict()
+        self._forward_post_hooks = collections.OrderedDict()
 
     def train(self):
         framework._dygraph_tracer().train_mode()
@@ -129,8 +129,8 @@ class Layer(core.Layer):
                 forward_post_hook_handle = linear.register_forward_post_hook(forward_hook)
                 forward_post_hook_handle.remove()
         """
-        hook_erase_helper = HookEraseHelper(self._forward_hooks)
-        self._forward_hooks[hook_erase_helper._hook_id] = hook
+        hook_erase_helper = HookEraseHelper(self._forward_post_hooks)
+        self._forward_post_hooks[hook_erase_helper._hook_id] = hook
         return hook_erase_helper
 
     def register_forward_pre_hook(self, hook):
@@ -389,7 +389,7 @@ class Layer(core.Layer):
 
         outputs = self.forward(*inputs, **kwargs)
 
-        for forward_hook in self._forward_hooks.values():
+        for forward_hook in self._forward_post_hooks.values():
             hook_result = forward_hook(self, inputs, outputs)
             if hook_result is not None:
                 outputs = hook_result
