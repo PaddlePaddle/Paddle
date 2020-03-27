@@ -71,8 +71,8 @@ class TestFleet2(unittest.TestCase):
         cost = fluid.layers.log_loss(fc, label_cast)
         cost = fluid.layers.mean(cost)
 
-        fleet.init()
         try:
+            fleet.init()
             adam = fluid.optimizer.Adam(learning_rate=0.000005)
             adam = fleet.distributed_optimizer(adam)
             scope = fluid.Scope()
