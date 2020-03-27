@@ -18,7 +18,6 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.framework import IrGraph
 from paddle.fluid.contrib.slim.quantization import Qat2Int8MkldnnPass
-from paddle.fluid.tests.unittests.test_conv2d_op import conv2d_forward_naive
 
 
 class TestQat2Int8MkldnnPass(unittest.TestCase):
@@ -33,24 +32,18 @@ class TestQat2Int8MkldnnPass(unittest.TestCase):
         self.stride = [1, 1]
         self.dilations = [1, 1]
         self.groups = 1
-        self.input_size = [1, 3, 5, 5]  # NCHW
+        self.input_size = [1, 3, 5, 5]
         self.filter_size = [16, 3, 3, 3]
         self.filter_size2 = [1, 16, 2, 2]
+        self.conv_output_size = [1, 16, 3, 3]
+        self.conv_output2_size = [1, 1, 2, 2]
         self.input = np.random.random(self.input_size).astype(self.dtype)
         self.filter = np.random.random(self.filter_size).astype(self.dtype)
         self.filter2 = np.random.random(self.filter_size2).astype(self.dtype)
+        self.conv_output = np.ndarray(self.conv_output_size).astype(self.dtype)
+        self.conv_output2 = np.ndarray(self.conv_output2_size).astype(
+            self.dtype)
         self.quantized_ops = 'conv2d'
-        conv2d_param = {
-            'stride': self.stride,
-            'pad': self.pad,
-            'dilation': self.dilations
-        }
-        conv_out, _, _, _, _ = conv2d_forward_naive(
-            self.input, self.filter, self.groups, conv2d_param)  #[1, 16, 2, 2]
-        self.conv_output = conv_out
-        conv_out2, _, _, _, _ = conv2d_forward_naive(
-            self.conv_output, self.filter2, self.groups, conv2d_param)
-        self.conv_output2 = conv_out2
         self.variables = {
             "input": self.input,
             "filter": self.filter,
