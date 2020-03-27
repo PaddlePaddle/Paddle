@@ -415,6 +415,16 @@ def _as_lodtensor(data, place):
     return tensor
 
 
+def _is_optimize_op(op):
+    op_maker = core.op_proto_and_checker_maker
+    OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
+    op_role = op.desc.attr(op_maker.kOpRoleAttrName())
+    if op_role & int(OPTIMIZE):
+        return True
+    else:
+        return False
+
+
 class FetchHandler(object):
     def __init__(self, var_dict=None, period_secs=60):
         assert var_dict != None
@@ -626,7 +636,57 @@ class Executor(object):
     TODO(panyx0718): Why ParallelExecutor doesn't have close?
     '''
 
-    def _prune_program(self, program, feed=None, fetch_list=None):
+    def _split_optimize_ops_in_fetch_list(self, fetch_list):
+        """
+        Split optimize_ops from fetch_list, which provided to specify program prunning.
+        Args:
+            fetch_list(list): The original fetch_list.
+            Possible types of fetch_list are:
+                fetch_list = ['loss']
+                fetch_list = [[sgd, sgd], 'loss']
+                fetch_list = [([sgd, sgd], params_grads), 'loss']
+
+        Returns:
+            optimize_ops(list): The optimize operators splited from fetch_list.
+            fetch_list(list):  The updated fetch_list which does not contain optimize operators.  
+        """
+        _optimize_ops = []
+        _fetch_list = []
+
+        def _get_targets(item):
+            nonlocal _optimize_ops
+            nonlocal _fetch_list
+            if isinstance(item, Operator):
+                if _is_optimize_op(item):
+                    _optimize_ops.append(item)
+                else:
+                    raise TypeError(
+                        "The operator in fetch_list is not an optimize_op")
+            elif isinstance(item, Variable) or isinstance(
+                    item, str) or isinstance(item, six.string_types):
+                _fetch_list.append(item)
+            else:
+                raise TypeError(
+                    "The item in fetch_list should be str, variable or optimize_op, but recieved %s.",
+                    type(item))
+
+        for item in fetch_list:
+            if isinstance(item, list):
+                for i in item:
+                    _get_targets(i)
+            elif isinstance(item, tuple):
+                for i in item[0]:
+                    _get_targets(i)
+            else:
+                _get_targets(item)
+
+        return _fetch_list, _optimize_ops
+
+    def _prune_program(self,
+                       program,
+                       feed=None,
+                       fetch_list=None,
+                       optimize_ops=None):
         """
         Prune operators and variables which are not needed to generate
         :code:`fetch_list` and optimize operators. 
@@ -653,7 +713,7 @@ class Executor(object):
                 warnings.warn(
                     "The program holds no _program, maybe it is constructed by graph, which can't be pruned yet."
                 )
-            return
+                return
         else:
             origin_program = program
 
@@ -665,46 +725,14 @@ class Executor(object):
             for i, each in enumerate(feed):
                 feed_names += list(each.keys())
 
-        def _is_optimize_op(op):
-            op_maker = core.op_proto_and_checker_maker
-            OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
-            op_role = op.desc.attr(op_maker.kOpRoleAttrName())
-            if op_role == int(OPTIMIZE):
-                return True
-            else:
-                return False
-
-        targets = []
-        has_optimize = False
-
-        def _get_targets(item):
-            if isinstance(item, Variable) or isinstance(
-                    item, str) or isinstance(item, six.string_types):
-                targets.append(item)
-            elif isinstance(item, Operator):
-                if _is_optimize_op(item):
-                    has_optimize = True
-                targets.append(item)
-
-        for item in fetch_list:
-            if isinstance(item, list):
-                for i in item:
-                    _get_targets(i)
-            elif isinstance(item, tuple):
-                for i in item[0]:
-                    _get_targets(i)
-            else:
-                _get_targets(item)
-
-        # get all optimize op 
-        if not has_optimize:
-            op_maker = core.op_proto_and_checker_maker
-            OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
+        # if optimize_ops is [], all optimize ops in the program is used.
+        if not optimize_ops:
             for block in origin_program.blocks:
                 for op in block.ops:
                     if _is_optimize_op(op):
-                        targets.append(op)
+                        optimize_ops.append(op)
 
+        targets = fetch_list + optimize_ops
         pruned_program = origin_program._prune_with_input(feed_names, targets)
 
         if compiled:
@@ -730,7 +758,6 @@ class Executor(object):
         Returns:
             feed:(list|dict)  updated feed.
         """
-        print('type', type(program))
         compiled = isinstance(program, compiler.CompiledProgram)
         if compiled:
             if program._program:
@@ -761,7 +788,7 @@ class Executor(object):
 
         return feed
 
-    def _update_fetch(self, program, fetch_list):
+    def _remove_optimize_ops_in_fetch_list(self, program, fetch_list):
         """
         Update the fetch list, remove the fetch item which is optimize op.  
 
@@ -881,8 +908,8 @@ class Executor(object):
             scope=None,
             return_numpy=True,
             use_program_cache=False,
-            use_prune=False,
-            return_merged=True):
+            return_merged=True,
+            use_prune=False):
         """
         Run the specified :code:`Program` or :code:`CompiledProgram`. It should be noted that the executor
         will execute all the operators in :code:`Program` or :code:`CompiledProgram` without pruning some
@@ -921,9 +948,6 @@ class Executor(object):
                 the input program is :code:`fluid.Program`, and the parameters(program, feed variable name
                 and fetch_list variable) of this interface remains unchanged during running.
                 The default is False.
-            use_prune(bool): This parameter indicates whether the input :code:`Program` will be pruned. 
-                If the parameter is True, the program will be pruned accroding to the given feed and fetch_list.
-                The default is False.
             return_merged(bool): This parameter indicates whether fetched variables (the variables
                 specified in the fetch list) should be merged according to the execution device dimension.
                 If :code:`return_merged` is False, the type of the return value is a two-dimensional list
@@ -935,6 +959,9 @@ class Executor(object):
                 set :code:`return_merged` as False, which denotes that the fetched results will not be merged.
                 The default is True, but it is just for the compatibility, and may use False as default value
                 in the future version.
+            use_prune(bool): This parameter indicates whether the input :code:`Program` will be pruned. 
+                If the parameter is True, the program will be pruned accroding to the given feed and fetch_list.
+                The default is False.
                 
         Returns:
 
@@ -1057,8 +1084,7 @@ class Executor(object):
 
     def _run_impl(self, program, feed, fetch_list, feed_var_name,
                   fetch_var_name, scope, return_numpy, use_program_cache,
-                  use_prune, return_merged):
-        _origin_program = program
+                  return_merged, use_prune):
         if self._closed:
             raise RuntimeError("Attempted to use a closed Executor")
 
@@ -1093,10 +1119,18 @@ class Executor(object):
         else:
             fetch_list = []
 
-        if use_prune:
-            cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
-            cached_pruned_program = self._get_pruned_program_cache(cache_key)
+        # use_prune can be overrided by putting optimize_ops in fetch_list
+        _origin_fetch_list = fetch_list
+        _origin_program = program
+        fetch_list, optimize_ops = self._split_optimize_ops_in_fetch_list(
+            fetch_list)
 
+        if optimize_ops:
+            use_prune = True
+        if use_prune:
+            cache_key = _get_strong_program_cache_key(program, feed,
+                                                      _origin_fetch_list)
+            cached_pruned_program = self._get_pruned_program_cache(cache_key)
             if cached_pruned_program is None:
                 if isinstance(program, compiler.CompiledProgram):
                     program_scope_cache = self._get_pruned_program_scope_cache(
@@ -1109,15 +1143,14 @@ class Executor(object):
                             str(id(_origin_program))) is None:
                         self._add_pruned_program_scope_cache(
                             str(id(_origin_program)), program)
-                pruned_program = self._prune_program(program, feed, fetch_list)
+                pruned_program = self._prune_program(program, feed, fetch_list,
+                                                     optimize_ops)
                 self._add_pruned_program_cache(cache_key, pruned_program)
             else:
                 pruned_program = cached_pruned_program
 
             feed = self._update_feed(pruned_program, feed)
             program = pruned_program
-
-        fetch_list = self._update_fetch(program, fetch_list)
 
         compiled = isinstance(program, compiler.CompiledProgram)
 
@@ -1131,8 +1164,7 @@ class Executor(object):
                 fetch_var_name=fetch_var_name,
                 scope=scope,
                 return_numpy=return_numpy,
-                use_program_cache=use_program_cache,
-                use_prune=use_prune)
+                use_program_cache=use_program_cache)
 
         program._compile(scope, self.place)
 
@@ -1149,8 +1181,7 @@ class Executor(object):
                 return_merged=return_merged)
 
     def _run_program(self, program, feed, fetch_list, feed_var_name,
-                     fetch_var_name, scope, return_numpy, use_program_cache,
-                     use_prune):
+                     fetch_var_name, scope, return_numpy, use_program_cache):
 
         if feed is None:
             feed = {}
