@@ -211,6 +211,8 @@ void CudnnWorkspaceHandle::ReallocWorkspace(size_t required_workspace_bytes) {
   allocation_ = memory::Alloc(device_context_, required_workspace_bytes);
 }
 
+using stream::CUDAStream;
+
 void CUDAContext::ResetEigenContext(const cudaStream_t& stream) {
   eigen_stream_.reset(new EigenCudaStreamDevice());
   eigen_stream_->Reinitialize(&stream, place_);
@@ -220,18 +222,17 @@ void CUDAContext::ResetEigenContext(const cudaStream_t& stream) {
 CUDAContext::CUDAContext(const CUDAPlace& place) {
   place_ = place;
   CUDADeviceGuard guard(place_.device);
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream_));
-  ResetEigenContext(stream_);
-  ResetCuBlasContext(stream_);
-  ResetCuDNNContext(stream_);
-  ResetCallbackManager(stream_);
+  stream_.reset(new CUDAStream(place));
+  ResetEigenContext(stream_->stream());
+  ResetCuBlasContext(stream_->stream());
+  ResetCuDNNContext(stream_->stream());
+  ResetCallbackManager(stream_->stream());
 }
 
 CUDAContext::~CUDAContext() {
   CUDADeviceGuard guard(place_.device);
   DestoryCuDNNContext();
   DestoryCuBlasContext();
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(stream_));
 }
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
@@ -282,7 +283,6 @@ CUDADeviceContext::~CUDADeviceContext() {
   SetDeviceId(place_.device);
   Wait();
   WaitStreamCallback();
-// context_.reset();
 #if defined(PADDLE_WITH_NCCL)
   if (nccl_comm_) {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclCommDestroy(nccl_comm_));
