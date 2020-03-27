@@ -201,7 +201,10 @@ class PrivateQueueDataFeed : public DataFeed {
   virtual void AddInstanceToInsVec(T* vec_ins, const T& instance,
                                    int index) = 0;
   // This function is used to put ins_vec to feed_vec
-  virtual void PutToFeedVec(const T& ins_vec) = 0;
+  virtual void PutToFeedVec(const std::vector<T>& ins_vec) = 0;
+
+  virtual void SetParseInsId(bool parse_ins_id);
+  virtual void SetParseContent(bool parse_content);
 
   // The thread for read files
   std::thread read_thread_;
@@ -211,11 +214,13 @@ class PrivateQueueDataFeed : public DataFeed {
   //     ifstream one line and one line parse: 6034 ms
   //     fread one buffer and one buffer parse: 7097 ms
   std::ifstream file_;
-  std::shared_ptr<FILE> fp_;
+  std::shared_ptr<FILE> fp_ = nullptr;
   size_t queue_size_;
   string::LineFileReader reader_;
   // The queue for store parsed data
-  std::shared_ptr<paddle::framework::ChannelObject<T>> queue_;
+  std::shared_ptr<paddle::framework::ChannelObject<T>> queue_ = nullptr;
+  bool parse_ins_id_ = nullptr;
+  bool parse_content_ = nullptr;
 };
 
 template <typename T>
@@ -529,8 +534,7 @@ paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
 // This DataFeed is used to feed multi-slot type data.
 // The format of multi-slot type data:
 //   [n feasign_0 feasign_1 ... feasign_n]*
-class MultiSlotDataFeed
-    : public PrivateQueueDataFeed<std::vector<MultiSlotType>> {
+class MultiSlotDataFeed : public PrivateQueueDataFeed<Record> {
  public:
   MultiSlotDataFeed() {}
   virtual ~MultiSlotDataFeed() {}
@@ -539,12 +543,12 @@ class MultiSlotDataFeed
 
  protected:
   virtual void ReadThread();
-  virtual void AddInstanceToInsVec(std::vector<MultiSlotType>* vec_ins,
-                                   const std::vector<MultiSlotType>& instance,
-                                   int index);
-  virtual bool ParseOneInstance(std::vector<MultiSlotType>* instance);
-  virtual bool ParseOneInstanceFromPipe(std::vector<MultiSlotType>* instance);
-  virtual void PutToFeedVec(const std::vector<MultiSlotType>& ins_vec);
+  virtual void AddInstanceToInsVec(Record* vec_ins,
+                                   const Record& instance,
+                                   int index) {}
+  virtual bool ParseOneInstance(Record* instance);
+  virtual bool ParseOneInstanceFromPipe(Record* instance);
+  virtual void PutToFeedVec(const std::vector<Record>& ins_vec);
 };
 
 class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
