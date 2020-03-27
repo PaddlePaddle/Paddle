@@ -79,6 +79,14 @@ class IfElseTransformer(gast.NodeTransformer):
         else:
             return node
 
+    def visit_Call(self, node):
+        # Remove `numpy()` statement, like `Tensor.numpy()[i]` -> `Tensor[i]`
+        if isinstance(node.func, gast.Attribute):
+            attribute = node.func
+            if attribute.attr == 'numpy':
+                node = attribute.value
+        return node
+
     def visit_IfExp(self, node):
         """
         Transformation with `true_fn(x) if Tensor > 0 else false_fn(x)`
