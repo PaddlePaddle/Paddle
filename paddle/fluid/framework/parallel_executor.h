@@ -80,6 +80,8 @@ class ParallelExecutor {
   FetchResultType Run(const std::vector<std::string> &fetch_tensors,
                       bool return_merged = true);
 
+  const ir::Graph &Graph() const;
+
  private:
   // broadcast the parameters from the 0th device.
   // trainer_id the trainer index in nccl distributed training.

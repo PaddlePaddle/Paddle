@@ -17,12 +17,12 @@ from __future__ import print_function
 import gast
 import astor
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
-from paddle.fluid.dygraph.dygraph_to_static.utils import is_control_flow_to_transform
+from paddle.fluid.dygraph.dygraph_to_static.utils import is_control_flow_to_transform, ast_to_source_code
 
 
 class ListTransformer(gast.NodeTransformer):
     """
-    This class transforms python list used in control flow into Static Graph Ast
+    This class transforms python list used in control flow into Static Graph Ast.
     """
 
     def __init__(self, wrapper_root):
@@ -31,8 +31,8 @@ class ListTransformer(gast.NodeTransformer):
         ), "Input non-AstNodeWrapper node for the initialization of ListTransformer."
         self.wrapper_root = wrapper_root
         self.root = wrapper_root.node
-        self.name_of_list_set = set()
         self.list_name_to_updated = dict()
+        self.list_nodes = set()
 
         self.static_analysis_visitor = StaticAnalysisVisitor(self.root)
         self.node_to_wrapper_map = self.static_analysis_visitor.get_node_to_wrapper_map(
@@ -46,7 +46,11 @@ class ListTransformer(gast.NodeTransformer):
         self.replace_list_with_tensor_array(self.root)
 
     def visit_Assign(self, node):
-        self._update_list_name_to_updated(node)
+        if self._update_list_name_to_updated(node):
+            return node
+
+        if self._need_to_array_write_node(node):
+            return self._transform_slice_to_tensor_write(node)
         return node
 
     def visit_If(self, node):
@@ -85,7 +89,32 @@ class ListTransformer(gast.NodeTransformer):
                 if self._is_list_append_tensor(node.value):
                     return True
 
+        if isinstance(node, gast.Assign):
+            target_node = node.targets[0]
+            if isinstance(target_node, gast.Subscript):
+                list_name = ast_to_source_code(target_node.value).strip()
+                if list_name in self.list_name_to_updated:
+                    if self.list_name_to_updated[list_name] == True:
+                        return True
         return False
+
+    def _transform_slice_to_tensor_write(self, node):
+        assert isinstance(node, gast.Assign)
+        target_node = node.targets[0]
+        target_name = target_node.value.id
+        slice_node = target_node.slice
+
+        if isinstance(slice_node, gast.Slice):
+            pass
+        elif isinstance(slice_node, gast.Index):
+            value_code = ast_to_source_code(node.value)
+            i = "fluid.layers.cast(" \
+                "x=fluid.dygraph.dygraph_to_static.variable_trans_func.to_static_variable({})," \
+                "dtype='int64')".format(ast_to_source_code(slice_node))
+            assign_code = "{} = fluid.layers.array_write(x={}, i={}, array={})" \
+                .format(target_name, value_code, i, target_name)
+            assign_node = gast.parse(assign_code).body[0]
+        return assign_node
 
     def _is_list_append_tensor(self, node):
         """
@@ -135,7 +164,7 @@ class ListTransformer(gast.NodeTransformer):
             target_id = target_node.id
         except AttributeError:
             return False
-        if self.list_name_to_updated.get(target_id):
+        if self.list_name_to_updated.get(target_id) and node in self.list_nodes:
             return True
         return False
 
@@ -165,7 +194,9 @@ class ListTransformer(gast.NodeTransformer):
         value_node = node.value
         if isinstance(value_node, gast.List):
             self.list_name_to_updated[target_id] = False
+            self.list_nodes.add(node)
             return True
-        elif target_id in self.name_of_list_set:
+        elif target_id in self.list_name_to_updated and \
+                self.list_name_to_updated[target_id] == False:
             del self.list_name_to_updated[target_id]
         return False

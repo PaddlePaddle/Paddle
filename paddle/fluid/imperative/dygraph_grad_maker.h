@@ -18,9 +18,11 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
@@ -51,11 +53,8 @@ class GradOpBaseMakerBase {
         attrs_(attrs) {}
 
   virtual ~GradOpBaseMakerBase() = default;
-  virtual std::vector<std::shared_ptr<OpBase>> operator()() const = 0;
 
-  static std::shared_ptr<OpBase> CreateOp() {
-    return std::make_shared<OpBase>();
-  }
+  virtual std::shared_ptr<GradOpNode> operator()() const = 0;
 
   TracedVarList<VarBase, TracedVarRole::kBackward> InputGrad(
       const std::string& name, bool drop_empty_grad = true) const {
@@ -138,6 +137,10 @@ class GradOpBaseMakerBase {
     return var_base_map_out_.count(name) > 0;
   }
 
+  static std::shared_ptr<GradOpNode> NewGradNode() {
+    return std::make_shared<GradOpNode>();
+  }
+
  private:
   template <TracedVarRole kRole>
   TracedVarList<VarBase, kRole> GetVarBaseList(const std::string& name,
@@ -149,7 +152,13 @@ class GradOpBaseMakerBase {
     if (iterator != data_map.end()) {
       vec_temp.reserve(iterator->second.size());
 
+      bool is_valid = false;
       for (auto& var_base_temp : iterator->second) {
+        if (!var_base_temp) {
+          vec_temp.emplace_back();
+          continue;
+        }
+
         if (kRole == TracedVarRole::kBackward) {
           if (var_base_temp->OverridedStopGradient()) {
             VLOG(6) << "var " << var_base_temp->Name()
@@ -175,6 +184,11 @@ class GradOpBaseMakerBase {
         } else {
           vec_temp.emplace_back(var_base_temp);
         }
+        is_valid = true;
+      }
+
+      if (!is_valid) {
+        vec_temp.clear();
       }
     }
 
@@ -192,44 +206,63 @@ class TracedGradOp {
   DISABLE_COPY_AND_ASSIGN(TracedGradOp);
 
  public:
-  explicit TracedGradOp(const std::shared_ptr<OpBase>& op) : op_(op) {}
+  explicit TracedGradOp(const std::shared_ptr<GradOpNode>& node)
+      : node_(node), op_(&(node->emplace_back())) {}
 
   ~TracedGradOp() {
-    op_->SetGradPendingOps(
-        {grad_pending_ops_.begin(), grad_pending_ops_.end()});
-    op_->CheckAttrs();
+    if (UNLIKELY(op_->GetOutsMap().empty())) {
+      node_->pop_back();
+    } else {
+      op_->CheckAttrs();
+    }
   }
 
   template <TracedVarRole kRole>
   void SetInput(const std::string& name,
                 const TracedVarList<VarBase, kRole>& vars) {
+    if (vars.empty()) {
+      return;
+    }
+
     if (kRole == TracedVarRole::kBackward) {
       for (auto& var : vars) {
-        var->AddGradOp(op_);
+        if (var && !var->OverridedStopGradient()) {
+          var->SetGradNode(node_);
+        }
       }
     }
-    op_->SetInput(name, ToVarWrapperList(vars));
+
+    auto var_wrappers = ToVarWrapperList<kRole>(vars);
+    if (!var_wrappers.empty()) {
+      op_->SetInput(name, std::move(var_wrappers),
+                    kRole == TracedVarRole::kBackward);
+    }
   }
 
   template <TracedVarRole kRole>
   void SetOutput(const std::string& name,
                  const TracedVarList<VarBase, kRole>& vars) {
+    if (vars.empty()) {
+      return;
+    }
+
     if (kRole == TracedVarRole::kBackward) {
       if (vars.size() == 1 && vars.front()->OverridedStopGradient()) {
-        op_->SetOutput(name, VariableWrapperList{});
         return;
       } else {
         for (auto& var : vars) {
-          if (!var->OverridedStopGradient()) {
-            for (auto& op : var->GradOps()) {
-              grad_pending_ops_.emplace(op);
-            }
+          if (var && !var->OverridedStopGradient() && var->GradNode()) {
+            node_->InsertGradPendingNode(var->GradNode());
           }
         }
       }
     }
 
-    op_->SetOutput(name, ToVarWrapperList(vars));
+    auto var_wrappers = ToVarWrapperList<kRole>(vars);
+    if (!var_wrappers.empty()) {
+      op_->SetOutput(name, std::move(var_wrappers),
+                     kRole == TracedVarRole::kBackward);
+    }
   }
 
   void SetType(const std::string& type) { op_->SetType(type); }
@@ -254,19 +287,31 @@ class TracedGradOp {
   }
 
  private:
+  template <TracedVarRole kRole>
   static std::vector<std::shared_ptr<VariableWrapper>> ToVarWrapperList(
       const std::vector<std::shared_ptr<VarBase>>& vars) {
     std::vector<std::shared_ptr<VariableWrapper>> result;
     result.reserve(vars.size());
+    bool has_valid = false;
     for (auto& var : vars) {
-      result.emplace_back(var->SharedVar());
+      if (UNLIKELY(!var || (kRole == TracedVarRole::kBackward &&
+                            var->OverridedStopGradient()))) {
+        result.emplace_back();
+      } else {
+        result.emplace_back(var->SharedVar());
+        has_valid = true;
+      }
+    }
+
+    if (!has_valid) {
+      result.clear();
     }
     return result;
   }
 
  private:
-  const std::shared_ptr<OpBase>& op_;
-  std::unordered_set<std::shared_ptr<OpBase>> grad_pending_ops_;
+  const std::shared_ptr<GradOpNode>& node_;
+  OpBase* op_;
 };
 
 }  // namespace imperative

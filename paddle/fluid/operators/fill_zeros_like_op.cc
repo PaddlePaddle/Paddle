@@ -73,8 +73,8 @@ class FillZerosLikeOp2Maker : public FillZerosLikeOpMaker {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(FillZerosLikeOp2NoNeedBufferVarsInference,
-                                      "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(FillZerosLikeOp2NoNeedBufferVarsInference,
+                                    "X");
 
 }  // namespace operators
 }  // namespace paddle

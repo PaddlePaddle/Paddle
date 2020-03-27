@@ -18,7 +18,7 @@ import numpy as np
 import paddle.fluid as fluid
 import unittest
 
-from paddle.fluid.dygraph.jit import dygraph_to_static_graph
+from paddle.fluid.dygraph.jit import dygraph_to_static_func
 
 from ifelse_simple_func import *
 
@@ -45,7 +45,7 @@ class TestDygraphIfElse(unittest.TestCase):
         with fluid.program_guard(main_program):
             x_v = fluid.layers.assign(self.x)
             # Transform into static graph
-            out = dygraph_to_static_graph(self.dyfunc)(x_v)
+            out = dygraph_to_static_func(self.dyfunc)(x_v)
             exe = fluid.Executor(place)
             ret = exe.run(main_program, fetch_list=out)
             return ret
@@ -145,6 +145,44 @@ class TestDygraphIfElseNet(unittest.TestCase):
 
     def test_ast_to_func(self):
         self.assertTrue((self._run_dygraph() == self._run_static()).all())
+
+
+def call_external_func(x, label=None):
+    if fluid.layers.mean(x).numpy()[0] > 5:
+        x_v = x - 1
+    else:
+        x_v = add_fn(x)
+
+    if label is not None:
+        loss = loss_fn(x_v, label)
+        return loss
+    return x_v
+
+
+class TestAst2FuncWithExternalFunc(TestDygraphIfElse):
+    def setUp(self):
+        self.x = np.random.random([10, 16]).astype('float32')
+        self.dyfunc = call_external_func
+
+
+class NetWithExternalFunc(fluid.dygraph.Layer):
+    @dygraph_to_static_func
+    def forward(self, x, label=None):
+        if fluid.layers.mean(x).numpy()[0] > 5:
+            x_v = x - 1
+        else:
+            x_v = add_fn(x)
+
+        if label is not None:
+            loss = loss_fn(x_v, label)
+            return loss
+        return x_v
+
+
+class TestNetWithExternalFunc(TestDygraphIfElseNet):
+    def setUp(self):
+        self.x = np.random.random([10, 16]).astype('float32')
+        self.Net = NetWithExternalFunc
 
 
 if __name__ == '__main__':
