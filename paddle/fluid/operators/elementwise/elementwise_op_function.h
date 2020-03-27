@@ -143,7 +143,7 @@ inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
                    "ShapeError: broadcast dimension mismatch. Operands could "
                    "not be broadcast together with the shape of X = [%s] and "
                    "the shape of Y = [%s]. Received [%d] in X is not equal to "
-                   "[%d] in Y i:%d",
+                   "[%d] in Y at i:%d",
                    x_dims, y_dims, x_dims_array[i], y_dims_array[i], i);
     if ((x_dims_array[i] > 1 || y_dims_array[i] > 1) ||
         (x_dims_array[i] == 1 && y_dims_array[i] == 1)) {
@@ -550,12 +550,11 @@ static __global__ void FastCommonGradBroadcastAllCUDAKernel(
 
 // Check input can be split into 2 parts
 static inline bool SplitDims(const std::vector<int> &y_broadcast_pos,
-                             const int *y_dims_array, int max_dim) {
+                             int max_dim) {
   bool can_split_dim2 = true;
   // must at start or end.
   if (y_broadcast_pos[0] != 0 &&
-      y_broadcast_pos[y_broadcast_pos.size() - 1] !=
-          y_dims_array[max_dim - 1]) {
+      y_broadcast_pos[y_broadcast_pos.size() - 1] != max_dim - 1) {
     can_split_dim2 = false;
   } else {
     for (int i = 1; i < y_broadcast_pos.size(); ++i) {
@@ -773,7 +772,7 @@ void CommonGradBroadcastCUDA(
   // to old fast path.
   // 2. if both x and y need broadcast, then do it one by one.
   if (x_broadcast_pos.empty() && !y_broadcast_pos.empty()) {
-    can_split_y = SplitDims(y_broadcast_pos, y_dims_array, max_dim);
+    can_split_y = SplitDims(y_broadcast_pos, max_dim);
     if (can_split_y) {
       // only y need to do broadcast on h
       if (y_broadcast_pos[0] == 0) {
@@ -789,7 +788,7 @@ void CommonGradBroadcastCUDA(
     }
   } else if (y_broadcast_pos.empty() && !x_broadcast_pos.empty()) {
     // only x need broadcast
-    can_split_x = SplitDims(x_broadcast_pos, out_dims_array, max_dim);
+    can_split_x = SplitDims(x_broadcast_pos, max_dim);
     if (can_split_x) {
       if (x_broadcast_pos[0] == 0) {
         FastBroadCastHeightCUDAF(x_broadcast_pos, false);
@@ -804,7 +803,7 @@ void CommonGradBroadcastCUDA(
     }
   } else if (!x_broadcast_pos.empty() && !y_broadcast_pos.empty()) {
     // do x and y broadcast each.
-    can_split_y = SplitDims(y_broadcast_pos, out_dims_array, max_dim);
+    can_split_y = SplitDims(y_broadcast_pos, max_dim);
     if (can_split_y) {
       // begin at start.
       if (y_broadcast_pos[0] == 0) {
@@ -814,7 +813,7 @@ void CommonGradBroadcastCUDA(
         LOG(ERROR) << "Error, broadcast should not into w broadcast";
       }
     }
-    can_split_x = SplitDims(x_broadcast_pos, out_dims_array, max_dim);
+    can_split_x = SplitDims(x_broadcast_pos, max_dim);
     if (can_split_x) {
       if (x_broadcast_pos[0] == 0) {
         FastCommonCUDAF(x_broadcast_pos, false);
