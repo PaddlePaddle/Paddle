@@ -135,8 +135,8 @@ def bmm(x, y, name=None):
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
         for name, val in var_names.items():
-            check_type_and_dtype(val, name, Variable,
-                                 ['float16', 'float32', 'float64'], 'matmul')
+            check_variable_and_dtype(val, name, Variable,
+                                     ['float16', 'float32', 'float64'], 'bmm')
         x_shape = list(x.shape)
         y_shape = list(y.shape)
         if len(x_shape) != 3 or len(y_shape) != 3:
