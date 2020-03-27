@@ -259,8 +259,7 @@ class IsControlFlowVisitor(gast.NodeVisitor):
         return node
 
     def _is_node_with_tensor(self, node, name_id):
-        tensor_types = set(
-            [NodeVarType.TENSOR, NodeVarType.PADDLE_RETURN_TYPES])
+        tensor_types = {NodeVarType.TENSOR, NodeVarType.PADDLE_RETURN_TYPES}
         # Look up the node_var_type_map by name_id.
         if self.node_var_type_map:
             if name_id and isinstance(name_id, six.string_types):
@@ -282,7 +281,9 @@ class IsControlFlowVisitor(gast.NodeVisitor):
 
 
 class NodeTestTransformer(gast.NodeTransformer):
-    def __init__(self, ast_node, compare_nodes_with_tensor=set()):
+    def __init__(self, ast_node, compare_nodes_with_tensor=None):
+        if compare_nodes_with_tensor is None:
+            compare_nodes_with_tensor = set()
         self.ast_root = ast_node
         self._compare_nodes_with_tensor = compare_nodes_with_tensor
         self._new_assign_nodes = []
