@@ -17,7 +17,6 @@
 #include <algorithm>
 #include <memory>
 #include <queue>
-#include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -198,14 +197,11 @@ void BasicEngine::Execute() {
     // A var may be coresponding to several grad var in one op
     for (auto it = tmp_outs.begin(); it != tmp_outs.end(); ++it) {
       for (size_t i = 0; i < it->second.size(); ++i) {
-        auto var = it->second[i];
-        // NOTE: With original var name, can know the relation
-        // between temp var and original var
-        std::string tmp_name = "Gtmp@" + var->Name();
         auto tmp_var =
-            std::make_shared<VariableWrapper>(tmp_name);  // Do not need grad
-        it->second[i] = tmp_var;
+            std::make_shared<VariableWrapper>("Gtmp@");  // Do not need grad
 
+        auto var = it->second[i];
+        it->second[i] = tmp_var;
         if (var) {
           need_accu_var_list_.emplace_back(var.get(), std::move(tmp_var));
         }
