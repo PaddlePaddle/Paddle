@@ -358,10 +358,10 @@ void FleetWrapper::PullSparseVarsSync(
 #endif
 }
 
-void FleetWrapper::PullSparseToTensorSync(
-    const uint64_t table_id, int fea_dim, uint64_t padding_id,
-    platform::Place place, std::vector<const LoDTensor*>* inputs,
-    std::vector<LoDTensor*>* outputs) {
+void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
+                                          uint64_t padding_id, platform::Place place,
+                                          std::vector<const LoDTensor*>* inputs,
+                                          std::vector<LoDTensor*>* outputs) {
 #ifdef PADDLE_WITH_PSLIB
   std::vector<uint64_t> fea_keys;
   std::vector<float*> pull_result_ptr;
@@ -665,8 +665,7 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
     uint64_t padding_id, bool scale_sparse, const std::string& accesor,
     const std::string& click_name, platform::Place place,
     const std::vector<std::string>& input_names,
-    std::vector<const LoDTensor*>* inputs,
-    std::vector<LoDTensor*>* outputs) {
+    std::vector<const LoDTensor*>* inputs, std::vector<LoDTensor*>* outputs) {
 #ifdef PADDLE_WITH_PSLIB
   int show_index = 0;
   int click_index = 1;
@@ -746,7 +745,7 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
   std::vector<uint64_t> push_keys;
   push_keys.reserve(MAX_FEASIGN_NUM / 100);
   std::vector<std::vector<float>> push_values;
-  push_values.reserve(MAX_FEASIGN_NUM /  100);
+  push_values.reserve(MAX_FEASIGN_NUM / 100);
   framework::LoDTensor* output = nullptr;
   float* output_data = nullptr;
   size_t output_index = -1;
