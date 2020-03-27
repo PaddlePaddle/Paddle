@@ -84,7 +84,7 @@ class CudnnWorkspaceHandle;
 class CUDAContext {
  public:
   CUDAContext() = default;
-  explicit CUDAContext(const CUDAPlace& place);
+  explicit CUDAContext(const CUDAPlace& place, const enum stream::Priority& priority = stream::Priority::NORMAL);
 
   ~CUDAContext();
 
@@ -133,7 +133,7 @@ class CUDAContext {
   template <typename Callback>
   void RecordEvent(cudaEvent_t ev, Callback callback) {
     callback();
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(ev, stream_.stream()));
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(ev, stream_.stream()), platform::errors::Fatal("CUDA event recording failed."));
   }
 
   template <typename Callback>
@@ -161,9 +161,9 @@ class CUDAContext {
   }
 
  private:
-  void ResetEigenContext(const stream::CUDAStream& stream);
+  void InitEigenContext(const stream::CUDAStream& stream);
 
-  void ResetCuBlasContext(const stream::CUDAStream& stream) {
+  void InitCuBlasContext(const stream::CUDAStream& stream) {
     cublas_handle_.reset(new CublasHandleHolder(stream.stream(), CUBLAS_DEFAULT_MATH));
     if (TensorCoreAvailable()) {
 #if CUDA_VERSION >= 9000
@@ -173,11 +173,11 @@ class CUDAContext {
     }
   }
 
-  void ResetCallbackManager(const stream::CUDAStream& stream) {
+  void InitCallbackManager(const stream::CUDAStream& stream) {
     callback_manager_.reset(new StreamCallbackManager(stream.stream()));
   }
 
-  void ResetCuDNNContext(const stream::CUDAStream& stream) {
+  void InitCuDNNContext(const stream::CUDAStream& stream) {
     if (dynload::HasCUDNN()) {
       auto local_cudnn_version = dynload::cudnnGetVersion() / 100;
       auto compile_cudnn_version = CUDNN_VERSION / 100;
@@ -194,10 +194,10 @@ class CUDAContext {
       }
       PADDLE_ENFORCE_CUDA_SUCCESS(
           dynload::cudnnCreate(&cudnn_handle_),
-          "Failed to create Cudnn handle in DeviceContext");
+          platform::errors::Fatal("Failed to create Cudnn handle in DeviceContext"));
       PADDLE_ENFORCE_CUDA_SUCCESS(
           dynload::cudnnSetStream(cudnn_handle_, stream.stream()),
-          "Failed to set stream for Cudnn handle in DeviceContext");
+          platform::errors::Fatal("Failed to set stream for Cudnn handle in DeviceContext"));
     } else {
       cudnn_handle_ = nullptr;
     }
@@ -206,8 +206,9 @@ class CUDAContext {
   void DestoryCuDNNContext() {
     if (cudnn_handle_) {
       PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_),
-                                  "Failed to destory Cudnn handle");
+                                  platform::errors::Fatal("Failed to destory Cudnn handle"));
     }
+    cudnn_handle_ = nullptr;
   }
 
   void DestoryCuBlasContext() {
@@ -306,21 +307,25 @@ class CUDADeviceContext : public DeviceContext {
 
   void WaitStreamCallback() const { return context()->WaitStreamCallback(); }
 
-  void ResetCurrentThreadCtx(const enum stream::Priority& priority) {
+  void ResetDefaultContext(const enum stream::Priority& priority) {
+    default_ctx_.reset(new CUDAContext(place_, priority));
+  }
+
+  void ResetThreadContext(const enum stream::Priority& priority) {
     std::lock_guard<std::mutex> guard(ctx_mtx_);
-    thread_ctx_[this].reset(new CUDAContext(place_));
+    thread_ctx_[this].reset(new CUDAContext(place_, priority));
   }
 
   const std::unique_ptr<CUDAContext>& context() const {
     if (!thread_ctx_.count(this)) {
-      return context_;
+      return default_ctx_;
     }
     return thread_ctx_.at(this);
   }
 
  private:
   CUDAPlace place_;
-  std::unique_ptr<CUDAContext> context_;
+  std::unique_ptr<CUDAContext> default_ctx_;
 
   static thread_local std::map<const CUDADeviceContext*,
                                std::unique_ptr<CUDAContext>>

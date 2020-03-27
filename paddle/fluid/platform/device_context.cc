@@ -56,11 +56,6 @@ namespace platform {
 
 DeviceContextPool* DeviceContextPool::pool = nullptr;
 
-thread_local std::map<const CUDADeviceContext*,
-                              std::unique_ptr<CUDAContext>>
-    CUDADeviceContext::thread_ctx_;
-thread_local std::mutex CUDADeviceContext::ctx_mtx_;
-
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   auto it = device_contexts_.find(place);
   if (it == device_contexts_.end()) {
@@ -115,7 +110,7 @@ DeviceContextPool::DeviceContextPool(
           &device_contexts_, p);
 #else
       PADDLE_THROW(
-          "'CUDAPlace' is not supported, Please re-compile with WITH_GPU  "
+          "'CUDAPlace' is not supported, Please re-compile with WITH_GPU "
           "option");
 #endif
     }
@@ -216,22 +211,25 @@ void CudnnWorkspaceHandle::ReallocWorkspace(size_t required_workspace_bytes) {
   allocation_ = memory::Alloc(device_context_, required_workspace_bytes);
 }
 
-using stream::CUDAStream;
+thread_local std::map<const CUDADeviceContext*,
+                              std::unique_ptr<CUDAContext>>
+    CUDADeviceContext::thread_ctx_;
+thread_local std::mutex CUDADeviceContext::ctx_mtx_;
 
-void CUDAContext::ResetEigenContext(const stream::CUDAStream& stream) {
+void CUDAContext::InitEigenContext(const stream::CUDAStream& stream) {
   eigen_stream_.reset(new EigenCudaStreamDevice());
   eigen_stream_->Reinitialize(&stream.stream(), place_);
   eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
 }
 
-CUDAContext::CUDAContext(const CUDAPlace& place) {
+CUDAContext::CUDAContext(const CUDAPlace& place, const enum stream::Priority& priority) {
   place_ = place;
   CUDADeviceGuard guard(place_.device);
-  stream_.Init(place);
-  ResetEigenContext(stream_);
-  ResetCuBlasContext(stream_);
-  ResetCuDNNContext(stream_);
-  ResetCallbackManager(stream_);
+  stream_.Init(place, priority);
+  InitEigenContext(stream_);
+  InitCuBlasContext(stream_);
+  InitCuDNNContext(stream_);
+  InitCallbackManager(stream_);
 }
 
 CUDAContext::~CUDAContext() {
@@ -282,7 +280,7 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
              "version.";
     }
   }
-  context_.reset(new CUDAContext(place_));
+  default_ctx_.reset(new CUDAContext(place_));
 }
 
 CUDADeviceContext::~CUDADeviceContext() {
