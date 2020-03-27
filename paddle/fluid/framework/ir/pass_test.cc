@@ -120,6 +120,17 @@ TEST(PassTest, TestPassAttrCheck) {
     exception = std::string(e.what());
   }
   ASSERT_TRUE(exception.find("shouldn't have cycle") != exception.npos);
+
+  pass = PassRegistry::Instance().Get("test_pass");
+  pass->Set<int>("test_pass_attr", new int);
+  try {
+    pass->Set<int>("test_pass_attr", new int);
+  } catch (paddle::platform::EnforceNotMet& e) {
+    exception = std::string(e.what());
+  }
+  ASSERT_TRUE(
+      exception.find("Attribute test_pass_attr already set in the pass") !=
+      exception.npos);
 }
 
 class TestPassWithDefault : public Pass {
@@ -145,6 +156,14 @@ TEST(PassTest, TestPassDefaultAttrCheck) {
   pass = PassRegistry::Instance().Get("test_pass_default_attr");
   pass->Set<int>("default_attr", new int{3});
   ASSERT_EQ(pass->Get<int>("default_attr"), 3);
+}
+
+TEST(PassTest, TestPassRegistrarDeconstructor) {
+  auto pass_registrary =
+      new PassRegistrar<paddle::framework::ir::TestPassWithDefault>(
+          "test_deconstructor");
+  pass_registrary->DefaultPassAttr("deconstructor_attr", new int{1});
+  pass_registrary->~PassRegistrar();
 }
 
 }  // namespace ir
