@@ -39,7 +39,7 @@ from white_list import op_threshold_white_list, no_grad_set_white_list
 
 def _set_use_system_allocator(value=None):
     USE_SYSTEM_ALLOCATOR_FLAG = "FLAGS_use_system_allocator"
-    old_value = fluid.globals()[USE_SYSTEM_ALLOCATOR_FLAG]
+    old_value = core.globals()[USE_SYSTEM_ALLOCATOR_FLAG]
     value = old_value if value is None else value
     core.globals()[USE_SYSTEM_ALLOCATOR_FLAG] = value
     return old_value
