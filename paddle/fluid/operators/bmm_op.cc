@@ -51,7 +51,7 @@ class BmmOp : public framework::OperatorWithKernel {
     dim_out.push_back(x_dims[1]);
     dim_out.push_back(y_dims[2]);
     ctx->SetOutputDim("Out", framework::make_ddim(dim_out));
-    ctx->ShareLoD("X", /*->*/ "OUt");
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 

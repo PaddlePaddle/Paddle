@@ -106,10 +106,10 @@ class BmmKernel : public framework::OpKernel<T> {
 
     auto blas = math::GetBlas<DeviceContext, T>(context);
 
-    auto mat_dim_a = math::CreateMatrixDescriptor(
-        RowMatrixFromVector(x.dims()), 0, context.Attr<bool>("transpose_X"));
+    auto mat_dim_a =
+        math::CreateMatrixDescriptor(RowMatrixFromVector(x.dims()), 0, false);
     auto mat_dim_b = math::CreateMatrixDescriptor(
-        ColumnMatrixFromVector(y.dims()), 0, context.Attr<bool>("transpose_Y"));
+        ColumnMatrixFromVector(y.dims()), 0, false);
     auto scale = static_cast<T>(context.Attr<float>("alpha"));
 
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
