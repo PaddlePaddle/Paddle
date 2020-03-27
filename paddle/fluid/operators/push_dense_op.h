@@ -30,13 +30,15 @@ void PushDenseFunctor(const framework::ExecutionContext& ctx) {
 #ifdef PADDLE_WITH_PSLIB
   const auto& input_names = ctx.Attr<std::vector<std::string>>("InputNames");
   auto table_id = static_cast<uint32_t>(ctx.Attr<int>("TableId"));
-  PADDLE_ENFORCE_GT(table_id, 0, platform::errors::InvalidArgument(
+  PADDLE_ENFORCE_GT(table_id, 0,
+                    platform::errors::InvalidArgument(
                        "table id should > 0, but value is ", table_id));
   float scale_datanorm = ctx.Attr<float>("ScaleDataNorm");
   const auto& ids = ctx.MultiInput<framework::LoDTensor>("Ids");
   int batch_size =
       ids[0]->lod().size() ? ids[0]->lod()[0].size() - 1 : ids[0]->dims()[0];
-  PADDLE_ENFORCE_GT(batch_size, 0, platform::errors::InvalidArgument(
+  PADDLE_ENFORCE_GT(batch_size, 0,
+                    platform::errors::InvalidArgument(
                         "batch size should > 0, but value is ", batch_size));
 
   auto fleet_ptr = framework::FleetWrapper::GetInstance();

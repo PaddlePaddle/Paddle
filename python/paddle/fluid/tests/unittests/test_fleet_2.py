@@ -52,13 +52,13 @@ class TestFleet2(unittest.TestCase):
             slots_vars.append(var)
         click = slots_vars[0]
         embs = []
-        for slot in slots_vars[1: 3]:
+        for slot in slots_vars[1:3]:
             with fleet_embedding(click_name=click.name):
                 emb = fluid.layers.embedding(input=slot, size=[-1, 11], \
                     is_sparse=True, is_distributed=True, \
                     param_attr=fluid.ParamAttr(name="embedding"))
                 embs.append(emb)
-        for slot in slots_vars[3: 5]:
+        for slot in slots_vars[3:5]:
             with fleet_embedding(click_name=click.name):
                 emb = fluid.embedding(input=slot, size=[-1, 11], \
                     is_sparse=True, is_distributed=True, \
