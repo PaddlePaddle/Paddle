@@ -62,5 +62,42 @@ class TestGlobalVarGetterSetter(unittest.TestCase):
         self.assertEquals(g.get_public_or_return_default_value(name, -1), -1)
 
 
+class TestGetAndSetFlags(unittest.TestCase):
+    def test_api(self):
+        flags = {
+            'FLAGS_eager_delete_tensor_gb': 1.0,
+            'FLAGS_check_nan_inf': True
+        }
+        fluid.set_flags(flags)
+
+        flags_list = ['FLAGS_eager_delete_tensor_gb', 'FLAGS_check_nan_inf']
+        flag = 'FLAGS_eager_delete_tensor_gb'
+
+        res = fluid.get_flags(flags_list)
+        res_flag = fluid.get_flags(flag)
+
+        self.assertTrue(res['FLAGS_eager_delete_tensor_gb'], 1.0)
+        self.assertTrue(res['FLAGS_check_nan_inf'], True)
+        self.assertTrue(res_flag['FLAGS_eager_delete_tensor_gb'], 1.0)
+
+
+class TestGetAndSetFlagsErrors(unittest.TestCase):
+    def test_errors(self):
+        flags_list = ['FLAGS_eager_delete_tensor_gb', 'FLAGS_check_nan_inf']
+        flag = 1
+
+        # flags type is set_flags should be dict
+        def test_set_flags_input_type():
+            fluid.set_flags(flags_list)
+
+        self.assertRaises(TypeError, test_set_flags_input_type)
+
+        # flags type is set_flags should be list, tuple or string
+        def test_get_flags_input_type():
+            fluid.get_flags(flag)
+
+        self.assertRaises(TypeError, test_get_flags_input_type)
+
+
 if __name__ == '__main__':
     unittest.main()
