@@ -13,31 +13,32 @@
 # limitations under the License.
 
 # TODO: define functions to manipulate a tensor  
-__all__ = ['cast',
-           'concat',
-           'expand',
-           'expand_as',
-           'flatten',
+__all__ = [
+#           'cast',
+#           'concat',
+#           'expand',
+#           'expand_as',
+#           'flatten',
            'gather',
-           'gather_nd',
-           'reshape',
-           'reverse',
-           'scatter',
-           'scatter_nd_add',
-           'scatter_nd',
-           'shard_index',
-           'slice',
+#           'gather_nd',
+#           'reshape',
+#           'reverse',
+#           'scatter',
+#           'scatter_nd_add',
+#           'scatter_nd',
+#           'shard_index',
+#           'slice',
            'split',
            'squeeze',
            'stack',
-           'strided_slice',
-           'unique',
-           'unique_with_counts',
-           'unsqueeze',
-           'unstack',
-           'flip',
-           'unbind',
-           'roll']
+#           'strided_slice',
+#           'unique',
+#           'unique_with_counts',
+           'unsqueeze']
+#           'unstack',
+#           'flip',
+#           'unbind',
+#           'roll']
 
 
 def stack(x, axis=0):
