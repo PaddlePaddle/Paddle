@@ -161,23 +161,23 @@ class CUDAContext {
   }
 
  private:
-  void ResetEigenContext(const cudaStream_t& stream);
+  void ResetEigenContext(const stream::CUDAStream& stream);
 
-  void ResetCuBlasContext(const cudaStream_t& stream) {
-    cublas_handle_.reset(new CublasHandleHolder(stream, CUBLAS_DEFAULT_MATH));
+  void ResetCuBlasContext(const stream::CUDAStream& stream) {
+    cublas_handle_.reset(new CublasHandleHolder(stream.stream(), CUBLAS_DEFAULT_MATH));
     if (TensorCoreAvailable()) {
 #if CUDA_VERSION >= 9000
       cublas_tensor_core_handle_.reset(
-          new CublasHandleHolder(stream, CUBLAS_TENSOR_OP_MATH));
+          new CublasHandleHolder(stream.stream(), CUBLAS_TENSOR_OP_MATH));
 #endif
     }
   }
 
-  void ResetCallbackManager(const cudaStream_t& stream) {
-    callback_manager_.reset(new StreamCallbackManager(stream));
+  void ResetCallbackManager(const stream::CUDAStream& stream) {
+    callback_manager_.reset(new StreamCallbackManager(stream.stream()));
   }
 
-  void ResetCuDNNContext(const cudaStream_t& stream) {
+  void ResetCuDNNContext(const stream::CUDAStream& stream) {
     if (dynload::HasCUDNN()) {
       auto local_cudnn_version = dynload::cudnnGetVersion() / 100;
       auto compile_cudnn_version = CUDNN_VERSION / 100;
@@ -196,7 +196,7 @@ class CUDAContext {
           dynload::cudnnCreate(&cudnn_handle_),
           "Failed to create Cudnn handle in DeviceContext");
       PADDLE_ENFORCE_CUDA_SUCCESS(
-          dynload::cudnnSetStream(cudnn_handle_, stream),
+          dynload::cudnnSetStream(cudnn_handle_, stream.stream()),
           "Failed to set stream for Cudnn handle in DeviceContext");
     } else {
       cudnn_handle_ = nullptr;

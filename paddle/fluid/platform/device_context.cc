@@ -218,9 +218,9 @@ void CudnnWorkspaceHandle::ReallocWorkspace(size_t required_workspace_bytes) {
 
 using stream::CUDAStream;
 
-void CUDAContext::ResetEigenContext(const cudaStream_t& stream) {
+void CUDAContext::ResetEigenContext(const stream::CUDAStream& stream) {
   eigen_stream_.reset(new EigenCudaStreamDevice());
-  eigen_stream_->Reinitialize(&stream, place_);
+  eigen_stream_->Reinitialize(&stream.stream(), place_);
   eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
 }
 
@@ -228,10 +228,10 @@ CUDAContext::CUDAContext(const CUDAPlace& place) {
   place_ = place;
   CUDADeviceGuard guard(place_.device);
   stream_.Init(place);
-  ResetEigenContext(stream_.stream());
-  ResetCuBlasContext(stream_.stream());
-  ResetCuDNNContext(stream_.stream());
-  ResetCallbackManager(stream_.stream());
+  ResetEigenContext(stream_);
+  ResetCuBlasContext(stream_);
+  ResetCuDNNContext(stream_);
+  ResetCallbackManager(stream_);
 }
 
 CUDAContext::~CUDAContext() {
