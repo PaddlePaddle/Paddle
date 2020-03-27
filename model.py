@@ -1074,7 +1074,7 @@ class Model(fluid.dygraph.Layer):
 
         return eval_result
 
-    def predict(self, test_data, batch_size=1, num_workers=0, callbacks=None):
+    def predict(self, test_data, batch_size=1, num_workers=0):
         """
         FIXME: add more comments and usage
         Args:
@@ -1087,9 +1087,6 @@ class Model(fluid.dygraph.Layer):
             num_workers (int): the number of subprocess to load data, 0 for no subprocess 
                 used and loading data in main process. When train_data and eval_data are
                 both the instance of Dataloader, this parameter will be ignored.
-            callbacks (Callback|None): A list of `Callback` instances to apply
-                during training. If None, `ProgBarLogger` and `ModelCheckpoint`
-                are automatically inserted.
         """
 
         if fluid.in_dygraph_mode():
