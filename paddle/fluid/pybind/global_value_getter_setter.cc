@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/global_value_getter_setter.h"
+#include <cctype>
 #include <functional>
 #include <string>
 #include <unordered_map>
@@ -84,8 +85,8 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
   GlobalVarGetterSetterRegistry() = default;
 
  public:
-  using Setter = std::function<void(const py::object &)>;
   using Getter = std::function<py::object()>;
+  using Setter = std::function<void(const py::object &)>;
 
   template <typename T>
   static Getter CreateGetter(const T &var) {
@@ -100,14 +101,14 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
  private:
   struct VarInfo {
     VarInfo(bool is_public, const Getter &getter)
-        : is_public_(is_public), getter_(getter) {}
+        : is_public(is_public), getter(getter) {}
 
     VarInfo(bool is_public, const Getter &getter, const Setter &setter)
-        : is_public_(is_public), getter_(getter), setter_(setter) {}
+        : is_public(is_public), getter(getter), setter(setter) {}
 
-    bool is_public_;
-    const Getter getter_;
-    const Setter setter_;
+    const bool is_public;
+    const Getter getter;
+    const Setter setter;
   };
 
  public:
@@ -137,12 +138,6 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
         HasSetterMethod(name), false,
         platform::errors::AlreadyExists(
             "Setter of global variable %s has been registered", name));
-    PADDLE_ENFORCE_NOT_NULL(getter,
-                            platform::errors::InvalidArgument(
-                                "Getter of %s should not be null", name));
-    PADDLE_ENFORCE_NOT_NULL(setter,
-                            platform::errors::InvalidArgument(
-                                "Setter of %s should not be null", name));
     var_infos_.insert({name, VarInfo(is_public, getter, setter)});
   }
 
@@ -150,7 +145,7 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
     PADDLE_ENFORCE_EQ(
         HasGetterMethod(name), true,
         platform::errors::NotFound("Cannot find global variable %s", name));
-    return var_infos_.at(name).getter_;
+    return var_infos_.at(name).getter;
   }
 
   py::object GetOrReturnDefaultValue(const std::string &name,
@@ -168,7 +163,7 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
     PADDLE_ENFORCE_EQ(
         HasSetterMethod(name), true,
         platform::errors::NotFound("Global variable %s is not writable", name));
-    return var_infos_.at(name).setter_;
+    return var_infos_.at(name).setter;
   }
 
   void Set(const std::string &name, const py::object &value) const {
@@ -180,11 +175,11 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
   }
 
   bool HasSetterMethod(const std::string &name) const {
-    return var_infos_.count(name) > 0 && var_infos_.at(name).setter_;
+    return var_infos_.count(name) > 0 && var_infos_.at(name).setter;
   }
 
   bool IsPublic(const std::string &name) const {
-    return var_infos_.count(name) > 0 && var_infos_.at(name).is_public_;
+    return var_infos_.count(name) > 0 && var_infos_.at(name).is_public;
   }
 
   std::unordered_set<std::string> Keys() const {
@@ -220,24 +215,24 @@ class GlobalVarGetterSetterRegistryHelper {
 
  private:
   static std::vector<std::string> SplitVarNames(const std::string &names) {
-    auto valid_char = [](char ch) -> bool {
-      return !std::isspace(ch) && ch != ',';
-    };
-    std::vector<std::string> res;
+    auto valid_char = [](char ch) { return !std::isspace(ch) && ch != ','; };
+
+    std::vector<std::string> ret;
     size_t i = 0, j = 0, n = names.size();
     while (i < n) {
-      for (; i < n && !valid_char(names[i]); i++) {
+      for (; i < n && !valid_char(names[i]); ++i) {
       }
-      for (j = i + 1; j < n && !valid_char(names[j]); j++) {
+      for (j = i + 1; j < n && valid_char(names[j]); ++j) {
       }
+
       if (i < n && j <= n) {
         auto substring = names.substr(i, j - i);
         VLOG(10) << "Get substring: \"" << substring << "\"";
-        res.emplace_back(substring);
+        ret.emplace_back(substring);
       }
       i = j + 1;
     }
-    return res;
+    return ret;
   }
 
  private:
@@ -291,6 +286,7 @@ void BindGlobalValueGetterSetter(pybind11::module *module) {
       .def("__contains__", &GlobalVarGetterSetterRegistry::HasGetterMethod)
       .def("is_public", &GlobalVarGetterSetterRegistry::IsPublic)
       .def("keys", &GlobalVarGetterSetterRegistry::Keys)
+      .def("is_public", &GlobalVarGetterSetterRegistry::IsPublic)
       .def("get", &GlobalVarGetterSetterRegistry::GetOrReturnDefaultValue,
            py::arg("key"), py::arg("default") = py::cast<py::none>(Py_None));
 
@@ -298,6 +294,7 @@ void BindGlobalValueGetterSetter(pybind11::module *module) {
               py::return_value_policy::reference);
 }
 
+/* Public vars are designed to be writable. */
 #define REGISTER_PUBLIC_GLOBAL_VAR(...)                                        \
   do {                                                                         \
     GlobalVarGetterSetterRegistryHelper(/*is_public=*/true,                    \
@@ -316,32 +313,19 @@ static void RegisterGlobalVarGetterSetter() {
   REGISTER_PRIVATE_GLOBAL_VAR(/*is_writable=*/false, FLAGS_use_mkldnn,
                               FLAGS_use_ngraph, FLAGS_free_idle_chunk,
                               FLAGS_free_when_no_cache_hit);
+
   REGISTER_PUBLIC_GLOBAL_VAR(
-      FLAGS_eager_delete_tensor_gb, FLAGS_use_system_allocator,
-      FLAGS_allocator_strategy, FLAGS_check_nan_inf, FLAGS_cpu_deterministic,
-      FLAGS_enable_rpc_profiler, FLAGS_multiple_of_cupti_buffer_size,
-      FLAGS_reader_queue_speed_test_mode, FLAGS_enable_parallel_graph,
-      FLAGS_pe_profile_fname, FLAGS_print_sub_graph_dir,
-      FLAGS_fraction_of_cpu_memory_to_use, FLAGS_fuse_parameter_groups_size,
-      FLAGS_fuse_parameter_memory_size, FLAGS_init_allocated_mem,
-      FLAGS_initial_cpu_memory_in_mb, FLAGS_memory_fraction_of_eager_deletion,
-      FLAGS_use_pinned_memory, FLAGS_benchmark,
+      FLAGS_eager_delete_tensor_gb, FLAGS_enable_parallel_graph,
+      FLAGS_allocator_strategy, FLAGS_use_system_allocator);
+
 #ifdef PADDLE_WITH_CUDA
-      FLAGS_gpu_memory_limit_mb, FLAGS_cudnn_deterministic,
-      FLAGS_conv_workspace_size_limit, FLAGS_initial_gpu_memory_in_mb,
-      FLAGS_cudnn_batchnorm_spatial_persistent, FLAGS_selected_gpus,
-      FLAGS_cudnn_exhaustive_search, FLAGS_eager_delete_scope,
-      FLAGS_fast_eager_deletion_mode, FLAGS_fraction_of_gpu_memory_to_use,
-      FLAGS_fraction_of_cuda_pinned_memory_to_use,
-      FLAGS_reallocate_gpu_memory_in_mb, FLAGS_sync_nccl_allreduce,
-      FLAGS_enable_cublas_tensor_op_math,
+  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_gpu_memory_limit_mb,
+                             FLAGS_cudnn_deterministic);
 #endif
 #ifdef PADDLE_WITH_DITRIBUTE
-      FLAGS_rpc_send_thread_num, FLAGS_rpc_get_thread_num,
+  FLAGS_rpc_send_thread_num, FLAGS_rpc_get_thread_num,
       FLAGS_rpc_prefetch_thread_num
 #endif
-          FLAGS_inner_op_parallelism,
-      FLAGS_tracer_profile_fname);
 }
 }  // namespace pybind
 }  // namespace paddle

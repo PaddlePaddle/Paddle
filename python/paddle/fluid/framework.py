@@ -5156,7 +5156,7 @@ def set_flags(flags):
     if not isinstance(flags, dict):
         raise TypeError('flags in set_flags should be a dict')
     for key, value in flags.items():
-        if not isinstance(key, str):
+        if core.globals().IsPublic(key):
             key = str(key)
         core.globals()[key] = value
 
@@ -5183,13 +5183,23 @@ def get_flags(flags):
     flags_value = {}
     if isinstance(flags, (list, tuple)):
         for key in flags:
-            value = core.globals()[key]
-            temp = {key: value}
-            flags_value.update(temp)
+            if (core.globals().IsPublic(key)):
+                value = core.globals()[key]
+                temp = {key: value}
+                flags_value.update(temp)
+            else:
+                raise ValueError(
+                    'Flag %s is a private flag, which can not get its value through this function.'
+                    % (key))
     elif isinstance(flags, str):
-        value = core.globals()[flags]
-        temp = {flags: value}
-        flags_value.update(temp)
+        if (core.globals().IsPublic(flags)):
+            value = core.globals()[flags]
+            temp = {flags: value}
+            flags_value.update(temp)
+        else:
+            raise ValueError(
+                'Flag %s is a private flag, which can not get its value through this function.'
+                % (flags))
     else:
         raise TypeError('Flags in get_flags should be a list, tuple or string.')
     return flags_value
