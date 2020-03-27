@@ -110,20 +110,20 @@ class BmmKernel : public framework::OpKernel<T> {
         math::CreateMatrixDescriptor(RowMatrixFromVector(x.dims()), 0, false);
     auto mat_dim_b = math::CreateMatrixDescriptor(
         ColumnMatrixFromVector(y.dims()), 0, false);
-    auto scale = static_cast<T>(context.Attr<float>("alpha"));
+// auto scale = static_cast<T>(context.Attr<float>("alpha"));
 
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
     int head_number = context.Attr<int>("head_number");
     bool split_vertical_y = (mat_dim_a.width_ != mat_dim_b.height_);
 
     if (head_number > 1) {
-      blas.MatMulWithHead(x, mat_dim_a, y, mat_dim_b, scale, head_number, out,
+      blas.MatMulWithHead(x, mat_dim_a, y, mat_dim_b, T(1), head_number, out,
                           T(0), split_vertical_y);
     } else {
-      blas.MatMul(x, mat_dim_a, y, mat_dim_b, scale, out, T(0));
+      blas.MatMul(x, mat_dim_a, y, mat_dim_b, T(1), out, T(0));
     }
 #else
-    blas.MatMul(x, mat_dim_a, y, mat_dim_b, scale, out, T(0));
+    blas.MatMul(x, mat_dim_a, y, mat_dim_b, T(1), out, T(0));
 #endif  // PADDLE_WITH_MKLML
   }
 };
