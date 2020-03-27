@@ -284,7 +284,6 @@ void BindGlobalValueGetterSetter(pybind11::module *module) {
       .def("__getitem__", &GlobalVarGetterSetterRegistry::Get)
       .def("__setitem__", &GlobalVarGetterSetterRegistry::Set)
       .def("__contains__", &GlobalVarGetterSetterRegistry::HasGetterMethod)
-      .def("is_public", &GlobalVarGetterSetterRegistry::IsPublic)
       .def("keys", &GlobalVarGetterSetterRegistry::Keys)
       .def("is_public", &GlobalVarGetterSetterRegistry::IsPublic)
       .def("get", &GlobalVarGetterSetterRegistry::GetOrReturnDefaultValue,

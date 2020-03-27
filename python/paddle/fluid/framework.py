@@ -5157,8 +5157,10 @@ def set_flags(flags):
         raise TypeError('flags in set_flags should be a dict')
     for key, value in flags.items():
         if core.globals().is_public(key):
-            key = str(key)
-        core.globals()[key] = value
+            core.globals()[key] = value
+        else:
+            raise ValueError(
+                "Flag %s cannot set its value through this function." % (key))
 
 
 def get_flags(flags):
@@ -5175,10 +5177,10 @@ def get_flags(flags):
         .. code-block:: python
             import paddle.fluid as fluid
 
-            flags = ['FLAGS_eager_delete_tensor_gb', 'FLAGS_use_system_allocator']
+            flags = ['FLAGS_eager_delete_tensor_gb', 'FLAGS_check_nan_inf']
             res = fluid.get_flags(flags)
             print(res)
-            # {'FLAGS_allocator_strategy': u'auto_growth', 'FLAGS_eager_delete_tensor_gb': 0}
+            # {'FLAGS_eager_delete_tensor_gb': 0.0, 'FLAGS_check_nan_inf': False}
     """
     flags_value = {}
     if isinstance(flags, (list, tuple)):
@@ -5189,8 +5191,8 @@ def get_flags(flags):
                 flags_value.update(temp)
             else:
                 raise ValueError(
-                    'Flag %s is a private flag, which can not get its value through this function.'
-                    % (key))
+                    'Flag %s cannot get its value through this function.' %
+                    (key))
     elif isinstance(flags, str):
         if (core.globals().is_public(flags)):
             value = core.globals()[flags]
@@ -5198,8 +5200,7 @@ def get_flags(flags):
             flags_value.update(temp)
         else:
             raise ValueError(
-                'Flag %s is a private flag, which can not get its value through this function.'
-                % (flags))
+                'Flag %s cannot get its value through this function.' % (flags))
     else:
         raise TypeError('Flags in get_flags should be a list, tuple or string.')
     return flags_value
