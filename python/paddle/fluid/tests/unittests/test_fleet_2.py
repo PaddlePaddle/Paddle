@@ -97,7 +97,6 @@ class TestFleet2(unittest.TestCase):
         exe.train_from_dataset(fluid.default_main_program(), dataset)
         fleet._opt_info["stat_var_names"] = ["233"]
         exe.infer_from_dataset(fluid.default_main_program(), dataset)
-        
         fleet._opt_info = None
         fleet._fleet_ptr = None
         os.remove("./test_in_memory_dataset_run_fleet_a.txt")

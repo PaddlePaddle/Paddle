@@ -32,7 +32,7 @@ void PushDenseFunctor(const framework::ExecutionContext& ctx) {
   auto table_id = static_cast<uint32_t>(ctx.Attr<int>("TableId"));
   PADDLE_ENFORCE_GT(table_id, 0,
                     platform::errors::InvalidArgument(
-                       "table id should > 0, but value is ", table_id));
+                        "table id should > 0, but value is ", table_id));
   float scale_datanorm = ctx.Attr<float>("ScaleDataNorm");
   const auto& ids = ctx.MultiInput<framework::LoDTensor>("Ids");
   int batch_size =
