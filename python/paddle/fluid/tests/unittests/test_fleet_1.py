@@ -173,7 +173,6 @@ class TestFleet2(unittest.TestCase):
         except:
             FLEET_GLOBAL_DICT["emb_to_table"] = pre
             print("catch expected exception of error emb_to_table")
-       
         try:
             adam2 = fluid.optimizer.Adam(learning_rate=0.000005)
             adam2 = fleet.distributed_optimizer(adam2)

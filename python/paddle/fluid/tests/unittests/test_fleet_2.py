@@ -27,7 +27,7 @@ from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
 
 class TestFleet2(unittest.TestCase):
     """Test cases for fleet ops."""
-    
+
     def test_in_memory_dataset_run_fleet(self):
         """
         Testcase for InMemoryDataset from create to run.
@@ -71,6 +71,7 @@ class TestFleet2(unittest.TestCase):
         cost = fluid.layers.log_loss(fc, label_cast)
         cost = fluid.layers.mean(cost)
 
+        fleet.init()
         try:
             adam = fluid.optimizer.Adam(learning_rate=0.000005)
             adam = fleet.distributed_optimizer(adam)
@@ -94,6 +95,8 @@ class TestFleet2(unittest.TestCase):
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())
         exe.train_from_dataset(fluid.default_main_program(), dataset)
+        fleet._opt_info["stat_var_names"] = ["233"]
+        exe.infer_from_dataset(fluid.default_main_program(), dataset)
         
         fleet._opt_info = None
         fleet._fleet_ptr = None

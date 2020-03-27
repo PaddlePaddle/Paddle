@@ -30,12 +30,14 @@ void PushDenseFunctor(const framework::ExecutionContext& ctx) {
 #ifdef PADDLE_WITH_PSLIB
   const auto& input_names = ctx.Attr<std::vector<std::string>>("InputNames");
   auto table_id = static_cast<uint32_t>(ctx.Attr<int>("TableId"));
-  PADDLE_ENFORCE_GT(table_id, 0, "table id should > 0");
+  PADDLE_ENFORCE_GT(table_id, 0, platform::errors::InvalidArgument(
+                       "table id should > 0, but value is ", table_id));
   float scale_datanorm = ctx.Attr<float>("ScaleDataNorm");
   const auto& ids = ctx.MultiInput<framework::LoDTensor>("Ids");
   int batch_size =
       ids[0]->lod().size() ? ids[0]->lod()[0].size() - 1 : ids[0]->dims()[0];
-  PADDLE_ENFORCE_GT(batch_size, 0, "batch size should > 0");
+  PADDLE_ENFORCE_GT(batch_size, 0, platform::errors::InvalidArgument(
+                        "batch size should > 0, but value is ", batch_size));
 
   auto fleet_ptr = framework::FleetWrapper::GetInstance();
   fleet_ptr->PushDenseVarsAsync(ctx.scope(), table_id, input_names, nullptr,
@@ -45,7 +47,8 @@ void PushDenseFunctor(const framework::ExecutionContext& ctx) {
   // we assume PullDenseWorker has been already initialized in DistMultiTrainer
   auto pull_dense_worker = framework::PullDenseWorker::GetInstance();
   PADDLE_ENFORCE_NE(pull_dense_worker, nullptr,
-                    "pull_dense_worker should not be null");
+                    platform::errors::PreconditionNotMet(
+                        "pull_dense_worker should not be null"));
   int thread_id = pull_dense_worker->GetThreadIdByScope(&ctx.scope());
   pull_dense_worker->IncreaseThreadVersion(thread_id, table_id);
 #endif
