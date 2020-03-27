@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fill_any_like_op.h"
-#include<string>
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -33,9 +33,9 @@ class FillAnyLikeOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
+      const framework::ExecutionContext &ctx) const override {
     framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
-    const auto& data_type = ctx.Attr<int>("dtype");
+    const auto &data_type = ctx.Attr<int>("dtype");
     if (data_type >= 0) {
       kt.data_type_ = static_cast<framework::proto::VarType::Type>(data_type);
     }
@@ -45,9 +45,9 @@ class FillAnyLikeOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
-        return framework::OpKernelType(expected_kernel_type.data_type_,
-                    expected_kernel_type.place_,
-                    tensor.layout());
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   expected_kernel_type.place_,
+                                   tensor.layout());
   }
 };
 
