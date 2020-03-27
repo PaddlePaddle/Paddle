@@ -27,7 +27,9 @@ function(pass_library TARGET DEST)
 
     # add more DEST here, such as train, dist and collect USE_PASS into a file automatically.
     if (${DEST} STREQUAL "base" OR ${DEST} STREQUAL "inference")
-        message(STATUS "add pass ${TARGET} ${DEST}")
+        if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+            message(STATUS "add pass ${TARGET} ${DEST}")
+        endif()
         file(APPEND ${pass_file} "USE_PASS(${TARGET});\n")
         set(INFER_IR_PASSES ${INFER_IR_PASSES} ${TARGET} CACHE INTERNAL "")
     endif()
