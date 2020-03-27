@@ -18,13 +18,8 @@
 
 from __future__ import print_function
 
-from . import manipulation
-from manipulation import *
-
-from . import linalg
-from linalg import *
-
-from . import creation
-from creation import *
+from .manipulation import *
+from .linalg import *
+from .creation import *
 
 __all__ = manipulation.__all__ + linalg.__all__ + creation.__all__
