@@ -308,7 +308,7 @@ def grad(outputs,
             details. Default None.
 
     Returns:
-        tuple: a tuple of Variable, whose length is the same as the Variable number 
+        tuple: a tuple of Variables, whose length is the same as the Variable number 
         inside `inputs`, and the i-th returned Variable is the sum of gradients of 
         `outputs` with respect to the i-th `inputs`.
 
