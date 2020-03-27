@@ -64,7 +64,6 @@ else()
         PREFIX          ${EIGEN_PREFIX_DIR}
         SOURCE_DIR      ${EIGEN_SOURCE_DIR}
         UPDATE_COMMAND    ""
-        PATCH_COMMAND   ${EIGEN_PATCH_COMMAND}
         CONFIGURE_COMMAND ""
         BUILD_COMMAND     ""
         INSTALL_COMMAND   ""
