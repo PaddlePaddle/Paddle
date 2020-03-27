@@ -147,8 +147,8 @@ void HeterTrainer::InitOtherEnv(const ProgramDesc &main_program) {
     workers_[i]->SetPlace(places_[i % place_len]);
     workers_[i]->SetStream(copy_streams_[i % place_len]);
     workers_[i]->SetReaderPlace(platform::CPUPlace());
-    workers_[i]->CreateThreadParam();
     workers_[i]->CreateEvent();
+    workers_[i]->CreateThreadParam(main_program);
     pull_dense_worker_->AddThreadScope(workers_[i]->GetThreadScope());
     pull_dense_worker_->AddPlace(places_[i % place_len]);
     pull_dense_worker_->AddStream(copy_streams_[i % place_len]);

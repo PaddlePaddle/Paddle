@@ -434,7 +434,6 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   }
   uint64_t fea_idx = 0u;
   if (!platform::is_cpu_place(place)) {
-    
     in_cpu = false;
     cudaEventSynchronize(event);
     

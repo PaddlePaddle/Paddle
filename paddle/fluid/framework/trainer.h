@@ -51,7 +51,6 @@ class TrainerBase {
   virtual void Run() = 0;
   virtual void Finalize() = 0;
   virtual Scope* GetWorkerScope(int thread_id) = 0;
-  void CreateThreadParam(Scope* scope);
  protected:
   Scope* root_scope_;
   bool debug_;

@@ -146,7 +146,7 @@ class DeviceWorker {
   virtual const platform::Place& place() const { return place_; }
   virtual void CreatePinVar() {};
   virtual void CreateEvent() {};
-  virtual void CreateThreadParam() {};
+  virtual void CreateThreadParam(const ProgramDesc &main_program) {};
   #ifdef PADDLE_WITH_CUDA
   virtual void SetStream(cudaStream_t stream) {}
   #endif
@@ -227,7 +227,11 @@ class DownpourWorker : public HogwildWorker {
   virtual void SetNeedDump(bool need_dump_field);
   virtual void SetChannelWriter(ChannelObject<std::string>* queue);
   virtual void CreatePinVar();
-  virtual void CreateThreadParam();
+  virtual void CreateThreadParam(const ProgramDesc &main_program);
+  template <typename T>
+  void MemCpy(LoDTensor* tensor, LoDTensor* root_tensor,
+              const paddle::platform::Place& thread_place,
+              cudaStream_t stream);
 
  protected:
   std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
@@ -263,6 +267,7 @@ class DownpourWorker : public HogwildWorker {
   cudaEvent_t event_;
   cudaStream_t copy_stream_;
   #endif
+  platform::Place root_place_;
   // actually pushed feasign of each table
   std::map<uint64_t, std::vector<uint64_t>> sparse_push_keys_;
 
