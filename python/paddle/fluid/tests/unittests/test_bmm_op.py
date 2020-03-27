@@ -26,7 +26,7 @@ class TestBmmOp(OpTest):
         self.op_type = "bmm"
         self.dtype = np.float32
         X = np.random.random((10,3,4)).astype("float32")
-        Y = np.random.random((10,4,5))).astype("float32")
+        Y = np.random.random((10,4,5)).astype("float32")
         self.inputs = {'X': X, 'Y': Y}
         Out = np.matmul(X, Y)
         self.outputs = {'Out': Out}
