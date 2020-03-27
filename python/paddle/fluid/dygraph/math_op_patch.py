@@ -144,9 +144,7 @@ def monkey_patch_math_varbase():
         return int(var.numpy().flatten()[0])
 
     def _len_(var):
-        tensor = var.value().get_tensor()
-        dims = tensor._get_dims()
-        return dims[0]
+        return var.shape[0]
 
     def _index_(var):
         numel = np.prod(var.shape)
