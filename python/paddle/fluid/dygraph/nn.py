@@ -1135,8 +1135,9 @@ class BatchNorm(layers.Layer):
         variance_out = self._variance
 
         if in_dygraph_mode():
+            _is_test = not _dygraph_tracer()._train_mode
             attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
-                     "is_test", self._is_test, "data_layout", self._data_layout,
+                     "is_test", _is_test, "data_layout", self._data_layout,
                      "use_mkldnn", False, "fuse_with_relu",
                      self._fuse_with_relu, "use_global_stats",
                      self._use_global_stats, "trainable_statistics",
