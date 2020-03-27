@@ -133,26 +133,30 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
     GET_IR_NODE_FROM_SUBGRAPH(lstm, lstm, lstm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(Weight, Weight, lstm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(Bias, Bias, lstm_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(Cell, Cell, lstm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(Hidden, Hidden, lstm_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(BatchCellPreAct, BatchCellPreAct, lstm_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(BatchGate, BatchGate, lstm_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(Cell, Cell, lstm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(w, w, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul, mul, fc_pattern);
     if (with_fc_bias) {
       GET_IR_NODE_FROM_SUBGRAPH(fc_out, elementwise_add_out, fc_pattern);
       GET_IR_NODE_FROM_SUBGRAPH(fc_bias, bias, fc_pattern);
+      GET_IR_NODE_FROM_SUBGRAPH(mul_out, mul_out, fc_pattern);
       GET_IR_NODE_FROM_SUBGRAPH(elementwise_add, elementwise_add, fc_pattern);
       lstm_creator(lstm, subgraph.at(x), w, Weight, Bias, Hidden, Cell, fc_out,
                    fc_bias);
       // Remove unneeded nodes.
       std::unordered_set<const Node*> marked_nodes(
-          {mul, lstm, elementwise_add, fc_bias});
+          {mul, lstm, elementwise_add, mul_out, BatchGate, BatchCellPreAct});
       GraphSafeRemoveNodes(graph, marked_nodes);
     } else {
       GET_IR_NODE_FROM_SUBGRAPH(fc_out, mul_out, fc_pattern);
       lstm_creator(lstm, subgraph.at(x), w, Weight, Bias, Hidden, Cell, fc_out,
                    nullptr);
       // Remove unneeded nodes.
-      std::unordered_set<const Node*> marked_nodes({mul, lstm});
+      std::unordered_set<const Node*> marked_nodes(
+          {mul, lstm, BatchGate, BatchCellPreAct});
       GraphSafeRemoveNodes(graph, marked_nodes);
     }
 

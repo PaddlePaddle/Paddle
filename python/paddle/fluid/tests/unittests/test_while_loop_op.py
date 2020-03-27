@@ -77,6 +77,66 @@ class TestApiWhileLoop(unittest.TestCase):
             data = np.add(data, data_one)
         self.assertTrue(np.allclose(np.asarray(res[1]), data))
 
+    def test_var_dict(self):
+        def cond(i, ten, test_dict, test_list, test_list_dict):
+            return layers.less_than(i, ten)
+
+        def body(i, ten, test_dict, test_list, test_list_dict):
+            test_dict["test_key"] = i
+            test_dict["test_key"] += 1
+
+            test_list[0] = fluid.layers.reshape(test_list[0], [2, -1]) + 1
+
+            test_list_dict[0]["test_key"] += 1
+            test_list_dict[0]["test_key"] = fluid.layers.relu(test_list_dict[0][
+                "test_key"])
+
+            i = layers.increment(i)
+            return [i, ten, test_dict, test_list, test_list_dict]
+
+        main_program = Program()
+        startup_program = Program()
+        with program_guard(main_program, startup_program):
+            i = layers.zeros(shape=[1], dtype='int64')
+            ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
+            test_data = layers.fill_constant(shape=[1], dtype='int64', value=0)
+
+            test_dict = {"test_key": test_data}
+            test_list = [
+                layers.fill_constant(
+                    shape=[1, 2], dtype='int64', value=0)
+            ]
+            test_list_dict = [{
+                "test_key": layers.fill_constant(
+                    shape=[1], dtype='float32', value=0)
+            }]
+
+            i, ten, test_dict, test_list, test_list_dict = layers.while_loop(
+                cond, body, [i, ten, test_dict, test_list, test_list_dict])
+        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        res = exe.run(main_program,
+                      fetch_list=[
+                          test_dict["test_key"], test_list[0],
+                          test_list_dict[0]["test_key"]
+                      ])
+        self.assertTrue(
+            np.allclose(
+                np.asarray(res[0]),
+                np.full(
+                    shape=(1), fill_value=10, dtype=np.int64)))
+        self.assertTrue(
+            np.allclose(
+                np.asarray(res[1]),
+                np.full(
+                    shape=(2, 1), fill_value=10, dtype=np.int64)))
+        self.assertTrue(
+            np.allclose(
+                np.asarray(res[2]),
+                np.full(
+                    shape=(1), fill_value=10, dtype=np.float32)))
+
 
 class TestApiWhileLoop_Nested(unittest.TestCase):
     def test_nested_net(self):
@@ -311,8 +371,35 @@ class TestApiWhileLoop_Error(unittest.TestCase):
         def cond_returns_2d_tensor(i):
             return layers.less_than(i, ten_2d)
 
+        def cond_receives_two_args(i, ten):
+            return layers.less_than(i, ten)
+
         def body(i):
             return layers.increment(i)
+
+        def body_returns_error_length(i):
+            i = layers.increment(i)
+            return [i, i]
+
+        def body_returns_error_type(i, ten):
+            return layers.increment(i)
+
+        def cond_returns_with_mutable_dict(i, test_dict):
+            return i > 0
+
+        def body_returns_with_mutable_dict(i, test_dict):
+            test_dict['new_key'] = layers.fill_constant(
+                shape=[1], dtype='int64', value=1)
+            return layers.increment(i), test_dict
+
+        def cond_returns_with_mutable_list(i, test_list):
+            return i > 0
+
+        def body_returns_with_mutable_list(i, test_list):
+            test_list.append(
+                layers.fill_constant(
+                    shape=[1], dtype='int64', value=1))
+            return layers.increment(i), test_list
 
         main_program = Program()
         startup_program = Program()
@@ -366,6 +453,45 @@ class TestApiWhileLoop_Error(unittest.TestCase):
                 out = layers.while_loop(cond_returns_2d_tensor, body, [data_2d])
 
             self.assertRaises(TypeError, type_error_shape_cond_returns_2d)
+
+            # The length of `body` returns in Op(while_loop) must be same as `loop_vars`
+            def value_error_body_returns_error_length():
+                out = layers.while_loop(cond_returns_bool_tensor,
+                                        body_returns_error_length, [data])
+
+            self.assertRaises(ValueError, value_error_body_returns_error_length)
+
+            # The type of `body` returns in Op(while_loop) must be same as `loop_vars`
+            def value_error_body_returns_error_type():
+                out = layers.while_loop(cond_receives_two_args,
+                                        body_returns_error_type, [data, ten])
+
+            self.assertRaises(ValueError, value_error_body_returns_error_type)
+
+            # The length of `output_vars` with mutable value should keep same with `loop_vars`
+            def value_error_body_returns_with_mutable_dict():
+                test_dict = {
+                    "int_constant": layers.fill_constant(
+                        shape=[2, 2], dtype='int64', value=1)
+                }
+                out = layers.while_loop(cond_returns_with_mutable_dict,
+                                        body_returns_with_mutable_dict,
+                                        [data, test_dict])
+
+            self.assertRaises(ValueError,
+                              value_error_body_returns_with_mutable_dict)
+
+            def value_error_body_returns_with_mutable_list():
+                test_list = [
+                    layers.fill_constant(
+                        shape=[2, 2], dtype='int64', value=1)
+                ]
+                out = layers.while_loop(cond_returns_with_mutable_list,
+                                        body_returns_with_mutable_list,
+                                        [data, test_list])
+
+            self.assertRaises(ValueError,
+                              value_error_body_returns_with_mutable_list)
 
 
 if __name__ == '__main__':

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Testcases for Downpour."""
+"""Test cases for Downpour."""
 
 from __future__ import print_function
 
@@ -26,16 +26,21 @@ import sys
 from op_test import OpTest
 from paddle.fluid.trainer_desc import DistMultiTrainer
 from paddle.fluid.device_worker import DownpourSGD, DownpourSGDOPT
-from paddle.fluid.incubate.fleet.parameter_server.pslib.node import DownpourWorker
+from paddle.fluid.incubate.fleet.parameter_server.pslib.node import DownpourWorker, DownpourServer
 from google.protobuf import text_format
 import paddle.fluid.incubate.fleet.parameter_server.pslib.ps_pb2 as pslib
+from paddle.fluid.trainer_factory import TrainerFactory
+
+cache_path = os.path.expanduser('~/.cache/paddle/dataset')
 
 
 class TestListenAndServOp(unittest.TestCase):
-    """TestListenAndServOp."""
+    """This class is Test Listen And ServOp."""
 
     def setUp(self):
-        pass
+        """This function is set Up."""
+        if not os.path.exists(cache_path):
+            os.makedirs(cache_path)
 
     def test_device_work_use_cvm(self):
         """test device work use_cvm."""
@@ -43,8 +48,11 @@ class TestListenAndServOp(unittest.TestCase):
             pass
         else:
             print(sys.platform)
-            cmd = "wget --no-check-certificate https://pslib.bj.bcebos.com/fleet_desc.prototxt"
-            os.system(cmd)
+            if not os.path.exists('{}/{}'.format(cache_path,
+                                                 'fleet_desc.prototxt')):
+                cmd = "wget --no-check-certificate https://pslib.bj.bcebos.com/fleet_desc.prototxt -P {}/".format(
+                    cache_path)
+                os.system(cmd)
             x = fluid.layers.data(name='x', shape=[1], dtype='int64')
             x_emb = fluid.layers.embedding(
                 input=x, size=[1, 2], is_distributed=True)
@@ -54,7 +62,7 @@ class TestListenAndServOp(unittest.TestCase):
             avg_cost = fluid.layers.mean(cost)
 
             ps_param = pslib.PSParameter()
-            with open("fleet_desc.prototxt") as f:
+            with open("{}/fleet_desc.prototxt".format(cache_path)) as f:
                 text_format.Merge(f.read(), ps_param)
             fleet_desc = ps_param
             exe = fluid.Executor(fluid.CPUPlace())
@@ -83,28 +91,27 @@ class TestListenAndServOp(unittest.TestCase):
             opt_info["dump_slot"] = False
             opt_info["stat_var_names"] = []
             worker = DownpourWorker(None)
+            server = DownpourServer()
+            server.add_sparse_table(0, {})
             worker.get_desc().CopyFrom(ps_param.trainer_param[0])
             opt_info["program_id_to_worker"] = {program_id: worker}
 
             main_program._fleet_opt = opt_info
-            trainer = DistMultiTrainer()
+            trainer = TrainerFactory()._create_trainer(main_program._fleet_opt)
             trainer._set_program(main_program)
-            device_worker = DownpourSGD()
-            device_worker._set_fleet_desc(fleet_desc)
-            trainer._set_device_worker(device_worker)
-            trainer._set_fleet_desc(fleet_desc)
             trainer._gen_trainer_desc()
-            cmd = "rm fleet_desc.prototxt*"
-            os.system(cmd)
 
     def test_device_work(self):
-        """test devicve worker."""
+        """This function is test devicve worker."""
         if sys.platform == 'win32' or sys.platform == 'sys.platform':
             pass
         else:
             print(sys.platform)
-            cmd = "wget --no-check-certificate https://pslib.bj.bcebos.com/fleet_desc.prototxt"
-            os.system(cmd)
+            if not os.path.exists('{}/{}'.format(cache_path,
+                                                 'fleet_desc.prototxt')):
+                cmd = "wget --no-check-certificate https://pslib.bj.bcebos.com/fleet_desc.prototxt -P {}/".format(
+                    cache_path)
+                os.system(cmd)
             x = fluid.layers.data(name='x', shape=[1], dtype='int64')
             x_emb = fluid.layers.embedding(
                 input=x, size=[1, 2], is_distributed=True)
@@ -114,7 +121,7 @@ class TestListenAndServOp(unittest.TestCase):
             avg_cost = fluid.layers.mean(cost)
 
             ps_param = pslib.PSParameter()
-            with open("fleet_desc.prototxt") as f:
+            with open("{}/fleet_desc.prototxt".format(cache_path)) as f:
                 text_format.Merge(f.read(), ps_param)
             fleet_desc = ps_param
             exe = fluid.Executor(fluid.CPUPlace())
@@ -147,24 +154,21 @@ class TestListenAndServOp(unittest.TestCase):
             opt_info["program_id_to_worker"] = {program_id: worker}
 
             main_program._fleet_opt = opt_info
-            trainer = DistMultiTrainer()
+            trainer = TrainerFactory()._create_trainer(main_program._fleet_opt)
             trainer._set_program(main_program)
-            device_worker = DownpourSGD()
-            device_worker._set_fleet_desc(fleet_desc)
-            trainer._set_device_worker(device_worker)
-            trainer._set_fleet_desc(fleet_desc)
             trainer._gen_trainer_desc()
-            cmd = "rm fleet_desc.prototxt*"
-            os.system(cmd)
 
     def test_downpour_opt_work(self):
-        """test devicve worker."""
+        """This function is test devicve worker."""
         if sys.platform == 'win32' or sys.platform == 'sys.platform':
             pass
         else:
             print(sys.platform)
-            cmd = "wget --no-check-certificate https://pslib.bj.bcebos.com/fleet_desc.prototxt"
-            os.system(cmd)
+            if not os.path.exists('{}/{}'.format(cache_path,
+                                                 'fleet_desc.prototxt')):
+                cmd = "wget --no-check-certificate https://pslib.bj.bcebos.com/fleet_desc.prototxt -P {}/".format(
+                    cache_path)
+                os.system(cmd)
             x = fluid.layers.data(name='x', shape=[1], dtype='int64')
             x_emb = fluid.layers.embedding(
                 input=x, size=[1, 2], is_distributed=True)
@@ -174,7 +178,7 @@ class TestListenAndServOp(unittest.TestCase):
             avg_cost = fluid.layers.mean(cost)
 
             ps_param = pslib.PSParameter()
-            with open("fleet_desc.prototxt") as f:
+            with open("{}/fleet_desc.prototxt".format(cache_path)) as f:
                 text_format.Merge(f.read(), ps_param)
             fleet_desc = ps_param
             exe = fluid.Executor(fluid.CPUPlace())
@@ -207,15 +211,9 @@ class TestListenAndServOp(unittest.TestCase):
             opt_info["program_id_to_worker"] = {program_id: worker}
 
             main_program._fleet_opt = opt_info
-            trainer = DistMultiTrainer()
+            trainer = TrainerFactory()._create_trainer(main_program._fleet_opt)
             trainer._set_program(main_program)
-            device_worker = DownpourSGDOPT()
-            device_worker._set_fleet_desc(fleet_desc)
-            trainer._set_device_worker(device_worker)
-            trainer._set_fleet_desc(fleet_desc)
             trainer._gen_trainer_desc()
-            cmd = "rm fleet_desc.prototxt*"
-            os.system(cmd)
 
 
 if __name__ == "__main__":

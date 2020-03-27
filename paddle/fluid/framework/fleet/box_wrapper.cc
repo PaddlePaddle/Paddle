@@ -91,6 +91,7 @@ void BasicAucCalculator::calculate_bucket_error() {
   _bucket_error = error_count > 0 ? error_sum / error_count : 0.0;
 }
 
+// Deprecated: should use BeginFeedPass & EndFeedPass
 void BoxWrapper::FeedPass(int date,
                           const std::vector<uint64_t>& feasgin_to_box) const {
   int ret = boxps_ptr_->FeedPass(date, feasgin_to_box);
@@ -116,8 +117,8 @@ void BoxWrapper::BeginPass() const {
                                 "BeginPass failed in BoxPS."));
 }
 
-void BoxWrapper::EndPass() const {
-  int ret = boxps_ptr_->EndPass();
+void BoxWrapper::EndPass(bool need_save_delta) const {
+  int ret = boxps_ptr_->EndPass(need_save_delta);
   PADDLE_ENFORCE_EQ(
       ret, 0, platform::errors::PreconditionNotMet("EndPass failed in BoxPS."));
 }
@@ -140,47 +141,8 @@ void BoxWrapper::PullSparse(const paddle::platform::Place& place,
       reinterpret_cast<boxps::FeatureValueGpu*>(buf->ptr());
 
   if (platform::is_cpu_place(place)) {
-    // Note: Only GPU is supported in paddlebox now, and following code have not
-    // be tested fully yet
-    LoDTensor total_keys_tensor;
-    uint64_t* total_keys = reinterpret_cast<uint64_t*>(
-        total_keys_tensor.mutable_data<int64_t>({total_length, 1}, place));
-    int64_t offset = 0;
-    VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
-    for (size_t i = 0; i < keys.size(); ++i) {
-      memory::Copy(boost::get<platform::CPUPlace>(place), total_keys + offset,
-                   boost::get<platform::CPUPlace>(place), keys[i],
-                   slot_lengths[i] * sizeof(uint64_t));
-      offset += slot_lengths[i];
-    }
-
-    VLOG(3) << "Begin call PullSparseCPU in BoxPS";
-    pull_boxps_timer.Start();
-    // TODO(hutuxian): should use boxps::FeatureValue in the future
-    int ret = boxps_ptr_->PullSparseCPU(total_keys, total_values_gpu,
-                                        static_cast<int>(total_length));
-    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                  "PullSparseCPU failed in BoxPS."));
-    pull_boxps_timer.Pause();
-
-    VLOG(3) << "Begin Copy result to tensor, total_length[" << total_length
-            << "]";
-    offset = 0;
-    for (size_t i = 0; i < values.size(); ++i) {
-      int64_t fea_num = slot_lengths[i];
-      VLOG(3) << "Begin Copy slot[" << i << "] fea_num[" << fea_num << "]";
-      for (auto j = 0; j < fea_num; ++j) {
-        // Copy the emb from BoxPS to paddle tensor. Since
-        // 'show','click','emb'
-        // are continuous in memory, so we copy here using the 'show' address
-        memory::Copy(
-            boost::get<platform::CPUPlace>(place), values[i] + j * hidden_size,
-            boost::get<platform::CPUPlace>(place),
-            reinterpret_cast<float*>(&((total_values_gpu + offset)->show)),
-            sizeof(float) * hidden_size);
-        ++offset;
-      }
-    }
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Warning:: CPUPlace is not supported in PaddleBox now."));
   } else if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
@@ -253,43 +215,8 @@ void BoxWrapper::PushSparseGrad(const paddle::platform::Place& place,
   boxps::FeaturePushValueGpu* total_grad_values_gpu =
       reinterpret_cast<boxps::FeaturePushValueGpu*>(buf->ptr());
   if (platform::is_cpu_place(place)) {
-    // Note: only GPU is supported in paddlebox now, and following code have not
-    // be tested fully yet
-    LoDTensor total_keys_tensor;
-    uint64_t* total_keys = reinterpret_cast<uint64_t*>(
-        total_keys_tensor.mutable_data<int64_t>({total_length, 1}, place));
-    int64_t offset = 0;
-    VLOG(3) << "Begin copy keys, key_num[" << total_length << "]";
-    for (size_t i = 0; i < keys.size(); ++i) {
-      memory::Copy(boost::get<platform::CPUPlace>(place), total_keys + offset,
-                   boost::get<platform::CPUPlace>(place), keys[i],
-                   slot_lengths[i] * sizeof(uint64_t));
-      offset += slot_lengths[i];
-    }
-    offset = 0;
-    VLOG(3) << "Begin copy grad tensor to BoxPS struct";
-    for (size_t i = 0; i < grad_values.size(); ++i) {
-      int64_t fea_num = slot_lengths[i];
-      for (auto j = 0; j < fea_num; ++j) {
-        // Copy the emb grad from paddle tensor to BoxPS. Since
-        // 'show','click','emb' are continuous in memory, here we copy
-        // using 'show' address
-        memory::Copy(
-            boost::get<platform::CPUPlace>(place),
-            reinterpret_cast<float*>(&((total_grad_values_gpu + offset)->show)),
-            boost::get<platform::CPUPlace>(place),
-            grad_values[i] + j * hidden_size, sizeof(float) * hidden_size);
-        ++offset;
-      }
-    }
-
-    VLOG(3) << "Begin call PushSparseCPU in BoxPS";
-    push_boxps_timer.Start();
-    int ret = boxps_ptr_->PushSparseCPU(total_keys, total_grad_values_gpu,
-                                        static_cast<int>(total_length));
-    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
-                                  "PushSparseCPU failed in BoxPS."));
-    push_boxps_timer.Pause();
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Warning:: CPUPlace is not supported in PaddleBox now."));
   } else if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     int device_id = boost::get<platform::CUDAPlace>(place).GetDeviceId();

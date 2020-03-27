@@ -741,7 +741,7 @@ class SensitivePruneStrategy(PruneStrategy):
 
     def _format_sensitivities(self, sensitivities):
         """
-        Print formated sensitivities in debug log level.
+        Print formatted sensitivities in debug log level.
         """
         tb = pt.PrettyTable()
         tb.field_names = ["parameter", "size"] + [

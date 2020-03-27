@@ -348,10 +348,10 @@ DECLARE_INPLACE_OP_INFERER(ElementwiseGradOpInplace,
                             framework::GradVarName("X")});
 DECLARE_INPLACE_OP_INFERER(ElementwiseDoubleGradOpInplace, {"DDX", "DDOut"});
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ElementwiseGradNoBufVarsInference, "X",
-                                      "Y");
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ElementwiseDoubleGradNoBufVarsInference,
-                                      "Y", "DOut");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ElementwiseGradNoBufVarsInference, "X",
+                                    "Y");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ElementwiseDoubleGradNoBufVarsInference,
+                                    "Y", "DOut");
 
 }  // namespace operators
 }  // namespace paddle
@@ -363,8 +363,7 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ElementwiseDoubleGradNoBufVarsInference,
     using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker; \
                                                                         \
    protected:                                                           \
-    std::unique_ptr<T> Apply() const override {                         \
-      auto *op = new T();                                               \
+    void Apply(::paddle::framework::GradOpPtr<T> op) const override {   \
       op->SetType(#kernel_type "_grad");                                \
       op->SetInput("X", this->Input("X"));                              \
       op->SetInput("Y", this->Input("Y"));                              \
@@ -375,7 +374,6 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ElementwiseDoubleGradNoBufVarsInference,
                     this->InputGrad("X"));                              \
       op->SetOutput(::paddle::framework::GradVarName("Y"),              \
                     this->InputGrad("Y"));                              \
-      return std::unique_ptr<T>(op);                                    \
     }                                                                   \
   }
 

@@ -243,8 +243,7 @@ class MulOpGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> retv(new T());
+  void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("mul_grad");
     retv->SetInput("X", this->Input("X"));
     retv->SetInput("Y", this->Input("Y"));
@@ -252,7 +251,6 @@ class MulOpGradMaker : public framework::SingleGradOpMaker<T> {
     retv->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     retv->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
     retv->SetAttrMap(this->Attrs());
-    return retv;
   }
 };
 
@@ -284,8 +282,7 @@ class MulDoubleGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> retv(new T());
+  void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("mul_grad_grad");
 
     retv->SetInput("X", this->Input("X"));
@@ -300,11 +297,12 @@ class MulDoubleGradMaker : public framework::SingleGradOpMaker<T> {
     if (!ddx.empty() || !ddw.empty()) {
       retv->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
     }
-    retv->SetOutput("DX", ddw.empty() ? this->Empty() : this->InputGrad("X"));
-    retv->SetOutput("DY", ddx.empty() ? this->Empty() : this->InputGrad("Y"));
+    retv->SetOutput(
+        "DX", ddw.empty() ? this->EmptyInputGrad() : this->InputGrad("X"));
+    retv->SetOutput(
+        "DY", ddx.empty() ? this->EmptyInputGrad() : this->InputGrad("Y"));
 
     retv->SetAttrMap(this->Attrs());
-    return retv;
   }
 };
 

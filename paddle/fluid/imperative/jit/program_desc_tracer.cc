@@ -25,6 +25,7 @@ namespace jit {
 class UniqueBlockVarGenerator {
  public:
   UniqueBlockVarGenerator(const VarDescMetaMap &all_vars,
+                          const VarBaseSet &non_exist_input_vars,
                           framework::BlockDesc *block);
 
   std::string NameOf(const std::weak_ptr<VarBase> &var,
@@ -33,7 +34,8 @@ class UniqueBlockVarGenerator {
  private:
   void InsertNewVarInBlock(const std::weak_ptr<VarBase> &var,
                            const framework::VarDesc &ref_desc,
-                           const std::string &name);
+                           const std::string &name,
+                           bool force_persistable = false);
 
  private:
   const VarDescMetaMap &all_vars_;
@@ -46,13 +48,18 @@ class UniqueBlockVarGenerator {
   std::unordered_set<std::string> existing_names_;
 };
 
-UniqueBlockVarGenerator::UniqueBlockVarGenerator(const VarDescMetaMap &all_vars,
-                                                 framework::BlockDesc *block)
+UniqueBlockVarGenerator::UniqueBlockVarGenerator(
+    const VarDescMetaMap &all_vars, const VarBaseSet &non_exist_input_vars,
+    framework::BlockDesc *block)
     : all_vars_(all_vars), block_(block) {
   for (auto &var_pair : all_vars_) {
     auto *var_desc = var_pair.second.get();
     if (var_desc->Persistable()) {
       InsertNewVarInBlock(var_pair.first, *var_desc, var_desc->Name());
+    } else if (non_exist_input_vars.count(var_pair.first.lock()) > 0) {
+      VLOG(10) << "Mark " << var_desc->Name() << " as persistable";
+      InsertNewVarInBlock(var_pair.first, *var_desc, var_desc->Name(),
+                          /*force_persistable=*/true);
     }
   }
 }
@@ -90,12 +97,15 @@ std::string UniqueBlockVarGenerator::NameOf(const std::weak_ptr<VarBase> &var,
 
 void UniqueBlockVarGenerator::InsertNewVarInBlock(
     const std::weak_ptr<VarBase> &var, const framework::VarDesc &var_desc,
-    const std::string &name) {
+    const std::string &name, bool force_persistable) {
   var_to_name_[var] = name;
   existing_names_.insert(name);
   auto *new_var_desc = block_->Var(name);
   *new_var_desc = var_desc;
   new_var_desc->SetName(name);
+  if (force_persistable) {
+    new_var_desc->SetPersistable(true);
+  }
 }
 
 void ProgramDescTracer::InsertOp(const std::string &type,
@@ -106,13 +116,13 @@ void ProgramDescTracer::InsertOp(const std::string &type,
   auto &new_op = ops_.back();
   for (auto &pair : new_op->Inputs()) {
     for (auto &var : pair.second) {
-      InsertVarIfNotExist(var.lock());
+      InsertVarIfNotExist(var.lock(), true);
     }
   }
 
   for (auto &pair : new_op->Outputs()) {
     for (auto &var : pair.second) {
-      InsertVarIfNotExist(var.lock());
+      InsertVarIfNotExist(var.lock(), false);
     }
   }
 }
@@ -125,7 +135,12 @@ TracedProgramTuple ProgramDescTracer::CreateProgramDesc(
   std::unique_ptr<framework::ProgramDesc> prog(new framework::ProgramDesc());
   auto *block = prog->MutableBlock(0);
 
-  UniqueBlockVarGenerator generator(vars_, block);
+  auto non_exist_vars_copy = non_exist_input_vars_;
+  for (auto &feed_var : feed_vars) {
+    non_exist_vars_copy.erase(feed_var);
+  }
+
+  UniqueBlockVarGenerator generator(vars_, non_exist_vars_copy, block);
 
   std::vector<std::string> feed_var_names;
   for (auto &feed_var : feed_vars) {
@@ -164,21 +179,37 @@ TracedProgramTuple ProgramDescTracer::CreateProgramDesc(
   }
 
   prog->Flush();
+
+  std::vector<std::shared_ptr<VarBase>> persistable_vars(
+      non_exist_vars_copy.begin(), non_exist_vars_copy.end());
+  for (auto &pair : vars_) {
+    if (pair.second->Persistable()) {
+      auto var = pair.first.lock();
+      PADDLE_ENFORCE_NOT_NULL(
+          var, platform::errors::NotFound("Persistable var %s does not exist",
+                                          pair.second->Name()));
+      persistable_vars.emplace_back(var);
+    }
+  }
   return std::make_tuple(std::move(prog), std::move(feed_var_names),
-                         std::move(fetch_var_names));
+                         std::move(fetch_var_names),
+                         std::move(persistable_vars));
 }
 
 void ProgramDescTracer::InsertVarIfNotExist(
-    const std::shared_ptr<VarBase> &new_var) {
+    const std::shared_ptr<VarBase> &new_var, bool is_input) {
   PADDLE_ENFORCE_NOT_NULL(new_var);
   if (vars_.count(new_var) != 0) return;
 
   auto new_var_desc = new framework::VarDesc("");
   vars_[new_var].reset(new_var_desc);
 
-  if (new_var->Persistable()) {
+  if (new_var->Persistable() || is_input) {
     new_var_desc->SetName(new_var->Name());
-    new_var_desc->SetPersistable(true);
+    new_var_desc->SetPersistable(new_var->Persistable());
+    if (!new_var->Persistable()) {
+      non_exist_input_vars_.insert(new_var);
+    }
   } else {
     new_var_desc->SetPersistable(false);
   }
@@ -204,6 +235,7 @@ void ProgramDescTracer::InsertVarIfNotExist(
 void ProgramDescTracer::Reset() {
   ops_.clear();
   vars_.clear();
+  non_exist_input_vars_.clear();
 }
 
 }  // namespace jit

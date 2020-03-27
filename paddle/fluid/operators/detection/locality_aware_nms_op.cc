@@ -393,7 +393,7 @@ class LocalityAwareNMSOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("nms_top_k",
                  "(int64_t) "
                  "Maximum number of detections to be kept according to the "
-                 "confidences aftern the filtering detections based on "
+                 "confidences after the filtering detections based on "
                  "score_threshold");
     AddAttr<float>("nms_threshold",
                    "(float, default: 0.3) "

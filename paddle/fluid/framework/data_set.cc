@@ -96,6 +96,16 @@ void DatasetImpl<T>::SetHdfsConfig(const std::string& fs_name,
 }
 
 template <typename T>
+void DatasetImpl<T>::SetDownloadCmd(const std::string& download_cmd) {
+  paddle::framework::set_download_command(download_cmd);
+}
+
+template <typename T>
+std::string DatasetImpl<T>::GetDownloadCmd() {
+  return paddle::framework::download_cmd();
+}
+
+template <typename T>
 void DatasetImpl<T>::SetDataFeedDesc(const std::string& data_feed_desc_str) {
   google::protobuf::TextFormat::ParseFromString(data_feed_desc_str,
                                                 &data_feed_desc_);
@@ -390,7 +400,8 @@ void DatasetImpl<T>::GlobalShuffle(int thread_num) {
 }
 
 template <typename T>
-void DatasetImpl<T>::DynamicAdjustChannelNum(int channel_num) {
+void DatasetImpl<T>::DynamicAdjustChannelNum(int channel_num,
+                                             bool discard_remaining_ins) {
   if (channel_num_ == channel_num) {
     VLOG(3) << "DatasetImpl<T>::DynamicAdjustChannelNum channel_num_="
             << channel_num_ << ", channel_num_=channel_num, no need to adjust";
@@ -439,13 +450,13 @@ void DatasetImpl<T>::DynamicAdjustChannelNum(int channel_num) {
     total_data_channel->Write(std::move(local_vec));
   }
   total_data_channel->Close();
-  total_data_channel->SetBlockSize(total_data_channel->Size() / channel_num +
-                                   1);
-  // will discard the remaining instances,
-  // TODO(hutuxian): should add a config here to choose how to deal with
-  // remaining instances
+  if (static_cast<int>(total_data_channel->Size()) >= channel_num) {
+    total_data_channel->SetBlockSize(total_data_channel->Size() / channel_num +
+                                     (discard_remaining_ins ? 0 : 1));
+  }
   if (static_cast<int>(input_channel_->Size()) >= channel_num) {
-    input_channel_->SetBlockSize(input_channel_->Size() / channel_num);
+    input_channel_->SetBlockSize(input_channel_->Size() / channel_num +
+                                 (discard_remaining_ins ? 0 : 1));
   }
 
   for (int i = 0; i < channel_num; ++i) {
@@ -1076,6 +1087,7 @@ void MultiSlotDataset::SlotsShuffle(
   random_data.clear();
   random_data.shrink_to_fit();
   input_channel_->Close();
+  cur_channel_ = 0;
 
   timeline.Pause();
   VLOG(2) << "DatasetImpl<T>::SlotsShuffle() end"
