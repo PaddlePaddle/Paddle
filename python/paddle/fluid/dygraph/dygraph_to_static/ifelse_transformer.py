@@ -147,6 +147,8 @@ def is_candidate_node(node):
     """
     is_compare_node = isinstance(node,
                                  (gast.Compare, gast.BoolOp, gast.UnaryOp))
+    # TODO(Aurelius84): `.numpy()` may be an customized function,
+    # and should consider a more elegant way to solve this problem。
     has_numpy_attr = ".numpy()" in ast_to_source_code(node)
     return is_compare_node or has_numpy_attr
 
