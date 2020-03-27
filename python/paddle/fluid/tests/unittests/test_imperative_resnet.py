@@ -230,7 +230,7 @@ class TestDygraphResnet(unittest.TestCase):
         seed = 90
 
         batch_size = train_parameters["batch_size"]
-        batch_num = 1
+        batch_num = 10
 
         traced_layer = None
 
@@ -287,7 +287,6 @@ class TestDygraphResnet(unittest.TestCase):
                     out_dygraph = resnet(img)
                     out_static = traced_layer([img])
                     traced_layer._switch(is_test=False)
-                    # print(out_dygraph, out_static)
                     helper.assertEachVar(out_dygraph, out_static)
                     resnet.train()
 

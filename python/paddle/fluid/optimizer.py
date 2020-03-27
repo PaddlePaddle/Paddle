@@ -893,7 +893,6 @@ class SGDOptimizer(Optimizer):
         if framework.in_dygraph_mode():
             core.ops.sgd(param_and_grad[0], lr, param_and_grad[1],
                          param_and_grad[0])
-            # no need to return op
             return None
 
         assert isinstance(block, framework.Block)

@@ -192,7 +192,6 @@ def _elementwise_op_in_dygraph(x,
                                act=None,
                                use_mkldnn=False,
                                op_name=None):
-
     op = getattr(core.ops, op_name)
     out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
 

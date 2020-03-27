@@ -41,24 +41,15 @@ std::map<std::string, std::set<std::string>> op_passing_out_map = {
 // clang-format off
 const char* OUT_INITIALIZER_TEMPLATE =
     R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase(tracer->GenerateUniqueName()))}})";
+const char* OUT_DUPLICABLE_INITIALIZER_TEMPLATE = R"({"%s", ConstructDuplicableOutput(%s)})";
 
-const char* OUT_DUPLICABLE_INITIALIZER_TEMPLATE =
-     R"({"%s", ConstructDuplicableOutput(%s)})";
-
-
-const char* INPUT_INITIALIZER_TEMPLATE =
-    R"({"%s", {%s}})";
-
-// if inputs is list, no need {}
-const char* INPUT_LIST_INITIALIZER_TEMPLATE =
-    R"({"%s", %s})";
-
+const char* INPUT_INITIALIZER_TEMPLATE = R"({"%s", {%s}})";
+const char* INPUT_LIST_INITIALIZER_TEMPLATE = R"({"%s", %s})";
 const char* INPUT_INITIALIZER_TEMPLATE_WITH_NULL = R"(
     if (%s != nullptr) {
       ins_["%s"] = {%s};
     }
 )";
-
 const char* INPUT_INITIALIZER_TEMPLATE_WITH_NULL_LIST = R"(
     if (%s != nullptr) {
       ins_["%s"] = %s;
@@ -66,20 +57,15 @@ const char* INPUT_INITIALIZER_TEMPLATE_WITH_NULL_LIST = R"(
 )";
 
 // if inputs is list, no need {}
-const char* ARG_OUT_NUM =
-    R"(%sNum)";
-const char* ARG_OUT_NUM_TYPE =
-    R"(size_t )";
+const char* ARG_OUT_NUM = R"(%sNum)";
+const char* ARG_OUT_NUM_TYPE = R"(size_t )";
 
 const char* VAR_TYPE = R"(std::shared_ptr<imperative::VarBase>)";
 const char* VAR_LIST_TYPE = R"(std::vector<std::shared_ptr<imperative::VarBase>>)";
-
-const char* ATTR_TYPE = R"(framework::Attribute)";
 const char* ARG_TEMPLATE = R"(%s %s)";
 
 const char* RETURN_TUPLE_TYPE = R"(std::tuple<%s>)";
 const char* RETURN_TYPE = R"(%s)";
-
 const char* RETURN_TUPLE_TEMPLATE = R"(std::make_tuple(%s))";
 const char* RETURN_LIST_TEMPLATE = R"(outs_["%s"])";
 const char* RETURN_TEMPLATE = R"(outs_["%s"][0])";
@@ -95,31 +81,25 @@ R"(
   ConstructAttrMapFromPyArgs(&attrs_, args);
   {
     py::gil_scoped_release release;
-    
     auto tracer = imperative::GetCurrentTracer();
     imperative::NameVarBaseMap outs_ = %s;
     imperative::NameVarBaseMap ins_ = %s;
-    
     %s
-    
     tracer->TraceOp("%s", ins_, outs_, attrs_);
     return %s; 
   }   
 })";
 
-const char* PYBIND_ITEM_TEMPLATE =
-R"(
-  %s.def("%s", &%s);)";
-const char* PYBIND_PY_ARG_TEMPLATE = R"(py::arg("%s"))";
-// clang-format on
+const char* PYBIND_ITEM_TEMPLATE = R"(  %s.def("%s", &%s);)";
 
-static bool FindInputInSpecialization(const std::string op_type,
-                                      const std::string in_name) {
+// clang-format on
+static inline bool FindInputInSpecialization(const std::string op_type,
+                                             const std::string in_name) {
   return op_ins_map[op_type].count(in_name);
 }
 
-static bool FindOutoutInSpecialization(const std::string op_type,
-                                       const std::string out_name) {
+static inline bool FindOutoutInSpecialization(const std::string op_type,
+                                              const std::string out_name) {
   return op_passing_out_map[op_type].count(out_name);
 }
 
@@ -136,15 +116,12 @@ GenerateOpFunctions2(const std::string& module_name) {
     if (op_proto == nullptr) {
       continue;
     }
-
     auto& op_type = op_proto->type();
-
     // Skip ooerator which is not inherit form OperatorWithKernel, like while,
     // since only OperatorWithKernel can run in dygraph mode.
     if (!all_kernels.count(op_type)) {
       continue;
     }
-
     std::string input_args = "";
     std::string ins_initializer = "{";
     std::string ins_initializer_with_null = "";
@@ -155,7 +132,6 @@ GenerateOpFunctions2(const std::string& module_name) {
       if (input.dispensable() && !FindInputInSpecialization(op_type, in_name)) {
         continue;
       }
-      // If input is duplicable, use list
       auto in_type = input.duplicable() ? VAR_LIST_TYPE : VAR_TYPE;
 
       auto input_arg = paddle::string::Sprintf(ARG_TEMPLATE, in_type, in_name);
@@ -176,7 +152,6 @@ GenerateOpFunctions2(const std::string& module_name) {
         ins_initializer += ",";
       }
     }
-
     if (ins_initializer.back() == ',') {
       ins_initializer.pop_back();
     }
@@ -196,11 +171,9 @@ GenerateOpFunctions2(const std::string& module_name) {
       if (output.dispensable()) {
         continue;
       }
-
       auto out_type = output.duplicable() ? VAR_LIST_TYPE : VAR_TYPE;
       auto return_template =
           output.duplicable() ? RETURN_LIST_TEMPLATE : RETURN_TEMPLATE;
-
       auto& out_name = output.name();
       std::string out_initializer_str;
       if (FindOutoutInSpecialization(op_type, out_name)) {
@@ -280,7 +253,6 @@ GenerateOpFunctions2(const std::string& module_name) {
     op_function_list.emplace_back(std::move(op_function_str));
     bind_function_list.emplace_back(std::move(bind_function_str));
   }
-
   return std::make_tuple(op_function_list, bind_function_list);
 }
 
