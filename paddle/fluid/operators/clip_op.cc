@@ -28,9 +28,6 @@ class ClipOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of ClipOp should not be null.");
     auto x_dims = ctx->GetInputDim("X");
-    auto max = ctx->Attrs().Get<float>("max");
-    auto min = ctx->Attrs().Get<float>("min");
-    PADDLE_ENFORCE_LT(min, max, "max should be greater than min.");
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -43,6 +40,14 @@ class ClipOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "Tensor, the input of clip op, data type should be float32 or "
              "float64.");
+    AddInput("Min",
+             "Tensor, the lower bound, data type should be float32 "
+             "or float64.")
+        .AsDispensable();
+    AddInput("Max",
+             "Tensor, the upper bound, data type should be float32 "
+             "or float64.")
+        .AsDispensable();
     AddOutput(
         "Out",
         "Tensor, the clipped tensor, with the same shape and data type as "
@@ -87,6 +92,12 @@ class ClipGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("clip_grad");
     op->SetInput("X", this->Input("X"));
+    if (this->HasInput("Min")) {
+      op->SetInput("Min", this->Input("Min"));
+    }
+    if (this->HasInput("Max")) {
+      op->SetInput("Max", this->Input("Max"));
+    }
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());

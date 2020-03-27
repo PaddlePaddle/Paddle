@@ -22,19 +22,29 @@ from op_test import OpTest
 class TestClipOp(OpTest):
     def setUp(self):
         self.max_relative_error = 0.006
+
+        self.inputs = {}
         self.initTestCase()
-        input = np.random.random(self.shape).astype("float32")
-        input[np.abs(input - self.min) < self.max_relative_error] = 0.5
-        input[np.abs(input - self.max) < self.max_relative_error] = 0.5
+
         self.op_type = "clip"
-        self.inputs = {'X': input, }
         self.attrs = {}
         self.attrs['min'] = self.min
         self.attrs['max'] = self.max
-        self.outputs = {
-            'Out': np.clip(self.inputs['X'], self.attrs['min'],
-                           self.attrs['max'])
-        }
+        if 'Min' in self.inputs:
+            min_v = self.inputs['Min']
+        else:
+            min_v = self.attrs['min']
+
+        if 'Max' in self.inputs:
+            max_v = self.inputs['Max']
+        else:
+            max_v = self.attrs['max']
+
+        input = np.random.random(self.shape).astype("float32")
+        input[np.abs(input - min_v) < self.max_relative_error] = 0.5
+        input[np.abs(input - max_v) < self.max_relative_error] = 0.5
+        self.inputs['X'] = input
+        self.outputs = {'Out': np.clip(self.inputs['X'], min_v, max_v)}
 
     def test_check_output(self):
         self.check_output()
@@ -43,9 +53,9 @@ class TestClipOp(OpTest):
         self.check_grad(['X'], 'Out')
 
     def initTestCase(self):
-        self.shape = (10, 10)
-        self.max = 0.7
-        self.min = 0.1
+        self.shape = (4, 10, 10)
+        self.max = 0.8
+        self.min = 0.3
 
 
 class TestCase1(TestClipOp):
@@ -67,6 +77,15 @@ class TestCase3(TestClipOp):
         self.shape = (4, 8, 16)
         self.max = 0.7
         self.min = 0.2
+
+
+class TestCase4(TestClipOp):
+    def initTestCase(self):
+        self.shape = (4, 8, 8)
+        self.max = 0.7
+        self.min = 0.2
+        self.inputs['Min'] = np.array([0.1]).astype('float32')
+        self.inputs['Max'] = np.array([0.8]).astype('float32')
 
 
 if __name__ == '__main__':
