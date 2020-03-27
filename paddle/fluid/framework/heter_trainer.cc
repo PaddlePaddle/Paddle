@@ -183,7 +183,8 @@ void HeterTrainer::Finalize() {
       continue;
     }
     LoDTensor *root_tensor = root_var->GetMutable<LoDTensor>();
-    for (int j = 1; j < thread_num_; j++) {
+
+    for (int j = 0; j < thread_num_; j++) {
       Scope *cur_thread_scope = workers_[j]->GetThreadScope();
       Variable *thread_var =
           cur_thread_scope->FindVar(need_merge_var_names_[i]);
@@ -222,11 +223,17 @@ void HeterTrainer::Finalize() {
 template <typename T>
 void HeterTrainer::MergeToRootScope(LoDTensor *root_tensor,
                                         LoDTensor *tensor) {
-  T *root_data = root_tensor->data<T>();
-  T *data = tensor->data<T>();
-  for (int i = 0; i < tensor->numel(); i++) {
-    root_data[i] += data[i];
+  LoDTensor tmp_root;
+  TensorCopy(*root_tensor, platform::CPUPlace(), &tmp_root);
+  T *tmp_root_data = tmp_root.data<T>();
+  
+  LoDTensor tmp_tensor;
+  TensorCopy(*tensor, platform::CPUPlace(), &tmp_tensor);
+  T *data = tmp_tensor.data<T>();
+  for (int i = 0; i < tmp_tensor.numel(); i++) {
+    tmp_root_data[i] += data[i];
   }
+  TensorCopy(tmp_root, root_tensor->place(), root_tensor);
 }
 }  // namespace framework
 }  // namespace paddle
