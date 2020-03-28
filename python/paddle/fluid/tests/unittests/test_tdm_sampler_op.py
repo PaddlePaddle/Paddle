@@ -31,75 +31,54 @@ class TestTDMChildOp(OpTest):
         self.config()
         tree_travel = self.create_tdm_travel()
         tree_layer = self.create_tdm_layer()
+        layer_node_num_list = [len(i) for i in tree_layer]
         layer_nums = 0
         node_nums = 0
         tree_layer_offset_lod = [0]
-        for layer_idx, layer_node_num in enumerate(layer_node_num_list):
+        tree_layer_flat = []
+        for layer_idx, layer_node in enumerate(layer_node_num_list):
             layer_nums += 1
-            node_nums += layer_node_nums
-            tree_layer_offset_lod.append(layer_node_nums)
-            tree_info_np = np.array(tree_info).astype(self.info_type)
+            node_nums += len(layer_node)
+            tree_layer_flat += layer_node
+            tree_layer_offset_lod.append(len(layer_node))
+
+        travel_np = np.array(tree_travel).astype(self.dtype)
+        layer_np = np.array(tree_layer_flat)
+        layer_np = layer_np.reshape([-1, 1])
 
         x_np = np.random.randint(
-            low=0, high=26, size=self.x_shape).astype(self.x_type)
-        children_res = []
-        leaf_mask_res = []
+            low=0, high=13, size=self.x_shape).astype(self.x_type)
+
+        out_res = []
+        label_res = []
+        mask_res = []
         for batch in x_np:
             for node in batch:
-                children = []
-                if node != 0:
-                    children.append(tree_info[node][3])
-                    children.append(tree_info[node][4])
-                else:
-                    children.append(0)
-                    children.append(0)
-                mask = []
-                for child in children:
-                    m = int(tree_info[child][0] != 0)
-                    mask.append(m)
-                children_res += children
-                leaf_mask_res += mask
-        children_res_np = np.array(children_res).astype(self.info_type)
-        leaf_mask_res_np = np.array(leaf_mask_res).astype(self.info_type)
+                out_res += tree_travel[node]
+                label = [1, 1, 1, 1]
+                mask = [1, 1, 1, 1]
+                if tree_travel[node][-1] == 0:
+                    label[-1] = 0
+                    mask[-1] = 0
+                label_res += label
+                mask_res += mask
 
-        child = np.reshape(children_res_np, self.child_shape)
-        leaf_mask = np.reshape(leaf_mask_res_np, self.child_shape)
+        out_res_np = np.array(out_res).astype(self.x_type)
+        label_res_np = np.array(label_res).astype(self.x_type)
+        mask_res_np = np.array(mask_res).astype(self.x_type)
 
-        self.attrs = {'Child_nums': 2}
-        self.inputs = {'X': x_np, 'Tree_info': tree_info_np}
-        self.outputs = {'Child': child, 'Leaf_mask': leaf_mask}
+        out = np.reshape(out_res_np, self.output_shape)
+        label = np.reshape(label_res_np, self.output_shape)
+        mask = np.reshape(mask_res_np, self.output_shape)
 
-    def create_tdm_tree(self):
-        """Create tdm tree info"""
-        tree_info = [
-            [0, 0, 0, 1, 2],
-            [0, 1, 0, 3, 4],
-            [0, 1, 0, 5, 6],
-            [0, 2, 1, 7, 8],
-            [0, 2, 1, 9, 10],
-            [0, 2, 2, 11, 12],
-            [0, 2, 2, 13, 0],
-            [0, 3, 3, 14, 15],
-            [0, 3, 3, 16, 17],
-            [0, 3, 4, 18, 19],
-            [0, 3, 4, 20, 21],
-            [0, 3, 5, 22, 23],
-            [0, 3, 5, 24, 25],
-            [12, 3, 6, 0, 0],
-            [0, 4, 7, 0, 0],
-            [1, 4, 7, 0, 0],
-            [2, 4, 8, 0, 0],
-            [3, 4, 8, 0, 0],
-            [4, 4, 9, 0, 0],
-            [5, 4, 9, 0, 0],
-            [6, 4, 10, 0, 0],
-            [7, 4, 10, 0, 0],
-            [8, 4, 11, 0, 0],
-            [9, 4, 11, 0, 0],
-            [10, 4, 12, 0, 0],
-            [11, 4, 12, 0, 0],
-        ]
-        return tree_info
+        self.attrs = {
+            'neg_samples_num_list': self.neg_samples_num_list,
+            'output_positive': True,
+            'layer_offset_lod': tree_layer_offset_lod,
+            'seed': 0
+        }
+        self.inputs = {'X': x_np, 'Travel': travel_np, 'Layer': layer_np}
+        self.outputs = {'Out': child, 'Labels': label, 'Mask': mask}
 
     def create_tdm_travel(self):
         tree_travel = [[1, 3, 7, 14], [1, 3, 7, 15], [1, 3, 8, 16],
@@ -116,49 +95,14 @@ class TestTDMChildOp(OpTest):
 
     def config(self):
         """set test shape & type"""
-        self.x_shape = (10, 20)
-        self.child_shape = (10, 20, 2)
+        self.neg_samples_num_list = [0, 0, 0, 0]
+        self.x_shape = (10, 1)
+        self.output_shape = (10, 4)
         self.x_type = 'int32'
-        self.info_type = 'int32'
+        self.dtype = 'int32'
 
     def test_check_output(self):
         self.check_output()
-
-
-class TestCase1(TestTDMChildOp):
-    def config(self):
-        """check int int64_t """
-        self.x_shape = (10, 20)
-        self.child_shape = (10, 20, 2)
-        self.x_type = 'int32'
-        self.info_type = 'int64'
-
-
-class TestCase2(TestTDMChildOp):
-    def config(self):
-        """check int64_t int64_t """
-        self.x_shape = (10, 20)
-        self.child_shape = (10, 20, 2)
-        self.x_type = 'int64'
-        self.info_type = 'int64'
-
-
-class TestCase3(TestTDMChildOp):
-    def config(self):
-        """check int64 int32 """
-        self.x_shape = (10, 20)
-        self.child_shape = (10, 20, 2)
-        self.x_type = 'int64'
-        self.info_type = 'int32'
-
-
-class TestCase4(TestTDMChildOp):
-    def config(self):
-        """check large shape """
-        self.x_shape = (100, 20)
-        self.child_shape = (100, 20, 2)
-        self.x_type = 'int32'
-        self.info_type = 'int32'
 
 
 if __name__ == "__main__":

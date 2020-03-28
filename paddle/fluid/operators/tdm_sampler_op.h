@@ -63,9 +63,9 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
   auto total_sample_nums = input_ids_num * sample_res_length;
 
   // get all data
-  T *input_data = input_tensor.data<T>();
-  TreeT *travel_data = travel_lod_tensor.data<TreeT>();
-  TreeT *layer_data = layer_lod_tensor.data<TreeT>();
+  auto *input_data = input_tensor.data<T>();
+  auto *travel_data = travel_lod_tensor.data<TreeT>();
+  auto *layer_data = layer_lod_tensor.data<TreeT>();
 
   int64_t zero = 0;
   int64_t one = 1;

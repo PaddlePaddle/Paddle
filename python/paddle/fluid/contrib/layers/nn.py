@@ -967,8 +967,8 @@ def tdm_sampler(x,
     tree_layer_offset_lod = [0]
     for layer_idx, layer_node_num in enumerate(layer_node_num_list):
         layer_nums += 1
-        node_nums += layer_node_nums
-        tree_layer_offset_lod.append(layer_node_nums)
+        node_nums += layer_node_num
+        tree_layer_offset_lod.append(layer_node_num)
         if neg_samples_num_list[layer_idx] >= layer_node_num_list[layer_idx]:
             raise ValueError(
                 "The number of negative samples must be less than the number of nodes "
