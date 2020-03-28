@@ -282,7 +282,7 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
             "Input(Travel) must holds the same type with "
             "Input(Layer), but Travel holds %s, and Layer holds %s",
             paddle::framework::DataTypeToString(travel_type),
-            paddle::framework::DataTypeToString(layer_type));
+            paddle::framework::DataTypeToString(layer_type)));
 
     auto *out_var = context.OutputVar("Out");
     auto *label_var = context.OutputVar("Labels");
@@ -295,11 +295,11 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
       TDMSamplerInner<T, int>(context, input_tensor, travel_lod_tensor,
                               layer_lod_tensor, out_tensor, label_tensor,
                               mask_tensor);
-     } else if (travel_type == framework::proto::VarType::INT64) {
+    } else if (travel_type == framework::proto::VarType::INT64) {
       TDMSamplerInner<T, int64_t>(context, input_tensor, travel_lod_tensor,
                                   layer_lod_tensor, out_tensor, label_tensor,
                                   mask_tensor);
-  }
+    }
   };
 }
 }  // namespace operators
