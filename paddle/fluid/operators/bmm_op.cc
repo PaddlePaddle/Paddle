@@ -53,6 +53,13 @@ class BmmOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", framework::make_ddim(dim_out));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(data_type, ctx.device_context());
+  }
 };
 
 class BmmOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -100,6 +107,14 @@ class BmmGradOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim(y_grad_name, y_dims);
     }
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
+  }
 };
 
 template <typename T>
@@ -115,7 +130,6 @@ class BmmOpGradMaker : public framework::SingleGradOpMaker<T> {
     retv->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     retv->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     retv->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
-    retv->SetAttrMap(this->Attrs());
   }
 };
 
