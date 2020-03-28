@@ -716,7 +716,7 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
     size_t dim = static_cast<size_t>(grad_dim);
     Eigen::Map<
         Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-    g_mat(g.data(), g.size() / dim, dim);
+        g_mat(g.data(), g.size() / dim, dim);
     g_mat.rightCols(grad_dim) *= batch_size;
   }
 
