@@ -40,7 +40,7 @@ void PullSparseFunctor(const framework::ExecutionContext& ctx) {
 template <typename T>
 void PushSparseFunctor(const framework::ExecutionContext& ctx) {
   auto inputs = ctx.MultiInput<framework::LoDTensor>("Ids");
-  auto grads_const =
+  auto grads =
       ctx.MultiInput<framework::LoDTensor>(framework::GradVarName("Out"));
   uint32_t fea_dim = static_cast<uint32_t>(ctx.Attr<int>("EmbeddingDim"));
   std::string accesor = ctx.Attr<std::string>("AccessorClass");
@@ -50,11 +50,6 @@ void PushSparseFunctor(const framework::ExecutionContext& ctx) {
   const framework::Scope& scope = ctx.scope();
   auto input_names = ctx.Attr<std::vector<std::string>>("InputNames");
   auto table_id = static_cast<uint32_t>(ctx.Attr<int>("TableId"));
-  // the grads tensor may be modified in place
-  std::vector<framework::LoDTensor*> grads(grads_const.size(), nullptr);
-  for (size_t i = 0; i < grads_const.size(); ++i) {
-    grads[i] = const_cast<framework::LoDTensor*>(grads_const[i]);
-  }
   // note: GetInstance() is not thread-safe
   // we assume FleetWrapper has been already initialized
   auto fleet_ptr = framework::FleetWrapper::GetInstance();

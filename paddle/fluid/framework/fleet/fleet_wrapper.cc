@@ -666,7 +666,8 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
     uint64_t padding_id, bool scale_sparse, const std::string& accesor,
     const std::string& click_name, platform::Place place,
     const std::vector<std::string>& input_names,
-    std::vector<const LoDTensor*>* inputs, std::vector<LoDTensor*>* outputs) {
+    std::vector<const LoDTensor*>* inputs,
+    std::vector<const LoDTensor*>* outputs) {
 #ifdef PADDLE_WITH_PSLIB
   int show_index = 0;
   int click_index = 1;
@@ -704,15 +705,19 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
   }
   CHECK(batch_size > 0);  // NOLINT
 
+  std::vector<float> g;
+  for (const framework::LoDTensor* g_tensor : *outputs) {
+    size_t origin = g.size();
+    size_t add = g_tensor->numel();
+    g.resize(origin + add);
+    memcpy(g.data() + origin, g_tensor->data<float>(), add);
+  }
   if (scale_sparse && grad_dim > 0) {
     size_t dim = static_cast<size_t>(grad_dim);
-    for (framework::LoDTensor* g_tensor : *outputs) {
-      float* g = g_tensor->mutable_data<float>(place);
-      Eigen::Map<
-          Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-          g_mat(g, g_tensor->numel() / dim, dim);
-      g_mat.rightCols(grad_dim) *= batch_size;
-    }
+    Eigen::Map<
+        Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+    g_mat(g.data(), g.size() / dim, dim);
+    g_mat.rightCols(grad_dim) *= batch_size;
   }
 
   std::vector<float> fea_labels;
@@ -747,9 +752,6 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
   push_keys.reserve(MAX_FEASIGN_NUM / 100);
   std::vector<std::vector<float>> push_values;
   push_values.reserve(MAX_FEASIGN_NUM / 100);
-  framework::LoDTensor* output = nullptr;
-  float* output_data = nullptr;
-  size_t output_index = -1;
   size_t output_len = 0;
   size_t input_idx = 0;
   for (size_t index = 0; index < inputs->size(); ++index) {
@@ -757,15 +759,6 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
     const int64_t* ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
-      if (!output || output_len == size_t(output->numel())) {
-        ++output_index;
-        CHECK(output_index < outputs->size());  // NOLINT
-        output = outputs->at(output_index);
-        output_data = output->mutable_data<float>(place);
-        output_len = 0;
-        CHECK(output->numel() % fea_dim == 0);  // NOLINT
-        CHECK(output_data != nullptr);          // NOLINT
-      }
       if (static_cast<uint64_t>(ids[i]) == padding_id) {
         continue;
       }
@@ -773,10 +766,10 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
       push_values.emplace_back(fea_dim + slot_offset);
       float* data = push_values.back().data();
       if (!var) {
-        memcpy(data + slot_offset, output_data + output_len,
+        memcpy(data + slot_offset, g.data() + output_len,
                sizeof(float) * fea_dim);
       } else {
-        memcpy(data + slot_offset, output_data + output_len,
+        memcpy(data + slot_offset, g.data() + output_len,
                sizeof(float) * grad_dim);
         data[show_index] = 1.0f;
         data[click_index] = static_cast<float>(fea_labels.at(input_idx));
@@ -789,6 +782,7 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
     }
   }
 
+  CHECK(output_len == g.size());  // NOLINT
   if (click_name != "") {
     CHECK(input_idx == global_idx);  // NOLINT
   }
