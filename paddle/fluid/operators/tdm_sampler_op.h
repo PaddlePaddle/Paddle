@@ -63,9 +63,9 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
   auto total_sample_nums = input_ids_num * sample_res_length;
 
   // get all data
-  auto *input_data = input_tensor.data<T>();
-  auto *travel_data = travel_lod_tensor.data<TreeT>();
-  auto *layer_data = layer_lod_tensor.data<TreeT>();
+  T *input_data = input_tensor.data<T>();
+  TreeT *travel_data = travel_lod_tensor.data<TreeT>();
+  TreeT *layer_data = layer_lod_tensor.data<TreeT>();
 
   int64_t zero = 0;
   int64_t one = 1;
@@ -88,7 +88,7 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
 
   for (int i = 0; i < input_ids_num; ++i) {
     // find leaf node travel path
-    auto input_id = input_data[i];
+    T input_id = input_data[i];
     PADDLE_ENFORCE_LT(
         -1, input_id,
         "Variable value (input) of OP(fluid.layers.tdm_sampler) "
@@ -103,7 +103,7 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
         travel_dim[0], input_id);
 
     VLOG(3) << "TDM: input id: " << input_id;
-    auto start_offset = input_id * layer_nums;
+    int start_offset = static_cast<int>(input_id * layer_nums);
     VLOG(3) << "TDM: Start offset(input_id * layer_nums): " << start_offset;
     // nce sample, layer by layer
     int offset = 0;
@@ -126,7 +126,7 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
       int node_id_min = layer_offset_lod[layer_idx];
       int node_id_max = layer_offset_lod[layer_idx + 1];
 
-      auto positive_node_id = travel_data[start_offset + layer_idx];
+      TreeT positive_node_id = travel_data[start_offset + layer_idx];
 
       if (positive_node_id == 0) {
         // skip padding
@@ -177,7 +177,7 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
       // Sampling at layer, until samples enough
       for (int sample_index = 0; sample_index < sample_num; ++sample_index) {
         // Avoid sampling to positive samples
-        T sample_res = 0;
+        int sample_res = 0;
         do {
           sample_res = sampler_vec[layer_idx]->Sample();
         } while (positive_node_id ==

@@ -31,8 +31,14 @@ class TestTDMChildOp(OpTest):
         self.config()
         tree_travel = self.create_tdm_travel()
         tree_layer = self.create_tdm_layer()
-
-        tree_info_np = np.array(tree_info).astype(self.info_type)
+        layer_nums = 0
+        node_nums = 0
+        tree_layer_offset_lod = [0]
+        for layer_idx, layer_node_num in enumerate(layer_node_num_list):
+            layer_nums += 1
+            node_nums += layer_node_nums
+            tree_layer_offset_lod.append(layer_node_nums)
+            tree_info_np = np.array(tree_info).astype(self.info_type)
 
         x_np = np.random.randint(
             low=0, high=26, size=self.x_shape).astype(self.x_type)
