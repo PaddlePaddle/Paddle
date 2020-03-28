@@ -42,32 +42,33 @@ class TestBmmOp(OpTest):
         self.check_grad(['X', 'Y'], 'Out')
 
 
-# class TestBmmOpError(unittest.TestCase):
-#     def test_errors(self):
-#         with program_guard(Program(), Program()):
-#             input1_X = fluid.layers.data(
-#                 name='input1_X', shape=[10, 3, 4, 2], dtype="float32")
-#             input1_Y = fluid.layers.data(
-#                 name='input1_Y', shape=[10, 4, 5], dtype="float32")
-#             self.assertRaises(TypeError, tensor.bmm, input1_X, input1_Y)
+class TestBmmOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            input1_X = fluid.layers.data(
+                name='input1_X', shape=[10, 3, 4, 2], dtype="float32")
+            input1_Y = fluid.layers.data(
+                name='input1_Y', shape=[10, 4, 5], dtype="float32")
+            self.assertRaises(TypeError, tensor.bmm, input1_X, input1_Y)
 
-#             input2_X = fluid.layers.data(
-#                 name='input2_X', shape=[10, 3, 4], dtype="float32")
-#             input2_Y = fluid.layers.data(
-#                 name='input2_Y', shape=[10, 4, 5, 5], dtype="float32")
-#             self.assertRaises(TypeError, tensor.bmm, input2_X, input2_Y)
+            input2_X = fluid.layers.data(
+                name='input2_X', shape=[10, 3, 4], dtype="float32")
+            input2_Y = fluid.layers.data(
+                name='input2_Y', shape=[10, 4, 5, 5], dtype="float32")
+            self.assertRaises(TypeError, tensor.bmm, input2_X, input2_Y)
 
-#             input3_X = fluid.layers.data(
-#                 name='input3_X', shape=[9, 3, 4], dtype="float32")
-#             input3_Y = fluid.layers.data(
-#                 name='input3_Y', shape=[10, 4, 5], dtype="float32")
-#             self.assertRaises(TypeError, tensor.bmm, input3_X, input3_Y)
+            input3_X = fluid.layers.data(
+                name='input3_X', shape=[9, 3, 4], dtype="float32")
+            input3_Y = fluid.layers.data(
+                name='input3_Y', shape=[10, 4, 5], dtype="float32")
+            self.assertRaises(TypeError, tensor.bmm, input3_X, input3_Y)
 
-#             input4_X = fluid.layers.data(
-#                 name='input4_X', shape=[10, 3, 3], dtype="float32")
-#             input4_Y = fluid.layers.data(
-#                 name='input4_Y', shape=[10, 4, 5], dtype="float32")
-#             self.assertRaises(TypeError, tensor.bmm, input4_X, input4_Y)
+            input4_X = fluid.layers.data(
+                name='input4_X', shape=[10, 3, 3], dtype="float32")
+            input4_Y = fluid.layers.data(
+                name='input4_Y', shape=[10, 4, 5], dtype="float32")
+            self.assertRaises(TypeError, tensor.bmm, input4_X, input4_Y)
+
 
 if __name__ == "__main__":
     unittest.main()
