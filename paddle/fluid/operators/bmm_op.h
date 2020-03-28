@@ -171,6 +171,7 @@ class BmmGradKernel : public framework::OpKernel<T> {
     auto *dx = context.Output<framework::Tensor>(framework::GradVarName("X"));
     auto *dy = context.Output<framework::Tensor>(framework::GradVarName("Y"));
 
+    ReshapeXYOutIntoMatrixSequence(&x, &y, &dout, false, false);
     framework::DDim dx_dims;
     if (dx) {
       dx_dims = dx->dims();
