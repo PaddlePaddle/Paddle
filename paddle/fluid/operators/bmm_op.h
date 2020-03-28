@@ -82,7 +82,8 @@ static void ReshapeTensorIntoMatrixSequence(
 
 static void ReshapeXYOutIntoMatrixSequence(framework::Tensor *x,
                                            framework::Tensor *y,
-                                           framework::Tensor *out) {
+                                           framework::Tensor *out, bool trans_x,
+                                           bool trans_y) {
   auto x_dim = framework::make_ddim({1, x->dims()[0]});
   auto y_dim = framework::make_ddim({y->dims()[0], 1});
   auto mat_dim_x = math::CreateMatrixDescriptor(x_dim, 0, false);
