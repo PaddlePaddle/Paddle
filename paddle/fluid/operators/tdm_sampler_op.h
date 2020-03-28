@@ -32,6 +32,7 @@ using Tensor = framework::Tensor;
 using Sampler = math::Sampler;
 using DDim = framework::DDim;
 using LoD = framework::LoD;
+using LoDTensor = framework::LoDTensor;
 using LoDAndOffset = std::pair<LoD, std::pair<size_t, size_t>>;
 
 template <typename T, typename TreeT = int>
