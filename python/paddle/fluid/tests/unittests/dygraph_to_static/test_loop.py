@@ -35,6 +35,23 @@ def while_loop_dyfunc(x):
     return i
 
 
+def while_loop_dyfun_with_conflict_var(x):
+    i = fluid.dygraph.to_variable(x)
+
+    def relu(y):
+        # 'y' is not visible outside the scope.
+        return fluid.layers.relu(y)
+
+    while x < 10:
+        # If a tmp variable is created which has same name
+        # with a argument in function, it should not be
+        # included in the loop_vars.
+        add_fn = lambda x, y: x + y
+        i = add_fn(i, x)
+        x = x + 1
+    return i
+
+
 def while_loop_dyfunc_with_none(x):
     i = fluid.dygraph.to_variable(x)\
         if x is not None \
@@ -129,6 +146,11 @@ class TestTransformWhileLoop(unittest.TestCase):
         #
         # self._run_dygraph()
         # self.assertTrue(np.allclose(self._run_dygraph(), self._run_static()))
+
+
+class TestTransformWhileLoopWithConflicVar(TestTransformWhileLoop):
+    def _init_dyfunc(self):
+        self.dyfunc = while_loop_dyfun_with_conflict_var
 
 
 class TestTransformWhileLoopWithNone(TestTransformWhileLoop):
