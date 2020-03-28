@@ -64,8 +64,8 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
 
   // get all data
   auto *input_data = input_tensor.data<T>();
-  int *travel_data = travel_lod_tensor.data<TreeT>();
-  int *layer_data = layer_lod_tensor.data<TreeT>();
+  auto *travel_data = travel_lod_tensor.data<TreeT>();
+  auto *layer_data = layer_lod_tensor.data<TreeT>();
 
   int64_t zero = 0;
   int64_t one = 1;
@@ -126,7 +126,7 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
       int node_id_min = layer_offset_lod[layer_idx];
       int node_id_max = layer_offset_lod[layer_idx + 1];
 
-      int positive_node_id = travel_data[start_offset + layer_idx];
+      auto positive_node_id = travel_data[start_offset + layer_idx];
 
       if (positive_node_id == 0) {
         // skip padding
@@ -300,7 +300,8 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
                                   layer_lod_tensor, out_tensor, label_tensor,
                                   mask_tensor);
     }
-  };
-}
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle

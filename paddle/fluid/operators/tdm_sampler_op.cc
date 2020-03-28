@@ -84,6 +84,7 @@ class TDMSamplerOp : public framework::OperatorWithKernel {
       sample_res_length += sample_nums + (int64_t)output_positive_flag;
     }
 
+    auto input_dims = ctx->GetInputDim("X");
     auto ddim = framework::make_ddim({-1, sample_res_length});
     if (ctx->IsRuntime()) {
       auto output_dims = framework::vectorize(input_dims);
