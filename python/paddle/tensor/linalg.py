@@ -164,7 +164,7 @@ def bmm(x, y, name=None):
                     "But received x_shape[%d] != y_shape[%d]. X's shape: %s, "
                     "Y's shape: %s.\n" % (i, i, x_shape, y_shape))
 
-    #__check_input(x, y)
+    __check_input(x, y)
 
     helper = LayerHelper('bmm', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
