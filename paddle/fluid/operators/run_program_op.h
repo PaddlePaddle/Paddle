@@ -92,7 +92,7 @@ static void ShareVarsIntoScope(const std::vector<Variable *> vars,
                                const std::vector<std::string> &var_names,
                                framework::Scope *scope) {
   for (size_t i = 0; i < vars.size(); ++i) {
-    auto *var = scope.Var(var_names[i]);
+    auto *var = scope->Var(var_names[i]);
     if (vars[i]->IsType<LoDTensor>()) {
       PADDLE_ENFORCE_EQ(
           vars[i]->Get<LoDTensor>().IsInitialized(), true,
@@ -166,7 +166,7 @@ static void ShareVarsFromScope(std::vector<Variable *> vars,
                                const std::vector<std::string> &var_names,
                                framework::Scope *scope) {
   for (size_t i = 0; i < vars.size(); ++i) {
-    auto *var = scope.FindVar(var_names[i]);
+    auto *var = scope->FindVar(var_names[i]);
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::NotFound("The output variable %s is not in "
                                         "RunProgram(Grad)Op(StaticModelRunner)'"
@@ -182,16 +182,21 @@ static void CopyVarsFromScope(std::vector<Variable *> vars,
                               const platform::Place &dst_place,
                               framework::Scope *scope) {
   for (size_t i = 0; i < vars.size(); ++i) {
-    auto *var = scope.FindVar(var_names[i]);
-    if (nullptr == var) {
-      // need remove not find output?
-      VLOG(2) << "Can't find variable " << var_names[i]
-              << "in RunProgram(Grad)Op(StaticModelRunner)'s internal scope.";
+    if (var_names[i] == framework::kEmptyVarName) {
+      VLOG(2) << "find variable name is " << framework::kEmptyVarName
+              << ", skip it!";
       continue;
-    } else {
-      CheckOutputVarStatus(var, vars[i], var_names[i]);
-      VariableCopy(var, dst_place, vars[i]);
     }
+    auto *var = scope->FindVar(var_names[i]);
+    // NOTE: Here skip not found var is dangerous, if a bug is caused here,
+    // the result is grad calculation error, which will be very hidden!
+    PADDLE_ENFORCE_NOT_NULL(
+        var, platform::errors::NotFound("The output variable %s is not in "
+                                        "RunProgram(Grad)Op(StaticModelRunner)'"
+                                        "s internal scope.",
+                                        var_names[i]));
+    CheckOutputVarStatus(var, vars[i], var_names[i]);
+    VariableCopy(var, dst_place, vars[i]);
   }
 }
 }  // namespace details
@@ -253,17 +258,19 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
     auto input_grad_vars = ctx.MultiOutputVar(framework::GradVarName("X"));
     auto param_grad_vars = ctx.MultiOutputVar(framework::GradVarName("Params"));
 
+    VLOG(2) << "input_grad_vars len: " << input_grad_vars.size();
+
     auto output_grad_var_names = ctx.InputNames(framework::GradVarName("Out"));
     auto input_grad_var_names = ctx.OutputNames(framework::GradVarName("X"));
     auto param_grad_names = ctx.OutputNames(framework::GradVarName("Params"));
     // remove prefix Gtmp@
-    auto rm_prefix_func = [](std::string &name) {
-      name = std::move(name.substr(5));
-    };
-    std::for_each(input_grad_var_names.begin(), input_grad_var_names.end(),
-                  rm_prefix_func);
-    std::for_each(param_grad_names.begin(), param_grad_names.end(),
-                  rm_prefix_func);
+    // auto rm_prefix_func = [](std::string &name) {
+    //   name = std::move(name.substr(5));
+    // };
+    // std::for_each(input_grad_var_names.begin(), input_grad_var_names.end(),
+    //               rm_prefix_func);
+    // std::for_each(param_grad_names.begin(), param_grad_names.end(),
+    //               rm_prefix_func);
 
     std::stringstream ss;
     ss << "Maker names: ";

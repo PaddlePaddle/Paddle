@@ -150,10 +150,12 @@ class StaticModelRunner(layers.Layer):
                     persistable=False,
                     place=framework._current_expected_place(),
                     zero_copy=True)
-                var.stop_gradient = True
             else:
                 var = value
                 var.name = self._input_names[i]
+            # NOTE: after PR22939 [Add double grad], the grad op maker's
+            # SetOutput will set to None if the input var stop_gradient=True 
+            var.stop_gradient = False
             input_vars.append(var)
 
         params = []
