@@ -312,7 +312,7 @@ if(WITH_DISTRIBUTE)
     endif(NOT APPLE)
 endif()
 
-bash_tes_modules("test_command_line_flags" MODULES test_command_line_flags.sh)
+bash_test_modules("test_command_line_flags" MODULES test_command_line_flags.sh)
 
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer)
