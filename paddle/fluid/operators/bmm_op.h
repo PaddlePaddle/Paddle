@@ -55,6 +55,9 @@ static framework::Tensor FoldHeadAndLastDims(const DeviceContext &context,
 }
 
 static framework::DDim RowMatrixFromVector(const framework::DDim &x_dim) {
+  if (x_dim.size() > 1) {
+    return x_dim;
+  }
   return framework::make_ddim({1, x_dim[0]});
 }
 
@@ -89,8 +92,12 @@ static void ReshapeXYOutIntoMatrixSequence(framework::Tensor *x,
   auto mat_dim_x = math::CreateMatrixDescriptor(x_dim, 0, false);
   auto mat_dim_y = math::CreateMatrixDescriptor(y_dim, 0, false);
 
-  out->Resize({std::max(mat_dim_x.batch_size_, mat_dim_y.batch_size_),
-               mat_dim_x.height_, mat_dim_y.width_});
+  if (mat_dim_x.batch_size_ == 0 && mat_dim_y.batch_size_ == 0) {
+    out->Resize({mat_dim_x.height_, mat_dim_y.width_});
+  } else {
+    out->Resize({std::max(mat_dim_x.batch_size_, mat_dim_y.batch_size_),
+                 mat_dim_x.height_, mat_dim_y.width_});
+  }
 
   ReshapeTensorIntoMatrixSequence(x, mat_dim_x);
   ReshapeTensorIntoMatrixSequence(y, mat_dim_y);
@@ -111,21 +118,8 @@ class BmmKernel : public framework::OpKernel<T> {
         math::CreateMatrixDescriptor(RowMatrixFromVector(x.dims()), 0, false);
     auto mat_dim_b = math::CreateMatrixDescriptor(
         ColumnMatrixFromVector(y.dims()), 0, false);
-// auto scale = static_cast<T>(context.Attr<float>("alpha"));
-
-#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
-    int head_number = context.Attr<int>("head_number");
-    bool split_vertical_y = (mat_dim_a.width_ != mat_dim_b.height_);
-
-    if (head_number > 1) {
-      blas.MatMulWithHead(x, mat_dim_a, y, mat_dim_b, T(1), head_number, out,
-                          T(0), split_vertical_y);
-    } else {
-      blas.MatMul(x, mat_dim_a, y, mat_dim_b, T(1), out, T(0));
-    }
-#else
+    // auto scale = static_cast<T>(context.Attr<float>("alpha"));
     blas.MatMul(x, mat_dim_a, y, mat_dim_b, T(1), out, T(0));
-#endif  // PADDLE_WITH_MKLML
   }
 };
 
@@ -140,8 +134,7 @@ class BmmGradKernel : public framework::OpKernel<T> {
     auto blas = math::GetBlas<DeviceContext, T>(context);
     auto mat_dim_a = math::CreateMatrixDescriptor(a.dims(), 0, trans_a);
     auto mat_dim_b = math::CreateMatrixDescriptor(b.dims(), 0, trans_b);
-    blas.MatMul(a, mat_dim_a, b, mat_dim_b,
-                static_cast<T>(context.Attr<float>("alpha")), out, T(0));
+    blas.MatMul(a, mat_dim_a, b, mat_dim_b, T(1), out, T(0));
   }
   void CalcInputGrad(const framework::ExecutionContext &context,
                      const framework::Tensor &a, bool trans_a,
