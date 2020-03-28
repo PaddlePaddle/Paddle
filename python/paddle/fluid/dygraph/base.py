@@ -23,6 +23,7 @@ import objgraph
 
 __all__ = [
     'no_grad',
+    'grad',
     'guard',
     'enable_dygraph',
     'disable_dygraph',
@@ -105,8 +106,9 @@ def enable_dygraph(place=None):
             print(fluid.in_dygraph_mode())  # False
     """
     global _functional_dygraph_context_manager
-    _functional_dygraph_context_manager = guard(place=place)
-    _functional_dygraph_context_manager.__enter__()
+    if _functional_dygraph_context_manager is None:
+        _functional_dygraph_context_manager = guard(place=place)
+        _functional_dygraph_context_manager.__enter__()
 
 
 def disable_dygraph():
@@ -253,9 +255,145 @@ def _print_debug_msg(parameter_list, limit=5, is_test=False):
 def grad(outputs,
          inputs,
          grad_outputs=None,
-         no_grad_set=None,
+         retain_graph=None,
          create_graph=False,
+         only_inputs=True,
+         allow_unused=False,
+         no_grad_vars=None,
          backward_strategy=None):
+    ''' 
+    .. note::
+        **This API is ONLY available in Dygraph mode.**
+
+    This API computes the sum of gradients of `outputs` with respect to each `inputs` .
+
+    Parameters:
+        outputs (Variable|list(Variable)|tuple(Variable)): the output Variable or 
+            Variable list/tuple of the graph to compute gradients.
+        inputs (Variable|list(Variable)|tuple(Variable)): the input Variable or 
+            Variable list/tuple of the graph to compute gradients. The returned
+            values of this API are the gradients of `inputs` . 
+        grad_outputs (Variable|list(Variable|None)|tuple(Variable|None), optional): 
+            initial gradient values of `outputs` . If `grad_outputs` is None, 
+            the initial gradient values of `outputs` would be Tensors filled with 1; 
+            if `grad_outputs` is not None, it must have the same length as `outputs` , 
+            and in this case, the initial gradient value of the i-th `outputs` would
+            be: (1) a Tensor filled with 1 when the i-th element of `grad_outputs` 
+            is None; (2) the i-th element of `grad_outputs` when the i-th element of
+            `grad_outputs` is a Variable. Default None.
+        retain_graph (bool, optional): whether to retain the forward graph which 
+            is used to calculate the gradient. When it is True, the graph would 
+            be retained, in which way users can calculate backward twice for the 
+            same graph. When it is False, the graph would be freed. Default None,
+            which means it is equal to `create_graph` . 
+        create_graph (bool, optional): whether to create the gradient graphs of
+            the computing process. When it is True, higher order derivatives are
+            supported to compute; when it is False, the gradient graphs of the
+            computing process would be discarded. Default False.
+        only_inputs (bool, optional): whether to only compute the gradients of
+            `inputs` . If it is False, the gradients of all remaining leaf 
+            Variables in the graph would be also computed and accumulated. 
+            If it is True, only the gradients of `inputs` would be computed.
+            Default True. only_inputs=False is under development, and it is
+            not supported yet.    
+        allow_unused (bool, optional): whether to raise error or return None if some 
+            Variables of `inputs` are unreachable in the graph. If some Variables of 
+            `inputs` are unreachable in the graph (i.e., their gradients are None),  
+            error would be raised if allow_unused=False, or None would be returned as
+            their gradients if allow_unused=True. Default False.
+        no_grad_vars (Variable|list(Variable)|tuple(Variable)|set(Variable), optional): 
+            the Variables whose gradients are not needed to compute. Default None.
+        backward_strategy (BackwardStrategy, optional): The backward strategy to
+            compute gradients. See :ref:`api_fluid_dygraph_BackwardStrategy` for
+            details. Default None.
+
+    Returns:
+        tuple: a tuple of Variables, whose length is the same as the Variable number 
+        inside `inputs`, and the i-th returned Variable is the sum of gradients of 
+        `outputs` with respect to the i-th `inputs`.
+
+    Examples 1:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            def test_dygraph_grad(create_graph):
+                with fluid.dygraph.guard(): 
+                    x = fluid.layers.ones(shape=[1], dtype='float32') 
+                    x.stop_gradient = False
+                    y = x * x
+
+                    # Since y = x * x, dx = 2 * x 
+                    dx = fluid.dygraph.grad(
+                            outputs=[y],
+                            inputs=[x], 
+                            create_graph=create_graph, 
+                            retain_graph=True)[0]
+
+                    z = y + dx
+
+                    # If create_graph = False, the gradient of dx
+                    # would not be backpropagated. Therefore,
+                    # z = x * x + dx, and x.gradient() = 2 * x = 2.0
+                    
+                    # If create_graph = True, the gradient of dx
+                    # would be backpropagated. Therefore, 
+                    # z = x * x + dx = x * x + 2 * x, and
+                    # x.gradient() = 2 * x + 2 = 4.0 
+
+                    z.backward()
+                    return x.gradient() 
+
+            print(test_dygraph_grad(create_graph=False)) # [2.] 
+            print(test_dygraph_grad(create_graph=True)) # [4.]
+
+    Examples 2:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            fluid.enable_dygraph()
+
+            def test_dygraph_grad(grad_outputs=None):
+                x = fluid.layers.fill_constant(shape=[1], value=2.0, dtype='float32')
+                x.stop_gradient = False
+
+                y1 = x * x
+                y2 = x * 3 
+
+                # If grad_outputs=None, dy1 = [1], dy2 = [1].
+                # If grad_outputs=[g1, g2], then:
+                #    - dy1 = [1] if g1 is None else g1
+                #    - dy2 = [1] if g2 is None else g2
+
+                # Since y1 = x * x, dx = 2 * x * dy1.
+                # Since y2 = x * 3, dx = 3 * dy2.
+                # Therefore, the final result would be:
+                # dx = 2 * x * dy1 + 3 * dy2 = 4 * dy1 + 3 * dy2.
+
+                dx = fluid.dygraph.grad(
+                    outputs=[y1, y2], 
+                    inputs=[x],
+                    grad_outputs=grad_outputs)[0]
+
+                return dx.numpy()
+
+            THREE = fluid.layers.fill_constant(shape=[1], value=3.0, dtype='float32')
+            FOUR = fluid.layers.fill_constant(shape=[1], value=4.0, dtype='float32')
+
+            # dy1 = [1], dy2 = [1]
+            print(test_dygraph_grad(None)) # [7.]
+
+            # dy1 = [1], dy2 = [4]
+            print(test_dygraph_grad([None, FOUR])) # [16.] 
+
+            # dy1 = [4], dy2 = [1]
+            print(test_dygraph_grad([FOUR, None])) # [19.]
+
+            # dy1 = [3], dy2 = [4]
+            print(test_dygraph_grad([THREE, FOUR])) # [24.]
+	'''
+
     def check_in_out(in_out_list, name):
         assert in_out_list is not None, "{} should not be None".format(name)
 
@@ -293,18 +431,18 @@ def grad(outputs,
         assert len(grad_outputs) == len(
             outputs), "The length of grad_outputs must be equal to outputs"
 
-    if no_grad_set is None:
-        no_grad_set = []
-    elif isinstance(no_grad_set, core.VarBase):
-        no_grad_set = [no_grad_set]
-    elif isinstance(no_grad_set, (list, tuple, set)):
-        no_grad_set = list(no_grad_set)
-        for var in no_grad_set:
+    if no_grad_vars is None:
+        no_grad_vars = []
+    elif isinstance(no_grad_vars, core.VarBase):
+        no_grad_vars = [no_grad_vars]
+    elif isinstance(no_grad_vars, (list, tuple, set)):
+        no_grad_vars = list(no_grad_vars)
+        for var in no_grad_vars:
             assert isinstance(
-                var, core.VarBase), "no_grad_set can only contains Variable"
+                var, core.VarBase), "no_grad_vars can only contains Variable"
     else:
         raise AssertionError(
-            "no_grad_set must be None, Variable or list/tuple/set of Variables")
+            "no_grad_vars must be None, Variable or list/tuple/set of Variables")
 
     if backward_strategy is None:
         backward_strategy = core.BackwardStrategy()
@@ -314,10 +452,22 @@ def grad(outputs,
 
     assert isinstance(create_graph, bool), "create_graph must be True or False"
 
+    if retain_graph is None:
+        retain_graph = create_graph
+
+    assert isinstance(retain_graph,
+                      bool), "retain_graph must be None, True or False"
+
+    assert isinstance(allow_unused, bool), "allow_unused must be True or False"
+
+    assert isinstance(only_inputs, bool), "only_inputs must be True or False"
+    assert only_inputs, "only_inputs=False is not supported yet"
+
     place = core.Place()
     place.set_place(framework._current_expected_place())
-    return core.dygraph_partial_grad(inputs, outputs, grad_outputs, no_grad_set,
-                                     place, backward_strategy, create_graph)
+    return core.dygraph_partial_grad(
+        inputs, outputs, grad_outputs, no_grad_vars, place, backward_strategy,
+        create_graph, retain_graph, allow_unused, only_inputs)
 
 
 @framework.dygraph_only

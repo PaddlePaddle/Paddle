@@ -141,8 +141,8 @@ class CVMGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(CVMNoNeedBufferVarInference, "CVM");
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(CVMGradNoNeedBufferVarInference, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(CVMNoNeedBufferVarInference, "CVM");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(CVMGradNoNeedBufferVarInference, "X");
 
 }  // namespace operators
 }  // namespace paddle

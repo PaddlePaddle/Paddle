@@ -368,11 +368,10 @@ def loss_cls(cls, label, cfg):
 
 def calc_gradients(outputs, inputs, no_grad_set):
     if fluid.in_dygraph_mode():
-        from paddle.fluid.dygraph.base import grad
-        return grad(
+        return fluid.dygraph.grad(
             outputs=outputs,
             inputs=inputs,
-            no_grad_set=no_grad_set,
+            no_grad_vars=no_grad_set,
             create_graph=True)
     else:
         return fluid.gradients(

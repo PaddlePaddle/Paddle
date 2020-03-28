@@ -19,7 +19,7 @@ import numpy as np
 import unittest
 
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import dygraph_to_static_graph
+from paddle.fluid.dygraph.jit import dygraph_to_static_func
 
 PLACE = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace(
 )
@@ -47,7 +47,7 @@ class SubNetWithDict(fluid.dygraph.Layer):
             bias_attr=False,
             param_attr=init_weight(0.2))
 
-    @dygraph_to_static_graph
+    @dygraph_to_static_func
     def forward(self, input, cache=None):
         input = fluid.dygraph.to_variable(input)
 
@@ -76,7 +76,7 @@ class MainNetWithDict(fluid.dygraph.Layer):
         self.output_size = output_size
         self.sub_net = SubNetWithDict(hidden_size, output_size)
 
-    @dygraph_to_static_graph
+    @dygraph_to_static_func
     def forward(self, input, max_len=4):
         input = fluid.dygraph.to_variable(input)
         cache = {
