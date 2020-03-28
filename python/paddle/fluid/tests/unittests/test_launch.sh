@@ -1,7 +1,5 @@
 #!/bin/bash
 set -xe
-python --version
-echo "pythonpath:${PYTHONPATH}"
 # use default values
 python -m paddle.distributed.launch multi_process.py
 
