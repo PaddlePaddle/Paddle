@@ -25,13 +25,27 @@ import random
 import six
 
 
+def create_tdm_travel():
+    tree_travel = [[1, 3, 7, 14], [1, 3, 7, 15], [1, 3, 8, 16], [1, 3, 8, 17],
+                   [1, 4, 9, 18], [1, 4, 9, 19], [1, 4, 10, 20],
+                   [1, 4, 10, 21], [2, 5, 11, 22], [2, 5, 11, 23],
+                   [2, 5, 12, 24], [2, 5, 12, 25], [2, 6, 13, 0]]
+    return tree_travel
+
+
+def create_tdm_layer():
+    tree_layer = [[1, 2], [3, 4, 5, 6], [7, 8, 9, 10, 11, 12, 13],
+                  [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]]
+    return tree_layer
+
+
 class TestTDMSamplerOp(OpTest):
     def setUp(self):
         self.__class__.op_type = "tdm_sampler"
         self.config()
 
-        self.tree_travel = self.create_tdm_travel()
-        self.tree_layer = self.create_tdm_layer()
+        self.tree_travel = create_tdm_travel()
+        self.tree_layer = create_tdm_layer()
 
         output_0 = self.x_shape[0]
         output_1 = len(self.neg_samples_num_list) + \
@@ -67,19 +81,6 @@ class TestTDMSamplerOp(OpTest):
         }
         self.inputs = {'X': self.x_np, 'Travel': travel_np, 'Layer': layer_np}
         self.outputs = {'Out': out, 'Labels': label, 'Mask': mask}
-
-    def create_tdm_travel(self):
-        tree_travel = [[1, 3, 7, 14], [1, 3, 7, 15], [1, 3, 8, 16],
-                       [1, 3, 8, 17], [1, 4, 9, 18], [1, 4, 9, 19],
-                       [1, 4, 10, 20], [1, 4, 10, 21], [2, 5, 11, 22],
-                       [2, 5, 11, 23], [2, 5, 12, 24], [2, 5, 12, 25],
-                       [2, 6, 13, 0]]
-        return tree_travel
-
-    def create_tdm_layer(self):
-        tree_layer = [[1, 2], [3, 4, 5, 6], [7, 8, 9, 10, 11, 12, 13],
-                      [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]]
-        return tree_layer
 
     def config(self):
         """set test shape & type"""
@@ -129,13 +130,13 @@ class TestTDMSamplerOp(OpTest):
                 if sampling_res[0] == 0:
                     label_flag = 0
                 assert label_sampling_res[0] == label_flag
-                assert np.sum(label_sampling_res) == np.array(label_flag)
                 # check mask
                 padding_index = np.where(sampling_res == 0)
                 assert np.sum(mask_sampling_res[padding_index]) == 0
                 start_offset = end_offset
             # check travel legal
-            assert self.tree_travel[self.x_np[batch_ids]] == positive_travel
+            assert self.tree_travel[int(self.x_np[
+                batch_ids])] == positive_travel
 
     def verify_output(self, outs):
         self.out = outs
@@ -202,6 +203,51 @@ class TestCase7(TestTDMSamplerOp):
         self.x_shape = (10, 1)
         self.x_type = 'int64'
         self.dtype = 'int64'
+
+
+class TestTDMSamplerShape(unittest.TestCase):
+    def test_shape(self):
+        x = fluid.layers.data(name='x', shape=[1], dtype='int32', lod_level=1)
+        tdm_tree_travel = create_tdm_travel()
+        tdm_tree_layer = create_tdm_layer()
+        layer_node_num_list = [len(i) for i in tdm_tree_layer]
+
+        tree_layer_flat = []
+        for layer_idx, layer_node in enumerate(layer_node_num_list):
+            tree_layer_flat += tdm_tree_layer[layer_idx]
+
+        travel_array = np.array(tdm_tree_travel).astype('int32')
+        layer_array = np.array(tree_layer_flat).astype('int32')
+
+        neg_samples_num_list = [1, 2, 3, 4]
+        leaf_node_num = 13
+
+        sample, label, mask = fluid.contrib.layers.tdm_sampler(
+            x,
+            neg_samples_num_list,
+            layer_node_num_list,
+            leaf_node_num,
+            tree_travel_attr=fluid.ParamAttr(
+                initializer=NumpyArrayInitializer(travel_array)),
+            tree_layer_attr=fluid.ParamAttr(
+                initializer=NumpyArrayInitializer(layer_array)),
+            output_positive=True,
+            output_list=True,
+            seed=0,
+            dtype='int32')
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place=place)
+        exe.run(fluid.default_startup_program())
+
+        feed = {
+            'x': np.array(
+                [[0], [1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11],
+                 [12]],
+                dtype='int32')
+        }
+        sample_res, label_res, mask_res = exe.run(
+            feed=feed, fetch_list=[sample, label, mask])
 
 
 if __name__ == "__main__":
