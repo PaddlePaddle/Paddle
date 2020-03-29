@@ -52,7 +52,7 @@ class TestTDMSamplerOp(OpTest):
         layer_np = np.array(tree_layer_flat).astype(self.dtype)
         layer_np = layer_np.reshape([-1, 1])
 
-        x_np = np.random.randint(
+        self.x_np = np.random.randint(
             low=0, high=13, size=self.x_shape).astype(self.x_type)
 
         out = np.random.random(self.output_shape).astype(self.x_type)
@@ -65,7 +65,7 @@ class TestTDMSamplerOp(OpTest):
             'layer_offset_lod': tree_layer_offset_lod,
             'seed': 0
         }
-        self.inputs = {'X': x_np, 'Travel': travel_np, 'Layer': layer_np}
+        self.inputs = {'X': self.x_np, 'Travel': travel_np, 'Layer': layer_np}
         self.outputs = {'Out': out, 'Labels': label, 'Mask': mask}
 
     def create_tdm_travel(self):
@@ -90,7 +90,7 @@ class TestTDMSamplerOp(OpTest):
 
     def test_check_output(self):
         self.check_output_customized(self.verify_output)
-        x_res, label_res, mask_res = self.out
+        mask_res, label_res, x_res = self.out
 
         # check dtype
         if self.x_type == 'int32':
@@ -102,33 +102,106 @@ class TestTDMSamplerOp(OpTest):
             assert label_res.dtype == np.int64
             assert mask_res.dtype == np.int64
 
-        x_res = x_res.reshape(output_shape)
-        label_res = label_res.reshape(output_shape)
-        mask_res = mask_res.reshape(output_shape)
+        x_res = x_res.reshape(self.output_shape)
+        label_res = label_res.reshape(self.output_shape)
+        mask_res = mask_res.reshape(self.output_shape)
 
         layer_nums = len(self.neg_samples_num_list)
         for batch_ids, x_batch in enumerate(x_res):
             start_offset = 0
+            positive_travel = []
             for layer_idx in range(layer_nums):
                 end_offset = start_offset + self.layer_sample_nums[layer_idx]
                 sampling_res = x_batch[start_offset:end_offset]
+                positive_travel.append(sampling_res[0])
                 # check unique
-                assert (np.unique(sampling_res)).shape == sampling_res.sahpe
+                if sampling_res[0] != 0:
+                    assert (np.unique(sampling_res)).shape == sampling_res.shape
                 # check legal
-                assert np.isin(sampling_res,
-                               np.array(self.tree_layer[layer_idx])).all()
+                layer_node = self.tree_layer[layer_idx]
+                layer_node.append(0)
+                assert np.isin(sampling_res, np.array(layer_node)).all()
                 label_sampling_res = label_res[batch_ids][start_offset:
                                                           end_offset]
                 mask_sampling_res = mask_res[batch_ids][start_offset:end_offset]
                 # check label
-                assert label_sampling_res[0] == 1
-                assert np.sum(label_sampling_res) == 1
+                label_flag = 1
+                if sampling_res[0] == 0:
+                    label_flag = 0
+                assert label_sampling_res[0] == label_flag
+                assert np.sum(label_sampling_res) == np.array(label_flag)
                 # check mask
                 padding_index = np.where(sampling_res == 0)
                 assert np.sum(mask_sampling_res[padding_index]) == 0
+                start_offset = end_offset
+            # check travel legal
+            assert self.tree_travel[self.x_np[batch_ids]] == positive_travel
 
     def verify_output(self, outs):
         self.out = outs
+
+
+class TestCase1(TestTDMSamplerOp):
+    def config(self):
+        """test input int64"""
+        self.neg_samples_num_list = [0, 0, 0, 0]
+        self.x_shape = (10, 1)
+        self.x_type = 'int64'
+        self.dtype = 'int32'
+
+
+class TestCase2(TestTDMSamplerOp):
+    def config(self):
+        """test dtype int64"""
+        self.neg_samples_num_list = [0, 0, 0, 0]
+        self.x_shape = (10, 1)
+        self.x_type = 'int32'
+        self.dtype = 'int64'
+
+
+class TestCase3(TestTDMSamplerOp):
+    def config(self):
+        """test all dtype int64"""
+        self.neg_samples_num_list = [0, 0, 0, 0]
+        self.x_shape = (10, 1)
+        self.x_type = 'int64'
+        self.dtype = 'int64'
+
+
+class TestCase4(TestTDMSamplerOp):
+    def config(self):
+        """test one neg"""
+        self.neg_samples_num_list = [1, 1, 1, 1]
+        self.x_shape = (10, 1)
+        self.x_type = 'int64'
+        self.dtype = 'int64'
+
+
+class TestCase5(TestTDMSamplerOp):
+    def config(self):
+        """test normal neg"""
+        self.neg_samples_num_list = [1, 2, 3, 4]
+        self.x_shape = (10, 1)
+        self.x_type = 'int64'
+        self.dtype = 'int64'
+
+
+class TestCase6(TestTDMSamplerOp):
+    def config(self):
+        """test huge batchsize"""
+        self.neg_samples_num_list = [1, 2, 3, 4]
+        self.x_shape = (100, 1)
+        self.x_type = 'int64'
+        self.dtype = 'int64'
+
+
+class TestCase7(TestTDMSamplerOp):
+    def config(self):
+        """test full neg"""
+        self.neg_samples_num_list = [1, 3, 6, 11]
+        self.x_shape = (10, 1)
+        self.x_type = 'int64'
+        self.dtype = 'int64'
 
 
 if __name__ == "__main__":
