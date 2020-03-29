@@ -78,7 +78,7 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
 
   auto seed = context.Attr<int>("seed");
   std::vector<Sampler *> sampler_vec{};
-  for (int layer_index = 0; layer_index < layer_nums; layer_index++) {
+  for (size_t layer_index = 0; layer_index < layer_nums; layer_index++) {
     int layer_node_nums =
         layer_offset_lod[layer_index + 1] - layer_offset_lod[layer_index];
     Sampler *sampler = new math::UniformSampler(layer_node_nums - 1, seed);
@@ -107,7 +107,7 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
     VLOG(3) << "TDM: Start offset(input_id * layer_nums): " << start_offset;
     // nce sample, layer by layer
     int offset = 0;
-    for (int layer_idx = 0; layer_idx < layer_nums; ++layer_idx) {
+    for (size_t layer_idx = 0; layer_idx < layer_nums; ++layer_idx) {
       int sample_num = neg_samples_num_vec[layer_idx];
       VLOG(3) << "TDM: Sample num: " << sample_num;
 

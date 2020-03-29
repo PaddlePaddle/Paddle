@@ -38,9 +38,9 @@ class TestTDMChildOp(OpTest):
         tree_layer_flat = []
         for layer_idx, layer_node in enumerate(layer_node_num_list):
             layer_nums += 1
-            node_nums += len(layer_node)
-            tree_layer_flat += layer_node
-            tree_layer_offset_lod.append(len(layer_node))
+            node_nums += layer_node
+            tree_layer_flat += tree_layer[layer_idx]
+            tree_layer_offset_lod.append(layer_node)
 
         travel_np = np.array(tree_travel).astype(self.dtype)
         layer_np = np.array(tree_layer_flat)
@@ -78,7 +78,7 @@ class TestTDMChildOp(OpTest):
             'seed': 0
         }
         self.inputs = {'X': x_np, 'Travel': travel_np, 'Layer': layer_np}
-        self.outputs = {'Out': child, 'Labels': label, 'Mask': mask}
+        self.outputs = {'Out': out, 'Labels': label, 'Mask': mask}
 
     def create_tdm_travel(self):
         tree_travel = [[1, 3, 7, 14], [1, 3, 7, 15], [1, 3, 8, 16],

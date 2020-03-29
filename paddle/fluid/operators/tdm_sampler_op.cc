@@ -71,7 +71,7 @@ class TDMSamplerOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
                       "Inputs(Input) of TdmSampler should not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("Travel"), true);
     PADDLE_ENFORCE_EQ(ctx->HasInput("Layer"), true);
