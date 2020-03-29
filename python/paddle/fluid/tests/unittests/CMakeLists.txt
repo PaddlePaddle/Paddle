@@ -312,8 +312,10 @@ if(WITH_DISTRIBUTE)
     endif(NOT APPLE)
 endif()
 
-bash_test_modules("test_command_line_flags" MODULES test_command_line_flags.sh ENVS
-   WITH_GPU=${WITH_GPU} WITH_DISTRIBUTE=${WITH_DISTRIBUTE})
+if(NOT WIN32)
+    bash_test_modules("test_command_line_flags" MODULES test_command_line_flags.sh ENVS
+       WITH_GPU=${WITH_GPU} WITH_DISTRIBUTE=${WITH_DISTRIBUTE})
+endif()
 
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer)
