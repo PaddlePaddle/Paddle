@@ -22,6 +22,7 @@ class BmmOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+ protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("X"), true,
@@ -54,7 +55,6 @@ class BmmOp : public framework::OperatorWithKernel {
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 
- protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
@@ -83,6 +83,8 @@ Examples:
 class BmmGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("X"), true,
@@ -107,8 +109,6 @@ class BmmGradOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim(y_grad_name, y_dims);
     }
   }
-
- protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
