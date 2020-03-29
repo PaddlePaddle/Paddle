@@ -87,7 +87,7 @@ import paddle.sysconfig
 # from .tensor.random import randn   #DEFINE_ALIAS
 # from .tensor.random import randperm   #DEFINE_ALIAS
 # from .tensor.random import rand   #DEFINE_ALIAS
-# from .tensor.random import randint   #DEFINE_ALIAS
+from .tensor.random import randint  #DEFINE_ALIAS
 # from .tensor.math import abs   #DEFINE_ALIAS
 # from .tensor.math import acos   #DEFINE_ALIAS
 # from .tensor.math import asin   #DEFINE_ALIAS

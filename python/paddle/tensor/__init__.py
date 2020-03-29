@@ -65,7 +65,7 @@
 # from .random import randn   #DEFINE_ALIAS
 # from .random import randperm   #DEFINE_ALIAS
 # from .random import rand   #DEFINE_ALIAS
-# from .random import randint   #DEFINE_ALIAS
+from .random import randint  #DEFINE_ALIAS
 # from .math import abs   #DEFINE_ALIAS
 # from .math import acos   #DEFINE_ALIAS
 # from .math import asin   #DEFINE_ALIAS
