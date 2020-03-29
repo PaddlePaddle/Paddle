@@ -94,8 +94,9 @@ class StaticModelRunner(layers.Layer):
         super(StaticModelRunner, self).__init__()
 
         # Step 0. key variable definitions
-        self._program_desc = None
+        self._fwd_program_desc = None
         self._bwd_program_desc = None
+        self._whole_program_desc = None
         # the layer outputs var desc
         self._output_descs = []
         # input, output, params name list
@@ -105,7 +106,8 @@ class StaticModelRunner(layers.Layer):
 
         # Step 1. load program desc from disk
         # the saved model hold feed, fetch & scale op, no need, can be remove
-        self._program_desc = self._load_static_model(model_dir, model_filename)
+        self._fwd_program_desc = self._load_static_model(model_dir,
+                                                         model_filename)
 
         # Step 2. set all `is_test` attributes to False
         self._change_is_test_status(False)
@@ -114,13 +116,14 @@ class StaticModelRunner(layers.Layer):
         self._load_persisitable_dict(model_dir, params_filename)
 
         # Step 4. generate backwar program desc
-        self._bwd_program_desc = self._generate_backward_desc()
+        self._whole_program_desc, self._bwd_program_desc = self._generate_backward_desc(
+        )
 
         # Step 5. recheck parameters stop gradients
         self._recheck_stop_gradients()
 
         # For Debug
-        DescParser.program_desc_to_log(self._program_desc)
+        DescParser.program_desc_to_log(self._fwd_program_desc)
         DescParser.program_desc_to_log(self._bwd_program_desc)
 
     def train(self):
@@ -183,8 +186,9 @@ class StaticModelRunner(layers.Layer):
             outputs={'Out': output_vars,
                      'OutScope': out_scope},
             attrs={
-                'fwd_block': self._program_desc.block(0),
-                'bwd_block': self._bwd_program_desc.block(0)
+                'global_block': self._whole_program_desc.block(0),
+                'start_op_index': 0,
+                'end_op_index': self._fwd_program_desc.block(0).op_size()
             })
 
         outs = output_vars
@@ -249,8 +253,8 @@ class StaticModelRunner(layers.Layer):
 
     def _generate_backward_desc(self):
         with framework._static_graph_guard():
-            assert self._program_desc is not None, "The StaticModelRunner not initialized properly."
-            program_desc_copy = core.ProgramDesc(self._program_desc)
+            assert self._fwd_program_desc is not None, "The StaticModelRunner not initialized properly."
+            program_desc_copy = core.ProgramDesc(self._fwd_program_desc)
 
             # Step 1. prepare program and related var
             # NOTE: To reuse backward interfaces, build Program firstly.
@@ -274,13 +278,13 @@ class StaticModelRunner(layers.Layer):
             self._copy_bwd_block(program_desc, bwd_program_desc,
                                  program_desc.block(0),
                                  bwd_program_desc.block(0), fwd_op_num + 2)
-            return bwd_program_desc
+            return program_desc, bwd_program_desc
 
     def _load_persisitable_dict(self, model_dir, params_filename=None):
         load_dirname = os.path.normpath(model_dir)
-        assert self._program_desc is not None, "The StaticModelRunner not initialized properly."
+        assert self._fwd_program_desc is not None, "The StaticModelRunner not initialized properly."
 
-        persis_vars = self._get_persis_vars(self._program_desc)
+        persis_vars = self._get_persis_vars(self._fwd_program_desc)
         load_var_map = {}
         for each_var in persis_vars:
             orig_each_name = each_var.name()
@@ -425,19 +429,19 @@ class StaticModelRunner(layers.Layer):
         return var_desc.persistable()
 
     def _is_parameter(self, persis_var_desc):
-        assert self._program_desc is not None, "The StaticModelRunner not initialized properly."
+        assert self._fwd_program_desc is not None, "The StaticModelRunner not initialized properly."
         # 1. firstly, param should be input of op
         input_ops = []  # op can be repeated
-        for block_idx in six.moves.range(self._program_desc.num_blocks()):
-            block = self._program_desc.block(block_idx)
+        for block_idx in six.moves.range(self._fwd_program_desc.num_blocks()):
+            block = self._fwd_program_desc.block(block_idx)
             for op_idx in six.moves.range(block.op_size()):
                 op = block.op(op_idx)
                 # NOTE: parameter is the input of a certain op
                 if persis_var_desc.name() in op.input_arg_names():
                     input_ops.append(op)
         # 2. secondly, param should not be output of op or be same op's output
-        for block_idx in six.moves.range(self._program_desc.num_blocks()):
-            block = self._program_desc.block(block_idx)
+        for block_idx in six.moves.range(self._fwd_program_desc.num_blocks()):
+            block = self._fwd_program_desc.block(block_idx)
             for op_idx in six.moves.range(block.op_size()):
                 op = block.op(op_idx)
                 if persis_var_desc.name() in op.output_arg_names():
@@ -450,9 +454,9 @@ class StaticModelRunner(layers.Layer):
 
     def _change_is_test_status(self, is_test):
         # change all `is_test` attributes
-        assert self._program_desc is not None, "The StaticModelRunner not initialized properly."
-        for i in six.moves.range(self._program_desc.num_blocks()):
-            block = self._program_desc.block(i)
+        assert self._fwd_program_desc is not None, "The StaticModelRunner not initialized properly."
+        for i in six.moves.range(self._fwd_program_desc.num_blocks()):
+            block = self._fwd_program_desc.block(i)
             for j in six.moves.range(block.op_size()):
                 op = block.op(j)
                 if op.has_attr('is_test'):
@@ -473,8 +477,8 @@ class StaticModelRunner(layers.Layer):
         old_name = param_desc.name()
         new_name = self._append_loaded_suffix(param_desc.name())
         param_desc.set_name(new_name)
-        for block_idx in six.moves.range(self._program_desc.num_blocks()):
-            block = self._program_desc.block(block_idx)
+        for block_idx in six.moves.range(self._fwd_program_desc.num_blocks()):
+            block = self._fwd_program_desc.block(block_idx)
             for op_idx in six.moves.range(block.op_size()):
                 op = block.op(op_idx)
                 op._rename_input(old_name, new_name)

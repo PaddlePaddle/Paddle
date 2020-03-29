@@ -133,7 +133,7 @@ static void CheckOutputVarStatus(Variable *src_var, Variable *dst_var,
             platform::demangle(framework::ToTypeName(src_var->Type()))));
     PADDLE_ENFORCE_EQ(src_var->Get<LoDTensor>().IsInitialized(), true,
                       platform::errors::InvalidArgument(
-                          "The tensor in output variable % get from "
+                          "The tensor in output variable %s get from "
                           "RunProgram(Grad)Op(StaticModelRunner)'s internal "
                           "scope is not initialized.",
                           var_name));
@@ -148,7 +148,7 @@ static void CheckOutputVarStatus(Variable *src_var, Variable *dst_var,
             platform::demangle(framework::ToTypeName(src_var->Type()))));
     PADDLE_ENFORCE_EQ(src_var->Get<SelectedRows>().value().IsInitialized(),
                       true, platform::errors::InvalidArgument(
-                                "The tensor in output variable % get from "
+                                "The tensor in output variable %s get from "
                                 "RunProgram(Grad)Op(StaticModelRunner)'s "
                                 "internal scope is not initialized.",
                                 var_name));
@@ -215,12 +215,13 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     auto param_names = ctx.InputNames("Params");
     auto output_var_names = ctx.OutputNames("Out");
 
-    auto *block = ctx.Attr<BlockDesc *>("fwd_block");
-    auto *fwd_program = block->Program();
+    auto *block = ctx.Attr<BlockDesc *>("global_block");
+    auto *program = block->Program();
+    auto start_op_index = ctx.Attr<int64_t>("start_op_index");
+    auto end_op_index = ctx.Attr<int64_t>("end_op_index");
 
     // NOTE(chenweihang): In order not to add new variable type, use vector
-    // here.
-    // Originally, here can use scope directly.
+    // here. Originally, here can use scope directly.
     auto *out_scope_vec = ctx.Output<StepScopeVar>("OutScope");
 
     // TODO(chenweihang): check input output size
@@ -229,7 +230,8 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
 
     // Step 2. prepare executor and init persistable variables
     framework::Executor exe(ctx.GetPlace());
-    // framework::Scope scope;
+    auto exe_ctx = exe.Prepare(*program, 0, {}, true);
+
     out_scope_vec->emplace_back(new framework::Scope());
     framework::Scope &scope = *(out_scope_vec->front());
 
@@ -238,7 +240,8 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     details::ShareVarsIntoScope(param_vars, param_names, &scope);
 
     // Step 3. run ops
-    exe.Run(*fwd_program, &scope, 0, false, true, {}, true, true);
+    exe.RunPartialPreparedContext(exe_ctx.get(), &scope, start_op_index,
+                                  end_op_index, false, true, true);
 
     // Step 4. Get Output
     details::ShareVarsFromScope(output_vars, output_var_names, &scope);
@@ -258,40 +261,17 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
     auto input_grad_vars = ctx.MultiOutputVar(framework::GradVarName("X"));
     auto param_grad_vars = ctx.MultiOutputVar(framework::GradVarName("Params"));
 
-    VLOG(2) << "input_grad_vars len: " << input_grad_vars.size();
-
     auto output_grad_var_names = ctx.InputNames(framework::GradVarName("Out"));
     auto input_grad_var_names = ctx.OutputNames(framework::GradVarName("X"));
     auto param_grad_names = ctx.OutputNames(framework::GradVarName("Params"));
-    // remove prefix Gtmp@
-    // auto rm_prefix_func = [](std::string &name) {
-    //   name = std::move(name.substr(5));
-    // };
-    // std::for_each(input_grad_var_names.begin(), input_grad_var_names.end(),
-    //               rm_prefix_func);
-    // std::for_each(param_grad_names.begin(), param_grad_names.end(),
-    //               rm_prefix_func);
 
-    std::stringstream ss;
-    ss << "Maker names: ";
-    for (size_t i = 0; i < input_grad_var_names.size(); ++i) {
-      ss << input_grad_var_names[i] << ", ";
-    }
-    for (size_t i = 0; i < param_grad_names.size(); ++i) {
-      ss << param_grad_names[i] << ", ";
-    }
-    VLOG(2) << ss.str();
+    auto *block = ctx.Attr<BlockDesc *>("global_block");
+    auto *program = block->Program();
 
-    auto output_names = ctx.OutputNames(framework::GradVarName("Params"));
-    std::stringstream ss2;
-    ss2 << "Output names: ";
-    for (size_t i = 0; i < output_names.size(); ++i) {
-      ss2 << output_names[i] << ", ";
-    }
-    VLOG(2) << ss2.str();
-
-    auto *block = ctx.Attr<BlockDesc *>("bwd_block");
-    auto *bwd_program = block->Program();
+    auto orig_end_op_index = ctx.Attr<int64_t>("end_op_index");
+    // NOTE: skip `Shape` and loss op created by fluid.backward.gradients
+    int64_t start_op_index = orig_end_op_index + 2;
+    int64_t end_op_index = block->OpSize();
 
     auto *out_scope_vec = ctx.Input<StepScopeVar>("OutScope");
     PADDLE_ENFORCE_EQ(out_scope_vec->size(), 1,
@@ -302,14 +282,13 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
     auto &scope = *(out_scope_vec->front());
 
     // skip delete vars, out@grad & params@grad
-    /*
-    std::vector<std::string> skip_vars;
-    std::copy(output_grad_var_names.begin(), output_grad_var_names.end(),
-              std::back_inserter(skip_vars));
-    std::copy(param_grad_names.begin(), param_grad_names.end(),
-              std::back_inserter(skip_vars));
-    VLOG(2) << details::GetSkipEagerDeletionVarsDebugString(skip_vars);
-    */
+    // std::vector<std::string> skip_vars;
+    // std::copy(output_grad_var_names.begin(), output_grad_var_names.end(),
+    //           std::back_inserter(skip_vars));
+    // std::copy(param_grad_names.begin(), param_grad_names.end(),
+    //           std::back_inserter(skip_vars));
+    // VLOG(2) << details::GetSkipEagerDeletionVarsDebugString(skip_vars);
+    auto exe_ctx = exe.Prepare(*program, 0, {}, true);
 
     details::ShareVarsIntoScope(output_grad_vars, output_grad_var_names,
                                 &scope);
@@ -318,8 +297,8 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
     VLOG(3) << framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 
     // Step 3. run ops
-    // exe.Run(*bwd_program, &scope, 0, false, true, skip_vars);
-    exe.Run(*bwd_program, &scope, 0, false, true, {}, true, true);
+    exe.RunPartialPreparedContext(exe_ctx.get(), &scope, start_op_index,
+                                  end_op_index, false, true, true);
 
     // Step 4. copy outputs
     // TODO(chenweihang): need copy?
@@ -327,9 +306,6 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
                                ctx.GetPlace(), &scope);
     details::CopyVarsFromScope(param_grad_vars, param_grad_names,
                                ctx.GetPlace(), &scope);
-
-    // Debug info: scope info when run end
-    VLOG(3) << framework::GenScopeTreeDebugInfo(out_scope_vec->front());
 
     // Step 5. clear
     // scope_vec->clear();

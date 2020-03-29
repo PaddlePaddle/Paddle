@@ -60,12 +60,15 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
               "contains at most one scope."
               "NOTE: Do not use Scope directly because Scope output is not "
               "currently supported.");
-    AddAttr<BlockDesc*>("fwd_block",
+    AddAttr<BlockDesc*>("global_block",
                         "(BlockDesc *)"
-                        "The global block of froward progarm desc.");
-    AddAttr<BlockDesc*>("bwd_block",
-                        "(BlockDesc *)"
-                        "The global block of backward progarm desc.");
+                        "The global block of executed program desc.");
+    AddAttr<int64_t>("start_op_index",
+                     "(int64_t)"
+                     "The index of the op to start execution");
+    AddAttr<int64_t>("end_op_index",
+                     "(int64_t)"
+                     "The index of the op to stop execution");
     AddComment(R"DOC(
 RunProgram operator.
 
@@ -108,16 +111,16 @@ class RunProgramGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  void Apply(GradOpPtr<T> retv) const override {
-    retv->SetType("run_program_grad");
-    retv->SetInput("X", this->Input("X"));
-    retv->SetInput("Params", this->Input("Params"));
-    retv->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-    retv->SetInput("OutScope", this->Output("OutScope"));
-    retv->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    retv->SetOutput(framework::GradVarName("Params"),
-                    this->InputGrad("Params"));
-    retv->SetAttrMap(this->Attrs());
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("run_program_grad");
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput("Params", this->Input("Params"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetInput("OutScope", this->Output("OutScope"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetOutput(framework::GradVarName("Params"),
+                       this->InputGrad("Params"));
+    grad_op->SetAttrMap(this->Attrs());
   }
 };
 

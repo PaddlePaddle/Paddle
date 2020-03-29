@@ -83,7 +83,7 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
         optimizer = fluid.optimizer.SGD(learning_rate=0.001)
         optimizer.minimize(avg_loss)
 
-        pu.program_to_code(main_program, skip_op_callstack=True)
+        # pu.program_to_code(main_program, skip_op_callstack=True)
 
         place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
@@ -144,14 +144,12 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
                 sgd.minimize(avg_loss)
                 while_net.clear_gradients()
 
-            dy_x_data = img.numpy()
             dy_out = avg_loss.numpy()
-
             dy_param_value = {}
             for param in while_net.parameters():
                 dy_param_value[param.name] = param.numpy()
 
-        return dy_x_data, dy_out, dy_param_init_value, dy_param_value
+        return dy_out, dy_param_init_value, dy_param_value
 
     def load_and_train_static(self):
         with new_program_scope():
@@ -159,8 +157,7 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
             fluid.default_main_program().random_seed = self.seed
             np.random.seed(self.seed)
 
-            img = fluid.data(
-                name='img', shape=[None, 1, 28, 28], dtype='float32')
+            img = fluid.data(name='img', shape=[None, 784], dtype='float32')
             label = fluid.data(name='label', shape=[None, 1], dtype='int64')
 
             pred = while_softmax_regression(img)
@@ -191,48 +188,46 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
                     param.name)
 
             loader = fluid.io.DataLoader.from_generator(
-                feed_list=[img, label], capacity=5, iterable=iterable)
+                feed_list=[img, label], capacity=5, iterable=True)
             loader.set_batch_generator(
                 self._random_batch_reader(), places=place)
 
             for data in loader():
-                static_x_data = np.array([x[0] for x in data])
-
                 fetch_list = [avg_loss.name]
                 fetch_list.extend(static_param_name_list)
 
-                out = exe.run(main_program, feed=data, fetch_list=[avg_loss])
+                out = exe.run(fluid.default_main_program(),
+                              feed=data,
+                              fetch_list=[avg_loss])
 
             static_param_value = {}
             static_out = out[0]
             for i in range(1, len(out)):
                 static_param_value[static_param_name_list[i - 1]] = out[i]
 
-        return static_x_data, static_out, static_param_init_value, static_param_value
+        return static_out, static_param_init_value, static_param_value
 
     def test_while_no_params_filename(self):
         # Phase 1. run and save static model
         self.train_and_save_model()
 
         # # Phase 2. load model & train dygraph
-        # dy_x_data, dy_out, dy_param_init_value, dy_param_value = \
-        #     self.load_and_train_dygraph()
+        dy_out, dy_param_init_value, dy_param_value = \
+            self.load_and_train_dygraph()
 
-        # static_x_data, static_out, static_param_init_value, static_param_value = \
-        #     self.load_and_train_static()
+        static_out, static_param_init_value, static_param_value = \
+            self.load_and_train_static()
 
-        # # Phase 3. compare
-        # self.assertTrue(np.array_equal(static_x_data, dy_x_data))
+        # Phase 3. compare
+        for key, value in six.iteritems(static_param_init_value):
+            key += core.loaded_var_suffix()
+            self.assertTrue(np.array_equal(value, dy_param_init_value[key]))
 
-        # for key, value in six.iteritems(static_param_init_value):
-        #     key += core.loaded_var_suffix()
-        #     self.assertTrue(np.array_equal(value, dy_param_init_value[key]))
+        self.assertTrue(np.allclose(static_out, dy_out))
 
-        # self.assertTrue(np.allclose(static_out, dy_out))
-
-        # for key, value in six.iteritems(static_param_value):
-        #     key += core.loaded_var_suffix()
-        #     self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-5))
+        for key, value in six.iteritems(static_param_value):
+            key += core.loaded_var_suffix()
+            self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-5))
 
 
 if __name__ == '__main__':
