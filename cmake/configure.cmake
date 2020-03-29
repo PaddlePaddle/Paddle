@@ -70,6 +70,7 @@ if(WITH_GPU)
     add_definitions(-DPADDLE_WITH_CUDA)
     add_definitions(-DEIGEN_USE_GPU)
     add_definitions(-DEIGEN_MAX_CPP_VER=11)
+    add_definitions(-fabi-version=4)
 
     FIND_PACKAGE(CUDA REQUIRED)
 
@@ -116,6 +117,7 @@ elseif(WITH_AMD_GPU)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__HIP_PLATFORM_HCC__")
 else()
     add_definitions(-DHPPL_STUB_FUNC)
+    add_definitions(-fabi-version=4)
     list(APPEND CMAKE_CXX_SOURCE_FILE_EXTENSIONS cu)
 endif()
 
