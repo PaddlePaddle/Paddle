@@ -297,8 +297,7 @@ class NCEOpGradVarTypeInference : public framework::VarTypeInference {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(NCEGradOpNoNeedBufferVarInference,
-                                      "Bias");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(NCEGradOpNoNeedBufferVarInference, "Bias");
 
 }  // namespace operators
 }  // namespace paddle
