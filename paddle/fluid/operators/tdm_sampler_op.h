@@ -228,7 +228,7 @@ template <typename DeviceContext, typename T>
 class TDMSamplerKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *input_var = context.InputVar("Input");
+    auto *input_var = context.InputVar("X");
     auto *travel_var = context.InputVar("Travel");
     auto *layer_var = context.InputVar("Layer");
 
