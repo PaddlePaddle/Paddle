@@ -876,7 +876,8 @@ class TestLayer(LayerTest):
                 emb_rlt = emb(words[i])
                 embs3.append(emb_rlt)
 
-            embs3 = layers.concat(input=embs3, axis=1)
+            embs3 = layers.concat(
+                input=embs3, axis=fluid.dygraph.to_variable(np.array([1])))
             nce = nn.NCE(num_total_classes=dict_size,
                          dim=embs3.shape[1],
                          num_neg_samples=2,
@@ -903,7 +904,9 @@ class TestLayer(LayerTest):
             for i in range(window_size):
                 words.append(base.to_variable(inp_word[i]))
             sample_weights = layers.fill_constant(
-                shape=[5, 1], dtype='float32', value=1)
+                shape=fluid.dygraph.to_variable(np.array([5, 1])),
+                dtype='float32',
+                value=1)
             emb = nn.Embedding(
                 size=[dict_size, 32], param_attr='emb.w', is_sparse=False)
 
@@ -954,6 +957,37 @@ class TestLayer(LayerTest):
                 np.array_equal(nce1.weight.numpy(), nce2.weight.numpy()))
             self.assertTrue(
                 np.array_equal(nce1.bias.numpy(), nce2.bias.numpy()))
+
+    def test_one_hot(self):
+        with self.dynamic_graph():
+            label = fluid.dygraph.to_variable(np.array([[1], [1], [3], [0]]))
+            one_hot_label1 = fluid.layers.one_hot(input=label, depth=4)
+            one_hot_label2 = fluid.layers.one_hot(
+                input=label, depth=fluid.dygraph.to_variable(np.array([4])))
+            self.assertTrue(
+                np.array_equal(one_hot_label1.numpy(), one_hot_label2.numpy()))
+
+    def test_split(self):
+        with self.dynamic_graph():
+            input = fluid.dygraph.to_variable(np.random.random((3, 8, 5)))
+            x0, x1 = fluid.layers.split(input, num_or_sections=2, dim=1)
+            x00, x11 = fluid.layers.split(
+                input,
+                num_or_sections=2,
+                dim=fluid.dygraph.to_variable(np.array([1])))
+            self.assertTrue(np.array_equal(x0.numpy(), x00.numpy()))
+            self.assertTrue(np.array_equal(x1.numpy(), x11.numpy()))
+
+    def test_topk(self):
+        with self.dynamic_graph():
+            input = fluid.dygraph.to_variable(np.random.random((13, 11)))
+            top5_values1, top5_indices1 = layers.topk(input, k=5)
+            top5_values2, top5_indices2 = layers.topk(
+                input, k=fluid.dygraph.to_variable(np.array([5])))
+            self.assertTrue(
+                np.array_equal(top5_values1.numpy(), top5_values2.numpy()))
+            self.assertTrue(
+                np.array_equal(top5_indices1.numpy(), top5_indices2.numpy()))
 
     def test_conv3d(self):
         with self.static_graph():

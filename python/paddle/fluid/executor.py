@@ -216,18 +216,12 @@ def check_feed_shape_type(var, feed, num_places=1):
             the feed value
     """
     if var.desc.need_check_feed():
-        feed_shape = feed.shape()
-        if six.PY2:
-            feed_shape[0] = long(feed_shape[0] /
-                                 num_places) if len(feed.lod()) == 0 else -1
-        else:
-            feed_shape[0] = int(feed_shape[0] /
-                                num_places) if len(feed.lod()) == 0 else -1
-        if not dimension_is_compatible_with(feed_shape, var.shape):
+        diff_shape = core.diff_tensor_shape(feed, var.desc, num_places)
+        if diff_shape is not None:
             raise ValueError(
                 'The fed Variable %r should have dimensions = %d, shape = '
                 '%r, but received fed shape %r on each device' %
-                (var.name, len(var.shape), var.shape, feed_shape))
+                (var.name, len(var.shape), var.shape, diff_shape))
         if not dtype_is_compatible_with(feed._dtype(), var.dtype):
             var_dtype_format = convert_dtype(var.dtype) if isinstance(
                 var.dtype, core.VarDesc.VarType) else var.dtype
@@ -646,11 +640,6 @@ class Executor(object):
 
             exe.feed_and_split_tensor_into_local_scopes(feed_tensor_dict)
         elif isinstance(feed, list) or isinstance(feed, tuple):
-            if len(feed) != len(program._places):
-                raise ValueError(
-                    "Feed a list of tensor, the list should be the same size as places"
-                )
-
             res = list()
             for i, each in enumerate(feed):
                 if not isinstance(each, dict):

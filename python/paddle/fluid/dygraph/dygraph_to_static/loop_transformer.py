@@ -19,8 +19,10 @@ import gast
 
 from collections import defaultdict
 from paddle.fluid import unique_name
-from paddle.fluid.dygraph.dygraph_to_static.utils import generate_name_node
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
+from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+from paddle.fluid.dygraph.dygraph_to_static.utils import generate_name_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_constant_variable_node
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_static_variable_gast_node
@@ -62,6 +64,55 @@ def create_while_node(condition_name, body_name, loop_var_names):
     return assign_node
 
 
+class LogicalOpTransformer(gast.NodeTransformer):
+    """
+    Transform python boolean op into Paddle logical op
+    """
+
+    def __init__(self, node):
+        self.root = node
+
+    def transform(self):
+        return self.visit(self.root)
+
+    def visit_UnaryOp(self, node):
+        self.generic_visit(node)
+        if isinstance(node.op, gast.Not):
+            arg = ast_to_source_code(node.operand)
+            new_node_str = "fluid.layers.logical_not({})".format(arg)
+            # gast.parse returns Module(body=[expr(value=...)])
+            new_node = gast.parse(new_node_str).body[0].value
+            return new_node
+        return node
+
+    def visit_BoolOp(self, node):
+        self.generic_visit(node)
+        if isinstance(node.op, gast.And):
+            new_node = self._create_bool_op_node(node.values, 'and')
+        elif isinstance(node.op, gast.Or):
+            new_node = self._create_bool_op_node(node.values, 'or')
+        else:
+            raise TypeError(
+                "Only supports and/or syntax in control flow if statement.")
+        return new_node
+
+    def _create_bool_op_node(self, nodes, api_type):
+        assert len(
+            nodes
+        ) > 1, "The length of BoolOp should be at least 2, but received {}.".format(
+            len(nodes))
+        if len(nodes) > 2:
+            # Creates logic_and/logic_or node recursively.
+            pre_assign_node = self._create_bool_op_node(nodes[:2], api_type)
+            nodes = [pre_assign_node] + nodes[2:]
+        args = [ast_to_source_code(child) for child in nodes]
+        new_node_str = "fluid.layers.logical_{}(x={}, y={})".format(
+            api_type, args[0], args[1])
+        # gast.parse return Module(body=[expr(...)])
+        new_node = gast.parse(new_node_str).body[0].value
+        return new_node
+
+
 class NameVisitor(gast.NodeVisitor):
     '''
     Analysis name liveness for loop transformer
@@ -70,8 +121,6 @@ class NameVisitor(gast.NodeVisitor):
     def __init__(self, root_node):
         # Set of gast.Name or gast.Attribute for variables
         self.current_seen_vars = set()
-        # list of nodes of current visit node
-        self.ancestor_nodes = []
 
         # List of gast.While/gast.For nodes
         self.current_loop = []
@@ -80,6 +129,10 @@ class NameVisitor(gast.NodeVisitor):
         self.before_loop_body_vars = defaultdict(set)
         self.in_loop_vars = defaultdict(set)
 
+        self.static_analysis_visitor = StaticAnalysisVisitor(root_node)
+        self.node_to_wrapper_map = self.static_analysis_visitor.get_node_to_wrapper_map(
+        )
+
         self.visit(root_node)
 
     def is_control_flow_loop(self, node):
@@ -87,8 +140,8 @@ class NameVisitor(gast.NodeVisitor):
         return True
 
     def get_loop_var_names(self, node):
-        assert isinstance(node, (gast.While,
-                                 gast.For)), "Input node is not gast loop node"
+        assert isinstance(
+            node, (gast.While, gast.For)), "Input node is not gast loop node"
         loop_var_names = set()
         create_var_names = set()
         read_context = {type(gast.Load()), type(gast.AugLoad())}
@@ -116,6 +169,9 @@ class NameVisitor(gast.NodeVisitor):
         if self._is_call_func_name_node(node):
             self.generic_visit(node)
             return
+        if node.id == "False" or node.id == "True" or node.id == "None":
+            self.generic_visit(node)
+            return
 
         self.current_seen_vars.add(node)
         for loop_node in self.current_loop:
@@ -123,17 +179,14 @@ class NameVisitor(gast.NodeVisitor):
         self.generic_visit(node)
 
     def visit(self, node):
-        self.ancestor_nodes.append(node)
         method = 'visit_' + node.__class__.__name__
         visitor = getattr(self, method, self.generic_visit)
         ret = visitor(node)
-        self.ancestor_nodes.pop()
         return ret
 
     def visit_Attribute(self, node):
         if self._is_call_func_name_node(node):
             return
-
         attr_full_name = get_attribute_full_name(node)
         self.current_seen_vars.add(node)
         for loop_node in self.current_loop:
@@ -166,10 +219,9 @@ class NameVisitor(gast.NodeVisitor):
         return ret
 
     def _is_call_func_name_node(self, node):
-        if self.ancestor_nodes:
-            parent_node = self.ancestor_nodes[-1]
-            if isinstance(parent_node, gast.Call) and parent_node.func == node:
-                return True
+        parent_node = self.node_to_wrapper_map[node].parent.node
+        if isinstance(parent_node, gast.Call) and parent_node.func == node:
+            return True
         return False
 
 
@@ -391,6 +443,9 @@ class LoopTransformer(gast.NodeTransformer):
         for name in loop_var_names:
             new_stmts.append(to_static_variable_gast_node(name))
 
+        logical_op_transformer = LogicalOpTransformer(node.test)
+        cond_value_node = logical_op_transformer.transform()
+
         condition_func_node = gast.FunctionDef(
             name=unique_name.generate(WHILE_CONDITION_PREFIX),
             args=gast.arguments(
@@ -407,7 +462,7 @@ class LoopTransformer(gast.NodeTransformer):
                 kw_defaults=None,
                 kwarg=None,
                 defaults=[]),
-            body=[gast.Return(value=node.test)],
+            body=[gast.Return(value=cond_value_node)],
             decorator_list=[],
             returns=None,
             type_comment=None)

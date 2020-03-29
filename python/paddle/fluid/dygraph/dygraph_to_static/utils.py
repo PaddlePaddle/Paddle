@@ -45,8 +45,15 @@ def is_api_in_module(node, module_prefix):
     assert isinstance(node, gast.Call), "Input non-Call node for is_dygraph_api"
     func_str = astor.to_source(gast.gast_to_ast(node.func))
     try:
+        # TODO(liym27):
+        #  Consider a better to import modules like:
+        #  source_file = inspect.getfile(dyfunc)
+        #  import_statements = ImportVisitor(source_file).transform()
+        #  import_str = "".join(import_statements)
         import paddle.fluid as fluid
         import paddle
+        from paddle.fluid.dygraph import to_variable
+        import paddle.fluid.dygraph as dygraph
         return eval("_is_api_in_module_helper({}, '{}')".format(func_str,
                                                                 module_prefix))
     except NameError:
@@ -86,8 +93,10 @@ def is_control_flow_to_transform(node, var_name_to_type):
         "The type of input node must be gast.AST, but received %s." % type(node)
 
     if isinstance(node, gast.If):
-        # TODO: make a better condition
-        return True
+        from .ifelse_transformer import IfConditionVisitor
+        if_visitor = IfConditionVisitor(
+            node.test, node_var_type_map=var_name_to_type)
+        return if_visitor.is_control_flow()
 
     if isinstance(node, gast.For):
         # TODO: make a better condition
@@ -148,8 +157,8 @@ def _add_keywords_to(node, dygraph_api_name):
 def is_to_variable(node):
     assert isinstance(node, gast.Call)
     if is_dygraph_api(node):
-        api_name = node.func.attr
-        return api_name == "to_variable"
+        api_name = ast_to_source_code(node.func).strip()
+        return api_name.endswith("to_variable")
     return False
 
 
@@ -230,12 +239,19 @@ def update_args_of_func(node, dygraph_node, method_name):
 
 
 def create_api_shape_node(tensor_shape_node):
-    assert isinstance(tensor_shape_node, gast.Attribute)
-    api_shape_node = gast.Call(
-        func=gast.parse('fluid.layers.shape').body[0].value,
-        args=[tensor_shape_node.value],
-        keywords=[])
-    return api_shape_node
+    assert isinstance(tensor_shape_node, (gast.Attribute, gast.Subscript))
+
+    if isinstance(tensor_shape_node, gast.Attribute):
+        api_shape_node = gast.Call(
+            func=gast.parse('fluid.layers.shape').body[0].value,
+            args=[tensor_shape_node.value],
+            keywords=[])
+        return api_shape_node
+
+    if isinstance(tensor_shape_node, gast.Subscript):
+        result_node = copy.deepcopy(tensor_shape_node)
+        result_node.value = create_api_shape_node(result_node.value)
+        return result_node
 
 
 def get_constant_variable_node(name, value, shape=[1], dtype='int64'):
@@ -280,6 +296,8 @@ def create_funcDef_node(nodes, name, input_args, return_name_ids):
     # add return statement
     if return_name_ids:
         nodes.append(gast.Return(value=generate_name_node(return_name_ids)))
+    else:
+        nodes.append(gast.Return(value=None))
     func_def_node = gast.FunctionDef(
         name=name,
         args=input_args,
@@ -290,30 +308,68 @@ def create_funcDef_node(nodes, name, input_args, return_name_ids):
     return func_def_node
 
 
-def ast_to_func(ast_root, func_name, delete_on_exit=True):
+class ImportVisitor(gast.NodeVisitor):
+    """
+    Visitor to parse all `import` statement.
+    """
+
+    def __init__(self, file_name):
+        self.root = self.file_to_ast(file_name)
+        self.import_statements = []
+
+    def transform(self):
+        if self.root is not None:
+            self.visit(self.root)
+        self.after_visit()
+        return self.import_statements
+
+    def visit_Import(self, node):
+        self.import_statements.append(ast_to_source_code(node))
+        return node
+
+    def visit_ImportFrom(self, node):
+        self.import_statements.append(ast_to_source_code(node))
+        return node
+
+    def after_visit(self):
+        essential_statements = ["import paddle.fluid as fluid\n"]
+        new_stmts = set(essential_statements) - set(self.import_statements)
+        self.import_statements.extend(list(new_stmts))
+
+    def file_to_ast(self, file_name):
+        root = None
+        if file_name is not None:
+            with open(file_name) as f:
+                root = gast.parse(f.read())
+        return root
+
+
+def index_in_list(array_list, item):
+    try:
+        return array_list.index(item)
+    except ValueError:
+        # Item not in array_list
+        return -1
+
+
+def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     """
     Transform modified AST of decorated function into python callable object.
     """
-    if not isinstance(ast_root, (gast.AST, ast.AST)):
-        raise TypeError(
-            "Type of ast_root should be gast.AST or ast.AST, but received %s." %
-            type(ast_root))
-    if isinstance(ast_root, gast.AST):
-        ast_root = gast.gast_to_ast(ast_root)
-    source = astor.to_source(ast_root)
+    source = ast_to_source_code(ast_root)
     if six.PY2:
         source = source.encode('utf-8')
         f = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)
     else:
         f = tempfile.NamedTemporaryFile(
             mode='w', suffix='.py', delete=False, encoding='utf-8')
-
-    # TODO(Aurelius84): more elegant way to transform ast into callable object
-    import_str = "import paddle\n" \
-                 "import paddle.fluid as fluid\n" \
-                 "import paddle.fluid.layers as layers\n" \
-                 "import numpy as np\n" \
-                 "import numpy\n"
+    # `sys.modules` is used to cache all modules and packages that avoids
+    # to import same modules twice by the import mechanism in python.
+    # We insert the import statements defined in source file into the tmpfile
+    # to make it easier to import external functions correctly.
+    source_file = inspect.getfile(dyfunc)
+    import_statements = ImportVisitor(source_file).transform()
+    import_str = "".join(import_statements)
     with f:
         module_name = os.path.basename(f.name[:-3])
         f.write(import_str)
@@ -322,9 +378,33 @@ def ast_to_func(ast_root, func_name, delete_on_exit=True):
     if delete_on_exit:
         atexit.register(lambda: os.remove(f.name))
     module = imp.load_source(module_name, f.name)
+    func_name = dyfunc.__name__
     if not hasattr(module, func_name):
         raise ValueError(
             'Function: %s doesn\'t exist in the Module transformed from AST.' %
             func_name)
 
     return getattr(module, func_name), f.name
+
+
+def ast_to_source_code(ast_node):
+    """
+    Transformers ast node into source code.
+    """
+    if not isinstance(ast_node, (gast.AST, ast.AST)):
+        raise TypeError(
+            "Type of ast_root should be gast.AST or ast.AST, but received %s." %
+            type(ast_node))
+    if isinstance(ast_node, gast.AST):
+        ast_node = gast.gast_to_ast(ast_node)
+    source_code = astor.to_source(ast_node)
+    return source_code
+
+
+def create_assign_node(name, node):
+    """
+    Creates a `gast.Assign` node by given name_id as target and node as value.
+    """
+    targets = generate_name_node(name, ctx=gast.Store())
+    assign_node = gast.Assign(targets=[targets], value=node)
+    return targets, assign_node

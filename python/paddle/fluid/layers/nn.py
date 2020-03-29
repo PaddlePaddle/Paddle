@@ -4538,12 +4538,13 @@ def split(input, num_or_sections, dim=-1, name=None):
     if in_dygraph_mode():
         inputs = {'X': [input]}
         attrs = {}
-        if isinstance(dim, int):
-            dim = (len(input.shape) + dim) if dim < 0 else dim
-            attrs['axis'] = dim
-        else:
-            dim.stop_gradient = True
-            inputs['AxisTensor'] = [dim]
+        if isinstance(dim, Variable):
+            dim = dim.numpy()
+            assert dim.shape == (1,
+                                 ), "dim of type Variable should have shape [1]"
+            dim = dim[0]
+        dim = (len(input.shape) + dim) if dim < 0 else dim
+        attrs['axis'] = dim
 
         if isinstance(num_or_sections, int):
             num = num_or_sections
@@ -4920,16 +4921,22 @@ def topk(input, k, name=None):
     """
     inputs = {"X": [input]}
     attrs = {}
-    if isinstance(k, Variable):
-        inputs['K'] = [k]
-    else:
-        attrs = {'k': k}
 
     if in_dygraph_mode():
+        if isinstance(k, Variable):
+            k = k.numpy()
+            assert k.shape == (1, ), "k of type Variable should have shape [1]"
+            k = k[0]
+        attrs = {'k': k}
         outs = core.ops.top_k(inputs, attrs)
         outs['Out'][0].stop_gradient = True
         outs['Indices'][0].stop_gradient = True
         return outs['Out'][0], outs['Indices'][0]
+
+    if isinstance(k, Variable):
+        inputs['K'] = [k]
+    else:
+        attrs = {'k': k}
 
     helper = LayerHelper("top_k", **locals())
     values = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -5604,6 +5611,11 @@ def one_hot(input, depth, allow_out_of_range=False):
             one_hot_label = fluid.layers.one_hot(input=label, depth=4)
     """
     if in_dygraph_mode():
+        if isinstance(depth, Variable):
+            depth = depth.numpy()
+            assert depth.shape == (
+                1, ), "depth of type Variable should have shape [1]"
+            depth = depth[0]
         inputs = {'X': [input]}
         attrs = {'depth': depth, 'allow_out_of_range': allow_out_of_range}
         outs = core.ops.one_hot(inputs, attrs)

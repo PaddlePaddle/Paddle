@@ -48,6 +48,15 @@ class PassTest(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         return places
 
+    def grad(self, var):
+        grad_name = var.name + "@GRAD"
+        return self.main_program.global_block().var(grad_name)
+
+    def append_gradients(self, outs):
+        with fluid.program_guard(self.main_program, self.startup_program):
+            loss = fluid.layers.mean(outs)
+            fluid.backward.append_backward(loss)
+
     def check_output(self, startup_on_cpu=False, atol=1e-5):
         '''
         Check whether the fetched outputs of the origin program and the
@@ -143,7 +152,7 @@ class PassTest(unittest.TestCase):
                 np.allclose(
                     outs_opt[i], outs[i], atol=atol),
                 "Output < {} > has diff at {}, expected {} but got {}".format(
-                    self.fetch_list[i].name, str(place), outs_opt[i], outs[i]))
+                    self.fetch_list[i], str(place), outs_opt[i], outs[i]))
 
     def _check_fused_ops(self, program):
         '''
