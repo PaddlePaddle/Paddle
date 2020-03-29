@@ -38,6 +38,18 @@ from ._utils import ParentWatchDog
 MP_INDICES_CHECK_INTERVAL = 5
 
 
+def _default_collate_fn(batch):
+    # batch each field
+    slots = []
+    for items in batch:
+        for i, item in enumerate(items):
+            if len(slots) < len(items):
+                slots.append([item])
+            else:
+                slots[i].append(item)
+    return [np.stack(slot, axis=0) for slot in slots]
+
+
 class _DataLoaderIterBase(object):
     """
     Iterator implement of DataLoader, will load and feed mini-batch
@@ -54,9 +66,10 @@ class _DataLoaderIterBase(object):
         self._return_list = loader.return_list
         self._batch_sampler = loader.batch_sampler
         self._sampler_iter = iter(loader.batch_sampler)
-        self._collate_fn = loader.collate_fn
+        self._collate_fn = loader.collate_fn or _default_collate_fn
         self._num_workers = loader.num_workers
         self._use_buffer_reader = loader.use_buffer_reader
+        self._use_shared_memory = loader.use_shared_memory
         self._timeout = loader.timeout if loader.timeout > 0 else MP_INDICES_CHECK_INTERVAL
         self._worker_init_fn = loader.worker_init_fn
 
@@ -139,18 +152,9 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                 if self._collate_fn is not None:
                     batch = self._collate_fn(batch)
 
-                # batch each field
-                slots = []
-                for items in batch:
-                    for i, item in enumerate(items):
-                        if len(slots) < len(items):
-                            slots.append([item])
-                        else:
-                            slots[i].append(item)
-
                 # pack as LoDTensorArray
                 array = core.LoDTensorArray()
-                for slot in slots:
+                for slot in batch:
                     if not isinstance(slot, core.LoDTensor):
                         self._check_input_array(slot)
                         tmp = core.LoDTensor()
@@ -332,7 +336,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             # some shared memory objects may have been applied for but have not yet
             # been put into the inter-process Queue. This part of the object needs
             # to be cleaned up when the process ends.
-            CleanupFuncRegistrar.register(_cleanup_mmap, signals=[])
+            CleanupFuncRegistrar.register(_cleanup_mmap)
 
             # set signal handler
             core._set_process_signal_handler()
@@ -374,25 +378,20 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                 except Exception as e:
                     out_queue.put((idx, e))
                 else:
-                    # copy batch data to shared memory
-                    slots = []
-                    for items in batch:
-                        for i, item in enumerate(items):
-                            if len(slots) < len(items):
-                                slots.append([item])
-                            else:
-                                slots[i].append(item)
-
-                    tensor_list = core._convert_to_tensor_list(slots)
-                    out_queue.put((idx, tensor_list))
-                    core._remove_tensor_list_mmap_fds(tensor_list)
+                    if self._use_shared_memory:
+                        tensor_list = core._convert_to_tensor_list(batch)
+                        out_queue.put((idx, tensor_list))
+                        core._remove_tensor_list_mmap_fds(tensor_list)
+                    else:
+                        out_queue.put((idx, batch))
         except KeyboardInterrupt:
             # NOTE: Main process will raise KeyboardInterrupt anyways, ignore it in child process
             pass
         except:
             six.reraise(*sys.exc_info())
         finally:
-            _cleanup_mmap()
+            if self._use_shared_memory:
+                _cleanup_mmap()
 
         if self._workers_done_event.is_set():
             self._clear_and_remove_data_queue()
@@ -407,9 +406,22 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     self._exit_thread_unexpectedly()
                 else:
                     try:
+                        # pack as LoDTensorArray
                         array = core.LoDTensorArray()
-                        for tensor in batch:
-                            array.append(tensor)
+                        if self._use_shared_memory:
+                            for tensor in batch:
+                                array.append(tensor)
+                        else:
+                            # LoDTensor not in shared memory is not
+                            # serializable, cannot be create in workers
+                            for slot in batch:
+                                if not isinstance(slot, core.LoDTensor):
+                                    # self._check_input_array(slot)
+                                    tmp = core.LoDTensor()
+                                    tmp.set(slot, core.CPUPlace())
+                                    slot = tmp
+                                array.append(slot)
+
                         if not self._blocking_queue.push(array):
                             self._blocking_queue.close()
                     except:

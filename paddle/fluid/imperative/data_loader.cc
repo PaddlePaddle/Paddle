@@ -121,8 +121,8 @@ void ThrowErrorIfLoadProcessFailed() {
     for (auto pid_it = pids_set->begin(); pid_it != pids_set->end(); ++pid_it) {
       process_pid = *pid_it;
       // Use waitid rather than waitpid so that we can set NOWAIT, and that
-      // Python
-      // and other handlers can get whatever info they want about the child.
+      // Python and other handlers can get whatever info they want about the
+      // child.
       infop.si_pid = 0;
       VLOG(3) << "DataLoader: monitor loader child process " << process_pid;
       error = waitid(P_PID, process_pid, &infop, WEXITED | WNOHANG | WNOWAIT);
@@ -159,7 +159,9 @@ void ThrowErrorIfLoadProcessFailed() {
               "capacity is set by from_generator(..., capacity=xx, ...).\n"
               "  2. If run DataLoader by DataLoader(dataset, ...), queue "
               "capacity is set as 2 times of the max value of num_workers and "
-              "len(places).",
+              "len(places).\n"
+              "  3. If run by DataLoader(dataset, ..., use_shared_memory=True),"
+              " set use_shared_memory=False for not using shared memory.",
               process_pid, strsignal(infop.si_status)));
         } else {
           PADDLE_THROW(platform::errors::Fatal(

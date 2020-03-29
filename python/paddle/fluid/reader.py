@@ -149,6 +149,11 @@ class DataLoader(object):
             batch data asynchronously, so it would speed up data feeding 
             and occupies a little more CPU or GPU memory, i.e., the memory
             of one batch input data. Default True.
+        use_shared_memory (bool): whether to use shared memory to speed up
+            putting data into inter-process queue, enable use_shared_memory
+            only when the shared memory space on your machine(e.g. space of
+            '/dev/shm' on Linux operating sysytem) is large enough. Default
+            True.
         timeout(int): the timeout value for getting data form output queue
             of subprocesses. Default 0.
         worker_init_fn(callable): init function which will be called with
@@ -276,6 +281,7 @@ class DataLoader(object):
                  collate_fn=None,
                  num_workers=0,
                  use_buffer_reader=True,
+                 use_shared_memory=True,
                  timeout=0,
                  worker_init_fn=None):
         self.return_list = return_list
@@ -305,6 +311,13 @@ class DataLoader(object):
                 " use signle-process with num_workers = 0 instead")
             num_workers = 0
         self.num_workers = num_workers
+
+        self.use_shared_memory = use_shared_memory
+        if use_shared_memory and num_workers == 0:
+            logging.warning(
+                "use_shared_memory can only be used in multi-process mode(" \
+                "num_workers > 0), set use_shared_memory as False")
+            self.use_shared_memory = False
 
         assert timeout >= 0, "timeout should be a non-negative value"
         self.timeout = timeout
