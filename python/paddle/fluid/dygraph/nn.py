@@ -926,12 +926,6 @@ class Linear(layers.Layer):
             shape=[output_dim], attr=bias_attr, dtype=dtype, is_bias=True)
 
     def forward(self, input):
-        attrs = {
-            "x_num_col_dims": len(input.shape) - 1,
-            "y_num_col_dims": 1,
-        }
-        inputs = {"X": [input], "Y": [self.weight]}
-
         if in_dygraph_mode():
             pre_bias = core.ops.mul(input, self.weight, 'x_num_col_dims',
                                     len(input.shape) - 1, 'y_num_col_dims', 1)
@@ -941,6 +935,11 @@ class Linear(layers.Layer):
 
             return dygraph_utils._append_activation_in_dygraph(pre_act,
                                                                self._act)
+        attrs = {
+            "x_num_col_dims": len(input.shape) - 1,
+            "y_num_col_dims": 1,
+        }
+        inputs = {"X": [input], "Y": [self.weight]}
 
         tmp = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
@@ -1470,10 +1469,9 @@ class LayerNorm(layers.Layer):
                     1:] + ', but got input shape ' + str(input_shape))
 
         if in_dygraph_mode():
-            out, _, _ = core.ops.layer_norm(
+            pre_act, _, _ = core.ops.layer_norm(
                 input, self.weight, self.bias, 'epsilon', self._epsilon,
                 'begin_norm_axis', self._begin_norm_axis)
-            pre_act = out
             return dygraph_utils._append_activation_in_dygraph(
                 pre_act, act=self._act)
 
@@ -2320,16 +2318,6 @@ class Conv2DTranspose(layers.Layer):
             is_bias=True)
 
     def forward(self, input):
-        inputs = {'Input': [input], 'Filter': [self.weight]}
-        attrs = {
-            'output_size': self._output_size,
-            'strides': self._stride,
-            'paddings': self._padding,
-            'dilations': self._dilation,
-            'groups': self._groups,
-            'use_cudnn': self._use_cudnn
-        }
-
         if in_dygraph_mode():
             op = getattr(core.ops, self._op_type)
             out = op(input, self.weight, 'output_size', self._output_size,
@@ -2341,6 +2329,16 @@ class Conv2DTranspose(layers.Layer):
                                                             1)
             return dygraph_utils._append_activation_in_dygraph(
                 pre_act, act=self._act)
+
+        inputs = {'Input': [input], 'Filter': [self.weight]}
+        attrs = {
+            'output_size': self._output_size,
+            'strides': self._stride,
+            'paddings': self._padding,
+            'dilations': self._dilation,
+            'groups': self._groups,
+            'use_cudnn': self._use_cudnn
+        }
 
         pre_bias = self._helper.create_variable_for_type_inference(
             dtype=input.dtype)

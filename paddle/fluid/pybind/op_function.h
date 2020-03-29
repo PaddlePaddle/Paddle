@@ -30,8 +30,13 @@
 
 namespace py = pybind11;
 namespace paddle {
+namespace pybind {
 static inline void ConstructAttrMapFromPyArgs(framework::AttributeMap* attrs,
                                               const py::args& args) {
+  PADDLE_ENFORCE_EQ(
+      args.size() % 2, 0,
+      platform::errors::InvalidArgument(
+          "The number of arguments for arributes should be even."));
   for (size_t i = 0; i < args.size(); i += 2) {
     auto name = args[i].cast<std::string>();
     auto value = args[i + 1].cast<framework::Attribute>();
@@ -49,7 +54,7 @@ ConstructDuplicableOutput(const size_t num) {
   }
   return res;
 }
-
+}  // namespace pybind
 }  // namespace paddle
 
 // This include must be the last line

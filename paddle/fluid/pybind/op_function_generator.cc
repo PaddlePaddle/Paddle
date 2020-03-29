@@ -36,6 +36,7 @@ std::map<std::string, std::set<std::string>> op_passing_out_map = {
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
     {"momentum", {"ParamOut", "VelocityOut"}},
     {"batch_norm", {"MeanOut", "VarianceOut"}},
+    {"accuracy", {"Correct", "Total"}},
     {"fill_constant", {"Out"}}};
 
 // clang-format off
@@ -73,7 +74,7 @@ const char* RETURN_TEMPLATE = R"(outs_["%s"][0])";
 const char* FUNCTION_ARGS = R"(%s, const py::args& args)";
 const char* FUNCTION_ARGS_NO_INPUT = R"(const py::args& args)";
 
-const char* OP_FUNCTION_TEMPLATE2 =
+const char* OP_FUNCTION_TEMPLATE =
 R"(
 %s %s(%s)
 {
@@ -93,18 +94,18 @@ R"(
 const char* PYBIND_ITEM_TEMPLATE = R"(  %s.def("%s", &%s);)";
 
 // clang-format on
-static inline bool FindInputInSpecialization(const std::string op_type,
-                                             const std::string in_name) {
+static inline bool FindInputInSpecialization(const std::string& op_type,
+                                             const std::string& in_name) {
   return op_ins_map[op_type].count(in_name);
 }
 
-static inline bool FindOutoutInSpecialization(const std::string op_type,
-                                              const std::string out_name) {
+static inline bool FindOutoutInSpecialization(const std::string& op_type,
+                                              const std::string& out_name) {
   return op_passing_out_map[op_type].count(out_name);
 }
 
 static std::tuple<std::vector<std::string>, std::vector<std::string>>
-GenerateOpFunctions2(const std::string& module_name) {
+GenerateOpFunctions(const std::string& module_name) {
   auto& op_info_map = paddle::framework::OpInfoMap::Instance().map();
 
   std::vector<std::string> op_function_list, bind_function_list;
@@ -132,21 +133,21 @@ GenerateOpFunctions2(const std::string& module_name) {
       if (input.dispensable() && !FindInputInSpecialization(op_type, in_name)) {
         continue;
       }
-      auto in_type = input.duplicable() ? VAR_LIST_TYPE : VAR_TYPE;
-
+      const auto in_type = input.duplicable() ? VAR_LIST_TYPE : VAR_TYPE;
       auto input_arg = paddle::string::Sprintf(ARG_TEMPLATE, in_type, in_name);
       input_args += input_arg;
       input_args += ",";
 
       if (input.dispensable()) {
-        auto in_template = input.duplicable()
-                               ? INPUT_INITIALIZER_TEMPLATE_WITH_NULL_LIST
-                               : INPUT_INITIALIZER_TEMPLATE_WITH_NULL;
+        const auto in_template = input.duplicable()
+                                     ? INPUT_INITIALIZER_TEMPLATE_WITH_NULL_LIST
+                                     : INPUT_INITIALIZER_TEMPLATE_WITH_NULL;
         ins_initializer_with_null +=
             paddle::string::Sprintf(in_template, in_name, in_name, in_name);
       } else {
-        auto in_template = input.duplicable() ? INPUT_LIST_INITIALIZER_TEMPLATE
-                                              : INPUT_INITIALIZER_TEMPLATE;
+        const auto in_template = input.duplicable()
+                                     ? INPUT_LIST_INITIALIZER_TEMPLATE
+                                     : INPUT_INITIALIZER_TEMPLATE;
         ins_initializer +=
             paddle::string::Sprintf(in_template, in_name, in_name);
         ins_initializer += ",";
@@ -171,8 +172,8 @@ GenerateOpFunctions2(const std::string& module_name) {
       if (output.dispensable()) {
         continue;
       }
-      auto out_type = output.duplicable() ? VAR_LIST_TYPE : VAR_TYPE;
-      auto return_template =
+      const auto out_type = output.duplicable() ? VAR_LIST_TYPE : VAR_TYPE;
+      const auto return_template =
           output.duplicable() ? RETURN_LIST_TEMPLATE : RETURN_TEMPLATE;
       auto& out_name = output.name();
       std::string out_initializer_str;
@@ -182,9 +183,9 @@ GenerateOpFunctions2(const std::string& module_name) {
         }
         input_args += out_type;
         input_args += out_name;
-        auto out_template = output.duplicable()
-                                ? INPUT_LIST_INITIALIZER_TEMPLATE
-                                : INPUT_INITIALIZER_TEMPLATE;
+        const auto out_template = output.duplicable()
+                                      ? INPUT_LIST_INITIALIZER_TEMPLATE
+                                      : INPUT_INITIALIZER_TEMPLATE;
         out_initializer_str +=
             paddle::string::Sprintf(out_template, out_name, out_name);
       } else {
@@ -238,13 +239,10 @@ GenerateOpFunctions2(const std::string& module_name) {
 
     std::string func_name = "imperative_" + op_type;
     // generate op funtcion body
-    // return_type, func_name, inputs_args, outs_initializer, ins_initializer,
-    // op_name, return_str
     auto op_function_str = paddle::string::Sprintf(
-        OP_FUNCTION_TEMPLATE2, return_type, func_name, function_args,
+        OP_FUNCTION_TEMPLATE, return_type, func_name, function_args,
         outs_initializer, ins_initializer, ins_initializer_with_null, op_type,
         return_str);
-    // std::cout << op_function_str << std::endl;
 
     // generate pybind item
     auto bind_function_str = paddle::string::Sprintf(
@@ -272,9 +270,7 @@ int main(int argc, char* argv[]) {
     out << "#include  " + header + "\n";
   }
 
-  auto op_funcs = GenerateOpFunctions2("m");
-  // all op functions
-  // auto op_funcs = GenerateOpFunctions("m");
+  auto op_funcs = GenerateOpFunctions("m");
 
   out << "namespace py = pybind11;"
       << "\n";

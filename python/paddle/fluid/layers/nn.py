@@ -9891,7 +9891,6 @@ def slice(input, axes, starts, ends):
     """
     if in_dygraph_mode():
         infer_flags = list(1 for i in range(len(axes)))
-
         if isinstance(starts, (list, tuple)):
             if utils._contain_var(starts):
                 raise TypeError(
@@ -9912,12 +9911,6 @@ def slice(input, axes, starts, ends):
                 "The type of 'ends' in slice must be list[int] or tuple(int) in Dygraph mode, but "
                 "received %s." % type(shape))
 
-        attrs = {
-            'axes': axes,
-            'starts': starts,
-            'ends': ends,
-            'infer_flags': infer_flags
-        }
         return core.ops.slice(input, 'axes', axes, 'starts', starts, 'ends',
                               ends, 'infer_flags', infer_flags)
 
