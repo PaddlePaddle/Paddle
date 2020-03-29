@@ -228,9 +228,11 @@ class TestTDMSamplerShape(unittest.TestCase):
             layer_node_num_list,
             leaf_node_num,
             tree_travel_attr=fluid.ParamAttr(
-                initializer=NumpyArrayInitializer(travel_array)),
+                initializer=fluid.initializer.NumpyArrayInitializer(
+                    travel_array)),
             tree_layer_attr=fluid.ParamAttr(
-                initializer=NumpyArrayInitializer(layer_array)),
+                initializer=fluid.initializer.NumpyArrayInitializer(
+                    layer_array)),
             output_positive=True,
             output_list=True,
             seed=0,
@@ -241,13 +243,10 @@ class TestTDMSamplerShape(unittest.TestCase):
         exe.run(fluid.default_startup_program())
 
         feed = {
-            'x': np.array(
-                [[0], [1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11],
-                 [12]],
-                dtype='int32')
+            'x': np.array([[0], [1], [2], [3], [4], [5], [6], [7], [8], [9],
+                           [10], [11], [12]]).astype('int32')
         }
-        sample_res, label_res, mask_res = exe.run(
-            feed=feed, fetch_list=[sample, label, mask])
+        exe.run(feed=feed)
 
 
 if __name__ == "__main__":

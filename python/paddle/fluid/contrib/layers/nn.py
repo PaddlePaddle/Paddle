@@ -24,8 +24,10 @@ import inspect
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import utils
 from ... import unique_name
+from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from paddle.fluid.framework import Variable
+from paddle.fluid.layers import slice, reshape
 import warnings
 
 __all__ = [
@@ -949,8 +951,6 @@ def tdm_sampler(x,
     2. get neg sample at every layer
     '''
     helper = LayerHelper("tdm_sampler", **locals())
-    check_variable_and_dtype(x, 'x', ['int32', 'int64'],
-                             'fluid.contrib.layers.tdm_sampler')
     check_dtype(dtype, 'dtype', ['int32', 'int64'],
                 'fluid.contrib.layers.tdm_sampler')
 
@@ -976,7 +976,7 @@ def tdm_sampler(x,
                 "is {}, please check your input.".format(
                     layer_idx, neg_samples_num_list[
                         layer_idx], layer_idx, layer_node_num_list[layer_idx]))
-    assert leaf_node_num > node_nums, "leaf_node_num must be less than total node nums."
+    assert leaf_node_num < node_nums, "leaf_node_num must be less than total node nums."
 
     travel_shape = [leaf_node_num, layer_nums]
     travel = helper.create_parameter(
@@ -992,14 +992,16 @@ def tdm_sampler(x,
         dtype=dtype,
         default_initializer=Constant(0))
 
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    input_dtype = helper.input_dtype()
+    check_dtype(input_dtype, 'x', ['int32', 'int64'],
+                'fluid.contrib.layers.tdm_sampler')
+    out = helper.create_variable_for_type_inference(dtype=input_dtype)
     out.stop_gradient = True
 
-    labels = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype())
+    labels = helper.create_variable_for_type_inference(dtype=input_dtype)
     labels.stop_gradient = True
 
-    mask = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    mask = helper.create_variable_for_type_inference(dtype=input_dtype)
     mask.stop_gradient = True
 
     helper.append_op(
@@ -1024,8 +1026,11 @@ def tdm_sampler(x,
         start_offset = 0
 
         for layer_sample_num in neg_samples_num_list:
+            positive_flag = 1
+            if not output_positive:
+                positive_flag = 0
             end_offset = start_offset + \
-                layer_sample_num + int(output_positive)
+                layer_sample_num + positive_flag
             layer_samples = slice(
                 out, axes=[1], starts=[start_offset], ends=[end_offset])
             layer_labels = slice(
@@ -1033,17 +1038,16 @@ def tdm_sampler(x,
             layer_mask = slice(
                 mask, axes=[1], starts=[start_offset], ends=[end_offset])
 
-            layer_samples = reshape(
-                layer_samples,
-                [-1, layer_sample_num + int(output_positive), 1])
+            layer_samples = reshape(layer_samples,
+                                    [-1, layer_sample_num + positive_flag, 1])
             layer_samples.stop_gradient = True
 
-            layer_labels = reshape(
-                layer_labels, [-1, layer_sample_num + int(output_positive), 1])
+            layer_labels = reshape(layer_labels,
+                                   [-1, layer_sample_num + positive_flag, 1])
             layer_labels.stop_gradient = True
 
-            layer_mask = reshape(
-                layer_mask, [-1, layer_sample_num + int(output_positive), 1])
+            layer_mask = reshape(layer_mask,
+                                 [-1, layer_sample_num + positive_flag, 1])
             layer_mask.stop_gradient = True
 
             output_list.append(layer_samples)
