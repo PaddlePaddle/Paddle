@@ -14,11 +14,16 @@
 
 from __future__ import print_function
 
-from . import mnist
-from .mnist import *
+import os
+import paddle.dataset.common
 
-from . import flowers
-from .flowers import *
 
-__all__ = mnist.__all__ \
-        + flowers.__all__
+def _check_exists_and_download(path, url, md5, module_name, download=True):
+    if path and os.path.exists(path):
+        return path
+
+    if download:
+        return paddle.dataset.common.download(url, module_name, md5)
+    else:
+        raise FileNotFoundError(
+            '{} not exists and auto download disabled'.format(path))

@@ -21,6 +21,7 @@ import numpy as np
 
 import paddle.dataset.common
 from ..dataset import Dataset
+from .utils import _check_exists_and_download
 
 __all__ = ["MNIST"]
 
@@ -33,17 +34,6 @@ TRAIN_IMAGE_URL = URL_PREFIX + 'train-images-idx3-ubyte.gz'
 TRAIN_IMAGE_MD5 = 'f68b3c2dcbeaaa9fbdd348bbdeb94873'
 TRAIN_LABEL_URL = URL_PREFIX + 'train-labels-idx1-ubyte.gz'
 TRAIN_LABEL_MD5 = 'd53e105ee54ea40749a09fcbcd1e9432'
-
-
-def _check_exists_and_download(path, url, module_name, md5, download=True):
-    if path and os.path.exists(path):
-        return path
-
-    if download:
-        return paddle.dataset.common.download(url, module_name, md5)
-    else:
-        raise FileNotFoundError(
-            '{} not exists and auto download disabled'.format(path))
 
 
 class MNIST(Dataset):
@@ -78,7 +68,7 @@ class MNIST(Dataset):
                  mode='train',
                  download=True):
         assert mode.lower() in ['train', 'test'], \
-                "mode should be 'train' or 'test, but got {}'".format(mode)
+                "mode should be 'train' or 'test', but got {}".format(mode)
         self.mode = mode.lower()
 
         self.image_path = image_path
@@ -87,7 +77,7 @@ class MNIST(Dataset):
             image_url = TRAIN_IMAGE_URL if mode == 'train' else TEST_IMAGE_URL
             image_md5 = TRAIN_IMAGE_MD5 if mode == 'train' else TEST_IMAGE_MD5
             self.image_path = _check_exists_and_download(
-                image_path, image_url, 'mnist', image_md5, download)
+                image_path, image_url, image_md5, 'mnist', download)
 
         self.label_path = label_path
         if self.label_path is None:
@@ -95,7 +85,7 @@ class MNIST(Dataset):
             label_url = TRAIN_LABEL_URL if mode == 'train' else TEST_LABEL_URL
             label_md5 = TRAIN_LABEL_MD5 if mode == 'train' else TEST_LABEL_MD5
             self.label_path = _check_exists_and_download(
-                label_path, label_url, 'mnist', label_md5, download)
+                label_path, label_url, label_md5, 'mnist', download)
 
         # read dataset into memory
         self._parse_dataset()
