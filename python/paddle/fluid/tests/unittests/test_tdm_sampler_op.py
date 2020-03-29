@@ -42,9 +42,11 @@ class TestTDMSamplerOp(OpTest):
         layer_node_num_list = [len(i) for i in self.tree_layer]
         tree_layer_offset_lod = [0]
         tree_layer_flat = []
+        node_nums = 0
         for layer_idx, layer_node in enumerate(layer_node_num_list):
             tree_layer_flat += self.tree_layer[layer_idx]
-            tree_layer_offset_lod.append(layer_node)
+            node_nums += layer_node
+            tree_layer_offset_lod.append(node_nums)
 
         travel_np = np.array(self.tree_travel).astype(self.dtype)
         layer_np = np.array(tree_layer_flat).astype(self.dtype)
