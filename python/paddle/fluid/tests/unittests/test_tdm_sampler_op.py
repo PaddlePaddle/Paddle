@@ -25,26 +25,28 @@ import random
 import six
 
 
-class TestTDMChildOp(OpTest):
+class TestTDMSamplerOp(OpTest):
     def setUp(self):
         self.__class__.op_type = "tdm_sampler"
         self.config()
-        output_0 = x_shape[0]
-        output_1 = len(neg_samples_num_list) + \
-            np.sum(self.neg_samples_num_list)
-        self.output_shape = (output_0, output_1)
-        self.layer_sample_nums = [1 + i for i in self.neg_samples_num_list]
+
         self.tree_travel = self.create_tdm_travel()
         self.tree_layer = self.create_tdm_layer()
 
-        layer_node_num_list = [len(i) for i in tree_layer]
+        output_0 = self.x_shape[0]
+        output_1 = len(self.neg_samples_num_list) + \
+            np.sum(self.neg_samples_num_list)
+        self.output_shape = (output_0, output_1)
+        self.layer_sample_nums = [1 + i for i in self.neg_samples_num_list]
+
+        layer_node_num_list = [len(i) for i in self.tree_layer]
         tree_layer_offset_lod = [0]
         tree_layer_flat = []
         for layer_idx, layer_node in enumerate(layer_node_num_list):
-            tree_layer_flat += tree_layer[layer_idx]
+            tree_layer_flat += self.tree_layer[layer_idx]
             tree_layer_offset_lod.append(layer_node)
 
-        travel_np = np.array(tree_travel).astype(self.dtype)
+        travel_np = np.array(self.tree_travel).astype(self.dtype)
         layer_np = np.array(tree_layer_flat).astype(self.dtype)
         layer_np = layer_np.reshape([-1, 1])
 
