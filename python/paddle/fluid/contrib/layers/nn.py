@@ -945,11 +945,33 @@ def tdm_sampler(x,
                 output_list=True,
                 seed=0,
                 dtype='int32'):
-    '''
-    used for tdm data reader, get neg sample at every layer
-    1. travel the tree, find path of input (root->node(input))
-    2. get neg sample at every layer
-    '''
+    """
+    **Tdm Sampler**
+    According to the input positive samples at leaf node(x), do negative sampling layer by layer on the given tree.
+
+    Args:
+        x (Variable): Variable contained the item(at leaf node) information, dtype support int32/int64.
+        neg_samples_num_list (list(int)): Number of negative samples per layert.
+        layer_node_num_list (list(int)): Number of nodes per layer, must has same shape with neg_samples_num_list.
+        leaf_node_num (int): Number of leaf nodes.
+        tree_travel_attr (ParamAttr): To specify the tdm-travel parameter property. Default: None, which means the
+            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr`, should 
+            has shape (leaf_node_num, len(layer_node_num_list)), dtype support int32/int64.
+        tree_layer_attr (ParamAttr): To specify the tdm-layer parameter property. Default: None, which means the
+            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr`, should 
+            has shape (node_num, 1), dtype support int32/int64.
+        output_positive (bool): Whether to output positive samples (includ label and mask )at the same time.
+        output_list (bool): Whether to divide the output into layers and organize it into list format.
+        seed (int): The number of random seed.
+        dtype(str): The data type of tdm-travel and tdm-layer parameter, support int32/int64.
+
+    Returns:
+        tuple: A tuple including sampling result, corresponding labels and masks. if output_positive = True, sampling
+            result  will include both positive and negative samples. If sampling reseult is a positive sample, the label is 1, 
+            and if it is a negative sample, it is 0. If the tree is unbalanced, in order to ensure the consistency of the 
+            sampling result shape, the padding sample's mask = 0, the real sample's mask value = 1. 
+            If output_list = True, the result will organize into list format specified by layer information.
+    """
     helper = LayerHelper("tdm_sampler", **locals())
     check_dtype(dtype, 'dtype', ['int32', 'int64'],
                 'fluid.contrib.layers.tdm_sampler')
@@ -992,16 +1014,13 @@ def tdm_sampler(x,
         dtype=dtype,
         default_initializer=Constant(0))
 
-    input_dtype = helper.input_dtype()
-    check_dtype(input_dtype, 'x', ['int32', 'int64'],
-                'fluid.contrib.layers.tdm_sampler')
-    out = helper.create_variable_for_type_inference(dtype=input_dtype)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
     out.stop_gradient = True
 
-    labels = helper.create_variable_for_type_inference(dtype=input_dtype)
+    labels = helper.create_variable_for_type_inference(dtype=x.dtype)
     labels.stop_gradient = True
 
-    mask = helper.create_variable_for_type_inference(dtype=input_dtype)
+    mask = helper.create_variable_for_type_inference(dtype=x.dtype)
     mask.stop_gradient = True
 
     helper.append_op(
@@ -1059,4 +1078,4 @@ def tdm_sampler(x,
         labels = labels_list
         mask = mask_list
 
-    return out, labels, mask
+    return (out, labels, mask)
