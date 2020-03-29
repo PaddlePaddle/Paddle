@@ -29,47 +29,31 @@ class TestTDMChildOp(OpTest):
     def setUp(self):
         self.__class__.op_type = "tdm_sampler"
         self.config()
-        tree_travel = self.create_tdm_travel()
-        tree_layer = self.create_tdm_layer()
+        output_0 = x_shape[0]
+        output_1 = len(neg_samples_num_list) + \
+            np.sum(self.neg_samples_num_list)
+        self.output_shape = (output_0, output_1)
+        self.layer_sample_nums = [1 + i for i in self.neg_samples_num_list]
+        self.tree_travel = self.create_tdm_travel()
+        self.tree_layer = self.create_tdm_layer()
+
         layer_node_num_list = [len(i) for i in tree_layer]
-        layer_nums = 0
-        node_nums = 0
         tree_layer_offset_lod = [0]
         tree_layer_flat = []
         for layer_idx, layer_node in enumerate(layer_node_num_list):
-            layer_nums += 1
-            node_nums += layer_node
             tree_layer_flat += tree_layer[layer_idx]
             tree_layer_offset_lod.append(layer_node)
 
         travel_np = np.array(tree_travel).astype(self.dtype)
-        layer_np = np.array(tree_layer_flat)
+        layer_np = np.array(tree_layer_flat).astype(self.dtype)
         layer_np = layer_np.reshape([-1, 1])
 
         x_np = np.random.randint(
             low=0, high=13, size=self.x_shape).astype(self.x_type)
 
-        out_res = []
-        label_res = []
-        mask_res = []
-        for batch in x_np:
-            for node in batch:
-                out_res += tree_travel[node]
-                label = [1, 1, 1, 1]
-                mask = [1, 1, 1, 1]
-                if tree_travel[node][-1] == 0:
-                    label[-1] = 0
-                    mask[-1] = 0
-                label_res += label
-                mask_res += mask
-
-        out_res_np = np.array(out_res).astype(self.x_type)
-        label_res_np = np.array(label_res).astype(self.x_type)
-        mask_res_np = np.array(mask_res).astype(self.x_type)
-
-        out = np.reshape(out_res_np, self.output_shape)
-        label = np.reshape(label_res_np, self.output_shape)
-        mask = np.reshape(mask_res_np, self.output_shape)
+        out = np.random.random(self.output_shape).astype(self.x_type)
+        label = np.random.random(self.output_shape).astype(self.x_type)
+        mask = np.random.random(self.output_shape).astype(self.x_type)
 
         self.attrs = {
             'neg_samples_num_list': self.neg_samples_num_list,
@@ -97,12 +81,50 @@ class TestTDMChildOp(OpTest):
         """set test shape & type"""
         self.neg_samples_num_list = [0, 0, 0, 0]
         self.x_shape = (10, 1)
-        self.output_shape = (10, 4)
         self.x_type = 'int32'
         self.dtype = 'int32'
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output_customized(self.verify_output)
+        x_res, label_res, mask_res = self.out
+
+        # check dtype
+        if self.x_type == 'int32':
+            assert x_res.dtype == np.int32
+            assert label_res.dtype == np.int32
+            assert mask_res.dtype == np.int32
+        elif self.x_type == 'int64':
+            assert x_res.dtype == np.int64
+            assert label_res.dtype == np.int64
+            assert mask_res.dtype == np.int64
+
+        x_res = x_res.reshape(output_shape)
+        label_res = label_res.reshape(output_shape)
+        mask_res = mask_res.reshape(output_shape)
+
+        layer_nums = len(self.neg_samples_num_list)
+        for batch_ids, x_batch in enumerate(x_res):
+            start_offset = 0
+            for layer_idx in range(layer_nums):
+                end_offset = start_offset + self.layer_sample_nums[layer_idx]
+                sampling_res = x_batch[start_offset:end_offset]
+                # check unique
+                assert (np.unique(sampling_res)).shape == sampling_res.sahpe
+                # check legal
+                assert np.isin(sampling_res,
+                               np.array(self.tree_layer[layer_idx])).all()
+                label_sampling_res = label_res[batch_ids][start_offset:
+                                                          end_offset]
+                mask_sampling_res = mask_res[batch_ids][start_offset:end_offset]
+                # check label
+                assert label_sampling_res[0] == 1
+                assert np.sum(label_sampling_res) == 1
+                # check mask
+                padding_index = np.where(sampling_res == 0)
+                assert np.sum(mask_sampling_res[padding_index]) == 0
+
+    def verify_output(self, outs):
+        self.out = outs
 
 
 if __name__ == "__main__":
