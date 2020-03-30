@@ -373,7 +373,12 @@ def _get_strong_program_cache_key(program, feed, fetch_list):
 
 
 def _get_program_cache_key(feed, fetch_list):
-    feed_var_names = list(feed.keys())
+    feed_var_names = []
+    if isinstance(feed, dict):
+        feed_var_names = list(feed.keys())
+    elif isinstance(feed, list) or isinstance(feed, tuple):
+        for i, each in enumerate(feed):
+            feed_var_names += list(each.keys())
     fetch_var_names = list(map(_to_name_str, fetch_list))
     return str(feed_var_names + fetch_var_names)
 
