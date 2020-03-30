@@ -1,4 +1,5 @@
 import collections
+import copy
 import six
 import sys
 from functools import partial, reduce
@@ -172,15 +173,15 @@ class BasicLSTMCell(RNNCell):
     """
 
     def __init__(self,
-                 hidden_size,
                  input_size,
+                 hidden_size,
                  param_attr=None,
                  bias_attr=None,
                  gate_activation=None,
                  activation=None,
                  forget_bias=1.0,
                  dtype='float32'):
-        super(BasicLSTMCell, self).__init__(dtype)
+        super(BasicLSTMCell, self).__init__()
 
         self._hidden_size = hidden_size
         self._param_attr = param_attr
@@ -227,7 +228,7 @@ class BasicLSTMCell(RNNCell):
         return [[self._hidden_size], [self._hidden_size]]
 
 
-class BasicGRUUnit(RNNCell):
+class BasicGRUCell(RNNCell):
     """
     ****
     BasicGRUUnit class, using basic operators to build GRU
@@ -262,57 +263,84 @@ class BasicGRUUnit(RNNCell):
     """
 
     def __init__(self,
+                 input_size,
                  hidden_size,
                  param_attr=None,
                  bias_attr=None,
                  gate_activation=None,
                  activation=None,
                  dtype='float32'):
-        super(BasicGRUUnit, self).__init__(dtype)
-
-        self._hidden_size = hidden_size
+        super(BasicGRUCell, self).__init__()
+        self._input_size = input_size
+        self._hiden_size = hidden_size
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._gate_activation = gate_activation or layers.sigmoid
         self._activation = activation or layers.tanh
-        self._forget_bias = layers.fill_constant(
-            [1], dtype=dtype, value=forget_bias)
-        self._forget_bias.stop_gradient = False
         self._dtype = dtype
-        self._input_size = input_size
 
-        self._weight = self.create_parameter(
-            attr=self._param_attr,
-            shape=[
-                self._input_size + self._hidden_size, 4 * self._hidden_size
-            ],
+        if self._param_attr is not None and self._param_attr.name is not None:
+            gate_param_attr = copy.deepcopy(self._param_attr)
+            candidate_param_attr = copy.deepcopy(self._param_attr)
+            gate_param_attr.name += "_gate"
+            candidate_param_attr.name += "_candidate"
+        else:
+            gate_param_attr = self._param_attr
+            candidate_param_attr = self._param_attr
+
+        self._gate_weight = self.create_parameter(
+            attr=gate_param_attr,
+            shape=[self._input_size + self._hiden_size, 2 * self._hiden_size],
             dtype=self._dtype)
 
-        self._bias = self.create_parameter(
-            attr=self._bias_attr,
-            shape=[4 * self._hidden_size],
-            dtype=self._dtype,
-            is_bias=True)
+        self._candidate_weight = self.create_parameter(
+            attr=candidate_param_attr,
+            shape=[self._input_size + self._hiden_size, self._hiden_size],
+            dtype=self._dtype)
+
+        if self._bias_attr is not None and self._bias_attr.name is not None:
+            gate_bias_attr = copy.deepcopy(self._bias_attr)
+            candidate_bias_attr = copy.deepcopy(self._bias_attr)
+            gate_bias_attr.name += "_gate"
+            candidate_bias_attr.name += "_candidate"
+        else:
+            gate_bias_attr = self._bias_attr
+            candidate_bias_attr = self._bias_attr
+
+        self._gate_bias = self.create_parameter(attr=gate_bias_attr,
+                                                shape=[2 * self._hiden_size],
+                                                dtype=self._dtype,
+                                                is_bias=True)
+        self._candidate_bias = self.create_parameter(attr=candidate_bias_attr,
+                                                     shape=[self._hiden_size],
+                                                     dtype=self._dtype,
+                                                     is_bias=True)
 
     def forward(self, input, state):
-        pre_hidden, pre_cell = state
-        concat_input_hidden = layers.concat([input, pre_hidden], 1)
-        gate_input = layers.matmul(x=concat_input_hidden, y=self._weight)
+        pre_hidden = state
+        concat_input_hidden = layers.concat([input, pre_hidden], axis=1)
 
-        gate_input = layers.elementwise_add(gate_input, self._bias)
-        i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
-        new_cell = layers.elementwise_add(
-            layers.elementwise_mul(
-                pre_cell,
-                layers.sigmoid(layers.elementwise_add(f, self._forget_bias))),
-            layers.elementwise_mul(layers.sigmoid(i), layers.tanh(j)))
-        new_hidden = layers.tanh(new_cell) * layers.sigmoid(o)
+        gate_input = layers.matmul(x=concat_input_hidden, y=self._gate_weight)
 
-        return new_hidden, [new_hidden, new_cell]
+        gate_input = layers.elementwise_add(gate_input, self._gate_bias)
+
+        gate_input = self._gate_activation(gate_input)
+        r, u = layers.split(gate_input, num_or_sections=2, dim=1)
+
+        r_hidden = r * pre_hidden
+
+        candidate = layers.matmul(layers.concat([input, r_hidden], 1),
+                                  self._candidate_weight)
+        candidate = layers.elementwise_add(candidate, self._candidate_bias)
+
+        c = self._activation(candidate)
+        new_hidden = u * pre_hidden + (1 - u) * c
+
+        return new_hidden
 
     @property
     def state_shape(self):
-        return [[self._hidden_size], [self._hidden_size]]
+        return [self._hidden_size]
 
 
 class RNN(fluid.dygraph.Layer):
