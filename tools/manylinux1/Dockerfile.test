@@ -1,0 +1,98 @@
+FROM nvidia/cuda:8.0-cudnn7-devel-ubuntu16.04
+MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
+
+ARG UBUNTU_MIRROR
+RUN /bin/bash -c 'if [[ -n ${UBUNTU_MIRROR} ]]; then sed -i 's#http://archive.ubuntu.com/ubuntu#${UBUNTU_MIRROR}#g' /etc/apt/sources.list; fi'
+
+# ENV variables
+ARG WITH_GPU
+ARG WITH_AVX
+
+ENV WOBOQ OFF
+ENV WITH_GPU=${WITH_GPU:-ON}
+ENV WITH_AVX=${WITH_AVX:-ON}
+
+ENV HOME /root
+# Add bash enhancements
+COPY ./paddle/scripts/docker/root/ /root/
+
+# Prepare packages for Python
+RUN apt-get update && \
+    apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
+    libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
+    xz-utils tk-dev libffi-dev liblzma-dev
+
+# Downgrade gcc&&g++
+RUN apt-get update
+WORKDIR /usr/bin
+RUN apt install -y gcc-4.8 g++-4.8
+RUN cp gcc gcc.bak
+RUN cp g++ g++.bak
+RUN rm gcc
+RUN rm g++
+RUN ln -s gcc-4.8 gcc
+RUN ln -s g++-4.8 g++
+
+# Install cmake3.16.0
+RUN mkdir -p /root/cmake_build && wget -q https://cmake.org/files/v3.16/cmake-3.16.0.tar.gz && \
+    tar -zxvf cmake-3.16.0.tar.gz && rm cmake-3.16.0.tar.gz && \
+    cd cmake-3.16.0 && ./bootstrap > /dev/null && \
+    make -j8 > /dev/null && make install > /dev/null && \
+    ln -s /usr/local/bin/cmake /usr/bin/cmake
+
+ENV PATH=/usr/local/bin:$PATH
+
+RUN rm -r /root/cmake_build
+
+# Install Python3.6
+RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz && \
+    tar -zxf sqlite-autoconf-3250300.tar.gz && cd sqlite-autoconf-3250300 && \
+    ./configure -prefix=/usr/local && make -j8 && make install && cd ../ && rm sqlite-autoconf-3250300.tar.gz && \
+    wget -q https://www.python.org/ftp/python/3.6.0/Python-3.6.0.tgz && \
+    tar -xzf Python-3.6.0.tgz && cd Python-3.6.0 && \
+    CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
+    make -j8 > /dev/null && make altinstall > /dev/null
+
+# Install Python3.7
+RUN wget -q https://www.python.org/ftp/python/3.7.0/Python-3.7.0.tgz && \
+    tar -xzf Python-3.7.0.tgz && cd Python-3.7.0 && \
+    CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
+    make -j8 > /dev/null && make altinstall > /dev/null
+
+RUN rm -r /root/python_build
+
+RUN apt-get update && \
+    apt-get install -y --allow-downgrades --allow-change-held-packages \
+    python3 python3-dev python3-pip \
+    git python-pip python-dev python-opencv openssh-server bison \
+    libnccl2=2.1.2-1+cuda8.0 libnccl-dev=2.1.2-1+cuda8.0 \
+    wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
+    curl sed grep graphviz libjpeg-dev zlib1g-dev  \
+    python-matplotlib gcc-4.8 g++-4.8 \
+    automake locales clang-format swig  \
+    liblapack-dev liblapacke-dev \
+    clang-3.8 llvm-3.8 libclang-3.8-dev \
+    net-tools libtool ccache && \
+    apt-get clean -y
+
+# Install Python2.7.15 to replace original python
+WORKDIR /home
+ENV version=2.7.15
+RUN wget https://www.python.org/ftp/python/$version/Python-$version.tgz
+RUN tar -xvf Python-$version.tgz
+WORKDIR /home/Python-$version
+RUN ./configure --enable-unicode=ucs4 --enable-shared CFLAGS=-fPIC --prefix=/usr/local/python2.7.15
+RUN make && make install
+
+RUN echo "export PATH=/usr/local/bin:${PATH}" >> ~/.bashrc
+RUN echo "export PATH=/usr/local/python2.7.15/include:${PATH}" >> ~/.bashrc
+RUN echo "export PATH=/usr/local/python2.7.15/bin:${PATH}" >> ~/.bashrc
+RUN echo "export LD_LIBRARY_PATH=/usr/local/python2.7.15/lib:${LD_LIBRARY_PATH}" >> ~/.bashrc
+RUN echo "export CPLUS_INCLUDE_PATH=/usr/local/python2.7.15/include/python2.7:$CPLUS_INCLUDE_PATH" >> ~/.bashrc
+ENV PATH=/usr/local/python2.7.15/include:${PATH}
+ENV PATH=/usr/local/python2.7.15/bin:${PATH}
+ENV LD_LIBRARY_PATH=/usr/local/python2.7.15/lib:${LD_LIBRARY_PATH}
+ENV CPLUS_INCLUDE_PATH=/usr/local/python2.7.15/include/python2.7:$CPLUS_INCLUDE_PATH
+RUN mv /usr/bin/python /usr/bin/python.bak
+RUN ln -s /usr/local/python2.7.15/bin/python2.7 /usr/local/bin/python
+RUN ln -s /usr/local/python2.7.15/bin/python2.7 /usr/bin/python
