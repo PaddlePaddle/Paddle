@@ -19,6 +19,8 @@ import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 class TestWhereIndexOp(OpTest):
@@ -86,6 +88,18 @@ class TestRank3(TestWhereIndexOp):
                 [[0, 0, 0], [0, 1, 1], [1, 0, 1], [1, 1, 0], [2, 1, 1]],
                 dtype='int64')
         }
+
+
+class TestWhereOpError(unittest.TestCase):
+    def test_api(self):
+        with program_guard(Program(), Program()):
+            cond = fluid.layers.data(name='cond', shape=[4], dtype='bool')
+            result = fluid.layers.where(cond)
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+            cond_i = np.array([True, False, False, False]).astype("bool")
+            out = exe.run(fluid.default_main_program(), feed={'cond': cond_i})
 
 
 if __name__ == "__main__":
