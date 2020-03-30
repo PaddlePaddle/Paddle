@@ -420,16 +420,6 @@ def _as_lodtensor(data, place, dtype=None):
     return tensor
 
 
-def _is_optimize_op(op):
-    op_maker = core.op_proto_and_checker_maker
-    OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
-    op_role = op.desc.attr(op_maker.kOpRoleAttrName())
-    if op_role & int(OPTIMIZE):
-        return True
-    else:
-        return False
-
-
 class FetchHandler(object):
     def __init__(self, var_dict=None, period_secs=60):
         assert var_dict != None
@@ -654,7 +644,7 @@ class Executor(object):
 
         def _get_targets(_optimize_ops, _fetch_list, item):
             if isinstance(item, Operator):
-                if _is_optimize_op(item):
+                if item._is_optimize_op():
                     _optimize_ops.append(item)
                 else:
                     raise TypeError(
@@ -696,8 +686,8 @@ class Executor(object):
         Args:
             program(Program): the origin program
             feed(list|dict): feed dict or list.
-            fetch_list(list|Variable|Operator): A list of variables or operators
-                need to be fetched
+            fetch_list(list|Variable): A list of variables need to be fetched
+            optimize_ops(list[Operator]): A list of optimizer operators
 
         Returns:
             Program:  A new, pruned program.
@@ -726,7 +716,7 @@ class Executor(object):
         if not optimize_ops:
             for block in origin_program.blocks:
                 for op in block.ops:
-                    if _is_optimize_op(op):
+                    if op._is_optimize_op():
                         optimize_ops.append(op)
 
         targets = fetch_list + optimize_ops
@@ -1131,7 +1121,6 @@ class Executor(object):
                 use_program_cache=use_program_cache)
 
         program._compile(scope, self.place)
-
         if program._is_inference:
             return self._run_inference(program._executor, feed)
         else:

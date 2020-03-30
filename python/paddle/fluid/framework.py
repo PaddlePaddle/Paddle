@@ -2176,7 +2176,7 @@ class Operator(object):
         op_maker = core.op_proto_and_checker_maker
         OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
         op_role = self.desc.attr(op_maker.kOpRoleAttrName())
-        if op_role == int(OPTIMIZE):
+        if op_role & int(OPTIMIZE):
             return True
         else:
             return False
@@ -2720,8 +2720,6 @@ class Block(object):
             if v is None:
                 # if the Parameter is pruned, v may be None
                 continue
-                # raise ValueError("_copy_param_info_from should be invoked with "
-                #                  "same topology")
             assert isinstance(v, Variable)
             new_p = None
             if in_dygraph_mode():
@@ -4109,8 +4107,6 @@ class Program(object):
                         else:
                             target_op = op
                             break
-                #TODO(zhiqiu): maybe we should not break?
-
                 t = target_op
                 if t is None:
                     raise ValueError("The target variable must have an "
