@@ -952,32 +952,33 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
                      [3, 4]]
             leaf_mask = [[0, 0],
                          [1, 1]]
-     Args:
-         x(Variable): Variable contained the node_id information, dtype support int32/int64.
-         node_nums(int): Number of total nodes.
-         child_nums(int): Maximum number of child nodes per node.
-         param_attr(ParamAttr): To specify the tdm-tree-info parameter property. Default: None, which means the
-             default weight parameter property is used. See usage for details in: ref: `api_fluid_ParamAttr`, should
-             has shape(node_nums, 3 + child_nums), dtype support int32/int64. 
-             The dimension[1] of tdm-tree-info contains the following: 
-             1. Item_id(int, shape(1)), if node is a leaf node, give its item_id corresponding to node_id, else give 0.
-             2. Layer_id(int, shape(1)), indicates which layer the node is on.
-             3. Parent_id(int, shape(1)), node's parent node.
-             4. Child_id(int, shape(child_nums)), all child node's node_id of this node should be given. 
-                If the number of child nodes is insufficient, padding 0 until child nums equal to Child_nums
-         dtype(str): The data type of output child and leaf_mask, support int32/int64.
+    Args:
+        x(Variable): Variable contained the node_id information, dtype support int32/int64.
+        node_nums(int): Number of total nodes.
+        child_nums(int): Maximum number of child nodes per node.
+        param_attr(ParamAttr): To specify the tdm-tree-info parameter property. Default: None, which means the
+            default weight parameter property is used. See usage for details in: ref: `api_fluid_ParamAttr`, should
+            has shape(node_nums, 3 + child_nums), dtype support int32/int64. 
+            The dimension[1] of tdm-tree-info contains the following: 
+            1. Item_id(int, shape(1)), if node is a leaf node, give its item_id corresponding to node_id, else give 0.
+            2. Layer_id(int, shape(1)), indicates which layer the node is on.
+            3. Parent_id(int, shape(1)), node's parent node.
+            4. Child_id(int, shape(child_nums)), all child node's node_id of this node should be given. 
+            If the number of child nodes is insufficient, padding 0 until child nums equal to Child_nums
+        dtype(str): The data type of output child and leaf_mask, support int32/int64.
 
-     Returns:
-         tuple: A tuple including input node's child(Variable) and leaf_mask(Variable). 
-                If child is a leaf node, leaf_mask equal ot 1, otherwise equal to 0.
-     Examples:
+    Returns:
+        tuple: A tuple including input node's child(Variable) and leaf_mask(Variable). 
+            If child is a leaf node, leaf_mask equal ot 1, otherwise equal to 0.
+
+    Examples:
         .. code-block:: python
         import paddle.fluid as fluid
         import numpy as np
         x = fluid.data(name="x", shape=[1], dtype="int32")
         tree_info = [[0,0,0,1,2],
-                     [0,1,0,3,4],[0,1,0,5,6],
-                     [0,2,1,0,0],[1,2,1,0,0],[2,2,2,0,0],[3,2,2,0,0]]
+                        [0,1,0,3,4],[0,1,0,5,6],
+                        [0,2,1,0,0],[1,2,1,0,0],[2,2,2,0,0],[3,2,2,0,0]]
         tree_info_np = np.array(tree_info)
         node_nums = 7
         child_nums = 2
