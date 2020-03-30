@@ -192,13 +192,9 @@ class NameVisitor(gast.NodeVisitor):
                 # If a variable is created in the while loop and read after
                 # loop, it should be in loop_var and we should create it
 
-                # If this var is a basic variable and read-only and not
-                # condition var, it may not be loop_var else it should
-                # be in loop_var as input
-                if (not name in condition_names) and (
-                        not name in write_names
-                ) and self._node_var_type_is_basic(name_to_type[name]):
-                    continue
+                # because name in after_loop_name must be initialized in loop
+                # So it is write-only, we don't have to filter read-only basic
+                # vars out
                 loop_var_names.add(name)
                 create_var_names.add(name)
         return loop_var_names, create_var_names
@@ -263,10 +259,6 @@ class NameVisitor(gast.NodeVisitor):
         }
         for loop_node in self.current_loop:
             self.in_loop_vars[loop_node].add(node)
-            if type(node.ctx) in write_context:
-                self.write_in_loop[loop_node].add(node)
-            if self.in_condition:
-                self.condition_vars[loop_node].add(node)
 
         # sub-nodes are visited during get_attribute_full_name and we shouldn't
         # visit again
