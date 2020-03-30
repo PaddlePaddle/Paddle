@@ -222,8 +222,10 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     auto *out_scope_vec = ctx.Output<StepScopeVar>("OutScope");
 
     // TODO(chenweihang): check input output size
-    PADDLE_ENFORCE_EQ(out_scope_vec->size(), 0,
-                      "The StepScope should be empty.");
+    PADDLE_ENFORCE_EQ(
+        out_scope_vec->size(), 0,
+        platform::errors::InvalidArgument(
+            "The OutScope of RunProgramOp should initially be empty."));
 
     // Step 2. prepare executor and init persistable variables
     framework::Executor exe(ctx.GetPlace());
@@ -272,8 +274,10 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
 
     // TODO(chenweihang): clear const? gc will clear it?
     auto *out_scope_vec = ctx.Input<StepScopeVar>("OutScope");
-    PADDLE_ENFORCE_EQ(out_scope_vec->size(), 1,
-                      "The StepScope should only hold one scope.");
+    PADDLE_ENFORCE_EQ(
+        out_scope_vec->size(), 1,
+        platform::errors::InvalidArgument(
+            "The OutScope of RunProgramGradOp should only hold one scope."));
 
     // Step 2. prepare executor and scope
     framework::Executor exe(ctx.GetPlace());

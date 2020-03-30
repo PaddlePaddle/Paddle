@@ -30,8 +30,6 @@ from .. import backward
 
 from ... import compat as cpt
 
-__all__ = ["StaticModelRunner"]
-
 # Set Log level
 logging.getLogger().setLevel(logging.ERROR)
 
@@ -149,7 +147,7 @@ class StaticModelRunner(layers.Layer):
 
         # Step 2. load inference model in dygraph and fine-tune
         with fluid.dygraph.guard(place):
-            fc = fluid.dygraph.StaticModelRunner(SAVE_DIRNAME)
+            fc = fluid.dygraph.static_runner.StaticModelRunner(SAVE_DIRNAME)
 
             sgd = fluid.optimizer.SGD(learning_rate=0.001,
                                     parameter_list=fc.parameters())
@@ -203,7 +201,7 @@ class StaticModelRunner(layers.Layer):
         self._recheck_stop_gradients()
 
         # For Debug
-        # DescParser.program_desc_to_log(self._program_desc)
+        # DescParser.print_program_desc(self._program_desc)
 
     def train(self):
         framework._dygraph_tracer().train_mode()
@@ -521,15 +519,15 @@ class StaticModelRunner(layers.Layer):
 # after the function is stable.
 class DescParser():
     @classmethod
-    def program_desc_to_log(cls, prog, skip_op_callstack=True):
+    def print_program_desc(cls, prog, skip_op_callstack=True):
         block_idx = 0
         for i in six.moves.range(prog.num_blocks()):
             block = prog.block(i)
-            cls.block_desc_to_log(block, block_idx, skip_op_callstack)
+            cls.print_block_desc(block, block_idx, skip_op_callstack)
             block_idx += 1
 
     @classmethod
-    def block_desc_to_log(cls, block, block_idx, skip_op_callstack=True):
+    def print_block_desc(cls, block, block_idx, skip_op_callstack=True):
         indent = 0
 
         print("{0}{1} // block {2}".format(

@@ -120,7 +120,7 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
             backward_strategy = fluid.dygraph.BackwardStrategy()
             backward_strategy.sort_sum_gradient = True
 
-            mnist = fluid.dygraph.StaticModelRunner(
+            mnist = fluid.dygraph.static_runner.StaticModelRunner(
                 model_dir=self.save_dirname,
                 model_filename=self.model_filename,
                 params_filename=self.params_filename)

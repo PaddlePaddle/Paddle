@@ -115,7 +115,8 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
             backward_strategy = fluid.dygraph.BackwardStrategy()
             backward_strategy.sort_sum_gradient = True
 
-            while_net = fluid.dygraph.StaticModelRunner(self.save_dirname)
+            while_net = fluid.dygraph.static_runner.StaticModelRunner(
+                self.save_dirname)
 
             dy_param_init_value = {}
             for param in while_net.parameters():
