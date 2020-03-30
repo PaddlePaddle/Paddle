@@ -117,7 +117,8 @@ class TestTDMSamplerOp(OpTest):
                 positive_travel.append(sampling_res[0])
                 # check unique
                 if sampling_res[0] != 0:
-                    assert (np.unique(sampling_res)).shape == sampling_res.shape
+                    sampling_res_list = sampling_res.tolist()
+                    assert len(set(sampling_res_list)) == len(sampling_res_list)
                 # check legal
                 layer_node = self.tree_layer[layer_idx]
                 layer_node.append(0)
