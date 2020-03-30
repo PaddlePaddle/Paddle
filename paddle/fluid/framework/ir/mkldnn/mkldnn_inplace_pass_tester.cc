@@ -58,11 +58,12 @@ class MKLDNNInplacePassTest {
     op->SetOutput("Out", {outputs[0]});
   }
 
-  ProgramDesc BuildProgramDesc(const std::string& mkldnn_enabled_op, bool branched) {
+  ProgramDesc BuildProgramDesc(const std::string& mkldnn_enabled_op,
+                               bool branched) {
     ProgramDesc prog;
 
-    for (auto& v :
-         std::vector<std::string>({"a", "weights", "bias", "f", "g", "h", "i", "j","k"})) {
+    for (auto& v : std::vector<std::string>(
+             {"a", "weights", "bias", "f", "g", "h", "i", "j", "k"})) {
       auto* var = prog.MutableBlock(0)->Var(v);
       var->SetType(proto::VarType::SELECTED_ROWS);
       if (v == "weights" || v == "bias") {
@@ -74,14 +75,18 @@ class MKLDNNInplacePassTest {
           std::vector<std::string>({"a", "weights", "bias"}),
           std::vector<std::string>({"f"}), boost::indeterminate);
     SetOp(&prog, "relu", "relu1", std::vector<std::string>({"f"}),
-          std::vector<std::string>({"g"}), mkldnn_enabled_op.compare("relu") == 0);
+          std::vector<std::string>({"g"}),
+          mkldnn_enabled_op.compare("relu") == 0);
     SetOp(&prog, "softmax", "softmax1", std::vector<std::string>({"g"}),
-          std::vector<std::string>({"h"}), mkldnn_enabled_op.compare("softmax") == 0);
-    SetOp(&prog, "elementwise_add", "elementwise_add1", std::vector<std::string>({"h","i"}),
-          std::vector<std::string>({"j"}), mkldnn_enabled_op.compare("elementwise_add") == 0);
+          std::vector<std::string>({"h"}),
+          mkldnn_enabled_op.compare("softmax") == 0);
+    SetOp(&prog, "elementwise_add", "elementwise_add1",
+          std::vector<std::string>({"h", "i"}), std::vector<std::string>({"j"}),
+          mkldnn_enabled_op.compare("elementwise_add") == 0);
     if (branched == true) {
       SetOp(&prog, "softmax", "softmax2", std::vector<std::string>({"g"}),
-            std::vector<std::string>({"k"}), mkldnn_enabled_op.compare("softmax") == 0);
+            std::vector<std::string>({"k"}),
+            mkldnn_enabled_op.compare("softmax") == 0);
     }
 
     return prog;
@@ -112,11 +117,12 @@ class MKLDNNInplacePassTest {
     for (auto* node : graph->Nodes()) {
       if (node->IsOp()) {
         auto* op = node->Op();
-        if (op->Type() == mkldnn_enabled_op ) {
+        if (op->Type() == mkldnn_enabled_op) {
           auto ins = op->Inputs();
-          auto outs = op->Outputs(); 
+          auto outs = op->Outputs();
           // Input and output are the same var
-          if (ins[input_names[mkldnn_enabled_op]] == outs[output_names[mkldnn_enabled_op]]) {
+          if (ins[input_names[mkldnn_enabled_op]] ==
+              outs[output_names[mkldnn_enabled_op]]) {
             ++use_mkldnn_true_count;
           }
         }
@@ -125,18 +131,17 @@ class MKLDNNInplacePassTest {
 
     EXPECT_EQ(use_mkldnn_true_count, expected_use_mkldnn_true_count);
   }
-
 };
 
 TEST(MKLDNNInplacePass, inplace_softmax) {
   // softmax to be mkl-dnn enabled and made in-place
-  
-  MKLDNNInplacePassTest().MainTest("softmax",false, 1);
+
+  MKLDNNInplacePassTest().MainTest("softmax", false, 1);
 }
 
 TEST(MKLDNNInplacePass, inplace_softmax_branched) {
   // softmax to be mkl-dnn enabled and made in-place
-  MKLDNNInplacePassTest().MainTest("softmax",true, 0);
+  MKLDNNInplacePassTest().MainTest("softmax", true, 0);
 }
 
 }  // namespace ir
