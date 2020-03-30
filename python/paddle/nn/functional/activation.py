@@ -89,7 +89,7 @@ def relu(input, inplace=False, name=None):
         outs = core.ops.relu(inputs)
         return outs['Out'][0]
 
-    helper = LayerHelper("fc", **locals())
+    helper = LayerHelper("relu", **locals())
 
     outs = input if inplace else helper.create_variable_for_type_inference(
         input.dtype)
