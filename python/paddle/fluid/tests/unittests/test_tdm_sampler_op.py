@@ -121,7 +121,8 @@ class TestTDMSamplerOp(OpTest):
                 # check legal
                 layer_node = self.tree_layer[layer_idx]
                 layer_node.append(0)
-                assert np.isin(sampling_res, np.array(layer_node)).all()
+                for sample in sampling_res:
+                    assert (sample in layer_node)
                 label_sampling_res = label_res[batch_ids][start_offset:
                                                           end_offset]
                 mask_sampling_res = mask_res[batch_ids][start_offset:end_offset]

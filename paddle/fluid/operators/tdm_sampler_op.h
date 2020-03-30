@@ -53,7 +53,7 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
   VLOG(3) << "TDM: tree layer nums: " << layer_nums;
 
   int sample_res_length = 0;
-  for (int layer_idx = 0; layer_idx < layer_nums; ++layer_idx) {
+  for (size_t layer_idx = 0; layer_idx < layer_nums; ++layer_idx) {
     sample_res_length += (neg_samples_num_vec[layer_idx] +
                           static_cast<int>(output_positive_flag));
   }
@@ -219,7 +219,7 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
   memcpy(label_data, &label_vec[0], sizeof(T) * total_sample_nums);
   memcpy(mask_data, &mask_vec[0], sizeof(T) * total_sample_nums);
 
-  for (int layer_index = 0; layer_index < layer_nums; layer_index++) {
+  for (size_t layer_index = 0; layer_index < layer_nums; layer_index++) {
     delete sampler_vec[layer_index];
   }
 }
