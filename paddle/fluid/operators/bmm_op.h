@@ -87,8 +87,8 @@ static void ReshapeXYOutIntoMatrixSequence(framework::Tensor *x,
                                            framework::Tensor *y,
                                            framework::Tensor *out, bool trans_x,
                                            bool trans_y) {
-  auto x_dim = framework::make_ddim({1, x->dims()[0]});
-  auto y_dim = framework::make_ddim({y->dims()[0], 1});
+  auto x_dim = RowMatrixFromVector(x->dims());
+  auto y_dim = ColumnMatrixFromVector(y->dims());
   auto mat_dim_x = math::CreateMatrixDescriptor(x_dim, 0, false);
   auto mat_dim_y = math::CreateMatrixDescriptor(y_dim, 0, false);
 
@@ -135,6 +135,16 @@ class BmmGradKernel : public framework::OpKernel<T> {
     auto blas = math::GetBlas<DeviceContext, T>(context);
     auto mat_dim_a = math::CreateMatrixDescriptor(a.dims(), 0, trans_a);
     auto mat_dim_b = math::CreateMatrixDescriptor(b.dims(), 0, trans_b);
+    int head_number = 1;
+
+    if (head_number <= 1 && a.dims().size() == 3 && b.dims().size() <= 2) {
+      // the transpose_X must be false, if is true, the transpose cost much time
+      if (!trans_a) {
+        mat_dim_a.height_ *= mat_dim_a.batch_size_;
+        mat_dim_a.batch_size_ = 0;
+      }
+    }
+
     blas.MatMul(a, mat_dim_a, b, mat_dim_b, T(1), out, T(0));
   }
   void CalcInputGrad(const framework::ExecutionContext &context,
