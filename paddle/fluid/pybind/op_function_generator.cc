@@ -48,12 +48,12 @@ const char* INPUT_INITIALIZER_TEMPLATE = R"({"%s", {%s}})";
 const char* INPUT_LIST_INITIALIZER_TEMPLATE = R"({"%s", %s})";
 const char* INPUT_INITIALIZER_TEMPLATE_WITH_NULL = R"(
     if (%s != nullptr) {
-      ins_["%s"] = {%s};
+      ins["%s"] = {%s};
     }
 )";
 const char* INPUT_INITIALIZER_TEMPLATE_WITH_NULL_LIST = R"(
     if (%s != nullptr) {
-      ins_["%s"] = %s;
+      ins["%s"] = %s;
     }
 )";
 
@@ -61,15 +61,15 @@ const char* INPUT_INITIALIZER_TEMPLATE_WITH_NULL_LIST = R"(
 const char* ARG_OUT_NUM = R"(%sNum)";
 const char* ARG_OUT_NUM_TYPE = R"(size_t )";
 
-const char* VAR_TYPE = R"(std::shared_ptr<imperative::VarBase>)";
-const char* VAR_LIST_TYPE = R"(std::vector<std::shared_ptr<imperative::VarBase>>)";
+const char* VAR_TYPE = R"(const std::shared_ptr<imperative::VarBase>&)";
+const char* VAR_LIST_TYPE = R"(const std::vector<std::shared_ptr<imperative::VarBase>>&)";
 const char* ARG_TEMPLATE = R"(%s %s)";
 
 const char* RETURN_TUPLE_TYPE = R"(std::tuple<%s>)";
 const char* RETURN_TYPE = R"(%s)";
 const char* RETURN_TUPLE_TEMPLATE = R"(std::make_tuple(%s))";
-const char* RETURN_LIST_TEMPLATE = R"(outs_["%s"])";
-const char* RETURN_TEMPLATE = R"(outs_["%s"][0])";
+const char* RETURN_LIST_TEMPLATE = R"(outs["%s"])";
+const char* RETURN_TEMPLATE = R"(outs["%s"][0])";
 
 const char* FUNCTION_ARGS = R"(%s, const py::args& args)";
 const char* FUNCTION_ARGS_NO_INPUT = R"(const py::args& args)";
@@ -78,15 +78,15 @@ const char* OP_FUNCTION_TEMPLATE =
 R"(
 %s %s(%s)
 {
-  framework::AttributeMap attrs_;
-  ConstructAttrMapFromPyArgs(&attrs_, args);
+  framework::AttributeMap attrs;
+  ConstructAttrMapFromPyArgs(&attrs, args);
   {
     py::gil_scoped_release release;
     auto tracer = imperative::GetCurrentTracer();
-    imperative::NameVarBaseMap outs_ = %s;
-    imperative::NameVarBaseMap ins_ = %s;
+    imperative::NameVarBaseMap outs = %s;
+    imperative::NameVarBaseMap ins = %s;
     %s
-    tracer->TraceOp("%s", ins_, outs_, attrs_);
+    tracer->TraceOp("%s", ins, outs, attrs);
     return %s; 
   }   
 })";

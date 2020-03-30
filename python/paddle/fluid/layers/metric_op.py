@@ -75,9 +75,9 @@ def accuracy(input, label, k=1, correct=None, total=None):
     """
     if in_dygraph_mode():
         if correct is None:
-            correct = _varbase_creator(dtype="int64")
+            correct = _varbase_creator(dtype="int32")
         if total is None:
-            total = _varbase_creator(dtype="int64")
+            total = _varbase_creator(dtype="int32")
 
         topk_out, topk_indices = nn.topk(input, k=k)
         _acc, _, _ = core.ops.accuracy(topk_out, topk_indices, label, correct,
@@ -90,9 +90,9 @@ def accuracy(input, label, k=1, correct=None, total=None):
     topk_out, topk_indices = nn.topk(input, k=k)
     acc_out = helper.create_variable_for_type_inference(dtype="float32")
     if correct is None:
-        correct = helper.create_variable_for_type_inference(dtype="int64")
+        correct = helper.create_variable_for_type_inference(dtype="int32")
     if total is None:
-        total = helper.create_variable_for_type_inference(dtype="int64")
+        total = helper.create_variable_for_type_inference(dtype="int32")
     helper.append_op(
         type="accuracy",
         inputs={
