@@ -65,10 +65,24 @@ class TestGetNameIds2(TestGetNameIds):
             return z
         """
         self.all_name_ids = {
-            'x': [gast.Param(), gast.Store()],
-            'a': [gast.Store(), gast.Load()],
-            'y': [gast.Param(), gast.Load()],
-            'z': [gast.Store()]
+            'x': [
+                gast.Param(), gast.Store(), gast.Load(), gast.Load(),
+                gast.Load()
+            ],
+            'a': [gast.Store(), gast.Load(), gast.Load()],
+            'y': [
+                gast.Param(),
+                gast.Load(),
+                gast.Load(),
+                gast.Load(),
+                gast.Load(),
+            ],
+            'z': [
+                gast.Store(),
+                gast.Load(),
+                gast.Store(),
+                gast.Store(),
+            ]
         }
 
 
@@ -83,9 +97,23 @@ class TestGetNameIds3(TestGetNameIds):
             return z
         """
         self.all_name_ids = {
-            'x': [gast.Param()],
-            'y': [gast.Param()],
-            'z': [gast.Store()]
+            'x': [
+                gast.Param(),
+                gast.Load(),
+                gast.Load(),
+                gast.Load(),
+            ],
+            'y': [
+                gast.Param(),
+                gast.Load(),
+                gast.Load(),
+            ],
+            'z': [
+                gast.Store(),
+                gast.Store(),
+                gast.Load(),
+                gast.Store(),
+            ]
         }
 
 
@@ -107,7 +135,15 @@ class TestIsControlFlowIf(unittest.TestCase):
         self.check_false_case("a+b")
 
     def test_expr2(self):
-        self.check_false_case("a + x.numpy()[1]")
+        # x is a Tensor.
+        node = gast.parse("a + x.numpy()")
+        node_test = node.body[0].value
+
+        if_visitor = IfConditionVisitor(node_test)
+        self.assertTrue(if_visitor.is_control_flow())
+        # No transformation will be applied.
+        new_node, assign_nodes = if_visitor.transform()
+        self.assertTrue(len(assign_nodes) == 0)
 
     def test_is_None(self):
         self.check_false_case("x is None")

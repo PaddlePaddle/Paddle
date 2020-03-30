@@ -315,8 +315,8 @@ class SliceDoubleOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(SliceOpGradNoNeedBufferVarsInference,
-                                      "Input");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SliceOpGradNoNeedBufferVarsInference,
+                                    "Input");
 
 }  // namespace operators
 }  // namespace paddle

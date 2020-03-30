@@ -27,7 +27,9 @@ function(pass_library TARGET DEST)
 
     # add more DEST here, such as train, dist and collect USE_PASS into a file automatically.
     if (${DEST} STREQUAL "base" OR ${DEST} STREQUAL "inference")
-        message(STATUS "add pass ${TARGET} ${DEST}")
+        if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+            message(STATUS "add pass ${TARGET} ${DEST}")
+        endif()
         file(APPEND ${pass_file} "USE_PASS(${TARGET});\n")
         set(INFER_IR_PASSES ${INFER_IR_PASSES} ${TARGET} CACHE INTERNAL "")
     endif()
@@ -130,6 +132,7 @@ cc_test(test_skip_layernorm_fuse_pass SRCS skip_layernorm_fuse_pass_tester.cc DE
 cc_test(test_multihead_matmul_fuse_pass SRCS multihead_matmul_fuse_pass_tester.cc DEPS multihead_matmul_fuse_pass)
 cc_test(test_conv_bn_fuse_pass SRCS conv_bn_fuse_pass_tester.cc DEPS conv_bn_fuse_pass)
 if(WITH_GPU)
+    cc_test(test_embedding_eltwise_layernorm_fuse_pass SRCS embedding_eltwise_layernorm_fuse_pass_tester.cc DEPS embedding_eltwise_layernorm_fuse_pass)
     cc_test(test_cudnn_placement_pass SRCS cudnn_placement_pass_tester.cc DEPS cudnn_placement_pass)
 endif()
 if(NOT WIN32)

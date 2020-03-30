@@ -29,7 +29,6 @@ from . import control_flow
 from . import nn
 from . import ops
 from . import tensor
-from ..initializer import init_on_cpu
 from ..framework import default_main_program, Parameter, unique_name, name_scope
 from ..framework import Variable
 from ..framework import in_dygraph_mode
@@ -50,7 +49,7 @@ def _decay_step_counter(begin=0):
     return global_step
 
 
-def noam_decay(d_model, warmup_steps):
+def noam_decay(d_model, warmup_steps, learning_rate=1.0):
     """
     Noam decay method. The numpy implementation of noam decay as follows.
 
@@ -59,11 +58,12 @@ def noam_decay(d_model, warmup_steps):
       import paddle.fluid as fluid
       import numpy as np
       # set hyper parameters
+      base_lr = 0.01
       d_model = 2
       current_steps = 20
       warmup_steps = 200
       # compute
-      lr_value = np.power(d_model, -0.5) * np.min([
+      lr_value = base_lr * np.power(d_model, -0.5) * np.min([
                               np.power(current_steps, -0.5),
                               np.power(warmup_steps, -1.5) * current_steps])
 
@@ -75,6 +75,10 @@ def noam_decay(d_model, warmup_steps):
 
         warmup_steps(Variable): A super parameter.
 
+        learning_rate(Variable|float|int): The initial learning rate. If the type
+            is Variable, it's a tensor with shape [1], the data type can be
+            float32 or float64. It also can be set to python int number. Default 1.0
+
     Returns:
         The decayed learning rate.
     Examples:
@@ -85,18 +89,21 @@ def noam_decay(d_model, warmup_steps):
           learning_rate = 0.01
           lr = fluid.layers.learning_rate_scheduler.noam_decay(
                          1/(warmup_steps *(learning_rate ** 2)),
-                         warmup_steps)
+                         warmup_steps,
+                         learning_rate)
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            decay = imperate_lr.NoamDecay(d_model, warmup_steps)
+            decay = imperate_lr.NoamDecay(
+                d_model, warmup_steps, learning_rate=learning_rate)
             return decay
         else:
             global_step = _decay_step_counter(1)
 
             a = global_step**-0.5
             b = (warmup_steps**-1.5) * global_step
-            lr_value = (d_model**-0.5) * nn.elementwise_min(a, b)
+            lr_value = learning_rate * (d_model**-0.5) * nn.elementwise_min(a,
+                                                                            b)
 
             return lr_value
 

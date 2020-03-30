@@ -18,7 +18,7 @@ from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator
 from ..framework import Variable
-from ..initializer import Constant, force_init_on_cpu
+from ..initializer import Constant
 from ..core import VarDesc
 from .. import core
 from .layer_function_generator import templatedoc
@@ -502,10 +502,13 @@ def assign(input, output=None):
         elif dtype == VarDesc.VarType.INT32:
             value_name = "int32_values"
             values = [int(v) for v in input.flat]
+        elif dtype == VarDesc.VarType.INT64:
+            value_name = "int64_values"
+            values = [int(v) for v in input.flat]
         else:
             raise TypeError(
                 "When the type of 'input' in assign is numpy.ndarray, "
-                "the data type of 'input' must be float32 or int32, but "
+                "the data type of 'input' must be float32, int32 or int64, but "
                 "received %s." % convert_dtype(dtype))
         if input.size > 1024 * 1024:
             raise ValueError("The size of input is too big. Please consider "
@@ -569,10 +572,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
           shape = fluid.layers.fill_constant([1,2], "int32", 2) # shape=[2,2]
           data4 = fluid.layers.fill_constant(shape=shape, dtype='bool', value=True) # data4=[[True,True],[True,True]]
     """
-    attrs = {
-        'value': float(value),
-        'force_cpu': force_cpu or force_init_on_cpu()
-    }
+    attrs = {'value': float(value), 'force_cpu': force_cpu}
 
     if convert_dtype(dtype) in ['int64', 'int32']:
         attrs['str_value'] = str(int(value))
@@ -601,10 +601,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
                 'fill_constant')
     check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
     inputs = {}
-    attrs = {
-        'value': float(value),
-        'force_cpu': force_cpu or force_init_on_cpu()
-    }
+    attrs = {'value': float(value), 'force_cpu': force_cpu}
 
     if convert_dtype(dtype) in ['int64', 'int32']:
         attrs['str_value'] = str(int(value))
@@ -722,7 +719,7 @@ def fill_constant_batch_size_like(input,
         'value': float(value),
         'input_dim_idx': input_dim_idx,
         'output_dim_idx': output_dim_idx,
-        'force_cpu': force_cpu or force_init_on_cpu()
+        'force_cpu': force_cpu
     }
     if convert_dtype(dtype) in ['int64', 'int32']:
         attrs['str_value'] = str(int(value))
