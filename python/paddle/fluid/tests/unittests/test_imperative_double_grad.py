@@ -17,7 +17,6 @@ from paddle.fluid.wrapped_decorator import wrap_decorator
 import unittest
 from unittest import TestCase
 import numpy as np
-from paddle.fluid.dygraph.base import grad
 
 
 def _dygraph_guard_(func):
@@ -48,16 +47,20 @@ class TestDygraphDoubleGrad(TestCase):
              outputs,
              inputs,
              grad_outputs=None,
-             no_grad_set=None,
-             create_graph=False):
+             no_grad_vars=None,
+             retain_graph=None,
+             create_graph=False,
+             allow_unused=False):
         backward_strategy = fluid.dygraph.BackwardStrategy()
         backward_strategy.sort_sum_gradient = self.sort_sum_gradient
-        return grad(
+        return fluid.dygraph.grad(
             outputs=outputs,
             inputs=inputs,
             grad_outputs=grad_outputs,
-            no_grad_set=no_grad_set,
+            no_grad_vars=no_grad_vars,
+            retain_graph=retain_graph,
             create_graph=create_graph,
+            allow_unused=allow_unused,
             backward_strategy=backward_strategy)
 
     @dygraph_guard
@@ -84,10 +87,11 @@ class TestDygraphDoubleGrad(TestCase):
                       [random_var(shape)], [random_var(shape)])
 
         with self.assertRaises(AssertionError):
-            self.grad([random_var(shape)], [random_var(shape)], no_grad_set=[1])
+            self.grad(
+                [random_var(shape)], [random_var(shape)], no_grad_vars=[1])
 
         with self.assertRaises(AssertionError):
-            self.grad([random_var(shape)], [random_var(shape)], no_grad_set=1)
+            self.grad([random_var(shape)], [random_var(shape)], no_grad_vars=1)
 
     @dygraph_guard
     def test_simple_example(self):
@@ -96,17 +100,20 @@ class TestDygraphDoubleGrad(TestCase):
         y = x + 1
 
         for create_graph in [False, True]:
-            dx, = self.grad([x], [x], create_graph=create_graph)
+            dx, = self.grad(
+                [x], [x], create_graph=create_graph, retain_graph=True)
             self.assertEqual(dx.shape, x.shape)
             self.assertTrue(np.all(dx.numpy() == 1))
             self.assertNotEqual(dx.stop_gradient, create_graph)
 
-            dx_mul_2, = self.grad([y, x], [x], create_graph=create_graph)
+            dx_mul_2, = self.grad(
+                [y, x], [x], create_graph=create_graph, retain_graph=True)
             self.assertEqual(dx_mul_2.shape, x.shape)
             self.assertTrue(np.all(dx_mul_2.numpy() == 2))
             self.assertNotEqual(dx_mul_2.stop_gradient, create_graph)
 
-            none_grad, = self.grad([x], [y], create_graph=create_graph)
+            none_grad, = self.grad(
+                [x], [y], create_graph=create_graph, allow_unused=True)
             self.assertTrue(none_grad is None)
 
             grad_with_none_and_not_none, = self.grad(
@@ -160,7 +167,8 @@ class TestDygraphDoubleGrad(TestCase):
                         outputs=[y, z],
                         inputs=[x],
                         grad_outputs=[grad_y, grad_z],
-                        create_graph=create_graph)
+                        create_graph=create_graph,
+                        retain_graph=True)
 
                     grad_y_np = ones_grad_y if grad_y is None else grad_y.numpy(
                     )
@@ -216,7 +224,7 @@ class TestDygraphDoubleGrad(TestCase):
         self.assertTrue(np.allclose(x_grad_actual, x_grad_expected))
 
     @dygraph_guard
-    def test_example_with_gradient_accumulation_and_no_grad_set(self):
+    def test_example_with_gradient_accumulation_and_no_grad_vars(self):
         x = random_var(self.shape)
         x_np = x.numpy()
         numel = x_np.size
@@ -231,7 +239,7 @@ class TestDygraphDoubleGrad(TestCase):
         del y1, z, w
 
         dx_actual, = self.grad(
-            [w_mean], [x], create_graph=True, no_grad_set=[y2])
+            [w_mean], [x], create_graph=True, no_grad_vars=[y2])
 
         self.assertFalse(y2.stop_gradient)
         self.assertFalse(dx_actual.stop_gradient)

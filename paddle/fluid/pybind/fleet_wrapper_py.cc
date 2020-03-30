@@ -59,6 +59,7 @@ void BindFleetWrapper(py::module* m) {
       .def("save_cache", &framework::FleetWrapper::SaveCache)
       .def("load_model", &framework::FleetWrapper::LoadModel)
       .def("clear_model", &framework::FleetWrapper::ClearModel)
+      .def("clear_one_table", &framework::FleetWrapper::ClearOneTable)
       .def("stop_server", &framework::FleetWrapper::StopServer)
       .def("finalize_worker", &framework::FleetWrapper::FinalizeWorker)
       .def("gather_servers", &framework::FleetWrapper::GatherServers)
