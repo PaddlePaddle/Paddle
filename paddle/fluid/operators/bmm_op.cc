@@ -40,7 +40,7 @@ class BmmOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(x_dims.size(), 3,
                       "Input(X) of BmmOp must be 3-dimensional.");
     PADDLE_ENFORCE_EQ(y_dims.size(), 3,
-                      "Input(X) of BmmOp must be 3-dimensional.");
+                      "Input(Y) of BmmOp must be 3-dimensional.");
     PADDLE_ENFORCE_EQ(x_dims[0], y_dims[0],
                       "Input(X) and Input(Y) must have the same dimension");
     PADDLE_ENFORCE_EQ(x_dims[2], y_dims[1],
@@ -65,9 +65,9 @@ class BmmOp : public framework::OperatorWithKernel {
 class BmmOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor), The first input tensor of bmm op.");
-    AddInput("Y", "(Tensor), The second input tensor of bmm op.");
-    AddOutput("Out", "(Tensor), The output tensor of bmm op.");
+    AddInput("X", "(Tensor), The first input tensor of Bmm op.");
+    AddInput("Y", "(Tensor), The second input tensor of Bmm op.");
+    AddOutput("Out", "(Tensor), The output tensor of Bmm op.");
     AddComment(R"DOC(
 The Bmm operator is used to perform batched matrix multiplication
 over the last two dimensions of the input tensors `X` and `Y` 
@@ -80,7 +80,7 @@ Examples:
   }
 };
 
-class BmmGradOp : public framework::OperatorWithKernel {
+class BmmOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -141,7 +141,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(bmm, ops::BmmOp, ops::BmmOpMaker,
                   ops::BmmOpGradMaker<paddle::framework::OpDesc>,
                   ops::BmmOpGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(bmm_grad, ops::BmmGradOp);
+REGISTER_OPERATOR(bmm_grad, ops::BmmOpGrad);
 REGISTER_OP_CPU_KERNEL(
     bmm, ops::BmmKernel<paddle::platform::CPUDeviceContext, float>,
     ops::BmmKernel<paddle::platform::CPUDeviceContext, double>);
