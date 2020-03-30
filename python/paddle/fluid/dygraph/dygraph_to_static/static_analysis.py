@@ -275,6 +275,8 @@ class StaticAnalysisVisitor(object):
         if isinstance(node.value, str):
             return {NodeVarType.STRING}
 
+        return {NodeVarType.UNKNOWN}
+
     def _get_node_var_type(self, cur_wrapper):
         node = cur_wrapper.node
         if isinstance(node, gast.Constant):
