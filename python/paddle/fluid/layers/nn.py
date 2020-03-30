@@ -837,7 +837,7 @@ def dropout(x,
             seed = default_main_program().random_seed
         seed = seed if seed is not None else 0
         _is_test = not _dygraph_tracer()._train_mode
-        out, musk = core.ops.dropout(x, 'dropout_prob', dropout_prob, 'is_test',
+        out, mask = core.ops.dropout(x, 'dropout_prob', dropout_prob, 'is_test',
                                      _is_test, 'fix_seed', seed is not None,
                                      'seed', seed, 'dropout_implementation',
                                      dropout_implementation)
@@ -4717,7 +4717,7 @@ def topk(input, k, name=None):
 
     """
     if in_dygraph_mode():
-        _k = k.numpy().item() if isinstance(k, Variable) else k
+        _k = k.numpy().item(0) if isinstance(k, Variable) else k
         out, indices = core.ops.top_k(input, 'k', _k)
         out.stop_gradient = True
         indices.stop_gradient = True
@@ -10369,7 +10369,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
 
     if in_dygraph_mode():
-        _scale = scale.numpy().item() if isinstance(scale, Variable) else scale
+        _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
         out = core.ops.scale(x, 'scale',
                              float(_scale), 'bias',
                              float(bias), 'bias_after_scale', bias_after_scale)

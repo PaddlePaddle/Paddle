@@ -1852,9 +1852,9 @@ class AdamOptimizer(Optimizer):
 
         if framework.in_dygraph_mode():
             _beta1 = self._beta1 if not isinstance(
-                self._beta1, Variable) else self._beta1.numpy().item()
+                self._beta1, Variable) else self._beta1.numpy().item(0)
             _beta2 = self._beta2 if not isinstance(
-                self._beta2, Variable) else self._beta2.numpy().item()
+                self._beta2, Variable) else self._beta2.numpy().item(0)
             _, _, _, _, _ = core.ops.adam(
                 param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
                 beta1_pow_acc, beta2_pow_acc, param_and_grad[0], moment1,

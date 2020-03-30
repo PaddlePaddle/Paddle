@@ -48,6 +48,7 @@ static inline std::vector<std::shared_ptr<imperative::VarBase>>
 ConstructDuplicableOutput(const size_t num) {
   auto tracer = imperative::GetCurrentTracer();
   std::vector<std::shared_ptr<imperative::VarBase>> res;
+  res.reserve(num);
   for (size_t i = 0; i < num; i++) {
     auto var_base_name = tracer->GenerateUniqueName();
     res.emplace_back(new imperative::VarBase(var_base_name));
