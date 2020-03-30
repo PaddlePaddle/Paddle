@@ -457,7 +457,7 @@ class Executor(object):
           # place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
           # exe = fluid.Executor(place)
 
-          # If you don't set place, PaddlePaddle set the default device.
+          # If you don't set place, PaddlePaddle sets the default device.
           exe = fluid.Executor()
 
           train_program = fluid.Program()
