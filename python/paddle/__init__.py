@@ -220,4 +220,3 @@ import paddle.tensor
 # from .framework import WeightNormParamAttr   #DEFINE_ALIAS
 # from .framework import Model   #DEFINE_ALIAS
 # from .framework import Sequential   #DEFINE_ALIAS
-

@@ -92,7 +92,7 @@ class BmmOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Y"), true,
         platform::errors::NotFound("Input(Y) of BmmOp should not be null"));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("Out")), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
                       platform::errors::NotFound(
                           "Output(Out@GRAD) of BmmOp should not be null."));
 
