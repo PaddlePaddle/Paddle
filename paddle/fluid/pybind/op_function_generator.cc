@@ -61,9 +61,9 @@ const char* INPUT_INITIALIZER_TEMPLATE_WITH_NULL_LIST = R"(
 const char* ARG_OUT_NUM = R"(%sNum)";
 const char* ARG_OUT_NUM_TYPE = R"(size_t )";
 
-const char* VAR_TYPE = R"(const std::shared_ptr<imperative::VarBase>&)";
-const char* VAR_LIST_TYPE = R"(const std::vector<std::shared_ptr<imperative::VarBase>>&)";
-const char* ARG_TEMPLATE = R"(%s %s)";
+const char* VAR_TYPE = R"(std::shared_ptr<imperative::VarBase>)";
+const char* VAR_LIST_TYPE = R"(std::vector<std::shared_ptr<imperative::VarBase>>)";
+const char* ARG_TEMPLATE = R"(const %s& %s)";
 
 const char* RETURN_TUPLE_TYPE = R"(std::tuple<%s>)";
 const char* RETURN_TYPE = R"(%s)";
