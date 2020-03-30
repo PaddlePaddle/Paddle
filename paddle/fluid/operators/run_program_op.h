@@ -33,14 +33,11 @@ namespace paddle {
 namespace operators {
 
 using StepScopeVar = std::vector<framework::Scope *>;
-using ProgramDesc = framework::ProgramDesc;
 using BlockDesc = framework::BlockDesc;
 
 using Variable = framework::Variable;
 using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
-
-using FeedFetchList = framework::FeedFetchList;
 
 namespace details {
 

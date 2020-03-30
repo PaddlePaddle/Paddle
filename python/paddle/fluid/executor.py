@@ -328,12 +328,12 @@ def _fetch_var(name, scope=None, return_numpy=True):
     Returns:
        LodTensor|numpy.ndarray
     """
-    assert isinstance(name, str)
+    assert isinstance(name, six.string_types)
     if scope is None:
         scope = global_scope()
     assert isinstance(scope, core._Scope)
 
-    var = scope.find_var(name)
+    var = scope.find_var(_to_name_str(name))
     assert var is not None, (
         "Cannot find " + name + " in scope. Perhaps you need to make the"
         " variable persistable by using var.persistable = True in your"

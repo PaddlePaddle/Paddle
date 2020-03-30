@@ -193,6 +193,7 @@ list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_debug_string)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
+list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 
 if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
@@ -270,6 +271,8 @@ py_test_modules(test_install_check MODULES test_install_check ENVS
 set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
 py_test_modules(test_imperative_debug_string MODULES test_imperative_debug_string ENVS FLAGS_dygraph_debug=1)
 py_test_modules(test_imperative_static_runner_mnist MODULES test_imperative_static_runner_mnist ENVS
+    FLAGS_cudnn_deterministic=1)
+py_test_modules(test_imperative_static_runner_while MODULES test_imperative_static_runner_while ENVS
     FLAGS_cudnn_deterministic=1)
 if(WITH_DISTRIBUTE)
     # FIXME(typhoonzero): add these tests back
