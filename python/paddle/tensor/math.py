@@ -98,13 +98,13 @@ def pow(input, exponent, out=None, name=None):
 
             # example 1: argument exponent is float
             res = paddle.fluid.data(name="output", shape=[32,32], dtype="float32")
-            y_1 = paddle.tensor.pow(x, 2.0, out=res)
+            y_1 = paddle.pow(x, 2.0, out=res)
             # y_1 is x^{2.0}
 
             # example 2: argument exponent is Variable
             exponet_tensor = fluid.layers.fill_constant([1], "float32", 3.0)
             res = paddle.fluid.data(name="output", shape=[32,32], dtype="float32")
-            y_2 = paddle.tensor.pow(x, exponent_tensor, out=res)
+            y_2 = paddle.pow(x, exponent_tensor, out=res)
             # y_2 is x^{3.0}
     """
     helper = LayerHelper('pow', **locals())
@@ -182,7 +182,7 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, out=None, name=None):
             dataY = paddle.fluid.data(name="dataY", append_batch_size = False, shape=[5, 3], dtype="float32")
             
             res = paddle.fluid.data(name="output", append_batch_size = False, shape=[2, 3], dtype="float32")
-            output = paddle.tensor.mul(dataX, dataY,
+            output = paddle.mul(dataX, dataY,
                                       x_num_col_dims = 1,
                                       y_num_col_dims = 1, 
                                       out=res)
