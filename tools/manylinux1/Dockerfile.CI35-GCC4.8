@@ -14,6 +14,7 @@ ENV LD_LIBRARY_PATH /opt/rh/devtoolset-2/root/usr/lib64:/opt/rh/devtoolset-2/roo
 ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 
 RUN yum install -y sqlite-devel zlib-devel openssl-devel pcre-devel tk-devel tkinter libtool xz graphviz gettext-devel
+
 RUN yum install -y curl-devel
 
 COPY tools/manylinux1/build_scripts ./build_scripts
