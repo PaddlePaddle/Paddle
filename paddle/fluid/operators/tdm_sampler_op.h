@@ -67,8 +67,8 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
   auto *travel_data = travel_lod_tensor.data<TreeT>();
   auto *layer_data = layer_lod_tensor.data<TreeT>();
 
-  int64_t zero = 0;
-  int64_t one = 1;
+  T zero = 0;
+  T one = 1;
   std::vector<T> output_vec(total_sample_nums, zero);
   std::vector<T> label_vec(total_sample_nums, zero);
   std::vector<T> mask_vec(total_sample_nums, one);
