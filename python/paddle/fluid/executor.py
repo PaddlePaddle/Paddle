@@ -630,12 +630,6 @@ class Executor(object):
         ]
         return outs
 
-    '''
-    TODO(typhoonzero): Define "no longer use" meaning? Can user create
-    a new Executor for the same program and run?
-    TODO(panyx0718): Why ParallelExecutor doesn't have close?
-    '''
-
     def _split_optimize_ops_in_fetch_list(self, fetch_list):
         """
         Split optimize_ops from fetch_list, which provided to specify program prunning.
@@ -654,8 +648,9 @@ class Executor(object):
         _fetch_list = []
 
         def _get_targets(item):
-            nonlocal _optimize_ops
-            nonlocal _fetch_list
+            if sys.version_info[0] == 3:
+                nonlocal _optimize_ops
+                nonlocal _fetch_list
             if isinstance(item, Operator):
                 if _is_optimize_op(item):
                     _optimize_ops.append(item)
@@ -788,35 +783,11 @@ class Executor(object):
 
         return feed
 
-    def _remove_optimize_ops_in_fetch_list(self, program, fetch_list):
-        """
-        Update the fetch list, remove the fetch item which is optimize op.  
-
-        Notes: This is a very low level API. Users should not use this API
-        directly. 
-
-        Args:
-            program(Program): the pruned program.
-            feed(list): feed dict or list.
-
-        Returns:
-            feed:(list)  updated fetch_list.
-        """
-        res = []
-        for item in fetch_list:
-            if isinstance(item, Variable) or isinstance(
-                    item, str) or isinstance(item, six.string_types):
-                res.append(item)
-            elif isinstance(item, Operator):
-                continue
-            elif isinstance(item, list):
-                for i in item:
-                    if isinstance(i, Variable) or isinstance(
-                            i, str) or isinstance(item, six.string_types):
-                        res.append(i)
-                    elif isinstance(i, Operator):
-                        continue
-        return res
+    '''
+    TODO(typhoonzero): Define "no longer use" meaning? Can user create
+    a new Executor for the same program and run?
+    TODO(panyx0718): Why ParallelExecutor doesn't have close?
+    '''
 
     def close(self):
         """
