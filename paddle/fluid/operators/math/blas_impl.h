@@ -913,7 +913,7 @@ void Blas<platform::CPUDeviceContext>::CSRMM(
 
 template <>
 template <typename T>
-void Blas<platform::CPUDeviceContext>::GETRF(int m, int n, float *a,
+void Blas<platform::CPUDeviceContext>::GETRF(int m, int n, T *a,
                                              int *ipiv) const {
   CBlas<T>::GETRF(LAPACK_ROW_MAJOR, m, n, a, n, ipiv);
 }
