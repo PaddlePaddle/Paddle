@@ -5,6 +5,8 @@ import random
 import numpy as np
 from paddle.fluid.io import Dataset
 
+from datasets.folder import DatasetFolder
+
 
 def center_crop_resize(img):
     h, w = img.shape[:2]
@@ -81,9 +83,9 @@ def image_folder(path):
     return samples
 
 
-class ImageNetDataset(Dataset):
+class ImageNetDataset(DatasetFolder):
     def __init__(self, path, mode='train'):
-        self.samples = image_folder(path)
+        super(ImageNetDataset, self).__init__(path)
         self.mode = mode
         if self.mode == 'train':
             self.transform = compose([
