@@ -133,7 +133,7 @@
 # from .linalg import cholesky   #DEFINE_ALIAS
 # from .linalg import dot   #DEFINE_ALIAS
 # from .manipulation import cast   #DEFINE_ALIAS
-# from .manipulation import concat   #DEFINE_ALIAS
+from .manipulation import concat  #DEFINE_ALIAS
 # from .manipulation import expand   #DEFINE_ALIAS
 # from .manipulation import expand_as   #DEFINE_ALIAS
 # from .manipulation import flatten   #DEFINE_ALIAS

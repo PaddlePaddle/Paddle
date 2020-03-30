@@ -155,7 +155,7 @@ import paddle.sysconfig
 # from .tensor.linalg import cholesky   #DEFINE_ALIAS
 # from .tensor.linalg import .tensordot   #DEFINE_ALIAS
 # from .tensor.manipulation import cast   #DEFINE_ALIAS
-# from .tensor.manipulation import concat   #DEFINE_ALIAS
+from .tensor.manipulation import concat  #DEFINE_ALIAS
 # from .tensor.manipulation import expand   #DEFINE_ALIAS
 # from .tensor.manipulation import expand_as   #DEFINE_ALIAS
 # from .tensor.manipulation import flatten   #DEFINE_ALIAS

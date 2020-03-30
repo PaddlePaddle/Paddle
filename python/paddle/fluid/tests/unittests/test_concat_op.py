@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid as fluid
+import paddle.tensor as tensor
 from paddle.fluid import compiler, Program, program_guard, core
 
 
@@ -235,6 +236,33 @@ class TestConcatAPI(unittest.TestCase):
         out_1 = fluid.layers.concat(input=[x_2, x_3], axis=1)
         out_2 = fluid.layers.concat(input=[x_2, x_3], axis=positive_1_int32)
         out_3 = fluid.layers.concat(input=[x_2, x_3], axis=positive_1_int64)
+
+        exe = fluid.Executor(place=fluid.CPUPlace())
+        [res_1, res_2, res_3] = exe.run(
+            fluid.default_main_program(),
+            feed={"x_1": input_2,
+                  "x_2": input_2,
+                  "x_3": input_3},
+            fetch_list=[out_1, out_2, out_3])
+        assert np.array_equal(res_1, np.concatenate((input_2, input_3), axis=1))
+        assert np.array_equal(res_2, np.concatenate((input_2, input_3), axis=1))
+        assert np.array_equal(res_3, np.concatenate((input_2, input_3), axis=1))
+
+
+class TestTensorConcatAPI(unittest.TestCase):
+    def test_api(self):
+        x_1 = fluid.data(shape=[None, 1, 4, 5], dtype='int32', name='x_1')
+        tensor.concat([x_1, x_1], 0)
+
+        input_2 = np.random.random([2, 1, 4, 5]).astype("int32")
+        input_3 = np.random.random([2, 2, 4, 5]).astype("int32")
+        x_2 = fluid.data(shape=[2, 1, 4, 5], dtype='int32', name='x_2')
+        x_3 = fluid.data(shape=[2, 2, 4, 5], dtype='int32', name='x_3')
+        positive_1_int32 = fluid.layers.fill_constant([1], "int32", 1)
+        positive_1_int64 = fluid.layers.fill_constant([1], "int64", 1)
+        out_1 = tensor.concat(input=[x_2, x_3], axis=1)
+        out_2 = tensor.concat(input=[x_2, x_3], axis=positive_1_int32)
+        out_3 = tensor.concat(input=[x_2, x_3], axis=positive_1_int64)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
         [res_1, res_2, res_3] = exe.run(
