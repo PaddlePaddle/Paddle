@@ -24,6 +24,7 @@ import inspect
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import utils
 from ... import unique_name
+from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from paddle.fluid.framework import Variable
 import warnings
@@ -950,7 +951,7 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
              1. Item_id(int, shape(1)), if node is a leaf node, give its item_id corresponding to node_id, else give 0.
              2. Layer_id(int, shape(1)), indicates which layer the node is on.
              3. Parent_id(int, shape(1))，node's parent node.
-             4. Child_id(int, shape(child_nums)), all child nodes' node_id of this node are given. 
+             4. Child_id(int, shape(child_nums)), all child node's node_id of this node should be given. 
                 If the number of child nodes is insufficient, padding 0 until child nums equal to Child_nums
          dtype(str): The data type of output child and leaf_mask, support int32/int64.
 

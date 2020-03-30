@@ -145,7 +145,7 @@ class TestTDMChildShape(unittest.TestCase):
     def test_shape(self):
         x = fluid.layers.data(name='x', shape=[1], dtype='int32', lod_level=1)
         tdm_tree_info = create_tdm_tree()
-        tree_info_np = np.array(tree_info).astype('int32')
+        tree_info_np = np.array(tdm_tree_info).astype('int32')
 
         child, leaf_mask = fluid.contrib.layers.tdm_child(
             x=x,
