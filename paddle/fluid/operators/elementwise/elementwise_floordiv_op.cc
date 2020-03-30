@@ -50,5 +50,7 @@ REGISTER_OP_WITHOUT_GRADIENT(elementwise_floordiv, ops::ElementwiseOp,
 REGISTER_OP_CPU_KERNEL(
     elementwise_floordiv,
     ops::ElementwiseFloorDivKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ElementwiseFloorDivKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ElementwiseFloorDivKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ElementwiseFloorDivKernel<paddle::platform::CPUDeviceContext,
                                    int64_t>);

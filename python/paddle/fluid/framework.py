@@ -3320,6 +3320,11 @@ class IrGraph(object):
         var_desc.set_dtype(var_dtype)
         return IrVarNode(self.graph.create_var_node(var_desc))
 
+    def create_control_dep_var(self):
+        """
+        """
+        return IrVarNode(self.graph.create_control_dep_var())
+
     def create_var_node_from_desc(self, var_desc):
         """
         Create a variable node by using an existing VarDesc in the graph.

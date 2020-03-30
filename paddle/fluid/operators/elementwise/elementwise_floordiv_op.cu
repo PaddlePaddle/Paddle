@@ -19,5 +19,7 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
     elementwise_floordiv,
+    ops::ElementwiseFloorDivKernel<plat::CUDADeviceContext, float>,
+    ops::ElementwiseFloorDivKernel<plat::CUDADeviceContext, double>,
     ops::ElementwiseFloorDivKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseFloorDivKernel<plat::CUDADeviceContext, int64_t>);
