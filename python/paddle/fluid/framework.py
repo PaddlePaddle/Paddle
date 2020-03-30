@@ -4168,7 +4168,6 @@ class Program(object):
                 elif isinstance(t, six.string_types):
                     name = str(t)
                 else:
-                    print(t, type(t))
                     raise ValueError("All targets of prune() can only be "
                                      "Variable or Operator.")
                 # After transpiler processing, the op that output this

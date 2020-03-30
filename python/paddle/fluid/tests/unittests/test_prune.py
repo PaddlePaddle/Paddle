@@ -168,12 +168,10 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
 
     def test_not_prune(self):
         """
-        use_prune = False
+        If use_prune = False, the targets which is not fetched will be calculated.
         """
         program = framework.Program()
         startup_program = framework.Program()
-        block = program.global_block()
-
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             with fluid.program_guard(program, startup_program):
@@ -192,12 +190,10 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
 
     def test_prune_fetches_without_optimizer(self):
         """
-        Prune operators and operators which are not needed to generate 'fetches'. 
+        Prune operators and variables which are not needed to generate 'fetches'. 
         """
         program = framework.Program()
         startup_program = framework.Program()
-        block = program.global_block()
-
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             with fluid.program_guard(program, startup_program):
@@ -228,8 +224,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         """
         program = framework.Program()
         startup_program = framework.Program()
-        block = program.global_block()
-
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             with fluid.program_guard(program, startup_program):
@@ -259,8 +253,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
     def test_prune_compiled_program(self):
         program = framework.Program()
         startup_program = framework.Program()
-        block = program.global_block()
-
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             with fluid.program_guard(program, startup_program):
@@ -292,8 +284,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
     def test_prune_feed_without_optimizer(self):
         program = framework.Program()
         startup_program = framework.Program()
-        block = program.global_block()
-
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             with fluid.program_guard(program, startup_program):
@@ -321,8 +311,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
     def test_prune_feed_with_optimizer(self):
         program = framework.Program()
         startup_program = framework.Program()
-        block = program.global_block()
-
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             with fluid.program_guard(program, startup_program):
@@ -356,15 +344,11 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         Executor.prune_called_times, and we check prune_called_times equals 1 even if we called exe.run() 
         10 times with the same input arguments.
         '''
-
         with _mock_guard(mock):
             exe = fluid.Executor(fluid.CPUPlace())
             exe.prune_called_times = 0
-
             program = framework.Program()
             startup_program = framework.Program()
-            block = program.global_block()
-
             scope = fluid.Scope()
             with fluid.scope_guard(scope):
                 with fluid.program_guard(program, startup_program):
@@ -399,14 +383,11 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         Executor.prune_called_times, and we check prune_called_times equals 1 even if we called exe.run() 
         10 times with the same input arguments.
         '''
-
         with _mock_guard(mock):
             exe = fluid.Executor(fluid.CPUPlace())
             exe.prune_called_times = 0
             program = framework.Program()
             startup_program = framework.Program()
-            block = program.global_block()
-
             scope = fluid.Scope()
             with fluid.scope_guard(scope):
                 with fluid.program_guard(program, startup_program):
@@ -441,11 +422,8 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         pass the return of optimize.minimize() to fetch_list.
         '''
         exe = fluid.Executor(fluid.CPUPlace())
-
         program = framework.Program()
         startup_program = framework.Program()
-        block = program.global_block()
-
         scope = fluid.Scope()
         # do not use_prune
         with fluid.scope_guard(scope):
@@ -503,11 +481,8 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         This test the correctness.
         '''
         exe = fluid.Executor(fluid.CPUPlace())
-
         program = framework.Program()
         startup_program = framework.Program()
-        block = program.global_block()
-
         scope = fluid.Scope()
         os.environ['CPU_NUM'] = str(2)
         # do not use_prune
@@ -544,7 +519,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
 
                 weight1 = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor())
-
         # expected
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
@@ -564,11 +538,8 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         pass the return of optimize.minimize() to fetch_list.
         '''
         exe = fluid.Executor(fluid.CPUPlace())
-
         program = framework.Program()
         startup_program = framework.Program()
-        block = program.global_block()
-
         scope = fluid.Scope()
         # do not use_prune
         with fluid.scope_guard(scope):
@@ -627,8 +598,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         """
         program = framework.Program()
         startup_program = framework.Program()
-        block = program.global_block()
-
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             with fluid.program_guard(program, startup_program):
@@ -672,11 +641,8 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         If optimize_ops in provided in the fetch_list, the argument use_prune is always override to True.
         '''
         exe = fluid.Executor(fluid.CPUPlace())
-
         program = framework.Program()
         startup_program = framework.Program()
-        block = program.global_block()
-
         scope = fluid.Scope()
         # do not use_prune
         with fluid.scope_guard(scope):

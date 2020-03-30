@@ -113,7 +113,6 @@ bool HasSubBlock(const proto::OpDesc& op_desc) {
 }
 
 int GetOpRole(const proto::OpDesc& op_desc) {
-  // The op role >= 0, so -1 is used to indicate "NotFound".
   for (auto& attr : op_desc.attrs()) {
     if (attr.name() == OpProtoAndCheckerMaker::OpRoleAttrName()) {
       PADDLE_ENFORCE_EQ(
@@ -124,7 +123,10 @@ int GetOpRole(const proto::OpDesc& op_desc) {
       return attr.i();
     }
   }
-  return -1;
+  // If attr op_role is not found, it may be operator created in c++ test, like
+  // prune_test.cc. In that case, the op_role should be defaut value, which is
+  // kNotSpecified.
+  return static_cast<int>(OpRole::kNotSpecified);
 }
 
 void AppendOpInputVarNames(const proto::OpDesc& op_desc,
@@ -170,16 +172,19 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
 
   bool expect_feed = true;
   for (auto& op_desc : ops) {
-    PADDLE_ENFORCE(op_desc.type() != kFeedOpType || expect_feed,
-                   "All FeedOps are at the beginning of the ProgramDesc");
+    PADDLE_ENFORCE_EQ(
+        op_desc.type() != kFeedOpType || expect_feed, true,
+        platform::errors::PreconditionNotMet(
+            "All FeedOps are at the beginning of the ProgramDesc"));
     expect_feed = (op_desc.type() == kFeedOpType);
   }
 
   bool expect_fetch = true;
   for (auto op_iter = ops.rbegin(); op_iter != ops.rend(); ++op_iter) {
     auto& op_desc = *op_iter;
-    PADDLE_ENFORCE(op_desc.type() != kFetchOpType || expect_fetch,
-                   "All FetchOps must at the end of the ProgramDesc");
+    PADDLE_ENFORCE_EQ(op_desc.type() != kFetchOpType || expect_fetch, true,
+                      platform::errors::PreconditionNotMet(
+                          "All FetchOps must at the end of the ProgramDesc"));
     expect_fetch = (op_desc.type() == kFetchOpType);
   }
 
@@ -324,8 +329,9 @@ std::map<int, int> Prune(const proto::ProgramDesc& input,
         auto sub_idx =
             FindMapByValue(pruned_origin_block_id_map, origin_sub_idx);
         PADDLE_ENFORCE_NE(sub_idx, -1,
-                          "The origin sub block id should be found in "
-                          "pruned_progin_block_id_map");
+                          platform::errors::NotFound(
+                              "The origin sub block id should be found in "
+                              "pruned_progin_block_id_map"));
         SetSubBlockIndex(&op_desc, sub_idx);
       }
     }
