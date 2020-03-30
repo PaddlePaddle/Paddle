@@ -1,4 +1,4 @@
-#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,14 +20,14 @@ import numpy as np
 import paddle.fluid as fluid
 import unittest
 
-from paddle.fluid.dygraph.dygraph_to_static import AstNodeWrapper, NodeVarType, StaticAnalysisVisitor
+from paddle.fluid.dygraph.dygraph_to_static import NodeVarType, StaticAnalysisVisitor
 
 
 def func_to_test1(a, b):
     return a + b
 
 
-result_var_type1 = {}
+result_var_type1 = {'a': {NodeVarType.UNKNOWN}, 'b': {NodeVarType.UNKNOWN}}
 
 
 def func_to_test2(x):
@@ -42,7 +42,7 @@ def func_to_test2(x):
         return x
 
 
-result_var_type2 = {'m': {NodeVarType.INT}}
+result_var_type2 = {'m': {NodeVarType.INT}, 'x': {NodeVarType.UNKNOWN}}
 
 
 def func_to_test3():
@@ -117,12 +117,34 @@ result_var_type5 = {
     'inner_unknown_func': {NodeVarType.UNKNOWN},
 }
 
+
+def func_to_test6(x, y=1):
+    i = fluid.dygraph.to_variable(x)
+
+    def add(x, y):
+        return x + y
+
+    while x < 10:
+        i = add(i, x)
+        x = x + y
+
+    return i
+
+
+result_var_type6 = {
+    'i': {NodeVarType.UNKNOWN},
+    'x': {NodeVarType.INT},
+    'y': {NodeVarType.INT},
+    'add': {NodeVarType.UNKNOWN}
+}
+
 test_funcs = [
-    func_to_test1, func_to_test2, func_to_test3, func_to_test4, func_to_test5
+    func_to_test1, func_to_test2, func_to_test3, func_to_test4, func_to_test5,
+    func_to_test6
 ]
 result_var_type = [
     result_var_type1, result_var_type2, result_var_type3, result_var_type4,
-    result_var_type5
+    result_var_type5, result_var_type6
 ]
 
 
@@ -150,8 +172,8 @@ class TestStaticAnalysis(unittest.TestCase):
             self._check_wrapper(wrapper_root, node_to_wrapper_map)
 
     def test_var_env(self):
-        for i in range(5):
-            func = test_funcs[i]
+
+        for i, func in enumerate(test_funcs):
             var_type = result_var_type[i]
             test_source_code = inspect.getsource(func)
             ast_root = gast.parse(test_source_code)
@@ -164,6 +186,7 @@ class TestStaticAnalysis(unittest.TestCase):
             var_env.cur_scope = var_env.cur_scope.sub_scopes[0]
 
             scope_var_type = var_env.get_scope_var_type()
+            print(scope_var_type)
             self.assertEqual(len(scope_var_type), len(var_type))
             for name in scope_var_type:
                 print("Test var name %s" % (name))
