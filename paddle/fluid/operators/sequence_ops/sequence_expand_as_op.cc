@@ -175,9 +175,9 @@ class SequenceExpandAsOpGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
-    SequenceExpandAsOpNoNeedBufferVarsInference, "Y");
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequenceExpandAsOpNoNeedBufferVarsInference,
+                                    "Y");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(
     SequenceExpandAsGradOpNoNeedBufferVarsInference, "X", "Y");
 
 }  // namespace operators

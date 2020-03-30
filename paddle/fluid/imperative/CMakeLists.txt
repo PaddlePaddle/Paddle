@@ -6,7 +6,8 @@ cc_library(gradient_accumulator SRCS gradient_accumulator.cc DEPS blas operator 
 add_subdirectory(jit)
 
 cc_library(tracer SRCS tracer.cc DEPS layer engine program_desc_tracer)
-cc_library(engine SRCS engine.cc DEPS layer gradient_accumulator)
+cc_library(basic_engine SRCS basic_engine.cc DEPS layer gradient_accumulator)
+cc_library(engine SRCS basic_engine.cc partial_grad_engine.cc DEPS layer gradient_accumulator)
 cc_library(imperative_profiler SRCS profiler.cc)
 if(NOT WIN32)
     if(WITH_NCCL)

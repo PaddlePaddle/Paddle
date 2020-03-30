@@ -216,18 +216,12 @@ def check_feed_shape_type(var, feed, num_places=1):
             the feed value
     """
     if var.desc.need_check_feed():
-        feed_shape = feed.shape()
-        if six.PY2:
-            feed_shape[0] = long(feed_shape[0] /
-                                 num_places) if len(feed.lod()) == 0 else -1
-        else:
-            feed_shape[0] = int(feed_shape[0] /
-                                num_places) if len(feed.lod()) == 0 else -1
-        if not dimension_is_compatible_with(feed_shape, var.shape):
+        diff_shape = core.diff_tensor_shape(feed, var.desc, num_places)
+        if diff_shape is not None:
             raise ValueError(
                 'The fed Variable %r should have dimensions = %d, shape = '
                 '%r, but received fed shape %r on each device' %
-                (var.name, len(var.shape), var.shape, feed_shape))
+                (var.name, len(var.shape), var.shape, diff_shape))
         if not dtype_is_compatible_with(feed._dtype(), var.dtype):
             var_dtype_format = convert_dtype(var.dtype) if isinstance(
                 var.dtype, core.VarDesc.VarType) else var.dtype
@@ -372,7 +366,7 @@ def _get_program_cache_key(feed, fetch_list):
     return str(feed_var_names + fetch_var_names)
 
 
-def _as_lodtensor(data, place):
+def _as_lodtensor(data, place, dtype=None):
     """
         Convert numpy.ndarray to Tensor, its only support Tensor without LoD information.
         For higher dimensional sequence data, please use LoDTensor directly.
@@ -387,6 +381,8 @@ def _as_lodtensor(data, place):
 
         Args:
             data(numpy.ndarray): a instance of array
+            data(core.Place): the place of created tensor
+            dtype(core.VarDesc.VarType): the expected data type of created tensor
 
         Returns:
             LoDTensor
@@ -397,6 +393,15 @@ def _as_lodtensor(data, place):
                 ndarray to LoDTensor. Please convert data to LoDTensor \
                 directly before feeding the data.\
                 ")
+
+    #NOTE(zhiqiu): convert python builtin ,like float and int, to numpy array
+    if not isinstance(data, np.ndarray):
+        if np.isscalar(data):
+            assert dtype is not None, 'dtype should be given when casting python scalar to tensor'
+            dtype = convert_dtype(dtype) if isinstance(
+                dtype, core.VarDesc.VarType) else dtype
+            data = np.array([data]).astype(dtype)
+
     # single tensor case
     tensor = core.LoDTensor()
     tensor.set(data, place)
@@ -574,9 +579,9 @@ class Executor(object):
             if op.desc.type() == 'feed':
                 feed_target_name = op.desc.output('Out')[0]
                 cur_feed = feed[feed_target_name]
-                if not isinstance(cur_feed, core.LoDTensor):
-                    cur_feed = _as_lodtensor(cur_feed, self.place)
                 var = global_block.var(feed_target_name)
+                if not isinstance(cur_feed, core.LoDTensor):
+                    cur_feed = _as_lodtensor(cur_feed, self.place, var.dtype)
                 check_feed_shape_type(var, cur_feed)
                 idx = op.desc.attr('col')
                 core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
@@ -631,26 +636,19 @@ class Executor(object):
             feed_tensor_dict = dict()
             for feed_name in feed:
                 feed_tensor = feed[feed_name]
+                var = global_block.var(feed_name) if need_check_feed else None
                 if not isinstance(feed_tensor, core.LoDTensor):
-                    feed_tensor = core.LoDTensor()
                     # always set to CPU place, since the tensor need to be split
                     # it is fast in CPU
-                    assert isinstance( feed[feed_name], np.ndarray ), \
-                        "The input({}) should be numpy.array, but not {}.".format(
-                        feed_name, type(feed[feed_name]))
-                    feed_tensor.set(feed[feed_name], core.CPUPlace())
+                    feed_tensor = _as_lodtensor(feed[feed_name],
+                                                core.CPUPlace(), var.dtype
+                                                if var else None)
                 if need_check_feed:
-                    var = global_block.var(feed_name)
                     check_feed_shape_type(var, feed_tensor, exe.device_count())
                 feed_tensor_dict[feed_name] = feed_tensor
 
             exe.feed_and_split_tensor_into_local_scopes(feed_tensor_dict)
         elif isinstance(feed, list) or isinstance(feed, tuple):
-            if len(feed) != len(program._places):
-                raise ValueError(
-                    "Feed a list of tensor, the list should be the same size as places"
-                )
-
             res = list()
             for i, each in enumerate(feed):
                 if not isinstance(each, dict):
@@ -659,15 +657,13 @@ class Executor(object):
                 res_dict = dict()
                 for feed_name in each:
                     tensor = each[feed_name]
+                    var = global_block.var(
+                        feed_name) if need_check_feed else None
                     if not isinstance(tensor, core.LoDTensor):
-                        tmp = core.LoDTensor()
-                        assert isinstance(each[feed_name], np.ndarray), \
-                            "The input({}) should be numpy.array, but not {}.".format(
-                            feed_name, type(each[feed_name]))
-                        tmp.set(tensor, program._places[i])
-                        tensor = tmp
+                        tensor = _as_lodtensor(each[feed_name],
+                                               program._places[i], var.dtype
+                                               if var else None)
                     if need_check_feed:
-                        var = global_block.var(feed_name)
                         check_feed_shape_type(var, tensor)
                     res_dict[feed_name] = tensor
                 res.append(res_dict)
