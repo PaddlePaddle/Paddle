@@ -114,16 +114,21 @@ class TestTDMSamplerOp(OpTest):
             for layer_idx in range(layer_nums):
                 end_offset = start_offset + self.layer_sample_nums[layer_idx]
                 sampling_res = x_batch[start_offset:end_offset]
+                sampling_res_list = sampling_res.tolist()
                 positive_travel.append(sampling_res[0])
                 # check unique
                 if sampling_res[0] != 0:
-                    sampling_res_list = sampling_res.tolist()
-                    assert len(set(sampling_res_list)) == len(sampling_res_list)
+                    assert len(set(sampling_res_list)) == len(
+                        sampling_res_list
+                    ), "len(set(sampling_res_list)): {}, len(sampling_res_list): {} ".format(
+                        len(set(sampling_res_list)), len(sampling_res_list))
                 # check legal
                 layer_node = self.tree_layer[layer_idx]
                 layer_node.append(0)
-                for sample in sampling_res:
-                    assert (sample in layer_node)
+                for sample in sampling_res_list:
+                    assert (sample in layer_node
+                            ), "sample: {}, layer_node: {} ".format(sample,
+                                                                    layer_node)
                 label_sampling_res = label_res[batch_ids][start_offset:
                                                           end_offset]
                 mask_sampling_res = mask_res[batch_ids][start_offset:end_offset]
@@ -134,7 +139,10 @@ class TestTDMSamplerOp(OpTest):
                 assert label_sampling_res[0] == label_flag
                 # check mask
                 padding_index = np.where(sampling_res == 0)
-                assert np.sum(mask_sampling_res[padding_index]) == 0
+                assert int(
+                    np.sum(mask_sampling_res[padding_index])
+                ) == 0, "np.sum(mask_sampling_res[padding_index]): {} ".format(
+                    np.sum(mask_sampling_res[padding_index]))
                 start_offset = end_offset
             # check travel legal
             assert self.tree_travel[int(self.x_np[
