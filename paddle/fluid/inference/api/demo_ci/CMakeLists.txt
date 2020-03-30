@@ -94,11 +94,9 @@ if(WITH_MKL)
   set(MATH_LIB_PATH "${PADDLE_LIB_THIRD_PARTY_PATH}mklml")
   include_directories("${MATH_LIB_PATH}/include")
   if(WIN32)
-    set(MATH_LIB ${MATH_LIB_PATH}/lib/mklml${CMAKE_STATIC_LIBRARY_SUFFIX}
-                 ${MATH_LIB_PATH}/lib/libiomp5md${CMAKE_STATIC_LIBRARY_SUFFIX})
+    set(MATH_LIB ${MATH_LIB_PATH}/lib/mklml${CMAKE_STATIC_LIBRARY_SUFFIX})
   else()
-    set(MATH_LIB ${MATH_LIB_PATH}/lib/libmklml_intel${CMAKE_SHARED_LIBRARY_SUFFIX}
-                 ${MATH_LIB_PATH}/lib/libiomp5${CMAKE_SHARED_LIBRARY_SUFFIX})
+    set(MATH_LIB ${MATH_LIB_PATH}/lib/libmklml_gnu${CMAKE_SHARED_LIBRARY_SUFFIX})
   endif()
   set(MKLDNN_PATH "${PADDLE_LIB_THIRD_PARTY_PATH}mkldnn")
   if(EXISTS ${MKLDNN_PATH})

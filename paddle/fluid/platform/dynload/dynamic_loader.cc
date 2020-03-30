@@ -44,7 +44,7 @@ DEFINE_string(
     tensorrt_dir, "",
     "Specify path for loading tensorrt library, such as libnvinfer.so.");
 
-DEFINE_string(mklml_dir, "", "Specify path for loading libmklml_intel.so.");
+DEFINE_string(mklml_dir, "", "Specify path for loading libmklml_gnu.so.");
 
 DEFINE_string(op_dir, "", "Specify path for loading user-defined op library.");
 
@@ -274,11 +274,11 @@ void* GetTensorRtDsoHandle() {
 
 void* GetMKLMLDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_intel.dylib");
+  return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_gnu.dylib");
 #elif defined(_WIN32)
   return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "mklml.dll");
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_intel.so");
+  return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_gnu.so");
 #endif
 }
 

@@ -182,7 +182,7 @@ if '${TENSORRT_FOUND}' == 'ON' and os.name == 'nt':
 
 if '${WITH_MKL}' == 'ON':
     shutil.copy('${MKLML_SHARED_LIB}', libs_path)
-    package_data['paddle.libs']+=[('libmklml_intel' if os.name != 'nt' else 'mklml') + ext_name, ('libiomp5' if os.name != 'nt' else 'libiomp5md') + ext_name]
+    package_data['paddle.libs']+=[('libmklml_gnu' if os.name != 'nt' else 'mklml') + ext_name, ('libiomp5' if os.name != 'nt' else 'libiomp5md') + ext_name]
     # mklml has dependency to vs runtime library
     if os.name == 'nt':
         shutil.copy('${MKLML_SHARED_LIB_DEPS}', libs_path)
@@ -207,7 +207,7 @@ if '${WITH_MKLDNN}' == 'ON':
         #
         # change rpath of libdnnl.so.1, add $ORIGIN/ to it.
         # The reason is that all thirdparty libraries in the same directory,
-        # thus, libdnnl.so.1 will find libmklml_intel.so and libiomp5.so.
+        # thus, libdnnl.so.1 will find libmklml_gnu.so.
         command = "patchelf --set-rpath '$ORIGIN/' ${MKLDNN_SHARED_LIB}"
         if os.system(command) != 0:
             raise Exception("patch libdnnl.so failed, command: %s" % command)
