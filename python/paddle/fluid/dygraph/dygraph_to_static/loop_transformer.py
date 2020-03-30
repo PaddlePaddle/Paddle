@@ -125,6 +125,11 @@ class NameVisitor(gast.NodeVisitor):
         # List of gast.While/gast.For nodes
         self.current_loop = []
 
+        # List of nodes that have scope of variables.
+        self.nodes_with_scope = []
+
+        self.blacklist_names = {"False", "True", "None"}
+
         # Mapping from gast.While/gast.For to variable nodes
         self.before_loop_body_vars = defaultdict(set)
         self.in_loop_vars = defaultdict(set)
@@ -169,7 +174,7 @@ class NameVisitor(gast.NodeVisitor):
         if self._is_call_func_name_node(node):
             self.generic_visit(node)
             return
-        if node.id == "False" or node.id == "True":
+        if node.id in self.blacklist_names:
             self.generic_visit(node)
             return
 
@@ -177,6 +182,19 @@ class NameVisitor(gast.NodeVisitor):
         for loop_node in self.current_loop:
             self.in_loop_vars[loop_node].add(node)
         self.generic_visit(node)
+
+    def visit_FunctionDef(self, node):
+        self.nodes_with_scope.append(node)
+        self.blacklist_names.add(node.name)
+        # The variables in the function are not visible to the outside scope.
+        before_func_seen_vars = copy.copy(self.current_seen_vars)
+
+        self.generic_visit(node)
+        self.nodes_with_scope.pop()
+        # After exiting the scope of the node, variables in this scope
+        # should be removed from self.current_seen_vars.
+        if self.nodes_with_scope:
+            self.current_seen_vars = before_func_seen_vars
 
     def visit(self, node):
         method = 'visit_' + node.__class__.__name__
@@ -187,8 +205,17 @@ class NameVisitor(gast.NodeVisitor):
     def visit_Attribute(self, node):
         if self._is_call_func_name_node(node):
             return
-
         attr_full_name = get_attribute_full_name(node)
+        # Class variables are not allowed to appear in the arguments list
+        # of defined function under class methods in Python.
+        """
+        def class_func(self):
+            def while_loop_body(self.x, y) # `self.x` is illegal.
+        """
+        # TODO: If do change the variable with `self.var`, need a better
+        # way to deal with this case.
+        if attr_full_name.startswith("self."):
+            return
         self.current_seen_vars.add(node)
         for loop_node in self.current_loop:
             self.in_loop_vars[loop_node].add(node)
