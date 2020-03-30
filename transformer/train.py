@@ -123,6 +123,7 @@ def do_train(args):
                               num_workers=0,
                               return_list=True)
 
+
     transformer = Transformer(
         args.src_vocab_size, args.trg_vocab_size, args.max_length + 1,
         args.n_layer, args.n_head, args.d_key, args.d_value, args.d_model,
