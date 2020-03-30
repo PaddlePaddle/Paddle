@@ -25,7 +25,6 @@ from paddle.fluid.layers import collective
 from paddle.fluid.dygraph.parallel import ParallelEnv, ParallelStrategy
 from paddle.fluid.io import BatchSampler
 
-
 _parallel_context_initialized = False
 
 
@@ -67,7 +66,8 @@ class DistributedBatchSampler(BatchSampler):
         self.nranks = ParallelEnv().nranks
         self.local_rank = ParallelEnv().local_rank
         self.epoch = 0
-        self.num_samples = int(math.ceil(len(self.dataset) * 1.0 / self.nranks))
+        self.num_samples = int(
+            math.ceil(len(self.dataset) * 1.0 / self.nranks))
         self.total_size = self.num_samples * self.nranks
 
     def __iter__(self):
@@ -78,9 +78,28 @@ class DistributedBatchSampler(BatchSampler):
         if self.shuffle:
             np.random.RandomState(self.epoch).shuffle(indices)
             self.epoch += 1
+
         # subsample
-        indices = indices[self.local_rank * self.num_samples: 
-                            (self.local_rank + 1) * self.num_samples]
+        def _get_indices_by_batch_size(indices):
+            subsampled_indices = []
+            last_batch_size = self.total_size % (self.batch_size * self.nranks)
+            assert last_batch_size % self.nranks == 0
+            last_local_batch_size = last_batch_size // self.nranks
+
+            for i in range(self.local_rank * self.batch_size,
+                           len(indices) - last_batch_size,
+                           self.batch_size * self.nranks):
+                subsampled_indices.extend(indices[i:i + self.batch_size])
+
+            indices = indices[len(indices) - last_batch_size:]
+            subsampled_indices.extend(indices[
+                self.local_rank * last_local_batch_size:(
+                    self.local_rank + 1) * last_local_batch_size])
+            return subsampled_indices
+
+        if self.nranks > 1:
+            indices = _get_indices_by_batch_size(indices)
+
         assert len(indices) == self.num_samples
         _sample_iter = iter(indices)
 
@@ -103,7 +122,8 @@ class DistributedBatchSampler(BatchSampler):
 
 
 def _all_gather(x, nranks, ring_id=0, use_calc_stream=True):
-    return collective._c_allgather(x, nranks, ring_id=ring_id, use_calc_stream=use_calc_stream)
+    return collective._c_allgather(
+        x, nranks, ring_id=ring_id, use_calc_stream=use_calc_stream)
 
 
 def wait_server_ready(endpoints):
@@ -114,8 +134,7 @@ def wait_server_ready(endpoints):
         for ep in endpoints:
             ip_port = ep.split(":")
             with contextlib.closing(
-                    socket.socket(socket.AF_INET,
-                                  socket.SOCK_STREAM)) as sock:
+                    socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
                 sock.settimeout(2)
                 result = sock.connect_ex((ip_port[0], int(ip_port[1])))
                 if result != 0:
@@ -127,8 +146,8 @@ def wait_server_ready(endpoints):
             break
 
 
-def init_communicator(program, rank, nranks, wait_port,
-                     current_endpoint, endpoints):
+def init_communicator(program, rank, nranks, wait_port, current_endpoint,
+                      endpoints):
     if nranks < 2:
         return
     other_endpoints = endpoints[:]
@@ -166,7 +185,7 @@ def prepare_distributed_context(place=None):
     if place is None:
         place = fluid.CUDAPlace(ParallelEnv().dev_id) if ParallelEnv().nranks > 1 \
             else fluid.CUDAPlace(0)
-    
+
     strategy = ParallelStrategy()
     strategy.nranks = ParallelEnv().nranks
     strategy.local_rank = ParallelEnv().local_rank
@@ -178,11 +197,14 @@ def prepare_distributed_context(place=None):
 
     global _parallel_context_initialized
 
-    if not _parallel_context_initialized and isinstance(place, fluid.CUDAPlace):
+    if not _parallel_context_initialized and isinstance(place,
+                                                        fluid.CUDAPlace):
+
         def _init_context():
             communicator_prog = fluid.Program()
-            init_communicator(communicator_prog, strategy.local_rank, strategy.nranks, 
-                            True, strategy.current_endpoint, strategy.trainer_endpoints)
+            init_communicator(communicator_prog, strategy.local_rank,
+                              strategy.nranks, True, strategy.current_endpoint,
+                              strategy.trainer_endpoints)
             exe = fluid.Executor(place)
             exe.run(communicator_prog)
 
