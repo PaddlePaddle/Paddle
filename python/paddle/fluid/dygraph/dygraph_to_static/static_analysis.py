@@ -311,33 +311,29 @@ class StaticAnalysisVisitor(object):
             return ret_type
 
         if isinstance(node, gast.Name):
-            var_type = None
             if node.id == "None":
-                var_type = {NodeVarType.NONE}
-            elif node.id in {"True", "False"}:
-                var_type = {NodeVarType.BOOLEAN}
-            else:
-                # If node is child of functionDef.arguments
-                parent_node_wrapper = cur_wrapper.parent
-                if parent_node_wrapper and isinstance(parent_node_wrapper.node,
-                                                      gast.arguments):
-                    parent_node = parent_node_wrapper.node
-                    if parent_node.defaults:
-                        index = index_in_list(parent_node.args, node)
-                        args_len = len(parent_node.args)
-                        if index != -1 and args_len - index <= len(
-                                parent_node.defaults):
-                            defaults_node = parent_node.defaults[index -
-                                                                 args_len]
-                            if isinstance(defaults_node, gast.Constant):
-                                var_type = self._get_constant_node_type(
-                                    defaults_node)
-                    else:
-                        var_type = {NodeVarType.UNKNOWN}
+                return {NodeVarType.NONE}
+            if node.id in {"True", "False"}:
+                return {NodeVarType.BOOLEAN}
+            # If node is child of functionDef.arguments
+            parent_node_wrapper = cur_wrapper.parent
+            if parent_node_wrapper and isinstance(parent_node_wrapper.node,
+                                                  gast.arguments):
+                parent_node = parent_node_wrapper.node
+                var_type = {NodeVarType.UNKNOWN}
+                if parent_node.defaults:
+                    index = index_in_list(parent_node.args, node)
+                    args_len = len(parent_node.args)
+                    if index != -1 and args_len - index <= len(
+                            parent_node.defaults):
+                        defaults_node = parent_node.defaults[index - args_len]
+                        if isinstance(defaults_node, gast.Constant):
+                            var_type = self._get_constant_node_type(
+                                defaults_node)
 
-            if var_type is not None:
                 # Add node with identified type into cur_env.
                 self.var_env.set_var_type(node.id, var_type)
+
             return self.var_env.get_var_type(node.id)
 
         if isinstance(node, gast.Return):
