@@ -230,7 +230,7 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
 
     // Step 2. prepare executor and init persistable variables
     framework::Executor exe(ctx.GetPlace());
-    auto exe_ctx = exe.Prepare(*program, 0, {}, true);
+    auto exe_ctx = exe.Prepare(*program, 0);
 
     out_scope_vec->emplace_back(new framework::Scope());
     framework::Scope &scope = *(out_scope_vec->front());
@@ -273,23 +273,24 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
     int64_t start_op_index = orig_end_op_index + 2;
     int64_t end_op_index = block->OpSize();
 
+    // TODO(chenweihang): clear const? gc will clear it?
     auto *out_scope_vec = ctx.Input<StepScopeVar>("OutScope");
     PADDLE_ENFORCE_EQ(out_scope_vec->size(), 1,
                       "The StepScope should only hold one scope.");
 
     // Step 2. prepare executor and scope
     framework::Executor exe(ctx.GetPlace());
+
+    // skip delete vars
+    std::vector<std::string> skip_vars;
+    AppendSkipDeletionVars(&skip_vars, output_grad_var_names);
+    AppendSkipDeletionVars(&skip_vars, input_grad_var_names);
+    AppendSkipDeletionVars(&skip_vars, param_grad_names);
+    VLOG(2) << details::GetSkipEagerDeletionVarsDebugString(skip_vars);
+
+    auto exe_ctx = exe.Prepare(*program, 0, skip_vars);
+
     auto &scope = *(out_scope_vec->front());
-
-    // skip delete vars, out@grad & params@grad
-    // std::vector<std::string> skip_vars;
-    // std::copy(output_grad_var_names.begin(), output_grad_var_names.end(),
-    //           std::back_inserter(skip_vars));
-    // std::copy(param_grad_names.begin(), param_grad_names.end(),
-    //           std::back_inserter(skip_vars));
-    // VLOG(2) << details::GetSkipEagerDeletionVarsDebugString(skip_vars);
-    auto exe_ctx = exe.Prepare(*program, 0, {}, true);
-
     details::ShareVarsIntoScope(output_grad_vars, output_grad_var_names,
                                 &scope);
 
@@ -306,9 +307,15 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
                                ctx.GetPlace(), &scope);
     details::CopyVarsFromScope(param_grad_vars, param_grad_names,
                                ctx.GetPlace(), &scope);
+  }
 
-    // Step 5. clear
-    // scope_vec->clear();
+ private:
+  void AppendSkipDeletionVars(
+      std::vector<std::string> *all_vars,
+      const std::vector<std::string> &append_vars) const {
+    for (auto &var : append_vars) {
+      all_vars->emplace_back(var);
+    }
   }
 };
 
