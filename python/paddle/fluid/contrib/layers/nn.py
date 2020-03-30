@@ -26,7 +26,7 @@ from paddle.fluid.layers import utils
 from ... import unique_name
 from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
-from paddle.fluid.framework import Variable
+from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
 import warnings
 
 __all__ = [
@@ -939,7 +939,19 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
     **Tdm Child**
      According to the input node_id on the given tree, return the corresponding child node_id and 
       whether child is a leaf node by leaf_mask value.
+    .. code-block:: text
 
+        Given:
+            tree[[0], [1, 2], [3, 4], [5, 6]] # A binary tree with seven nodes
+            x = [[0], [1]]
+            node_nums = 7
+            child_nums = 2
+
+          we get:
+            child = [[1, 2],
+                     [3, 4]]
+            leaf_mask = [[0, 0],
+                         [1, 1]]
      Args:
          x(Variable): Variable contained the node_id information, dtype support int32/int64.
          node_nums(int): Number of total nodes.
@@ -958,6 +970,25 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
      Returns:
          tuple: A tuple including input node's child(Variable) and leaf_mask(Variable). 
                 If child is a leaf node, leaf_mask equal ot 1, otherwise equal to 0.
+     Examples:
+        .. code-block:: python
+        import paddle.fluid as fluid
+        import numpy as np
+        x = fluid.data(name="x", shape=[1], dtype="int32")
+        tree_info = [[0,0,0,1,2],
+                     [0,1,0,3,4],[0,1,0,5,6],
+                     [0,2,1,0,0],[1,2,1,0,0],[2,2,2,0,0],[3,2,2,0,0]]
+        tree_info_np = np.array(tree_info)
+        node_nums = 7
+        child_nums = 2
+        child, leaf_mask  = fluid.contrib.layers.tdm_child(x, node_nums, child_nums,
+                                param_attr=fluid.ParamAttr(
+                                    initializer=fluid.initializer.NumpyArrayInitializer(
+                                                                            tree_info_np)))
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        xx = np.array([[0],[1]]).reshape((2,1)).astype("int32")
+        child_res, leaf_mask_res = exe.run(feed={"x":xx}, fetch_list=[child, leaf_mask])
      """
     helper = LayerHelper("tdm_child", **locals())
     check_dtype(dtype, 'dtype', ['int32', 'int64'],

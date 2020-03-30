@@ -173,7 +173,7 @@ class TDMChildKernel : public framework::OpKernel<T> {
       TDMChildInner<T, int64_t, int64_t>(ctx, input_tensor, tree_info_tensor,
                                          child_tensor, leaf_mask_tensor);
     }
-  };
-}
+  }
+};
 }  // namespace operators
 }  // namespace paddle
