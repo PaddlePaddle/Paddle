@@ -65,14 +65,15 @@ class IndexSampleOp : public framework::OperatorWithKernel {
             "Inputs(Index) shape of IndexSample op should be 2-D, but "
             "got Index's shape [%s] , please check index shape.",
             input_dims));
-
-    PADDLE_ENFORCE_EQ(input_dims[0], index_dims[0],
-                      platform::errors::InvalidArgument(
-                          "Inputs(X)'s value of dimension 0 must same with "
-                          "Inputs(Index)'s value of dimension 0, but "
-                          "got %d of Inputs(X), and got %d of Inputs(Index), "
-                          "please check Inputs shape.",
-                          input_dims[0], index_dims[0]));
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(input_dims[0], index_dims[0],
+                        platform::errors::InvalidArgument(
+                            "Inputs(X)'s value of dimension 0 must same with "
+                            "Inputs(Index)'s value of dimension 0, but "
+                            "got %d of Inputs(X), and got %d of Inputs(Index), "
+                            "please check Inputs shape.",
+                            input_dims[0], index_dims[0]));
+    }
     ctx->SetOutputDim("Out", index_dims);
     auto type = ctx->GetInputsVarType("Index")[0];
     if (type == framework::proto::VarType::LOD_TENSOR) {
