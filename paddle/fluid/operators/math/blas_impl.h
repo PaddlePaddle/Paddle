@@ -11,7 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #pragma once
+
 #include <cmath>
 #include <limits>
 #include <vector>
@@ -146,12 +148,23 @@ struct CBlas<float> {
   static void VMERF(ARGS... args) {
     platform::dynload::vmsErf(args...);
   }
+
 #if !defined(_WIN32)
   template <typename... ARGS>
   static void CSRMM(ARGS... args) {
     platform::dynload::mkl_scsrmm(args...);
   }
 #endif
+
+  template <typename... ARGS>
+  static void GETRF(ARGS... args) {
+    platform::dynload::LAPACKE_sgetrf(args...);
+  }
+
+  template <typename... ARGS>
+  static void GETRI(ARGS... args) {
+    platform::dynload::LAPACKE_sgetri(args...);
+  }
 };
 
 template <>
@@ -896,6 +909,20 @@ void Blas<platform::CPUDeviceContext>::CSRMM(
     const T *beta, T *c, const int *ldc) const {
   CBlas<T>::CSRMM(transa, m, n, k, alpha, matdescra, val, indx, pntrb, pntre, b,
                   ldb, beta, c, ldc);
+}
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::GETRF(int m, int n, float *a,
+                                             int *ipiv) const {
+  CBlas<T>::GETRF(LAPACK_ROW_MAJOR, m, n, a, n, ipiv);
+}
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::GETRI(int n, T *a,
+                                             const int *ipiv) const {
+  CBlas<T>::GETRI(LAPACK_ROW_MAJOR, n, a, n, ipiv);
 }
 #endif
 
