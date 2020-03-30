@@ -27,7 +27,7 @@ def func_to_test1(a, b):
     return a + b
 
 
-result_var_type1 = {'a': {NodeVarType.UNKNOWN}, 'b': {NodeVarType.UNKNOWN}}
+result_var_type1 = {}
 
 
 def func_to_test2(x):
@@ -42,7 +42,7 @@ def func_to_test2(x):
         return x
 
 
-result_var_type2 = {'m': {NodeVarType.INT}, 'x': {NodeVarType.UNKNOWN}}
+result_var_type2 = {'m': {NodeVarType.INT}}
 
 
 def func_to_test3():
@@ -132,10 +132,10 @@ def func_to_test6(x, y=1):
 
 
 result_var_type6 = {
-    'i': {NodeVarType.UNKNOWN},
+    'i': {NodeVarType.INT},
     'x': {NodeVarType.INT},
     'y': {NodeVarType.INT},
-    'add': {NodeVarType.UNKNOWN}
+    'add': {NodeVarType.INT}
 }
 
 test_funcs = [

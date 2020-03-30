@@ -333,8 +333,8 @@ class StaticAnalysisVisitor(object):
                             var_type = self._get_constant_node_type(
                                 defaults_node)
 
-                # Add node with identified type into cur_env.
-                self.var_env.set_var_type(node.id, var_type)
+                            # Add node with identified type into cur_env.
+                            self.var_env.set_var_type(node.id, var_type)
                 return var_type
 
             return self.var_env.get_var_type(node.id)
