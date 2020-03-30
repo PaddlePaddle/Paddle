@@ -182,7 +182,7 @@ if '${TENSORRT_FOUND}' == 'ON' and os.name == 'nt':
 
 if '${WITH_MKL}' == 'ON':
     shutil.copy('${MKLML_SHARED_LIB}', libs_path)
-    package_data['paddle.libs']+=[('libmklml_gnu' if os.name != 'nt' else 'mklml') + ext_name, ('libiomp5' if os.name != 'nt' else 'libiomp5md') + ext_name]
+    package_data['paddle.libs']+=[('libmklml_gnu' if os.name != 'nt' else 'mklml') + ext_name]
     # mklml has dependency to vs runtime library
     if os.name == 'nt':
         shutil.copy('${MKLML_SHARED_LIB_DEPS}', libs_path)
@@ -249,7 +249,7 @@ package_dir['paddle.libs']=libs_path
 
 
 # change rpath of ${FLUID_CORE_NAME}.ext, add $ORIGIN/../libs/ to it.
-# The reason is that libwarpctc.ext, libiomp5.ext etc are in paddle.libs, and
+# The reason is that libwarpctc.ext, etc are in paddle.libs, and
 # ${FLUID_CORE_NAME}.ext is in paddle.fluid, thus paddle/fluid/../libs will pointer to above libraries.
 # This operation will fix https://github.com/PaddlePaddle/Paddle/issues/3213
 if '${CMAKE_BUILD_TYPE}' == 'Release':
