@@ -160,6 +160,10 @@ class Tensor {
     offset_ = tensor.offset_;
   }
 
+  bool IsSharedBufferWith(const Tensor& src) const {
+    return holder_ && holder_ == src.Holder();
+  }
+
   const std::shared_ptr<memory::Allocation>& Holder() const { return holder_; }
   size_t offset() const { return offset_; }
 

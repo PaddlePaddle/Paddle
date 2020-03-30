@@ -34,9 +34,11 @@ TEST(AnalysisPredictor, use_gpu) {
       {"image", {1, 1, 10, 10}}};
   std::map<std::string, std::vector<int>> opt_input_shape = {
       {"image", {1, 1, 3, 3}}};
-  config.EnableTensorRtEngine(
-      1 << 30, 1, 1, AnalysisConfig::Precision::kFloat32, false, true,
-      min_input_shape, max_input_shape, opt_input_shape);
+  config.EnableTensorRtEngine(1 << 30, 1, 1,
+                              AnalysisConfig::Precision::kFloat32, false, true);
+
+  config.SetTRTDynamicShapeInfo(min_input_shape, max_input_shape,
+                                opt_input_shape);
   auto predictor = CreatePaddlePredictor(config);
   auto input_names = predictor->GetInputNames();
   int channels = 1;

@@ -303,90 +303,6 @@ struct ReluGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
 };
 
-// gelu(x) = 0.5 * x *  (1 + erf(x / sqrt(2)))
-template <typename T>
-struct GeluFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-// Because the execute or device context can not be deliver here, it keep the
-// marco for NVCC.
-#if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
-    !defined(__OSX__) && !defined(PADDLE_WITH_CUDA)
-    auto x_data = x.data();
-    auto out_data = out.data();
-    int n = std::min(x.size(), out.size());
-
-    std::memset(out_data, 0, n * sizeof(T));
-    math::CBlas<T>::AXPY(n, static_cast<T>(M_SQRT1_2), x_data, 1, out_data, 1);
-    math::CBlas<T>::VMERF(n, out_data, out_data, VML_LA);
-    for (int i = 0; i < n; i++) {
-      out_data[i] += static_cast<T>(1);
-    }
-    math::CBlas<T>::VMUL(n, x_data, out_data, out_data);
-    for (int i = 0; i < n; i++) {
-      out_data[i] *= static_cast<T>(0.5);
-    }
-#else
-    auto temp = (x * static_cast<T>(M_SQRT1_2)).erf();
-    out.device(d) = x * static_cast<T>(0.5) * (static_cast<T>(1) + temp);
-#endif
-  }
-};
-
-// gelu_grad(x) = dout * (0.5 * (1 + erf(x / sqrt(2))) + 0.5 * 2 / sqrt(pi) /
-// sqrt(2) * x * exp (-0.5 * x^2))
-template <typename T>
-struct GeluGradFunctor : BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out, typename dOut,
-            typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-#if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
-    !defined(__OSX__) && !defined(PADDLE_WITH_CUDA)
-    auto x_data = x.data();
-    auto dx_data = dx.data();
-    auto dout_data = dout.data();
-    int n = std::min(x.size(), dx.size());
-
-    auto first = static_cast<T*>(std::malloc(n * sizeof(T)));
-    std::memset(first, 0, n * sizeof(T));
-    auto second = static_cast<T*>(std::malloc(n * sizeof(T)));
-    std::memset(second, 0, n * sizeof(T));
-
-    // first = (0.5 * (1 + erf(x / sqrt(2))))
-    math::CBlas<T>::AXPY(n, static_cast<T>(M_SQRT1_2), x_data, 1, first, 1);
-    math::CBlas<T>::VMERF(n, first, first, VML_LA);
-    for (int i = 0; i < n; i++) {
-      first[i] += static_cast<T>(1);
-    }
-    math::CBlas<T>::SCAL(n, static_cast<T>(0.5), first, 1);
-
-    // second = (0.5 * 2/sqrt(pi) * 1/sqrt(2) * x * exp(-0.5 * x^2))
-    math::CBlas<T>::VSQUARE(n, x_data, second);
-    math::CBlas<T>::SCAL(n, -static_cast<T>(0.5), second, 1);
-    math::CBlas<T>::VEXP(n, second, second);
-    math::CBlas<T>::VMUL(n, x_data, second, second);
-    math::CBlas<T>::SCAL(n, static_cast<T>(0.5 * M_2_SQRTPI * M_SQRT1_2),
-                         second, 1);
-
-    // dx = dout * (first + second);
-    math::CBlas<T>::VADD(n, first, second, first);
-    math::CBlas<T>::VMUL(n, dout_data, first, dx_data);
-
-    std::free(first);
-    std::free(second);
-#else
-    auto first = static_cast<T>(0.5) *
-                 (static_cast<T>(1) + ((x * static_cast<T>(M_SQRT1_2)).erf()));
-
-    auto second = static_cast<T>(0.5 * M_2_SQRTPI * M_SQRT1_2) * x *
-                  (-static_cast<T>(0.5) * x.square()).exp();
-    dx.device(d) = dout * (first + second);
-#endif
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
-};
-
 // tanh(x) = (exp(x) - exp(-x)) / (exp(x) + exp(-x))
 template <typename T>
 struct TanhFunctor : public BaseActivationFunctor<T> {
@@ -1726,7 +1642,6 @@ class PowGradKernel
 #define FOR_EACH_ACTIVATION_OP(__macro)                                       \
   __macro(sigmoid, Sigmoid, SigmoidFunctor, SigmoidGradFunctor);              \
   __macro(logsigmoid, LogSigmoid, LogSigmoidFunctor, LogSigmoidGradFunctor);  \
-  __macro(gelu, Gelu, GeluFunctor, GeluGradFunctor);                          \
   __macro(tanh, Tanh, TanhFunctor, TanhGradFunctor);                          \
   __macro(atan, Atan, AtanFunctor, AtanGradFunctor);                          \
   __macro(softshrink, SoftShrink, SoftShrinkFunctor, SoftShrinkGradFunctor);  \

@@ -21,7 +21,7 @@ from .. import core
 from ..framework import Program, Variable, Operator, in_dygraph_mode
 from ..layer_helper import LayerHelper, unique_name
 from .nn import logical_and, logical_not, logical_or
-from .utils import assert_same_structure, map_structure
+from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars
 import numpy
 import warnings
 import six
@@ -83,10 +83,14 @@ def select_input(inputs, mask):
     if isinstance(inputs, list) or isinstance(inputs, tuple):
         input_dtype = inputs[0].dtype
         input_shape = inputs[0].shape
+        input_type = inputs[0].type
     else:
         input_dtype = inputs.dtype
         input_shape = inputs.shape
-    out = helper.create_variable(dtype=input_dtype, shape=input_shape)
+        input_type = inputs.type
+
+    out = helper.create_variable(
+        dtype=input_dtype, shape=input_shape, type=input_type)
     helper.append_op(
         type='select_input',
         inputs={'X': inputs,
@@ -1014,13 +1018,25 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         return loop_vars
 
     while_loop_block = While(pre_cond, is_test, name)
+    has_mutable_vars_in_loop = hold_mutable_vars(loop_vars)
     with while_loop_block.block():
-        output_vars = body(*loop_vars)
+        # If a variable with mutable type is included in loop_vars, like `dict/list`,
+        # modifying it in the body function will cause origin variable to be modified
+        # synchronously. This will raise an assignment error out of while block.
+        # Here we make a copy of the mutable vars to avoid this problem.
+        if has_mutable_vars_in_loop:
+            new_loop_vars = copy_mutable_vars(loop_vars)
+            output_vars = body(*new_loop_vars)
+        else:
+            output_vars = body(*loop_vars)
         if not isinstance(output_vars, (list, tuple)):
             output_vars = [output_vars]
-        if len(output_vars) != len(loop_vars):
+        try:
+            assert_same_structure(output_vars, loop_vars, check_types=False)
+        except ValueError as e:
             raise ValueError("body in while_loop should return the same arity "
-                             "(length and structure) and types as loop_vars")
+                             "(length and structure) as loop_vars: {0}".format(
+                                 e))
         now_cond = cond(*output_vars)
         map_structure(assign, output_vars, loop_vars)
         assign(now_cond, pre_cond)
