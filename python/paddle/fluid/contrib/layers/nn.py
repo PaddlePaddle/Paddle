@@ -114,20 +114,21 @@ def var_conv_2d(input,
     """
     The var_conv_2d layer calculates the output base on the :attr:`input` with variable length,
     row, col, input channel, filter size and strides. Both :attr:`input`, :attr:`row`,
-    and :attr:`col` are 1-level LodTensor. The convolution operation is same as conv2d layer with 
-    padding. Besides, input.dims[1] should be 1. 
+    and :attr:`col` are 1-level LodTensor. The convolution operation is same as conv2d layer with
+    padding. Besides, input.dims[1] should be 1.
 
     .. code-block:: text
 
             If input_channel is 2 and given row lodTensor and col lodTensor as follows:
                 row.lod = [[5, 4]]
                 col.lod = [[6, 7]]
-            input is a lodTensor: 
+            input is a lodTensor:
                 input.lod = [[60, 56]]	# where 60 = input_channel * 5 * 6
                 input.dims = [116, 1]	# where 116 = 60 + 56
 
             If set output_channel is 3, filter_size is [3, 3], stride is [1, 1]:
-                output.lod = [[90, 84]] # where 90 = output_channel * [(5-1)/stride + 1] * [(6-1)/stride + 1]
+                # where 90 = output_channel * [(5-1)/stride + 1] * [(6-1)/stride + 1]
+                output.lod = [[90, 84]]
                 output.dims = [174, 1]  # where 174 = 90 + 84
 
     Args:
@@ -166,7 +167,7 @@ def var_conv_2d(input,
             x_lod_tensor = layers.data(name='x', shape=[1], lod_level=1)
             row_lod_tensor = layers.data(name='row', shape=[6], lod_level=1)
             col_lod_tensor = layers.data(name='col', shape=[6], lod_level=1)
-            out = contrib.var_conv_2d(input=x_lod_tensor, 
+            out = contrib.var_conv_2d(input=x_lod_tensor,
                                      row=row_lod_tensor,
                                      col=col_lod_tensor,
                                      input_channel=3,
@@ -228,24 +229,27 @@ def match_matrix_tensor(x,
     Given a query A of length `n` and a title B of length `m`, the input shape are respectively
     [n, h] and [m, h], which h is hidden_size. If :attr:`channel_num` is set to 3,
     it will generate a learnable parameter matrix W with shape [h, 3, h].
-    Then the semantic matching matrix of query A and title B is calculated by 
-    A * W * B.T = [n, h]*[h, 3, h]*[h, m] = [n, 3, m]. The learnable parameter matrix `W` 
-    is equivalent to a fully connected layer in the calculation process. If :attr:`act` is provided, 
+    Then the semantic matching matrix of query A and title B is calculated by
+    A * W * B.T = [n, h]*[h, 3, h]*[h, m] = [n, 3, m]. The learnable parameter matrix `W`
+    is equivalent to a fully connected layer in the calculation process. If :attr:`act` is provided,
     the corresponding activation function will be applied to output matrix.
     The :attr:`x` and :attr:`y` should be LodTensor and only one level LoD is supported.
 
     .. code-block:: text
 
             Given a 1-level LoDTensor x:
-                x.lod =  [[2,                     3,                               ]]
-                x.data = [[0.3, 0.1], [0.2, 0.3], [0.5, 0.6], [0.7, 0.1], [0.3, 0.4]]
+                x.lod =  [
+                    [2,                     3,                               ]]
+                x.data = [[0.3, 0.1], [0.2, 0.3], [
+                    0.5, 0.6], [0.7, 0.1], [0.3, 0.4]]
                 x.dims = [5, 2]
             y is a Tensor:
                 y.lod =  [[3,                                 1,       ]]
                 y.data = [[0.1, 0.2], [0.3, 0.7], [0.9, 0.2], [0.4, 0.1]]
                 y.dims = [4, 2]
             set channel_num 2, then we get a 1-level LoDTensor:
-                out.lod =  [[12, 6]]   # where 12 = channel_num * x.lod[0][0] * y.lod[0][0]
+                # where 12 = channel_num * x.lod[0][0] * y.lod[0][0]
+                out.lod =  [[12, 6]]
                 out.dims = [18, 1]     # where 18 = 12 + 6
 
     Args:
@@ -270,7 +274,8 @@ def match_matrix_tensor(x,
 
             x_lod_tensor = layers.data(name='x', shape=[10], lod_level=1)
             y_lod_tensor = layers.data(name='y', shape=[10], lod_level=1)
-            out, out_tmp = contrib.match_matrix_tensor(x=x_lod_tensor, y=y_lod_tensor, channel_num=3)
+            out, out_tmp = contrib.match_matrix_tensor(
+                x=x_lod_tensor, y=y_lod_tensor, channel_num=3)
     """
     helper = LayerHelper('match_matrix_tensor', **locals())
 
@@ -302,9 +307,9 @@ def match_matrix_tensor(x,
 def sequence_topk_avg_pooling(input, row, col, topks, channel_num):
     """
     The :attr:`topks` is a list with incremental values in this function. For each topk,
-    it will average the topk features as an output feature for each channel of every 
-    input sequence. Both :attr:`row` and :attr:`col` are LodTensor, which provide height 
-    and width information for :attr:`input` tensor. If feature size of input sequence is less 
+    it will average the topk features as an output feature for each channel of every
+    input sequence. Both :attr:`row` and :attr:`col` are LodTensor, which provide height
+    and width information for :attr:`input` tensor. If feature size of input sequence is less
     than topk, it will padding 0 at the back.
 
     .. code-block:: text
@@ -313,7 +318,7 @@ def sequence_topk_avg_pooling(input, row, col, topks, channel_num):
                 row.lod = [[5, 4]]
                 col.lod = [[6, 7]]
 
-            input is a LoDTensor with input.lod[0][i] = channel_num * row.lod[0][i] * col.lod[0][i] 
+            input is a LoDTensor with input.lod[0][i] = channel_num * row.lod[0][i] * col.lod[0][i]
                 input.lod = [[60, 56]]  # where 60 = channel_num * 5 * 6
                 input.dims = [116, 1]   # where 116 = 60 + 56
 
@@ -376,7 +381,7 @@ def tree_conv(nodes_vector,
               param_attr=None,
               bias_attr=None,
               name=None):
-    """ 
+    """
     ${comment}
 
     Args:
@@ -398,10 +403,12 @@ def tree_conv(nodes_vector,
 
           import paddle.fluid as fluid
           # 10 for max_node_size of dataset, 5 for vector width
-          nodes_vector = fluid.layers.data(name='vectors', shape=[10, 5], dtype='float32')
+          nodes_vector = fluid.layers.data(
+              name='vectors', shape=[10, 5], dtype='float32')
           # 10 for max_node_size of dataset, 2 for every edge has two nodes
           # edges must be directional
-          edge_set = fluid.layers.data(name='edge_set', shape=[10, 2], dtype='float32')
+          edge_set = fluid.layers.data(name='edge_set', shape=[
+                                       10, 2], dtype='float32')
           # the shape of output will be [10, 6, 1],
           # 10 for max_node_size of dataset, 6 for output size, 1 for 1 filter
           out_vector = fluid.layers.tree_conv(nodes_vector, edge_set, 6, 1, 2)
@@ -470,7 +477,8 @@ def fused_embedding_seq_pool(input,
             import paddle.fluid as fluid
 
             dict_size = 20
-            data_t = fluid.layers.data(name='word', shape=[1], dtype='int64', lod_level=1)
+            data_t = fluid.layers.data(
+                name='word', shape=[1], dtype='int64', lod_level=1)
             padding_idx = np.random.randint(1, 10)
             out = fluid.contrib.fused_embedding_seq_pool(
                 input=data_t,
@@ -529,16 +537,16 @@ def multiclass_nms2(bboxes,
                            [N, M, 4 or 8 16 24 32] represents the
                            predicted locations of M bounding bboxes,
                            N is the batch size. Each bounding box has four
-                           coordinate values and the layout is 
+                           coordinate values and the layout is
                            [xmin, ymin, xmax, ymax], when box size equals to 4.
                            2. (LoDTensor) A 3-D Tensor with shape [M, C, 4]
-                           M is the number of bounding boxes, C is the 
-                           class number   
+                           M is the number of bounding boxes, C is the
+                           class number
         scores (Variable): Two types of scores are supported:
                            1. (Tensor) A 3-D Tensor with shape [N, C, M]
                            represents the predicted confidence predictions.
-                           N is the batch size, C is the class number, M is 
-                           number of bounding boxes. For each category there 
+                           N is the batch size, C is the class number, M is
+                           number of bounding boxes. For each category there
                            are total M scores which corresponding M bounding
                            boxes. Please note, M is equal to the 2nd dimension
                            of BBoxes.
@@ -546,11 +554,11 @@ def multiclass_nms2(bboxes,
                            M is the number of bbox, C is the class number.
                            In this case, input BBoxes should be the second
                            case with shape [M, C, 4].
-        background_label (int): The index of background label, the background 
+        background_label (int): The index of background label, the background
                                 label will be ignored. If set to -1, then all
                                 categories will be considered. Default: 0
         score_threshold (float): Threshold to filter out bounding boxes with
-                                 low confidence score. If not provided, 
+                                 low confidence score. If not provided,
                                  consider all boxes.
         nms_top_k (int): Maximum number of detections to be kept according to
                          the confidences after the filtering detections based
@@ -565,19 +573,19 @@ def multiclass_nms2(bboxes,
 
     Returns:
         A tuple with two Variables: (Out, Index) if return_index is True,
-        otherwise, a tuple with one Variable(Out) is returned. 
-        Out: A 2-D LoDTensor with shape [No, 6] represents the detections. 
-        Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax] 
-        or A 2-D LoDTensor with shape [No, 10] represents the detections. 
-        Each row has 10 values: [label, confidence, x1, y1, x2, y2, x3, y3, 
-        x4, y4]. No is the total number of detections. 
+        otherwise, a tuple with one Variable(Out) is returned.
+        Out: A 2-D LoDTensor with shape [No, 6] represents the detections.
+        Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax]
+        or A 2-D LoDTensor with shape [No, 10] represents the detections.
+        Each row has 10 values: [label, confidence, x1, y1, x2, y2, x3, y3,
+        x4, y4]. No is the total number of detections.
         If all images have not detected results, all elements in LoD will be
         0, and output tensor is empty (None).
-        Index: Only return when return_index is True. A 2-D LoDTensor with 
-        shape [No, 1] represents the selected index which type is Integer. 
-        The index is the absolute value cross batches. No is the same number 
-        as Out. If the index is used to gather other attribute such as age, 
-        one needs to reshape the input(N, M, 1) to (N * M, 1) as first, where 
+        Index: Only return when return_index is True. A 2-D LoDTensor with
+        shape [No, 1] represents the selected index which type is Integer.
+        The index is the absolute value cross batches. No is the same number
+        as Out. If the index is used to gather other attribute such as age,
+        one needs to reshape the input(N, M, 1) to (N * M, 1) as first, where
         N is the batch size and M is the number of boxes.
 
 
@@ -671,7 +679,7 @@ def search_pyramid_hash(input,
             default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
         param_attr_wl(ParamAttr): Specified parameters of white filter.
         param_attr_bl(ParamAttr): Specified parameters of black filter.
-        distribute_update_vars(list[ParamAttr.name]): Decided which params should be updated in distribute training. 
+        distribute_update_vars(list[ParamAttr.name]): Decided which params should be updated in distribute training.
             Used in Distribute Transpiler to create a trainer/server program.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
@@ -813,7 +821,7 @@ def partial_concat(input, start_index=0, length=-1):
     **Partial Concat**
     This OP concatenates the inputs according to the start index and length. This
     OP exists in contrib, which means that it is not shown to the public.
-    Only 2-D Tensor or LodTensor input is supported. Slice and concat can only be 
+    Only 2-D Tensor or LodTensor input is supported. Slice and concat can only be
     performed along the second dimension.
 
     .. code-block:: text
@@ -844,7 +852,8 @@ def partial_concat(input, start_index=0, length=-1):
             import paddle.fluid as fluid
             x = fluid.data(name="x", shape=[None,3], dtype="float32")
             y = fluid.data(name="y", shape=[None,3], dtype="float32")
-            concat = fluid.contrib.layers.partial_concat([x, y], start_index=0, length=2)
+            concat = fluid.contrib.layers.partial_concat(
+                [x, y], start_index=0, length=2)
     """
     if not isinstance(input, list):
         warnings.warn(
@@ -873,9 +882,9 @@ def partial_concat(input, start_index=0, length=-1):
 def partial_sum(input, start_index=0, length=-1):
     """
     **PartialSum**
-    This Op can sum the vars by specifying the initial position(start_index) and length(length). 
+    This Op can sum the vars by specifying the initial position(start_index) and length(length).
     This Op exists in contrib, which means that it is not shown to the public.
-    Only 2-D Tensor or LodTensor input is supported. Slice and concat can only be 
+    Only 2-D Tensor or LodTensor input is supported. Slice and concat can only be
     performed along the second dimension.
     .. code-block:: text
 
@@ -926,8 +935,29 @@ def partial_sum(input, start_index=0, length=-1):
 
 def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
     """
-    used for tdm infer
-    """
+    **Tdm Child**
+     According to the input node_id on the given tree, return the corresponding child node_id and 
+      whether child is a leaf node by leaf_mask value.
+
+     Args:
+         x(Variable): Variable contained the node_id information, dtype support int32/int64.
+         node_nums(int): Number of total nodes.
+         child_nums(int): Maximum number of child nodes per node.
+         param_attr(ParamAttr): To specify the tdm-tree-info parameter property. Default: None, which means the
+             default weight parameter property is used. See usage for details in: ref: `api_fluid_ParamAttr`, should
+             has shape(node_nums, 3 + child_nums), dtype support int32/int64. 
+             The dimension[1] of tdm-tree-info contains the following: 
+             1. Item_id(int, shape(1)), if node is a leaf node, give its item_id corresponding to node_id, else give 0.
+             2. Layer_id(int, shape(1)), indicates which layer the node is on.
+             3. Parent_id(int, shape(1))，node's parent node.
+             4. Child_id(int, shape(child_nums)), all child nodes' node_id of this node are given. 
+                If the number of child nodes is insufficient, padding 0 until child nums equal to Child_nums
+         dtype(str): The data type of output child and leaf_mask, support int32/int64.
+
+     Returns:
+         tuple: A tuple including input node's child(Variable) and leaf_mask(Variable). 
+                If child is a leaf node, leaf_mask equal ot 1, otherwise equal to 0.
+     """
     helper = LayerHelper("tdm_child", **locals())
     tree_info = helper.create_parameter(
         attr=helper.param_attr,
@@ -947,4 +977,4 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
                  'Leaf_mask': leaf_mask},
         attrs={'Child_nums': child_nums},
         stop_gradient=True)
-    return child, leaf_mask
+    return (child, leaf_mask)

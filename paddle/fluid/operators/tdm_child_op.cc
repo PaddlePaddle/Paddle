@@ -40,7 +40,10 @@ class TDMChildOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Leaf_mask",
               "Leaf_mask has the same shape with Child"
               "If child is leaf node, leaf_mask value = 1, else = 0");
-    AddComment(R"DOC("TDM Child")DOC");
+    AddComment(R"DOC("
+     **Tdm Child**
+     According to the input node_id on the given tree, return the corresponding child node_id and 
+      whether child is a leaf node by leaf_mask.")DOC");
   }
 };
 

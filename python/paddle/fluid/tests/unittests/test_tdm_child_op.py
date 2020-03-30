@@ -25,11 +25,44 @@ import random
 import six
 
 
+def create_tdm_tree():
+    """Create tdm tree info"""
+    tree_info = [
+        [0, 0, 0, 1, 2],
+        [0, 1, 0, 3, 4],
+        [0, 1, 0, 5, 6],
+        [0, 2, 1, 7, 8],
+        [0, 2, 1, 9, 10],
+        [0, 2, 2, 11, 12],
+        [0, 2, 2, 13, 0],
+        [0, 3, 3, 14, 15],
+        [0, 3, 3, 16, 17],
+        [0, 3, 4, 18, 19],
+        [0, 3, 4, 20, 21],
+        [0, 3, 5, 22, 23],
+        [0, 3, 5, 24, 25],
+        [12, 3, 6, 0, 0],
+        [0, 4, 7, 0, 0],
+        [1, 4, 7, 0, 0],
+        [2, 4, 8, 0, 0],
+        [3, 4, 8, 0, 0],
+        [4, 4, 9, 0, 0],
+        [5, 4, 9, 0, 0],
+        [6, 4, 10, 0, 0],
+        [7, 4, 10, 0, 0],
+        [8, 4, 11, 0, 0],
+        [9, 4, 11, 0, 0],
+        [10, 4, 12, 0, 0],
+        [11, 4, 12, 0, 0],
+    ]
+    return tree_info
+
+
 class TestTDMChildOp(OpTest):
     def setUp(self):
         self.__class__.op_type = "tdm_child"
         self.config()
-        tree_info = self.create_tdm_tree()
+        tree_info = create_tdm_tree()
         tree_info_np = np.array(tree_info).astype(self.info_type)
 
         x_np = np.random.randint(
@@ -60,38 +93,6 @@ class TestTDMChildOp(OpTest):
         self.attrs = {'Child_nums': 2}
         self.inputs = {'X': x_np, 'Tree_info': tree_info_np}
         self.outputs = {'Child': child, 'Leaf_mask': leaf_mask}
-
-    def create_tdm_tree(self):
-        """Create tdm tree info"""
-        tree_info = [
-            [0, 0, 0, 1, 2],
-            [0, 1, 0, 3, 4],
-            [0, 1, 0, 5, 6],
-            [0, 2, 1, 7, 8],
-            [0, 2, 1, 9, 10],
-            [0, 2, 2, 11, 12],
-            [0, 2, 2, 13, 0],
-            [0, 3, 3, 14, 15],
-            [0, 3, 3, 16, 17],
-            [0, 3, 4, 18, 19],
-            [0, 3, 4, 20, 21],
-            [0, 3, 5, 22, 23],
-            [0, 3, 5, 24, 25],
-            [12, 3, 6, 0, 0],
-            [0, 4, 7, 0, 0],
-            [1, 4, 7, 0, 0],
-            [2, 4, 8, 0, 0],
-            [3, 4, 8, 0, 0],
-            [4, 4, 9, 0, 0],
-            [5, 4, 9, 0, 0],
-            [6, 4, 10, 0, 0],
-            [7, 4, 10, 0, 0],
-            [8, 4, 11, 0, 0],
-            [9, 4, 11, 0, 0],
-            [10, 4, 12, 0, 0],
-            [11, 4, 12, 0, 0],
-        ]
-        return tree_info
 
     def config(self):
         """set test shape & type"""
@@ -138,6 +139,31 @@ class TestCase4(TestTDMChildOp):
         self.child_shape = (100, 20, 2)
         self.x_type = 'int32'
         self.info_type = 'int32'
+
+
+class TestTDMChildShape(unittest.TestCase):
+    def test_shape(self):
+        x = fluid.layers.data(name='x', shape=[1], dtype='int32', lod_level=1)
+        tdm_tree_info = create_tdm_tree()
+        tree_info_np = np.array(tree_info).astype('int32')
+
+        child, leaf_mask = fluid.contrib.layers.tdm_child(
+            x=x,
+            node_nums=26,
+            child_nums=2,
+            param_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.NumpyArrayInitializer(
+                    tree_info_np)))
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place=place)
+        exe.run(fluid.default_startup_program())
+
+        feed = {
+            'x': np.array([[1], [2], [3], [4], [5], [6], [7], [8], [9], [10],
+                           [11], [12]]).astype('int32')
+        }
+        exe.run(feed=feed)
 
 
 if __name__ == "__main__":
