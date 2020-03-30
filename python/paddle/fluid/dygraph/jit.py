@@ -14,18 +14,21 @@
 
 from __future__ import print_function
 
-__all__ = ['TracedLayer', 'dygraph_to_static_output', 'dygraph_to_static_graph']
+__all__ = [
+    'TracedLayer', 'dygraph_to_static_code', 'dygraph_to_static_func',
+    'dygraph_to_static_output', 'dygraph_to_static_program'
+]
 
 import warnings
 
 from ..wrapped_decorator import wrap_decorator
 from .base import program_desc_tracing_guard, switch_to_static_graph
-from .dygraph_to_static import AutoTracer, convert_to_static
 from .layers import Layer
 from paddle.fluid import core
 from paddle.fluid.framework import Program, Block, Variable, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.compiler import CompiledProgram
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
 
 
 def create_program_from_desc(program_desc):
@@ -51,42 +54,65 @@ def extract_vars(inputs):
     return result_list
 
 
-def _dygraph_to_static_graph_(dygraph_func):
+def _dygraph_to_static_code_(dygraph_func):
+    def __impl__(*args, **kwargs):
+        program_translator = ProgramTranslator()
+        return program_translator.get_code(dygraph_func)
+
+    return __impl__
+
+
+dygraph_to_static_code = wrap_decorator(_dygraph_to_static_code_)
+
+
+def _dygraph_to_static_program_(dygraph_func):
     def __impl__(*args, **kwargs):
         if in_dygraph_mode():
             warnings.warn(
-                "The decorator 'dygraph_to_static_graph' doesn't work in dygraph mode."
-                " Please use it in static mode.")
+                "The decorator 'dygraph_to_static_program' doesn't work in "
+                "dygraph mode. We will just return dygraph output. Use the "
+                "decorator in static mode if you would like to translate to "
+                "static graph.")
             return dygraph_func(*args, **kwargs)
-        static_func, ast_transformer = convert_to_static(dygraph_func)
+        program_translator = ProgramTranslator()
+        return program_translator.get_program(dygraph_func, *args, **kwargs)
+
+    return __impl__
+
+
+dygraph_to_static_program = wrap_decorator(_dygraph_to_static_program_)
+
+
+def _dygraph_to_static_func_(dygraph_func):
+    def __impl__(*args, **kwargs):
+        if in_dygraph_mode():
+            warnings.warn(
+                "The decorator 'dygraph_to_static_func' doesn't work in "
+                "dygraph mode. We will just return dygraph output. Use the "
+                "decorator in static mode if you would like to translate to "
+                "static graph.")
+            return dygraph_func(*args, **kwargs)
+        program_translator = ProgramTranslator()
+        static_func = program_translator.get_func(dygraph_func)
         return static_func(*args, **kwargs)
 
     return __impl__
 
 
-dygraph_to_static_graph = wrap_decorator(_dygraph_to_static_graph_)
+dygraph_to_static_func = wrap_decorator(_dygraph_to_static_func_)
 
 
 def _dygraph_to_static_output_(dygraph_func):
-    # Singleton object to cache main_program to avoid inserting ops repeatedly.
-    # TODO: Need a better class name
-    auto_tracer = AutoTracer()
-
     def __impl__(*args, **kwargs):
         if in_dygraph_mode():
             warnings.warn(
-                "The decorator 'dygraph_to_static_output' doesn't work in dygraph mode."
-                " Please use it in static mode.")
+                "The decorator 'dygraph_to_static_output' doesn't work in "
+                "dygraph mode. We will just return dygraph output. Use the "
+                "decorator in static mode if you would like to translate to "
+                "static graph.")
             return dygraph_func(*args, **kwargs)
-
-        cached_program = auto_tracer.get_cached_program()
-        outputs = cached_program(dygraph_func, *args, **kwargs)
-
-        # Run program to fetch output Tensors once building successfully.
-        if not cached_program.in_build_process:
-            outputs = auto_tracer.run(*args, **kwargs)
-
-        return outputs
+        program_translator = ProgramTranslator()
+        return program_translator.get_output(dygraph_func, *args, **kwargs)
 
     return __impl__
 

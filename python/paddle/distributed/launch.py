@@ -44,11 +44,11 @@ import time
 import six
 import copy
 from argparse import ArgumentParser, REMAINDER
+import paddle
 import paddle.fluid as fluid
 
-from utils import *
-
-import cloud_utils
+from paddle.distributed.utils import *
+import paddl.distributed.cloud_utils as cloud_utils
 
 
 def _print_arguments(args):

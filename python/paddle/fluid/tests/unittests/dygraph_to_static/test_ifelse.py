@@ -18,7 +18,7 @@ import numpy as np
 import paddle.fluid as fluid
 import unittest
 
-from paddle.fluid.dygraph.jit import dygraph_to_static_graph
+from paddle.fluid.dygraph.jit import dygraph_to_static_func
 
 from ifelse_simple_func import *
 
@@ -45,7 +45,7 @@ class TestDygraphIfElse(unittest.TestCase):
         with fluid.program_guard(main_program):
             x_v = fluid.layers.assign(self.x)
             # Transform into static graph
-            out = dygraph_to_static_graph(self.dyfunc)(x_v)
+            out = dygraph_to_static_func(self.dyfunc)(x_v)
             exe = fluid.Executor(place)
             ret = exe.run(main_program, fetch_list=out)
             return ret
@@ -82,6 +82,38 @@ class TestDygraphIfElse5(TestDygraphIfElse):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = nested_if_else_3
+
+
+def dyfunc_ifExp_with_while(x):
+    y = [x]
+
+    def add_fn(x):
+        x = x + 1
+        return x
+
+    def cond(i, ten, y):
+        return i < ten
+
+    def map_func(func, tensor_list):
+        return [func(x) for x in tensor_list]
+
+    def body(i, ten, y):
+        # It will be converted into `layers.cond` as followed.
+        # map_func(lambda x: fluid.layers.cond(i==0, lambda: x, lambda: add_fn(x), y)
+        y = map_func(lambda x: x if i == 0 else add_fn(x), y)
+        i += 1
+        return [i, ten, y]
+
+    i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+    ten = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
+    i, ten, y = fluid.layers.while_loop(cond, body, [i, ten, y])
+    return y[0]
+
+
+class TestDygraphIfElse6(TestDygraphIfElse):
+    def setUp(self):
+        self.x = np.random.random([10, 16]).astype('float32')
+        self.dyfunc = dyfunc_ifExp_with_while
 
 
 class TestDygraphIfElseWithAndOr(TestDygraphIfElse):
@@ -145,6 +177,44 @@ class TestDygraphIfElseNet(unittest.TestCase):
 
     def test_ast_to_func(self):
         self.assertTrue((self._run_dygraph() == self._run_static()).all())
+
+
+def call_external_func(x, label=None):
+    if fluid.layers.mean(x).numpy()[0] > 5:
+        x_v = x - 1
+    else:
+        x_v = add_fn(x)
+
+    if label is not None:
+        loss = loss_fn(x_v, label)
+        return loss
+    return x_v
+
+
+class TestAst2FuncWithExternalFunc(TestDygraphIfElse):
+    def setUp(self):
+        self.x = np.random.random([10, 16]).astype('float32')
+        self.dyfunc = call_external_func
+
+
+class NetWithExternalFunc(fluid.dygraph.Layer):
+    @dygraph_to_static_func
+    def forward(self, x, label=None):
+        if fluid.layers.mean(x).numpy()[0] > 5:
+            x_v = x - 1
+        else:
+            x_v = add_fn(x)
+
+        if label is not None:
+            loss = loss_fn(x_v, label)
+            return loss
+        return x_v
+
+
+class TestNetWithExternalFunc(TestDygraphIfElseNet):
+    def setUp(self):
+        self.x = np.random.random([10, 16]).astype('float32')
+        self.Net = NetWithExternalFunc
 
 
 if __name__ == '__main__':

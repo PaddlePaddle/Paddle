@@ -15,7 +15,17 @@
 from __future__ import print_function
 
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import dygraph_to_static_graph
+from paddle.fluid.dygraph.jit import dygraph_to_static_func
+
+
+def add_fn(x):
+    x = x + 1
+    return x
+
+
+def loss_fn(x, lable):
+    loss = fluid.layers.cross_entropy(x, lable)
+    return loss
 
 
 def dyfunc_with_if_else(x_v, label=None):
@@ -48,7 +58,8 @@ def nested_if_else(x_v):
     bias = fluid.layers.fill_constant([feat_size], dtype='float32', value=1)
     if x_v.shape[0] != batch_size:
         batch_size = x_v.shape[0]
-    if fluid.layers.mean(x_v).numpy()[0] < 0:
+    # if tensor.shape is [1], now support to compare with numpy.
+    if fluid.layers.mean(x_v).numpy() < 0:
         y = x_v + bias
         w = fluid.layers.fill_constant([feat_size], dtype='float32', value=10)
         if y.numpy()[0] < 10:
@@ -131,7 +142,7 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
         self.alpha = 10.
         self.constant_vars = {}
 
-    @dygraph_to_static_graph
+    @dygraph_to_static_func
     def forward(self, input):
         hidden_dim = input.shape[-1]
         if hidden_dim != self.hidden_dim:

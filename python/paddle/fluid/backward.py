@@ -273,10 +273,13 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
                     args)))
 
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
+    op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
 
     if op_role_attr_name not in attrs:
         attrs[
             op_role_attr_name] = core.op_proto_and_checker_maker.OpRole.Backward
+    if op_device_attr_name not in attrs:
+        attrs[op_device_attr_name] = ""
     for name, val in six.iteritems(attrs):
         if isinstance(val, framework.Block):
             op_desc.set_block_attr(name, val.desc)
@@ -880,9 +883,10 @@ def _append_backward_ops_(block,
 
         # Set device for grad_op according to forward Op
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
-        op_device = op.desc.attr(device_attr_name)
-        for op_desc in grad_op_desc:
-            op_desc._set_attr(device_attr_name, op_device)
+        if op.desc.has_attr(device_attr_name):
+            op_device = op.desc.attr(device_attr_name)
+            for op_desc in grad_op_desc:
+                op_desc._set_attr(device_attr_name, op_device)
 
         # If input_grad_names_set is not None, extend grad_op_descs only when
         # any input grad in outputs of previous grad ops.
