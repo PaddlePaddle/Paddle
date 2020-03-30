@@ -32,7 +32,7 @@ __all__ = [
     'fused_elemwise_activation', 'sequence_topk_avg_pooling', 'var_conv_2d',
     'match_matrix_tensor', 'tree_conv', 'fused_embedding_seq_pool',
     'multiclass_nms2', 'search_pyramid_hash', 'shuffle_batch', 'partial_concat',
-    'partial_sum'
+    'partial_sum', 'rank_attention'
 ]
 
 
@@ -922,3 +922,79 @@ def partial_sum(input, start_index=0, length=-1):
     helper.append_op(
         type='partial_sum', inputs=inputs, outputs={'Out': [out]}, attrs=attrs)
     return out
+
+
+def rank_attention(input,
+                   rank_offset,
+                   rank_param_shape,
+                   rank_param_attr,
+                   max_rank=3):
+    """
+    **Rank Attention layer**
+    This Op can calculate rank attention between input and rank_param, and 
+    rank_param gives the organization of data. Notice: It currently supports
+    GPU device.
+    This Op exists in contrib, which means that it is not shown to the public.
+
+    Args:
+        input: Tensor with data type float32, float64.
+        rank_offset: Tensor with data type int32.
+        rank_para_shape: The shape of rank_param.
+        rank_param_attr: Attribute initializer of rank_param.
+        max_rank: The max rank of input's ranks.
+
+    Returns:
+        Variable: A Tensor with the same data type as input's.
+
+    Examples:
+        .. code-block:: python
+           import paddle.fluid as fluid
+           import numpy as np
+           
+           input = fluid.data(name="input", shape=[None, 2], dtype="float32")
+           rank_offset = fluid.data(name="rank_offset", shape=[None, 7], dtype="int32")
+           out = fluid.contrib.layers.rank_attention(input=input,
+                                                     rank_offset=rank_offset,
+                                                     rank_param_shape=[18,3],
+                                                     rank_param_attr=
+                                                       fluid.ParamAttr(learning_rate=1.0,
+                                                                     name="ubm_rank_param.w_0",
+                                                                     initializer=
+                                                                     fluid.initializer.Xavier(uniform=False)),
+                                                      max_rank=3)
+           place = fluid.CUDAPlace(0)
+           exe = fluid.Executor(place)
+           xx = np.array([[1, 2],
+                          [3, 4],
+                          [5, 6]]).astype("float32")
+           yy = np.array([[1, 0, 0, 1, 1, 2, -1],
+                          [2, 0, 0, 1, 1, 2, -1],
+                          [1, 0, 2, 1, -1, 2, -1]]).astype("int32")
+           
+           exe.run(fluid.default_startup_program())
+           out = exe.run(feed={"input":xx, "rank_offset":yy}, fetch_list=[out])
+    """
+    helper = LayerHelper('rank_attention', **locals())
+    dtype = helper.input_dtype(input_param_name='input')
+    input_shape = input.shape
+    assert input_shape[1] * max_rank * max_rank == rank_param_shape[0]
+
+    rank_param = helper.create_parameter(
+        attr=rank_param_attr, shape=rank_param_shape, dtype=dtype)
+    rank_param.stop_gradient = False
+
+    output = helper.create_variable_for_type_inference(dtype)
+    ins_rank = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
+
+    helper.append_op(
+        type="rank_attention",
+        inputs={
+            "X": input,
+            "RankOffset": rank_offset,
+            "RankParam": rank_param
+        },
+        outputs={"Out": output},
+        attrs={"MaxRank": max_rank})
+
+    return output
