@@ -37,7 +37,7 @@
 # from .creation import meshgrid   #DEFINE_ALIAS
 # from .stat import mean   #DEFINE_ALIAS
 # from .stat import reduce_mean   #DEFINE_ALIAS
-# from .stat import std   #DEFINE_ALIAS
+from .stat import std  #DEFINE_ALIAS
 # from .stat import var   #DEFINE_ALIAS
 # from .logic import equal   #DEFINE_ALIAS
 # from .logic import greater_equal   #DEFINE_ALIAS

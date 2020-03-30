@@ -59,7 +59,7 @@ import paddle.sysconfig
 # from .tensor.creation import meshgrid   #DEFINE_ALIAS
 # from .tensor.stat import mean   #DEFINE_ALIAS
 # from .tensor.stat import reduce_mean   #DEFINE_ALIAS
-# from .tensor.stat import std   #DEFINE_ALIAS
+from .tensor.stat import std  #DEFINE_ALIAS
 # from .tensor.stat import var   #DEFINE_ALIAS
 # from .tensor.logic import equal   #DEFINE_ALIAS
 # from .tensor.logic import greater_equal   #DEFINE_ALIAS
