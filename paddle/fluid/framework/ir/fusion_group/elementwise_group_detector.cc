@@ -111,6 +111,13 @@ bool ElementwiseGroupDetector::IsElementwiseOp(const Node* n) {
         }
       }
     }
+
+    for (size_t i = 0; i < n->outputs.size(); ++i) {
+      auto* out_i = n->outputs[i];
+      if (!(out_i && out_i->IsVar() && out_i->Var())) {
+        return false;
+      }
+    }
     return true;
   }
   return false;
