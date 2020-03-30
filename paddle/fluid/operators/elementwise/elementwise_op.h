@@ -182,7 +182,6 @@ There are two cases for this operator:
 2. The shape of $Y$ is a continuous subsequence of $X$.
 
 For case 2:
-
 1. Broadcast $Y$ to match the shape of $X$, where $axis$ is the start dimension index
    for broadcasting $Y$ onto $X$.
 2. If $axis$ is -1 (default), $axis = rank(X) - rank(Y)$.
