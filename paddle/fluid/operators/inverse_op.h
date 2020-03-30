@@ -32,7 +32,7 @@ class InverseKernel : public framework::OpKernel<T> {
     int N = input_dims[rank - 1];
     int batch_size = rank > 2 ? input->numel() / (N * N) : 1;
 
-    Tensor ipiv;
+    framework::Tensor ipiv;
     int* ipiv_ptr = ipiv.mutable_data<int>({N}, context.GetPlace());
 
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
