@@ -52,7 +52,7 @@ IF(NOT WIN32)
     IF(${CBLAS_PROVIDER} STREQUAL "MKLML")
     # Force libmkldnn.so to link libiomp5.so (provided by intel mkl) instead of libgomp.so (provided by gcc),
     # since core_avx.so links libiomp5.so 
-        set(MKLDNN_SHARED_LINKER_FLAG "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-as-needed -L${MKLML_LIB_DIR} -liomp5")
+        set(MKLDNN_SHARED_LINKER_FLAG "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-as-needed -L${MKLML_LIB_DIR} ")
         set(FORBID "-fopenmp")
     ELSE()
         set(MKLDNN_SHARED_LINKER_FLAG "${CMAKE_SHARED_LINKER_FLAGS}")
@@ -112,7 +112,7 @@ add_definitions(-DPADDLE_WITH_MKLDNN)
 SET(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/mkldnn_dummy.c)
 FILE(WRITE ${dummyfile} "const char * dummy = \"${dummyfile}\";")
 ADD_LIBRARY(mkldnn STATIC ${dummyfile})
-TARGET_LINK_LIBRARIES(mkldnn ${MKLDNN_LIB} ${MKLML_IOMP_LIB})
+TARGET_LINK_LIBRARIES(mkldnn ${MKLDNN_LIB})
 ADD_DEPENDENCIES(mkldnn ${MKLDNN_PROJECT})
 
 # copy the real so.0 lib to install dir
