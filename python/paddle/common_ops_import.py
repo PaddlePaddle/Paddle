@@ -22,7 +22,7 @@ from paddle.fluid.framework import Variable
 from paddle.fluid.initializer import Constant
 from paddle.fluid.core import VarDesc
 from paddle.fluid import core
-from paddle.fluid.data_feeder import check_type, check_dtype, convert_dtype
+from paddle.fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from paddle.fluid.layers import utils
 import numpy
 import warnings
