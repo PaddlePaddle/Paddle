@@ -89,7 +89,13 @@ class MainNetWithDict(fluid.dygraph.Layer):
                 dtype='float32',
                 value=0),
         }
-        max_len = input.shape[0] if input.shape[0] != max_len else max_len
+        # TODO(Aurelius84): The following code will be converted into:
+        # max_len = layers.cond(layers.shape(input)[0] != max_len,
+        #                       lambda: layers.shape(input)[0], lambda: max_len)
+        # But max_len should be wrapped into tensor, which is not supported.
+
+        # Comment out this line of code for now.
+        # max_len = input.shape[0] if input.shape[0] != max_len else max_len
         out = input
         for i in range(max_len):
             out = self.sub_net(out, cache)
