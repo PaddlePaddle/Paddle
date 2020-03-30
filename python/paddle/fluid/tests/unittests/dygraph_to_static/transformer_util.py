@@ -16,13 +16,13 @@ import pickle
 import warnings
 from functools import partial
 
-import glob
 import six
-import os
-import tarfile
 
 import numpy as np
 import paddle.fluid as fluid
+import paddle
+
+import paddle.dataset.wmt16 as wmt16
 
 
 def get_input_descs(args):
@@ -112,30 +112,6 @@ fast_decoder_data_input_fields = (
     "trg_src_attn_bias", )
 
 
-class InputField(object):
-    """
-    A high-level API for handling inputs in PaddlePaddle.
-    """
-
-    def __init__(self, input_slots, build_pyreader=False, capacity=100):
-        self.feed_list = []
-        self.loader = None
-        for slot in input_slots:
-            self.feed_list.append(
-                fluid.layers.data(
-                    name=slot['name'],
-                    shape=slot['shape'],
-                    dtype=slot['dtype'],
-                    lod_level=slot.get('lod_level', 0),
-                    append_batch_size=False))
-
-        self.loader = fluid.io.DataLoader.from_generator(
-            feed_list=self.feed_list,
-            capacity=capacity,
-            iterable=(not build_pyreader),
-            use_double_buffer=True)
-
-
 class ModelHyperParams(object):
     # used for continuous evaluation
     enable_ce = False
@@ -150,30 +126,9 @@ class ModelHyperParams(object):
     save_model = "trained_models"
     # the directory for saving inference model.
     inference_model_dir = "infer_model"
-    # Set seed for CE or debug
-    random_seed = None
-    # The pattern to match training data files.
-    training_file = "train.tok.clean.bpe.1000.en-de"
-    # The pattern to match test data files.
-    predict_file = "newstest2016.tok.bpe.32000.en-de"
     # The file to output the translation results of predict_file to.
     output_file = "predict.txt"
     # The path of vocabulary file of source language.
-    src_vocab_fpath = "vocab_all.bpe.32000"
-    # The path of vocabulary file of target language.
-    trg_vocab_fpath = "vocab_all.bpe.32000"
-    # The <bos>, <eos> and <unk> tokens in the dictionary.
-    special_token = ["<s>", "<e>", "<unk>"]
-    # whether to use cuda
-    use_cuda = True
-
-    # args for reader, see reader.py for details
-    token_delimiter = " "
-    use_token_batch = True
-    pool_size = 200000
-    sort_type = "pool"
-    shuffle = False
-    shuffle_batch = False
     batch_size = 5
 
     # Hyparams for training:
@@ -199,11 +154,6 @@ class ModelHyperParams(object):
     max_out_len = 256
     # the number of decoded sentences to output.
     n_best = 1
-
-    # Hyparams for model:
-    # These following five vocabularies related configurations will be set
-    # automatically according to the passed vocabulary path and special tokens.
-    # size of source word dictionary.
     src_vocab_size = 10000
     # size of target word dictionay
     trg_vocab_size = 10000
@@ -237,8 +187,6 @@ class ModelHyperParams(object):
     preprocess_cmd = "n"  # layer normalization
     # to process after each sub-layer
     postprocess_cmd = "da"  # dropout + residual connection
-    # the flag indicating whether to share embedding and softmax weights.
-    # vocabularies in source and target should be same for weight sharing.
     weight_sharing = True
 
 
@@ -335,7 +283,7 @@ def prepare_train_input(insts, src_pad_idx, trg_pad_idx, n_head):
     return data_inputs
 
 
-def prepare_infer_input(insts, src_pad_idx, bos_idx, n_head, place):
+def prepare_infer_input(insts, src_pad_idx, bos_idx, n_head):
     """
     Put all padded data needed by beam search decoder into a list.
     """
@@ -355,314 +303,43 @@ def prepare_infer_input(insts, src_pad_idx, bos_idx, n_head, place):
     return data_inputs
 
 
-class SortType(object):
-    GLOBAL = 'global'
-    POOL = 'pool'
-    NONE = "none"
+def get_feed_data_reader(args, mode='train'):
+    def __for_train__():
+        train_reader = paddle.batch(
+            wmt16.train(args.src_vocab_size, args.trg_vocab_size),
+            batch_size=args.batch_size)
+        for batch in train_reader():
+            tensors = prepare_train_input(batch, args.eos_idx, args.eos_idx,
+                                          args.n_head)
+            yield tensors
+
+    def __for_test__():
+        test_reader = paddle.batch(
+            wmt16.train(args.src_vocab_size, args.trg_vocab_size),
+            batch_size=args.batch_size)
+        for batch in test_reader():
+            tensors = prepare_infer_input(batch, args.eos_idx, args.eos_idx,
+                                          args.n_head)
+            yield tensors
+
+    return __for_train__ if mode == 'train' else __for_test__
 
 
-class Converter(object):
-    def __init__(self, vocab, beg, end, unk, delimiter, add_beg):
-        self._vocab = vocab
-        self._beg = beg
-        self._end = end
-        self._unk = unk
-        self._delimiter = delimiter
-        self._add_beg = add_beg
+class InputField(object):
+    """
+    A high-level API for handling inputs in PaddlePaddle.
+    """
 
-    def __call__(self, sentence):
-        return ([self._beg] if self._add_beg else []) + [
-            self._vocab.get(w, self._unk)
-            for w in sentence.split(self._delimiter)
-        ] + [self._end]
-
-
-class ComposedConverter(object):
-    def __init__(self, converters):
-        self._converters = converters
-
-    def __call__(self, parallel_sentence):
-        return [
-            self._converters[i](parallel_sentence[i])
-            for i in range(len(self._converters))
-        ]
-
-
-class SentenceBatchCreator(object):
-    def __init__(self, batch_size):
-        self.batch = []
-        self._batch_size = batch_size
-
-    def append(self, info):
-        self.batch.append(info)
-        if len(self.batch) == self._batch_size:
-            tmp = self.batch
-            self.batch = []
-            return tmp
-
-
-class TokenBatchCreator(object):
-    def __init__(self, batch_size):
-        self.batch = []
-        self.max_len = -1
-        self._batch_size = batch_size
-
-    def append(self, info):
-        cur_len = info.max_len
-        max_len = max(self.max_len, cur_len)
-        if max_len * (len(self.batch) + 1) > self._batch_size:
-            result = self.batch
-            self.batch = [info]
-            self.max_len = cur_len
-            return result
-        else:
-            self.max_len = max_len
-            self.batch.append(info)
-
-
-class SampleInfo(object):
-    def __init__(self, i, max_len, min_len):
-        self.i = i
-        self.min_len = min_len
-        self.max_len = max_len
-
-
-class MinMaxFilter(object):
-    def __init__(self, max_len, min_len, underlying_creator):
-        self._min_len = min_len
-        self._max_len = max_len
-        self._creator = underlying_creator
-
-    def append(self, info):
-        if info.max_len > self._max_len or info.min_len < self._min_len:
-            return
-        else:
-            return self._creator.append(info)
-
-    @property
-    def batch(self):
-        return self._creator.batch
-
-
-class DataProcessor(object):
-    def __init__(self,
-                 src_vocab_fpath,
-                 trg_vocab_fpath,
-                 fpattern,
-                 batch_size,
-                 device_count,
-                 n_head,
-                 pool_size,
-                 sort_type=SortType.GLOBAL,
-                 clip_last_batch=False,
-                 tar_fname=None,
-                 min_length=0,
-                 max_length=100,
-                 shuffle=True,
-                 shuffle_batch=False,
-                 use_token_batch=False,
-                 field_delimiter="\t",
-                 token_delimiter=" ",
-                 start_mark="<s>",
-                 end_mark="<e>",
-                 unk_mark="<unk>",
-                 only_src=False,
-                 seed=0):
-        # convert str to bytes, and use byte data
-        field_delimiter = field_delimiter.encode("utf8")
-        token_delimiter = token_delimiter.encode("utf8")
-        start_mark = start_mark.encode("utf8")
-        end_mark = end_mark.encode("utf8")
-        unk_mark = unk_mark.encode("utf8")
-        self._src_vocab = self.load_dict(src_vocab_fpath)
-        self._trg_vocab = self.load_dict(trg_vocab_fpath)
-        self._bos_idx = self._src_vocab[start_mark]
-        self._eos_idx = self._src_vocab[end_mark]
-        self._unk_idx = self._src_vocab[unk_mark]
-        self._only_src = only_src
-        self._pool_size = pool_size
-        self._batch_size = batch_size
-        self._device_count = device_count
-        self._n_head = n_head
-        self._use_token_batch = use_token_batch
-        self._sort_type = sort_type
-        self._clip_last_batch = clip_last_batch
-        self._shuffle = shuffle
-        self._shuffle_batch = shuffle_batch
-        self._min_length = min_length
-        self._max_length = max_length
-        self._field_delimiter = field_delimiter
-        self._token_delimiter = token_delimiter
-        self.load_src_trg_ids(fpattern, tar_fname)
-        self._random = np.random
-        self._random.seed(seed)
-
-    def load_src_trg_ids(self, fpattern, tar_fname):
-        converters = [
-            Converter(
-                vocab=self._src_vocab,
-                beg=self._bos_idx,
-                end=self._eos_idx,
-                unk=self._unk_idx,
-                delimiter=self._token_delimiter,
-                add_beg=False)
-        ]
-        if not self._only_src:
-            converters.append(
-                Converter(
-                    vocab=self._trg_vocab,
-                    beg=self._bos_idx,
-                    end=self._eos_idx,
-                    unk=self._unk_idx,
-                    delimiter=self._token_delimiter,
-                    add_beg=True))
-
-        converters = ComposedConverter(converters)
-
-        self._src_seq_ids = []
-        self._trg_seq_ids = None if self._only_src else []
-        self._sample_infos = []
-
-        for i, line in enumerate(self._load_lines(fpattern, tar_fname)):
-            src_trg_ids = converters(line)
-            self._src_seq_ids.append(src_trg_ids[0])
-            lens = [len(src_trg_ids[0])]
-            if not self._only_src:
-                self._trg_seq_ids.append(src_trg_ids[1])
-                lens.append(len(src_trg_ids[1]))
-            self._sample_infos.append(SampleInfo(i, max(lens), min(lens)))
-
-    def _load_lines(self, fpattern, tar_fname):
-        fpaths = glob.glob(fpattern)
-        assert len(fpaths) > 0, "no matching file to the provided data path"
-
-        if len(fpaths) == 1 and tarfile.is_tarfile(fpaths[0]):
-            if tar_fname is None:
-                raise Exception("If tar file provided, please set tar_fname.")
-
-            f = tarfile.open(fpaths[0], "rb")
-            for line in f.extractfile(tar_fname):
-                fields = line.strip(b"\n").split(self._field_delimiter)
-                if (not self._only_src and len(fields) == 2) or (
-                        self._only_src and len(fields) == 1):
-                    yield fields
-        else:
-            for fpath in fpaths:
-                if not os.path.isfile(fpath):
-                    raise IOError("Invalid file: %s" % fpath)
-
-                with open(fpath, "rb") as f:
-                    for line in f:
-                        fields = line.strip(b"\n").split(self._field_delimiter)
-                        if (not self._only_src and len(fields) == 2) or (
-                                self._only_src and len(fields) == 1):
-                            yield fields
-
-    @staticmethod
-    def load_dict(dict_path, reverse=False):
-        word_dict = {}
-        with open(dict_path, "rb") as fdict:
-            for idx, line in enumerate(fdict):
-                if reverse:
-                    word_dict[idx] = line.strip(b"\n")
-                else:
-                    word_dict[line.strip(b"\n")] = idx
-        return word_dict
-
-    def batch_generator(self, batch_size, use_token_batch):
-        def __impl__():
-            # global sort or global shuffle
-            if self._sort_type == SortType.GLOBAL:
-                infos = sorted(self._sample_infos, key=lambda x: x.max_len)
-            else:
-                if self._shuffle:
-                    infos = self._sample_infos
-                    self._random.shuffle(infos)
-                else:
-                    infos = self._sample_infos
-
-                if self._sort_type == SortType.POOL:
-                    reverse = True
-                    for i in range(0, len(infos), self._pool_size):
-                        # to avoid placing short next to long sentences
-                        reverse = not reverse
-                        infos[i:i + self._pool_size] = sorted(
-                            infos[i:i + self._pool_size],
-                            key=lambda x: x.max_len,
-                            reverse=reverse)
-
-            # concat batch
-            batches = []
-            batch_creator = TokenBatchCreator(
-                batch_size) if use_token_batch else SentenceBatchCreator(
-                    batch_size)
-            batch_creator = MinMaxFilter(self._max_length, self._min_length,
-                                         batch_creator)
-
-            for info in infos:
-                batch = batch_creator.append(info)
-                if batch is not None:
-                    batches.append(batch)
-
-            if not self._clip_last_batch and len(batch_creator.batch) != 0:
-                batches.append(batch_creator.batch)
-
-            if self._shuffle_batch:
-                self._random.shuffle(batches)
-
-            for batch in batches:
-                batch_ids = [info.i for info in batch]
-
-                if self._only_src:
-                    yield [[self._src_seq_ids[idx]] for idx in batch_ids]
-                else:
-                    yield [(self._src_seq_ids[idx], self._trg_seq_ids[idx][:-1],
-                            self._trg_seq_ids[idx][1:]) for idx in batch_ids]
-
-        return __impl__
-
-    @staticmethod
-    def split(data_reader, count):
-        def __impl__():
-            for item in data_reader():
-                inst_num_per_part = len(item) // count
-                for i in range(count):
-                    yield item[inst_num_per_part * i:inst_num_per_part * (i + 1
-                                                                          )]
-
-        return __impl__
-
-    def data_generator(self, phase, place=None):
-        # Any token included in dict can be used to pad, since the paddings' loss
-        # will be masked out by weights and make no effect on parameter gradients.
-        src_pad_idx = trg_pad_idx = self._eos_idx
-        bos_idx = self._bos_idx
-        n_head = self._n_head
-        data_reader = self.batch_generator(
-            self._batch_size *
-            (1 if self._use_token_batch else self._device_count),
-            self._use_token_batch)
-        if not self._use_token_batch:
-            # to make data on each device have similar token number
-            data_reader = self.split(data_reader, self._device_count)
-
-        def __for_train__():
-            for data in data_reader():
-                data_inputs = prepare_train_input(data, src_pad_idx,
-                                                  trg_pad_idx, n_head)
-                yield data_inputs
-
-        def __for_predict__():
-            for data in data_reader():
-                data_inputs = prepare_infer_input(data, src_pad_idx, bos_idx,
-                                                  n_head, place)
-                yield data_inputs
-
-        return __for_train__ if phase == "train" else __for_predict__
-
-    def get_vocab_summary(self):
-        return len(self._src_vocab), len(
-            self._trg_vocab), self._bos_idx, self._eos_idx, self._unk_idx
+    def __init__(self, input_slots):
+        self.feed_list = []
+        for slot in input_slots:
+            self.feed_list.append(
+                fluid.layers.data(
+                    name=slot['name'],
+                    shape=slot['shape'],
+                    dtype=slot['dtype'],
+                    lod_level=slot.get('lod_level', 0),
+                    append_batch_size=False))
 
 
 def load(program, model_path, executor=None, var_list=None):

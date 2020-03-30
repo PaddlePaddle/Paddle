@@ -15,6 +15,7 @@
 import logging
 import numpy as np
 import time
+import os
 import paddle.fluid as fluid
 
 import unittest
@@ -50,8 +51,11 @@ def train_static(args, batch_generator):
                 "dtype": input_descs[name][1]
             } for name in input_field_names]
 
-            input_field = util.InputField(input_slots, build_pyreader=True)
-            input_field.loader.set_batch_generator(batch_generator)
+            input_field = util.InputField(input_slots)
+            # Define DataLoader
+            data_loader = fluid.io.DataLoader.from_generator(
+                input_field.feed_list, capacity=60)
+            data_loader.set_batch_generator(batch_generator, places=place)
 
             # define model
             transformer = Transformer(
@@ -95,53 +99,48 @@ def train_static(args, batch_generator):
     avg_loss = []
     for pass_id in range(args.epoch):
         batch_id = 0
-        input_field.loader.start()
-        while True:
-            try:
-                outs = exe.run(program=train_prog,
-                               fetch_list=[sum_cost.name, token_num.name])
+        for feed_dict in data_loader:
+            outs = exe.run(program=train_prog,
+                           feed=feed_dict,
+                           fetch_list=[sum_cost.name, token_num.name])
 
-                if step_idx % args.print_step == 0:
-                    sum_cost_val, token_num_val = np.array(outs[0]), np.array(
-                        outs[1])
-                    # sum the cost from multi-devices
-                    total_sum_cost = sum_cost_val.sum()
-                    total_token_num = token_num_val.sum()
-                    total_avg_cost = total_sum_cost / total_token_num
+            if step_idx % args.print_step == 0:
+                sum_cost_val, token_num_val = np.array(outs[0]), np.array(outs[
+                    1])
+                # sum the cost from multi-devices
+                total_sum_cost = sum_cost_val.sum()
+                total_token_num = token_num_val.sum()
+                total_avg_cost = total_sum_cost / total_token_num
 
-                    avg_loss.append(total_avg_cost)
+                avg_loss.append(total_avg_cost)
 
-                    if step_idx == 0:
-                        logging.info(
-                            "step_idx: %d, epoch: %d, batch: %d, avg loss: %f, "
-                            "normalized loss: %f, ppl: %f" %
-                            (step_idx, pass_id, batch_id, total_avg_cost,
-                             total_avg_cost - loss_normalizer,
-                             np.exp([min(total_avg_cost, 100)])))
-                        avg_batch_time = time.time()
-                    else:
-                        logging.info(
-                            "step_idx: %d, epoch: %d, batch: %d, avg loss: %f, "
-                            "normalized loss: %f, ppl: %f, speed: %.2f step/s" %
-                            (step_idx, pass_id, batch_id, total_avg_cost,
-                             total_avg_cost - loss_normalizer,
-                             np.exp([min(total_avg_cost, 100)]),
-                             args.print_step / (time.time() - avg_batch_time)))
-                        avg_batch_time = time.time()
-                batch_id += 1
-                step_idx += 1
-                total_batch_num = total_batch_num + 1
-                if step_idx == 10:
-                    # if args.save_model:
-                    #     model_path = os.path.join(args.save_model,
-                    #                               "step_" + str(step_idx),
-                    #                               "transformer")
-                    #     fluid.save(train_prog, model_path)
-                    break
-
-            except fluid.core.EOFException:
-                input_field.loader.reset()
+                if step_idx == 0:
+                    logging.info(
+                        "step_idx: %d, epoch: %d, batch: %d, avg loss: %f, "
+                        "normalized loss: %f, ppl: %f" %
+                        (step_idx, pass_id, batch_id, total_avg_cost,
+                         total_avg_cost - loss_normalizer,
+                         np.exp([min(total_avg_cost, 100)])))
+                    avg_batch_time = time.time()
+                else:
+                    logging.info(
+                        "step_idx: %d, epoch: %d, batch: %d, avg loss: %f, "
+                        "normalized loss: %f, ppl: %f, speed: %.2f step/s" %
+                        (step_idx, pass_id, batch_id, total_avg_cost,
+                         total_avg_cost - loss_normalizer,
+                         np.exp([min(total_avg_cost, 100)]),
+                         args.print_step / (time.time() - avg_batch_time)))
+                    avg_batch_time = time.time()
+            batch_id += 1
+            step_idx += 1
+            total_batch_num = total_batch_num + 1
+            if step_idx == 10:
+                if args.save_model:
+                    model_path = os.path.join(
+                        args.save_model, "step_" + str(step_idx), "transformer")
+                    fluid.save(train_prog, model_path)
                 break
+
     return np.array(avg_loss)
 
 
@@ -238,17 +237,17 @@ def train_dygraph(args, batch_generator):
                 batch_id += 1
                 step_idx += 1
                 if step_idx == 10:
-                    # if args.save_model:
-                    #     model_dir = os.path.join(args.save_model+'_dygraph',
-                    #                              "step_" + str(step_idx))
-                    #     if not os.path.exists(model_dir):
-                    #         os.makedirs(model_dir)
-                    #     fluid.save_dygraph(
-                    #         transformer.state_dict(),
-                    #         os.path.join(model_dir, "transformer"))
-                    #     fluid.save_dygraph(
-                    #         optimizer.state_dict(),
-                    #         os.path.join(model_dir, "transformer"))
+                    if args.save_model:
+                        model_dir = os.path.join(args.save_model + '_dygraph',
+                                                 "step_" + str(step_idx))
+                        if not os.path.exists(model_dir):
+                            os.makedirs(model_dir)
+                        fluid.save_dygraph(
+                            transformer.state_dict(),
+                            os.path.join(model_dir, "transformer"))
+                        fluid.save_dygraph(
+                            optimizer.state_dict(),
+                            os.path.join(model_dir, "transformer"))
                     break
 
             time_consumed = time.time() - pass_start_time
@@ -260,28 +259,8 @@ def train_dygraph(args, batch_generator):
 class TestTransformer(unittest.TestCase):
     def prepare(self, mode='train'):
         args = util.ModelHyperParams()
-        # define the data generator
-        processor = util.DataProcessor(
-            fpattern=args.training_file,
-            src_vocab_fpath=args.src_vocab_fpath,
-            trg_vocab_fpath=args.trg_vocab_fpath,
-            token_delimiter=args.token_delimiter,
-            use_token_batch=args.use_token_batch,
-            batch_size=args.batch_size,
-            device_count=trainer_count,
-            pool_size=args.pool_size,
-            sort_type=args.sort_type,
-            shuffle=args.shuffle,
-            shuffle_batch=args.shuffle_batch,
-            start_mark=args.special_token[0],
-            end_mark=args.special_token[1],
-            unk_mark=args.special_token[2],
-            max_length=args.max_length,
-            n_head=args.n_head)
-        batch_generator = processor.data_generator(phase=mode)
+        batch_generator = util.get_feed_data_reader(args, mode)
 
-        args.src_vocab_size, args.trg_vocab_size, args.bos_idx, args.eos_idx, \
-        args.unk_idx = processor.get_vocab_summary()
         return args, batch_generator
 
     def test_train(self):
