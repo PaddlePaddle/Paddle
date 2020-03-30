@@ -118,6 +118,7 @@ class BmmKernel : public framework::OpKernel<T> {
         math::CreateMatrixDescriptor(RowMatrixFromVector(x.dims()), 0, false);
     auto mat_dim_b = math::CreateMatrixDescriptor(
         ColumnMatrixFromVector(y.dims()), 0, false);
+
     // auto scale = static_cast<T>(context.Attr<float>("alpha"));
     blas.MatMul(x, mat_dim_a, y, mat_dim_b, T(1), out, T(0));
   }

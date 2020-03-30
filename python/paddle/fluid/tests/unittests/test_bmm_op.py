@@ -25,15 +25,11 @@ from paddle.fluid import Program, program_guard
 class TestBmmOp(OpTest):
     def setUp(self):
         self.op_type = "bmm"
-        self.dtype = np.float64
-        X = np.random.random((2, 2, 1)).astype("float64")
-        Y = np.random.random((2, 1, 3)).astype("float64")
+        X = np.random.random((2, 3, 4)).astype("float32")
+        Y = np.random.random((2, 4, 5)).astype("float32")
         self.inputs = {'X': X, 'Y': Y}
         Out = np.matmul(X, Y)
         self.outputs = {'Out': Out}
-
-    def init_dtype_type(self):
-        pass
 
     def test_check_output(self):
         self.check_output()
