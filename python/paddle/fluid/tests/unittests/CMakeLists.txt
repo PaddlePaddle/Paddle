@@ -312,7 +312,7 @@ if(WITH_DISTRIBUTE)
     endif(NOT APPLE)
 endif()
 
-if(NOT WIN32)
+if(NOT WIN32 AND NOT APPLE)
     bash_test_modules("test_command_line_flags" MODULES test_command_line_flags.sh ENVS
        WITH_GPU=${WITH_GPU} WITH_DISTRIBUTE=${WITH_DISTRIBUTE})
 endif()
