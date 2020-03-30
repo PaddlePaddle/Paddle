@@ -65,5 +65,9 @@ Takes the inverse of the square matrix.
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(inverse, ops::InverseOp, ops::InverseOpMaker);
+
+#ifdef PADDLE_WITH_MKLML
 REGISTER_OP_CPU_KERNEL(
-    inverse, ops::InverseKernel<paddle::platform::CPUDeviceContext, float>);
+    inverse, ops::InverseKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::InverseKernel<paddle::platform::CPUDeviceContext, double>);
+#endif

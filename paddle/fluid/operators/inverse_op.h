@@ -24,6 +24,7 @@ template <typename DeviceContext, typename T>
 class InverseKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+#ifdef PADDLE_WITH_MKLML
     auto* input = context.Input<framework::Tensor>("Input");
     auto* output = context.Output<framework::Tensor>("Output");
 
@@ -51,6 +52,11 @@ class InverseKernel : public framework::OpKernel<T> {
       // Computes the inverse of an LU-factored general matrix.
       blas.GETRI(N, A, ipiv_ptr);
     }
+#else
+    PADDLE_THROW(
+        platform::errors::Unimplemented("The CPU kernel of matrix's inverse "
+                                        "without MKLML is not implemented."));
+#endif
   }
 };
 

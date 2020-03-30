@@ -91,8 +91,12 @@ if(WITH_COVERAGE OR NOT WITH_AVX OR WIN32)
 endif()
 
 if(WITH_GPU OR NOT WITH_MKLML)
-    # matmul with multiple heads need MKL support
-    LIST(REMOVE_ITEM TEST_OPS test_matmul_op_with_head)
+  # matmul with multiple heads need MKL support
+  LIST(REMOVE_ITEM TEST_OPS test_matmul_op_with_head)
+endif()
+
+if(WITH_GPU AND NOT WITH_MKLML)
+  LIST(REMOVE_ITEM TEST_OPS test_inverse_op)
 endif()
 
 function(py_test_modules TARGET_NAME)
