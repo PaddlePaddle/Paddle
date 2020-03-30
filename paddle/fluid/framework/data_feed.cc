@@ -33,6 +33,7 @@ limitations under the License. */
 #include "io/shell.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
+#include "paddle/fluid/framework/fleet/box_wrapper.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/platform/timer.h"
 
@@ -232,6 +233,8 @@ InMemoryDataFeed<T>::InMemoryDataFeed() {
   this->thread_num_ = 1;
   this->parse_ins_id_ = false;
   this->parse_content_ = false;
+  this->parse_logkey_ = false;
+  this->enable_pv_predict_ = false;
   this->input_channel_ = nullptr;
   this->output_channel_ = nullptr;
   this->consume_channel_ = nullptr;
@@ -241,6 +244,8 @@ template <typename T>
 bool InMemoryDataFeed<T>::Start() {
 #ifdef _LINUX
   this->CheckSetFileList();
+  //  // FIXME beceuse of two phases in wasq, it must judge form box_wraper
+
   if (output_channel_->Size() == 0 && input_channel_->Size() != 0) {
     std::vector<T> data;
     input_channel_->Read(data);
@@ -305,6 +310,25 @@ void InMemoryDataFeed<T>::SetConsumeChannel(void* channel) {
   consume_channel_ = static_cast<paddle::framework::ChannelObject<T>*>(channel);
 }
 
+// FIXME for wasq
+template <typename T>
+void InMemoryDataFeed<T>::SetInputPvChannel(void* channel) {
+  input_pv_channel_ =
+      static_cast<paddle::framework::ChannelObject<PvInstance>*>(channel);
+}
+
+template <typename T>
+void InMemoryDataFeed<T>::SetOutputPvChannel(void* channel) {
+  output_pv_channel_ =
+      static_cast<paddle::framework::ChannelObject<PvInstance>*>(channel);
+}
+
+template <typename T>
+void InMemoryDataFeed<T>::SetConsumePvChannel(void* channel) {
+  consume_pv_channel_ =
+      static_cast<paddle::framework::ChannelObject<PvInstance>*>(channel);
+}
+
 template <typename T>
 void InMemoryDataFeed<T>::SetThreadId(int thread_id) {
   thread_id_ = thread_id;
@@ -318,6 +342,16 @@ void InMemoryDataFeed<T>::SetThreadNum(int thread_num) {
 template <typename T>
 void InMemoryDataFeed<T>::SetParseContent(bool parse_content) {
   parse_content_ = parse_content;
+}
+
+template <typename T>
+void InMemoryDataFeed<T>::SetParseLogKey(bool parse_logkey) {
+  parse_logkey_ = parse_logkey;
+}
+
+template <typename T>
+void InMemoryDataFeed<T>::SetEnablePvPredict(bool enable_pv_predict) {
+  enable_pv_predict_ = enable_pv_predict;
 }
 
 template <typename T>
@@ -756,6 +790,24 @@ void MultiSlotInMemoryDataFeed::Init(
   finish_init_ = true;
 }
 
+void MultiSlotInMemoryDataFeed::GetMsgFromLogKey(const std::string& log_key,
+                                                 uint64_t* search_id,
+                                                 uint32_t* cmatch,
+                                                 uint32_t* rank) {
+  std::string searchid_str = log_key.substr(16, 16);
+  *search_id = (uint64_t)strtoull(searchid_str.c_str(), NULL, 16);
+
+  std::string cmatch_str = log_key.substr(11, 3);
+  *cmatch = (uint32_t)strtoul(cmatch_str.c_str(), NULL, 16);
+
+  std::string rank_str = log_key.substr(14, 2);
+  *rank = (uint32_t)strtoul(rank_str.c_str(), NULL, 16);
+
+  // VLOG(3) << "search_id " << search_id;
+  // VLOG(3) << "cmatch " << cmatch;
+  // VLOG(3) << "rank " << rank;
+}
+
 bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
 #ifdef _LINUX
   thread_local string::LineFileReader reader;
@@ -791,6 +843,30 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
       instance->content_ = std::string(str + pos, len);
       pos += len + 1;
       VLOG(3) << "content " << instance->content_;
+    }
+    if (parse_logkey_) {
+      int num = strtol(&str[pos], &endptr, 10);
+      CHECK(num == 1);  // NOLINT
+      pos = endptr - str + 1;
+      size_t len = 0;
+      while (str[pos + len] != ' ') {
+        ++len;
+      }
+      // parse_logkey
+      std::string log_key = std::string(str + pos, len);
+      uint64_t search_id;
+      uint32_t cmatch;
+      uint32_t rank;
+      GetMsgFromLogKey(log_key, &search_id, &cmatch, &rank);
+
+      VLOG(3) << "search_id " << search_id;
+      VLOG(3) << "cmatch " << cmatch;
+      VLOG(3) << "rank " << rank;
+
+      instance->search_id = search_id;
+      instance->cmatch = cmatch;
+      instance->rank = rank;
+      pos += len + 1;
     }
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
       int idx = use_slots_index_[i];
@@ -1185,6 +1261,237 @@ bool MultiSlotFileInstantDataFeed::ParseOneMiniBatch() {
   return true;
 }
 #endif
+
+bool PaddleBoxDataFeed::Start() {
+  int phase = GetCurrentPhase();  // join: 1, update: 0
+#ifdef _LINUX
+  this->CheckSetFileList();
+  if (enable_pv_predict_ && phase == 1) {
+    // join phase : input_pv_channel to output_pv_channel
+    if (output_pv_channel_->Size() == 0 && input_pv_channel_->Size() != 0) {
+      std::vector<PvInstance> data;
+      input_pv_channel_->Read(data);
+      output_pv_channel_->Write(std::move(data));
+    }
+  } else {
+    // input_channel to output
+    if (output_channel_->Size() == 0 && input_channel_->Size() != 0) {
+      std::vector<Record> data;
+      input_channel_->Read(data);
+      output_channel_->Write(std::move(data));
+    }
+  }
+#endif
+  this->finish_start_ = true;
+  return true;
+}
+
+int PaddleBoxDataFeed::Next() {
+  int phase = GetCurrentPhase();  // join: 1, update: 0
+  this->CheckStart();
+  if (enable_pv_predict_ && phase == 1) {
+    // join phase : output_pv_channel to consume_pv_channel
+    CHECK(output_pv_channel_ != nullptr);
+    CHECK(consume_pv_channel_ != nullptr);
+    VLOG(3) << "output_pv_channel_ size=" << output_pv_channel_->Size()
+            << ", consume_pv_channel_ size=" << consume_pv_channel_->Size()
+            << ", thread_id=" << thread_id_;
+    int index = 0;
+    PvInstance pv_instance;
+    std::vector<PvInstance> pv_vec;
+    pv_vec.reserve(this->pv_batch_size_);
+    while (index < this->pv_batch_size_) {
+      if (output_pv_channel_->Size() == 0) {
+        break;
+      }
+      output_pv_channel_->Get(pv_instance);
+      pv_vec.push_back(pv_instance);
+      ++index;
+      consume_pv_channel_->Put(std::move(pv_instance));
+    }
+    this->batch_size_ = index;
+    VLOG(3) << "pv_batch_size_=" << this->batch_size_
+            << ", thread_id=" << thread_id_;
+    if (this->batch_size_ != 0) {
+      PutToFeedVec(pv_vec);
+    } else {
+      VLOG(3) << "finish reading, output_pv_channel_ size="
+              << output_pv_channel_->Size()
+              << ", consume_pv_channel_ size=" << consume_pv_channel_->Size()
+              << ", thread_id=" << thread_id_;
+    }
+    return this->batch_size_;
+  } else {
+    this->batch_size_ = MultiSlotInMemoryDataFeed::Next();
+    return this->batch_size_;
+  }
+}
+
+void PaddleBoxDataFeed::Init(const DataFeedDesc& data_feed_desc) {
+  MultiSlotInMemoryDataFeed::Init(data_feed_desc);
+  if (enable_pv_predict_) {
+    rank_offset_name_ = data_feed_desc.rank_offset();
+    pv_batch_size_ = data_feed_desc.pv_batch_size();
+  }
+}
+
+void PaddleBoxDataFeed::GetRankOffset(const std::vector<PvInstance>& pv_vec,
+                                      int ins_number) {
+  int index = 0;
+  int max_rank = 3;  // the value is setting
+  int row = ins_number;
+  int col = max_rank * 2 + 1;
+  int pv_num = pv_vec.size();
+
+  std::vector<int> rank_offset_mat(row * col, -1);
+  rank_offset_mat.shrink_to_fit();
+
+  for (int i = 0; i < pv_num; i++) {
+    auto pv_ins = pv_vec[i];
+    int ad_num = pv_ins->ads.size();
+    int index_start = index;
+    for (int j = 0; j < ad_num; ++j) {
+      auto ins = pv_ins->ads[j];
+      int rank = -1;
+      if ((ins->cmatch == 222 || ins->cmatch == 223) &&
+          ins->rank <= static_cast<uint32_t>(max_rank) && ins->rank != 0) {
+        rank = ins->rank;
+      }
+
+      rank_offset_mat[index * col] = rank;
+      if (rank > 0) {
+        for (int k = 0; k < ad_num; ++k) {
+          auto cur_ins = pv_ins->ads[k];
+          int fast_rank = -1;
+          if ((cur_ins->cmatch == 222 || cur_ins->cmatch == 223) &&
+              cur_ins->rank <= static_cast<uint32_t>(max_rank) &&
+              cur_ins->rank != 0) {
+            fast_rank = cur_ins->rank;
+          }
+
+          if (fast_rank > 0) {
+            int m = fast_rank - 1;
+            rank_offset_mat[index * col + 2 * m + 1] = cur_ins->rank;
+            rank_offset_mat[index * col + 2 * m + 2] = index_start + k;
+          }
+        }
+      }
+      index += 1;
+    }
+  }
+
+  int* rank_offset = rank_offset_mat.data();
+  int* tensor_ptr = rank_offset_->mutable_data<int>({row, col}, this->place_);
+  CopyToFeedTensor(tensor_ptr, rank_offset, row * col * sizeof(int));
+}
+
+void PaddleBoxDataFeed::AssignFeedVar(const Scope& scope) {
+  MultiSlotInMemoryDataFeed::AssignFeedVar(scope);
+  // set rank offset memory
+  if (enable_pv_predict_ && GetCurrentPhase() == 1)
+    rank_offset_ = scope.FindVar(rank_offset_name_)->GetMutable<LoDTensor>();
+}
+
+void PaddleBoxDataFeed::PutToFeedVec(const std::vector<PvInstance>& pv_vec) {
+  // Todo get rank_offset msg
+  // int pv_num = pv_vec.size();
+  int ins_number = 0;
+  std::vector<Record*> ins_vec;
+  for (auto& pv : pv_vec) {
+    ins_number += pv->ads.size();
+    for (auto ins : pv->ads) {
+      ins_vec.push_back(ins);
+    }
+  }
+  GetRankOffset(pv_vec, ins_number);
+  VLOG(3) << "Rank offset is obtained.. ins_number is " << ins_number;
+  VLOG(3) << "Current thread id [" << thread_id_ << "] has " << ins_number
+          << "instances, has " << pv_vec.size() << " pvs";
+  PutToFeedVec(ins_vec);
+}
+
+int PaddleBoxDataFeed::GetCurrentPhase() {
+  auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
+  return box_ptr->PassFlag();  // join: 1, update: 0
+}
+
+void PaddleBoxDataFeed::PutToFeedVec(const std::vector<Record*>& ins_vec) {
+#ifdef _LINUX
+  std::vector<std::vector<float>> batch_float_feasigns(use_slots_.size(),
+                                                       std::vector<float>());
+  std::vector<std::vector<uint64_t>> batch_uint64_feasigns(
+      use_slots_.size(), std::vector<uint64_t>());
+  std::vector<std::vector<size_t>> offset(use_slots_.size(),
+                                          std::vector<size_t>{0});
+  std::vector<bool> visit(use_slots_.size(), false);
+  ins_content_vec_.clear();
+  ins_content_vec_.reserve(ins_vec.size());
+  ins_id_vec_.clear();
+  ins_id_vec_.reserve(ins_vec.size());
+  for (size_t i = 0; i < ins_vec.size(); ++i) {
+    auto r = ins_vec[i];
+    ins_id_vec_.push_back(r->ins_id_);
+    ins_content_vec_.push_back(r->content_);
+    for (auto& item : r->float_feasigns_) {
+      batch_float_feasigns[item.slot()].push_back(item.sign().float_feasign_);
+      visit[item.slot()] = true;
+    }
+    for (auto& item : r->uint64_feasigns_) {
+      batch_uint64_feasigns[item.slot()].push_back(item.sign().uint64_feasign_);
+      visit[item.slot()] = true;
+    }
+    for (size_t j = 0; j < use_slots_.size(); ++j) {
+      const auto& type = all_slots_type_[j];
+      if (visit[j]) {
+        visit[j] = false;
+      } else {
+        // fill slot value with default value 0
+        if (type[0] == 'f') {  // float
+          batch_float_feasigns[j].push_back(0.0);
+        } else if (type[0] == 'u') {  // uint64
+          batch_uint64_feasigns[j].push_back(0);
+        }
+      }
+      // get offset of this ins in this slot
+      if (type[0] == 'f') {  // float
+        offset[j].push_back(batch_float_feasigns[j].size());
+      } else if (type[0] == 'u') {  // uint64
+        offset[j].push_back(batch_uint64_feasigns[j].size());
+      }
+    }
+  }
+
+  for (size_t i = 0; i < use_slots_.size(); ++i) {
+    if (feed_vec_[i] == nullptr) {
+      continue;
+    }
+    int total_instance = offset[i].back();
+    const auto& type = all_slots_type_[i];
+    if (type[0] == 'f') {  // float
+      float* feasign = batch_float_feasigns[i].data();
+      float* tensor_ptr =
+          feed_vec_[i]->mutable_data<float>({total_instance, 1}, this->place_);
+      CopyToFeedTensor(tensor_ptr, feasign, total_instance * sizeof(float));
+    } else if (type[0] == 'u') {  // uint64
+      // no uint64_t type in paddlepaddle
+      uint64_t* feasign = batch_uint64_feasigns[i].data();
+      int64_t* tensor_ptr = feed_vec_[i]->mutable_data<int64_t>(
+          {total_instance, 1}, this->place_);
+      CopyToFeedTensor(tensor_ptr, feasign, total_instance * sizeof(int64_t));
+    }
+    auto& slot_offset = offset[i];
+    LoD data_lod{slot_offset};
+    feed_vec_[i]->set_lod(data_lod);
+    if (use_slots_is_dense_[i]) {
+      if (inductive_shape_index_[i] != -1) {
+        use_slots_shape_[i][inductive_shape_index_[i]] =
+            total_instance / total_dims_without_inductive_[i];
+      }
+      feed_vec_[i]->Resize(framework::make_ddim(use_slots_shape_[i]));
+    }
+  }
+#endif
+}
 
 }  // namespace framework
 }  // namespace paddle

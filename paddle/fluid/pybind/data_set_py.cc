@@ -239,6 +239,8 @@ void BindDataset(py::module *m) {
            py::call_guard<py::gil_scoped_release>())
       .def("get_memory_data_size", &framework::Dataset::GetMemoryDataSize,
            py::call_guard<py::gil_scoped_release>())
+      .def("get_pv_data_size", &framework::Dataset::GetPvDataSize,
+           py::call_guard<py::gil_scoped_release>())
       .def("get_shuffle_data_size", &framework::Dataset::GetShuffleDataSize,
            py::call_guard<py::gil_scoped_release>())
       .def("set_queue_num", &framework::Dataset::SetChannelNum,
@@ -247,6 +249,17 @@ void BindDataset(py::module *m) {
            py::call_guard<py::gil_scoped_release>())
       .def("set_parse_content", &framework::Dataset::SetParseContent,
            py::call_guard<py::gil_scoped_release>())
+      .def("set_parse_logkey", &framework::Dataset::SetParseLogKey,
+           py::call_guard<py::gil_scoped_release>())
+      .def("set_merge_by_sid", &framework::Dataset::SetMergeBySid,
+           py::call_guard<py::gil_scoped_release>())
+      .def("merge_pv_instance", &framework::Dataset::Merge_Pv_Instance,
+           py::call_guard<py::gil_scoped_release>())
+      .def("divide_pv_instance", &framework::Dataset::Divide_Pv_Instance,
+           py::call_guard<py::gil_scoped_release>())
+      .def("set_enable_pv_predict", &framework::Dataset::SetEnablePvPredict,
+           py::call_guard<py::gil_scoped_release>())
+
       .def("set_merge_by_lineid", &framework::Dataset::SetMergeByInsId,
            py::call_guard<py::gil_scoped_release>())
       .def("merge_by_lineid", &framework::Dataset::MergeByInsId,

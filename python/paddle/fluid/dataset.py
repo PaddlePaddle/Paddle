@@ -92,6 +92,23 @@ class DatasetBase(object):
         """
         self.proto_desc.pipe_command = pipe_command
 
+    def set_rank_offset(self, rank_offset):
+        """
+        Set rank_offset for merge_pv. It set the message of Pv.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset()
+              dataset.set_rank_offset("rank_offset")
+
+        Args:
+            rank_offset(str): rank_offset's name
+
+        """
+        self.proto_desc.rank_offset = rank_offset
+
     def set_fea_eval(self, record_candidate_size, fea_eval=True):
         """
         set fea eval mode for slots shuffle to debug the importance level of
@@ -153,6 +170,22 @@ class DatasetBase(object):
 
         """
         self.proto_desc.batch_size = batch_size
+
+    def set_pv_batch_size(self, pv_batch_size):
+        """
+        Set pv batch size. It will be effective during enable_pv_predict
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset()
+              dataset.set_pv_batch(128)
+        Args:
+            pv_batch_size(int): pv batch size
+
+        """
+        self.proto_desc.pv_batch_size = pv_batch_size
 
     def set_thread(self, thread_num):
         """
@@ -308,8 +341,17 @@ class InMemoryDataset(DatasetBase):
         self.queue_num = None
         self.parse_ins_id = False
         self.parse_content = False
+        self.parse_logkey = False
+        self.merge_by_sid = True
+        self.enable_pv_predict = False
         self.merge_by_lineid = False
         self.fleet_send_sleep_seconds = None
+
+    def set_feed_type(self, data_feed_type):
+        """
+        Set data_feed_desc
+        """
+        self.proto_desc.name = data_feed_type
 
     def _prepare_to_run(self):
         """
@@ -324,6 +366,9 @@ class InMemoryDataset(DatasetBase):
         self.dataset.set_queue_num(self.queue_num)
         self.dataset.set_parse_ins_id(self.parse_ins_id)
         self.dataset.set_parse_content(self.parse_content)
+        self.dataset.set_parse_logkey(self.parse_logkey)
+        self.dataset.set_merge_by_sid(self.merge_by_sid)
+        self.dataset.set_enable_pv_predict(self.enable_pv_predict)
         self.dataset.set_data_feed_desc(self.desc())
         self.dataset.create_channel()
         self.dataset.create_readers()
@@ -389,6 +434,94 @@ class InMemoryDataset(DatasetBase):
 
         """
         self.parse_content = parse_content
+
+    def set_parse_logkey(self, parse_logkey):
+        """
+        Set if Dataset need to parse logkey
+
+        Args:
+            parse_content(bool): if parse logkey or not
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset.set_parse_logkey(True)
+
+        """
+        self.parse_logkey = parse_logkey
+
+    def set_merge_by_sid(self, merge_by_sid):
+        """
+        Set if Dataset need to merge sid. If not, one ins means one Pv.
+
+        Args:
+            merge_by_sid(bool): if merge sid or not
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset.set_merge_by_sid(True)
+
+        """
+        self.merge_by_sid = merge_by_sid
+
+    def set_enable_pv_predict(self, enable_pv_predict):
+        """
+        Set if Dataset need to merge pv.
+
+        Args:
+            enable_pv_predict(bool): if enable_pv_predict or not
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              dataset.set_enable_pv_predict(True)
+
+        """
+        self.enable_pv_predict = enable_pv_predict
+
+    def merge_pv_instance(self):
+        """
+        Merge pv instance and convey it from input_channel to input_pv_channel. 
+        It will be effective when enable_pv_predict_ is True.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              filelist = ["a.txt", "b.txt"]
+              dataset.set_filelist(filelist)
+              dataset.load_into_memory()
+              dataset.merge_pv_instance()
+
+        """
+        self.dataset.merge_pv_instance()
+
+    def divide_pv_instance(self):
+        """
+        Divide pv instance and convey it to input_channel.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              filelist = ["a.txt", "b.txt"]
+              dataset.set_filelist(filelist)
+              dataset.load_into_memory()
+              dataset.merge_pv_instance()
+              exe.train_from_dataset(dataset)
+              dataset.divide_pv_instance()
+
+        """
+        self.dataset.divide_pv_instance()
 
     def set_fleet_send_batch_size(self, fleet_send_batch_size=1024):
         """
@@ -593,6 +726,30 @@ class InMemoryDataset(DatasetBase):
 
         """
         self.dataset.release_memory()
+
+    def get_pv_data_size(self):
+        """
+        Get memory data size of Pv, user can call this function to know the pv num
+        of ins in all workers after load into memory.
+
+        Note:
+            This function may cause bad performance, because it has barrier
+
+        Returns:
+            The size of memory pv data.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              filelist = ["a.txt", "b.txt"]
+              dataset.set_filelist(filelist)
+              dataset.load_into_memory()
+              print dataset.get_pv_data_size()
+
+        """
+        return self.dataset.get_pv_data_size()
 
     def get_memory_data_size(self, fleet=None):
         """
@@ -808,6 +965,7 @@ class BoxPSDataset(InMemoryDataset):
         """
         super(BoxPSDataset, self).__init__()
         self.boxps = core.BoxPS(self.dataset)
+        self.proto_desc.name = "PaddleBoxDataFeed"
 
     def set_date(self, date):
         """
@@ -895,3 +1053,6 @@ class BoxPSDataset(InMemoryDataset):
         if not self.is_user_set_queue_num:
             self.dataset.dynamic_adjust_channel_num(thread_num, True)
         self.dataset.dynamic_adjust_readers_num(thread_num)
+
+    #def _dynamic_adjust_after_train(self):
+    #    pass
