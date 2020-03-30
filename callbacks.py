@@ -242,6 +242,12 @@ class ProgBarLogger(Callback):
         samples = logs.get('batch_size', 1)
         self.evaled_samples += samples
 
+        if self.eval_step % self.log_freq == 0 and self.verbose and ParallelEnv(
+        ).local_rank == 0:
+            # if steps is not None, last step will update in on_epoch_end
+            if self.eval_steps and self.eval_step < self.eval_steps:
+                self._updates(logs, 'eval')
+
     def on_eval_end(self, logs=None):
         logs = logs or {}
         if self.verbose and ParallelEnv().local_rank == 0:

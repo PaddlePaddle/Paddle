@@ -84,7 +84,7 @@ def main():
         device=FLAGS.device)
 
     if FLAGS.eval_only:
-        if FLGAS.weights is not None:
+        if FLAGS.weights is not None:
             model.load(FLAGS.weights)
 
         model.evaluate(
