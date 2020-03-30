@@ -31,10 +31,21 @@ cache_third_party(extern_eigen3
     TAG           ${EIGEN_TAG}
     DIR           EIGEN_SOURCE_DIR)
 
-if(WIN32)
-    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Half.h native_src)
+if(WIN32 AND WITH_AMD_GPU)
+    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen_amd/Half.h native_src)
     file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/Eigen/src/Core/arch/CUDA/Half.h native_dst)
     set(EIGEN_PATCH_COMMAND copy ${native_src} ${native_dst} /Y)
+elseif(WIN32)
+    # To solve the compilation error: TensorBlock.h(1037): syntax error: identifier 'Kind'
+    # We can upgrade compiler to VS 2019, or add the following patch in older versions,
+    # because Kind is dependent name, so it should be preceded by typename.
+    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/unsupported/Eigen/CXX11/src/Tensor/TensorBlock.h native_src)
+    file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/unsupported/Eigen/CXX11/src/Tensor/TensorBlock.h native_dst)
+    set(EIGEN_PATCH_COMMAND copy ${native_src} ${native_dst} /Y)
+    #elseif(LINUX)
+    #file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Eigen/src/Geometry/arch/Geometry_SSE.h native_src)
+    # file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/Eigen/src/Geometry/arch/Geometry_SSE.h native_dst)
+    #set(EIGEN_PATCH_COMMAND cp ${native_src} ${native_dst})
 endif()
 
 set(EIGEN_INCLUDE_DIR ${EIGEN_SOURCE_DIR})
@@ -64,6 +75,7 @@ else()
         PREFIX          ${EIGEN_PREFIX_DIR}
         SOURCE_DIR      ${EIGEN_SOURCE_DIR}
         UPDATE_COMMAND    ""
+        PATCH_COMMAND   ${EIGEN_PATCH_COMMAND}
         CONFIGURE_COMMAND ""
         BUILD_COMMAND     ""
         INSTALL_COMMAND   ""

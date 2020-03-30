@@ -69,8 +69,10 @@ endif()
 if(WITH_GPU)
     add_definitions(-DPADDLE_WITH_CUDA)
     add_definitions(-DEIGEN_USE_GPU)
-    add_definitions(-DEIGEN_MAX_CPP_VER=11)
-    add_definitions(-fabi-version=4)
+    # The compiler fully support const expressions since c++14,
+    # but Eigen use some const expressions such as std::max and std::min, which are not supported in c++11
+    # set EIGEN_HAS_CONSTEXPR=0 to avoid compilation error in c++11
+    add_definitions(-DEIGEN_HAS_CONSTEXPR=0)
 
     FIND_PACKAGE(CUDA REQUIRED)
 
@@ -117,7 +119,6 @@ elseif(WITH_AMD_GPU)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__HIP_PLATFORM_HCC__")
 else()
     add_definitions(-DHPPL_STUB_FUNC)
-    add_definitions(-fabi-version=4)
     list(APPEND CMAKE_CXX_SOURCE_FILE_EXTENSIONS cu)
 endif()
 
