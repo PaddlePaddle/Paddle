@@ -652,10 +652,7 @@ class Executor(object):
         _optimize_ops = []
         _fetch_list = []
 
-        def _get_targets(item):
-            if sys.version_info[0] == 3:
-                nonlocal _optimize_ops
-                nonlocal _fetch_list
+        def _get_targets(_optimize_ops, _fetch_list, item):
             if isinstance(item, Operator):
                 if _is_optimize_op(item):
                     _optimize_ops.append(item)
@@ -673,12 +670,12 @@ class Executor(object):
         for item in fetch_list:
             if isinstance(item, list):
                 for i in item:
-                    _get_targets(i)
+                    _get_targets(_optimize_ops, _fetch_list, i)
             elif isinstance(item, tuple):
                 for i in item[0]:
-                    _get_targets(i)
+                    _get_targets(_optimize_ops, _fetch_list, i)
             else:
-                _get_targets(item)
+                _get_targets(_optimize_ops, _fetch_list, item)
 
         return _fetch_list, _optimize_ops
 
