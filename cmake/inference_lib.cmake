@@ -62,12 +62,11 @@ function(copy_part_of_thrid_party TARGET DST)
             copy(${TARGET}
                     SRCS ${MKLML_LIB} ${MKLML_SHARED_LIB}
                     ${MKLML_SHARED_LIB_DEPS} ${MKLML_INC_DIR}
-                    DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}/lib
-                    ${dst_dir}/lib ${dst_dir}/lib ${dst_dir})
+                    DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}/lib ${dst_dir})
         else()
             copy(${TARGET}
                     SRCS ${MKLML_LIB} ${MKLML_INC_DIR}
-                    DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir})
+                    DSTS ${dst_dir}/lib ${dst_dir})
         endif()
     elseif(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
         set(dst_dir "${DST}/third_party/install/openblas")
