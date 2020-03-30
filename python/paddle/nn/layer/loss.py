@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # TODO: define loss functions of neural network  
-import paddle.fluid.layers as layers
+import paddle.fluid as fluid
 __all__ = [
     #'NCELoss',
     #    'CrossEntropyLoss',
@@ -24,7 +24,7 @@ __all__ = [
 ]
 
 
-class L1Loss(layers.Layer):
+class L1Loss(fluid.dygraph.Layer):
     """
     This interface is used to construct a callable object of the ``L1Loss`` class.
     The L1Loss layer calculates the mean absolute error of input predictions and target label.
@@ -85,9 +85,9 @@ class L1Loss(layers.Layer):
         self.reduction = reduction
 
     def forward(self, input, label):
-        check_variable_and_dtype(
+        fluid.data_feeder.check_variable_and_dtype(
             input, 'input', ['float32', 'float64', 'int32', 'int64'], 'l1_loss')
-        check_variable_and_dtype(
+        fluid.data_feeder.check_variable_and_dtype(
             label, 'label', ['float32', 'float64', 'int32', 'int64'], 'l1_loss')
 
         if self.reduction not in ['sum', 'mean', 'none']:
@@ -95,11 +95,11 @@ class L1Loss(layers.Layer):
                 "The value of 'reduction' in l1_loss should be 'sum', 'mean' or 'none', but "
                 "received %s, which is not allowed." % self.reduction)
 
-        unreduced = layers.elementwise_sub(input, label, act='abs')
+        unreduced = fluid.layers.elementwise_sub(input, label, act='abs')
 
         if self.reduction == 'sum':
-            return layers.reduce_sum(unreduced)
+            return fluid.layers.reduce_sum(unreduced)
         elif self.reduction == 'mean':
-            return layers.reduce_mean(unreduced)
+            return fluid.layers.reduce_mean(unreduced)
         else:
             return unreduced

@@ -29,8 +29,8 @@ except ImportError:
 import paddle.reader
 import paddle.dataset
 import paddle.batch
-import paddle.compat
 import paddle.nn
+import paddle.compat
 import paddle.distributed
 batch = batch.batch
 import paddle.sysconfig
