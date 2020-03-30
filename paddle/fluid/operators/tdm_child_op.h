@@ -32,7 +32,7 @@ using LoDTensor = framework::LoDTensor;
 using DDim = framework::DDim;
 using LoD = framework::LoD;
 
-template <typename T, typename InfoT = int>
+template <typename T, typename InfoT = int, typename OutT = int>
 void TDMChildInner(const framework::ExecutionContext &context,
                    const LoDTensor &input, const LoDTensor &tree_info,
                    LoDTensor *child, LoDTensor *mask) {
@@ -44,8 +44,8 @@ void TDMChildInner(const framework::ExecutionContext &context,
   int input_ids_num = input.numel();
   VLOG(4) << "TDM child : input numel -> " << input_ids_num;
 
-  std::vector<InfoT> child_vec{};
-  std::vector<InfoT> item_mask_vec{};
+  std::vector<OutT> child_vec{};
+  std::vector<OutT> item_mask_vec{};
 
   auto *input_data = input.data<T>();
   auto *tree_info_data = tree_info.data<InfoT>();
@@ -76,12 +76,12 @@ void TDMChildInner(const framework::ExecutionContext &context,
 
     if (has_child) {
       for (int child_ids = 0; child_ids < child_nums; ++child_ids) {
-        InfoT child_id =
+        OutT child_id = static_cast<OutT>(
             tree_info_data[static_cast<int>(input_data[input_ids]) * length +
-                           3 + child_ids];
+                           3 + child_ids]);
         child_vec.push_back(child_id);
-        InfoT child_is_item =
-            tree_info_data[static_cast<int>(child_id) * length] == 0 ? 0 : 1;
+        OutT child_is_item = static_cast<OutT>(
+            tree_info_data[static_cast<int>(child_id) * length] == 0 ? 0 : 1);
         item_mask_vec.push_back(child_is_item);
       }
     } else {
@@ -93,11 +93,11 @@ void TDMChildInner(const framework::ExecutionContext &context,
   }
 
   int output_nums = child_vec.size();
-  auto *child_data = child->mutable_data<InfoT>(context.GetPlace());
-  auto *leaf_mask_data = mask->mutable_data<InfoT>(context.GetPlace());
+  auto *child_data = child->mutable_data<OutT>(context.GetPlace());
+  auto *leaf_mask_data = mask->mutable_data<OutT>(context.GetPlace());
 
-  memcpy(child_data, &child_vec[0], sizeof(InfoT) * output_nums);
-  memcpy(leaf_mask_data, &item_mask_vec[0], sizeof(InfoT) * output_nums);
+  memcpy(child_data, &child_vec[0], sizeof(OutT) * output_nums);
+  memcpy(leaf_mask_data, &item_mask_vec[0], sizeof(OutT) * output_nums);
 }
 
 template <typename DeviceContext, typename T>
@@ -141,15 +141,39 @@ class TDMChildKernel : public framework::OpKernel<T> {
     auto *child_tensor = child_var->GetMutable<framework::LoDTensor>();
     auto *leaf_mask_tensor = leaf_mask_var->GetMutable<framework::LoDTensor>();
 
-    if (info_type == framework::proto::VarType::INT32) {
-      TDMChildInner<T, int>(ctx, input_tensor, tree_info_tensor, child_tensor,
-                            leaf_mask_tensor);
-    } else if (info_type == framework::proto::VarType::INT64) {
-      TDMChildInner<T, int64_t>(ctx, input_tensor, tree_info_tensor,
-                                child_tensor, leaf_mask_tensor);
-    }
-  }
-};
+    auto output_type =
+        static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
+    bool out_type_match = output_type == framework::proto::VarType::INT32 ||
+                          output_type == framework::proto::VarType::INT64;
+    PADDLE_ENFORCE_EQ(out_type_match, true,
+                      platform::errors::InvalidArgument(
+                          "Ouput(Child) & Output(Leaf_mask) holds the wrong "
+                          "type, it holds %s, but "
+                          "desires to be %s or %s",
+                          paddle::framework::DataTypeToString(output_type),
+                          paddle::framework::DataTypeToString(
+                              framework::proto::VarType::INT32),
+                          paddle::framework::DataTypeToString(
+                              framework::proto::VarType::INT64)));
 
+    if (info_type == framework::proto::VarType::INT32 &&
+        output_type == framework::proto::VarType::INT32) {
+      TDMChildInner<T, int, int>(ctx, input_tensor, tree_info_tensor,
+                                 child_tensor, leaf_mask_tensor);
+    } else if (info_type == framework::proto::VarType::INT64 &&
+               output_type == framework::proto::VarType::INT32) {
+      TDMChildInner<T, int64_t, int>(ctx, input_tensor, tree_info_tensor,
+                                     child_tensor, leaf_mask_tensor);
+    } else if (info_type == framework::proto::VarType::INT32 &&
+               output_type == framework::proto::VarType::INT64) {
+      TDMChildInner<T, int, int64_t>(ctx, input_tensor, tree_info_tensor,
+                                     child_tensor, leaf_mask_tensor);
+    } else if (info_type == framework::proto::VarType::INT64 &&
+               output_type == framework::proto::VarType::INT64) {
+      TDMChildInner<T, int64_t, int64_t>(ctx, input_tensor, tree_info_tensor,
+                                         child_tensor, leaf_mask_tensor);
+    }
+  };
+}
 }  // namespace operators
 }  // namespace paddle

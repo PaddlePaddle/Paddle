@@ -960,6 +960,9 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
                 If child is a leaf node, leaf_mask equal ot 1, otherwise equal to 0.
      """
     helper = LayerHelper("tdm_child", **locals())
+    check_dtype(dtype, 'dtype', ['int32', 'int64'],
+                'fluid.contrib.layers.tdm_child')
+    c_dtype = convert_np_dtype_to_dtype_(dtype)
     tree_info = helper.create_parameter(
         attr=helper.param_attr,
         shape=[node_nums, 3 + child_nums],
@@ -976,6 +979,7 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
                 'Tree_info': tree_info},
         outputs={'Child': child,
                  'Leaf_mask': leaf_mask},
-        attrs={'Child_nums': child_nums},
+        attrs={'Child_nums': child_nums,
+               'dtype': c_dtype},
         stop_gradient=True)
     return (child, leaf_mask)
