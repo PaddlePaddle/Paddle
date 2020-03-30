@@ -24,7 +24,7 @@ __all__ = [#'abs',
     #            'cos',
     #            'cumsum',
     #            'elementwise_add',
-           'elementwise_div',
+    #            'elementwise_div',
     #            'elementwise_floordiv',
     #            'elementwise_max',
     #            'elementwise_min',
@@ -71,7 +71,6 @@ __all__ = [#'abs',
             ]
 
 from paddle.common_ops_import import *
-from paddle.fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
 
 def _elementwise_op(helper):
@@ -96,12 +95,6 @@ def _elementwise_op(helper):
         else:
             out = helper.create_variable(
                 name=name, dtype=x.dtype, persistable=False)
-    elif name is not None:
-        warnings.warn(
-            "Both name and out parameters have been set in fluid.layers.%s(), only out will take effect to specify the result storage. "
-            "You can discard either one to solve this warning." % op_type,
-            category=UserWarning,
-            stacklevel=2)
 
     helper.append_op(
         type=op_type,
@@ -111,90 +104,6 @@ def _elementwise_op(helper):
         attrs={'axis': axis,
                'use_mkldnn': use_mkldnn})
     return helper.append_activation(out)
-
-
-def elementwise_div(x, y, axis=-1, act=None, name=None):
-    """
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-
-            def gen_data():
-                return {
-                    "x": np.array([2, 3, 4]).astype('float32'),
-                    "y": np.array([1, 5, 2]).astype('float32')
-                }
-
-            x = fluid.data(name="x", shape=[3], dtype='float32')
-            y = fluid.data(name="y", shape=[3], dtype='float32')
-            z = fluid.layers.elementwise_div(x, y)
-            # z = x / y
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
-
-            print(z_value) # [2., 0.6, 2.]
-
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-
-            def gen_data():
-                return {
-                    "x": np.ones((2, 3, 4, 5)).astype('float32'),
-                    "y": np.zeros((3, 4)).astype('float32')
-                }
-
-            x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
-            y = fluid.data(name="y", shape=[3,4], dtype='float32')
-            z = fluid.layers.elementwise_div(x, y, axis=1)
-            # z = x / y
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-
-            z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
-
-            print(z_value) # z.shape=[2,3,4,5]
-
-
-        ..  code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-
-            def gen_data():
-                return {
-                    "x": np.random.randint(1, 5, size=[2, 3, 4, 5]).astype('float32'),
-                    "y": np.random.randint(1, 5, size=[5]).astype('float32')
-                }
-
-            x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
-            y = fluid.data(name="y", shape=[5], dtype='float32')
-            z = fluid.layers.elementwise_div(x, y, axis=3)
-            # z = x / y
-
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-
-            z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
-            print(z_value) # z.shape=[2,3,4,5]
-
-    """
-    if in_dygraph_mode():
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name='elementwise_div')
-
-    return _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
 
 def div(x, y, out=None, name=None):
@@ -284,5 +193,10 @@ def div(x, y, out=None, name=None):
     if in_dygraph_mode():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
-
+    if name and out:
+        warnings.warn(
+            "Both name and out parameters have been set in fluid.layers.%s(), only out will take effect to specify the result storage. "
+            "You can discard either one to solve this warning." % op_type,
+            category=UserWarning,
+            stacklevel=2)
     return _elementwise_op(LayerHelper(op_type, **locals()))

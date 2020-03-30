@@ -16,6 +16,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
+import paddle.fluid as fluid
 import paddle.fluid.core as core
 from op_test import OpTest, skip_check_grad_ci
 
@@ -251,7 +252,7 @@ class TestDivOpAttr(ElementwiseDivOp):
             y = fluid.data(name='y', shape=[2, 3], dtype='float32')
 
             y_1 = paddle.tensor.div(x, y, name='div_res')
-            self.assertEqual(y_1.name, 'div_res')
+            self.assertEqual(('div_res' in y_1.name), True)
 
 
 if __name__ == '__main__':

@@ -118,7 +118,7 @@ or not. And the output only shares the LoD information with input Ids.
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(LookupTableV2GradOpNoBuffer, "W");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(LookupTableV2GradOpNoBuffer, "W");
 
 template <typename T>
 class LookupTableV2GradOpMaker : public framework::SingleGradOpMaker<T> {

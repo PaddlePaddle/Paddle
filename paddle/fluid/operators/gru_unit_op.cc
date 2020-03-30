@@ -234,8 +234,8 @@ class GRUUnitGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(GRUUnitGradOpNoNeedBufferVarInference,
-                                      "Bias");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(GRUUnitGradOpNoNeedBufferVarInference,
+                                    "Bias");
 
 }  // namespace operators
 }  // namespace paddle
