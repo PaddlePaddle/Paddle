@@ -15,19 +15,17 @@
 from __future__ import print_function
 
 import collections
-import copy
 import logging
 import numpy as np
 import os
 import six
 
-from . import base
 from . import layers
 from .. import core
-from .. import executor
 from .. import framework
 from .. import backward
 
+from .base import switch_to_static_graph
 from ... import compat as cpt
 
 # Set Log level
@@ -204,10 +202,12 @@ class StaticModelRunner(layers.Layer):
         # DescParser.print_program_desc(self._program_desc)
 
     def train(self):
+        # TODO: remove global train_mode setting
         framework._dygraph_tracer().train_mode()
         self._change_is_test_status(False)
 
     def eval(self):
+        # TODO: remove global train_mode setting
         framework._dygraph_tracer().eval_mode()
         self._change_is_test_status(True)
 
@@ -329,27 +329,27 @@ class StaticModelRunner(layers.Layer):
 
         return program_desc
 
+    @switch_to_static_graph
     def _append_backward_desc(self):
-        with framework._static_graph_guard():
-            assert self._load_program_desc is not None, "The StaticModelRunner not initialized properly."
-            program_desc_copy = core.ProgramDesc(self._load_program_desc)
+        assert self._load_program_desc is not None, "The StaticModelRunner not initialized properly."
+        program_desc_copy = core.ProgramDesc(self._load_program_desc)
 
-            # Step 1. prepare program and related var
-            # NOTE: To reuse backward interfaces, build Program firstly.
-            # Originally, there is no need to build a program, but need to almost
-            # rewrite a series of methods for append_backward for program_desc. 
-            # Therefore, in order to reuse the method of backward.py, build the program here.
-            fwd_op_num = program_desc_copy.block(0).op_size()
-            program = self._build_program_by_desc(program_desc_copy)
+        # Step 1. prepare program and related var
+        # NOTE: To reuse backward interfaces, build Program firstly.
+        # Originally, there is no need to build a program, but need to almost
+        # rewrite a series of methods for append_backward for program_desc. 
+        # Therefore, in order to reuse the method of backward.py, build the program here.
+        fwd_op_num = program_desc_copy.block(0).op_size()
+        program = self._build_program_by_desc(program_desc_copy)
 
-            # TODO: could the targets be in sub block?
-            targets = []
-            for out in self._output_descs:
-                targets.append(program.global_block().var(out.name()))
+        # TODO: could the targets be in sub block?
+        targets = []
+        for out in self._output_descs:
+            targets.append(program.global_block().var(out.name()))
 
-            # Step 2. append backward
-            backward.gradients(targets=targets, inputs=[])
-            return program.desc
+        # Step 2. append backward
+        backward.gradients(targets=targets, inputs=[])
+        return program.desc
 
     def _load_persisitable_dict(self, model_dir, params_filename=None):
         load_dirname = os.path.normpath(model_dir)

@@ -34,6 +34,32 @@ class RunProgramOp : public framework::OperatorWithKernel {
                       platform::errors::NotFound(
                           "Output(Out) of RunProgramOp should not be null."));
   }
+
+ protected:
+  /* [Why use single type kernel]:
+   *
+   * This op is similar to a control flow op, it doses not need
+   * a op kernel, but in order to make it execute under dynamic
+   * graph mode, implement it with op kernel.
+   *
+   * So whether the kernel data type is int, float or other type,
+   * which has no effect on its execution logic, so directly
+   * specified a data type here.
+   *
+   * Of course, the data type here is also not important.
+   */
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   tensor.place());
+  }
 };
 
 class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -103,6 +129,21 @@ class RunProgramGradOp : public framework::OperatorWithKernel {
     // NOTE: The X@GRAD and Params@GRAD may not exist,
     // because they can be set stop_gradient = True
   }
+
+ protected:
+  /* see [Why use single type kernel] */
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    return framework::OpKernelType(framework::proto::VarType::FP32,
+                                   tensor.place());
+  }
 };
 
 template <typename T>
@@ -133,16 +174,10 @@ REGISTER_OPERATOR(run_program, ops::RunProgramOp, ops::RunProgramOpMaker,
                   ops::RunProgramGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(run_program_grad, ops::RunProgramGradOp);
 
+/* see [Why use single type kernel] */
 REGISTER_OP_CPU_KERNEL(
     run_program,
-    ops::RunProgramOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::RunProgramOpKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::RunProgramOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::RunProgramOpKernel<paddle::platform::CPUDeviceContext, double>)
-
+    ops::RunProgramOpKernel<paddle::platform::CPUDeviceContext, float>)
 REGISTER_OP_CPU_KERNEL(
     run_program_grad,
-    ops::RunProgramGradOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::RunProgramGradOpKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::RunProgramGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::RunProgramGradOpKernel<paddle::platform::CPUDeviceContext, double>)
+    ops::RunProgramGradOpKernel<paddle::platform::CPUDeviceContext, float>)

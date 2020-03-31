@@ -18,18 +18,11 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
+
+/* see [Why use single type kernel] */
 REGISTER_OP_CUDA_KERNEL(
     run_program,
-    ops::RunProgramOpKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::RunProgramOpKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::RunProgramOpKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::RunProgramOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::RunProgramOpKernel<paddle::platform::CUDADeviceContext, double>);
-
+    ops::RunProgramOpKernel<paddle::platform::CUDADeviceContext, float>);
 REGISTER_OP_CUDA_KERNEL(
     run_program_grad,
-    ops::RunProgramGradOpKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::RunProgramGradOpKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::RunProgramGradOpKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::RunProgramGradOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::RunProgramGradOpKernel<paddle::platform::CUDADeviceContext, double>);
+    ops::RunProgramGradOpKernel<paddle::platform::CUDADeviceContext, float>);

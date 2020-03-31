@@ -45,7 +45,7 @@ from . import jit
 from .jit import *
 
 from . import static_runner
-from .static_runner import *
+from .static_runner import StaticModelRunner
 
 __all__ = []
 __all__ += layers.__all__
