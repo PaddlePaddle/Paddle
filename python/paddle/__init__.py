@@ -40,7 +40,7 @@ import paddle.sysconfig
 # from .tensor.creation import create_random_int_lod.tensor   #DEFINE_ALIAS
 # from .tensor.creation import crop_.tensor   #DEFINE_ALIAS
 # from .tensor.creation import diag   #DEFINE_ALIAS
-# from .tensor.creation import eye   #DEFINE_ALIAS
+from .tensor.creation import eye  #DEFINE_ALIAS
 # from .tensor.creation import fill_constant   #DEFINE_ALIAS
 # from .tensor.creation import get_.tensor_from_selected_rows   #DEFINE_ALIAS
 # from .tensor.creation import linspace   #DEFINE_ALIAS
@@ -128,15 +128,15 @@ import paddle.sysconfig
 # from .tensor.math import sums   #DEFINE_ALIAS
 # from .tensor.math import tanh   #DEFINE_ALIAS
 # from .tensor.math import elementwise_sum   #DEFINE_ALIAS
-# from .tensor.math import max   #DEFINE_ALIAS
-# from .tensor.math import min   #DEFINE_ALIAS
+from .tensor.math import max  #DEFINE_ALIAS
+from .tensor.math import min  #DEFINE_ALIAS
 # from .tensor.math import mm   #DEFINE_ALIAS
 # from .tensor.math import div   #DEFINE_ALIAS
 # from .tensor.math import add   #DEFINE_ALIAS
 # from .tensor.math import atan   #DEFINE_ALIAS
 # from .tensor.math import logsumexp   #DEFINE_ALIAS
 # from .tensor.math import inverse   #DEFINE_ALIAS
-# from .tensor.math import log1p   #DEFINE_ALIAS
+from .tensor.math import log1p  #DEFINE_ALIAS
 # from .tensor.math import erf   #DEFINE_ALIAS
 # from .tensor.math import addcmul   #DEFINE_ALIAS
 # from .tensor.math import addmm   #DEFINE_ALIAS
@@ -150,7 +150,7 @@ import paddle.sysconfig
 # from .tensor.linalg import morm   #DEFINE_ALIAS
 # from .tensor.linalg import transpose   #DEFINE_ALIAS
 # from .tensor.linalg import dist   #DEFINE_ALIAS
-# from .tensor.linalg import t   #DEFINE_ALIAS
+from .tensor.linalg import t  #DEFINE_ALIAS
 # from .tensor.linalg import cross   #DEFINE_ALIAS
 # from .tensor.linalg import cholesky   #DEFINE_ALIAS
 # from .tensor.linalg import .tensordot   #DEFINE_ALIAS

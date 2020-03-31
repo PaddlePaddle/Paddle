@@ -121,18 +121,18 @@ def max(input, dim=None, keep_dim=False, out=None, name=None):
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the corresponding output tensor.
             x = fluid.data(name='x', shape=[2, 4], dtype='float32')
-            paddle.tensor.max(x)  # [0.9]
-            paddle.tensor.max(x, dim=0)  # [0.2, 0.3, 0.6, 0.9]
-            paddle.tensor.max(x, dim=-1)  # [0.9, 0.7]
-            paddle.tensor.max(x, dim=1, keep_dim=True)  # [[0.9], [0.7]]
+            paddle.max(x)  # [0.9]
+            paddle.max(x, dim=0)  # [0.2, 0.3, 0.6, 0.9]
+            paddle.max(x, dim=-1)  # [0.9, 0.7]
+            paddle.max(x, dim=1, keep_dim=True)  # [[0.9], [0.7]]
 
             # y is a Tensor variable with shape [2, 2, 2] and elements as below:
             #      [[[1.0, 2.0], [3.0, 4.0]],
             #      [[5.0, 6.0], [7.0, 8.0]]]
             # Each example is followed by the corresponding output tensor.
             y = fluid.data(name='y', shape=[2, 2, 2], dtype='float32')
-            paddle.tensor.max(y, dim=[1, 2]) # [4.0, 8.0]
-            paddle.tensor.max(y, dim=[0, 1]) # [7.0, 8.0]
+            paddle.max(y, dim=[1, 2]) # [4.0, 8.0]
+            paddle.max(y, dim=[0, 1]) # [7.0, 8.0]
     """
     helper = LayerHelper('max', **locals())
     if out is None:
@@ -188,18 +188,18 @@ def min(input, dim=None, keep_dim=False, out=None, name=None):
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the corresponding output tensor.
             x = fluid.data(name='x', shape=[2, 4], dtype='float32')
-            paddle.tensor.min(x)  # [0.1]
-            paddle.tensor.min(x, dim=0)  # [0.1, 0.2, 0.5, 0.7]
-            paddle.tensor.min(x, dim=-1)  # [0.2, 0.1]
-            paddle.tensor.min(x, dim=1, keep_dim=True)  # [[0.2], [0.1]]
+            paddle.min(x)  # [0.1]
+            paddle.min(x, dim=0)  # [0.1, 0.2, 0.5, 0.7]
+            paddle.min(x, dim=-1)  # [0.2, 0.1]
+            paddle.min(x, dim=1, keep_dim=True)  # [[0.2], [0.1]]
 
             # y is a Tensor variable with shape [2, 2, 2] and elements as below:
             #      [[[1.0, 2.0], [3.0, 4.0]],
             #      [[5.0, 6.0], [7.0, 8.0]]]
             # Each example is followed by the corresponding output tensor.
             y = fluid.data(name='y', shape=[2, 2, 2], dtype='float32')
-            paddle.tensor.min(y, dim=[1, 2]) # [1.0, 5.0]
-            paddle.tensor.min(y, dim=[0, 1]) # [1.0, 2.0]
+            paddle.min(y, dim=[1, 2]) # [1.0, 5.0]
+            paddle.min(y, dim=[0, 1]) # [1.0, 2.0]
     """
     helper = LayerHelper('min', **locals())
     if out is None:
@@ -249,7 +249,7 @@ def log1p(x, out=None, name=None):
 
             # Graph Organizing
             x = fluid.data(name="x", shape=[1], dtype="float32")
-            res = paddle.tensor.log1p(x)
+            res = paddle.log1p(x)
 
             # Create an executor using CPU as an example
             exe = fluid.Executor(fluid.CPUPlace())
@@ -260,11 +260,10 @@ def log1p(x, out=None, name=None):
             print(res_val) # [[0.], [0.6931472]]
     """
 
-    inputs = {'X': [x]}
     if in_dygraph_mode():
-        outs = core.ops.log1p(inputs)
-        return outs['Out'][0]
+        return core.ops.log1p(x)
 
+    inputs = {'X': [x]}
     helper = LayerHelper('log1p', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     if out is None:

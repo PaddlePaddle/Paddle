@@ -63,16 +63,16 @@ def t(input, name=None):
 
         # Example 1 (1-D tensor)
          x = tensor([0.79])
-         paddle.tensor.t(x) = tensor([0.79])
+         paddle.t(x) = tensor([0.79])
 
          # Example 2 (1-D tensor)
          x = tensor([0.79, 0.84, 0.32])
-         paddle.tensor.t(x) = tensor([0.79, 0.84, 0.32])
+         paddle.t(x) = tensor([0.79, 0.84, 0.32])
         
          # Example 3 (2-D tensor)
          x = tensor([0.79, 0.84, 0.32],
                     [0.64, 0.14, 0.57])
-         paddle.tensor.t(x) = tensor([0.79, 0.64],
+         paddle.t(x) = tensor([0.79, 0.64],
                                      [0.84, 0.14],
                                      [0.32, 0.57])
 
@@ -84,7 +84,7 @@ def t(input, name=None):
             import paddle.fluid as fluid
             x = fluid.data(name='x', shape=[2, 3],
                             dtype='float32')
-            x_transposed = paddle.tensor.t(x)
+            x_transposed = paddle.t(x)
             print x_transposed.shape
             #(3L, 2L)
 
@@ -100,10 +100,9 @@ def t(input, name=None):
         # 2-D tensor
         if input.shape[0] == 1 or input.shape[1] == 1:
             return input
-        attrs = {'axis': [1, 0]}
-        inputs = {'X': [input]}
-        outs = core.ops.transpose2(inputs, attrs)
-        return outs['Out'][0]
+        perm = [1, 0]
+        out, _ = core.ops.transpose2(input, 'axis', perm)
+        return out
 
     check_variable_and_dtype(
         input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
