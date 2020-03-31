@@ -16,7 +16,7 @@ from __future__ import print_function
 from six.moves import reduce
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
-from ..framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator, device_guard
+from ..framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator
 from ..framework import Variable
 from ..initializer import Constant
 from ..core import VarDesc
@@ -32,7 +32,7 @@ __all__ = [
     'tensor_array_to_tensor', 'concat', 'sums', 'assign',
     'fill_constant_batch_size_like', 'fill_constant', 'argmin', 'argmax',
     'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite',
-    'range', 'linspace', 'zeros_like', 'ones_like', 'diag', 'eye', 'full'
+    'range', 'linspace', 'zeros_like', 'ones_like', 'diag', 'eye'
 ]
 
 
@@ -1467,60 +1467,4 @@ def ones_like(x, out=None):
         inputs={'X': [x]},
         attrs={'value': 1.0},
         outputs={'Out': [out]})
-    return out
-
-
-def full(shape,
-         fill_value,
-         out=None,
-         dtype=None,
-         device=None,
-         stop_gradient=True,
-         name=None):
-    """
-    This function return a Tensor with the `fill_value` which size is same as `shape`
-    
-    Args:
-        shape(list|tuple|Variable): Shape of the Tensor to be created.
-                The data type is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
-                the elements of it should be integers or Tensors with shape [1].
-                If ``shape`` is an Variable, it should be an 1-D Tensor .
-        value(float): The constant value used to initialize the Tensor to be created.
-        out(Variable, optional): Optional output which can be any created 
-            Variable that meets the requirements to store the result of operation.
-            if out is None, a new Varibale will be create to store the result.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output tensor
-            which can be float16, float32, float64, int32, int64, if dytpe is `None`, the data
-            type of created tensor is `float32`
-        device(str, optional): This parameter specifies that the Tensor is created 
-            on the GPU or CPU.
-        stop_gradient(bool, optional): Indicating if we stop gradient from current(out) Variable,
-            default value is True.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this
-            property.  For more information, please refer to :ref:`api_guide_Name`.
-
-    """
-
-    helper = LayerHelper("full", **locals())
-
-    if dtype is None:
-        dtype = 'float32'
-
-    check_dtype(dtype, 'create data type',
-                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'full')
-    check_type(shape, 'shape', (Variable, list, tuple), 'full')
-
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=dtype)
-
-    out.stop_gradient = stop_gradient
-
-    if device is None:
-        out = fill_constant(shape=shape, dtype=dtype, value=fill_value, out=out)
-    else:
-        with device_guard(device):
-            out = fill_constant(
-                shape=shape, dtype=dtype, value=fill_value, out=out)
-
     return out
