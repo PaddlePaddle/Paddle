@@ -212,7 +212,7 @@ class StaticModelRunner(layers.Layer):
         self._change_is_test_status(True)
 
     def forward(self, inputs):
-        # Step 1. check inputs, may affect performance
+        # Step 1. prepare inputs, outputs, attrs
         if not isinstance(inputs, (list, tuple)):
             inputs = [inputs]
 
@@ -232,10 +232,12 @@ class StaticModelRunner(layers.Layer):
                     zero_copy=True)
             else:
                 var = value
-                var.name = self._input_names[i]
-            # NOTE: after PR22939 [Add double grad], the grad op maker's
-            # SetOutput will set to None if the input var stop_gradient=True 
-            var.stop_gradient = False
+                # NOTE: change desc var name, if the inputs user given are VarBase, 
+                # they may have important name set by the user!
+                if var.name != self._input_names[i]:
+                    self._change_var_name_in_desc(self._input_names[i],
+                                                  var.name)
+                self._input_names[i] = var.name
             input_vars.append(var)
 
         params = []
@@ -251,9 +253,11 @@ class StaticModelRunner(layers.Layer):
             output_vars.append(var)
 
         # hold forward variables
-        out_scope = core.VarBase(core.VarDesc.VarType.FP32, [],
-                                 "program_out_scope",
-                                 core.VarDesc.VarType.STEP_SCOPES, True)
+        tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
+                                     "program_out_scope",
+                                     core.VarDesc.VarType.STEP_SCOPES, True)
+        inner_scope = core.Scope()
+        tmp_scope_vec.value().set_scope(inner_scope)
 
         # Step 2. run prorgam by op
         framework._dygraph_tracer().trace_op(
@@ -261,13 +265,14 @@ class StaticModelRunner(layers.Layer):
             inputs={'X': input_vars,
                     'Params': params},
             outputs={'Out': output_vars,
-                     'OutScope': out_scope},
+                     'OutScope': tmp_scope_vec},
             attrs={
                 'global_block': self._program_desc.block(0),
                 'start_op_index': 0,
                 'end_op_index': self._load_program_desc.block(0).op_size()
             })
 
+        # Step 3. prepare output, keep same form with inputs
         outs = output_vars
         if len(output_vars) == 1:
             outs = output_vars[0]
@@ -509,6 +514,27 @@ class StaticModelRunner(layers.Layer):
                 op = block.op(op_idx)
                 op._rename_input(old_name, new_name)
                 op._rename_output(old_name, new_name)
+
+    def _change_var_name_in_desc(self, orig_name, new_name):
+        assert self._program_desc is not None, "The StaticModelRunner not initialized properly."
+        # 1. change all var and grad var name
+        # 2. change all related op input name
+        # 3. change all related grad op output name
+        orig_grad_name = cpt.to_text(orig_name) + core.grad_var_suffix()
+        new_grad_name = new_name + core.grad_var_suffix()
+        for i in six.moves.range(self._program_desc.num_blocks()):
+            block = self._program_desc.block(i)
+            # change var name
+            for var in block.all_vars():
+                if var.name() == orig_name:
+                    var.set_name(new_name)
+                elif var.name() == orig_grad_name:
+                    var.set_name(new_grad_name)
+            # change op input & output
+            for j in six.moves.range(block.op_size()):
+                op = block.op(j)
+                op._rename_input(orig_name, new_name)
+                op._rename_output(orig_grad_name, new_grad_name)
 
 
 ######### Debug Functions ##########
