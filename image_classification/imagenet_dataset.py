@@ -3,7 +3,6 @@ import cv2
 import math
 import random
 import numpy as np
-from paddle.fluid.io import Dataset
 
 from datasets.folder import DatasetFolder
 
@@ -65,24 +64,6 @@ def compose(functions):
     return process
 
 
-def image_folder(path):
-    valid_ext = ('.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.webp')
-    classes = [
-        d for d in os.listdir(path) if os.path.isdir(os.path.join(path, d))
-    ]
-    classes.sort()
-    class_map = {cls: idx for idx, cls in enumerate(classes)}
-    samples = []
-    for dir in sorted(class_map.keys()):
-        d = os.path.join(path, dir)
-        for root, _, fnames in sorted(os.walk(d)):
-            for fname in sorted(fnames):
-                p = os.path.join(root, fname)
-                if os.path.splitext(p)[1].lower() in valid_ext:
-                    samples.append((p, [class_map[dir]]))
-    return samples
-
-
 class ImageNetDataset(DatasetFolder):
     def __init__(self, path, mode='train'):
         super(ImageNetDataset, self).__init__(path)
@@ -96,8 +77,8 @@ class ImageNetDataset(DatasetFolder):
                 [cv2.imread, center_crop_resize, normalize_permute])
 
     def __getitem__(self, idx):
-
-        return self.transform(self.samples[idx])
+        img, label = self.samples[idx]
+        return self.transform((img, [label]))
 
     def __len__(self):
         return len(self.samples)

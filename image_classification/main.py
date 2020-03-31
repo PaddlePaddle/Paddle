@@ -40,7 +40,7 @@ def make_optimizer(step_per_epoch, parameter_list=None):
     momentum = 0.9
     weight_decay = 1e-4
 
-    boundaries = [step_per_epoch * e for e in [30, 60, 90]]
+    boundaries = [step_per_epoch * e for e in [30, 60, 80]]
     values = [base_lr * (0.1**i) for i in range(len(boundaries) + 1)]
     learning_rate = fluid.layers.piecewise_decay(
         boundaries=boundaries, values=values)
@@ -61,7 +61,8 @@ def main():
     device = set_device(FLAGS.device)
     fluid.enable_dygraph(device) if FLAGS.dynamic else None
 
-    model = models.__dict__[FLAGS.arch](pretrained=FLAGS.eval_only)
+    model = models.__dict__[FLAGS.arch](pretrained=FLAGS.eval_only and
+                                        not FLAGS.resume)
 
     if FLAGS.resume is not None:
         model.load(FLAGS.resume)
@@ -115,7 +116,7 @@ if __name__ == '__main__':
     parser.add_argument(
         "-d", "--dynamic", action='store_true', help="enable dygraph mode")
     parser.add_argument(
-        "-e", "--epoch", default=120, type=int, help="number of epoch")
+        "-e", "--epoch", default=90, type=int, help="number of epoch")
     parser.add_argument(
         '--lr',
         '--learning-rate',
