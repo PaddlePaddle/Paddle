@@ -50,7 +50,7 @@ class TestRowConvOp1(OpTest):
         lod = [[2, 3, 2]]
         T = sum(lod[0])
         D = 16
-        context_length = 2
+        context_length = 8
 
         x = np.random.random((T, D)).astype("float32")
         wt = np.random.random((context_length, D)).astype("float32")
@@ -63,27 +63,15 @@ class TestRowConvOp1(OpTest):
         self.check_output(check_dygraph=False)
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Filter'],
-            'Out',
-            max_relative_error=0.05,
-            check_dygraph=False)
+        self.check_grad(['X', 'Filter'], 'Out', check_dygraph=False)
 
     def test_check_grad_ignore_x(self):
         self.check_grad(
-            ['Filter'],
-            'Out',
-            max_relative_error=0.05,
-            no_grad_set=set('X'),
-            check_dygraph=False)
+            ['Filter'], 'Out', no_grad_set=set('X'), check_dygraph=False)
 
     def test_check_grad_ignore_wt(self):
         self.check_grad(
-            ['X'],
-            'Out',
-            max_relative_error=0.05,
-            no_grad_set=set('Filter'),
-            check_dygraph=False)
+            ['X'], 'Out', no_grad_set=set('Filter'), check_dygraph=False)
 
 
 class TestRowConvOp2(OpTest):
@@ -151,11 +139,11 @@ def row_conv_foward_Tensor(x, wt):
 class TestRowOpWithTensorInput(OpTest):
     def setUp(self):
         self.op_type = "row_conv"
-        length = [3, 2, 4]
+        length = [1, 2, 3]
         B = 2
         T = sum(length)
-        D = 16
-        context_length = 2
+        D = 20
+        context_length = 6
 
         x = np.random.random((B, T, D)).astype("float32")
         wt = np.random.random((context_length, D)).astype("float32")
@@ -169,26 +157,14 @@ class TestRowOpWithTensorInput(OpTest):
 
     def test_check_grad_ignore_x(self):
         self.check_grad(
-            ['Filter'],
-            'Out',
-            max_relative_error=0.05,
-            no_grad_set=set('X'),
-            check_dygraph=False)
+            ['Filter'], 'Out', no_grad_set=set('X'), check_dygraph=False)
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Filter'],
-            'Out',
-            max_relative_error=0.05,
-            check_dygraph=False)
+        self.check_grad(['X', 'Filter'], 'Out', check_dygraph=False)
 
     def test_check_grad_ignore_wt(self):
         self.check_grad(
-            ['X'],
-            'Out',
-            max_relative_error=0.05,
-            no_grad_set=set('Filter'),
-            check_dygraph=False)
+            ['X'], 'Out', no_grad_set=set('Filter'), check_dygraph=False)
 
 
 if __name__ == '__main__':

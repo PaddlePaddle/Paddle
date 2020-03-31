@@ -20,6 +20,11 @@
 # for instance, protobuf libs path is <install_dir>/lib64
 # on CentOS, but <install_dir>/lib on other systems.
 
+if(UNIX AND NOT APPLE)
+  # except apple from nix*Os family
+  set(LINUX TRUE)
+endif(UNIX AND NOT APPLE)
+
 IF(WIN32)
     SET(HOST_SYSTEM "win32")
 ELSE(WIN32)

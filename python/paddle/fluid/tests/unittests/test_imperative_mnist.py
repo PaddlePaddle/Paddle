@@ -23,16 +23,16 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC
+from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
-from paddle.fluid.dygraph.jit import TracedLayer
+from paddle.fluid.dygraph import TracedLayer
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
     def __init__(self,
-                 name_scope,
+                 num_channels,
                  num_filters,
                  filter_size,
                  pool_size,
@@ -48,10 +48,10 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
                  use_cudnn=False,
                  param_attr=None,
                  bias_attr=None):
-        super(SimpleImgConvPool, self).__init__(name_scope)
+        super(SimpleImgConvPool, self).__init__()
 
         self._conv2d = Conv2D(
-            self.full_name(),
+            num_channels=num_channels,
             num_filters=num_filters,
             filter_size=filter_size,
             stride=conv_stride,
@@ -63,7 +63,6 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             use_cudnn=use_cudnn)
 
         self._pool2d = Pool2D(
-            self.full_name(),
             pool_size=pool_size,
             pool_type=pool_type,
             pool_stride=pool_stride,
@@ -78,28 +77,30 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
 
 
 class MNIST(fluid.dygraph.Layer):
-    def __init__(self, name_scope):
-        super(MNIST, self).__init__(name_scope)
+    def __init__(self):
+        super(MNIST, self).__init__()
 
         self._simple_img_conv_pool_1 = SimpleImgConvPool(
-            self.full_name(), 20, 5, 2, 2, act="relu")
+            1, 20, 5, 2, 2, act="relu")
 
         self._simple_img_conv_pool_2 = SimpleImgConvPool(
-            self.full_name(), 50, 5, 2, 2, act="relu")
+            20, 50, 5, 2, 2, act="relu")
 
-        pool_2_shape = 50 * 4 * 4
+        self.pool_2_shape = 50 * 4 * 4
         SIZE = 10
-        scale = (2.0 / (pool_2_shape**2 * SIZE))**0.5
-        self._fc = FC(self.full_name(),
-                      10,
-                      param_attr=fluid.param_attr.ParamAttr(
-                          initializer=fluid.initializer.NormalInitializer(
-                              loc=0.0, scale=scale)),
-                      act="softmax")
+        scale = (2.0 / (self.pool_2_shape**2 * SIZE))**0.5
+        self._fc = Linear(
+            self.pool_2_shape,
+            10,
+            param_attr=fluid.param_attr.ParamAttr(
+                initializer=fluid.initializer.NormalInitializer(
+                    loc=0.0, scale=scale)),
+            act="softmax")
 
     def forward(self, inputs):
         x = self._simple_img_conv_pool_1(inputs)
         x = self._simple_img_conv_pool_2(x)
+        x = fluid.layers.reshape(x, shape=[-1, self.pool_2_shape])
         x = self._fc(x)
         return x
 
@@ -126,8 +127,9 @@ class TestImperativeMnist(unittest.TestCase):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
-            mnist = MNIST("mnist")
-            sgd = SGDOptimizer(learning_rate=1e-3)
+            mnist = MNIST()
+            sgd = SGDOptimizer(
+                learning_rate=1e-3, parameter_list=mnist.parameters())
 
             batch_py_reader = fluid.io.PyReader(capacity=1)
             batch_py_reader.decorate_sample_list_generator(
@@ -190,7 +192,7 @@ class TestImperativeMnist(unittest.TestCase):
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
 
-            mnist = MNIST("mnist")
+            mnist = MNIST()
             sgd = SGDOptimizer(learning_rate=1e-3)
             train_reader = paddle.batch(
                 paddle.dataset.mnist.train(),

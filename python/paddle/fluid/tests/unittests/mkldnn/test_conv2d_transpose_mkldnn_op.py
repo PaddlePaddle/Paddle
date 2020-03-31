@@ -60,8 +60,10 @@ class TestConv2dTransposeMKLDNNOp(TestConv2dTransposeOp):
         f_c = self.input_size[1]
         self.filter_size = [f_c, 6, 3, 3]
         self.groups = 1
+        self.dtype = np.float32
 
     def setUp(self):
+
         TestConv2dTransposeOp.setUp(self)
 
         output = self.outputs['Output']

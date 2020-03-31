@@ -23,19 +23,20 @@ set(THIRD_PARTY_CACHE_PATH     "${CMAKE_SOURCE_DIR}"    CACHE STRING
 set(THIRD_PARTY_BUILD_TYPE Release)
 
 # cache funciton to avoid repeat download code of third_party.
-# This function has 4 parameters, URL/REPOSITOR/TAG/DIR:
-# 1. URL: specify download url of 3rd party
-# 2. REPOSITORY and TAG: specify git REPOSITORY and tag/branch/commitID of 3rd party
-# 3. DIR(optional): Unify the source dir in cached and uncached mode to "${TARGET}_SOURCE_DIR". 
-#
-# The function Return 2 PARENT_SCOPE variables:
-# 1. ${TARGET}_DOWNLOAD_DIR: Simply place "${TARGET}_DOWNLOAD_DIR" in ExternalProject_Add, 
+# This function has 4 parameters, URL / REPOSITOR / TAG / DIR:
+# 1. URL:           specify download url of 3rd party
+# 2. REPOSITORY:    specify git REPOSITORY of 3rd party
+# 3. TAG:           specify git tag/branch/commitID of 3rd party
+# 4. DIR:           overwrite the original SOURCE_DIR when cache directory
+# 
+# The function Return 1 PARENT_SCOPE variables:
+#  - ${TARGET}_DOWNLOAD_CMD: Simply place "${TARGET}_DOWNLOAD_CMD" in ExternalProject_Add, 
 #                            and you no longer need to set any donwnload steps in ExternalProject_Add.
-# 2. ${TARGET}_SOURCE_DIR: Value of argument: SOURCE_DIR of ExternalProject_Add.
 # For example:
-#    Cache_third_party (${TARGET}
+#    Cache_third_party(${TARGET}
 #            REPOSITORY ${TARGET_REPOSITORY}
-#            TAG ${TARGET_TAG})
+#            TAG        ${TARGET_TAG}
+#            DIR        ${TARGET_SOURCE_DIR})
 FUNCTION(cache_third_party TARGET)
     SET(options "")
     SET(oneValueArgs URL REPOSITORY TAG DIR)
@@ -56,17 +57,12 @@ FUNCTION(cache_third_party TARGET)
         SET(${TARGET_NAME}_DOWNLOAD_CMD
                 URL             ${cache_third_party_URL})
     ELSE()
-        MESSAGE(FATAL_ERROR "Download link (Git repo or URL) must be specified for cache!")
+        MESSAGE(FATAL_ERROR    "Download link (Git repo or URL) must be specified for cache!")
     ENDIF()
-    IF(NOT WITH_TP_CACHE)
-        # The uniform argument "{TAGGET}_SOURCE_DIR" must exists for these targets even if not cache
-        SET(LISTS xxhash protobuf boost mklml cub dlpack eigen pybind threadpool)
-        FOREACH(tmp ${LISTS})
-            IF(${TARGET} MATCHES ${tmp} AND cache_third_party_DIR)
-                SET(${TARGET_NAME}_SOURCE_DIR "${cache_third_party_DIR}/src/${TARGET}")
-            ENDIF()
-        ENDFOREACH()
-    ELSE()
+    IF(WITH_TP_CACHE)
+        IF(NOT cache_third_party_DIR)
+            MESSAGE(FATAL_ERROR   "Please input the ${TARGET_NAME}_SOURCE_DIR for overwriting when -DWITH_TP_CACHE=ON")
+        ENDIF()
         # Generate and verify cache dir for third_party source code
         SET(cache_third_party_REPOSITORY ${cache_third_party_REPOSITORY} ${cache_third_party_URL})
         IF(cache_third_party_REPOSITORY AND cache_third_party_TAG)
@@ -75,25 +71,27 @@ FUNCTION(cache_third_party TARGET)
             STRING(SUBSTRING ${HASH_REPO} 0 8 HASH_REPO)
             STRING(SUBSTRING ${HASH_GIT} 0 8 HASH_GIT)
             STRING(CONCAT HASH ${HASH_REPO} ${HASH_GIT})
-            SET(${TARGET_NAME}_SOURCE_DIR ${THIRD_PARTY_CACHE_PATH}/third_party/${TARGET}_${HASH})
+            # overwrite the original SOURCE_DIR when cache directory
+            SET(${cache_third_party_DIR} ${THIRD_PARTY_CACHE_PATH}/third_party/${TARGET}_${HASH})
         ELSEIF(cache_third_party_REPOSITORY)
             STRING(MD5 HASH_REPO ${cache_third_party_REPOSITORY})
             STRING(SUBSTRING ${HASH_REPO} 0 16 HASH)
-            SET(${TARGET_NAME}_SOURCE_DIR ${THIRD_PARTY_CACHE_PATH}/third_party/${TARGET}_${HASH})
+            # overwrite the original SOURCE_DIR when cache directory
+            SET(${cache_third_party_DIR} ${THIRD_PARTY_CACHE_PATH}/third_party/${TARGET}_${HASH})
         ENDIF()
 
-        IF(EXISTS ${${TARGET_NAME}_SOURCE_DIR})
+        IF(EXISTS ${${cache_third_party_DIR}})
             # judge whether the cache dir is empty
-            FILE(GLOB files ${${TARGET_NAME}_SOURCE_DIR}/*)
+            FILE(GLOB files ${${cache_third_party_DIR}}/*)
             LIST(LENGTH files files_len)
             IF(files_len GREATER 0)
                 list(APPEND ${TARGET_NAME}_DOWNLOAD_CMD DOWNLOAD_COMMAND "")
             ENDIF()
         ENDIF()
+        SET(${cache_third_party_DIR} ${${cache_third_party_DIR}} PARENT_SCOPE)
     ENDIF()
 
-    # Pass the variable to parent scope, the double quotation marks can't be removed
-    SET(${TARGET_NAME}_SOURCE_DIR "${${TARGET_NAME}_SOURCE_DIR}" PARENT_SCOPE)
+    # Pass ${TARGET_NAME}_DOWNLOAD_CMD to parent scope, the double quotation marks can't be removed
     SET(${TARGET_NAME}_DOWNLOAD_CMD "${${TARGET_NAME}_DOWNLOAD_CMD}" PARENT_SCOPE)
 ENDFUNCTION()
 
@@ -176,7 +174,7 @@ if(${CMAKE_VERSION} VERSION_GREATER "3.5.2")
     set(SHALLOW_CLONE "GIT_SHALLOW TRUE") # adds --depth=1 arg to git clone of External_Projects
 endif()
 
-########################### include third_party accoring to flags ###############################
+########################### include third_party according to flags ###############################
 include(external/zlib)      # download, build, install zlib
 include(external/gflags)    # download, build, install gflags
 include(external/glog)      # download, build, install glog
@@ -243,13 +241,17 @@ if(WITH_PSLIB)
     endif()
 endif(WITH_PSLIB)
 
+if(NOT WIN32 AND NOT APPLE)
+    include(external/gloo)
+    list(APPEND third_party_deps extern_gloo)
+endif()
+
 if(WITH_BOX_PS)
     include(external/box_ps)
     list(APPEND third_party_deps extern_box_ps)
 endif(WITH_BOX_PS)
 
 if(WITH_DISTRIBUTE)
-    list(APPEND third_party_deps extern_cares)
     if(WITH_GRPC)
         list(APPEND third_party_deps extern_grpc)
     else()
@@ -286,5 +288,9 @@ if(WITH_DGC)
     add_definitions(-DPADDLE_WITH_DGC)
     list(APPEND third_party_deps extern_dgc)
 endif()
+
+if (WITH_LITE)
+    include(external/lite)
+endif (WITH_LITE)
 
 add_custom_target(third_party DEPENDS ${third_party_deps})

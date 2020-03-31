@@ -177,36 +177,6 @@ std::string SerializedBlock(const framework::BlockDesc& bdesc) {
   return block_desc.Proto()->SerializeAsString();
 }
 
-std::string GenerateEngineKey(const framework::BlockDesc& bdesc) {
-  framework::proto::BlockDesc block_proto;
-  framework::BlockDesc block_desc(nullptr, &block_proto);
-  block_desc.Proto()->set_parent_idx(-1);
-  block_desc.Proto()->set_idx(0);
-
-  for (auto& op_desc : bdesc.AllOps()) {
-    auto* op = block_desc.AppendOp();
-    *op->Proto() = *op_desc->Proto();
-  }
-  auto engine_key = std::to_string(
-      std::hash<std::string>()(block_desc.Proto()->SerializeAsString()));
-  return engine_key;
-}
-
-std::string GenerateEngineKey(const std::vector<std::string>& engine_inputs,
-                              const std::vector<std::string>& engine_outputs,
-                              int size) {
-  std::string engine_hash_key = "";
-  for (auto name : engine_inputs) {
-    engine_hash_key += name;
-  }
-  for (auto name : engine_outputs) {
-    engine_hash_key += name;
-  }
-  engine_hash_key += std::to_string(size);
-  auto engine_key = std::to_string(std::hash<std::string>()(engine_hash_key));
-  return engine_key;
-}
-
 void NgraphEngine::FuseNgraphOps(
     const framework::BlockDesc& block_desc,
     std::vector<std::unique_ptr<framework::OperatorBase>>* ops) {

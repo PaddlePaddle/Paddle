@@ -74,7 +74,7 @@ class TestElementwiseModOpFloat(TestElementwiseModOp):
         self.out = np.fmod(self.y + np.fmod(self.x, self.y), self.y)
 
     def test_check_output(self):
-        self.check_output(atol=2e-5)
+        self.check_output()
 
 
 class TestElementwiseModOpDouble(TestElementwiseModOpFloat):

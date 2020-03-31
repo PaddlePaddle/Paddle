@@ -14,9 +14,10 @@
 
 from __future__ import print_function
 
-import unittest
+import unittest, sys
+sys.path.append("../")
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest
+from op_test import OpTest
 
 
 class TestNGRAPHIncrementOp(OpTest):

@@ -47,13 +47,13 @@ class TestHuberLossOp(OpTest):
         }
 
     def set_shape(self):
-        return (64, 1)
+        return (100, 1)
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.008)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
         self.check_grad(

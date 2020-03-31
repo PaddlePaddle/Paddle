@@ -33,7 +33,8 @@ class InferShapeBase {
   virtual void operator()(InferShapeContext*) const = 0;
 };
 
-struct OpInfo {
+class OpInfo {
+ public:
   OpCreator creator_;
   GradOpMakerFN grad_op_maker_;
   proto::OpProto* proto_{nullptr};
@@ -47,6 +48,10 @@ struct OpInfo {
   // NOTE(zjl): this flag is added to check whether
   // the grad maker is the default one.
   bool use_default_grad_op_desc_maker_{false};
+
+  // NOTE(huihuangzheng): this flag is added to check whether
+  // the grad maker is the empty one.
+  bool use_empty_grad_op_desc_maker_{false};
 
   bool HasOpProtoAndChecker() const {
     return proto_ != nullptr && checker_ != nullptr;
@@ -82,8 +87,12 @@ struct OpInfo {
     return grad_op_maker_;
   }
 
-  // some op has no grad_op_maker, add check before use GradOpMaker()
+  // some ops don't have grad_op_maker, add check before use GradOpMaker()
   bool HasGradOpMaker() const { return grad_op_maker_ != nullptr; }
+
+  bool HasNonEmptyGradOpMaker() const {
+    return grad_op_maker_ != nullptr && !use_empty_grad_op_desc_maker_;
+  }
 
   const DygraphGradOpMakerFN& DygraphGradOpMaker() const {
     // Normally, proto_ should not be null, except some special operators, such
@@ -100,7 +109,7 @@ struct OpInfo {
   }
 
   bool HasDygraphGradOpMaker() const {
-    return dygraph_grad_op_maker_ != nullptr ? true : false;
+    return dygraph_grad_op_maker_ != nullptr;
   }
 
   bool HasInferInplace() const { return infer_inplace_ != nullptr; }

@@ -22,17 +22,6 @@ import os
 flag_name = os.path.splitext(__file__)[0]
 
 
-def skip_ci(func):
-    on_ci = bool(int(os.environ.get("SKIP_UNSTABLE_CI", '0')))
-
-    def __func__(*args, **kwargs):
-        if on_ci:
-            return
-        return func(*args, **kwargs)
-
-    return __func__
-
-
 class TestDistCTR2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
@@ -43,7 +32,6 @@ class TestDistCTR2x2(TestDistBase):
             "dist_ctr.py", delta=1e-2, check_error_log=True, log_name=flag_name)
 
 
-@skip_ci
 class TestDistCTRWithL2Decay2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
@@ -59,6 +47,7 @@ class TestDistCTRWithL2Decay2x2(TestDistBase):
             log_name=flag_name)
 
 
+@unittest.skip(reason="Skip unstable ci")
 class TestDistCTR2x2_ASYNC(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
@@ -80,6 +69,7 @@ class TestDistCTR2x2_ASYNC(TestDistBase):
             log_name=flag_name)
 
 
+@unittest.skip(reason="Skip unstable ci")
 class TestDistCTR2x2_ASYNCWithLRDecay2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
@@ -102,6 +92,7 @@ class TestDistCTR2x2_ASYNCWithLRDecay2x2(TestDistBase):
             log_name=flag_name)
 
 
+@unittest.skip(reason="Skip unstable ci")
 class TestDistCTR2x2_ASYNC2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False

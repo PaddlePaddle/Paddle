@@ -103,15 +103,18 @@ TEST(test_prepare_op, test_prepare_op) {
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap split_attr_map;
   const auto& info = framework::OpInfoMap::Instance().Get("split");
+  if (info.Checker()) info.Checker()->Check(&split_attr_map);
   framework::VariableNameMap var_in_map =
       CreateVarNameMap(info, "split", ins, true);
   framework::VariableNameMap var_out_map =
       CreateVarNameMap(info, "split", outs, false);
-  framework::OperatorWithKernel op("split", var_in_map, var_out_map,
-                                   split_attr_map);
+  auto op = framework::OpRegistry::CreateOp("split", var_in_map, var_out_map,
+                                            split_attr_map);
   framework::RuntimeContext ctx = PrepareRuntimeContext(ins, outs);
   ASSERT_NO_FATAL_FAILURE(PreparedOp preparedOp = PreparedOp::Prepare(
-                              ins, outs, op, place, &split_attr_map));
+                              ins, outs,
+                              dynamic_cast<framework::OperatorWithKernel&>(*op),
+                              place, split_attr_map));
 }
 
 const framework::Tensor* GetTensorFromVar(const framework::Variable& var);
@@ -147,19 +150,22 @@ TEST(test_prepare_op, test_prepare_data) {
   var_pair out_pair = var_pair("Out", vb_vector(1, vout));
   imperative::NameVarBaseMap ins = {x_pair};
   imperative::NameVarBaseMap outs = {out_pair};
-  framework::AttributeMap assign_attr_map;
-  const auto& info = framework::OpInfoMap::Instance().Get("assign");
+  const std::string op_type = "relu";
+  framework::AttributeMap attr_map;
+  const auto& info = framework::OpInfoMap::Instance().Get(op_type);
+  if (info.Checker()) info.Checker()->Check(&attr_map);
   framework::VariableNameMap var_in_map =
-      CreateVarNameMap(info, "assign", ins, true);
+      CreateVarNameMap(info, op_type, ins, true);
   framework::VariableNameMap var_out_map =
-      CreateVarNameMap(info, "assign", outs, false);
-  framework::OperatorWithKernel assign_op("assign", var_in_map, var_out_map,
-                                          assign_attr_map);
+      CreateVarNameMap(info, op_type, outs, false);
+  auto op = framework::OpRegistry::CreateOp(op_type, var_in_map, var_out_map,
+                                            attr_map);
   framework::RuntimeContext ctx = PrepareRuntimeContext(ins, outs);
 
   // test if it can be transformed to GPU place
-  PreparedOp prepared_op =
-      PreparedOp::Prepare(ins, outs, assign_op, gpu_place, &assign_attr_map);
+  PreparedOp prepared_op = PreparedOp::Prepare(
+      ins, outs, dynamic_cast<framework::OperatorWithKernel&>(*op), gpu_place,
+      attr_map);
   for (const auto& name_pair : ins) {
     for (const auto& vb : name_pair.second) {
       ASSERT_TRUE(platform::is_same_place(
@@ -191,19 +197,23 @@ TEST(test_prepare_op, test_prepare_data_same_place) {
   var_pair out_pair = var_pair("Out", vb_vector(1, vout));
   imperative::NameVarBaseMap ins = {x_pair};
   imperative::NameVarBaseMap outs = {out_pair};
-  framework::AttributeMap assign_attr_map;
-  const auto& info = framework::OpInfoMap::Instance().Get("assign");
+  framework::AttributeMap attr_map;
+  const std::string op_type = "relu";
+  const auto& info = framework::OpInfoMap::Instance().Get(op_type);
+  if (info.Checker()) info.Checker()->Check(&attr_map);
   framework::VariableNameMap var_in_map =
-      CreateVarNameMap(info, "assign", ins, true);
+      CreateVarNameMap(info, op_type, ins, true);
   framework::VariableNameMap var_out_map =
-      CreateVarNameMap(info, "assign", outs, false);
-  framework::OperatorWithKernel assign_op("assign", var_in_map, var_out_map,
-                                          assign_attr_map);
+      CreateVarNameMap(info, op_type, outs, false);
+
+  auto op = framework::OpRegistry::CreateOp(op_type, var_in_map, var_out_map,
+                                            attr_map);
   framework::RuntimeContext ctx = PrepareRuntimeContext(ins, outs);
 
-  // test if it never transfered on GPU place
-  PreparedOp prepared_op =
-      PreparedOp::Prepare(ins, outs, assign_op, cpu_place, &assign_attr_map);
+  // test if it never transferred on GPU place
+  PreparedOp prepared_op = PreparedOp::Prepare(
+      ins, outs, dynamic_cast<framework::OperatorWithKernel&>(*op), cpu_place,
+      attr_map);
   for (const auto& name_pair : ins) {
     for (const auto& vb : name_pair.second) {
       ASSERT_TRUE(platform::is_same_place(
@@ -215,4 +225,4 @@ TEST(test_prepare_op, test_prepare_data_same_place) {
 }  // namespace paddle
 
 USE_OP(split);
-USE_OP(assign);
+USE_OP(relu);

@@ -14,8 +14,9 @@
 
 from __future__ import print_function
 
-import unittest
-from paddle.fluid.tests.unittests.test_concat_op import TestConcatOp, TestConcatOp2, TestConcatOp3, TestConcatOp4, TestConcatOp5
+import unittest, sys
+sys.path.append("../")
+from test_concat_op import TestConcatOp, TestConcatOp2, TestConcatOp3, TestConcatOp4, TestConcatOp5
 
 if __name__ == '__main__':
     unittest.main()

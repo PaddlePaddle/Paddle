@@ -142,7 +142,7 @@ The cumulative sum of the elements along a given axis. By default, the first ele
 
 Args:
     x (Variable): Input of cumsum operator, the Tensor/LoDTensor needed to be cumsumed. 
-    axis (int, optional): The dimenstion to accumulate along. -1 means the last dimenstion. Default is -1.
+    axis (int, optional): The dimension to accumulate along. -1 means the last dimension. Default is -1.
     exclusive (bool, optional): Whether to perform exclusive cumsum. Default is False.
     reverse (bool, optional): If true, the cumsum is performed in the reversed direction. Default is False.
 
@@ -245,7 +245,7 @@ __all__ += ['gelu']
 _gelu_ = generate_layer_fn('gelu')
 
 
-def gelu(x):
+def gelu(x, approximate=False):
     locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():
@@ -259,6 +259,11 @@ gelu.__doc__ = """
 For more details, see [Gaussian Error Linear Units](https://arxiv.org/abs/1606.08415).
 
 Equation:
+    if approximate is True
+    ..  math::
+        out = 0.5 * x * (1 + tanh(\\sqrt{\\frac{2}{\\pi}} * (x + 0.044715x^{3})))
+
+    else
     ..  math::
         out = 0.5 * x * (1 + erf(\\frac{x}{\\sqrt{2}}))
 
@@ -317,4 +322,83 @@ Examples:
         y_np
         # array([[ 0.70456535, -0.15380788, -0.13207214],
         #        [ 0.08796856,  0.20387867,  0.2080159 ]], dtype=float32)
+"""
+
+__all__ += ['erf']
+
+_erf_ = generate_layer_fn('erf')
+
+
+def erf(x):
+    locals_var = locals().copy()
+    kwargs = dict()
+    for name, val in locals_var.items():
+        if val is not None:
+            kwargs[name] = val
+    return _erf_(**kwargs)
+
+
+erf.__doc__ = """
+:strong:`Erf Operator`
+For more details, see [Error function](https://en.wikipedia.org/wiki/Error_function).
+
+Equation:
+    ..  math::
+        out = \\frac{2}{\\sqrt{\\pi}} \\int_{0}^{x}e^{- \\eta^{2}}d\\eta
+
+Args:
+
+    x(Variable): The input of Erf op, Tensor or LoDTensor, dtype: float32 or float64.
+
+Returns:
+
+    Variable: The output of Erf op, Tensor or LoDTensor, dtype: float32 or float64, the same as the input, shape: the same as the input.
+
+Examples:
+    
+    .. code-block:: python
+    
+        # declarative mode
+        import numpy as np
+        from paddle import fluid
+        
+        x = fluid.data(name="x", shape=(-1, 3), dtype="float32")
+        y = fluid.layers.erf(x)
+        
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        start = fluid.default_startup_program()
+        main = fluid.default_main_program()
+        
+        data = np.random.randn(2, 3).astype("float32")
+        exe.run(start)
+        
+        y_np, = exe.run(main, feed={"x": data}, fetch_list=[y])
+        
+        data
+        # array([[ 0.4643714 , -1.1509596 ,  1.2538221 ],
+        #        [ 0.34369683,  0.27478245,  1.1805398 ]], dtype=float32)
+        y_np
+        # array([[ 0.48863927, -0.8964121 ,  0.9237998 ],
+        #        [ 0.37307587,  0.30242872,  0.9049887 ]], dtype=float32)
+
+    .. code-block:: python
+    
+        # imperative mode
+        import numpy as np
+        from paddle import fluid
+        import paddle.fluid.dygraph as dg
+        
+        data = np.random.randn(2, 3).astype("float32")
+        place = fluid.CPUPlace()
+        with dg.guard(place) as g:
+            x = dg.to_variable(data)
+            y = fluid.layers.erf(x)
+            y_np = y.numpy()
+        data
+        # array([[ 0.4643714 , -1.1509596 ,  1.2538221 ],
+        #        [ 0.34369683,  0.27478245,  1.1805398 ]], dtype=float32)
+        y_np
+        # array([[ 0.48863927, -0.8964121 ,  0.9237998 ],
+        #        [ 0.37307587,  0.30242872,  0.9049887 ]], dtype=float32)
 """

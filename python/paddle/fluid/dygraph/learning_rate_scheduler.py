@@ -88,9 +88,9 @@ class PiecewiseDecay(LearningRateDecay):
         boundaries(list): A list of steps numbers. The type of element in the list is python int. 
         values(list): A list of learning rate values that will be picked during
             different step boundaries. The type of element in the list is python float.
-        begin(int): The begin step to initilize the global_step in the description above.
+        begin(int): The begin step to initialize the global_step in the description above.
         step(int, optional): The step size used to calculate the new global_step in the description above.
-            The defalult value is 1.
+            The default value is 1.
         dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
             'float32', 'float64'. The default value is 'float32'.
 
@@ -104,8 +104,10 @@ class PiecewiseDecay(LearningRateDecay):
           boundaries = [10000, 20000]
           values = [1.0, 0.5, 0.1]
           with fluid.dygraph.guard():
+              emb = fluid.dygraph.Embedding( [10, 10] )
               optimizer = fluid.optimizer.SGD(
-                 learning_rate=fluid.dygraph.PiecewiseDecay(boundaries, values, 0) )
+                 learning_rate=fluid.dygraph.PiecewiseDecay(boundaries, values, 0),
+                 parameter_list = emb.parameters() )
     """
 
     def __init__(self, boundaries, values, begin, step=1, dtype='float32'):
@@ -156,7 +158,7 @@ class NaturalExpDecay(LearningRateDecay):
             default value is False.
         begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
         step(int, optional): The step size used to calculate the new global_step in the description above.
-            The defalult value is 1.
+            The default value is 1.
         dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
             'float32', 'float64'. The default value is 'float32'.
 
@@ -236,7 +238,7 @@ class ExponentialDecay(LearningRateDecay):
             default value is False.
         begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
         step(int, optional): The step size used to calculate the new global_step in the description above.
-            The defalult value is 1.
+            The default value is 1.
         dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
             'float32', 'float64'. The default value is 'float32'.
 
@@ -310,7 +312,7 @@ class InverseTimeDecay(LearningRateDecay):
             default value is False.
         begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
         step(int, optional): The step size used to calculate the new global_step in the description above.
-            The defalult value is 1.
+            The default value is 1.
         dtype(str, optional): The data type used to create the learning rate variable. The data type can be 
             'float32', 'float64'. The default value is 'float32'.
 
@@ -323,12 +325,14 @@ class InverseTimeDecay(LearningRateDecay):
           import paddle.fluid as fluid
           base_lr = 0.1
           with fluid.dygraph.guard():
+              emb = fluid.dygraph.Embedding([10, 10])
               sgd_optimizer = fluid.optimizer.SGD(
 	          learning_rate=fluid.dygraph.InverseTimeDecay(
 		        learning_rate=base_lr,
 		        decay_steps=10000,
 		        decay_rate=0.5,
-		        staircase=True))
+		        staircase=True),
+                  parameter_list = emb.parameters())
 
     """
 
@@ -389,7 +393,7 @@ class PolynomialDecay(LearningRateDecay):
         cycle(bool, optional): If set true, decay the learning rate every decay_steps. The default value is False.
         begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
         step(int, optional): The step size used to calculate the new global_step in the description above.
-            The defalult value is 1.
+            The default value is 1.
         dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
             'float32', 'float64'. The default value is 'float32'.
 
@@ -404,9 +408,11 @@ class PolynomialDecay(LearningRateDecay):
           total_step = 5000
           end_lr = 0
           with fluid.dygraph.guard():
+              emb = fluid.dygraph.Embedding( [10, 10])
               optimizer  = fluid.optimizer.SGD(
                   learning_rate = fluid.dygraph.PolynomialDecay(
-                  start_lr, total_step, end_lr, power=1.0) )
+                  start_lr, total_step, end_lr, power=1.0),
+                  parameter_list = emb.parameters())
 
     """
 
@@ -465,7 +471,7 @@ class CosineDecay(LearningRateDecay):
         epochs(int): The number of epochs.
         begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
         step(int, optional): The step size used to calculate the new global_step in the description above.
-            The defalult value is 1.
+            The default value is 1.
         dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
             'float32', 'float64'. The default value is 'float32'.
 
@@ -511,7 +517,7 @@ class NoamDecay(LearningRateDecay):
 
     .. math::
 
-        decayed\_learning\_rate = d_{model}^{-0.5} * min(global\_step^{-0.5}, global\_step * warmup\_steps^{-1.5})
+        decayed\_learning\_rate = learning\_rate * d_{model}^{-0.5} * min(global\_step^{-0.5}, global\_step * warmup\_steps^{-1.5})
 
     Please reference `attention is all you need <https://arxiv.org/pdf/1706.03762.pdf>`_ 
 
@@ -522,9 +528,12 @@ class NoamDecay(LearningRateDecay):
             it's a tensor with shape [1] and the data type can be int32 or int64. The type can also be python int.
         begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
         step(int, optional): The step size used to calculate the new global_step in the description above.
-            The defalult value is 1.
+            The default value is 1.
         dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
             'float32', 'float64'. The default value is 'float32'.
+        learning_rate(Variable|float|int): The initial learning rate. If the type
+            is Variable, it's a tensor with shape [1], the data type can be
+            float32 or float64. It also can be set to python int number. Default 1.0
 
     Returns:
         None.
@@ -536,14 +545,23 @@ class NoamDecay(LearningRateDecay):
           warmup_steps = 100
           learning_rate = 0.01
           with fluid.dygraph.guard():
+              emb = fluid.dygraph.Embedding([10, 10])
               optimizer  = fluid.optimizer.SGD(
                   learning_rate = fluid.dygraph.NoamDecay(
                          1/(warmup_steps *(learning_rate ** 2)),
-                         warmup_steps) )
+                         warmup_steps),
+                  parameter_list = emb.parameters())
     """
 
-    def __init__(self, d_model, warmup_steps, begin=1, step=1, dtype='float32'):
+    def __init__(self,
+                 d_model,
+                 warmup_steps,
+                 begin=1,
+                 step=1,
+                 dtype='float32',
+                 learning_rate=1.0):
         super(NoamDecay, self).__init__(begin, step, dtype)
+        self.learning_rate = learning_rate
         self.d_model = d_model
         self.warmup_steps = warmup_steps
 
@@ -551,7 +569,8 @@ class NoamDecay(LearningRateDecay):
         from .. import layers
         a = self.create_lr_var(self.step_num**-0.5)
         b = self.create_lr_var((self.warmup_steps**-1.5) * self.step_num)
-        lr_value = (self.d_model**-0.5) * layers.elementwise_min(a, b)
+        lr_value = self.learning_rate * (self.d_model
+                                         **-0.5) * layers.elementwise_min(a, b)
         return lr_value
 
 
@@ -584,7 +603,7 @@ class LinearLrWarmup(LearningRateDecay):
         end_lr (float): Final learning rate of warm up.
         begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
         step(int, optional): The step size used to calculate the new global_step in the description above.
-            The defalult value is 1.
+            The default value is 1.
         dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
             'float32', 'float64'. The default value is 'float32'.
     
@@ -626,9 +645,8 @@ class LinearLrWarmup(LearningRateDecay):
                 format(learning_rate))
         self.learning_rate = learning_rate
         self.warmup_steps = warmup_steps
-        assert (end_lr > start_lr,
-                "end_lr {} MUST GREATER than start_lr {}".format(end_lr,
-                                                                 start_lr))
+        assert end_lr > start_lr, "end_lr {} must be greater than start_lr {}".format(
+            end_lr, start_lr)
         self.lr_ratio_before_warmup = (
             float(end_lr) - float(start_lr)) / float(warmup_steps)
 

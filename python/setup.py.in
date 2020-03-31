@@ -112,6 +112,7 @@ packages=['paddle',
           'paddle.distributed',
           'paddle.fluid',
           'paddle.fluid.dygraph',
+          'paddle.fluid.dygraph.dygraph_to_static',
           'paddle.fluid.proto',
           'paddle.fluid.proto.profiler',
           'paddle.fluid.distributed',
@@ -190,11 +191,13 @@ if '${WITH_MKL}' == 'ON':
 else:
     if os.name == 'nt':
         # copy the openblas.dll
-        shutil.copy(os.path.dirname('${CBLAS_LIBRARIES}') + '/openblas' + ext_name, libs_path)
+        shutil.copy('${OPENBLAS_SHARED_LIB}', libs_path)
         package_data['paddle.libs'] += ['openblas' + ext_name]
 
 if '${WITH_PSLIB}' == 'ON':
     shutil.copy('${PSLIB_LIB}', libs_path)
+    if os.path.exists('${PSLIB_VERSION_PY}'):
+        shutil.copy('${PSLIB_VERSION_PY}', '${PADDLE_BINARY_DIR}/python/paddle/fluid/incubate/fleet/parameter_server/pslib/')
     package_data['paddle.libs'] += ['libps' + ext_name]
 
 if '${WITH_MKLDNN}' == 'ON':
@@ -203,14 +206,19 @@ if '${WITH_MKLDNN}' == 'ON':
         # TODO(typhoonzero): use install_name_tool to patch mkl libs once
         # we can support mkl on mac.
         #
-        # change rpath of libmkldnn.so.0, add $ORIGIN/ to it.
+        # change rpath of libdnnl.so.1, add $ORIGIN/ to it.
         # The reason is that all thirdparty libraries in the same directory,
-        # thus, libmkldnn.so.0 will find libmklml_intel.so and libiomp5.so.
+        # thus, libdnnl.so.1 will find libmklml_intel.so and libiomp5.so.
         command = "patchelf --set-rpath '$ORIGIN/' ${MKLDNN_SHARED_LIB}"
         if os.system(command) != 0:
-            raise Exception("patch libmkldnn.so failed, command: %s" % command)
-    package_data['paddle.libs']+=['libmkldnn.so.0' if os.name != 'nt' else ('mkldnn' + ext_name)]
+            raise Exception("patch libdnnl.so failed, command: %s" % command)
     shutil.copy('${MKLDNN_SHARED_LIB}', libs_path)
+    if os.name != 'nt':
+        shutil.copy('${MKLDNN_SHARED_LIB_1}', libs_path)
+        package_data['paddle.libs']+=['libmkldnn.so.0', 'libdnnl.so.1']
+    else:
+        package_data['paddle.libs']+=['mkldnn.dll']
+
 if '${WITH_NGRAPH}' == 'ON':
     # only change rpath in Release mode,
     # since in Debug mode, nGraph lib may be too large to be changed?

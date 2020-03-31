@@ -14,8 +14,9 @@
 
 from __future__ import print_function
 
-import unittest
-from paddle.fluid.tests.unittests.test_dropout_op import TestDropoutOp, TestDropoutOp2, TestDropoutOp3, TestDropoutOp4, TestDropoutOp5, TestDropoutOp6, TestDropoutOp7, TestDropoutOp8, TestDropoutOp9
+import unittest, sys
+sys.path.append("../")
+from test_dropout_op import TestDropoutOp, TestDropoutOp2, TestDropoutOp3, TestDropoutOp4, TestDropoutOp5, TestDropoutOp6, TestDropoutOp7, TestDropoutOp8, TestDropoutOp9
 
 if __name__ == '__main__':
     unittest.main()

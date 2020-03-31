@@ -27,8 +27,7 @@ class TestGatherNdOpWithEmptyIndex(OpTest):
 
     def setUp(self):
         self.op_type = "gather_nd"
-        xnp = np.array(
-            [[65, 17, 2], [-14, -25, -1], [76, 22, 3]]).astype("float32")
+        xnp = np.random.random((5, 20)).astype("float64")
         self.inputs = {'X': xnp, 'Index': np.array([[], []]).astype("int32")}
         self.outputs = {
             'Out': np.vstack((xnp[np.newaxis, :], xnp[np.newaxis, :]))
@@ -48,8 +47,7 @@ class TestGatherNdOpWithLowIndex(OpTest):
 
     def setUp(self):
         self.op_type = "gather_nd"
-        xnp = np.array(
-            [[65, 17, 2], [14, 25, 1], [76, 22, 3]]).astype("float32")
+        xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
         index = np.array([[1], [2]]).astype("int64")
 
         self.inputs = {'X': xnp, 'Index': index}
@@ -70,8 +68,7 @@ class TestGatherNdOpWithSameIndexAsX(OpTest):
 
     def setUp(self):
         self.op_type = "gather_nd"
-        xnp = np.array(
-            [[65, 17, 2], [14, 25, 1], [76, 22, 3]]).astype("float64")
+        xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
         index = np.array([[1, 1], [2, 1]]).astype("int64")
 
         self.inputs = {'X': xnp, 'Index': index}
@@ -92,7 +89,7 @@ class TestGatherNdOpWithHighRankSame(OpTest):
     def setUp(self):
         self.op_type = "gather_nd"
         shape = (20, 9, 8, 1, 31)
-        xnp = np.random.rand(*shape)
+        xnp = np.random.rand(*shape).astype("float64")
         index = np.vstack([np.random.randint(0, s, size=150) for s in shape]).T
 
         self.inputs = {'X': xnp, 'Index': index.astype("int32")}
@@ -113,7 +110,7 @@ class TestGatherNdOpWithHighRankDiff(OpTest):
     def setUp(self):
         self.op_type = "gather_nd"
         shape = (20, 9, 8, 1, 31)
-        xnp = np.random.rand(*shape).astype("double")
+        xnp = np.random.rand(*shape).astype("float64")
         index = np.vstack([np.random.randint(0, s, size=1000) for s in shape]).T
         index_re = index.reshape([10, 5, 20, 5])
 

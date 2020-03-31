@@ -96,7 +96,7 @@ class SequenceUnpadOpMaker : public framework::OpProtoAndCheckerMaker {
                     [ 6.0,  7.0,  8.0,  9.0, 10.0],
                     [11.0, 12.0, 13.0, 14.0, 15.0]], 
 `     
-      in which there are 3 sequences padded to length 5, and the acutal length 
+      in which there are 3 sequences padded to length 5, and the actual length 
       specified by Input(Length):
 
           Length.data = [2, 3, 4],
@@ -142,18 +142,16 @@ class SequenceUnpadGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("sequence_unpad_grad");
     op->SetAttrMap(this->Attrs());
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    return op;
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(
     SequenceUnpadGradOpNoNeedBufferVarsInference, "X");
 
 }  // namespace operators

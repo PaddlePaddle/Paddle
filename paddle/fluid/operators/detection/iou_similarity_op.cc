@@ -61,7 +61,10 @@ class IOUSimilarityOpMaker : public framework::OpProtoAndCheckerMaker {
              "[xmin, ymin] is the left top coordinate of the box if the "
              "input is image feature map, and [xmax, ymax] is the right "
              "bottom coordinate of the box.");
-
+    AddAttr<bool>("box_normalized",
+                  "(bool, default true) "
+                  "whether treat the priorbox as a normalized box")
+        .SetDefault(true);
     AddOutput("Out",
               "(LoDTensor, the lod is same as input X) The output of "
               "iou_similarity op, a tensor with shape [N, M] "

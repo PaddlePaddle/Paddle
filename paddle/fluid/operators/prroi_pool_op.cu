@@ -185,8 +185,8 @@ __global__ void GPUPRROIPoolBackward(
     PrRoIPoolingCoorBackward(
         s_w, e_w, s_h, e_h, width, height, win_start_w, win_start_h, win_end_w,
         win_end_h, pw, ph, pooled_width, pooled_height, win_size, spatial_scale,
-        offset_in_data, offset_out_data, offset_input_grad_data,
-        offset_input_roi_grad_data, GPUAccumulateRois<T>,
+        offset_in_data, offset_out_data, offset_input_roi_grad_data,
+        offset_output_grad_data, GPUAccumulateRois<T>,
         [](const T x, const T y) { return max(x, y); },
         [](const T x, const T y) { return min(x, y); });
   }
@@ -214,41 +214,66 @@ class GPUPRROIPoolOpKernel : public framework::OpKernel<T> {
     int rois_num = rois->dims()[0];
     if (rois_num == 0) return;
 
-    auto rois_lod = rois->lod().back();
-    int rois_batch_size = rois_lod.size() - 1;
-    PADDLE_ENFORCE_EQ(
-        rois_batch_size, batch_size,
-        "The rois_batch_size and input(X) batch_size must be the same.");
-    int rois_num_with_lod = rois_lod[rois_batch_size];
-    PADDLE_ENFORCE_EQ(rois_num, rois_num_with_lod,
-                      "The rois_num from input and lod must be the same.");
-
     // set rois batch id
     framework::Tensor rois_batch_id_list;
     rois_batch_id_list.Resize({rois_num});
     int* rois_batch_id_data =
         rois_batch_id_list.mutable_data<int>(platform::CPUPlace());
-    for (int n = 0; n < rois_batch_size; ++n) {
-      for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
-        rois_batch_id_data[i] = n;
+
+    if (ctx.HasInput("BatchRoINums") || rois->lod().empty()) {
+      auto* batchroinum = ctx.Input<Tensor>("BatchRoINums");
+      framework::Tensor batch_index_cpu;
+      framework::TensorCopySync(*batchroinum, platform::CPUPlace(),
+                                &batch_index_cpu);
+
+      int rois_batch_size = batchroinum->dims()[0];
+      auto* batch_index = batch_index_cpu.data<int64_t>();
+      size_t c = 0;
+      for (int n = 0; n < rois_batch_size; ++n) {
+        for (int64_t k = 0; k < batch_index[n]; ++k) {
+          rois_batch_id_data[c] = n;
+          c = c + 1;
+        }
+      }
+
+    } else {
+      auto rois_lod = rois->lod().back();
+      int rois_batch_size = rois_lod.size() - 1;
+      PADDLE_ENFORCE_EQ(
+          rois_batch_size, batch_size,
+          platform::errors::InvalidArgument(
+              "The rois_batch_size and input(X) batch_size must be the same."));
+      int rois_num_with_lod = rois_lod[rois_batch_size];
+      PADDLE_ENFORCE_EQ(
+          rois_num, rois_num_with_lod,
+          platform::errors::InvalidArgument(
+              "The rois_num from input and lod must be the same."));
+
+      for (int n = 0; n < rois_batch_size; ++n) {
+        for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+          rois_batch_id_data[i] = n;
+        }
       }
     }
-
-    framework::Tensor rois_batch_id_list_gpu;
-    framework::TensorCopy(rois_batch_id_list, ctx.GetPlace(),
-                          ctx.device_context(), &rois_batch_id_list_gpu);
 
     int output_size = out->numel();
     int blocks = NumBlocks(output_size);
     int threads = kNumCUDAThreads;
 
+    auto cplace = platform::CPUPlace();
+    auto& dev_ctx = ctx.cuda_device_context();
+    int bytes = rois_batch_id_list.numel() * sizeof(int);
+    auto roi_ptr = memory::Alloc(dev_ctx, bytes);
+    int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
+    const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+    memory::Copy(gplace, roi_id_data, cplace, rois_batch_id_data, bytes,
+                 dev_ctx.stream());
+
     // call cuda kernel function
-    GPUPRROIPoolForward<
-        T><<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>(
+    GPUPRROIPoolForward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
         output_size, in->data<T>(), rois->data<T>(), spatial_scale,
         input_channels, height, width, output_channels, pooled_height,
-        pooled_width, rois_batch_id_list_gpu.data<int>(),
-        out->mutable_data<T>(ctx.GetPlace()));
+        pooled_width, roi_id_data, out->mutable_data<T>(ctx.GetPlace()));
   }
 };
 
@@ -275,23 +300,50 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
     int height = in->dims()[2];
     int width = in->dims()[3];
 
-    if (input_grad) {
+    if (input_grad || input_roi_grad) {
       // set roi batch id
       framework::Tensor rois_batch_id_list;
       rois_batch_id_list.Resize({rois_num});
       int* rois_batch_id_data =
           rois_batch_id_list.mutable_data<int>(platform::CPUPlace());
-      auto rois_lod = rois->lod().back();
-      int rois_batch_size = rois_lod.size() - 1;
-      for (int n = 0; n < rois_batch_size; ++n) {
-        for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
-          rois_batch_id_data[i] = n;
+
+      if (ctx.HasInput("BatchRoINums") || rois->lod().empty()) {
+        auto* batchroinum = ctx.Input<Tensor>("BatchRoINums");
+        framework::Tensor batch_index_cpu;
+        framework::TensorCopySync(*batchroinum, platform::CPUPlace(),
+                                  &batch_index_cpu);
+
+        int rois_batch_size = batchroinum->dims()[0];
+        auto* batch_index = batch_index_cpu.data<int64_t>();
+        size_t c = 0;
+        for (int n = 0; n < rois_batch_size; ++n) {
+          for (int64_t k = 0; k < batch_index[n]; ++k) {
+            rois_batch_id_data[c] = n;
+            c = c + 1;
+          }
+        }
+      } else {
+        PADDLE_ENFORCE_EQ(rois->lod().empty(), false,
+                          platform::errors::InvalidArgument(
+                              "the lod of Input ROIs should not be empty when "
+                              "BatchRoINums is None!"));
+        auto rois_lod = rois->lod().back();
+        int rois_batch_size = rois_lod.size() - 1;
+        for (int n = 0; n < rois_batch_size; ++n) {
+          for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+            rois_batch_id_data[i] = n;
+          }
         }
       }
 
-      framework::Tensor rois_batch_id_list_gpu;
-      framework::TensorCopy(rois_batch_id_list, ctx.GetPlace(),
-                            ctx.device_context(), &rois_batch_id_list_gpu);
+      auto cplace = platform::CPUPlace();
+      auto& dev_ctx = ctx.cuda_device_context();
+      int bytes = rois_batch_id_list.numel() * sizeof(int);
+      auto roi_ptr = memory::Alloc(dev_ctx, bytes);
+      int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
+      const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+      memory::Copy(gplace, roi_id_data, cplace, rois_batch_id_data, bytes,
+                   dev_ctx.stream());
 
       input_grad->mutable_data<T>(ctx.GetPlace());
       math::SetConstant<DeviceContext, T> set_zero;
@@ -304,12 +356,10 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
       int threads = kNumCUDAThreads;
 
       if (output_grad_size > 0) {
-        GPUPRROIPoolBackward<
-            T><<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>(
+        GPUPRROIPoolBackward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
             output_grad_size, in->data<T>(), rois->data<T>(),
             output_grad->data<T>(), spatial_scale, input_channels, height,
-            width, output_channels, pooled_height, pooled_width,
-            rois_batch_id_list_gpu.data<int>(),
+            width, output_channels, pooled_height, pooled_width, roi_id_data,
             input_grad->mutable_data<T>(ctx.GetPlace()), out->data<T>(),
             input_roi_grad->mutable_data<T>(ctx.GetPlace()));
       }

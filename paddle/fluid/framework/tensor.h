@@ -38,9 +38,9 @@ class Tensor {
 #ifdef PADDLE_WITH_MKLDNN
 
  public:
-  inline mkldnn::memory::format format() const { return format_; }
+  inline mkldnn::memory::format_tag format() const { return format_; }
 
-  inline void set_format(const mkldnn::memory::format format) {
+  inline void set_format(const mkldnn::memory::format_tag format) {
     format_ = format;
   }
 
@@ -54,7 +54,7 @@ class Tensor {
    *       this field.
    */
 
-  mkldnn::memory::format format_ = mkldnn::memory::format::format_undef;
+  mkldnn::memory::format_tag format_ = mkldnn::memory::format_tag::undef;
 #endif
 
  public:
@@ -158,6 +158,10 @@ class Tensor {
   void ShareBufferWith(const Tensor& tensor) {
     holder_ = tensor.holder_;
     offset_ = tensor.offset_;
+  }
+
+  bool IsSharedBufferWith(const Tensor& src) const {
+    return holder_ && holder_ == src.Holder();
   }
 
   const std::shared_ptr<memory::Allocation>& Holder() const { return holder_; }

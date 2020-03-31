@@ -48,7 +48,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/dynload/curand.h"
-#if !defined(__APPLE__) && !defined(_WIN32)
+#if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
@@ -207,6 +207,10 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
 
 inline bool is_error(bool stat) { return !stat; }
 
+inline std::string build_ex_string(bool stat, const std::string& msg) {
+  return msg;
+}
+
 inline void throw_on_error(bool stat, const std::string& msg) {
 #ifndef REPLACE_ENFORCE_GLOG
   throw std::runtime_error(msg);
@@ -215,13 +219,12 @@ inline void throw_on_error(bool stat, const std::string& msg) {
 #endif
 }
 
-inline void throw_on_error(const platform::ErrorSummary& error) {
-#ifndef REPLACE_ENFORCE_GLOG
-  throw std::runtime_error(error.ToString());
-#else
-  LOG(FATAL) << error.ToString();
-#endif
-}
+// Note: This Macro can only be used within enforce.h
+#define __THROW_ERROR_INTERNAL__(...)                                \
+  do {                                                               \
+    throw ::paddle::platform::EnforceNotMet(                         \
+        ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
+  } while (0)
 
 /** ENFORCE EXCEPTION AND MACROS **/
 
@@ -251,12 +254,6 @@ struct EnforceNotMet : public std::exception {
         ::paddle::platform::ErrorSummary(__VA_ARGS__), __FILE__, __LINE__); \
   } while (0)
 
-#define PADDLE_THROW_ERROR(...)                                      \
-  do {                                                               \
-    throw ::paddle::platform::EnforceNotMet(                         \
-        ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
-  } while (0)
-
 #if defined(__CUDA_ARCH__)
 // For cuda, the assertions can affect performance and it is therefore
 // recommended to disable them in production code
@@ -270,18 +267,21 @@ struct EnforceNotMet : public std::exception {
     }                                                                        \
   } while (0)
 #else
-#define PADDLE_ENFORCE(COND, ...)                                         \
-  do {                                                                    \
-    auto __cond__ = (COND);                                               \
-    if (UNLIKELY(::paddle::platform::is_error(__cond__))) {               \
-      try {                                                               \
-        ::paddle::platform::throw_on_error(                               \
-            ::paddle::platform::ErrorSummary(__VA_ARGS__));               \
-      } catch (...) {                                                     \
-        throw ::paddle::platform::EnforceNotMet(std::current_exception(), \
-                                                __FILE__, __LINE__);      \
-      }                                                                   \
-    }                                                                     \
+#define PADDLE_ENFORCE(COND, ...)                                           \
+  do {                                                                      \
+    auto __cond__ = (COND);                                                 \
+    if (UNLIKELY(::paddle::platform::is_error(__cond__))) {                 \
+      try {                                                                 \
+        ::paddle::platform::throw_on_error(                                 \
+            __cond__,                                                       \
+            ::paddle::platform::build_ex_string(                            \
+                __cond__,                                                   \
+                ::paddle::platform::ErrorSummary(__VA_ARGS__).ToString())); \
+      } catch (...) {                                                       \
+        throw ::paddle::platform::EnforceNotMet(std::current_exception(),   \
+                                                __FILE__, __LINE__);        \
+      }                                                                     \
+    }                                                                       \
   } while (0)
 #endif
 
@@ -298,10 +298,11 @@ struct EnforceNotMet : public std::exception {
  *    extra messages is also supported, for example:
  *    PADDLE_ENFORCE(a, b, "some simple enforce failed between %d numbers", 2)
  */
+
 #define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                          \
   do {                                                               \
     if (UNLIKELY(nullptr == (__VAL))) {                              \
-      PADDLE_THROW_ERROR(                                            \
+      __THROW_ERROR_INTERNAL__(                                      \
           "%s\n  [Hint: " #__VAL " should not be null.]",            \
           ::paddle::platform::ErrorSummary(__VA_ARGS__).ToString()); \
     }                                                                \
@@ -323,7 +324,7 @@ struct EnforceNotMet : public std::exception {
       constexpr bool __kCanToString__ =                                        \
           ::paddle::platform::details::CanToString<__TYPE1__>::kValue &&       \
           ::paddle::platform::details::CanToString<__TYPE2__>::kValue;         \
-      PADDLE_THROW_ERROR(                                                      \
+      __THROW_ERROR_INTERNAL__(                                                \
           "%s\n  [Hint: Expected %s " #__CMP                                   \
           " %s, but received %s " #__INV_CMP " %s.]",                          \
           ::paddle::platform::ErrorSummary(__VA_ARGS__).ToString(), #__VAL1,   \
@@ -412,7 +413,8 @@ inline bool is_error(cudnnStatus_t stat) {
 }
 
 inline std::string build_ex_string(cudnnStatus_t stat, const std::string& msg) {
-  return msg + "\n  [" + platform::dynload::cudnnGetErrorString(stat) + "]";
+  return msg + "\n  [Hint: " + platform::dynload::cudnnGetErrorString(stat) +
+         "]";
 }
 
 inline void throw_on_error(cudnnStatus_t stat, const std::string& msg) {
@@ -431,25 +433,25 @@ inline std::string build_ex_string(cublasStatus_t stat,
                                    const std::string& msg) {
   std::string err;
   if (stat == CUBLAS_STATUS_NOT_INITIALIZED) {
-    err = "CUBLAS: not initialized.";
+    err = "CUBLAS_STATUS_NOT_INITIALIZED";
   } else if (stat == CUBLAS_STATUS_ALLOC_FAILED) {
-    err = "CUBLAS: alloc failed.";
+    err = "CUBLAS_STATUS_ALLOC_FAILED";
   } else if (stat == CUBLAS_STATUS_INVALID_VALUE) {
-    err = "CUBLAS: invalid value.";
+    err = "CUBLAS_STATUS_INVALID_VALUE";
   } else if (stat == CUBLAS_STATUS_ARCH_MISMATCH) {
-    err = "CUBLAS: arch mismatch.";
+    err = "CUBLAS_STATUS_ARCH_MISMATCH";
   } else if (stat == CUBLAS_STATUS_MAPPING_ERROR) {
-    err = "CUBLAS: mapping error.";
+    err = "CUBLAS_STATUS_MAPPING_ERROR";
   } else if (stat == CUBLAS_STATUS_EXECUTION_FAILED) {
-    err = "CUBLAS: execution failed.";
+    err = "CUBLAS_STATUS_EXECUTION_FAILED";
   } else if (stat == CUBLAS_STATUS_INTERNAL_ERROR) {
-    err = "CUBLAS: internal error.";
+    err = "CUBLAS_STATUS_INTERNAL_ERROR";
   } else if (stat == CUBLAS_STATUS_NOT_SUPPORTED) {
-    err = "CUBLAS: not supported, ";
+    err = "CUBLAS_STATUS_NOT_SUPPORTED";
   } else if (stat == CUBLAS_STATUS_LICENSE_ERROR) {
-    err = "CUBLAS: license error.";
+    err = "CUBLAS_STATUS_LICENSE_ERROR";
   }
-  return msg + "\n  [" + err + "]";
+  return msg + "\n  [Hint: " + err + "]";
 }
 
 inline void throw_on_error(cublasStatus_t stat, const std::string& msg) {
@@ -460,7 +462,7 @@ inline void throw_on_error(cublasStatus_t stat, const std::string& msg) {
 #endif
 }
 
-#if !defined(__APPLE__) && !defined(_WIN32)
+#if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 inline bool is_error(ncclResult_t nccl_result) {
   return nccl_result != ncclSuccess;
 }
@@ -500,7 +502,7 @@ DEFINE_CUDA_STATUS_TYPE(curandStatus_t, CURAND_STATUS_SUCCESS);
 DEFINE_CUDA_STATUS_TYPE(cudnnStatus_t, CUDNN_STATUS_SUCCESS);
 DEFINE_CUDA_STATUS_TYPE(cublasStatus_t, CUBLAS_STATUS_SUCCESS);
 
-#if !defined(__APPLE__) && !defined(_WIN32)
+#if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
 #endif
 

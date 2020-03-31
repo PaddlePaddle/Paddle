@@ -29,9 +29,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include <algorithm>
 #include <utility>
+#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/data_feed.h"
+#include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/timer.h"
 
 namespace paddle {
 namespace framework {
@@ -107,6 +110,16 @@ uint64_t FleetWrapper::RunServer() {
 #endif
 }
 
+uint64_t FleetWrapper::RunServer(const std::string& ip, uint32_t port) {
+#ifdef PADDLE_WITH_PSLIB
+  VLOG(3) << "Going to run server with ip " << ip << " port " << port;
+  auto ret = pslib_ptr_->run_server(ip, port);
+  return ret;
+#else
+  return 0;
+#endif
+}
+
 void FleetWrapper::GatherServers(const std::vector<uint64_t>& host_sign_list,
                                  int node_num) {
 #ifdef PADDLE_WITH_PSLIB
@@ -141,6 +154,151 @@ void FleetWrapper::CreateClient2ClientConnection() {
 #endif
 }
 
+void FleetWrapper::PullSparseToLocal(const uint64_t table_id,
+                                     int fea_value_dim) {
+#ifdef PADDLE_WITH_PSLIB
+  size_t fea_keys_size = local_tables_.size();
+  if (fea_keys_size == 0) {
+    return;
+  }
+  local_table_shard_num_ = fea_keys_size;
+  platform::Timer timeline;
+  std::vector<std::thread> threads(fea_keys_size);
+  auto ptl_func = [this, &table_id](int i) {
+    size_t key_size = this->local_tables_[i].size();
+    std::vector<uint64_t> keys;
+    keys.reserve(key_size);
+    std::vector<float*> pull_result_ptr;
+    pull_result_ptr.reserve(key_size);
+
+    for (auto& kv : this->local_tables_[i]) {
+      keys.emplace_back(kv.first);
+      pull_result_ptr.emplace_back(kv.second.data());
+    }
+    auto tt = pslib_ptr_->_worker_ptr->pull_sparse(
+        pull_result_ptr.data(), table_id, keys.data(), key_size);
+    tt.wait();
+    auto status = tt.get();
+    if (status != 0) {
+      LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
+      sleep(sleep_seconds_before_fail_exit_);
+      exit(-1);
+    } else {
+      VLOG(3) << "FleetWrapper Pull sparse to local done with table size: "
+              << pull_result_ptr.size();
+    }
+  };
+  timeline.Start();
+  for (size_t i = 0; i < threads.size(); i++) {
+    threads[i] = std::thread(ptl_func, i);
+  }
+  for (std::thread& t : threads) {
+    t.join();
+  }
+  local_pull_pool_.reset(new ::ThreadPool(pull_local_thread_num_));
+  timeline.Pause();
+#endif
+}
+
+void FleetWrapper::PullSparseVarsFromLocal(
+    const Scope& scope, const uint64_t table_id,
+    const std::vector<std::string>& var_names, std::vector<uint64_t>* fea_keys,
+    std::vector<std::vector<float>>* fea_values, int fea_value_dim) {
+#ifdef PADDLE_WITH_PSLIB
+  fea_keys->clear();
+  fea_keys->resize(0);
+  fea_keys->reserve(MAX_FEASIGN_NUM);
+  for (auto name : var_names) {
+    Variable* var = scope.FindVar(name);
+    if (var == nullptr) {
+      continue;
+    }
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
+    int64_t* ids = tensor->data<int64_t>();
+    size_t len = tensor->numel();
+    for (auto i = 0u; i < len; ++i) {
+      if (ids[i] == 0u) {
+        continue;
+      }
+      fea_keys->push_back(static_cast<uint64_t>(ids[i]));
+    }
+  }
+  fea_values->resize(fea_keys->size() + 1);
+  for (auto& t : *fea_values) {
+    t.resize(fea_value_dim);
+  }
+  size_t key_length = fea_keys->size();
+  int local_step = key_length / pull_local_thread_num_;
+  std::vector<std::future<void>> task_futures;
+  task_futures.reserve(key_length / local_step + 1);
+  for (size_t i = 0; i < key_length; i += local_step) {
+    size_t end = i + local_step < key_length ? i + local_step : key_length;
+    auto pull_local_task = [this, i, end, &fea_values, &fea_keys,
+                            &fea_value_dim] {
+      for (size_t j = i; j < end; j++) {
+        std::memcpy((*fea_values)[j].data(),
+                    local_tables_[(*fea_keys)[j] % local_table_shard_num_]
+                                 [(*fea_keys)[j]]
+                                     .data(),
+                    fea_value_dim * sizeof(float));
+      }
+    };
+    task_futures.emplace_back(
+        local_pull_pool_->enqueue(std::move(pull_local_task)));
+  }
+  for (auto& tf : task_futures) {
+    tf.wait();
+  }
+#endif
+}
+
+void FleetWrapper::ClearLocalTable() {
+#ifdef PADDLE_WITH_PSLIB
+  for (auto& t : local_tables_) {
+    t.clear();
+  }
+#endif
+}
+
+std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
+    const Scope& scope, const uint64_t table_id,
+    const std::vector<std::string>& var_names, std::vector<uint64_t>* fea_keys,
+    std::vector<std::vector<float>>* fea_values, int fea_value_dim) {
+#ifdef PADDLE_WITH_PSLIB
+  fea_keys->clear();
+  fea_keys->resize(0);
+  fea_keys->reserve(MAX_FEASIGN_NUM);
+  for (auto name : var_names) {
+    Variable* var = scope.FindVar(name);
+    if (var == nullptr) {
+      continue;
+    }
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
+    int64_t* ids = tensor->data<int64_t>();
+    size_t len = tensor->numel();
+    for (auto i = 0u; i < len; ++i) {
+      if (ids[i] == 0u) {
+        continue;
+      }
+      fea_keys->push_back(static_cast<uint64_t>(ids[i]));
+    }
+  }
+  fea_values->resize(fea_keys->size() + 1);
+  for (auto& t : *fea_values) {
+    t.resize(fea_value_dim);
+  }
+  std::vector<float*> pull_result_ptr;
+  for (auto& t : *fea_values) {
+    pull_result_ptr.push_back(t.data());
+  }
+  return pslib_ptr_->_worker_ptr->pull_sparse(
+      pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size());
+#endif
+  return std::future<int32_t>();
+}
+
 void FleetWrapper::PullSparseVarsSync(
     const Scope& scope, const uint64_t table_id,
     const std::vector<std::string>& var_names, std::vector<uint64_t>* fea_keys,
@@ -161,7 +319,7 @@ void FleetWrapper::PullSparseVarsSync(
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
     int64_t* ids = tensor->data<int64_t>();
-    int len = tensor->numel();
+    size_t len = tensor->numel();
 
     // skip slots which do not have embedding
     const std::string& emb_name = var_emb_names[var_index];
@@ -350,7 +508,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
     }
-    int len = tensor->numel();
+    size_t len = tensor->numel();
     int64_t* ids = tensor->data<int64_t>();
     int slot = 0;
     if (dump_slot) {
@@ -413,7 +571,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
     }
-    int len = tensor->numel();
+    size_t len = tensor->numel();
     int64_t* ids = tensor->data<int64_t>();
     for (auto id_idx = 0u; id_idx < len; ++id_idx) {
       if (ids[id_idx] == 0) {
@@ -596,7 +754,7 @@ void FleetWrapper::CacheShuffle(int table_id, const std::string& path,
                                 const int mode, const double cache_threshold) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->cache_shuffle(
-      0, path, std::to_string(mode), std::to_string(cache_threshold));
+      table_id, path, std::to_string(mode), std::to_string(cache_threshold));
   ret.wait();
   int32_t feasign_cnt = ret.get();
   if (feasign_cnt == -1) {
@@ -643,6 +801,15 @@ void FleetWrapper::ClearModel() {
   ret.wait();
 #else
   VLOG(0) << "FleetWrapper::ClearModel does nothing when no pslib";
+#endif
+}
+
+void FleetWrapper::ClearOneTable(const uint64_t table_id) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->clear(table_id);
+  ret.wait();
+#else
+  VLOG(0) << "FleetWrapper::ClearOneTable does nothing when no pslib";
 #endif
 }
 

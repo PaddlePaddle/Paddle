@@ -31,15 +31,6 @@ MD5 = '155de2b77c6834dd8eea7cbe88e93acb'
 class TestDatasetSentiment(unittest.TestCase):
     """  TestCases for Sentiment. """
 
-    def setUp(self):
-        paddle.dataset.common.download(
-            URL, 'corpora', md5sum=MD5, save_name='movie_reviews.zip')
-        path = os.path.join(paddle.dataset.common.DATA_HOME, 'corpora')
-        filename = os.path.join(path, 'movie_reviews.zip')
-        zip_file = zipfile.ZipFile(filename)
-        zip_file.extractall(path)
-        zip_file.close()
-
     def test_get_word_dict(self):
         """ Testcase for get_word_dict. """
         words_freq_sorted = paddle.dataset.sentiment.get_word_dict()

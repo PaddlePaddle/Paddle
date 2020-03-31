@@ -37,7 +37,7 @@ class LabelSmoothOp : public framework::OperatorWithKernel {
       auto noise_dims = ctx->GetInputDim("PriorDist");
       auto noise_numel = paddle::framework::product(noise_dims);
       PADDLE_ENFORCE(
-          in_dims[1] == noise_numel,
+          in_dims[in_dims.size() - 1] == noise_numel,
           "The number of elements in Input(PriorDist) must be equal to the "
           "dimension of each label.");
     }
@@ -117,13 +117,11 @@ class LabelSmoothGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("label_smooth_grad");
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 

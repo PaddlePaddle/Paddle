@@ -14,8 +14,10 @@
 
 from __future__ import print_function
 import collections
+import copy
 import six
 import numpy as np
+from ..framework import Variable
 
 
 def convert_to_list(value, n, name, dtype=np.int):
@@ -186,6 +188,24 @@ def map_structure(func, *structure):
     return pack_sequence_as(structure[0], [func(*x) for x in entries])
 
 
+def hold_mutable_vars(structure):
+    """
+    Returns whether structure holds sequence like `list/dict`.
+    """
+    for s in structure:
+        if is_sequence(s):
+            return True
+    return False
+
+
+def copy_mutable_vars(structure):
+    """
+    Returns vars copied from sequence without mutable property.
+    """
+    flat_structure = copy.copy(flatten(structure))
+    return pack_sequence_as(structure, flat_structure)
+
+
 def _recursive_assert_same_structure(nest1, nest2, check_types):
     """
     Helper function for `assert_same_structure`.
@@ -244,3 +264,13 @@ def _is_symmetric_padding(padding, data_dim):
             if padding[i * 2] != padding[i * 2 + 1]:
                 is_sys = False
     return is_sys
+
+
+def _contain_var(list_or_tuple):
+    """
+    Check whether list or tuple contains variable.
+    """
+    for item in list_or_tuple:
+        if isinstance(item, Variable):
+            return True
+    return False

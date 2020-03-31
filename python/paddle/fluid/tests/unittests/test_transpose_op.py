@@ -25,13 +25,13 @@ class TestTransposeOp(OpTest):
     def setUp(self):
         self.init_op_type()
         self.initTestCase()
-        self.inputs = {'X': np.random.random(self.shape).astype("float32")}
+        self.inputs = {'X': np.random.random(self.shape).astype("float64")}
         self.attrs = {
             'axis': list(self.axis),
             'use_mkldnn': self.use_mkldnn,
         }
         self.outputs = {
-            'XShape': np.random.random(self.shape).astype("float32"),
+            'XShape': np.random.random(self.shape).astype("float64"),
             'Out': self.inputs['X'].transpose(self.axis)
         }
 
@@ -46,19 +46,19 @@ class TestTransposeOp(OpTest):
         self.check_grad(['X'], 'Out')
 
     def initTestCase(self):
-        self.shape = (3, 4)
+        self.shape = (3, 40)
         self.axis = (1, 0)
 
 
 class TestCase0(TestTransposeOp):
     def initTestCase(self):
-        self.shape = (3, )
+        self.shape = (100, )
         self.axis = (0, )
 
 
 class TestCase1(TestTransposeOp):
     def initTestCase(self):
-        self.shape = (3, 4, 5)
+        self.shape = (3, 4, 10)
         self.axis = (0, 2, 1)
 
 
@@ -80,10 +80,28 @@ class TestCase4(TestTransposeOp):
         self.axis = (4, 2, 3, 1, 0, 5)
 
 
+class TestCase5(TestTransposeOp):
+    def initTestCase(self):
+        self.shape = (2, 16, 96)
+        self.axis = (0, 2, 1)
+
+
+class TestCase6(TestTransposeOp):
+    def initTestCase(self):
+        self.shape = (2, 10, 12, 16)
+        self.axis = (3, 1, 2, 0)
+
+
+class TestCase7(TestTransposeOp):
+    def initTestCase(self):
+        self.shape = (2, 10, 2, 16)
+        self.axis = (0, 1, 3, 2)
+
+
 class TestTransposeOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[10, 5, 3], dtype='float32')
+            x = fluid.layers.data(name='x', shape=[10, 5, 3], dtype='float64')
 
             def test_x_Variable_check():
                 # the Input(x)'s type must be Variable

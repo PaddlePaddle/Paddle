@@ -17,9 +17,10 @@
 #include <string>
 #include <unordered_set>
 #include <utility>
-
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/operators/controlflow/op_variant.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
@@ -194,6 +195,23 @@ void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
 
   PrepareSafeEagerDeletionOnWhileOpAndWhileGradOpImpl(program, &fwd_ops,
                                                       &bwd_ops);
+}
+
+// Make while_op could run on GPU place
+bool GetCondData(const framework::LoDTensor &cond) {
+  if (platform::is_cpu_place(cond.place())) {
+    return cond.data<bool>()[0];
+  }
+  // when platform::is_gpu_place(cond.place()) is true
+  std::unique_ptr<framework::LoDTensor> cpu_cond{new framework::LoDTensor()};
+#ifdef PADDLE_WITH_CUDA
+  framework::TensorCopySync(cond, platform::CPUPlace(), cpu_cond.get());
+#else
+  PADDLE_THROW(platform::errors::PreconditionNotMet(
+      "This version of PaddlePaddle does NOT support GPU but got GPU tensor "
+      "Cond in WhileOp. Please compile WITH_GPU option"));
+#endif
+  return cpu_cond->data<bool>()[0];
 }
 
 }  // namespace operators

@@ -34,6 +34,10 @@ class TestMKLDNNBatchNormOpTraining(TestBatchNormOpTraining):
 
     def ref_forward_backward(self, x, y_grad, scale, bias, mean, variance,
                              epsilon, momentum, shape, data_layout):
+
+        if data_layout != "NCHW" and data_layout != "NHWC":
+            raise ValueError("Unknown data order.")
+
         # run forward
         y, saved_mean, saved_variance = _reference_training(
             x, scale, bias, epsilon, data_layout)
@@ -44,6 +48,12 @@ class TestMKLDNNBatchNormOpTraining(TestBatchNormOpTraining):
             x, y_grad, scale, saved_mean, saved_variance, epsilon, data_layout)
 
         return y, mean_out, variance_out, saved_mean, saved_variance, x_grad, scale_grad, bias_grad
+
+
+class TestMKLDNNBatchNormOpTraining_NHWC(TestMKLDNNBatchNormOpTraining):
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+        self.data_formats = ["NHWC"]
 
 
 class TestMKLDNNBatchNormOpExistedPrimitives(TestMKLDNNBatchNormOpTraining):

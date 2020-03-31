@@ -104,6 +104,8 @@ namespace ops = paddle::operators;
   REGISTER_OP_CPU_KERNEL(                                                   \
       op_type, ops::OverflowKernel<paddle::platform::CPUDeviceContext, int, \
                                    ops::functor>,                           \
+      ops::OverflowKernel<paddle::platform::CPUDeviceContext, int64_t,      \
+                          ops::functor>,                                    \
       ops::OverflowKernel<paddle::platform::CPUDeviceContext, float,        \
                           ops::functor>,                                    \
       ops::OverflowKernel<paddle::platform::CPUDeviceContext, double,       \

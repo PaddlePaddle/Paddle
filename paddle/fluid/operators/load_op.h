@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <fstream>
 #include <string>
+#include <vector>
 
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -63,7 +64,18 @@ class LoadOpKernel : public framework::OpKernel<T> {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
     auto *tensor = var->GetMutable<framework::LoDTensor>();
-    DeserializeFromStream(fin, tensor, dev_ctx);
+
+    auto seek = ctx.Attr<int64_t>("seek");
+
+    if (seek != -1) {
+      PADDLE_ENFORCE_GE(seek, 0,
+                        platform::errors::InvalidArgument(
+                            "seek witn tensor must great than or equal to 0"));
+      auto shape = ctx.Attr<std::vector<int64_t>>("shape");
+      DeserializeFromStream(fin, tensor, dev_ctx, seek, shape);
+    } else {
+      DeserializeFromStream(fin, tensor, dev_ctx);
+    }
 
     auto load_as_fp16 = ctx.Attr<bool>("load_as_fp16");
     auto in_dtype = tensor->type();

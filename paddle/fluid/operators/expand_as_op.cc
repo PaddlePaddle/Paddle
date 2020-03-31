@@ -103,19 +103,17 @@ class ExpandAsGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("expand_as_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("target_tensor", this->Input("target_tensor"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ExpandAsGradNoNeedBufVarsInferer, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ExpandAsGradNoNeedBufVarsInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle
@@ -130,8 +128,11 @@ REGISTER_OP_CPU_KERNEL(
     expand_as, ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, bool>);
 REGISTER_OP_CPU_KERNEL(
     expand_as_grad,
+    ops::ExpandAsGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ExpandAsGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::ExpandAsGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ExpandAsGradKernel<paddle::platform::CPUDeviceContext, double>);

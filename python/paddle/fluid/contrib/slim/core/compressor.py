@@ -220,7 +220,7 @@ class Context(object):
                         batch_id, eval_graph.out_nodes.keys(), result))
                 batch_id += 1
 
-        result = np.mean(np.array(results), axis=0)
+        result = list(np.mean(np.array(results), axis=0))
         _logger.info("Final eval result: {}={}".format(
             eval_graph.out_nodes.keys(), result))
         if not isinstance(result, Iterable):
@@ -302,7 +302,7 @@ class Compressor(object):
                                  this optimizer is used to minimize the combined loss of student-net and
                                  teacher-net while train_optimizer is used to minimize loss of
                                  student-net in fine-tune stage. 
-            search_space(slim.nas.SearchSpace): The instance that define the searching space. It must inherite
+            search_space(slim.nas.SearchSpace): The instance that define the searching space. It must inherit
                               slim.nas.SearchSpace class and overwrite the abstract methods.
             log_period(int): The period of print log of training.
 
@@ -551,7 +551,7 @@ class Compressor(object):
 
     def run(self):
         """
-        Execute compressiong pass.
+        Execute compressing pass.
         """
         context = Context(
             place=self.place,

@@ -183,7 +183,6 @@ class TestCUDNNLstmOp(OpTest):
         self.check_grad_with_place(
             place,
             set(['Input', 'W', 'InitH', 'InitC']), ['Out', 'last_h', 'last_c'],
-            max_relative_error=0.02,
             check_dygraph=False)
 
 

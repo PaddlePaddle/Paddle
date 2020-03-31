@@ -79,7 +79,7 @@ class TestNearestInterpOp(OpTest):
         self.data_layout = 'NCHW'
         self.init_test_case()
         self.op_type = "nearest_interp"
-        input_np = np.random.random(self.input_shape).astype("float32")
+        input_np = np.random.random(self.input_shape).astype("float64")
 
         if self.data_layout == "NCHW":
             in_h = self.input_shape[2]
@@ -121,7 +121,7 @@ class TestNearestInterpOp(OpTest):
 
     def init_test_case(self):
         self.interp_method = 'nearest'
-        self.input_shape = [2, 3, 4, 4]
+        self.input_shape = [2, 3, 4, 5]
         self.out_h = 2
         self.out_w = 2
         self.scale = 0.
@@ -340,11 +340,11 @@ class TestNearestInterpOp_attr_tensor(OpTest):
             'align_corners': self.align_corners,
         }
 
-        input_np = np.random.random(self.input_shape).astype("float32")
+        input_np = np.random.random(self.input_shape).astype("float64")
         self.inputs = {'X': input_np}
 
         if self.scale_by_1Dtensor:
-            self.inputs['Scale'] = np.array([self.scale]).astype("float32")
+            self.inputs['Scale'] = np.array([self.scale]).astype("float64")
         elif self.scale > 0:
             out_h = int(self.input_shape[2] * self.scale)
             out_w = int(self.input_shape[3] * self.scale)
@@ -377,7 +377,7 @@ class TestNearestInterpOp_attr_tensor(OpTest):
 
     def init_test_case(self):
         self.interp_method = 'nearest'
-        self.input_shape = [2, 3, 4, 4]
+        self.input_shape = [2, 5, 4, 4]
         self.out_h = 3
         self.out_w = 3
         self.scale = 0.

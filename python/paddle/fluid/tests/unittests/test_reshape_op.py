@@ -35,12 +35,11 @@ class TestReshapeOp(OpTest):
         }
 
     def init_data(self):
-        self.ori_shape = (2, 25)
-        self.new_shape = (5, 10)
-        self.infered_shape = (5, 10)
+        self.ori_shape = (2, 60)
+        self.new_shape = (12, 10)
+        self.infered_shape = (12, 10)
 
     def test_check_output(self):
-
         self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
@@ -49,16 +48,16 @@ class TestReshapeOp(OpTest):
 
 class TestReshapeOpDimInfer1(TestReshapeOp):
     def init_data(self):
-        self.ori_shape = (5, 10)
+        self.ori_shape = (5, 25)
         self.new_shape = (5, -1, 5)
         self.infered_shape = (5, -1, 5)
 
 
 class TestReshapeOpDimInfer2(TestReshapeOp):
     def init_data(self):
-        self.ori_shape = (2, 2, 6)
-        self.new_shape = (2, 0, 3, -1)
-        self.infered_shape = (2, 2, 3, -1)
+        self.ori_shape = (10, 2, 6)
+        self.new_shape = (10, 0, 3, -1)
+        self.infered_shape = (10, 2, 3, -1)
 
 
 # situation 2: have shape(list, no tensor), have actual shape(Tensor)
@@ -79,9 +78,9 @@ class TestReshapeOpWithInputShape(OpTest):
         }
 
     def init_data(self):
-        self.ori_shape = (6, 5)
-        self.new_shape = (0, -1, 5)
-        self.actual_shape = (2, 3, 5)
+        self.ori_shape = (6, 20)
+        self.new_shape = (0, -1, 20)
+        self.actual_shape = (2, 3, 20)
 
     def test_check_output(self):
         self.check_output(no_check_set=['XShape'])
@@ -112,9 +111,9 @@ class TestReshapeOp_attr_ShapeTensor(OpTest):
         }
 
     def init_data(self):
-        self.ori_shape = (2, 25)
-        self.new_shape = (5, 10)
-        self.infered_shape = (5, 10)
+        self.ori_shape = (4, 25)
+        self.new_shape = (10, 10)
+        self.infered_shape = (10, 10)
         self.shape = (-1, -1)
 
     def test_check_output(self):
@@ -126,18 +125,18 @@ class TestReshapeOp_attr_ShapeTensor(OpTest):
 
 class TestReshapeOpDimInfer1_attr_ShapeTensor(TestReshapeOp_attr_ShapeTensor):
     def init_data(self):
-        self.ori_shape = (5, 10)
-        self.new_shape = (5, -1, 5)
-        self.infered_shape = (5, -1, 5)
+        self.ori_shape = (5, 20)
+        self.new_shape = (5, -1, 20)
+        self.infered_shape = (5, -1, 20)
         self.shape = (5, -1, -1)
 
 
 class TestReshapeOpDimInfer2_attr_ShapeTensor(TestReshapeOp_attr_ShapeTensor):
     def init_data(self):
-        self.ori_shape = (2, 2, 6)
-        self.new_shape = (2, 0, 3, -1)
-        self.infered_shape = (2, 2, 3, -1)
-        self.shape = (2, 0, 3, -1)
+        self.ori_shape = (10, 2, 6)
+        self.new_shape = (10, 0, 3, -1)
+        self.infered_shape = (10, 2, 3, -1)
+        self.shape = (10, 0, 3, -1)
 
 
 # Situation 4: have shape(Tensor), no actual shape(Tensor)
@@ -158,9 +157,9 @@ class TestReshapeOp_attr_OnlyShape(OpTest):
         }
 
     def init_data(self):
-        self.ori_shape = (2, 25)
-        self.new_shape = (5, 10)
-        self.infered_shape = (5, 10)
+        self.ori_shape = (4, 25)
+        self.new_shape = (10, 10)
+        self.infered_shape = (10, 10)
 
     def test_check_output(self):
         self.check_output(no_check_set=['XShape'])
@@ -171,18 +170,59 @@ class TestReshapeOp_attr_OnlyShape(OpTest):
 
 class TestReshapeOpDimInfer1_attr_OnlyShape(TestReshapeOp_attr_OnlyShape):
     def init_data(self):
-        self.ori_shape = (5, 10)
-        self.new_shape = (5, -1, 5)
-        self.infered_shape = (5, -1, 5)
+        self.ori_shape = (5, 20)
+        self.new_shape = (5, -1, 10)
+        self.infered_shape = (5, -1, 10)
         self.shape = (5, -1, -1)
 
 
 class TestReshapeOpDimInfer2_attr_OnlyShape(TestReshapeOp_attr_OnlyShape):
     def init_data(self):
-        self.ori_shape = (2, 2, 6)
-        self.new_shape = (2, 0, 3, -1)
-        self.infered_shape = (2, 2, 3, -1)
-        self.shape = (2, 0, 3, -1)
+        self.ori_shape = (10, 2, 6)
+        self.new_shape = (10, 0, 3, -1)
+        self.infered_shape = (10, 2, 3, -1)
+        self.shape = (10, 0, 3, -1)
+
+
+# test int8 data type on CPU
+class TestReshapeInt8Op(OpTest):
+    def setUp(self):
+        self.init_dtype()
+        self.init_data()
+        self.use_mkldnn = True
+        self._cpu_only = True
+        self.op_type = "reshape2"
+        input = np.random.randint(0, 127, self.ori_shape).astype(self.dtype)
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
+        self.attrs = {
+            'shape': self.new_shape,
+            'use_mkldnn': self.use_mkldnn,
+        }
+        self.outputs = {
+            "Out": self.inputs["X"].reshape(self.infered_shape),
+            'XShape': np.random.random(self.ori_shape).astype(np.float32)
+        }
+
+    def init_dtype(self):
+        self.dtype = np.int8
+
+    def init_data(self):
+        self.ori_shape = (10, 2, 6)
+        self.new_shape = (10, 0, 3, -1)
+        self.infered_shape = (10, 2, 3, -1)
+
+    def test_check_output(self):
+        self.check_output_with_place(
+            fluid.core.CPUPlace(), atol=1e-5, no_check_set=['XShape'])
+
+    def test_check_grad(self):
+        pass
+
+
+# test unt8 data type on CPU
+class TestReshapeUint8Op(TestReshapeInt8Op):
+    def init_dtype(self):
+        self.dtype = np.uint8
 
 
 # Test python API
@@ -289,7 +329,7 @@ class TestReshapeOpError(unittest.TestCase):
 
             self.assertRaises(AssertionError, test_shape_2)
 
-            # The argument shape have more than one negtive value.
+            # The argument shape have more than one negative value.
             def test_shape_3():
                 fluid.layers.reshape(x3, [-1, -2, 5])
 

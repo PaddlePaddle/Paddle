@@ -27,10 +27,12 @@ limitations under the License. */
 namespace py = pybind11;
 
 using paddle::framework::ProgramDesc;
-using paddle::operators::distributed::Communicator;
-using paddle::operators::distributed::AsyncCommunicator;
-using paddle::operators::distributed::GeoSgdCommunicator;
 using paddle::framework::Scope;
+using paddle::operators::distributed::AsyncCommunicator;
+using paddle::operators::distributed::Communicator;
+using paddle::operators::distributed::GeoSgdCommunicator;
+using paddle::operators::distributed::HalfAsyncCommunicator;
+using paddle::operators::distributed::SyncCommunicator;
 
 namespace paddle {
 namespace pybind {
@@ -39,25 +41,30 @@ void BindCommunicator(py::module* m) {
   // Communicator is already used by nccl, change to DistCommunicator
   py::class_<Communicator, std::shared_ptr<Communicator>>(*m,
                                                           "DistCommunicator")
-      .def(py::init([](const ProgramDesc& program, Scope* param_scope) {
-        VLOG(0) << "using communicator";
-        Communicator::InitInstance<AsyncCommunicator>(program, param_scope);
-        return Communicator::GetInstantcePtr();
-      }))
-      .def(py::init([](
-          const ProgramDesc& program, Scope* training_scope,
-          std::map<std::string,
-                   std::map<std::string, std::vector<std::string>>>& vars_info,
-          int& trainers, int& geo_need_push_nums) {
-        VLOG(0) << "using geo sgd communicator";
-        Communicator::InitInstance<GeoSgdCommunicator>(
-            program, training_scope, vars_info, trainers, geo_need_push_nums);
+      .def(py::init([](const std::string& mode, const ProgramDesc& program,
+                       Scope* param_scope,
+                       std::map<std::string, std::string>& envs) {
+        if (mode == "HALF_ASYNC") {
+          Communicator::InitInstance<HalfAsyncCommunicator>(program,
+                                                            param_scope, envs);
+        } else if (mode == "ASYNC") {
+          Communicator::InitInstance<AsyncCommunicator>(program, param_scope,
+                                                        envs);
+        } else if (mode == "GEO") {
+          Communicator::InitInstance<GeoSgdCommunicator>(program, param_scope,
+                                                         envs);
+        } else if (mode == "SYNC") {
+          Communicator::InitInstance<SyncCommunicator>(program, param_scope,
+                                                       envs);
+        } else {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "unsuported communicator MODE"));
+        }
         return Communicator::GetInstantcePtr();
       }))
       .def("stop", &Communicator::Stop)
       .def("start", &Communicator::Start)
       .def("is_running", &Communicator::IsRunning);
 }
-
 }  // namespace pybind
 }  // namespace paddle

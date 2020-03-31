@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import platform
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid.op import Operator
@@ -25,11 +25,13 @@ import paddle.compat as cpt
 import paddle.version as ver
 
 
+@skip_check_grad_ci(reason="check_grad is called when ver.mkl() == ON"
+                    "and 'Linux' in platform.platform().")
 class TestFusedEmbeddingSeqPoolOp(OpTest):
     def setUp(self):
         self.op_type = "fused_embedding_seq_pool"
-        self.emb_size = 2
-        self.table = np.random.random((17, self.emb_size)).astype("float32")
+        self.emb_size = 6
+        self.table = np.random.random((17, self.emb_size)).astype("float64")
         self.ids = np.array([[[4], [3]], [[4], [3]], [[2], [1]],
                              [[16], [1]]]).astype("int64")
         ids_expand = np.expand_dims(self.ids, axis=1)
@@ -53,7 +55,7 @@ class TestFusedEmbeddingSeqPoolOp(OpTest):
         if ver.mkl() == "ON" and 'Linux' in platform.platform():
             self.attrs = {'is_sparse': False}
             self.check_grad(
-                ['W'], 'Out', no_grad_set=('Ids'), check_dygraph=False)
+                ['W'], 'Out', no_grad_set=['Ids'], check_dygraph=False)
 
 
 class TestLookupTableOpWithPadding(TestFusedEmbeddingSeqPoolOp):
@@ -87,7 +89,7 @@ class TestLookupTableOpWithPadding(TestFusedEmbeddingSeqPoolOp):
             self.attrs = {'padding_idx': int(padding_idx), 'is_sparse': False}
             # TODO(wangzhongpu): support lod in dygraph mode
             self.check_grad(
-                ['W'], 'Out', no_grad_set=('Ids'), check_dygraph=False)
+                ['W'], 'Out', no_grad_set=['Ids'], check_dygraph=False)
 
 
 class TestFusedEmbeddingSeqPoolApi(unittest.TestCase):

@@ -83,14 +83,12 @@ class SeqConcatGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("sequence_concat_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X", false));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 
@@ -112,8 +110,8 @@ class SeqConcatGradOp : public framework::OperatorWithKernel {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(SeqConcatGradNoNeedBufferVarsInference,
-                                      "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SeqConcatGradNoNeedBufferVarsInference,
+                                    "X");
 
 }  // namespace operators
 }  // namespace paddle
@@ -126,7 +124,7 @@ REGISTER_OPERATOR(sequence_concat, op::SequenceConcatOp, op::SeqConcatOpMaker,
 template <typename T>
 using Kernel = op::SeqConcatKernel<paddle::platform::CPUDeviceContext, T>;
 REGISTER_OP_CPU_KERNEL(sequence_concat, Kernel<float>, Kernel<double>,
-                       Kernel<int64_t>);
+                       Kernel<int>, Kernel<int64_t>);
 
 REGISTER_OPERATOR(sequence_concat_grad, op::SeqConcatGradOp,
                   op::SeqConcatGradNoNeedBufferVarsInference);
@@ -134,4 +132,5 @@ template <typename T>
 using GradKernel =
     op::SeqConcatGradKernel<paddle::platform::CPUDeviceContext, T>;
 REGISTER_OP_CPU_KERNEL(sequence_concat_grad, GradKernel<float>,
-                       GradKernel<double>, GradKernel<int64_t>);
+                       GradKernel<double>, GradKernel<int>,
+                       GradKernel<int64_t>);

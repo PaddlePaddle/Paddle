@@ -209,7 +209,7 @@ class TestPool3d_Op(OpTest):
     def setUp(self):
         self.op_type = "pool3d"
         self.init_kernel_type()
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_test_case()
         self.padding_algorithm = "EXPLICIT"
         self.init_paddings()
@@ -261,10 +261,9 @@ class TestPool3d_Op(OpTest):
             return
         if self.has_cudnn() and self.pool_type != "max":
             place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, set(['X']), 'Out', max_relative_error=0.07)
+            self.check_grad_with_place(place, set(['X']), 'Out')
         elif self.pool_type != "max":
-            self.check_grad(set(['X']), 'Out', max_relative_error=0.07)
+            self.check_grad(set(['X']), 'Out')
 
     def init_data_format(self):
         self.data_format = "NCDHW"

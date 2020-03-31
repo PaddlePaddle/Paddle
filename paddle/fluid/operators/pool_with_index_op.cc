@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/pool_with_index_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -87,19 +88,26 @@ class MaxPoolWithIndexOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Mask"), "Input(Mask) must not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Input(X@GRAD) should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Mask"), true,
+        platform::errors::NotFound("Input(Mask) must not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::NotFound("Input(X) must not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput(framework::GradVarName("Out")), true,
+        platform::errors::NotFound("Input(Out@GRAD) should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput(framework::GradVarName("X")), true,
+        platform::errors::NotFound("Output(X@GRAD) should not be null."));
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 
@@ -283,17 +291,36 @@ Example:
   }
 };
 
+template <typename T>
+class MaxPoolWithIndexGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType(this->ForwardOpType() + "_grad");
+    op->SetAttrMap(this->Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Mask", this->Output("Mask"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(
+    MaxPoolWithIndexOpGradNoNeedBufferVarsInference, "X");
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(
-    max_pool2d_with_index, ops::MaxPoolWithIndexOp,
-    ops::MaxPool2dWithIndexOpMaker,
-    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
-    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
-REGISTER_OPERATOR(max_pool2d_with_index_grad, ops::MaxPoolWithIndexOpGrad);
+REGISTER_OPERATOR(max_pool2d_with_index, ops::MaxPoolWithIndexOp,
+                  ops::MaxPool2dWithIndexOpMaker,
+                  ops::MaxPoolWithIndexGradOpMaker<paddle::framework::OpDesc>,
+                  ops::MaxPoolWithIndexGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(max_pool2d_with_index_grad, ops::MaxPoolWithIndexOpGrad,
+                  ops::MaxPoolWithIndexOpGradNoNeedBufferVarsInference);
 
 REGISTER_OP_CPU_KERNEL(
     max_pool2d_with_index,
@@ -307,12 +334,12 @@ REGISTER_OP_CPU_KERNEL(
     ops::MaxPoolWithIndexGradKernel<paddle::platform::CPUDeviceContext, double,
                                     int>);
 
-REGISTER_OPERATOR(
-    max_pool3d_with_index, ops::MaxPoolWithIndexOp,
-    ops::MaxPool3dWithIndexOpMaker,
-    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
-    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
-REGISTER_OPERATOR(max_pool3d_with_index_grad, ops::MaxPoolWithIndexOpGrad);
+REGISTER_OPERATOR(max_pool3d_with_index, ops::MaxPoolWithIndexOp,
+                  ops::MaxPool3dWithIndexOpMaker,
+                  ops::MaxPoolWithIndexGradOpMaker<paddle::framework::OpDesc>,
+                  ops::MaxPoolWithIndexGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(max_pool3d_with_index_grad, ops::MaxPoolWithIndexOpGrad,
+                  ops::MaxPoolWithIndexOpGradNoNeedBufferVarsInference);
 
 REGISTER_OP_CPU_KERNEL(
     max_pool3d_with_index,

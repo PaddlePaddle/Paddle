@@ -78,7 +78,7 @@ def conv2dtranspose_forward_naive(input_, filter_, attrs):
         out_h = output_size[0] + pad_h_0 + pad_h_1
         out_w = output_size[1] + pad_w_0 + pad_w_1
 
-    out = np.zeros((in_n, out_c, out_h, out_w))
+    out = np.zeros((in_n, out_c, out_h, out_w), dtype=input_.dtype)
 
     for n in range(in_n):
         for i in range(in_h):
@@ -108,6 +108,7 @@ def conv2dtranspose_forward_naive(input_, filter_, attrs):
 class TestConv2dTransposeOp(OpTest):
     def setUp(self):
         # init as conv transpose
+        self.dtype = np.float64
         self.is_test = False
         self.use_cudnn = False
         self.use_mkldnn = False
@@ -118,8 +119,8 @@ class TestConv2dTransposeOp(OpTest):
         self.init_op_type()
         self.init_test_case()
 
-        input_ = np.random.random(self.input_size).astype("float32")
-        filter_ = np.random.random(self.filter_size).astype("float32")
+        input_ = np.random.random(self.input_size).astype(self.dtype)
+        filter_ = np.random.random(self.filter_size).astype(self.dtype)
 
         self.inputs = {'Input': input_, 'Filter': filter_}
         self.attrs = {
@@ -137,7 +138,7 @@ class TestConv2dTransposeOp(OpTest):
             self.attrs['output_size'] = self.output_size
 
         output = conv2dtranspose_forward_naive(input_, filter_,
-                                               self.attrs).astype('float32')
+                                               self.attrs).astype(self.dtype)
 
         self.outputs = {'Output': output}
 
@@ -159,26 +160,15 @@ class TestConv2dTransposeOp(OpTest):
                 max_relative_error=0.02,
                 no_grad_set=set(['Input']))
         else:
-            self.check_grad(
-                ['Filter'],
-                'Output',
-                max_relative_error=0.02,
-                no_grad_set=set(['Input']))
+            self.check_grad(['Filter'], 'Output', no_grad_set=set(['Input']))
 
     def test_check_grad_no_filter(self):
         if self.use_cudnn:
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['Input'],
-                'Output',
-                max_relative_error=0.02,
-                no_grad_set=set(['Filter']))
+                place, ['Input'], 'Output', no_grad_set=set(['Filter']))
         else:
-            self.check_grad(
-                ['Input'],
-                'Output',
-                max_relative_error=0.02,
-                no_grad_set=set(['Filter']))
+            self.check_grad(['Input'], 'Output', no_grad_set=set(['Filter']))
 
     def test_check_grad(self):
         if self.use_cudnn:

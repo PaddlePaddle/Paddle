@@ -129,19 +129,19 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
         "CustomDistProbs",
         "(Tensor) It is used in 'CostumDist' sampler. "
         "It is a tensor with shape [num_total_classes]."
-        "The i-th element is the probsbility of the i-th class being sampled.")
+        "The i-th element is the probability of the i-th class being sampled.")
         .AsDispensable();
     AddInput(
         "CustomDistAlias",
         "(Tensor) It is used in 'CostumDist' sampler. "
         "It is a tensor with shape [num_total_classes]."
-        "The i-th element is the probsbility of the i-th class being sampled.")
+        "The i-th element is the probability of the i-th class being sampled.")
         .AsDispensable();
     AddInput(
         "CustomDistAliasProbs",
         "(Tensor) It is used in 'CostumDist' sampler. "
         "It is a tensor with shape [num_total_classes]."
-        "The i-th element is the probsbility of the i-th class being sampled.")
+        "The i-th element is the probability of the i-th class being sampled.")
         .AsDispensable();
 
     AddOutput("Cost",
@@ -192,7 +192,7 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<std::vector<std::string>>(
         "table_names",
-        "(string vector, the splited table names that will be fetched from "
+        "(string vector, the split table names that will be fetched from "
         "parameter server)"
         "in the order of input variables for mapping")
         .SetDefault({});
@@ -217,14 +217,12 @@ template <typename T>
 class NCEGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-  std::unique_ptr<T> Apply() const override {
-    auto *op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("Input", this->Input("Input"));
     op->SetInput("Label", this->Input("Label"));
     op->SetInput("Bias", this->Input("Bias"));
     op->SetInput("Weight", this->Input("Weight"));
-    op->SetInput("Cost", this->Output("Cost"));
     op->SetInput("SampleLogits", this->Output("SampleLogits"));
     op->SetInput("SampleLabels", this->Output("SampleLabels"));
     op->SetInput("SampleWeight", this->Input("SampleWeight"));
@@ -236,7 +234,6 @@ class NCEGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
     op->SetOutput(framework::GradVarName("Weight"), this->InputGrad("Weight"));
     op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(op);
   }
 };
 
@@ -247,7 +244,6 @@ class NCEOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"));
     PADDLE_ENFORCE(ctx->HasInput("Weight"));
-    PADDLE_ENFORCE(ctx->HasInput("Cost"));
     PADDLE_ENFORCE(ctx->HasInput("SampleLogits"));
     PADDLE_ENFORCE(ctx->HasInput("SampleLabels"));
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Cost")),
@@ -301,6 +297,8 @@ class NCEOpGradVarTypeInference : public framework::VarTypeInference {
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(NCEGradOpNoNeedBufferVarInference, "Bias");
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -308,7 +306,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(nce, ops::NCEOp, ops::NCEOpMaker,
                   ops::NCEGradOpMaker<paddle::framework::OpDesc>,
                   ops::NCEGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(nce_grad, ops::NCEOpGrad, ops::NCEOpGradVarTypeInference);
+REGISTER_OPERATOR(nce_grad, ops::NCEOpGrad, ops::NCEOpGradVarTypeInference,
+                  ops::NCEGradOpNoNeedBufferVarInference);
 REGISTER_OP_CPU_KERNEL(nce, ops::NCEKernel<paddle::platform::CPUPlace, float>,
                        ops::NCEKernel<paddle::platform::CPUPlace, double>);
 REGISTER_OP_CPU_KERNEL(nce_grad,

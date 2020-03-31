@@ -27,13 +27,13 @@ class TestExpandOpRank1(OpTest):
         self.op_type = "expand"
         self.init_data()
 
-        self.inputs = {'X': np.random.random(self.ori_shape).astype("float32")}
+        self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
         self.attrs = {'expand_times': self.expand_times}
         output = np.tile(self.inputs['X'], self.expand_times)
         self.outputs = {'Out': output}
 
     def init_data(self):
-        self.ori_shape = [12]
+        self.ori_shape = [100]
         self.expand_times = [2]
 
     def test_check_output(self):
@@ -45,7 +45,7 @@ class TestExpandOpRank1(OpTest):
 
 class TestExpandOpRank2_Corner(TestExpandOpRank1):
     def init_data(self):
-        self.ori_shape = [12]
+        self.ori_shape = [120]
         self.expand_times = [2]
 
 
@@ -57,13 +57,13 @@ class TestExpandOpRank2(TestExpandOpRank1):
 
 class TestExpandOpRank3_Corner(TestExpandOpRank1):
     def init_data(self):
-        self.ori_shape = (2, 4, 5)
+        self.ori_shape = (2, 10, 5)
         self.expand_times = (1, 1, 1)
 
 
 class TestExpandOpRank3(TestExpandOpRank1):
     def init_data(self):
-        self.ori_shape = (2, 4, 5)
+        self.ori_shape = (2, 4, 15)
         self.expand_times = (2, 1, 4)
 
 
@@ -84,7 +84,7 @@ class TestExpandOpRank1_tensor_attr(OpTest):
                 (1)).astype('int32') * ele))
 
         self.inputs = {
-            'X': np.random.random(self.ori_shape).astype("float32"),
+            'X': np.random.random(self.ori_shape).astype("float64"),
             'expand_times_tensor': expand_times_tensor,
         }
         self.attrs = {"expand_times": self.infer_expand_times}
@@ -92,7 +92,7 @@ class TestExpandOpRank1_tensor_attr(OpTest):
         self.outputs = {'Out': output}
 
     def init_data(self):
-        self.ori_shape = [12]
+        self.ori_shape = [100]
         self.expand_times = [2]
         self.infer_expand_times = [-1]
 
@@ -124,7 +124,7 @@ class TestExpandOpRank1_tensor(OpTest):
         self.init_data()
 
         self.inputs = {
-            'X': np.random.random(self.ori_shape).astype("float32"),
+            'X': np.random.random(self.ori_shape).astype("float64"),
             'ExpandTimes': np.array(self.expand_times).astype("int32"),
         }
         self.attrs = {}
@@ -132,7 +132,7 @@ class TestExpandOpRank1_tensor(OpTest):
         self.outputs = {'Out': output}
 
     def init_data(self):
-        self.ori_shape = [12]
+        self.ori_shape = [100]
         self.expand_times = [2]
 
     def test_check_output(self):

@@ -17,6 +17,7 @@
 #include <memory>
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_api.h"
+#include "paddle/fluid/inference/capi/paddle_c_api.h"
 #include "paddle/fluid/platform/enforce.h"
 
 using PD_PaddleDType = paddle::PaddleDType;
@@ -34,10 +35,14 @@ struct PD_PaddleBuf {
   paddle::PaddleBuf buf;
 };
 
+struct PD_Predictor {
+  std::unique_ptr<paddle::PaddlePredictor> predictor;
+};
+
 namespace paddle {
 paddle::PaddleDType ConvertToPaddleDType(PD_DataType dtype);
 
 PD_DataType ConvertToPDDataType(PD_PaddleDType dtype);
 
 PD_ACPrecision ConvertToACPrecision(Precision dtype);
-}
+}  // namespace paddle

@@ -20,10 +20,11 @@ from __future__ import print_function
 import warnings
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
-from ..framework import Variable
+from ..framework import Variable, in_dygraph_mode, _varbase_creator
+from .. import core
 from ..param_attr import ParamAttr
 from . import nn
-from ..data_feeder import check_type_and_dtype
+from ..data_feeder import check_variable_and_dtype
 
 __all__ = ['accuracy', 'auc']
 
@@ -39,7 +40,8 @@ def accuracy(input, label, k=1, correct=None, total=None):
 
     Args:
         input(Variable): The input of accuracy layer, which is the predictions of network. A LoDTensor or Tensor with type float32,float64.
-        label(Variable): The label of dataset.  LoDTensor or Tensor with type int32,int64.
+            The shape is ``[sample_number, class_dim]`` .
+        label(Variable): The label of dataset.  LoDTensor or Tensor with type int32,int64. The shape is ``[sample_number, 1]`` .
         k(int): The top k predictions for each class will be checked. Data type is int64 or int32.
         correct(Variable): The correct predictions count. A Tensor with type int64 or int32.
         total(Variable): The total entries count. A tensor with type int64 or int32.
@@ -71,15 +73,26 @@ def accuracy(input, label, k=1, correct=None, total=None):
 
             #[array([0.6666667], dtype=float32)]
     """
+    if in_dygraph_mode():
+        if correct is None:
+            correct = _varbase_creator(dtype="int32")
+        if total is None:
+            total = _varbase_creator(dtype="int32")
+
+        topk_out, topk_indices = nn.topk(input, k=k)
+        _acc, _, _ = core.ops.accuracy(topk_out, topk_indices, label, correct,
+                                       total)
+        return _acc
+
     helper = LayerHelper("accuracy", **locals())
-    check_type_and_dtype(input, 'input', Variable,
-                         ['float16', 'float32', 'float64'], 'accuracy')
+    check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
+                             'accuracy')
     topk_out, topk_indices = nn.topk(input, k=k)
     acc_out = helper.create_variable_for_type_inference(dtype="float32")
     if correct is None:
-        correct = helper.create_variable_for_type_inference(dtype="int64")
+        correct = helper.create_variable_for_type_inference(dtype="int32")
     if total is None:
-        total = helper.create_variable_for_type_inference(dtype="int64")
+        total = helper.create_variable_for_type_inference(dtype="int32")
     helper.append_op(
         type="accuracy",
         inputs={
@@ -184,9 +197,9 @@ def auc(input,
     # for global auc
     # Needn't maintain the batch id
     stat_pos = helper.create_global_variable(
-        persistable=True, dtype='int64', shape=[num_thresholds + 1])
+        persistable=True, dtype='int64', shape=[1, num_thresholds + 1])
     stat_neg = helper.create_global_variable(
-        persistable=True, dtype='int64', shape=[num_thresholds + 1])
+        persistable=True, dtype='int64', shape=[1, num_thresholds + 1])
 
     for var in [batch_stat_pos, batch_stat_neg, stat_pos, stat_neg]:
         helper.set_variable_initializer(

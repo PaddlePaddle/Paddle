@@ -131,7 +131,7 @@ class SpaceToDepthOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(SpaceToDepthGradOpNoBuffer, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SpaceToDepthGradOpNoBuffer, "X");
 
 template <typename T>
 class SpaceToDepthGradOpMaker : public framework::SingleGradOpMaker<T> {
@@ -139,9 +139,7 @@ class SpaceToDepthGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
-
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("space_to_depth_grad");
 
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
@@ -150,7 +148,6 @@ class SpaceToDepthGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
 
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 
@@ -187,9 +184,11 @@ REGISTER_OP_CPU_KERNEL(
     space_to_depth,
     ops::SpaceToDepthKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SpaceToDepthKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::SpaceToDepthKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SpaceToDepthKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     space_to_depth_grad,
     ops::SpaceToDepthGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SpaceToDepthGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::SpaceToDepthGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SpaceToDepthGradKernel<paddle::platform::CPUDeviceContext, int64_t>);

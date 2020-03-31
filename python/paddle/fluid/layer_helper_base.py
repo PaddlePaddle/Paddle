@@ -50,7 +50,6 @@ class LayerHelperBase(object):
 
         Parameters:
             value(ndarray): The numpy\.ndarray object that needs to be converted, it can be multi-dimension, and the data type is one of numpy\.{float16, float32, float64, int16, int32, int64, uint8, uint16}.
-            block(fluid.Block, optional): Which block this variable will be in. Default: None.
             name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
         Returns:
@@ -280,12 +279,13 @@ class LayerHelperBase(object):
                          dtype,
                          is_bias=False,
                          default_initializer=None,
-                         stop_gradient=False):
+                         stop_gradient=False,
+                         type=core.VarDesc.VarType.LOD_TENSOR):
         """Create parameters for this layers.
 
            Args:
                attr: [ParamAttr] should be the parameter attribute for this parameter
-               shape: shape of the paramter
+               shape: shape of the parameter
                dtype: data type of this parameter
                is_bias: if this is a bias parameter
                default_initializer: set the default initializer for this parameter
@@ -331,18 +331,28 @@ class LayerHelperBase(object):
         if in_dygraph_mode():
             # In dygraph mode, we want the returned parameter to be
             # initialized so that it can be used imperatively.
+            # check parameter name
+            is_used = unique_name.dygraph_parameter_name_checker(attr.name)
+            if is_used:
+                raise ValueError(
+                    "parameter name [{}] have be been used. "
+                    "In dygraph mode, the name of parameter can't be same."
+                    "Please check the parameter attr value passed to self.create_parameter or "
+                    "constructor of dygraph Layers".format(attr.name))
             return self.main_program.global_block().create_parameter(
                 dtype=dtype,
                 shape=shape,
+                type=type,
                 stop_gradient=stop_gradient,
                 **attr._to_kwargs(with_initializer=True))
         else:
             self.startup_program.global_block().create_parameter(
                 dtype=dtype,
                 shape=shape,
+                type=type,
                 **attr._to_kwargs(with_initializer=True))
             return self.main_program.global_block().create_parameter(
-                dtype=dtype, shape=shape, **attr._to_kwargs())
+                dtype=dtype, shape=shape, type=type, **attr._to_kwargs())
 
     def create_variable_for_type_inference(self, dtype, stop_gradient=False):
         """Create a temporary variable that should be type inferred layer.

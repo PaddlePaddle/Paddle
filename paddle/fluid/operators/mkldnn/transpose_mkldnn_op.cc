@@ -40,11 +40,12 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const T* input_data = input->data<T>();
 
     if (ndims == 1) {
-      output->ShareDataWith(*input);
+      framework::TensorCopy(*input, input->place(), output);
+      output->set_format(input->format());
       return;
     }
 
-    auto nchw_tz = paddle::framework::vectorize<int>(input->dims());
+    auto nchw_tz = paddle::framework::vectorize<int64_t>(input->dims());
 
     const std::string key = platform::CreateKey(nchw_tz, ctx.OutputName("Out"));
 
@@ -58,12 +59,13 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto transpose_p = handler.AcquireTranspose(transpose_dst_memory_p,
                                                 transpose_src_memory_p);
 
-    std::vector<mkldnn::primitive> pipeline;
-    pipeline.push_back(*transpose_p);
-    mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
+    mkldnn::stream astream(mkldnn_engine);
+    transpose_p->execute(astream, *transpose_src_memory_p,
+                         *transpose_dst_memory_p);
+    astream.wait();
 
     output->set_layout(DataLayout::kNCHW);
-    output->set_format(MKLDNNMemoryFormat::format_undef);
+    output->set_format(MKLDNNMemoryFormat::undef);
   }
 };
 
@@ -84,7 +86,8 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> reversed_axis(axis);
     int ndims = axis.size();
     if (ndims == 1) {
-      x_grad->ShareDataWith(*out_grad);
+      framework::TensorCopy(*out_grad, out_grad->place(), x_grad);
+      x_grad->set_format(out_grad->format());
       return;
     }
 
@@ -95,7 +98,7 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     const T* out_grad_data = out_grad->data<T>();
     x_grad->mutable_data<T>(ctx.GetPlace());
 
-    auto nchw_tz = paddle::framework::vectorize<int>(out_grad->dims());
+    auto nchw_tz = paddle::framework::vectorize<int64_t>(out_grad->dims());
 
     const std::string key = platform::CreateKey(
         nchw_tz, ctx.OutputName(framework::GradVarName("X")));
@@ -110,9 +113,10 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto transpose_p = handler.AcquireTranspose(transpose_dst_memory_p,
                                                 transpose_src_memory_p);
 
-    std::vector<mkldnn::primitive> pipeline;
-    pipeline.push_back(*transpose_p);
-    mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
+    mkldnn::stream astream(mkldnn_engine);
+    transpose_p->execute(astream, *transpose_src_memory_p,
+                         *transpose_dst_memory_p);
+    astream.wait();
   }
 };
 
@@ -136,22 +140,11 @@ REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose2, MKLDNN,
                                     ops::kTransposeMKLDNNINT8,
                                     ops::TransposeMKLDNNOpKernel<int8_t>);
 
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose, MKLDNN,
-                                    ::paddle::platform::CPUPlace, FP32,
-                                    ops::kTransposeMKLDNNFP32,
-                                    ops::TransposeMKLDNNOpKernel<float>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose, MKLDNN,
-                                    ::paddle::platform::CPUPlace, U8,
-                                    ops::kTransposeMKLDNNINT8,
-                                    ops::TransposeMKLDNNOpKernel<uint8_t>);
-
-REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose, MKLDNN,
-                                    ::paddle::platform::CPUPlace, S8,
-                                    ops::kTransposeMKLDNNINT8,
-                                    ops::TransposeMKLDNNOpKernel<int8_t>);
+REGISTER_OP_KERNEL(transpose, MKLDNN, ::paddle::platform::CPUPlace,
+                   ops::TransposeMKLDNNOpKernel<float>);
 
 REGISTER_OP_KERNEL(transpose_grad, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::TransposeMKLDNNGradOpKernel<float>);
+
 REGISTER_OP_KERNEL(transpose2_grad, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::TransposeMKLDNNGradOpKernel<float>);

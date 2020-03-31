@@ -15,15 +15,16 @@
 include(ExternalProject)
 
 set(CUB_PREFIX_DIR ${THIRD_PARTY_PATH}/cub)
+set(CUB_SOURCE_DIR ${THIRD_PARTY_PATH}/cub/src/extern_cub)
 set(CUB_REPOSITORY https://github.com/NVlabs/cub.git)
 set(CUB_TAG        v1.8.0)
 
 cache_third_party(extern_cub
     REPOSITORY    ${CUB_REPOSITORY}
     TAG           ${CUB_TAG}
-    DIR           ${CUB_PREFIX_DIR})
+    DIR           CUB_SOURCE_DIR)
 
-SET(CUB_INCLUDE_DIR ${CUB_SOURCE_DIR})
+SET(CUB_INCLUDE_DIR   ${CUB_SOURCE_DIR})
 include_directories(${CUB_INCLUDE_DIR})
 
 ExternalProject_Add(

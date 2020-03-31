@@ -68,8 +68,7 @@ class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
@@ -86,8 +85,6 @@ class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
         static_cast<int>(ActBwdOpFwdDeps::kDepOut)) {
       op->SetInput("Out", this->Output("Out"));
     }
-
-    return op;
   }
 };
 
@@ -185,13 +182,6 @@ UNUSED constexpr char ReluDoc[] = R"DOC(
 Relu Activation Operator.
 
 $out = \max(x, 0)$
-
-)DOC";
-
-UNUSED constexpr char GeluDoc[] = R"DOC(
-Gelu Activation Operator.
-
-$out = \\frac{1 + erf(\\frac{x}{\\sqrt{2}})}{2} x$
 
 )DOC";
 
@@ -599,6 +589,13 @@ class SwishOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of Swish operator");
     AddOutput("Out", "Output of Swish operator");
     AddAttr<float>("beta", "Constant beta of swish operator").SetDefault(1.0f);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
+    AddAttr<bool>("is_test",
+                  "(bool, default false) Set to true for inference only, false "
+                  "for training. Some layers may run faster when this is true.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Swish Activation Operator.
 
@@ -638,7 +635,6 @@ REGISTER_ACTIVATION_OP_MAKER(Sigmoid, SigmoidDoc);
 REGISTER_ACTIVATION_OP_MAKER(LogSigmoid, LogSigmoidDoc);
 REGISTER_ACTIVATION_OP_MAKER(Exp, ExpDoc);
 REGISTER_ACTIVATION_OP_MAKER(Relu, ReluDoc);
-REGISTER_ACTIVATION_OP_MAKER(Gelu, GeluDoc);
 REGISTER_ACTIVATION_OP_MAKER(Tanh, TanhDoc);
 REGISTER_ACTIVATION_OP_MAKER(TanhShrink, TanhShrinkDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sqrt, SqrtDoc);
@@ -727,8 +723,7 @@ class ReluDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
   using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("relu_grad_grad");
     // input1: Out
     op->SetInput("Out", this->Input("Out"));
@@ -737,7 +732,6 @@ class ReluDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
     // output: ddy
     op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
-    return std::unique_ptr<T>(op);
   }
 };
 
@@ -750,8 +744,7 @@ class LeakyReluDoubleGradMaker
   using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("leaky_relu_grad_grad");
     // input1: Out
     op->SetInput("Out", this->Input("Out"));
@@ -760,7 +753,29 @@ class LeakyReluDoubleGradMaker
     op->SetAttrMap(this->Attrs());
     // Out@GRAD@GRAD: ddy
     op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
-    return std::unique_ptr<T>(op);
+  }
+};
+
+// elu grad: dx=dy if y>0 else alpha*dy*x.exp()
+// elu gradgrad: ddx=ddy if y>0 else alpha*ddy*x.exp()
+template <typename T>
+class ELUDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
+ public:
+  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("elu_grad_grad");
+
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
+    // X@GRAD@GRAD: ddx
+    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    op->SetAttrMap(this->Attrs());
+
+    // Out@GRAD@GRAD: ddy
+    op->SetOutput("DX", this->InputGrad("X"));
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
   }
 };
 
@@ -772,8 +787,7 @@ class SqrtDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
   using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("sqrt_grad_grad");
     op->SetInput("Out", this->Input("Out"));
     op->SetInput("DX", this->Output(framework::GradVarName("X")));
@@ -781,7 +795,6 @@ class SqrtDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
     op->SetOutput("DOut", this->InputGrad("Out"));
     op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
-    return std::unique_ptr<T>(op);
   }
 };
 
@@ -793,8 +806,7 @@ class SquareDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
   using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("square_grad_grad");
     op->SetInput("X", this->Input("X"));
     // Out@GRAD: dy
@@ -808,7 +820,6 @@ class SquareDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
     op->SetOutput("DX", this->InputGrad("X"));
     // Out@GRAD@GRAD: ddy
     op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
-    return std::unique_ptr<T>(op);
   }
 };
 
@@ -824,16 +835,13 @@ class PowGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("pow_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetInput("FactorTensor", this->Input("FactorTensor"));
     op->SetAttrMap(this->Attrs());
-
-    return op;
   }
 };
 class PowOp : public framework::OperatorWithKernel {
@@ -984,6 +992,34 @@ REGISTER_OP_CPU_KERNEL(
         plat::CPUDeviceContext, ops::LeakyReluGradGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
+/* ========================    elu  register     ============================ */
+REGISTER_OPERATOR(
+    elu, ops::ActivationOp, ops::ELUOpMaker, ops::ActivationOpInferVarType,
+    ops::ActivationGradOpMaker<ops::ELUGradFunctor<float>::FwdDeps(),
+                               paddle::framework::OpDesc>,
+    ops::ActivationGradOpMaker<ops::ELUGradFunctor<float>::FwdDeps(),
+                               paddle::imperative::OpBase>,
+    ops::ActFwdInplaceInferer);
+REGISTER_OPERATOR(elu_grad, ops::ActivationOpGrad,
+                  ops::ActivationGradOpInplaceInference,
+                  ops::ELUDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::ELUDoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(
+    elu_grad_grad,
+    ops::ActivationOpDoubleGrad<ops::ELUGradFunctor<float>::FwdDeps()>,
+    ops::ActivationDoubleGradOpInplaceInference);
+
+REGISTER_ACTIVATION_CPU_KERNEL(elu, ELU, ELUFunctor, ELUGradFunctor);
+REGISTER_OP_CPU_KERNEL(
+    elu_grad_grad, ops::ELUDoubleGradKernel<plat::CPUDeviceContext,
+                                            ops::ELUGradGradFunctor<float>>,
+    ops::ELUDoubleGradKernel<plat::CPUDeviceContext,
+                             ops::ELUGradGradFunctor<double>>,
+    ops::ELUDoubleGradKernel<plat::CPUDeviceContext,
+                             ops::ELUGradGradFunctor<plat::float16>>);
+
+/* ========================================================================== */
+
 /* ===========================   sqrt register  ============================= */
 REGISTER_OPERATOR(
     sqrt, ops::ActivationOp, ops::SqrtOpMaker, ops::ActivationOpInferVarType,
@@ -1029,8 +1065,24 @@ REGISTER_OPERATOR(
     ops::ActivationOpDoubleGrad<ops::SquareGradGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInference);
 
-REGISTER_ACTIVATION_CPU_KERNEL(square, Square, SquareFunctor,
-                               SquareGradFunctor);
+REGISTER_OP_CPU_KERNEL(square,
+                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
+                                             ops::SquareFunctor<float>>,
+                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
+                                             ops::SquareFunctor<double>>,
+                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
+                                             ops::SquareFunctor<int>>,
+                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
+                                             ops::SquareFunctor<int64_t>>);
+REGISTER_OP_CPU_KERNEL(
+    square_grad, ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
+                                           ops::SquareGradFunctor<float>>,
+    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
+                              ops::SquareGradFunctor<double>>,
+    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
+                              ops::SquareGradFunctor<int>>,
+    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
+                              ops::SquareGradFunctor<int64_t>>);
 
 REGISTER_OP_CPU_KERNEL(
     square_grad_grad,
@@ -1039,7 +1091,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::SquareDoubleGradKernel<plat::CPUDeviceContext,
                                 ops::SquareGradGradFunctor<double>>,
     ops::SquareDoubleGradKernel<plat::CPUDeviceContext,
-                                ops::SquareGradGradFunctor<plat::float16>>);
+                                ops::SquareGradGradFunctor<plat::float16>>,
+    ops::SquareDoubleGradKernel<plat::CPUDeviceContext,
+                                ops::SquareGradGradFunctor<int>>,
+    ops::SquareDoubleGradKernel<plat::CPUDeviceContext,
+                                ops::SquareGradGradFunctor<int64_t>>);
 /* ========================================================================== */
 
 /* ==========================   pow register  ============================ */
@@ -1055,9 +1111,77 @@ REGISTER_OPERATOR(pow_grad, ops::PowOpGrad,
 
 REGISTER_OP_CPU_KERNEL(
     pow, ops::PowKernel<plat::CPUDeviceContext, ops::PowFunctor<float>>,
-    ops::PowKernel<plat::CPUDeviceContext, ops::PowFunctor<double>>);
+    ops::PowKernel<plat::CPUDeviceContext, ops::PowFunctor<double>>,
+    ops::PowKernel<plat::CPUDeviceContext, ops::PowFunctor<int>>,
+    ops::PowKernel<plat::CPUDeviceContext, ops::PowFunctor<int64_t>>);
 REGISTER_OP_CPU_KERNEL(
     pow_grad,
     ops::PowGradKernel<plat::CPUDeviceContext, ops::PowGradFunctor<float>>,
-    ops::PowGradKernel<plat::CPUDeviceContext, ops::PowGradFunctor<double>>);
+    ops::PowGradKernel<plat::CPUDeviceContext, ops::PowGradFunctor<double>>,
+    ops::PowGradKernel<plat::CPUDeviceContext, ops::PowGradFunctor<int>>,
+    ops::PowGradKernel<plat::CPUDeviceContext, ops::PowGradFunctor<int64_t>>);
+/* ========================================================================== */
+
+/* ==========================   exp register  ============================ */
+REGISTER_OPERATOR(
+    exp, ops::ActivationOp, ops::ExpOpMaker, ops::ActivationOpInferVarType,
+    ops::ActivationGradOpMaker<ops::ExpGradFunctor<float>::FwdDeps(),
+                               paddle::framework::OpDesc>,
+    ops::ActivationGradOpMaker<ops::ExpGradFunctor<float>::FwdDeps(),
+                               paddle::imperative::OpBase>,
+    std::conditional<ops::CanInplaceAct<ops::ExpGradFunctor<float>>(),
+                     ops::ActFwdInplaceInferer, void>::type);
+REGISTER_OPERATOR(exp_grad, ops::ActivationOpGrad,
+                  ops::ActivationGradOpInplaceInference);
+
+REGISTER_OP_CPU_KERNEL(exp,
+                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
+                                             ops::ExpFunctor<float>>,
+                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
+                                             ops::ExpFunctor<double>>,
+                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
+                                             ops::ExpFunctor<int>>,
+                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
+                                             ops::ExpFunctor<int64_t>>);
+REGISTER_OP_CPU_KERNEL(
+    exp_grad, ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
+                                        ops::ExpGradFunctor<float>>,
+    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
+                              ops::ExpGradFunctor<double>>,
+    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
+                              ops::ExpGradFunctor<int>>,
+    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
+                              ops::ExpGradFunctor<int64_t>>);
+/* ========================================================================== */
+
+/* ==========================   abs register  ============================ */
+REGISTER_OPERATOR(
+    abs, ops::ActivationOp, ops::AbsOpMaker, ops::ActivationOpInferVarType,
+    ops::ActivationGradOpMaker<ops::AbsGradFunctor<float>::FwdDeps(),
+                               paddle::framework::OpDesc>,
+    ops::ActivationGradOpMaker<ops::AbsGradFunctor<float>::FwdDeps(),
+                               paddle::imperative::OpBase>,
+    std::conditional<ops::CanInplaceAct<ops::AbsGradFunctor<float>>(),
+                     ops::ActFwdInplaceInferer, void>::type);
+REGISTER_OPERATOR(abs_grad, ops::ActivationOpGrad,
+                  ops::ActivationGradOpInplaceInference);
+
+REGISTER_OP_CPU_KERNEL(abs,
+                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
+                                             ops::AbsFunctor<float>>,
+                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
+                                             ops::AbsFunctor<double>>,
+                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
+                                             ops::AbsFunctor<int>>,
+                       ops::ActivationKernel<paddle::platform::CPUDeviceContext,
+                                             ops::AbsFunctor<int64_t>>);
+REGISTER_OP_CPU_KERNEL(
+    abs_grad, ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
+                                        ops::AbsGradFunctor<float>>,
+    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
+                              ops::AbsGradFunctor<double>>,
+    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
+                              ops::AbsGradFunctor<int>>,
+    ops::ActivationGradKernel<paddle::platform::CPUDeviceContext,
+                              ops::AbsGradFunctor<int64_t>>);
 /* ========================================================================== */

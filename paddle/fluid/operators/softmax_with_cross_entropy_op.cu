@@ -100,7 +100,7 @@ where:
 Therefore, the calculation can be separated into 3 steps:
 Step 1: row-wise operation to calculate max_i
 Step 2: row-wise operation to calculate logDiffMaxSum_i
-Step 3: caculate tmp_i_j, and finally get softmax_i_j and cross\_entropy_i
+Step 3: calculate tmp_i_j, and finally get softmax_i_j and cross\_entropy_i
 To save memory, we can share memory among max_i, logDiffMaxSum_i and
 cross\_entropy_i.
 In this way, the 3 steps should be changed to:
@@ -419,18 +419,18 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
     const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
     int axis_dim = logits->dims()[axis];
 
+    const int n = SizeToAxis(axis, logits->dims());
+    const int d = SizeFromAxis(axis, logits->dims());
+
+    auto* softmax_data = softmax->mutable_data<T>(context.GetPlace());
+    auto* loss_data = loss->mutable_data<T>(context.GetPlace());
+
     if (axis_dim == 1) {
       math::SetConstant<platform::CUDADeviceContext, T> set_constant;
       set_constant(context.cuda_device_context(), softmax, static_cast<T>(1));
       set_constant(context.cuda_device_context(), loss, static_cast<T>(0));
       return;
     }
-
-    const int n = SizeToAxis(axis, logits->dims());
-    const int d = SizeFromAxis(axis, logits->dims());
-
-    auto* softmax_data = softmax->mutable_data<T>(context.GetPlace());
-    auto* loss_data = loss->mutable_data<T>(context.GetPlace());
 
     auto soft_label = context.Attr<bool>("soft_label");
     auto ignore_index = context.Attr<int>("ignore_index");

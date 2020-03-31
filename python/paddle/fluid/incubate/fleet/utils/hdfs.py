@@ -22,7 +22,7 @@ from datetime import datetime
 import re
 import copy
 import errno
-
+import time
 import logging
 
 __all__ = ["HDFSClient"]
@@ -83,6 +83,7 @@ class HDFSClient(object):
         ret_code = 0
         ret_out = None
         ret_err = None
+        retry_sleep_second = 3
         whole_commands = " ".join(whole_commands)
         for x in range(retry_times + 1):
             proc = subprocess.Popen(
@@ -99,6 +100,7 @@ class HDFSClient(object):
 
             if ret_code == 0:
                 break
+            time.sleep(retry_sleep_second)
 
         return ret_code, ret_out, ret_err
 
@@ -272,10 +274,10 @@ class HDFSClient(object):
     @staticmethod
     def make_local_dirs(local_path):
         """
-        create a directiory local, is same to mkdir
+        create a directory local, is same to mkdir
 
         Args:
-            local_path(str): local path that wants to create a directiory.
+            local_path(str): local path that wants to create a directory.
         """
         try:
             os.makedirs(local_path)
@@ -329,7 +331,7 @@ class HDFSClient(object):
 
         ls_commands = ['-ls', hdfs_path]
         returncode, output, errors = self.__run_hdfs_cmd(
-            ls_commands, retry_times=1)
+            ls_commands, retry_times=10)
 
         if returncode:
             _logger.error("HDFS list path: {} failed".format(hdfs_path))

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <time.h>
 #include "paddle/fluid/framework/device_worker.h"
+#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 
 namespace paddle {
 namespace framework {

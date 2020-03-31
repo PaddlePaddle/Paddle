@@ -470,6 +470,8 @@ class TestBatchNormOpTraining(unittest.TestCase):
                     grad_var = block.desc.find_var(arg.encode("ascii"))
                     grad_var.set_dtype(core.VarDesc.VarType.FP32)
 
+                program._sync_with_cpp()
+
                 exe = fluid.Executor(place)
                 out = exe.run(program,
                               feed={

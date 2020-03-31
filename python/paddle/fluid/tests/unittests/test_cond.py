@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import numpy as np
+import os
 import unittest
 
 import paddle.fluid as fluid
@@ -22,7 +23,6 @@ import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 import paddle.fluid.framework as framework
 from paddle.fluid.backward import append_backward
-from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, program_guard
 from simple_nets import simple_fc_net_with_inputs, batchnorm_fc_with_inputs
 
@@ -192,15 +192,11 @@ class TestCondInputOutput(unittest.TestCase):
         with program_guard(main_program, startup_program):
             i = fluid.data(name="i", shape=[1], dtype='int32')
             pred = ((i % 2) == 0)
-            with self.assertRaises(Exception) as e:
+            with self.assertRaises(TypeError):
                 out = layers.cond(pred, i, func_return_one_tensor)
-            self.assertEqual("The true_fn in cond must be callable",
-                             str(e.exception))
 
-            with self.assertRaises(Exception) as e:
+            with self.assertRaises(TypeError):
                 out = layers.cond(pred, func_return_one_tensor, np.asarray([3]))
-            self.assertEqual("The false_fn in cond must be callable",
-                             str(e.exception))
 
             with self.assertRaises(Exception) as e:
                 out = layers.cond(pred, func_return_none,
@@ -222,6 +218,29 @@ class TestCondInputOutput(unittest.TestCase):
             self.assertTrue(
                 "Incompatible return values of true_fn and false_fn in cond" in
                 str(e.exception))
+
+    def test_extremely_simple_net_with_op_in_condition(self):
+        main_program = fluid.Program()
+        startup_program = fluid.Program()
+        with fluid.program_guard(main_program, startup_program):
+            a = fluid.layers.fill_constant(
+                shape=[1], dtype='float32', value=1.23)
+            a.stop_gradient = False
+            b = fluid.layers.fill_constant(
+                shape=[1], dtype='float32', value=1.25)
+            b.stop_gradient = False
+            out = layers.cond(a - b < -1.0, lambda: a, lambda: b)
+        append_backward(out)
+
+        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        ret = exe.run(main_program, fetch_list=[out, a.grad_name, b.grad_name])
+        # Note: fill_constant has loss of precision, you have to assertEqual
+        # with values doens't lose precision in float-point number.
+        self.assertEqual(ret[0][0], 1.25)
+        self.assertEqual(ret[1][0], 0.0)
+        self.assertEqual(ret[2][0], 1.0)
 
 
 class TestCondNestedControlFlow(unittest.TestCase):
@@ -277,9 +296,36 @@ class TestCondNestedControlFlow(unittest.TestCase):
             self.assertEqual(ret[0][0], expected_ret)
             self.assertEqual(ret[1][0], expected_a_grad)
 
+    def test_cond_op_in_condition(self):
+        main_program = fluid.Program()
+        startup_program = fluid.Program()
+
+        with fluid.program_guard(main_program, startup_program):
+            a = fluid.layers.fill_constant(
+                shape=[1], dtype='float32', value=1.23)
+            a.stop_gradient = False
+            b = fluid.layers.fill_constant(
+                shape=[1], dtype='float32', value=1.24)
+            b.stop_gradient = False
+            out = fluid.layers.cond(
+                a < b,
+                lambda: fluid.layers.cond(a - b < -1.0, lambda: fluid.layers.elementwise_add(a, b), lambda: fluid.layers.elementwise_mul(a, b)),
+                lambda: fluid.layers.cond(a == b, lambda: fluid.layers.elementwise_sub(a, b), lambda: fluid.layers.elementwise_pow(a, b))
+            )
+            append_backward(out)
+
+        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        ret = exe.run(main_program, fetch_list=[out, a.grad_name, b.grad_name])
+        # Note: fill_constant has loss of precision, so we assertAlmostEqual.    
+        self.assertAlmostEqual(ret[0][0], 1.5252)
+        self.assertAlmostEqual(ret[1][0], 1.24)
+        self.assertAlmostEqual(ret[2][0], 1.23)
+
 
 class TestCondBackward(unittest.TestCase):
-    def backward_value_helper(self, cond_func):
+    def backward_value_helper(self, cond_func, use_cuda, use_parallel_exe):
         """
         Helper function that compares calculated backward value is close to dy/dx
         """
@@ -294,43 +340,78 @@ class TestCondBackward(unittest.TestCase):
             i = fluid.data(name="i", shape=[1], dtype='int32')
             loss = cond_func(i, img, label)
             append_backward(loss)
-        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup_program)
+
+        num_devices = 1
+        if use_parallel_exe:
+            os.environ['CPU_NUM'] = str(2)
+            exe = fluid.ParallelExecutor(
+                use_cuda=use_cuda,
+                main_program=main_program,
+                loss_name=loss.name)
+            num_devices = exe.device_count
 
         delta = 0.005
         for feed_i in range(0, 10):
             feed_img = np.random.random(size=[1, 9]).astype(np.float32)
             feed_label = np.random.randint(
                 low=0, high=10, size=[1, 1], dtype=np.int64)
-            img_grad, loss_value = exe.run(
-                main_program,
-                feed={
-                    'i': np.full((1), feed_i, np.int32),
-                    'image': feed_img,
-                    'label': feed_label
-                },
-                fetch_list=[img.grad_name, loss.name])
+            if use_parallel_exe:
+                img_grad, loss_value = exe.run(
+                    feed={
+                        'i': np.full((num_devices), feed_i, np.int32),
+                        'image': np.repeat(
+                            feed_img, num_devices, axis=0),
+                        'label': np.repeat(
+                            feed_label, num_devices, axis=0)
+                    },
+                    fetch_list=[img.grad_name, loss.name])
+            else:
+                img_grad, loss_value = exe.run(
+                    main_program,
+                    feed={
+                        'i': np.full((1), feed_i, np.int32),
+                        'image': feed_img,
+                        'label': feed_label
+                    },
+                    fetch_list=[img.grad_name, loss.name])
 
-            numerical_grad = np.zeros(shape=[1, 9], dtype=np.float32)
+            numerical_grad = np.zeros(shape=[num_devices, 9], dtype=np.float32)
             feed_img_delta = np.copy(feed_img)
             for j in range(9):
                 feed_img_delta[0][j] = feed_img[0][j] + delta
-                loss_delta = exe.run(main_program,
-                                     feed={
-                                         'i': np.full((1), feed_i, np.int32),
-                                         'image': feed_img_delta,
-                                         'label': feed_label
-                                     },
-                                     fetch_list=[loss.name])
-                numerical_grad[0][j] = (loss_delta[0] - loss_value[0]) / delta
+                if use_parallel_exe:
+                    loss_delta = exe.run(feed={
+                        'i': np.full((num_devices), feed_i, np.int32),
+                        'image': np.repeat(
+                            feed_img_delta, num_devices, axis=0),
+                        'label': np.repeat(
+                            feed_label, num_devices, axis=0)
+                    },
+                                         fetch_list=[loss.name])
+                    multi_device_grad = (
+                        loss_delta[0] - loss_value[0]) / delta / num_devices
+                    for d in range(num_devices):
+                        numerical_grad[d][j] = multi_device_grad[d]
+                else:
+                    loss_delta = exe.run(main_program,
+                                         feed={
+                                             'i': np.full((1), feed_i,
+                                                          np.int32),
+                                             'image': feed_img_delta,
+                                             'label': feed_label
+                                         },
+                                         fetch_list=[loss.name])
+                    numerical_grad[0][j] = (
+                        loss_delta[0] - loss_value[0]) / delta
                 feed_img_delta[0][j] = feed_img[0][j]
             self.assertTrue(
                 np.isclose(
                     img_grad, numerical_grad, atol=0.05, rtol=0.05).all())
 
-    def add_optimizer_helper(self, cond_func):
+    def add_optimizer_helper(self, cond_func, use_cuda, use_parallel_exe):
         """
         Test that program is runnable when add optimizer
         """
@@ -344,22 +425,38 @@ class TestCondBackward(unittest.TestCase):
             optimizer = fluid.optimizer.SGD(learning_rate=0.1)
             optimizer.minimize(loss)
 
-        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup_program)
+        if use_parallel_exe:
+            os.environ['CPU_NUM'] = str(2)
+            exe = fluid.ParallelExecutor(
+                use_cuda=use_cuda,
+                main_program=main_program,
+                loss_name=loss.name)
+            num_devices = exe.device_count
 
         for feed_i in range(0, 10):
             feed_img = np.random.random(size=[16, 784]).astype(np.float32)
             feed_label = np.random.randint(
                 low=0, high=10, size=[16, 1], dtype=np.int64)
-            exe.run(main_program,
-                    feed={
-                        'i': np.full((1), feed_i, np.int32),
-                        'image': feed_img,
-                        'label': feed_label
-                    },
-                    fetch_list=[loss])
+            if use_parallel_exe:
+                exe.run(feed={
+                    'i': np.full((num_devices), feed_i, np.int32),
+                    'image': np.repeat(
+                        feed_img, num_devices, axis=0),
+                    'label': np.repeat(
+                        feed_label, num_devices, axis=0)
+                },
+                        fetch_list=[loss.name])
+            else:
+                exe.run(main_program,
+                        feed={
+                            'i': np.full((1), feed_i, np.int32),
+                            'image': feed_img,
+                            'label': feed_label
+                        },
+                        fetch_list=[loss])
 
     def test_cond_backward(self):
         def cond_func(i, img, label):
@@ -368,8 +465,13 @@ class TestCondBackward(unittest.TestCase):
                                lambda: simple_fc_net_with_inputs(img, label, class_num=10),
                                lambda: batchnorm_fc_with_inputs(img, label, class_num=10))
 
-        self.backward_value_helper(cond_func)
-        self.add_optimizer_helper(cond_func)
+        for use_parallel_exe in [False, True]:
+            self.backward_value_helper(cond_func,
+                                       core.is_compiled_with_cuda(),
+                                       use_parallel_exe)
+            self.add_optimizer_helper(cond_func,
+                                      core.is_compiled_with_cuda(),
+                                      use_parallel_exe)
 
     def test_half_nested_cond_backward(self):
         def branch(i, img, label):
@@ -384,10 +486,19 @@ class TestCondBackward(unittest.TestCase):
             return layers.cond(i < 5, lambda: layers.mean(img),
                                lambda: branch(i, img, label))
 
-        self.backward_value_helper(cond_func_simple_net_at_true)
-        self.add_optimizer_helper(cond_func_simple_net_at_true)
-        self.backward_value_helper(cond_func_simple_net_at_false)
-        self.add_optimizer_helper(cond_func_simple_net_at_false)
+        for use_parallel_exe in [False, True]:
+            self.backward_value_helper(cond_func_simple_net_at_true,
+                                       core.is_compiled_with_cuda(),
+                                       use_parallel_exe)
+            self.add_optimizer_helper(cond_func_simple_net_at_true,
+                                      core.is_compiled_with_cuda(),
+                                      use_parallel_exe)
+            self.backward_value_helper(cond_func_simple_net_at_false,
+                                       core.is_compiled_with_cuda(),
+                                       use_parallel_exe)
+            self.add_optimizer_helper(cond_func_simple_net_at_false,
+                                      core.is_compiled_with_cuda(),
+                                      use_parallel_exe)
 
     def test_nested_cond_backward(self):
         def branch(i, img, label, mod_two):
@@ -403,8 +514,13 @@ class TestCondBackward(unittest.TestCase):
             return layers.cond(i < 5, lambda: branch(i, img, label, True),
                                lambda: branch(i, img, label, False))
 
-        self.backward_value_helper(cond_func)
-        self.add_optimizer_helper(cond_func)
+        for use_parallel_exe in [False, True]:
+            self.backward_value_helper(cond_func,
+                                       core.is_compiled_with_cuda(),
+                                       use_parallel_exe)
+            self.add_optimizer_helper(cond_func,
+                                      core.is_compiled_with_cuda(),
+                                      use_parallel_exe)
 
 
 if __name__ == '__main__':

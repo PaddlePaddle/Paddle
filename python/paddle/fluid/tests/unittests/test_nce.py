@@ -88,7 +88,7 @@ class TestNCE(OpTest):
         }
 
     def set_data(self):
-        self.generate_data(5, 5, 4, 1, 2, False)
+        self.generate_data(5, 25, 100, 1, 2, False)
 
     def compute(self):
         out = nce(self.inputs['Input'], self.inputs['Weight'],
@@ -116,7 +116,7 @@ class TestNCE(OpTest):
 
 class TestNCECase1Tensor(TestNCE):
     def set_data(self):
-        self.generate_data(10, 20, 10, 2, 5, False)
+        self.generate_data(10, 20, 100, 2, 5, False)
 
 
 class TestNCECase1SelectedRows(unittest.TestCase):
@@ -131,12 +131,12 @@ class TestNCECase1SelectedRows(unittest.TestCase):
 
     @staticmethod
     def get_train_data(batch_size):
-        batchs = []
+        batches = []
         for i in range(batch_size):
             input = np.random.randn(batch_size, 10).astype(np.float32)
             labels = np.random.randint(0, 20, (batch_size, 1))
-            batchs.append([input, labels])
-        return batchs
+            batches.append([input, labels])
+        return batches
 
     def get_optimizer(self):
         # SGD optimizer

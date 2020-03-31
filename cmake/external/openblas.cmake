@@ -14,15 +14,22 @@
 
 INCLUDE(ExternalProject)
 
-SET(CBLAS_SOURCES_DIR ${THIRD_PARTY_PATH}/openblas)
+SET(CBLAS_PREFIX_DIR  ${THIRD_PARTY_PATH}/openblas)
+SET(CBLAS_SOURCE_DIR  ${THIRD_PARTY_PATH}/openblas/src/extern_openblas)
 SET(CBLAS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/openblas)
+SET(CBLAS_REPOSITORY  https://github.com/xianyi/OpenBLAS.git)
+SET(CBLAS_TAG         v0.3.7)
+cache_third_party(extern_openblas
+    REPOSITORY    ${CBLAS_REPOSITORY}
+    TAG           ${CBLAS_TAG}
+    DIR           CBLAS_SOURCE_DIR)
+
 IF(NOT WIN32)
     SET(CBLAS_LIBRARIES
         "${CBLAS_INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}openblas${CMAKE_STATIC_LIBRARY_SUFFIX}"
         CACHE FILEPATH "openblas library." FORCE)
     SET(CBLAS_INC_DIR "${CBLAS_INSTALL_DIR}/include" CACHE PATH "openblas include directory." FORCE)
     SET(OPENBLAS_CC "${CMAKE_C_COMPILER} -Wno-unused-but-set-variable -Wno-unused-variable")
-    SET(OPENBLAS_COMMIT "v0.3.7")
 
     IF(APPLE)
         SET(OPENBLAS_CC "${CMAKE_C_COMPILER} -isysroot ${CMAKE_OSX_SYSROOT}")
@@ -37,9 +44,9 @@ IF(NOT WIN32)
         extern_openblas
         ${EXTERNAL_PROJECT_LOG_ARGS}
         ${SHALLOW_CLONE}
-        GIT_REPOSITORY      https://github.com/xianyi/OpenBLAS.git
-        GIT_TAG             ${OPENBLAS_COMMIT}
-        PREFIX              ${CBLAS_SOURCES_DIR}
+        "${OPENBLAS_DOWNLOAD_CMD}"
+        PREFIX              ${CBLAS_PREFIX_DIR}
+        SOURCE_DIR          ${CBLAS_SOURCE_DIR}
         INSTALL_DIR         ${CBLAS_INSTALL_DIR}
         BUILD_IN_SOURCE     1
         BUILD_COMMAND       make -j$(nproc) ${COMMON_ARGS} ${OPTIONAL_ARGS}
@@ -55,9 +62,9 @@ ELSE(NOT WIN32)
     ExternalProject_Add(
         extern_openblas
         ${EXTERNAL_PROJECT_LOG_ARGS}
-        GIT_REPOSITORY      https://github.com/xianyi/OpenBLAS.git
-        GIT_TAG            "v0.3.7"
-        PREFIX              ${CBLAS_SOURCES_DIR}
+        "${OPENBLAS_DOWNLOAD_CMD}"
+        PREFIX              ${CBLAS_PREFIX_DIR}
+        SOURCE_DIR          ${CBLAS_SOURCE_DIR}
         INSTALL_DIR         ${CBLAS_INSTALL_DIR}
         BUILD_IN_SOURCE     0
         UPDATE_COMMAND      ""
@@ -68,10 +75,12 @@ ELSE(NOT WIN32)
                             -DCMAKE_INSTALL_PREFIX=${CBLAS_INSTALL_DIR}
                             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                             -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+                            -DBUILD_SHARED_LIBS=ON
                             -DMSVC_STATIC_CRT=${MSVC_STATIC_CRT}
                             ${EXTERNAL_OPTIONAL_ARGS}
         CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${CBLAS_INSTALL_DIR}
                             -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
                             -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
         )
+    SET(OPENBLAS_SHARED_LIB  ${CBLAS_INSTALL_DIR}/bin/openblas${CMAKE_SHARED_LIBRARY_SUFFIX})
 ENDIF(NOT WIN32)

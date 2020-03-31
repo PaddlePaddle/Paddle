@@ -14,11 +14,11 @@
 
 from __future__ import print_function
 
-import unittest
+import unittest, sys
+sys.path.append("../")
 import numpy as np
-import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
-from paddle.fluid.tests.unittests.test_activation_op import TestAbs, TestGelu, TestSigmoid, TestSquare, TestRelu, TestTanh
+from op_test import OpTest
+from test_activation_op import TestAbs, TestGelu, TestSigmoid, TestSquare, TestRelu, TestTanh
 
 
 class TestNGRAPHReluDim4(TestRelu):

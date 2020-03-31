@@ -22,7 +22,7 @@ from op_test import OpTest
 class TestLodResetOpByAttr(OpTest):
     def setUp(self):
         self.op_type = "lod_reset"
-        x = np.random.random((10, 20)).astype("float32")
+        x = np.random.random((10, 20)).astype("float64")
         lod = [[3, 2, 5]]
         # target_offset_lod and target_lod are the same lod info represented
         # in offset-based format and length-based format, respectively.
@@ -45,7 +45,7 @@ class TestLodResetOpByAttr(OpTest):
 class TestLodResetOpByInput(OpTest):
     def setUp(self):
         self.op_type = "lod_reset"
-        x = np.random.random((10, 20)).astype("float32")
+        x = np.random.random((10, 20)).astype("float64")
         lod = [[3, 2, 5]]
         # target_offset_lod and target_lod are the same lod info represented
         # in offset-based format and length-based format, respectively.
@@ -69,7 +69,7 @@ class TestLodResetOpByInput(OpTest):
 class TestLodResetOpBoth(OpTest):
     def setUp(self):
         self.op_type = "lod_reset"
-        x = np.random.random((10, 20)).astype("float32")
+        x = np.random.random((10, 20)).astype("float64")
         lod = [[3, 2, 5]]
         target_offset_lod_attr = [0, 7, 10]
         target_offset_lod_in = [0, 4, 7, 10]
@@ -93,9 +93,9 @@ class TestLodResetOpBoth(OpTest):
 class TestLodResetOpYIsLoDTensor(OpTest):
     def setUp(self):
         self.op_type = "lod_reset"
-        x = np.random.random((10, 20)).astype("float32")
+        x = np.random.random((10, 20)).astype("float64")
         lod = [[3, 2, 5]]
-        y = np.random.random((10, 10)).astype("float32")
+        y = np.random.random((10, 10)).astype("float64")
         target_lod = [[4, 3, 3]]
         self.inputs = {'X': (x, lod), 'Y': (y, target_lod)}
         self.outputs = {'Out': (x, target_lod)}
@@ -112,7 +112,7 @@ class TestLodResetOpYIsLoDTensor(OpTest):
 class TestLodAppendOpByAttr(OpTest):
     def setUp(self):
         self.op_type = "lod_reset"
-        x = np.random.random((10, 20)).astype("float32")
+        x = np.random.random((10, 20)).astype("float64")
         lod = [[3, 2, 5]]
         # target_offset_lod and target_lod are the same lod info represented
         # in offset-based format and length-based format, respectively.

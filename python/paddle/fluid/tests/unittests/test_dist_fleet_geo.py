@@ -19,26 +19,16 @@ import unittest
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
+from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig
+from paddle.fluid.transpiler.geo_sgd_transpiler import GeoSgdTranspiler
 from test_dist_fleet_base import TestFleetBase
 from dist_simnet_bow import train_network
 
 
-def skip_ci(func):
-    on_ci = bool(int(os.environ.get("SKIP_UNSTABLE_CI", '0')))
-
-    def __func__(*args, **kwargs):
-        if on_ci:
-            return
-        return func(*args, **kwargs)
-
-    return __func__
-
-
 class TestDistGeoCtr_2x2(TestFleetBase):
     def _setup_config(self):
-        self._sync_mode = False
-        self._geo_sgd = True
+        self._mode = "geo"
+        self._reader = "dataset"
         self._geo_sgd_need_push_nums = 5
 
     def check_with_place(self,
@@ -57,7 +47,7 @@ class TestDistGeoCtr_2x2(TestFleetBase):
         required_envs.update(need_envs)
 
         if check_error_log:
-            required_envs["GLOG_v"] = "3"
+            required_envs["GLOG_v"] = "4"
             required_envs["GLOG_logtostderr"] = "1"
 
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)

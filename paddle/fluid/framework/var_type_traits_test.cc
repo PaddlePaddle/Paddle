@@ -24,7 +24,7 @@
 #include "paddle/fluid/framework/var_type_traits.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #ifdef PADDLE_WITH_CUDA
-#ifndef _WIN32
+#if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif

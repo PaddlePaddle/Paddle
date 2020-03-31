@@ -250,14 +250,13 @@ class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
 
     auto use_stack = Attr<bool>("use_stack");
 
-    auto grad_op =
-        use_stack
-            ? framework::OpRegistry::CreateOp(
-                  "stack_grad", {{"X", names}, {"Y@GRAD", {dout_name}}},
-                  {{"X@GRAD", grad_names}}, attrs)
-            : framework::OpRegistry::CreateOp(
-                  "concat_grad", {{"X", names}, {"Out@GRAD", {dout_name}}},
-                  {{"X@GRAD", grad_names}}, attrs);
+    auto grad_op = use_stack ? framework::OpRegistry::CreateOp(
+                                   "stack_grad", {{"Y@GRAD", {dout_name}}},
+                                   {{"X@GRAD", grad_names}}, attrs)
+                             : framework::OpRegistry::CreateOp(
+                                   "concat_grad",
+                                   {{"X", names}, {"Out@GRAD", {dout_name}}},
+                                   {{"X@GRAD", grad_names}}, attrs);
 
     grad_op->Run(scope, place);
 
@@ -273,6 +272,21 @@ class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
   }
 };
 
+template <typename T>
+class TensorArrayToTensorGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("tensor_array_to_tensor_grad");
+    op->SetAttrMap(this->Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 USE_OP(concat);
@@ -281,8 +295,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(
     tensor_array_to_tensor, ops::LoDTensorArray2TensorOp,
     ops::LoDTensorArray2TensorOpMaker, ops::LoDTensorArray2TensorOpInferShape,
-    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
-    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
+    ops::TensorArrayToTensorGradOpMaker<paddle::framework::OpDesc>,
+    ops::TensorArrayToTensorGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(tensor_array_to_tensor_grad, ops::LoDTensorArray2TensorGradOp,
                   ops::LoDTensorArray2TensorGradInferShape,
                   ops::LoDTensorArray2TensorGradInferVarType);

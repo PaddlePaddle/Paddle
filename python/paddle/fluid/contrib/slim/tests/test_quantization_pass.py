@@ -60,14 +60,21 @@ def residual_block(num, quant_skip_pattern=None):
             bias_attr=bias_attr)
         return fluid.layers.batch_norm(input=tmp, act=act)
 
-    data = fluid.layers.data(name='image', shape=[1, 32, 32], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    data = fluid.layers.data(
+        name='image',
+        shape=[1, 1, 32, 32],
+        dtype='float32',
+        append_batch_size=False)
+    label = fluid.layers.data(
+        name='label', shape=[1, 1], dtype='int64', append_batch_size=False)
     hidden = data
     for _ in six.moves.xrange(num):
         conv = conv_bn_layer(hidden, 16, 3, 1, 1, act=None, bias_attr=True)
         short = conv_bn_layer(hidden, 16, 1, 1, 0, act=None)
         hidden = fluid.layers.elementwise_add(x=conv, y=short, act='relu')
-
+    matmul_weight = fluid.layers.create_parameter(
+        shape=[1, 16, 32, 32], dtype='float32')
+    hidden = fluid.layers.matmul(hidden, matmul_weight, True, True)
     if quant_skip_pattern:
         with fluid.name_scope(quant_skip_pattern):
             pool = fluid.layers.pool2d(
@@ -189,6 +196,7 @@ class TestQuantizationTransformPass(unittest.TestCase):
     def residual_block_quant(self,
                              activation_quant_type,
                              weight_quantize_type,
+                             quantizable_op_type,
                              for_ci=True):
         main = fluid.Program()
         startup = fluid.Program()
@@ -202,7 +210,8 @@ class TestQuantizationTransformPass(unittest.TestCase):
             scope=fluid.global_scope(),
             place=place,
             activation_quantize_type=activation_quant_type,
-            weight_quantize_type=weight_quantize_type)
+            weight_quantize_type=weight_quantize_type,
+            quantizable_op_type=quantizable_op_type)
         transform_pass.apply(graph)
         if not for_ci:
             marked_nodes = set()
@@ -223,14 +232,22 @@ class TestQuantizationTransformPass(unittest.TestCase):
                            val_marked_nodes)
 
     def test_residual_block_abs_max(self):
-        self.residual_block_quant('abs_max', 'abs_max', for_ci=True)
+        quantizable_op_type = ['conv2d', 'depthwise_conv2d', 'mul', 'matmul']
+        self.residual_block_quant(
+            'abs_max', 'abs_max', quantizable_op_type, for_ci=True)
 
     def test_residual_block_range_abs_max(self):
-        self.residual_block_quant('range_abs_max', 'abs_max', for_ci=True)
+        quantizable_op_type = ['conv2d', 'depthwise_conv2d', 'mul', 'matmul']
+        self.residual_block_quant(
+            'range_abs_max', 'abs_max', quantizable_op_type, for_ci=True)
 
     def test_residual_block_moving_average_abs_max(self):
+        quantizable_op_type = ['conv2d', 'depthwise_conv2d', 'mul', 'matmul']
         self.residual_block_quant(
-            'moving_average_abs_max', 'channel_wise_abs_max', for_ci=True)
+            'moving_average_abs_max',
+            'channel_wise_abs_max',
+            quantizable_op_type,
+            for_ci=True)
 
 
 class TestQuantizationFreezePass(unittest.TestCase):
@@ -523,14 +540,16 @@ def quant_dequant_residual_block(num, quant_skip_pattern=None):
             bias_attr=bias_attr)
         return fluid.layers.batch_norm(input=tmp, act=act)
 
-    data = fluid.layers.data(name='image', shape=[1, 32, 32], dtype='float32')
+    data1 = fluid.layers.data(name='image', shape=[1, 32, 32], dtype='float32')
+    data2 = fluid.layers.data(
+        name='matmul_input', shape=[16, 32, 32], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-    hidden = data
+    hidden = data1
     for _ in six.moves.xrange(num):
         conv = conv_bn_layer(hidden, 16, 3, 1, 1, act=None, bias_attr=True)
         short = conv_bn_layer(hidden, 16, 1, 1, 0, act=None)
         hidden = fluid.layers.elementwise_add(x=conv, y=short, act='relu')
-
+    hidden = fluid.layers.matmul(hidden, data2, True, True)
     if isinstance(quant_skip_pattern, str):
         with fluid.name_scope(quant_skip_pattern):
             pool1 = fluid.layers.pool2d(
@@ -596,7 +615,10 @@ class TestAddQuantDequantPass(unittest.TestCase):
                 for input_name in input_names:
                     self.assertTrue(input_name.endswith('.quant_dequant'))
 
-    def residual_block_quant(self, skip_pattern=None, for_ci=True):
+    def residual_block_quant(self,
+                             quantizable_op_type,
+                             skip_pattern=None,
+                             for_ci=True):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
@@ -606,7 +628,10 @@ class TestAddQuantDequantPass(unittest.TestCase):
         place = fluid.CPUPlace()
         graph = IrGraph(core.Graph(main.desc), for_test=False)
         add_quant_dequant_pass = AddQuantDequantPass(
-            scope=fluid.global_scope(), place=place, skip_pattern=skip_pattern)
+            scope=fluid.global_scope(),
+            place=place,
+            skip_pattern=skip_pattern,
+            quantizable_op_type=quantizable_op_type)
         add_quant_dequant_pass.apply(graph)
         if not for_ci:
             marked_nodes = set()
@@ -625,14 +650,21 @@ class TestAddQuantDequantPass(unittest.TestCase):
             val_graph.draw('.', 'val_add_quant_dequant_graph', val_marked_nodes)
 
     def test_residual_block(self):
-        self.residual_block_quant(skip_pattern=None, for_ci=True)
-
-    def test_residual_block_skip_pattern(self):
-        self.residual_block_quant(skip_pattern='skip_quant', for_ci=True)
-
-    def test_residual_block_skip_pattern(self):
+        quantizable_op_type = ['elementwise_add', 'pool2d', 'mul', 'matmul']
         self.residual_block_quant(
-            skip_pattern=['skip_quant1', 'skip_quant2'], for_ci=True)
+            quantizable_op_type, skip_pattern=None, for_ci=True)
+
+    def test_residual_block_skip_pattern(self):
+        quantizable_op_type = ['elementwise_add', 'pool2d', 'mul', 'matmul']
+        self.residual_block_quant(
+            quantizable_op_type, skip_pattern='skip_quant', for_ci=True)
+
+    def test_residual_block_skip_pattern(self):
+        quantizable_op_type = ['elementwise_add', 'pool2d', 'mul', 'matmul']
+        self.residual_block_quant(
+            quantizable_op_type,
+            skip_pattern=['skip_quant1', 'skip_quant2'],
+            for_ci=True)
 
 
 if __name__ == '__main__':

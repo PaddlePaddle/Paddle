@@ -137,6 +137,8 @@ class TestDistRunnerBase(object):
             dist_strategy.use_local_sgd = True
         if args.ut4grad_allreduce:
             dist_strategy._ut4grad_allreduce = True
+        if args.sync_batch_norm:
+            dist_strategy.sync_batch_norm = True
 
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
@@ -161,6 +163,13 @@ class TestDistRunnerBase(object):
             var for var in trainer_prog.global_block().vars.values()
             if var.is_data
         ]
+
+        eprint("feed_var_list:", feed_var_list)
+
+        # tmp add this code to pass python35 gcc8 CI
+        # Fixme(gongweibao, wangxi), need fix fleet api program order
+        if feed_var_list[0].name == 'label':
+            feed_var_list = feed_var_list[::-1]
 
         feeder = fluid.DataFeeder(feed_var_list, place)
         reader_generator = train_reader()
@@ -325,10 +334,6 @@ class TestDistRunnerBase(object):
             build_stra.num_trainers = 1
             build_stra.trainer_id = 0
 
-        if args.use_dgc:
-            # fuse_all_reduce_ops require that gradients should not be sparse types
-            build_stra.fuse_all_reduce_ops = False
-
         print_to_err(type(self).__name__, "begin to compile with data parallel")
         binary = compiler.CompiledProgram(trainer_prog).with_data_parallel(
             loss_name=avg_cost.name,
@@ -480,6 +485,7 @@ def runtime_main(test_class):
         required=False,
         type=bool,
         default=False)
+    parser.add_argument('--sync_batch_norm', action='store_true')
 
     args = parser.parse_args()
 
@@ -830,6 +836,8 @@ class TestDistBase(unittest.TestCase):
                 tr_cmd += " --use_local_sgd"
             if self._ut4grad_allreduce:
                 tr_cmd += " --ut4grad_allreduce"
+            if hasattr(self, '_sync_batch_norm') and self._sync_batch_norm:
+                tr_cmd += " --sync_batch_norm"
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             env['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')

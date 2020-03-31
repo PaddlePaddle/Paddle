@@ -32,6 +32,15 @@ class SequenceEraseOp : public framework::OperatorWithKernel {
                    "Input(X) of SequenceEraseOp should be a 2-D LoDTensor "
                    "with the 2nd dimension equal to 1.");
     ctx->SetOutputDim("Out", x_dims);
+    // The output LoDTensor's lod_level should be input X's lod_level.
+    // For compile-time, we call SetLoDLevel to set output's lod_level.
+    // For runtime, output LoDTensor's lod is determined by input X's lod and
+    // the level specified by input RandTable.
+    // We cannot get X's detail lod and RankTable's level in this function, so
+    // leave this work to the detail kernel implementation.
+    if (!ctx->IsRuntime()) {
+      ctx->SetLoDLevel("Out", ctx->GetLoDLevel("X"));
+    }
   }
 };
 

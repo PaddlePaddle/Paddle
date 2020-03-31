@@ -72,16 +72,16 @@ class StridedSliceOp : public framework::OperatorWithKernel {
         ctx->HasInput("StridesTensor")) {
       tensor_input = true;
     }
-    if (ctx->HasInput("EndsTensor") == false) {
+    if (!ctx->HasInput("EndsTensor")) {
       PADDLE_ENFORCE_EQ(ends_size, axes.size(),
                         "The size of ends must be equal to the size of axes.");
     }
-    if (ctx->HasInput("StartsTensor") == false) {
+    if (!ctx->HasInput("StartsTensor")) {
       PADDLE_ENFORCE_EQ(
           starts_size, axes.size(),
           "The size of starts must be equal to the size of axes.");
     }
-    if (ctx->HasInput("StridesTensor") == false) {
+    if (!ctx->HasInput("StridesTensor")) {
       PADDLE_ENFORCE_EQ(
           strides_size, axes.size(),
           "The size of strides must be equal to the size of axes.");
@@ -257,8 +257,7 @@ class StridedSliceOpGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *bind = new T();
+  void Apply(GradOpPtr<T> bind) const override {
     bind->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     bind->SetInput("Input", this->Input("Input"));
     bind->SetInput("StartsTensor", this->Input("StartsTensor"));
@@ -270,12 +269,11 @@ class StridedSliceOpGradMaker : public framework::SingleGradOpMaker<T> {
     bind->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
     bind->SetAttrMap(this->Attrs());
     bind->SetType("strided_slice_grad");
-    return std::unique_ptr<T>(bind);
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
-    StridedSliceOpGradNoNeedBufferVarsInference, "Input");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(StridedSliceOpGradNoNeedBufferVarsInference,
+                                    "Input");
 
 }  // namespace operators
 }  // namespace paddle

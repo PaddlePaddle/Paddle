@@ -23,16 +23,16 @@ import os
 import inspect
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import utils
+from ... import unique_name
+from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
+from paddle.fluid.framework import Variable
+import warnings
 
 __all__ = [
-    'fused_elemwise_activation',
-    'sequence_topk_avg_pooling',
-    'var_conv_2d',
-    'match_matrix_tensor',
-    'tree_conv',
-    'fused_embedding_seq_pool',
-    'multiclass_nms2',
-    'search_pyramid_hash',
+    'fused_elemwise_activation', 'sequence_topk_avg_pooling', 'var_conv_2d',
+    'match_matrix_tensor', 'tree_conv', 'fused_embedding_seq_pool',
+    'multiclass_nms2', 'search_pyramid_hash', 'shuffle_batch', 'partial_concat',
+    'partial_sum'
 ]
 
 
@@ -114,26 +114,26 @@ def var_conv_2d(input,
     """
     The var_conv_2d layer calculates the output base on the :attr:`input` with variable length,
     row, col, input channel, filter size and strides. Both :attr:`input`, :attr:`row`,
-    and :attr:`col` are 1-level LodTensor. The covolution operation is same as conv2d layer with 
+    and :attr:`col` are 1-level LodTensor. The convolution operation is same as conv2d layer with 
     padding. Besides, input.dims[1] should be 1. 
 
     .. code-block:: text
-            
+
             If input_channel is 2 and given row lodTensor and col lodTensor as follows:
                 row.lod = [[5, 4]]
                 col.lod = [[6, 7]]
             input is a lodTensor: 
                 input.lod = [[60, 56]]	# where 60 = input_channel * 5 * 6
                 input.dims = [116, 1]	# where 116 = 60 + 56
-            
+
             If set output_channel is 3, filter_size is [3, 3], stride is [1, 1]:
                 output.lod = [[90, 84]] # where 90 = output_channel * [(5-1)/stride + 1] * [(6-1)/stride + 1]
                 output.dims = [174, 1]  # where 174 = 90 + 84
 
     Args:
-        input (Variable): The input shoud be 1-level LodTensor with dims[1] equals 1.
-        row (Variable): The row shoud be 1-level LodTensor to provide height information.
-        col (Variable): The col shoud be 1-level LodTensor to provide width information.
+        input (Variable): The input should be 1-level LodTensor with dims[1] equals 1.
+        row (Variable): The row should be 1-level LodTensor to provide height information.
+        col (Variable): The col should be 1-level LodTensor to provide width information.
         input_channel (int): The number of input channel.
         output_channel (int): The number of output channel.
         filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
@@ -323,9 +323,9 @@ def sequence_topk_avg_pooling(input, row, col, topks, channel_num):
 
     Args:
         input (Variable): The input should be 2D LodTensor with dims[1] equals 1.
-        row (Variable): The row shoud be 1-level LodTensor to provide the height information
+        row (Variable): The row should be 1-level LodTensor to provide the height information
                         of the input tensor data.
-        col (Variable): The col shoud be 1-level LodTensor to provide the width information
+        col (Variable): The col should be 1-level LodTensor to provide the width information
                         of the input tensor data.
         topks (list): A list of incremental value to average the topk feature.
         channel_num (int): The number of input channel.
@@ -378,7 +378,7 @@ def tree_conv(nodes_vector,
               name=None):
     """ 
     ${comment}
-    		
+
     Args:
         nodes_vector(${nodes_vector_type}): ${nodes_vector_comment}
         edge_set(${edge_set_type}): ${edge_set_comment}
@@ -511,7 +511,7 @@ def multiclass_nms2(bboxes,
                     name=None):
     """
     **Multiclass NMS2**
-    
+
     This operator is to do multi-class non maximum suppression (NMS) on
     boxes and scores.
     In the NMS step, this operator greedily selects a subset of detection bounding
@@ -553,7 +553,7 @@ def multiclass_nms2(bboxes,
                                  low confidence score. If not provided, 
                                  consider all boxes.
         nms_top_k (int): Maximum number of detections to be kept according to
-                         the confidences aftern the filtering detections based
+                         the confidences after the filtering detections based
                          on score_threshold.
         nms_threshold (float): The threshold to be used in NMS. Default: 0.3
         nms_eta (float): The threshold to be used in NMS. Default: 1.0
@@ -644,6 +644,7 @@ def search_pyramid_hash(input,
                         param_attr_wl=None,
                         param_attr_bl=None,
                         name=None,
+                        distribute_update_vars=None,
                         dtype='float32'):
     """
     **Pyramid hash embedding**
@@ -670,6 +671,8 @@ def search_pyramid_hash(input,
             default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
         param_attr_wl(ParamAttr): Specified parameters of white filter.
         param_attr_bl(ParamAttr): Specified parameters of black filter.
+        distribute_update_vars(list[ParamAttr.name]): Decided which params should be updated in distribute training. 
+            Used in Distribute Transpiler to create a trainer/server program.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
         dtype(str): The data type of output variable, float32.
@@ -698,6 +701,22 @@ def search_pyramid_hash(input,
         black_list.stop_gradient = True
         input_vars['BlackList'] = black_list
 
+    distribute_update_vars_str = ""
+    if distribute_update_vars:
+        assert isinstance(distribute_update_vars, list)
+        special_name_list = []
+        if param_attr:
+            special_name_list.append(param_attr.name)
+        if param_attr_wl:
+            special_name_list.append(param_attr_wl.name)
+        if param_attr_bl:
+            special_name_list.append(param_attr_bl.name)
+        for param in distribute_update_vars:
+            if param not in special_name_list:
+                raise ValueError(
+                    "Pyramid Hash layer didn't have parameter {}".format(param))
+        distribute_update_vars_str = ",".join(distribute_update_vars)
+
     res = helper.create_variable_for_type_inference(dtype)
     drop_pos = helper.create_variable_for_type_inference(dtype)
     x_temp_out = helper.create_variable_for_type_inference(dtype)
@@ -719,6 +738,187 @@ def search_pyramid_hash(input,
             'black_list_len': black_list_len,
             'seed': seed,
             'lr': lr,
+            'distribute_update_vars': distribute_update_vars_str
         })
 
     return res
+
+
+def shuffle_batch(x, seed=None):
+    """
+    This layer shuffle input tensor :attr:`x` . Normally, :attr:`x` is 2-D LoDTensor.
+
+    :attr:`x` is a LoDTensor to be shuffled with shape :math:`[N_1, N_2, ..., N_k, D]` . Note that the last dim of input will not be shuffled.
+    :math:`N_1 * N_2 * ... * N_k` numbers of elements with length :math:`D` will be shuffled randomly.
+
+    For Example:
+
+    .. code-block:: text
+
+      Input:
+        x.data = [[1, 2], [3, 4], [5, 6], [7, 8]]
+        x.dims = [4, 2]
+
+      Attrs:
+        seed = 2019
+
+      Output:
+        Out.data =[[7, 8], [1, 2], [3, 4], [5, 6]]
+        Out.dims = [4, 2]
+
+    Args:
+        x (Variable): The input variable. The input variable is a N-D LoDTensor with type int, float32 or float64.
+        seed (None|int|Variable): The start up seed. If set, seed will be set as the start up seed of shuffle engine.
+                If not set(Default), start up seed of shuffle engine will be generated randomly.
+
+    Returns:
+        Variables: The shuffled LoDTensor with the same shape and lod as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name="x", shape=[-1, 4])
+            out = fluid.contrib.layers.shuffle_batch(x)
+    """
+    helper = LayerHelper('shuffle_batch', **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    shuffle_idx = helper.create_variable_for_type_inference(dtype=np.int64)
+    if seed is None and helper.main_program.random_seed != 0:
+        seed = helper.main_program.random_seed
+    if seed is None:
+        seed = np.random.randint(-65536, 65535)
+    op_attrs = {}
+    if isinstance(seed, int):
+        op_attrs["startup_seed"] = seed
+        seed = helper.create_variable(
+            name=unique_name.generate("shuffle_batch_seed"),
+            dtype="int64",
+            persistable=True)
+    helper.append_op(
+        type='shuffle_batch',
+        inputs={'X': x,
+                'Seed': seed},
+        outputs={'Out': out,
+                 'ShuffleIdx': shuffle_idx,
+                 'SeedOut': seed},
+        attrs=op_attrs)
+    return out
+
+
+def partial_concat(input, start_index=0, length=-1):
+    """
+    **Partial Concat**
+    This OP concatenates the inputs according to the start index and length. This
+    OP exists in contrib, which means that it is not shown to the public.
+    Only 2-D Tensor or LodTensor input is supported. Slice and concat can only be 
+    performed along the second dimension.
+
+    .. code-block:: text
+        
+        Given:
+            x = [[0, 1, 2],
+                 [3, 4, 5]]
+            y = [[6, 7 ,8],
+                 [9, 10, 11]]
+            output = partial_concat([x, y], start_index=0, length=2)
+
+          we get:
+             
+            output = [[0, 1, 6, 7],
+                      [3, 4, 9, 10]]
+
+    Args:
+        input(list): List of input Tensors with data type float32, float64, int32,
+            int64.
+        start_index(int32): The start index of each instance for partial concatenation.
+            Default is 0.
+        length(int32): The length of each instance for partial concatenation. Default is -1.
+            Negative values for all elements after start_index.
+    Returns:
+        Variable: A Tensor with the same data type as input's.
+    Examples:
+        .. code-block:: python
+            import paddle.fluid as fluid
+            x = fluid.data(name="x", shape=[None,3], dtype="float32")
+            y = fluid.data(name="y", shape=[None,3], dtype="float32")
+            concat = fluid.contrib.layers.partial_concat([x, y], start_index=0, length=2)
+    """
+    if not isinstance(input, list):
+        warnings.warn(
+            "The type of input in partial_concat should be list, but received %s."
+            % (type(input)))
+        input = [input]
+    for id, x in enumerate(input):
+        check_variable_and_dtype(
+            x, 'input[' + str(id) + ']',
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            'partial_concat')
+    check_type(start_index, 'start_index', (int), 'partial_concat')
+    check_type(length, 'length', (int), 'partial_concat')
+    inputs = {'X': input}
+    attrs = {'start_index': start_index, 'length': length}
+    helper = LayerHelper('partial_concat', **locals())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    helper.append_op(
+        type='partial_concat',
+        inputs=inputs,
+        outputs={'Out': [out]},
+        attrs=attrs)
+    return out
+
+
+def partial_sum(input, start_index=0, length=-1):
+    """
+    **PartialSum**
+    This Op can sum the vars by specifying the initial position(start_index) and length(length). 
+    This Op exists in contrib, which means that it is not shown to the public.
+    Only 2-D Tensor or LodTensor input is supported. Slice and concat can only be 
+    performed along the second dimension.
+    .. code-block:: text
+        
+        Given:
+            x = [[0, 1, 2],
+                 [3, 4, 5]]
+            y = [[6, 7 ,8],
+                 [9, 10, 11]]
+            output = partial_sum([x, y], start_index=0, length=2)
+          we get:
+             
+            output = [[6, 8],
+                      [12, 14]]
+    Args:
+        input(list): List of input Tensors with data type float32, float64, int32,
+            int64.
+    Returns:
+        Variable: A Tensor with the same data type as input's.
+    Examples:
+        .. code-block:: python
+        import paddle.fluid.layers as layers
+        import paddle.fluid as fluid
+        import numpy as np
+        x = fluid.data(name="x", shape=[None, 3], dtype="float32")
+        y = fluid.data(name="y", shape=[None, 3], dtype="float32")
+        sum = layers.partial_sum([x,y], start_index=0, length=2)
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        xx = np.array([1,2,3,4,5,6]).reshape((2,3)).astype("float32")
+        yy = np.array([6,5,4,4,5,6]).reshape((2,3)).astype("float32")
+        out = exe.run(feed={"x":xx, "y":yy}, fetch_list=[sum])
+    """
+    for id, x in enumerate(input):
+        check_variable_and_dtype(x, 'input[' + str(id) + ']',
+                                 ['float32', 'float64', 'int32', 'int64'],
+                                 'partial_sum')
+
+    inputs = {'X': input}
+    attrs = {}
+    attrs['start_index'] = start_index
+    attrs['length'] = length
+    helper = LayerHelper('partial_sum', **locals())
+    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    helper.append_op(
+        type='partial_sum', inputs=inputs, outputs={'Out': [out]}, attrs=attrs)
+    return out

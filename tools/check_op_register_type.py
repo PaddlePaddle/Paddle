@@ -25,6 +25,9 @@ import difflib
 import collections
 import paddle.fluid as fluid
 
+INTS = set(['int', 'int64_t'])
+FLOATS = set(['float', 'double'])
+
 
 def get_all_kernels():
     all_kernels_info = fluid.core._get_all_register_op_kernels()
@@ -54,8 +57,15 @@ def read_file(file_path):
     return content
 
 
-INTS = set(['int', 'int64_t'])
-FLOATS = set(['float', 'double'])
+def print_diff(op_type, register_types):
+    lack_types = set()
+    if len(INTS - register_types) == 1:
+        lack_types |= INTS - register_types
+    if len(FLOATS - register_types) == 1:
+        lack_types |= FLOATS - register_types
+
+    print("{} only supports [{}] now, but lacks [{}].".format(op_type, " ".join(
+        register_types), " ".join(lack_types)))
 
 
 def check_add_op_valid():
@@ -72,7 +82,7 @@ def check_add_op_valid():
             register_types = set(op_info[1:])
             if len(FLOATS - register_types) == 1 or \
                     len(INTS - register_types) == 1:
-                print(each_diff)
+                print_diff(op_info[0], register_types)
 
 
 if len(sys.argv) == 1:

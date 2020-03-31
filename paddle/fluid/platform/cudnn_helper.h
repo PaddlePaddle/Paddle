@@ -60,14 +60,6 @@ inline const char* cudnnGetErrorString(cudnnStatus_t status) {
 #define CUDNN_VERSION_MIN(major, minor, patch) \
   (CUDNN_VERSION >= ((major)*1000 + (minor)*100 + (patch)))
 
-#define CUDNN_ENFORCE(condition)                                     \
-  do {                                                               \
-    auto status = condition;                                         \
-    if (UNLIKELY(status != CUDNN_STATUS_SUCCESS)) {                  \
-      PADDLE_THROW(::paddle::platform::cudnnGetErrorString(status)); \
-    }                                                                \
-  } while (false)
-
 enum class DataLayout {  // Not use
   kNHWC,
   kNCHW,
@@ -83,7 +75,7 @@ enum class PoolingMode {
   kAverageInclusive,
 };
 
-enum ActivationMode {
+enum class ActivationMode {
   kNone,  // activation identity
   kSigmoid,
   kRelu,
@@ -467,7 +459,7 @@ class ScopedActivationDescriptor {
         PADDLE_THROW("unrecognized activation mode: %d .",
                      static_cast<int>(activation_mode));
     }
-    CUDNN_ENFORCE(dynload::cudnnSetActivationDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetActivationDescriptor(
         desc_, mode, CUDNN_NOT_PROPAGATE_NAN, relu_ceiling));
     return desc_;
   }

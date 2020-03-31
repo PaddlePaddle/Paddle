@@ -60,10 +60,25 @@ class Pass {
     try {
       return *boost::any_cast<AttrType *>(attrs_.at(attr_name));
     } catch (boost::bad_any_cast &) {
-      PADDLE_THROW(
-          "Invalid attribute type of %s error, expected: %s, actual: %s",
-          attr_name, typeid(AttrType *).name(),
-          attrs_.at(attr_name).type().name());
+      auto TypeToString = [](const std::type_info &info) -> std::string {
+        if (std::type_index(info) == std::type_index(typeid(bool *))) {
+          return "bool";
+        } else if (std::type_index(info) == std::type_index(typeid(int *))) {
+          return "int";
+        } else if (std::type_index(info) ==
+                   std::type_index(typeid(const int *))) {
+          return "const int";
+        } else if (std::type_index(info) ==
+                   std::type_index(typeid(std::string *))) {
+          return "std::string";
+        }
+        return info.name();
+      };
+
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Invalid type for attritube %s, expected: %s, actual: %s", attr_name,
+          TypeToString(typeid(AttrType *)),
+          TypeToString(attrs_.at(attr_name).type())));
     }
   }
 

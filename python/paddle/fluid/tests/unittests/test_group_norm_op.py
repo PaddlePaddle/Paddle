@@ -19,7 +19,7 @@ import numpy as np
 from operator import mul
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from op_test import OpTest
+from op_test import OpTest, skip_check_grad_ci
 
 from testsuite import create_op
 
@@ -45,7 +45,7 @@ class TestGroupNormOp(OpTest):
         self.op_type = "group_norm"
         self.data_format = "NCHW"
         self.dtype = np.float64
-        self.shape = (2, 4, 3, 3)
+        self.shape = (2, 100, 3, 5)
         self.attrs = {'epsilon': 1e-5, 'groups': 2, 'data_layout': "NCHW"}
         self.compare_between_place = False
         self.init_test_case()
@@ -68,15 +68,22 @@ class TestGroupNormOp(OpTest):
         self.attrs['data_layout'] = self.data_format
 
     def test_check_output(self):
-        atol = 1e-4
-        inplace_atol = 1e-4
+        atol = 0.0
+        inplace_atol = 0.0
         place = core.CPUPlace()
-        # add inplace_atol bacause group_norm doesn't ensure computational consistency
-        self.check_output_with_place(
-            place, atol=atol, inplace_atol=inplace_atol)
+
+        self.check_output_with_place(place, atol=atol)
 
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
+            # group_norm uses AtomicAdd on CUDAPlace, which do not ensure
+            # computation order when multiple threads write the same address. So the 
+            # result of group_norm is non-deterministic when datatype is float.
+            # When inplace_atol is not None, the inplace check uses numpy.allclose
+            # to check inplace result instead of numpy.array_equal.
+            # Set to inplace_atol to 0, which means the absolute error is 0, and the
+            # relative error is 1e-05 in numpy.allclose by default.
+            # Reference: https://docs.scipy.org/doc/numpy/reference/generated/numpy.allclose.html
             self.check_output_with_place(
                 place, atol=atol, inplace_atol=inplace_atol)
 
@@ -105,15 +112,13 @@ class TestGroupNormOp(OpTest):
             return
 
         place = core.CPUPlace()
-        self.check_grad_with_place(
-            place, set(['X', 'Scale', 'Bias']), 'Y', max_relative_error=0.01)
+        self.check_grad_with_place(place, set(['X', 'Scale', 'Bias']), 'Y')
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
                 place,
                 set(['X', 'Scale', 'Bias']),
-                'Y',
-                max_relative_error=0.005)
+                'Y', )
 
     def init_test_case(self):
         pass
@@ -146,6 +151,10 @@ class TestGroupNormOpBigEps3(TestGroupNormOp):
         self.attrs['epsilon'] = 0.5
 
 
+@skip_check_grad_ci(
+    reason='''This test case is used to ensure whether the gradient checking results between CPU and GPU  
+            are consistent when using the same inputs, thus, it doesn't need to call check_grad.'''
+)
 class TestGroupNormOpLargeData(TestGroupNormOp):
     def init_test_case(self):
         self.shape = (2, 32, 64, 64)
@@ -185,6 +194,10 @@ class TestGroupNormOpBigEps3_With_NHWC(TestGroupNormOp):
         self.data_format = "NHWC"
 
 
+@skip_check_grad_ci(
+    reason='''This test case is used to ensure whether the gradient checking results between CPU and GPU  
+            are consistent when using the same inputs, thus, it doesn't need to call check_grad.'''
+)
 class TestGroupNormOpLargeData_With_NHWC(TestGroupNormOp):
     def init_test_case(self):
         self.shape = (2, 64, 32, 32)  # NCHW

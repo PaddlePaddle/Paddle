@@ -26,7 +26,7 @@ namespace analysis {
 using framework::ir::Node;
 
 std::vector<std::string> ExtractParameters(
-    const std::unordered_set<Node *> &nodes) {
+    const std::unordered_set<Node *> &nodes, bool sorted) {
   // We can judge whether a variable is a parameter by
   // its presistable property, but sometimes the presistable
   // of the feed op output is true, so we have to identify it.
@@ -50,7 +50,57 @@ std::vector<std::string> ExtractParameters(
       parameters.push_back(node->Name());
     }
   }
+  if (sorted) {
+    std::sort(parameters.begin(), parameters.end());
+    parameters.erase(std::unique(parameters.begin(), parameters.end()),
+                     parameters.end());
+  }
   return parameters;
+}
+
+std::unordered_set<Node *> GetRelatedIOVarNodes(
+    const std::vector<Node *> &nodes) {
+  std::unordered_set<Node *> io_nodes;
+  for (const auto &node : nodes) {
+    if (!node->IsOp()) continue;
+    for (const auto &in : node->inputs) {
+      io_nodes.insert(in);
+    }
+    for (const auto &out : node->outputs) {
+      io_nodes.insert(out);
+    }
+  }
+  return io_nodes;
+}
+
+void PrependFeedOps(framework::BlockDesc *global_block,
+                    const std::vector<std::string> &feed_target_names,
+                    std::string feed_holder_name) {
+  framework::VarDesc *feed_var = global_block->Var(feed_holder_name);
+  feed_var->SetType(paddle::framework::proto::VarType::FEED_MINIBATCH);
+  feed_var->SetPersistable(true);
+  for (size_t i = 0; i < feed_target_names.size(); i++) {
+    framework::OpDesc *feed_op = global_block->AppendOp();
+    feed_op->SetType("feed");
+    feed_op->SetInput("X", {feed_holder_name});
+    feed_op->SetOutput("Out", {feed_target_names[i]});
+    feed_op->SetAttr("col", static_cast<int>(i));
+  }
+}
+
+void PrependFetchOps(framework::BlockDesc *global_block,
+                     const std::vector<std::string> &fetch_target_names,
+                     std::string fetch_holder_name) {
+  framework::VarDesc *fetch_var = global_block->Var(fetch_holder_name);
+  fetch_var->SetType(paddle::framework::proto::VarType::FETCH_LIST);
+  fetch_var->SetPersistable(true);
+  for (size_t i = 0; i < fetch_target_names.size(); i++) {
+    framework::OpDesc *fetch_op = global_block->AppendOp();
+    fetch_op->SetType("fetch");
+    fetch_op->SetInput("X", {fetch_target_names[i]});
+    fetch_op->SetOutput("Out", {fetch_holder_name});
+    fetch_op->SetAttr("col", static_cast<int>(i));
+  }
 }
 
 void RenameAndGetOutputs(
@@ -62,7 +112,7 @@ void RenameAndGetOutputs(
     std::unordered_map<std::string, std::string> *output_name_map,
     const std::unordered_map<std::string, framework::ir::Node *> &graph_var_map,
     bool trt_and_not_int8) {
-  //// In the normal case, the paddle-trt exists bug when runing the googlenet.
+  //// In the normal case, the paddle-trt exists bug when running the googlenet.
   // When there are more than two convolutions of 1 * 1 with the same input, the
   // paddle-tensorrt will do the merging optimization, which fuse those conv
   // into one conv, and then trigger bug. So,  We should use strategy to avoid

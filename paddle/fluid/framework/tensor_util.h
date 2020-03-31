@@ -72,6 +72,9 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
                     const platform::DeviceContext& dev_ctx);
 void TensorFromStream(std::istream& is, Tensor* tensor,
                       const platform::DeviceContext& dev_ctx);
+void TensorFromStream(std::istream& is, Tensor* tensor,
+                      const platform::DeviceContext& dev_ctx,
+                      const size_t& seek, const std::vector<int64_t>& shape);
 
 // convert dlpack's DLTensor to tensor
 void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst);

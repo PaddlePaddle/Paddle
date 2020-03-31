@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/string/split.h"
 
 DECLARE_bool(communicator_is_sgd_optimizer);
 
@@ -174,102 +175,52 @@ using RpcCtxMap = std::unordered_map<std::string, RpcContext>;
 
 class Communicator {
  public:
-  Communicator() {}
+  Communicator();
+  explicit Communicator(const std::map<std::string, std::string>& envs);
   virtual ~Communicator() {}
 
   virtual void Start() = 0;
   virtual void Stop() = 0;
   virtual bool IsRunning() { return running_; }
 
-  virtual void Send(const std::string& var_name,
-                    const framework::Scope& scope) = 0;
+  virtual void Clean() {}
 
-  virtual void Send(const std::vector<std::string>& sparse_var_names,
-                    const std::vector<std::string>& sparse_var_tables,
+  virtual void Send(const std::vector<std::string>& var_names,
+                    const std::vector<std::string>& var_tables,
                     const framework::Scope& scope) = 0;
 
   virtual void Recv() = 0;
 
+  virtual void Barrier() {}
+  virtual void BarrierTriggerDecrement() {}
+  virtual void BarrierTriggerReset(int init_counter) {}
+
   virtual void InitImpl(const RpcCtxMap& send_varname_to_ctx,
                         const RpcCtxMap& recv_varname_to_ctx,
-                        Scope* recv_scope) = 0;
-
+                        Scope* recv_scope) {}
   virtual void InitImpl(const paddle::framework::ProgramDesc& program,
                         Scope* recv_scope) = 0;
 
-  // for geo-sgd
-  virtual void InitImpl(
-      const paddle::framework::ProgramDesc& program, Scope* param_scope,
-      std::map<std::string, std::map<std::string, std::vector<std::string>>>&
-          vars_info,
-      const int& trainers, const int& geo_need_push_nums) = 0;
-
   static Communicator* GetInstance() { return communicator_.get(); }
-
   static std::shared_ptr<Communicator> GetInstantcePtr() {
     return communicator_;
   }
-
-  template <typename T>
-  static Communicator* InitInstance(const RpcCtxMap& send_varname_to_ctx,
-                                    const RpcCtxMap& recv_varname_to_ctx,
-                                    Scope* recv_scope) {
-    std::call_once(init_flag_, &Communicator::InitWithRpcCtx<T>,
-                   send_varname_to_ctx, recv_varname_to_ctx, recv_scope);
-    return communicator_.get();
-  }
-
   template <typename T>
   static Communicator* InitInstance(
-      const paddle::framework::ProgramDesc& program, Scope* recv_scope) {
+      const paddle::framework::ProgramDesc& program, Scope* recv_scope,
+      const std::map<std::string, std::string>& envs) {
     std::call_once(init_flag_, &Communicator::InitWithProgram<T>, program,
-                   recv_scope);
+                   recv_scope, std::ref(envs));
     return communicator_.get();
-  }
-
-  template <typename T>
-  static Communicator* InitInstance(
-      const paddle::framework::ProgramDesc& program, Scope* training_scope,
-      std::map<std::string, std::map<std::string, std::vector<std::string>>>&
-          vars_info,
-      const int& trainers, const int& geo_need_push_nums) {
-    std::call_once(init_flag_, &Communicator::InitWithTranspilerInfo<T>,
-                   program, training_scope, std::ref(vars_info),
-                   std::ref(trainers), std::ref(geo_need_push_nums));
-    return communicator_.get();
-  }
-
-  // Init is called by InitInstance.
-  template <typename T>
-  static void InitWithRpcCtx(const RpcCtxMap& send_varname_to_ctx,
-                             const RpcCtxMap& recv_varname_to_ctx,
-                             Scope* recv_scope) {
-    if (communicator_.get() == nullptr) {
-      communicator_.reset(new T());
-      communicator_->InitImpl(send_varname_to_ctx, recv_varname_to_ctx,
-                              recv_scope);
-    }
   }
 
   template <typename T>
   static void InitWithProgram(const paddle::framework::ProgramDesc& program,
-                              Scope* recv_scope) {
+                              Scope* recv_scope,
+                              const std::map<std::string, std::string>& envs) {
     if (communicator_.get() == nullptr) {
-      communicator_.reset(new T());
+      communicator_.reset(new T(std::ref(envs)));
       communicator_->InitImpl(program, recv_scope);
-    }
-  }
-
-  template <typename T>
-  static void InitWithTranspilerInfo(
-      const paddle::framework::ProgramDesc& program, Scope* training_scope,
-      std::map<std::string, std::map<std::string, std::vector<std::string>>>&
-          vars_info,
-      const int& trainers, const int& geo_need_push_nums) {
-    if (communicator_.get() == nullptr) {
-      communicator_.reset(new T());
-      communicator_->InitImpl(program, training_scope, std::ref(vars_info),
-                              std::ref(trainers), std::ref(geo_need_push_nums));
     }
   }
 
@@ -277,6 +228,7 @@ class Communicator {
   bool running_ = false;
   static std::shared_ptr<Communicator> communicator_;
   static std::once_flag init_flag_;
+  std::unordered_map<std::string, std::string> envs;
 };
 
 using SparseIdsMap =
@@ -284,13 +236,25 @@ using SparseIdsMap =
 
 class AsyncCommunicator : public Communicator {
  public:
-  AsyncCommunicator() {}
+  AsyncCommunicator() : Communicator() {}
+  explicit AsyncCommunicator(const std::map<std::string, std::string>& envs)
+      : Communicator(envs) {
+    independent_recv_thread_ = static_cast<bool>(
+        std::stoi(envs.at("communicator_independent_recv_thread")));
+    min_send_grad_num_before_recv_ =
+        std::stoi(envs.at("communicator_min_send_grad_num_before_recv"));
+    thread_pool_size_ = std::stoi(envs.at("communicator_thread_pool_size"));
+    max_merge_var_num_ = std::stoi(envs.at("communicator_max_merge_var_num"));
+    send_wait_times_ = std::stoi(envs.at("communicator_send_wait_times"));
+    send_queue_size_ = std::stoi(envs.at("communicator_send_queue_size"));
+    is_sgd_optimizer_ =
+        static_cast<bool>(std::stoi(envs.at("communicator_is_sgd_optimizer")));
+    VLOG(0) << "AsyncCommunicator Initialized";
+  }
   ~AsyncCommunicator();
   void Start() override;
   void Stop() override;
 
-  void Send(const std::string& var_name,
-            const framework::Scope& scope) override;
   void Recv() override;
   void RecvAll();
 
@@ -304,15 +268,18 @@ class AsyncCommunicator : public Communicator {
   void SendThread();
   void RecvThread();
 
-  void Send(const std::vector<std::string>& sparse_var_names,
-            const std::vector<std::string>& sparse_var_tables,
+  void Send(const std::vector<std::string>& var_names,
+            const std::vector<std::string>& var_tables,
             const framework::Scope& scope) override;
 
-  void InitImpl(
-      const paddle::framework::ProgramDesc& program, Scope* param_scope,
-      std::map<std::string, std::map<std::string, std::vector<std::string>>>&
-          vars_info,
-      const int& trainers, const int& geo_need_push_nums) override;
+ private:
+  int min_send_grad_num_before_recv_;
+  int thread_pool_size_;
+  int max_merge_var_num_;
+  int send_wait_times_;
+  int send_queue_size_;
+  bool independent_recv_thread_;
+  bool is_sgd_optimizer_;
 
  private:
   std::unordered_map<std::string,
@@ -329,31 +296,112 @@ class AsyncCommunicator : public Communicator {
   std::atomic_uint grad_num_{0};  // the num of gradient sent since last recv
 };
 
-class GeoSgdCommunicator : public Communicator {
+class HalfAsyncCommunicator : public Communicator {
  public:
-  GeoSgdCommunicator() {}
-  ~GeoSgdCommunicator();
-  void InitImpl(
-      const paddle::framework::ProgramDesc& program, Scope* training_scope,
-      std::map<std::string, std::map<std::string, std::vector<std::string>>>&
-          vars_info,
-      const int& trainers, const int& geo_need_push_nums) override;
-
+  HalfAsyncCommunicator() {}
+  explicit HalfAsyncCommunicator(const std::map<std::string, std::string>& envs)
+      : Communicator(envs) {
+    max_merge_var_num_ = std::stoi(envs.at("communicator_max_merge_var_num"));
+    send_wait_times_ = std::stoi(envs.at("communicator_send_wait_times"));
+    thread_pool_size_ = std::stoi(envs.at("communicator_thread_pool_size"));
+    send_queue_size_ = std::stoi(envs.at("communicator_send_queue_size"));
+    VLOG(0) << "HalfAsyncCommunicator Initialized";
+  }
+  ~HalfAsyncCommunicator();
   void Start() override;
   void Stop() override;
 
-  void Send(const std::string& var_name,
-            const framework::Scope& scope) override;
+  void Clean() override;
 
-  void Send(const std::vector<std::string>& sparse_var_names,
-            const std::vector<std::string>& sparse_var_tables,
+  void Send(const std::vector<std::string>& var_names,
+            const std::vector<std::string>& var_tables,
             const framework::Scope& scope) override;
 
   void Recv() override;
 
+  void Barrier() override;
+  void BarrierWeakUp();
+
+  void BarrierTriggerDecrement() override;
+  void BarrierTriggerReset(int initial_val) override;
+
   void InitImpl(const RpcCtxMap& send_varname_to_ctx,
                 const RpcCtxMap& recv_varname_to_ctx,
                 Scope* recv_scope) override;
+
+  void InitImpl(const paddle::framework::ProgramDesc& program,
+                Scope* recv_scope) override;
+
+  void ConsumeThread();
+  virtual void BarrierSend() {}
+  virtual void BarrierRecv() {}
+
+ protected:
+  int max_merge_var_num_;
+  int send_wait_times_;
+  int thread_pool_size_;
+  int send_queue_size_;
+  int trainer_id_ = 0;
+
+ protected:
+  std::unordered_map<std::string,
+                     std::shared_ptr<BlockingQueue<std::shared_ptr<Variable>>>>
+      send_varname_to_queue_;
+  RpcCtxMap send_varname_to_ctx_;
+  RpcCtxMap recv_varname_to_ctx_;
+  std::unique_ptr<std::thread> consume_thread_{nullptr};
+  Scope* recv_scope_;                  // should be global scope
+  std::unique_ptr<Scope> send_scope_;  // an independent scope
+  std::unique_ptr<::ThreadPool> consume_threadpool_{nullptr};
+  std::unique_ptr<::ThreadPool> recv_threadpool_{nullptr};
+
+  // mutex for Wait for barrier
+  std::mutex barrier_mutex_;
+  std::condition_variable barrier_cond_;
+  std::atomic<int64_t> barrier_trigger_{0};
+  std::atomic<int64_t> barrier_counter_{0};
+};
+
+class SyncCommunicator : public HalfAsyncCommunicator {
+ public:
+  SyncCommunicator() : HalfAsyncCommunicator() {}
+  explicit SyncCommunicator(const std::map<std::string, std::string>& envs)
+      : HalfAsyncCommunicator(envs) {
+    trainer_id_ = std::stoi(envs.at("trainer_id"));
+    auto pserver_strings = envs.at("pserver_endpoints");
+    pserver_endpoints_ = paddle::string::Split(pserver_strings, ',');
+    VLOG(0) << "SyncCommunicator Initialized";
+  }
+  ~SyncCommunicator();
+  void BarrierSend();
+  void BarrierRecv();
+
+ private:
+  std::vector<std::string> pserver_endpoints_{};
+};
+
+class GeoSgdCommunicator : public Communicator {
+ public:
+  GeoSgdCommunicator() : Communicator() {}
+  explicit GeoSgdCommunicator(const std::map<std::string, std::string>& envs)
+      : Communicator(envs) {
+    geo_need_push_nums_ = std::stoi(envs.at("geo_need_push_nums"));
+    trainer_nums_ = std::stoi(envs.at("geo_trainer_nums"));
+    thread_pool_size_ = std::stoi(envs.at("communicator_thread_pool_size"));
+    send_wait_times_ = std::stoi(envs.at("communicator_send_wait_times"));
+    VLOG(0) << "GeoSgdCommunicator Initialized";
+  }
+
+  ~GeoSgdCommunicator();
+
+  void Start() override;
+  void Stop() override;
+
+  void Send(const std::vector<std::string>& var_names,
+            const std::vector<std::string>& var_tables,
+            const framework::Scope& scope) override;
+
+  void Recv() override;
 
   void InitImpl(const paddle::framework::ProgramDesc& program,
                 Scope* recv_scope) override;
@@ -364,12 +412,15 @@ class GeoSgdCommunicator : public Communicator {
       const std::vector<SparseIdsMap>& ids_send_vec,
       const std::string& var_name, const std::string& splited_var_name);
 
-  void SendUpdateDenseVars(const std::string& var_name);
+  void SendUpdateDenseVars(const std::string& var_name,
+                           const std::string& splited_var_name);
+
   void SendUpdateSparseVars(const std::string& var_name,
                             const std::string& splited_var_name,
                             const std::unordered_set<int64_t>& ids_table);
 
-  void RecvUpdateDenseVars(const std::string& var_name);
+  void RecvUpdateDenseVars(const std::string& var_name,
+                           const std::string& splited_var_name);
   void RecvUpdateSparseVars(const std::string& var_name,
                             const std::string& splited_var_name);
 
@@ -418,23 +469,37 @@ class GeoSgdCommunicator : public Communicator {
 
  private:
   int trainer_nums_ = 1;
-  size_t geo_need_push_nums_ = 100;
-  bool is_geo_sgd_ = false;
-  Scope* training_scope_;
-  std::shared_ptr<Scope> delta_scope_;  // parameter local delta: recv - old
-  std::shared_ptr<Scope>
-      old_scope_;  // parameter local, storage the param after last recv
-  std::shared_ptr<Scope> pserver_scope_;  // parameter on pserver,gloabl scope
+  int geo_need_push_nums_ = 100;
+  int thread_pool_size_;
+  int send_wait_times_;
+
+ private:
+  int send_var_nums_ = 0;
+
   RpcCtxMap send_varname_to_ctx_;
   RpcCtxMap recv_varname_to_ctx_;
-  std::unordered_map<std::string, bool>
-      var_list_;  // if var is sparse, using selected rows, bool=true
+
+  // parameter for local training
+  Scope* training_scope_;
+
+  // parameter for delta calc and send
+  std::shared_ptr<Scope> delta_scope_;
+
+  // parameter for storage the pserver param after last recv
+  std::shared_ptr<Scope> old_scope_;
+
+  // parameter on pserver
+  std::shared_ptr<Scope> pserver_scope_;
+
+  // if var is sparse, using selected rows, bool=true
+  std::unordered_map<std::string, bool> var_list_;
 
   std::shared_ptr<BlockingQueue<std::shared_ptr<SparseIdsMap>>>
       need_push_queue_;
   std::vector<SparseIdsMap> ids_send_vec_;
 
   std::unordered_map<std::string, std::vector<int64_t>> absolute_section_;
+  std::unordered_map<std::string, int64_t> vars_first_dimension_;
 
   std::unique_ptr<::ThreadPool> send_threadpool_{nullptr};
   std::unique_ptr<std::thread> send_thread_{nullptr};

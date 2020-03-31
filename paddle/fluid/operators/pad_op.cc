@@ -127,13 +127,11 @@ class PadOpGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* bind = new T();
+  void Apply(GradOpPtr<T> bind) const override {
     bind->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     bind->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     bind->SetAttrMap(this->Attrs());
     bind->SetType("pad_grad");
-    return std::unique_ptr<T>(bind);
   }
 };
 
@@ -147,6 +145,10 @@ REGISTER_OPERATOR(pad, ops::PadOp, ops::PadOpMaker,
                   ops::PadOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(pad_grad, ops::PadOpGrad);
 REGISTER_OP_CPU_KERNEL(
-    pad, ops::PadKernel<paddle::platform::CPUDeviceContext, float>);
+    pad, ops::PadKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PadKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::PadKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::PadKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
-    pad_grad, ops::PadGradKernel<paddle::platform::CPUDeviceContext, float>);
+    pad_grad, ops::PadGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PadGradKernel<paddle::platform::CPUDeviceContext, double>);

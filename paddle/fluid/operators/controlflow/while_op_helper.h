@@ -40,5 +40,7 @@ void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
     const std::vector<framework::OperatorBase *> &while_ops,
     const std::vector<framework::OperatorBase *> &while_grad_ops);
 
+bool GetCondData(const framework::LoDTensor &cond);
+
 }  // namespace operators
 }  // namespace paddle

@@ -15,9 +15,8 @@
 from __future__ import print_function
 
 from .. import core
-from ..framework import Variable, unique_name, in_dygraph_mode, default_main_program
+from ..framework import Variable, unique_name
 from .layer_function_generator import OpProtoHolder
-from ..initializer import force_init_on_cpu
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,
@@ -26,6 +25,8 @@ _supported_int_dtype_ = [
     core.VarDesc.VarType.INT32,
     core.VarDesc.VarType.INT64,
 ]
+
+compare_ops = ['__eq__', '__ne__', '__lt__', '__le__', '__gt__', '__ge__']
 
 
 def monkey_patch_variable():
@@ -40,10 +41,7 @@ def monkey_patch_variable():
         return dtype
 
     def current_block(var):
-        if in_dygraph_mode():
-            return default_main_program().global_block()
-        else:
-            return var.block
+        return var.block.program.current_block()
 
     def create_new_tmp_var(block, dtype):
         tmp_name = unique_tmp_name()
@@ -59,7 +57,7 @@ def monkey_patch_variable():
                 'dtype': var.dtype,
                 'shape': shape,
                 'value': value,
-                'force_cpu': force_init_on_cpu()
+                'force_cpu': False
             },
             stop_gradient=True)
         var.stop_gradient = True
@@ -160,6 +158,9 @@ def monkey_patch_variable():
                    "bias": bias})
         return out
 
+    def _neg_(var):
+        return _scalar_elementwise_op_(var, -1.0, 0.0)
+
     def _scalar_elementwise_add_(var, value):
         return _scalar_elementwise_op_(var, 1.0, value)
 
@@ -224,14 +225,21 @@ def monkey_patch_variable():
                 self = other_var
                 other_var = tmp
 
-            out = create_new_tmp_var(current_block(self), dtype=lhs_dtype)
+            # NOTE(zhiqiu): the output of compare operator should be bool.
+            if method_name in compare_ops:
+                out = create_new_tmp_var(current_block(self), dtype="bool")
+            else:
+                out = create_new_tmp_var(current_block(self), dtype=lhs_dtype)
 
+            axis = -1
+            if other_var.shape[0] == -1:
+                axis = 0
             current_block(self).append_op(
                 type=op_type,
                 inputs={'X': [self],
                         'Y': [other_var]},
                 outputs={'Out': out},
-                attrs={'axis': -1})
+                attrs={'axis': axis})
             return out
 
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
@@ -276,9 +284,7 @@ def monkey_patch_variable():
         setattr(Variable, method_name,
                 _elemwise_method_creator_(method_name, op_type, reverse,
                                           scalar_method))
-        setattr(core.VarBase, method_name,
-                _elemwise_method_creator_(method_name, op_type, reverse,
-                                          scalar_method))
 
+    # b = -a
+    Variable.__neg__ = _neg_
     Variable.astype = astype
-    setattr(core.VarBase, "astype", astype)

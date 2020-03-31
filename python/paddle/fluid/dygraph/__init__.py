@@ -41,13 +41,16 @@ from .learning_rate_scheduler import *
 from . import backward_strategy
 from .backward_strategy import *
 
+from . import jit
+from .jit import *
+
 __all__ = []
 __all__ += layers.__all__
 __all__ += base.__all__
 __all__ += container.__all__
 __all__ += nn.__all__
-__all__ += tracer.__all__
 __all__ += parallel.__all__
 __all__ += checkpoint.__all__
 __all__ += learning_rate_scheduler.__all__
 __all__ += backward_strategy.__all__
+__all__ += jit.__all__

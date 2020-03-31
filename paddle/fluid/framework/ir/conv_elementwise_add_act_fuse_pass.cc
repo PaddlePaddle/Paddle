@@ -31,7 +31,7 @@ namespace ir {
   GET_IR_NODE(act_op);               \
   GET_IR_NODE(act_out);
 
-// Inherient the basic infomation from `base_desc`, and modify some fields.
+// Inherient the basic information from `base_desc`, and modify some fields.
 framework::proto::OpDesc PrepareOpDesc(
     const framework::proto::OpDesc& base_desc, const std::string& bias,
     const std::string& activation, const std::string& output) {

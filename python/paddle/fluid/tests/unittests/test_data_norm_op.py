@@ -182,12 +182,11 @@ class TestDataNormOp(OpTest):
         self.op_type = 'data_norm'
         self.use_mkldnn = False
         epsilon = 0.00001
-        x_shape = [2, 3]
-        scale_shape = [3]
+        x_shape = [10, 12]
+        scale_shape = [12]
         tp = np.float32
 
-        x_val = np.array([[-0.35702616, -0.42756206, -0.08306625],
-                          [0.41199666, -0.21719968, -0.10180971]]).astype(tp)
+        x_val = np.random.random(x_shape).astype(tp)
         batch_size = np.ones(scale_shape).astype(tp)
         batch_size *= 1e4
         batch_sum = np.zeros(scale_shape).astype(tp)
@@ -196,8 +195,8 @@ class TestDataNormOp(OpTest):
 
         y = np.array(x_val)
 
-        mean = np.array([[0, 0, 0], [0, 0, 0]]).astype(tp)
-        scale = np.array([[1, 1, 1], [1, 1, 1]]).astype(tp)
+        mean = np.zeros(x_shape).astype(tp)
+        scale = np.ones(x_shape).astype(tp)
 
         self.inputs = {
             "X": x_val,
@@ -218,7 +217,7 @@ class TestDataNormOp(OpTest):
         """
         test check backward, check grad
         """
-        self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
+        self.check_grad(['X'], 'Y', no_grad_set=set([]))
 
 
 class TestDataNormOpWithSlotDim(OpTest):
@@ -235,12 +234,11 @@ class TestDataNormOpWithSlotDim(OpTest):
         self.use_mkldnn = False
         epsilon = 0.00001
         slot_dim = 1
-        x_shape = [2, 3]
-        scale_shape = [3]
+        x_shape = [2, 50]
+        scale_shape = [50]
         tp = np.float32
 
-        x_val = np.array([[-0.35702616, 0.0, -0.08306625],
-                          [0.41199666, 0.0, -0.10180971]]).astype(tp)
+        x_val = np.random.uniform(-1, 1, x_shape).astype(tp)
         batch_size = np.ones(scale_shape).astype(tp)
         batch_size *= 1e4
         batch_sum = np.zeros(scale_shape).astype(tp)
@@ -249,8 +247,8 @@ class TestDataNormOpWithSlotDim(OpTest):
 
         y = np.array(x_val)
 
-        mean = np.array([[0, 0, 0], [0, 0, 0]]).astype(tp)
-        scale = np.array([[1, 1, 1], [1, 1, 1]]).astype(tp)
+        mean = np.zeros(x_shape).astype(tp)
+        scale = np.ones(x_shape).astype(tp)
 
         self.inputs = {
             "X": x_val,
@@ -275,7 +273,7 @@ class TestDataNormOpWithSlotDim(OpTest):
         """
         test check backward, check grad
         """
-        self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
+        self.check_grad(['X'], 'Y', no_grad_set=set([]))
 
 
 class TestDataNormOpWithSyncStats(unittest.TestCase):

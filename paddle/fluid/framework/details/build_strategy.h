@@ -26,7 +26,7 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
@@ -86,7 +86,9 @@ struct BuildStrategy {
   // Operator fusion
   // TODO(dev-paddle): fuse_elewise_add_act_ops may cause some models have
   // cycle.
+  bool fuse_bn_act_ops_{false};
   bool fuse_elewise_add_act_ops_{false};
+  bool enable_auto_fusion_{false};
   // Fuse_all_optimizer_ops and fuse_all_reduce_ops require that gradients
   // should not be sparse types
   boost::optional<bool> fuse_all_optimizer_ops_{false};
@@ -131,10 +133,10 @@ struct BuildStrategy {
   // The picture is here:
   // https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396
   bool use_hierarchical_allreduce_{false};
-  // Nccl ranks in a node when use hierarchical allreduce, it's setted to gpu
+  // Nccl ranks in a node when use hierarchical allreduce, it's set to gpu
   // cards' number in most cases.
   size_t hierarchical_allreduce_inter_nranks_{0};
-  // Nccl ranks bewteen nodes when use hierarchical allreduce, it's setted to
+  // Nccl ranks bewteen nodes when use hierarchical allreduce, it's set to
   // nodes number.
   size_t hierarchical_allreduce_exter_nranks_{0};
 
@@ -161,7 +163,7 @@ struct BuildStrategy {
                    const std::string &loss_var_name,
                    const std::vector<Scope *> &local_scopes,
                    const size_t &nranks,
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
                    const bool use_cuda,
                    platform::NCCLCommunicator *nccl_ctxs) const;
 #else

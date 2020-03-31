@@ -21,7 +21,7 @@ from paddle.fluid.dygraph.nn import Embedding
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.jit import TracedLayer
+from paddle.fluid.dygraph import TracedLayer
 from test_imperative_base import new_program_scope
 import numpy as np
 import six
@@ -30,13 +30,12 @@ from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
 
 class SimpleLSTMRNN(fluid.Layer):
     def __init__(self,
-                 name_scope,
                  hidden_size,
                  num_steps,
                  num_layers=2,
                  init_scale=0.1,
                  dropout=None):
-        super(SimpleLSTMRNN, self).__init__(name_scope)
+        super(SimpleLSTMRNN, self).__init__()
         self._hidden_size = hidden_size
         self._num_layers = num_layers
         self._init_scale = init_scale
@@ -45,8 +44,9 @@ class SimpleLSTMRNN(fluid.Layer):
         self._num_steps = num_steps
         self.cell_array = []
         self.hidden_array = []
+        self._create_parameter()
 
-    def _build_once(self, input_embedding, init_hidden=None, init_cell=None):
+    def _create_parameter(self):
         self.weight_1_arr = []
         self.weight_2_arr = []
         self.bias_arr = []
@@ -135,7 +135,6 @@ class SimpleLSTMRNN(fluid.Layer):
 
 class PtbModel(fluid.Layer):
     def __init__(self,
-                 name_scope,
                  hidden_size,
                  vocab_size,
                  num_layers=2,
@@ -143,7 +142,7 @@ class PtbModel(fluid.Layer):
                  init_scale=0.1,
                  is_sparse=False,
                  dropout=None):
-        super(PtbModel, self).__init__(name_scope)
+        super(PtbModel, self).__init__()
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
         self.init_scale = init_scale
@@ -151,14 +150,12 @@ class PtbModel(fluid.Layer):
         self.num_steps = num_steps
         self.dropout = dropout
         self.simple_lstm_rnn = SimpleLSTMRNN(
-            self.full_name(),
             hidden_size,
             num_steps,
             num_layers=num_layers,
             init_scale=init_scale,
             dropout=dropout)
         self.embedding = Embedding(
-            self.full_name(),
             size=[vocab_size, hidden_size],
             dtype='float32',
             is_sparse=is_sparse,
@@ -232,7 +229,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
             fluid.default_main_program().random_seed = seed
             # TODO: marsyang1993 Change seed to
             ptb_model = PtbModel(
-                "ptb_model",
                 hidden_size=hidden_size,
                 vocab_size=vocab_size,
                 num_layers=num_layers,
@@ -240,7 +236,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 init_scale=init_scale,
                 is_sparse=is_sparse)
 
-            sgd = SGDOptimizer(learning_rate=1e-3)
+            sgd = SGDOptimizer(
+                learning_rate=1e-3, parameter_list=ptb_model.parameters())
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -299,7 +296,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
             ptb_model = PtbModel(
-                "ptb_model",
                 hidden_size=hidden_size,
                 vocab_size=vocab_size,
                 num_layers=num_layers,

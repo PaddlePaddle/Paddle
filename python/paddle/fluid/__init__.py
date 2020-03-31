@@ -86,6 +86,7 @@ from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 from . import install_check
 from .dygraph.nn import *
 from .dygraph.layers import *
+from .dygraph.base import enable_dygraph, disable_dygraph
 from .io import save, load, load_program_state, set_program_state
 from .dygraph.checkpoint import save_dygraph, load_dygraph
 from .dygraph.varbase_patch_methods import monkey_patch_varbase
@@ -103,6 +104,8 @@ __all__ = framework.__all__ + executor.__all__ + \
         'contrib',
         'data',
         'dygraph',
+        'enable_dygraph',
+        'disable_dygraph',
         'transpiler',
         'nets',
         'optimizer',
@@ -171,7 +174,7 @@ def __bootstrap__():
         'enable_parallel_graph', 'fuse_parameter_groups_size',
         'multiple_of_cupti_buffer_size', 'fuse_parameter_memory_size',
         'tracer_profile_fname', 'dygraph_debug', 'use_system_allocator',
-        'enable_unused_var_check'
+        'enable_unused_var_check', 'free_idle_chunk', 'free_when_no_cache_hit'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
@@ -199,17 +202,6 @@ def __bootstrap__():
 
         read_env_flags.append('worker_update_interval_secs')
 
-        # env for communicator
-        read_env_flags.append('communicator_independent_recv_thread')
-        read_env_flags.append('communicator_send_queue_size')
-        read_env_flags.append('communicator_min_send_grad_num_before_recv')
-        read_env_flags.append('communicator_thread_pool_size')
-        read_env_flags.append('communicator_max_merge_var_num')
-        read_env_flags.append('communicator_merge_sparse_bucket')
-        read_env_flags.append('communicator_fake_rpc')
-        read_env_flags.append('communicator_send_wait_times')
-        read_env_flags.append('communicator_merge_sparse_grad')
-        read_env_flags.append('communicator_is_sgd_optimizer')
         if core.is_compiled_with_brpc():
             read_env_flags.append('max_body_size')
             #set brpc max body size
@@ -222,7 +214,7 @@ def __bootstrap__():
             'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
             'cudnn_exhaustive_search', 'selected_gpus', 'sync_nccl_allreduce',
             'cudnn_batchnorm_spatial_persistent', 'gpu_allocator_retry_time',
-            'local_exe_sub_scope_limit'
+            'local_exe_sub_scope_limit', 'gpu_memory_limit_mb'
         ]
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])

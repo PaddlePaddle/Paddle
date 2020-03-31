@@ -98,7 +98,7 @@ def retinanet_target_assign(bbox_pred,
     the training process.
 
     Retinanet predicts a :math:`C`-vector for classification and a 4-vector for box
-    regresion for each anchor, hence the target label for each positive(or negative)
+    regression for each anchor, hence the target label for each positive(or negative)
     sample is a :math:`C`-vector and the target locations for each positive sample
     is a 4-vector. As for a positive sample, if the category of its assigned
     ground-truth box is class :math:`i`, the corresponding entry in its length
@@ -156,7 +156,7 @@ def retinanet_target_assign(bbox_pred,
             of :attr:`is_crowd` is int32.
         im_info(Variable): A 2-D Tensor with shape [N, 3] represents the size
             information of input images. :math:`N` is the batch size, the size
-            informarion of each image is a 3-vector which are the height and width
+            information of each image is a 3-vector which are the height and width
             of the network input along with the factor scaling the origin image to
             the network input. The data type of :attr:`im_info` is float32.
         num_classes(int32): The number of categories for classification, the default
@@ -233,7 +233,7 @@ def retinanet_target_assign(bbox_pred,
                             dtype='float32')
           im_info = fluid.data(name='im_infoss', shape=[1, 3],
                             dtype='float32')
-          score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num =
+          score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num = \\
                 fluid.layers.retinanet_target_assign(bbox_pred, cls_logits, anchor_box,
                 anchor_var, gt_boxes, gt_labels, is_crowd, im_info, 10)
 
@@ -557,7 +557,7 @@ def detection_output(loc,
             categories will be considered. Default: 0.
         nms_threshold(float): The threshold to be used in NMS. Default: 0.3.
         nms_top_k(int): Maximum number of detections to be kept according
-            to the confidences aftern filtering detections based on
+            to the confidences after filtering detections based on
             score_threshold and before NMS. Default: 400.
         keep_top_k(int): Number of total bboxes to be kept per image after
             NMS step. -1 means keeping all bboxes after NMS step. Default: 200.
@@ -653,14 +653,15 @@ def detection_output(loc,
 
 
 @templatedoc()
-def iou_similarity(x, y, name=None):
+def iou_similarity(x, y, box_normalized=True, name=None):
     """
     ${comment}
 
     Args:
         x (Variable): ${x_comment}.The data type is float32 or float64.
         y (Variable): ${y_comment}.The data type is float32 or float64.
-
+        box_normalized(bool): Whether treat the priorbox as a normalized box.
+            Set true by default.
     Returns:
         Variable: ${out_comment}.The data type is same with x.
 
@@ -700,7 +701,7 @@ def iou_similarity(x, y, name=None):
         type="iou_similarity",
         inputs={"X": x,
                 "Y": y},
-        attrs={},
+        attrs={"box_normalized": box_normalized},
         outputs={"Out": out})
     return out
 
@@ -774,7 +775,7 @@ def box_coder(prior_box,
         code_type(str): The code type used with the target box. It can be
             `encode_center_size` or `decode_center_size`. `encode_center_size` 
             by default.
-        box_normalized(bool): Whether treat the priorbox as a noramlized box.
+        box_normalized(bool): Whether treat the priorbox as a normalized box.
             Set true by default.
         name(str, optional): For detailed information, please refer 
             to :ref:`api_guide_Name`. Usually name is no need to set and 
@@ -792,7 +793,7 @@ def box_coder(prior_box,
         output tensor of box_coder_op with shape [N, M, 4] representing the 
         result of N target boxes encoded with M Prior boxes and variances. 
         When code_type is 'decode_center_size', N represents the batch size 
-        and M represents the number of deocded boxes.
+        and M represents the number of decoded boxes.
 
     Examples:
  
@@ -907,13 +908,13 @@ def yolov3_loss(x,
     Args:
         x (Variable): ${x_comment}The data type is float32 or float64. 
         gt_box (Variable): groud truth boxes, should be in shape of [N, B, 4],
-                          in the third dimenstion, x, y, w, h should be stored. 
-                          x,y is the center cordinate of boxes, w, h are the
+                          in the third dimension, x, y, w, h should be stored. 
+                          x,y is the center coordinate of boxes, w, h are the
                           width and height, x, y, w, h should be divided by 
                           input image height to scale to [0, 1].
                           N is the batch number and B is the max box number in 
                           an image.The data type is float32 or float64. 
-        gt_label (Variable): class id of ground truth boxes, shoud be in shape
+        gt_label (Variable): class id of ground truth boxes, should be in shape
                             of [N, B].The data type is int32. 
         anchors (list|tuple): ${anchors_comment}
         anchor_mask (list|tuple): ${anchor_mask_comment}
@@ -923,7 +924,7 @@ def yolov3_loss(x,
         name (string): The default value is None.  Normally there is no need 
                        for user to set this property.  For more information, 
                        please refer to :ref:`api_guide_Name`
-        gt_score (Variable): mixup score of ground truth boxes, shoud be in shape
+        gt_score (Variable): mixup score of ground truth boxes, should be in shape
                             of [N, B]. Default None.
         use_label_smooth (bool): ${use_label_smooth_comment}
 
@@ -1023,6 +1024,7 @@ def yolo_box(x,
              class_num,
              conf_thresh,
              downsample_ratio,
+             clip_bbox=True,
              name=None):
     """
     ${comment}
@@ -1034,6 +1036,7 @@ def yolo_box(x,
         class_num (int): ${class_num_comment}
         conf_thresh (float): ${conf_thresh_comment}
         downsample_ratio (int): ${downsample_ratio_comment}
+        clip_bbox (bool): ${clip_bbox_comment}
         name (string): The default value is None.  Normally there is no need 
                        for user to set this property.  For more information, 
                        please refer to :ref:`api_guide_Name`
@@ -1081,6 +1084,7 @@ def yolo_box(x,
         "class_num": class_num,
         "conf_thresh": conf_thresh,
         "downsample_ratio": downsample_ratio,
+        "clip_bbox": clip_bbox,
     }
 
     helper.append_op(
@@ -1411,7 +1415,7 @@ def ssd_loss(location,
 
       1.1 Compute IOU similarity between ground-truth boxes and prior boxes.
 
-      1.2 Compute matched boundding box by bipartite matching algorithm.
+      1.2 Compute matched bounding box by bipartite matching algorithm.
 
     2. Compute confidence for mining hard examples
 
@@ -1521,10 +1525,10 @@ def ssd_loss(location,
     def __reshape_to_2d(var):
         return nn.flatten(x=var, axis=2)
 
-    # 1. Find matched boundding box by prior box.
+    # 1. Find matched bounding box by prior box.
     #   1.1 Compute IOU similarity between ground-truth boxes and prior boxes.
     iou = iou_similarity(x=gt_box, y=prior_box)
-    #   1.2 Compute matched boundding box by bipartite matching algorithm.
+    #   1.2 Compute matched bounding box by bipartite matching algorithm.
     matched_indices, matched_dist = bipartite_match(iou, match_type,
                                                     overlap_threshold)
 
@@ -1649,7 +1653,7 @@ def prior_box(input,
     sequence according to the aspect_ratios.
 
     Parameters:
-       input(Variable): 4-D tenosr(NCHW), the data type should be float32 or float64.
+       input(Variable): 4-D tensor(NCHW), the data type should be float32 or float64.
        image(Variable): 4-D tensor(NCHW), the input image data of PriorBoxOp,
             the data type should be float32 or float64.
        min_sizes(list|tuple|float): the min sizes of generated prior boxes.
@@ -2047,7 +2051,7 @@ def multi_box_head(inputs,
        min_max_aspect_ratios_order(bool): If set True, the output prior box is
             in order of [min, max, aspect_ratios], which is consistent with
             Caffe. Please note, this order affects the weights order of
-            convolution layer followed by and does not affect the fininal
+            convolution layer followed by and does not affect the final
             detection results. Default: False.
 
     Returns:
@@ -2606,7 +2610,7 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
             target_size / original_size, target_size is the size after resize,
             original_size is the original image size.
         gt_classes (Variable): A 2-D LoDTensor with shape [M, 1]. Data type
-            shoule be int. M is the total number of ground-truth, each
+            should be int. M is the total number of ground-truth, each
             element is a class label.
         is_crowd (Variable): A 2-D LoDTensor with same shape and same data type
             as gt_classes, each element is a flag indicating whether a
@@ -2624,7 +2628,7 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
             float32. R is the total number of RoIs, each element is a bounding
             box with (xmin, ymin, xmax, ymax) format in the range of original image.
         labels_int32 (Variable): A 2-D LoDTensor in shape of [R, 1] with type
-            of int32. R is the same as it in `rois`. Each element repersents
+            of int32. R is the same as it in `rois`. Each element represents
             a class label of a RoI.
         num_classes (int): Class number.
         resolution (int): Resolution of mask predictions.
@@ -2633,15 +2637,15 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
         mask_rois (Variable):  A 2D LoDTensor with shape [P, 4] and same data
         type as `rois`. P is the total number of sampled RoIs. Each element
         is a bounding box with [xmin, ymin, xmax, ymax] format in range of
-        orignal image size.
+        original image size.
 
         mask_rois_has_mask_int32 (Variable): A 2D LoDTensor with shape [P, 1]
-        and int data type, each element repersents the output mask RoI
+        and int data type, each element represents the output mask RoI
         index with regard to input RoIs.
 
         mask_int32 (Variable): A 2D LoDTensor with shape [P, K * M * M] and int
         data type, K is the classes number and M is the resolution of mask
-        predictions. Each element repersents the binary mask targets.
+        predictions. Each element represents the binary mask targets.
 
     Examples:
         .. code-block:: python
@@ -2741,11 +2745,11 @@ def generate_proposals(scores,
             N is batch size, A is number of anchors, H and W are height and
             width of the feature map. The data type must be float32.
         bbox_deltas(Variable): A 4-D Tensor with shape [N, 4*A, H, W]
-            represents the differece between predicted box locatoin and
+            represents the difference between predicted box location and
             anchor location. The data type must be float32.
         im_info(Variable): A 2-D Tensor with shape [N, 3] represents origin
-            image information for N batch. Info contains height, width and scale
-            between origin image size and the size of feature map.
+            image information for N batch. Height and width are the input sizes 
+            and scale is the ratio of network input size and original size. 
             The data type must be int32.
         anchors(Variable):   A 4-D Tensor represents the anchors with a layout
             of [H, W, A, 4]. H and W are height and width of the feature map,
@@ -2837,8 +2841,8 @@ def box_clip(input, im_info, name=None):
         input(Variable): The input Tensor with shape :math:`[N_1, N_2, ..., N_k, 4]`,
             the last dimension is 4 and data type is float32 or float64.
         im_info(Variable): The 2-D Tensor with shape [N, 3] with layout 
-            (height, width, scale) represeting the information of image. 
-            height and width is the input size and scale is the ratio of input
+            (height, width, scale) representing the information of image. 
+            Height and width are the input sizes and scale is the ratio of network input
             size and original size. The data type is float32 or float64.
         name(str, optional): For detailed information, please refer 
             to :ref:`api_guide_Name`. Usually name is no need to set and 
@@ -2847,7 +2851,7 @@ def box_clip(input, im_info, name=None):
     Returns:
         Variable:
 
-        output(Variable): The cliped tensor with data type float32 or float64. 
+        output(Variable): The clipped tensor with data type float32 or float64. 
         The shape is same as input.
 
         
@@ -2915,7 +2919,7 @@ def retinanet_detection_output(bboxes,
             The data type of each element is float32 or float64.
         im_info(Variable): A 2-D Tensor with shape :math:`[N, 3]` represents the size
             information of input images. :math:`N` is the batch size, the size
-            informarion of each image is a 3-vector which are the height and width
+            information of each image is a 3-vector which are the height and width
             of the network input along with the factor scaling the origin image to
             the network input. The data type of :attr:`im_info` is float32.
         score_threshold(float): Threshold to filter out bounding boxes
@@ -2942,7 +2946,7 @@ def retinanet_detection_output(bboxes,
     that there is no detection if :attr:`score_threshold` are used at all
     levels. Hence, this OP do not filter out anchors from the highest FPN level
     before NMS. And the last element in :attr:`bboxes`:, :attr:`scores` and
-    :attr:`anchors` is required to be from the hightest FPN level.
+    :attr:`anchors` is required to be from the highest FPN level.
 
     Returns:
         Variable(The data type is float32 or float64):
@@ -3086,7 +3090,7 @@ def multiclass_nms(bboxes,
                                  low confidence score. If not provided, 
                                  consider all boxes.
         nms_top_k (int): Maximum number of detections to be kept according to
-                         the confidences aftern the filtering detections based
+                         the confidences after the filtering detections based
                          on score_threshold.
         nms_threshold (float): The threshold to be used in NMS. Default: 0.3
         nms_eta (float): The threshold to be used in NMS. Default: 1.0
@@ -3197,7 +3201,7 @@ def locality_aware_nms(bboxes,
                                  low confidence score. If not provided,
                                  consider all boxes.
         nms_top_k (int): Maximum number of detections to be kept according to
-                         the confidences aftern the filtering detections based
+                         the confidences after the filtering detections based
                          on score_threshold.
         nms_threshold (float): The threshold to be used in NMS. Default: 0.3
         nms_eta (float): The threshold to be used in NMS. Default: 1.0

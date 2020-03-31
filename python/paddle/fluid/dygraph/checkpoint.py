@@ -16,8 +16,9 @@ from __future__ import print_function
 
 import os
 import collections
-from ..framework import Variable, default_main_program, in_dygraph_mode, dygraph_only, Parameter
+from ..framework import Variable, default_main_program, in_dygraph_mode, dygraph_only, Parameter, ParamBase
 import pickle
+import six
 from . import learning_rate_scheduler
 import warnings
 from .. import core
@@ -48,12 +49,13 @@ def save_dygraph(state_dict, model_path):
             import paddle.fluid as fluid
 
             with fluid.dygraph.guard():
-                emb = fluid.dygraph.Embedding( "emb", [10, 10])
+                emb = fluid.dygraph.Embedding([10, 10])
 
                 state_dict = emb.state_dict()
                 fluid.save_dygraph( state_dict, "paddle_dy")
 
-                adam = fluid.optimizer.Adam( learning_rate = fluid.layers.noam_decay( 100, 10000) )
+                adam = fluid.optimizer.Adam( learning_rate = fluid.layers.noam_decay( 100, 10000),
+                                             parameter_list = emb.parameters() )
 
                 state_dict = adam.state_dict()
                 fluid.save_dygraph( state_dict, "paddle_dy")
@@ -67,20 +69,38 @@ def save_dygraph(state_dict, model_path):
     assert len(state_dict) > 0, "state_dict is empty, no need to save"
 
     for k, v in state_dict.items():
-        if not isinstance(v, Parameter):
+        if not isinstance(v, ParamBase):
             suffix = ".pdopt"
         break
 
-    core._save_dygraph_dict(model_path + suffix, state_dict)
+    model_dict = {}
+    name_table = {}
+    for k, v in state_dict.items():
+        if isinstance(v, (Variable, core.VarBase)):
+            model_dict[k] = v.numpy()
+        else:
+            model_dict[k] = v
+        name_table[k] = v.name
+    model_dict["StructuredToParameterName@@"] = name_table
+
+    file_name = model_path + suffix
+    dir_name = os.path.dirname(file_name)
+    if dir_name and not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+
+    with open(file_name, 'wb') as f:
+        pickle.dump(model_dict, f, protocol=2)
 
 
 @dygraph_only
-def load_dygraph(model_path):
+def load_dygraph(model_path, keep_name_table=False):
     '''
     Load parameter state_dict from disk.
 
     Args:
         model_path(str) : The file prefix store the state_dict. (The path should Not contain suffix '.pdparams') 
+        keep_name_table(bool, optional) : Whether keep structed name to parameter name conversion table in output dict. 
+                                          Default : False
 
     Returns:
         state_dict(dict) : the dict store the state_dict
@@ -91,14 +111,15 @@ def load_dygraph(model_path):
             import paddle.fluid as fluid
             
             with fluid.dygraph.guard():
-                emb = fluid.dygraph.Embedding( "emb", [10, 10])
+                emb = fluid.dygraph.Embedding([10, 10])
 
                 state_dict = emb.state_dict()
                 fluid.save_dygraph( state_dict, "paddle_dy")
 
-                adam = fluid.optimizer.Adam( learning_rate = fluid.layers.noam_decay( 100, 10000) )
+                adam = fluid.optimizer.Adam( learning_rate = fluid.layers.noam_decay( 100, 10000),
+                                             parameter_list = emb.parameters() )
                 state_dict = adam.state_dict()
-                fluid.save_dygraph( state_dict, "padle_dy")
+                fluid.save_dygraph( state_dict, "paddle_dy")
 
                 para_state_dict, opti_state_dict = fluid.load_dygraph( "paddle_dy")
 
@@ -109,45 +130,17 @@ def load_dygraph(model_path):
         raise RuntimeError("Parameter file [ {} ] not exists".format(
             params_file_path))
 
-    para_dict = core._load_dygraph_dict(params_file_path)
+    with open(params_file_path, 'rb') as f:
+        para_dict = pickle.load(f) if six.PY2 else pickle.load(
+            f, encoding='latin1')
 
+    if not keep_name_table and "StructuredToParameterName@@" in para_dict:
+        del para_dict["StructuredToParameterName@@"]
     opti_dict = None
     opti_file_path = model_path + ".pdopt"
     if os.path.exists(opti_file_path):
-        opti_dict = core._load_dygraph_dict(opti_file_path)
+        with open(opti_file_path, 'rb') as f:
+            opti_dict = pickle.load(f) if six.PY2 else pickle.load(
+                f, encoding='latin1')
 
     return para_dict, opti_dict
-
-
-@dygraph_only
-def load_optimizer(model_path):
-    '''
-    Load optimizer state_dict from disk.
-
-    Args:
-        model_path(str) : The file prefix store the state_dict. (The path should Not contain shuffix '.pdparams')
-
-    Returns:
-        state_dict(dict) : the dict store the state_dict
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            with fluid.dygraph.guard():
-                adam = fluid.optimizer.Adam(0.001)
-
-                state_dict = adam.state_dict()
-                fluid.save_optimizer( state_dict, "opt_adam")
-
-                fluid.load_optimizer( "opt_adam")
-
-    '''
-
-    assert in_dygraph_mode(), "save_optimizer only work in dygraph mode"
-    opt_file_path = model_path + ".pdopt"
-    if not os.path.exists(opt_file_path):
-        raise RuntimeError("Optimizer file [ {} ] not exists".format(
-            opt_file_path))
-    return core._load_dygraph_dict(opt_file_path)

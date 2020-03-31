@@ -244,14 +244,47 @@ void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
 }
 
 void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
+                           const platform::DeviceContext &dev_ctx,
+                           const size_t &seek,
+                           const std::vector<int64_t> &shape) {
+  {
+    // the 1st field, unit32_t version for LoDTensor
+    uint32_t version;
+    is.read(reinterpret_cast<char *>(&version), sizeof(version));
+    PADDLE_ENFORCE_EQ(framework::IsTensorVersionSupported(version), true,
+                      platform::errors::InvalidArgument(
+                          "tensor version %u is not supported.", version));
+    PADDLE_ENFORCE_EQ(
+        version, 0U,
+        platform::errors::InvalidArgument(
+            "tensor version %u is not supported, Only version 0 is supported",
+            version));
+  }
+  {
+    // the 2st field, LoD information
+    uint64_t lod_level;
+    is.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
+    auto &lod = *tensor->mutable_lod();
+    lod.resize(lod_level);
+  }
+  // the 3st filed, Tensor
+  TensorFromStream(is, static_cast<Tensor *>(tensor), dev_ctx, seek, shape);
+}
+
+void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
                            const platform::DeviceContext &dev_ctx) {
   {
     // the 1st field, unit32_t version for LoDTensor
     uint32_t version;
     is.read(reinterpret_cast<char *>(&version), sizeof(version));
-    PADDLE_ENFORCE(framework::IsTensorVersionSupported(version),
-                   "tensor version %u is not supported.", version);
-    PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
+    PADDLE_ENFORCE_EQ(framework::IsTensorVersionSupported(version), true,
+                      platform::errors::InvalidArgument(
+                          "tensor version %u is not supported.", version));
+    PADDLE_ENFORCE_EQ(
+        version, 0U,
+        platform::errors::InvalidArgument(
+            "tensor version %u is not supported, Only version 0 is supported",
+            version));
   }
   {
     // the 2st field, LoD information
@@ -274,18 +307,18 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
 
 std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
     const std::vector<platform::Place> places) const {
+  PADDLE_ENFORCE_GT(places.size(), 0,
+                    platform::errors::InvalidArgument(
+                        "place number cannot be empty when splitting"));
   check_memory_size();
-  int batch_size =
-      lod().empty() ? dims()[0] : static_cast<int>(lod()[0].size()) - 1;
-  size_t result_size = std::min(static_cast<size_t>(batch_size), places.size());
-  size_t remainder = batch_size % places.size();
+  size_t batch_size =
+      lod().empty() ? static_cast<size_t>(dims()[0]) : lod()[0].size() - 1;
 
-  std::vector<LoDTensor> results;
-  results.reserve(result_size);
-
-  // if result_size(batch_size) is 0, just return #places.size() copys of empty
+  // if batch_size is 0, just return #places.size() copys of empty
   // tensors.
-  if (result_size == 0) {
+  if (batch_size == 0) {
+    std::vector<LoDTensor> empty_results;
+    empty_results.reserve(places.size());
     for (size_t i = 0; i < places.size(); ++i) {
       LoDTensor dst;
       dst.Resize(dims());
@@ -293,18 +326,22 @@ std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
       if (!lod().empty()) {
         dst.set_lod(lod());
       }
-      results.emplace_back(dst);
+      empty_results.emplace_back(std::move(dst));
     }
-    return results;
+    return empty_results;
   }
 
-  int step_width = static_cast<int>(batch_size / result_size);
+  auto step_width = (batch_size + places.size() - 1) / places.size();
+  auto result_size = (batch_size + step_width - 1) / step_width;
+  std::vector<LoDTensor> results;
+  results.reserve(result_size);
+
   for (size_t i = 0; i < result_size; ++i) {
-    int begin = static_cast<int>(i * step_width);
-    int end = static_cast<int>((i + 1) * step_width);
-    if (i + 1 == places.size()) {  // last
-      end += remainder;
-    }
+    auto begin = i * step_width;
+    auto end = std::min<size_t>((i + 1) * step_width, batch_size);
+    PADDLE_ENFORCE_LT(begin, end,
+                      platform::errors::InvalidArgument(
+                          "begin must be less than end, this may be a bug"));
 
     LoDTensor dst;
     if (lod().empty()) {
@@ -329,7 +366,7 @@ std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
       }
       dst.set_lod(my_lod);
     }
-    results.emplace_back(dst);
+    results.emplace_back(std::move(dst));
   }
 
   return results;

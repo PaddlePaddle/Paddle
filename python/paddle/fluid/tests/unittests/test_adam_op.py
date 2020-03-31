@@ -58,7 +58,9 @@ class TestAdamOp1(OpTest):
         self.outputs = {
             'Moment1Out': moment1_out,
             'Moment2Out': moment2_out,
-            'ParamOut': param_out
+            'ParamOut': param_out,
+            'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
+            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2
         }
 
     def test_check_output(self):
@@ -101,7 +103,9 @@ class TestAdamOp2(OpTest):
         self.outputs = {
             'Moment1Out': moment1_out,
             'Moment2Out': moment2_out,
-            'ParamOut': param_out
+            'ParamOut': param_out,
+            'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
+            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2
         }
 
     def test_check_output(self):
@@ -122,11 +126,11 @@ class TestAdamOpMultipleSteps(OpTest):
         moment2 = np.random.random((102, 105)).astype("float32")
 
         learning_rate = 0.001
-        beta1 = 0.9
-        beta2 = 0.999
+        self.beta1 = 0.9
+        self.beta2 = 0.999
         epsilon = 1e-8
-        beta1_pow = beta1**10
-        beta2_pow = beta2**10
+        self.beta1_pow = self.beta1**10
+        self.beta2_pow = self.beta2**10
 
         self.inputs = {
             'Param': param,
@@ -134,21 +138,29 @@ class TestAdamOpMultipleSteps(OpTest):
             'Moment1': moment1,
             'Moment2': moment2,
             'LearningRate': np.array([learning_rate]).astype("float32"),
-            'Beta1Pow': np.array([beta1_pow]).astype("float32"),
-            'Beta2Pow': np.array([beta2_pow]).astype("float32")
+            'Beta1Pow': np.array([self.beta1_pow]).astype("float32"),
+            'Beta2Pow': np.array([self.beta2_pow]).astype("float32")
         }
 
-        self.attrs = {'epsilon': epsilon, 'beta1': beta1, 'beta2': beta2}
+        self.attrs = {
+            'epsilon': epsilon,
+            'beta1': self.beta1,
+            'beta2': self.beta2
+        }
 
     def test_check_output(self):
         for _ in range(self.num_steps):
             param_out, moment1_out, \
                 moment2_out = adam_step(self.inputs, self.attrs)
 
+            beta1_pow_out = self.inputs['Beta1Pow'] * self.beta1
+            beta2_pow_out = self.inputs['Beta2Pow'] * self.beta2
             self.outputs = {
                 'Moment1Out': moment1_out,
                 'Moment2Out': moment2_out,
-                'ParamOut': param_out
+                'ParamOut': param_out,
+                'Beta1PowOut': beta1_pow_out,
+                'Beta2PowOut': beta2_pow_out
             }
 
             # Verify output for this step
@@ -160,8 +172,8 @@ class TestAdamOpMultipleSteps(OpTest):
             self.inputs['Moment2'] = moment2_out
 
             # Update powers of Beta1 and Beta2 for next time step
-            self.inputs['Beta1Pow'] *= self.attrs['beta1']
-            self.inputs['Beta2Pow'] *= self.attrs['beta1']
+            self.inputs['Beta1Pow'] = beta1_pow_out
+            self.inputs['Beta2Pow'] = beta2_pow_out
 
             # Randomize gradient for next step
             self.inputs['Grad'] = np.random.uniform(
@@ -254,6 +266,8 @@ class TestSparseAdamOp(unittest.TestCase):
         beta1 = 0.78
         beta2 = 0.836
         epsilon = 1e-4
+        beta1_pow = np.array([beta1**10]).astype("float32")
+        beta2_pow = np.array([beta2**10]).astype("float32")
 
         height = 10
         rows = [0, 4, 7]
@@ -264,8 +278,8 @@ class TestSparseAdamOp(unittest.TestCase):
             "Param": np.full((height, row_numel), 5.0).astype("float32"),
             "Moment1": np.full((height, row_numel), 5.0).astype("float32"),
             "Moment2": np.full((height, row_numel), 5.0).astype("float32"),
-            'Beta1Pow': np.array([beta1**10]).astype("float32"),
-            'Beta2Pow': np.array([beta2**10]).astype("float32"),
+            'Beta1Pow': beta1_pow,
+            'Beta2Pow': beta2_pow,
             "LearningRate": np.full((1), 2.0).astype("float32")
         }
         self.init_output = np.full((height, row_numel), 0.0).astype("float32")
@@ -294,7 +308,9 @@ class TestSparseAdamOp(unittest.TestCase):
         self.outputs = {
             "ParamOut": param_out,
             "Moment1Out": mom1,
-            "Moment2Out": mom2
+            "Moment2Out": mom2,
+            'Beta1PowOut': beta1_pow * beta1,
+            'Beta2PowOut': beta2_pow * beta2
         }
 
     def check_with_place(self, place, lazy_mode):
@@ -376,7 +392,9 @@ class TestAdamOpBetaVariable(OpTest):
         self.outputs = {
             'Moment1Out': moment1_out,
             'Moment2Out': moment2_out,
-            'ParamOut': param_out
+            'ParamOut': param_out,
+            'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
+            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2
         }
 
     def test_check_output(self):

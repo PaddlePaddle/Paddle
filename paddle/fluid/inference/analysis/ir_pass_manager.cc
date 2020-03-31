@@ -24,7 +24,6 @@
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/argument.h"
-#include "paddle/fluid/inference/analysis/ir_passes/subgraph_detector.h"
 #include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
@@ -124,32 +123,45 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
       pass->Set("use_static_engine", new bool(use_static_engine));
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
+      pass->Set("max_input_shape", new std::map<std::string, std::vector<int>>(
+                                       argument->max_input_shape()));
+      pass->Set("min_input_shape", new std::map<std::string, std::vector<int>>(
+                                       argument->min_input_shape()));
+      pass->Set("optim_input_shape",
+                new std::map<std::string, std::vector<int>>(
+                    argument->optim_input_shape()));
+      // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will
+      // not
+      // run fp16.
+      pass->Set("disable_trt_plugin_fp16",
+                new bool(argument->disable_trt_plugin_fp16()));
     }
     if (pass_name == "ngraph_subgraph_pass") {
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
     }
-    if (pass_name == "anakin_subgraph_pass") {
+    if (pass_name == "lite_subgraph_pass") {
+      bool enable_int8 =
+          argument->lite_precision_mode() == AnalysisConfig::Precision::kInt8;
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
-      pass->Set("use_gpu", new bool(argument->use_gpu()));
-      pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
-      pass->Set("model_from_memory", new bool(argument->model_from_memory()));
+      pass->Set("lite_ops_filter",
+                new std::vector<std::string>(argument->lite_ops_filter()));
       pass->Set("predictor_id", new int(argument->predictor_id()));
-      pass->Set("max_input_shape", new std::map<std::string, std::vector<int>>(
-                                       argument->anakin_max_input_shape()));
-      pass->Set("max_batch_size", new int(argument->anakin_max_batch_size()));
-      bool enable_int8 =
-          argument->anakin_precision_mode() == AnalysisConfig::Precision::kInt8;
       pass->Set("enable_int8", new bool(enable_int8));
-      pass->Set("anakin_ops_filter",
-                new std::vector<std::string>(argument->anakin_ops_filter()));
-      pass->Set("auto_config_layout",
-                new bool(argument->anakin_auto_config_layout()));
+      pass->Set("use_gpu", new bool(argument->use_gpu()));
     }
     disable_logs_ = argument->disable_logs();
     if (pass_name == "fc_fuse_pass") {
       pass->Set("use_gpu", new bool(argument->use_gpu()));
+      bool fc_mkldnn_pass = 0;
+      for (const std::string &pass_n : passes) {
+        if (pass_n == "fc_mkldnn_pass") {
+          fc_mkldnn_pass = 1;
+        }
+      }
+      bool use_fc_padding = !fc_mkldnn_pass && argument->use_fc_padding();
+      pass->Set("use_fc_padding", new bool(use_fc_padding));
     }
 
     pre_pass = pass_name;
@@ -162,7 +174,8 @@ std::unique_ptr<Graph> IRPassManager::Apply(std::unique_ptr<Graph> graph) {
   if (passes_.empty()) {
     return graph;
   }
-  PADDLE_ENFORCE(graph.get());
+  PADDLE_ENFORCE_NOT_NULL(graph.get(), platform::errors::PreconditionNotMet(
+                                           "Graph cannot be NULL."));
   // Apply all the passes
   for (const auto &pass : passes_) {
     if (pass->Type() != "graph_viz_pass" && !disable_logs_) {

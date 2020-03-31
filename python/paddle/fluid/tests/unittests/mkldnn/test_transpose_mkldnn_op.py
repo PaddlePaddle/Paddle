@@ -48,25 +48,25 @@ class TestTransposeMKLDNN(TestTransposeOp):
         self.check_grad(['X'], 'Out', check_dygraph=False)
 
     def initTestCase(self):
-        self.shape = (3, 4)
+        self.shape = (30, 4)
         self.axis = (1, 0)
 
 
 class TestCase0MKLDNN(TestTransposeMKLDNN):
     def initTestCase(self):
-        self.shape = (3, )
+        self.shape = (100, )
         self.axis = (0, )
 
 
 class TestCase1a(TestTransposeMKLDNN):
     def initTestCase(self):
-        self.shape = (3, 4, 5)
+        self.shape = (3, 4, 10)
         self.axis = (0, 2, 1)
 
 
 class TestCase1b(TestTransposeMKLDNN):
     def initTestCase(self):
-        self.shape = (3, 4, 5)
+        self.shape = (3, 4, 10)
         self.axis = (2, 1, 0)
 
 

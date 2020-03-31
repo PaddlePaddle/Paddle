@@ -66,9 +66,11 @@ else()
   cc_test(mixed_vector_test SRCS mixed_vector_test.cc DEPS place memory device_context tensor)
 endif()
 cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto version)
+cc_library(device_worker SRCS device_worker.cc DEPS trainer_desc_proto lod_tensor)
 
 cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor memory)
 nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
+cc_test(device_worker_test SRCS device_worker_test.cc DEPS device_worker)
 
 cc_library(garbage_collector SRCS garbage_collector.cc DEPS device_context memory gflags glog)
 
@@ -133,7 +135,7 @@ cc_library(op_kernel_type SRCS op_kernel_type.cc DEPS device_context place)
 cc_library(unused_var_check SRCS unused_var_check.cc DEPS glog no_need_buffer_vars_inference)
 
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
-    shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check)
+    shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils)
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
 cc_test(operator_exception_test SRCS operator_exception_test.cc DEPS operator op_registry device_context)
@@ -189,20 +191,20 @@ cc_library(executor_gc_helper SRCS executor_gc_helper.cc DEPS scope proto_desc o
 if(WITH_DISTRIBUTE)
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
-  data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc
+  data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc downpour_worker_opt.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
-  device_context scope framework_proto trainer_desc_proto glog fs shell fleet_wrapper lodtensor_printer
-  lod_rank_table feed_fetch_method sendrecvop_rpc collective_helper ${GLOB_DISTRIBUTE_DEPS}
+  device_context scope framework_proto trainer_desc_proto glog fs shell fleet_wrapper box_wrapper lodtensor_printer
+  lod_rank_table feed_fetch_method sendrecvop_rpc communicator collective_helper ${GLOB_DISTRIBUTE_DEPS}
   graph_to_program_pass variable_helper data_feed_proto ${NGRAPH_EXE_DEPS} timer)
 set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
 set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 else()
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
   dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
-  data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc
+  data_feed.cc device_worker.cc hogwild_worker.cc downpour_worker.cc downpour_worker_opt.cc
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto data_feed_proto trainer_desc_proto glog
-  lod_rank_table fs shell fleet_wrapper lodtensor_printer feed_fetch_method
+  lod_rank_table fs shell fleet_wrapper box_wrapper lodtensor_printer feed_fetch_method
   graph_to_program_pass variable_helper ${NGRAPH_EXE_DEPS} timer)
   cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
 endif()
@@ -214,6 +216,7 @@ cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         graph build_strategy
         fast_threaded_ssa_graph_executor variable_helper)
 
+cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS executor)
 cc_library(prune SRCS prune.cc DEPS framework_proto boost)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
@@ -262,15 +265,13 @@ message(STATUS "branch: ${PADDLE_BRANCH}")
 
 configure_file(commit.h.in commit.h)
 
-set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto)
-if(WIN32)
-  sep_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
-else(WIN32)
-  cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
-endif(WIN32)
+set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer)
 
+cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 cc_library(paddle_framework_shared
-    SHARED SRCS executor.cc operator.cc ${CMAKE_CURRENT_SOURCE_DIR}/c/c_api.cc
+    SHARED SRCS executor.cc operator.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/c/c_api.cc
+    ${CMAKE_SOURCE_DIR}/paddle/fluid/imperative/layer.cc
     DEPS ${FLUID_FRAMEWORK_MODULES})
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
 set_target_properties(paddle_framework_shared PROPERTIES OUTPUT_NAME paddle_framework)

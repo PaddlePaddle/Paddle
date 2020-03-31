@@ -90,9 +90,9 @@ def create_test_class(test_case,
             if not grad_chek:
                 return
             if self.attrs["save_intermediate_out"]:
-                self.check_grad(['X', 'Y'], ['Out'], max_relative_error=0.005)
+                self.check_grad(['X', 'Y'], ['Out'])
             else:
-                self.check_grad(['X', 'Y'], ['Out'], max_relative_error=0.005)
+                self.check_grad(['X', 'Y'], ['Out'])
 
         def test_check_grad_ingore_x(self):
             if not grad_chek:

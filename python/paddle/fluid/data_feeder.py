@@ -15,14 +15,14 @@
 from __future__ import print_function
 
 from . import core
-import numpy
+import numpy as np
 import os
 import six
 from six.moves import zip, range, xrange
 import multiprocessing
 import warnings
 
-from .framework import Variable, default_main_program, _current_expected_place
+from .framework import Variable, default_main_program, _current_expected_place, in_dygraph_mode
 from .framework import _cpu_num, _cuda_ids
 __all__ = ['DataFeeder']
 
@@ -47,6 +47,12 @@ def convert_dtype(dtype):
             return 'int64'
         elif dtype == core.VarDesc.VarType.UINT8:
             return 'uint8'
+    elif isinstance(dtype, type):
+        if dtype in [
+                np.bool, np.float16, np.float32, np.float64, np.int8, np.int16,
+                np.int32, np.int64, np.uint8
+        ]:
+            return dtype.__name__
     else:
         if dtype in [
                 'bool', 'float16', 'float32', 'float64', 'int8', 'int16',
@@ -65,17 +71,25 @@ def convert_dtype(dtype):
         "int32, int64, uint8]")
 
 
-def check_type_and_dtype(input,
-                         input_name,
-                         expected_type,
-                         expected_dtype,
-                         op_name,
-                         extra_message=''):
-    check_type(input, input_name, expected_type, op_name, extra_message)
+def check_variable_and_dtype(input,
+                             input_name,
+                             expected_dtype,
+                             op_name,
+                             extra_message=''):
+    check_type(input, input_name, Variable, op_name, extra_message)
     check_dtype(input.dtype, input_name, expected_dtype, op_name, extra_message)
 
 
 def check_type(input, input_name, expected_type, op_name, extra_message=''):
+    # NOTE [ Why skip dynamic graph check ]:
+    # 1. If the input type / dtype of a layer is wrong, it will be reported
+    # directly on that line. User can easily print the relevant information
+    # on which line. It is easier to debug, so there is no need to check
+    # in dynamic graph mode.
+    # 2. Performance considerations. Because these checks are executed at
+    # each step in dynamic graph mode, it will bring a heavy performance burden.
+    if in_dygraph_mode():
+        return
     if not isinstance(input, expected_type):
         raise TypeError(
             "The type of '%s' in %s must be %s, but received %s. %s" %
@@ -87,6 +101,9 @@ def check_dtype(input_dtype,
                 expected_dtype,
                 op_name,
                 extra_message=''):
+    # See NOTE [ Why skip dynamic graph check ]
+    if in_dygraph_mode():
+        return
     if convert_dtype(input_dtype) in ['float16']:
         warnings.warn(
             "The data type of '%s' in %s only support float16 in GPU now. %s" %
@@ -136,7 +153,7 @@ class DataToLoDTensorConverter(object):
                     format(self.shape, shape))
 
     def done(self):
-        arr = numpy.array(self.data, dtype=self.dtype)
+        arr = np.array(self.data, dtype=self.dtype)
         if self.shape:
             if len(arr.shape) != len(self.shape):
                 try:
@@ -334,10 +351,10 @@ class DataFeeder(object):
         """
         Similar with feed function, feed_parallel is used with multiple devices (CPU|GPU).
         Here :code:`iterable` is a list of python generators. The data return by each 
-        generator in the list will be fed into a seperate device.        
+        generator in the list will be fed into a separate device.        
 
         Parameters:
-            iterable (list|tuple): list of user-defined python geneators. The element 
+            iterable (list|tuple): list of user-defined python generators. The element 
                 number should match the :code:`num_places`.
             num_places (int, optional): the number of devices. If not provided (None), 
                 all available devices on the machine will be used. Default None.
@@ -374,7 +391,7 @@ class DataFeeder(object):
                 exe.run(fluid.default_startup_program())
                 program = fluid.CompiledProgram(fluid.default_main_program()).with_data_parallel(places=places)
 
-                # print sample feed_parallel r resultt
+                # print sample feed_parallel r result
                 # for item in list(feeder.feed_parallel([generate_reader(5, 0, 1), generate_reader(3, 10, 2)], 2)):
                 #     print(item['x'])
                 #     print(item['y'])
@@ -428,7 +445,7 @@ class DataFeeder(object):
 
         Parameters:
             reader(generator): a user defined python generator used to get :code:`mini-batch` of data.
-                A :code:`mini-batch` can be regarded as a python generator that returns batchs of input 
+                A :code:`mini-batch` can be regarded as a python generator that returns batches of input 
                 entities, just like the below :code:`_mini_batch` in the code example.                      
             multi_devices(bool): indicate whether to use multiple devices or not.
             num_places(int, optional): if :code:`multi_devices` is True, you can specify the number
@@ -502,63 +519,3 @@ class DataFeeder(object):
                         "not implemented")
 
         return __reader_creator__
-
-
-class NumpyToLoDTensorConverter(object):
-    def __init__(self, place):
-        self.place = place
-        self.data = []
-        self._reset()
-
-    def _reset(self):
-        self.data = []
-
-    def feed(self, data):
-        self.data.append(data)
-
-    def done(self):
-        arr = numpy.array(self.data)
-        t = core.LoDTensor()
-        t.set(arr, self.place)
-        self._reset()
-        return t
-
-
-class ListTensorProvider(object):
-    def __init__(self, generator, places):
-        self.generator = generator
-        self.converters = []
-        self.places = []
-        if places:
-            if not isinstance(places, (list, tuple)):
-                places = [places]
-            assert len(
-                places) == 1, "dygraph mode CAN NOT specify multiple places."
-            for place in places:
-                if isinstance(place, (core.CUDAPlace, core.CPUPlace)):
-                    self.places.append(place)
-                else:
-                    raise ValueError(
-                        "Please specify a valid place values such as core.CPUPlace or core.CUDAPlace"
-                    )
-        if len(self.places) == 0:
-            self.places.append(_current_expected_place())
-
-    def _readData(self, iterable, places):
-        for place, each_sample in six.moves.zip(places, iterable):
-            for item in each_sample:
-                if len(self.converters) < len(item):
-                    for i in item:
-                        self.converters.append(NumpyToLoDTensorConverter(place))
-                for each_converter, each_slot in six.moves.zip(self.converters,
-                                                               item):
-                    each_converter.feed(each_slot)
-            yield [c.done() for c in self.converters]
-
-    def __call__(self):
-        item = []
-        for batch in self.generator():
-            item.append(batch)
-            if len(item) == len(self.places):
-                yield list(self._readData(item, self.places))
-                item = []

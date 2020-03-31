@@ -31,7 +31,13 @@ class ReverseOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(!axis.empty(), "'axis' can not be empty.");
     for (int a : axis) {
       PADDLE_ENFORCE_LT(a, x_dims.size(),
-                        "The axis must be less than input tensor's rank.");
+                        paddle::platform::errors::OutOfRange(
+                            "The axis must be less than input tensor's rank."));
+      PADDLE_ENFORCE_GE(
+          a, -x_dims.size(),
+          paddle::platform::errors::OutOfRange(
+              "The axis must be greater than the negative number of "
+              "input tensor's rank."));
     }
     ctx->SetOutputDim("Out", x_dims);
   }
@@ -83,13 +89,11 @@ class ReverseGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<T> Apply() const override {
-    auto* grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("reverse");
     grad_op->SetInput("X", this->OutputGrad("Out"));
     grad_op->SetOutput("Out", this->InputGrad("X"));
     grad_op->SetAttr("axis", this->GetAttr("axis"));
-    return std::unique_ptr<T>(grad_op);
   }
 };
 
