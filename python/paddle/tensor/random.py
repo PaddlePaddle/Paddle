@@ -134,12 +134,17 @@ def randint(low,
         low = 0
     attrs['low'] = low
     attrs['high'] = high
+
     if out is None:
         if name is None:
             out = helper.create_variable_for_type_inference(dtype=dtype)
         else:
             out = helper.create_variable(
                 name=name, dtype=dtype, persistable=False)
+    else:
+        check_dtype(dtype, 'dtype',
+                    convert_dtype(out.dtype), 'randint',
+                    "(The dtype in randint must be the same with out's dtype.)")
     attrs['dtype'] = out.dtype
     out.stop_gradient = stop_gradient
 
