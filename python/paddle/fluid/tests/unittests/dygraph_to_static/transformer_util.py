@@ -46,7 +46,6 @@ def get_input_descs(args):
         "init_score": [(batch_size, 1), "float32", 2],
         "init_idx": [(batch_size, ), "int32"],
     }
-
     return input_descs
 
 

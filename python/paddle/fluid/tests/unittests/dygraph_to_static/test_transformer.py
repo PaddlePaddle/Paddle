@@ -33,10 +33,8 @@ SEED = 10
 def train_static(args, batch_generator):
     train_prog = fluid.default_main_program()
     startup_prog = fluid.default_startup_program()
-    if SEED is not None:
-        train_prog.random_seed = SEED
-        startup_prog.random_seed = SEED
-
+    train_prog.random_seed = SEED
+    startup_prog.random_seed = SEED
     with fluid.program_guard(train_prog, startup_prog):
         with fluid.unique_name.guard():
             # define input and reader
@@ -61,7 +59,6 @@ def train_static(args, batch_generator):
                 args.attention_dropout, args.relu_dropout, args.preprocess_cmd,
                 args.postprocess_cmd, args.weight_sharing, args.bos_idx,
                 args.eos_idx)
-
             logits = transformer(*input_field.feed_list[:7])
             # define loss
             criterion = CrossEntropyCriterion(args.label_smooth_eps)
@@ -71,7 +68,6 @@ def train_static(args, batch_generator):
             # define optimizer
             learning_rate = fluid.layers.learning_rate_scheduler.noam_decay(
                 args.d_model, args.warmup_steps, args.learning_rate)
-
             optimizer = fluid.optimizer.Adam(
                 learning_rate=learning_rate,
                 beta1=args.beta1,
@@ -82,30 +78,24 @@ def train_static(args, batch_generator):
             loss_normalizer = -((1. - args.label_smooth_eps) * np.log(
                 (1. - args.label_smooth_eps)) + args.label_smooth_eps * np.log(
                     args.label_smooth_eps / (args.trg_vocab_size - 1) + 1e-20))
-
     step_idx = 0
-    total_batch_num = 0  # this is for benchmark
+    total_batch_num = 0
+    avg_loss = []
     exe = fluid.Executor(place)
     exe.run(startup_prog)
-
-    avg_loss = []
     for pass_id in range(args.epoch):
         batch_id = 0
         for feed_dict in data_loader:
             outs = exe.run(program=train_prog,
                            feed=feed_dict,
                            fetch_list=[sum_cost.name, token_num.name])
-
             if step_idx % args.print_step == 0:
                 sum_cost_val, token_num_val = np.array(outs[0]), np.array(outs[
                     1])
-                # sum the cost from multi-devices
                 total_sum_cost = sum_cost_val.sum()
                 total_token_num = token_num_val.sum()
                 total_avg_cost = total_sum_cost / total_token_num
-
                 avg_loss.append(total_avg_cost)
-
                 if step_idx == 0:
                     logging.info(
                         "step_idx: %d, epoch: %d, batch: %d, avg loss: %f, "
@@ -132,17 +122,14 @@ def train_static(args, batch_generator):
                         args.save_model, "step_" + str(step_idx), "transformer")
                     fluid.save(train_prog, model_path)
                 break
-
     return np.array(avg_loss)
 
 
 def train_dygraph(args, batch_generator):
-
     with fluid.dygraph.guard(place):
         if SEED is not None:
             fluid.default_main_program().random_seed = SEED
             fluid.default_startup_program().random_seed = SEED
-
         # define data loader
         train_loader = fluid.io.DataLoader.from_generator(capacity=10)
         train_loader.set_batch_generator(batch_generator, places=place)
@@ -171,7 +158,6 @@ def train_dygraph(args, batch_generator):
             (1. - args.label_smooth_eps) * np.log(
                 (1. - args.label_smooth_eps)) + args.label_smooth_eps *
             np.log(args.label_smooth_eps / (args.trg_vocab_size - 1) + 1e-20))
-
         ce_time = []
         ce_ppl = []
         avg_loss = []
@@ -186,19 +172,14 @@ def train_dygraph(args, batch_generator):
                 logits = transformer(src_word, src_pos, src_slf_attn_bias,
                                      trg_word, trg_pos, trg_slf_attn_bias,
                                      trg_src_attn_bias)
-
                 sum_cost, avg_cost, token_num = criterion(logits, lbl_word,
                                                           lbl_weight)
                 avg_cost.backward()
-
                 optimizer.minimize(avg_cost)
                 transformer.clear_gradients()
-
                 if step_idx % args.print_step == 0:
                     total_avg_cost = avg_cost.numpy() * trainer_count
-
                     avg_loss.append(total_avg_cost[0])
-
                     if step_idx == 0:
                         logging.info(
                             "step_idx: %d, epoch: %d, batch: %d, avg loss: %f, "
@@ -217,7 +198,6 @@ def train_dygraph(args, batch_generator):
                              args.print_step / (time.time() - avg_batch_time)))
                         ce_ppl.append(np.exp([min(total_avg_cost, 100)]))
                         avg_batch_time = time.time()
-
                 batch_id += 1
                 step_idx += 1
                 if step_idx == 10:
@@ -233,10 +213,8 @@ def train_dygraph(args, batch_generator):
                             optimizer.state_dict(),
                             os.path.join(model_dir, "transformer"))
                     break
-
             time_consumed = time.time() - pass_start_time
             ce_time.append(time_consumed)
-
         return np.array(avg_loss)
 
 
@@ -244,7 +222,6 @@ class TestTransformer(unittest.TestCase):
     def prepare(self, mode='train'):
         args = util.ModelHyperParams()
         batch_generator = util.get_feed_data_reader(args, mode)
-
         return args, batch_generator
 
     def test_train(self):

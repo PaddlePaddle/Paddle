@@ -19,7 +19,6 @@ import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid.dygraph import Embedding, LayerNorm, Linear, Layer
-
 from paddle.fluid.dygraph.jit import dygraph_to_static_func
 
 
@@ -43,10 +42,6 @@ def position_encoding_init(n_position, d_pos_vec):
 
 
 class PrePostProcessLayer(Layer):
-    """
-    PrePostProcessLayer
-    """
-
     def __init__(self, process_cmd, d_model, dropout_rate):
         super(PrePostProcessLayer, self).__init__()
         self.process_cmd = process_cmd
@@ -81,10 +76,6 @@ class PrePostProcessLayer(Layer):
 
 
 class MultiHeadAttention(Layer):
-    """
-    Multi-Head Attention
-    """
-
     def __init__(self, d_key, d_value, d_model, n_head=1, dropout_rate=0.):
         super(MultiHeadAttention, self).__init__()
         self.n_head = n_head
@@ -106,11 +97,9 @@ class MultiHeadAttention(Layer):
         # compute q ,k ,v
         keys = queries if keys is None else keys
         values = keys if values is None else values
-
         q = self.q_fc(queries)
         k = self.k_fc(keys)
         v = self.v_fc(values)
-
         # split head
         q = layers.reshape(x=q, shape=[0, 0, self.n_head, self.d_key])
         q = layers.transpose(x=q, perm=[0, 2, 1, 3])
@@ -124,7 +113,6 @@ class MultiHeadAttention(Layer):
             k = layers.concat([cache_k, k], axis=2)
             v = layers.concat([cache_v, v], axis=2)
             cache["k"], cache["v"] = k, v
-
         # scale dot product attention
         product = layers.matmul(
             x=q, y=k, transpose_y=True, alpha=self.d_model**-0.5)
@@ -134,23 +122,14 @@ class MultiHeadAttention(Layer):
         if self.dropout_rate:
             weights = layers.dropout(
                 weights, dropout_prob=self.dropout_rate, is_test=False)
-
             out = layers.matmul(weights, v)
-
-        # combine heads
         out = layers.transpose(out, perm=[0, 2, 1, 3])
         out = layers.reshape(x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
-
-        # project to output
         out = self.proj_fc(out)
         return out
 
 
 class FFN(Layer):
-    """
-    Feed-Forward Network
-    """
-
     def __init__(self, d_inner_hid, d_model, dropout_rate):
         super(FFN, self).__init__()
         self.dropout_rate = dropout_rate
@@ -168,10 +147,6 @@ class FFN(Layer):
 
 
 class EncoderLayer(Layer):
-    """
-    EncoderLayer
-    """
-
     def __init__(self,
                  n_head,
                  d_key,
@@ -204,17 +179,12 @@ class EncoderLayer(Layer):
         attn_output = self.self_attn(
             self.preprocesser1(enc_input), None, None, attn_bias)
         attn_output = self.postprocesser1(attn_output, enc_input)
-
         ffn_output = self.ffn(self.preprocesser2(attn_output))
         ffn_output = self.postprocesser2(ffn_output, attn_output)
         return ffn_output
 
 
 class Encoder(Layer):
-    """
-    encoder
-    """
-
     def __init__(self,
                  n_layer,
                  n_head,
@@ -252,13 +222,8 @@ class Encoder(Layer):
 
 
 class Embedder(Layer):
-    """
-    Word Embedding + Position Encoding
-    """
-
     def __init__(self, vocab_size, emb_dim, bos_idx=0):
         super(Embedder, self).__init__()
-
         self.word_embedder = Embedding(
             size=[vocab_size, emb_dim],
             padding_idx=bos_idx,
@@ -272,16 +237,11 @@ class Embedder(Layer):
 
 
 class WrapEncoder(Layer):
-    """
-    embedder + encoder
-    """
-
     def __init__(self, src_vocab_size, max_length, n_layer, n_head, d_key,
                  d_value, d_model, d_inner_hid, prepostprocess_dropout,
                  attention_dropout, relu_dropout, preprocess_cmd,
                  postprocess_cmd, word_embedder):
         super(WrapEncoder, self).__init__()
-
         self.emb_dropout = prepostprocess_dropout
         self.emb_dim = d_model
         self.word_embedder = word_embedder
@@ -291,7 +251,6 @@ class WrapEncoder(Layer):
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     position_encoding_init(max_length, self.emb_dim)),
                 trainable=False))
-
         self.encoder = Encoder(n_layer, n_head, d_key, d_value, d_model,
                                d_inner_hid, prepostprocess_dropout,
                                attention_dropout, relu_dropout, preprocess_cmd,
@@ -307,16 +266,11 @@ class WrapEncoder(Layer):
         enc_input = layers.dropout(
             emb, dropout_prob=self.emb_dropout,
             is_test=False) if self.emb_dropout else emb
-
         enc_output = self.encoder(enc_input, src_slf_attn_bias)
         return enc_output
 
 
 class DecoderLayer(Layer):
-    """
-    decoder
-    """
-
     def __init__(self,
                  n_head,
                  d_key,
@@ -336,14 +290,12 @@ class DecoderLayer(Layer):
                                             attention_dropout)
         self.postprocesser1 = PrePostProcessLayer(postprocess_cmd, d_model,
                                                   prepostprocess_dropout)
-
         self.preprocesser2 = PrePostProcessLayer(preprocess_cmd, d_model,
                                                  prepostprocess_dropout)
         self.cross_attn = MultiHeadAttention(d_key, d_value, d_model, n_head,
                                              attention_dropout)
         self.postprocesser2 = PrePostProcessLayer(postprocess_cmd, d_model,
                                                   prepostprocess_dropout)
-
         self.preprocesser3 = PrePostProcessLayer(preprocess_cmd, d_model,
                                                  prepostprocess_dropout)
         self.ffn = FFN(d_inner_hid, d_model, relu_dropout)
@@ -360,24 +312,17 @@ class DecoderLayer(Layer):
         self_attn_output = self.self_attn(
             self.preprocesser1(dec_input), None, None, self_attn_bias, cache)
         self_attn_output = self.postprocesser1(self_attn_output, dec_input)
-
         cross_attn_output = self.cross_attn(
             self.preprocesser2(self_attn_output), enc_output, enc_output,
             cross_attn_bias)
         cross_attn_output = self.postprocesser2(cross_attn_output,
                                                 self_attn_output)
-
         ffn_output = self.ffn(self.preprocesser3(cross_attn_output))
         ffn_output = self.postprocesser3(ffn_output, cross_attn_output)
-
         return ffn_output
 
 
 class Decoder(Layer):
-    """
-    decoder
-    """
-
     def __init__(self, n_layer, n_head, d_key, d_value, d_model, d_inner_hid,
                  prepostprocess_dropout, attention_dropout, relu_dropout,
                  preprocess_cmd, postprocess_cmd):
@@ -407,15 +352,10 @@ class Decoder(Layer):
                                        cross_attn_bias, None
                                        if caches is None else caches[i])
             dec_input = dec_output
-
         return self.processer(dec_output)
 
 
 class WrapDecoder(Layer):
-    """
-    embedder + decoder
-    """
-
     def __init__(self, trg_vocab_size, max_length, n_layer, n_head, d_key,
                  d_value, d_model, d_inner_hid, prepostprocess_dropout,
                  attention_dropout, relu_dropout, preprocess_cmd,
@@ -431,12 +371,10 @@ class WrapDecoder(Layer):
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     position_encoding_init(max_length, self.emb_dim)),
                 trainable=False))
-
         self.decoder = Decoder(n_layer, n_head, d_key, d_value, d_model,
                                d_inner_hid, prepostprocess_dropout,
                                attention_dropout, relu_dropout, preprocess_cmd,
                                postprocess_cmd)
-
         if share_input_output_embed:
             self.linear = lambda x: layers.matmul(x=x,
                                                   y=self.word_embedder.
@@ -496,10 +434,6 @@ class CrossEntropyCriterion(object):
 
 
 class Transformer(Layer):
-    """
-    model
-    """
-
     def __init__(self,
                  src_vocab_size,
                  trg_vocab_size,
