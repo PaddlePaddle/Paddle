@@ -25,10 +25,11 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
   auto dim_x = ctx->GetInputDim("X");
   auto interp_method = ctx->Attrs().Get<std::string>("interp_method");
 
-  PADDLE_ENFORCE(
-      "bilinear" == interp_method || "nearest" == interp_method,
-      "Interpolation method can only be \"bilinear\" or \"nearest\" when "
-      "Input(X) dimension is 4");
+  PADDLE_ENFORCE("bilinear" == interp_method || "nearest" == interp_method ||
+                     "linear" == interp_method,
+                 "Interpolation method can only be \"bilinear\" or \"nearest\" "
+                 "or \"linear\" when "
+                 "Input(X) dimension is 4");
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
 
@@ -264,7 +265,8 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
                          "method, can be \"bilinear\" for "
                          "bilinear interpolation, \"trilinear\" for trilinear "
                          "interpolation and \"nearest\" for nearest "
-                         "neighbor interpolation.")
+                         "neighbor interpolation, \"linear\" for linear"
+                         "interpolation")
         .SetDefault("bilinear");
     AddAttr<bool>(
         "align_corners",
@@ -282,7 +284,7 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
           This operator samples input X to given output shape by using specified
           interpolation method, the interpolation methods can be \"nearest\"
           for nearest neighbor interpolation and \"bilinear\" for bilinear 
-          interpolation.
+          interpolation and \"linear\" for linear interpolation..
 
           Nearest neighbor interpolation is to perform nearest neighbor interpolation
           in both the 3rd dimension(in height direction) and the 4th dimension(in width 
@@ -483,4 +485,14 @@ REGISTER_OP_CPU_KERNEL(trilinear_interp, ops::InterpolateKernel<float>,
                        ops::InterpolateKernel<double>,
                        ops::InterpolateKernel<uint8_t>);
 REGISTER_OP_CPU_KERNEL(trilinear_interp_grad, ops::InterpolateGradKernel<float>,
+                       ops::InterpolateGradKernel<double>);
+REGISTER_OPERATOR(linear_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
+                  ops::InterpolateGradMaker<paddle::framework::OpDesc>,
+                  ops::InterpolateGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(linear_interp_grad, ops::InterpolateOpGrad,
+                  ops::InterpolateGradNoNeedBufferVarsInference);
+REGISTER_OP_CPU_KERNEL(linear_interp, ops::InterpolateKernel<float>,
+                       ops::InterpolateKernel<double>,
+                       ops::InterpolateKernel<uint8_t>);
+REGISTER_OP_CPU_KERNEL(linear_interp_grad, ops::InterpolateGradKernel<float>,
                        ops::InterpolateGradKernel<double>);

@@ -113,6 +113,139 @@ __global__ void KeNearestNeighborInterpBw(
 }
 
 template <typename T>
+__global__ void KeLinearInterpFw(const T* in, const size_t in_img_h,
+                                 const size_t in_img_w, const size_t input_h,
+                                 const size_t input_w, T* out,
+                                 const size_t out_img_h, const size_t out_img_w,
+                                 const size_t output_h, const size_t output_w,
+                                 const size_t num_channels, const float ratio_h,
+                                 const float ratio_w, const bool align_corners,
+                                 const int align_mode,
+                                 const DataLayout data_layout) {
+  int nthreads = output_h * output_w;
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = blockDim.x * gridDim.x;
+  bool align_flag = (align_mode == 0 && !align_corners);
+  for (; tid < nthreads; tid += stride) {
+    int out_id_h = tid / output_w;
+    int out_id_w = tid % output_w;
+    int in_img_size = input_w / num_channels;
+    int out_img_size = output_w / num_channels;
+
+    int channel_id, out_img_idy, out_img_idx;
+    if (data_layout == DataLayout::kNCHW) {
+      channel_id = out_id_w / out_img_size;
+      out_img_idy = (out_id_w % out_img_size) / out_img_w;
+      out_img_idx = tid % out_img_w;
+    } else {
+      out_img_idy = out_id_w / (out_img_w * num_channels);
+      out_img_idx = out_id_w % (out_img_w * num_channels) / num_channels;
+      channel_id = tid % num_channels;
+    }
+
+    int in_img_idy = align_flag
+                         ? static_cast<int>(ratio_h * (out_img_idy + 0.5) - 0.5)
+                         : static_cast<int>(ratio_h * out_img_idy);
+    in_img_idy = (in_img_idy > 0) ? in_img_idy : 0;  // h
+
+    int in_img_idx = align_flag
+                         ? static_cast<int>(ratio_w * (out_img_idx + 0.5) - 0.5)
+                         : static_cast<int>(ratio_w * out_img_idx);
+    in_img_idx = (in_img_idx > 0) ? in_img_idx : 0;  // w
+    int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;
+
+    T src_w = ratio_w * (out_img_idx + 0.5) - 0.5;
+    src_w = (src_w > 0) ? src_w : 0;
+    T w1lambda =
+        align_flag ? src_w - in_img_idx : ratio_w * out_img_idx - in_img_idx;
+    T w2lambda = 1.f - w1lambda;
+
+    if (data_layout == DataLayout::kNCHW) {
+      const T* in_pos = &in[out_id_h * input_w + channel_id * in_img_size +
+                            in_img_idy * in_img_w + in_img_idx];
+
+      // linear interpolation
+      out[out_id_h * output_w + out_id_w] =
+          w2lambda * in_pos[0] + w1lambda * in_pos[w_id];
+    } else {
+      const T* in_pos =
+          &in[out_id_h * input_w + in_img_idy * in_img_w * num_channels +
+              in_img_idx * num_channels + channel_id];
+
+      // linear interpolation
+      out[out_id_h * output_w + out_id_w] =
+          w2lambda * in_pos[0] + w1lambda * in_pos[w_id * num_channels];
+    }
+  }
+}
+
+template <typename T>
+__global__ void KeLinearInterpBw(T* in, const size_t in_img_h,
+                                 const size_t in_img_w, const size_t input_h,
+                                 const size_t input_w, const T* out,
+                                 const size_t out_img_h, const size_t out_img_w,
+                                 const size_t output_h, const size_t output_w,
+                                 const size_t num_channels, const T ratio_h,
+                                 const T ratio_w, const bool align_corners,
+                                 const int align_mode,
+                                 const DataLayout data_layout) {
+  int nthreads = output_h * output_w;
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = blockDim.x * gridDim.x;
+  bool align_flag = (align_mode == 0 && !align_corners);
+  for (; tid < nthreads; tid += stride) {
+    int out_id_h = tid / output_w;
+    int out_id_w = tid % output_w;
+    int in_img_size = input_w / num_channels;
+    int out_img_size = output_w / num_channels;
+
+    int channel_id, out_img_idy, out_img_idx;
+    if (data_layout == DataLayout::kNCHW) {
+      channel_id = out_id_w / out_img_size;
+      out_img_idy = (out_id_w % out_img_size) / out_img_w;
+      out_img_idx = tid % out_img_w;
+    } else {
+      out_img_idy = out_id_w / (out_img_w * num_channels);
+      out_img_idx = out_id_w % (out_img_w * num_channels) / num_channels;
+      channel_id = tid % num_channels;
+    }
+    int in_img_idy = align_flag ? ratio_h * (out_img_idy + 0.5) - 0.5
+                                : ratio_h * out_img_idy;
+    in_img_idy = (in_img_idy > 0) ? in_img_idy : 0;  // h
+
+    int in_img_idx = align_flag ? ratio_w * (out_img_idx + 0.5) - 0.5
+                                : ratio_w * out_img_idx;
+    in_img_idx = (in_img_idx > 0) ? in_img_idx : 0;  // w
+    int w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;  // w_id
+
+    T src_w = ratio_w * (out_img_idx + 0.5) - 0.5;
+    src_w = (src_w > 0) ? src_w : 0;
+    T w1lambda =
+        align_flag ? src_w - in_img_idx : ratio_w * out_img_idx - in_img_idx;
+    T w2lambda = 1.f - w1lambda;
+
+    T* in_pos;
+    if (data_layout == DataLayout::kNCHW) {
+      in_pos = &in[out_id_h * input_w + channel_id * in_img_size +
+                   in_img_idy * in_img_w + in_img_idx];
+    } else {
+      in_pos = &in[out_id_h * input_w + in_img_idy * in_img_w * num_channels +
+                   in_img_idx * num_channels + channel_id];
+    }
+    const T* out_pos = &out[out_id_h * output_w + out_id_w];
+
+    if (data_layout == DataLayout::kNCHW) {
+      platform::CudaAtomicAdd(&in_pos[0], w2lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos[w_id], w1lambda * out_pos[0]);
+    } else {
+      platform::CudaAtomicAdd(&in_pos[0], w2lambda * out_pos[0]);
+      platform::CudaAtomicAdd(&in_pos[w_id * num_channels],
+                              w1lambda * out_pos[0]);
+    }
+  }
+}
+
+template <typename T>
 __global__ void KeBilinearInterpFw(
     const T* in, const size_t in_img_h, const size_t in_img_w,
     const size_t input_h, const size_t input_w, T* out, const size_t out_img_h,
@@ -602,6 +735,11 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
                             ctx.cuda_device_context().stream()>>>(
         input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
         out_chw, c, ratio_h, ratio_w, align_corners, align_mode, data_layout);
+  } else if ("linear" == interp_method) {
+    KeLinearInterpFw<T><<<config.blocks, config.threads, 0,
+                          ctx.cuda_device_context().stream()>>>(
+        input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
+        out_chw, c, ratio_h, ratio_w, align_corners, align_mode, data_layout);
   }
 }
 
@@ -806,6 +944,12 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
         input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h, out_w,
         n, out_chw, c, ratio_h, ratio_w, align_corners, align_mode,
         data_layout);
+  } else if ("linear" == interp_method) {
+    KeLinearInterpBw<T><<<config.blocks, config.threads, 0,
+                          ctx.cuda_device_context().stream()>>>(
+        input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h, out_w,
+        n, out_chw, c, ratio_h, ratio_w, align_corners, align_mode,
+        data_layout);
   }
 }
 
@@ -966,5 +1110,11 @@ REGISTER_OP_CUDA_KERNEL(trilinear_interp, ops::InterpolateOpCUDAKernel<float>,
                         ops::InterpolateOpCUDAKernel<double>,
                         ops::InterpolateOpCUDAKernel<int>);
 REGISTER_OP_CUDA_KERNEL(trilinear_interp_grad,
+                        ops::InterpolateGradOpCUDAKernel<float>,
+                        ops::InterpolateGradOpCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(linear_interp, ops::InterpolateOpCUDAKernel<float>,
+                        ops::InterpolateOpCUDAKernel<double>,
+                        ops::InterpolateOpCUDAKernel<int>);
+REGISTER_OP_CUDA_KERNEL(linear_interp_grad,
                         ops::InterpolateGradOpCUDAKernel<float>,
                         ops::InterpolateGradOpCUDAKernel<double>);

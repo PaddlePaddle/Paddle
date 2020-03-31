@@ -106,6 +106,89 @@ static void NearestNeighborInterpolate(const Tensor& input, Tensor* output,
 }
 
 template <typename T>
+static void LinearInterpolation(const Tensor& input, Tensor* output,
+                                const float ratio_h, const float ratio_w,
+                                const int in_h, const int in_w, const int n,
+                                const int c, const int out_h, const int out_w,
+                                const bool align_corners, const bool align_mode,
+                                const DataLayout data_layout) {
+  auto input_t = EigenTensor<T, 4>::From(input);
+  auto output_t = EigenTensor<T, 4>::From(*output);
+  bool align_flag = (align_mode == 0 && !align_corners);
+
+  std::vector<int> vy_n, vy_s;
+  vy_n.reserve(out_h);
+  vy_s.reserve(out_h);
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+  for (int k = 0; k < out_h; k++) {
+    int y_n = align_flag ? static_cast<int>(ratio_h * (k + 0.5) - 0.5)
+                         : static_cast<int>(ratio_h * k);
+    y_n = (y_n > 0) ? y_n : 0;
+    int y_s = (y_n + 1) < (in_h - 1) ? (y_n + 1) : (in_h - 1);
+    {
+      vy_n[k] = y_n;
+      vy_s[k] = y_s;
+    }
+  }
+
+  std::vector<int> vx_w, vx_e;
+  std::vector<float> vd_w, vd_e;
+  vx_w.reserve(out_w);
+  vx_e.reserve(out_w);
+  vd_w.reserve(out_w);
+  vd_e.reserve(out_w);
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+  for (int l = 0; l < out_w; l++) {
+    int x_w = (align_mode == 0 && !align_corners)
+                  ? static_cast<int>(ratio_w * (l + 0.5) - 0.5)
+                  : static_cast<int>(ratio_w * l);
+    x_w = (x_w > 0) ? x_w : 0;
+    // int x_e = (x_w + 1) < (in_w - 1) ? (x_w + 1) : (in_w - 1);
+    int x_e = (x_w < (in_w - 1)) ? (x_w + 1) : x_w;
+    // w1lambda
+    float idx_src_x = ratio_w * (l + 0.5) - 0.5;
+    idx_src_x = (idx_src_x > 0) ? idx_src_x : 0;
+    float d_w = align_flag ? idx_src_x - x_w : ratio_w * l - x_w;
+    // w2lambda
+    float d_e = 1.f - d_w;
+    {
+      vx_w[l] = x_w;
+      vx_e[l] = x_e;
+      vd_w[l] = d_w;
+      vd_e[l] = d_e;
+    }
+  }
+
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for collapse(4)
+#endif
+  for (int i = 0; i < n; i++) {          // loop for batches
+    for (int j = 0; j < c; j++) {        // loop for channels
+      for (int k = 0; k < out_h; k++) {  // loop for images
+        for (int l = 0; l < out_w; l++) {
+          // bilinear interpolation
+          T out_t;
+          if (data_layout == DataLayout::kNCHW) {
+            out_t = input_t(i, j, vy_n[k], vx_w[l]) * vd_e[l] +
+                    input_t(i, j, vy_s[k], vx_e[l]) * vd_w[l];
+            output_t(i, j, k, l) = out_t;
+
+          } else {
+            out_t = input_t(i, vy_n[k], vx_w[l], j) * vd_e[l] +
+                    input_t(i, vy_s[k], vx_e[l], j) * vd_w[l];
+            output_t(i, k, l, j) = out_t;
+          }
+        }
+      }
+    }
+  }
+}
+
+template <typename T>
 static void BilinearInterpolation(const Tensor& input, Tensor* output,
                                   const float ratio_h, const float ratio_w,
                                   const int in_h, const int in_w, const int n,
@@ -372,6 +455,49 @@ static void NearestNeighborInterpolateGrad(
 }
 
 template <typename T>
+static void LinearInterpolationGrad(
+    const Tensor& output_grad, Tensor* input_grad, const float ratio_h,
+    const float ratio_w, const int in_h, const int in_w, const int n,
+    const int c, const int out_h, const int out_w, const bool align_corners,
+    const int align_mode, const DataLayout data_layout) {
+  auto input_grad_t = EigenTensor<T, 4>::From(*input_grad);
+  auto output_grad_t = EigenTensor<T, 4>::From(output_grad);
+  bool align_flag = (align_mode == 0 && !align_corners);
+  for (int k = 0; k < out_h; k++) {  // loop for images
+    int y_n = align_flag ? static_cast<int>(ratio_h * (k + 0.5) - 0.5)
+                         : static_cast<int>(ratio_h * k);
+    y_n = (y_n > 0) ? y_n : 0;  // h
+
+    for (int l = 0; l < out_w; l++) {
+      int x_w = align_flag ? static_cast<int>(ratio_w * (l + 0.5) - 0.5)
+                           : static_cast<int>(ratio_w * l);
+      x_w = (x_w > 0) ? x_w : 0;                       // w
+      int x_e = (x_w < (in_w - 1)) ? (x_w + 1) : x_w;  // w_id
+
+      float idx_src_x = ratio_w * (l + 0.5) - 0.5;
+      idx_src_x = (idx_src_x > 0) ? idx_src_x : 0;
+      float d_w = align_flag ? idx_src_x - x_w : ratio_w * l - x_w;  // w1lambda
+      float d_e = 1.f - d_w;                                         // w2lambda
+
+      for (int i = 0; i < n; i++) {    // loop for batches
+        for (int j = 0; j < c; j++) {  // loop for channels
+          // linear interpolation grad
+          if (data_layout == DataLayout::kNCHW) {
+            const T grad = output_grad_t(i, j, k, l);
+            input_grad_t(i, j, y_n, x_w) += static_cast<T>(grad * d_e);
+            input_grad_t(i, j, y_n, x_e) += static_cast<T>(grad * d_w);
+          } else {
+            const T grad = output_grad_t(i, k, l, j);
+            input_grad_t(i, y_n, x_w, j) += static_cast<T>(grad * d_e);
+            input_grad_t(i, y_n, x_e, j) += static_cast<T>(grad * d_w);
+          }
+        }
+      }
+    }
+  }
+}
+
+template <typename T>
 static void BilinearInterpolationGrad(
     const Tensor& output_grad, Tensor* input_grad, const float ratio_h,
     const float ratio_w, const int in_h, const int in_w, const int n,
@@ -588,6 +714,11 @@ static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
     NearestNeighborInterpolate<T>(input, output, ratio_h, ratio_w, n, c, out_h,
                                   out_w, align_corners, data_layout);
   }
+  if ("linear" == interp_method) {
+    LinearInterpolation<T>(input, output, ratio_h, ratio_w, in_h, in_w, n, c,
+                           out_h, out_w, align_corners, align_mode,
+                           data_layout);
+  }
 }
 
 template <typename T>
@@ -759,6 +890,10 @@ static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
     NearestNeighborInterpolateGrad<T>(output_grad, input_grad, ratio_h, ratio_w,
                                       n, c, out_h, out_w, align_corners,
                                       data_layout);
+  } else if ("linear" == interp_method) {
+    LinearInterpolationGrad<T>(output_grad, input_grad, ratio_h, ratio_w, in_h,
+                               in_w, n, c, out_h, out_w, align_corners,
+                               align_mode, data_layout);
   }
 }
 

@@ -94,6 +94,7 @@ __all__ = [
     'resize_bilinear',
     'resize_trilinear',
     'resize_nearest',
+    'resize_linear',
     'gather',
     'gather_nd',
     'scatter',
@@ -6741,6 +6742,7 @@ def image_resize(input,
         'BILINEAR': 'bilinear',
         'TRILINEAR': 'trilinear',
         'NEAREST': 'nearest',
+        'LINEAR': 'linear',
     }
     if resample not in resample_methods:
         raise ValueError(
@@ -6748,7 +6750,7 @@ def image_resize(input,
             "or 'NEAREST' currently.")
     resample_type = resample_methods[resample]
 
-    if resample in ['BILINEAR', 'NEAREST'] and len(input.shape) != 4:
+    if resample in ['BILINEAR', 'NEAREST', 'LINEAR'] and len(input.shape) != 4:
         raise ValueError("'BILINEAR' and 'NEAREST' only support 4-D tensor.")
     if resample == 'TRILINEAR' and len(input.shape) != 5:
         raise ValueError("'TRILINEAR'only support 5-D tensor.")
@@ -6881,6 +6883,160 @@ def image_resize(input,
         outputs={"Out": out},
         attrs=attrs)
     return out
+
+
+@templatedoc(op_type="linear_interp")
+def resize_linear(input,
+                  out_shape=None,
+                  scale=None,
+                  name=None,
+                  actual_shape=None,
+                  align_corners=True,
+                  align_mode=1,
+                  data_format='NCHW'):
+    """
+    This op resizes the input by performing linear interpolation based on given
+    output shape which specified by actual_shape, out_shape and scale
+    in priority order.
+
+    **Warning:** the parameter :attr:`actual_shape` will be deprecated in 
+    the future and only use :attr:`out_shape` instead.
+
+    Align_corners and align_mode are optional parameters,the calculation 
+    method of interpolation can be selected by them.
+
+    Example:
+
+    .. code-block:: text
+
+        For scale:
+          
+            if align_corners = True && out_size > 1 :
+
+              scale_factor = (in_size-1.0)/(out_size-1.0)
+            
+            else:
+              
+              scale_factor = float(in_size/out_size)
+
+        Linear interpolation:
+
+          if:
+              align_corners = False , align_mode = 0
+              
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+              
+              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+
+          else:
+
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+              H_out = H_{in} * scale_{factor}
+              W_out = W_{in} * scale_{factor}
+
+    Parameters:
+        input(Variable): 4-D Tensor(NCHW), its data type is float32, float64, or uint8,
+                          its data format is specified by :attr:`data_format`.
+        out_shape(list|tuple|Variable|None): Output shape of resize linear
+            layer, the shape is (out_h, out_w).Default: None. If a list, each 
+            element can be an integer or a Tensor Variable with shape: [1]. If a 
+            Tensor Variable, its dimension size should be 1.
+        scale(float|Variable|None): The multiplier for the input height or width. At
+             least one of :attr:`out_shape` or :attr:`scale` must be set. 
+             And :attr:`out_shape` has a higher priority than :attr:`scale`. 
+             Default: None.
+        actual_shape(Variable): An optional input to specify output shape
+                                dynamically. If provided, image resize
+                                according to this given shape rather than
+                                :attr:`out_shape` and :attr:`scale` specifying
+                                shape. That is to say actual_shape has the
+                                highest priority. It is recommended to use
+                                :attr:`out_shape` if you want to specify output 
+                                shape dynamically, because :attr:`actual_shape` 
+                                will be deprecated. When using actual_shape to 
+                                specify output shape, one of :attr:`out_shape` 
+                                and :attr:`scale` should also be set, otherwise 
+                                errors would be occurred in graph constructing stage.
+                                Default: None
+        align_corners(bool): ${align_corners_comment}
+        align_mode(bool): ${align_mode_comment}
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+
+    Returns:
+	Variable: 4-D tensor(NCHW or NHWC).
+    
+    Examples:
+        .. code-block:: python
+	
+	    #declarative mode
+	    import paddle.fluid as fluid
+	    import numpy as np
+	    input = fluid.data(name="input", shape=[None,3,6,10])
+
+	    #1
+	    output = fluid.layers.resize_linear(input=input,out_shape=[12,12])
+
+	    #2
+	    #x = np.array([2]).astype("int32")
+	    #dim1 = fluid.data(name="dim1", shape=[1], dtype="int32")
+	    #fluid.layers.assign(input=x, output=dim1)
+	    #output = fluid.layers.resize_linear(input=input,out_shape=[12,dim1])
+
+	    #3
+	    #x = np.array([3,12]).astype("int32")
+	    #shape_tensor = fluid.data(name="shape_tensor", shape=[2], dtype="int32")
+	    #fluid.layers.assign(input=x, output=shape_tensor)
+	    #output = fluid.layers.resize_linear(input=input,out_shape=shape_tensor)
+
+	    #4
+	    #x = np.array([0.5]).astype("float32")
+	    #scale_tensor = fluid.data(name="scale", shape=[1], dtype="float32")
+	    #fluid.layers.assign(x,scale_tensor)
+	    #output = fluid.layers.resize_linear(input=input,scale=scale_tensor)
+
+	    place = fluid.CPUPlace()
+	    exe = fluid.Executor(place)
+	    exe.run(fluid.default_startup_program())
+ 
+	    input_data = np.random.rand(2,3,6,10).astype("float32")
+
+	    output_data = exe.run(fluid.default_main_program(),
+                feed={"input":input_data},
+                fetch_list=[output],
+                return_numpy=True)
+ 
+	    print(output_data[0].shape)
+
+	    #1
+	    # (2, 3, 12, 12)
+	    #2
+	    # (2, 3, 12, 2)
+	    #3
+	    # (2, 3, 3, 12)
+	    #4
+	    # (2, 3, 3, 5)
+
+	    #imperative mode
+	    import paddle.fluid.dygraph as dg
+
+	    with dg.guard(place) as g:
+    		input = dg.to_variable(input_data)
+    		output = fluid.layers.resize_linear(input=input, out_shape=[12,12])
+    		print(output.shape)
+
+		# [2L, 3L, 12L, 12L]
+
+    """
+
+    return image_resize(input, out_shape, scale, name, 'LINEAR', actual_shape,
+                        align_corners, align_mode, data_format)
 
 
 @templatedoc(op_type="bilinear_interp")
