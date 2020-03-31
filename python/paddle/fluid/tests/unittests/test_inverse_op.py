@@ -32,7 +32,7 @@ class TestInverseOp(OpTest):
         self.outputs = {'Output': inverse}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestInverseOpBatched(TestInverseOp):
