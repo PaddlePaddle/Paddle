@@ -39,7 +39,7 @@ class ReLU(layers.Layer):
         inplace (bool, optional): If inplace is True, the input and output of 
             ``ReLU`` are the same variable. Otherwise, the input and output of
             ``ReLU`` are different variables. Default False. Note that if x is
-            more than one OPs’ input, inplace must be False.
+            more than one OPs' input, inplace must be False.
 
     Returns:
         None
@@ -77,7 +77,7 @@ class LogSoftmax(layers.Layer):
 
     Parameters:
         axis (int, optional): The index of dimension to perform softmax calculations, it should be in
-            range :math:`[−1,rank−1]`, while :math:`rank` is the rank of input variable. Default: None. 
+            range :math:`[-1, rank-1]`, while :math:`rank` is the rank of input variable. Default: None. 
             None and -1 means the last dimension.
         dtype (np.dtype|core.VarDesc.VarType|str): The desired data type of returned tensor. If specified,
             the input tensor is casted to dtype before the operation is performed. This is useful for

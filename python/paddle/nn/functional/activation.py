@@ -59,7 +59,7 @@ def relu(input, inplace=False, name=None):
         input (Variable): The input variable. A multi-dimension Tensor with type float16, float32, or float64.
         inplace (bool, optional): If inplace is True, the input and output of ``ReLU`` are the same variable.
             Otherwise, the input and output of ``ReLU`` are different variables. Default: False. Note that if x is
-            more than one OPs’ input, inplace must be False.
+            more than one OPs' input, inplace must be False.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
@@ -79,17 +79,14 @@ def relu(input, inplace=False, name=None):
               res = functional.relu(data)  # [0, 0, 1]
     """
 
-    inputs = {'X': [input]}
-
     if in_dygraph_mode():
         if inplace:
             warnings.warn(
                 "Inplace on ReLU is not allowed and will be discarded in dygraph mode currently."
             )
-        outs = core.ops.relu(inputs)
-        return outs['Out'][0]
+        return core.ops.relu(input)
 
-    helper = LayerHelper("relu", **locals())
+    helper = LayerHelper('relu', **locals())
 
     outs = input if inplace else helper.create_variable_for_type_inference(
         input.dtype)
@@ -109,7 +106,7 @@ def log_softmax(input, axis=None, dtype=None, name=None):
     Parameters:
         input (Variable): The input variable. A multi-dimension Tensor with type float32, or float64.
         axis (int, optional): The index of dimension to perform softmax calculations, it should be in
-            range :math:`[−1,rank−1]`, while :math:`rank` is the rank of input variable. Default: None. 
+            range :math:`[-1, rank-1]`, while :math:`rank` is the rank of input variable. Default: None. 
             None and -1 means the last dimension.
         dtype (np.dtype|core.VarDesc.VarType|str): The desired data type of returned tensor. If specified,
             the input tensor is casted to dtype before the operation is performed. This is useful for
@@ -146,15 +143,13 @@ def log_softmax(input, axis=None, dtype=None, name=None):
 
     axis = -1 if axis is None else axis
     dtype = dtype if dtype is None else convert_np_dtype_to_dtype_(dtype)
-    attrs_cast = {'in_dtype': input.dtype, 'out_dtype': dtype}
-    attrs_softmax = {'axis': axis, 'use_cudnn': False}
 
     if in_dygraph_mode():
-        outs_cast = {'Out': [input]} if dtype is None \
-            else core.ops.cast({'X': [input]}, attrs_cast)
-        outs_softmax = core.ops.softmax({'X': outs_cast['Out']}, attrs_softmax)
-        outs_log = core.ops.log({'X': outs_softmax['Out']})
-        return outs_log['Out'][0]
+        outs_cast = input if dtype is None \
+            else core.ops.cast(input, 'in_dtype', input.dtype, 'out_dtype', dtype)
+        outs_softmax = core.ops.softmax(outs_cast, 'axis', axis, 'use_cudnn',
+                                        False)
+        return core.ops.log(outs_softmax)
 
     helper = LayerHelper("log_softmax", **locals())
 
@@ -165,14 +160,16 @@ def log_softmax(input, axis=None, dtype=None, name=None):
             type='cast',
             inputs={'X': input},
             outputs={'Out': outs_cast},
-            attrs=attrs_cast)
+            attrs={'in_dtype': input.dtype,
+                   'out_dtype': dtype})
 
     outs_softmax = helper.create_variable_for_type_inference(outs_cast.dtype)
     helper.append_op(
         type='softmax',
         inputs={'X': outs_cast},
         outputs={'Out': outs_softmax},
-        attrs=attrs_softmax)
+        attrs={'axis': axis,
+               'use_cudnn': False})
 
     outs_log = helper.create_variable_for_type_inference(outs_softmax.dtype)
     helper.append_op(
