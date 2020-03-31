@@ -46,9 +46,9 @@ def randint(low,
             stop_gradient=False,
             name=None):
     """
-    This function returns a Tensor filled with random integers from the “discrete uniform” distribution of
-    the specified dtype in the interval [low, high). If high is None (the default), then results are from [0, low). 
-    
+    This function returns a Tensor filled with random integers from the "discrete uniform" distribution of the
+    specified dtype in the interval [low, high). If high is None (the default), then results are from [0, low).
+
     Args:
         low (int): The lower bound on the range of random values to generate, the low is included in the range.
             (unless high=None, in which case this parameter is one above the highest such integer).
@@ -62,9 +62,9 @@ def randint(low,
         out(Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output tensor
-            which can be float16, float32, float64, int32, int64, if dytpe is `None`, the data
-            type of created tensor is `int32`
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output Tensor
+            which can be float32, float64, int32, int64, if dytpe is `None`, the data
+            type of created Tensor is `int32`
         device(str, optional): This parameter specifies that the Tensor is created 
             on the GPU or CPU.
         stop_gradient(bool, optional): Indicating if we stop gradient from current(out) Variable,
@@ -74,30 +74,30 @@ def randint(low,
 
     Examples:
         .. code-block:: python
-            import padd;e.fluid as fluid
+            import paddle
             import paddle.tensor as tensor
 
             # example 1:
             # attr shape is a list which doesn't contain tensor Variable.
-            result_1 = tesnro.randint(low=-5, high=5, shape=[3, 4], dtype="int64")
+            result_1 = paddle.randint(low=-5, high=5, shape=[3, 4], dtype="int64")
 
             # example 2:
             # attr shape is a list which contains tensor Variable.
             dim_1 = fluid.layers.fill_constant([1],"int64",3)
             dim_2 = fluid.layers.fill_constant([1],"int32",5)
-            result_2 = tensor.randint(low=-5, high=5, shape=[dim_1, dim_2], dtype="int32")
+            result_2 = paddle.randint(low=-5, high=5, shape=[dim_1, dim_2], dtype="int32")
 
             # example 3:
             # attr shape is a Variable, the data type must be int64 or int32.
             var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
-            result_3 = tensor.randint(low=-5, high=5, shape=var_shape, dtype="float32")
+            result_3 = padddle.randint(low=-5, high=5, shape=var_shape, dtype="float32")
             var_shape_int32 = fluid.data(name='var_shape_int32', shape=[2], dtype="int32")
-            result_4 = tensor.randint(low=-5, high=5, shape=var_shape_int32, dtype="float64")
+            result_4 = paddle.randint(low=-5, high=5, shape=var_shape_int32, dtype="float64")
 
             # example 4:
             # Input only one parameter
             # low=0, high=10, shape=[1], dtype='int32'
-            result_4 = tensor.randint(10)
+            result_4 = paddle.randint(10)
      """
 
     if dtype is None:

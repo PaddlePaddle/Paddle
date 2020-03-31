@@ -22,7 +22,7 @@ import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
-import paddle.tensor as tensor
+import paddle
 
 
 def output_hist(out):
@@ -62,12 +62,12 @@ class TestRandintOpError(unittest.TestCase):
 
             def test_shape():
                 shape = np.array([2, 3])
-                tensor.randint(5, shape=shape, dtype='int32')
+                paddle.randint(5, shape=shape, dtype='int32')
 
             self.assertRaises(TypeError, test_shape)
 
             def test_dtype():
-                tensor.randint(5, shape=[32, 32], dtype='int8')
+                paddle.randint(5, shape=[32, 32], dtype='int8')
 
             self.assertRaises(TypeError, test_dtype)
 
@@ -126,21 +126,21 @@ class TestRandintAPI(unittest.TestCase):
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             # results are from [0, 5).
-            output1 = tensor.randint(5)
+            output1 = paddle.randint(5)
             # shape is a list and dtype is 'int32'
-            output2 = tensor.randint(
+            output2 = paddle.randint(
                 low=-100, high=100, shape=[64, 64], dtype='int32')
             # shape is a tuple and dtype is 'int64'
-            output3 = tensor.randint(
+            output3 = paddle.randint(
                 low=-100, high=100, shape=(32, 32, 3), dtype='int64')
             # shape is a tensorlist and dtype is 'float32'
             dim_1 = fluid.layers.fill_constant([1], "int64", 32)
             dim_2 = fluid.layers.fill_constant([1], "int32", 50)
-            output4 = tensor.randint(
+            output4 = paddle.randint(
                 low=-100, high=100, shape=[dim_1, dim_2], dtype='float32')
             # shape is a tensor and dtype is 'float64'
             var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
-            output5 = tensor.randint(
+            output5 = paddle.randint(
                 low=1, high=1000, shape=var_shape, dtype='float64')
 
             place = fluid.CPUPlace()
@@ -158,7 +158,7 @@ class TestRandintAPI(unittest.TestCase):
 class TestRandintDygraphMode(unittest.TestCase):
     def test_check_output(self):
         with fluid.dygraph.guard():
-            x = tensor.randint(10, shape=[10], dtype="int32")
+            x = paddle.randint(10, shape=[10], dtype="int32")
             x_np = x.numpy()
             for i in range(10):
                 self.assertTrue((x_np[i] >= 0 and x_np[i] < 10))
