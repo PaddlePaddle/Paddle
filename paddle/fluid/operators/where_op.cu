@@ -18,6 +18,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using platform::PADDLE_CUDA_NUM_THREADS;
+
 template <typename T>
 __global__ void WhereCudaKernel(const int N, const bool* cond, const T* x,
                                 const T* y, T* out) {
