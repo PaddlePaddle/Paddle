@@ -56,10 +56,11 @@ class BmmOp : public framework::OperatorWithKernel {
             x_dims[0], y_dims[0]));
     PADDLE_ENFORCE_EQ(
         x_dims[2], y_dims[1],
-        "Input(X)'s width must be equal with Input(Y)'s height in BmmOp,"
-        "but receive X's width: [%s],"
-        "Y's height: [%s].",
-        x_dims[2], y_dims[1]));
+        platform::errors::InvalidArgument(
+            "Input(X)'s width must be equal with Input(Y)'s height in BmmOp,"
+            "but receive X's width: [%s],"
+            "Y's height: [%s].",
+            x_dims[2], y_dims[1]));
 
     std::vector<int64_t> dim_out;
     dim_out.push_back(x_dims[0]);
