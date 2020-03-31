@@ -652,8 +652,9 @@ class InferTransformer(Transformer):
                  eos_id=1,
                  beam_size=4,
                  max_out_len=256):
-        args = locals()
+        args = dict(locals())
         args.pop("self")
+        args.pop("__class__", None)  # py3
         self.beam_size = args.pop("beam_size")
         self.max_out_len = args.pop("max_out_len")
         super(InferTransformer, self).__init__(**args)

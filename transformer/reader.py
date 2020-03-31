@@ -60,22 +60,19 @@ def prepare_train_input(insts, src_pad_idx, trg_pad_idx, n_head):
     return data_inputs
 
 
-def prepare_infer_input(insts, src_pad_idx, bos_idx, n_head):
+def prepare_infer_input(insts, src_pad_idx, n_head):
     """
     Put all padded data needed by beam search decoder into a list.
     """
     src_word, src_pos, src_slf_attn_bias, src_max_len = pad_batch_data(
         [inst[0] for inst in insts], src_pad_idx, n_head, is_target=False)
-    # start tokens
-    trg_word = np.asarray([[bos_idx]] * len(insts), dtype="int64")
     trg_src_attn_bias = np.tile(src_slf_attn_bias[:, :, ::src_max_len, :],
                                 [1, 1, 1, 1]).astype("float32")
-    trg_word = trg_word.reshape(-1, 1)
     src_word = src_word.reshape(-1, src_max_len)
     src_pos = src_pos.reshape(-1, src_max_len)
 
     data_inputs = [
-        src_word, src_pos, src_slf_attn_bias, trg_word, trg_src_attn_bias
+        src_word, src_pos, src_slf_attn_bias, trg_src_attn_bias
     ]
     return data_inputs
 
@@ -343,11 +340,11 @@ class Seq2SeqBatchSampler(BatchSampler):
     def __init__(self,
                  dataset,
                  batch_size,
-                 pool_size,
-                 sort_type=SortType.GLOBAL,
+                 pool_size=10000,
+                 sort_type=SortType.NONE,
                  min_length=0,
                  max_length=100,
-                 shuffle=True,
+                 shuffle=False,
                  shuffle_batch=False,
                  use_token_batch=False,
                  clip_last_batch=False,
@@ -412,7 +409,7 @@ class Seq2SeqBatchSampler(BatchSampler):
                 batch[self._batch_size * i:self._batch_size * (i + 1)]
                 for i in range(self._nranks)
             ] for batch in batches]
-            batches = itertools.chain.from_iterable(batches)
+            batches = list(itertools.chain.from_iterable(batches))
 
         # for multi-device
         for batch_id, batch in enumerate(batches):
