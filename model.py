@@ -1125,19 +1125,19 @@ class Model(fluid.dygraph.Layer):
         if not isinstance(test_loader, Iterable):
             loader = test_loader()
 
-        outputs = None
+        outputs = []
         for data in tqdm.tqdm(loader):
             if not fluid.in_dygraph_mode():
                 data = data[0]
 
-            outs = self.test(*data)
+            assert len(data) == len(self._inputs) + len(self._labels), \
+                    "data fileds number mismatch"
+            inputs_data = data[:len(self._inputs)]
 
-            if outputs is None:
-                outputs = outs
-            else:
-                outputs = [
-                    np.vstack([x, outs[i]]) for i, x in enumerate(outputs)
-                ]
+            outputs.append(self.test(inputs_data))
+
+        # sample list to batched data
+        outputs = list(zip(*outputs))
 
         self._test_dataloader = None
         if test_loader is not None and self._adapter._nranks > 1 \
@@ -1180,11 +1180,16 @@ class Model(fluid.dygraph.Layer):
             else:
                 batch_size = data[0].shape[0]
 
+            assert len(data) == len(self._inputs) + len(self._labels), \
+                    "data fileds number mismatch"
+            inputs_data = data[:len(self._inputs)]
+            labels_data = data[len(self._inputs):]
+
             callbacks.on_batch_begin(mode, step, logs)
             if mode == 'train':
-                outs = self.train(*data)
+                outs = self.train(inputs_data, labels_data)
             else:
-                outs = self.eval(*data)
+                outs = self.eval(inputs_data, labels_data)
 
             # losses
             loss = outs[0] if self._metrics else outs
