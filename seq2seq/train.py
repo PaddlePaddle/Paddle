@@ -80,6 +80,37 @@ def do_train(args):
         Input([None, None, 1], "int64", name="label"),
     ]
 
+    model = Seq2Seq(args.src_vocab_size, args.trg_vocab_size, args.embed_dim,
+                    args.hidden_size, args.num_layers, args.dropout)
+
+    model.prepare(fluid.optimizer.Adam(learning_rate=args.learning_rate,
+                                       parameter_list=model.parameters()),
+                  CrossEntropyCriterion(),
+                  inputs=inputs,
+                  labels=labels)
+
+    batch_size = 32
+    src_seq_len = 10
+    trg_seq_len = 12
+    iter_num = 10
+    def random_generator():
+        for i in range(iter_num):
+            src = np.random.randint(2, args.src_vocab_size,
+                                    (batch_size, src_seq_len)).astype("int64")
+            src_length = np.random.randint(
+                1, src_seq_len, (batch_size, )).astype("int64")
+            trg = np.random.randint(2, args.trg_vocab_size,
+                                    (batch_size, trg_seq_len)).astype("int64")
+            trg_length = np.random.randint(1, trg_seq_len,
+                                        (batch_size, )).astype("int64")
+            label = np.random.randint(1, trg_seq_len,
+                                    (batch_size, trg_seq_len, 1)).astype("int64")
+            yield src, src_length, trg, trg_length, label
+
+    model.fit(train_data=random_generator, log_freq=1)
+    exit(0)
+
+
     dataset = Seq2SeqDataset(fpattern=args.training_file,
                              src_vocab_fpath=args.src_vocab_fpath,
                              trg_vocab_fpath=args.trg_vocab_fpath,
@@ -106,15 +137,6 @@ def do_train(args):
                                                  trg_pad_idx=args.eos_idx),
                               num_workers=0,
                               return_list=True)
-
-    model = Seq2Seq(args.src_vocab_size, args.trg_vocab_size, args.embed_dim,
-                    args.hidden_size, args.num_layers, args.dropout)
-
-    model.prepare(fluid.optimizer.Adam(learning_rate=args.learning_rate,
-                                       parameter_list=model.parameters()),
-                  CrossEntropyCriterion(),
-                  inputs=inputs,
-                  labels=labels)
 
     model.fit(train_data=train_loader,
               eval_data=None,

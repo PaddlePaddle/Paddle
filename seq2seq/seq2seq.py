@@ -223,7 +223,8 @@ class Seq2Seq(Model):
         # encoder
         encoder_output, encoder_final_state = self.encoder(src, src_length)
 
-        # decoder initial states
+        # decoder initial states: use input_feed and the structure is
+        # [[h,c] * num_layers, input_feed]
         decoder_initial_states = [
             encoder_final_state,
             self.decoder.lstm_attention.cell.get_initial_states(
