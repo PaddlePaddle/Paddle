@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
@@ -232,14 +233,27 @@ class NCCLCommunicator {
       auto ptr = new platform::NCCLContextMap(places);
       VLOG(1) << "init local trainer";
       flat_ctxs_.emplace_back(ptr);
-      return;
+    } else {
+      for (size_t i = 0; i < nccl_ids.size(); i++) {
+        auto ptr = new platform::NCCLContextMap(places, nccl_ids[i],
+                                                trainers_num, trainer_id);
+        VLOG(1) << "init trainer_id:" << trainer_id << ", comm no:" << i;
+        flat_ctxs_.emplace_back(ptr);
+      }
     }
 
-    for (size_t i = 0; i < nccl_ids.size(); i++) {
-      auto ptr = new platform::NCCLContextMap(places, nccl_ids[i], trainers_num,
-                                              trainer_id);
-      VLOG(1) << "init trainer_id:" << trainer_id << ", comm no:" << i;
-      flat_ctxs_.emplace_back(ptr);
+    // as Executor have no way to use ncclComm created by ParallelExecutor,
+    // we assign all flatten contexts to NCCLCommContext to fix.
+    int nranks = static_cast<int>(trainers_num * places.size());
+    int nrings = static_cast<int>(flat_ctxs_.size());
+    for (int ring_id = 0; ring_id < nrings; ++ring_id) {
+      for (size_t p = 0; p < places.size(); ++p) {
+        int rank = trainer_id * places.size() + p;
+        int dev_id = boost::get<CUDAPlace>(places[p]).device;
+        auto &ctx = flat_ctxs_[ring_id]->contexts_.at(dev_id);
+        NCCLCommContext::Instance().AssignNCCLComm(ctx.comm_, nranks, rank,
+                                                   dev_id, ring_id);
+      }
     }
   }
 
