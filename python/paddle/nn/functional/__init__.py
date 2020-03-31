@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .activation import *
+
 # TODO: import all neural network related api under this directory, 
 # including layers, linear, conv, rnn etc.
-# __all__ = [ ]
+__all__ = []
+__all__ += activation.__all__
 
 # TODO: define alias in functional directory
 # from .conv import conv2d   #DEFINE_ALIAS
