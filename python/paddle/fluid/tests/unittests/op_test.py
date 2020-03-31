@@ -637,7 +637,15 @@ class OpTest(unittest.TestCase):
             # computational consistency.
             # When inplace_atol is not None, the inplace check uses numpy.allclose
             # to check inplace result instead of numpy.array_equal.
-            if inplace_atol is not None:
+            if self.dtype in [np.int64, np.int32, np.bool]:
+               self.assertTrue(
+                    np.array_equal(
+                        np.array(expect_outs[i]), np.array(actual_outs[i])),
+                    "Output (" + name + ") has diff at " + str(place) +
+                    " when using and not using inplace" + "\nExpect " +
+                    str(expect_outs[i]) + "\n" + "But Got" + str(actual_outs[i])
+                    + " in class " + self.__class__.__name__ + '\n')            
+            elif inplace_atol is not None:
                 self.assertTrue(
                     np.allclose(
                         np.array(expect_outs[i]),
@@ -1029,20 +1037,36 @@ class OpTest(unittest.TestCase):
                     actual_t = np.array(actual)
                     expect_t = expect[0] \
                         if isinstance(expect, tuple) else expect
-                    self.assertTrue(
-                        np.allclose(
-                            actual_t, expect_t, atol=atol, equal_nan=equal_nan),
-                        "Output (" + sub_out_name + ") has diff at " +
-                        str(place))
-                    if check_dygraph:
+                    if self.dtype in [np.int64, np.int32, np.bool]:
+                        self.assertTrue(
+                            np.array_equal(
+                                actual_t, expect_t),
+                            "Output (" + sub_out_name + ") has diff, " +
+                            "\nExpect " + str(expect_t) + "\n" + "But Got" +
+                            str(actual_t) + "at" + str(place))
+                    else:
                         self.assertTrue(
                             np.allclose(
-                                imperative_actual_t,
-                                expect_t,
-                                atol=atol,
-                                equal_nan=equal_nan),
+                                actual_t, expect_t, atol=atol, equal_nan=equal_nan),
                             "Output (" + sub_out_name + ") has diff at " +
-                            str(place) + " in dygraph mode")
+                            str(place))
+                    if check_dygraph:
+                        if self.dtype in [np.int64, np.int32, np.bool]:
+                            self.assertTrue(
+                                np.array_equal(
+                                    imperative_actual_t,
+                                    expect_t),
+                                "Output (" + sub_out_name + ") has diff at " +
+                                str(place) + " in dygraph mode")
+                        else:
+                            self.assertTrue(
+                                np.allclose(
+                                    imperative_actual_t,
+                                    expect_t,
+                                    atol=atol,
+                                    equal_nan=equal_nan),
+                                "Output (" + sub_out_name + ") has diff at " +
+                                str(place) + " in dygraph mode")
                     if isinstance(expect, tuple):
                         self.assertListEqual(
                             actual.recursive_sequence_lengths(), expect[1],
@@ -1066,12 +1090,20 @@ class OpTest(unittest.TestCase):
                 actual_t = np.array(actual)
                 expect = self.outputs[out_name]
                 expect_t = expect[0] if isinstance(expect, tuple) else expect
-                self.assertTrue(
-                    np.allclose(
-                        actual_t, expect_t, atol=atol, equal_nan=equal_nan),
-                    "Output (" + out_name + ") has diff at " + str(place) +
-                    "\nExpect " + str(expect_t) + "\n" + "But Got" +
-                    str(actual_t) + " in class " + self.__class__.__name__)
+                if self.dtype in [np.int64, np.int32, np.bool]:
+                    self.assertTrue(
+                        np.array_equal(
+                            actual_t, expect_t),
+                        "Output (" + out_name + ") has diff at " + str(place) +
+                        "\nExpect " + str(expect_t) + "\n" + "But Got" +
+                        str(actual_t) + " in class " + self.__class__.__name__)
+                else:
+                    self.assertTrue(
+                        np.allclose(
+                            actual_t, expect_t, atol=atol, equal_nan=equal_nan),
+                        "Output (" + out_name + ") has diff at " + str(place) +
+                        "\nExpect " + str(expect_t) + "\n" + "But Got" +
+                        str(actual_t) + " in class " + self.__class__.__name__)
                 if check_dygraph:
                     if six.moves.reduce(
                             lambda x, y: x * y, imperative_actual_t.shape,
@@ -1079,16 +1111,26 @@ class OpTest(unittest.TestCase):
                                 lambda x, y: x * y, expect_t.shape, 1) == 0:
                         pass
                     else:
-                        self.assertTrue(
-                            np.allclose(
-                                imperative_actual_t,
-                                expect_t,
-                                atol=atol,
-                                equal_nan=equal_nan),
-                            "Output (" + out_name + ") has diff at " +
-                            str(place) + "\nExpect " + str(expect_t) + "\n" +
-                            "But Got" + str(imperative_actual_t) + " in class "
-                            + self.__class__.__name__)
+                        if self.dtype in [np.int32, np.int64, np.bool]:
+                            self.assertTrue(
+                                np.array_equal(
+                                    imperative_actual_t,
+                                    expect_t),
+                                "Output (" + out_name + ") has diff at " +
+                                str(place) + "\nExpect " + str(expect_t) + "\n" +
+                                "But Got" + str(imperative_actual_t) + " in class "
+                                + self.__class__.__name__)
+                        else:
+                            self.assertTrue(
+                                np.allclose(
+                                    imperative_actual_t,
+                                    expect_t,
+                                    atol=atol,
+                                    equal_nan=equal_nan),
+                                "Output (" + out_name + ") has diff at " +
+                                str(place) + "\nExpect " + str(expect_t) + "\n" +
+                                "But Got" + str(imperative_actual_t) + " in class "
+                                + self.__class__.__name__)
                 if isinstance(expect, tuple):
                     self.assertListEqual(actual.recursive_sequence_lengths(),
                                          expect[1], "Output (" + out_name +
