@@ -97,6 +97,7 @@ class TestCase4(TestIndexSampleOp):
 
 class TestIndexSampleShape(unittest.TestCase):
     def test_shape(self):
+        import paddle.fluid as fluid
         import paddle.tensor as tensor
 
         # create x value
