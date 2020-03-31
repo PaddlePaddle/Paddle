@@ -545,7 +545,6 @@ void BindPaddlePassBuilder(py::module *m) {
       .def(py::init<const std::vector<std::string> &>())
       .def("enable_cudnn", &PassStrategy::EnableCUDNN)
       .def("enable_mkldnn", &PassStrategy::EnableMKLDNN)
-      .def("enable_ngraph", &PassStrategy::EnableNgraph)
       .def("enable_mkldnn_quantizer", &PassStrategy::EnableMkldnnQuantizer)
       .def("use_gpu", &PassStrategy::use_gpu);
 
@@ -554,7 +553,6 @@ void BindPaddlePassBuilder(py::module *m) {
       .def(py::init<const CpuPassStrategy &>())
       .def("enable_cudnn", &CpuPassStrategy::EnableCUDNN)
       .def("enable_mkldnn", &CpuPassStrategy::EnableMKLDNN)
-      .def("enable_ngraph", &CpuPassStrategy::EnableNgraph)
       .def("enable_mkldnn_quantizer", &CpuPassStrategy::EnableMkldnnQuantizer);
 
   py::class_<GpuPassStrategy, PassStrategy>(*m, "GpuPassStrategy")
@@ -562,7 +560,6 @@ void BindPaddlePassBuilder(py::module *m) {
       .def(py::init<const GpuPassStrategy &>())
       .def("enable_cudnn", &GpuPassStrategy::EnableCUDNN)
       .def("enable_mkldnn", &GpuPassStrategy::EnableMKLDNN)
-      .def("enable_ngraph", &GpuPassStrategy::EnableNgraph)
       .def("enable_mkldnn_quantizer", &GpuPassStrategy::EnableMkldnnQuantizer);
 }
 }  // namespace

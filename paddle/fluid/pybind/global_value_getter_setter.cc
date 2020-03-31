@@ -29,7 +29,6 @@
 
 DECLARE_double(eager_delete_tensor_gb);
 DECLARE_bool(use_mkldnn);
-DECLARE_bool(use_ngraph);
 DECLARE_bool(use_system_allocator);
 DECLARE_bool(free_idle_chunk);
 DECLARE_bool(free_when_no_cache_hit);
@@ -285,7 +284,7 @@ void BindGlobalValueGetterSetter(pybind11::module *module) {
 
 static void RegisterGlobalVarGetterSetter() {
   REGISTER_PRIVATE_GLOBAL_VAR(/*is_writable=*/false, FLAGS_use_mkldnn,
-                              FLAGS_use_ngraph, FLAGS_free_idle_chunk,
+                              FLAGS_free_idle_chunk,
                               FLAGS_free_when_no_cache_hit);
 
   REGISTER_PUBLIC_GLOBAL_VAR(

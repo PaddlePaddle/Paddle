@@ -346,10 +346,6 @@ set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu P
 add_subdirectory(sequence)
 add_subdirectory(dygraph_to_static)
 
-if (WITH_NGRAPH)
-    add_subdirectory(ngraph)
-endif()
-
 if (WITH_MKLDNN)
     add_subdirectory(mkldnn)
 endif()
