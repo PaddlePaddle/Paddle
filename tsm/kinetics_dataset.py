@@ -96,43 +96,43 @@ class KineticsDataset(Dataset):
         return imgs, np.array([label])
 
     def _video_loader(self, frames):
-	videolen = len(frames)
-	average_dur = int(videolen / self.seg_num)
-
-	imgs = []
-	for i in range(self.seg_num):
-	    idx = 0
-	    if self.mode == 'train':
-		if average_dur >= self.seg_len:
-		    idx = random.randint(0, average_dur - self.seg_len)
-		    idx += i * average_dur
-		elif average_dur >= 1:
-		    idx += i * average_dur
-		else:
-		    idx = i
-	    else:
-		if average_dur >= self.seg_len:
-		    idx = (average_dur - self.seg_len) // 2
-		    idx += i * average_dur
-		elif average_dur >= 1:
-		    idx += i * average_dur
-		else:
-		    idx = i
-
-	    for jj in range(idx, idx + self.seg_len):
-		imgbuf = frames[int(jj % videolen)]
-		img = self._imageloader(imgbuf)
-		imgs.append(img)
-
-	return imgs
+        videolen = len(frames)
+        average_dur = int(videolen / self.seg_num)
+        
+        imgs = []
+        for i in range(self.seg_num):
+            idx = 0
+            if self.mode == 'train':
+                if average_dur >= self.seg_len:
+                    idx = random.randint(0, average_dur - self.seg_len)
+                    idx += i * average_dur
+                elif average_dur >= 1:
+                    idx += i * average_dur
+                else:
+                    idx = i
+            else:
+                if average_dur >= self.seg_len:
+                    idx = (average_dur - self.seg_len) // 2
+                    idx += i * average_dur
+                elif average_dur >= 1:
+                    idx += i * average_dur
+                else:
+                    idx = i
+            
+            for jj in range(idx, idx + self.seg_len):
+                imgbuf = frames[int(jj % videolen)]
+                img = self._imageloader(imgbuf)
+                imgs.append(img)
+        
+        return imgs
 
     def _imageloader(self, buf):
-	if isinstance(buf, str):
-	    img = Image.open(StringIO(buf))
-	else:
-	    img = Image.open(BytesIO(buf))
-
-	return img.convert('RGB')
+        if isinstance(buf, str):
+            img = Image.open(StringIO(buf))
+        else:
+            img = Image.open(BytesIO(buf))
+        
+        return img.convert('RGB')
 
 
 if __name__ == "__main__":

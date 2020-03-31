@@ -52,25 +52,25 @@ class GroupScale(object):
         self.target_size = target_size
 
     def __call__(self, imgs, label):
-	resized_imgs = []
-	for i in range(len(imgs)):
-	    img = imgs[i]
-	    w, h = img.size
-	    if (w <= h and w == self.target_size) or \
+        resized_imgs = []
+        for i in range(len(imgs)):
+            img = imgs[i]
+            w, h = img.size
+            if (w <= h and w == self.target_size) or \
                     (h <= w and h == self.target_size):
-		resized_imgs.append(img)
-		continue
+                resized_imgs.append(img)
+                continue
 
-	    if w < h:
-		ow = self.target_size
-		oh = int(self.target_size * 4.0 / 3.0)
-		resized_imgs.append(img.resize((ow, oh), Image.BILINEAR))
-	    else:
-		oh = self.target_size
-		ow = int(self.target_size * 4.0 / 3.0)
-		resized_imgs.append(img.resize((ow, oh), Image.BILINEAR))
-
-	return resized_imgs, label
+            if w < h:
+                ow = self.target_size
+                oh = int(self.target_size * 4.0 / 3.0)
+                resized_imgs.append(img.resize((ow, oh), Image.BILINEAR))
+            else:
+                oh = self.target_size
+                ow = int(self.target_size * 4.0 / 3.0)
+                resized_imgs.append(img.resize((ow, oh), Image.BILINEAR))
+        
+        return resized_imgs, label
 
 
 class GroupMultiScaleCrop(object):
@@ -91,75 +91,74 @@ class GroupMultiScaleCrop(object):
         self.more_fix_crop = more_fix_crop
 
     def __call__(self, imgs, label):
-	input_size = [self.short_size, self.short_size]
+        input_size = [self.short_size, self.short_size]
+        im_size = imgs[0].size
+        
+        # get random crop offset
+        def _sample_crop_size(im_size):
+            image_w, image_h = im_size[0], im_size[1]
+            
+            base_size = min(image_w, image_h)
+            crop_sizes = [int(base_size * x) for x in self.scales]
+            crop_h = [
+                input_size[1] if abs(x - input_size[1]) < 3 else x
+                for x in crop_sizes
+            ]
+            crop_w = [
+                input_size[0] if abs(x - input_size[0]) < 3 else x
+                for x in crop_sizes
+            ]
+            
+            pairs = []
+            for i, h in enumerate(crop_h):
+                for j, w in enumerate(crop_w):
+                    if abs(i - j) <= self.max_distort:
+                        pairs.append((w, h))
+            crop_pair = random.choice(pairs)
+            if not self.fix_crop:
+                w_offset = np.random.randint(0, image_w - crop_pair[0])
+                h_offset = np.random.randint(0, image_h - crop_pair[1])
+            else:
+                w_step = (image_w - crop_pair[0]) / 4
+                h_step = (image_h - crop_pair[1]) / 4
+                
+                ret = list()
+                ret.append((0, 0))  # upper left
+                if w_step != 0:
+                    ret.append((4 * w_step, 0))  # upper right
+                if h_step != 0:
+                    ret.append((0, 4 * h_step))  # lower left
+                if h_step != 0 and w_step != 0:
+                    ret.append((4 * w_step, 4 * h_step))  # lower right
+                if h_step != 0 or w_step != 0:
+                    ret.append((2 * w_step, 2 * h_step))  # center
+                
+                if self.more_fix_crop:
+                    ret.append((0, 2 * h_step))  # center left
+                    ret.append((4 * w_step, 2 * h_step))  # center right
+                    ret.append((2 * w_step, 4 * h_step))  # lower center
+                    ret.append((2 * w_step, 0 * h_step))  # upper center
+                    
+                    ret.append((1 * w_step, 1 * h_step))  # upper left quarter
+                    ret.append((3 * w_step, 1 * h_step))  # upper right quarter
+                    ret.append((1 * w_step, 3 * h_step))  # lower left quarter
+                    ret.append((3 * w_step, 3 * h_step))  # lower righ quarter
+                
+                w_offset, h_offset = random.choice(ret)
+            
+            return crop_pair[0], crop_pair[1], w_offset, h_offset
+        
+        crop_w, crop_h, offset_w, offset_h = _sample_crop_size(im_size)
+        crop_imgs = [
+            img.crop((offset_w, offset_h, offset_w + crop_w, offset_h + crop_h))
+            for img in imgs
+        ]
+        ret_imgs = [
+            img.resize((input_size[0], input_size[1]), Image.BILINEAR)
+            for img in crop_imgs
+        ]
 
-	im_size = imgs[0].size
-
-	# get random crop offset
-	def _sample_crop_size(im_size):
-	    image_w, image_h = im_size[0], im_size[1]
-
-	    base_size = min(image_w, image_h)
-	    crop_sizes = [int(base_size * x) for x in self.scales]
-	    crop_h = [
-		input_size[1] if abs(x - input_size[1]) < 3 else x
-		for x in crop_sizes
-	    ]
-	    crop_w = [
-		input_size[0] if abs(x - input_size[0]) < 3 else x
-		for x in crop_sizes
-	    ]
-
-	    pairs = []
-	    for i, h in enumerate(crop_h):
-		for j, w in enumerate(crop_w):
-		    if abs(i - j) <= self.max_distort:
-			pairs.append((w, h))
-	    crop_pair = random.choice(pairs)
-	    if not self.fix_crop:
-		w_offset = np.random.randint(0, image_w - crop_pair[0])
-		h_offset = np.random.randint(0, image_h - crop_pair[1])
-	    else:
-		w_step = (image_w - crop_pair[0]) / 4
-		h_step = (image_h - crop_pair[1]) / 4
-
-		ret = list()
-		ret.append((0, 0))  # upper left
-		if w_step != 0:
-		    ret.append((4 * w_step, 0))  # upper right
-		if h_step != 0:
-		    ret.append((0, 4 * h_step))  # lower left
-		if h_step != 0 and w_step != 0:
-		    ret.append((4 * w_step, 4 * h_step))  # lower right
-		if h_step != 0 or w_step != 0:
-		    ret.append((2 * w_step, 2 * h_step))  # center
-
-		if self.more_fix_crop:
-		    ret.append((0, 2 * h_step))  # center left
-		    ret.append((4 * w_step, 2 * h_step))  # center right
-		    ret.append((2 * w_step, 4 * h_step))  # lower center
-		    ret.append((2 * w_step, 0 * h_step))  # upper center
-
-		    ret.append((1 * w_step, 1 * h_step))  # upper left quarter
-		    ret.append((3 * w_step, 1 * h_step))  # upper right quarter
-		    ret.append((1 * w_step, 3 * h_step))  # lower left quarter
-		    ret.append((3 * w_step, 3 * h_step))  # lower righ quarter
-
-		w_offset, h_offset = random.choice(ret)
-
-	    return crop_pair[0], crop_pair[1], w_offset, h_offset
-
-	crop_w, crop_h, offset_w, offset_h = _sample_crop_size(im_size)
-	crop_imgs = [
-	    img.crop((offset_w, offset_h, offset_w + crop_w, offset_h + crop_h))
-	    for img in imgs
-	]
-	ret_imgs = [
-	    img.resize((input_size[0], input_size[1]), Image.BILINEAR)
-	    for img in crop_imgs
-	]
-
-	return ret_imgs, label
+        return ret_imgs, label
 
 
 class GroupRandomCrop(object):
@@ -167,34 +166,34 @@ class GroupRandomCrop(object):
         self.target_size = target_size
 
     def __call__(self, imgs, label):
-	w, h = imgs[0].size
-	th, tw = self.target_size, self.target_size
-
-	assert (w >= self.target_size) and (h >= self.target_size), \
-	      "image width({}) and height({}) should be larger than " \
-              "crop size".format(w, h, self.target_size)
-
-	out_images = []
-	x1 = np.random.randint(0, w - tw)
-	y1 = np.random.randint(0, h - th)
-
-	for img in imgs:
-	    if w == tw and h == th:
-		out_images.append(img)
-	    else:
-		out_images.append(img.crop((x1, y1, x1 + tw, y1 + th)))
-
-	return out_images, label
+        w, h = imgs[0].size
+        th, tw = self.target_size, self.target_size
+        
+        assert (w >= self.target_size) and (h >= self.target_size), \
+            "image width({}) and height({}) should be larger than " \
+            "crop size".format(w, h, self.target_size)
+        
+        out_images = []
+        x1 = np.random.randint(0, w - tw)
+        y1 = np.random.randint(0, h - th)
+        
+        for img in imgs:
+            if w == tw and h == th:
+                out_images.append(img)
+            else:
+                out_images.append(img.crop((x1, y1, x1 + tw, y1 + th)))
+        
+        return out_images, label
 
 
 class GroupRandomFlip(object):
     def __call__(self, imgs, label):
-	v = np.random.random()
-	if v < 0.5:
-	    ret = [img.transpose(Image.FLIP_LEFT_RIGHT) for img in imgs]
-	    return ret, label
-	else:
-	    return imgs, label 
+        v = np.random.random()
+        if v < 0.5:
+            ret = [img.transpose(Image.FLIP_LEFT_RIGHT) for img in imgs]
+            return ret, label
+        else:
+            return imgs, label 
 
 
 class GroupCenterCrop(object):
@@ -202,18 +201,18 @@ class GroupCenterCrop(object):
         self.target_size = target_size
 
     def __call__(self, imgs, label):
-	crop_imgs = []
-	for img in imgs:
-	    w, h = img.size
-	    th, tw = self.target_size, self.target_size
-	    assert (w >= self.target_size) and (h >= self.target_size), \
-		 "image width({}) and height({}) should be larger " \
-                 "than crop size".format(w, h, self.target_size)
-	    x1 = int(round((w - tw) / 2.))
-	    y1 = int(round((h - th) / 2.))
-	    crop_imgs.append(img.crop((x1, y1, x1 + tw, y1 + th)))
-
-	return crop_imgs, label 
+        crop_imgs = []
+        for img in imgs:
+            w, h = img.size
+            th, tw = self.target_size, self.target_size
+            assert (w >= self.target_size) and (h >= self.target_size), \
+                "image width({}) and height({}) should be larger " \
+                "than crop size".format(w, h, self.target_size)
+            x1 = int(round((w - tw) / 2.))
+            y1 = int(round((h - th) / 2.))
+            crop_imgs.append(img.crop((x1, y1, x1 + tw, y1 + th)))
+        
+        return crop_imgs, label 
 
 
 class NormalizeImage(object):
@@ -230,18 +229,18 @@ class NormalizeImage(object):
         self.seg_len = seg_len
 
     def __call__(self, imgs, label):
-	np_imgs = (np.array(imgs[0]).astype('float32').transpose(
-	    (2, 0, 1))).reshape(1, 3, self.target_size,
+        np_imgs = (np.array(imgs[0]).astype('float32').transpose(
+            (2, 0, 1))).reshape(1, 3, self.target_size,
             self.target_size) / 255
-	for i in range(len(imgs) - 1):
-	    img = (np.array(imgs[i + 1]).astype('float32').transpose(
-		(2, 0, 1))).reshape(1, 3, self.target_size,
+        for i in range(len(imgs) - 1):
+            img = (np.array(imgs[i + 1]).astype('float32').transpose(
+                (2, 0, 1))).reshape(1, 3, self.target_size,
                 self.target_size) / 255
-	    np_imgs = np.concatenate((np_imgs, img))
-
-	np_imgs -= self.img_mean
-	np_imgs /= self.img_std
-	np_imgs = np.reshape(np_imgs, (self.seg_num, self.seg_len * 3,
-                                 self.target_size, self.target_size))
-
+            np_imgs = np.concatenate((np_imgs, img))
+        
+        np_imgs -= self.img_mean
+        np_imgs /= self.img_std
+        np_imgs = np.reshape(np_imgs, (self.seg_num, self.seg_len * 3,
+                             self.target_size, self.target_size))
+        
         return np_imgs, label
