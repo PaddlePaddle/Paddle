@@ -17,6 +17,9 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
+message(STATUS "CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
+message(STATUS "CMAKE_ROOT: ${CMAKE_ROOT}")
+
 include(system)
 
 project(paddle CXX C)
@@ -58,6 +61,7 @@ find_package(Threads REQUIRED)
 
 include(simd)
 
+message(STATUS, "CUDA_FOUND: ${CUDA_FOUND}")
 ################################ Exposed Configurations #######################################
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_DSO         "Compile PaddlePaddle with dynamic linked CUDA" ON)
