@@ -292,8 +292,8 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     auto *label_tensor = label_var->GetMutable<framework::LoDTensor>();
     auto *mask_tensor = mask_var->GetMutable<framework::LoDTensor>();
 
-    auto output_type =
-        static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
+    auto output_type = static_cast<framework::proto::VarType::Type>(
+        context.Attr<int>("dtype"));
 
     if (travel_type == framework::proto::VarType::INT32 &&
         output_type == framework::proto::VarType::INT32) {
@@ -306,7 +306,7 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
                                        layer_lod_tensor, out_tensor,
                                        label_tensor, mask_tensor);
     } else if (travel_type == framework::proto::VarType::INT32 &&
-               output_type == framework::proto::VarType::int64) {
+               output_type == framework::proto::VarType::INT64) {
       TDMSamplerInner<T, int, int64_t>(context, input_tensor, travel_lod_tensor,
                                        layer_lod_tensor, out_tensor,
                                        label_tensor, mask_tensor);
