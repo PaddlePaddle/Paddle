@@ -1,4 +1,4 @@
-# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@ class TestGetAndSetFlagsErrors(unittest.TestCase):
         flag = 1
         flag_private = {'FLAGS_use_mkldnn': True}
 
-        # flags type is set_flags should be dict.
+        # flags type of set_flags should be dict.
         def test_set_flags_input_type():
             fluid.set_flags(flags_list)
 
@@ -55,7 +55,7 @@ class TestGetAndSetFlagsErrors(unittest.TestCase):
 
         self.assertRaises(ValueError, test_set_private_flag)
 
-        # flags type is set_flags should be list, tuple or string
+        # flags type of set_flags should be list, tuple or string
         def test_get_flags_input_type():
             fluid.get_flags(flag)
 
