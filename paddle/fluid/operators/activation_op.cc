@@ -185,13 +185,6 @@ $out = \max(x, 0)$
 
 )DOC";
 
-UNUSED constexpr char GeluDoc[] = R"DOC(
-Gelu Activation Operator.
-
-$out = \\frac{1 + erf(\\frac{x}{\\sqrt{2}})}{2} x$
-
-)DOC";
-
 UNUSED constexpr char TanhDoc[] = R"DOC(
 Tanh Activation Operator.
 
@@ -596,6 +589,13 @@ class SwishOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "Input of Swish operator");
     AddOutput("Out", "Output of Swish operator");
     AddAttr<float>("beta", "Constant beta of swish operator").SetDefault(1.0f);
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
+    AddAttr<bool>("is_test",
+                  "(bool, default false) Set to true for inference only, false "
+                  "for training. Some layers may run faster when this is true.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Swish Activation Operator.
 
@@ -635,7 +635,6 @@ REGISTER_ACTIVATION_OP_MAKER(Sigmoid, SigmoidDoc);
 REGISTER_ACTIVATION_OP_MAKER(LogSigmoid, LogSigmoidDoc);
 REGISTER_ACTIVATION_OP_MAKER(Exp, ExpDoc);
 REGISTER_ACTIVATION_OP_MAKER(Relu, ReluDoc);
-REGISTER_ACTIVATION_OP_MAKER(Gelu, GeluDoc);
 REGISTER_ACTIVATION_OP_MAKER(Tanh, TanhDoc);
 REGISTER_ACTIVATION_OP_MAKER(TanhShrink, TanhShrinkDoc);
 REGISTER_ACTIVATION_OP_MAKER(Sqrt, SqrtDoc);

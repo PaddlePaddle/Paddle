@@ -53,6 +53,9 @@ class InferencePassTest(unittest.TestCase):
                             feed=self.feeds,
                             fetch_list=self.fetch_list,
                             return_numpy=False)
+        # save models as combined to ensure that 
+        # there won't be too many useless files 
+        # after finishing a couple of tests.
         fluid.io.save_inference_model(
             dirname=self.path,
             feeded_var_names=list(self.feeds.keys()),

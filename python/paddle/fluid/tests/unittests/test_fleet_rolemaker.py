@@ -99,6 +99,7 @@ class TestCloudRoleMaker(unittest.TestCase):
         except:
             print("do not support pslib test, skip")
             return
+        fleet.clear_one_table(0)
         from paddle.fluid.incubate.fleet.base.role_maker import \
             MPISymetricRoleMaker
         try:

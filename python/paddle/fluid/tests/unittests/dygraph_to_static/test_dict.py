@@ -19,7 +19,7 @@ import numpy as np
 import unittest
 
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import dygraph_to_static_graph
+from paddle.fluid.dygraph.jit import dygraph_to_static_func
 
 PLACE = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace(
 )
@@ -47,7 +47,7 @@ class SubNetWithDict(fluid.dygraph.Layer):
             bias_attr=False,
             param_attr=init_weight(0.2))
 
-    @dygraph_to_static_graph
+    @dygraph_to_static_func
     def forward(self, input, cache=None):
         input = fluid.dygraph.to_variable(input)
 
@@ -76,7 +76,7 @@ class MainNetWithDict(fluid.dygraph.Layer):
         self.output_size = output_size
         self.sub_net = SubNetWithDict(hidden_size, output_size)
 
-    @dygraph_to_static_graph
+    @dygraph_to_static_func
     def forward(self, input, max_len=4):
         input = fluid.dygraph.to_variable(input)
         cache = {
@@ -89,12 +89,17 @@ class MainNetWithDict(fluid.dygraph.Layer):
                 dtype='float32',
                 value=0),
         }
-        max_len = input.shape[0] if input.shape[0] != max_len else max_len
+        # TODO(Aurelius84): The following code will be converted into:
+        # max_len = layers.cond(layers.shape(input)[0] != max_len,
+        #                       lambda: layers.shape(input)[0], lambda: max_len)
+        # But max_len should be wrapped into tensor, which is not supported.
+
+        # Comment out this line of code for now.
+        # max_len = input.shape[0] if input.shape[0] != max_len else max_len
         out = input
         for i in range(max_len):
             out = self.sub_net(out, cache)
             cache = self.update_cache(cache)
-
         return out
 
     def update_cache(self, cache):

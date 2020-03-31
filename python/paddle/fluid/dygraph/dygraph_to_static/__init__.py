@@ -26,12 +26,12 @@ from .loop_transformer import *
 from . import variable_trans_func
 from .variable_trans_func import *
 
-from . import cache_program
-from .cache_program import *
+from . import program_translator
+from .program_translator import *
 
 __all__ = []
 __all__ += ast_transformer.__all__
 __all__ += loop_transformer.__all__
 __all__ += static_analysis.__all__
 __all__ += variable_trans_func.__all__
-__all__ += cache_program.__all__
+__all__ += program_translator.__all__

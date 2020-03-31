@@ -33,6 +33,8 @@ void FusionGroupPass::ApplyImpl(ir::Graph* graph) const {
     fusion_group::OperationMap::Init();
     int num_elementwise_groups = DetectFusionGroup(graph, 0);
     AddStatis(num_elementwise_groups);
+    LOG(INFO) << "Detect " << num_elementwise_groups
+              << " elementwise fusion groups.";
   }
 }
 
@@ -54,7 +56,7 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
     VLOG(3) << "subgraph: {\n" << DebugString(subgraph.SortedNodes()) << "}\n";
 
     if (subgraph.IsValid(min_subgraph_size)) {
-      subgraph.SetFuncName("fused_elementwise_" + std::to_string(index++));
+      subgraph.SetFuncName("FusedElementwise" + std::to_string(index++));
       if (GenerateCode(&subgraph)) {
         InsertFusionGroupOp(graph, &subgraph);
         num_subgraphs++;
@@ -110,18 +112,25 @@ void FusionGroupPass::InsertFusionGroupOp(
   op_desc.SetType("fusion_group");
 
   std::vector<std::string> input_names;
+  std::vector<std::string> inputs_data_types;
   for (auto* n : input_vars_of_subgraph) {
     input_names.push_back(n->Name());
+    inputs_data_types.push_back(DataTypeToString(n->Var()->GetDataType()));
     external_nodes.insert(n);
   }
   op_desc.SetInput("Inputs", input_names);
 
   std::vector<std::string> output_names;
+  std::vector<std::string> outs_data_types;
   for (auto* n : output_vars_of_subgraph) {
     output_names.push_back(n->Name());
+    outs_data_types.push_back(DataTypeToString(n->Var()->GetDataType()));
     external_nodes.insert(n);
   }
+
   op_desc.SetOutput("Outs", output_names);
+  op_desc.SetAttr("inputs_data_type", inputs_data_types);
+  op_desc.SetAttr("outs_data_type", outs_data_types);
   op_desc.SetAttr("type", subgraph->GetType());
   op_desc.SetAttr("func_name", subgraph->GetFuncName());
   op_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
@@ -131,6 +140,7 @@ void FusionGroupPass::InsertFusionGroupOp(
   for (auto* in : input_vars_of_subgraph) {
     IR_NODE_LINK_TO(in, fusion_group_node);
   }
+
   for (auto* out : output_vars_of_subgraph) {
     IR_NODE_LINK_TO(fusion_group_node, out);
   }
