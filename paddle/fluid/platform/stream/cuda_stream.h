@@ -34,14 +34,13 @@ enum class Priority : uint8_t {
 class CUDAStream final {
  public:
   CUDAStream() = default;
-  CUDAStream(const Place& place,
-             const enum Priority& priority = Priority::NORMAL) {
+  explicit CUDAStream(const Place& place,
+                      const Priority& priority = Priority::NORMAL) {
     Init(place, priority);
   }
   virtual ~CUDAStream() { Destroy(); }
 
-  bool Init(const Place& place,
-            const enum Priority& priority = Priority::NORMAL);
+  bool Init(const Place& place, const Priority& priority = Priority::NORMAL);
 
   const cudaStream_t& stream() const { return stream_; }
   void Destroy();

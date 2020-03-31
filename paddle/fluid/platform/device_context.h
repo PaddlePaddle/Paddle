@@ -86,7 +86,7 @@ class CUDAContext {
   CUDAContext() = default;
   explicit CUDAContext(
       const CUDAPlace& place,
-      const enum stream::Priority& priority = stream::Priority::NORMAL);
+      const stream::Priority& priority = stream::Priority::NORMAL);
 
   ~CUDAContext();
 
@@ -316,11 +316,11 @@ class CUDADeviceContext : public DeviceContext {
 
   void WaitStreamCallback() const { return context()->WaitStreamCallback(); }
 
-  void ResetDefaultContext(const enum stream::Priority& priority) {
+  void ResetDefaultContext(const stream::Priority& priority) {
     default_ctx_.reset(new CUDAContext(place_, priority));
   }
 
-  void ResetThreadContext(const enum stream::Priority& priority) {
+  void ResetThreadContext(const stream::Priority& priority) {
     std::lock_guard<std::mutex> guard(ctx_mtx_);
     thread_ctx_[this].reset(new CUDAContext(place_, priority));
   }
