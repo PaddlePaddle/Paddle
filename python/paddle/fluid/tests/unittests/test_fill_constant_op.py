@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+import paddle
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
@@ -79,6 +80,28 @@ class TestFillConstantOp4(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+
+class TestFillConstantOp5(unittest.TestCase):
+    def test_errors(self):
+        with fluid.program_guard(fluid.Program()):
+            data = fluid.data(name="X", shape=[1], dtype="float32")
+            out = paddle.tensor.zeros(shape=[1], out=data, dtype="float32")
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            result = exe.run(feed={"X": np.array(
+                [0.1], dtype="float32")},
+                             fetch_list=[data, out])
+            self.assertEqual(result[0], result[1])
+        with fluid.program_guard(fluid.Program()):
+            data = fluid.data(name="X", shape=[1], dtype="float32")
+            out = paddle.tensor.ones(shape=[1], out=data, dtype="float32")
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            result = exe.run(feed={"X": np.array(
+                [0.1], dtype="float32")},
+                             fetch_list=[data, out])
+            self.assertEqual(result[0], result[1])
 
 
 class TestFillConstantOpWithSelectedRows(unittest.TestCase):
