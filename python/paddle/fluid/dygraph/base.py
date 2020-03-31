@@ -205,7 +205,7 @@ def no_grad_guard():
 
         data = np.array([[2, 3], [4, 5]]).astype('float32')
         with fluid.dygraph.guard():
-            l0 = fluid.Linear(2, 2)  # l0.weight._grad_ivar() is None
+            l0 = fluid.Linear(2, 2)  # l0.weight.gradient() is None
             l1 = fluid.Linear(2, 2)
             with fluid.dygraph.no_grad_guard():
                 # l1.weight.stop_gradient is False
@@ -214,8 +214,8 @@ def no_grad_guard():
             y = l0(x) + tmp
             o = l1(y)
             o.backward()
-            print(tmp._grad_ivar() is None)  # True
-            print(l0.weight._grad_ivar() is None)  # False
+            print(tmp.gradient() is None)  # True
+            print(l0.weight.gradient() is None)  # False
 
     """
     with _switch_tracer_mode_guard_(is_train=False):
