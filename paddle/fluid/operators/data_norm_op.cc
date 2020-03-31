@@ -557,8 +557,8 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
             Tensor dy_sum;
             dy_sum.Resize({C});
             dy_sum.mutable_data<T>(ctx.GetPlace());
-            EigenVectorArrayMap<T>
-                dy_sum_arr(dy_sum.mutable_data<T>(ctx.GetPlace()), C);
+            EigenVectorArrayMap<T>dy_sum_arr(
+                dy_sum.mutable_data<T>(ctx.GetPlace()), C);
             Tensor dy_mul_x_sub_mean_mul_invstd_sum;
             dy_mul_x_sub_mean_mul_invstd_sum.Resize({C});
             dy_mul_x_sub_mean_mul_invstd_sum.mutable_data<T>(ctx.GetPlace());
@@ -581,8 +581,7 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
                 d_scale_arr = dy_mul_x_sub_mean_mul_invstd_sum_arr;
               }
               for (int nc = 0; nc < N; ++nc) {
-                d_x_arr.col(nc) = d_y_arr.col(nc) *
-                scales_arr * scale_arr;
+                d_x_arr.col(nc) = d_y_arr.col(nc) * scales_arr * scale_arr;
               }
             } else {
               int offset = 0;
@@ -605,11 +604,10 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
                     // show != 0
                     for (int j = i; j < i + slot_dim; ++j) {
                       d_x_data[offset+j] = dy_data[offset+j] *
-                      scales_data[j]* scale_w_data[j];
+                                           scales_data[j]* scale_w_data[j];
                       d_bias_data[j] += dy_data[offset+j];
-                      d_scale_data[j] +=
-                          (x_data[offset+j]-mean_data[j]) *
-                           inv_var_data[j] * dy_data[offset+j];
+                      d_scale_data[j] += (x_data[offset+j]-mean_data[j]) *
+                                         inv_var_data[j] * dy_data[offset+j];
                     }
                   }
                 }
