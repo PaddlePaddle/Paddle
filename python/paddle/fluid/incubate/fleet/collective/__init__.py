@@ -168,7 +168,7 @@ class Collective(Fleet):
             return r
 
         d = {}
-        with open(file_name, 'rb') as f:
+        with open(file_name, 'r') as f:
             d = json.load(f)
 
         assert "epoch_no" in d, "Can't find epoch_no in dict from train_status file:{}".format(
