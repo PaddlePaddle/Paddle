@@ -44,6 +44,7 @@ cc_library(place SRCS place.cc DEPS enforce boost)
 cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
 
 add_subdirectory(dynload)
+add_subdirectory(stream)
 
 cc_library(cpu_helper SRCS cpu_helper.cc DEPS cblas enforce)
 cc_test(cpu_helper_test SRCS cpu_helper_test.cc DEPS cpu_helper)
@@ -54,7 +55,7 @@ IF(WITH_DGC)
 ENDIF()
 
 IF(WITH_GPU)
-    set(GPU_CTX_DEPS dynload_cuda dynamic_loader)
+    set(GPU_CTX_DEPS dynload_cuda dynamic_loader cuda_stream)
 ENDIF()
 
 IF(WITH_MKLDNN)
