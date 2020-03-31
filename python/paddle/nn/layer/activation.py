@@ -42,14 +42,14 @@ class Sigmoid(layers.Layer):
           import paddle.nn as nn
           import numpy as np
           input = fluid.data(name="input", shape=[None, 4])
-          output = nn.Sigmoid(input)
+          output = nn.Sigmoid()(input)
           place = fluid.CPUPlace()
           exe = fluid.Executor(place)
           exe.run(fluid.default_startup_program())
           input_data = np.array([1.0, 2.0, 3.0, 4.0]).astype('float32')
           output_data = exe.run(feed={"input": input_data},
-                                fetch_list=[output[0]])
-          print(output_data) # [0, 0, 1]
+                                fetch_list=[output])
+          print(output_data) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
     """
 
     def __init__(self):
