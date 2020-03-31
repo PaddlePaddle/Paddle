@@ -41,15 +41,15 @@ def _convert_camel_to_snake(name):
     return _all_cap_re.sub(r'\1_\2', s1).lower()
 
 
-class HookEraseHelper(object):
-    """ A HookEraseHelper that can be used to remove hook. """
+class HookRemoveHelper(object):
+    """ A HookRemoveHelper that can be used to remove hook. """
 
     next_hook_id = 0
 
     def __init__(self, hooks):
         self._hooks_ref = weakref.ref(hooks)
-        self._hook_id = HookEraseHelper.next_hook_id
-        HookEraseHelper.next_hook_id += 1
+        self._hook_id = HookRemoveHelper.next_hook_id
+        HookRemoveHelper.next_hook_id += 1
 
     def remove(self):
         hooks = self._hooks_ref()
@@ -106,62 +106,108 @@ class Layer(core.Layer):
 
     def register_forward_post_hook(self, hook):
         """Register a forward post-hook for Layer. The hook will be called after `forward` function has been computed.
-        The hook can modify the output. It should have the following form:
+
+        User can use forward post-hook to change the output of the Layer or perform information statistics tasks on the Layer.
+        
+        It should have the following form, the parameter input's format of the hook is the same as the tuple of the 
+        input parameters of the Layer's `forward` function, the parameter output's format of the hook is the same as 
+        the result of the Layer's `forward` function .
 
         hook(Layer, input, output) -> None or modified output
 
         Parameters:
-            hook(function): a forward post-hook
+            hook(function): a function registered as a forward post-hook
 
         Returns:
-            HookEraseHelper: a HookEraseHelper object that can be used to remove the added hook by calling `hook_erase_helper.remove()` .
+            HookRemoveHelper: a HookRemoveHelper object that can be used to remove the added hook by calling `hook_remove_helper.remove()` .
 
         Examples:
             .. code-block:: python
 
-            import paddle.fluid as fluid
+              import paddle.fluid as fluid
 
-            def forward_post_hook(layer, input, output):
-                return output * 2
+              # the forward_post_hook change the output of the layer: output = output * 2 
+              def forward_post_hook(layer, input, output):
+                  # user can use layer, input and output for information statistis tasks
 
-            with fluid.dygraph.guard():
-                linear = fluid.Linear(13, 5, dtype="float32")
-                forward_post_hook_handle = linear.register_forward_post_hook(forward_hook)
-                forward_post_hook_handle.remove()
+                  # change the output 
+                  return output * 2
+
+              with fluid.dygraph.guard():
+                  linear = fluid.Linear(13, 5, dtype="float32")
+
+                  # register the hook
+                  forward_post_hook_handle = linear.register_forward_post_hook(forward_post_hook)
+                  
+                  value = np.arange(26).reshape(2, 13).astype("float32")
+                  in = fluid.dygraph.to_variable(value0)
+                  
+                  out0 = linear(in)
+                  
+                  # remove the hook
+                  forward_post_hook_handle.remove()
+
+                  out1 = linear(in)
+
+                  # hook change the linear's output to output * 2, so out0 is equal to out1 * 2.
+                  assert (out0.numpy() == (out1.numpy()) * 2).any()
         """
-        hook_erase_helper = HookEraseHelper(self._forward_post_hooks)
-        self._forward_post_hooks[hook_erase_helper._hook_id] = hook
-        return hook_erase_helper
+        hook_remove_helper = HookRemoveHelper(self._forward_post_hooks)
+        self._forward_post_hooks[hook_remove_helper._hook_id] = hook
+        return hook_remove_helper
 
     def register_forward_pre_hook(self, hook):
         """Register a forward pre-hook for Layer. The hook will be called before `forward` function has been computed.
-        The hook can modify the input. It should have the following form:
+        
+        User can use forward pre-hook to change the input of the Layer or perform information statistics tasks on the Layer.
+
+        It should have the following form, the parameter input's format of the hook is the same as the tuple of the 
+        input parameters of the Layer's `forward` function .
 
         hook(Layer, input) -> None or modified input
 
         Parameters:
-            hook(function): a forward pre-hook
+            hook(function): a function registered as a forward pre-hook
 
         Returns:
-            HookEraseHelper: a HookEraseHelper object that can be used to remove the added hook by calling `hook_erase_helper.remove()` .
+            HookRemoveHelper: a HookRemoveHelper object that can be used to remove the added hook by calling `hook_remove_helper.remove()` .
 
         Examples:
             .. code-block:: python
 
-            import paddle.fluid as fluid
+              import paddle.fluid as fluid
 
-            def forward_pre_hook(layer, input):
-                input_return = (input[0] * 2, input[1])
-                return input_return
+              # the forward_post_hook change the input of the layer: input = input * 2
+              def forward_pre_hook(layer, input):
+                  # user can use layer and input for information statistis tasks
 
-            with fluid.dygraph.guard():
-                linear = fluid.Linear(13, 5, dtype="float32")
-                forward_pre_hook_handle = linear.register_forward_pre_hook(forward_pre_hook)
-                forward_pre_hook_handle.remove()
+                  # change the input
+                  input_return = (input[0] * 2)
+                  return input_return
+
+              with fluid.dygraph.guard():
+                  linear = fluid.Linear(13, 5, dtype="float32")
+
+                  # register the hook
+                  forward_pre_hook_handle = linear.register_forward_pre_hook(forward_pre_hook)
+
+                  value0 = np.arange(26).reshape(2, 13).astype("float32")
+                  in0 = fluid.dygraph.to_variable(value0)
+                  out0 = linear(in0)
+
+                  # remove the hook
+                  forward_pre_hook_handle.remove()
+
+                  value1 = value0 * 2
+                  in1 = fluid.dygraph.to_variable(value1)
+                  out1 = linear(in1)
+
+                  # hook change the linear's input to input * 2, so out0 is equal to out1.
+                  assert (out0.numpy() == out1.numpy()).any()
         """
-        hook_erase_helper = HookEraseHelper(self._forward_pre_hooks)
-        self._forward_pre_hooks[hook_erase_helper._hook_id] = hook
-        return hook_erase_helper
+        hook_remove_helper = HookRemoveHelper(self._forward_pre_hooks)
+        self._forward_pre_hooks[hook_remove_helper._hook_id] = hook
+        return hook_remove_helper
 
     def create_parameter(self,
                          shape,
@@ -389,8 +435,8 @@ class Layer(core.Layer):
 
         outputs = self.forward(*inputs, **kwargs)
 
-        for forward_hook in self._forward_post_hooks.values():
-            hook_result = forward_hook(self, inputs, outputs)
+        for forward_post_hook in self._forward_post_hooks.values():
+            hook_result = forward_post_hook(self, inputs, outputs)
             if hook_result is not None:
                 outputs = hook_result
 
