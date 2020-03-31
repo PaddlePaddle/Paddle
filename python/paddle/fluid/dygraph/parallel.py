@@ -247,8 +247,8 @@ class DataParallel(layers.Layer):
         coalesced_grads_and_vars = self._coalesce_tensors(grad_var_groups)
 
         for coalesced_grad, g_vars, g_shapes in coalesced_grads_and_vars:
-            collective._allreduce(
-                coalesced_grad, coalesced_grad, sync_mode=False)
+            collective._c_allreduce(
+                coalesced_grad, coalesced_grad, use_calc_stream=True)
 
         self._split_tensors(coalesced_grads_and_vars)
 
