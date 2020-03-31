@@ -975,7 +975,7 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
         .. code-block:: python
         import paddle.fluid as fluid
         import numpy as np
-        x = fluid.data(name="x", shape=[1], dtype="int32")
+        x = fluid.data(name="x", shape=[1], dtype="int32", lod_level=1)
         tree_info = [[0,0,0,1,2],
                         [0,1,0,3,4],[0,1,0,5,6],
                         [0,2,1,0,0],[1,2,1,0,0],[2,2,2,0,0],[3,2,2,0,0]]
