@@ -1137,7 +1137,7 @@ class BatchNorm(layers.Layer):
         variance_out = self._variance
 
         if in_dygraph_mode():
-            _is_test = not self.training
+            _is_test = not self.training and not self._trainable_statistics
             attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
                      "is_test", _is_test, "data_layout", self._data_layout,
                      "use_mkldnn", False, "fuse_with_relu",
@@ -1156,8 +1156,7 @@ class BatchNorm(layers.Layer):
             "data_layout": self._data_layout,
             "use_mkldnn": False,
             "fuse_with_relu": self._fuse_with_relu,
-            "use_global_stats": self._use_global_stats,
-            "trainable_statistics": self._trainable_statistics
+            "use_global_stats": self._use_global_stats
         }
 
         inputs = {
@@ -1195,16 +1194,16 @@ class Dropout(layers.Layer):
    This interface is used to construct a callable object of the ``Dropout`` class.
    For more details, refer to code examples.
 
-   Drop or keep each element of `x` independently. Dropout is a regularization
+   Drop or keep each element of input independently. Dropout is a regularization
    technique for reducing overfitting by preventing neuron co-adaption during
    training. The dropout operator randomly sets (according to the given dropout
    probability) the outputs of some units to zero, while others are remain
    unchanged.
 
-   dropout op can be removed from the program to make the program more efficient.
+   Dropout layer can be removed for efficiency concern.
 
    Parameters:
-       dropout_prob (float): Probability of setting units to zero.
+       prob (float, optional): Probability of setting units to zero. Default: 0.5
        seed (int, optional): A Python integer used to create random seeds. If this
                    parameter is set to None, a random seed is used.
                    NOTE: If an integer seed is given, always the same output
@@ -1251,13 +1250,20 @@ class Dropout(layers.Layer):
    """
 
     def __init__(self,
-                 dropout_prob,
+                 prob=0.5,
                  seed=None,
                  dropout_implementation="downgrade_in_infer",
                  is_test=False):
         super(Dropout, self).__init__()
-        self._dropout_prob = dropout_prob
+        assert isinstance(prob,
+                          (float, int)), "prob argument should be a number"
+        assert 0 <= prob <= 1, "prob argument should between 0 and 1"
+        self._dropout_prob = prob
+        assert isinstance(seed, int), "seed argument should be a integer"
         self._seed = seed
+        assert dropout_implementation in (
+            'downgrade_in_infer', 'upscale_in_train'
+        ), "dropout_implementation argument should be 'downgrade_in_infer' or 'upscale_in_train'"
         self._dropout_implementation = dropout_implementation
         self._is_test = is_test
 
