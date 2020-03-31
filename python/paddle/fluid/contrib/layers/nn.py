@@ -943,15 +943,15 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
 
         Given:
             tree[[0], [1, 2], [3, 4], [5, 6]] # A binary tree with seven nodes
-            x = [[0], [1]]
+            x = [[2], [3]]
             node_nums = 7
             child_nums = 2
 
           we get:
-            child = [[1, 2],
-                     [3, 4]]
-            leaf_mask = [[0, 0],
-                         [1, 1]]
+            child = [[5, 6],
+                     [0, 0]]
+            leaf_mask = [[1, 1],
+                         [0, 0]]
     Args:
         x(Variable): Variable contained the node_id information, dtype support int32/int64.
         node_nums(int): Number of total nodes.
@@ -977,9 +977,10 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
         import numpy as np
         x = fluid.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
         tree_info = [[0,0,0,1,2],
-                        [0,1,0,3,4],[0,1,0,5,6],
-                        [0,2,1,0,0],[1,2,1,0,0],[2,2,2,0,0],[3,2,2,0,0]]
+                     [0,1,0,3,4],[0,1,0,5,6],
+                     [0,2,1,0,0],[1,2,1,0,0],[2,2,2,0,0],[3,2,2,0,0]]
         tree_info_np = np.array(tree_info)
+        tree_info_np = np.reshape(tree_info_np, (7,5))
         node_nums = 7
         child_nums = 2
         child, leaf_mask  = fluid.contrib.layers.tdm_child(x, node_nums, child_nums,
@@ -988,7 +989,8 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
                                                                             tree_info_np)))
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
-        xx = np.array([[0],[1]]).reshape((2,1)).astype("int32")
+        exe.run(fluid.default_startup_program())
+        xx = np.array([[2],[3]]).reshape((2,1)).astype("int32")
         child_res, leaf_mask_res = exe.run(feed={"x":xx}, fetch_list=[child, leaf_mask])
      """
     helper = LayerHelper("tdm_child", **locals())
