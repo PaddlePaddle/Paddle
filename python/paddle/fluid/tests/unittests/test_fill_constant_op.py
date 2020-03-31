@@ -86,7 +86,7 @@ class TestFillConstantOp5(unittest.TestCase):
     def test_errors(self):
         with fluid.program_guard(fluid.Program()):
             data = fluid.data(name="X", shape=[1], dtype="float32")
-            out = paddle.tensor.zeros(shape=[1], out=data, dtype="float32")
+            out = paddle.zeros(shape=[1], out=data, dtype="float32")
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result = exe.run(feed={"X": np.array(
@@ -95,7 +95,7 @@ class TestFillConstantOp5(unittest.TestCase):
             self.assertEqual(result[0], result[1])
         with fluid.program_guard(fluid.Program()):
             data = fluid.data(name="X", shape=[1], dtype="float32")
-            out = paddle.tensor.ones(shape=[1], out=data, dtype="float32")
+            out = paddle.ones(shape=[1], out=data, dtype="float32")
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result = exe.run(feed={"X": np.array(

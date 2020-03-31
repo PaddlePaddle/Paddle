@@ -106,28 +106,28 @@ class TestOnesZerosError(unittest.TestCase):
         def test_device_error1():
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 data = fluid.data(name="data", shape=[10], dtype="float32")
-                paddle.tensor.ones_like(data, device="opu")
+                paddle.ones_like(data, device="opu")
 
         self.assertRaises(ValueError, test_device_error1)
 
         def test_device_error2():
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 data = fluid.data(name="data", shape=[10], dtype="float32")
-                paddle.tensor.ones_like(data, dtype="float")
+                paddle.ones_like(data, dtype="float")
 
         self.assertRaises(ValueError, test_device_error2)
 
         def test_device_error3():
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 data = fluid.data(name="data", shape=[10], dtype="float32")
-                paddle.tensor.zeros_like(data, device="opu")
+                paddle.zeros_like(data, device="opu")
 
         self.assertRaises(ValueError, test_device_error3)
 
         def test_device_error4():
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 data = fluid.data(name="data", shape=[10], dtype="float32")
-                paddle.tensor.zeros_like(data, dtype="float")
+                paddle.zeros_like(data, dtype="float")
 
         self.assertRaises(ValueError, test_device_error4)
 
