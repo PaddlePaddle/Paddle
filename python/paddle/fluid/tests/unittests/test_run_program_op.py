@@ -39,7 +39,9 @@ def program_scope_guard():
 # when creating output variables in OpTest, default type is LoDTensor
 class RunProgramOpTest(unittest.TestCase):
     def check_output(self):
-        places = [fluid.CPUPlace(), fluid.CUDAPlace(0)]
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
         for place in places:
             # TODO: RunProgramOp is not recommended for use in static mode now
             self.check_output_dygraph(place)
