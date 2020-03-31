@@ -87,11 +87,11 @@ def full(shape,
 
           # attr shape is a list which contains Variable Tensor.
           positive_2 = fluid.layers.fill_constant([1], "int32", 2)
-          data3 = tensor.full(shape=[1, positive_2], dtype='float32', value=1.5) # data3=[1.5, 1.5]
+          data3 = tensor.full(shape=[1, positive_2], dtype='float32', full_value=1.5) # data3=[1.5, 1.5]
 
           # attr shape is an Variable Tensor.
           shape = fluid.layers.fill_constant([1,2], "int32", 2) # shape=[2,2]
-          data4 = tensor.full(shape=shape, dtype='bool', value=True) # data4=[[True,True],[True,True]]
+          data4 = tensor.full(shape=shape, dtype='bool', full_value=True) # data4=[[True,True],[True,True]]
     """
 
     helper = LayerHelper("full", **locals())
