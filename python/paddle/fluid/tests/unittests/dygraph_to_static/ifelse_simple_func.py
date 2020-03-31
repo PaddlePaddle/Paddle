@@ -58,7 +58,8 @@ def nested_if_else(x_v):
     bias = fluid.layers.fill_constant([feat_size], dtype='float32', value=1)
     if x_v.shape[0] != batch_size:
         batch_size = x_v.shape[0]
-    if fluid.layers.mean(x_v).numpy()[0] < 0:
+    # if tensor.shape is [1], now support to compare with numpy.
+    if fluid.layers.mean(x_v).numpy() < 0:
         y = x_v + bias
         w = fluid.layers.fill_constant([feat_size], dtype='float32', value=10)
         if y.numpy()[0] < 10:

@@ -15,7 +15,7 @@ limitations under the License. */
 #include <thrust/device_vector.h>
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/where_op.h"
+#include "paddle/fluid/operators/where_index_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/for_range.h"
 
@@ -25,7 +25,7 @@ namespace operators {
 using CUDADeviceContext = paddle::platform::CUDADeviceContext;
 
 template <typename T>
-class CUDAWhereKernel : public framework::OpKernel<T> {
+class CUDAWhereIndexKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* condition = context.Input<framework::Tensor>("Condition");
@@ -67,8 +67,8 @@ class CUDAWhereKernel : public framework::OpKernel<T> {
     int* ptr_stride = thrust::raw_pointer_cast(d_stride.data());
 
     auto& dev_ctx = context.template device_context<CUDADeviceContext>();
-    WhereFunctor<int*> functor(ptr_true_index, true_num, ptr_stride, rank,
-                               out_ptr);
+    WhereIndexFunctor<int*> functor(ptr_true_index, true_num, ptr_stride, rank,
+                                    out_ptr);
     platform::ForRange<CUDADeviceContext> for_range(dev_ctx, true_num);
     for_range(functor);
   }
@@ -78,4 +78,4 @@ class CUDAWhereKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(where, ops::CUDAWhereKernel<int64_t>);
+REGISTER_OP_CUDA_KERNEL(where_index, ops::CUDAWhereIndexKernel<int64_t>);
