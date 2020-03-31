@@ -234,6 +234,32 @@ class TestTensorArrayToTensorAPI(unittest.TestCase):
         for s, d in zip(outs_static, outs_dynamic):
             self.assertTrue(numpy.array_equal(s, d.numpy()))
 
+    def test_while_loop_case(self):
+        with fluid.dygraph.guard():
+            zero = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=1)
+            ten = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
+            array = fluid.layers.create_array(dtype='float32')
+            inp0 = numpy.random.rand(2, 3, 4).astype("float32")
+            x0 = fluid.layers.assign(inp0)
+            fluid.layers.array_write(x0, zero, array)
+
+            def cond(i):
+                prev = fluid.layers.array_read(array, i - 1)
+                fluid.layers.array_write(prev, i, array)
+                return fluid.layers.less_than(i, ten)
+
+            def body(i):
+                return i + 1
+
+            fluid.layers.while_loop(cond, body, [i])
+
+            self.assertTrue(fluid.layers.array_length(array), 10)
+            last = fluid.layers.fill_constant(shape=[1], dtype='int64', value=9)
+            self.assertTrue(
+                numpy.array_equal(
+                    fluid.layers.array_read(array, last).numpy(), inp0))
+
 
 if __name__ == '__main__':
     unittest.main()

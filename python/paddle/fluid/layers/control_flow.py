@@ -1286,18 +1286,23 @@ def array_write(x, i, array=None):
     """
     if in_dygraph_mode():
         assert isinstance(
-            x, Variable), "The input data 'x' in array_write must be Variable"
+            x, Variable
+        ), "The input data 'x' in array_write must be Variable in dygraph mode"
         assert isinstance(
-            i, Variable), "The index 'i' in array_write must be Variable"
-        assert i.shape == [1], "The shape of index 'i' should be [1]"
+            i, Variable
+        ), "The index 'i' in array_write must be Variable in dygraph mode"
+        assert i.shape == [
+            1
+        ], "The shape of index 'i' should be [1] in dygraph mode"
         i = i.numpy()[0]
         if array is None:
             array = create_array(x.dtype)
-        assert isinstance(array,
-                          list), "The 'array' in array_write must be a list"
+        assert isinstance(
+            array,
+            list), "The 'array' in array_write must be a list in dygraph mode"
         assert i <= len(
             array
-        ), "The index 'i' should not be greater than the length of 'array'"
+        ), "The index 'i' should not be greater than the length of 'array' in dygraph mode"
         if i < len(array):
             array[i] = x
         else:
@@ -1664,10 +1669,15 @@ def array_read(array, i):
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
     if in_dygraph_mode():
-        assert isinstance(array, list), "The 'array' in array_read must be list"
         assert isinstance(
-            i, Variable), "The index 'i' in array_read must be Variable"
-        assert i.shape == [1], "The shape of index 'i' should be [1]"
+            array,
+            list), "The 'array' in array_read must be list in dygraph mode"
+        assert isinstance(
+            i, Variable
+        ), "The index 'i' in array_read must be Variable in dygraph mode"
+        assert i.shape == [
+            1
+        ], "The shape of index 'i' should be [1] in dygraph mode"
         i = i.numpy()[0]
         return array[i]
 
@@ -1768,8 +1778,9 @@ def array_length(array):
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
     if in_dygraph_mode():
-        assert isinstance(array,
-                          list), "The 'array' in array_write must be a list"
+        assert isinstance(
+            array,
+            list), "The 'array' in array_write must be a list in dygraph mode"
         return len(array)
 
     helper = LayerHelper('array_length', **locals())
