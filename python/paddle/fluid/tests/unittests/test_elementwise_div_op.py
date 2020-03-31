@@ -227,7 +227,7 @@ class TestElementwiseDivOpFp16(ElementwiseDivOp):
             ['X'], 'Out', max_relative_error=1, no_grad_set=set('Y'))
 
 
-class TestDivOpAttr(ElementwiseDivOp):
+class TestDivOpAttr(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data(name="x", shape=[3], dtype="float32")

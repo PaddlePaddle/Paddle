@@ -110,7 +110,7 @@
 # from .math import min   #DEFINE_ALIAS
 # from .math import mm   #DEFINE_ALIAS
 from .math import div  #DEFINE_ALIAS
-# from .math import add   #DEFINE_ALIAS
+from .math import add  #DEFINE_ALIAS
 # from .math import atan   #DEFINE_ALIAS
 # from .math import logsumexp   #DEFINE_ALIAS
 # from .math import inverse   #DEFINE_ALIAS

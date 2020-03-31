@@ -60,7 +60,7 @@ __all__ = [#'abs',
     #            'min',
     #            'mm',
            'div',
-    #            'add',
+           'add',
     #            'atan',
     #            'logsumexp',
     #            'inverse',
@@ -104,6 +104,100 @@ def _elementwise_op(helper):
         attrs={'axis': axis,
                'use_mkldnn': use_mkldnn})
     return helper.append_activation(out)
+
+
+def add(x, y, alpha=1, out=None, name=None):
+    """
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+
+            def gen_data():
+                return {
+                    "x": np.array([2, 3, 4]).astype('float32'),
+                    "y": np.array([1, 5, 2]).astype('float32')
+                }
+
+            x = fluid.data(name="x", shape=[3], dtype='float32')
+            y = fluid.data(name="y", shape=[3], dtype='float32')
+            z = fluid.layers.elementwise_add(x, y)
+            # z = x + y
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            z_value = exe.run(feed=gen_data(),
+                                fetch_list=[z.name])
+
+            print(z_value) # [3., 8., 6.]
+
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+
+            def gen_data():
+                return {
+                    "x": np.ones((2, 3, 4, 5)).astype('float32'),
+                    "y": np.zeros((3, 4)).astype('float32')
+                }
+
+            x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+            y = fluid.data(name="y", shape=[3,4], dtype='float32')
+            z = fluid.layers.elementwise_add(x, y, axis=1)
+            # z = x + y
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            z_value = exe.run(feed=gen_data(),
+                                fetch_list=[z.name])
+
+            print(z_value) # z.shape=[2,3,4,5]
+
+
+        ..  code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+
+            def gen_data():
+                return {
+                    "x": np.random.randint(1, 5, size=[2, 3, 4, 5]).astype('float32'),
+                    "y": np.random.randint(1, 5, size=[5]).astype('float32')
+                }
+
+            x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+            y = fluid.data(name="y", shape=[5], dtype='float32')
+            z = fluid.layers.elementwise_add(x, y, axis=3)
+            # z = x + y
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            z_value = exe.run(feed=gen_data(),
+                                fetch_list=[z.name])
+            print(z_value) # z.shape=[2,3,4,5]
+
+    """
+    op_type = 'elementwise_add'
+    axis = -1
+    act = None
+    y = scale(y, scale=alpha)
+    if in_dygraph_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name=op_type)
+
+    if name and out:
+        warnings.warn(
+            "Both name and out parameters have been set in paddle.tensor.add(), only out will take effect to specify the result storage. "
+            "You can discard either one to solve this warning.",
+            category=UserWarning,
+            stacklevel=2)
+    return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
 def div(x, y, out=None, name=None):
@@ -195,8 +289,8 @@ def div(x, y, out=None, name=None):
             x, y, axis=axis, act=act, op_name=op_type)
     if name and out:
         warnings.warn(
-            "Both name and out parameters have been set in fluid.layers.%s(), only out will take effect to specify the result storage. "
-            "You can discard either one to solve this warning." % op_type,
+            "Both name and out parameters have been set in paddle.tensor.div(), only out will take effect to specify the result storage. "
+            "You can discard either one to solve this warning.",
             category=UserWarning,
             stacklevel=2)
     return _elementwise_op(LayerHelper(op_type, **locals()))
