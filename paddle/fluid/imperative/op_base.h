@@ -119,6 +119,20 @@ class OpBase {
 
   void SetPlace(const platform::Place& place) { place_ = place; }
 
+  void EnforceHasInOut() const {
+    PADDLE_ENFORCE_NE(
+        ins_.empty() && outs_.empty(), true,
+        platform::errors::NotFound(
+            "Inputs and outputs of %s do not exist. This may be because:\n"
+            "1. You use some output variables of the previous batch as the "
+            "inputs of the current batch. Please try to call \"stop_gradient "
+            "= True\" or \"detach()\" for these variables.\n"
+            "2. You calculate backward twice for the same subgraph without "
+            "setting retain_graph=True. Please set retain_graph=True in the "
+            "first backward call.\n\n",
+            Type()));
+  }
+
   static size_t GenerateUniqueId() {
     static std::atomic<size_t> unique_id{0};
     return unique_id.fetch_add(1);

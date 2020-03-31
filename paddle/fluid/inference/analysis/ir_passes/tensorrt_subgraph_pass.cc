@@ -272,7 +272,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   // Check trt version for dynamic shape input.
 
   if (min_input_shape.size() > 0 && TRT_VERSION < 6000) {
-    std::cout << "hello";
     LOG_FIRST_N(WARNING, 1) << "You are using the dynamic size input mode of "
                                "Paddle-TRT, but we found that the version of "
                                "the TensorRT is less than 6.0, so we use the "
@@ -284,18 +283,23 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
 
   if (min_input_shape.size() > 0 && TRT_VERSION > 6000) {
     LOG_FIRST_N(WARNING, 1)
-        << "The Paddle lib links the " << TRT_VERSION / 1000.
-        << " version TensorRT, "
+        << "The Paddle lib links the " << TRT_VERSION << " version TensorRT, "
         << "make sure the runtime TensorRT you are using is no less than this "
            "version, otherwise, there might be Segfault!";
   }
 
+  // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will not
+  // run fp16.
+  // When running fp16, the output accuracy of the model will be affected,
+  // closing the plugin fp16 may bring some improvement on accuracy.
+  bool disable_trt_plugin_fp16 = Get<bool>("disable_trt_plugin_fp16");
   tensorrt::TensorRTEngine *trt_engine =
       inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
           .Create(engine_key + std::to_string(predictor_id),
                   Get<int>("max_batch_size"), Get<int>("workspace_size"),
                   precision_mode, calibrator.get(), Get<int>("gpu_device_id"),
-                  min_input_shape, max_input_shape, opt_input_shape);
+                  min_input_shape, max_input_shape, opt_input_shape,
+                  disable_trt_plugin_fp16);
 
   bool need_serialize = (use_static_engine && !load_from_memory);
   if (need_serialize) {

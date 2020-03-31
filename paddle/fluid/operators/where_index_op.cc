@@ -12,23 +12,28 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/where_op.h"
+#include "paddle/fluid/operators/where_index_op.h"
 
 namespace paddle {
 namespace operators {
 
-class WhereOp : public framework::OperatorWithKernel {
+class WhereIndexOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Condition"),
-                   "Input(Condition) of WhereOp should not be null.");
-    PADDLE_ENFORCE(
-        ctx->GetInputDim("Condition").size() >= 1,
-        "Input(Condition) should have number of dimension at least 1");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(OUt) of WhereOp should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Condition"), true,
+        platform::errors::NotFound(
+            "Input(Condition) of layers.where should not be null."));
+    PADDLE_ENFORCE_GE(
+        ctx->GetInputDim("Condition").size(), 1UL,
+        platform::errors::InvalidArgument(
+            "Input(Condition) should have number of dimension at least 1"));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::NotFound(
+                          "Output(Out) of layers.where should not be null."));
+
     ctx->SetOutputDim("Out", {-1, ctx->GetInputDim("Condition").size()});
   }
 
@@ -40,7 +45,7 @@ class WhereOp : public framework::OperatorWithKernel {
   }
 };
 
-class WhereOpMaker : public framework::OpProtoAndCheckerMaker {
+class WhereIndexOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Condition", "A bool tensor whose rank is at least 1");
@@ -54,5 +59,6 @@ class WhereOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(where, ops::WhereOp, ops::WhereOpMaker);
-REGISTER_OP_CPU_KERNEL(where, ops::CPUWhereKernel<int64_t>);
+REGISTER_OP_WITHOUT_GRADIENT(where_index, ops::WhereIndexOp,
+                             ops::WhereIndexOpMaker);
+REGISTER_OP_CPU_KERNEL(where_index, ops::CPUWhereIndexKernel<int64_t>);

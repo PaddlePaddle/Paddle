@@ -74,24 +74,15 @@ def accuracy(input, label, k=1, correct=None, total=None):
             #[array([0.6666667], dtype=float32)]
     """
     if in_dygraph_mode():
-        topk_out, topk_indices = nn.topk(input, k=k)
-        inputs = {
-            "Out": [topk_out],
-            "Indices": [topk_indices],
-            "Label": [label]
-        }
-        acc_out = _varbase_creator(dtype="float32")
         if correct is None:
-            correct = _varbase_creator(dtype="int64")
+            correct = _varbase_creator(dtype="int32")
         if total is None:
-            total = _varbase_creator(dtype="int64")
-        outputs = {
-            "Accuracy": [acc_out],
-            "Correct": [correct],
-            "Total": [total]
-        }
-        outs = core.ops.accuracy(inputs, {}, outputs)
-        return outs['Accuracy'][0]
+            total = _varbase_creator(dtype="int32")
+
+        topk_out, topk_indices = nn.topk(input, k=k)
+        _acc, _, _ = core.ops.accuracy(topk_out, topk_indices, label, correct,
+                                       total)
+        return _acc
 
     helper = LayerHelper("accuracy", **locals())
     check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
@@ -99,9 +90,9 @@ def accuracy(input, label, k=1, correct=None, total=None):
     topk_out, topk_indices = nn.topk(input, k=k)
     acc_out = helper.create_variable_for_type_inference(dtype="float32")
     if correct is None:
-        correct = helper.create_variable_for_type_inference(dtype="int64")
+        correct = helper.create_variable_for_type_inference(dtype="int32")
     if total is None:
-        total = helper.create_variable_for_type_inference(dtype="int64")
+        total = helper.create_variable_for_type_inference(dtype="int32")
     helper.append_op(
         type="accuracy",
         inputs={
