@@ -20,6 +20,7 @@ from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
 class TestSumOp(OpTest):
@@ -424,6 +425,48 @@ class Test1DReduceWithAxes1(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+class TestReduceWithDtype(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.inputs = {'X': np.random.random((6, 2, 10)).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].sum().astype('float64')}
+        self.attrs = {'reduce_all': True}
+        self.attrs.update({
+            'in_dtype': int(convert_np_dtype_to_dtype_(np.float32)),
+            'out_dtype': int(convert_np_dtype_to_dtype_(np.float64))
+        })
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestReduceWithDtype1(TestReduceWithDtype):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.inputs = {'X': np.random.random((6, 2, 10)).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].sum(axis=1)}
+        self.attrs = {'dim': [1]}
+        self.attrs.update({
+            'in_dtype': int(convert_np_dtype_to_dtype_(np.float32)),
+            'out_dtype': int(convert_np_dtype_to_dtype_(np.float64))
+        })
+
+
+class TestReduceWithDtype2(TestReduceWithDtype):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.inputs = {'X': np.random.random((6, 2, 10)).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].sum(axis=1, keepdims=True)}
+        self.attrs = {'dim': [1], 'keep_dim': True}
+        self.attrs.update({
+            'in_dtype': int(convert_np_dtype_to_dtype_(np.float32)),
+            'out_dtype': int(convert_np_dtype_to_dtype_(np.float64))
+        })
 
 
 class TestReduceSumOpError(unittest.TestCase):

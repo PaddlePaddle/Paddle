@@ -30,8 +30,26 @@ class ReduceSumGradKernel : public framework::OpKernel<T> {
     auto dims = context.Attr<std::vector<int>>("dim");
     if (context.GetPlace().type() == typeid(platform::CPUPlace) &&
         dims.size() == 1) {
+      int in_dtype = context.Attr<int>("in_dtype");
       auto* input0 = context.Input<Tensor>("X");
-      auto* input2 = context.Input<Tensor>(framework::GradVarName("Out"));
+
+      Tensor* input2 = nullptr;
+      Tensor tmp_tensor;
+      if (in_dtype >= 0) {
+        auto* pre_input = context.Input<Tensor>(framework::GradVarName("Out"));
+        auto in_kernel_type =
+            framework::OpKernelType(pre_input->type(), context.GetPlace());
+        auto out_kernel_type = framework::OpKernelType(
+            static_cast<framework::proto::VarType::Type>(in_dtype),
+            context.GetPlace());
+        framework::TransDataType(in_kernel_type, out_kernel_type, *pre_input,
+                                 &tmp_tensor);
+        input2 = &tmp_tensor;
+      } else {
+        input2 = const_cast<Tensor*>(
+            context.Input<Tensor>(framework::GradVarName("Out")));
+      }
+
       auto* output = context.Output<Tensor>(framework::GradVarName("X"));
       output->mutable_data<T>(context.GetPlace());
       const auto* input2_d = input2->data<T>();
