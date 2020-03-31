@@ -101,6 +101,11 @@ inline void MatchShapeToLayout(framework::Tensor* tensor_in,
   }
 }
 
+struct mkldnn_dummy_primitive {
+  struct primitive_desc {};
+  struct desc {};
+};
+
 inline mkldnn::memory::desc MKLDNNMemDesc(const std::vector<int64_t>& dims,
                                           mkldnn::memory::data_type data_type,
                                           MKLDNNMemoryFormat format) {
