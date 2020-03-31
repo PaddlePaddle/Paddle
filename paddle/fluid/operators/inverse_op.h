@@ -24,39 +24,12 @@ template <typename DeviceContext, typename T>
 class InverseKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-#ifdef PADDLE_WITH_MKLML
     auto* input = context.Input<framework::Tensor>("Input");
     auto* output = context.Output<framework::Tensor>("Output");
+    output->mutable_data<T>(context.GetPlace());
 
-    const auto& input_dims = input->dims();
-    const int rank = input_dims.size();
-    int N = input_dims[rank - 1];
-    int batch_size = rank > 2 ? input->numel() / (N * N) : 1;
-
-    framework::Tensor ipiv;
-    int* ipiv_ptr = ipiv.mutable_data<int>({N}, context.GetPlace());
-
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
-    T* output_ptr = output->mutable_data<T>(context.GetPlace());
-
-    if (input->data<T>() != output_ptr) {
-      framework::TensorCopy(*input, context.GetPlace(), output);
-    }
-
-    for (int i = 0; i < batch_size; ++i) {
-      T* A = output_ptr + i * N * N;
-
-      // Compute the LU Factorization of a general m-by-n matrix: A = P*L*U
-      blas.GETRF(N, N, A, ipiv_ptr);
-
-      // Computes the inverse of an LU-factored general matrix.
-      blas.GETRI(N, A, ipiv_ptr);
-    }
-#else
-    PADDLE_THROW(
-        platform::errors::Unimplemented("The CPU kernel of matrix's inverse "
-                                        "without MKLML is not implemented."));
-#endif
+    auto blas = math::GetBlas<DeviceContext, T>(context);
+    blas.MatInv(*input, output);
   }
 };
 

@@ -377,6 +377,20 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
 #endif  // CUDA_VERSION >= 9010
 }
 
+template <>
+template <typename T>
+void Blas<platform::CUDADeviceContext>::MatInv(const framework::Tensor &A,
+                                               framework::Tensor *A_inv) const {
+  //  cublasStatus_t cublasSmatinvBatched(cublasHandle_t handle,
+  //                                    int n,
+  //                                    const float *A[],
+  //                                    int lda,
+  //                                    float *Ainv[],
+  //                                    int lda_inv,
+  //                                    int *info,
+  //                                    int batchSize);
+}
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
