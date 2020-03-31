@@ -68,8 +68,8 @@ class TestTDMSamplerOp(OpTest):
             node_nums += layer_node
             tree_layer_offset_lod.append(node_nums)
 
-        travel_np = np.array(self.tree_travel).astype(self.dtype)
-        layer_np = np.array(tree_layer_flat).astype(self.dtype)
+        travel_np = np.array(self.tree_travel).astype(self.tree_dtype)
+        layer_np = np.array(tree_layer_flat).astype(self.tree_dtype)
         layer_np = layer_np.reshape([-1, 1])
 
         self.x_np = np.random.randint(
