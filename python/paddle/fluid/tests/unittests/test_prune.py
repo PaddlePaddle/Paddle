@@ -421,16 +421,13 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         with fluid.scope_guard(scope):
             with fluid.program_guard(program, startup_program):
                 (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                x.persistable = True
                 sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.5)
                 train1, _ = sgd_optimizer.minimize(loss1)
                 cloned_program = program.clone()
-
                 train2, _ = sgd_optimizer.minimize(loss2)
                 exe.run(startup_program)
                 x_np = np.random.random(size=(10, 2)).astype('float32')
                 label_np = np.random.randint(1, size=(10, 1)).astype('int64')
-
                 res = exe.run(program,
                               feed={'x': x_np,
                                     'label': label_np},
@@ -480,53 +477,63 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         # do not use_prune
         with fluid.scope_guard(scope):
             with fluid.program_guard(program, startup_program):
-                (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                x.persistable = True
-                sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.5)
-                train1, _ = sgd_optimizer.minimize(loss1)
+                (x1, x2, y1, y2, label, loss1, loss2, w1_param_attrs,
+                 w2_param_attrs) = self.net2()
+                adam_optimizer1 = fluid.optimizer.AdamOptimizer(
+                    learning_rate=0.5)
+                train1 = adam_optimizer1.minimize(loss1)
                 cloned_program = program.clone()
-
-                train2, _ = sgd_optimizer.minimize(loss2)
+                adam_optimizer2 = fluid.optimizer.AdamOptimizer(
+                    learning_rate=0.5)
+                train2 = adam_optimizer2.minimize(loss2)
                 exe.run(startup_program)
-                weight1 = np.array(
-                    scope.find_var(w_param_attrs.name).get_tensor())
                 x_np = np.random.random(size=(10, 2)).astype('float32')
                 label_np = np.random.randint(1, size=(10, 1)).astype('int64')
-                compiled_prog = fluid.CompiledProgram(
+                compiled_prog1 = fluid.CompiledProgram(
                     program).with_data_parallel(
                         loss_name=loss1.name, places=[fluid.CPUPlace()] * 2)
-                for i in range(10):
-                    if i % 2:
-                        res = exe.run(compiled_prog,
+                compiled_prog2 = fluid.CompiledProgram(
+                    program).with_data_parallel(
+                        loss_name=loss2.name, places=[fluid.CPUPlace()] * 2)
+                for i in range(2):
+                    if i % 2 == 1:
+                        res = exe.run(compiled_prog1,
                                       feed=[{
-                                          'x': x_np,
-                                          'label': label_np
+                                          'x1': x_np[0:5, :],
+                                          'label': label_np[0:5, :]
                                       }, {
-                                          'x': x_np,
-                                          'label': label_np
+                                          'x1': x_np[5:, :],
+                                          'label': label_np[5:, :]
                                       }],
                                       fetch_list=[loss1.name, train1],
                                       use_prune=True)
                     else:
-                        res = exe.run(compiled_prog,
-                                      feed={'x': x_np,
-                                            'label': label_np},
+                        res = exe.run(compiled_prog2,
+                                      feed=[{
+                                          'x2': x_np[0:5, :],
+                                          'label': label_np[0:5, :]
+                                      }, {
+                                          'x2': x_np[5:, :],
+                                          'label': label_np[5:, :]
+                                      }],
                                       fetch_list=[loss2.name, train2],
                                       use_prune=True)
 
                 weight1 = np.array(
-                    scope.find_var(w_param_attrs.name).get_tensor())
+                    scope.find_var(w1_param_attrs.name).get_tensor())
         # expected
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             exe.run(startup_program)
-            for i in range(10):
-                exe.run(cloned_program,
-                        feed={'x': x_np,
-                              'label': label_np},
-                        fetch_list=[loss1.name],
-                        use_prune=False)
-            weight2 = np.array(scope.find_var(w_param_attrs.name).get_tensor())
+            for i in range(2):
+                if i % 2 == 1:
+                    exe.run(cloned_program,
+                            feed={'x1': x_np,
+                                  'x2': x_np,
+                                  'label': label_np},
+                            fetch_list=[loss1.name],
+                            use_prune=False)
+            weight2 = np.array(scope.find_var(w1_param_attrs.name).get_tensor())
         self.assertTrue(np.allclose(weight1, weight2))
 
     def test_prune_program_with_tupe_in_fetch_list(self):
@@ -542,7 +549,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         with fluid.scope_guard(scope):
             with fluid.program_guard(program, startup_program):
                 (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                x.persistable = True
                 sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.5)
                 train1 = sgd_optimizer.minimize(loss1)
                 cloned_program = program.clone()
@@ -600,7 +606,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             with fluid.program_guard(program, startup_program):
                 (x1, x2, y1, y2, label, loss1, loss2, w1_param_attrs,
                  w2_param_attrs) = self.net2()
-                x1.persistable = True
                 sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.5)
                 train1 = sgd_optimizer.minimize(loss1)
                 sgd_optimizer1 = fluid.optimizer.SGD(learning_rate=0.5)
@@ -645,11 +650,9 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         with fluid.scope_guard(scope):
             with fluid.program_guard(program, startup_program):
                 (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                x.persistable = True
                 sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.5)
                 train1, _ = sgd_optimizer.minimize(loss1)
                 cloned_program = program.clone()
-
                 train2, _ = sgd_optimizer.minimize(loss2)
                 exe.run(startup_program)
                 x_np = np.random.random(size=(10, 2)).astype('float32')
