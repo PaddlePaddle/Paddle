@@ -5175,6 +5175,7 @@ def get_flags(flags):
 
     Examples:
         .. code-block:: python
+
             import paddle.fluid as fluid
 
             flags = ['FLAGS_eager_delete_tensor_gb', 'FLAGS_check_nan_inf']
