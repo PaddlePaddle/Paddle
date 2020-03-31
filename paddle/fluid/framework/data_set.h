@@ -128,6 +128,8 @@ class Dataset {
   virtual void Merge_Pv_Instance() = 0;
   // divide pv instance
   virtual void Divide_Pv_Instance() = 0;
+  // only for untest
+  virtual void SetCurrentPhase(int current_phase) = 0;
   virtual void GenerateLocalTablesUnlock(int table_id, int feadim,
                                          int read_thread_num,
                                          int consume_thread_num,
@@ -210,6 +212,7 @@ class DatasetImpl : public Dataset {
   virtual void MergeByInsId() {}
   virtual void Merge_Pv_Instance() {}
   virtual void Divide_Pv_Instance() {}
+  virtual void SetCurrentPhase(int current_phase) {}
   virtual void GenerateLocalTablesUnlock(int table_id, int feadim,
                                          int read_thread_num,
                                          int consume_thread_num,
@@ -278,6 +281,7 @@ class MultiSlotDataset : public DatasetImpl<Record> {
   virtual void MergeByInsId();
   virtual void Merge_Pv_Instance();
   virtual void Divide_Pv_Instance();
+  virtual void SetCurrentPhase(int current_phase);
   virtual void GenerateLocalTablesUnlock(int table_id, int feadim,
                                          int read_thread_num,
                                          int consume_thread_num, int shard_num);

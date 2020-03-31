@@ -814,6 +814,12 @@ void MultiSlotDataset::Divide_Pv_Instance() {
   this->LocalShuffle();
 }
 
+void MultiSlotDataset::SetCurrentPhase(int current_phase) {
+  for (int i = 0; i < thread_num_; ++i) {
+    readers_[i]->SetCurrentPhase(current_phase);
+  }
+}
+
 void MultiSlotDataset::Merge_Pv_Instance() {
   if (!input_channel_ || input_channel_->Size() == 0) {
     return;

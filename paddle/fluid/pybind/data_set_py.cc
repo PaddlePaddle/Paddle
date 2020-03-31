@@ -257,6 +257,8 @@ void BindDataset(py::module *m) {
            py::call_guard<py::gil_scoped_release>())
       .def("divide_pv_instance", &framework::Dataset::Divide_Pv_Instance,
            py::call_guard<py::gil_scoped_release>())
+      .def("set_current_phase", &framework::Dataset::SetCurrentPhase,
+           py::call_guard<py::gil_scoped_release>())
       .def("set_enable_pv_predict", &framework::Dataset::SetEnablePvPredict,
            py::call_guard<py::gil_scoped_release>())
 

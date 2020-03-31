@@ -235,6 +235,7 @@ InMemoryDataFeed<T>::InMemoryDataFeed() {
   this->parse_content_ = false;
   this->parse_logkey_ = false;
   this->enable_pv_predict_ = false;
+  this->current_phase_ = 1;  // 1:join ;0:update
   this->input_channel_ = nullptr;
   this->output_channel_ = nullptr;
   this->consume_channel_ = nullptr;
@@ -244,8 +245,6 @@ template <typename T>
 bool InMemoryDataFeed<T>::Start() {
 #ifdef _LINUX
   this->CheckSetFileList();
-  //  // FIXME beceuse of two phases in wasq, it must judge form box_wraper
-
   if (output_channel_->Size() == 0 && input_channel_->Size() != 0) {
     std::vector<T> data;
     input_channel_->Read(data);
@@ -310,7 +309,6 @@ void InMemoryDataFeed<T>::SetConsumeChannel(void* channel) {
   consume_channel_ = static_cast<paddle::framework::ChannelObject<T>*>(channel);
 }
 
-// FIXME for wasq
 template <typename T>
 void InMemoryDataFeed<T>::SetInputPvChannel(void* channel) {
   input_pv_channel_ =
@@ -352,6 +350,11 @@ void InMemoryDataFeed<T>::SetParseLogKey(bool parse_logkey) {
 template <typename T>
 void InMemoryDataFeed<T>::SetEnablePvPredict(bool enable_pv_predict) {
   enable_pv_predict_ = enable_pv_predict;
+}
+
+template <typename T>
+void InMemoryDataFeed<T>::SetCurrentPhase(int current_phase) {
+  current_phase_ = current_phase;
 }
 
 template <typename T>
@@ -802,10 +805,6 @@ void MultiSlotInMemoryDataFeed::GetMsgFromLogKey(const std::string& log_key,
 
   std::string rank_str = log_key.substr(14, 2);
   *rank = (uint32_t)strtoul(rank_str.c_str(), NULL, 16);
-
-  // VLOG(3) << "search_id " << search_id;
-  // VLOG(3) << "cmatch " << cmatch;
-  // VLOG(3) << "rank " << rank;
 }
 
 bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
@@ -858,10 +857,6 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
       uint32_t cmatch;
       uint32_t rank;
       GetMsgFromLogKey(log_key, &search_id, &cmatch, &rank);
-
-      VLOG(3) << "search_id " << search_id;
-      VLOG(3) << "cmatch " << cmatch;
-      VLOG(3) << "rank " << rank;
 
       instance->search_id = search_id;
       instance->cmatch = cmatch;
@@ -1263,8 +1258,13 @@ bool MultiSlotFileInstantDataFeed::ParseOneMiniBatch() {
 #endif
 
 bool PaddleBoxDataFeed::Start() {
-  int phase = GetCurrentPhase();  // join: 1, update: 0
 #ifdef _LINUX
+  int phase = GetCurrentPhase();  // join: 1, update: 0
+  if (phase == -1) {
+    VLOG(0) << "It should be complied with BoxPS";
+    this->finish_start_ = true;
+    return true;
+  }
   this->CheckSetFileList();
   if (enable_pv_predict_ && phase == 1) {
     // join phase : input_pv_channel to output_pv_channel
@@ -1290,6 +1290,11 @@ int PaddleBoxDataFeed::Next() {
 #ifdef _LINUX
   int phase = GetCurrentPhase();  // join: 1, update: 0
   this->CheckStart();
+  if (phase == -1) {
+    VLOG(0) << "It should be complied with BoxPS";
+    return 0;
+  }
+
   if (enable_pv_predict_ && phase == 1) {
     // join phase : output_pv_channel to consume_pv_channel
     CHECK(output_pv_channel_ != nullptr);
@@ -1333,10 +1338,8 @@ int PaddleBoxDataFeed::Next() {
 
 void PaddleBoxDataFeed::Init(const DataFeedDesc& data_feed_desc) {
   MultiSlotInMemoryDataFeed::Init(data_feed_desc);
-  if (enable_pv_predict_) {
-    rank_offset_name_ = data_feed_desc.rank_offset();
-    pv_batch_size_ = data_feed_desc.pv_batch_size();
-  }
+  rank_offset_name_ = data_feed_desc.rank_offset();
+  pv_batch_size_ = data_feed_desc.pv_batch_size();
 }
 
 void PaddleBoxDataFeed::GetRankOffset(const std::vector<PvInstance>& pv_vec,
@@ -1392,8 +1395,10 @@ void PaddleBoxDataFeed::GetRankOffset(const std::vector<PvInstance>& pv_vec,
 void PaddleBoxDataFeed::AssignFeedVar(const Scope& scope) {
   MultiSlotInMemoryDataFeed::AssignFeedVar(scope);
   // set rank offset memory
-  if (enable_pv_predict_ && GetCurrentPhase() == 1)
+  int phase = GetCurrentPhase();  // join: 1, update: 0
+  if (enable_pv_predict_ && phase == 1) {
     rank_offset_ = scope.FindVar(rank_offset_name_)->GetMutable<LoDTensor>();
+  }
 }
 
 void PaddleBoxDataFeed::PutToFeedVec(const std::vector<PvInstance>& pv_vec) {
@@ -1419,7 +1424,8 @@ int PaddleBoxDataFeed::GetCurrentPhase() {
   auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
   return box_ptr->PassFlag();  // join: 1, update: 0
 #else
-  return 0;
+  VLOG(0) << "It should be complied with BOX_PS...";
+  return current_phase_;  // get wrong condition
 #endif
 }
 

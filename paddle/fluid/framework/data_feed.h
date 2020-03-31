@@ -94,7 +94,6 @@ struct Record {
   uint32_t cmatch;
 };
 
-// FIXME for wasq model -> Pv instance
 struct PvInstanceObject {
   std::vector<Record*> ads;
   void merge_instance(Record* ins) { ads.push_back(ins); }
@@ -139,7 +138,6 @@ class DataFeed {
   // This function is used for binding feed_vec memory in a given scope
   virtual void AssignFeedVar(const Scope& scope);
 
-  // FIXME for wasq model
   // This function will do nothing at default
   virtual void SetInputPvChannel(void* channel) {}
   // This function will do nothing at default
@@ -162,6 +160,7 @@ class DataFeed {
   virtual void SetParseContent(bool parse_content) {}
   virtual void SetParseLogKey(bool parse_logkey) {}
   virtual void SetEnablePvPredict(bool enable_pv_predict) {}
+  virtual void SetCurrentPhase(int current_phase) {}
   virtual void SetFileListMutex(std::mutex* mutex) {
     mutex_for_pick_file_ = mutex;
   }
@@ -219,7 +218,6 @@ class DataFeed {
   // The data read by DataFeed will be stored here
   std::vector<LoDTensor*> feed_vec_;
 
-  // FIXME for wasq model
   LoDTensor* rank_offset_;
 
   // the batch size defined by user
@@ -298,6 +296,7 @@ class InMemoryDataFeed : public DataFeed {
   virtual void SetParseContent(bool parse_content);
   virtual void SetParseLogKey(bool parse_logkey);
   virtual void SetEnablePvPredict(bool enable_pv_predict);
+  virtual void SetCurrentPhase(int current_phase);
   virtual void LoadIntoMemory();
 
  protected:
@@ -311,6 +310,7 @@ class InMemoryDataFeed : public DataFeed {
   bool parse_content_;
   bool parse_logkey_;
   bool enable_pv_predict_;
+  int current_phase_{-1};  // only for untest
   std::ifstream file_;
   std::shared_ptr<FILE> fp_;
   paddle::framework::ChannelObject<T>* input_channel_;
@@ -599,7 +599,6 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
                                 uint32_t* cmatch, uint32_t* rank);
 };
 
-// FIXME for wasq two phase
 class PaddleBoxDataFeed : public MultiSlotInMemoryDataFeed {
  public:
   PaddleBoxDataFeed() {}

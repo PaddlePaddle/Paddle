@@ -504,6 +504,24 @@ class InMemoryDataset(DatasetBase):
         """
         self.dataset.merge_pv_instance()
 
+    def set_current_phase(self, current_phase):
+        """
+        Set current phase in train. It is useful for untest.
+        current_phase : 1 for join, 0 for update.
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              filelist = ["a.txt", "b.txt"]
+              dataset.set_filelist(filelist)
+              dataset.load_into_memory()
+              dataset.set_current_phase(1)
+
+        """
+        self.dataset.set_current_phase(current_phase)
+
     def divide_pv_instance(self):
         """
         Divide pv instance and convey it to input_channel.
@@ -1054,5 +1072,5 @@ class BoxPSDataset(InMemoryDataset):
             self.dataset.dynamic_adjust_channel_num(thread_num, True)
         self.dataset.dynamic_adjust_readers_num(thread_num)
 
-    #def _dynamic_adjust_after_train(self):
-    #    pass
+    def _dynamic_adjust_after_train(self):
+        pass
