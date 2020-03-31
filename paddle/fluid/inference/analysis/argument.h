@@ -176,10 +176,14 @@ struct Argument {
   DECL_ARGUMENT_FIELD(use_fc_padding, UseFcPadding, bool);
   DECL_ARGUMENT_FIELD(gpu_device_id, GPUDeviceId, int);
 
-  // usually use for trt dynamic shape.
+  // Usually use for trt dynamic shape.
+  // TRT will select the best kernel according to opt shape
+  // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will not
+  // run fp16.
   DECL_ARGUMENT_FIELD(min_input_shape, MinInputShape, input_shape_t);
   DECL_ARGUMENT_FIELD(max_input_shape, MaxInputShape, input_shape_t);
   DECL_ARGUMENT_FIELD(optim_input_shape, OptimInputShape, input_shape_t);
+  DECL_ARGUMENT_FIELD(disable_trt_plugin_fp16, CloseTrtPluginFp16, bool);
 
   DECL_ARGUMENT_FIELD(use_tensorrt, UseTensorRT, bool);
   DECL_ARGUMENT_FIELD(tensorrt_max_batch_size, TensorRtMaxBatchSize, int);

@@ -15,6 +15,8 @@
 from __future__ import print_function
 import unittest
 import numpy as np
+import paddle
+import paddle.fluid as fluid
 import paddle.fluid.core as core
 from op_test import OpTest, skip_check_grad_ci
 
@@ -223,6 +225,34 @@ class TestElementwiseDivOpFp16(ElementwiseDivOp):
     def test_check_grad_ingore_y(self):
         self.check_grad(
             ['X'], 'Out', max_relative_error=1, no_grad_set=set('Y'))
+
+
+class TestDivOpAttr(unittest.TestCase):
+    def test_out(self):
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data(name="x", shape=[3], dtype="float32")
+            y = fluid.data(name='y', shape=[3], dtype='float32')
+
+            res = fluid.data(name="output", shape=[3], dtype="float32")
+            y_1 = paddle.tensor.div(x, y, out=res)
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            data1 = np.array([2, 3, 4], dtype='float32')
+            data2 = np.array([1, 5, 2], dtype='float32')
+            np_res, np_y_1 = exe.run(feed={'x': data1,
+                                           'y': data2},
+                                     fetch_list=[res, y_1])
+
+            self.assertEqual((np_res == np_y_1).all(), True)
+
+    def test_name(self):
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data(name="x", shape=[2, 3], dtype="float32")
+            y = fluid.data(name='y', shape=[2, 3], dtype='float32')
+
+            y_1 = paddle.tensor.div(x, y, name='div_res')
+            self.assertEqual(('div_res' in y_1.name), True)
 
 
 if __name__ == '__main__':
