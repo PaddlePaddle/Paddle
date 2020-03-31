@@ -361,3 +361,19 @@ TEST(enforce, cannot_to_string_type) {
   list.push_back(4);
   PADDLE_ENFORCE_NE(list.begin(), list.end());
 }
+
+TEST(GET_DATA_SAFELY, SUCCESS) {
+  int* a = new int(10);
+  paddle::platform::GetDataSafely(a, "Input", "X", "dummy");
+}
+
+TEST(GET_DATA_SAFELY, FAIL) {
+  bool caught_exception = false;
+  try {
+    int* a = nullptr;
+    paddle::platform::GetDataSafely(a, "Input", "X", "dummy");
+  } catch (paddle::platform::EnforceNotMet& error) {
+    caught_exception = true;
+  }
+  EXPECT_TRUE(caught_exception);
+}

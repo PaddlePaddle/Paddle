@@ -348,6 +348,44 @@ struct EnforceNotMet : public std::exception {
 #define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) \
   __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <=, >, __VA_ARGS__)
 
+/** EXTENDED TOOL FUNCTIONS WITH CHECKING **/
+
+/*
+ * Summary: This function is used to get the internal type data (such as
+ *LoDTensor or SelectedRows)
+ *   of the input and output variable in op, generally used when call
+ *ctx.Input<LoDTensor>() or
+ *   ctx.Output<LoDTensor>(). Firstly this macro check whether the obtained
+ *pointer is null,
+ *   and return data if it is not null.
+ *
+ * Parameters:
+ *     ptr: pointer
+ *     role: (string), Input or Output
+ *     name: (string), Input or Output name
+ *     op_type: (string), the op type
+ *  
+ * Return: The data pointed to by the pointer.
+ *
+ * Examples:
+ *    platform::GetDataSafely(ctx.Input<LoDTensor>("X")).
+ *    paltform::GetDataSafely(ctx.Output<SelectedRows>("Y")).
+*/
+template <typename T>
+inline T& GetDataSafely(T* ptr, const std::string& role,
+                        const std::string& name, const std::string& op_type) {
+  PADDLE_ENFORCE_NOT_NULL(
+      ptr, platform::errors::InvalidArgument(
+               "Unable to get %s data of %s %s in operator %s. "
+               "Possible reasons are:\n"
+               "  1. The %s is not the %s of operator %s;\n"
+               "  2. The %s has no corresponding variable passed in;\n"
+               "  3. The %s corresponding variable is not initialized.",
+               demangle(typeid(T).name()), role, name, op_type, name, role,
+               op_type, name, name));
+  return *ptr;
+}
+
 /** OTHER EXCEPTION AND ENFORCE **/
 
 struct EOFException : public std::exception {
