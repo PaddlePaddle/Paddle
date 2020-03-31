@@ -327,6 +327,16 @@ struct Layers {
     return outs;
   }
 
+  VarDesc* embedding(VarDesc* x, VarDesc* weights) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("lookup_table");
+    op->SetInput("Ids", {x->Name()});
+    op->SetInput("W", {weights->Name()});
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
   void backward(std::vector<VarDesc*> targets) {
     // This function is designed to simulate the structure of training program,
     //  but is constructed differently as the actual program.

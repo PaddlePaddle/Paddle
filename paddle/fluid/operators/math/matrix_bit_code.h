@@ -106,7 +106,7 @@ class SimpleCode {
       : c_(static_cast<size_t>(ids[code]) + num_classes) {}
   /**
    * Here the id of root should be 1 rather than 0, thus the encoding of class c
-   * is `c + num_classes` and all siblings can get the same weight indice using
+   * is `c + num_classes` and all siblings can get the same weight index using
    * prefixes.
    * Weight index is the prefixes of encoding, thus leave out the right most
    * bit in calc_index.
@@ -133,7 +133,7 @@ class CustomCode {
   }
   /**
    * Here the id of root should be 1 rather than 0, thus the encoding of class c
-   * is `c + num_classes` and all siblings can get the same weight indice using
+   * is `c + num_classes` and all siblings can get the same weight index using
    * prefixes.
    * Weight index is the prefixes of encoding, thus leave out the right most
    * bit in calc_index.

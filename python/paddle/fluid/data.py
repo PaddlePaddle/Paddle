@@ -27,7 +27,7 @@ def data(name, shape, dtype='float32', lod_level=0):
 
     This function creates a variable on the global block. The global variable
     can be accessed by all the following operators in the graph. The variable
-    is a placeholder that could be feeded with input, such as Executor can feed
+    is a placeholder that could be fed with input, such as Executor can feed
     input into the variable.
 
     Note: 
@@ -35,8 +35,8 @@ def data(name, shape, dtype='float32', lod_level=0):
         future version. Please use this `paddle.fluid.data`. 
        
         The `paddle.fluid.layers.data` set shape and dtype at compile time but
-        does NOT check the shape or the dtype of feeded data, this
-        `paddle.fluid.data` checks the shape and the dtype of data feeded by
+        does NOT check the shape or the dtype of fed data, this
+        `paddle.fluid.data` checks the shape and the dtype of data fed by
         Executor or ParallelExecutor during run time.
 
         To feed variable size inputs, users can set -1 on the variable

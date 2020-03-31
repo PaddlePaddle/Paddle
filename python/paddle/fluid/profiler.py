@@ -137,15 +137,15 @@ def start_profiler(state, tracer_option='Default'):
             or 'All'. 'CPU' means only profiling CPU; 'GPU' means profiling
             both CPU and GPU; 'All' means profiling both CPU and GPU, and 
             generates timeline as well.
-        tracer_option (str) : tracer_option can be one of ['Default', 'OpDetail', 'AllOpDetail'], it
-            can control the profile level and print the different level profile result. Default option print 
-            the different Op type profiling result and the OpDetail option print the detail profiling 
-            result of different op types such as compute and data transform, AllOpDetail option 
-            print the detail profiling result of different op name same as OpDetail.
+        tracer_option (str, optional) : tracer_option can be one of ['Default', 'OpDetail', 'AllOpDetail'], it
+            can control the profile level and print the different level profile result. `Default` option print 
+            the different Op type profiling result and the `OpDetail` option print the detail profiling 
+            result of different op types such as compute and data transform, `AllOpDetail` option 
+            print the detail profiling result of different op name same as `OpDetail`.
 
     Raises:
-        ValueError: If `state` is not in ['CPU', 'GPU', 'All'].
-        ValueError: If `tracer_option` is not in ['Default', 'OpDetail', 'AllOpDetail']
+        ValueError: If `state` is not in ['CPU', 'GPU', 'All'] or `tracer_option` 
+            is not in ['Default', 'OpDetail', 'AllOpDetail'].
 
     Examples:
 
@@ -274,11 +274,11 @@ def profiler(state,
             The `ave` means sorting by the average execution time.
         profile_path (str, optional) : If state == 'All', it will generate timeline,
             and write it into `profile_path`. The default profile_path is `/tmp/profile`. 
-        tracer_option (str) : tracer_option can be one of ['Default', 'OpDetail', 'AllOpDetail'], it
-            can control the profile level and print the different level profile result. Default option print 
-            the different Op type profiling result and the OpDetail option print the detail profiling 
-            result of different op types such as compute and data transform, AllOpDetail option 
-            print the detail profiling result of different op name same as OpDetail.
+        tracer_option (str, optional) : tracer_option can be one of ['Default', 'OpDetail', 'AllOpDetail'], it
+            can control the profile level and print the different level profile result. `Default` option print 
+            the different Op type profiling result and the `OpDetail` option print the detail profiling 
+            result of different op types such as compute and data transform, `AllOpDetail` option 
+            print the detail profiling result of different op name same as `OpDetail`.
 
     Raises:
         ValueError: If `state` is not in ['CPU', 'GPU', 'All']. If `sorted_key` is

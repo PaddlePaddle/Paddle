@@ -123,6 +123,18 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
       pass->Set("use_static_engine", new bool(use_static_engine));
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
+      pass->Set("max_input_shape", new std::map<std::string, std::vector<int>>(
+                                       argument->max_input_shape()));
+      pass->Set("min_input_shape", new std::map<std::string, std::vector<int>>(
+                                       argument->min_input_shape()));
+      pass->Set("optim_input_shape",
+                new std::map<std::string, std::vector<int>>(
+                    argument->optim_input_shape()));
+      // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will
+      // not
+      // run fp16.
+      pass->Set("disable_trt_plugin_fp16",
+                new bool(argument->disable_trt_plugin_fp16()));
     }
     if (pass_name == "ngraph_subgraph_pass") {
       pass->Set("program",

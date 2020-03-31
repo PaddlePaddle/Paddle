@@ -14,21 +14,21 @@
 
 from __future__ import print_function
 
-__all__ = ['TracedLayer', 'dygraph_to_static_output']
+__all__ = [
+    'TracedLayer', 'dygraph_to_static_code', 'dygraph_to_static_func',
+    'dygraph_to_static_output', 'dygraph_to_static_program'
+]
 
-import gast
-import inspect
-import textwrap
+import warnings
 
 from ..wrapped_decorator import wrap_decorator
 from .base import program_desc_tracing_guard, switch_to_static_graph
-from .dygraph_to_static import DygraphToStaticAst
-from .dygraph_to_static.ast_utils import ast_to_func
 from .layers import Layer
 from paddle.fluid import core
 from paddle.fluid.framework import Program, Block, Variable, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.compiler import CompiledProgram
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
 
 
 def create_program_from_desc(program_desc):
@@ -54,20 +54,65 @@ def extract_vars(inputs):
     return result_list
 
 
+def _dygraph_to_static_code_(dygraph_func):
+    def __impl__(*args, **kwargs):
+        program_translator = ProgramTranslator()
+        return program_translator.get_code(dygraph_func)
+
+    return __impl__
+
+
+dygraph_to_static_code = wrap_decorator(_dygraph_to_static_code_)
+
+
+def _dygraph_to_static_program_(dygraph_func):
+    def __impl__(*args, **kwargs):
+        if in_dygraph_mode():
+            warnings.warn(
+                "The decorator 'dygraph_to_static_program' doesn't work in "
+                "dygraph mode. We will just return dygraph output. Use the "
+                "decorator in static mode if you would like to translate to "
+                "static graph.")
+            return dygraph_func(*args, **kwargs)
+        program_translator = ProgramTranslator()
+        return program_translator.get_program(dygraph_func, *args, **kwargs)
+
+    return __impl__
+
+
+dygraph_to_static_program = wrap_decorator(_dygraph_to_static_program_)
+
+
+def _dygraph_to_static_func_(dygraph_func):
+    def __impl__(*args, **kwargs):
+        if in_dygraph_mode():
+            warnings.warn(
+                "The decorator 'dygraph_to_static_func' doesn't work in "
+                "dygraph mode. We will just return dygraph output. Use the "
+                "decorator in static mode if you would like to translate to "
+                "static graph.")
+            return dygraph_func(*args, **kwargs)
+        program_translator = ProgramTranslator()
+        static_func = program_translator.get_func(dygraph_func)
+        return static_func(*args, **kwargs)
+
+    return __impl__
+
+
+dygraph_to_static_func = wrap_decorator(_dygraph_to_static_func_)
+
+
 def _dygraph_to_static_output_(dygraph_func):
     def __impl__(*args, **kwargs):
-        # Get AST from dygraph function
-        dygraph_code = inspect.getsource(dygraph_func)
-        dygraph_code = textwrap.dedent(dygraph_code)
-        root = gast.parse(dygraph_code)
-
-        # Transform AST
-        dygraph_to_static = DygraphToStaticAst()
-        root_wrapper = dygraph_to_static.get_static_ast(root)
-        func_name = dygraph_to_static.get_module_name()
-        static_func, file_name = ast_to_func(root_wrapper.node, func_name)
-
-        return static_func(*args, **kwargs)
+        if in_dygraph_mode():
+            warnings.warn(
+                "The decorator 'dygraph_to_static_output' doesn't work in "
+                "dygraph mode. We will just return dygraph output. Use the "
+                "decorator in static mode if you would like to translate to "
+                "static graph.")
+            return dygraph_func(*args, **kwargs)
+        program_translator = ProgramTranslator()
+        return program_translator.get_output(dygraph_func, *args, **kwargs)
 
     return __impl__
 
@@ -334,11 +379,11 @@ class TracedLayer(object):
                     in_var = to_variable(in_np)
                     out_dygraph, static_layer = TracedLayer.trace(layer, inputs=[in_var])
                     static_layer.save_inference_model(save_dirname, feed=[0], fetch=[0])
-                
-                place = fluid.CPUPlace() 
+
+                place = fluid.CPUPlace()
                 exe = fluid.Executor(place)
                 program, feed_vars, fetch_vars = fluid.io.load_inference_model(save_dirname,
-                                                    exe) 
+                                                    exe)
 
                 fetch, = exe.run(program, feed={feed_vars[0]: in_np}, fetch_list=fetch_vars)
                 print(fetch.shape) # (2, 10)

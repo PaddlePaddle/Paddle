@@ -402,6 +402,23 @@ class PSLib(Fleet):
                                                        var_list, decay, emb_dim)
         self._role_maker._barrier_worker()
 
+    def clear_one_table(self, table_id):
+        """
+        clear_one_table() will be called by user. It will clear one table.
+
+        Args:
+            table_id(int): table id
+
+        Examples:
+            .. code-block:: python
+
+              fleet.clear_one_table(0)
+        """
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.clear_one_table(table_id)
+        self._role_maker._barrier_worker()
+
     def clear_model(self):
         """
         clear_model() will be called by user. It will clear sparse model.
@@ -448,7 +465,7 @@ class PSLib(Fleet):
                     model_proto_file(str): path of program desc proto binary
                                            file, can be local or hdfs/afs file
                     var_names(list): var name list
-                    load_combine(bool): load from a file or splited param files
+                    load_combine(bool): load from a file or split param files
                                         default False.
 
         Examples:
@@ -502,7 +519,7 @@ class PSLib(Fleet):
             model_proto_file(str): path of program desc proto binary file,
                                    can be local or hdfs/afs file
             var_names(list): load var names
-            load_combine(bool): load from a file or splited param files
+            load_combine(bool): load from a file or split param files
 
         """
         self._role_maker._barrier_worker()

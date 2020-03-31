@@ -144,8 +144,7 @@ class SequencePoolGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* op_desc_ptr = new T();
+  void Apply(GradOpPtr<T> op_desc_ptr) const override {
     op_desc_ptr->SetType("sequence_pool_grad");
     op_desc_ptr->SetInput("X", this->Input("X"));
     if (boost::get<std::string>(this->GetAttr("pooltype")) == "MAX") {
@@ -155,12 +154,11 @@ class SequencePoolGradOpMaker : public framework::SingleGradOpMaker<T> {
                           this->OutputGrad("Out"));
     op_desc_ptr->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op_desc_ptr->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(op_desc_ptr);
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
-    SequencePoolGradOpNoNeedBufferVarsInference, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequencePoolGradOpNoNeedBufferVarsInference,
+                                    "X");
 
 }  // namespace operators
 }  // namespace paddle

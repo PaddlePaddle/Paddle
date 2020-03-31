@@ -2469,10 +2469,10 @@ def dynamic_gru(input,
             See usage for details in :ref:`api_fluid_ParamAttr` .
         is_reverse(bool, optional): Whether to compute in the reversed order of
             input sequences. Default False.
-        gate_activation(str, optional): The activation fuction corresponding to
+        gate_activation(str, optional): The activation function corresponding to
             :math:`act_g` in the formula. "sigmoid", "tanh", "relu" and "identity"
             are supported. Default "sigmoid".
-        candidate_activation(str, optional): The activation fuction corresponding to
+        candidate_activation(str, optional): The activation function corresponding to
             :math:`act_c` in the formula. "sigmoid", "tanh", "relu" and "identity"
             are supported. Default "tanh".
         h_0 (Variable, optional): A Tensor representing the initial hidden state.
@@ -2618,10 +2618,10 @@ def gru_unit(input,
         bias_attr (ParamAttr, optional): To specify the bias parameter property.
             Default: None, which means the default bias parameter property is used.
             See usage for details in :ref:`api_fluid_ParamAttr` .
-        activation(str, optional): The activation fuction corresponding to
+        activation(str, optional): The activation function corresponding to
             :math:`act_c` in the formula. "sigmoid", "tanh", "relu" and "identity"
             are supported. Default "tanh".
-        gate_activation(str, optional): The activation fuction corresponding to
+        gate_activation(str, optional): The activation function corresponding to
             :math:`act_g` in the formula. "sigmoid", "tanh", "relu" and "identity"
             are supported. Default "sigmoid".
 
@@ -2746,7 +2746,7 @@ def beam_search(pre_ids,
             `[batch_size * beam_size, K]`, where `K` supposed to be greater than
             ``beam_size`` and the first dimension size (decrease as samples reach
             to the end) should be same as that of ``pre_ids`` . The data type
-            should be int64. It can be None, which use indice in ``scores`` as
+            should be int64. It can be None, which use index in ``scores`` as
             ids.
         scores(Variable): A LodTensor variable containing the accumulated
             scores corresponding to ``ids`` . Both its shape and lod are same as
@@ -2765,7 +2765,7 @@ def beam_search(pre_ids,
             to :ref:`api_guide_Name`. Usually name is no need to set and 
             None by default.
         return_parent_idx(bool, optional): Whether to return an extra Tensor variable
-            in output, which stores the selected ids' parent indice in
+            in output, which stores the selected ids' parent index in
             ``pre_ids`` and can be used to update RNN's states by gather operator.
             Default False.
 
@@ -2774,7 +2774,7 @@ def beam_search(pre_ids,
             representing the selected ids and the corresponding accumulated scores of \
             current step, have the same shape `[batch_size, beam_size]` and lod with 2 levels, \
             and have data types int64 and float32. If ``return_parent_idx`` is True, \
-            an extra Tensor variable preserving the selected ids' parent indice \
+            an extra Tensor variable preserving the selected ids' parent index \
             is included, whose shape is `[batch_size * beam_size]` and data type \
             is int64.
 

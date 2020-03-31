@@ -56,10 +56,11 @@ using GradOpMakerFN = std::function<std::vector<std::unique_ptr<OpDesc>>(
     const std::vector<BlockDesc*>& grad_block)>;
 
 using DygraphGradOpMakerFN =
-    std::function<std::vector<std::unique_ptr<imperative::OpBase>>(
-        const imperative::OpBase* fw_op_base,
-        const imperative::NameVarBaseMap& var_base_map_in,
-        const imperative::NameVarBaseMap& var_base_map_out)>;
+    std::function<std::shared_ptr<imperative::GradOpNode>(
+        const std::string& /*op_type*/,
+        const imperative::NameVarBaseMap& /*var_base_map_in*/,
+        const imperative::NameVarBaseMap& /*var_base_map_out*/,
+        const framework::AttributeMap& /*attributes*/)>;
 
 using InferVarTypeFN =
     std::function<void(framework::InferVarTypeContext* /*context*/)>;

@@ -905,7 +905,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 fluid.load(main_program, "test_path", exe)
 
-            # check unused paramter
+            # check unused parameter
 
             fluid.load(test_clone_program, "test_path", exe)
 

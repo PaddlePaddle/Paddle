@@ -14,7 +14,7 @@
 #
 
 if(WITH_TESTING)
-  include(tests/test.cmake) # some generic cmake funtion for inference
+  include(tests/test.cmake) # some generic cmake function for inference
 endif()
 
 # TODO(panyx0718): Should this be called paddle_fluid_inference_api_internal?
@@ -76,6 +76,7 @@ set(SHARED_INFERENCE_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/api/api_impl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/analysis_predictor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/utils/io_utils.cc
     ${mkldnn_quantizer_src_file})
 
 # Create shared inference library defaultly

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This is defination of dataset class, which is high performance IO."""
+"""This is definition of dataset class, which is high performance IO."""
 
 from paddle.fluid.proto import data_feed_pb2
 from google.protobuf import text_format
@@ -235,6 +235,22 @@ class DatasetBase(object):
             fs_ugi(str): fs ugi
         """
         self.dataset.set_hdfs_config(fs_name, fs_ugi)
+
+    def set_download_cmd(self, download_cmd):
+        """
+        Set customized download cmd: download_cmd
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset()
+              dataset.set_download_cmd("./read_from_afs")
+
+        Args:
+            download_cmd(str): customized download command
+        """
+        self.dataset.set_download_cmd(download_cmd)
 
     def _prepare_to_run(self):
         """
@@ -816,7 +832,7 @@ class BoxPSDataset(InMemoryDataset):
         """
         self.boxps.begin_pass()
 
-    def end_pass(self):
+    def end_pass(self, need_save_delta):
         """
         End Pass
         Notify BoxPS that current pass ended 
@@ -825,9 +841,9 @@ class BoxPSDataset(InMemoryDataset):
 
               import paddle.fluid as fluid
               dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
-              dataset.end_pass()
+              dataset.end_pass(True)
         """
-        self.boxps.end_pass()
+        self.boxps.end_pass(need_save_delta)
 
     def wait_preload_done(self):
         """

@@ -192,15 +192,11 @@ class TestCondInputOutput(unittest.TestCase):
         with program_guard(main_program, startup_program):
             i = fluid.data(name="i", shape=[1], dtype='int32')
             pred = ((i % 2) == 0)
-            with self.assertRaises(Exception) as e:
+            with self.assertRaises(TypeError):
                 out = layers.cond(pred, i, func_return_one_tensor)
-            self.assertEqual("The true_fn in cond must be callable",
-                             str(e.exception))
 
-            with self.assertRaises(Exception) as e:
+            with self.assertRaises(TypeError):
                 out = layers.cond(pred, func_return_one_tensor, np.asarray([3]))
-            self.assertEqual("The false_fn in cond must be callable",
-                             str(e.exception))
 
             with self.assertRaises(Exception) as e:
                 out = layers.cond(pred, func_return_none,

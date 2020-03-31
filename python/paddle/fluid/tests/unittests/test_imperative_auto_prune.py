@@ -221,8 +221,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             out1.stop_gradient = True
             out = fluid.layers.concat(input=[out1, out2, c], axis=1)
             out.backward()
-            self.assertTrue((linear.weight.gradient() == 0).all())
-            self.assertTrue((out1.gradient() == 0).all())
+            self.assertTrue(linear.weight.gradient() is None)
+            self.assertTrue(out1.gradient() is None)
 
     def test_auto_prune7(self):
         with fluid.dygraph.guard():
@@ -240,8 +240,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             out = fluid.layers.concat(input=[out1, out2, c], axis=1)
             backward_strategy = fluid.dygraph.BackwardStrategy()
             out.backward(backward_strategy)
-            self.assertTrue((linear.weight.gradient() == 0).all())
-            self.assertTrue((out1.gradient() == 0).all())
+            self.assertTrue(linear.weight.gradient() is None)
+            self.assertTrue(out1.gradient() is None)
 
     def test_auto_prune8(self):
         with fluid.dygraph.guard():
@@ -314,8 +314,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
             backward_strategy = fluid.dygraph.BackwardStrategy()
             backward_strategy.sort_sum_gradient = True
             out.backward(backward_strategy)
-            self.assertTrue((linear.weight.gradient() == 0).all())
-            self.assertTrue((out1.gradient() == 0).all())
+            self.assertTrue(linear.weight.gradient() is None)
+            self.assertTrue(out1.gradient() is None)
 
     def test_auto_prune_with_optimizer(self):
         vocab_size = 100

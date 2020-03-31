@@ -44,6 +44,7 @@ cc_library(place SRCS place.cc DEPS enforce boost)
 cc_test(place_test SRCS place_test.cc DEPS place glog gflags)
 
 add_subdirectory(dynload)
+add_subdirectory(stream)
 
 cc_library(cpu_helper SRCS cpu_helper.cc DEPS cblas enforce)
 cc_test(cpu_helper_test SRCS cpu_helper_test.cc DEPS cpu_helper)
@@ -54,7 +55,7 @@ IF(WITH_DGC)
 ENDIF()
 
 IF(WITH_GPU)
-    set(GPU_CTX_DEPS dynload_cuda dynamic_loader)
+    set(GPU_CTX_DEPS dynload_cuda dynamic_loader cuda_stream)
 ENDIF()
 
 IF(WITH_MKLDNN)
@@ -78,8 +79,11 @@ cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool 
     place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
     ${dgc_deps} dlpack cudnn_workspace_helper)
 
-if (WITH_DISTRIBUTE)
-  cc_library(collective_helper SRCS collective_helper.cc DEPS framework_proto  device_context enforce)
+cc_library(collective_helper SRCS collective_helper.cc DEPS framework_proto  device_context enforce)
+
+if(WITH_GPU)
+    cc_library(cuda_resource_pool SRCS cuda_resource_pool.cc DEPS gpu_info)
+    target_link_libraries(device_context cuda_resource_pool)
 endif()
 
 if(WIN32)
@@ -116,6 +120,8 @@ cc_test(profiler_test SRCS profiler_test.cc DEPS profiler)
 
 nv_test(float16_gpu_test SRCS float16_test.cu DEPS lod_tensor)
 cc_test(float16_test SRCS float16_test.cc DEPS lod_tensor)
+
+nv_test(test_limit_gpu_memory SRCS test_limit_gpu_memory.cu DEPS gpu_info flags)
 
 nv_library(cuda_device_guard SRCS cuda_device_guard.cc DEPS gpu_info)
 
