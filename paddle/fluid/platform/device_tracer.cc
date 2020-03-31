@@ -41,7 +41,8 @@ thread_local std::deque<int> block_id_stack;
 // Tracking the nested event stacks.
 thread_local std::deque<Event *> annotation_stack;
 // paralle executor need to do special handling
-static std::deque<Event *> main_thread_annotation_stack;
+static std::mutex main_thread_mu;
+static std::deque<Event *> main_thread_annotation_stack{};
 static std::vector<std::string> main_thread_event_name{"ParallelExecutor::Run"};
 std::map<uint32_t, int32_t> system_thread_id_map;
 
@@ -647,23 +648,32 @@ void SetCurAnnotation(Event *event) {
     if (!main_thread_annotation_stack.empty() &&
         annotation_stack.back()->name() !=
             main_thread_annotation_stack.back()->name()) {
-      event->set_name(main_thread_annotation_stack.back()->name() + "/" +
-                      event->name());
-    }
-    if (!main_thread_annotation_stack.empty() &&
-        find(main_thread_event_name.begin(), main_thread_event_name.end(),
-             main_thread_annotation_stack.back()->name()) !=
-            main_thread_event_name.end()) {
-      main_thread_annotation_stack.push_back(event);
+      if (event->name().substr(
+              0, main_thread_annotation_stack.back()->name().length()) !=
+          main_thread_annotation_stack.back()->name())
+        event->set_name(main_thread_annotation_stack.back()->name() + "/" +
+                        event->name());
     }
   }
+
+  if (annotation_stack.empty() && !main_thread_annotation_stack.empty()) {
+    event->set_name(main_thread_annotation_stack.back()->name() + "/" +
+                    event->name());
+  }
+  if (find(main_thread_event_name.begin(), main_thread_event_name.end(),
+           event->name()) != main_thread_event_name.end()) {
+    std::lock_guard<std::mutex> l(main_thread_mu);
+    main_thread_annotation_stack.push_back(event);
+  }
+
   annotation_stack.push_back(event);
 }
 
 void ClearCurAnnotation() {
-  if (!main_thread_annotation_stack.empty() &&
+  if (!annotation_stack.empty() && !main_thread_annotation_stack.empty() &&
       annotation_stack.back()->name() ==
           main_thread_annotation_stack.back()->name()) {
+    std::lock_guard<std::mutex> l(main_thread_mu);
     main_thread_annotation_stack.pop_back();
   }
   annotation_stack.pop_back();
