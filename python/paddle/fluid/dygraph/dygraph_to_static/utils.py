@@ -45,8 +45,15 @@ def is_api_in_module(node, module_prefix):
     assert isinstance(node, gast.Call), "Input non-Call node for is_dygraph_api"
     func_str = astor.to_source(gast.gast_to_ast(node.func))
     try:
+        # TODO(liym27):
+        #  Consider a better to import modules like:
+        #  source_file = inspect.getfile(dyfunc)
+        #  import_statements = ImportVisitor(source_file).transform()
+        #  import_str = "".join(import_statements)
         import paddle.fluid as fluid
         import paddle
+        from paddle.fluid.dygraph import to_variable
+        import paddle.fluid.dygraph as dygraph
         return eval("_is_api_in_module_helper({}, '{}')".format(func_str,
                                                                 module_prefix))
     except NameError:
@@ -86,8 +93,10 @@ def is_control_flow_to_transform(node, var_name_to_type):
         "The type of input node must be gast.AST, but received %s." % type(node)
 
     if isinstance(node, gast.If):
-        # TODO: make a better condition
-        return True
+        from .ifelse_transformer import IfConditionVisitor
+        if_visitor = IfConditionVisitor(
+            node.test, node_var_type_map=var_name_to_type)
+        return if_visitor.is_control_flow()
 
     if isinstance(node, gast.For):
         # TODO: make a better condition
@@ -148,8 +157,8 @@ def _add_keywords_to(node, dygraph_api_name):
 def is_to_variable(node):
     assert isinstance(node, gast.Call)
     if is_dygraph_api(node):
-        api_name = node.func.attr
-        return api_name == "to_variable"
+        api_name = ast_to_source_code(node.func).strip()
+        return api_name.endswith("to_variable")
     return False
 
 
