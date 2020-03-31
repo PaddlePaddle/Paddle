@@ -43,7 +43,7 @@ class TDMChildOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("dtype",
                  "(int, default INT32) "
                  "Output data type.")
-        .SetDefault(1);
+        .SetDefault(2);
     AddComment(R"DOC("
      **Tdm Child**
      According to the input node_id on the given tree, return the corresponding child node_id and 
