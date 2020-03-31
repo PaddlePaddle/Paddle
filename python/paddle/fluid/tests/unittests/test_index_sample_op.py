@@ -95,5 +95,32 @@ class TestCase4(TestIndexSampleOp):
         self.index_type = "int64"
 
 
+class TestIndexSampleShape(unittest.TestCase):
+    def test_shape(self):
+        import paddle.tensor as tensor
+
+        # create x value
+        x_shape = (2, 5)
+        x_type = "float64"
+        x_np = np.random.random(x_shape).astype(x_type)
+
+        # create index value
+        index_shape = (2, 3)
+        index_type = "int32"
+        index_np = np.random.randint(
+            low=0, high=x_shape[1], size=index_shape).astype(index_type)
+
+        x = fluid.data(name='x', shape=[-1, 5], dtype='float64')
+        index = fluid.data(name='index', shape=[-1, 3], dtype='int32')
+        output = tensor.index_sample(x=x, index=index)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place=place)
+        exe.run(fluid.default_startup_program())
+
+        feed = {'x': x_np, 'index': index_np}
+        res = exe.run(feed=feed, fetch_list=[output])
+
+
 if __name__ == "__main__":
     unittest.main()
