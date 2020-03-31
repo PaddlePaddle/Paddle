@@ -71,19 +71,26 @@ def do_train(args):
 
     # define inputs
     inputs = [
-        Input([None, None], "int64", name="src_word"),
-        Input([None, None], "int64", name="src_pos"),
-        Input([None, args.n_head, None, None],
-              "float32",
-              name="src_slf_attn_bias"),
-        Input([None, None], "int64", name="trg_word"),
-        Input([None, None], "int64", name="trg_pos"),
-        Input([None, args.n_head, None, None],
-              "float32",
-              name="trg_slf_attn_bias"),
-        Input([None, args.n_head, None, None],
-              "float32",
-              name="trg_src_attn_bias"),
+        Input(
+            [None, None], "int64", name="src_word"),
+        Input(
+            [None, None], "int64", name="src_pos"),
+        Input(
+            [None, args.n_head, None, None],
+            "float32",
+            name="src_slf_attn_bias"),
+        Input(
+            [None, None], "int64", name="trg_word"),
+        Input(
+            [None, None], "int64", name="trg_pos"),
+        Input(
+            [None, args.n_head, None, None],
+            "float32",
+            name="trg_slf_attn_bias"),
+        Input(
+            [None, args.n_head, None, None],
+            "float32",
+            name="trg_src_attn_bias"),
     ]
     labels = [
         Input(
@@ -97,33 +104,38 @@ def do_train(args):
     data_files = [args.training_file, args.validation_file
                   ] if args.validation_file else [args.training_file]
     for i, data_file in enumerate(data_files):
-        dataset = Seq2SeqDataset(fpattern=data_file,
-                                 src_vocab_fpath=args.src_vocab_fpath,
-                                 trg_vocab_fpath=args.trg_vocab_fpath,
-                                 token_delimiter=args.token_delimiter,
-                                 start_mark=args.special_token[0],
-                                 end_mark=args.special_token[1],
-                                 unk_mark=args.special_token[2])
+        dataset = Seq2SeqDataset(
+            fpattern=data_file,
+            src_vocab_fpath=args.src_vocab_fpath,
+            trg_vocab_fpath=args.trg_vocab_fpath,
+            token_delimiter=args.token_delimiter,
+            start_mark=args.special_token[0],
+            end_mark=args.special_token[1],
+            unk_mark=args.special_token[2])
         args.src_vocab_size, args.trg_vocab_size, args.bos_idx, args.eos_idx, \
             args.unk_idx = dataset.get_vocab_summary()
-        batch_sampler = Seq2SeqBatchSampler(dataset=dataset,
-                                            use_token_batch=args.use_token_batch,
-                                            batch_size=args.batch_size,
-                                            pool_size=args.pool_size,
-                                            sort_type=args.sort_type,
-                                            shuffle=args.shuffle,
-                                            shuffle_batch=args.shuffle_batch,
-                                            max_length=args.max_length)
-        data_loader = DataLoader(dataset=dataset,
-                                batch_sampler=batch_sampler,
-                                places=device,
-                                feed_list=[x.forward() for x in inputs + labels],
-                                collate_fn=partial(prepare_train_input,
-                                                    src_pad_idx=args.eos_idx,
-                                                    trg_pad_idx=args.eos_idx,
-                                                    n_head=args.n_head),
-                                num_workers=0,
-                                return_list=True)
+        batch_sampler = Seq2SeqBatchSampler(
+            dataset=dataset,
+            use_token_batch=args.use_token_batch,
+            batch_size=args.batch_size,
+            pool_size=args.pool_size,
+            sort_type=args.sort_type,
+            shuffle=args.shuffle,
+            shuffle_batch=args.shuffle_batch,
+            max_length=args.max_length)
+        data_loader = DataLoader(
+            dataset=dataset,
+            batch_sampler=batch_sampler,
+            places=device,
+            feed_list=None if fluid.in_dygraph_mode() else
+            [x.forward() for x in inputs + labels],
+            collate_fn=partial(
+                prepare_train_input,
+                src_pad_idx=args.eos_idx,
+                trg_pad_idx=args.eos_idx,
+                n_head=args.n_head),
+            num_workers=0,  # TODO: use multi-process
+            return_list=True)
         data_loaders[i] = data_loader
     train_loader, eval_loader = data_loaders
 
@@ -135,15 +147,17 @@ def do_train(args):
         args.relu_dropout, args.preprocess_cmd, args.postprocess_cmd,
         args.weight_sharing, args.bos_idx, args.eos_idx)
 
-    transformer.prepare(fluid.optimizer.Adam(
-        learning_rate=fluid.layers.noam_decay(args.d_model, args.warmup_steps),
-        beta1=args.beta1,
-        beta2=args.beta2,
-        epsilon=float(args.eps),
-        parameter_list=transformer.parameters()),
-                        CrossEntropyCriterion(args.label_smooth_eps),
-                        inputs=inputs,
-                        labels=labels)
+    transformer.prepare(
+        fluid.optimizer.Adam(
+            learning_rate=fluid.layers.noam_decay(args.d_model,
+                                                  args.warmup_steps),
+            beta1=args.beta1,
+            beta2=args.beta2,
+            epsilon=float(args.eps),
+            parameter_list=transformer.parameters()),
+        CrossEntropyCriterion(args.label_smooth_eps),
+        inputs=inputs,
+        labels=labels)
 
     ## init from some checkpoint, to resume the previous training
     if args.init_from_checkpoint:

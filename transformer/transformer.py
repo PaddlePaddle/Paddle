@@ -21,6 +21,7 @@ import paddle.fluid.layers as layers
 from paddle.fluid.dygraph import Embedding, LayerNorm, Linear, Layer, to_variable
 from paddle.fluid.dygraph.learning_rate_scheduler import LearningRateDecay
 from model import Model, CrossEntropy, Loss
+from text import TransformerBeamSearchDecoder, DynamicDecode
 
 
 def position_encoding_init(n_position, d_pos_vec):
@@ -602,9 +603,6 @@ class Transformer(Model):
         predict = self.decoder(trg_word, trg_pos, trg_slf_attn_bias,
                                trg_src_attn_bias, enc_output)
         return predict
-
-
-from rnn_api import TransformerBeamSearchDecoder, DynamicDecode
 
 
 class TransfomerCell(object):

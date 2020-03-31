@@ -55,62 +55,70 @@ def do_predict(args):
     fluid.enable_dygraph(device) if args.eager_run else None
 
     inputs = [
-        Input([None, None], "int64", name="src_word"),
-        Input([None, None], "int64", name="src_pos"),
-        Input([None, args.n_head, None, None],
-              "float32",
-              name="src_slf_attn_bias"),
-        Input([None, args.n_head, None, None],
-              "float32",
-              name="trg_src_attn_bias"),
+        Input(
+            [None, None], "int64", name="src_word"),
+        Input(
+            [None, None], "int64", name="src_pos"),
+        Input(
+            [None, args.n_head, None, None],
+            "float32",
+            name="src_slf_attn_bias"),
+        Input(
+            [None, args.n_head, None, None],
+            "float32",
+            name="trg_src_attn_bias"),
     ]
 
     # define data
-    dataset = Seq2SeqDataset(fpattern=args.predict_file,
-                             src_vocab_fpath=args.src_vocab_fpath,
-                             trg_vocab_fpath=args.trg_vocab_fpath,
-                             token_delimiter=args.token_delimiter,
-                             start_mark=args.special_token[0],
-                             end_mark=args.special_token[1],
-                             unk_mark=args.special_token[2])
+    dataset = Seq2SeqDataset(
+        fpattern=args.predict_file,
+        src_vocab_fpath=args.src_vocab_fpath,
+        trg_vocab_fpath=args.trg_vocab_fpath,
+        token_delimiter=args.token_delimiter,
+        start_mark=args.special_token[0],
+        end_mark=args.special_token[1],
+        unk_mark=args.special_token[2])
     args.src_vocab_size, args.trg_vocab_size, args.bos_idx, args.eos_idx, \
         args.unk_idx = dataset.get_vocab_summary()
-    trg_idx2word = Seq2SeqDataset.load_dict(dict_path=args.trg_vocab_fpath,
-                                            reverse=True)
-    batch_sampler = Seq2SeqBatchSampler(dataset=dataset,
-                                        use_token_batch=False,
-                                        batch_size=args.batch_size,
-                                        max_length=args.max_length)
-    data_loader = DataLoader(dataset=dataset,
-                             batch_sampler=batch_sampler,
-                             places=device,
-                             feed_list=[x.forward() for x in inputs],
-                             collate_fn=partial(prepare_infer_input,
-                                                src_pad_idx=args.eos_idx,
-                                                n_head=args.n_head),
-                             num_workers=0,
-                             return_list=True)
+    trg_idx2word = Seq2SeqDataset.load_dict(
+        dict_path=args.trg_vocab_fpath, reverse=True)
+    batch_sampler = Seq2SeqBatchSampler(
+        dataset=dataset,
+        use_token_batch=False,
+        batch_size=args.batch_size,
+        max_length=args.max_length)
+    data_loader = DataLoader(
+        dataset=dataset,
+        batch_sampler=batch_sampler,
+        places=device,
+        feed_list=None
+        if fluid.in_dygraph_mode() else [x.forward() for x in inputs],
+        collate_fn=partial(
+            prepare_infer_input, src_pad_idx=args.eos_idx, n_head=args.n_head),
+        num_workers=0,
+        return_list=True)
 
     # define model
-    transformer = InferTransformer(args.src_vocab_size,
-                                   args.trg_vocab_size,
-                                   args.max_length + 1,
-                                   args.n_layer,
-                                   args.n_head,
-                                   args.d_key,
-                                   args.d_value,
-                                   args.d_model,
-                                   args.d_inner_hid,
-                                   args.prepostprocess_dropout,
-                                   args.attention_dropout,
-                                   args.relu_dropout,
-                                   args.preprocess_cmd,
-                                   args.postprocess_cmd,
-                                   args.weight_sharing,
-                                   args.bos_idx,
-                                   args.eos_idx,
-                                   beam_size=args.beam_size,
-                                   max_out_len=args.max_out_len)
+    transformer = InferTransformer(
+        args.src_vocab_size,
+        args.trg_vocab_size,
+        args.max_length + 1,
+        args.n_layer,
+        args.n_head,
+        args.d_key,
+        args.d_value,
+        args.d_model,
+        args.d_inner_hid,
+        args.prepostprocess_dropout,
+        args.attention_dropout,
+        args.relu_dropout,
+        args.preprocess_cmd,
+        args.postprocess_cmd,
+        args.weight_sharing,
+        args.bos_idx,
+        args.eos_idx,
+        beam_size=args.beam_size,
+        max_out_len=args.max_out_len)
     transformer.prepare(inputs=inputs)
 
     # load the trained model
@@ -126,8 +134,7 @@ def do_predict(args):
         for ins in finished_seq:
             for beam_idx, beam in enumerate(ins):
                 if beam_idx >= args.n_best: break
-                id_list = post_process_seq(beam, args.bos_idx,
-                                           args.eos_idx)
+                id_list = post_process_seq(beam, args.bos_idx, args.eos_idx)
                 word_list = [trg_idx2word[id] for id in id_list]
                 sequence = b" ".join(word_list) + b"\n"
                 f.write(sequence)

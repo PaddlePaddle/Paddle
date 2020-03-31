@@ -1,23 +1,29 @@
 import collections
-import contextlib
-import inspect
+import copy
 import six
 import sys
 from functools import partial, reduce
 
-import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers.utils as utils
 from paddle.fluid.layers.utils import map_structure, flatten, pack_sequence_as
-from paddle.fluid.dygraph import to_variable, Embedding, Linear
+from paddle.fluid.dygraph import to_variable, Embedding, Linear, LayerNorm
 from paddle.fluid.data_feeder import convert_dtype
 
 from paddle.fluid import layers
 from paddle.fluid.dygraph import Layer
+from paddle.layers import BeamSearchDecoder
+
+__all__ = [
+    'RNNCell', 'BasicLSTMCell', 'BasicGRUCell', 'RNN', 'DynamicDecode',
+    'BeamSearchDecoder', 'MultiHeadAttention', 'FFN',
+    'TransformerEncoderLayer', 'TransformerEncoder', 'TransformerDecoderLayer',
+    'TransformerDecoder', 'TransformerBeamSearchDecoder'
+]
 
 
-class RNNUnit(Layer):
+class RNNCell(Layer):
     def get_initial_states(self,
                            batch_ref,
                            shape=None,
@@ -130,7 +136,7 @@ class RNNUnit(Layer):
             "Please add implementaion for `state_dtype` in the used cell.")
 
 
-class BasicLSTMUnit(RNNUnit):
+class BasicLSTMCell(RNNCell):
     """
     ****
     BasicLSTMUnit class, Using basic operator to build LSTM
@@ -175,15 +181,15 @@ class BasicLSTMUnit(RNNUnit):
     """
 
     def __init__(self,
-                 hidden_size,
                  input_size,
+                 hidden_size,
                  param_attr=None,
                  bias_attr=None,
                  gate_activation=None,
                  activation=None,
                  forget_bias=1.0,
                  dtype='float32'):
-        super(BasicLSTMUnit, self).__init__(dtype)
+        super(BasicLSTMCell, self).__init__()
 
         self._hidden_size = hidden_size
         self._param_attr = param_attr
@@ -228,6 +234,123 @@ class BasicLSTMUnit(RNNUnit):
     @property
     def state_shape(self):
         return [[self._hidden_size], [self._hidden_size]]
+
+
+class BasicGRUCell(RNNCell):
+    """
+    ****
+    BasicGRUUnit class, using basic operators to build GRU
+    The algorithm can be described as the equations below.
+
+        .. math::
+            u_t & = actGate(W_ux xu_{t} + W_uh h_{t-1} + b_u)
+
+            r_t & = actGate(W_rx xr_{t} + W_rh h_{t-1} + b_r)
+
+            m_t & = actNode(W_cx xm_t + W_ch dot(r_t, h_{t-1}) + b_m)
+
+            h_t & = dot(u_t, h_{t-1}) + dot((1-u_t), m_t)
+
+    Args:
+        hidden_size (integer): The hidden size used in the Unit.
+        param_attr(ParamAttr|None): The parameter attribute for the learnable
+            weight matrix. Note:
+            If it is set to None or one attribute of ParamAttr, gru_unit will
+            create ParamAttr as param_attr. If the Initializer of the param_attr
+            is not set, the parameter is initialized with Xavier. Default: None.
+        bias_attr (ParamAttr|None): The parameter attribute for the bias
+            of GRU unit.
+            If it is set to None or one attribute of ParamAttr, gru_unit will 
+            create ParamAttr as bias_attr. If the Initializer of the bias_attr
+            is not set, the bias is initialized zero. Default: None.
+        gate_activation (function|None): The activation function for gates (actGate).
+                                  Default: 'fluid.layers.sigmoid'
+        activation (function|None): The activation function for cell (actNode).
+                             Default: 'fluid.layers.tanh'
+        dtype(string): data type used in this unit
+    """
+
+    def __init__(self,
+                 input_size,
+                 hidden_size,
+                 param_attr=None,
+                 bias_attr=None,
+                 gate_activation=None,
+                 activation=None,
+                 dtype='float32'):
+        super(BasicGRUCell, self).__init__()
+        self._input_size = input_size
+        self._hiden_size = hidden_size
+        self._param_attr = param_attr
+        self._bias_attr = bias_attr
+        self._gate_activation = gate_activation or layers.sigmoid
+        self._activation = activation or layers.tanh
+        self._dtype = dtype
+
+        if self._param_attr is not None and self._param_attr.name is not None:
+            gate_param_attr = copy.deepcopy(self._param_attr)
+            candidate_param_attr = copy.deepcopy(self._param_attr)
+            gate_param_attr.name += "_gate"
+            candidate_param_attr.name += "_candidate"
+        else:
+            gate_param_attr = self._param_attr
+            candidate_param_attr = self._param_attr
+
+        self._gate_weight = self.create_parameter(
+            attr=gate_param_attr,
+            shape=[self._input_size + self._hiden_size, 2 * self._hiden_size],
+            dtype=self._dtype)
+
+        self._candidate_weight = self.create_parameter(
+            attr=candidate_param_attr,
+            shape=[self._input_size + self._hiden_size, self._hiden_size],
+            dtype=self._dtype)
+
+        if self._bias_attr is not None and self._bias_attr.name is not None:
+            gate_bias_attr = copy.deepcopy(self._bias_attr)
+            candidate_bias_attr = copy.deepcopy(self._bias_attr)
+            gate_bias_attr.name += "_gate"
+            candidate_bias_attr.name += "_candidate"
+        else:
+            gate_bias_attr = self._bias_attr
+            candidate_bias_attr = self._bias_attr
+
+        self._gate_bias = self.create_parameter(
+            attr=gate_bias_attr,
+            shape=[2 * self._hiden_size],
+            dtype=self._dtype,
+            is_bias=True)
+        self._candidate_bias = self.create_parameter(
+            attr=candidate_bias_attr,
+            shape=[self._hiden_size],
+            dtype=self._dtype,
+            is_bias=True)
+
+    def forward(self, input, state):
+        pre_hidden = state
+        concat_input_hidden = layers.concat([input, pre_hidden], axis=1)
+
+        gate_input = layers.matmul(x=concat_input_hidden, y=self._gate_weight)
+
+        gate_input = layers.elementwise_add(gate_input, self._gate_bias)
+
+        gate_input = self._gate_activation(gate_input)
+        r, u = layers.split(gate_input, num_or_sections=2, dim=1)
+
+        r_hidden = r * pre_hidden
+
+        candidate = layers.matmul(
+            layers.concat([input, r_hidden], 1), self._candidate_weight)
+        candidate = layers.elementwise_add(candidate, self._candidate_bias)
+
+        c = self._activation(candidate)
+        new_hidden = u * pre_hidden + (1 - u) * c
+
+        return new_hidden
+
+    @property
+    def state_shape(self):
+        return [self._hidden_size]
 
 
 class RNN(fluid.dygraph.Layer):
@@ -332,109 +455,6 @@ class RNN(fluid.dygraph.Layer):
                 is_reverse=self.is_reverse,
                 **kwargs)
         return final_outputs, final_states
-
-
-from paddle.fluid.dygraph import Embedding, LayerNorm, Linear, Layer, to_variable
-place = fluid.CPUPlace()
-executor = fluid.Executor(place)
-
-
-class EncoderCell(RNNUnit):
-    def __init__(self, num_layers, input_size, hidden_size, dropout_prob=0.):
-        super(EncoderCell, self).__init__()
-        self.num_layers = num_layers
-        self.dropout_prob = dropout_prob
-
-        self.lstm_cells = list()
-        for i in range(self.num_layers):
-            self.lstm_cells.append(
-                self.add_sublayer("layer_%d" % i,
-                                  BasicLSTMUnit(input_size if i == 0 else
-                                                hidden_size, hidden_size)))
-
-    def forward(self, step_input, states):
-        new_states = []
-        for i in range(self.num_layers):
-            out, new_state = self.lstm_cells[i](step_input, states[i])
-            step_input = layers.dropout(
-                out, self.dropout_prob) if self.dropout_prob > 0 else out
-            new_states.append(new_state)
-        return step_input, new_states
-
-    @property
-    def state_shape(self):
-        return [cell.state_shape for cell in self.lstm_cells]
-
-
-class MultiHeadAttention(Layer):
-    """
-    Multi-Head Attention
-    """
-
-    # def __init__(self, embed_dim, num_heads, dropout=0., bias=True, add_bias_kv=False, add_zero_attn=False, kdim=None, vdim=None):
-    #     pass
-
-    # def forward(self, queries, keys, values, attn_bias, cache=None):
-    #     pass
-
-    def __init__(self, d_key, d_value, d_model, n_head=1, dropout_rate=0.):
-        super(MultiHeadAttention, self).__init__()
-        self.n_head = n_head
-        self.d_key = d_key
-        self.d_value = d_value
-        self.d_model = d_model
-        self.dropout_rate = dropout_rate
-        self.q_fc = Linear(
-            input_dim=d_model, output_dim=d_key * n_head, bias_attr=False)
-        self.k_fc = Linear(
-            input_dim=d_model, output_dim=d_key * n_head, bias_attr=False)
-        self.v_fc = Linear(
-            input_dim=d_model, output_dim=d_value * n_head, bias_attr=False)
-        self.proj_fc = Linear(
-            input_dim=d_value * n_head, output_dim=d_model, bias_attr=False)
-
-    def forward(self, queries, keys, values, attn_bias, cache=None):
-        # compute q ,k ,v
-        keys = queries if keys is None else keys
-        values = keys if values is None else values
-
-        q = self.q_fc(queries)
-        k = self.k_fc(keys)
-        v = self.v_fc(values)
-
-        # split head
-        q = layers.reshape(x=q, shape=[0, 0, self.n_head, self.d_key])
-        q = layers.transpose(x=q, perm=[0, 2, 1, 3])
-        k = layers.reshape(x=k, shape=[0, 0, self.n_head, self.d_key])
-        k = layers.transpose(x=k, perm=[0, 2, 1, 3])
-        v = layers.reshape(x=v, shape=[0, 0, self.n_head, self.d_value])
-        v = layers.transpose(x=v, perm=[0, 2, 1, 3])
-
-        if cache is not None:
-            cache_k, cache_v = cache["k"], cache["v"]
-            k = layers.concat([cache_k, k], axis=2)
-            v = layers.concat([cache_v, v], axis=2)
-            cache["k"], cache["v"] = k, v
-
-        # scale dot product attention
-        product = layers.matmul(
-            x=q, y=k, transpose_y=True, alpha=self.d_model**-0.5)
-        if attn_bias:
-            product += attn_bias
-        weights = layers.softmax(product)
-        if self.dropout_rate:
-            weights = layers.dropout(
-                weights, dropout_prob=self.dropout_rate, is_test=False)
-
-            out = layers.matmul(weights, v)
-
-        # combine heads
-        out = layers.transpose(out, perm=[0, 2, 1, 3])
-        out = layers.reshape(x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
-
-        # project to output
-        out = self.proj_fc(out)
-        return out
 
 
 class DynamicDecode(Layer):
@@ -633,3 +653,340 @@ class TransformerBeamSearchDecoder(layers.BeamSearchDecoder):
                                  beam_search_state.finished)
 
         return (beam_search_output, beam_search_state, next_inputs, finished)
+
+
+### Transformer Modules ###
+class PrePostProcessLayer(Layer):
+    """
+    PrePostProcessLayer
+    """
+
+    def __init__(self, process_cmd, d_model, dropout_rate):
+        super(PrePostProcessLayer, self).__init__()
+        self.process_cmd = process_cmd
+        self.functors = []
+        for cmd in self.process_cmd:
+            if cmd == "a":  # add residual connection
+                self.functors.append(lambda x, y: x + y if y else x)
+            elif cmd == "n":  # add layer normalization
+                self.functors.append(
+                    self.add_sublayer(
+                        "layer_norm_%d" % len(
+                            self.sublayers(include_sublayers=False)),
+                        LayerNorm(
+                            normalized_shape=d_model,
+                            param_attr=fluid.ParamAttr(
+                                initializer=fluid.initializer.Constant(1.)),
+                            bias_attr=fluid.ParamAttr(
+                                initializer=fluid.initializer.Constant(0.)))))
+            elif cmd == "d":  # add dropout
+                self.functors.append(lambda x: layers.dropout(
+                    x, dropout_prob=dropout_rate, is_test=False)
+                                     if dropout_rate else x)
+
+    def forward(self, x, residual=None):
+        for i, cmd in enumerate(self.process_cmd):
+            if cmd == "a":
+                x = self.functors[i](x, residual)
+            else:
+                x = self.functors[i](x)
+        return x
+
+
+class MultiHeadAttention(Layer):
+    """
+    Multi-Head Attention
+    """
+
+    def __init__(self, d_key, d_value, d_model, n_head=1, dropout_rate=0.):
+        super(MultiHeadAttention, self).__init__()
+        self.n_head = n_head
+        self.d_key = d_key
+        self.d_value = d_value
+        self.d_model = d_model
+        self.dropout_rate = dropout_rate
+        self.q_fc = Linear(
+            input_dim=d_model, output_dim=d_key * n_head, bias_attr=False)
+        self.k_fc = Linear(
+            input_dim=d_model, output_dim=d_key * n_head, bias_attr=False)
+        self.v_fc = Linear(
+            input_dim=d_model, output_dim=d_value * n_head, bias_attr=False)
+        self.proj_fc = Linear(
+            input_dim=d_value * n_head, output_dim=d_model, bias_attr=False)
+
+    def _prepare_qkv(self, queries, keys, values, cache=None):
+        if keys is None:  # self-attention
+            keys, values = queries, queries
+            static_kv = False
+        else:  # cross-attention
+            static_kv = True
+
+        q = self.q_fc(queries)
+        q = layers.reshape(x=q, shape=[0, 0, self.n_head, self.d_key])
+        q = layers.transpose(x=q, perm=[0, 2, 1, 3])
+
+        if cache is not None and static_kv and "static_k" in cache:
+            # for encoder-decoder attention in inference and has cached
+            k = cache["static_k"]
+            v = cache["static_v"]
+        else:
+            k = self.k_fc(keys)
+            v = self.v_fc(values)
+            k = layers.reshape(x=k, shape=[0, 0, self.n_head, self.d_key])
+            k = layers.transpose(x=k, perm=[0, 2, 1, 3])
+            v = layers.reshape(x=v, shape=[0, 0, self.n_head, self.d_value])
+            v = layers.transpose(x=v, perm=[0, 2, 1, 3])
+
+        if cache is not None:
+            if static_kv and not "static_k" in cache:
+                # for encoder-decoder attention in inference and has not cached
+                cache["static_k"], cache["static_v"] = k, v
+            elif not static_kv:
+                # for decoder self-attention in inference
+                cache_k, cache_v = cache["k"], cache["v"]
+                k = layers.concat([cache_k, k], axis=2)
+                v = layers.concat([cache_v, v], axis=2)
+                cache["k"], cache["v"] = k, v
+
+        return q, k, v
+
+    def forward(self, queries, keys, values, attn_bias, cache=None):
+        # compute q ,k ,v
+        q, k, v = self._prepare_qkv(queries, keys, values, cache)
+
+        # scale dot product attention
+        product = layers.matmul(
+            x=q, y=k, transpose_y=True, alpha=self.d_model**-0.5)
+        if attn_bias:
+            product += attn_bias
+        weights = layers.softmax(product)
+        if self.dropout_rate:
+            weights = layers.dropout(
+                weights, dropout_prob=self.dropout_rate, is_test=False)
+
+        out = layers.matmul(weights, v)
+
+        # combine heads
+        out = layers.transpose(out, perm=[0, 2, 1, 3])
+        out = layers.reshape(x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
+
+        # project to output
+        out = self.proj_fc(out)
+        return out
+
+    def cal_kv(self, keys, values):
+        k = self.k_fc(keys)
+        v = self.v_fc(values)
+        k = layers.reshape(x=k, shape=[0, 0, self.n_head, self.d_key])
+        k = layers.transpose(x=k, perm=[0, 2, 1, 3])
+        v = layers.reshape(x=v, shape=[0, 0, self.n_head, self.d_value])
+        v = layers.transpose(x=v, perm=[0, 2, 1, 3])
+        return k, v
+
+
+class FFN(Layer):
+    """
+    Feed-Forward Network
+    """
+
+    def __init__(self, d_inner_hid, d_model, dropout_rate):
+        super(FFN, self).__init__()
+        self.dropout_rate = dropout_rate
+        self.fc1 = Linear(
+            input_dim=d_model, output_dim=d_inner_hid, act="relu")
+        self.fc2 = Linear(input_dim=d_inner_hid, output_dim=d_model)
+
+    def forward(self, x):
+        hidden = self.fc1(x)
+        if self.dropout_rate:
+            hidden = layers.dropout(
+                hidden, dropout_prob=self.dropout_rate, is_test=False)
+        out = self.fc2(hidden)
+        return out
+
+
+class TransformerEncoderLayer(Layer):
+    """
+    EncoderLayer
+    """
+
+    def __init__(self,
+                 n_head,
+                 d_key,
+                 d_value,
+                 d_model,
+                 d_inner_hid,
+                 prepostprocess_dropout,
+                 attention_dropout,
+                 relu_dropout,
+                 preprocess_cmd="n",
+                 postprocess_cmd="da"):
+
+        super(TransformerEncoderLayer, self).__init__()
+
+        self.preprocesser1 = PrePostProcessLayer(preprocess_cmd, d_model,
+                                                 prepostprocess_dropout)
+        self.self_attn = MultiHeadAttention(d_key, d_value, d_model, n_head,
+                                            attention_dropout)
+        self.postprocesser1 = PrePostProcessLayer(postprocess_cmd, d_model,
+                                                  prepostprocess_dropout)
+
+        self.preprocesser2 = PrePostProcessLayer(preprocess_cmd, d_model,
+                                                 prepostprocess_dropout)
+        self.ffn = FFN(d_inner_hid, d_model, relu_dropout)
+        self.postprocesser2 = PrePostProcessLayer(postprocess_cmd, d_model,
+                                                  prepostprocess_dropout)
+
+    def forward(self, enc_input, attn_bias):
+        attn_output = self.self_attn(
+            self.preprocesser1(enc_input), None, None, attn_bias)
+        attn_output = self.postprocesser1(attn_output, enc_input)
+
+        ffn_output = self.ffn(self.preprocesser2(attn_output))
+        ffn_output = self.postprocesser2(ffn_output, attn_output)
+        return ffn_output
+
+
+class TransformerEncoder(Layer):
+    """
+    encoder
+    """
+
+    def __init__(self,
+                 n_layer,
+                 n_head,
+                 d_key,
+                 d_value,
+                 d_model,
+                 d_inner_hid,
+                 prepostprocess_dropout,
+                 attention_dropout,
+                 relu_dropout,
+                 preprocess_cmd="n",
+                 postprocess_cmd="da"):
+
+        super(TransformerEncoder, self).__init__()
+
+        self.encoder_layers = list()
+        for i in range(n_layer):
+            self.encoder_layers.append(
+                self.add_sublayer(
+                    "layer_%d" % i,
+                    TransformerEncoderLayer(
+                        n_head, d_key, d_value, d_model, d_inner_hid,
+                        prepostprocess_dropout, attention_dropout,
+                        relu_dropout, preprocess_cmd, postprocess_cmd)))
+        self.processer = PrePostProcessLayer(preprocess_cmd, d_model,
+                                             prepostprocess_dropout)
+
+    def forward(self, enc_input, attn_bias):
+        for encoder_layer in self.encoder_layers:
+            enc_output = encoder_layer(enc_input, attn_bias)
+            enc_input = enc_output
+
+        return self.processer(enc_output)
+
+
+class TransformerDecoderLayer(Layer):
+    """
+    decoder
+    """
+
+    def __init__(self,
+                 n_head,
+                 d_key,
+                 d_value,
+                 d_model,
+                 d_inner_hid,
+                 prepostprocess_dropout,
+                 attention_dropout,
+                 relu_dropout,
+                 preprocess_cmd="n",
+                 postprocess_cmd="da"):
+        super(TransformerDecoderLayer, self).__init__()
+
+        self.preprocesser1 = PrePostProcessLayer(preprocess_cmd, d_model,
+                                                 prepostprocess_dropout)
+        self.self_attn = MultiHeadAttention(d_key, d_value, d_model, n_head,
+                                            attention_dropout)
+        self.postprocesser1 = PrePostProcessLayer(postprocess_cmd, d_model,
+                                                  prepostprocess_dropout)
+
+        self.preprocesser2 = PrePostProcessLayer(preprocess_cmd, d_model,
+                                                 prepostprocess_dropout)
+        self.cross_attn = MultiHeadAttention(d_key, d_value, d_model, n_head,
+                                             attention_dropout)
+        self.postprocesser2 = PrePostProcessLayer(postprocess_cmd, d_model,
+                                                  prepostprocess_dropout)
+
+        self.preprocesser3 = PrePostProcessLayer(preprocess_cmd, d_model,
+                                                 prepostprocess_dropout)
+        self.ffn = FFN(d_inner_hid, d_model, relu_dropout)
+        self.postprocesser3 = PrePostProcessLayer(postprocess_cmd, d_model,
+                                                  prepostprocess_dropout)
+
+    def forward(self,
+                dec_input,
+                enc_output,
+                self_attn_bias,
+                cross_attn_bias,
+                cache=None):
+        self_attn_output = self.self_attn(
+            self.preprocesser1(dec_input), None, None, self_attn_bias, cache)
+        self_attn_output = self.postprocesser1(self_attn_output, dec_input)
+
+        cross_attn_output = self.cross_attn(
+            self.preprocesser2(self_attn_output), enc_output, enc_output,
+            cross_attn_bias, cache)
+        cross_attn_output = self.postprocesser2(cross_attn_output,
+                                                self_attn_output)
+
+        ffn_output = self.ffn(self.preprocesser3(cross_attn_output))
+        ffn_output = self.postprocesser3(ffn_output, cross_attn_output)
+
+        return ffn_output
+
+
+class TransformerDecoder(Layer):
+    """
+    decoder
+    """
+
+    def __init__(self, n_layer, n_head, d_key, d_value, d_model, d_inner_hid,
+                 prepostprocess_dropout, attention_dropout, relu_dropout,
+                 preprocess_cmd, postprocess_cmd):
+        super(TransformerDecoder, self).__init__()
+
+        self.decoder_layers = list()
+        for i in range(n_layer):
+            self.decoder_layers.append(
+                self.add_sublayer(
+                    "layer_%d" % i,
+                    TransformerDecoderLayer(
+                        n_head, d_key, d_value, d_model, d_inner_hid,
+                        prepostprocess_dropout, attention_dropout,
+                        relu_dropout, preprocess_cmd, postprocess_cmd)))
+        self.processer = PrePostProcessLayer(preprocess_cmd, d_model,
+                                             prepostprocess_dropout)
+
+    def forward(self,
+                dec_input,
+                enc_output,
+                self_attn_bias,
+                cross_attn_bias,
+                caches=None):
+        for i, decoder_layer in enumerate(self.decoder_layers):
+            dec_output = decoder_layer(dec_input, enc_output, self_attn_bias,
+                                       cross_attn_bias, None
+                                       if caches is None else caches[i])
+            dec_input = dec_output
+
+        return self.processer(dec_output)
+
+    def prepare_static_cache(self, enc_output):
+        return [
+            dict(
+                zip(("static_k", "static_v"),
+                    decoder_layer.cross_attn.cal_kv(enc_output, enc_output)))
+            for decoder_layer in self.decoder_layers
+        ]
