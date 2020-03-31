@@ -62,7 +62,7 @@
 # from .random import gaussin   #DEFINE_ALIAS
 # from .random import uniform   #DEFINE_ALIAS
 # from .random import shuffle   #DEFINE_ALIAS
-# from .random import randn   #DEFINE_ALIAS
+from .random import randn  #DEFINE_ALIAS
 # from .random import randperm   #DEFINE_ALIAS
 # from .random import rand   #DEFINE_ALIAS
 # from .random import randint   #DEFINE_ALIAS

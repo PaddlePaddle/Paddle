@@ -84,7 +84,7 @@ import paddle.sysconfig
 # from .tensor.random import gaussin   #DEFINE_ALIAS
 # from .tensor.random import uniform   #DEFINE_ALIAS
 # from .tensor.random import shuffle   #DEFINE_ALIAS
-# from .tensor.random import randn   #DEFINE_ALIAS
+from .tensor.random import randn  #DEFINE_ALIAS
 # from .tensor.random import randperm   #DEFINE_ALIAS
 # from .tensor.random import rand   #DEFINE_ALIAS
 # from .tensor.random import randint   #DEFINE_ALIAS

@@ -25,8 +25,8 @@ from __future__ import print_function
 
 import numpy as np
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import device_guard
-from ..fluid.data_feeder import check_type, check_dtype, convert_np_dtype_to_dtype_
+from ..fluid.framework import device_guard, convert_np_dtype_to_dtype_
+from ..fluid.data_feeder import check_type, check_dtype
 
 __all__ = ['randn']
 
