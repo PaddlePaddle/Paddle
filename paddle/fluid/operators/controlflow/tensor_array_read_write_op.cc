@@ -97,7 +97,7 @@ class WriteToArrayInferShape : public framework::InferShapeBase {
     PADDLE_ENFORCE_EQ(
         context->HasOutput("Out"), true,
         platform::errors::InvalidArgument(
-            "Do array operation (write/read)must set the output Tensor "
+            "Read/Write array operation must set the output Tensor "
             "to get the result."));
     context->SetOutputDim("Out", context->GetInputDim("X"));
 
@@ -143,13 +143,12 @@ class ReadFromArrayOp : public ArrayOp {
     PADDLE_ENFORCE_NOT_NULL(
         x,
         platform::errors::InvalidArgument(
-            "X(Input Variable) must be set when we do read array operation"));
+            "X(Input Variable) must be set when we call read array operation"));
     auto &x_array = x->Get<framework::LoDTensorArray>();
     auto *out = scope.FindVar(Output("Out"));
-    PADDLE_ENFORCE_NOT_NULL(
-        out,
-        platform::errors::InvalidArgument(
-            "Out(Output Varibale) must be set when we do read read operation"));
+    PADDLE_ENFORCE_NOT_NULL(out, platform::errors::InvalidArgument(
+                                     "Out(Output Varibale) must be set when we "
+                                     "call read array operation"));
     size_t offset = GetOffset(scope, place);
     if (offset < x_array.size()) {
       auto *out_tensor = out->GetMutable<framework::LoDTensor>();
