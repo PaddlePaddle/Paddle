@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
@@ -240,6 +241,28 @@ for dim in [4]:
                 'transpose_X': transpose_X,
                 'transpose_Y': transpose_Y,
             })
+
+
+class TestMatmulOpAttr(unittest.TestCase):
+    def test_out(self):
+        def run_test_case(place):
+            with fluid.program_guard(fluid.Program()):
+                x = fluid.data(name="x", shape=[3, 2], dtype="float32")
+                y = fluid.data(name='y', shape=[2, 3], dtype='float32')
+                res = fluid.data(name="output", shape=[3, 3], dtype="float32")
+                y_1 = paddle.mm(x, y, out=res)
+                exe = fluid.Executor(place)
+                data1 = np.random.rand(3, 2).astype('float32')
+                data2 = np.random.rand(2, 3).astype('float32')
+                np_res, np_y_1 = exe.run(feed={'x': data1,
+                                               'y': data2},
+                                         fetch_list=[res, y_1])
+
+                self.assertEqual((np_res == np_y_1).all(), True)
+
+        cpu_place = fluid.CPUPlace()
+        run_test_case(cpu_place)
+
 
 if __name__ == "__main__":
     unittest.main()

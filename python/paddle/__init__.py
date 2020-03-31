@@ -76,7 +76,7 @@ import paddle.sysconfig
 # from .tensor.logic import reduce_all   #DEFINE_ALIAS
 # from .tensor.logic import reduce_any   #DEFINE_ALIAS
 # from .tensor.logic import allclose   #DEFINE_ALIAS
-# from .tensor.logic import elementwise_equal   #DEFINE_ALIAS
+from .tensor.logic import elementwise_equal  #DEFINE_ALIAS
 # from .tensor.logic import isnan   #DEFINE_ALIAS
 # from .tensor..tensor import Tensor   #DEFINE_ALIAS
 # from .tensor..tensor import LoDTensor   #DEFINE_ALIAS
@@ -127,10 +127,10 @@ import paddle.sysconfig
 # from .tensor.math import sum   #DEFINE_ALIAS
 # from .tensor.math import sums   #DEFINE_ALIAS
 # from .tensor.math import tanh   #DEFINE_ALIAS
-# from .tensor.math import elementwise_sum   #DEFINE_ALIAS
+from .tensor.math import elementwise_sum  #DEFINE_ALIAS
 # from .tensor.math import max   #DEFINE_ALIAS
 # from .tensor.math import min   #DEFINE_ALIAS
-# from .tensor.math import mm   #DEFINE_ALIAS
+from .tensor.math import mm  #DEFINE_ALIAS
 # from .tensor.math import div   #DEFINE_ALIAS
 # from .tensor.math import add   #DEFINE_ALIAS
 # from .tensor.math import atan   #DEFINE_ALIAS
