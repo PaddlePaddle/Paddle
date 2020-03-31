@@ -12976,13 +12976,15 @@ def where(condition):
              out = layers.where(condition) # [[]]
 
     """
-    helper = LayerHelper("where", **locals())
+    helper = LayerHelper("where_index", **locals())
 
     out = helper.create_variable_for_type_inference(
         dtype=core.VarDesc.VarType.INT64)
 
     helper.append_op(
-        type='where', inputs={'Condition': condition}, outputs={'Out': [out]})
+        type='where_index',
+        inputs={'Condition': condition},
+        outputs={'Out': [out]})
     return out
 
 
