@@ -558,14 +558,14 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
             dy_sum.Resize({C});
             dy_sum.mutable_data<T>(ctx.GetPlace());
             EigenVectorArrayMap<T>
-                 dy_sum_arr(dy_sum.mutable_data<T>(ctx.GetPlace()), C);
+                dy_sum_arr(dy_sum.mutable_data<T>(ctx.GetPlace()), C);
             Tensor dy_mul_x_sub_mean_mul_invstd_sum;
             dy_mul_x_sub_mean_mul_invstd_sum.Resize({C});
             dy_mul_x_sub_mean_mul_invstd_sum.mutable_data<T>(ctx.GetPlace());
-            EigenVectorArrayMap<T>
-                      dy_mul_x_sub_mean_mul_invstd_sum_arr(
-                      dy_mul_x_sub_mean_mul_invstd_sum.mutable_data<T>
-                      (ctx.GetPlace()), C);
+            EigenVectorArrayMap<T> dy_mul_x_sub_mean_mul_invstd_sum_arr(
+                dy_mul_x_sub_mean_mul_invstd_sum.mutable_data<T>(
+                    ctx.GetPlace()),
+                C);
 
             dy_sum_arr.setZero();
             dy_mul_x_sub_mean_mul_invstd_sum_arr.setZero();
@@ -574,8 +574,7 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
               for (int n = 0; n < N; ++n) {
                 dy_sum_arr += d_y_arr.col(n);
                 dy_mul_x_sub_mean_mul_invstd_sum_arr +=
-                    ((x_arr.col(n) - mean_arr) *
-                    inv_var_arr * d_y_arr.col(n));
+                    ((x_arr.col(n) - mean_arr) * inv_var_arr * d_y_arr.col(n));
               }
               if (d_scale && d_bias) {
                 d_bias_arr = dy_sum_arr;
