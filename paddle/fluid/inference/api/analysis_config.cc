@@ -128,6 +128,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(min_input_shape_);
   CP_MEMBER(max_input_shape_);
   CP_MEMBER(optim_input_shape_);
+  CP_MEMBER(disable_trt_plugin_fp16_);
 
   CP_MEMBER(use_lite_);
   CP_MEMBER(lite_precision_mode_);
@@ -226,10 +227,7 @@ MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
 void AnalysisConfig::EnableTensorRtEngine(
     int workspace_size, int max_batch_size, int min_subgraph_size,
     AnalysisConfig::Precision precision_mode, bool use_static,
-    bool use_calib_mode,
-    std::map<std::string, std::vector<int>> min_input_shape,
-    std::map<std::string, std::vector<int>> max_input_shape,
-    std::map<std::string, std::vector<int>> optim_input_shape) {
+    bool use_calib_mode) {
 #ifdef PADDLE_WITH_CUDA
   if (!use_gpu()) {
     LOG(ERROR) << "To use TensorRT engine, please call EnableGpu() first";
@@ -243,15 +241,23 @@ void AnalysisConfig::EnableTensorRtEngine(
   tensorrt_precision_mode_ = precision_mode;
   trt_use_static_engine_ = use_static;
   trt_use_calib_mode_ = use_calib_mode;
-  min_input_shape_ = min_input_shape;
-  max_input_shape_ = max_input_shape;
-  optim_input_shape_ = optim_input_shape;
 
   Update();
 #else
   LOG(ERROR)
       << "To use TensorRT engine, please compile inference lib with GPU first.";
 #endif
+}
+
+void AnalysisConfig::SetTRTDynamicShapeInfo(
+    std::map<std::string, std::vector<int>> min_input_shape,
+    std::map<std::string, std::vector<int>> max_input_shape,
+    std::map<std::string, std::vector<int>> optim_input_shape,
+    bool disable_trt_plugin_fp16) {
+  min_input_shape_ = min_input_shape;
+  max_input_shape_ = max_input_shape;
+  optim_input_shape_ = optim_input_shape;
+  disable_trt_plugin_fp16_ = disable_trt_plugin_fp16;
 }
 
 // TODO(Superjomn) refactor this, buggy.
