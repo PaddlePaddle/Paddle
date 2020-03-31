@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-// #include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
 namespace operators {
@@ -87,40 +86,35 @@ class DNNLMatMulKernel : public framework::OpKernel<T> {
     const memory::dim N = dim_y.width_;
     const memory::dim K = dim_x.width_;
 
-    memory::dims src_dims = {batch_size, M, K};
-    memory::dims weights_dims = {batch_size, K, N};
-    memory::dims dst_dims = {batch_size, M, N};
+    memory::dims x_dims = {batch_size, M, K};
+    memory::dims y_dims = {batch_size, K, N};
+    memory::dims out_dims = {batch_size, M, N};
 
     // Translate transA and transB
     memory::dims x_strides =
         !dim_x.trans_ ? memory::dims{M * K, K, 1} : memory::dims{M * K, 1, M};
     memory::dims y_strides =
         !dim_y.trans_ ? memory::dims{N * K, N, 1} : memory::dims{N * K, 1, K};
-    // memory::dims out_strides = memory::dims{M * N, ldout, 1};
+    memory::dims out_strides = memory::dims{M * N, N, 1};
 
-    // Create memory descriptors and memory objects for src, weights and
-    // dst.
-    auto src_md = memory::desc(src_dims, MKLDNNGetDataType<T>(), x_strides);
-    auto weights_md =
-        memory::desc(weights_dims, MKLDNNGetDataType<T>(), y_strides);
-    auto src_mem = dnnl::memory(src_md, engine, to_void_cast(x->data<T>()));
-    auto weights_mem =
-        dnnl::memory(weights_md, engine, to_void_cast(y->data<T>()));
+    // Create memory descriptors and memory objects for x, y and dst
+    auto x_md = memory::desc(x_dims, MKLDNNGetDataType<T>(), x_strides);
+    auto y_md = memory::desc(y_dims, MKLDNNGetDataType<T>(), y_strides);
+    auto x_mem = dnnl::memory(x_md, engine, to_void_cast(x->data<T>()));
+    auto y_mem = dnnl::memory(y_md, engine, to_void_cast(y->data<T>()));
 
     bool force_fp32_out = ctx.Attr<bool>("force_fp32_output");
-    memory::desc dst_md;
-    dnnl::memory dst_mem;
+    memory::desc out_md;
+    dnnl::memory out_mem;
     if (force_fp32_out) {
-      dst_md = memory::desc(dst_dims, memory::data_type::f32,
-                            memory::format_tag::abc);
-      dst_mem =
-          dnnl::memory(dst_md, engine,
+      out_md = memory::desc(out_dims, memory::data_type::f32, out_strides);
+      out_mem =
+          dnnl::memory(out_md, engine,
                        to_void_cast(out->mutable_data<float>(ctx.GetPlace())));
     } else {
-      dst_md = memory::desc(dst_dims, MKLDNNGetDataType<T>(),
-                            memory::format_tag::abc);
-      dst_mem = dnnl::memory(
-          dst_md, engine, to_void_cast(out->mutable_data<T>(ctx.GetPlace())));
+      out_md = memory::desc(out_dims, MKLDNNGetDataType<T>(), out_strides);
+      out_mem = dnnl::memory(
+          out_md, engine, to_void_cast(out->mutable_data<T>(ctx.GetPlace())));
     }
 
     float scale_x = ctx.Attr<float>("Scale_x");
@@ -133,15 +127,15 @@ class DNNLMatMulKernel : public framework::OpKernel<T> {
     if (final_scale_out != 1.0f)
       attr.set_output_scales(/* mask */ 0, {final_scale_out});
 
-    auto matmul_d = dnnl::matmul::desc(src_md, weights_md, dst_md);
+    auto matmul_d = dnnl::matmul::desc(x_md, y_md, out_md);
     auto matmul_pd = dnnl::matmul::primitive_desc(matmul_d, attr, engine);
     auto matmul_prim = dnnl::matmul(matmul_pd);
 
     dnnl::stream stream(engine);
     matmul_prim.execute(stream, {
-                                    {MKLDNN_ARG_SRC, src_mem},
-                                    {MKLDNN_ARG_WEIGHTS, weights_mem},
-                                    {MKLDNN_ARG_DST, dst_mem},
+                                    {MKLDNN_ARG_SRC, x_mem},
+                                    {MKLDNN_ARG_WEIGHTS, y_mem},
+                                    {MKLDNN_ARG_DST, out_mem},
                                 });
     stream.wait();
 
