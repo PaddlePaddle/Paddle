@@ -16,28 +16,26 @@ import logging
 import numpy as np
 import time
 import os
-import paddle.fluid as fluid
-
 import unittest
 
-import transformer_util as util
+import paddle.fluid as fluid
 
+import transformer_util as util
 from transformer_dygraph_model import Transformer
 from transformer_dygraph_model import CrossEntropyCriterion
 
 trainer_count = 1
-place = fluid.CPUPlace()
+place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace(
+)
 SEED = 10
 
 
 def train_static(args, batch_generator):
-    # set seed for CE
     train_prog = fluid.default_main_program()
     startup_prog = fluid.default_startup_program()
-    random_seed = SEED
-    if random_seed is not None:
-        train_prog.random_seed = random_seed
-        startup_prog.random_seed = random_seed
+    if SEED is not None:
+        train_prog.random_seed = SEED
+        startup_prog.random_seed = SEED
 
     with fluid.program_guard(train_prog, startup_prog):
         with fluid.unique_name.guard():
@@ -50,13 +48,11 @@ def train_static(args, batch_generator):
                 "shape": input_descs[name][0],
                 "dtype": input_descs[name][1]
             } for name in input_field_names]
-
             input_field = util.InputField(input_slots)
             # Define DataLoader
             data_loader = fluid.io.DataLoader.from_generator(
                 input_field.feed_list, capacity=60)
             data_loader.set_batch_generator(batch_generator, places=place)
-
             # define model
             transformer = Transformer(
                 args.src_vocab_size, args.trg_vocab_size, args.max_length + 1,
@@ -67,13 +63,11 @@ def train_static(args, batch_generator):
                 args.eos_idx)
 
             logits = transformer(*input_field.feed_list[:7])
-
             # define loss
             criterion = CrossEntropyCriterion(args.label_smooth_eps)
             lbl_word, lbl_weight = input_field.feed_list[7:]
             sum_cost, avg_cost, token_num = criterion(logits, lbl_word,
                                                       lbl_weight)
-
             # define optimizer
             learning_rate = fluid.layers.learning_rate_scheduler.noam_decay(
                 args.d_model, args.warmup_steps, args.learning_rate)
@@ -84,7 +78,6 @@ def train_static(args, batch_generator):
                 beta2=args.beta2,
                 epsilon=float(args.eps))
             optimizer.minimize(avg_cost)
-
             # the best cross-entropy value with label smoothing
             loss_normalizer = -((1. - args.label_smooth_eps) * np.log(
                 (1. - args.label_smooth_eps)) + args.label_smooth_eps * np.log(
@@ -92,7 +85,6 @@ def train_static(args, batch_generator):
 
     step_idx = 0
     total_batch_num = 0  # this is for benchmark
-    # train loop
     exe = fluid.Executor(place)
     exe.run(startup_prog)
 
@@ -147,16 +139,13 @@ def train_static(args, batch_generator):
 def train_dygraph(args, batch_generator):
 
     with fluid.dygraph.guard(place):
-        # set seed for CE
-        random_seed = SEED
-        if random_seed is not None:
-            fluid.default_main_program().random_seed = random_seed
-            fluid.default_startup_program().random_seed = random_seed
+        if SEED is not None:
+            fluid.default_main_program().random_seed = SEED
+            fluid.default_startup_program().random_seed = SEED
 
         # define data loader
         train_loader = fluid.io.DataLoader.from_generator(capacity=10)
         train_loader.set_batch_generator(batch_generator, places=place)
-
         # define model
         transformer = Transformer(
             args.src_vocab_size, args.trg_vocab_size, args.max_length + 1,
@@ -165,14 +154,11 @@ def train_dygraph(args, batch_generator):
             args.attention_dropout, args.relu_dropout, args.preprocess_cmd,
             args.postprocess_cmd, args.weight_sharing, args.bos_idx,
             args.eos_idx)
-
         # define loss
         criterion = CrossEntropyCriterion(args.label_smooth_eps)
-
         # define optimizer
         learning_rate = fluid.layers.learning_rate_scheduler.noam_decay(
             args.d_model, args.warmup_steps, args.learning_rate)
-
         # define optimizer
         optimizer = fluid.optimizer.Adam(
             learning_rate=learning_rate,
@@ -180,7 +166,6 @@ def train_dygraph(args, batch_generator):
             beta2=args.beta2,
             epsilon=float(args.eps),
             parameter_list=transformer.parameters())
-
         # the best cross-entropy value with label smoothing
         loss_normalizer = -(
             (1. - args.label_smooth_eps) * np.log(
@@ -191,7 +176,6 @@ def train_dygraph(args, batch_generator):
         ce_ppl = []
         avg_loss = []
         step_idx = 0
-        # train loop
         for pass_id in range(args.epoch):
             pass_start_time = time.time()
             batch_id = 0
