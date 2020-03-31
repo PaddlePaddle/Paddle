@@ -1287,6 +1287,7 @@ bool PaddleBoxDataFeed::Start() {
 }
 
 int PaddleBoxDataFeed::Next() {
+#ifdef _LINUX
   int phase = GetCurrentPhase();  // join: 1, update: 0
   this->CheckStart();
   if (enable_pv_predict_ && phase == 1) {
@@ -1325,6 +1326,9 @@ int PaddleBoxDataFeed::Next() {
     this->batch_size_ = MultiSlotInMemoryDataFeed::Next();
     return this->batch_size_;
   }
+#else
+  return 0;
+#endif
 }
 
 void PaddleBoxDataFeed::Init(const DataFeedDesc& data_feed_desc) {
@@ -1393,8 +1397,7 @@ void PaddleBoxDataFeed::AssignFeedVar(const Scope& scope) {
 }
 
 void PaddleBoxDataFeed::PutToFeedVec(const std::vector<PvInstance>& pv_vec) {
-  // Todo get rank_offset msg
-  // int pv_num = pv_vec.size();
+#ifdef _LINUX
   int ins_number = 0;
   std::vector<Record*> ins_vec;
   for (auto& pv : pv_vec) {
@@ -1408,11 +1411,16 @@ void PaddleBoxDataFeed::PutToFeedVec(const std::vector<PvInstance>& pv_vec) {
   VLOG(3) << "Current thread id [" << thread_id_ << "] has " << ins_number
           << "instances, has " << pv_vec.size() << " pvs";
   PutToFeedVec(ins_vec);
+#endif
 }
 
 int PaddleBoxDataFeed::GetCurrentPhase() {
+#ifdef PADDLE_WITH_BOX_PS
   auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
   return box_ptr->PassFlag();  // join: 1, update: 0
+#else
+  return 0;
+#endif
 }
 
 void PaddleBoxDataFeed::PutToFeedVec(const std::vector<Record*>& ins_vec) {
