@@ -120,13 +120,6 @@ if(WIN32 OR APPLE)
         SET(WITH_LIBXSMM OFF CACHE STRING "Disable LIBXSMM in Windows and MacOS" FORCE)
     endif()
 
-    if(WITH_NGRAPH)
-        MESSAGE(WARNING
-            "Windows or Mac is not supported with nGraph in Paddle yet."
-            "Force WITH_NGRAPH=OFF")
-        SET(WITH_NGRAPH OFF CACHE STRING "Disable nGraph in Windows and MacOS" FORCE)
-    endif()
-
     if(WITH_BOX_PS)
         MESSAGE(WARNING
             "Windows or Mac is not supported with BOX_PS in Paddle yet."
@@ -257,18 +250,6 @@ if(WITH_DISTRIBUTE)
     else()
         list(APPEND third_party_deps extern_leveldb)
         list(APPEND third_party_deps extern_brpc)
-    endif()
-endif()
-
-if(WITH_NGRAPH)
-    if(WITH_MKLDNN)
-        include(external/ngraph)    # download, build, install nGraph
-        list(APPEND third_party_deps extern_ngraph)
-    else()
-        MESSAGE(WARNING
-            "nGraph needs mkl-dnn to be enabled."
-            "Force WITH_NGRAPH=OFF")
-        SET(WITH_NGRAPH OFF CACHE STRING "Disable nGraph if mkl-dnn is disabled" FORCE)
     endif()
 endif()
 
