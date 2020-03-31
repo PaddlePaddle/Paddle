@@ -17,6 +17,7 @@ from __future__ import print_function
 import six
 import gast
 
+from paddle.fluid import core
 from paddle.fluid.layers import fill_constant
 from paddle.fluid.layer_helper import LayerHelper
 
