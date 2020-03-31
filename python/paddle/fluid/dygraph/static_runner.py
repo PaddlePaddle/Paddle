@@ -436,15 +436,15 @@ class StaticModelRunner(layers.Layer):
                 list(filter(self._is_persistable, block.all_vars())))
         return persis_vars
 
+    @switch_to_static_graph
     def _build_program_by_desc(self, program_desc):
-        with framework._static_graph_guard():
-            prog = framework.Program()
-            prog.desc = program_desc
-            prog.blocks = [
-                framework.Block(prog, i)
-                for i in six.moves.range(prog.desc.num_blocks())
-            ]
-            prog._sync_with_cpp()
+        prog = framework.Program()
+        prog.desc = program_desc
+        prog.blocks = [
+            framework.Block(prog, i)
+            for i in six.moves.range(prog.desc.num_blocks())
+        ]
+        prog._sync_with_cpp()
         return prog
 
     def _is_persistable(self, var_desc):

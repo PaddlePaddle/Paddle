@@ -5136,14 +5136,3 @@ def device_guard(device=None):
     pre_device = switch_device(device)
     yield
     switch_device(pre_device)
-
-
-@signature_safe_contextmanager
-def _static_graph_guard():
-    global _dygraph_tracer_
-    tmp_trace = _dygraph_tracer_
-    _dygraph_tracer_ = None
-
-    yield
-
-    _dygraph_tracer_ = tmp_trace
