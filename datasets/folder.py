@@ -45,7 +45,7 @@ def make_dataset(dir, class_to_idx, extensions=None, is_valid_file=None):
 
 
 class DatasetFolder(Dataset):
-    """A generic data loader where the samples are arranged in this way: ::
+    """A generic data loader where the samples are arranged in this way:
 
         root/class_a/1.ext
         root/class_a/2.ext
@@ -62,7 +62,6 @@ class DatasetFolder(Dataset):
             both extensions and is_valid_file should not be passed.
         transform (callable, optional): A function/transform that takes in
             a sample and returns a transformed version.
-            E.g, ``transforms.RandomCrop`` for images.
         target_transform (callable, optional): A function/transform that takes
             in the target and transforms it.
         is_valid_file (callable, optional): A function that takes path of a file
@@ -110,10 +109,9 @@ class DatasetFolder(Dataset):
             dir (string): Root directory path.
 
         Returns:
-            tuple: (classes, class_to_idx) where classes are relative to (dir), and class_to_idx is a dictionary.
+            tuple: (classes, class_to_idx) where classes are relative to (dir), 
+                    and class_to_idx is a dictionary.
 
-        Ensures:
-            No class is a subdirectory of another.
         """
         if sys.version_info >= (3, 5):
             # Faster and available in Python 3.5 and above
