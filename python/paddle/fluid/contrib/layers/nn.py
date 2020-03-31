@@ -1097,7 +1097,7 @@ def tdm_sampler(x,
             'output_positive': output_positive,
             'layer_offset_lod': tree_layer_offset_lod,
             'seed': seed,
-            'dtype': c_type
+            'dtype': c_dtype
         })
 
     if output_list:

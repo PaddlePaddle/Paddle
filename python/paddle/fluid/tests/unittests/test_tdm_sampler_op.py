@@ -39,6 +39,12 @@ def create_tdm_layer():
     return tree_layer
 
 
+type_dict = {
+    "int32": int(core.VarDesc.VarType.INT32),
+    "int64": int(core.VarDesc.VarType.INT64)
+}
+
+
 class TestTDMSamplerOp(OpTest):
     def setUp(self):
         self.__class__.op_type = "tdm_sampler"
@@ -69,15 +75,16 @@ class TestTDMSamplerOp(OpTest):
         self.x_np = np.random.randint(
             low=0, high=13, size=self.x_shape).astype(self.x_type)
 
-        out = np.random.random(self.output_shape).astype(self.dtype)
-        label = np.random.random(self.output_shape).astype(self.dtype)
-        mask = np.random.random(self.output_shape).astype(self.dtype)
+        out = np.random.random(self.output_shape).astype(self.out_dtype)
+        label = np.random.random(self.output_shape).astype(self.out_dtype)
+        mask = np.random.random(self.output_shape).astype(self.out_dtype)
 
         self.attrs = {
             'neg_samples_num_list': self.neg_samples_num_list,
             'output_positive': True,
             'layer_offset_lod': tree_layer_offset_lod,
-            'seed': 0
+            'seed': 0,
+            'dtype': type_dict[self.out_dtype]
         }
         self.inputs = {'X': self.x_np, 'Travel': travel_np, 'Layer': layer_np}
         self.outputs = {'Out': out, 'Labels': label, 'Mask': mask}
@@ -88,18 +95,18 @@ class TestTDMSamplerOp(OpTest):
         self.x_shape = (10, 1)
         self.x_type = 'int32'
         self.tree_dtype = 'int32'
-        self.dtype = 'int32'
+        self.out_dtype = 'int32'
 
     def test_check_output(self):
         self.check_output_customized(self.verify_output)
         mask_res, label_res, x_res = self.out
 
         # check dtype
-        if self.dtype == 'int32':
+        if self.out_dtype == 'int32':
             assert x_res.dtype == np.int32
             assert label_res.dtype == np.int32
             assert mask_res.dtype == np.int32
-        elif self.dtype == 'int64':
+        elif self.out_dtype == 'int64':
             assert x_res.dtype == np.int64
             assert label_res.dtype == np.int64
             assert mask_res.dtype == np.int64
@@ -118,7 +125,7 @@ class TestTDMSamplerOp(OpTest):
                 sampling_res_list = sampling_res.tolist()
                 positive_travel.append(sampling_res_list[0])
                 # check unique
-                if not sampling_res_list[0]:
+                if sampling_res_list[0] != 0:
                     assert len(set(sampling_res_list)) == len(
                         sampling_res_list
                     ), "len(set(sampling_res_list)): {}, len(sampling_res_list): {} ".format(
@@ -160,7 +167,7 @@ class TestCase1(TestTDMSamplerOp):
         self.x_shape = (10, 1)
         self.x_type = 'int64'
         self.tree_dtype = 'int64'
-        self.dtype = 'int32'
+        self.out_dtype = 'int32'
 
 
 class TestCase2(TestTDMSamplerOp):
@@ -170,7 +177,7 @@ class TestCase2(TestTDMSamplerOp):
         self.x_shape = (10, 1)
         self.x_type = 'int32'
         self.tree_dtype = 'int32'
-        self.dtype = 'int64'
+        self.out_dtype = 'int64'
 
 
 class TestCase3(TestTDMSamplerOp):
@@ -180,7 +187,7 @@ class TestCase3(TestTDMSamplerOp):
         self.x_shape = (10, 1)
         self.x_type = 'int64'
         self.tree_dtype = 'int64'
-        self.dtype = 'int64'
+        self.out_dtype = 'int64'
 
 
 class TestCase4(TestTDMSamplerOp):
@@ -190,7 +197,7 @@ class TestCase4(TestTDMSamplerOp):
         self.x_shape = (10, 1)
         self.x_type = 'int64'
         self.tree_dtype = 'int32'
-        self.dtype = 'int64'
+        self.out_dtype = 'int64'
 
 
 class TestCase5(TestTDMSamplerOp):
@@ -200,7 +207,7 @@ class TestCase5(TestTDMSamplerOp):
         self.x_shape = (10, 1)
         self.x_type = 'int64'
         self.tree_dtype = 'int32'
-        self.dtype = 'int64'
+        self.out_dtype = 'int64'
 
 
 class TestCase6(TestTDMSamplerOp):
@@ -210,7 +217,7 @@ class TestCase6(TestTDMSamplerOp):
         self.x_shape = (100, 1)
         self.x_type = 'int64'
         self.tree_dtype = 'int32'
-        self.dtype = 'int64'
+        self.out_dtype = 'int64'
 
 
 class TestCase7(TestTDMSamplerOp):
@@ -220,7 +227,7 @@ class TestCase7(TestTDMSamplerOp):
         self.x_shape = (10, 1)
         self.x_type = 'int64'
         self.tree_dtype = 'int32'
-        self.dtype = 'int64'
+        self.out_dtype = 'int64'
 
 
 class TestTDMSamplerShape(unittest.TestCase):
