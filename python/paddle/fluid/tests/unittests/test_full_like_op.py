@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 import paddle.fluid.core as core
-import paddle.compat as cpt
+
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -27,7 +27,7 @@ class TestFullLikeOp(OpTest):
         self.dtype = np.int32
         self.value = 2.0
         self.init()
-        self.inputs = {'X': np.random.random((128, 768)).astype(self.dtype)}
+        self.inputs = {'X': np.random.random((128, 128)).astype(self.dtype)}
         self.attrs = {'value': self.value}
         self.outputs = {'Out': self.value * np.ones_like(self.inputs["X"])}
 
@@ -54,11 +54,6 @@ class TestFullLikeOpValue2(TestFullLikeOp):
         self.value = 1e-10
 
 
-class TestFullLikeOpValue3(TestFullLikeOp):
-    def init(self):
-        self.value = 1e-100
-
-
 class TestFullLikeOpOverflow(TestFullLikeOp):
     def init(self):
         self.value = 1e100
@@ -70,11 +65,6 @@ class TestFullLikeOpOverflow(TestFullLikeOp):
         except core.EnforceNotMet as ex:
             exception = ex
         self.assertIsNotNone(exception)
-
-
-class TestFullLikeOpDouble(TestFullLikeOp):
-    def init(self):
-        self.dtype = np.float64
 
 
 if __name__ == "__main__":

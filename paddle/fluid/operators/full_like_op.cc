@@ -14,20 +14,37 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/full_like_op.h"
 
+#include <string>
+#include <unordered_map>
+
 namespace paddle {
 namespace operators {
+
+using framework::OpKernelType;
+using framework::Tensor;
 
 class FullLikeOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of FullLikeOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of FullLikeOp should not be null.");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", "Out");
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const {
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    int customized_type_value =
+        framework::OpKernelType::kDefaultCustomizedTypeValue;
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
+                                   library, customized_type_value);
   }
 };
 
@@ -36,7 +53,7 @@ class FullLikeOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "The input of fill-zeros-like op.");
     AddOutput("Out", "The variable will be filled up with specified value.");
-    AddAttr<double>("value", "The filled value").SetDefault(0.0);
+    AddAttr<float>("value", "The filled value").SetDefault(0.0);
     AddComment(R"DOC(
 FullLike Operator.
 
@@ -47,15 +64,24 @@ The output will have the same shape and dtype as the input.
   }
 };
 
+class FullLikeOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
+ protected:
+  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+      const override {
+    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
+  }
+};
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(FullLikeNoNeedBufferVarsInference, "X");
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(full_like, ops::FullLikeOp, ops::FullLikeOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(
+    full_like, ops::FullLikeOp,
+    ops::FullLikeOpMaker ops::FullLikeNoNeedBufferVarsInference);
 
 REGISTER_OP_CPU_KERNEL(
-    full_like, ops::FullLikeKernel<paddle::platform::CPUDeviceContext, int>,
+    full_like, ops::FullLikeKernel<paddle::platform::CPUDeviceContext, int32_t>,
     ops::FullLikeKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::FullLikeKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FullLikeKernel<paddle::platform::CPUDeviceContext, double>,
     ops::FullLikeKernel<paddle::platform::CPUDeviceContext, bool>);

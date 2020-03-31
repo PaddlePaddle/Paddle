@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/full_like_op.h"
 
 namespace ops = paddle::operators;
@@ -21,5 +20,4 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FullLikeKernel<paddle::platform::CUDADeviceContext, int32_t>,
     ops::FullLikeKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::FullLikeKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FullLikeKernel<paddle::platform::CUDADeviceContext, double>,
     ops::FullLikeKernel<paddle::platform::CUDADeviceContext, bool>);

@@ -25,7 +25,7 @@ class FullLikeKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* out = context.Output<framework::Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
-    float value = context.Attr<double>("value");
+    float value = context.Attr<float>("value");
 
     math::SetConstant<DeviceContext, T> setter;
     setter(context.template device_context<DeviceContext>(), out,
