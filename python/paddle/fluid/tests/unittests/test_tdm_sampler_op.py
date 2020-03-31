@@ -69,9 +69,9 @@ class TestTDMSamplerOp(OpTest):
         self.x_np = np.random.randint(
             low=0, high=13, size=self.x_shape).astype(self.x_type)
 
-        out = np.random.random(self.output_shape).astype(self.x_type)
-        label = np.random.random(self.output_shape).astype(self.x_type)
-        mask = np.random.random(self.output_shape).astype(self.x_type)
+        out = np.random.random(self.output_shape).astype(self.dtype)
+        label = np.random.random(self.output_shape).astype(self.dtype)
+        mask = np.random.random(self.output_shape).astype(self.dtype)
 
         self.attrs = {
             'neg_samples_num_list': self.neg_samples_num_list,
@@ -94,11 +94,11 @@ class TestTDMSamplerOp(OpTest):
         mask_res, label_res, x_res = self.out
 
         # check dtype
-        if self.x_type == 'int32':
+        if self.dtype == 'int32':
             assert x_res.dtype == np.int32
             assert label_res.dtype == np.int32
             assert mask_res.dtype == np.int32
-        elif self.x_type == 'int64':
+        elif self.dtype == 'int64':
             assert x_res.dtype == np.int64
             assert label_res.dtype == np.int64
             assert mask_res.dtype == np.int64
@@ -115,9 +115,9 @@ class TestTDMSamplerOp(OpTest):
                 end_offset = start_offset + self.layer_sample_nums[layer_idx]
                 sampling_res = x_batch[start_offset:end_offset]
                 sampling_res_list = sampling_res.tolist()
-                positive_travel.append(sampling_res[0])
+                positive_travel.append(sampling_res_list[0])
                 # check unique
-                if sampling_res[0] != 0:
+                if not sampling_res_list[0]:
                     assert len(set(sampling_res_list)) == len(
                         sampling_res_list
                     ), "len(set(sampling_res_list)): {}, len(sampling_res_list): {} ".format(
@@ -139,9 +139,9 @@ class TestTDMSamplerOp(OpTest):
                 assert label_sampling_res[0] == label_flag
                 # check mask
                 padding_index = np.where(sampling_res == 0)
-                assert int(
-                    np.sum(mask_sampling_res[padding_index])
-                ) == 0, "np.sum(mask_sampling_res[padding_index]): {} ".format(
+                assert not np.sum(
+                    mask_sampling_res[padding_index]
+                ), "np.sum(mask_sampling_res[padding_index]): {} ".format(
                     np.sum(mask_sampling_res[padding_index]))
                 start_offset = end_offset
             # check travel legal
@@ -246,7 +246,7 @@ class TestTDMSamplerShape(unittest.TestCase):
             output_positive=True,
             output_list=True,
             seed=0,
-            dtype='int32')
+            tree_dtype='int32')
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place=place)

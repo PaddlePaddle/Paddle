@@ -67,11 +67,11 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
   auto *travel_data = travel_lod_tensor.data<TreeT>();
   auto *layer_data = layer_lod_tensor.data<TreeT>();
 
-  T zero = 0;
-  T one = 1;
-  std::vector<T> output_vec(total_sample_nums, zero);
-  std::vector<T> label_vec(total_sample_nums, zero);
-  std::vector<T> mask_vec(total_sample_nums, one);
+  TreeT zero = 0;
+  TreeT one = 1;
+  std::vector<TreeT> output_vec(total_sample_nums, zero);
+  std::vector<TreeT> label_vec(total_sample_nums, zero);
+  std::vector<TreeT> mask_vec(total_sample_nums, one);
 
   VLOG(3) << "End get input & output data";
   // generate uniform sampler
@@ -173,7 +173,7 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
                 << mask_vec[i * sample_res_length + offset];
         offset += 1;
       }
-      std::vector<T> sample_res_vec{};
+      std::vector<TreeT> sample_res_vec{};
       // Sampling at layer, until samples enough
       for (int sample_index = 0; sample_index < sample_num; ++sample_index) {
         // Avoid sampling to positive samples
@@ -211,13 +211,13 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
     }    // end one input nce
   }      // end all input nce
 
-  auto *output_data = out_tensor->mutable_data<T>(context.GetPlace());
-  auto *label_data = label_tensor->mutable_data<T>(context.GetPlace());
-  auto *mask_data = mask_tensor->mutable_data<T>(context.GetPlace());
+  auto *output_data = out_tensor->mutable_data<TreeT>(context.GetPlace());
+  auto *label_data = label_tensor->mutable_data<TreeT>(context.GetPlace());
+  auto *mask_data = mask_tensor->mutable_data<TreeT>(context.GetPlace());
 
-  memcpy(output_data, &output_vec[0], sizeof(T) * total_sample_nums);
-  memcpy(label_data, &label_vec[0], sizeof(T) * total_sample_nums);
-  memcpy(mask_data, &mask_vec[0], sizeof(T) * total_sample_nums);
+  memcpy(output_data, &output_vec[0], sizeof(TreeT) * total_sample_nums);
+  memcpy(label_data, &label_vec[0], sizeof(TreeT) * total_sample_nums);
+  memcpy(mask_data, &mask_vec[0], sizeof(TreeT) * total_sample_nums);
 
   for (size_t layer_index = 0; layer_index < layer_nums; layer_index++) {
     delete sampler_vec[layer_index];
