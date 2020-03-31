@@ -17,7 +17,7 @@ include(ExternalProject)
 set(EIGEN_PREFIX_DIR ${THIRD_PARTY_PATH}/eigen3)
 set(EIGEN_SOURCE_DIR ${THIRD_PARTY_PATH}/eigen3/src/extern_eigen3)
 set(EIGEN_REPOSITORY https://gitlab.com/libeigen/eigen)
-set(EIGEN_TAG        4da2c6b1974827b1999bab652a3d4703e1992d26)
+set(EIGEN_TAG        5a8b97b401e8283637e12a8ad9260f37c3271a16)
 
 # eigen on cuda9.1 missing header of math_funtions.hpp
 # https://stackoverflow.com/questions/43113508/math-functions-hpp-not-found-when-using-cuda-with-eigen
@@ -41,11 +41,11 @@ elseif(WIN32)
     # because Kind is dependent name, so it should be preceded by typename.
     file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/unsupported/Eigen/CXX11/src/Tensor/TensorBlock.h native_src)
     file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/unsupported/Eigen/CXX11/src/Tensor/TensorBlock.h native_dst)
-    set(EIGEN_PATCH_COMMAND copy ${native_src} ${native_dst} /Y)
-    #elseif(LINUX)
-    #file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Eigen/src/Geometry/arch/Geometry_SSE.h native_src)
-    # file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/Eigen/src/Geometry/arch/Geometry_SSE.h native_dst)
-    #set(EIGEN_PATCH_COMMAND cp ${native_src} ${native_dst})
+    # set(EIGEN_PATCH_COMMAND copy ${native_src} ${native_dst} /Y)
+elseif(LINUX)
+    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Eigen/src/Geometry/arch/Geometry_SSE.h native_src)
+    file(TO_NATIVE_PATH ${EIGEN_SOURCE_DIR}/Eigen/src/Geometry/arch/Geometry_SSE.h native_dst)
+    set(EIGEN_PATCH_COMMAND cp ${native_src} ${native_dst})
 endif()
 
 set(EIGEN_INCLUDE_DIR ${EIGEN_SOURCE_DIR})
