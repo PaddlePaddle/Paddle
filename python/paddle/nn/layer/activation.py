@@ -111,10 +111,9 @@ class LogSoftmax(layers.Layer):
               #   [ -3.4401896   -2.4401896   -1.4401896   -0.44018966]]]
     """
 
-    def __init__(self, axis=None, dtype=None):
+    def __init__(self, axis=None):
         super(LogSoftmax, self).__init__()
         self._axis = axis
-        self._cast_dtype = dtype
 
     def forward(self, input):
-        return functional.log_softmax(input, self._axis, self._cast_dtype)
+        return functional.log_softmax(input, self._axis)
