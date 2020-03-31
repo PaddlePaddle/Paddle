@@ -37,15 +37,31 @@ class BmmOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
 
-    PADDLE_ENFORCE_EQ(x_dims.size(), 3,
-                      "Input(X) of BmmOp must be 3-dimensional.");
-    PADDLE_ENFORCE_EQ(y_dims.size(), 3,
-                      "Input(Y) of BmmOp must be 3-dimensional.");
-    PADDLE_ENFORCE_EQ(x_dims[0], y_dims[0],
-                      "Input(X) and Input(Y) must have the same dimension");
-    PADDLE_ENFORCE_EQ(x_dims[2], y_dims[1],
-                      "First matrix's width must be equal with second matrix's "
-                      "height in BmmOp.");
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(), 3,
+        platform::errors::InvalidArgument(
+            "Input(X) of BmmOp must be 3-dimensional in BmmOp, "
+            "but received X's shape: [%s].",
+            x_dims);
+    PADDLE_ENFORCE_EQ(
+        y_dims.size(), 3,
+        platform::errors::InvalidArgument(
+            "Input(Y) of BmmOp must be 3-dimensional in BmmOp, "
+            "but received Y's shape: [%s].",
+            y_dims);
+    PADDLE_ENFORCE_EQ(
+        x_dims[0], y_dims[0],
+        platform::errors::InvalidArgument(
+            "Input(X) and Input(Y) must have the same batch size in BmmOp, "
+            "but received X's batch size: [%s],"
+            "Y's batch size [%s]",
+            x_dims[0], y_dims[0]);
+    PADDLE_ENFORCE_EQ(
+        x_dims[2], y_dims[1],
+        "Input(X)'s width must be equal with Input(Y)'s height in BmmOp,"
+        "but receive X's width: [%s],"
+        "Y's height: [%s].",
+        x_dims[2], y_dims[1]);
 
     std::vector<int64_t> dim_out;
     dim_out.push_back(x_dims[0]);
