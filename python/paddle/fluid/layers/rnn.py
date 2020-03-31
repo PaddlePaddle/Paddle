@@ -2902,7 +2902,8 @@ def beam_search_decode(ids, scores, beam_size, end_id, name=None):
     """
     helper = LayerHelper('beam_search_decode', **locals())
     sentence_ids = helper.create_variable_for_type_inference(dtype=ids.dtype)
-    sentence_scores = helper.create_variable_for_type_inference(dtype=ids.dtype)
+    sentence_scores = helper.create_variable_for_type_inference(
+        dtype=scores.dtype)
 
     helper.append_op(
         type="beam_search_decode",

@@ -190,16 +190,20 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
       // For example, in the transformer structure, the third parameter returned
       // by beam_search op is generally assigned to a feed var. Cutting the
       // assign op will cause an error.
-      bool flag = false;
-      for (auto& var : op_desc.outputs()) {
-        for (auto& argu : var.arguments()) {
-          if (feed_var_names.count(argu)) {
-            flag = true;
+      if (parent_block_id != -1) {
+        bool flag = false;
+        for (auto& var : op_desc.outputs()) {
+          for (auto& argu : var.arguments()) {
+            if (feed_var_names.count(argu)) {
+              flag = true;
+            }
           }
         }
-      }
-      if (flag) {
-        should_run.push_back(true);
+        if (flag) {
+          should_run.push_back(true);
+        } else {
+          should_run.push_back(false);
+        }
       } else {
         should_run.push_back(false);
       }
