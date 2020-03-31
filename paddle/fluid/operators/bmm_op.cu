@@ -11,15 +11,17 @@
 
 #include "paddle/fluid/operators/bmm_op.h"
 
+#ifdef PADDLE_WITH_CUDA
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    bmm, ops::BmmKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::BmmKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::BmmKernel<paddle::platform::CPUDeviceContext,
+    bmm, ops::BmmKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::BmmKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::BmmKernel<paddle::platform::CUDADeviceContext,
                    paddle::platform::float16>);
 
 REGISTER_OP_CUDA_KERNEL(
-    bmm_grad, ops::BmmGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::BmmGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::BmmGradKernel<paddle::platform::CPUDeviceContext,
+    bmm_grad, ops::BmmGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::BmmGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::BmmGradKernel<paddle::platform::CUDADeviceContext,
                        paddle::platform::float16>);
+#endif
