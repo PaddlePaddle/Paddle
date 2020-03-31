@@ -835,6 +835,23 @@ struct Reshape : public PatternBase {
   PATTERN_DECL_NODE(next_op);
 };
 
+// Matmul op
+// Forward pass for matmul.
+// next_op is a result of the operator.
+struct Matmul : public PatternBase {
+  Matmul(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "reshape2") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(prev_op_x);
+  PATTERN_DECL_NODE(prev_op_y);
+  PATTERN_DECL_NODE(matmul_in_x);
+  PATTERN_DECL_NODE(matmul_in_y);
+  PATTERN_DECL_NODE(matmul_op);
+  PATTERN_DECL_NODE(matmul_out);
+  PATTERN_DECL_NODE(next_op);
+};
+
 // Concat op
 // Forward pass for concat.
 // concat_out is a result of the operator.
