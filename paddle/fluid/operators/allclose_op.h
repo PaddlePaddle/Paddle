@@ -29,12 +29,12 @@ class AllcloseKernel : public framework::OpKernel<T> {
     // get attrs
     float rtol = ctx.Attr<float>("rtol");
     float atol = ctx.Attr<float>("atol");
-    bool equal_nan = ctx.Attr<float>("equal_nan");
+    bool equal_nan = ctx.Attr<bool>("equal_nan");
     // get input/output
     auto* input = ctx.Input<Tensor>("Input");
     auto* other = ctx.Input<Tensor>("Other");
     auto* out = ctx.Output<Tensor>("Out");
-    out->mutable_data<T>(ctx.GetPlace());
+    out->mutable_data<bool>(ctx.GetPlace());
     // get place
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 

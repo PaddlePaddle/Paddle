@@ -15,7 +15,7 @@
 from paddle.common_ops_import import *
 import paddle.fluid as fluid
 
-# TODO: define logic functions of a tensor  
+# TODO: define logic functions of a tensor
 __all__ = [
     'equal',
     #            'greater_equal',
@@ -47,10 +47,10 @@ def equal(x, y, axis=-1, name=None):
         x(Variable): Tensor, data type is float32, float64, int32, int64.
         y(Variable): Tensor, data type is float32, float64, int32, int64.
         axis(int32, optional): If X.dimension != Y.dimension, Y.dimension
-            must be a subsequence of x.dimension. And axis is the start 
-            dimension index for broadcasting Y onto X. For more detail, 
+            must be a subsequence of x.dimension. And axis is the start
+            dimension index for broadcasting Y onto X. For more detail,
             please refer to OP:`elementwise_add`.
-        name(str, optional): Normally there is no need for user to set this property. 
+        name(str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.Default: None.
 
     Returns:
