@@ -30,6 +30,7 @@ using Tensor = framework::Tensor;
 using framework::DataLayout;
 // using dnnl::stream;
 using platform::GetMKLDNNFormat;
+using platform::MKLDNNGetDataType;
 
 /**
  * Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
@@ -54,7 +55,7 @@ static framework::DDim ColumnMatrixFromVector(const framework::DDim& y_dim) {
 }
 
 template <typename T>
-class MKLDNNMatMulKernel : public framework::OpKernel<T> {
+class DNNLMatMulKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<Tensor>("X");
@@ -90,49 +91,63 @@ class MKLDNNMatMulKernel : public framework::OpKernel<T> {
     memory::dims weights_dims = {batch_size, K, N};
     memory::dims dst_dims = {batch_size, M, N};
 
-    int64_t ldx = !dim_x.trans_ ? K : M;
-    int64_t ldy = !dim_y.trans_ ? N : K;
-    // int64_t ldout = N;
-
     // Translate transA and transB
-    memory::dims x_strides = !dim_x.trans_
-                                 ? memory::dims{batch_size * ldx, ldx, 1}
-                                 : memory::dims{batch_size * ldx, 1, ldx};
-    memory::dims y_strides = !dim_y.trans_
-                                 ? memory::dims{batch_size * ldy, ldy, 1}
-                                 : memory::dims{batch_size * ldy, 1, ldy};
+    memory::dims x_strides =
+        !dim_x.trans_ ? memory::dims{M * K, K, 1} : memory::dims{M * K, 1, M};
+    memory::dims y_strides =
+        !dim_y.trans_ ? memory::dims{N * K, N, 1} : memory::dims{N * K, 1, K};
+    // memory::dims out_strides = memory::dims{M * N, ldout, 1};
 
-    // Create memory descriptors and memory objects for src, weights, bias, and
+    // Create memory descriptors and memory objects for src, weights and
     // dst.
-    auto src_md = memory::desc(src_dims, memory::data_type::f32, x_strides);
+    auto src_md = memory::desc(src_dims, MKLDNNGetDataType<T>(), x_strides);
     auto weights_md =
-        memory::desc(weights_dims, memory::data_type::f32, y_strides);
-    auto dst_md =
-        memory::desc(dst_dims, memory::data_type::f32, memory::format_tag::abc);
+        memory::desc(weights_dims, MKLDNNGetDataType<T>(), y_strides);
     auto src_mem = dnnl::memory(src_md, engine, to_void_cast(x->data<T>()));
     auto weights_mem =
         dnnl::memory(weights_md, engine, to_void_cast(y->data<T>()));
-    auto dst_mem = dnnl::memory(
-        dst_md, engine, to_void_cast(out->mutable_data<T>(ctx.GetPlace())));
 
+    bool force_fp32_out = ctx.Attr<bool>("force_fp32_output");
+    memory::desc dst_md;
+    dnnl::memory dst_mem;
+    if (force_fp32_out) {
+      dst_md = memory::desc(dst_dims, memory::data_type::f32,
+                            memory::format_tag::abc);
+      dst_mem =
+          dnnl::memory(dst_md, engine,
+                       to_void_cast(out->mutable_data<float>(ctx.GetPlace())));
+    } else {
+      dst_md = memory::desc(dst_dims, MKLDNNGetDataType<T>(),
+                            memory::format_tag::abc);
+      dst_mem = dnnl::memory(
+          dst_md, engine, to_void_cast(out->mutable_data<T>(ctx.GetPlace())));
+    }
+
+    float scale_x = ctx.Attr<float>("Scale_x");
+    float scale_y = ctx.Attr<float>("Scale_y");
+    float scale_out = force_fp32_out ? 1.f : ctx.Attr<float>("Scale_out");
+    float out_shift_scale = scale_out / (scale_x * scale_y);
     float alpha = ctx.Attr<float>("alpha");
-    dnnl::memory alpha_mem({{1}, memory::data_type::f32, {1}}, engine, &alpha);
+    float final_scale_out = out_shift_scale * alpha;
     dnnl::primitive_attr attr;
-    if (alpha != 1.0f) attr.set_output_scales(/* mask */ 0, {alpha});
+    if (final_scale_out != 1.0f)
+      attr.set_output_scales(/* mask */ 0, {final_scale_out});
 
     auto matmul_d = dnnl::matmul::desc(src_md, weights_md, dst_md);
     auto matmul_pd = dnnl::matmul::primitive_desc(matmul_d, attr, engine);
     auto matmul_prim = dnnl::matmul(matmul_pd);
 
     dnnl::stream stream(engine);
-    matmul_prim.execute(stream, {{MKLDNN_ARG_SRC, src_mem},
-                                 {MKLDNN_ARG_WEIGHTS, weights_mem},
-                                 {MKLDNN_ARG_DST, dst_mem},
-                                 {DNNL_ARG_ATTR_OUTPUT_SCALES, alpha_mem}});
+    matmul_prim.execute(stream, {
+                                    {MKLDNN_ARG_SRC, src_mem},
+                                    {MKLDNN_ARG_WEIGHTS, weights_mem},
+                                    {MKLDNN_ARG_DST, dst_mem},
+                                });
     stream.wait();
 
     out->set_layout(DataLayout::kMKLDNN);
-    out->set_format(GetMKLDNNFormat(dst_mem));
+    out->set_format(platform::MKLDNNFormatForSize(out->dims().size(),
+                                                  MKLDNNMemoryFormat::nchw));
   }
 };
 }  // namespace operators
@@ -140,4 +155,5 @@ class MKLDNNMatMulKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(matmul, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::MKLDNNMatMulKernel<float>);
+                   ops::DNNLMatMulKernel<float>, ops::DNNLMatMulKernel<int8_t>,
+                   ops::DNNLMatMulKernel<uint8_t>);

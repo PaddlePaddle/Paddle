@@ -446,6 +446,26 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         "use_mkldnn",
         "(bool, default false) Indicates if MKL-DNN kernel will be used")
         .SetDefault(false);
+    /* int8 parameters */
+    AddAttr<bool>("use_quantizer",
+                  "(bool, default false) "
+                  "Set to true for operators that should be quantized and use "
+                  "int8 kernel. "
+                  "Only used on CPU.")
+        .SetDefault(false);
+    AddAttr<float>("Scale_x",
+                   "(float, default 1.0f), The quantize scale of X tensor")
+        .SetDefault(1.0f);
+    AddAttr<float>("Scale_y",
+                   "(float, default 1.0f), The quantize scale of Y tensor")
+        .SetDefault(1.0f);
+    AddAttr<float>("Scale_out",
+                   "(float, default 1.0f), The quantize scale of output data")
+        .SetDefault(1.0f);
+    AddAttr<bool>("force_fp32_output",
+                  "(bool, default false) Force INT8 kernel output FP32, only "
+                  "used in MKL-DNN INT8")
+        .SetDefault(false);
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
     AddAttr<int>("head_number", "The number of heads of the matrix")
         .SetDefault(1);
