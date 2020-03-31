@@ -254,9 +254,6 @@ class NameVisitor(gast.NodeVisitor):
             return
         self.current_seen_vars.add(node)
 
-        write_context = {
-            type(gast.Store()), type(gast.AugStore()), type(gast.Del())
-        }
         for loop_node in self.current_loop:
             self.in_loop_vars[loop_node].add(node)
 
@@ -267,6 +264,7 @@ class NameVisitor(gast.NodeVisitor):
         self.current_loop.append(node)
         self.in_condition = True
         self.visit(node.target)
+        self.visit(node.iter)
         self.in_condition = False
         self.before_loop_body_vars[node] = copy.copy(self.current_seen_vars)
         self.generic_visit(node)
