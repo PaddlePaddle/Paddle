@@ -86,17 +86,19 @@ class ReduceKernel : public framework::OpKernel<T> {
     auto* output = context.Output<Tensor>("Out");
     auto dims = context.Attr<std::vector<int>>("dim");
     bool keep_dim = context.Attr<bool>("keep_dim");
-    Tensor* cast_input = nullptr;
     int out_dtype = context.Attr<int>("out_dtype");
     framework::proto::VarType::Type cast_out_dtype;
 
-    Tensor tmp_tensor;
-
     if (out_dtype < 0) {
-      cast_input = const_cast<Tensor*>(context.Input<Tensor>("X"));
+      auto* cast_input = context.Input<Tensor>("X");
       cast_out_dtype =
           static_cast<framework::proto::VarType::Type>(cast_input->type());
+      framework::VisitDataType(
+          cast_out_dtype,
+          ReduceKernelFunctor<DeviceContext, T, Functor>(
+              cast_input, output, dims, keep_dim, reduce_all, context));
     } else {
+      Tensor tmp_tensor;
       cast_out_dtype = static_cast<framework::proto::VarType::Type>(out_dtype);
       auto* input = context.Input<Tensor>("X");
 
@@ -106,13 +108,11 @@ class ReduceKernel : public framework::OpKernel<T> {
           CastOpFunctor<DeviceContext, T>(
               input, &tmp_tensor,
               context.template device_context<DeviceContext>()));
-      cast_input = &tmp_tensor;
+      framework::VisitDataType(
+          cast_out_dtype,
+          ReduceKernelFunctor<DeviceContext, T, Functor>(
+              &tmp_tensor, output, dims, keep_dim, reduce_all, context));
     }
-
-    framework::VisitDataType(
-        cast_out_dtype,
-        ReduceKernelFunctor<DeviceContext, T, Functor>(
-            cast_input, output, dims, keep_dim, reduce_all, context));
   }
 };
 
@@ -164,31 +164,12 @@ template <typename DeviceContext, typename T, typename Functor,
           bool kNoNeedBufferX = false, bool kNoNeedBufferY = false>
 class ReduceGradKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
+  void ComputeFromInput(const Tensor* input2,
+                        const framework::ExecutionContext& context) const {
     bool reduce_all = context.Attr<bool>("reduce_all");
     auto dims = context.Attr<std::vector<int>>("dim");
-    int in_dtype = context.Attr<int>("in_dtype");
-
     auto* input0 = context.Input<Tensor>("X");
     auto* input1 = context.Input<Tensor>("Out");
-
-    framework::Tensor* input2 = nullptr;
-    framework::Tensor tmp_tensor;
-    if (in_dtype >= 0) {
-      auto* pre_input = context.Input<Tensor>(framework::GradVarName("Out"));
-      auto in_kernel_type =
-          framework::OpKernelType(pre_input->type(), context.GetPlace());
-      auto out_kernel_type = framework::OpKernelType(
-          static_cast<framework::proto::VarType::Type>(in_dtype),
-          context.GetPlace());
-      framework::TransDataType(in_kernel_type, out_kernel_type, *pre_input,
-                               &tmp_tensor);
-      input2 = &tmp_tensor;
-
-    } else {
-      input2 = const_cast<framework::Tensor*>(
-          context.Input<Tensor>(framework::GradVarName("Out")));
-    }
 
     auto* output = context.Output<Tensor>(framework::GradVarName("X"));
     output->mutable_data<T>(context.GetPlace());
@@ -254,6 +235,26 @@ class ReduceGradKernel : public framework::OpKernel<T> {
               *input1, *input2, output, dims);
           break;
       }
+    }
+  }
+
+  void Compute(const framework::ExecutionContext& context) const override {
+    int in_dtype = context.Attr<int>("in_dtype");
+    if (in_dtype >= 0) {
+      Tensor tmp_tensor;
+      auto* pre_input = context.Input<Tensor>(framework::GradVarName("Out"));
+      auto in_kernel_type =
+          framework::OpKernelType(pre_input->type(), context.GetPlace());
+      auto out_kernel_type = framework::OpKernelType(
+          static_cast<framework::proto::VarType::Type>(in_dtype),
+          context.GetPlace());
+      framework::TransDataType(in_kernel_type, out_kernel_type, *pre_input,
+                               &tmp_tensor);
+      ComputeFromInput(&tmp_tensor, context);
+
+    } else {
+      auto* input2 = context.Input<Tensor>(framework::GradVarName("Out"));
+      ComputeFromInput(input2, context);
     }
   }
 };

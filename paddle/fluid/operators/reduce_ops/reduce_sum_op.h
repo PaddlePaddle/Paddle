@@ -26,16 +26,58 @@ template <typename DeviceContext, typename T, typename Functor,
           bool kNoNeedBufferX = false>
 class ReduceSumGradKernel : public framework::OpKernel<T> {
  public:
+  void ComputeFromInput(const Tensor* input2,
+                        const framework::ExecutionContext& context) const {
+    auto dims = context.Attr<std::vector<int>>("dim");
+    auto* input0 = context.Input<Tensor>("X");
+
+    auto* output = context.Output<Tensor>(framework::GradVarName("X"));
+    output->mutable_data<T>(context.GetPlace());
+    const auto* input2_d = input2->data<T>();
+    auto* output_d = output->data<T>();
+
+    // handle reduce_all
+    if (input2->dims().size() == 1 && input2->dims()[0] == 1) {
+      for (int64_t i = 0; i < framework::product(input0->dims()); ++i) {
+        output_d[i] = input2_d[0];
+      }
+      return;
+    }
+
+    // handle reduce by one dimension
+    int reduce_dim_index = dims[0];
+    if (reduce_dim_index < 0) {
+      reduce_dim_index += input0->dims().size();
+    }
+
+    auto& input_dim = input0->dims();
+    int64_t before_dim = 1;
+    for (int i = 0; i < reduce_dim_index; ++i) {
+      before_dim *= input_dim[i];
+    }
+    int64_t reduce_dim = input_dim[reduce_dim_index];
+    int64_t after_dim = 1;
+    for (int i = reduce_dim_index + 1; i < input_dim.size(); ++i) {
+      after_dim *= input_dim[i];
+    }
+    for (int64_t i = 0; i < before_dim; ++i) {
+      for (int64_t j = 0; j < reduce_dim; ++j) {
+        for (int64_t k = 0; k < after_dim; ++k) {
+          output_d[i * reduce_dim * after_dim + j * after_dim + k] =
+              input2_d[i * after_dim + k];
+        }
+      }
+    }
+  }
+
   void Compute(const framework::ExecutionContext& context) const override {
     auto dims = context.Attr<std::vector<int>>("dim");
     if (context.GetPlace().type() == typeid(platform::CPUPlace) &&
         dims.size() == 1) {
       int in_dtype = context.Attr<int>("in_dtype");
-      auto* input0 = context.Input<Tensor>("X");
 
-      Tensor* input2 = nullptr;
-      Tensor tmp_tensor;
       if (in_dtype >= 0) {
+        Tensor tmp_tensor;
         auto* pre_input = context.Input<Tensor>(framework::GradVarName("Out"));
         auto in_kernel_type =
             framework::OpKernelType(pre_input->type(), context.GetPlace());
@@ -44,52 +86,13 @@ class ReduceSumGradKernel : public framework::OpKernel<T> {
             context.GetPlace());
         framework::TransDataType(in_kernel_type, out_kernel_type, *pre_input,
                                  &tmp_tensor);
-        input2 = &tmp_tensor;
+        ComputeFromInput(&tmp_tensor, context);
       } else {
-        input2 = const_cast<Tensor*>(
-            context.Input<Tensor>(framework::GradVarName("Out")));
-      }
-
-      auto* output = context.Output<Tensor>(framework::GradVarName("X"));
-      output->mutable_data<T>(context.GetPlace());
-      const auto* input2_d = input2->data<T>();
-      auto* output_d = output->data<T>();
-
-      // handle reduce_all
-      if (input2->dims().size() == 1 && input2->dims()[0] == 1) {
-        for (int64_t i = 0; i < framework::product(input0->dims()); ++i) {
-          output_d[i] = input2_d[0];
-        }
-        return;
-      }
-
-      // handle reduce by one dimension
-      int reduce_dim_index = dims[0];
-      if (reduce_dim_index < 0) {
-        reduce_dim_index += input0->dims().size();
-      }
-
-      auto& input_dim = input0->dims();
-      int64_t before_dim = 1;
-      for (int i = 0; i < reduce_dim_index; ++i) {
-        before_dim *= input_dim[i];
-      }
-      int64_t reduce_dim = input_dim[reduce_dim_index];
-      int64_t after_dim = 1;
-      for (int i = reduce_dim_index + 1; i < input_dim.size(); ++i) {
-        after_dim *= input_dim[i];
-      }
-      for (int64_t i = 0; i < before_dim; ++i) {
-        for (int64_t j = 0; j < reduce_dim; ++j) {
-          for (int64_t k = 0; k < after_dim; ++k) {
-            output_d[i * reduce_dim * after_dim + j * after_dim + k] =
-                input2_d[i * after_dim + k];
-          }
-        }
+        auto* input2 = context.Input<Tensor>(framework::GradVarName("Out"));
+        ComputeFromInput(input2, context);
       }
       return;
     }
-
     // default use Eigen broadcast
     ReduceGradKernel<DeviceContext, T, Functor, kNoNeedBufferX> kernel;
     kernel.Compute(context);
