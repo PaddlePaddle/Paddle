@@ -21,6 +21,9 @@
 #include <string>
 #include <vector>
 #include "gtest/gtest.h"
+#include "paddle/fluid/imperative/execution_context.h"
+#include "paddle/fluid/imperative/infer_shape_context.h"
+#include "paddle/fluid/imperative/infer_var_type_context.h"
 #include "paddle/fluid/imperative/layer.h"
 
 namespace imperative = paddle::imperative;
@@ -44,7 +47,8 @@ TEST(test_layer, test_runtime_context) {
   imperative::NameVarBaseMap ins = {in_pair};
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap attrs;
-  auto* ctx = new imperative::RuntimeInferVarTypeContext(ins, &outs, attrs);
+  auto *ctx = new imperative::RuntimeInferVarTypeContext<imperative::VarBase>(
+      ins, outs, attrs);
   ASSERT_TRUE(ctx->HasVar("vin"));
   ASSERT_TRUE(ctx->HasInput("X"));
   ASSERT_TRUE(ctx->HasOutput("Out"));
@@ -57,9 +61,9 @@ TEST(test_layer, test_runtime_context) {
   ASSERT_ANY_THROW(ctx->SetLoDLevel("vin", 2));
 }
 
-std::string LayerDebugString(const std::string& op_type,
-                             const NameVarBaseMap& ins,
-                             const NameVarBaseMap& outs);
+std::string LayerDebugString(const std::string &op_type,
+                             const NameVarBaseMap &ins,
+                             const NameVarBaseMap &outs);
 
 TEST(test_layer, test_debug_string) {
   platform::CPUPlace place;
@@ -67,7 +71,7 @@ TEST(test_layer, test_debug_string) {
       new imperative::VarBase(false, "vin"));
   var_pair in_pair = var_pair("X", vb_vector(1, vin));
 
-  auto test_func = [&](std::shared_ptr<imperative::VarBase>& vout) {
+  auto test_func = [&](std::shared_ptr<imperative::VarBase> &vout) {
     var_pair out_pair = var_pair("Out", vb_vector(1, vout));
     imperative::NameVarBaseMap ins = {in_pair};
     imperative::NameVarBaseMap outs = {out_pair};
@@ -119,6 +123,35 @@ TEST(test_layer, test_debug_string) {
   ASSERT_TRUE(res_sr.find("SelectedRows") != std::string::npos);
 }
 
+static std::shared_ptr<imperative::GradOpNode> CreateGradNode(
+    size_t id, const std::string &type, const imperative::NameVarBaseMap &ins,
+    const imperative::NameVarBaseMap &outs,
+    const framework::AttributeMap &attrs, const platform::Place &place) {
+  auto node = std::make_shared<imperative::GradOpNode>();
+  auto *op = &(node->emplace_back());
+  op->SetId(id);
+  op->SetPlace(place);
+  op->SetType(type);
+  op->SetAttrMap(attrs);
+  for (auto &pair : ins) {
+    std::vector<std::shared_ptr<VariableWrapper>> vars;
+    for (auto &var : pair.second) {
+      vars.emplace_back(var->SharedVar());
+    }
+    op->SetInput(pair.first, vars, false);
+  }
+
+  for (auto &pair : outs) {
+    std::vector<std::shared_ptr<VariableWrapper>> vars;
+    for (auto &var : pair.second) {
+      vars.emplace_back(var->SharedVar());
+    }
+    op->SetOutput(pair.first, vars, false);
+  }
+
+  return node;
+}
+
 TEST(test_layer, test_clear_backward_info) {
   std::shared_ptr<imperative::VarBase> vin(
       new imperative::VarBase(false, "vin"));
@@ -133,22 +166,22 @@ TEST(test_layer, test_clear_backward_info) {
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap concat_att_map;
   concat_att_map["axis"] = 1;
-  std::shared_ptr<imperative::OpBase> op(
-      OpBase::Create(0, "mul", ins, outs, concat_att_map, place));
-  std::shared_ptr<imperative::OpBase> preceding_op(
-      OpBase::Create(0, "mul", ins, outs, concat_att_map, place));
-  op->InsertGradPendingOps(preceding_op.get());
-  *(op->GetMutableInsMap()) = ins;
-  *(op->GetMutableOutsMap()) = outs;
+
+  auto node = CreateGradNode(0, "mul", ins, outs, concat_att_map, place);
+  auto pending_node =
+      CreateGradNode(0, "mul", ins, outs, concat_att_map, place);
+  node->InsertGradPendingNode(pending_node);
+
+  ASSERT_EQ(node->size(), 1UL);
+  auto *op = &(node->back());
+
   ASSERT_GT(op->GetInsMap().size(), 0UL);
   ASSERT_GT(op->GetOutsMap().size(), 0UL);
-  ASSERT_GT(op->GradPendingOps().size(), 0UL);
 
   op->ClearBackwardTrace();
 
   ASSERT_EQ(op->GetInsMap().size(), 0UL);
   ASSERT_EQ(op->GetOutsMap().size(), 0UL);
-  ASSERT_EQ(op->GradPendingOps().size(), 0UL);
 }
 
 TEST(test_layer, test_varbase_basic) {
@@ -163,10 +196,10 @@ TEST(test_layer, test_varbase_basic) {
   std::shared_ptr<imperative::VarBase> vin_with_grad(
       new imperative::VarBase(true, "vin"));
   ASSERT_ANY_THROW(vin->MutableGradVar());
-  ASSERT_NO_THROW(ASSERT_TRUE(dynamic_cast<framework::Variable*>(
+  ASSERT_NO_THROW(ASSERT_TRUE(dynamic_cast<framework::Variable *>(
                                   vin_with_grad->MutableGradVar()) != 0));
-  ASSERT_TRUE(
-      dynamic_cast<framework::Variable*>(vin_with_grad->MutableGradVar()) != 0);
+  ASSERT_TRUE(dynamic_cast<framework::Variable *>(
+                  vin_with_grad->MutableGradVar()) != 0);
   vin_with_grad->SetOverridedStopGradient(false);
   ASSERT_FALSE(vin_with_grad->OverridedStopGradient());
   ASSERT_NO_FATAL_FAILURE(vin_with_grad->SetPersistable(true));
@@ -195,14 +228,14 @@ TEST(test_layer, test_dygraph_execution_context) {
   auto op = framework::OpRegistry::CreateOp("mul", {}, {}, {}, false);
   paddle::platform::CPUPlace cpu_place;
 
-  paddle::platform::DeviceContextPool& pool =
+  paddle::platform::DeviceContextPool &pool =
       paddle::platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(cpu_place);
+  auto *dev_ctx = pool.Get(cpu_place);
   paddle::framework::RuntimeContext ctx({}, {});
   framework::Scope scope;
 
-  DygraphExecutionContext dy_exe_context(*(op.get()), scope, *dev_ctx, ctx,
-                                         nullptr, ins, outs, &concat_att_map);
+  DygraphExecutionContext<imperative::VarBase> dy_exe_context(
+      *(op.get()), scope, *dev_ctx, ctx, nullptr, ins, outs, concat_att_map);
 
   ASSERT_EQ(dy_exe_context.InputSize("X"), 1u);
   ASSERT_EQ(dy_exe_context.InputName("X"), "vin");
@@ -229,7 +262,8 @@ TEST(test_layer, test_dygraph_infershape_context) {
   framework::AttributeMap concat_att_map;
   concat_att_map["axis"] = 1;
 
-  DygraphInferShapeContext infer_shape_ctx(&ins, &outs, &concat_att_map);
+  DygraphInferShapeContext<imperative::VarBase> infer_shape_ctx(
+      &ins, &outs, &concat_att_map);
 
   bool have_x = infer_shape_ctx.HasOutputs("Out");
   ASSERT_EQ(have_x, true);

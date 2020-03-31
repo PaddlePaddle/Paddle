@@ -19,12 +19,15 @@ limitations under the License. */
 #include <archive.h>
 #include <pslib.h>
 #endif
+#include <ThreadPool.h>
 #include <atomic>
 #include <ctime>
 #include <map>
 #include <random>
 #include <string>
+#include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable_helper.h"
@@ -65,12 +68,16 @@ class FleetWrapper {
     client2client_connect_timeout_ms_ = 10000;
     // pslib request max retry
     client2client_max_retry_ = 3;
+    pull_local_thread_num_ = 25;
   }
 
   // set client to client communication config
   void SetClient2ClientConfig(int request_timeout_ms, int connect_timeout_ms,
                               int max_retry);
 
+  void SetPullLocalThreadNum(int thread_num) {
+    pull_local_thread_num_ = thread_num;
+  }
   // Pull sparse variables from server in sync mode
   // Param<in>: scope, table_id, var_names, fea_keys, fea_dim
   // Param<out>: fea_values
@@ -80,7 +87,11 @@ class FleetWrapper {
                           std::vector<std::vector<float>>* fea_values,
                           int fea_dim,
                           const std::vector<std::string>& var_emb_names);
-
+  std::future<int32_t> PullSparseVarsAsync(
+      const Scope& scope, const uint64_t table_id,
+      const std::vector<std::string>& var_names,
+      std::vector<uint64_t>* fea_keys,
+      std::vector<std::vector<float>>* fea_values, int fea_dim);
   // pull dense variables from server in sync mod
   void PullDenseVarsSync(const Scope& scope, const uint64_t table_id,
                          const std::vector<std::string>& var_names);
@@ -111,6 +122,18 @@ class FleetWrapper {
                          const std::vector<std::string>& var_names);
 
   // Push sparse variables with labels to server in async mode
+  std::vector<std::unordered_map<uint64_t, std::vector<float>>> local_tables_;
+  void PullSparseToLocal(const uint64_t table_id, int fea_value_dim);
+  void PullSparseVarsFromLocal(const Scope& scope, const uint64_t table_id,
+                               const std::vector<std::string>& var_names,
+                               std::vector<uint64_t>* fea_keys,
+                               std::vector<std::vector<float>>* fea_values,
+                               int fea_value_dim);
+  void ClearLocalTable();
+  std::vector<std::unordered_map<uint64_t, std::vector<float>>>&
+  GetLocalTable() {
+    return local_tables_;
+  }
   // This is specially designed for click/show stats in server
   // Param<in>: scope, table_id, fea_keys, fea_labels, sparse_key_names,
   //            sparse_grad_names, batch_size, use_cvm, dump_slot
@@ -197,6 +220,8 @@ class FleetWrapper {
                              const std::vector<uint64_t>& feasign_list);
   // clear all models, release their memory
   void ClearModel();
+  // clear one table
+  void ClearOneTable(const uint64_t table_id);
   // shrink sparse table
   void ShrinkSparseTable(int table_id);
   // shrink dense table
@@ -237,6 +262,10 @@ class FleetWrapper {
   int client2client_request_timeout_ms_;
   int client2client_connect_timeout_ms_;
   int client2client_max_retry_;
+  std::unique_ptr<::ThreadPool> local_pull_pool_{nullptr};
+  int pull_local_thread_num_;
+  std::unique_ptr<::ThreadPool> pull_to_local_pool_{nullptr};
+  int local_table_shard_num_;
   DISABLE_COPY_AND_ASSIGN(FleetWrapper);
 };
 

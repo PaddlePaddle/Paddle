@@ -171,8 +171,7 @@ class PRROIPoolGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("prroi_pool_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("Out", this->Output("Out"));
@@ -182,7 +181,6 @@ class PRROIPoolGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetOutput(framework::GradVarName("ROIs"), this->InputGrad("ROIs"));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 }  // namespace operators

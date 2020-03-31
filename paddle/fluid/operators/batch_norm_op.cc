@@ -721,8 +721,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
 };
 
 template <typename T>
-std::unique_ptr<T> BatchNormGradMaker<T>::Apply() const {
-  auto *op = new T();
+void BatchNormGradMaker<T>::Apply(GradOpPtr<T> op) const {
   op->SetType(this->ForwardOpType() + "_grad");
   op->SetInput("X", this->Input("X"));
   op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
@@ -746,8 +745,6 @@ std::unique_ptr<T> BatchNormGradMaker<T>::Apply() const {
   op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   op->SetOutput(framework::GradVarName("Scale"), this->InputGrad("Scale"));
   op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
-
-  return std::unique_ptr<T>(op);
 }
 
 }  // namespace operators

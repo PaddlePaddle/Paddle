@@ -267,7 +267,7 @@ void Conv2DTransposeOpMaker::Make() {
                "workspace is a section of GPU memory which will be "
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
-               "better hardward. This size should be carefully setted.")
+               "better hardward. This size should be carefully set.")
       .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
   AddComment(R"DOC(
 Convolution2D Transpose Operator.
@@ -368,7 +368,7 @@ void Conv3DTransposeOpMaker::Make() {
                "workspace is a section of GPU memory which will be "
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
-               "better hardward. This size should be carefully setted.")
+               "better hardward. This size should be carefully set.")
       .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
   AddComment(R"DOC(
 Convolution3D Transpose Operator.
@@ -441,8 +441,7 @@ class ConvTransposeGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("Input", this->Input("Input"));
     op->SetInput("Filter", this->Input("Filter"));
@@ -454,7 +453,6 @@ class ConvTransposeGradOpMaker : public framework::SingleGradOpMaker<T> {
     }
     op->SetInput(framework::GradVarName("Output"), this->OutputGrad("Output"));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 

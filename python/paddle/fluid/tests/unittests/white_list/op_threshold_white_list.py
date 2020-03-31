@@ -20,7 +20,6 @@ NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST = [
     'conv3d', \
     'cross_entropy', \
     'depthwise_conv2d_transpose', \
-    'elementwise_pow', \
     'grid_sampler', \
     'group_norm', \
     'gru', \

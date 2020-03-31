@@ -29,7 +29,6 @@ from . import control_flow
 from . import nn
 from . import ops
 from . import tensor
-from ..initializer import init_on_cpu
 from ..framework import default_main_program, Parameter, unique_name, name_scope
 from ..framework import Variable
 from ..framework import in_dygraph_mode
@@ -50,20 +49,21 @@ def _decay_step_counter(begin=0):
     return global_step
 
 
-def noam_decay(d_model, warmup_steps):
+def noam_decay(d_model, warmup_steps, learning_rate=1.0):
     """
     Noam decay method. The numpy implementation of noam decay as follows.
 
     .. code-block:: python
       
-      import padde.fluid as fluid
+      import paddle.fluid as fluid
       import numpy as np
       # set hyper parameters
+      base_lr = 0.01
       d_model = 2
       current_steps = 20
       warmup_steps = 200
       # compute
-      lr_value = np.power(d_model, -0.5) * np.min([
+      lr_value = base_lr * np.power(d_model, -0.5) * np.min([
                               np.power(current_steps, -0.5),
                               np.power(warmup_steps, -1.5) * current_steps])
 
@@ -75,28 +75,35 @@ def noam_decay(d_model, warmup_steps):
 
         warmup_steps(Variable): A super parameter.
 
+        learning_rate(Variable|float|int): The initial learning rate. If the type
+            is Variable, it's a tensor with shape [1], the data type can be
+            float32 or float64. It also can be set to python int number. Default 1.0
+
     Returns:
         The decayed learning rate.
     Examples:
         .. code-block:: python
 
-          import padde.fluid as fluid
+          import paddle.fluid as fluid
           warmup_steps = 100
           learning_rate = 0.01
           lr = fluid.layers.learning_rate_scheduler.noam_decay(
                          1/(warmup_steps *(learning_rate ** 2)),
-                         warmup_steps)
+                         warmup_steps,
+                         learning_rate)
     """
     with default_main_program()._lr_schedule_guard():
         if in_dygraph_mode():
-            decay = imperate_lr.NoamDecay(d_model, warmup_steps)
+            decay = imperate_lr.NoamDecay(
+                d_model, warmup_steps, learning_rate=learning_rate)
             return decay
         else:
             global_step = _decay_step_counter(1)
 
             a = global_step**-0.5
             b = (warmup_steps**-1.5) * global_step
-            lr_value = (d_model**-0.5) * nn.elementwise_min(a, b)
+            lr_value = learning_rate * (d_model**-0.5) * nn.elementwise_min(a,
+                                                                            b)
 
             return lr_value
 
@@ -109,7 +116,7 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     training progresses. By using this function, the learning rate will be decayed by
     'decay_rate' every 'decay_steps' steps.
 
-    Decayed learning rate calcualtes as follows:
+    Decayed learning rate calculates as follows:
 
     >>> if staircase == True:
     >>>     decayed_learning_rate = learning_rate * decay_rate ^ floor(global_step / decay_steps)
@@ -165,7 +172,7 @@ def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     training progresses. By using this function, the learning rate will be decayed by
     natural exponential power 'decay_rate' every 'decay_steps' steps.
 
-    Decayed learning rate calcualtes as follows:
+    Decayed learning rate calculates as follows:
 
     >>> if not staircase:
     >>>     decayed_learning_rate = learning_rate * exp(- decay_rate * (global_step / decay_steps))
@@ -178,7 +185,7 @@ def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
         decay_steps(int): The learning rate decay steps. See the decay computation above.
         decay_rate(float): The learning rate decay rate. See the decay computation above.
         staircase(bool): If True, decay the learning rate at discrete intervals, which 
-                         means the learning rate will be decayed by natual exponential power
+                         means the learning rate will be decayed by natural exponential power
                          `decay_rate` every `decay_steps`. If False, learning rate will be
                          decayed continuously and following the formula above. Default: False
 
@@ -222,7 +229,7 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     training progresses. By using this function, an inverse decay function will be
     applied to the initial learning rate.
 
-    Decayed learning rate calcualtes as follows:
+    Decayed learning rate calculates as follows:
 
     >>> if staircase == True:
     >>>     decayed_learning_rate = learning_rate / (1 + decay_rate * floor(global_step / decay_step))
