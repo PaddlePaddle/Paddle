@@ -557,7 +557,7 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
             Tensor dy_sum;
             dy_sum.Resize({C});
             dy_sum.mutable_data<T>(ctx.GetPlace());
-            EigenVectorArrayMap<T>dy_sum_arr(
+            EigenVectorArrayMap<T> dy_sum_arr(
                 dy_sum.mutable_data<T>(ctx.GetPlace()), C);
             Tensor dy_mul_x_sub_mean_mul_invstd_sum;
             dy_mul_x_sub_mean_mul_invstd_sum.Resize({C});
@@ -603,11 +603,11 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
                         x_data[offset + i] < min_precision)) {
                     // show != 0
                     for (int j = i; j < i + slot_dim; ++j) {
-                      d_x_data[offset+j] = dy_data[offset+j] *
+                      d_x_data[offset + j] = dy_data[offset + j] *
                                            scales_data[j]* scale_w_data[j];
-                      d_bias_data[j] += dy_data[offset+j];
-                      d_scale_data[j] += (x_data[offset+j]-mean_data[j]) *
-                                         inv_var_data[j] * dy_data[offset+j];
+                      d_bias_data[j] += dy_data[offset + j];
+                      d_scale_data[j] += (x_data[offset + j]-mean_data[j]) *
+                                         inv_var_data[j] * dy_data[offset + j];
                     }
                   }
                 }
