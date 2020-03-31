@@ -16,6 +16,11 @@
 # including layers, linear, conv, rnn etc.
 # __all__ = [ ]
 
+from .layer import norm
+
+__all__ = []
+__all__ += norm.__all__
+
 # TODO: define alias in nn directory
 # from .clip import ErrorClipByValue   #DEFINE_ALIAS
 # from .clip import GradientClipByGlobalNorm   #DEFINE_ALIAS
@@ -70,6 +75,7 @@
 # from .layer.norm import BatchNorm   #DEFINE_ALIAS
 # from .layer.norm import GroupNorm   #DEFINE_ALIAS
 # from .layer.norm import LayerNorm   #DEFINE_ALIAS
+from .layer.norm import InstanceNorm  #DEFINE_ALIAS
 # from .layer.norm import SpectralNorm   #DEFINE_ALIAS
 # from .layer.activation import PReLU   #DEFINE_ALIAS
 # from .layer.activation import ReLU   #DEFINE_ALIAS
