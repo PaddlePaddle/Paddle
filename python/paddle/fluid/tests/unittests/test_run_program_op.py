@@ -73,6 +73,8 @@ class RunProgramOpTest(unittest.TestCase):
                 type=core.VarDesc.VarType.STEP_SCOPES,
                 name="program_out_scope",
                 persistable=True)
+            inner_scope = core.Scope()
+            outputs['OutScope'].value().set_scope(inner_scope)
 
             framework._dygraph_tracer().trace_op(
                 type=self.op_type,

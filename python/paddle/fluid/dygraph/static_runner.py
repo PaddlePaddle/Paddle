@@ -232,12 +232,8 @@ class StaticModelRunner(layers.Layer):
                     zero_copy=True)
             else:
                 var = value
-                # NOTE: change desc var name, if the inputs user given are VarBase, 
-                # they may have important name set by the user!
-                if var.name != self._input_names[i]:
-                    self._change_var_name_in_desc(self._input_names[i],
-                                                  var.name)
-                self._input_names[i] = var.name
+                # TODO: here may have important name set by user
+                var.name = self._input_names[i]
             input_vars.append(var)
 
         params = []
@@ -514,27 +510,6 @@ class StaticModelRunner(layers.Layer):
                 op = block.op(op_idx)
                 op._rename_input(old_name, new_name)
                 op._rename_output(old_name, new_name)
-
-    def _change_var_name_in_desc(self, orig_name, new_name):
-        assert self._program_desc is not None, "The StaticModelRunner not initialized properly."
-        # 1. change all var and grad var name
-        # 2. change all related op input name
-        # 3. change all related grad op output name
-        orig_grad_name = cpt.to_text(orig_name) + core.grad_var_suffix()
-        new_grad_name = new_name + core.grad_var_suffix()
-        for i in six.moves.range(self._program_desc.num_blocks()):
-            block = self._program_desc.block(i)
-            # change var name
-            for var in block.all_vars():
-                if var.name() == orig_name:
-                    var.set_name(new_name)
-                elif var.name() == orig_grad_name:
-                    var.set_name(new_grad_name)
-            # change op input & output
-            for j in six.moves.range(block.op_size()):
-                op = block.op(j)
-                op._rename_input(orig_name, new_name)
-                op._rename_output(orig_grad_name, new_grad_name)
 
 
 ######### Debug Functions ##########
