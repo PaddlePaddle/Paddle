@@ -87,6 +87,7 @@ class TestTDMSamplerOp(OpTest):
         self.neg_samples_num_list = [0, 0, 0, 0]
         self.x_shape = (10, 1)
         self.x_type = 'int32'
+        self.tree_dtype = 'int32'
         self.dtype = 'int32'
 
     def test_check_output(self):
@@ -158,6 +159,7 @@ class TestCase1(TestTDMSamplerOp):
         self.neg_samples_num_list = [0, 0, 0, 0]
         self.x_shape = (10, 1)
         self.x_type = 'int64'
+        self.tree_dtype = 'int64'
         self.dtype = 'int32'
 
 
@@ -167,6 +169,7 @@ class TestCase2(TestTDMSamplerOp):
         self.neg_samples_num_list = [0, 0, 0, 0]
         self.x_shape = (10, 1)
         self.x_type = 'int32'
+        self.tree_dtype = 'int32'
         self.dtype = 'int64'
 
 
@@ -176,6 +179,7 @@ class TestCase3(TestTDMSamplerOp):
         self.neg_samples_num_list = [0, 0, 0, 0]
         self.x_shape = (10, 1)
         self.x_type = 'int64'
+        self.tree_dtype = 'int64'
         self.dtype = 'int64'
 
 
@@ -185,6 +189,7 @@ class TestCase4(TestTDMSamplerOp):
         self.neg_samples_num_list = [1, 1, 1, 1]
         self.x_shape = (10, 1)
         self.x_type = 'int64'
+        self.tree_dtype = 'int32'
         self.dtype = 'int64'
 
 
@@ -194,6 +199,7 @@ class TestCase5(TestTDMSamplerOp):
         self.neg_samples_num_list = [1, 2, 3, 4]
         self.x_shape = (10, 1)
         self.x_type = 'int64'
+        self.tree_dtype = 'int32'
         self.dtype = 'int64'
 
 
@@ -203,6 +209,7 @@ class TestCase6(TestTDMSamplerOp):
         self.neg_samples_num_list = [1, 2, 3, 4]
         self.x_shape = (100, 1)
         self.x_type = 'int64'
+        self.tree_dtype = 'int32'
         self.dtype = 'int64'
 
 
@@ -212,6 +219,7 @@ class TestCase7(TestTDMSamplerOp):
         self.neg_samples_num_list = [1, 3, 6, 11]
         self.x_shape = (10, 1)
         self.x_type = 'int64'
+        self.tree_dtype = 'int32'
         self.dtype = 'int64'
 
 
@@ -246,7 +254,8 @@ class TestTDMSamplerShape(unittest.TestCase):
             output_positive=True,
             output_list=True,
             seed=0,
-            tree_dtype='int32')
+            tree_dtype='int32',
+            dtype='int32')
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place=place)

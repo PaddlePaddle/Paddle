@@ -35,7 +35,7 @@ using LoD = framework::LoD;
 using LoDTensor = framework::LoDTensor;
 using LoDAndOffset = std::pair<LoD, std::pair<size_t, size_t>>;
 
-template <typename T, typename TreeT = int>
+template <typename T, typename TreeT = int, typename OutT = int>
 void TDMSamplerInner(const framework::ExecutionContext &context,
                      const LoDTensor &input_tensor,
                      const LoDTensor &travel_lod_tensor,
@@ -67,11 +67,11 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
   auto *travel_data = travel_lod_tensor.data<TreeT>();
   auto *layer_data = layer_lod_tensor.data<TreeT>();
 
-  TreeT zero = 0;
-  TreeT one = 1;
-  std::vector<TreeT> output_vec(total_sample_nums, zero);
-  std::vector<TreeT> label_vec(total_sample_nums, zero);
-  std::vector<TreeT> mask_vec(total_sample_nums, one);
+  OutT zero = 0;
+  OutT one = 1;
+  std::vector<OutT> output_vec(total_sample_nums, zero);
+  std::vector<OutT> label_vec(total_sample_nums, zero);
+  std::vector<OutT> mask_vec(total_sample_nums, one);
 
   VLOG(3) << "End get input & output data";
   // generate uniform sampler
@@ -126,7 +126,8 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
       int node_id_min = layer_offset_lod[layer_idx];
       int node_id_max = layer_offset_lod[layer_idx + 1];
 
-      TreeT positive_node_id = travel_data[start_offset + layer_idx];
+      OutT positive_node_id =
+          static_cast<OutT>(travel_data[start_offset + layer_idx]);
 
       if (positive_node_id == 0) {
         // skip padding
@@ -173,7 +174,7 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
                 << mask_vec[i * sample_res_length + offset];
         offset += 1;
       }
-      std::vector<TreeT> sample_res_vec{};
+      std::vector<int> sample_res_vec{};
       // Sampling at layer, until samples enough
       for (int sample_index = 0; sample_index < sample_num; ++sample_index) {
         // Avoid sampling to positive samples
@@ -186,8 +187,8 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
                       sample_res) != sample_res_vec.end());
         sample_res_vec.push_back(sample_res);
 
-        output_vec[i * sample_res_length + offset] =
-            layer_data[layer_offset_lod[layer_idx] + sample_res];
+        output_vec[i * sample_res_length + offset] = static_cast<OutT>(
+            layer_data[layer_offset_lod[layer_idx] + sample_res]);
         label_vec[i * sample_res_length + offset] = 0;
         mask_vec[i * sample_res_length + offset] = 1;
         VLOG(3) << "TDM: node id: " << travel_data[start_offset + layer_idx]
@@ -211,13 +212,13 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
     }    // end one input nce
   }      // end all input nce
 
-  auto *output_data = out_tensor->mutable_data<TreeT>(context.GetPlace());
-  auto *label_data = label_tensor->mutable_data<TreeT>(context.GetPlace());
-  auto *mask_data = mask_tensor->mutable_data<TreeT>(context.GetPlace());
+  auto *output_data = out_tensor->mutable_data<OutT>(context.GetPlace());
+  auto *label_data = label_tensor->mutable_data<OutT>(context.GetPlace());
+  auto *mask_data = mask_tensor->mutable_data<OutT>(context.GetPlace());
 
-  memcpy(output_data, &output_vec[0], sizeof(TreeT) * total_sample_nums);
-  memcpy(label_data, &label_vec[0], sizeof(TreeT) * total_sample_nums);
-  memcpy(mask_data, &mask_vec[0], sizeof(TreeT) * total_sample_nums);
+  memcpy(output_data, &output_vec[0], sizeof(OutT) * total_sample_nums);
+  memcpy(label_data, &label_vec[0], sizeof(OutT) * total_sample_nums);
+  memcpy(mask_data, &mask_vec[0], sizeof(OutT) * total_sample_nums);
 
   for (size_t layer_index = 0; layer_index < layer_nums; layer_index++) {
     delete sampler_vec[layer_index];
@@ -291,14 +292,29 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     auto *label_tensor = label_var->GetMutable<framework::LoDTensor>();
     auto *mask_tensor = mask_var->GetMutable<framework::LoDTensor>();
 
-    if (travel_type == framework::proto::VarType::INT32) {
-      TDMSamplerInner<T, int>(context, input_tensor, travel_lod_tensor,
-                              layer_lod_tensor, out_tensor, label_tensor,
-                              mask_tensor);
-    } else if (travel_type == framework::proto::VarType::INT64) {
-      TDMSamplerInner<T, int64_t>(context, input_tensor, travel_lod_tensor,
-                                  layer_lod_tensor, out_tensor, label_tensor,
-                                  mask_tensor);
+    auto output_type =
+        static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
+
+    if (travel_type == framework::proto::VarType::INT32 &&
+        output_type == framework::proto::VarType::INT32) {
+      TDMSamplerInner<T, int, int>(context, input_tensor, travel_lod_tensor,
+                                   layer_lod_tensor, out_tensor, label_tensor,
+                                   mask_tensor);
+    } else if (travel_type == framework::proto::VarType::INT64 &&
+               output_type == framework::proto::VarType::INT32) {
+      TDMSamplerInner<T, int64_t, int>(context, input_tensor, travel_lod_tensor,
+                                       layer_lod_tensor, out_tensor,
+                                       label_tensor, mask_tensor);
+    } else if (travel_type == framework::proto::VarType::INT32 &&
+               output_type == framework::proto::VarType::int64) {
+      TDMSamplerInner<T, int, int64_t>(context, input_tensor, travel_lod_tensor,
+                                       layer_lod_tensor, out_tensor,
+                                       label_tensor, mask_tensor);
+    } else if (travel_type == framework::proto::VarType::INT64 &&
+               output_type == framework::proto::VarType::INT64) {
+      TDMSamplerInner<T, int64_t, int64_t>(
+          context, input_tensor, travel_lod_tensor, layer_lod_tensor,
+          out_tensor, label_tensor, mask_tensor);
     }
   }
 };

@@ -26,7 +26,7 @@ from paddle.fluid.layers import utils
 from ... import unique_name
 from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
-from paddle.fluid.framework import Variable
+from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
 from paddle.fluid.layers import slice, reshape
 import warnings
 
@@ -944,7 +944,8 @@ def tdm_sampler(x,
                 output_positive=True,
                 output_list=True,
                 seed=0,
-                tree_dtype='int32'):
+                tree_dtype='int32',
+                dtype='int32'):
     """
     **Tdm Sampler**
     According to the input positive samples at leaf node(x), do negative sampling layer by layer on the given tree.
@@ -980,9 +981,11 @@ def tdm_sampler(x,
         output_positive (bool): Whether to output positive samples (includ label and mask )at the same time.
         output_list (bool): Whether to divide the output into layers and organize it into list format.
         seed (int): The number of random seed.
+        tree_dtype(np.dtype|core.VarDesc.VarType|str): The dtype of tdm-travel and tdm-layer, support int32/int64
+        dtype(np.dtype|core.VarDesc.VarType|str): The dtype of output(sampling results, labels and masks) 
 
     Returns:
-        tuple: A tuple including sampling result, corresponding labels and masks. if output_positive = True, sampling
+        tuple: A tuple including sampling results, corresponding labels and masks. if output_positive = True, sampling
             result  will include both positive and negative samples. If sampling reseult is a positive sample, the label is 1, 
             and if it is a negative sample, it is 0. If the tree is unbalanced, in order to ensure the consistency of the 
             sampling result shape, the padding sample's mask = 0, the real sample's mask value = 1. 
@@ -1030,6 +1033,9 @@ def tdm_sampler(x,
     helper = LayerHelper("tdm_sampler", **locals())
     check_dtype(tree_dtype, 'tree_dtype', ['int32', 'int64'],
                 'fluid.contrib.layers.tdm_sampler')
+    check_dtype(dtype, 'dtype', ['int32', 'int64'],
+                'fluid.contrib.layers.tdm_sampler')
+    c_dtype = convert_np_dtype_to_dtype_(dtype)
 
     if len(neg_samples_num_list) != len(layer_node_num_list):
         raise ValueError(
@@ -1069,13 +1075,13 @@ def tdm_sampler(x,
         dtype=tree_dtype,
         default_initializer=Constant(0))
 
-    out = helper.create_variable_for_type_inference(dtype=tree_dtype)
+    out = helper.create_variable_for_type_inference(dtype=dtype)
     out.stop_gradient = True
 
-    labels = helper.create_variable_for_type_inference(dtype=tree_dtype)
+    labels = helper.create_variable_for_type_inference(dtype=dtype)
     labels.stop_gradient = True
 
-    mask = helper.create_variable_for_type_inference(dtype=tree_dtype)
+    mask = helper.create_variable_for_type_inference(dtype=dtype)
     mask.stop_gradient = True
 
     helper.append_op(
@@ -1090,7 +1096,8 @@ def tdm_sampler(x,
             'neg_samples_num_list': neg_samples_num_list,
             'output_positive': output_positive,
             'layer_offset_lod': tree_layer_offset_lod,
-            'seed': seed
+            'seed': seed,
+            'dtype': c_type
         })
 
     if output_list:
