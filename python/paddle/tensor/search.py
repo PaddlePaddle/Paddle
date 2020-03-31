@@ -86,11 +86,11 @@ def where(Condition, X, Y):
         check_dtype(Condition.dtype, 'Condition', ['bool'], 'where',
                     '(When the type of Condition in where is Variable.)')
     if isinstance(X, Variable):
-        check_dtype(X.dtype, 'X', ['float32', 'float64', 'int32'], 'where',
-                    '(When the type of X in where is Variable.)')
+        check_dtype(X.dtype, 'X', ['float32', 'float64', 'int32', 'int64'],
+                    'where', '(When the type of X in where is Variable.)')
     if isinstance(Y, Variable):
-        check_dtype(Y.dtype, 'Y', ['float32', 'float64', 'int32'], 'where',
-                    '(When the type of Y in where is Variable.)')
+        check_dtype(Y.dtype, 'Y', ['float32', 'float64', 'int32', 'int64'],
+                    'where', '(When the type of Y in where is Variable.)')
 
     helper.append_op(
         type='where',

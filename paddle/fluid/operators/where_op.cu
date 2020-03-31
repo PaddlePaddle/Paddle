@@ -43,8 +43,9 @@ template <typename T>
 class WhereOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(context.GetPlace()),
-                   "It must use CUDAPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(context.GetPlace()), true,
+        platform::errors::PermissionDenied("It must use CUDAPlace."));
     auto* condition = context.Input<framework::Tensor>("Condition");
     auto* X = context.Input<framework::Tensor>("X");
     auto* Y = context.Input<framework::Tensor>("Y");
@@ -73,8 +74,9 @@ template <typename T>
 class WhereGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(context.GetPlace()),
-                   "It must use CUDAPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(context.GetPlace()), true,
+        platform::errors::PermissionDenied("It must use CUDAPlace."));
 
     auto* condition = context.Input<framework::Tensor>("Condition");
     const bool* cond_data = condition->data<bool>();
@@ -99,8 +101,10 @@ class WhereGradOpCUDAKernel : public framework::OpKernel<T> {
 
 REGISTER_OP_CUDA_KERNEL(where, paddle::operators::WhereOpCUDAKernel<float>,
                         paddle::operators::WhereOpCUDAKernel<double>,
-                        paddle::operators::WhereOpCUDAKernel<int>);
+                        paddle::operators::WhereOpCUDAKernel<int>,
+                        paddle::operators::WhereOpCUDAKernel<int64_t>);
 REGISTER_OP_CUDA_KERNEL(where_grad,
                         paddle::operators::WhereGradOpCUDAKernel<float>,
                         paddle::operators::WhereGradOpCUDAKernel<double>,
-                        paddle::operators::WhereGradOpCUDAKernel<int>);
+                        paddle::operators::WhereGradOpCUDAKernel<int>,
+                        paddle::operators::WhereGradOpCUDAKernel<int64_t>);

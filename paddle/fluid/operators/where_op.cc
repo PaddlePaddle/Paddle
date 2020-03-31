@@ -21,16 +21,16 @@ class WhereOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Condition"), true,
                       platform::errors::NotFound(
-                          "Input(Condition) of whereOp should not be null."));
+                          "Input(Condition) of where should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("X"), true,
-        platform::errors::NotFound("Input(X) of whereOp should not be null."));
+        platform::errors::NotFound("Input(X) of where should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Y"), true,
-        platform::errors::NotFound("Input(Y) of whereOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::NotFound(
-                          "Output(Out) of whereOp should not be null."));
+        platform::errors::NotFound("Input(Y) of where should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("Out"), true,
+        platform::errors::NotFound("Output(Out) of where should not be null."));
 
     auto x_size = ctx->GetInputDim("X").size();
     auto y_size = ctx->GetInputDim("Y").size();
@@ -66,10 +66,18 @@ class WhereGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Condition"), true,
+                      platform::errors::NotFound(
+                          "Input(Condition) of where should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"), true,
+        platform::errors::NotFound("Input(X) of where should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Y"), true,
+        platform::errors::NotFound("Input(Y) of where should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+                      platform::errors::NotFound(
+                          "Input(Out@GRAD) of where should not be null."));
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
@@ -136,8 +144,10 @@ REGISTER_OPERATOR(where_grad, ops::WhereGradOp);
 REGISTER_OP_CPU_KERNEL(
     where, ops::WhereKernel<paddle::platform::CPUDeviceContext, float>,
     ops::WhereKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::WhereKernel<paddle::platform::CPUDeviceContext, int>);
+    ops::WhereKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::WhereKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     where_grad, ops::WhereGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::WhereGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::WhereGradKernel<paddle::platform::CPUDeviceContext, int>);
+    ops::WhereGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::WhereGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
