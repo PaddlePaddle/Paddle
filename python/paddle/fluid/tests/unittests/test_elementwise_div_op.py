@@ -234,7 +234,7 @@ class TestDivOpAttr(unittest.TestCase):
             y = fluid.data(name='y', shape=[3], dtype='float32')
 
             res = fluid.data(name="output", shape=[3], dtype="float32")
-            y_1 = paddle.tensor.div(x, y, out=res)
+            y_1 = paddle.div(x, y, out=res)
 
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -251,7 +251,7 @@ class TestDivOpAttr(unittest.TestCase):
             x = fluid.data(name="x", shape=[2, 3], dtype="float32")
             y = fluid.data(name='y', shape=[2, 3], dtype='float32')
 
-            y_1 = paddle.tensor.div(x, y, name='div_res')
+            y_1 = paddle.div(x, y, name='div_res')
             self.assertEqual(('div_res' in y_1.name), True)
 
 

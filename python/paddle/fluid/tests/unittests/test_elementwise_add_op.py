@@ -15,6 +15,7 @@
 from __future__ import print_function
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid.core as core
 from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid as fluid
@@ -387,7 +388,7 @@ class TestAddOpAttr(unittest.TestCase):
             y = fluid.data(name='y', shape=[3], dtype='float32')
 
             res = fluid.data(name="output", shape=[3], dtype="float32")
-            y_1 = paddle.tensor.add(x, y, out=res)
+            y_1 = paddle.add(x, y, out=res)
 
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -404,7 +405,7 @@ class TestAddOpAttr(unittest.TestCase):
             x = fluid.data(name="x", shape=[2, 3], dtype="float32")
             y = fluid.data(name='y', shape=[2, 3], dtype='float32')
 
-            y_1 = paddle.tensor.add(x, y, name='add_res')
+            y_1 = paddle.add(x, y, name='add_res')
             self.assertEqual(('add_res' in y_1.name), True)
 
     def test_alpha_1(self):
@@ -418,7 +419,7 @@ class TestAddOpAttr(unittest.TestCase):
 
             x = fluid.data(name="x", shape=[3], dtype='float32')
             y = fluid.data(name="y", shape=[3], dtype='float32')
-            z = tensor.add(x, y, alpha=10)
+            z = paddle.add(x, y, alpha=10)
 
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -437,7 +438,7 @@ class TestAddOpAttr(unittest.TestCase):
 
             x = fluid.data(name="x", shape=[3], dtype='float32')
             y = fluid.data(name="y", shape=[3], dtype='float32')
-            z = tensor.add(x, y, alpha=-0.5)
+            z = paddle.add(x, y, alpha=-0.5)
 
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
