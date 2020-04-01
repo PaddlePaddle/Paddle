@@ -239,3 +239,28 @@ class LayerList(Layer):
         """
         self.add_sublayer(str(len(self)), sublayer)
         return self
+
+    def insert(self, index, sublayer):
+        """
+        Insert a sublayer before a given index in the list.
+
+        Parameters:
+            index (int): index to insert.
+            sublayer (Layer): sublayer to insert
+        """
+        for i in range(len(self._sub_layers), index, -1):
+            self._sub_layers[str(i)] = self._sub_layers[str(i - 1)]
+        self._sub_layers[str(index)] = sublayer
+
+    def extend(self, sublayers):
+        """
+        Appends sublayers to the end of the list.
+
+        Arguments:
+            sublayers (iterable of Layer): iterable of sublayers to append
+        """
+        offset = len(self)
+        for i, sublayer in enumerate(sublayers):
+            idx = str(offset + i)
+            self.add_sublayer(idx, sublayer)
+        return self
