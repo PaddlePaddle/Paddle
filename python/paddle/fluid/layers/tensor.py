@@ -583,13 +583,12 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
                     shape))
         else:
             shape = list(shape.numpy().astype(int))
-        dtype = convert_np_dtype_to_dtype_(dtype)
         if out is None:
             out = _varbase_creator(dtype=dtype)
         core.ops.fill_constant(out, 'value',
                                float(value), 'force_cpu', force_cpu, 'dtype',
-                               dtype, 'str_value', attrs['str_value'], 'shape',
-                               shape)
+                               out.dtype, 'str_value', attrs['str_value'],
+                               'shape', shape)
         out.stop_gradient = True
         return out
 
