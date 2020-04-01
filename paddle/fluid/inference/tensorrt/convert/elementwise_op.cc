@@ -192,9 +192,17 @@ class ElementwiseTensorOpConverter : public OpConverter {
             *const_cast<nvinfer1::ITensor*>(Y), op_pair->second);
         common_func(elet_layer);
       } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "TensorRT Dynamic shape mode unsupported weight shape for "
-            "Elementwise op!"));
+#if IS_TRT_VERSION_GE(6000)
+        plugin::ElementwisePluginDynamic* plugin =
+            new plugin::ElementwisePluginDynamic(op_type_, axis);
+        plugin->AddInput(X);
+        plugin->AddInput(Y);
+        layer = engine_->AddPluginV2(plugin->GetInputs().data(), 2, plugin);
+#else
+        PADDLE_THROW(platform::errors::Fatal(
+            "You are running the TRT Dynamic Shape mode, need to confirm that "
+            "your TRT version is no less than 6.0"));
+#endif
       }
       return;
     }
