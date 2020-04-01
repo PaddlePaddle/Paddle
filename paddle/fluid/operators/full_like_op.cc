@@ -76,9 +76,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(FullLikeNoNeedBufferVarsInference, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(
-    full_like, ops::FullLikeOp,
-    ops::FullLikeOpMaker ops::FullLikeNoNeedBufferVarsInference);
+REGISTER_OP_WITHOUT_GRADIENT(full_like, ops::FullLikeOp, ops::FullLikeOpMaker,
+                             ops::FullLikeNoNeedBufferVarsInference);
 
 REGISTER_OP_CPU_KERNEL(
     full_like, ops::FullLikeKernel<paddle::platform::CPUDeviceContext, int32_t>,
