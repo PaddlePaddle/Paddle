@@ -125,8 +125,8 @@ class ScatterGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ScatterGradNoNeedBufferVarsInference,
-                                      "Updates");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ScatterGradNoNeedBufferVarsInference,
+                                    "Updates");
 
 DECLARE_INPLACE_OP_INFERER(ScatterInplaceInferer, {"X", "Out"});
 DECLARE_INPLACE_OP_INFERER(ScatterGradInplaceInferer,

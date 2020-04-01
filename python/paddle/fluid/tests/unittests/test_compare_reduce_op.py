@@ -145,17 +145,11 @@ for args in broadcast_args:
 
 
 class TestEqualReduceAPI(unittest.TestCase):
-    def test_api(self):
-        out_1 = fluid.data(name="out_1", shape=[1], dtype="bool")
+    def test_name(self):
         x = fluid.layers.assign(np.array([3, 4], dtype="int32"))
         y = fluid.layers.assign(np.array([3, 4], dtype="int32"))
-        out_2 = paddle.tensor.equal(x, y, cond=out_1)
-        exe = fluid.Executor(place=fluid.CPUPlace())
-        ipt = {'out_1': np.random.random([1]).astype('bool')}
-        res_1, res_2 = exe.run(fluid.default_main_program(),
-                               feed=ipt,
-                               fetch_list=[out_1, out_2])
-        assert np.array_equal(res_1, res_2)
+        out = paddle.equal(x, y, name='equal_res')
+        assert 'equal_res' in out.name
 
 
 if __name__ == '__main__':

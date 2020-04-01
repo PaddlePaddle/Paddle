@@ -19,8 +19,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename Functor>
-class CompareReduceOpKernel<platform::CPUDeviceContext, Functor>
+template <typename DeviceContext, typename Functor>
+class CompareReduceOpKernel
     : public framework::OpKernel<typename Functor::ELEM_TYPE> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -79,11 +79,6 @@ class CompareReduceOpProtoMaker : public framework::OpProtoAndCheckerMaker {
         "The start dimension index for broadcasting Y onto X. [default -1]")
         .SetDefault(-1)
         .EqualGreaterThan(-1);
-    AddAttr<bool>("force_cpu",
-                  "Force fill output variable to cpu "
-                  "memory. Otherwise, fill output variable to the running "
-                  "device [default true].")
-        .SetDefault(true);
     AddOutput("Out", string::Sprintf(
                          "tensor with a bool element. If all "
                          "element %s, the Out tensor is [True], else [False]",
@@ -105,27 +100,21 @@ class CompareReduceOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* context) const override {
     OpComment comment;
-    PADDLE_ENFORCE(context->HasInput("X"), "%s operator must have input X",
-                   comment.type);
-    PADDLE_ENFORCE(context->HasInput("Y"), "%s operator must have input Y",
-                   comment.type);
+    PADDLE_ENFORCE_EQ(context->HasInput("X"), true,
+                      platform::errors::InvalidArgument(
+                          "%s operator must have input X", comment.type));
+    PADDLE_ENFORCE_EQ(context->HasInput("Y"), true,
+                      platform::errors::InvalidArgument(
+                          "%s operator must have input Y", comment.type));
     auto dim_x = context->GetInputDim("X");
     auto dim_y = context->GetInputDim("Y");
-    PADDLE_ENFORCE_GE(dim_x.size(), dim_y.size(),
-                      "The size of dim_y should not be greater than dim_x's.");
+    PADDLE_ENFORCE_GE(
+        dim_x.size(), dim_y.size(),
+        platform::errors::InvalidArgument(
+            "The size of dim_y should not be greater than dim_x's."));
 
     context->SetOutputDim("Out", {1});
     context->ShareLoD("X", "Out");
-  }
-
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
-    // CompareOp kernel's device type is decided by input tensor place
-    bool force_cpu = ctx.Attr<bool>("force_cpu");
-    kt.place_ = force_cpu ? platform::CPUPlace()
-                          : ctx.Input<framework::LoDTensor>("X")->place();
-    return kt;
   }
 };
 
@@ -145,6 +134,17 @@ class CompareReduceOp : public framework::OperatorWithKernel {
       ::paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,    \
       ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
+#define REGISTER_COMPARE_REDUCE_CPU_KERNEL(op_type, functor)            \
+  REGISTER_OP_CPU_KERNEL(                                               \
+      op_type, ::paddle::operators::CompareReduceOpKernel<              \
+                   ::paddle::platform::CPUDeviceContext, functor<int>>, \
+      ::paddle::operators::CompareReduceOpKernel<                       \
+          ::paddle::platform::CPUDeviceContext, functor<int64_t>>,      \
+      ::paddle::operators::CompareReduceOpKernel<                       \
+          ::paddle::platform::CPUDeviceContext, functor<float>>,        \
+      ::paddle::operators::CompareReduceOpKernel<                       \
+          ::paddle::platform::CPUDeviceContext, functor<double>>);
 REGISTER_COMPARE_REDUCE_OP(equal_reduce, "X == Y");
-REGISTER_COMPARE_REDUCE_KERNEL(equal_reduce, CPU,
-                               paddle::operators::EqualReduceFunctor);
+
+REGISTER_COMPARE_REDUCE_CPU_KERNEL(equal_reduce,
+                                   paddle::operators::EqualReduceFunctor);

@@ -16,38 +16,38 @@ from paddle.common_ops_import import *
 import paddle.fluid as fluid
 
 # TODO: define logic functions of a tensor  
-#__all__ = ['equal',
-#            'greater_equal',
-#            'greater_than',
-#            'is_empty',
-#            'isfinite',
-#            'less_equal',
-#            'less_than',
-#            'logical_and',
-#            'logical_not',
-#            'logical_or',
-#            'logical_xor',
-#            'not_equal',
-#            'reduce_all',
-#            'reduce_any',
-#            'allclose',
-#            'elementwise_equal',
-#            'isnan']
+__all__ = [
+    'equal',
+    #            'greater_equal',
+    #            'greater_than',
+    #            'is_empty',
+    #            'isfinite',
+    #            'less_equal',
+    #            'less_than',
+    #            'logical_and',
+    #            'logical_not',
+    #            'logical_or',
+    #            'logical_xor',
+    #            'not_equal',
+    #            'reduce_all',
+    #            'reduce_any',
+    #            'allclose',
+    #            'elementwise_equal',
+    #            'isnan'
+]
 
 
-def equal(x, y, axis=-1, cond=None):
+def equal(x, y, axis=-1, name=None):
     """
-    This layer returns the truth value of :math:`x == y` elementwise.
+    This OP returns the truth value of :math:`x == y`. True if two inputs have the same elements, False otherwise.
+    note: This OP has no gradient, and supports broadcasting by :attr:axis.
 
     Args:
         x(Variable): Tensor, data type is float32, float64, int32, int64.
         y(Variable): Tensor, data type is float32, float64, int32, int64.
-		axis(int32, optional): If X.dimension != Y.dimension, Y.dimension
-			must be a subsequence of x.dimension. And axis is the start 
-			dimension index for broadcasting Y onto X.
-        cond(Variable, optional): Optional output which can be any created 
-            Variable that meets the requirements to store the result of *equal*.
-            if cond is None, a new Varibale will be created to store the result.
+        axis(int32, optional): If X.dimension != Y.dimension, Y.dimension
+            must be a subsequence of x.dimension. And axis is the start 
+            dimension index for broadcasting Y onto X.
 
     Returns:
         Variable: output Tensor, data type is bool, value is [False] or [True].
@@ -56,15 +56,14 @@ def equal(x, y, axis=-1, cond=None):
         .. code-block:: python
 
           import paddle.fluid as fluid
-          import paddle.tensor as tensor
+          import paddle
           import numpy as np
 
-          out_cond =fluid.data(name="input1", shape=[1], dtype='bool')
           label = fluid.layers.assign(np.array([3, 4], dtype="int32"))
-		  label_1 = fluid.layers.assign(np.array([1, 2], dtype="int32"))
+          label_1 = fluid.layers.assign(np.array([1, 2], dtype="int32"))
           limit = fluid.layers.assign(np.array([3, 4], dtype="int32"))
-          out1 = tensor.equal(x=label, y=limit) #out1=[True]
-          out2 = tensor.equal(x=label_1, y=limit, out=out_cond) #out2=[False] out_cond=[False]
+          out1 = paddle.equal(x=label, y=limit) #out1=[True]
+          out2 = paddle.equal(x=label_1, y=limit) #out1=[False]
 
         .. code-block:: python
 
@@ -80,13 +79,10 @@ def equal(x, y, axis=-1, cond=None):
 
           x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
           y = fluid.data(name="y", shape=[3,4], dtype='float32')
-          out = tensor.equal(x, y, axis=1)
-          print(out) # [False]
+          out = paddle.equal(x, y, axis=1) #out=[False]
     """
     helper = LayerHelper("equal_reduce", **locals())
-    if cond is None:
-        cond = helper.create_variable_for_type_inference(dtype='bool')
-        cond.stop_gradient = True
+    out = helper.create_variable_for_type_inference(dtype='bool')
     attrs = {}
     attrs['axis'] = axis
     helper.append_op(
@@ -94,5 +90,5 @@ def equal(x, y, axis=-1, cond=None):
         inputs={'X': [x],
                 'Y': [y]},
         attrs=attrs,
-        outputs={'Out': [cond]})
-    return cond
+        outputs={'Out': [out]})
+    return out

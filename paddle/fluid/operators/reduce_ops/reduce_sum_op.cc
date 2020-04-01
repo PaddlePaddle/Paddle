@@ -37,8 +37,7 @@ class ReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ReduceSumGradNoNeedBufferVarInference,
-                                      "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReduceSumGradNoNeedBufferVarInference, "X");
 
 }  // namespace operators
 }  // namespace paddle
