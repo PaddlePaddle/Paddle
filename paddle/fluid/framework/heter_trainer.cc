@@ -82,6 +82,15 @@ void HeterTrainer::Initialize(const TrainerDesc &trainer_desc,
   SetDebug(trainer_desc.debug());
 }
 
+void HeterTrainer::RegisterHeterCallback() {
+  auto fleet_ptr = FleetWrapper::GetInstance();
+  fleet_ptr->RegisterHeterCallback(
+    [this](int worker, int taskid) {
+      workers_[worker]->Schedule(taskid);
+    };
+  )
+}
+
 void HeterTrainer::DumpWork(int tid) {
 #ifdef _LINUX
   int err_no = 0;

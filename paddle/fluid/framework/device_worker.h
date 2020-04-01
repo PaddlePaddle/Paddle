@@ -146,7 +146,9 @@ class DeviceWorker {
   virtual const platform::Place& place() const { return place_; }
   virtual void CreatePinVar() {};
   virtual void CreateEvent() {};
+  virtual void SetWokerNum(int num) {};
   virtual void CreateThreadParam(const ProgramDesc &main_program) {};
+  virtual void CacheProgram(const ProgramDesc &main_program) {};
   #ifdef PADDLE_WITH_CUDA
   virtual void SetStream(cudaStream_t stream) {}
   #endif
@@ -298,6 +300,218 @@ class DownpourWorker : public HogwildWorker {
   std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
   std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
 };
+
+class HeterTask {
+public:
+  void UpdateState();
+  void PackTask(Scope* scope, int taskid, );
+
+  Scope* scope_;
+  int taskid_;
+  HeterTaskState state_;
+  // cache
+  std::map<uint64_t, std::vector<uint64_t>> features_;
+  std::map<uint64_t, std::vector<float>> feature_labels_;
+  std::map<uint64_t, std::vector<std::vector<float>>> feature_values_;
+  std::map<uint64_t, std::vector<std::vector<float>>> feature_grads_;
+  std::map<uint64_t, std::vector<uint64_t>> sparse_push_keys_;
+}
+
+enum HeterTaskState {
+  PULL_SPARSE;
+  OP_RUN;
+  XPU;
+  PUSH_SPARSE;
+  DONE;
+}
+
+template <class T>
+class HeterObjectPool {
+public:
+  std::shared_ptr<T> get() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (pool_.empty()) {
+      return std::make_shared<T>();
+    }
+    else {
+      auto ret =  pool_.back();
+      pool_.pop_back();
+      return ret;
+    }
+  }
+  void push(std::shared_ptr<T> data) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    pool_.push_back(std::move(data));
+  }
+private:
+  std::vector<std::shared_ptr<T>> pool_;
+  std::mutex mutex_;
+};
+
+
+template <class K, class T>
+struct HeterNode {
+  K key;
+  T value;
+  HeterNode *prev;
+  HeterNode *next;
+};
+
+template <class K, class T>
+class HeterList {
+public:
+  Heterlist() 
+    : _head(new HeterNode<K, T>)
+    , _tail(new HeterNode<K, T>) {
+    _head->prev = NULL;
+    _head->next = _tail;
+    _tail->prev = _head;
+    _tail->next = NULL;
+  }
+
+  ~HeterList() {
+    delete _head;
+    delete _tail;
+  }
+
+  bool TryPut(K& key, T& value) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (task_map_.find(key) != task_map_.end()) {
+      return false;
+    }
+    else {
+      HeterNode<K, T>* node = new HeterNode<K, T>;
+      node->key = key;
+      node->value = value;
+      _map[node->key] = node;
+      attach(node);
+      return true;
+    }
+  }
+
+  bool Put(K& key, T& value) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    HeterNode<K, T>* node = new HeterNode<K, T>;
+    node->key = key;
+    node->value = value;
+    _map[node->key] = node;
+    attach(node);
+    return true;
+  }
+
+  T Get(const K &key) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto iter = _map.find(key);
+    if (iter != _map.end()) {
+      HeterNode<K, T>* node = iter->second;
+      detach(node);
+      T ret = std::move(node->value);
+      delete node;
+      return ret;
+    }
+    return nullptr;
+  }
+
+private:
+    void detach(HeterNode<K, T> *node) {
+      node->prev->next = node->next;
+      node->next->prev = node->prev;
+    }
+
+    void attach(HeterNode<K, T> *node) {
+      node->prev = _head;
+      node->next = _head->next;
+      _head->next->prev = node;
+      _head->next = node;
+    }
+
+private:
+    HeterNode<K, T> *_head;
+    HeterNode<K, T> *_tail;
+    std::unordered_map<K, HeterNode<K, T>*> _map;
+    std::unordered_set<K> task_map_;
+    std::mutex _mutex;
+};
+
+#ifdef PADDLE_WITH_CUDA
+class HeterCpuWorker : public HogwildWorker {
+ public:
+  HeterCpuWorker() {}
+  virtual ~HeterCpuWorker() {}
+  virtual void Initialize(const TrainerDesc& desc);
+  virtual void TrainFiles();
+  virtual void SetStream(cudaStream_t stream) { copy_stream_ = stream; }
+  virtual void CreateEvent();
+  virtual void TrainFilesWithProfiler();
+  virtual void SetNeedDump(bool need_dump_field);
+  virtual void SetChannelWriter(ChannelObject<std::string>* queue);
+  virtual void CreatePinVar();
+  virtual void SetWokerNum(int num) { worker_num_ = num; }
+  virtual void CreateThreadParam(const ProgramDesc &main_program);
+  virtual void CacheProgram(const ProgramDesc &main_program) { program_ = main_program; }
+  template <typename T>
+  void MemCpy(LoDTensor* tensor, LoDTensor* root_tensor,
+              const paddle::platform::Place& thread_place,
+              cudaStream_t stream);
+
+ protected:
+  std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
+  std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
+  void FillSparseValue(HeterTask* task, size_t table_id);
+  void PushGradients();
+  void CollectLabelInfo(HeterTask* task, size_t table_id);
+  void AdjustInsWeight();
+  void DumpParam();
+  void CopySparseTable();
+  void CopyDenseTable();
+  void CopyDenseVars();
+
+ private:
+  int worker_num_;
+  ProgramDesc program_;
+  HeterObjectPool<HeterTask> object_pool_;
+  HeterList<int, std::shared_ptr<HeterTask>> run_queue_;
+  HeterList<int, std::shared_ptr<HeterTask>> wait_queue_;
+  bool need_dump_param_;
+  std::vector<std::string> dump_param_;
+  bool need_to_push_dense_;
+  bool need_dump_field_;
+  bool dump_slot_;
+  bool need_to_push_sparse_;
+  std::vector<std::string> dump_fields_;
+  ChannelWriter<std::string> writer_;
+  DownpourWorkerParameter param_;
+  float scale_datanorm_;
+  // just save the value in param_ for easy access
+  std::map<uint64_t, std::string> label_var_name_;
+  std::map<uint64_t, std::vector<std::string>> sparse_key_names_;
+  std::map<uint64_t, std::vector<std::string>> sparse_value_names_;
+  std::map<uint64_t, std::vector<std::string>> sparse_grad_names_;
+  std::map<uint64_t, std::vector<std::string>> dense_value_names_;
+  std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
+  platform::Place root_place_;
+  // actually pushed feasign of each table
+  std::map<uint64_t, std::vector<uint64_t>> sparse_push_keys_;
+
+  // skipped ops
+  std::vector<std::string> skip_ops_;
+
+  std::vector<::std::future<int32_t>> push_sparse_status_;
+  std::vector<::std::future<int32_t>> push_dense_status_;
+
+  // adjust ins weight
+  AdjustInsWeightConfig adjust_ins_weight_config_;
+  std::vector<float> nid_show_;
+  // check nan and inf during training
+  std::vector<std::string> check_nan_var_names_;
+  // copy table
+  CopyTableConfig copy_table_config_;
+  std::map<uint64_t, uint64_t> table_dependency_;
+  std::vector<std::pair<uint64_t, uint64_t>> copy_sparse_tables_;
+  std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
+  std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
+};
+#endif
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 using ScopeQueue = operators::reader::BlockingQueue<Scope*>;

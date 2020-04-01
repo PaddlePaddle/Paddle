@@ -81,6 +81,11 @@ class FleetWrapper {
                           int fea_dim,
                           const std::vector<std::string>& var_emb_names);
 
+  void HeterPullSparseVars(int workerid, std::shared_ptr<HeterTask> task, const uint64_t table_id,
+                          const std::vector<std::string>& var_names,
+                          int fea_dim,
+                          const std::vector<std::string>& var_emb_names);
+
   // pull dense variables from server in sync mod
   void PullDenseVarsSync(const Scope& scope, const uint64_t table_id,
                          const std::vector<std::string>& var_names);
@@ -145,6 +150,13 @@ class FleetWrapper {
       const int batch_size, const bool use_cvm, const bool dump_slot,
       std::vector<uint64_t>* sparse_push_keys, const bool no_cvm);
   #endif
+  void HeterPushSparseVars(
+      std::shared_ptr<HeterTask> task, const uint64_t table_id,
+      const std::vector<std::string>& sparse_key_names,
+      const std::vector<std::string>& sparse_grad_names, const int emb_dim,
+      std::vector<::std::future<int32_t>>* push_sparse_status,
+      const int batch_size, const bool use_cvm, const bool dump_slot,
+      const bool no_cvm);
   // push dense parameters(not gradients) to server in sync mode
   void PushDenseParamSync(const Scope& scope, const uint64_t table_id,
                           const std::vector<std::string>& var_names);
@@ -234,6 +246,11 @@ class FleetWrapper {
   typedef std::function<int32_t(int, int, const std::string&)> MsgHandlerFunc;
   // register client to client communication
   int RegisterClientToClientMsgHandler(int msg_type, MsgHandlerFunc handler);
+  
+  typedef std::function<void (int, int)> HeterCallBackFunc;
+  
+  int RegisterHeterCallback(MsgHandlerFunc handler);
+
   // send client to client message
   std::future<int32_t> SendClientToClientMsg(int msg_type, int to_client_id,
                                              const std::string& msg);
