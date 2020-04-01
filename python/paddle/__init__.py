@@ -33,6 +33,7 @@ import paddle.compat
 import paddle.distributed
 batch = batch.batch
 import paddle.sysconfig
+import paddle.tensor
 
 #TODO: define alias in tensor and framework directory
 # from .tensor.creation import create_.tensor   #DEFINE_ALIAS
@@ -190,7 +191,7 @@ import paddle.sysconfig
 # from .tensor.search import where   #DEFINE_ALIAS
 # from .tensor.search import index_select   #DEFINE_ALIAS
 # from .tensor.search import nonzero   #DEFINE_ALIAS
-# from .tensor.search import sort   #DEFINE_ALIAS
+from .tensor.search import sort  #DEFINE_ALIAS
 # from .framework.framework import set_default_dtype   #DEFINE_ALIAS
 # from .framework.framework import get_default_dtype   #DEFINE_ALIAS
 # from .framework.random import manual_seed   #DEFINE_ALIAS
