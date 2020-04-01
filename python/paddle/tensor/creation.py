@@ -47,13 +47,13 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
 
     Args:
         shape(list|tuple|Variable): Shape of the Tensor to be created.
-                The data type is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
+                The data type is int32 or int64. If ``shape`` is a list or tuple,
                 the elements of it should be integers or Tensors with shape [1].
                 If ``shape`` is an Variable, it should be an 1-D Tensor .
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output tensor which can
             be float16, float32, float64, int32, int64.
         value(float): The constant value used to initialize the Tensor to be created.
-        force_cpu(True): data should be on CPU if it's true, default value is False.
+        force_cpu(bool, optional): Data should be on CPU if it's true, default value is False.
         out(Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
@@ -179,16 +179,16 @@ def ones(shape, dtype=None, out=None, device=None):
     """
     The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 1.
 
-    Parameters:
-        shape (tuple|list): Shape of output tensor.
-        dtype (np.dtype|core.VarDesc.VarType|str): Data type of output tensor, it supports
+    Args:
+        shape(tuple|list): Shape of output tensor.
+        dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor, it supports
             bool, float16, float32, float64, int32 and int64.
-        out (Variable, optional): Optional output which can be any created 
+        out(Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
-        device (str, optional): Which device to run the operator. The :attr:`device` must be
-        None, 'cpu', 'gpu'. If :attr:`device` is None, it will be choose the device that the user set in 
-        the paddle program. Default: False.
+        device(str, optional): Which device to run the operator. The :attr:`device` must be
+            None,'cpu', 'gpu'. If :attr:`device` is None, it will be choose the device that the user set in 
+            the paddle program. Default value is False.
 
     Returns:
         Variable: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 1.
@@ -216,8 +216,6 @@ def ones(shape, dtype=None, out=None, device=None):
 
 def ones_like(input, dtype=None, device=None, name=None):
     """
-    **ones_like**
-
     This function creates a ones tensor which has identical shape and dtype 
     with `input`.
 
@@ -228,7 +226,7 @@ def ones_like(input, dtype=None, device=None, name=None):
             The default value is None, the dtype is the same as input.
         device(str, optional): Which device to run the operator. The :attr:`device` must be
             None, 'cpu', 'gpu'. If :attr:`device` is None, it will be choose the device that the user set in 
-            the paddle program. Default: False.
+            the paddle program. Default value is None.
         name(str, optional): The name of output variable, normally there is no need for user to set this this property. 
             Default value is None, the framework set the name of output variable.  
     Returns:
@@ -286,16 +284,17 @@ def ones_like(input, dtype=None, device=None, name=None):
 def zeros(shape, dtype, out=None, device=None):
     """
     The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
-    Parameters:
-        shape (tuple|list): Shape of output tensor.
-        dtype (np.dtype|core.VarDesc.VarType|str): Data type of output tensor, it supports
+
+    Args:
+        shape(tuple|list): Shape of output tensor.
+        dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor, it supports
             bool, float16, float32, float64, int32 and int64.
-        out (Variable, optional): Optional output which can be any created 
+        out(Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
-        device (str, optional): Which device to run the operator. The :attr:`device` must be
-            None, 'cpu', 'gpu'. If :attr:`device` is None, it will be choose the device that the user set in 
-            the paddle program. Default: False.
+        device(str, optional): Which device to run the operator. The :attr:`device` must be
+            None,'cpu', 'gpu'. If :attr:`device` is None, it will be choose the device that the user set in 
+            the paddle program. Default value is False.
 
     Returns:
         Variable: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 0.
@@ -323,9 +322,7 @@ def zeros(shape, dtype, out=None, device=None):
 
 def zeros_like(input, dtype=None, device=None, name=None):
     """
-    **zeros_like**
-
-    This function creates a ozeros tensor which has identical shape and dtype 
+    This function creates a zeros tensor which has identical shape and dtype 
     with `input`.
 
     Args:
@@ -335,7 +332,7 @@ def zeros_like(input, dtype=None, device=None, name=None):
             The default value is None, the dtype is the same as input.
         device(str, optional): Which device to run the operator. The :attr:`device` must be
             None, 'cpu', 'gpu'. If :attr:`device` is None, it will be choose the device that the user set in 
-            the paddle program. Default: False.
+            the paddle program. Default value is None.
         name(str, optional): The name of output variable, normally there is no need for user to set this this property. 
             Default value is None, the framework set the name of output variable.  
 
