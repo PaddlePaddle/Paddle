@@ -52,7 +52,13 @@ TSM的训练数据采用由DeepMind公布的Kinetics-400动作识别数据集。
 
 ### 模型训练
 
-数据准备完毕后，可以通过如下方式启动训练和评估，如下脚本会自动每epoch交替进行训练和模型评估，并将checkpoint默认保存在`tsm_checkpoint`目录下。
+数据准备完毕后，可使用`main.py`脚本启动训练和评估，如下脚本会自动每epoch交替进行训练和模型评估，并将checkpoint默认保存在`tsm_checkpoint`目录下。
+
+`main.py`脚本参数可通过如下命令查询
+
+```shell
+python main.py --help
+```
 
 #### 静态图训练
 
