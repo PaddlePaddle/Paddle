@@ -81,6 +81,8 @@ def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
             Tensor variable with a single element, otherwise must be in the
             range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
             the dimension to reduce is :math:`rank + dim[i]`.
+        dtype(str, optional): The dtype of output tensor. The default value is None, the dtype 
+            of output is the same as input tensor.
         keep_dim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
             than the :attr:`input` unless :attr:`keep_dim` is true, default
