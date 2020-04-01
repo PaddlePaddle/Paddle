@@ -244,15 +244,15 @@ class TestTensorArrayToTensorAPI(unittest.TestCase):
             x0 = fluid.layers.assign(inp0)
             fluid.layers.array_write(x0, zero, array)
 
-            def cond(i):
+            def cond(i, end, array):
+                return fluid.layers.less_than(i, end)
+
+            def body(i, end, array):
                 prev = fluid.layers.array_read(array, i - 1)
                 fluid.layers.array_write(prev, i, array)
-                return fluid.layers.less_than(i, ten)
+                return i + 1, end, array
 
-            def body(i):
-                return i + 1
-
-            fluid.layers.while_loop(cond, body, [i])
+            _, _, array = fluid.layers.while_loop(cond, body, [i, ten, array])
 
             self.assertTrue(fluid.layers.array_length(array), 10)
             last = fluid.layers.fill_constant(shape=[1], dtype='int64', value=9)
