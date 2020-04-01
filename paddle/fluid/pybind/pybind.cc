@@ -65,7 +65,9 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
+#include "paddle/fluid/pybind/kv_maps_py.h"
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
+#include "paddle/fluid/pybind/kv_maps_py.h"
 
 #ifndef _WIN32
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
@@ -2182,6 +2184,7 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   BindFleetWrapper(&m);
+  BindKvMaps(&m);
   BindBoxHelper(&m);
 #ifndef _WIN32
   BindNCCLWrapper(&m);

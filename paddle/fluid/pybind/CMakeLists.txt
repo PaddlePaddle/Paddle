@@ -22,6 +22,7 @@ set(PYBIND_SRCS
   global_value_getter_setter.cc
   reader_py.cc
   fleet_wrapper_py.cc
+  kv_maps_py.cc
   box_helper_py.cc
   nccl_wrapper_py.cc
   data_set_py.cc

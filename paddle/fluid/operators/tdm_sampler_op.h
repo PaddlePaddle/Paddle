@@ -17,10 +17,12 @@ limitations under the License. */
 #include <gflags/gflags.h>
 #include <cmath>
 #include <fstream>
+#include <memory>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/framework/fleet/kv_maps.h"
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/sampler.h"
@@ -39,7 +41,6 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *input_var = context.InputVar("Input");
-    auto *travel_var = context.InputVar("Travel");
     auto *layer_var = context.InputVar("Layer");
 
     auto neg_samples_num_vec =
@@ -49,9 +50,13 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
 
     // get all tensor
     auto &input_tensor = input_var->Get<framework::LoDTensor>();
-    auto &travel_lod_tensor = travel_var->Get<framework::LoDTensor>();
+    // auto &travel_lod_tensor = travel_var->Get<framework::LoDTensor>();
+    std::shared_ptr<framework::UUMAP> travel_info =
+        framework::KV_MAPS::GetInstance()->get_data();
+    for (auto ite = travel_info->begin(); ite != travel_info->end(); ite++) {
+      VLOG(1) << ite->first << " " << ite->second[0];
+    }
     auto &layer_lod_tensor = layer_var->Get<framework::LoDTensor>();
-    auto travel_dim = travel_lod_tensor.dims();
 
     // get dimension
     int input_ids_num = input_tensor.numel();
@@ -82,8 +87,8 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
 
     // get all data
     auto *input_data = input_tensor.data<int64_t>();
-    int *travel_data = const_cast<int *>(travel_lod_tensor.data<int>());
-    int *layer_data = const_cast<int *>(layer_lod_tensor.data<int>());
+    // int *travel_data = const_cast<int *>(travel_lod_tensor.data<int>());
+    auto *layer_data = layer_lod_tensor.data<int64_t>();
 
     int64_t zero = 0;
     int64_t one = 1;
@@ -107,22 +112,8 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     for (int i = 0; i < input_ids_num; ++i) {
       // find leaf node travel path
       auto input_id = input_data[i];
-      PADDLE_ENFORCE_LT(
-          -1, input_id,
-          "Variable value (input) of OP(fluid.layers.tdm_sampler) "
-          "expected >= 0 and < %ld, but got %ld. Please check input "
-          "value.",
-          travel_dim[0], input_id);
-      PADDLE_ENFORCE_LT(
-          input_id, travel_dim[0],
-          "Variable value (input) of OP(fluid.layers.tdm_sampler) "
-          "expected >= 0 and < %ld, but got %ld. Please check input "
-          "value.",
-          travel_dim[0], input_id);
-
       VLOG(1) << "TDM: input id: " << input_id;
-      auto start_offset = input_id * layer_nums;
-      VLOG(1) << "TDM: Start offset(input_id * layer_nums): " << start_offset;
+      std::vector<int64_t> travel_data = travel_info->at(input_id);
       // nce sample, layer by layer
       int offset = 0;
       for (int layer_idx = 0; layer_idx < layer_nums; ++layer_idx) {
@@ -141,10 +132,7 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
             "check neg_samples_num_list.",
             layer_idx, node_nums, sample_num);
 
-        int node_id_min = layer_offset_lod[layer_idx];
-        int node_id_max = layer_offset_lod[layer_idx + 1];
-
-        int positive_node_id = travel_data[start_offset + layer_idx];
+        int64_t positive_node_id = travel_data[layer_idx];
 
         if (positive_node_id == 0) {
           // skip padding
@@ -167,22 +155,10 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
           continue;
         }
 
-        PADDLE_ENFORCE_LE(
-            positive_node_id, node_id_max,
-            "Positive node id of OP(fluid.layers.tdm_sampler) at layer %ld "
-            "expected >= %ld and <= %ld, but got %ld. Please check input "
-            "value.",
-            layer_idx, node_id_min, node_id_max, positive_node_id);
-        PADDLE_ENFORCE_LE(
-            node_id_min, positive_node_id,
-            "Positive node id of OP(fluid.layers.tdm_sampler) at layer %ld "
-            "expected >= %ld and <= %ld, but got %ld. Please check input "
-            "value.",
-            layer_idx, node_id_min, node_id_max, positive_node_id);
-
         // If output positive, add itself
         if (output_positive_flag) {
-          output_vec[i * sample_res_length + offset] = positive_node_id;
+          output_vec[i * sample_res_length + offset] =
+              static_cast<int64_t>(positive_node_id);
           label_vec[i * sample_res_length + offset] = 1;
           mask_vec[i * sample_res_length + offset] = 1;
           VLOG(1) << "TDM: node id: " << positive_node_id << " Res append  "
@@ -210,21 +186,13 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
               layer_data[layer_offset_lod[layer_idx] + sample_res];
           label_vec[i * sample_res_length + offset] = 0;
           mask_vec[i * sample_res_length + offset] = 1;
-          VLOG(1) << "TDM: node id: " << travel_data[start_offset + layer_idx]
+          VLOG(1) << "TDM: node id: " << positive_node_id
                   << " Res append negitive "
                   << output_vec[i * sample_res_length + offset]
                   << " Label append negitive "
                   << label_vec[i * sample_res_length + offset]
                   << " Mask append value "
                   << mask_vec[i * sample_res_length + offset];
-
-          PADDLE_ENFORCE_LE(
-              layer_data[layer_offset_lod[layer_idx] + sample_res], node_id_max,
-              "Negative node id of OP(fluid.layers.tdm_sampler) at layer %ld"
-              "expected >= %ld and <= %ld, but got %ld. Please check input "
-              "tdm tree structure and tdm travel info.",
-              layer_idx, node_id_min, node_id_max,
-              layer_data[layer_offset_lod[layer_idx] + sample_res]);
 
           offset += 1;
         }  // end layer nce

@@ -53,6 +53,7 @@ class Fleet(object):
         self._optimizer = None
         self._role_maker = None
         self._executor = None
+        self._kv_maps = None
 
     def is_first_worker(self):
         """
@@ -181,7 +182,7 @@ class Fleet(object):
 
         return trainer_files[trainer_id]
 
-    def init(self, role_maker=None):
+    def init(self, role_maker=None, kv_maps_filename=None):
         """
         should be called only once in user's python scripts,
         init() will initialize RoleMaker which is used for identifying
@@ -200,6 +201,10 @@ class Fleet(object):
 
         self._role_maker = role_maker
         self._role_maker.generate_role()
+
+        if kv_maps_filename:
+            self._kv_maps = fluid.core.KV_MAPS(kv_maps_filename)
+
         self._is_initialized = True
 
     @abc.abstractmethod
