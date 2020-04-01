@@ -17,7 +17,7 @@ from six.moves import reduce
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.param_attr import ParamAttr
 from ..fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator
-from ..fluid.framework import Variable
+from ..fluid.framework import Variable, device_guard
 from ..fluid.initializer import Constant
 from ..fluid.layers.layer_function_generator import templatedoc
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
