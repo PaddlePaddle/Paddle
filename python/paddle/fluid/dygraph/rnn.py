@@ -69,11 +69,13 @@ class CudnnLSTMCell(Layer):
     Examples:
         .. code-block:: python
             from paddle import fluid
-            from paddle.fluid.dygraph.rnn import CudnnLSTM
+            import paddle.fluid.core as core
+            from paddle.fluid.dygraph.rnn import CudnnLSTMCell
+            import numpy as np
+
             batch_size = 64
             input_size = 128
             hidden_size = 256
-            cudnn_lstm = CudnnLSTM(hidden_size, input_size)
 
             step_input_np = np.random.uniform(-0.1, 0.1, (
                 batch_size, input_size)).astype('float64')
@@ -82,10 +84,17 @@ class CudnnLSTMCell(Layer):
             pre_cell_np = np.random.uniform(-0.1, 0.1, (
                 batch_size, hidden_size)).astype('float64')
 
-            step_input_var = fluid.dygraph.to_variable(step_input_np)
-            pre_hidden_var = fluid.dygraph.to_variable(pre_hidden_np)
-            pre_cell_var = fluid.dygraph.to_variable(pre_cell_np)
-            new_hidden, new_cell = cudnn_lstm(step_input_var, pre_hidden_var, pre_cell_var)
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+            else:
+                place = core.CPUPlace()
+
+            with fluid.dygraph.guard(place):
+                cudnn_lstm = CudnnLSTMCell(hidden_size, input_size)
+                step_input_var = fluid.dygraph.to_variable(step_input_np)
+                pre_hidden_var = fluid.dygraph.to_variable(pre_hidden_np)
+                pre_cell_var = fluid.dygraph.to_variable(pre_cell_np)
+                new_hidden, new_cell = cudnn_lstm(step_input_var, pre_hidden_var, pre_cell_var) 
     """
 
     def __init__(self,
@@ -236,20 +245,28 @@ class CudnnGRUCell(Layer):
     Examples:
         .. code-block:: python
             from paddle import fluid
-            from paddle.fluid.dygraph.rnn import CudnnGRU
+            import paddle.fluid.core as core
+            from paddle.fluid.dygraph.rnn import CudnnGRUCell
+            import numpy as np
+
             batch_size = 64
             input_size = 128
             hidden_size = 256
-            cudnn_gru = CudnnGRU(hidden_size, input_size)
 
             step_input_np = np.random.uniform(-0.1, 0.1, (
-                batch_size, input_size)).astype('float64')
+            batch_size, input_size)).astype('float64')
             pre_hidden_np = np.random.uniform(-0.1, 0.1, (
-                batch_size, hidden_size)).astype('float64')
-            step_input_var = fluid.dygraph.to_variable(step_input_np)
-            pre_hidden_var = fluid.dygraph.to_variable(pre_hidden_np)
+            batch_size, hidden_size)).astype('float64')
 
-            new_hidden = cudnn_gru(step_input_var, pre_hidden_var)
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+            else:
+                place = core.CPUPlace()
+
+            with fluid.dygraph.guard(place):
+                cudnn_gru = CudnnGRUCell(hidden_size, input_size)
+                step_input_var = fluid.dygraph.to_variable(step_input_np)
+                pre_hidden_var = fluid.dygraph.to_variable(pre_hidden_np)
     """
 
     def __init__(self,
