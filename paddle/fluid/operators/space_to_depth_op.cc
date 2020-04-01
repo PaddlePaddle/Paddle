@@ -131,7 +131,7 @@ class SpaceToDepthOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(SpaceToDepthGradOpNoBuffer, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SpaceToDepthGradOpNoBuffer, "X");
 
 template <typename T>
 class SpaceToDepthGradOpMaker : public framework::SingleGradOpMaker<T> {

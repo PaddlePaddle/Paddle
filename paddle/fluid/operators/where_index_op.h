@@ -24,9 +24,9 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct WhereFunctor {
-  WhereFunctor(const T& true_index, int true_num, const T& stride, int rank,
-               int64_t* out)
+struct WhereIndexFunctor {
+  WhereIndexFunctor(const T& true_index, int true_num, const T& stride,
+                    int rank, int64_t* out)
       : true_index_(true_index),
         true_num_(true_num),
         stride_(stride),
@@ -51,7 +51,7 @@ struct WhereFunctor {
 using CPUDeviceContext = paddle::platform::CPUDeviceContext;
 
 template <typename T>
-class CPUWhereKernel : public framework::OpKernel<T> {
+class CPUWhereIndexKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* condition = context.Input<framework::Tensor>("Condition");
@@ -84,8 +84,8 @@ class CPUWhereKernel : public framework::OpKernel<T> {
     }
 
     auto& dev_ctx = context.template device_context<CPUDeviceContext>();
-    WhereFunctor<int*> functor(true_index.data(), true_num, stride.data(), rank,
-                               out_ptr);
+    WhereIndexFunctor<int*> functor(true_index.data(), true_num, stride.data(),
+                                    rank, out_ptr);
     platform::ForRange<CPUDeviceContext> for_range(dev_ctx, true_num);
     for_range(functor);
   }
