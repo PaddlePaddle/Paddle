@@ -304,8 +304,8 @@ def predict_static(args, batch_generator):
             bos_id=args.bos_idx,
             eos_id=args.eos_idx,
             beam_size=args.beam_size,
-            max_len=args.max_out_len,
-            batch_size=args.batch_size)
+            max_len=args.max_out_len)
+        # batch_size=args.batch_size)
 
     # This is used here to set dropout to the test mode.
     test_prog = test_prog.clone(for_test=True)
@@ -353,7 +353,7 @@ class TestTransformer(unittest.TestCase):
                                                            dygraph_res))
 
     def test_check_result(self):
-        self._test_train()
+        # self._test_train()
         self._test_predict()
 
 
