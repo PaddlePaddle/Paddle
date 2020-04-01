@@ -62,6 +62,28 @@ def _prune_feed_ops(program):
         program.global_block()._remove_op(index)
 
 
+def _has_optimize_op(block):
+    for op in block.ops:
+        op_maker = core.op_proto_and_checker_maker
+        optimize = core.op_proto_and_checker_maker.OpRole.Optimize
+        if op_maker.kOpRoleVarAttrName() in op.attr_names and \
+                int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize):
+            return True
+    return False
+
+
+def _has_optimizer_in_control_flow(program):
+    if not program:
+        program = framework.default_main_program()
+    for op in program.global_block().ops:
+        if op.type == "conditional_block_grad":
+            sub_block = program.block(op._block_attr_id("sub_block"))
+            if _has_optimize_op(sub_block):
+                return True
+
+    return False
+
+
 class CompiledProgram(object):
     """
     The CompiledProgram is used to transform a program or graph for
@@ -334,6 +356,16 @@ class CompiledProgram(object):
         if self._build_strategy.sync_batch_norm:
             self._build_strategy.enable_sequential_execution = True
 
+        if self._program is not None and self._program._enable_dgc:
+            assert use_cuda, "DGC only used under cuda"
+            assert self._build_strategy.num_trainers * len(
+                places) > 1, "DGC is not useful for single card training"
+            assert self._build_strategy.reduce_strategy == BuildStrategy.ReduceStrategy.AllReduce, "DGC \
+                only used for AllReduce BuildStrategy"
+
+            # DGC doesn't support fuse for now, close fuse.
+            self._build_strategy.fuse_all_reduce_ops = False
+
         self._persistable_vars = []
         for node in self._graph.nodes():
             if node.is_var() and node.var() is not None and node.var().persistable() and \
@@ -386,6 +418,16 @@ class CompiledProgram(object):
                 self._places = self._get_places(self._place, self._places)
             else:
                 self._places = [self._place]
+
+            # Todo(liym27):If optimizer is used in control flow,
+            #  training on multi-places is not supported now, will
+            #  be supported later.
+            if len(self._places) > 1 and \
+                    _has_optimizer_in_control_flow(self._program):
+                raise NotImplementedError(
+                    "If optimizer is used in control flow, "
+                    "training on multi-places is not supported now.")
+
             self._executor = self._compile_data_parallel(
                 use_cuda=isinstance(self._place, core.CUDAPlace),
                 scope=self._scope,

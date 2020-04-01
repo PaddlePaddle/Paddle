@@ -458,7 +458,7 @@ class TestFP16_2(OpTest):
 
     def config(self):
         self.dtype = "float16"
-        self.input = np.random.random([3, 4, 5]).astype(self.dtype)
+        self.input = np.random.random([3, 4, 10]).astype(self.dtype)
         self.starts = [0]
         self.ends = [1]
         self.axes = [1]

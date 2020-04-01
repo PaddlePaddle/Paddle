@@ -1,9 +1,18 @@
-set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapper nccl_wrapper prune
+set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapper prune
   feed_fetch_method pass_builder parallel_executor profiler layer tracer engine scope_pool
-  analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context)
+  analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context
+  gloo_wrapper infer_io_utils)
+
+if (WITH_NCCL)
+  set(PYBIND_DEPS ${PYBIND_DEPS} nccl_wrapper)
+endif()
 
 if(NOT WIN32)
-  set(PYBIND_DEPS ${PYBIND_DEPS} nccl_context)
+  set(PYBIND_DEPS ${PYBIND_DEPS} data_loader)
+  set(PYBIND_DEPS ${PYBIND_DEPS} mmap_allocator)
+  if (WITH_NCCL)
+    set(PYBIND_DEPS ${PYBIND_DEPS} nccl_context)
+  endif()
 endif(NOT WIN32)
 
 if(WITH_PYTHON)
@@ -23,8 +32,8 @@ set(PYBIND_SRCS
   reader_py.cc
   fleet_wrapper_py.cc
   kv_maps_py.cc
+  gloo_wrapper_py.cc
   box_helper_py.cc
-  nccl_wrapper_py.cc
   data_set_py.cc
   imperative.cc
   ir.cc
@@ -34,15 +43,19 @@ if (WITH_DISTRIBUTE)
   list(APPEND PYBIND_SRCS communicator_py.cc)
 endif()
 
+if (WITH_NCCL)
+  list(APPEND PYBIND_SRCS nccl_wrapper_py.cc)
+endif()
+
 if(WITH_PYTHON)
   # generate op pybind functions automatically for dygraph.
   set(OP_FUNCTION_GENERETOR_DEPS pybind proto_desc executor layer tracer engine imperative_profiler imperative_flag)
   list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OP_LIB})
   list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OPERATOR_DEPS})
 
-  if(NOT WIN32)
+  if(WITH_NCCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS nccl_context)
-  endif(NOT WIN32)
+  endif(WITH_NCCL)
 
   add_executable(op_function_generator op_function_generator.cc)
   target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})

@@ -18,12 +18,12 @@ import numpy as np
 from collections import defaultdict
 
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
-from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program
+from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
 
 from . import framework
 from . import layers
 from . import unique_name
-from .backward import append_backward, _some_in_set_, _append_grad_suffix_
+from .backward import append_backward, _some_in_set_, _append_grad_suffix_, _get_no_grad_set_name
 from .clip import append_gradient_clip_ops, error_clip_callback
 from .framework import program_guard
 from .initializer import Constant
@@ -108,23 +108,28 @@ class Optimizer(object):
         self.helper = None
         self._opti_name_list = []
         self._accumulators_holder = {}
+        self._param_device_map = dict()
 
     @framework.dygraph_only
     def state_dict(self):
         '''
-        Get state dict information from optimizer. It contain all the variable used by optimizer. For Adam opimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be include in state dict.
-        If the optimzier never be called(minimize function), the state_dict is empty.
+        Get state dict information from optimizer. It contain all the variable used by optimizer. For Adam optimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be include in state dict.
+        If the optimizer never be called(minimize function), the state_dict is empty.
 
         Args: None
         Return:
-            state_dict(dict) : dict contains all the variablel used by optimizer
+            state_dict(dict) : dict contains all the variable used by optimizer
         
         Examples:
             .. code-block:: python
 
                 import paddle.fluid as fluid
-                adam = fluid.optimizer.Adam(0.001)
-                state_dict = adam.state_dict()
+
+                with fluid.dygraph.guard():
+                    emb = fluid.dygraph.Embedding([10, 10])
+
+                    adam = fluid.optimizer.Adam(0.001, parameter_list=emb.parameters())
+                    state_dict = adam.state_dict()
 
         '''
         state_dict = {}
@@ -134,11 +139,11 @@ class Optimizer(object):
         # global step if use lr decay
         if isinstance(self._learning_rate, LearningRateDecay):
             var_tmp = None
-            if not framework.in_dygraph_mode():
-                var_temp = Variable(None, name='global_step', dtype='int32')
-            else:
+            if framework.in_dygraph_mode():
                 var_temp = framework._varbase_creator(
                     None, name='global_step', dtype='int32')
+            else:
+                var_temp = Variable(None, name='global_step', dtype='int32')
 
             tensor.fill_constant(
                 [1], "int32", self._learning_rate.step_num, out=var_temp)
@@ -149,7 +154,7 @@ class Optimizer(object):
     @framework.dygraph_only
     def set_dict(self, state_dict):
         '''
-        Load optimizer state dict. For Adam opimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be changed.
+        Load optimizer state dict. For Adam optimizer, contains beta1, beta2, momentum etc. If LearningRateDecay have been used, global_step will be changed.
 
         Args: 
             state_dict(dict) : Dict contains all the Variable needed by optimizer
@@ -160,19 +165,19 @@ class Optimizer(object):
             .. code-block:: python
 
                 with fluid.dygraph.guard():
-                    emb = fluid.dygraph.Embedding( "emb", [10, 10])
+                    emb = fluid.dygraph.Embedding([10, 10])
 
                     state_dict = emb.state_dict()
-                    fluid.save_dygraph( state_dict, "paddle_dy")
+                    fluid.save_dygraph(state_dict, "paddle_dy")
 
-                    adam = fluid.optimizer.Adam( learning_rate = fluid.layers.noam_decay( 100, 10000), 
-                                                 parameter_list = emb.parameters() )
+                    adam = fluid.optimizer.Adam(learning_rate=fluid.layers.noam_decay( 100, 10000), 
+                                                parameter_list=emb.parameters())
                     state_dict = adam.state_dict()
-                    fluid.save_dygraph( state_dict, "padle_dy")
+                    fluid.save_dygraph(state_dict, "paddle_dy")
 
                     para_state_dict, opti_state_dict = fluid.load_dygraph( "paddle_dy")
 
-                    adam.set_dict( opti_state_dict )
+                    adam.set_dict(opti_state_dict)
 
         '''
 
@@ -281,6 +286,68 @@ class Optimizer(object):
                 dtype='float32' if self._dtype is None else self._dtype,
                 persistable=True)
 
+    @framework.dygraph_only
+    def current_step_lr(self):
+        """
+        .. note::
+          **This API is ONLY available in Dygraph mode**
+        
+        Get current step learning rate. The return value is all the same When LearningRateDecay is not used,
+        otherwise return the step learning rate.
+
+        Returns:
+            float: The learning rate of the current step.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
+
+                # example1: LearningRateDecay is not used, return value is all the same
+                with fluid.dygraph.guard():
+                    emb = fluid.dygraph.Embedding([10, 10])
+                    adam = fluid.optimizer.Adam(0.001, parameter_list = emb.parameters())
+                    lr = adam.current_step_lr()
+                    print(lr) # 0.001
+
+                # example2: PiecewiseDecay is used, return the step learning rate
+                with fluid.dygraph.guard():
+                    inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+                    linear = fluid.dygraph.nn.Linear(10, 10)
+                    inp = fluid.dygraph.to_variable(inp)
+                    out = linear(inp)
+                    loss = fluid.layers.reduce_mean(out)
+                    
+                    bd = [2, 4, 6, 8]
+                    value = [0.2, 0.4, 0.6, 0.8, 1.0]
+                    adam = fluid.optimizer.Adam(fluid.dygraph.PiecewiseDecay(bd, value, 0),
+                                           parameter_list=linear.parameters())
+
+                    # first step: learning rate is 0.2
+                    np.allclose(adam.current_step_lr(), 0.2, rtol=1e-06, atol=0.0) # True
+
+                    # learning rate for different steps
+                    ret = [0.2, 0.2, 0.4, 0.4, 0.6, 0.6, 0.8, 0.8, 1.0, 1.0, 1.0, 1.0]
+                    for i in range(12):
+                        adam.minimize(loss)
+                        lr = adam.current_step_lr()
+                        np.allclose(lr, ret[i], rtol=1e-06, atol=0.0) # True
+
+        """
+        current_lr = self._global_learning_rate()
+        if current_lr:
+            return self._global_learning_rate().numpy()[0]
+
+        if isinstance(self._learning_rate, float):
+            return self._learning_rate
+        else:
+            step_lr = self._learning_rate.step()
+            if isinstance(step_lr, (float, int)):
+                return step_lr
+            else:
+                return step_lr.numpy()[0]
+
     def _global_learning_rate(self, program=None):
         """
         get global decayed learning rate
@@ -338,7 +405,8 @@ class Optimizer(object):
                          dtype=None,
                          fill_value=0.0,
                          shape=None,
-                         type=None):
+                         type=None,
+                         device=None):
         """Utility function to add an accumulator for a parameter
 
         Args:
@@ -371,8 +439,11 @@ class Optimizer(object):
             type=param.type if type is None else type,
             shape=shape,
             belong_to_optimizer=True)
-        self.helper.set_variable_initializer(
-            var, initializer=Constant(value=float(fill_value)))
+        if device is None:
+            device = self._get_device_for_param(param.name)
+        with device_guard(device):
+            self.helper.set_variable_initializer(
+                var, initializer=Constant(value=float(fill_value)))
 
         if framework.in_dygraph_mode():
             if len(self._accumulators_holder) > 0:
@@ -401,6 +472,26 @@ class Optimizer(object):
                             format(name, param.name))
         return self._accumulators[name][param.name]
 
+    def _update_param_device_map(self, parameters_and_grads, target_block):
+        for param_and_grad in parameters_and_grads:
+            if param_and_grad[0].trainable is True:
+                param_name = param_and_grad[0].name
+                ops = target_block.ops
+                device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName(
+                )
+                for op in ops:
+                    input_arg_names = op.input_arg_names
+                    if param_name in input_arg_names:
+                        self._param_device_map[param_name] = op.attr(
+                            device_attr_name)
+                        break
+
+    def _get_device_for_param(self, param_name):
+        device = None
+        if param_name in self._param_device_map:
+            device = self._param_device_map[param_name]
+        return device
+
     def _create_optimization_pass(self, parameters_and_grads):
         """Add optimization operators to update gradients to variables.
 
@@ -422,25 +513,32 @@ class Optimizer(object):
         # for parameters and extend _finish_update method to add custom ops.
 
         # Allways called under program_guard use global block as loss block
+        # But if current block is in control flow, append optimize op in the
+        # grad block of current block
+
         global_block = framework.default_main_program().global_block()
-        start = len(global_block.ops)
+        target_block = global_block
+        current_block = framework.default_main_program().current_block()
+        if current_block.idx != global_block.idx:
+            assert current_block.backward_block_idx != -1, \
+                "current block is not global_block, but it doesn't have backward block."
+            target_block = framework.default_main_program().blocks[
+                current_block.backward_block_idx]
+
+        start = len(target_block.ops)
         self.helper = LayerHelper(self.__class__.__name__)
+        self._update_param_device_map(parameters_and_grads, target_block)
         self._create_accumulators(
-            global_block,
+            target_block,
             [p[0] for p in parameters_and_grads if p[0].trainable])
         self._create_global_learning_rate()
 
-        optimize_ops = []
         if framework.in_dygraph_mode():
             for param_and_grad in parameters_and_grads:
                 if param_and_grad[1] is None:
                     continue
-                with param_and_grad[0].block.program._optimized_guard(
-                        param_and_grad):
-                    if param_and_grad[0].trainable is True:
-                        optimize_op = self._append_optimize_op(global_block,
-                                                               param_and_grad)
-                        optimize_ops.append(optimize_op)
+                if param_and_grad[0].trainable is True:
+                    self._append_optimize_op(target_block, param_and_grad)
         else:
             for param_and_grad in parameters_and_grads:
                 if param_and_grad[1] is None:
@@ -448,16 +546,18 @@ class Optimizer(object):
                 with param_and_grad[0].block.program._optimized_guard(
                         param_and_grad), name_scope("optimizer"):
                     if param_and_grad[0].trainable is True:
-                        optimize_op = self._append_optimize_op(global_block,
-                                                               param_and_grad)
-                        optimize_ops.append(optimize_op)
+                        device = self._get_device_for_param(param_and_grad[0]
+                                                            .name)
+                        with device_guard(device):
+                            optimize_op = self._append_optimize_op(
+                                target_block, param_and_grad)
 
         # Get custom finish ops for subclasses
         # FIXME: Need to fix this once we figure out how to handle dependencies
-        self._finish_update(global_block, parameters_and_grads)
+        self._finish_update(target_block, parameters_and_grads)
 
-        end = len(global_block.ops)
-        return global_block._slice_ops(start, end)
+        end = len(target_block.ops)
+        return target_block._slice_ops(start, end)
 
     def _process_distribute_lookuptable(self, param_grads):
         """
@@ -519,10 +619,10 @@ class Optimizer(object):
             startup_program (Program, optional): :ref:`api_fluid_Program` for
                 initializing parameters in ``parameter_list``. The default value
                 is None, at this time :ref:`api_fluid_default_startup_program` will be used.
-            parameter_list (list, optional): List of ``Variable`` names to update
+            parameter_list (list, optional): List of ``Variable`` or ``Variable.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
-            no_grad_set (set, optional): Set of ``Variable`` objects that don't need
+            no_grad_set (set, optional): Set of ``Variable``  or ``Variable.name`` that don't need
                 to be updated. The default value is None.
             callbacks (list, optional): list of callable objects to run when appending backward
                 operator for one parameter. The default value is None.
@@ -535,10 +635,10 @@ class Optimizer(object):
             See examples in ``apply_gradients``.
         """
         act_no_grad_set = None
-        if not framework.in_dygraph_mode():
-            act_no_grad_set = self._get_no_grad_set(loss, no_grad_set)
-        else:
+        if framework.in_dygraph_mode():
             pass
+        else:
+            act_no_grad_set = self._get_no_grad_set(loss, no_grad_set)
 
         self._dtype = loss.dtype
         if framework.in_dygraph_mode():
@@ -635,14 +735,7 @@ class Optimizer(object):
         return optimize_ops
 
     def _get_no_grad_set(self, loss, no_grad_set=None):
-        if no_grad_set is None:
-            no_grad_set = set()
-        elif isinstance(no_grad_set, set) or isinstance(
-                no_grad_set, list) or isinstance(no_grad_set, tuple):
-            no_grad_set = set(no_grad_set)
-        else:
-            assert "no_grad_set should be a set, but the passed type is {}".format(
-                type(no_grad_set))
+        no_grad_set = _get_no_grad_set_name(no_grad_set)
         parameters = loss.block.program.global_block().all_parameters()
         param_no_trainable = set(
             [param.name for param in parameters if param.trainable is False])
@@ -650,6 +743,37 @@ class Optimizer(object):
         no_grad_set.update(param_no_trainable)
 
         return no_grad_set
+
+    @framework.dygraph_only
+    def clear_gradients(self):
+        """
+        Clear the gradients of all optimized parameters for model.
+        
+        Returns:
+            None
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
+
+                with fluid.dygraph.guard():
+                    value = np.arange(26).reshape(2, 13).astype("float32")
+                    a = fluid.dygraph.to_variable(value)
+                    linear = fluid.Linear(13, 5, dtype="float32")
+                    # This can be any optimizer supported by dygraph.
+                    adam = fluid.optimizer.Adam(learning_rate = 0.01, 
+                                                parameter_list = linear.parameters())
+                    out = linear(a)
+                    out.backward()
+                    adam.minimize(out)
+                    adam.clear_gradients()
+
+        """
+        for p in self._parameter_list:
+            if p.trainable:
+                p.clear_gradient()
 
     @imperative_base.no_grad
     def minimize(self,
@@ -666,10 +790,10 @@ class Optimizer(object):
             startup_program (Program, optional): :ref:`api_fluid_Program` for
                 initializing parameters in ``parameter_list``. The default value
                 is None, at this time :ref:`api_fluid_default_startup_program` will be used.
-            parameter_list (list, optional): List of ``Variable`` names to update
+            parameter_list (list, optional): List of ``Variable`` or ``Variable.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
-            no_grad_set (set, optional): Set of ``Variable`` objects that don't need
+            no_grad_set (set, optional): Set of ``Variable``  or ``Variable.name`` that don't need
                 to be updated. The default value is None.
             grad_clip (GradClipBase, optional) : Gradient clipping strategy, static
                 graph mode does not need to use this argument. Currently, this argument
@@ -765,16 +889,11 @@ class SGDOptimizer(Optimizer):
 
     @no_grad
     def _append_optimize_op(self, block, param_and_grad):
+        lr = self._create_param_lr(param_and_grad)
         if framework.in_dygraph_mode():
-            inputs = {
-                "Param": [param_and_grad[0]],
-                "Grad": [param_and_grad[1]],
-                "LearningRate": [self._create_param_lr(param_and_grad)]
-            }
-            attrs = {}
-            outputs = {'ParamOut': [param_and_grad[0]]}
-            outs = core.ops.sgd(inputs, attrs, outputs)
-            return outs['ParamOut'][0]
+            core.ops.sgd(param_and_grad[0], lr, param_and_grad[1],
+                         param_and_grad[0])
+            return None
 
         assert isinstance(block, framework.Block)
         # create the optimize op
@@ -783,7 +902,7 @@ class SGDOptimizer(Optimizer):
             inputs={
                 "Param": param_and_grad[0],
                 "Grad": param_and_grad[1],
-                "LearningRate": self._create_param_lr(param_and_grad)
+                "LearningRate": lr
             },
             outputs={"ParamOut": param_and_grad[0]},
             stop_gradient=True)
@@ -885,21 +1004,33 @@ class MomentumOptimizer(Optimizer):
 
         velocity_acc = self._get_accumulator(self._velocity_acc_str,
                                              param_and_grad[0])
+        lr = self._create_param_lr(param_and_grad)
+
+        if framework.in_dygraph_mode():
+            _, _ = core.ops.momentum(param_and_grad[0], param_and_grad[1],
+                                     velocity_acc, lr, param_and_grad[0],
+                                     velocity_acc, 'mu', self._momentum,
+                                     'use_nesterov', self._use_nesterov)
+            return None
+
+        attrs = {"mu": self._momentum, "use_nesterov": self._use_nesterov}
+        inputs = {
+            "Param": [param_and_grad[0]],
+            "Grad": [param_and_grad[1]],
+            "Velocity": [velocity_acc],
+            "LearningRate": [lr]
+        }
+
+        outputs = {
+            "ParamOut": [param_and_grad[0]],
+            "VelocityOut": [velocity_acc]
+        }
         # create the momentum optimize op
         momentum_op = block.append_op(
             type=self.type,
-            inputs={
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                "Velocity": velocity_acc,
-                "LearningRate": self._create_param_lr(param_and_grad)
-            },
-            outputs={
-                "ParamOut": param_and_grad[0],
-                "VelocityOut": velocity_acc
-            },
-            attrs={"mu": self._momentum,
-                   "use_nesterov": self._use_nesterov},
+            inputs=inputs,
+            outputs=outputs,
+            attrs=attrs,
             stop_gradient=True)
 
         return momentum_op
@@ -979,6 +1110,12 @@ class DGCMomentumOptimizer(Optimizer):
                  num_trainers=None,
                  regularization=None,
                  name=None):
+        if framework.in_dygraph_mode():
+            raise Exception("In dygraph, don't support DGCMomentumOptimizer.")
+
+        assert core.is_compiled_with_cuda(), \
+            "Paddle is not compiled with CUDA. DGC is only support GPU for now."
+
         assert learning_rate is not None
         assert momentum is not None
         super(DGCMomentumOptimizer, self).__init__(
@@ -1009,21 +1146,23 @@ class DGCMomentumOptimizer(Optimizer):
             self._num_trainers = num_trainers
             self._clip_norm = local_grad_clip_norm * (num_trainers**-0.5)
 
-        self._get_dgc_regularization_param()
+        self.regular_type, self.regular_coeff = self._get_regularization_param(
+            self.regularization)
 
-    def _get_dgc_regularization_param(self):
-        self.regular_coeff = 0.0
-        self.regular_type = 0
+    def _get_regularization_param(self, regularization):
+        regular_type = 0
+        regular_coeff = 0.0
 
-        if self.regularization is not None:
-            self.regular_coeff = self.regularization._regularization_coeff
+        if regularization is not None:
+            regular_coeff = regularization._regularization_coeff
             from .regularizer import L1Decay, L2Decay
-            if isinstance(self.regularization, L1Decay):
-                self.regular_type = 1
-            elif isinstance(self.regularization, L2Decay):
-                self.regular_type = 2
+            if isinstance(regularization, L1Decay):
+                regular_type = 1
+            elif isinstance(regularization, L2Decay):
+                regular_type = 2
             else:
                 assert False, 'regularization must be None|L1Decay|L2Deacy'
+        return regular_type, regular_coeff
 
     def _is_use_dgc(self, param_var, grad_var):
         var_numel = abs(reduce(lambda x, y: x * y, param_var.shape))
@@ -1224,6 +1363,13 @@ class DGCMomentumOptimizer(Optimizer):
         block = framework.default_main_program().global_block()
         op_maker = core.op_proto_and_checker_maker
 
+        regular_type = self.regular_type
+        regular_coeff = self.regular_coeff
+        # The regularizer of the Parameters have higher priority
+        if param_var.regularizer is not None:
+            regular_type, regular_coeff = self._get_regularization_param(
+                param_var.regularizer)
+
         dgc_op = block.append_op(
             type="dgc",
             inputs={
@@ -1248,8 +1394,8 @@ class DGCMomentumOptimizer(Optimizer):
                 "use_nesterov": self._use_nesterov,
                 "rampup_begin_step": float(self._rampup_begin_step),
                 "rampup_step": float(self._rampup_step),
-                "regular_coeff": float(self.regular_coeff),
-                "regular_type": int(self.regular_type),
+                "regular_coeff": float(regular_coeff),
+                "regular_type": int(regular_type),
             },
             stop_gradient=True)
 
@@ -1475,24 +1621,16 @@ class AdagradOptimizer(Optimizer):
         assert isinstance(block, framework.Block)
 
         for p in parameters:
-            self._add_accumulator(self._moment_acc_str, p)
+            self._add_accumulator(
+                self._moment_acc_str,
+                p,
+                fill_value=self.initial_accumulator_value)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
 
         moment_acc = self._get_accumulator(self._moment_acc_str,
                                            param_and_grad[0])
-        startup_block = framework.default_startup_program().global_block()
-        startup_block.append_op(
-            type='fill_constant',
-            inputs={},
-            outputs={'Out': [moment_acc]},
-            attrs={
-                'dtype': moment_acc.dtype,
-                'value': self.initial_accumulator_value,
-                'shape': moment_acc.shape,
-            })
-
         # Create the adagrad optimizer op
         adagrad_op = block.append_op(
             type=self.type,
@@ -1512,7 +1650,7 @@ class AdagradOptimizer(Optimizer):
 
 class AdamOptimizer(Optimizer):
     """
-    The Adam optimzier uses an optimization described at the end
+    The Adam optimizer uses an optimization described at the end
     of section 2 of `Adam paper <https://arxiv.org/abs/1412.6980>`_ ,
     it can dynamically adjusts the learning rate of each parameter using
     the 1st moment estimates and the 2nd moment estimates of the gradient.
@@ -1689,14 +1827,14 @@ class AdamOptimizer(Optimizer):
                 fill_value=0.9 if isinstance(self._beta1, Variable) \
                         else self._beta1,
                 shape=[1],
-                type=core.VarDesc.VarType.LOD_TENSOR)
+                type=core.VarDesc.VarType.LOD_TENSOR, device='cpu')
             self._add_accumulator(
                 name=self._beta2_pow_acc_str,
                 param=p,
                 fill_value=0.999 if isinstance(self._beta2, Variable) \
                         else self._beta2,
                 shape=[1],
-                type=core.VarDesc.VarType.LOD_TENSOR)
+                type=core.VarDesc.VarType.LOD_TENSOR, device='cpu')
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -1709,23 +1847,38 @@ class AdamOptimizer(Optimizer):
                                               param_and_grad[0])
         beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
                                               param_and_grad[0])
-
+        lr = self._create_param_lr(param_and_grad)
         # create the adam optimize op
+
+        if framework.in_dygraph_mode():
+            _beta1 = self._beta1 if not isinstance(
+                self._beta1, Variable) else self._beta1.numpy().item(0)
+            _beta2 = self._beta2 if not isinstance(
+                self._beta2, Variable) else self._beta2.numpy().item(0)
+            _, _, _, _, _ = core.ops.adam(
+                param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
+                beta1_pow_acc, beta2_pow_acc, param_and_grad[0], moment1,
+                moment2, beta1_pow_acc, beta2_pow_acc, 'epsilon', self._epsilon,
+                'lazy_mode', self._lazy_mode, 'min_row_size_to_use_multithread',
+                1000, 'beta1', _beta1, 'beta2', _beta2)
+
+            return None
+
         inputs = {
-            "Param": param_and_grad[0],
-            "Grad": param_and_grad[1],
-            "LearningRate": self._create_param_lr(param_and_grad),
-            "Moment1": moment1,
-            "Moment2": moment2,
-            "Beta1Pow": beta1_pow_acc,
-            "Beta2Pow": beta2_pow_acc
+            "Param": [param_and_grad[0]],
+            "Grad": [param_and_grad[1]],
+            "LearningRate": [lr],
+            "Moment1": [moment1],
+            "Moment2": [moment2],
+            "Beta1Pow": [beta1_pow_acc],
+            "Beta2Pow": [beta2_pow_acc]
         }
         outputs = {
-            "ParamOut": param_and_grad[0],
-            "Moment1Out": moment1,
-            "Moment2Out": moment2,
-            "Beta1PowOut": beta1_pow_acc,
-            "Beta2PowOut": beta2_pow_acc,
+            "ParamOut": [param_and_grad[0]],
+            "Moment1Out": [moment1],
+            "Moment2Out": [moment2],
+            "Beta1PowOut": [beta1_pow_acc],
+            "Beta2PowOut": [beta2_pow_acc],
         }
         attrs = {
             "epsilon": self._epsilon,
@@ -1900,7 +2053,6 @@ class AdamaxOptimizer(Optimizer):
         """Update Beta1 Power accumulator
         """
         assert isinstance(block, framework.Block)
-        main_block = block.program.global_block()
         for param, grad in parameters_and_grads:
             if grad is None or param.trainable is False:
                 continue
@@ -1908,7 +2060,7 @@ class AdamaxOptimizer(Optimizer):
                 [param, grad]), name_scope('adamx'):
                 beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                                       param)
-                main_block.append_op(
+                block.append_op(
                     type="scale",
                     inputs={"X": beta1_pow_acc},
                     outputs={"Out": beta1_pow_acc},
@@ -1977,11 +2129,21 @@ class DpsgdOptimizer(Optimizer):
         self._clip = clip
         self._batch_size = batch_size
         self._sigma = sigma
+        '''
+        Note(wangzhongpu):
+        This property is only used for debugging, do not need to set it!
+        Dpsgd operator use time(NULL) as random seed to generate random number.
+        However, during debugging, we need determinated result, so we will set self._seed to a fixed number.
+        '''
+        self._seed = None
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
 
         # create the dpsgd optimize op
+        if self._seed == None:
+            self._seed = 0
+
         dpsgd_op = block.append_op(
             type=self.type,
             inputs={
@@ -1993,7 +2155,8 @@ class DpsgdOptimizer(Optimizer):
             attrs={
                 "clip": self._clip,
                 "batch_size": self._batch_size,
-                "sigma": self._sigma
+                "sigma": self._sigma,
+                "seed": self._seed
             },
             stop_gradient=True)
 
@@ -2094,7 +2257,8 @@ class DecayedAdagradOptimizer(Optimizer):
             },
             outputs={"ParamOut": param_and_grad[0],
                      "MomentOut": moment_acc},
-            attrs={"epsilon": self._epsilon},
+            attrs={"epsilon": self._epsilon,
+                   "decay": self._decay},
             stop_gradient=True)
 
         return decayed_adagrad_op
@@ -2791,6 +2955,8 @@ class ModelAverage(Optimizer):
                  max_average_window=10000,
                  regularization=None,
                  name=None):
+        if framework.in_dygraph_mode():
+            raise Exception("In dygraph, don't support ModelAverage.")
         super(ModelAverage, self).__init__(
             0.0, regularization=regularization, name=name)
         self.average_window = average_window_rate
@@ -3071,7 +3237,7 @@ class ExponentialMovingAverage(object):
 	    optimizer = fluid.optimizer.Adam(learning_rate=0.001)
 	    optimizer.minimize(cost)
 
-	    global_steps = fluid.layers.learning_rate_scheduler._decay_step_counter()
+	    global_steps = fluid.layers.autoincreased_step_counter()
 	    ema = fluid.optimizer.ExponentialMovingAverage(0.999, thres_steps=global_steps)
 	    ema.update()
 
@@ -3104,11 +3270,15 @@ class ExponentialMovingAverage(object):
     """
 
     def __init__(self, decay=0.999, thres_steps=None, name=None):
+        if framework.in_dygraph_mode():
+            raise Exception(
+                "In dygraph, don't support ExponentialMovingAverage.")
         self._decay = decay
         self._thres_steps = thres_steps
         self._name = name if name is not None else ''
         self._decay_var = self._get_ema_decay()
 
+        self._step_counter_name = "@EMA_STEP_COUNTER@"
         self._params_tmps = []
         for param in default_main_program().global_block().all_parameters():
             if param.do_model_average != False:
@@ -3129,14 +3299,16 @@ class ExponentialMovingAverage(object):
         self.apply_program = Program()
         block = self.apply_program.global_block()
         with program_guard(main_program=self.apply_program):
-            decay_pow = self._get_decay_pow(block)
+            decay_pow, global_step = self._get_decay_pow(block)
             for param, tmp in self._params_tmps:
                 param = block._clone_variable(param)
                 tmp = block._clone_variable(tmp)
                 ema = block._clone_variable(self._ema_vars[param.name])
                 layers.assign(input=param, output=tmp)
                 # bias correction
-                ema = ema / (1.0 - decay_pow)
+                with layers.control_flow.Switch() as switch:
+                    with switch.case(global_step > 0):
+                        layers.assign(output=ema, input=ema / (1.0 - decay_pow))
                 layers.assign(input=ema, output=param)
 
         self.restore_program = Program()
@@ -3169,10 +3341,16 @@ class ExponentialMovingAverage(object):
         return decay_var
 
     def _get_decay_pow(self, block):
-        global_steps = layers.learning_rate_scheduler._decay_step_counter()
+        global_step = layers.create_global_var(
+            name=self._step_counter_name,
+            shape=[1],
+            value=0,
+            dtype='int64',
+            persistable=True)
+        global_step = layers.cast(global_step, "float32")
         decay_var = block._clone_variable(self._decay_var)
-        decay_pow_acc = layers.elementwise_pow(decay_var, global_steps + 1)
-        return decay_pow_acc
+        decay_pow_acc = layers.elementwise_pow(decay_var, global_step)
+        return decay_pow_acc, global_step
 
     def _create_ema_vars(self, param):
         param_ema = layers.create_global_var(
@@ -3189,6 +3367,8 @@ class ExponentialMovingAverage(object):
         Update Exponential Moving Average. Should only call this method in 
         train program.
         """
+        global_step = layers.autoincreased_step_counter(
+            counter_name=self._step_counter_name)
         param_master_emas = []
         for param, tmp in self._params_tmps:
             with param.block.program._optimized_guard(
@@ -3243,10 +3423,10 @@ class PipelineOptimizer(object):
     """
     Pipeline Optimizer
 
-    Train with pipeline mode. The program will be splited by cut_list. 
+    Train with pipeline mode. The program will be split by cut_list. 
 
     If the len of cut_list is k, then the whole program (including \
-    backward part) will be splited to 2*k-1 sections. 
+    backward part) will be split to 2*k-1 sections. 
     
     So the length of place_list and concurrency_list must be also 2*k-1.
 
@@ -3314,6 +3494,8 @@ class PipelineOptimizer(object):
                  queue_size=30,
                  sync_steps=1,
                  start_cpu_core_id=0):
+        if framework.in_dygraph_mode():
+            raise Exception("In dygraph, don't support PipelineOptimizer.")
         # TODO: check properties
         self._optimizer = optimizer
         self._cut_list = cut_list
@@ -3599,6 +3781,8 @@ class RecomputeOptimizer(Optimizer):
     """
 
     def __init__(self, optimizer):
+        if framework.in_dygraph_mode():
+            raise Exception("In dygraph, don't support RecomputeOptimizer.")
         self._optimizer = optimizer
         self._checkpoints = None
 
@@ -3674,12 +3858,12 @@ class RecomputeOptimizer(Optimizer):
 
                 sgd = fluid.optimizer.Adam(learning_rate=0.01)
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                sgd._set_checkpoints([fc_1, pred])
                 params_grads = sgd.backward(
                     cost,
                     startup_program=None,
                     parameter_list=None,
-                    no_grad_set=None,
-                    checkpoints=[fc_1, pred])
+                    no_grad_set=None)
 
                 program = cost.block.program
                 with framework.program_guard(program, None):
@@ -3695,8 +3879,7 @@ class RecomputeOptimizer(Optimizer):
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None,
-                 callbacks=None,
-                 checkpoints=None):
+                 callbacks=None):
         """
         call append_backward with checkpoints.
 
@@ -3704,8 +3887,8 @@ class RecomputeOptimizer(Optimizer):
             loss (Variable): loss variable to run optimizations.
             startup_program (Program): startup_program for initializing parameters
                 in `parameter_list`.
-            parameter_list (list): list of Variables to update.
-            no_grad_set (set|None): set of Variables should be ignored.
+            parameter_list (list): list of Variables or Variable.names to update.
+            no_grad_set (set|None): set of Variables or Variables.names should be ignored.
             callbacks (list|None): list of callables to run when appending backward
                 operator for one parameter.
             checkpoints (list): list of Variables as checkpoints
@@ -3730,12 +3913,12 @@ class RecomputeOptimizer(Optimizer):
     
                 sgd = fluid.optimizer.Adam(learning_rate=0.01)
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                sgd._set_checkpoints([fc_1, pred])
                 params_grads = sgd.backward(
                     cost,
                     startup_program=None,
                     parameter_list=None,
-                    no_grad_set=None,
-                    checkpoints=[fc_1, pred])
+                    no_grad_set=None)
                 print("Finished backward")
         """
 
@@ -3751,6 +3934,9 @@ class RecomputeOptimizer(Optimizer):
                 parameter_list,
                 no_grad_set,
                 checkpoints=self._checkpoints)
+            # Note: since we can't use all_reduce_op now,
+            #  dgc_op should be the last op of one grad.
+            self._optimizer._append_dgc_ops(params_grads)
         return params_grads
 
     def apply_optimize(self, loss, startup_program, params_grads):
@@ -3782,12 +3968,12 @@ class RecomputeOptimizer(Optimizer):
                 
                 sgd = fluid.optimizer.Adam(learning_rate=0.01)
                 sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                sgd._set_checkpoints([fc_1, pred])
                 params_grads = sgd.backward(
                     cost,
                     startup_program=None,
                     parameter_list=None,
-                    no_grad_set=None,
-                    checkpoints=[fc_1, pred])
+                    no_grad_set=None)
                 
                 optimize_ops = sgd.apply_optimize(
                     cost, startup_program=None, params_grads=params_grads)
@@ -3817,8 +4003,7 @@ class RecomputeOptimizer(Optimizer):
             loss,
             startup_program=startup_program,
             parameter_list=parameter_list,
-            no_grad_set=no_grad_set,
-            checkpoints=self._checkpoints)
+            no_grad_set=no_grad_set)
 
         if grad_clip:
             # TODO(guru4elephant): should add grad_clip for static graph
@@ -3885,6 +4070,8 @@ class LookaheadOptimizer(object):
 
     def __init__(self, inner_optimizer, alpha=0.5, k=5):
 
+        if framework.in_dygraph_mode():
+            raise Exception("In dygraph, don't support LookaheadOptimizer.")
         assert (inner_optimizer is not None), "inner optimizer can not be None"
         assert (
             0.0 <= alpha <= 1.0

@@ -62,10 +62,10 @@ class TranspilerTest(unittest.TestCase):
         self.origin_prog = main.clone()
         return main
 
-    def get_trainer(self, config=None):
+    def get_trainer(self, config=None, sync_mode=True):
         src = fluid.default_startup_program().clone()
 
-        t = self._transpiler_instance(config)
+        t = self._transpiler_instance(config, sync_mode=True)
 
         trainer_main = t.get_trainer_program(wait_port=False)
         trainer_startup = fluid.default_startup_program()
@@ -118,7 +118,7 @@ class TestBasicModel(TranspilerTest):
 
         trainer, trainer_startup = self.get_trainer()
 
-        # splited var blocks should be in startup program
+        # split var blocks should be in startup program
         self.assertTrue("fc_w.block0" in trainer_startup.global_block().vars)
         self.assertTrue("fc_w.block1" in trainer_startup.global_block().vars)
         self.assertTrue("fc_w" in trainer_startup.global_block().vars)

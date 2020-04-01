@@ -144,7 +144,7 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate();
     AddOutput(
         "W_Out",
-        "(LoDTensor, optinal) using input 'W' as Output to make it mutable"
+        "(LoDTensor, optional) using input 'W' as Output to make it mutable"
         "When we are using prefetch")
         .AsIntermediate();
     AddAttr<AttrType>("num_classes", "(int, optional), The number of classes")
@@ -162,7 +162,7 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<std::vector<std::string>>(
         "table_names",
-        "(string vector, the splited table names that will be fetched from "
+        "(string vector, the split table names that will be fetched from "
         "parameter server)"
         "in the order of input variables for mapping")
         .SetDefault({});
@@ -189,8 +189,7 @@ class HierarchicalSigmoidGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     // Inputs: X, W, Label, PathTable, PathCode, PreOut, Out@GRAD
     op->SetInput("X", this->Input("X"));
@@ -207,8 +206,6 @@ class HierarchicalSigmoidGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
     op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
     op->SetAttrMap(this->Attrs());
-
-    return std::unique_ptr<T>(op);
   }
 };
 
@@ -290,6 +287,9 @@ class HierarchicalSigmoidGradOpGradVarTypeInference
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(
+    HierarchicalSigmoidGradOpNoNeedBufferVarInference, "Bias");
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -300,7 +300,8 @@ REGISTER_OPERATOR(
     ops::HierarchicalSigmoidGradMaker<paddle::framework::OpDesc>,
     ops::HierarchicalSigmoidGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(hierarchical_sigmoid_grad, ops::HierarchicalSigmoidGradOp,
-                  ops::HierarchicalSigmoidGradOpGradVarTypeInference);
+                  ops::HierarchicalSigmoidGradOpGradVarTypeInference,
+                  ops::HierarchicalSigmoidGradOpNoNeedBufferVarInference);
 REGISTER_OP_CPU_KERNEL(
     hierarchical_sigmoid,
     ops::HierarchicalSigmoidOpKernel<paddle::platform::CPUDeviceContext, float>,

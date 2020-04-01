@@ -141,6 +141,7 @@ class TestMaxPoolWithIndex_Op(OpTest):
         self.init_adaptive()
 
         input = np.random.random(self.shape).astype("float64")
+        input = np.round(input * 100., 2)
         output, mask = self.pool_forward_naive(input, self.ksize, self.strides,
                                                self.paddings, self.global_pool,
                                                self.adaptive)
@@ -161,15 +162,15 @@ class TestMaxPoolWithIndex_Op(OpTest):
     def test_check_output(self):
         self.check_output()
 
-    # def test_check_grad(self):
-    #     self.check_grad(set(['X']), ['Out'], max_relative_error=0.07)
+    def test_check_grad(self):
+        self.check_grad(set(['X']), ['Out'])
 
     def init_test_case(self):
         self.op_type = "max_pool3d_with_index"
         self.pool_forward_naive = max_pool3D_forward_naive
-        self.shape = [2, 3, 5, 5, 5]
+        self.shape = [2, 3, 7, 7, 7]
         self.ksize = [3, 3, 3]
-        self.strides = [1, 1, 1]
+        self.strides = [2, 2, 2]
         self.paddings = [1, 1, 1]
 
     def init_global(self):

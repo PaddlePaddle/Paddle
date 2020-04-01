@@ -1,0 +1,30 @@
+file(GLOB TEST_INFERENCE_IR_PASSES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
+string(REPLACE ".py" "" TEST_INFERENCE_IR_PASSES "${TEST_INFERENCE_IR_PASSES}")
+
+file(GLOB TEST_TRT_IR_PASSES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_trt_*.py")
+string(REPLACE ".py" "" TEST_TRT_IR_PASSES "${TEST_TRT_IR_PASSES}")
+foreach(TEST_INFERENCE_IR_PASS ${TEST_TRT_IR_PASSES})
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES ${TEST_INFERENCE_IR_PASS})
+endforeach()
+
+if(WITH_GPU AND TENSORRT_FOUND)
+  foreach(target ${TEST_TRT_IR_PASSES})
+    py_test_modules(${target} MODULES ${target})
+  endforeach()
+endif()
+
+file(GLOB TEST_MKLDNN_IR_PASSES RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_mkldnn_*.py")
+string(REPLACE ".py" "" TEST_MKLDNN_IR_PASSES "${TEST_MKLDNN_IR_PASSES}")
+foreach(TEST_INFERENCE_IR_PASS ${TEST_MKLDNN_IR_PASSES})
+  list(REMOVE_ITEM TEST_INFERENCE_IR_PASSES ${TEST_INFERENCE_IR_PASS})
+endforeach()
+
+if(WITH_MKLDNN)
+  foreach(target ${TEST_MKLDNN_IR_PASSES})
+    py_test_modules(${target} MODULES ${target})
+  endforeach()
+endif()
+
+foreach(target ${TEST_INFERENCE_IR_PASSES})
+  py_test_modules(${target} MODULES ${target})
+endforeach()

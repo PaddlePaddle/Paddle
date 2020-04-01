@@ -22,17 +22,15 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void VisualizeGraph(std::unique_ptr<Graph> graph, std::string graph_viz_path) {
+void VisualizeGraph(std::unique_ptr<Graph>* graph, std::string graph_viz_path) {
   // Insert a graph_viz_pass to transform the graph to a .dot file.
   // It can be used for debug.
   auto graph_viz_pass = PassRegistry::Instance().Get("graph_viz_pass");
   graph_viz_pass->Set("graph_viz_path", new std::string(graph_viz_path));
-  graph.reset(graph_viz_pass->Apply(graph.release()));
+  graph->reset(graph_viz_pass->Apply(graph->release()));
 }
 
-TEST(FusionGroupPass, elementwise_list) {
-  fusion_group::OperationMap::Init();
-
+std::unique_ptr<Graph> BuildElementwiseListGraph(bool backward = false) {
   // inputs                     operator            output
   // --------------------------------------------------------
   // (x, y)                     mul              -> tmp_0
@@ -42,34 +40,38 @@ TEST(FusionGroupPass, elementwise_list) {
   //
   // Expression: tmp_3 = relu(mul(x, y) + z) + w
   Layers layers;
+  std::vector<int64_t> shape = {16, 32};
   auto* x = layers.data("x", {16, 16});
   auto* y = layers.data("y", {16, 32});
   auto* tmp_0 = layers.mul(x, y);
-  tmp_0->SetShape({16, 32});
-  auto* z = layers.data("z", {16, 32});
+  auto* z = layers.data("z", shape);
   auto* tmp_1 = layers.elementwise_add(tmp_0, z);
   auto* tmp_2 = layers.relu(tmp_1);
-  tmp_2->SetShape({16, 32});
-  auto* w = layers.data("w", {16, 32});
-  layers.elementwise_add(tmp_2, w);
+  auto* w = layers.data("w", shape);
+  auto* tmp_3 = layers.elementwise_add(tmp_2, w);
+  std::vector<VarDesc*> elementwise_vars = {tmp_0, z, tmp_1, tmp_2, w, tmp_3};
+  for (auto* var : elementwise_vars) {
+    var->SetShape(shape);
+  }
+
+  if (backward) {
+    layers.backward({tmp_3});
+  }
 
   std::unique_ptr<Graph> graph(new Graph(layers.main_program()));
-  // VisualizeGraph(graph, "00_elementwise_list.dot");
-
-  auto fusion_group_pass = PassRegistry::Instance().Get("fusion_group_pass");
-  VLOG(3) << DebugString(graph);
-
-  graph.reset(fusion_group_pass->Apply(graph.release()));
-  // VisualizeGraph(graph, "01_elementwise_list.fusion_group.dot");
-  int num_fusion_group_ops = GetNumOpNodes(graph, "fusion_group");
-  VLOG(3) << DebugString(graph);
-
-  PADDLE_ENFORCE_EQ(num_fusion_group_ops, 1);
+  for (auto* n : graph->Nodes()) {
+    if (n && n->IsVar() && n->Var()) {
+      n->Var()->SetDataType(proto::VarType::FP32);
+    }
+  }
+#ifdef __clang__
+  return graph;
+#else
+  return std::move(graph);
+#endif
 }
 
-TEST(FusionGroupPass, elementwise_tree) {
-  fusion_group::OperationMap::Init();
-
+std::unique_ptr<Graph> BuildElementwiseTreeGraph(bool backward = false) {
   // inputs                     operator            output
   // --------------------------------------------------------
   // (x0, y0)                   mul              -> tmp_0
@@ -88,53 +90,73 @@ TEST(FusionGroupPass, elementwise_tree) {
   //             tmp_9 = tanh(x4) * sigmoid(x5)
   //             tmp_10 = mul(tmp_6, tmp_9)
   Layers layers;
+  std::vector<int64_t> shape = {16, 32};
   auto* x0 = layers.data("x0", {16, 16});
   auto* y0 = layers.data("y0", {16, 32});
   auto* tmp_0 = layers.mul(x0, y0);
-  tmp_0->SetShape({16, 32});
-
-  auto* x1 = layers.data("x1", {16, 32});
+  auto* x1 = layers.data("x1", shape);
   auto* tmp_1 = layers.sigmoid(x1);
-  tmp_1->SetShape({16, 32});
-
   auto* tmp_2 = layers.elementwise_mul(tmp_0, tmp_1);
-  tmp_2->SetShape({16, 32});
-
-  auto* x2 = layers.data("x2", {16, 32});
+  auto* x2 = layers.data("x2", shape);
   auto* tmp_3 = layers.sigmoid(x2);
-  tmp_3->SetShape({16, 32});
-  auto* x3 = layers.data("x3", {16, 32});
+  auto* x3 = layers.data("x3", shape);
   auto* tmp_4 = layers.tanh(x3);
-  tmp_4->SetShape({16, 32});
   auto* tmp_5 = layers.elementwise_mul(tmp_3, tmp_4);
-  tmp_5->SetShape({16, 32});
-
   auto* tmp_6 = layers.elementwise_add(tmp_2, tmp_5);
-  tmp_6->SetShape({16, 32});
-
-  auto* x4 = layers.data("x4", {16, 32});
+  auto* x4 = layers.data("x4", shape);
   auto* tmp_7 = layers.tanh(x4);
-  tmp_7->SetShape({16, 32});
-  auto* x5 = layers.data("x5", {16, 32});
+  auto* x5 = layers.data("x5", shape);
   auto* tmp_8 = layers.sigmoid(x5);
-  tmp_8->SetShape({16, 32});
-
   auto* tmp_9 = layers.elementwise_mul(tmp_7, tmp_8);
-  tmp_9->SetShape({16, 32});
-  layers.mul(tmp_6, tmp_9);
+  auto* tmp_10 = layers.mul(tmp_6, tmp_9);
+
+  std::vector<VarDesc*> elementwise_vars = {tmp_0, tmp_1, tmp_2, tmp_3, tmp_4,
+                                            tmp_5, tmp_6, tmp_7, tmp_8, tmp_9};
+  for (auto* var : elementwise_vars) {
+    var->SetShape(shape);
+  }
+
+  if (backward) {
+    layers.backward({tmp_10});
+  }
 
   std::unique_ptr<Graph> graph(new Graph(layers.main_program()));
-  // VisualizeGraph(graph, "00_elementwise_tree.dot");
+  for (auto* n : graph->Nodes()) {
+    if (n && n->IsVar() && n->Var()) {
+      n->Var()->SetDataType(proto::VarType::FP32);
+    }
+  }
+#ifdef __clang__
+  return graph;
+#else
+  return std::move(graph);
+#endif
+}
 
-  auto fusion_group_pass = PassRegistry::Instance().Get("fusion_group_pass");
+int TestMain(std::unique_ptr<Graph> graph, std::string prefix) {
+  // VisualizeGraph(&graph, prefix + ".dot");
+  auto pass = PassRegistry::Instance().Get("fusion_group_pass");
+  pass->Set("use_gpu", new bool(true));
   VLOG(3) << DebugString(graph);
 
-  graph.reset(fusion_group_pass->Apply(graph.release()));
-  // VisualizeGraph(graph, "01_elementwise_tree.fusion_group.dot");
+  graph.reset(pass->Apply(graph.release()));
+  // VisualizeGraph(&graph, prefix + ".fusion_group.dot");
   int num_fusion_group_ops = GetNumOpNodes(graph, "fusion_group");
   VLOG(3) << DebugString(graph);
 
-  PADDLE_ENFORCE_EQ(num_fusion_group_ops, 2);
+  return num_fusion_group_ops;
+}
+
+TEST(FusionGroupPass, elementwise_list) {
+  std::unique_ptr<Graph> graph = BuildElementwiseListGraph(true);
+  int num_fusion_group_ops = TestMain(std::move(graph), "elementwise_list");
+  EXPECT_EQ(num_fusion_group_ops, 2);
+}
+
+TEST(FusionGroupPass, elementwise_tree) {
+  std::unique_ptr<Graph> graph = BuildElementwiseTreeGraph(true);
+  int num_fusion_group_ops = TestMain(std::move(graph), "elementwise_tree");
+  EXPECT_EQ(num_fusion_group_ops, 4);
 }
 
 }  // namespace ir

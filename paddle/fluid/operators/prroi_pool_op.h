@@ -81,7 +81,7 @@ inline HOSTDEVICE void PrRoIPoolingDistributeDiff(T* diff, const T top_diff,
                                                   const T coeff) {
   bool overflow = (h < 0) || (w < 0) || (h >= height) || (w >= width);
   if (!overflow) {
-    *(diff + h * width + w) = top_diff * coeff;
+    *(diff + h * width + w) += top_diff * coeff;
   }
 }
 
@@ -179,7 +179,7 @@ inline HOSTDEVICE void PrRoIPoolingCoorBackward(
     T win_start_h, T win_end_w, T win_end_h, int pw, int ph,
     const int pooled_width, const int pooled_height, T win_size,
     const float spatial_scale, const T* this_bottom_data,
-    const T* this_top_data, T* this_data_grad, T* this_out_grad,
+    const T* this_top_data, T* this_data_grad, const T* this_out_grad,
     Functor functor, MaxFunctor maxFunctor, MinFunctor minFunctor) {
   T g_x1_y = 0.f;
   T g_x2_y = 0.f;
@@ -232,20 +232,19 @@ inline HOSTDEVICE void PrRoIPoolingCoorBackward(
   partial_y1 = partial_y1 / win_size * spatial_scale;
   partial_y2 = partial_y2 / win_size * spatial_scale;
 
-  this_data_grad[0] = 0;
-  functor(this_data_grad + 1,
+  functor(this_data_grad + 0,
           (partial_x1 * (1.0 - static_cast<T>(pw) / pooled_width) +
            partial_x2 * (1.0 - static_cast<T>(pw + 1) / pooled_width)) *
               (*this_out_grad));
-  functor(this_data_grad + 2,
+  functor(this_data_grad + 1,
           (partial_y1 * (1.0 - static_cast<T>(ph) / pooled_height) +
            partial_y2 * (1.0 - static_cast<T>(ph + 1) / pooled_height)) *
               (*this_out_grad));
-  functor(this_data_grad + 3,
+  functor(this_data_grad + 2,
           (partial_x2 * static_cast<T>(pw + 1) / pooled_width +
            partial_x1 * static_cast<T>(pw) / pooled_width) *
               (*this_out_grad));
-  functor(this_data_grad + 4,
+  functor(this_data_grad + 3,
           (partial_y2 * static_cast<T>(ph + 1) / pooled_height +
            partial_y1 * static_cast<T>(ph) / pooled_height) *
               (*this_out_grad));
@@ -262,7 +261,6 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
     auto pooled_height = ctx.Attr<int>("pooled_height");
     auto pooled_width = ctx.Attr<int>("pooled_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
-
     auto in_dims = in->dims();
     int batch_size = in_dims[0];
     int input_channels = in_dims[1];
@@ -270,6 +268,7 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
     int height = in_dims[2];
     int width = in_dims[3];
     int rois_num = rois->dims()[0];
+    if (rois_num == 0) return;
 
     auto in_stride = framework::stride(in_dims);
     auto out_stride = framework::stride(out->dims());
@@ -280,26 +279,44 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
     rois_batch_id_list.Resize({rois_num});
     int* rois_batch_id_data =
         rois_batch_id_list.mutable_data<int>(ctx.GetPlace());
+    if (ctx.HasInput("BatchRoINums") || rois->lod().empty()) {
+      auto* batchroinum = ctx.Input<framework::Tensor>("BatchRoINums");
+      auto* batch_index = batchroinum->data<int64_t>();
+      int rois_batch_size = batchroinum->dims()[0];
+      size_t c = 0;
+      for (int n = 0; n < rois_batch_size; ++n) {
+        for (int64_t k = 0; k < batch_index[n]; ++k) {
+          rois_batch_id_data[c] = n;
+          c = c + 1;
+        }
+      }
+    } else {
+      PADDLE_ENFORCE_EQ(rois->lod().empty(), false,
+                        platform::errors::InvalidArgument(
+                            "the lod of Input ROIs should not be empty when "
+                            "BatchRoINums is None!"));
+      auto rois_lod = rois->lod().back();
+      int rois_batch_size = rois_lod.size() - 1;
+      PADDLE_ENFORCE_EQ(
+          rois_batch_size, batch_size,
+          platform::errors::InvalidArgument("the rois_batch_size and input(X) "
+                                            "batch_size should be the same."));
+      int rois_num_with_lod = rois_lod[rois_batch_size];
+      PADDLE_ENFORCE_EQ(
+          rois_num_with_lod, rois_num,
+          platform::errors::InvalidArgument(
+              "the rois_num from input and lod must be the same"));
 
-    auto rois_lod = rois->lod().back();
-    int rois_batch_size = rois_lod.size() - 1;
-    PADDLE_ENFORCE_EQ(
-        rois_batch_size, batch_size,
-        "the rois_batch_size and input(X) batch_size should be the same.");
-    int rois_num_with_lod = rois_lod[rois_batch_size];
-    PADDLE_ENFORCE_EQ(rois_num_with_lod, rois_num,
-                      "the rois_num from input and lod must be the same");
-
-    // calculate batch id index for each roi according to LoD
-    for (int n = 0; n < rois_batch_size; ++n) {
-      for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
-        rois_batch_id_data[i] = n;
+      // calculate batch id index for each roi according to LoD
+      for (int n = 0; n < rois_batch_size; ++n) {
+        for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+          rois_batch_id_data[i] = n;
+        }
       }
     }
 
     T* output_data = out->mutable_data<T>(ctx.GetPlace());
     const T* input_rois = rois->data<T>();
-
     // calculate prroipooling, parallel processing can be implemented per ROI
     for (int n = 0; n < rois_num; ++n) {
       // set roi batch id
@@ -390,7 +407,7 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
     auto pooled_width = ctx.Attr<int>("pooled_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
 
-    if (input_grad && input_roi_grad) {
+    if (input_grad || input_roi_grad) {
       auto in_dims = in->dims();
       auto* in_data = in->data<T>();
       auto* out_data = out->data<T>();
@@ -406,24 +423,42 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
       rois_batch_id_list.Resize({rois_num});
       int* rois_batch_id_data =
           rois_batch_id_list.mutable_data<int>(ctx.GetPlace());
-      auto rois_lod = rois->lod().back();
-      int rois_batch_size = rois_lod.size() - 1;
-      // calculate batch id index for each roi according to LoD
-      for (int n = 0; n < rois_batch_size; ++n) {
-        for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
-          rois_batch_id_data[i] = n;
+      if (ctx.HasInput("BatchRoINums") || rois->lod().empty()) {
+        auto* batchroinum = ctx.Input<framework::Tensor>("BatchRoINums");
+        auto* batch_index = batchroinum->data<int64_t>();
+        int rois_batch_size = batchroinum->dims()[0];
+        size_t c = 0;
+        for (int n = 0; n < rois_batch_size; ++n) {
+          for (int64_t k = 0; k < batch_index[n]; ++k) {
+            rois_batch_id_data[c] = n;
+            c = c + 1;
+          }
+        }
+      } else {
+        auto rois_lod = rois->lod().back();
+        int rois_batch_size = rois_lod.size() - 1;
+        // calculate batch id index for each roi according to LoD
+        for (int n = 0; n < rois_batch_size; ++n) {
+          for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+            rois_batch_id_data[i] = n;
+          }
         }
       }
 
       const T* input_rois = rois->data<T>();
       const T* output_grad_data = output_grad->data<T>();
-      T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
-      T* input_roi_grad_data = input_roi_grad->mutable_data<T>(ctx.GetPlace());
 
+      input_grad->mutable_data<T>(ctx.GetPlace());
+      input_roi_grad->mutable_data<T>(ctx.GetPlace());
       // set gradient of X to be 0. before backpropagate.
       math::SetConstant<DeviceContext, T> set_zero;
       set_zero(ctx.template device_context<DeviceContext>(), input_grad,
                static_cast<T>(0));
+      set_zero(ctx.template device_context<DeviceContext>(), input_roi_grad,
+               static_cast<T>(0));
+
+      T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
+      T* input_roi_grad_data = input_roi_grad->mutable_data<T>(ctx.GetPlace());
 
       // backpropagate gradient per output pixel
       int output_grad_size = output_grad->numel();
@@ -493,7 +528,7 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
             s_w, e_w, s_h, e_h, width, height, win_start_w, win_start_h,
             win_end_w, win_end_h, pw, ph, pooled_width, pooled_height, win_size,
             spatial_scale, offset_in_data, offset_out_data,
-            offset_input_grad_data, offset_input_roi_grad_data,
+            offset_input_roi_grad_data, offset_output_grad_data,
             CPUAccumulateRois<T>,
             [](const T x, const T y) { return std::max(x, y); },
             [](const T x, const T y) { return std::min(x, y); });

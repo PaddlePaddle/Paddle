@@ -29,6 +29,7 @@ from ..framework import convert_np_dtype_to_dtype_, default_main_program, \
     default_startup_program, program_guard, Program, Variable
 from ..layer_helper import LayerHelper
 from ..unique_name import generate as unique_name
+from ..transpiler.distribute_transpiler import DistributedMode
 import logging
 
 __all__ = [
@@ -54,10 +55,20 @@ def data(name,
         :code:`paddle.fluid.layers.data` is deprecated as it will be removed in 
         a later version. Please use :code:`paddle.fluid.data` .
 
-        The :code:`paddle.fluid.layers.data` set shape and dtype at compile time
-        but does NOT check the shape or the dtype of feeded data, this
-        :code:`paddle.fluid.data` checks the shape and the dtype of data feeded 
+        This :code:`paddle.fluid.layers.data` set shape and dtype at compile
+        time but does NOT check the shape or the dtype of fed data, the
+        :code:`paddle.fluid.data` checks the shape and the dtype of data fed 
         by Executor or ParallelExecutor during run time.
+
+        To feed variable size inputs, users can feed variable size inputs
+        directly to this :code:`paddle.fluid.layers.data` and PaddlePaddle will
+        fit the size accordingly. Or set -1 on the variable dimension when using
+        :code:`paddle.fluid.data` .
+
+        The default :code:`stop_gradient` attribute of the Variable created by
+        this API is true, which means the gradient won't be passed backward
+        through the data Varaible. Set :code:`var.stop_gradient = False` If
+        user would like to pass backward gradient.
 
     Args:
        name(str): The name/alias of the variable, see :ref:`api_guide_Name`
@@ -230,7 +241,8 @@ class ListenAndServ(object):
                 'optimize_blocks': [
                     current_block
                 ],  # did not support multiple optimize blocks in layers
-                'sync_mode': True,  # did not support async now in layers
+                'distributed_mode':
+                DistributedMode.SYNC,  # did not support async now in layers
                 'grad_to_block_id': [""]
             })
 
@@ -241,7 +253,7 @@ def Send(endpoints, send_vars, dummy_output=None, sync=True):
     side when server have finished running server side program.
 
     Args:
-        endpoints (str): comma seperated IP:PORT pairs in the order
+        endpoints (str): comma separated IP:PORT pairs in the order
                    of send_vars to send
         send_vars (list): variables to send to server
         sync (bool): whether to wait the request finish
@@ -284,7 +296,7 @@ def Recv(endpoints, get_vars, dummy_input=None, sync=True):
     Receive variables from server side
 
     Args:
-        endpoints (str): comma seperated IP:PORT pairs in the order
+        endpoints (str): comma separated IP:PORT pairs in the order
                    of send_vars to send
         get_vars (list): vars to get from server after send completes.
         sync (bool): whether to wait the request finish
@@ -417,7 +429,7 @@ def _py_reader(capacity,
         double_buffer_name = "_".join([name, "double_buffer"])
 
     var = global_scope().var(queue_name)
-    feed_queue = core.init_lod_tensor_blocking_queue(var, capacity)
+    feed_queue = core.init_lod_tensor_blocking_queue(var, capacity, False)
 
     startup_blk = default_startup_program().current_block()
     startup_var = startup_blk.create_var(name=reader_name)
@@ -591,7 +603,7 @@ def py_reader(capacity,
          import paddle.dataset.mnist as mnist
 
          def network(image, label):
-             # user defined network, here a softmax regresssion example
+             # user defined network, here a softmax regession example
              predict = fluid.layers.fc(input=image, size=10, act='softmax')
              return fluid.layers.cross_entropy(input=predict, label=label)
 
@@ -748,7 +760,7 @@ def create_py_reader_by_data(capacity,
           reader.decorate_paddle_reader(
               paddle.reader.shuffle(paddle.batch(mnist.train(), batch_size=5), buf_size=500))
           img, label = fluid.layers.read_file(reader)
-          loss = network(img, label) # The definition of custom network and the loss funtion
+          loss = network(img, label) # The definition of custom network and the loss function
 
           place = fluid.CUDAPlace(0) if USE_CUDA else fluid.CPUPlace()
           exe = fluid.Executor(place)

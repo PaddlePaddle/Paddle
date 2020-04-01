@@ -18,16 +18,17 @@ from ..wrapped_decorator import signature_safe_contextmanager
 from .layer_function_generator import autodoc, templatedoc
 from .tensor import assign, cast, fill_constant
 from .. import core
-from ..framework import Program, Variable, Operator
+from ..framework import Program, Variable, Operator, in_dygraph_mode
 from ..layer_helper import LayerHelper, unique_name
-from ..initializer import force_init_on_cpu
 from .nn import logical_and, logical_not, logical_or
-from .utils import assert_same_structure, map_structure
+from .utils import assert_same_structure, map_structure, hold_mutable_vars, copy_mutable_vars
 import numpy
 import warnings
 import six
 from functools import reduce, partial
-from ..data_feeder import convert_dtype, check_type_and_dtype
+from ..data_feeder import convert_dtype, check_variable_and_dtype
+from ... import compat as cpt
+from ..backward import _infer_var_data_type_shape_
 
 __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
@@ -82,10 +83,14 @@ def select_input(inputs, mask):
     if isinstance(inputs, list) or isinstance(inputs, tuple):
         input_dtype = inputs[0].dtype
         input_shape = inputs[0].shape
+        input_type = inputs[0].type
     else:
         input_dtype = inputs.dtype
         input_shape = inputs.shape
-    out = helper.create_variable(dtype=input_dtype, shape=input_shape)
+        input_type = inputs.type
+
+    out = helper.create_variable(
+        dtype=input_dtype, shape=input_shape, type=input_type)
     helper.append_op(
         type='select_input',
         inputs={'X': inputs,
@@ -214,7 +219,7 @@ def Print(input,
     Args:
         input (Variable): A Tensor to print.
         summarize (int): Number of elements in the tensor to be print. If it's
-                vaule is -1, then all elements in the tensor will be print.
+                value is -1, then all elements in the tensor will be print.
         message (str): A string message to print as a prefix.
         first_n (int): Only log `first_n` number of times.
         print_tensor_name (bool, optional): Print the tensor name. Default: True.
@@ -256,9 +261,9 @@ def Print(input,
                data: 3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3, 
                
     '''
-    check_type_and_dtype(input, 'input', Variable,
-                         ['float32', 'float64', 'int32', 'int64', 'bool'],
-                         'fluid.layers.Print')
+    check_variable_and_dtype(input, 'input',
+                             ['float32', 'float64', 'int32', 'int64', 'bool'],
+                             'fluid.layers.Print')
 
     helper = LayerHelper('print' + "_" + input.name, **locals())
     output = helper.create_variable_for_type_inference(input.dtype)
@@ -702,7 +707,7 @@ class StaticRNN(object):
         Args:
             mem(Variable): the memory variable.
             var(Variable): the plain variable generated in RNN block, used to update memory.
-                           var and mem should hava same dims and data type.
+                           var and mem should have same dims and data type.
 
         Returns:
             None
@@ -827,6 +832,10 @@ class While(object):
     """
     while loop control flow. Repeat while body until cond is False.
 
+    Note:
+        A new OP :ref:`api_fluid_layers_while_loop` is highly recommended instead of ``While`` if the shape of parameter ``cond`` is [1].
+        OP :ref:`api_fluid_layers_while_loop` is easier to use and is called with less code but does the same thing as ``While`` .
+
     Args:
         cond(Variable): A Tensor whose data type is bool controlling whether to continue looping.
         is_test(bool, optional): A flag indicating whether execution is in test phase. Default value is False.
@@ -924,16 +933,17 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
     while_loop is one of the control flows. Repeats while_loop `body` until `cond` returns False.
 
     Args:
-        cond(Callable): A callable returning a boolean tensor controlling whether to continue looping.
-        body(Callable): A callable returning a tuple or list of tensors of the same arity (length and structure)
-            and types as ``loops_vars`` .
-        loop_vars(list|tuple): A list or tuple of tensors that is passed to both ``cond`` and ``body`` .
+        cond(Callable): A callable returning a boolean tensor controlling whether to continue looping. And ``cond`` takes
+	    as many arguments as ``loop_vars`` .
+        body(Callable): A callable returning a tuple or list of tensors or LoDTensorArrays of the same arity
+            (length and structure) and types as ``loops_vars`` . And ``body`` takes as many arguments as ``loop_vars`` .
+        loop_vars(list|tuple): A list or tuple of tensors or LoDTensorArrays that is passed to both ``cond`` and ``body`` .
         is_test(bool, optional): A flag indicating whether execution is in test phase. Default value is False.
         name(str, optional): Normally there is no need for users to set this property. For more information, please
             refer to :ref:`api_guide_Name`. Default is None.
     
     Returns:
-        A list or tuple of tensors which returned by ``body`` .
+        A list or tuple of tensors or LoDTensorArrays which returned by ``body`` .
     
     Returen type:
         list(Variable)|tuple(Variable).
@@ -946,6 +956,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         TypeError: If the type of ``cond`` returns is not a boolean variable.
         TypeError: If the shape of ``cond`` returns is not equals 1.
         ValueError: If the ``var_loops`` is empty.
+        ValueError: If the length or type of ``body`` returns is not same as ``loop_vars``.
 
     Examples:
         .. code-block:: python
@@ -953,22 +964,22 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
 
-            def cond(i):
-                return layers.less_than(i, ten)
+            def cond(i, ten):
+                return i < ten
 
-            def body(i):
-                return layers.increment(x=i, value=1, in_place=True)
+            def body(i, ten):
+                i = i + 1
+                return [i, ten]
 
             main_program = fluid.default_main_program()
             startup_program = fluid.default_startup_program()
-
             with fluid.program_guard(main_program, startup_program):
                 i = layers.fill_constant(shape=[1], dtype='int64', value=0)     # loop counter
                 ten = layers.fill_constant(shape=[1], dtype='int64', value=10)  # loop length
-                out = layers.while_loop(cond, body, [i])
+                i, ten = layers.while_loop(cond, body, [i, ten])
                 
                 exe = fluid.Executor(fluid.CPUPlace())
-                res = exe.run(main_program, feed={}, fetch_list=out)
+                res = exe.run(main_program, feed={}, fetch_list=[i])
                 print(res) # [array([10])]
     """
     helper = LayerHelper('while_loop', **locals())
@@ -992,18 +1003,43 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             "the shape of the variable returned by cond should be [],"
             "but given shape as {0}.".format(list(pre_cond.shape)))
 
-    while_loop_block = While(pre_cond, is_test, name)
-    with while_loop_block.block():
-        output_vars = body(*loop_vars)
-        if len(loop_vars) == 1:
-            assign(output_vars, loop_vars[0])
-            now_cond = cond(output_vars)
-        else:
-            for i in range(len(output_vars)):
-                assign(output_vars[i], loop_vars[i])
-            now_cond = cond(*output_vars)
-        assign(now_cond, pre_cond)
+    if in_dygraph_mode():
+        now_cond = pre_cond.numpy()[0]
+        while (now_cond):
+            output_vars = body(*loop_vars)
+            if not isinstance(output_vars, (list, tuple)):
+                output_vars = [output_vars]
+            if len(output_vars) != len(loop_vars):
+                raise ValueError(
+                    "body in while_loop should return the same arity "
+                    "(length and structure) and types as loop_vars")
+            now_cond = cond(*output_vars).numpy()[0]
+            loop_vars = output_vars
+        return loop_vars
 
+    while_loop_block = While(pre_cond, is_test, name)
+    has_mutable_vars_in_loop = hold_mutable_vars(loop_vars)
+    with while_loop_block.block():
+        # If a variable with mutable type is included in loop_vars, like `dict/list`,
+        # modifying it in the body function will cause origin variable to be modified
+        # synchronously. This will raise an assignment error out of while block.
+        # Here we make a copy of the mutable vars to avoid this problem.
+        if has_mutable_vars_in_loop:
+            new_loop_vars = copy_mutable_vars(loop_vars)
+            output_vars = body(*new_loop_vars)
+        else:
+            output_vars = body(*loop_vars)
+        if not isinstance(output_vars, (list, tuple)):
+            output_vars = [output_vars]
+        try:
+            assert_same_structure(output_vars, loop_vars, check_types=False)
+        except ValueError as e:
+            raise ValueError("body in while_loop should return the same arity "
+                             "(length and structure) as loop_vars: {0}".format(
+                                 e))
+        now_cond = cond(*output_vars)
+        map_structure(assign, output_vars, loop_vars)
+        assign(now_cond, pre_cond)
     return loop_vars
 
 
@@ -1013,7 +1049,7 @@ def lod_rank_table(x, level=0):
     of LoD, this layer creates a LodRankTable object. A LoDRankTable object
     contains a list of bi-element tuples. Each tuple consists of an index and
     a length, both of which are int type. Refering to specified level of LoD,
-    the index is the sequence index number and the length representes the
+    the index is the sequence index number and the length represents the
     sequence length. Please note that the list is ranked in descending order by
     the length. The following is an example:
 
@@ -1173,7 +1209,7 @@ def increment(x, value=1.0, in_place=True):
     Notice that the number of elements in :attr:`x` must be equal to 1.
 
     Parameters:
-        x (Variable): A tensor that must alway contain only one element, its data type supports
+        x (Variable): A tensor that must always contain only one element, its data type supports
             float32, float64, int32 and int64.
         value (float, optional): The amount to increment the data of :attr:`x`. Default: 1.0.
         in_place (bool, optional): Whether the OP should be performed in-place. Default: True.
@@ -1338,8 +1374,6 @@ def less_than(x, y, force_cpu=None, cond=None):
     attrs = dict()
     if force_cpu is not None:
         attrs['force_cpu'] = force_cpu
-    elif force_init_on_cpu():
-        attrs['force_cpu'] = force_init_on_cpu()
 
     helper.append_op(
         type='less_than',
@@ -1382,8 +1416,6 @@ def less_equal(x, y, cond=None):
         cond.stop_gradient = True
 
     attrs = dict()
-    if force_init_on_cpu():
-        attrs['force_cpu'] = force_init_on_cpu()
 
     helper.append_op(
         type='less_equal',
@@ -1425,8 +1457,6 @@ def greater_than(x, y, cond=None):
         cond.stop_gradient = True
 
     attrs = dict()
-    if force_init_on_cpu():
-        attrs['force_cpu'] = force_init_on_cpu()
 
     helper.append_op(
         type='greater_than',
@@ -1470,8 +1500,6 @@ def greater_equal(x, y, cond=None):
         cond.stop_gradient = True
 
     attrs = dict()
-    if force_init_on_cpu():
-        attrs['force_cpu'] = force_init_on_cpu()
 
     helper.append_op(
         type='greater_equal',
@@ -1670,7 +1698,7 @@ def array_length(array):
     """
     This OP is used to get the length of the input array :ref:`api_fluid_LoDTensorArray` .
     It can be used together with :ref:`api_fluid_layers_array_read` , :ref:`api_fluid_layers_array_write` , 
-    :ref:`api_fluid_layers_While` OP to traverse, read and wirte LoDTensorArray.
+    :ref:`api_fluid_layers_While` OP to traverse, read and write LoDTensorArray.
 
     Args:
         array (LoDTensorArray): The input array that will be used to compute the length.
@@ -1751,7 +1779,7 @@ class ConditionalBlock(object):
 
     Args:
         inputs (Variable): bool conditions.
-        is_scalar_condition (bool): whether the branch is controled by a scalar.
+        is_scalar_condition (bool): whether the branch is controlled by a scalar.
         name(str): name of this ConditionalBlock.
 
     Examples:
@@ -1799,6 +1827,9 @@ class ConditionalBlock(object):
                     intermediate.add(out_var_name)
         input_set = set([ipt.name for ipt in self.inputs])
 
+        # Todo(liym27) Here assume that all params are in recursive parent block
+        # but when minimize() called in control flow, some params may be in
+        # conditional grad block
         param_list = [
             parent_block._var_recursive(each_name) for each_name in params
         ]
@@ -1811,7 +1842,7 @@ class ConditionalBlock(object):
 
         step_scope = parent_block.create_var(
             type=core.VarDesc.VarType.STEP_SCOPES)
-        parent_block.append_op(
+        conditional_block_op = parent_block.append_op(
             type='conditional_block',
             inputs={
                 'Cond': self.inputs,
@@ -1823,6 +1854,90 @@ class ConditionalBlock(object):
                 'sub_block': inside_block,
                 'is_scalar_condition': self.is_scalar_condition
             })
+
+        if self.need_append_conditional_block_grad(inside_block):
+            self.append_conditional_block_grad(parent_block, inside_block,
+                                               conditional_block_op)
+
+    def need_append_conditional_block_grad(self, inside_block):
+        grad_sub_block_idx = inside_block.backward_block_idx
+
+        return grad_sub_block_idx != -1
+
+    def append_conditional_block_grad(self, parent_block, inside_block,
+                                      conditional_block_op):
+        '''
+        Append op `conditional_block_grad` manually.
+        When `optimizer.minimize/append_backward` is called in Paddle control flow,
+        grad ops will be appended before appending op `conditional_block` so that
+        op `conditional_block_grad` can't be appended when calling
+        `optimizer.minimize/append_backward`. After appending op `conditional_block`,
+        `conditional_block_grad` is appended manually.
+
+        Args:
+            parent_block (Block): The block that `conditional_block_op` blongs to.
+            inside_block (Block): The sub block of `conditional_block_op`.
+            conditional_block_op (Operator): The forward op conditional_block.
+        '''
+
+        grad_sub_block_idx = inside_block.backward_block_idx
+        grad_sub_block = self.helper.main_program.block(grad_sub_block_idx)
+
+        intermediate = set()
+        params = set()
+
+        for each_op in grad_sub_block.ops:
+            assert isinstance(each_op, Operator)
+            for iname in each_op.input_names:
+                for in_var_name in each_op.input(iname):
+                    if in_var_name not in intermediate:
+                        params.add(in_var_name)
+
+            for oname in each_op.output_names:
+                for out_var_name in each_op.output(oname):
+                    intermediate.add(out_var_name)
+
+        param_list = []
+        for inner_input_name in params:
+            inner_var = parent_block._find_var_recursive(inner_input_name)
+            if inner_var:
+                param_list.append(cpt.to_text(inner_var.name))
+
+        grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
+            conditional_block_op.desc,
+            cpt.to_text(set()), [grad_sub_block.desc])
+
+        # append op_desc in grad_op_descs to target_block
+        op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
+        backward = core.op_proto_and_checker_maker.OpRole.Backward
+        new_op_desc = parent_block.desc.append_op()
+        new_op_desc.copy_from(grad_op_desc[0])
+        new_op_desc._set_attr(op_role_attr_name, backward)
+        # set input and output manually
+        new_op_desc.set_input('Input', param_list)
+        new_op_desc.set_output('Input@GRAD',
+                               [param + "@GRAD" for param in param_list])
+
+        new_vars = set()
+        for grad_var_name in new_op_desc.output_arg_names():
+            if grad_sub_block.desc.has_var_recursive(
+                    cpt.to_bytes(grad_var_name)
+            ) or grad_var_name == core.empty_var_name():
+                continue
+            grad_sub_block.desc.var(cpt.to_bytes(grad_var_name))
+            new_vars.add(grad_var_name)
+            if grad_var_name not in op_grad_to_var:
+                continue
+
+        # infer_shape and infer_type
+        new_op_desc.infer_var_type(grad_sub_block.desc)
+        new_op_desc.infer_shape(grad_sub_block.desc)
+
+        for arg in new_op_desc.output_arg_names():
+            if arg in new_vars:
+                _infer_var_data_type_shape_(arg, grad_sub_block)
+
+        self.helper.main_program._sync_with_cpp()
 
 
 def copy_var_to_parent_block(var, layer_helper):
@@ -1936,13 +2051,35 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
             #           [ True  True  True]]
 
     """
+    if in_dygraph_mode():
+        assert isinstance(pred, Variable), "The pred in cond must be Variable"
+        assert pred.numpy().size == 1, "condition input's numel should be 1"
+        pred = pred.numpy()[0]
+        if pred:
+            if true_fn is not None:
+                if not callable(true_fn):
+                    raise TypeError(
+                        "The true_fn in cond must be callable, but received {}".
+                        format(type(true_fn).__name__))
+                return true_fn()
+        else:
+            if false_fn is not None:
+                if not callable(false_fn):
+                    raise TypeError(
+                        "The false_fn in cond must be callable, but received {}".
+                        format(type(false_fn).__name__))
+                return false_fn()
+        return None
+
     helper = LayerHelper('cond', **locals())
     true_output = None
     false_output = None
     copy_to_parent_func = lambda var: copy_var_to_parent_block(var, helper)
     if true_fn is not None:
         if not callable(true_fn):
-            raise TypeError("The true_fn in cond must be callable")
+            raise TypeError(
+                "The true_fn in cond must be callable, but received {}".format(
+                    type(true_fn).__name__))
         true_cond_block = ConditionalBlock([pred], is_scalar_condition=True)
         with true_cond_block.block():
             origin_true_output = true_fn()
@@ -1951,7 +2088,9 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
                                             origin_true_output)
     if false_fn is not None:
         if not callable(false_fn):
-            raise TypeError("The false_fn in cond must be callable")
+            raise TypeError(
+                "The false_fn in cond must be callable, but received {}".format(
+                    type(false_fn).__name__))
         false_cond_block = ConditionalBlock(
             [logical_not(pred)], is_scalar_condition=True)
         with false_cond_block.block():
@@ -2121,6 +2260,10 @@ class Switch(object):
     If there is no case branch that satisfies the condition, 
     only the statement following the default branch is executed.
 
+    Note:
+        A new OP :ref:`api_fluid_layers_case` is highly recommended instead of ``Switch`` if the shape of parameter ``cond`` is [1].
+        OP :ref:`api_fluid_layers_case` is easier to use and is called with less code but does the same thing as ``Switch`` .
+
     Member Functions:
         case(cond): The case branch of Switch whose parameter cond is a scalar Variable of bool type. Only if the cond of the current case branch is True and the cond of the previous case branch is False, the statement after the case branch will be executed, and the statement after the case branch will not be executed.
         
@@ -2266,6 +2409,10 @@ class IfElse(object):
 
     Cond is a 2-D Tensor with shape [N, 1] and data type bool, representing the execution conditions of the corresponding part of the input data.
 
+    Note:
+        A new OP :ref:`api_fluid_layers_cond` is highly recommended instead of ``IfElse``. if the shape of parameter ``cond`` is [1].
+        OP :ref:`api_fluid_layers_cond` is easier to use and is called with less code but does the same thing as ``IfElse`` .
+
     IfElse OP is different from other OPs in usage, which may cause some users confusion. Here is a simple example to illustrate this OP.
 
     .. code-block:: python
@@ -2307,7 +2454,7 @@ class IfElse(object):
         exe.run(fluid.default_startup_program())
 
         res = exe.run(fluid.default_main_program(), feed={"x":x_d, "y":y_d}, fetch_list=[out])
-        print res
+        print(res)
         # [array([-1.], dtype=float32)] 
 
     Args:
@@ -2446,7 +2593,7 @@ class DynamicRNN(object):
     The total number of time steps is determined by the longest sequence.
     DynamicRNN will not pad all sequences to the same length, instead it will
     sort the sequences internally by the sequence length in descending order.
-    The input sequences will be shrinked because only sequences of which the
+    The input sequences will be shrank because only sequences of which the
     length is larger than the time step will participate the remaining calculation.
 
     If defined :code:`drnn = DynamicRNN()`, then users can call :code:`drnn()`
@@ -2734,7 +2881,7 @@ class DynamicRNN(object):
                 Optional data types are: bool, float16, float32, float64, int8, int16, int32, int64, uint8.
 
         Returns:
-            Variable: The input LoDTensor after sorted and shrinked. If there are :code:`num_sequences` \
+            Variable: The input LoDTensor after sorted and shrank. If there are :code:`num_sequences` \
                 sequences in RNN's input LoDTensor whose length is larger than :code:`step_idx` , \
                 the static input Tensor will be sorted to the same order as RNN's input and \
                 will only retain data corresponding to those :code:`num_sequences` sequences. \
@@ -2833,7 +2980,7 @@ class DynamicRNN(object):
 
     def __call__(self, *args, **kwargs):
         """
-        This function is used to get the output  sequneces of DynamicRNN.
+        This function is used to get the output  sequences of DynamicRNN.
 
         Args:
             None
@@ -2875,10 +3022,10 @@ class DynamicRNN(object):
                 If setting shape to :math:`\{D_1, D_2, ...\}` , the shape of memory Tensor
                 will be :math:`\{batch\_size, D_1, D_2, ...\}` , where batch_size is
                 determined by RNN's input sequences. The default value is None.
-            value (float, optional): When init is None, it is used as initalized value
+            value (float, optional): When init is None, it is used as initialized value
                 of memory. The default value is 0.0.
             need_reorder (bool, optional): When init is not None, it determines whether
-                the memory needs to reorder like the RNN's input sequeneces. It should be
+                the memory needs to reorder like the RNN's input sequences. It should be
                 set to True when the initialized memory depends on the order of input samples.
                 The default value is False.
             dtype (str|numpy.dtype, optional): When init is None, it is used to set the
@@ -2886,9 +3033,9 @@ class DynamicRNN(object):
                 are: "float32", "float64", "int32", "int64".
 
         Returns:
-            Variable: The memory LoDTensor after shrinked.  If there are :code:`num_sequences` \
+            Variable: The memory LoDTensor after shrank.  If there are :code:`num_sequences` \
                 sequences in RNN's input LoDTensor whose length is larger than :code:`step_idx` , \
-                the memory Tensor also need to be shrinked and will only retain data \
+                the memory Tensor also need to be shrank and will only retain data \
                 corresponding to those :code:`num_sequences` sequences.
 
         Raises:

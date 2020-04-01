@@ -82,7 +82,7 @@ class TestSequenceExpand(OpTest):
 
 class TestSequenceExpandCase1(TestSequenceExpand):
     def set_data(self):
-        x_data = np.random.uniform(0.1, 1, [5, 1]).astype('float64')
+        x_data = np.random.uniform(0.1, 1, [5, 20]).astype('float64')
         y_data = np.random.uniform(0.1, 1, [13, 1]).astype('float64')
         y_lod = [[2, 3], [2, 2, 3, 3, 3]]
         self.inputs = {'X': x_data, 'Y': (y_data, y_lod)}
@@ -91,7 +91,7 @@ class TestSequenceExpandCase1(TestSequenceExpand):
 
 class TestSequenceExpandCase2(TestSequenceExpand):
     def set_data(self):
-        x_data = np.random.uniform(0.1, 1, [1, 2, 2]).astype('float64')
+        x_data = np.random.uniform(0.1, 1, [1, 2, 50]).astype('float64')
         x_lod = [[1]]
         y_data = np.random.uniform(0.1, 1, [2, 2, 2]).astype('float64')
         y_lod = [[2], [1, 1]]
@@ -101,7 +101,7 @@ class TestSequenceExpandCase2(TestSequenceExpand):
 
 class TestSequenceExpandCase3(TestSequenceExpand):
     def set_data(self):
-        x_data = np.random.uniform(0.1, 1, [4, 1]).astype('float64')
+        x_data = np.random.uniform(0.1, 1, [4, 25]).astype('float64')
         x_lod = [[1, 1, 1, 1]]
         y_data = np.random.uniform(0.1, 1, [8, 1]).astype('float64')
         y_lod = [[2, 2, 2, 2]]
@@ -110,8 +110,8 @@ class TestSequenceExpandCase3(TestSequenceExpand):
 
 class TestSequenceExpandCase4(TestSequenceExpand):
     def set_data(self):
-        data = np.random.uniform(0.1, 1, [5 * 2, 1])
-        x_data = np.array(data).reshape([5, 2]).astype('float64')
+        data = np.random.uniform(0.1, 1, [5 * 20, 1])
+        x_data = np.array(data).reshape([5, 20]).astype('float64')
         x_lod = [[2, 3]]
         y_data = np.random.uniform(0.1, 1, [5, 1]).astype('float64')
         y_lod = [[2], [2, 3]]
@@ -120,7 +120,7 @@ class TestSequenceExpandCase4(TestSequenceExpand):
 
 class TestSequenceExpandCase5(TestSequenceExpand):
     def set_data(self):
-        x_data = np.random.uniform(0.1, 1, [6, 1]).astype('float64')
+        x_data = np.random.uniform(0.1, 1, [6, 20]).astype('float64')
         y_data = np.random.uniform(0.1, 1, [13, 1]).astype('float64')
         y_lod = [[2, 4], [2, 2, 3, 0, 3, 3]]
         self.inputs = {'X': x_data, 'Y': (y_data, y_lod)}
@@ -129,7 +129,7 @@ class TestSequenceExpandCase5(TestSequenceExpand):
 
 class TestSequenceExpandCase6(TestSequenceExpand):
     def set_data(self):
-        x_data = np.random.uniform(0.1, 1, [4, 1]).astype('float64')
+        x_data = np.random.uniform(0.1, 1, [4, 25]).astype('float64')
         x_lod = [[1, 1, 0, 1, 1]]
         y_data = np.random.uniform(0.1, 1, [8, 1]).astype('float64')
         y_lod = [[0, 2, 4, 2, 0]]

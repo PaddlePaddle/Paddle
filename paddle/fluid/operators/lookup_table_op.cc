@@ -113,7 +113,7 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<std::vector<std::string>>(
         "table_names",
-        "(string vector, the splited table names that will be fetched from "
+        "(string vector, the split table names that will be fetched from "
         "parameter server)"
         "in the order of input variables for mapping")
         .SetDefault({});
@@ -131,7 +131,7 @@ or not. And the output only shares the LoD information with input Ids.
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(LookupTableGradOpNoBuffer, "W");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(LookupTableGradOpNoBuffer, "W");
 
 template <typename T>
 class LookupTableGradOpMaker : public framework::SingleGradOpMaker<T> {
@@ -139,9 +139,7 @@ class LookupTableGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
-
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("lookup_table_grad");
 
     op->SetInput("W", this->Input("W"));
@@ -151,7 +149,6 @@ class LookupTableGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
 
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 

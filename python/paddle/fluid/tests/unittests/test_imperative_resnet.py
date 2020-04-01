@@ -25,7 +25,9 @@ from paddle.fluid import Conv2D, Pool2D, BatchNorm, Linear
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
-from paddle.fluid.dygraph.jit import TracedLayer
+from paddle.fluid.dygraph import TracedLayer
+
+#NOTE(zhiqiu): run with FLAGS_cudnn_deterministic=1
 
 batch_size = 8
 train_parameters = {
@@ -240,8 +242,6 @@ class TestDygraphResnet(unittest.TestCase):
             optimizer = optimizer_setting(
                 train_parameters, parameter_list=resnet.parameters())
             np.random.seed(seed)
-            import random
-            random.seed = seed
 
             batch_py_reader = fluid.io.PyReader(capacity=1)
             batch_py_reader.decorate_sample_list_generator(
@@ -284,7 +284,7 @@ class TestDygraphResnet(unittest.TestCase):
                 if traced_layer is not None:
                     resnet.eval()
                     traced_layer._switch(is_test=True)
-                    out_dygraph = resnet([img])
+                    out_dygraph = resnet(img)
                     out_static = traced_layer([img])
                     traced_layer._switch(is_test=False)
                     helper.assertEachVar(out_dygraph, out_static)
@@ -328,8 +328,6 @@ class TestDygraphResnet(unittest.TestCase):
             optimizer = optimizer_setting(train_parameters)
 
             np.random.seed(seed)
-            import random
-            random.seed = seed
             train_reader = paddle.batch(
                 paddle.dataset.flowers.train(use_xmap=False),
                 batch_size=batch_size)

@@ -53,14 +53,12 @@ class Relu2GradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("relu2_grad");
     op->SetInput("Y", this->Output("Y"));
     op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
     op->SetAttrMap(this->Attrs());
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    return std::unique_ptr<T>(op);
   }
 };
 

@@ -55,7 +55,7 @@ class GradClipByValue(GradClipBase):
     Args:
         max_value (float): The maximum value to clip by. 
         min (float, optional): The minimum value to clip by. if not set by user, \
-        will be set to -max_value(max_value MUST be postive) by framework. 
+        will be set to -max_value(max_value MUST be positive) by framework. 
 
     Examples:
         .. code-block:: python
@@ -65,7 +65,7 @@ class GradClipByValue(GradClipBase):
             import paddle.fluid as fluid
 
             from paddle.fluid.dygraph.base import to_variable
-            from paddle.fluid.dygraph.nn import FC
+            from paddle.fluid.dygraph.nn import Linear
 
             from paddle.fluid.clip import GradClipByValue, GradClipByNorm, GradClipByGlobalNorm
 
@@ -77,9 +77,9 @@ class GradClipByValue(GradClipBase):
                 
                 init_value = np.random.uniform( -1, 1, (10, 10)).astype('float32')
 
-                fc = FC( "fc", 10)
+                linear = Linear( 10, 10)
 
-                out = fc( to_variable(init_value) )
+                out = linear( to_variable(init_value) )
 
                 loss = fluid.layers.reduce_mean( out )
 
@@ -144,7 +144,7 @@ class GradClipByNorm(GradClipBase):
             import paddle.fluid as fluid
 
             from paddle.fluid.dygraph.base import to_variable
-            from paddle.fluid.dygraph.nn import FC
+            from paddle.fluid.dygraph.nn import Linear
 
             from paddle.fluid.clip import GradClipByValue, GradClipByNorm, GradClipByGlobalNorm
 
@@ -156,9 +156,9 @@ class GradClipByNorm(GradClipBase):
                 
                 init_value = np.random.uniform( -1, 1, (10, 10)).astype('float32')
 
-                fc = FC( "fc", 10)
+                linear = Linear( 10, 10)
 
-                out = fc( to_variable(init_value) )
+                out = linear( to_variable(init_value) )
 
                 loss = fluid.layers.reduce_mean( out )
 
@@ -222,7 +222,7 @@ class GradClipByGlobalNorm(GradClipBase):
             import paddle.fluid as fluid
 
             from paddle.fluid.dygraph.base import to_variable
-            from paddle.fluid.dygraph.nn import FC
+            from paddle.fluid.dygraph.nn import Linear
 
             from paddle.fluid.dygraph_grad_clip import GradClipByValue, GradClipByNorm, GradClipByGlobalNorm
 
@@ -234,9 +234,9 @@ class GradClipByGlobalNorm(GradClipBase):
                 
                 init_value = np.random.uniform( -1, 1, (10, 10)).astype('float32')
 
-                fc = FC( "fc", 10)
+                linear = Linear( 10, 10)
 
-                out = fc( to_variable(init_value) )
+                out = linear( to_variable(init_value) )
 
                 loss = fluid.layers.reduce_mean( out )
 

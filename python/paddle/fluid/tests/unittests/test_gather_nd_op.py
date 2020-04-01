@@ -47,8 +47,7 @@ class TestGatherNdOpWithLowIndex(OpTest):
 
     def setUp(self):
         self.op_type = "gather_nd"
-        xnp = np.array(
-            [[65, 17, 2], [14, 25, 1], [76, 22, 3]]).astype("float64")
+        xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
         index = np.array([[1], [2]]).astype("int64")
 
         self.inputs = {'X': xnp, 'Index': index}
@@ -69,8 +68,7 @@ class TestGatherNdOpWithSameIndexAsX(OpTest):
 
     def setUp(self):
         self.op_type = "gather_nd"
-        xnp = np.array(
-            [[65, 17, 2], [14, 25, 1], [76, 22, 3]]).astype("float64")
+        xnp = np.random.uniform(0, 100, (10, 10)).astype("float64")
         index = np.array([[1, 1], [2, 1]]).astype("int64")
 
         self.inputs = {'X': xnp, 'Index': index}

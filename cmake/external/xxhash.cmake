@@ -15,6 +15,7 @@
 INCLUDE(ExternalProject)
 
 set(XXHASH_PREFIX_DIR ${THIRD_PARTY_PATH}/xxhash)
+set(XXHASH_SOURCE_DIR ${THIRD_PARTY_PATH}/xxhash/src/extern_xxhash)
 set(XXHASH_INSTALL_DIR ${THIRD_PARTY_PATH}/install/xxhash)
 set(XXHASH_INCLUDE_DIR "${XXHASH_INSTALL_DIR}/include")
 set(XXHASH_REPOSITORY  https://github.com/Cyan4973/xxHash)
@@ -23,16 +24,12 @@ set(XXHASH_TAG         v0.6.5)
 cache_third_party(extern_xxhash
     REPOSITORY    ${XXHASH_REPOSITORY}
     TAG           ${XXHASH_TAG}
-    DIR           ${XXHASH_PREFIX_DIR})
+    DIR           XXHASH_SOURCE_DIR)
 
-IF(WITH_STATIC_LIB)
-  SET(BUILD_CMD make lib)
-ELSE()
-  IF(APPLE)
-    SET(BUILD_CMD sed -i \"\" "s/-Wstrict-prototypes -Wundef/-Wstrict-prototypes -Wundef -fPIC/g" ${XXHASH_SOURCE_DIR}/Makefile && make lib)
-  ELSE(APPLE)
-    SET(BUILD_CMD sed -i "s/-Wstrict-prototypes -Wundef/-Wstrict-prototypes -Wundef -fPIC/g" ${XXHASH_SOURCE_DIR}/Makefile && make lib)
-  ENDIF(APPLE)
+IF(APPLE)
+  SET(BUILD_CMD sed -i \"\" "s/-Wstrict-prototypes -Wundef/-Wstrict-prototypes -Wundef -fPIC/g" ${XXHASH_SOURCE_DIR}/Makefile && make lib)
+ELSEIF(UNIX)
+  SET(BUILD_CMD sed -i "s/-Wstrict-prototypes -Wundef/-Wstrict-prototypes -Wundef -fPIC/g" ${XXHASH_SOURCE_DIR}/Makefile && make lib)
 ENDIF()
 
 if(WIN32)

@@ -36,9 +36,14 @@ class ErrorSummary {
   ErrorSummary() {
     code_ = paddle::platform::error::LEGACY;
     msg_ =
-        "Paddle internal Check failed. (Please help us create a new issue, "
-        "here we need to find the developer to add a user friendly error "
-        "message)";
+        "An error occurred here. There is no accurate error hint for this "
+        "error yet. We are continuously in the process of increasing hint for "
+        "this kind of error check. It would be helpful if you could inform us "
+        "of how this conversion went by opening a github issue. And we will "
+        "resolve it with high priority.\n"
+        "  - New issue link: "
+        "https://github.com/PaddlePaddle/Paddle/issues/new\n"
+        "  - Recommended issue content: all error stack information";
   }
 
   // Note(chenweihang): Final deprecated constructor

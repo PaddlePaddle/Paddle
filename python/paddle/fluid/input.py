@@ -16,7 +16,7 @@ from __future__ import print_function
 import warnings
 from .framework import Variable, in_dygraph_mode
 from .layer_helper import LayerHelper
-from .data_feeder import check_type_and_dtype, check_dtype
+from .data_feeder import check_variable_and_dtype, check_dtype
 
 __all__ = ['one_hot', 'embedding']
 
@@ -204,7 +204,7 @@ def embedding(input,
             default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` . In addition,
             user-defined or pre-trained word vectors can be loaded with the :attr:`param_attr` parameter. 
             The local word vector needs to be transformed into numpy format, and the shape of local word
-            vector shoud be consistent with :attr:`size` . Then :ref:`api_fluid_initializer_NumpyArrayInitializer`
+            vector should be consistent with :attr:`size` . Then :ref:`api_fluid_initializer_NumpyArrayInitializer`
             is used to load custom or pre-trained word vectors. See code example 2 for details.
         dtype(str|core.VarDesc.VarType): It refers to the data type of output Tensor.
             It must be float32 or float64. Default: float32.
@@ -219,7 +219,7 @@ def embedding(input,
           import numpy as np
           data = fluid.data(name='x', shape=[None, 10], dtype='int64')
 
-          # exampel 1
+          # example 1
           emb_1 = fluid.embedding(input=data, size=[128, 64])
 
           # example 2: load custom or pre-trained word vectors
@@ -233,7 +233,7 @@ def embedding(input,
     """
 
     helper = LayerHelper('embedding', **locals())
-    check_type_and_dtype(input, 'input', Variable, ['int64'], 'fluid.embedding')
+    check_variable_and_dtype(input, 'input', ['int64'], 'fluid.embedding')
     check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'],
                 'fluid.embedding')
     remote_prefetch = is_sparse and (not is_distributed)

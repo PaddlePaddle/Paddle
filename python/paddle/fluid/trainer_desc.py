@@ -108,9 +108,16 @@ class TrainerDesc(object):
         for param in dump_param:
             self.proto_desc.dump_param.append(param)
 
+    def _set_thread_barrier(self, thread_barrier):
+        self.proto_desc.thread_barrier = thread_barrier
+
     def _set_check_nan_var_names(self, check_nan_var_names):
         for var in check_nan_var_names:
             self.proto_desc.check_nan_var_names.append(var)
+
+    def _set_loss_names(self, loss_names):
+        for loss in loss_names:
+            self.proto_desc.loss_names.append(loss)
 
     def _set_adjust_ins_weight(self, config_dict):
         self.proto_desc.adjust_ins_weight_config.need_adjust = \
@@ -223,6 +230,7 @@ class MultiTrainer(TrainerDesc):
         super(MultiTrainer, self)._gen_trainer_desc()
         self.proto_desc.class_name = "MultiTrainer"
         self._device_worker._set_infer(self._infer)
+        self._device_worker._set_program(self._program)
         self._device_worker._gen_worker_desc(self.proto_desc)
 
 

@@ -37,9 +37,7 @@ void BuildElementwiseBinaryNode(
   std::shared_ptr<ngraph::Node>& x = nodes.at(0);
   std::shared_ptr<ngraph::Node>& y = nodes.at(1);
 
-  if (x->get_element_type() != y->get_element_type()) {
-    y = std::make_shared<ngraph::op::Convert>(y, x->get_element_type());
-  }
+  y = std::make_shared<ngraph::op::Convert>(y, x->get_element_type());
   auto out = std::make_shared<T>(x, y);
   paddle::platform::SetOutputNode(op, "Out", out, ngb_node_map);
 }

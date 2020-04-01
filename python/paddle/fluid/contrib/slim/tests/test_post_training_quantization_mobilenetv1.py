@@ -236,6 +236,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
     def generate_quantized_model(self,
                                  model_path,
+                                 quantizable_op_type,
                                  algo="KL",
                                  is_full_quantize=False,
                                  is_use_cache_file=False):
@@ -250,9 +251,6 @@ class TestPostTrainingQuantization(unittest.TestCase):
         exe = fluid.Executor(place)
         scope = fluid.global_scope()
         val_reader = val()
-        quantizable_op_type = [
-            "conv2d", "depthwise_conv2d", "mul", "pool2d", "elementwise_add"
-        ]
 
         ptq = PostTrainingQuantization(
             executor=exe,
@@ -265,8 +263,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
         ptq.quantize()
         ptq.save_quantized_model(self.int8_model)
 
-    def run_test(self, model, algo, data_urls, data_md5s, is_full_quantize,
-                 is_use_cache_file):
+    def run_test(self, model, algo, data_urls, data_md5s, quantizable_op_type,
+                 is_full_quantize, is_use_cache_file, diff_threshold):
         infer_iterations = self.infer_iterations
         batch_size = self.batch_size
         sample_iterations = self.sample_iterations
@@ -280,7 +278,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
         print("Start INT8 post training quantization for {0} on {1} images ...".
               format(model, sample_iterations * batch_size))
-        self.generate_quantized_model(model_cache_folder + "/model", algo,
+        self.generate_quantized_model(model_cache_folder + "/model",
+                                      quantizable_op_type, algo,
                                       is_full_quantize, is_use_cache_file)
 
         print("Start INT8 inference for {0} on {1} images ...".format(
@@ -297,21 +296,43 @@ class TestPostTrainingQuantization(unittest.TestCase):
         sys.stdout.flush()
 
         delta_value = fp32_acc1 - int8_acc1
-        self.assertLess(delta_value, 0.025)
+        self.assertLess(delta_value, diff_threshold)
 
 
-class TestPostTrainingForMobilenetv1(TestPostTrainingQuantization):
-    def test_post_training_mobilenetv1(self):
+class TestPostTrainingKLForMobilenetv1(TestPostTrainingQuantization):
+    def test_post_training_kl_mobilenetv1(self):
         model = "MobileNet-V1"
         algo = "KL"
         data_urls = [
             'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
         ]
         data_md5s = ['13892b0716d26443a8cdea15b3c6438b']
-        is_full_quantize = True
+        quantizable_op_type = [
+            "conv2d", "depthwise_conv2d", "mul", "pool2d", "elementwise_add"
+        ]
+        is_full_quantize = False
         is_use_cache_file = False
-        self.run_test(model, algo, data_urls, data_md5s, is_full_quantize,
-                      is_use_cache_file)
+        diff_threshold = 0.025
+        self.run_test(model, algo, data_urls, data_md5s, quantizable_op_type,
+                      is_full_quantize, is_use_cache_file, diff_threshold)
+
+
+class TestPostTrainingAbsMaxForMobilenetv1(TestPostTrainingQuantization):
+    def test_post_training_abs_max_mobilenetv1(self):
+        model = "MobileNet-V1"
+        algo = "abs_max"
+        data_urls = [
+            'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
+        ]
+        data_md5s = ['13892b0716d26443a8cdea15b3c6438b']
+        quantizable_op_type = [
+            "conv2d", "depthwise_conv2d", "mul", "pool2d", "elementwise_add"
+        ]
+        is_full_quantize = False
+        is_use_cache_file = False
+        diff_threshold = 0.05
+        self.run_test(model, algo, data_urls, data_md5s, quantizable_op_type,
+                      is_full_quantize, is_use_cache_file, diff_threshold)
 
 
 if __name__ == '__main__':

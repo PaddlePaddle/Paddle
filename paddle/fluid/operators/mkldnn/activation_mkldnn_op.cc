@@ -73,8 +73,13 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
   const auto *x = ctx.Input<Tensor>("X");
   auto *y = ctx.Output<Tensor>("Out");
 
-  const T alpha = ctx.HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
-  const T beta = ctx.HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
+  T alpha = ctx.HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
+  T beta = ctx.HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
+
+  // paddle uses beta but mkldnn uses alpha for swish
+  if (algorithm == mkldnn::algorithm::eltwise_swish) {
+    std::swap(alpha, beta);
+  }
 
   PADDLE_ENFORCE(
       x->dims().size() == 2 || x->dims().size() == 3 || x->dims().size() == 4,
@@ -112,8 +117,13 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
   const auto *diff_y = ctx.Input<Tensor>(framework::GradVarName("Out"));
   auto *diff_x = ctx.Output<Tensor>(framework::GradVarName("X"));
 
-  const T alpha = ctx.HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
-  const T beta = ctx.HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
+  T alpha = ctx.HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
+  T beta = ctx.HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
+
+  // paddle uses beta but mkldnn uses alpha for swish
+  if (algorithm == mkldnn::algorithm::eltwise_swish) {
+    std::swap(alpha, beta);
+  }
 
   auto diff_dst_tz = framework::vectorize<int64_t>(diff_y->dims());
 
@@ -163,6 +173,10 @@ using ReluMKLDNNFunctor =
     MKLDNNActivationFunc<T, mkldnn::algorithm::eltwise_relu>;
 
 template <typename T>
+using SwishMKLDNNFunctor =
+    MKLDNNActivationFunc<T, mkldnn::algorithm::eltwise_swish>;
+
+template <typename T>
 using TanhMKLDNNFunctor =
     MKLDNNActivationFunc<T, mkldnn::algorithm::eltwise_tanh>;
 
@@ -177,6 +191,10 @@ using AbsMKLDNNFunctor =
 template <typename T>
 using ReluMKLDNNGradFunctor =
     MKLDNNActivationGradFunc<T, mkldnn::algorithm::eltwise_relu>;
+
+template <typename T>
+using SwishMKLDNNGradFunctor =
+    MKLDNNActivationGradFunc<T, mkldnn::algorithm::eltwise_swish>;
 
 template <typename T>
 using TanhMKLDNNGradFunctor =
@@ -204,6 +222,7 @@ namespace ops = paddle::operators;
 #define FOR_EACH_MKLDNN_KERNEL_FUNCTOR(__macro)                  \
   __macro(relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);       \
   __macro(leaky_relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor); \
+  __macro(swish, SwishMKLDNNFunctor, SwishMKLDNNGradFunctor);    \
   __macro(tanh, TanhMKLDNNFunctor, TanhMKLDNNGradFunctor);       \
   __macro(sqrt, SqrtMKLDNNFunctor, SqrtMKLDNNGradFunctor);       \
   __macro(abs, AbsMKLDNNFunctor, AbsMKLDNNGradFunctor);

@@ -48,12 +48,7 @@ class SendOp : public framework::OperatorBase {
     auto use_send_handler = Attr<bool>("use_send_handler");
 
     if (send_varnames.size() > 0) {
-      if (ins.size() > 1) {
-        distributed::Communicator::GetInstance()->Send(ins, send_varnames,
-                                                       scope);
-      } else {
-        distributed::Communicator::GetInstance()->Send(ins[0], scope);
-      }
+      distributed::Communicator::GetInstance()->Send(ins, send_varnames, scope);
     } else {
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
@@ -121,7 +116,7 @@ This operator will send variables to listen_and_serve op at the parameter server
     AddAttr<std::vector<std::string>>(
         "send_varnames",
         "(vector<string>) "
-        "the splited output varnames to send to pserver")
+        "the split output varnames to send to pserver")
         .SetDefault(std::vector<std::string>{});
     AddAttr<int>("num",
                  "(int, default 0)"

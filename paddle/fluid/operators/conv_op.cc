@@ -208,9 +208,8 @@ framework::OpKernelType ConvOp::GetKernelTypeForVar(
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
     if (dl != framework::DataLayout::kAnyLayout) {
-      return framework::OpKernelType(
-          expected_kernel_type.data_type_, tensor.place(),
-          framework::StringToDataLayout(data_format));
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), dl);
     }
   }
 #endif
@@ -554,16 +553,7 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
       platform::CanMKLDNNBeUsed(ctx)) {
-    // TODO(jczaja): Add support for NHWC
     const std::string data_format = ctx.Attr<std::string>("data_format");
-    PADDLE_ENFORCE_NE(
-        data_format, "NHWC",
-        platform::errors::Unimplemented(
-            "Conv MKLDNN grad does not support NHWC data format yet"));
-    PADDLE_ENFORCE_NE(
-        data_format, "NDHWC",
-        platform::errors::Unimplemented(
-            "Conv MKLDNN Grad does not support NDHWC data format yet"));
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
     customized_type_value = kConvMKLDNNFP32;
@@ -591,13 +581,38 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
   return type;
 }
 
+framework::OpKernelType ConvOpGrad::GetKernelTypeForVar(
+    const std::string& var_name, const Tensor& tensor,
+    const framework::OpKernelType& expected_kernel_type) const {
+#ifdef PADDLE_WITH_MKLDNN
+  // Only input require reshaping, weights and
+  // bias are having shape in NCHW order
+  if (((var_name == "Input") ||
+       (var_name == framework::GradVarName("Output"))) &&
+      (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+    auto attrs = Attrs();
+    auto ar = paddle::framework::AttrReader(attrs);
+    const std::string data_format = ar.Get<std::string>("data_format");
+    auto dl = framework::StringToDataLayout(data_format);
+    // Some models may have intentionally set "AnyLayout" for pool
+    // op. Treat this as NCHW (default data_format value)
+    if (dl != framework::DataLayout::kAnyLayout) {
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), dl);
+    }
+  }
+#endif
+  return framework::OpKernelType(expected_kernel_type.data_type_,
+                                 tensor.place(), tensor.layout());
+}
+
 template <typename T>
 class Conv2DGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("Input", this->Input("Input"));
     op->SetInput("Filter", this->Input("Filter"));
@@ -608,8 +623,6 @@ class Conv2DGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("Filter"), this->InputGrad("Filter"));
     op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
     op->SetAttrMap(this->Attrs());
-
-    return std::unique_ptr<T>(op);
   }
 };
 
@@ -618,8 +631,7 @@ class Conv3DGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("Input", this->Input("Input"));
     op->SetInput("Filter", this->Input("Filter"));
@@ -633,8 +645,6 @@ class Conv3DGradMaker : public framework::SingleGradOpMaker<T> {
     }
 
     op->SetAttrMap(this->Attrs());
-
-    return std::unique_ptr<T>(op);
   }
 };
 
@@ -647,8 +657,7 @@ class Conv2DDoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     // I, W, dO, ddI, ddW
     op->SetInput("Input", this->Input("Input"));
@@ -666,16 +675,14 @@ class Conv2DDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetOutput("DDOutput",
                   ddx.empty()
-                      ? this->Empty()
+                      ? this->EmptyInputGrad()
                       : this->InputGrad(framework::GradVarName("Output")));
-    op->SetOutput("DFilter",
-                  ddx.empty() ? this->Empty() : this->InputGrad("Filter"));
-    op->SetOutput("DInput",
-                  ddw.empty() ? this->Empty() : this->InputGrad("Input"));
+    op->SetOutput("DFilter", ddx.empty() ? this->EmptyInputGrad()
+                                         : this->InputGrad("Filter"));
+    op->SetOutput("DInput", ddw.empty() ? this->EmptyInputGrad()
+                                        : this->InputGrad("Input"));
 
     op->SetAttrMap(this->Attrs());
-
-    return std::unique_ptr<T>(op);
   }
 };
 
@@ -688,8 +695,7 @@ class Conv3DDoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     // I, W, dO, ddI, ddW
     op->SetInput("Input", this->Input("Input"));
@@ -704,16 +710,14 @@ class Conv3DDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetOutput("DDOutput",
                   ddx.empty()
-                      ? this->Empty()
+                      ? this->EmptyInputGrad()
                       : this->InputGrad(framework::GradVarName("Output")));
-    op->SetOutput("DFilter",
-                  ddx.empty() ? this->Empty() : this->InputGrad("Filter"));
-    op->SetOutput("DInput",
-                  ddw.empty() ? this->Empty() : this->InputGrad("Input"));
+    op->SetOutput("DFilter", ddx.empty() ? this->EmptyInputGrad()
+                                         : this->InputGrad("Filter"));
+    op->SetOutput("DInput", ddw.empty() ? this->EmptyInputGrad()
+                                        : this->InputGrad("Input"));
 
     op->SetAttrMap(this->Attrs());
-
-    return std::unique_ptr<T>(op);
   }
 };
 

@@ -28,7 +28,8 @@ endif()
 
 cache_third_party(extern_eigen3
     REPOSITORY    ${EIGEN_REPOSITORY}
-    TAG           ${EIGEN_TAG})
+    TAG           ${EIGEN_TAG}
+    DIR           EIGEN_SOURCE_DIR)
 
 if(WIN32)
     file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Half.h native_src)

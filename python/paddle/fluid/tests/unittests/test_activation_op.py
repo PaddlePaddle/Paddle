@@ -165,7 +165,7 @@ class TestHardShrink(TestActivation):
         self.init_dtype()
 
         threshold = 0.5
-        x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
+        x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype) * 10
         out = np.copy(x)
         out[(out >= -threshold) & (out <= threshold)] = 0
 
@@ -185,7 +185,7 @@ class TestSoftShrink(TestActivation):
         self.init_dtype()
 
         lambda_val = 0.1
-        x = np.random.uniform(0.25, 10, [4, 4]).astype(self.dtype)
+        x = np.random.uniform(0.25, 10, [10, 12]).astype(self.dtype)
         out = np.copy(x)
         out = (out < -lambda_val) * (out + lambda_val) + (out > lambda_val) * (
             out - lambda_val)
@@ -222,7 +222,7 @@ class TestRsqrt(TestActivation):
         self.op_type = "rsqrt"
         self.init_dtype()
 
-        x = np.random.uniform(0.1, 1, [2, 3]).astype(self.dtype)
+        x = np.random.uniform(0.1, 1, [10, 12]).astype(self.dtype) * 10
         out = 1.0 / np.sqrt(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
@@ -261,7 +261,7 @@ class TestCeil(TestActivation):
         self.op_type = "ceil"
         self.init_dtype()
 
-        x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
+        x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
         out = np.ceil(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
@@ -277,7 +277,7 @@ class TestFloor(TestActivation):
         self.op_type = "floor"
         self.init_dtype()
 
-        x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
+        x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
         out = np.floor(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
@@ -295,7 +295,7 @@ class TestCos(TestActivation):
         self.op_type = "cos"
         self.init_dtype()
 
-        x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
+        x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
         out = np.cos(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
@@ -312,7 +312,7 @@ class TestAcos(TestActivation):
         self.op_type = "acos"
         self.init_dtype()
 
-        x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
+        x = np.random.uniform(-0.95, 0.95, [10, 12]).astype(self.dtype)
         out = np.arccos(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
@@ -329,7 +329,7 @@ class TestSin(TestActivation):
         self.op_type = "sin"
         self.init_dtype()
 
-        x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
+        x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
         out = np.sin(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
@@ -346,7 +346,7 @@ class TestAsin(TestActivation):
         self.op_type = "asin"
         self.init_dtype()
 
-        x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
+        x = np.random.uniform(-0.95, 0.95, [10, 12]).astype(self.dtype)
         out = np.arcsin(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
@@ -363,7 +363,7 @@ class TestRound(TestActivation):
         self.op_type = "round"
         self.init_dtype()
 
-        x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
+        x = np.random.uniform(-1, 1, [10, 12]).astype(self.dtype)
         out = np.round(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
@@ -411,16 +411,44 @@ class TestLeakyRelu(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
+def gelu(x, approximate):
+    if approximate:
+        y_ref = 0.5 * x * (1.0 + np.tanh(
+            np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))))
+    else:
+        y_ref = 0.5 * x * (1 + erf(x / np.sqrt(2)))
+    return y_ref.astype(x.dtype)
+
+
+class TestGeluApproximate(TestActivation):
+    def setUp(self):
+        self.op_type = "gelu"
+        self.init_dtype()
+        approximate = True
+        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+        out = gelu(x, approximate)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+        self.attrs = {"approximate": approximate}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out')
+
+
 class TestGelu(TestActivation):
     def setUp(self):
         self.op_type = "gelu"
         self.init_dtype()
-
+        approximate = False
         x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
-        out = 0.5 * x * (1.0 + erf(x / np.sqrt(2.0)))
+        out = gelu(x, approximate)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
+        self.attrs = {"approximate": approximate}
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -433,7 +461,7 @@ class TestBRelu(TestActivation):
         self.op_type = "brelu"
         self.init_dtype()
 
-        x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
+        x = np.random.uniform(-5, 10, [10, 12]).astype(self.dtype)
         t_min = 1.0
         t_max = 4.0
         # The same with TestAbs
@@ -458,7 +486,7 @@ class TestRelu6(TestActivation):
         self.op_type = "relu6"
         self.init_dtype()
 
-        x = np.random.uniform(-1, 1, [4, 10]).astype(self.dtype)
+        x = np.random.uniform(-1, 10, [10, 12]).astype(self.dtype)
         threshold = 6.0
         # The same with TestAbs
         x[np.abs(x) < 0.005] = 0.02
@@ -480,7 +508,7 @@ class TestHardSwish(TestActivation):
         self.op_type = 'hard_swish'
         self.init_dtype()
 
-        x = np.random.uniform(-6, 6, [4, 4]).astype(self.dtype)
+        x = np.random.uniform(-6, 6, [10, 12]).astype(self.dtype)
         threshold = 6.0
         scale = 6.0
         offset = 3.0
@@ -508,7 +536,7 @@ class TestSoftRelu(TestActivation):
         threshold = 2.0
         # The same reason with TestAbs
         x[np.abs(x - threshold) < 0.005] = threshold + 0.02
-        x[np.abs(x + threshold) < 0.005] = -threshold + 0.02
+        x[np.abs(x + threshold) < 0.005] = -threshold - 0.02
         t = np.copy(x)
         t[t < -threshold] = -threshold
         t[t > threshold] = threshold
@@ -529,7 +557,7 @@ class TestELU(TestActivation):
         self.op_type = "elu"
         self.init_dtype()
 
-        x = np.random.uniform(-3, 3, [4, 4]).astype(self.dtype)
+        x = np.random.uniform(-3, 3, [10, 12]).astype(self.dtype)
         alpha = 1.
         out = np.maximum(0, x) + np.minimum(0, alpha * (np.exp(x) - 1))
         # Note: unlike other Relu extensions, point 0 on standard ELU function (i.e. alpha = 1)
@@ -731,11 +759,11 @@ class TestThresholdedRelu(TestActivation):
         self.init_dtype()
 
         threshold = 0.25
-        self.relative_error = 0.005
+        self.delta = 0.005
         X = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
 
         # Same reason as TestAbs
-        X[np.abs(X - threshold) < self.relative_error] = threshold + 0.2
+        X[np.abs(X - threshold) < self.delta] = threshold + 0.2
         out = (X > threshold) * X
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(X)}
@@ -753,19 +781,17 @@ class TestHardSigmoid(TestActivation):
         self.op_type = "hard_sigmoid"
         self.init_dtype()
 
-        self.relative_error = 0.002
-
-        X = np.random.uniform(-5, 5, [2, 2]).astype("float32")
+        X = np.random.uniform(-5, 5, [10, 12]).astype("float32")
         slope = 0.2
         offset = 0.5
         lower_threshold = -offset / slope
         upper_threshold = (1 - offset) / slope
 
+        self.delta = 0.005
+
         # Same reason as TestAbs
-        X[np.abs(X - lower_threshold) < self.relative_error] = \
-            lower_threshold + 0.2
-        X[np.abs(X - upper_threshold) < self.relative_error] = \
-            upper_threshold - 0.2
+        X[(X - lower_threshold) < self.delta] = lower_threshold - 0.02
+        X[(X - upper_threshold) < self.delta] = upper_threshold + 0.02
 
         temp = X * slope + offset
         out = np.maximum(0.0, np.minimum(1.0, temp))
@@ -776,7 +802,7 @@ class TestHardSigmoid(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.002)
+        self.check_grad(['X'], 'Out')
 
 
 class TestSwish(TestActivation):

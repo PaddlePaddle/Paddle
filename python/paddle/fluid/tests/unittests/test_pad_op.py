@@ -37,7 +37,7 @@ class TestPadOp(OpTest):
         }
 
     def get_dtype(self):
-        return np.float32
+        return np.float64
 
     def test_check_output(self):
         self.check_output()
@@ -60,14 +60,14 @@ class TestCase1(TestPadOp):
 
 class TestCase2(TestPadOp):
     def initTestCase(self):
-        self.shape = (2, 2, 2)
+        self.shape = (5, 5, 5)
         self.paddings = [(0, 0), (0, 0), (1, 2)]
         self.pad_value = 1.0
 
 
 class TestCase3(TestPadOp):
     def initTestCase(self):
-        self.shape = (8)
+        self.shape = (100)
         self.paddings = [(0, 1)]
         self.pad_value = 0.9
 

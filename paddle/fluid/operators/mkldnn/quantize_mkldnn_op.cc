@@ -60,6 +60,9 @@ class QuantOpKernel : public framework::OpKernel<T> {
     reorder_p = std::static_pointer_cast<reorder>(dev_ctx.GetBlob(key_prim));
 
     if (reorder_p == nullptr) {
+      std::string out_layout = ctx.Attr<std::string>("output_format");
+      MKLDNNMemoryFormat out_format =
+          platform::data_format_to_memory_format(out_layout);
       mkldnn::primitive_attr attri;
       int mask = 0;
       attri.set_output_scales(mask, {scale_data});
@@ -72,10 +75,10 @@ class QuantOpKernel : public framework::OpKernel<T> {
       std::shared_ptr<mkldnn::memory::desc> dst_md;
       if (is_negative) {
         platform::SetDstMemoryQuantized<int8_t>(ctx, output, dst_tz, engine,
-                                                dst_md, dst_memory);
+                                                dst_md, dst_memory, out_format);
       } else {
-        platform::SetDstMemoryQuantized<uint8_t>(ctx, output, dst_tz, engine,
-                                                 dst_md, dst_memory);
+        platform::SetDstMemoryQuantized<uint8_t>(
+            ctx, output, dst_tz, engine, dst_md, dst_memory, out_format);
       }
       auto reorder_pd = std::shared_ptr<reorder::primitive_desc>(
           new reorder::primitive_desc(*src_memory, *dst_memory, attri));

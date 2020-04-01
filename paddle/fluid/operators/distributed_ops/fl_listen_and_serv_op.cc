@@ -199,9 +199,9 @@ void FlListenAndServOp::RunImpl(const framework::Scope &scope,
   rpc_service_.reset(new RPCSERVER_T(endpoint, fan_in));
 
   request_send_handler_.reset(
-      new distributed::RequestSendHandler(sync_mode, false));
+      new distributed::RequestSendHandler(!sync_mode, false));
   request_get_handler_.reset(
-      new distributed::RequestGetHandler(sync_mode, false));
+      new distributed::RequestGetHandler(!sync_mode, false));
 
   rpc_service_->RegisterRPC(distributed::kRequestSend,
                             request_send_handler_.get(),

@@ -40,7 +40,9 @@ class PSLib(Fleet):
         self._client2client_max_retry = 3
 
     def init(self, role_maker=None):
-        super(PSLib, self).init(MPISymetricRoleMaker())
+        if role_maker is None:
+            role_maker = MPISymetricRoleMaker()
+        super(PSLib, self).init(role_maker)
         self._fleet_ptr = fluid.core.Fleet()
 
     def _set_client_communication_config(self, request_timeout_ms,
@@ -48,6 +50,9 @@ class PSLib(Fleet):
         self._client2client_request_timeout_ms = request_timeout_ms
         self._client2client_connect_timeout_ms = connect_timeout_ms
         self._client2client_max_retry = max_retry
+
+    def set_pull_local_thread_num(self, thread_num):
+        self._fleet_ptr.set_pull_local_thread_num(thread_num)
 
     def init_worker(self):
         """
@@ -75,9 +80,10 @@ class PSLib(Fleet):
             # barrier_all for init_server, wait for server starts
             self._role_maker._barrier_all()
             self.all_ips_ = self._role_maker._all_gather(self._local_ip)
+            # worker_index * 2 is for compatible with older versions of pslib
             self._fleet_ptr.init_worker(self._dist_desc_str, self.all_ips_,
                                         self._role_maker._get_size(),
-                                        self._role_maker._get_rank())
+                                        self._role_maker.worker_index() * 2)
             # barrier_all for init_worker
             self._role_maker._barrier_all()
             # prepare for client to client communication
@@ -160,9 +166,16 @@ class PSLib(Fleet):
             else:
                 raise Exception(
                     "You should run DistributedOptimizer.minimize() first")
+            # server_index * 2 is for compatible with older versions of pslib
             self._fleet_ptr.init_server(self._dist_desc_str,
-                                        self._role_maker._get_rank())
-            self._local_ip = self._fleet_ptr.run_server()
+                                        self._role_maker.server_index() * 2)
+            if isinstance(self._role_maker, MPISymetricRoleMaker):
+                self._local_ip = self._fleet_ptr.run_server()
+            else:
+                local_endpoint = self._role_maker.get_local_endpoint()
+                local_endpoint = local_endpoint.split(":")
+                self._local_ip = self._fleet_ptr.run_server(
+                    str(local_endpoint[0]), int(local_endpoint[1]))
 
             # barrier_all for init_server
             self._role_maker._barrier_all()
@@ -389,6 +402,23 @@ class PSLib(Fleet):
                                                        var_list, decay, emb_dim)
         self._role_maker._barrier_worker()
 
+    def clear_one_table(self, table_id):
+        """
+        clear_one_table() will be called by user. It will clear one table.
+
+        Args:
+            table_id(int): table id
+
+        Examples:
+            .. code-block:: python
+
+              fleet.clear_one_table(0)
+        """
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.clear_one_table(table_id)
+        self._role_maker._barrier_worker()
+
     def clear_model(self):
         """
         clear_model() will be called by user. It will clear sparse model.
@@ -435,7 +465,7 @@ class PSLib(Fleet):
                     model_proto_file(str): path of program desc proto binary
                                            file, can be local or hdfs/afs file
                     var_names(list): var name list
-                    load_combine(bool): load from a file or splited param files
+                    load_combine(bool): load from a file or split param files
                                         default False.
 
         Examples:
@@ -489,7 +519,7 @@ class PSLib(Fleet):
             model_proto_file(str): path of program desc proto binary file,
                                    can be local or hdfs/afs file
             var_names(list): load var names
-            load_combine(bool): load from a file or splited param files
+            load_combine(bool): load from a file or split param files
 
         """
         self._role_maker._barrier_worker()
@@ -545,6 +575,193 @@ class PSLib(Fleet):
 
 
 fleet = PSLib()
+
+
+def _prepare_params(input,
+                    size,
+                    is_sparse=False,
+                    is_distributed=False,
+                    padding_idx=None,
+                    param_attr=None,
+                    dtype='float32'):
+    """
+    preprocess params, this interface is not for users.
+
+    Args:
+        input(Variable|list of Variable): Input is a Tensor<int64> Variable
+        size(list of int): the embedding dim
+        is_sparse(bool): whether input is sparse ids
+        is_distributed(bool): whether in distributed mode
+        padding_idx(int): padding idx of input
+        param_attr(ParamAttr): To specify the weight parameter property
+        dtype(str): data type of output
+
+    """
+    if param_attr is None:
+        raise ValueError("param_attr must be set")
+    name = param_attr.name
+    if name is None:
+        raise ValueError("embedding name must be set")
+    if not isinstance(size, list) and not isinstance(size, tuple):
+        raise ValueError("embedding size must be list or tuple")
+    size = size[-1]
+    global FLEET_GLOBAL_DICT
+    FLEET_GLOBAL_DICT["enable"] = True
+    d_table = FLEET_GLOBAL_DICT["emb_to_table"]
+    d_accessor = FLEET_GLOBAL_DICT["emb_to_accessor"]
+    d_size = FLEET_GLOBAL_DICT["emb_to_size"]
+
+    # check embedding size
+    if d_size.get(name) is None:
+        d_size[name] = size
+    elif d_size[name] != size:
+        raise ValueError("embedding size error: %s vs %s" %
+                         (size, d_size[name]))
+
+    # check embedding accessor
+    accessor = FLEET_GLOBAL_DICT["cur_accessor"]
+    if d_accessor.get(name) is None:
+        d_accessor[name] = accessor
+    elif d_accessor[name] != accessor:
+        raise ValueError("embedding size error: %s vs %s" %
+                         (d_accessor[name], accessor))
+
+    # check embedding table id
+    if d_table.get(name) is None:
+        d_table[name] = FLEET_GLOBAL_DICT["cur_sparse_id"]
+        FLEET_GLOBAL_DICT["cur_sparse_id"] += 1
+
+    # check other params
+    if not is_sparse:
+        raise ValueError("is_sparse must be True")
+    elif not is_distributed:
+        raise ValueError("is_distributed must be True")
+    elif dtype != "float32":
+        raise ValueError("dtype must be float32")
+
+
+def _fleet_embedding(input,
+                     size,
+                     is_sparse=False,
+                     is_distributed=False,
+                     padding_idx=None,
+                     param_attr=None,
+                     dtype='float32'):
+    """
+    add fleet embedding, this interface is not for users.
+
+    Args:
+        input(Variable|list of Variable): Input is a Tensor<int64> Variable
+        size(list of int): the embedding dim
+        is_sparse(bool): whether input is sparse ids
+        is_distributed(bool): whether in distributed mode
+        padding_idx(int): padding idx of input
+        param_attr(ParamAttr): To specify the weight parameter property
+        dtype(str): data type of output
+
+    """
+    # check and set params
+    _prepare_params(input, size, is_sparse, is_distributed, padding_idx,
+                    param_attr, dtype)
+    name = param_attr.name
+    size = size[-1]
+    if padding_idx is None:
+        padding_idx = 0
+    global FLEET_GLOBAL_DICT
+    return fluid.layers.nn._pull_sparse(
+        input=input,
+        size=size,
+        table_id=FLEET_GLOBAL_DICT["emb_to_table"][name],
+        accessor_class=FLEET_GLOBAL_DICT["emb_to_accessor"][name],
+        name=name,
+        ctr_label_name=FLEET_GLOBAL_DICT["click_name"],
+        padding_id=padding_idx,
+        dtype=dtype,
+        scale_sparse_grad=FLEET_GLOBAL_DICT["scale_sparse_grad"])
+
+
+def _fleet_embedding_v2(input,
+                        size,
+                        is_sparse=False,
+                        is_distributed=False,
+                        padding_idx=None,
+                        param_attr=None,
+                        dtype='float32'):
+    """
+    add fleet embedding v2, this interface is not for users.
+
+    Args:
+        input(Variable|list of Variable): Input is a Tensor<int64> Variable
+        size(list of int): the embedding dim
+        is_sparse(bool): whether input is sparse ids
+        is_distributed(bool): whether in distributed mode
+        padding_idx(int): padding idx of input
+        param_attr(ParamAttr): To specify the weight parameter property
+        dtype(str): data type of output
+
+    """
+    # check and set params
+    _prepare_params(input, size, is_sparse, is_distributed, padding_idx,
+                    param_attr, dtype)
+    name = param_attr.name
+    size = size[-1]
+    if padding_idx is None:
+        padding_idx = 0
+
+    return fluid.layers.nn._pull_sparse_v2(
+        input=input,
+        size=size,
+        table_id=FLEET_GLOBAL_DICT["emb_to_table"][name],
+        accessor_class=FLEET_GLOBAL_DICT["emb_to_accessor"][name],
+        name=name,
+        ctr_label_name=FLEET_GLOBAL_DICT["click_name"],
+        padding_id=padding_idx,
+        dtype=dtype,
+        scale_sparse_grad=FLEET_GLOBAL_DICT["scale_sparse_grad"])
+
+
+class fleet_embedding(object):
+    """
+    fleet embedding class, it is used as a wrapper
+
+    Example:
+        .. code-block:: python
+
+          with fleet_embedding(click_name=label.name):
+              emb = fluid.layers.embedding(
+                  input=var,
+                  size=[-1, 11],
+                  is_sparse=True,
+                  is_distributed=True,
+                  param_attr=fluid.ParamAttr(name="embedding"))
+
+    """
+
+    def __init__(self, click_name, scale_sparse_grad=True):
+        """Init."""
+        self.origin_emb = fluid.layers.embedding
+        self.origin_emb_v2 = fluid.embedding
+        # if user uses cvm layer after embedding, click_name can be None
+        self.click_name = "" if click_name is None else click_name
+        self.scale_sparse_grad = scale_sparse_grad
+        # it's default value, will be modified in minimize
+        self.accessor = "DownpourCtrAccessor"
+
+    def __enter__(self):
+        """Enter."""
+        fluid.layers.embedding = _fleet_embedding
+        fluid.embedding = _fleet_embedding_v2
+        FLEET_GLOBAL_DICT["cur_accessor"] = self.accessor
+        FLEET_GLOBAL_DICT["click_name"] = self.click_name
+        FLEET_GLOBAL_DICT["scale_sparse_grad"] = self.scale_sparse_grad
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit."""
+        fluid.layers.embedding = self.origin_emb
+        fluid.embedding = self.origin_emb_v2
+        FLEET_GLOBAL_DICT["cur_accessor"] = ""
+        FLEET_GLOBAL_DICT["click_name"] = ""
+        FLEET_GLOBAL_DICT["scale_sparse_grad"] = None
 
 
 class DownpourOptimizer(DistributedOptimizer):
@@ -605,7 +822,7 @@ class DownpourOptimizer(DistributedOptimizer):
         """
         minimize a program through loss, loss can be a list in DistributedOptimizer.
         Note that in parameter server mode, a worker will not get anything about optimize_os
-        Because optmizer algorithms run on pserver side. We will make this usable in pserver
+        Because optimizer algorithms run on pserver side. We will make this usable in pserver
         process, but currently the optimization part is written into Fleet(). A user does not
         need to care about how to startup a pserver node.
 
@@ -632,8 +849,8 @@ class DownpourOptimizer(DistributedOptimizer):
                           parameter_list,
                           no_grad_set,
                           self._strategy)
-        opt_info["mpi_rank"] = fleet._role_maker._get_rank()
-        opt_info["mpi_size"] = fleet._role_maker._get_size()
+        opt_info["mpi_rank"] = fleet.worker_index()
+        opt_info["mpi_size"] = fleet.worker_num()
         fleet._set_opt_info(opt_info)
 
         programs = [loss.block.program for loss in losses]

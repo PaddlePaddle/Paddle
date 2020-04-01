@@ -101,8 +101,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
             padding=(filter_size - 1) // 2,
             groups=groups,
             act=None,
-            bias_attr=False,
-            param_attr=fluid.ParamAttr(name="weights"))
+            bias_attr=False)
 
         # disable BatchNorm in multi-card. disable LayerNorm because of complex input_shape
         # self._batch_norm = BatchNorm(num_filters, act=act)

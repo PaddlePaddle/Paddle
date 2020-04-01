@@ -85,7 +85,7 @@ class TestStrideSliceOp(OpTest):
 
 class TestStrideSliceOp1(TestStrideSliceOp):
     def initTestCase(self):
-        self.input = np.random.rand(6)
+        self.input = np.random.rand(100)
         self.axes = [0]
         self.starts = [3]
         self.ends = [8]
@@ -95,7 +95,7 @@ class TestStrideSliceOp1(TestStrideSliceOp):
 
 class TestStrideSliceOp2(TestStrideSliceOp):
     def initTestCase(self):
-        self.input = np.random.rand(6)
+        self.input = np.random.rand(100)
         self.axes = [0]
         self.starts = [5]
         self.ends = [0]
@@ -105,7 +105,7 @@ class TestStrideSliceOp2(TestStrideSliceOp):
 
 class TestStrideSliceOp3(TestStrideSliceOp):
     def initTestCase(self):
-        self.input = np.random.rand(6)
+        self.input = np.random.rand(100)
         self.axes = [0]
         self.starts = [-1]
         self.ends = [-3]
@@ -115,7 +115,7 @@ class TestStrideSliceOp3(TestStrideSliceOp):
 
 class TestStrideSliceOp4(TestStrideSliceOp):
     def initTestCase(self):
-        self.input = np.random.rand(3, 4, 6)
+        self.input = np.random.rand(3, 4, 10)
         self.axes = [0, 1, 2]
         self.starts = [0, -1, 0]
         self.ends = [2, -3, 5]
@@ -125,7 +125,7 @@ class TestStrideSliceOp4(TestStrideSliceOp):
 
 class TestStrideSliceOp5(TestStrideSliceOp):
     def initTestCase(self):
-        self.input = np.random.rand(3, 3, 3)
+        self.input = np.random.rand(5, 5, 5)
         self.axes = [0, 1, 2]
         self.starts = [1, 0, 0]
         self.ends = [2, 1, 3]
@@ -135,7 +135,7 @@ class TestStrideSliceOp5(TestStrideSliceOp):
 
 class TestStrideSliceOp6(TestStrideSliceOp):
     def initTestCase(self):
-        self.input = np.random.rand(3, 3, 3)
+        self.input = np.random.rand(5, 5, 5)
         self.axes = [0, 1, 2]
         self.starts = [1, -1, 0]
         self.ends = [2, -3, 3]
@@ -145,7 +145,7 @@ class TestStrideSliceOp6(TestStrideSliceOp):
 
 class TestStrideSliceOp7(TestStrideSliceOp):
     def initTestCase(self):
-        self.input = np.random.rand(3, 3, 3)
+        self.input = np.random.rand(5, 5, 5)
         self.axes = [0, 1, 2]
         self.starts = [1, 0, 0]
         self.ends = [2, 2, 3]
@@ -155,7 +155,7 @@ class TestStrideSliceOp7(TestStrideSliceOp):
 
 class TestStrideSliceOp8(TestStrideSliceOp):
     def initTestCase(self):
-        self.input = np.random.rand(1, 3, 1)
+        self.input = np.random.rand(1, 100, 1)
         self.axes = [1]
         self.starts = [1]
         self.ends = [2]
@@ -165,7 +165,7 @@ class TestStrideSliceOp8(TestStrideSliceOp):
 
 class TestStrideSliceOp9(TestStrideSliceOp):
     def initTestCase(self):
-        self.input = np.random.rand(1, 3, 1)
+        self.input = np.random.rand(1, 100, 1)
         self.axes = [1]
         self.starts = [-1]
         self.ends = [-2]
@@ -175,7 +175,7 @@ class TestStrideSliceOp9(TestStrideSliceOp):
 
 class TestStrideSliceOp10(TestStrideSliceOp):
     def initTestCase(self):
-        self.input = np.random.rand(3, 3)
+        self.input = np.random.rand(10, 10)
         self.axes = [0, 1]
         self.starts = [1, 0]
         self.ends = [2, 2]

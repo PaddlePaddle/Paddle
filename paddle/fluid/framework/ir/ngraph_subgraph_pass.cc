@@ -20,8 +20,7 @@
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/ngraph_subgraph_pass.h"
-#include "paddle/fluid/inference/analysis/helper.h"
-#include "paddle/fluid/inference/analysis/ir_passes/subgraph_detector.h"
+#include "paddle/fluid/framework/ir/subgraph_detector.h"
 #include "paddle/fluid/operators/ngraph/ngraph_bridge.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/pretty_log.h"
@@ -29,8 +28,6 @@
 namespace paddle {
 namespace framework {
 namespace ir {
-
-namespace ANAT = paddle::inference::analysis;
 
 std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
                               const std::set<std::string> &engine_outputs,
@@ -59,19 +56,18 @@ void NgraphSubgraphPass::ApplyImpl(Graph *graph) const {
     return !paddle::operators::NgraphBridge::isRegister(op_type);
   };
 
-  ANAT::SubGraphFuser fuser(graph, teller, 0, "ngraph_engine");
+  SubGraphFuser fuser(graph, teller, 0, "ngraph_engine");
   fuser();
 
   for (auto *node : graph->Nodes()) {
-    if (node->IsOp() && !ANAT::Agent(node).subgraph()->empty()) {
+    if (node->IsOp() && !Agent(node).subgraph()->empty()) {
       OpDesc *op_desc = node->Op();
       op_desc->SetType("ngraph_engine");
 
       CreateNgraphEngineOp(node, graph);
 
       std::unordered_set<const Node *> nodes2remove(
-          ANAT::Agent(node).subgraph()->begin(),
-          ANAT::Agent(node).subgraph()->end());
+          Agent(node).subgraph()->begin(), Agent(node).subgraph()->end());
 
       GraphSafeRemoveNodes(graph, nodes2remove);
     }
@@ -79,7 +75,7 @@ void NgraphSubgraphPass::ApplyImpl(Graph *graph) const {
 
   std::unordered_set<const Node *> nodes2remove;
   for (auto *node : graph->Nodes()) {
-    if (node->IsOp() && ANAT::Agent(node).deleted()) {
+    if (node->IsOp() && Agent(node).deleted()) {
       nodes2remove.insert(node);
     }
   }
@@ -116,7 +112,7 @@ void UpdateNgraphIO(Node *node, Graph *graph,
     return;
   }
 
-  auto &subgraph = *ANAT::Agent(node).subgraph();
+  auto &subgraph = *Agent(node).subgraph();
   std::unordered_set<std::string> inputs;
   std::unordered_set<std::string> outputs;
   for (auto *node : subgraph) {
@@ -138,7 +134,7 @@ void UpdateNgraphIO(Node *node, Graph *graph,
 }
 
 void NgraphSubgraphPass::CreateNgraphEngineOp(Node *node, Graph *graph) const {
-  auto &subgraph = *ANAT::Agent(node).subgraph();
+  auto &subgraph = *Agent(node).subgraph();
   PADDLE_ENFORCE_NE(subgraph.empty(), true, "subgraph cannot be empty");
 
   framework::proto::BlockDesc block_proto;

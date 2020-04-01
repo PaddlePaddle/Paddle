@@ -24,8 +24,6 @@ from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 import numpy as np
 import six
-from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
-from paddle.fluid.dygraph.jit import TracedLayer
 
 
 class SimpleNet(fluid.Layer):
@@ -68,7 +66,7 @@ class SimpleNet(fluid.Layer):
         fc = fluid.layers.elementwise_add(fc, self.softmax_bias)
         projection = fluid.layers.matmul(
             fc, fluid.layers.transpose(
-                self.embedding._w, perm=[1, 0]))
+                self.embedding.weight, perm=[1, 0]))
         projection = fluid.layers.reshape(
             projection, shape=[-1, self.vocab_size])
         loss = fluid.layers.softmax_with_cross_entropy(
@@ -121,8 +119,6 @@ class TestDygraphSimpleNet(unittest.TestCase):
                     dy_param_init = dict()
                     dy_loss = None
 
-                    helper = DyGraphProgramDescTracerTestHelper(self)
-                    program = None
                     backward_strategy = fluid.dygraph.BackwardStrategy()
                     backward_strategy.sort_sum_gradient = is_sort_sum_gradient
 
@@ -141,7 +137,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
                                 dy_param_init[param.name] = param.numpy()
                         dy_loss.backward(backward_strategy)
                         sgd.minimize(dy_loss)
-                        simple_net.clear_gradients()
+                        sgd.clear_gradients()
                         if i == batch_num - 1:
                             for param in simple_net.parameters():
                                 dy_param_updated[param.name] = param.numpy()

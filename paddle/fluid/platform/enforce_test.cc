@@ -69,7 +69,8 @@ TEST(ENFORCE_EQ, NO_EXTRA_MSG_FAIL) {
   int a = 2;
   bool caught_exception = false;
   try {
-    PADDLE_ENFORCE_EQ(a, 1 + 3);
+    PADDLE_ENFORCE_EQ(a, 1 + 3, paddle::platform::errors::InvalidArgument(
+                                    "the result is not equal correct result."));
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     std::string ex_msg = error.what();
@@ -83,11 +84,11 @@ TEST(ENFORCE_EQ, EXTRA_MSG_FAIL) {
   int a = 2;
   bool caught_exception = false;
   try {
-    PADDLE_ENFORCE_EQ(a, 1 + 3, "%s size not match", "their");
+    PADDLE_ENFORCE_EQ(a, 1 + 3, paddle::platform::errors::InvalidArgument(
+                                    "the result is not equal correct result."));
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     std::string ex_msg = error.what();
-    EXPECT_TRUE(ex_msg.find("their size not match") != std::string::npos);
     EXPECT_TRUE(
         ex_msg.find("Expected a == 1 + 3, but received a:2 != 1 + 3:4.") !=
         std::string::npos);
@@ -292,7 +293,7 @@ TEST(enforce, cuda_success) {
   EXPECT_TRUE(CheckCudaStatusSuccess(CUBLAS_STATUS_SUCCESS));
   EXPECT_TRUE(CheckCudaStatusFailure(CUBLAS_STATUS_NOT_INITIALIZED));
   EXPECT_TRUE(CheckCudaStatusFailure(CUBLAS_STATUS_INVALID_VALUE));
-#if !defined(__APPLE__) && !defined(_WIN32)
+#if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
   EXPECT_TRUE(CheckCudaStatusSuccess(ncclSuccess));
   EXPECT_TRUE(CheckCudaStatusFailure(ncclUnhandledCudaError));
   EXPECT_TRUE(CheckCudaStatusFailure(ncclSystemError));

@@ -20,7 +20,7 @@
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/profiler.h"
 
-#ifdef PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_NCCL
 DECLARE_bool(sync_nccl_allreduce);
 #endif
 
@@ -28,7 +28,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
                                      const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places,
@@ -121,7 +121,7 @@ void AllReduceOpHandle::AllReduceFunc(
     const std::vector<platform::Place> &places,
     const std::vector<std::string> &out_var_names) {
   if (is_gpu_place(places[0])) {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
     PADDLE_ENFORCE_NOT_NULL(nccl_ctxs_, "nccl_ctxs should not be nullptr.");
     ncclDataType_t nccl_dtype = platform::ToNCCLDataType(dtype);
     std::vector<std::function<void()>> all_reduce_calls;
@@ -161,7 +161,7 @@ void AllReduceOpHandle::AllReduceFunc(
   VLOG(10) << Name() << " size:" << numel * SizeOfType(dtype);
 }
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 void AllReduceOpHandle::NCCLAllReduceFunc(
     const std::vector<std::function<void()>> &all_reduce_calls) {
   this->RunAndRecordEvent([&] {

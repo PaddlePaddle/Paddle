@@ -18,7 +18,7 @@ import unittest
 import paddle.fluid as fluid
 from paddle.fluid import Embedding, LayerNorm, Linear, Layer
 from paddle.fluid.dygraph import to_variable, guard
-from paddle.fluid.dygraph.jit import TracedLayer
+from paddle.fluid.dygraph import TracedLayer
 from test_imperative_base import new_program_scope
 from paddle.fluid import core
 import numpy as np
@@ -266,7 +266,7 @@ input_descs = {
     # The actual data shape of label_word is:
     # [batch_size * max_trg_len_in_batch, 1]
     "lbl_word": [(batch_size * seq_len, 1), "int64"],
-    # This input is used to mask out the loss of paddding tokens.
+    # This input is used to mask out the loss of padding tokens.
     # The actual data shape of label_weight is:
     # [batch_size * max_trg_len_in_batch, 1]
     "lbl_weight": [(batch_size * seq_len, 1), "float32"],
@@ -843,7 +843,7 @@ class WrapDecoderLayer(Layer):
         if self._weight_sharing:
             predict = fluid.layers.matmul(
                 x=dec_output_reshape,
-                y=self._prepare_decoder_layer._input_emb._w,
+                y=self._prepare_decoder_layer._input_emb.weight,
                 transpose_y=True)
         else:
             predict = self._fc(dec_output_reshape)
@@ -917,7 +917,7 @@ class TransFormer(Layer):
             is_sparse=is_sparse)
 
         if weight_sharing:
-            self._wrap_decoder_layer._prepare_decoder_layer._input_emb._w = self._wrap_encoder_layer._prepare_encoder_layer._input_emb._w
+            self._wrap_decoder_layer._prepare_decoder_layer._input_emb.weight = self._wrap_encoder_layer._prepare_encoder_layer._input_emb.weight
 
     def forward(self, enc_inputs, dec_inputs, label, weights):
         enc_output = self._wrap_encoder_layer(enc_inputs)

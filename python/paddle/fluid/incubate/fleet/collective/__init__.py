@@ -220,7 +220,7 @@ class CollectiveOptimizer(DistributedOptimizer):
 
     def _check_collective_mode(self, main_program, optimizer, strategy):
         """
-        Check the conflict condtions.
+        Check the conflict conditions.
         """
         if strategy.use_local_sgd:
             strategy.mode = "collective"
@@ -337,6 +337,17 @@ class CollectiveOptimizer(DistributedOptimizer):
                     "with multi nccl comm, please export FLAGS_sync_nccl_allreduce = 0"
                 )
 
+        # NOTE. open sync_batch_norm will hang when use multi num_threads
+        sync_batch_norm = self._strategy.sync_batch_norm
+        if sync_batch_norm is not None and sync_batch_norm is True:
+            self._strategy.nccl_comm_num = 1
+            self._strategy.use_hierarchical_allreduce = False
+            exec_strategy.num_threads = 1
+            logging.warn(
+                "use sync_batch_norm will hang when set num_threads > 1, so "
+                "set num_threads=1, nccl_comm_num=1, use_hierarchical_allreduce=False."
+            )
+
         if self.print_config:
             print("node_num:", node_num, "num_threads:",
                   exec_strategy.num_threads, "use_hierarchical_allreduce:",
@@ -381,7 +392,7 @@ class CollectiveOptimizer(DistributedOptimizer):
             tuple: (optimize_ops, params_grads) which are, list of operators appended;
             and list of (param, grad) Variables pair for optimization.
         Note that in parameter server mode, a worker will not get anything about optimize_os
-        Because optmizer algorithms run on pserver side. We will make this usable in pserver
+        Because optimizer algorithms run on pserver side. We will make this usable in pserver
         process, but currently the optimization part is written into Fleet(). A user does not
         need to care about how to startup a pserver node.
         """

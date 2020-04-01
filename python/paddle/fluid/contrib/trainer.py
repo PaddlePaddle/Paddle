@@ -673,11 +673,11 @@ def save_checkpoint(executor,
     main_program and then saves these variables to the `checkpoint_dir`
     directory.
 
-    In the training precess, we generally save a checkpoint in each
+    In the training process, we generally save a checkpoint in each
     iteration. So there might be a lot of checkpoints in the
     `checkpoint_dir`. To avoid them taking too much disk space, the
     `max_num_checkpoints` are introduced to limit the total number of
-    checkpoints. If the number of existing checkpints is greater than
+    checkpoints. If the number of existing checkpoints is greater than
     the `max_num_checkpoints`, oldest ones will be scroll deleted.
 
     A variable is a checkpoint variable and will be saved if it meets
@@ -689,7 +689,7 @@ def save_checkpoint(executor,
     Args:
         executor(Executor): The executor to run for save checkpoint.
         checkpoint_dir(str): The folder where to save checkpoints.
-        trainer_id(int): currect trainer id, if id is equal to 0, the trainer
+        trainer_id(int): current trainer id, if id is equal to 0, the trainer
             is chief.
         trainer_args(dict|None): Current training arguments. Such as 'epoch_id'
             and 'step_id'.
@@ -772,7 +772,7 @@ def load_checkpoint(executor,
     main_program and then try to load these variables from the
     `checkpoint_dir` directory.
 
-    In the training precess, we generally save a checkpoint in each
+    In the training process, we generally save a checkpoint in each
     iteration. So there are more than one checkpoint in the
     `checkpoint_dir` (each checkpoint has its own sub folder), use
     `serial` to specify which serial of checkpoint you would like to
@@ -867,7 +867,7 @@ def _load_persist_vars_without_grad(executor,
                                     has_model_dir=False):
     """
     This function filters out all checkpoint variables from the give
-    program and then trys to load these variables from the given directory.
+    program and then tries to load these variables from the given directory.
 
     A variable is a checkpoint variable if it meets all following
     conditions:
@@ -898,7 +898,7 @@ def _load_persist_vars_without_grad(executor,
 
             # In this example, `_load_persist_vars_without_grad` function
             # will first filters out all checkpoint variables in the default
-            # main program, and then trys to load these variables form the
+            # main program, and then tries to load these variables form the
             # folder "./my_paddle_model/__model__".
     """
 
@@ -1135,12 +1135,12 @@ def _is_checkpoint_var(var):
 
 def _make_chekcpoint_dirs(dirs):
     """
-    _make_chekcpoint_dirs will makdir local directory directly, when the directory is exist, it will igore it.
+    _make_chekcpoint_dirs will makedir local directory directly, when the directory is exist, it will ignore it.
     """
     assert dirs is not None
 
     if os.path.isfile(dirs):
-        raise OSError(errno.ENOTDIR, "dirs path shoule be a Directory.", dirs)
+        raise OSError(errno.ENOTDIR, "dirs path should be a Directory.", dirs)
 
     if not os.path.isdir(dirs):
         try:

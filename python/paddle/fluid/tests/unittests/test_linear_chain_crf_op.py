@@ -45,7 +45,7 @@ class LinearChainCrfForward(object):
         self.w_exps = transition_exps[2:, :]
 
         # The output of linear chain crf operator.
-        # alpha is a memo table in dynamic programming to caculate
+        # alpha is a memo table in dynamic programming to calculate
         # nomalization factor.
         self.alpha = np.zeros(
             (seq_start_positions[-1], self.tag_num), dtype="float64")

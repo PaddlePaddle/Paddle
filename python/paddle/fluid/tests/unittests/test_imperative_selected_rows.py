@@ -60,30 +60,18 @@ class TestSimpleNet(unittest.TestCase):
                             parameter_list=simplenet.parameters())
                         input_emb, emb = simplenet(input)
 
-                        try:
-                            emb._w.gradient()
-                        except ValueError as e:
-                            assert "has no grad, Please set Variable.stop_gradient=False, or check if this is the first and only variable need grad, if so, please set its pre-Variable's stop_gradient=False, to make sure it has gradient" in str(
-                                e)
-                        try:
-                            input_emb.gradient()
-                        except ValueError as e:
-                            assert "has no grad, Please set Variable.stop_gradient=False, or check if this is the first and only variable need grad, if so, please set its pre-Variable's stop_gradient=False, to make sure it has gradient" in str(
-                                e)
+                        self.assertTrue(emb.weight.gradient() is None)
+                        self.assertTrue(input_emb.gradient() is None)
 
                         input_emb.backward(backward_strategy)
                         adam.minimize(input_emb)  # grad_clip=grad_clip
-                        emb._w.gradient()
+                        self.assertTrue(emb.weight.gradient() is not None)
 
                         emb.clear_gradients()
-                        try:
-                            emb._w.gradient()
-                        except ValueError as e:
-                            assert "has no grad, Please set Variable.stop_gradient=False, or check if this is the first and only variable need grad, if so, please set its pre-Variable's stop_gradient=False, to make sure it has gradient" in str(
-                                e)
+                        self.assertTrue(emb.weight.gradient() is None)
 
                         input_emb.clear_gradient()
-                        input_emb.gradient()
+                        self.assertTrue(input_emb.gradient() is not None)
 
     def test_selectedrows_gradient2(self):
         places = [fluid.CPUPlace()]
@@ -107,30 +95,18 @@ class TestSimpleNet(unittest.TestCase):
                         parameter_list=simplenet.parameters())
                     input_emb, emb = simplenet(input)
 
-                    try:
-                        emb._w.gradient()
-                    except ValueError as e:
-                        assert "has no grad, Please set Variable.stop_gradient=False, or check if this is the first and only variable need grad, if so, please set its pre-Variable's stop_gradient=False, to make sure it has gradient" in str(
-                            e)
-                    try:
-                        input_emb.gradient()
-                    except ValueError as e:
-                        assert "has no grad, Please set Variable.stop_gradient=False, or check if this is the first and only variable need grad, if so, please set its pre-Variable's stop_gradient=False, to make sure it has gradient" in str(
-                            e)
+                    self.assertTrue(emb.weight.gradient() is None)
+                    self.assertTrue(input_emb.gradient() is None)
 
                     input_emb.backward(backward_strategy)
                     adam.minimize(input_emb, grad_clip=grad_clip)
-                    emb._w.gradient()
+                    self.assertTrue(emb.weight.gradient() is not None)
 
                     emb.clear_gradients()
-                    try:
-                        emb._w.gradient()
-                    except ValueError as e:
-                        assert "has no grad, Please set Variable.stop_gradient=False, or check if this is the first and only variable need grad, if so, please set its pre-Variable's stop_gradient=False, to make sure it has gradient" in str(
-                            e)
+                    self.assertTrue(emb.weight.gradient() is None)
 
                     input_emb.clear_gradient()
-                    input_emb.gradient()
+                    self.assertTrue(input_emb.gradient() is not None)
 
 
 if __name__ == '__main__':

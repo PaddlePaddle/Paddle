@@ -113,14 +113,6 @@ class SumOp : public framework::OperatorWithKernel {
     framework::LibraryType library{framework::LibraryType::kPlain};
     framework::DataLayout layout{framework::DataLayout::kAnyLayout};
 
-#ifdef PADDLE_WITH_MKLDNN
-    if (library == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
-      library = framework::LibraryType::kMKLDNN;
-      layout = framework::DataLayout::kMKLDNN;
-    }
-#endif
-
     if (x_vars[0]->IsType<framework::LoDTensor>()) {
       int dtype = -1;
       for (size_t idx = 0; idx < x_vars.size(); ++idx) {
@@ -140,6 +132,23 @@ class SumOp : public framework::OperatorWithKernel {
       }
       PADDLE_ENFORCE_NE(dtype, -1,
                         "Sum operator should have at least one tensor");
+
+#ifdef PADDLE_WITH_MKLDNN
+      if (library == framework::LibraryType::kPlain &&
+          platform::CanMKLDNNBeUsed(ctx) &&
+          static_cast<framework::proto::VarType::Type>(dtype) ==
+              framework::proto::VarType::FP32 &&
+          ctx.OutputVar("Out")->IsType<framework::LoDTensor>()) {
+        if (std::all_of(x_vars.begin(), x_vars.end(),
+                        [](const framework::Variable* v) {
+                          return v->IsType<framework::LoDTensor>();
+                        })) {
+          return framework::OpKernelType(
+              framework::proto::VarType::FP32, ctx.GetPlace(),
+              framework::DataLayout::kMKLDNN, framework::LibraryType::kMKLDNN);
+        }
+      }
+#endif
 
       return framework::OpKernelType(
           static_cast<framework::proto::VarType::Type>(dtype), ctx.GetPlace(),
@@ -263,22 +272,25 @@ class SumGradOpBaseMaker : public imperative::GradOpBaseMakerBase {
  public:
   using imperative::GradOpBaseMakerBase::GradOpBaseMakerBase;
 
-  std::vector<std::unique_ptr<imperative::OpBase>> operator()() const override {
+  std::shared_ptr<imperative::GradOpNode> operator()() const override {
     auto x_grads = InputGrad("X", false);
-    std::vector<std::unique_ptr<imperative::OpBase>> grad_ops;
-    grad_ops.reserve(x_grads.size());
-    auto og = OutputGrad("Out");
-    std::transform(x_grads.begin(), x_grads.end(), std::back_inserter(grad_ops),
-                   [&og](const std::shared_ptr<imperative::VarBase>& x_grad) {
-                     auto* grad_op = new imperative::OpBase();
-                     grad_op->SetType("scale");
-                     grad_op->SetInput("X", og);
-                     grad_op->SetOutput("Out", {x_grad});
-                     grad_op->SetAttr("scale", 1.0f);
-                     return std::unique_ptr<imperative::OpBase>(grad_op);
-                   });
+    using InputGradsType = decltype(x_grads);
 
-    return grad_ops;
+    if (!x_grads.empty()) {
+      auto node = this->NewGradNode();
+      node->reserve(x_grads.size());
+      auto og = OutputGrad("Out");
+      for (auto& x_grad : x_grads) {
+        imperative::TracedGradOp op(node);
+        op.SetType("scale");
+        op.SetInput("X", og);
+        op.SetOutput("Out", InputGradsType{x_grad});
+        op.SetAttr("scale", 1.0f);
+      }
+      return node;
+    } else {
+      return nullptr;
+    }
   }
 };
 

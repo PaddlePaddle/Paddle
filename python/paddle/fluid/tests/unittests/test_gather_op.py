@@ -62,7 +62,7 @@ class TestCase2(TestGatherOp):
         """
         For int64_t index type
         """
-        self.x_shape = (10)
+        self.x_shape = (100)
         self.x_type = "float64"
         self.index = [1, 3, 5]
         self.index_type = "int64"

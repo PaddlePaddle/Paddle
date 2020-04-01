@@ -46,7 +46,11 @@ void BindFleetWrapper(py::module* m) {
       .def("push_dense", &framework::FleetWrapper::PushDenseVarsSync)
       .def("pull_dense", &framework::FleetWrapper::PullDenseVarsSync)
       .def("init_server", &framework::FleetWrapper::InitServer)
-      .def("run_server", &framework::FleetWrapper::RunServer)
+      .def("run_server", (uint64_t (framework::FleetWrapper::*)(void)) &
+                             framework::FleetWrapper::RunServer)
+      .def("run_server", (uint64_t (framework::FleetWrapper::*)(  // NOLINT
+                             const std::string&, uint32_t)) &     // NOLINT
+                             framework::FleetWrapper::RunServer)
       .def("init_worker", &framework::FleetWrapper::InitWorker)
       .def("init_model", &framework::FleetWrapper::PushDenseParamSync)
       .def("save_model", &framework::FleetWrapper::SaveModel)
@@ -55,6 +59,7 @@ void BindFleetWrapper(py::module* m) {
       .def("save_cache", &framework::FleetWrapper::SaveCache)
       .def("load_model", &framework::FleetWrapper::LoadModel)
       .def("clear_model", &framework::FleetWrapper::ClearModel)
+      .def("clear_one_table", &framework::FleetWrapper::ClearOneTable)
       .def("stop_server", &framework::FleetWrapper::StopServer)
       .def("finalize_worker", &framework::FleetWrapper::FinalizeWorker)
       .def("gather_servers", &framework::FleetWrapper::GatherServers)
@@ -71,6 +76,8 @@ void BindFleetWrapper(py::module* m) {
       .def("load_model_one_table", &framework::FleetWrapper::LoadModelOneTable)
       .def("set_client2client_config",
            &framework::FleetWrapper::SetClient2ClientConfig)
+      .def("set_pull_local_thread_num",
+           &framework::FleetWrapper::SetPullLocalThreadNum)
       .def("copy_table", &framework::FleetWrapper::CopyTable)
       .def("copy_table_by_feasign",
            &framework::FleetWrapper::CopyTableByFeasign);

@@ -24,8 +24,8 @@ namespace operators {
 // Returns true if the two dimensions are compatible.
 // A dimension is compatible with the other if:
 // 1. The length of the dimensions are same.
-// 2. Each non-negative number of the two dimentions are same.
-// 3. For negative number in a dimention, it means unknown so it is compatible
+// 2. Each non-negative number of the two dimensions are same.
+// 3. For negative number in a dimension, it means unknown so it is compatible
 //    with any number.
 bool DimensionIsCompatibleWith(const framework::DDim& first,
                                const framework::DDim& second) {
@@ -118,7 +118,7 @@ class ReadOp : public framework::OperatorBase {
         reader->VarTypes();
     const std::vector<bool>& need_check_feed = reader->NeedCheckFeed();
     PADDLE_ENFORCE_EQ(out_arg_names.size(), need_check_feed.size(),
-                      "output size of read_op and the number of feeded "
+                      "output size of read_op and the number of fed "
                       "variables of reader do not match");
 
     for (size_t i = 0; i < out_arg_names.size(); ++i) {
@@ -127,13 +127,13 @@ class ReadOp : public framework::OperatorBase {
       if (need_check_feed[i]) {
         auto in_dims = ins[i].dims();
         PADDLE_ENFORCE_EQ(DimensionIsCompatibleWith(shapes[i], in_dims), true,
-                          "The feeded Variable %s should have dimensions = %d, "
-                          "shape = [%s], but received feeded shape [%s]",
+                          "The fed Variable %s should have dimensions = %d, "
+                          "shape = [%s], but received fed shape [%s]",
                           out_arg_names[i], shapes[i].size(), shapes[i],
                           in_dims);
         PADDLE_ENFORCE_EQ(
             ins[i].type(), var_types[i],
-            "The data type of feeded Variable %s must be %s, but received %s",
+            "The data type of fed Variable %s must be %s, but received %s",
             out_arg_names[i], var_types[i], ins[i].type());
       }
       out->ShareDataWith(ins[i]);
@@ -156,6 +156,10 @@ class ReadOpMaker : public framework::OpProtoAndCheckerMaker {
         " and it is set by ParallelExecutor instance, not users.")
         .SetDefault(true);
     AddAttr<bool>("infer_out", "").SetDefault(true);
+    AddAttr<bool>("drop_last",
+                  "Whether to drop last batches whose number is less than "
+                  "actual used device number.")
+        .SetDefault(true);
     AddComment(R"DOC(
       Read Operator
 

@@ -41,8 +41,8 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
       need_dump_field_ = false;
     }
   }
-  mpi_rank_ = trainer_desc.mpi_rank() / 2;
-  mpi_size_ = trainer_desc.mpi_size() / 2;
+  mpi_rank_ = trainer_desc.mpi_rank();
+  mpi_size_ = trainer_desc.mpi_size();
   dump_file_num_ = trainer_desc.dump_file_num();
   const std::vector<paddle::framework::DataFeed *> readers =
       dataset->GetReaders();
@@ -122,6 +122,22 @@ void DistMultiTrainer::FinalizeDumpEnv() {
     th.join();
   }
   queue_.reset();
+}
+
+void DistMultiTrainer::InitTrainerEnv(const ProgramDesc &main_program,
+                                      const platform::Place &place) {
+  for (int i = 0; i < thread_num_; ++i) {
+    workers_[i]->SetPlace(place);
+    workers_[i]->SetReaderPlace(place);
+    workers_[i]->SetRootScope(root_scope_);
+    workers_[i]->CreateDeviceResource(main_program);  // Program
+    workers_[i]->BindingDataFeedMemory();
+  }
+  // Scope* -> thread id, it will be used in push_dense op
+  for (int i = 0; i < thread_num_; ++i) {
+    Scope *thread_scope = workers_[i]->GetThreadScope();
+    pull_dense_worker_->SetThreadIdByScope(thread_scope, i);
+  }
 }
 
 void DistMultiTrainer::InitOtherEnv(const ProgramDesc &main_program) {

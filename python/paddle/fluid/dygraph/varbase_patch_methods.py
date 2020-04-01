@@ -27,7 +27,7 @@ def monkey_patch_varbase():
     def set_value(self, value):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Set a new value for this Variable.
 
@@ -39,17 +39,17 @@ def monkey_patch_varbase():
 
                 import paddle.fluid as fluid
                 from paddle.fluid.dygraph.base import to_variable
-                from paddle.fluid.dygraph import FC
+                from paddle.fluid.dygraph import Linear
                 import numpy as np
 
-                data = np.ones([3, 32, 32], dtype='float32')
+                data = np.ones([3, 1024], dtype='float32')
                 with fluid.dygraph.guard():
-                    fc = fluid.dygraph.FC("fc", 4)
+                    linear = fluid.dygraph.Linear(1024, 4)
                     t = to_variable(data)
-                    fc(t)  # call with default weight
+                    linear(t)  # call with default weight
                     custom_weight = np.random.randn(1024, 4).astype("float32")
-                    fc.weight.set_value(custom_weight)  # change existing weight
-                    out = fc(t)  # call with different weight
+                    linear.weight.set_value(custom_weight)  # change existing weight
+                    out = linear(t)  # call with different weight
 
         """
         assert isinstance(value, (np.ndarray, core.VarBase)), \
@@ -76,7 +76,7 @@ def monkey_patch_varbase():
     def backward(self, backward_strategy=None):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Run backward of current Graph which starts from current Variable
 
@@ -116,13 +116,13 @@ def monkey_patch_varbase():
             self._run_backward(backward_strategy, framework._dygraph_tracer())
         else:
             raise ValueError(
-                "Variable.backward() is only avaliable in DyGraph mode")
+                "Variable.backward() is only available in DyGraph mode")
 
     @framework.dygraph_only
     def gradient(self):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Get the Gradient of Current Variable
 
@@ -151,11 +151,8 @@ def monkey_patch_varbase():
 
         """
         if self._grad_ivar() is None:
-            raise ValueError(
-                "%s has no grad, Please set Variable.stop_gradient=False, or "
-                "check if this is the first and only variable need grad, if so, please set its pre-Variable's "
-                "stop_gradient=False, to make sure it has gradient " %
-                self.name)
+            return None
+
         new_ivar = self._grad_ivar()._copy_to(core.CPUPlace(), True)
         if self._grad_ivar().type == core.VarDesc.VarType.SELECTED_ROWS:
             return (np.array(new_ivar.value().get_selected_rows().get_tensor()),
@@ -207,73 +204,9 @@ def monkey_patch_varbase():
                 return 'name %s, shape: %s, not inited' % (self.name,
                                                            self.shape)
 
-    def __getitem__(self, item):
-        if not isinstance(item, tuple):
-            item = [item]
-
-        decrease_axis = []
-        slice_axis = []
-        slice_start = []
-        slice_end = []
-        reverse_axis = []
-
-        for dim, slice_item in enumerate(item):
-            if isinstance(slice_item, slice):
-                start = slice_item.start
-                end = slice_item.stop
-                step = slice_item.step if slice_item.step else 1
-
-                assert (step == 1 or step == -1)
-
-                if step == -1:
-                    reverse_axis.append(dim)
-                    assert (start is None and end is None)
-
-                if start is None and end is None:
-                    continue
-
-                if start is None:
-                    start = 0
-
-                if end is None:
-                    end = 10000000
-
-                slice_axis.append(dim)
-                slice_start.append(start)
-                slice_end.append(end)
-            else:
-                # int
-                decrease_axis.append(dim)
-                slice_axis.append(dim)
-                slice_start.append(slice_item)
-                slice_end.append(slice_item + 1
-                                 if slice_item != -1 else 10000000)
-
-        out = self
-        if len(slice_axis) > 0:
-            # append slice_op here
-            inputs = {'Input': [out]}
-            attrs = {
-                'axes': slice_axis,
-                'starts': slice_start,
-                'ends': slice_end,
-                'decrease_axis': decrease_axis
-            }
-            outs = core.ops.slice(inputs, attrs)
-            out = outs['Out'][0]
-
-        if len(reverse_axis) > 0:
-            inputs = {'X': [out]}
-            attrs = {'axis': reverse_axis}
-            outs = core.ops.reverse(inputs, attrs)
-            out = outs['Out'][0]
-
-        return out
-
     for method_name, method in (("set_value", set_value), ("block", block),
                                 ("backward", backward), ("gradient", gradient),
-                                ("__str__", __str__), ("to_string", to_string),
-                                ("__getitem__", __getitem__)):
+                                ("__str__", __str__), ("to_string", to_string)):
         setattr(core.VarBase, method_name, method)
 
     # patch math methods for varbase
