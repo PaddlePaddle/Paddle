@@ -69,25 +69,6 @@ def where(Condition, X, Y):
           out = exe.run(fluid.default_main_program(),feed={'x':x_i, 'y':y_i}, fetch_list=[result])
           print(out[0])
     """
-    if in_dygraph_mode():
-        X_shape = list(X.shape)
-        Y_shape = list(Y.shape)
-        if X_shape == Y_shape:
-            inputs = {'Condition': [Condition], 'X': [X], 'Y': [Y]}
-            outs = core.ops.where(inputs)
-            return outs['Out'][0]
-        else:
-            cond_int = layers.cast(Condition, X.dtype)
-            cond_not_int = layers.cast(layers.logical_not(Condition), X.dtype)
-            out1 = layers.elementwise_mul(X, cond_int)
-            out2 = layers.elementwise_mul(Y, cond_not_int)
-            out = layers.elementwise_add(out1, out2)
-            return out
-
-    helper = LayerHelper("where", **locals())
-    dtype = helper.input_dtype()
-    out = helper.create_variable_for_type_inference(dtype)
-
     check_type(Condition, 'Condition', (Variable), 'where')
     check_type(X, 'X', (Variable), 'where')
     check_type(Y, 'Y', (Variable), 'where')
@@ -95,23 +76,33 @@ def where(Condition, X, Y):
     if isinstance(Condition, Variable):
         check_dtype(Condition.dtype, 'Condition', ['bool'], 'where',
                     '(When the type of Condition in where is Variable.)')
+
     if isinstance(X, Variable):
         check_dtype(X.dtype, 'X', ['float32', 'float64', 'int32', 'int64'],
                     'where', '(When the type of X in where is Variable.)')
     if isinstance(Y, Variable):
         check_dtype(Y.dtype, 'Y', ['float32', 'float64', 'int32', 'int64'],
                     'where', '(When the type of Y in where is Variable.)')
+
     X_shape = list(X.shape)
     Y_shape = list(Y.shape)
-
     if X_shape == Y_shape:
-        helper.append_op(
-            type='where',
-            inputs={'Condition': Condition,
-                    'X': X,
-                    'Y': Y},
-            outputs={'Out': [out]})
-        return out
+        if in_dygraph_mode():
+            inputs = {'Condition': [Condition], 'X': [X], 'Y': [Y]}
+            outs = core.ops.where(inputs)
+            return outs['Out'][0]
+        else:
+            helper = LayerHelper("where", **locals())
+            dtype = helper.input_dtype()
+            out = helper.create_variable_for_type_inference(dtype)
+
+            helper.append_op(
+                type='where',
+                inputs={'Condition': Condition,
+                        'X': X,
+                        'Y': Y},
+                outputs={'Out': [out]})
+            return out
     else:
         cond_int = layers.cast(Condition, X.dtype)
         cond_not_int = layers.cast(layers.logical_not(Condition), X.dtype)
