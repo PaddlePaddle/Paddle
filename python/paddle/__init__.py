@@ -144,7 +144,7 @@ import paddle.sysconfig
 # from .tensor.attribute import shape   #DEFINE_ALIAS
 # from .tensor.io import save   #DEFINE_ALIAS
 # from .tensor.io import load   #DEFINE_ALIAS
-# from .tensor.linalg import matmul   #DEFINE_ALIAS
+from .tensor.linalg import matmul  #DEFINE_ALIAS
 # from .tensor.linalg import dot   #DEFINE_ALIAS
 # from .tensor.linalg import einsum   #DEFINE_ALIAS
 # from .tensor.linalg import morm   #DEFINE_ALIAS
