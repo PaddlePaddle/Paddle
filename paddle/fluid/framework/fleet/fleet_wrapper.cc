@@ -358,6 +358,66 @@ void FleetWrapper::PullSparseVarsSync(
 #endif
 }
 
+void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
+                                          uint64_t padding_id,
+                                          platform::Place place,
+                                          std::vector<const LoDTensor*>* inputs,
+                                          std::vector<LoDTensor*>* outputs) {
+#ifdef PADDLE_WITH_PSLIB
+  std::vector<uint64_t> fea_keys;
+  std::vector<float*> pull_result_ptr;
+  fea_keys.reserve(MAX_FEASIGN_NUM / 100);
+  pull_result_ptr.reserve(MAX_FEASIGN_NUM / 100);
+  std::vector<float> init_value(fea_dim, 0);
+  framework::LoDTensor* output = nullptr;
+  float* output_data = nullptr;
+  size_t output_index = -1;
+  size_t output_len = 0;
+  for (size_t index = 0; index < inputs->size(); ++index) {
+    const framework::LoDTensor* tensor = inputs->at(index);
+    const int64_t* ids = tensor->data<int64_t>();
+    size_t len = tensor->numel();
+    for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
+      if (!output || output_len == size_t(output->numel())) {
+        ++output_index;
+        CHECK(output_index < outputs->size());  // NOLINT
+        output = outputs->at(output_index);
+        output_data = output->mutable_data<float>(place);
+        output_len = 0;
+        CHECK(output->numel() % fea_dim == 0);  // NOLINT
+        CHECK(output_data != nullptr);          // NOLINT
+      }
+      uint64_t real_id = static_cast<uint64_t>(ids[i]);
+      if (real_id == padding_id) {
+        memcpy(output_data + output_len, init_value.data(),
+               sizeof(float) * fea_dim);
+        continue;
+      }
+      fea_keys.push_back(real_id);
+      pull_result_ptr.push_back(output_data + output_len);
+    }
+  }
+  auto status = pslib_ptr_->_worker_ptr->pull_sparse(
+      pull_result_ptr.data(), table_id, fea_keys.data(), fea_keys.size());
+  status.wait();
+  auto ret = status.get();
+  if (ret != 0) {
+    LOG(ERROR) << "fleet pull sparse failed, status[" << ret << "]";
+    sleep(sleep_seconds_before_fail_exit_);
+  }
+#else
+  for (size_t index = 0; index < inputs->size(); ++index) {
+    auto* tensor = inputs->at(index);
+    size_t len = tensor->numel();
+    std::vector<float> init_data(fea_dim, 0);
+    for (size_t i = 0; i < len; ++i) {
+      memcpy(outputs->at(index)->mutable_data<float>(place), init_data.data(),
+             fea_dim);
+    }
+  }
+#endif
+}
+
 void FleetWrapper::PullDenseVarsAsync(
     const Scope& scope, const uint64_t tid,
     const std::vector<std::string>& var_names,
@@ -454,9 +514,12 @@ void FleetWrapper::PushDenseVarsAsync(
     paddle::ps::Region reg(g, count);
     regions.emplace_back(std::move(reg));
   }
+
   auto status = pslib_ptr_->_worker_ptr->push_dense(regions.data(),
                                                     regions.size(), table_id);
-  push_sparse_status->push_back(std::move(status));
+  if (push_sparse_status) {
+    push_sparse_status->push_back(std::move(status));
+  }
 #endif
 }
 
@@ -595,6 +658,142 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       table_id, sparse_push_keys->data(), (const float**)push_g_vec.data(),
       sparse_push_keys->size());
   push_sparse_status->push_back(std::move(status));
+#endif
+}
+
+void FleetWrapper::PushSparseFromTensorWithLabelAsync(
+    const Scope& scope, const uint64_t table_id, int fea_dim,
+    uint64_t padding_id, bool scale_sparse, const std::string& accesor,
+    const std::string& click_name, platform::Place place,
+    const std::vector<std::string>& input_names,
+    std::vector<const LoDTensor*>* inputs,
+    std::vector<const LoDTensor*>* outputs) {
+#ifdef PADDLE_WITH_PSLIB
+  int show_index = 0;
+  int click_index = 1;
+  // these default values can not be used, it must be set.
+  bool dump_slot = false;
+  int slot_offset = 0;
+  int grad_dim = 0;
+  // don't worry, user do not have to care about all these flags
+  if (accesor == "DownpourCtrAccessor") {
+    dump_slot = true;
+    slot_offset = 1;
+    grad_dim = fea_dim - 2;
+    show_index = 1;
+    click_index = 2;
+  } else if (accesor == "DownpourFeatureValueAccessor") {
+    dump_slot = false;
+    slot_offset = 0;
+    grad_dim = fea_dim - 2;
+  } else if (accesor == "DownpourSparseValueAccessor") {
+    dump_slot = false;
+    slot_offset = 0;
+    grad_dim = fea_dim;
+  }
+  CHECK(grad_dim >= 0);  // NOLINT
+
+  int batch_size = -1;
+  for (auto* input : *inputs) {
+    int cur_batch_size =
+        input->lod().size() ? input->lod()[0].size() - 1 : input->dims()[0];
+    if (batch_size == -1) {
+      batch_size = cur_batch_size;
+    } else {
+      CHECK(batch_size == cur_batch_size);  // NOLINT
+    }
+  }
+  CHECK(batch_size > 0);  // NOLINT
+
+  std::vector<float> g;
+  for (const framework::LoDTensor* g_tensor : *outputs) {
+    size_t origin = g.size();
+    size_t add = g_tensor->numel();
+    g.resize(origin + add);
+    memcpy(g.data() + origin, g_tensor->data<float>(), add);
+  }
+  if (scale_sparse && grad_dim > 0) {
+    size_t dim = static_cast<size_t>(grad_dim);
+    Eigen::Map<
+        Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+        g_mat(g.data(), g.size() / dim, dim);
+    g_mat.rightCols(grad_dim) *= batch_size;
+  }
+
+  std::vector<float> fea_labels;
+  fea_labels.reserve(MAX_FEASIGN_NUM / 100);
+  framework::Variable* var = scope.FindVar(click_name);
+  size_t global_idx = 0;
+  if (click_name != "") {
+    CHECK(var != nullptr);  // NOLINT
+    framework::LoDTensor* label_tensor =
+        var->GetMutable<framework::LoDTensor>();
+    CHECK(label_tensor != nullptr);  // NOLINT
+    int64_t* label_ptr = label_tensor->data<int64_t>();
+
+    for (auto* tensor : *inputs) {
+      const int64_t* ids = tensor->data<int64_t>();
+      size_t fea_idx = 0;
+      for (size_t lod_idx = 1; lod_idx < tensor->lod()[0].size(); ++lod_idx) {
+        size_t cur =
+            GetAbsoluteSum(tensor->lod()[0][lod_idx - 1],
+                           tensor->lod()[0][lod_idx], 0, tensor->lod());
+        for (size_t i = 0; i < cur; ++i, ++fea_idx) {
+          if (static_cast<uint64_t>(ids[fea_idx]) == padding_id) {
+            continue;
+          }
+          fea_labels.push_back(static_cast<float>(label_ptr[lod_idx - 1]));
+          ++global_idx;
+        }
+      }
+    }
+  }
+  std::vector<uint64_t> push_keys;
+  push_keys.reserve(MAX_FEASIGN_NUM / 100);
+  std::vector<std::vector<float>> push_values;
+  push_values.reserve(MAX_FEASIGN_NUM / 100);
+  size_t output_len = 0;
+  size_t input_idx = 0;
+  for (size_t index = 0; index < inputs->size(); ++index) {
+    const framework::LoDTensor* tensor = inputs->at(index);
+    const int64_t* ids = tensor->data<int64_t>();
+    size_t len = tensor->numel();
+    for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
+      if (static_cast<uint64_t>(ids[i]) == padding_id) {
+        continue;
+      }
+      push_keys.emplace_back(ids[i]);
+      push_values.emplace_back(fea_dim + slot_offset);
+      float* data = push_values.back().data();
+      if (!var) {
+        memcpy(data + slot_offset, g.data() + output_len,
+               sizeof(float) * fea_dim);
+      } else {
+        memcpy(data + slot_offset, g.data() + output_len,
+               sizeof(float) * grad_dim);
+        data[show_index] = 1.0f;
+        data[click_index] = static_cast<float>(fea_labels.at(input_idx));
+      }
+      if (dump_slot) {
+        int slot = boost::lexical_cast<int>(input_names[index]);
+        data[0] = static_cast<float>(slot);
+      }
+      ++input_idx;
+    }
+  }
+
+  CHECK(output_len == g.size());  // NOLINT
+  if (click_name != "") {
+    CHECK(input_idx == global_idx);  // NOLINT
+  }
+
+  std::vector<float*> push_g_vec(input_idx, nullptr);
+  for (auto i = 0u; i < push_keys.size(); ++i) {
+    push_g_vec[i] = push_values.at(i).data();
+  }
+  auto status = pslib_ptr_->_worker_ptr->push_sparse(
+      table_id, push_keys.data(), (const float**)push_g_vec.data(),
+      push_keys.size());
 #endif
 }
 
@@ -953,6 +1152,20 @@ int32_t FleetWrapper::CopyTableByFeasign(
   VLOG(0) << "FleetWrapper::CopyTableByFeasign does nothing when no pslib";
   return 0;
 #endif
+}
+
+size_t FleetWrapper::GetAbsoluteSum(size_t start, size_t end, size_t level,
+                                    const framework::LoD& lod) {
+  if (level >= lod.size() - 1) {
+    return end - start;
+  }
+  size_t ret = 0;
+  for (size_t i = start; i < end - 1; ++i) {
+    size_t pos1 = lod[level][i];
+    size_t pos2 = lod[level][i + 1];
+    ret += GetAbsoluteSum(pos1, pos2, level + 1, lod);
+  }
+  return ret;
 }
 
 }  // end namespace framework

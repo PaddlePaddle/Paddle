@@ -80,11 +80,8 @@ def _elementwise_op_in_dygraph(x,
                                act=None,
                                use_mkldnn=False,
                                op_name=None):
-    attrs = {'axis': axis, 'use_mkldnn': use_mkldnn}
-    inputs = {'X': [x], 'Y': [y]}
     op = getattr(core.ops, op_name)
-    outs = op(inputs, attrs)
-    out = outs['Out'][0]
+    out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
 
     return dygraph_utils._append_activation_in_dygraph(
         out, act, use_mkldnn=use_mkldnn)
@@ -132,6 +129,7 @@ def add(x, y, alpha=1, out=None, name=None):
 
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import numpy as np
 
@@ -143,31 +141,34 @@ def add(x, y, alpha=1, out=None, name=None):
 
             x = fluid.data(name="x", shape=[3], dtype='float32')
             y = fluid.data(name="y", shape=[3], dtype='float32')
-            z = fluid.layers.elementwise_add(x, y)
+            z1 = paddle.add(x, y)
+            z2 = paddle.add(x, y, alpha=10)
             # z = x + y
 
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             z_value = exe.run(feed=gen_data(),
-                                fetch_list=[z.name])
+                                fetch_list=[z1.name, z2.name])
 
-            print(z_value) # [3., 8., 6.]
+            print(z_value[0]) # [3., 8., 6.]
+            print(z_value[1]) # [12. 53. 24.]
 
 
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import numpy as np
 
             def gen_data():
                 return {
                     "x": np.ones((2, 3, 4, 5)).astype('float32'),
-                    "y": np.zeros((3, 4)).astype('float32')
+                    "y": np.zeros((4, 5)).astype('float32')
                 }
 
-            x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
-            y = fluid.data(name="y", shape=[3,4], dtype='float32')
-            z = fluid.layers.elementwise_add(x, y, axis=1)
+            x = fluid.data(name="x", shape=[2, 3, 4, 5], dtype='float32')
+            y = fluid.data(name="y", shape=[4, 5], dtype='float32')
+            z = paddle.add(x, y, name='z')
             # z = x + y
 
             place = fluid.CPUPlace()
@@ -176,11 +177,13 @@ def add(x, y, alpha=1, out=None, name=None):
             z_value = exe.run(feed=gen_data(),
                                 fetch_list=[z.name])
 
-            print(z_value) # z.shape=[2,3,4,5]
+            print(z_value[0])
+            print(z_value[0].shape) # z.shape=[2,3,4,5]
 
 
         ..  code-block:: python
-
+            
+            import paddle
             import paddle.fluid as fluid
             import numpy as np
 
@@ -192,16 +195,55 @@ def add(x, y, alpha=1, out=None, name=None):
 
             x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
             y = fluid.data(name="y", shape=[5], dtype='float32')
-            z = fluid.layers.elementwise_add(x, y, axis=3)
-            # z = x + y
+            z = paddle.add(x, y)
+            # z = x / y
 
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
 
             z_value = exe.run(feed=gen_data(),
                                 fetch_list=[z.name])
-            print(z_value) # z.shape=[2,3,4,5]
+            print(z_value[0])
+            print(z_value[0].shape) # z.shape=[2,3,4,5]
+            
 
+        ..  code-block:: python
+            
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+            
+            x = fluid.data(name="x", shape=[3], dtype="float32")
+            y = fluid.data(name='y', shape=[3], dtype='float32')
+
+            output = fluid.data(name="output", shape=[3], dtype="float32")
+            z = paddle.add(x, y, out=output)
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            data1 = np.array([2, 3, 4], dtype='float32')
+            data2 = np.array([1, 5, 2], dtype='float32')
+            z_value = exe.run(feed={'x': data1,
+                                           'y': data2},
+                                     fetch_list=[z])
+            print(z_value[0]) # [3. 8. 6.]
+            
+            
+        ..  code-block:: python
+            
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+            
+            with fluid.dygraph.guard():
+                np_x = np.array([2, 3, 4]).astype('float64')
+                np_y = np.array([1, 5, 2]).astype('float64')
+                x = fluid.dygraph.to_variable(np_x)
+                y = fluid.dygraph.to_variable(np_y)
+                z = paddle.add(x, y, alpha=-0.5)
+                np_z = z.numpy()
+                print(np_z)  # [1.5, 0.5, 3. ]
+                
     """
     op_type = 'elementwise_add'
     axis = -1
@@ -229,8 +271,8 @@ def div(x, y, out=None, name=None):
 
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
-            import paddle.tensor as tensor
             import numpy as np
 
             def gen_data():
@@ -241,7 +283,7 @@ def div(x, y, out=None, name=None):
 
             x = fluid.data(name="x", shape=[3], dtype='float32')
             y = fluid.data(name="y", shape=[3], dtype='float32')
-            z = tensor.div(x, y)
+            z = paddle.div(x, y)
             # z = x / y
 
             place = fluid.CPUPlace()
@@ -254,8 +296,8 @@ def div(x, y, out=None, name=None):
 
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
-            import paddle.tensor as tensor
             import numpy as np
 
             def gen_data():
@@ -266,7 +308,7 @@ def div(x, y, out=None, name=None):
 
             x = fluid.data(name="x", shape=[2, 3, 4, 5], dtype='float32')
             y = fluid.data(name="y", shape=[4, 5], dtype='float32')
-            z = tensor.div(x, y, name='z')
+            z = paddle.div(x, y, name='z')
             # z = x / y
 
             place = fluid.CPUPlace()
@@ -281,8 +323,8 @@ def div(x, y, out=None, name=None):
 
         ..  code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
-            import paddle.tensor as tensor
             import numpy as np
 
             def gen_data():
@@ -293,7 +335,8 @@ def div(x, y, out=None, name=None):
 
             x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
             y = fluid.data(name="y", shape=[5], dtype='float32')
-            z = tensor.div(x, y)
+            output = fluid.data(name="output", shape=[2,3,4,5], dtype="float32")
+            z = paddle.div(x, y, out=output)
             # z = x / y
 
             place = fluid.CPUPlace()
@@ -303,6 +346,23 @@ def div(x, y, out=None, name=None):
                                 fetch_list=[z.name])
             print(z_value[0])
             print(z_value[0].shape) # z.shape=[2,3,4,5]
+            
+                        
+        ..  code-block:: python
+        
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+            
+            with fluid.dygraph.guard(fluid.CPUPlace()):
+                np_x = np.array([2, 3, 4]).astype('float64')
+                np_y = np.array([1, 5, 2]).astype('float64')
+                x = fluid.dygraph.to_variable(np_x)
+                y = fluid.dygraph.to_variable(np_y)
+                z = paddle.div(x, y)
+                np_z = z.numpy()
+                print(np_z)  # [2., 0.6, 2.]
+                
     """
     op_type = 'elementwise_div'
     axis = -1
@@ -320,3 +380,34 @@ def div(x, y, out=None, name=None):
             category=UserWarning,
             stacklevel=2)
     return _elementwise_op(LayerHelper(op_type, **locals()))
+
+
+for func in [
+        add,
+        div,
+]:
+    proto_dict = {'add': 'elementwise_add', 'div': 'elementwise_div'}
+    op_proto = OpProtoHolder.instance().get_op_proto(proto_dict[func.__name__])
+    if func.__name__ in ['add']:
+        additional_args_lines = [
+            "alpha (int|float, optional): The alpha factor of the input. Default is 1. If alpha is not 1, the equation becomes Out = X + alpha * Y.",
+            "out (Variable, optinal): The Variable that stores results of the operation. Default is None. If out is None, \
+            a new Varibale will be create to store the results.",
+            "name (string, optional): Name of the output. \
+            Default is None. It's used to print debug info for developers. Details: \
+            :ref:`api_guide_Name` "
+        ]
+    else:
+        additional_args_lines = [
+            "out (Variable, optinal): The Variable that stores results of the operation. If out is None, \
+            a new Varibale will be create to store the results.",
+            "name (string, optional): Name of the output. \
+            Default is None. It's used to print debug info for developers. Details: \
+            :ref:`api_guide_Name` "
+        ]
+
+    func.__doc__ = _generate_doc_string_(
+        op_proto,
+        additional_args_lines=additional_args_lines,
+        skip_attrs_set={"x_data_format", "y_data_format", "axis"
+                        }) + """\n""" + str(func.__doc__)
