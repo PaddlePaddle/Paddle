@@ -14,7 +14,7 @@
 
 # TODO: import all neural network related api under this directory, 
 # including layers, linear, conv, rnn etc.
-# __all__ = [ ]
+__all__ = []
 
 # TODO: define alias in nn directory
 # from .clip import ErrorClipByValue   #DEFINE_ALIAS
@@ -58,7 +58,7 @@
 # from .layer.loss import MSELoss   #DEFINE_ALIAS
 # from .layer.loss import L1Loss   #DEFINE_ALIAS
 # from .layer.loss import NLLLoss   #DEFINE_ALIAS
-# from .layer.loss import BCELoss   #DEFINE_ALIAS
+from .layer.loss import BCELoss  #DEFINE_ALIAS
 # from .layer.learning_rate import CosineDecay   #DEFINE_ALIAS
 # from .layer.learning_rate import ExponentialDecay   #DEFINE_ALIAS
 # from .layer.learning_rate import InverseTimeDecay   #DEFINE_ALIAS

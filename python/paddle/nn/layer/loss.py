@@ -11,11 +11,122 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+#
+import paddle.fluid as fluid
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.param_attr import ParamAttr
+from paddle.fluid.initializer import NumpyArrayInitializer
 # TODO: define loss functions of neural network  
-# __all__ = ['NCELoss',
-#            'CrossEntropyLoss',
-#            'MSELoss',
-#            'L1Loss',
-#            'NLLLoss',
-#            'BCELoss']
+__all__ = [#'NCELoss',
+    #            'CrossEntropyLoss',
+    #            'MSELoss',
+    #            'L1Loss',
+    #            'NLLLoss',
+            'BCELoss']
+
+
+class BCELoss(fluid.dygraph.Layer):
+    """
+    This op accepts input predictions and target label and returns binary 
+    cross entropy error.
+    For predictions label, and target label, the loss is calculated as follows.
+    If :attr:`weight` is set, the loss is:
+        Out = -1 * weight * (label * log(input) + (1 - label) * log(1 - input))
+    If :attr:`weight` is None, the loss is:
+        Out = -1 * (label * log(input) + (1 - label) * log(1 - input))
+
+    If :attr:`reduction` set to ``'none'``, the unreduced loss is:
+    .. math::
+        Out = Out
+    If :attr:`reduction` set to ``'mean'``, the reduced mean loss is:
+    .. math::
+        Out = MEAN(Out)
+    If :attr:`reduction` set to ``'sum'``, the reduced sum loss is:
+    .. math::
+        Out = SUM(Out)
+    Parameters:
+        input (Variable): Input tensor, the data type is float32,
+            float64. Input must in (0, 1).
+        label (Variable): Label tensor, the data type is float32,
+            float64.
+        weight (Variable, optional): Weight tensor, a manual rescaling weight given
+            to each class. It has the same dimensions as class number and the data type
+            is float32, float64, int32, int64. Default is ``'None'``.
+        reduction (str, optional): Indicate how to average the loss by batch_size, 
+            the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned; 
+            Default is ``'mean'``.
+    Returns:
+        The tensor variable storing the bce_loss of input and label.
+    Return type: Variable.
+    Examples:
+        .. code-block:: python
+            # declarative mode
+            import paddle.fluid as fluid
+            import numpy as np
+            input = fluid.data(name="input", shape=[3, 1])
+            label = fluid.data(name="label", shape=[3, 1])
+            output = fluid.layers.bce_loss(input,label)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+    
+            input_data = np.array([0.5, 0.6, 0.7]).astype("float32")
+            label_data = np.array([1.0, 0.0, 1.0]).astype("float32")
+            output_data = exe.run(fluid.default_main_program(),
+                    feed={"input":input_data, "label":label_data},
+                    fetch_list=[output],
+                    return_numpy=True)
+    
+            print(output_data)  # [array([0.65537095], dtype=float32)]
+            
+            # imperative mode
+            import paddle.fluid.dygraph as dg
+            with dg.guard(place) as g:
+                input = dg.to_variable(input_data)
+                label = dg.to_variable(label_data)
+                output = fluid.layers.bce_loss(input, label)
+                print(output.numpy())  # [0.65537095]
+    """
+
+    def __init__(self, weight=None, reduction='mean'):
+        super(BCELoss, self).__init__()
+        self.weight = weight
+        self.reduction = reduction
+
+    def forward(self, input, label):
+        dtype = self._helper.input_dtype(input)
+
+        fluid.data_feeder.check_variable_and_dtype(
+            input, 'input', ['float32', 'float64'], 'bce_loss')
+        fluid.data_feeder.check_variable_and_dtype(
+            label, 'label', ['float32', 'float64'], 'bce_loss')
+
+        if self.reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "The value of 'reduction' in bce_loss should be 'sum', 'mean' or 'none', but "
+                "received %s, which is not allowed." % self.reduction)
+
+        out = self._helper.create_variable_for_type_inference(dtype=input.dtype)
+        self._helper.append_op(
+            type='bce_loss',
+            inputs={
+                'X': [input],
+                'Label': [label],
+            },
+            outputs={'Out': [out]})
+
+        if self.weight is not None:
+            if isinstance(self.weight, fluid.framework.Variable):
+                w = self.weight
+                out = fluid.layers.elementwise_mul(out, w, axis=0)
+            else:
+                raise ValueError(
+                    "The weight is not a Variable, please convert to Variable.")
+
+        if self.reduction == 'sum':
+            return fluid.layers.reduce_sum(out)
+        elif self.reduction == 'mean':
+            return fluid.layers.reduce_mean(out)
+        else:
+            return out
