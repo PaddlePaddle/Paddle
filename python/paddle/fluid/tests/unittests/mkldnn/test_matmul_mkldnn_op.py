@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-import unittest
+import unittest, os
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest
 
@@ -31,6 +31,8 @@ class TestDnnlMatMulOp(OpTest):
         self.attrs = {'alpha': self.alpha}
 
     def setUp(self):
+        # Set max isa, otherwise fails on SKX and earlier
+        os.environ["DNNL_MAX_CPU_ISA"] = "AVX"
         self.op_type = "matmul"
         self._cpu_only = True
         self.use_mkldnn = True
@@ -109,15 +111,6 @@ class TestDnnlMatMulOpInt8NoScales(TestDnnlMatMulOp):
 
 
 class TestDnnlMatMulOpInt8(TestDnnlMatMulOp):
-    # def print_tensor_info(self, title, floatx, intx, scale):
-    #     print(title)
-    #     print("Float: ")
-    #     print(floatx)
-    #     print("int: ")
-    #     print(intx)
-    #     print("scale: ")
-    #     print(scale)
-
     def quantize(self, tensor):
         scale = 127. / np.abs(np.amax(tensor))
         quantized = (scale * tensor).astype("int8")

@@ -246,6 +246,9 @@ template <typename T>
 class DNNLMatMulKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    PADDLE_ENFORCE_EQ(ctx.Attr<int>("head_number"), 1,
+                      platform::errors::Unimplemented(
+                          "DNNL matmul doesn't support multiple heads."));
     ExecuteMatMul<T, T>(ctx);
   }
 };
