@@ -72,6 +72,17 @@ void ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
     std::string act_op_type = act_op->Op()->Type();
     std::string act_op_out = act_out->Name();
 
+    auto elementwise_add_out_shape = elementwise_add_out->Var()->GetShape();
+    auto add_in_y_1_shape = elementwise_add_in_y_1->Var()->GetShape();
+
+    if (elementwise_add_out_shape != add_in_y_1_shape) {
+      VLOG(3)
+          << "The inputs X and Y's shapes of elementwise_add op are different.";
+      VLOG(3) << "conv_elementwise_add2_act_fuse_pass doesn't support this "
+                 "pattern. Fusion will not apply.";
+      return;
+    }
+
     auto new_op_proto = PrepareOpDesc(base_op_desc, bias_name, bias1_name,
                                       act_op_type, act_op_out);
     framework::OpDesc new_op_desc(new_op_proto, nullptr);
