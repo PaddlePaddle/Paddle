@@ -191,8 +191,8 @@ def _tsm_resnet(num_layers, seg_num=8, num_classes=400, pretrained=True):
     model = TSM_ResNet(num_layers, seg_num, num_classes)
     if pretrained:
         assert num_layers in pretrain_infos.keys(), \
-                "TSM_ResNet{} do not have pretrained weights now, " \
-                "pretrained should be set as False"
+                "TSM-ResNet{} do not have pretrained weights now, " \
+                "pretrained should be set as False".format(num_layers)
         weight_path = get_weights_path(*(pretrain_infos[num_layers]))
         assert weight_path.endswith('.pdparams'), \
                 "suffix of weight must be .pdparams"

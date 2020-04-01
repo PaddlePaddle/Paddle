@@ -35,7 +35,8 @@ TSM模型是将Temporal Shift Module插入到ResNet网络中构建的视频分�
 #### 代码下载及环境变量设置
 
     克隆代码库到本地，并设置`PYTHONPATH`环境变量
-    ```shell
+
+    ```bash
     git clone https://github.com/PaddlePaddle/hapi
     cd hapi
     export PYTHONPATH=$PYTHONPATH:`pwd`
@@ -56,7 +57,7 @@ TSM的训练数据采用由DeepMind公布的Kinetics-400动作识别数据集。
 
 `main.py`脚本参数可通过如下命令查询
 
-```shell
+```bash
 python main.py --help
 ```
 
@@ -64,14 +65,14 @@ python main.py --help
 
 使用如下方式进行单卡训练:
 
-```shell
+```bash
 export CUDA_VISIBLE_DEVICES=0
 python main.py --data=<path/to/dataset> --batch_size=16
 ```
 
 使用如下方式进行多卡训练:
 
-```shell
+```bash
 CUDA_VISIBLE_DEVICES=0,1 python main.py --data=<path/to/dataset> --batch_size=8
 ```
 
@@ -81,14 +82,14 @@ CUDA_VISIBLE_DEVICES=0,1 python main.py --data=<path/to/dataset> --batch_size=8
 
 使用如下方式进行单卡训练:
 
-```shell
+```bash
 export CUDA_VISIBLE_DEVICES=0
 python main.py --data=<path/to/dataset> --batch_size=16 -d
 ```
 
 使用如下方式进行多卡训练:
 
-```shell
+```bash
 CUDA_VISIBLE_DEVICES=0,1 python main.py --data=<path/to/dataset> --batch_size=8 -d
 ```
 
@@ -100,14 +101,14 @@ CUDA_VISIBLE_DEVICES=0,1 python main.py --data=<path/to/dataset> --batch_size=8 
 
 1. 自动下载Paddle发布的[TSM-ResNet50](https://paddlemodels.bj.bcebos.com/hapi/tsm_resnet50.pdparams)权重评估
 
-```
-python main.py --data<path/to/dataset> --eval_only
+```bash
+python main.py --data=<path/to/dataset> --eval_only
 ```
 
 2. 加载checkpoint进行精度评估
 
-```
-python main.py --data<path/to/dataset> --eval_only --weights=tsm_checkpoint/final
+```bash
+python main.py --data=<path/to/dataset> --eval_only --weights=tsm_checkpoint/final
 ```
 
 #### 评估精度
@@ -116,7 +117,7 @@ python main.py --data<path/to/dataset> --eval_only --weights=tsm_checkpoint/fina
 
 |Top-1|Top-5|
 |:-:|:-:|
-|76.5%|98.0%|
+|76%|98%|
 
 ## 参考论文
 

@@ -92,7 +92,7 @@ def main():
 
     if FLAGS.eval_only:
         if FLAGS.weights is not None:
-            model.load(FLAGS.weights)
+            model.load(FLAGS.weights, reset_optimizer=True)
 
         model.evaluate(
             val_dataset,
