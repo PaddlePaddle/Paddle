@@ -169,13 +169,15 @@ void FleetWrapper::PullSparseVarsSync(
     if (emb_var == nullptr) {
       continue;
     }
-
+    int zeros = 0;
     for (auto i = 0u; i < len; ++i) {
       if (ids[i] == 0u) {
+        ++zeros;
         continue;
       }
       fea_keys->push_back(static_cast<uint64_t>(ids[i]));
     }
+//    VLOG(0) << "pull sparse tensor "  << name << " len " << len << " zeros " << zeros;
   }
   fea_values->resize(fea_keys->size() + 1);
   for (auto& t : *fea_values) {
@@ -433,9 +435,17 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     return;
   }
   std::vector<float*> push_g_vec;
-  for (auto i = 0u; i < sparse_push_keys->size(); ++i) {
-    push_g_vec.push_back((*push_values)[i].data());
-  }
+//  std::stringstream ss;
+//  ss << "\n";
+//  for (auto i = 0u; i < sparse_push_keys->size(); ++i) {
+//    push_g_vec.push_back((*push_values)[i].data());
+ //   ss << sparse_push_keys->at(i);
+ //   for (size_t j = 0; j < (*push_values)[i].size(); ++j) {
+  //    ss << " " << (*push_values)[i][j];
+   // }
+   // ss << "\n";
+ // }
+ // VLOG(0) << "push sparse " << ss.str();
   auto status = pslib_ptr_->_worker_ptr->push_sparse(
       table_id, sparse_push_keys->data(), (const float**)push_g_vec.data(),
       sparse_push_keys->size());

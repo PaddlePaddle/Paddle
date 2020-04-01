@@ -235,6 +235,17 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
   int64_t* label_ptr = tensor->data<int64_t>();
 
   size_t global_index = 0;
+  size_t batch_size_global = 0;
+
+//      VLOG(0) << "feature size " <<feature.size();
+  //    std::stringstream ss;
+  //    for (size_t jj = 0; jj < feature.size(); ++jj) {
+  //      ss <<  feature[jj] << ",";
+  //    }
+  //    VLOG(0) << ss.str();
+
+  //  std::stringstream ss1;
+
   for (size_t i = 0; i < sparse_key_names_[table_id].size(); ++i) {
     VLOG(3) << "sparse_key_names_[" << i
             << "]: " << sparse_key_names_[table_id][i];
@@ -257,6 +268,12 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
     size_t fea_idx = 0;
     // tensor->lod()[0].size() == batch_size + 1
     if (tensor->lod().size() > 0) {
+     // VLOG(0) << "tensor has lod "  << sparse_key_names_[table_id][i];
+      if (batch_size_global == 0) {
+        batch_size_global = tensor->lod()[0].size() - 1;
+      } else {
+        CHECK(tensor->lod()[0].size() == batch_size_global + 1);
+      }
       for (auto lod_idx = 1u; lod_idx < tensor->lod()[0].size(); ++lod_idx) {
         for (; fea_idx < tensor->lod()[0][lod_idx]; ++fea_idx) {
           // should be skipped feasign defined in protobuf
@@ -268,14 +285,37 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
         }
       }
     } else {
-      for (auto lod_idx = 0; lod_idx < tensor->dims()[0]; lod_idx++) {
-        if (ids[fea_idx] != 0u) {
-          feature_label[global_index++] = static_cast<float>(label_ptr[lod_idx]);
-        }
-        fea_idx++;
+  //    VLOG(0) << "feature size " <<feature.size();
+  //    for (size_t jj = 0; jj < feature.size(); ++jj) {
+  //      VLOG(0) << "    " << feature[jj];
+  //    }
+      auto dims = tensor->dims();
+      int numel = 1;
+      for (int jj = 1; jj < dims.size(); ++jj) {
+        numel *= dims[jj];
       }
+      //CHECK(dims.size() == 2);
+      if (batch_size_global == 0) {
+        batch_size_global = dims[0];
+      } else {
+        CHECK(int(batch_size_global) == dims[0]);
+      }
+      int zeros = 0;
+      for (auto lod_idx = 0; lod_idx < tensor->dims()[0]; lod_idx++) {
+        for (int jj = 0; jj < numel; ++jj, ++fea_idx) {
+          if (ids[fea_idx] != 0u) {
+         //   ss1 << ids[fea_idx] << ",";
+            feature_label[global_index++] = static_cast<float>(label_ptr[lod_idx]);
+          } else {
+            ++zeros;
+          }
+        }
+      }
+      //VLOG(0) << "tensor no lod "  << sparse_key_names_[table_id][i] << " len "  << tensor->dims()[0] * numel << " zeros " << zeros;
     }
   }
+//  VLOG(0) << "real " << global_index;
+//  VLOG(0) << ss1.str();
   CHECK(global_index == feature.size())
       << "expect fea info size:" << feature.size() << " real:" << global_index;
 }
