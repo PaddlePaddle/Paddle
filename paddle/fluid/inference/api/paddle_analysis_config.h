@@ -284,28 +284,32 @@ struct AnalysisConfig {
   /// \param use_static Serialize optimization information to disk for reusing.
   /// \param use_calib_mode Use TRT int8 calibration(post training
   /// quantization).
-  /// \param min_input_shape Min input shape in dynamic input shape(TRT 6 or
-  /// higher needed).
-  /// \param max_input_shape Max input shape in dynamic input shape(TRT 6 or
-  /// higher needed).
-  /// \param optim_input_shape Optimized input shape in dynamic input shape
-  /// (TRT 6 or higher needed). TRT will perform optimization based on this
-  /// input shape.
   ///
   ///
-  void EnableTensorRtEngine(
-      int workspace_size = 1 << 20, int max_batch_size = 1,
-      int min_subgraph_size = 3, Precision precision = Precision::kFloat32,
-      bool use_static = false, bool use_calib_mode = true,
-      std::map<std::string, std::vector<int>> min_input_shape = {},
-      std::map<std::string, std::vector<int>> max_input_shape = {},
-      std::map<std::string, std::vector<int>> optim_input_shape = {});
+  void EnableTensorRtEngine(int workspace_size = 1 << 20,
+                            int max_batch_size = 1, int min_subgraph_size = 3,
+                            Precision precision = Precision::kFloat32,
+                            bool use_static = false,
+                            bool use_calib_mode = true);
   ///
   /// \brief A boolean state telling whether the TensorRT engine is used.
   ///
   /// \return bool Whether the TensorRT engine is used.
   ///
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
+  ///
+  /// \brief Set min, max, opt shape for TensorRT Dynamic shape mode.
+  /// \param min_input_shape The min input shape of the subgraph input.
+  /// \param max_input_shape The max input shape of the subgraph input.
+  /// \param opt_input_shape The opt input shape of the subgraph input.
+  /// \param disable_trt_plugin_fp16 Setting this parameter to true means that
+  /// TRT plugin will not run fp16.
+  ///
+  void SetTRTDynamicShapeInfo(
+      std::map<std::string, std::vector<int>> min_input_shape,
+      std::map<std::string, std::vector<int>> max_input_shape,
+      std::map<std::string, std::vector<int>> optim_input_shape,
+      bool disable_trt_plugin_fp16 = false);
   ///
   /// \brief Turn on the usage of Lite sub-graph engine.
   ///
@@ -536,6 +540,10 @@ struct AnalysisConfig {
   Precision tensorrt_precision_mode_;
   bool trt_use_static_engine_;
   bool trt_use_calib_mode_;
+  std::map<std::string, std::vector<int>> min_input_shape_{};
+  std::map<std::string, std::vector<int>> max_input_shape_{};
+  std::map<std::string, std::vector<int>> optim_input_shape_{};
+  bool disable_trt_plugin_fp16_{false};
 
   // memory reuse related.
   bool enable_memory_optim_{false};
@@ -562,9 +570,6 @@ struct AnalysisConfig {
   std::string serialized_info_cache_;
 
   mutable std::unique_ptr<PassStrategy> pass_builder_;
-  std::map<std::string, std::vector<int>> min_input_shape_;
-  std::map<std::string, std::vector<int>> max_input_shape_;
-  std::map<std::string, std::vector<int>> optim_input_shape_;
 
   bool use_lite_{false};
   std::vector<std::string> lite_passes_filter_;

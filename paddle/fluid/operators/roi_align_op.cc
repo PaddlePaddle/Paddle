@@ -169,7 +169,7 @@ class ROIAlignGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(RoiAlignGradNoNeedBufVarsInferer, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(RoiAlignGradNoNeedBufVarsInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle

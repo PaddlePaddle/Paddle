@@ -63,6 +63,7 @@ math_library(matrix_bit_code)
 math_library(unpooling)
 math_library(vol2col)
 math_library(prelu)
+math_library(bert_encoder_functor)
 math_library(tree2col DEPS math_function)
 
 cc_test(math_function_test SRCS math_function_test.cc DEPS math_function)

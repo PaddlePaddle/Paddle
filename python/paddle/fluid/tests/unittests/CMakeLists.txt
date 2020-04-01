@@ -300,7 +300,7 @@ if(WITH_DISTRIBUTE)
     if(NOT APPLE)
         if(WITH_GPU)
             # NOTE. test_launch only work in gpu collective mode
-            bash_test_modules(test_launch MODULES test_launch.sh)
+            bash_test_modules(test_launch MODULES test_launch.sh  ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
         endif()
         bash_test_modules(test_launch_ps MODULES test_launch_ps.sh)
 
@@ -351,8 +351,6 @@ if (WITH_TESTING)
 endif()
 
 set_tests_properties(test_parallel_executor_test_while_train test_parallel_executor_mnist
-        test_parallel_executor_seresnext_base_gpu test_parallel_executor_seresnext_with_reduce_gpu
-        test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
         test_parallel_executor_feed_persistable_var
         test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
         test_data_norm_op test_imperative_using_non_zero_gpu test_fuse_bn_act_pass
@@ -362,7 +360,11 @@ set_tests_properties(test_parallel_executor_test_while_train test_parallel_execu
         test_fetch_unmerged
         test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
 
-set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op PROPERTIES LABELS "RUN_TYPE=DIST" RUN_SERIAL TRUE)
+set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op
+        test_parallel_executor_seresnext_base_gpu
+        test_parallel_executor_seresnext_with_reduce_gpu
+        test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
+        PROPERTIES LABELS "RUN_TYPE=DIST" RUN_SERIAL TRUE)
 
 if(NOT WIN32 AND NOT APPLE)
     set_tests_properties(test_imperative_data_loader_base PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
