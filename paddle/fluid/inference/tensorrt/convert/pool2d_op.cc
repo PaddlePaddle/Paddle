@@ -106,9 +106,8 @@ class Pool2dOpConverter : public OpConverter {
 
     if (engine_->with_dynamic_shape()) {
       if (!adaptive && pool_type == "max" && !global_pooling && !ceil_mode) {
-        auto *pool_layer = TRT_ENGINE_ADD_LAYER(
-            engine_, Pooling, *const_cast<nvinfer1::ITensor *>(input1),
-            nv_pool_type, nv_ksize);
+        auto *pool_layer = TRT_ENGINE_ADD_LAYER(engine_, Pooling, *input1,
+                                                nv_pool_type, nv_ksize);
         PADDLE_ENFORCE_NOT_NULL(pool_layer, "pool layer could not be created.");
         pool_layer->setStride(nv_strides);
         pool_layer->setPadding(nv_paddings);

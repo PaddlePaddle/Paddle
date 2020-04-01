@@ -103,17 +103,17 @@ int ElementWisePlugin::enqueue(int batch_size, const void *const *inputs,
   const float *y = reinterpret_cast<const float *>(inputs[1]);
   float *out = reinterpret_cast<float *>(outputs[0]);
 
-  int num = prev_size_ * midd_size_ * post_size_;
+  int num = batch_size * prev_size_ * midd_size_ * post_size_;
   int thread = 256;
   int block = (num + thread - 1) / thread;
   if (type_ == "add") {
-    elementwise_kernel<<<block, thread, 0, stream>>>(num, x, y, out, prev_size_,
-                                                     midd_size_, post_size_,
-                                                     details::Add<float>());
+    elementwise_kernel<<<block, thread, 0, stream>>>(
+        num, x, y, out, prev_size_, batch_size * midd_size_, post_size_,
+        details::Add<float>());
   } else if (type_ == "mul") {
-    elementwise_kernel<<<block, thread, 0, stream>>>(num, x, y, out, prev_size_,
-                                                     midd_size_, post_size_,
-                                                     details::Mul<float>());
+    elementwise_kernel<<<block, thread, 0, stream>>>(
+        num, x, y, out, prev_size_, batch_size * midd_size_, post_size_,
+        details::Mul<float>());
   } else {
     PADDLE_THROW("Not implemented.");
   }
@@ -196,11 +196,11 @@ int ElementwisePluginDynamic::enqueue(
   for (int i = 0; i < trimed_nb_dims; ++i) {
     PADDLE_ENFORCE_EQ(x_dims.d[i + axis], y_dims.d[i],
                       "Broadcast dimension mismatch.");
-    midd_size_ *= y_dims.d[i];
+    midd_size *= y_dims.d[i];
   }
 
-  for (int i = axis_ + trimed_nb_dims; i < x_dims.nbDims; ++i) {
-    post_size_ *= x_dims.d[i];
+  for (int i = axis + trimed_nb_dims; i < x_dims.nbDims; ++i) {
+    post_size *= x_dims.d[i];
   }
 
   const float *x = static_cast<const float *>(inputs[0]);
@@ -208,17 +208,15 @@ int ElementwisePluginDynamic::enqueue(
 
   float *out = static_cast<float *>(outputs[0]);
 
-  int num = prev_size_ * midd_size_ * post_size_;
+  int num = prev_size * midd_size * post_size;
   int thread = 256;
   int block = (num + thread - 1) / thread;
   if (type_ == "add") {
-    elementwise_kernel<<<block, thread, 0, stream>>>(num, x, y, out, prev_size_,
-                                                     midd_size_, post_size_,
-                                                     details::Add<float>());
+    elementwise_kernel<<<block, thread, 0, stream>>>(
+        num, x, y, out, prev_size, midd_size, post_size, details::Add<float>());
   } else if (type_ == "mul") {
-    elementwise_kernel<<<block, thread, 0, stream>>>(num, x, y, out, prev_size_,
-                                                     midd_size_, post_size_,
-                                                     details::Mul<float>());
+    elementwise_kernel<<<block, thread, 0, stream>>>(
+        num, x, y, out, prev_size, midd_size, post_size, details::Mul<float>());
   } else {
     PADDLE_THROW("Not implemented.");
   }

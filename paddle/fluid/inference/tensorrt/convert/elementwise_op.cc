@@ -165,6 +165,9 @@ class ElementwiseTensorOpConverter : public OpConverter {
 
     auto* X = engine_->GetITensor(op_desc.Input("X").front());
     auto* Y = engine_->GetITensor(op_desc.Input("Y").front());
+    std::vector<nvinfer1::ITensor*> itensors;
+    itensors.push_back(X);
+    itensors.push_back(Y);
     nvinfer1::Dims dims_x = X->getDimensions();
     nvinfer1::Dims dims_y = Y->getDimensions();
 
@@ -185,28 +188,6 @@ class ElementwiseTensorOpConverter : public OpConverter {
       }
     };
 
-    if (engine_->with_dynamic_shape()) {
-      if (CheckDims(dims_x, dims_y)) {
-        nvinfer1::IElementWiseLayer* elet_layer = TRT_ENGINE_ADD_LAYER(
-            engine_, ElementWise, *const_cast<nvinfer1::ITensor*>(X),
-            *const_cast<nvinfer1::ITensor*>(Y), op_pair->second);
-        common_func(elet_layer);
-      } else {
-#if IS_TRT_VERSION_GE(6000)
-        plugin::ElementwisePluginDynamic* plugin =
-            new plugin::ElementwisePluginDynamic(op_type_, axis);
-        plugin->AddInput(X);
-        plugin->AddInput(Y);
-        layer = engine_->AddPluginV2(plugin->GetInputs().data(), 2, plugin);
-#else
-        PADDLE_THROW(platform::errors::Fatal(
-            "You are running the TRT Dynamic Shape mode, need to confirm that "
-            "your TRT version is no less than 6.0"));
-#endif
-      }
-      return;
-    }
-
     if (CheckDims(dims_x, dims_y)) {
       // The two input tensor should have the same dims
       VLOG(3) << "Convert a fluid elementwise op to TensorRT IElementWiseLayer";
@@ -218,16 +199,27 @@ class ElementwiseTensorOpConverter : public OpConverter {
     } else {
       VLOG(3) << "Convert a fluid elementwise op to TensorRT "
                  "ElementWisePluginLayer";
+      if (engine_->with_dynamic_shape()) {
+#if IS_TRT_VERSION_GE(6000)
+        plugin::ElementwisePluginDynamic* plugin =
+            new plugin::ElementwisePluginDynamic(op_type_, axis);
+        layer = engine_->AddPluginV2(itensors.data(), 2, plugin);
+#else
+        PADDLE_THROW(platform::errors::Fatal(
+            "You are running the TRT Dynamic Shape mode, need to confirm that "
+            "your TRT version is no less than 6.0"));
+#endif
+      } else {
+        plugin::ElementWisePlugin* plugin =
+            new plugin::ElementWisePlugin(op_type_, dims_x, dims_y, axis);
+        plugin->AddInput(X);
+        plugin->AddInput(Y);
+        nvinfer1::IPluginLayer* plugin_layer = engine_->AddPlugin(
+            const_cast<nvinfer1::ITensor* const*>(plugin->GetInputs().data()),
+            2, reinterpret_cast<plugin::PluginTensorRT*>(plugin));
 
-      plugin::ElementWisePlugin* plugin =
-          new plugin::ElementWisePlugin(op_type_, dims_x, dims_y, axis);
-      plugin->AddInput(X);
-      plugin->AddInput(Y);
-      nvinfer1::IPluginLayer* plugin_layer = engine_->AddPlugin(
-          const_cast<nvinfer1::ITensor* const*>(plugin->GetInputs().data()), 2,
-          reinterpret_cast<plugin::PluginTensorRT*>(plugin));
-
-      layer = plugin_layer;
+        layer = plugin_layer;
+      }
     }
     common_func(layer);
   }

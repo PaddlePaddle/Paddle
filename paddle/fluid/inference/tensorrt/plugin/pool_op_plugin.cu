@@ -190,8 +190,8 @@ int PoolPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
     ksize[1] = w;
     paddings[0] = 0;
     paddings[1] = 0;
-    output_shape.push_back(1);
-    output_shape.push_back(1);
+    output_shape[2] = 1;
+    output_shape[3] = 1;
   } else {
     auto data_dim = CalcOutputSize({h, w}, ceil_mode_, adaptive_, ksize_,
                                    strides_, paddings_);
@@ -204,14 +204,14 @@ int PoolPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc *input_desc,
     paddle::operators::math::Pool2dDirectCUDAFunctor<
         paddle::operators::math::MaxPool<float>, float>
         pool2d_forward;
-    pool2d_forward(input, input_shape, output_shape, ksize, strides_, paddings_,
+    pool2d_forward(input, input_shape, output_shape, ksize, strides_, paddings,
                    pool_process, true, adaptive_, output, stream);
   } else if (pool_type_ == "avg") {
     paddle::operators::math::AvgPool<float> pool_process;
     paddle::operators::math::Pool2dDirectCUDAFunctor<
         paddle::operators::math::AvgPool<float>, float>
         pool2d_forward;
-    pool2d_forward(input, input_shape, output_shape, ksize, strides_, paddings_,
+    pool2d_forward(input, input_shape, output_shape, ksize, strides_, paddings,
                    pool_process, true, adaptive_, output, stream);
   }
 

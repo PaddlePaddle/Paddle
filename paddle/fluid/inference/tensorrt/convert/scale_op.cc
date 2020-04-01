@@ -25,14 +25,13 @@ class ScaleOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    VLOG(3) << "convert a fluid mul op to tensorrt mul layer without bias";
-    LOG(INFO) << "convert a fluid mul op to tensorrt mul layer without bias";
+    VLOG(3) << "convert a fluid scale op to tensorrt mul layer without bias";
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     std::vector<nvinfer1::ITensor*> itensors;
     std::string input_name = op_desc.Input("X").front();
-    std::string out_name = op_desc.Input("Out").front();
+    std::string out_name = op_desc.Output("Out").front();
 
     auto input = engine_->GetITensor(input_name);
     bool bias_after_scale =

@@ -137,10 +137,6 @@ class ElementwisePluginDynamic : public DynamicPluginTensorRT {
  private:
   std::string type_;
   int axis_;
-  int prev_size_;
-  int midd_size_;
-  int post_size_;
-  float beta_;
 };
 #endif
 
