@@ -24,7 +24,11 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 
 from model import Model, CrossEntropy, Input, set_device
 from metrics import Accuracy
-from tsm import *
+
+from check import check_gpu, check_version
+from modeling import tsm_resnet50
+from kinetics_dataset import KineticsDataset
+from transforms import *
 
 
 def make_optimizer(step_per_epoch, parameter_list=None):
@@ -111,7 +115,9 @@ def main():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("CNN training on TSM")
-    parser.add_argument('data', metavar='DIR', help='path to kineteics dataset')
+    parser.add_argument(
+        "--data", type=str, default='dataset/kinetics',
+        help="path to dataset root directory")
     parser.add_argument(
         "--device", type=str, default='gpu', help="device to use, gpu or cpu")
     parser.add_argument(
@@ -144,4 +150,7 @@ if __name__ == '__main__':
         type=str,
         help="weights path for evaluation")
     FLAGS = parser.parse_args()
+
+    check_gpu(str.lower(FLAGS.device) == 'gpu')
+    check_version()
     main()

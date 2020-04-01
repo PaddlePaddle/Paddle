@@ -169,7 +169,7 @@ class TSM_ResNet(Model):
             param_attr=fluid.param_attr.ParamAttr(
                 initializer=fluid.initializer.Uniform(-stdv, stdv)),
             bias_attr=fluid.param_attr.ParamAttr(
-                learning_rate=2.0, regularizer=fluid.regularizer.L2Decay(0.)))
+                learning_rate=1.0, regularizer=fluid.regularizer.L2Decay(0.)))
 
     def forward(self, inputs):
         y = fluid.layers.reshape(
