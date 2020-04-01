@@ -21,6 +21,7 @@ import paddle.fluid.layers as layers
 from paddle.fluid.dygraph import Embedding, LayerNorm, Linear, Layer, to_variable
 from paddle.fluid.dygraph.jit import dygraph_to_static_func
 from paddle.fluid.layers.utils import map_structure
+from paddle.fluid.framework import Program, Block, Variable, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
 
 
 def position_encoding_init(n_position, d_pos_vec):
@@ -489,17 +490,17 @@ class Transformer(Layer):
         return predict
 
     @dygraph_to_static_func
-    def beam_search(self,
-                    src_word,
-                    src_pos,
-                    src_slf_attn_bias,
-                    trg_word,
-                    trg_src_attn_bias,
-                    bos_id=0,
-                    eos_id=1,
-                    beam_size=4,
-                    max_len=256,
-                    batch_size=5):
+    def beam_search(
+            self,
+            src_word,
+            src_pos,
+            src_slf_attn_bias,
+            trg_word,
+            trg_src_attn_bias,
+            bos_id=0,
+            eos_id=1,
+            beam_size=4,
+            max_len=256, ):
         def expand_to_beam_size(tensor, beam_size):
             tensor = layers.reshape(
                 tensor, [tensor.shape[0], 1] + list(tensor.shape[1:]))
@@ -513,6 +514,7 @@ class Transformer(Layer):
                 tensor,
                 list(range(var_dim_in_state, len(tensor.shape))) +
                 list(range(0, var_dim_in_state)))
+
             tensor = layers.reshape(tensor,
                                     [0] * (len(tensor.shape) - var_dim_in_state
                                            ) + [batch_size * beam_size])
@@ -558,6 +560,7 @@ class Transformer(Layer):
 
         # run encoder
         enc_output = self.encoder(src_word, src_pos, src_slf_attn_bias)
+        batch_size = enc_output.shape[0]
 
         # constant number
         inf = float(1. * 1e7)
@@ -620,11 +623,9 @@ class Transformer(Layer):
                                         noend_mask_tensor)
             log_probs = layers.elementwise_add(
                 x=step_log_probs, y=log_probs, axis=0)
-            #TODO: should change from 5 to beam_size after PR23299 merged
             log_probs = layers.reshape(log_probs,
                                        [-1, beam_size * self.trg_vocab_size])
             scores = log_probs
-            #TODO: should change to k=beam_size after PR23299 merged
             topk_scores, topk_indices = fluid.layers.topk(
                 input=scores, k=beam_size)
             beam_indices = fluid.layers.elementwise_floordiv(topk_indices,
