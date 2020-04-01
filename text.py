@@ -13,7 +13,7 @@ from paddle.fluid.data_feeder import convert_dtype
 
 from paddle.fluid import layers
 from paddle.fluid.dygraph import Layer
-from paddle.layers import BeamSearchDecoder
+from paddle.fluid.layers import BeamSearchDecoder
 
 __all__ = [
     'RNNCell', 'BasicLSTMCell', 'BasicGRUCell', 'RNN', 'DynamicDecode',
