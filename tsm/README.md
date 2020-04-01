@@ -14,7 +14,7 @@
 Temporal Shift Module是由MIT和IBM Watson AI Lab的Ji Lin，Chuang Gan和Song Han等人提出的通过时间位移来提高网络视频理解能力的模块，其位移操作原理如下图所示。
 
 <p align="center">
-<img src="../../images/temporal_shift.png" height=250 width=800 hspace='10'/> <br />
+<img src="./images/temporal_shift.png" height=250 width=800 hspace='10'/> <br />
 Temporal shift module
 </p>
 
@@ -44,7 +44,7 @@ TSM模型是将Temporal Shift Module插入到ResNet网络中构建的视频分�
 
 ### 数据准备
 
-TSM的训练数据采用由DeepMind公布的Kinetics-400动作识别数据集。数据下载及准备请参考[数据说明](https://github.com/PaddlePaddle/models/blob/release/1.7/PaddleCV/video/data/dataset/README.md)
+TSM的训练数据采用由DeepMind公布的Kinetics-400动作识别数据集。数据下载及准备请参考[数据说明](./dataset/README.md)
 
 #### 小数据集验证
 
