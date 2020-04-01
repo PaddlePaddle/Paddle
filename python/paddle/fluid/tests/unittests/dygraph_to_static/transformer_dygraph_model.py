@@ -48,7 +48,7 @@ class PrePostProcessLayer(Layer):
         self.functors = []
         for cmd in self.process_cmd:
             if cmd == "a":  # add residual connection
-                self.functors.append(lambda x, y: x + y if y else x)
+                self.functors.append(lambda x, y: x + y if y is not None else x)
             elif cmd == "n":  # add layer normalization
                 self.functors.append(
                     self.add_sublayer(
@@ -116,7 +116,7 @@ class MultiHeadAttention(Layer):
         # scale dot product attention
         product = layers.matmul(
             x=q, y=k, transpose_y=True, alpha=self.d_model**-0.5)
-        if attn_bias:
+        if attn_bias is not None:
             product += attn_bias
         weights = layers.softmax(product)
         if self.dropout_rate:
