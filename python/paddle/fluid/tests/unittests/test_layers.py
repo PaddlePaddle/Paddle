@@ -114,7 +114,7 @@ class TestLayer(LayerTest):
                 shape=[3, 32, 32],
                 dtype='float32',
                 append_batch_size=False)
-            dropout = nn.Dropout(dropout_prob=0.35, seed=1, is_test=False)
+            dropout = nn.Dropout(prob=0.35, seed=1, is_test=False)
             ret = dropout(t)
             ret2 = fluid.layers.dropout(
                 t, dropout_prob=0.35, seed=1, is_test=False)
@@ -122,7 +122,7 @@ class TestLayer(LayerTest):
                 feed={'data': inp}, fetch_list=[ret, ret2])
         with self.dynamic_graph():
             t = base.to_variable(inp)
-            dropout = nn.Dropout(dropout_prob=0.35, seed=1, is_test=False)
+            dropout = nn.Dropout(prob=0.35, seed=1, is_test=False)
             dy_ret = dropout(t)
             dy_ret2 = fluid.layers.dropout(
                 t, dropout_prob=0.35, seed=1, is_test=False)
