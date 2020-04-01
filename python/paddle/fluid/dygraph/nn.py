@@ -1281,9 +1281,9 @@ class Dropout(layers.Layer):
         }
 
         if in_dygraph_mode():
-            inputs = {'X': [input]}
-            outs = core.ops.dropout(inputs, attrs)
-            return outs['Out'][0]
+            attrs = sum(attrs.items(), ())
+            out, mask = core.ops.dropout(input, *attrs)
+            return out
 
         out = self._helper.create_variable_for_type_inference(dtype=input.dtype)
         mask = self._helper.create_variable_for_type_inference(
