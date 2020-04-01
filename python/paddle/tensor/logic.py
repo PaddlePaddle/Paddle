@@ -89,21 +89,21 @@ def allclose(input, other, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
         
     Examples:
         .. code-block:: python
+          import paddle
           import paddle.fluid as fluid
-          import paddle.tensor as tensor
           import numpy as np
 
-          is_use_gpu = True
+          use_cuda = True
 
           a = fluid.data(name="a", shape=[2], dtype='float32')
           b = fluid.data(name="b", shape=[2], dtype='float32')
 
-          result = tensor.allclose(a, b, rtol=1e-05, atol=1e-08,
+          result = paddle.allclose(a, b, rtol=1e-05, atol=1e-08,
                                   equal_nan=False, name="ignore_nan")
-          result_nan = tensor.allclose(a, b, rtol=1e-05, atol=1e-08,
+          result_nan = paddle.allclose(a, b, rtol=1e-05, atol=1e-08,
                                       equal_nan=True, name="equal_nan")
 
-          place = fluid.CUDAPlace(0) if is_use_gpu else fluid.CPUPlace()
+          place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
           exe = fluid.Executor(place)
           exe.run(fluid.default_startup_program())
 
