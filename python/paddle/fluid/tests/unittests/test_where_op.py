@@ -17,14 +17,16 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid as fluid
+import paddle.fluid.layers as layers
 import paddle.tensor as tensor
 import paddle.fluid.core as core
 from op_test import OpTest
 from paddle.fluid import compiler, Program, program_guard
 from paddle.fluid.op import Operator
+from paddle.fluid.backward import append_backward
 
 
-class TestWhere(OpTest):
+class TestWhereOp(OpTest):
     def setUp(self):
         self.op_type = "where"
         self.init_config()
@@ -33,40 +35,153 @@ class TestWhere(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
         self.check_grad(['X', 'Y'], 'Out')
 
     def init_config(self):
         self.x = np.random.uniform(-3, 5, (100)).astype("float64")
-        self.x[np.abs(self.x) < 0.005] = 0.02
-        self.y = np.zeros((100)).astype("float64")
+        self.y = np.random.uniform(-3, 5, (100)).astype("float64")
         self.cond = np.zeros((100)).astype("bool")
 
-        for i in range(0, len(self.x)):
-            if self.x[i] > self.y[i]:
-                self.cond[i] = True
+        self.inputs = {'Condition': self.cond, 'X': self.x, 'Y': self.y}
+        self.outputs = {'Out': np.where(self.cond, self.x, self.y)}
+
+
+class TestWhereOp2(TestWhereOp):
+    def test_check_grad(self):
+        self.check_grad(['X', 'Y'], 'Out')
+
+    def init_config(self):
+        self.x = np.random.uniform(-5, 5, (60, 2)).astype("float64")
+        self.y = np.random.uniform(-5, 5, (60, 2)).astype("float64")
+        self.cond = np.ones((60, 2)).astype("bool")
+
+        self.inputs = {'Condition': self.cond, 'X': self.x, 'Y': self.y}
+        self.outputs = {'Out': np.where(self.cond, self.x, self.y)}
+
+
+class TestWhereOp3(TestWhereOp):
+    def test_check_grad(self):
+        self.check_grad(['X', 'Y'], 'Out')
+
+    def init_config(self):
+        self.x = np.random.uniform(-3, 5, (20, 2, 4)).astype("float64")
+        self.y = np.random.uniform(-3, 5, (20, 2, 4)).astype("float64")
+        self.cond = np.array(np.random.randint(2, size=(20, 2, 4)), dtype=bool)
 
         self.inputs = {'Condition': self.cond, 'X': self.x, 'Y': self.y}
         self.outputs = {'Out': np.where(self.cond, self.x, self.y)}
 
 
 class TestWhereAPI(unittest.TestCase):
-    def test_api(self):
-        x = fluid.layers.data(name='x', shape=[4], dtype='float32')
-        y = fluid.layers.data(name='y', shape=[4], dtype='float32')
-        x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float32")
-        y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype("float32")
-        cond_i = np.array([False, False, True, True]).astype("bool")
-        result = tensor.where(x > 1, X=x, Y=y)
+    def test_api(self, use_cuda=False):
+        main_program = Program()
+        startup_program = Program()
+        with fluid.program_guard(main_program, startup_program):
+            x = fluid.layers.data(name='x', shape=[4], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[4], dtype='float32')
+            x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float32")
+            y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype("float32")
+            cond_i = np.array([False, False, True, True]).astype("bool")
+            result = tensor.where(x > 1, X=x, Y=y)
 
-        exe = fluid.Executor(fluid.CPUPlace())
-        out = exe.run(fluid.default_main_program(),
-                      feed={'x': x_i,
-                            'y': y_i},
-                      fetch_list=[result])
-        assert np.array_equal(out[0], np.where(cond_i, x_i, y_i))
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            out = exe.run(fluid.default_main_program(),
+                          feed={'x': x_i,
+                                'y': y_i},
+                          fetch_list=[result])
+            assert np.array_equal(out[0], np.where(cond_i, x_i, y_i))
+
+    def test_grad(self, use_cuda=False):
+        main_program = Program()
+        startup_program = Program()
+        with fluid.program_guard(main_program, startup_program):
+            x = fluid.layers.data(name='x', shape=[4], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[4], dtype='float32')
+            x.stop_gradient = False
+            y.stop_gradient = False
+            x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float32")
+            y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype("float32")
+            cond_i = np.array([False, False, True, True]).astype("bool")
+            result = tensor.where(x > 1, X=x, Y=y)
+            x_mean = layers.mean(x)
+            append_backward(x_mean)
+            y_mean = layers.mean(y)
+            append_backward(y_mean)
+
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            out = exe.run(fluid.default_main_program(),
+                          feed={'x': x_i,
+                                'y': y_i},
+                          fetch_list=[result, x.grad_name, y.grad_name])
+            x_grad = [0.25] * 4
+            y_grad = [0.25] * 4
+            assert np.array_equal(out[0], np.where(cond_i, x_i, y_i))
+            assert np.array_equal(out[1], x_grad)
+            assert np.array_equal(out[2], y_grad)
+
+    def test_grad1(self, use_cuda=False):
+        main_program = Program()
+        startup_program = Program()
+        with fluid.program_guard(main_program, startup_program):
+            x = fluid.layers.data(name='x', shape=[4], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[4], dtype='float32')
+            x.stop_gradient = True
+            y.stop_gradient = False
+            x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float32")
+            y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype("float32")
+            cond_i = np.array([False, False, True, True]).astype("bool")
+            result = tensor.where(x > 1, X=x, Y=y)
+            y_mean = layers.mean(y)
+            append_backward(y_mean)
+
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            out = exe.run(fluid.default_main_program(),
+                          feed={'x': x_i,
+                                'y': y_i},
+                          fetch_list=[result, y.grad_name])
+            y_grad = [0.25] * 4
+            assert np.array_equal(out[0], np.where(cond_i, x_i, y_i))
+            assert np.array_equal(out[1], y_grad)
+
+    def test_grad2(self, use_cuda=False):
+        main_program = Program()
+        startup_program = Program()
+        with fluid.program_guard(main_program, startup_program):
+            x = fluid.layers.data(name='x', shape=[4], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[4], dtype='float32')
+            x.stop_gradient = False
+            y.stop_gradient = True
+            x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float32")
+            y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype("float32")
+            cond_i = np.array([False, False, True, True]).astype("bool")
+            result = tensor.where(x > 1, X=x, Y=y)
+            x_mean = layers.mean(x)
+            append_backward(x_mean)
+
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            out = exe.run(fluid.default_main_program(),
+                          feed={'x': x_i,
+                                'y': y_i},
+                          fetch_list=[result, x.grad_name])
+            x_grad = [0.25] * 4
+            assert np.array_equal(out[0], np.where(cond_i, x_i, y_i))
+            assert np.array_equal(out[1], x_grad)
+
+    def test_fw_bw(self):
+        if core.is_compiled_with_cuda():
+            self.test_api(use_cuda=True)
+            self.test_grad(use_cuda=True)
+            self.test_grad1(use_cuda=True)
+            self.test_grad2(use_cuda=True)
+        self.test_api(use_cuda=False)
+        self.test_grad(use_cuda=False)
+        self.test_grad1(use_cuda=False)
+        self.test_grad2(use_cuda=False)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()

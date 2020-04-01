@@ -57,13 +57,18 @@ class WhereGradKernel : public framework::OpKernel<T> {
     auto* dx_t = context.Output<framework::Tensor>(framework::GradVarName("X"));
     auto* dy_t = context.Output<framework::Tensor>(framework::GradVarName("Y"));
 
-    auto dout = dout_t->data<T>();
-    auto dx = dx_t->mutable_data<T>(context.GetPlace());
-    auto dy = dy_t->mutable_data<T>(context.GetPlace());
-
-    for (int i = 0; i < numel; i++) {
-      dx[i] = dout[i] * (cond_data[i] ? 1. : 0.);
-      dy[i] = dout[i] * (cond_data[i] ? 0. : 1.);
+    auto* dout = dout_t->data<T>();
+    if (dx_t != nullptr) {
+      auto* dx = dx_t->mutable_data<T>(context.GetPlace());
+      for (int i = 0; i < numel; i++) {
+        dx[i] = dout[i] * (cond_data[i] ? 1. : 0.);
+      }
+    }
+    if (dy_t != nullptr) {
+      auto* dy = dy_t->mutable_data<T>(context.GetPlace());
+      for (int i = 0; i < numel; i++) {
+        dy[i] = dout[i] * (cond_data[i] ? 0. : 1.);
+      }
     }
   }
 };

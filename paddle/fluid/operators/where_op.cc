@@ -1,13 +1,16 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-    http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include "paddle/fluid/operators/where_op.h"
 
@@ -32,23 +35,14 @@ class WhereOp : public framework::OperatorWithKernel {
         ctx->HasOutput("Out"), true,
         platform::errors::NotFound("Output(Out) of where should not be null."));
 
-    auto x_size = ctx->GetInputDim("X").size();
-    auto y_size = ctx->GetInputDim("Y").size();
-
-    PADDLE_ENFORCE_GE(ctx->GetInputDim("Condition").size(), 1UL,
-                      platform::errors::InvalidArgument(
-                          "Input(Condition) of where should not be empty"));
-    PADDLE_ENFORCE_GE(x_size, 1UL,
-                      platform::errors::InvalidArgument(
-                          "Inputs(X) of where should not be empty."));
-    PADDLE_ENFORCE_GE(y_size, 1UL,
-                      platform::errors::InvalidArgument(
-                          "Inputs(Y) of where should not be empty."));
-    PADDLE_ENFORCE_EQ(x_size, y_size,
+    auto x_dims = ctx->GetInputDim("X");
+    auto y_dims = ctx->GetInputDim("Y");
+    PADDLE_ENFORCE_EQ(x_dims, y_dims,
                       platform::errors::InvalidArgument(
                           "The size of Inputs(Y) and Inputs(Y) should be same. "
                           "But received X size = %d, Y size = %d",
-                          x_size, y_size));
+                          x_dims, y_dims));
+
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -105,13 +99,29 @@ class WhereGradOp : public framework::OperatorWithKernel {
 class WhereOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Condition", "(Tensor) A bool tensor whose rank is at least 1");
-    AddInput("X", "(Tensor), The first input tensor of where op");
-    AddInput("Y", "(Tensor), The second input tensor of where op");
+    AddInput("Condition",
+             "(Tensor) A bool tensor whose rank is at least 1. When Condition "
+             "is True, yield x, otherwise yield y");
+    AddInput("X",
+             "(Tensor), The first input tensor of where op. When the "
+             "corresponding position of the condition is true, the output "
+             "takes the element of X.");
+    AddInput("Y",
+             "(Tensor), The second input tensor of where op. When the "
+             "corresponding position of condition is false, the output takes "
+             "the element of Y.");
     AddOutput("Out", "(Tensor), The output tensor of mul op.");
     AddComment(R"DOC(
       Where Operator.
       Return a tensor of elements selected from either $X$ or $Y$, depending on condition.
+      The equation is:
+      $$
+      Out_i =
+      \begin{cases}
+      \X_i, \quad  \text{if} \ cond_i is True \\
+      \Y_i, \quad  \text{if} \ cond_i is False \\
+      \end{cases}
+      $$
 )DOC");
   }
 };
