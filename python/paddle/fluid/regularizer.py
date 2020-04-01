@@ -54,7 +54,7 @@ def _create_regularization_of_grad(param, grad, regularization=None):
     inputs = {"X": [grad, regularization_term]}
     outputs = {"Out": [new_grad]}
     if in_dygraph_mode():
-        core.ops.sum(inputs, {}, outputs)
+        new_grad = core.ops.sum([grad, regularization_term])
     else:
         grad.block.append_op(type='sum', inputs=inputs, outputs=outputs)
 
@@ -183,8 +183,7 @@ class L2DecayRegularizer(WeightDecayRegularizer):
         attrs = {"scale": self._regularization_coeff}
 
         if framework.in_dygraph_mode():
-            outs = core.ops.scale(inputs, attrs)
-            return outs['Out'][0]
+            return core.ops.scale(param, "scale", self._regularization_coeff)
         else:
             decay = block.create_var(
                 dtype=param.dtype, shape=param.shape, lod_level=param.lod_level)
