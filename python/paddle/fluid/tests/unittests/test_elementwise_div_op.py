@@ -227,7 +227,7 @@ class TestElementwiseDivOpFp16(ElementwiseDivOp):
             ['X'], 'Out', max_relative_error=1, no_grad_set=set('Y'))
 
 
-class TestDivOpAttr(unittest.TestCase):
+class TestDivOp(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data(name="x", shape=[3], dtype="float32")
@@ -246,6 +246,24 @@ class TestDivOpAttr(unittest.TestCase):
 
             self.assertEqual((np_res == np_y_1).all(), True)
 
+    def test_out_gpu(self):
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data(name="x", shape=[3], dtype="float32")
+            y = fluid.data(name='y', shape=[3], dtype='float32')
+
+            res = fluid.data(name="output", shape=[3], dtype="float32")
+            y_1 = paddle.div(x, y, out=res)
+
+            place = fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+            data1 = np.array([2, 3, 4], dtype='float32')
+            data2 = np.array([1, 5, 2], dtype='float32')
+            np_res, np_y_1 = exe.run(feed={'x': data1,
+                                           'y': data2},
+                                     fetch_list=[res, y_1])
+
+            self.assertEqual((np_res == np_y_1).all(), True)
+
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data(name="x", shape=[2, 3], dtype="float32")
@@ -253,6 +271,17 @@ class TestDivOpAttr(unittest.TestCase):
 
             y_1 = paddle.div(x, y, name='div_res')
             self.assertEqual(('div_res' in y_1.name), True)
+
+    def test_dygraph(self):
+        with fluid.dygraph.guard():
+            np_x = np.array([2, 3, 4]).astype('float64')
+            np_y = np.array([1, 5, 2]).astype('float64')
+            x = fluid.dygraph.to_variable(np_x)
+            y = fluid.dygraph.to_variable(np_y)
+            z = paddle.div(x, y)
+            np_z = z.numpy()
+            z_expected = np.array([2., 0.6, 2.])
+            self.assertEqual((np_z == z_expected).all(), True)
 
 
 if __name__ == '__main__':

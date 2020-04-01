@@ -16,7 +16,7 @@ math functions
 """
 
 # TODO: define math functions  
-__all__ = [#'abs',
+__all__ = [# 'abs',
     #            'acos',
     #            'asin',
     #            'atan',
@@ -73,17 +73,37 @@ __all__ = [#'abs',
 from paddle.common_ops_import import *
 
 
+@dygraph_only
+def _elementwise_op_in_dygraph(x,
+                               y,
+                               axis=-1,
+                               act=None,
+                               use_mkldnn=False,
+                               op_name=None):
+    attrs = {'axis': axis, 'use_mkldnn': use_mkldnn}
+    inputs = {'X': [x], 'Y': [y]}
+    op = getattr(core.ops, op_name)
+    outs = op(inputs, attrs)
+    out = outs['Out'][0]
+
+    return dygraph_utils._append_activation_in_dygraph(
+        out, act, use_mkldnn=use_mkldnn)
+
+
 def _elementwise_op(helper):
     op_type = helper.layer_type
+    original_op_type = helper.kwargs.get('original_op_type', op_type)
     x = helper.kwargs.get('x', None)
     y = helper.kwargs.get('y', None)
 
-    assert x is not None, 'x cannot be None in {}'.format(op_type)
-    assert y is not None, 'y cannot be None in {}'.format(op_type)
+    assert x is not None, 'x cannot be None in {}'.format(original_op_type)
+    assert y is not None, 'y cannot be None in {}'.format(original_op_type)
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], op_type)
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        original_op_type)
     check_variable_and_dtype(
-        y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64'], op_type)
+        y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        original_op_type)
 
     axis = helper.kwargs.get('axis', -1)
     use_mkldnn = helper.kwargs.get('use_mkldnn', False)
@@ -186,15 +206,18 @@ def add(x, y, alpha=1, out=None, name=None):
     op_type = 'elementwise_add'
     axis = -1
     act = None
-    y = scale(y, scale=alpha)
+    if alpha != 1:
+        y = scale(y, scale=alpha)
     if in_dygraph_mode():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
 
+    original_op_type = 'add'
     if name and out:
         warnings.warn(
-            "Both name and out parameters have been set in paddle.tensor.add(), only out will take effect to specify the result storage. "
-            "You can discard either one to solve this warning.",
+            "Both name and out parameters have been set in paddle.tensor.%s, only out will take effect to specify the result storage. "
+            "You can discard either one to solve this warning." %
+            original_op_type,
             category=UserWarning,
             stacklevel=2)
     return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -287,10 +310,13 @@ def div(x, y, out=None, name=None):
     if in_dygraph_mode():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type)
+
+    original_op_type = 'div'
     if name and out:
         warnings.warn(
-            "Both name and out parameters have been set in paddle.tensor.div(), only out will take effect to specify the result storage. "
-            "You can discard either one to solve this warning.",
+            "Both name and out parameters have been set in paddle.tensor.%s, only out will take effect to specify the result storage. "
+            "You can discard either one to solve this warning." %
+            original_op_type,
             category=UserWarning,
             stacklevel=2)
     return _elementwise_op(LayerHelper(op_type, **locals()))
