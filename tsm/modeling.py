@@ -113,6 +113,15 @@ class BottleneckBlock(fluid.dygraph.Layer):
 
 
 class TSM_ResNet(Model):
+    """
+    TSM network with ResNet as backbone
+
+    Args:
+        num_layers (int): ResNet layer number, only support 50 currently.
+            Default 50.
+        seg_num (int): segment number of each video sample. Default 8.
+        num_classes (int): video class number. Default 400.
+    """
     def __init__(self, num_layers=50, seg_num=8, num_classes=400):
         super(TSM_ResNet, self).__init__()
 

@@ -33,31 +33,51 @@ logger = logging.getLogger(__name__)
 
 __all__ = ['KineticsDataset']
 
+KINETICS_CLASS_NUM = 400
+
 
 class KineticsDataset(Dataset):
     """
     Kinetics dataset
 
     Args:
-        filelist (str): path to file list, default None.
-        num_classes (int): class number
+        file_list (str): path to file list
+        pickle_dir (str): path to pickle file directory
+        label_list (str): path to label_list file, if set None, the
+            default class number 400 of kinetics dataset will be
+            used. Default None
+        mode (str): 'train' or 'val' mode, segmentation methods will
+            be different in these 2 modes. Default 'train'
+        seg_num (int): segment number to sample from each video.
+            Default 8
+        seg_len (int): frame number of each segment. Default 1
+        transform (callable): transforms to perform on video samples,
+            None for no transforms. Default None.
     """
 
     def __init__(self,
-                 filelist,
+                 file_list,
                  pickle_dir,
+                 label_list=None,
                  mode='train',
                  seg_num=8,
                  seg_len=1,
                  transform=None):
-        assert os.path.isfile(filelist), \
-                "filelist {} not a file".format(filelist)
-        with open(filelist) as f:
+        assert os.path.isfile(file_list), \
+                "file_list {} not a file".format(file_list)
+        with open(file_list) as f:
             self.pickle_paths = [l.strip() for l in f]
 
         assert os.path.isdir(pickle_dir), \
                 "pickle_dir {} not a directory".format(pickle_dir)
         self.pickle_dir = pickle_dir
+
+        self.label_list = label_list
+        if self.label_list is not None:
+            assert os.path.isfile(self.label_list), \
+                "label_list {} not a file".format(self.label_list)
+            with open(self.label_list) as f:
+                self.label_list = [int(l.strip()) for l in f]
 
         assert mode in ['train', 'val'], \
                 "mode can only be 'train' or 'val'"
@@ -87,13 +107,18 @@ class KineticsDataset(Dataset):
             logger.error("Load {} failed: {}".format(pickle_path, e))
             sys.exit(-1)
 
-        label_list = [0, 2, 3, 4, 6, 7, 9, 12, 14, 15]
-        label = label_list.index(label)
+        if self.label_list is not None:
+            label = self.label_list.index(label)
         imgs = self._video_loader(frames)
 
         if self.transform:
             imgs, label = self.transform(imgs, label)
         return imgs, np.array([label])
+
+    @property
+    def num_classes(self):
+        return KINETICS_CLASS_NUM if self.label_list is None \
+                else len(self.label_list)
 
     def _video_loader(self, frames):
         videolen = len(frames)
@@ -134,9 +159,3 @@ class KineticsDataset(Dataset):
         
         return img.convert('RGB')
 
-
-if __name__ == "__main__":
-    kd = KineticsDataset('/paddle/ssd3/kineteics_mini/val_10.list', '/paddle/ssd3/kineteics_mini/val_10')
-    print("KineticsDataset length", len(kd))
-    for d in kd:
-        print(len(d[0]), d[0][0].size, d[1])

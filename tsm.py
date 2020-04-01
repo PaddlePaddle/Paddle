@@ -20,18 +20,15 @@ import argparse
 import numpy as np
 
 from paddle import fluid
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
+from paddle.fluid.dygraph.parallel import ParallelEnv
 
 from model import Model, CrossEntropy, Input, set_device
 from metrics import Accuracy
 from tsm import *
 
-NUM_CLASSES = 10
 
-
-def make_optimizer(num_samples, parameter_list=None):
-    step = int(num_samples / FLAGS.batch_size / FLAGS.num_devices)
-    boundaries = [e * step for e in [40, 60]]
+def make_optimizer(step_per_epoch, parameter_list=None):
+    boundaries = [e * step_per_epoch for e in [40, 60]]
     values = [FLAGS.lr * (0.1 ** i) for i in range(len(boundaries) + 1)]
 
     learning_rate = fluid.layers.piecewise_decay(
@@ -56,20 +53,26 @@ def main():
                                GroupRandomFlip(),
                                NormalizeImage()])
     train_dataset = KineticsDataset(
-            filelist=os.path.join(FLAGS.data, 'train_10.list'),
+            file_list=os.path.join(FLAGS.data, 'train_10.list'),
             pickle_dir=os.path.join(FLAGS.data, 'train_10'),
+            label_list=os.path.join(FLAGS.data, 'label_list'),
             transform=train_transform)
     val_transform = Compose([GroupScale(),
                              GroupCenterCrop(),
                              NormalizeImage()])
     val_dataset = KineticsDataset(
-            filelist=os.path.join(FLAGS.data, 'val_10.list'),
+            file_list=os.path.join(FLAGS.data, 'val_10.list'),
             pickle_dir=os.path.join(FLAGS.data, 'val_10'),
+            label_list=os.path.join(FLAGS.data, 'label_list'),
             mode='val',
             transform=val_transform)
 
     pretrained = FLAGS.eval_only and FLAGS.weights is None
-    model = tsm_resnet50(num_classes=NUM_CLASSES, pretrained=pretrained)
+    model = tsm_resnet50(num_classes=train_dataset.num_classes,
+                         pretrained=pretrained)
+
+    step_per_epoch = int(len(train_dataset) / FLAGS.batch_size \
+                         / ParallelEnv().nranks)
     optim = make_optimizer(len(train_dataset), model.parameters())
 
     inputs = [Input([None, 8, 3, 224, 224], 'float32', name='image')]
@@ -101,7 +104,7 @@ def main():
               epochs=FLAGS.epoch,
               batch_size=FLAGS.batch_size,
               save_dir='tsm_checkpoint',
-              num_workers=4,
+              num_workers=FLAGS.num_workers,
               drop_last=True,
               shuffle=True)
 
@@ -128,8 +131,6 @@ if __name__ == '__main__':
         help='initial learning rate')
     parser.add_argument(
         "-b", "--batch_size", default=16, type=int, help="batch size")
-    parser.add_argument(
-        "-n", "--num_devices", default=1, type=int, help="number of devices")
     parser.add_argument(
         "-r",
         "--resume",
