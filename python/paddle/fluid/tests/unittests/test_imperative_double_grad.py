@@ -152,8 +152,8 @@ class TestDygraphDoubleGrad(TestCase):
         dz_expected = (np.power(relu_x_np, 3) * relu_x_grad_np *
                        4).astype('float32')
 
-        random_grad_y = random_var(y.shape)
-        random_grad_z = random_var(z.shape)
+        random_grad_y = random_var(y.shape, low=1, high=2)
+        random_grad_z = random_var(z.shape, low=1, high=2)
         ones_grad_y = np.ones(y.shape).astype('float32')
         ones_grad_z = np.ones(z.shape).astype('float32')
 
