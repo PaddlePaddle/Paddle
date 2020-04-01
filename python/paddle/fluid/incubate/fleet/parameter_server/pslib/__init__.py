@@ -39,10 +39,10 @@ class PSLib(Fleet):
         self._client2client_connect_timeout_ms = 10000
         self._client2client_max_retry = 3
 
-    def init(self, role_maker=None):
+    def init(self, role_maker=None, kv_maps_filename=None):
         if role_maker is None:
             role_maker = MPISymetricRoleMaker()
-        super(PSLib, self).init(role_maker)
+        super(PSLib, self).init(role_maker, kv_maps_filename)
         self._fleet_ptr = fluid.core.Fleet()
 
     def _set_client_communication_config(self, request_timeout_ms,

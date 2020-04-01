@@ -30,10 +30,6 @@ class TDMSamplerOpMaker : public framework::OpProtoAndCheckerMaker {
              "X(Tensor), Input variable which"
              "mapping the leaf node idx of tdm tree,"
              "dtype support int32/int64");
-    AddInput("Travel",
-             "Travel(Tensor), must has the same dtype with Layer"
-             "Contains path information of all leaf nodes to root node,"
-             " dtype support int32/64");
     AddInput("Layer",
              "Layer(Tensor), must has the same dtype with Travel "
              "Indicates which nodes are in each layer");
@@ -81,7 +77,6 @@ class TDMSamplerOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
                       "Inputs(Input) of TdmSampler should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Travel"), true);
     PADDLE_ENFORCE_EQ(ctx->HasInput("Layer"), true);
     auto neg_samples_num_vec =
         ctx->Attrs().Get<std::vector<int>>("neg_samples_num_list");

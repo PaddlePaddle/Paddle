@@ -54,18 +54,21 @@ class KV_MAPS {
     VLOG(1) << "filename: " << filename;
     std::ifstream fin(filename.c_str());
     PADDLE_ENFORCE(fin.good(), "Can not open %s.", filename.c_str());
-    int size, dimensions, feasign;
+    int64_t size, dimensions, feasign;
     VLOG(1) << "begin to read file";
     fin >> size >> dimensions;
     VLOG(1) << "size: " << size << "dimensions: " << dimensions;
     std::vector<int64_t> feasign_values;
     feasign_values.resize(dimensions);
+    uint64_t read_v;
     for (int64_t i = 0; i < size; i++) {
       std::stringstream ss;
-      fin >> feasign;
+      fin >> read_v;
+      feasign = static_cast<int64_t>(read_v);
       ss << "feasign: " << feasign << "feasign_value: [";
       for (int64_t j = 0; j < dimensions; j++) {
-        fin >> feasign_values[j];
+        fin >> read_v;
+        feasign_values[j] = static_cast<int64_t>(read_v);
         ss << feasign_values[j] << " ";
       }
       ss << "]\n";

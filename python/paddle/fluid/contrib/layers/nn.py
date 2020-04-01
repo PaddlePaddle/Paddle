@@ -938,7 +938,7 @@ def partial_sum(input, start_index=0, length=-1):
 def tdm_sampler(x,
                 neg_samples_num_list,
                 layer_node_num_list,
-                leaf_node_num,
+                leaf_node_num=0,
                 tree_travel_attr=None,
                 tree_layer_attr=None,
                 output_positive=True,
@@ -1060,13 +1060,15 @@ def tdm_sampler(x,
                     layer_idx, neg_samples_num_list[
                         layer_idx], layer_idx, layer_node_num_list[layer_idx]))
     assert leaf_node_num < node_nums, "leaf_node_num must be less than total node nums."
-
-    travel_shape = [leaf_node_num, layer_nums]
-    travel = helper.create_parameter(
-        attr=tree_travel_attr,
-        shape=travel_shape,
-        dtype=tree_dtype,
-        default_initializer=Constant(0))
+    inputs = dict()
+    if leaf_node_num:
+        travel_shape = [leaf_node_num, layer_nums]
+        travel = helper.create_parameter(
+            attr=tree_travel_attr,
+            shape=travel_shape,
+            dtype=tree_dtype,
+            default_initializer=Constant(0))
+        inputs["Travel"] = travel
 
     layer_shape = [node_nums, 1]
     layer = helper.create_parameter(
@@ -1084,11 +1086,11 @@ def tdm_sampler(x,
     mask = helper.create_variable_for_type_inference(dtype=dtype)
     mask.stop_gradient = True
 
+    inputs["X"] = x
+    inputs["Layer"] = layer
     helper.append_op(
         type='tdm_sampler',
-        inputs={"X": x,
-                "Travel": travel,
-                "Layer": layer},
+        inputs = inputs,
         outputs={'Out': out,
                  'Labels': labels,
                  'Mask': mask},

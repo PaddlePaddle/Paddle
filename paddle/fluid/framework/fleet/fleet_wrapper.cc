@@ -658,14 +658,14 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   std::vector<float*> push_g_vec;
 //  std::stringstream ss;
 //  ss << "\n";
-//  for (auto i = 0u; i < sparse_push_keys->size(); ++i) {
-//    push_g_vec.push_back((*push_values)[i].data());
+  for (auto i = 0u; i < sparse_push_keys->size(); ++i) {
+    push_g_vec.push_back((*push_values)[i].data());
  //   ss << sparse_push_keys->at(i);
  //   for (size_t j = 0; j < (*push_values)[i].size(); ++j) {
   //    ss << " " << (*push_values)[i][j];
    // }
    // ss << "\n";
- // }
+  }
  // VLOG(0) << "push sparse " << ss.str();
   auto status = pslib_ptr_->_worker_ptr->push_sparse(
       table_id, sparse_push_keys->data(), (const float**)push_g_vec.data(),
