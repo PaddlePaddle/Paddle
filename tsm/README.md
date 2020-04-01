@@ -50,7 +50,7 @@ TSM的训练数据采用由DeepMind公布的Kinetics-400动作识别数据集。
 
 为了便于快速迭代，我们采用了较小的数据集进行动态图训练验证，从Kinetics-400数据集中选取分类标签(label)分别为 0, 2, 3, 4, 6, 7, 9, 12, 14, 15的即前10类数据验证模型精度。
 
-### 模型训练及评估
+### 模型训练
 
 数据准备完毕后，可以通过如下方式启动训练和评估，如下脚本会自动每epoch交替进行训练和模型评估，并将checkpoint默认保存在`tsm_checkpoint`目录下。
 
@@ -88,9 +88,25 @@ CUDA_VISIBLE_DEVICES=0,1 python main.py --data=<path/to/dataset> --batch_size=8 
 
 **注意：** 对于静态图和动态图，多卡训练中`--batch_size`为每卡上的batch_size，即总batch_size为`--batch_size`乘以卡数
 
-### 评估精度
+### 模型评估
 
-在10类小数据集下训练模型权重见[model](https://paddlemodels.bj.bcebos.com/hapi/tsm_resnet50.pdparams)，评估精度如下：
+可通过如下两种方式进行模型评估。
+
+1. 自动下载Paddle发布的[TSM-ResNet50](https://paddlemodels.bj.bcebos.com/hapi/tsm_resnet50.pdparams)权重评估
+
+```
+python main.py --data<path/to/dataset> --eval_only
+```
+
+2. 加载checkpoint进行精度评估
+
+```
+python main.py --data<path/to/dataset> --eval_only --weights=tsm_checkpoint/final
+```
+
+#### 评估精度
+
+在10类小数据集下训练模型权重见[TSM-ResNet50](https://paddlemodels.bj.bcebos.com/hapi/tsm_resnet50.pdparams)，评估精度如下：
 
 |Top-1|Top-5|
 |:-:|:-:|
