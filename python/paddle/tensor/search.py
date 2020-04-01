@@ -14,7 +14,7 @@
 
 # TODO: define searching & indexing functions of a tensor  
 __all__ = [
-    'argmax',
+    #            'argmax',
     #            'argmin',
     #            'argsort',
     #            'has_inf',
