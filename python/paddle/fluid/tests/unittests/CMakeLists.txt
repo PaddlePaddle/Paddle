@@ -302,7 +302,7 @@ if(WITH_DISTRIBUTE)
             # NOTE. test_launch only work in gpu collective mode
             bash_test_modules(test_launch MODULES test_launch.sh  ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
         endif()
-        bash_test_modules(test_launch_ps MODULES test_launch_ps.sh)
+        bash_test_modules(test_launch_ps MODULES test_launch_ps.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
 
         set(dist_ut_port 1000)
         foreach(TEST_OP ${DIST_TEST_OPS})
