@@ -490,17 +490,16 @@ class Transformer(Layer):
         return predict
 
     @dygraph_to_static_func
-    def beam_search(
-            self,
-            src_word,
-            src_pos,
-            src_slf_attn_bias,
-            trg_word,
-            trg_src_attn_bias,
-            bos_id=0,
-            eos_id=1,
-            beam_size=4,
-            max_len=256, ):
+    def beam_search(self,
+                    src_word,
+                    src_pos,
+                    src_slf_attn_bias,
+                    trg_word,
+                    trg_src_attn_bias,
+                    bos_id=0,
+                    eos_id=1,
+                    beam_size=4,
+                    max_len=256):
         def expand_to_beam_size(tensor, beam_size):
             tensor = layers.reshape(
                 tensor, [tensor.shape[0], 1] + list(tensor.shape[1:]))
