@@ -144,7 +144,7 @@ Notes:
 
 ## 6. How to reproduce the results
 
-The steps below show, taking ResNet50 as an example, how to reproduce the above accuracy and performance results for Image Classification models.
+The steps below show, taking ResNet50 as an example, how to reproduce the above accuracy and performance results for Image Classification models. 
 To reproduce NLP models results (Ernie), please follow [How to reproduce Ernie QAT results on MKL-DNN](https://github.com/PaddlePaddle/benchmark/tree/master/Inference/c%2B%2B/ernie/mkldnn/README.md).
 
 ### Prepare dataset
@@ -157,29 +157,47 @@ python paddle/fluid/inference/tests/api/full_ILSVRC2012_val_preprocess.py
 ```
 The converted data binary file is saved by default in `$HOME/.cache/paddle/dataset/int8/download/int8_full_val.bin`
 
-### Prepare model
+### Prepare models
 
-Run the following commands to download and extract QAT model.
+Run the following commands to download and extract QAT model:
 
 ```bash
 mkdir -p /PATH/TO/DOWNLOAD/MODEL/
 cd /PATH/TO/DOWNLOAD/MODEL/
-export MODEL_NAME=resnet50
-export MODEL_FILE_NAME=QAT2_models/${MODEL_NAME}_quant.tar.gz
-wget http://paddle-inference-dist.bj.bcebos.com/int8/${MODEL_FILE_NAME}
-mkdir ${MODEL_NAME} && tar -xvf ResNet50_qat_model.tar.gz -C ${MODEL_NAME}
+export QAT_MODEL_NAME=resnet50
+export QAT_MODEL_ARCHIVE=${QAT_MODEL_NAME}_quant.tar.gz
+wget http://paddle-inference-dist.bj.bcebos.com/int8/QAT2_models/${QAT_MODEL_ARCHIVE}
+mkdir ${QAT_MODEL_NAME} && tar -xvf ${QAT_MODEL_ARCHIVE} -C ${QAT_MODEL_NAME}
 ```
 
-To download other QAT models, set the `MODEL_NAME` variable in the above commands to one of the values: `resnet101`, `mobilenetv1`, `mobilenetv2`, `vgg16`, `vgg19`.
+To download other QAT models, set the `QAT_MODEL_NAME` variable in the above commands to one of the values: `resnet101`, `mobilenetv1`, `mobilenetv2`, `vgg16`, `vgg19`.
+
+Download clean FP32 model for accuracy comparison against the INT8 model:
+
+```bash
+cd /PATH/TO/DOWNLOAD/MODEL/
+export FP32_MODEL_NAME=resnet50
+export FP32_MODEL_ARCHIVE=${FP32_MODEL_NAME}_int8_model.tar.gz
+wget http://paddle-inference-dist.bj.bcebos.com/int8/${FP32_MODEL_ARCHIVE}
+mkdir ${FP32_MODEL_NAME} && tar -xzvf ${FP32_MODEL_ARCHIVE} -C ${FP32_MODEL_NAME}
+```
+
+To download other FP32 models, set the `FP32_MODEL_NAME` variable to on of the values: `Res101`, `mobilenetv1`, `mobilenet_v2`, `VGG16`, and `VGG19`.
+
 ### Run benchmark
 
-#### Accuracy benchamark commands
+#### Accuracy benchmark commands
 
-You can use the `qat2_int8_image_classification_comparison.py` script to reproduce the accuracy result of the QAT models. Among other options, the script requires the `--quantized_ops` option with a comma-separated list of names of operators to be quantized. For Image Classification models mentioned above the list comprises of `conv2d` and `pool2d` operators.
+You can use the `qat2_int8_image_classification_comparison.py` script to reproduce the accuracy result of the INT8 QAT models. The following options are required:
+
+* `--qat_model` - a path to a QAT model that will be transformed into INT8 model.
+* `--fp32_model` - a path to an FP32 model whose accuracy will be measured and compared to the accuracy of the INT8 model.
+* `--quantized_ops` - a comma-separated list of names of operators to be quantized. For Image Classification models mentioned above the list comprises of `conv2d` and `pool2d` operators.
+* `--infer_data` - a path to the validation dataset.
 
 ```bash
 cd /PATH/TO/PADDLE
-OMP_NUM_THREADS=28 FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/slim/tests/qat_int8_image_classification_comparison.py ----qat_model=/PATH/TO/DOWNLOAD/MODEL/${MODEL_NAME}_quant --infer_data=$HOME/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=50 --batch_num=1000 --acc_diff_threshold=0.01 --quantized_ops="conv2d,pool2d"
+OMP_NUM_THREADS=28 FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/slim/tests/qat_int8_image_classification_comparison.py ----qat_model=/PATH/TO/DOWNLOAD/MODEL/${MODEL_NAME}_quant --fp32_model=/PATH/TO/DOWNLOAD/MODEL/${FP32_MODEL} --infer_data=$HOME/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=50 --batch_num=1000 --acc_diff_threshold=0.01 --quantized_ops="conv2d,pool2d"
 ```
 
 #### Performance benchmark commands
