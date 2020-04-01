@@ -112,6 +112,14 @@ bool ElementwiseGroupDetector::IsElementwiseOp(const Node* n) {
       }
     }
 
+    auto op = n->Op();
+    std::vector<std::string> output_names =
+        OperationMap::Instance().Get(op->Type()).output_names;
+
+    for (auto& name : output_names) {
+      if (op->Output(name).size() != 1) return false;
+    }
+
     for (size_t i = 0; i < n->outputs.size(); ++i) {
       auto* out_i = n->outputs[i];
       if (!(out_i && out_i->IsVar() && out_i->Var())) {

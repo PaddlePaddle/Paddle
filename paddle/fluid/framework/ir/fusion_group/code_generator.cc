@@ -98,6 +98,7 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
           input_ids.push_back(-1);
         }
       }
+
       // Output ids should be set in fixed order, like:
       //  - dx, dy in backward operations
       std::vector<int> output_ids;
@@ -105,10 +106,6 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
           OperationMap::Instance().Get(op->Type()).output_names;
 
       for (auto& name : output_names) {
-        PADDLE_ENFORCE_EQ(
-            op->Output(name).size(), 1U,
-            platform::errors::InvalidArgument(
-                "Output(%s) of operation %s is not set.", name, op->Type()));
         PADDLE_ENFORCE_NE(
             var_ids.find(op->Output(name)[0]), var_ids.end(),
             platform::errors::InvalidArgument(
