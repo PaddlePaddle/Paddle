@@ -44,7 +44,9 @@ $$
 \left| input - other \right| \leq atol + rtol \times \left| other \right|
 $$
 
-elementwise, for all elements of `input` and `other`. The behaviour of this operator is analogous to `numpy.allclose`.
+elementwise, for all elements of `input` and `other`. The behaviour of this
+operator is analogous to `numpy.allclose`, namely that it returns `True` if
+two tensors are element-wise equal within a tolerance.
 )DOC");
   }
 };
@@ -63,6 +65,32 @@ class AllcloseOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
                       platform::errors::NotFound(
                           "The output(Out) of allclose op must not be null."));
+
+    auto input_dim = ctx->GetInputDim("Input");
+    auto other_dim = ctx->GetInputDim("Other");
+    PADDLE_ENFORCE_EQ(input_dim.size(), other_dim.size(),
+                      platform::errors::PreconditionNotMet(
+                          "Input(Input) and Input(Other) must have the same "
+                          "dimension size."));
+    int n = input_dim.size();
+    bool is_runtime = ctx->IsRuntime();
+    for (int i = 0; i < n; i++) {
+      if (is_runtime) {
+        PADDLE_ENFORCE_EQ(input_dim[i], other_dim[i],
+                          platform::errors::PreconditionNotMet(
+                              "The value at dim %d of Input(Input) is not "
+                              "equal to the Input(Other): %ld != %ld.",
+                              i, input_dim[i], other_dim[i]));
+      } else {
+        if (!(input_dim[i] < 0 || other_dim[i] < 0)) {
+          PADDLE_ENFORCE_EQ(input_dim[i], other_dim[i],
+                            platform::errors::PreconditionNotMet(
+                                "The value at dim %d of Input(Input) is not "
+                                "equal to the Input(Other): %ld != %ld.",
+                                i, input_dim[i], other_dim[i]));
+        }
+      }
+    }
 
     ctx->SetOutputDim("Out", framework::make_ddim({1}));
   }
