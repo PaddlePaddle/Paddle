@@ -644,7 +644,6 @@ void AnalyzeEvent(
       std::string grad_name = event_items[j].name + "_grad";
       for (size_t k = 0; k < table_size; ++k) {
         std::string cname = event_items[k].name;
-        if (fname == "ParallelExecutor::Run") VLOG(0) << cname;
         bool condition = cname.length() > fname.length() &&
                          cname.rfind(fname, 0) == 0 &&
                          !cname.rfind(grad_name, 0) == 0 &&
