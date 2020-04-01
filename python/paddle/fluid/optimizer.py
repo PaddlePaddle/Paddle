@@ -3936,7 +3936,8 @@ class RecomputeOptimizer(Optimizer):
                 checkpoints=self._checkpoints)
             # Note: since we can't use all_reduce_op now,
             #  dgc_op should be the last op of one grad.
-            self._optimizer._append_dgc_ops(params_grads)
+            if hasattr(self._optimizer, "_append_dgc_ops"):
+                self._optimizer._append_dgc_ops(params_grads)
         return params_grads
 
     def apply_optimize(self, loss, startup_program, params_grads):
