@@ -55,8 +55,9 @@ class GetPlacesOp : public framework::OperatorBase {
                       is_gpu ? "GPU" : "CPU");
 
     auto out_var_name = Output("Out");
-    auto &places =
-        *(scope.FindVar(out_var_name)->GetMutable<platform::PlaceList>());
+    auto &places = *(GET_DATA_SAFELY(scope.FindVar(out_var_name), "Output",
+                                     "Out", "GetPlaces")
+                         .GetMutable<platform::PlaceList>());
     places.reserve(device_count);
     if (is_gpu) {
       PADDLE_ENFORCE_LE(device_count, CUDADevCount(),

@@ -43,7 +43,8 @@ template <typename T>
 class FillKernel : public framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext &ctx) const override {
-    auto &out = *ctx.Output<framework::LoDTensor>("Out");
+    auto &out = GET_DATA_SAFELY(ctx.Output<framework::LoDTensor>("Out"),
+                                "Output", "Out", "Fill");
     out.Resize(framework::make_ddim(ctx.Attr<std::vector<int>>("shape")));
     auto dtype =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));

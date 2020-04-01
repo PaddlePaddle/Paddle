@@ -95,7 +95,9 @@ class ReadOp : public framework::OperatorBase {
                const platform::Place& dev_place) const override {
     VLOG(3) << "read op in";
     framework::ReaderHolder* reader =
-        (*scope.FindVar(Input("Reader"))).GetMutable<framework::ReaderHolder>();
+        GET_DATA_SAFELY(scope.FindVar(Input("Reader")), "Input", "Reader",
+                        "Read")
+            .GetMutable<framework::ReaderHolder>();
     std::vector<std::string> out_arg_names = Outputs("Out");
     std::vector<framework::LoDTensor> ins;
 

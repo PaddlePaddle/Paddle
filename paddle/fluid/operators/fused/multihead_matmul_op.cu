@@ -141,13 +141,13 @@ class MultiHeadMatMulV2Kernel : public framework::OpKernel<T> {
     auto *input = context.Input<framework::Tensor>("Input");
     auto *w = context.Input<framework::Tensor>("W");
     auto *bias = context.Input<framework::Tensor>("Bias");
-
-    auto &bias_qk = *context.Input<framework::Tensor>("BiasQK");
+    auto &bias_qk = GET_DATA_SAFELY(context.Input<framework::Tensor>("BiasQK"),
+                                    "Input", "BiasQK", "MultiHeadMatMulV2");
 
     auto *input_d = input->data<T>();
     auto *w_d = w->data<T>();
     auto *bias_d = bias->data<T>();
-    auto *bias_qk_d = bias_qk.data<T>();
+    auto *bias_qk_d = bias_qk.template data<T>();
     T scale = static_cast<T>(context.Attr<float>("alpha"));
 
     int head_number = context.Attr<int>("head_number");

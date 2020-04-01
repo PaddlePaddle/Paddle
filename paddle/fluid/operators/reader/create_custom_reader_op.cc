@@ -170,8 +170,11 @@ void CustomReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
   // 3. Copy LoDTensors from sink variables to out.
   out->resize(sink_var_names_.size());
   for (size_t i = 0; i < sink_var_names_.size(); ++i) {
-    const auto& tensor =
-        *exe_scope->FindVar(sink_var_names_[i]).Get<framework::LoDTensor>();
+    auto* var = exe_scope->FindVar(sink_var_names_[i]);
+    PADDLE_ENFORCE_NOT_NULL(var, platform::errors::NotFound(
+                                     "The variable %s is not in current scope.",
+                                     sink_var_names_[i]));
+    const auto& tensor = var->Get<framework::LoDTensor>();
     framework::TensorCopySync(tensor, platform::CPUPlace(), &(*out)[i]);
   }
   scope_.DeleteScope(exe_scope);

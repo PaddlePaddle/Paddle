@@ -48,11 +48,13 @@ inline framework::LoD ConcatLoD(const Container &xs,
 }
 
 template <typename T, typename... ARGS>
-inline std::vector<std::reference_wrapper<T>> VectorRef(
+inline std::vector<std::reference_wrapper<T>> GetDataVectorSafely(
     const std::vector<T *> &vec, ARGS &&... args) {
   std::vector<std::reference_wrapper<T>> result;
   result.reserve(vec.size());
   for (auto *ptr : vec) {
+    PADDLE_ENFORCE_NOT_NULL(ptr, platform::errors::InvalidArgument(
+                                     "The input variable X contains nullptr."));
     result.emplace_back(*ptr);
   }
   return result;
@@ -63,7 +65,8 @@ template <typename DeviceContext, typename T>
 class SeqConcatKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto xs = detail::VectorRef(context.MultiInput<framework::LoDTensor>("X"));
+    auto xs = detail::GetDataVectorSafely(
+        context.MultiInput<framework::LoDTensor>("X"));
     auto &out = *context.Output<framework::LoDTensor>("Out");
 
     size_t lod_size = 0;
@@ -149,7 +152,9 @@ class SeqConcatGradKernel : public framework::OpKernel<T> {
 
     math::SplitFunctor<DeviceContext, T> functor;
     functor(context.template device_context<DeviceContext>(),
-            *context.Input<framework::Tensor>(framework::GradVarName("Out")),
+            GET_DATA_SAFELY(
+                context.Input<framework::Tensor>(framework::GradVarName("Out")),
+                "Input", framework::GradVarName("Out"), "SeqConcatGrad"),
             sliced_x_ptr, 0, &sliced_dx_ptr);
   }
 };

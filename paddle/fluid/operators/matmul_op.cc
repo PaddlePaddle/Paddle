@@ -57,8 +57,10 @@ template <typename DeviceContext, typename T>
 class MatMulKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto &x = *context.Input<framework::Tensor>("X");
-    auto &y = *context.Input<framework::Tensor>("Y");
+    auto &x = GET_DATA_SAFELY(context.Input<framework::Tensor>("X"), "Input",
+                              "X", "MatMul");
+    auto &y = GET_DATA_SAFELY(context.Input<framework::Tensor>("Y"), "Input",
+                              "Y", "MatMul");
     auto *out = context.Output<framework::Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 

@@ -94,11 +94,15 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
-    auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
-    auto &rank_table =
-        scope.FindVar(Input("RankTable"))->Get<framework::LoDRankTable>();
-    auto &out =
-        *scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensorArray>();
+    auto &x = GET_DATA_SAFELY(scope.FindVar(Input("X")), "Input", "X",
+                              "LoDTensorToArray")
+                  .Get<framework::LoDTensor>();
+    auto &rank_table = GET_DATA_SAFELY(scope.FindVar(Input("RankTable")),
+                                       "Input", "RankTable", "LoDTensorToArray")
+                           .Get<framework::LoDRankTable>();
+    auto &out = *(GET_DATA_SAFELY(scope.FindVar(Output("Out")), "Output", "Out",
+                                  "LoDTensorToArray")
+                      .GetMutable<framework::LoDTensorArray>());
     auto &items = rank_table.items();
     auto max_seq_len = items[0].length;
     auto rank_level = rank_table.level();

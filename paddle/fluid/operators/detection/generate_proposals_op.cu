@@ -366,8 +366,10 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
     auto *scores = context.Input<Tensor>("Scores");
     auto *bbox_deltas = context.Input<Tensor>("BboxDeltas");
     auto *im_info = context.Input<Tensor>("ImInfo");
-    auto anchors = *context.Input<Tensor>("Anchors");
-    auto variances = *context.Input<Tensor>("Variances");
+    auto anchors = GET_DATA_SAFELY(context.Input<Tensor>("Anchors"), "Input",
+                                   "Anchors", "GenerateProposals");
+    auto variances = GET_DATA_SAFELY(context.Input<Tensor>("Variances"),
+                                     "Input", "Variances", "GenerateProposals");
 
     auto *rpn_rois = context.Output<LoDTensor>("RpnRois");
     auto *rpn_roi_probs = context.Output<LoDTensor>("RpnRoiProbs");

@@ -673,7 +673,8 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
     Tensor* ddY = ctx.Output<Tensor>("DDOutput");
     Tensor* dW = ctx.Output<Tensor>("DFilter");
     Tensor* dX = ctx.Output<Tensor>("DInput");
-    Tensor W = *ctx.Input<Tensor>("Filter");
+    Tensor W = GET_DATA_SAFELY(ctx.Input<Tensor>("Filter"), "Input", "Filter",
+                               "GemmConvDoubleGrad");
     if (!ddY && !dW && !dX) return;
 
     const int groups = ctx.Attr<int>("groups");

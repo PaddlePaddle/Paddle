@@ -77,11 +77,16 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
-    auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
+    auto &x = GET_DATA_SAFELY(scope.FindVar(Input("X")), "Input", "X",
+                              "ReorderLoDTensorByRankTable")
+                  .Get<framework::LoDTensor>();
     auto &rank_table =
-        scope.FindVar(Input("RankTable"))->Get<framework::LoDRankTable>();
-    auto &out =
-        *scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();
+        GET_DATA_SAFELY(scope.FindVar(Input("RankTable")), "Input", "RankTable",
+                        "ReorderLoDTensorByRankTable")
+            .Get<framework::LoDRankTable>();
+    auto &out = *(GET_DATA_SAFELY(scope.FindVar(Output("Out")), "Output", "Out",
+                                  "ReorderLoDTensorByRankTable")
+                      .GetMutable<framework::LoDTensor>());
 
     out.Resize(x.dims());
     out.mutable_data(x.place(), x.type());

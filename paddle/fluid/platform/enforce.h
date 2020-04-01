@@ -351,40 +351,52 @@ struct EnforceNotMet : public std::exception {
 /** EXTENDED TOOL FUNCTIONS WITH CHECKING **/
 
 /*
- * Summary: This function is used to get the internal type data (such as
- *LoDTensor or SelectedRows)
- *   of the input and output variable in op, generally used when call
- *ctx.Input<LoDTensor>() or
- *   ctx.Output<LoDTensor>(). Firstly this macro check whether the obtained
- *pointer is null,
- *   and return data if it is not null.
+ * Summary: This macro is used to get Variable or internal type
+ *   data (such as LoDTensor or SelectedRows) of the Input and
+ *   Output in op, generally used when call scope.FindVar(Input/
+ *   Output("Name")) or ctx.Input<LoDTensor>().
+ *   Firstly this macro check whether the obtained pointer is null,
+ *   and then return data if it is not null.
+ *
+ * Note: This macro is only suitable for specific scenarios and
+ *   does not intended to be widely used. If it cannot meet the
+ *   requirements, please use other PADDLE_ENFORCE** check macro.
  *
  * Parameters:
- *     ptr: pointer
- *     role: (string), Input or Output
- *     name: (string), Input or Output name
- *     op_type: (string), the op type
+ *     __PTR: pointer
+ *     __ROLE: (string), Input or Output
+ *     __NAME: (string), Input or Output name
+ *     __OP_TYPE: (string), the op type
  *  
  * Return: The data pointed to by the pointer.
  *
  * Examples:
- *    platform::GetDataSafely(ctx.Input<LoDTensor>("X")).
- *    paltform::GetDataSafely(ctx.Output<SelectedRows>("Y")).
+ *    GET_DATA_SAFELY(ctx.Input<LoDTensor>("X"), "Input", "X", "Mul");
 */
-template <typename T>
-inline T& GetDataSafely(T* ptr, const std::string& role,
-                        const std::string& name, const std::string& op_type) {
-  PADDLE_ENFORCE_NOT_NULL(
-      ptr, platform::errors::InvalidArgument(
-               "Unable to get %s data of %s %s in operator %s. "
-               "Possible reasons are:\n"
-               "  1. The %s is not the %s of operator %s;\n"
-               "  2. The %s has no corresponding variable passed in;\n"
-               "  3. The %s corresponding variable is not initialized.",
-               demangle(typeid(T).name()), role, name, op_type, name, role,
-               op_type, name, name));
-  return *ptr;
-}
+#define GET_DATA_SAFELY(__PTR, __ROLE, __NAME, __OP_TYPE)                     \
+  (([&]() -> std::add_lvalue_reference<decltype(*(__PTR))>::type {            \
+    static_assert(std::is_pointer<decltype(__PTR)>::value,                    \
+                  "The __PTR passed in PADDLE_GET_DATA_SAFELY macro must be " \
+                  "pointer type.");                                           \
+    auto ptr = (__PTR);                                                       \
+    if (UNLIKELY(nullptr == ptr)) {                                           \
+      __THROW_ERROR_INTERNAL__(                                               \
+          "%s\n  [Hint: pointer " #__PTR " should not be null.]",             \
+          paddle::platform::errors::NotFound(                                 \
+              "Unable to get %s data of %s %s in operator %s. "               \
+              "Possible reasons are:\n"                                       \
+              "  1. The %s is not the %s of operator %s;\n"                   \
+              "  2. The %s has no corresponding variable passed in;\n"        \
+              "  3. The %s corresponding variable is not initialized.",       \
+              paddle::platform::demangle(                                     \
+                  typeid(std::add_lvalue_reference<decltype(*ptr)>::type)     \
+                      .name()),                                               \
+              #__ROLE, #__NAME, #__OP_TYPE, #__NAME, #__ROLE, #__OP_TYPE,     \
+              #__NAME, #__NAME)                                               \
+              .ToString());                                                   \
+    }                                                                         \
+    return *ptr;                                                              \
+  })())
 
 /** OTHER EXCEPTION AND ENFORCE **/
 

@@ -28,9 +28,11 @@ class CumKernel : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
   using T = typename Functor::ELEMENT_TYPE;
 
   void Compute(const framework::ExecutionContext& context) const override {
-    auto& X = *context.Input<framework::Tensor>("X");
+    auto& X = GET_DATA_SAFELY(context.Input<framework::Tensor>("X"), "Input",
+                              "X", "Cum");
 
-    auto& Out = *context.Output<framework::Tensor>("Out");
+    auto& Out = GET_DATA_SAFELY(context.Output<framework::Tensor>("Out"),
+                                "Output", "Out", "Cum");
     int axis = context.Attr<int>("axis");
     bool exclusive = context.Attr<bool>("exclusive");
     bool reverse = context.Attr<bool>("reverse");
@@ -41,7 +43,7 @@ class CumKernel : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
     PADDLE_ENFORCE_LT(
         axis, x_dims.size(),
         "axis should be less than the dimensiotn of the input tensor");
-    Out.mutable_data<T>(context.GetPlace());
+    Out.template mutable_data<T>(context.GetPlace());
 
     int pre = 1;
     int post = 1;

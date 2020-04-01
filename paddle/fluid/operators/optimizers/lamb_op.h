@@ -189,18 +189,27 @@ class LambOpKernel : public framework::OpKernel<T> {
     T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
     T beta2 = static_cast<T>(ctx.Attr<float>("beta2"));
     T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
-    auto& param = *ctx.Input<LoDTensor>("Param");
+    auto& param = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Param"), "Input",
+                                  "Param", "Lamb");
     auto* grad_var = ctx.InputVar("Grad");
-    auto& mom1 = *ctx.Input<LoDTensor>("Moment1");
-    auto& mom2 = *ctx.Input<LoDTensor>("Moment2");
-    auto& lr = *ctx.Input<LoDTensor>("LearningRate");
+    auto& mom1 = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Moment1"), "Input",
+                                 "Moment1", "Lamb");
+    auto& mom2 = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Moment2"), "Input",
+                                 "Moment2", "Lamb");
+    auto& lr = GET_DATA_SAFELY(ctx.Input<LoDTensor>("LearningRate"), "Input",
+                               "LearningRate", "Lamb");
 
-    auto& beta1_pow = *ctx.Input<LoDTensor>("Beta1Pow");
-    auto& beta2_pow = *ctx.Input<LoDTensor>("Beta2Pow");
+    auto& beta1_pow = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Beta1Pow"), "Input",
+                                      "Beta1Pow", "Lamb");
+    auto& beta2_pow = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Beta2Pow"), "Input",
+                                      "Beta2Pow", "Lamb");
 
-    auto& param_out = *ctx.Output<LoDTensor>("ParamOut");
-    auto& mom1_out = *ctx.Output<LoDTensor>("Moment1Out");
-    auto& mom2_out = *ctx.Output<LoDTensor>("Moment2Out");
+    auto& param_out = GET_DATA_SAFELY(ctx.Output<LoDTensor>("ParamOut"),
+                                      "Output", "ParamOut", "Lamb");
+    auto& mom1_out = GET_DATA_SAFELY(ctx.Output<LoDTensor>("Moment1Out"),
+                                     "Output", "Moment1Out", "Lamb");
+    auto& mom2_out = GET_DATA_SAFELY(ctx.Output<LoDTensor>("Moment2Out"),
+                                     "Output", "Moment2Out", "Lamb");
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     platform::ForRange<DeviceContext> for_range(dev_ctx, param.numel());
@@ -221,7 +230,8 @@ class LambOpKernel : public framework::OpKernel<T> {
           trust_ratio_div.template data<T>());
       for_range(moment_update_functor);
     } else if (grad_var->IsType<framework::SelectedRows>()) {
-      auto& grad = *ctx.Input<framework::SelectedRows>("Grad");
+      auto& grad = GET_DATA_SAFELY(ctx.Input<framework::SelectedRows>("Grad"),
+                                   "Input", "Grad", "Lamb");
       if (grad.rows().size() == 0) {
         VLOG(3) << "grad row size is 0!!";
         return;
