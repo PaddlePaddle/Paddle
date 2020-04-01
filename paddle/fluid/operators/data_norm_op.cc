@@ -604,9 +604,9 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
                     // show != 0
                     for (int j = i; j < i + slot_dim; ++j) {
                       d_x_data[offset + j] = dy_data[offset + j] *
-                                           scales_data[j]* scale_w_data[j];
+                                             scales_data[j]* scale_w_data[j];
                       d_bias_data[j] += dy_data[offset + j];
-                      d_scale_data[j] += (x_data[offset + j]-mean_data[j]) *
+                      d_scale_data[j] += (x_data[offset + j] - mean_data[j]) *
                                          inv_var_data[j] * dy_data[offset + j];
                     }
                   }

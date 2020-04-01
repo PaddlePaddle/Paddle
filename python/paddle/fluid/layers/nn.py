@@ -2872,7 +2872,7 @@ def data_norm(input,
     batch_sum_default = 0.0
     batch_square_sum_default = 1e4
     scale_w_default = 1.0
-    bias_default = 0.0 
+    bias_default = 0.0
 
     if param_attr and isinstance(param_attr, dict):
         batch_size_default = param_attr.get("batch_size", 1e4)
@@ -2929,8 +2929,8 @@ def data_norm(input,
     scales = helper.create_variable(dtype=dtype, stop_gradient=True)
 
     data_norm_out = input if in_place else helper.create_variable(dtype=dtype)
-    
-    inputs={
+
+    inputs = {
         "X": input,
         "BatchSize": batch_size,
         "BatchSum": batch_sum,
