@@ -34,6 +34,11 @@ class AssignValueKernel : public framework::OpKernel<T> {
 
     const char* value_name = nullptr;
     switch (dtype) {
+      case framework::proto::VarType::BOOL:
+        VLOG(4) << " -------- bool -------" << std::endl;
+        value_name = "bool_values";
+        values = ctx.Attr<std::vector<T>>(value_name);
+        break;
       case framework::proto::VarType::INT32:
         VLOG(4) << " -------- int32 -------" << std::endl;
         value_name = "int32_values";

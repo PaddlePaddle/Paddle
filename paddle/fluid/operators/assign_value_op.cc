@@ -51,10 +51,10 @@ class AssignValueOpMaker : public framework::OpProtoAndCheckerMaker {
                               "(vector<int>) "
                               "Shape of values.");
     AddAttr<int>("dtype", "data type of values")
-        .InEnum({framework::proto::VarType::INT32,
-                 framework::proto::VarType::FP32,
-                 framework::proto::VarType::INT64,
-                 framework::proto::VarType::FP64});
+        .InEnum(
+            {framework::proto::VarType::INT32, framework::proto::VarType::FP32,
+             framework::proto::VarType::INT64, framework::proto::VarType::FP64,
+             framework::proto::VarType::BOOL});
     AddAttr<std::vector<float>>("fp32_values", "store the float32 values")
         .SetDefault({});
     AddAttr<std::vector<float>>("fp64_values", "store the float64 values")
@@ -62,6 +62,8 @@ class AssignValueOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>("int32_values", "store the int32 values")
         .SetDefault({});
     AddAttr<std::vector<int64_t>>("int64_values", "store the int64 values")
+        .SetDefault({});
+    AddAttr<std::vector<bool>>("bool_values", "store the bool values")
         .SetDefault({});
     AddComment(R"DOC(
 AssignValue operator
@@ -83,4 +85,5 @@ REGISTER_OPERATOR(
 REGISTER_OP_CPU_KERNEL(assign_value, ops::AssignValueKernel<int>,
                        ops::AssignValueKernel<float>,
                        ops::AssignValueKernel<double>,
-                       ops::AssignValueKernel<int64_t>);
+                       ops::AssignValueKernel<int64_t>,
+                       ops::AssignValueKernel<bool>);
