@@ -80,11 +80,8 @@ def _elementwise_op_in_dygraph(x,
                                act=None,
                                use_mkldnn=False,
                                op_name=None):
-    attrs = {'axis': axis, 'use_mkldnn': use_mkldnn}
-    inputs = {'X': [x], 'Y': [y]}
     op = getattr(core.ops, op_name)
-    outs = op(inputs, attrs)
-    out = outs['Out'][0]
+    out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
 
     return dygraph_utils._append_activation_in_dygraph(
         out, act, use_mkldnn=use_mkldnn)

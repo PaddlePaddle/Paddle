@@ -559,7 +559,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
           # attr shape is a list which doesn't contain Variable Tensor.
           data1 = fluid.layers.fill_constant(shape=[2,1], value=0, dtype='int64') # data1=[[0],[0]]
           data2 = fluid.layers.fill_constant(shape=[2,1], value=5, dtype='int64', out=data1)
-          # data1=[[0], [0]] data2=[[5], [5]]
+          # data1=[[5], [5]] data2=[[5], [5]]
 
           # attr shape is a list which contains Variable Tensor.
           positive_2 = fluid.layers.fill_constant([1], "int32", 2)
