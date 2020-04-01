@@ -67,6 +67,7 @@ Example:
   Output[0] = [1,2]
   Output[1] = [3,4]
   Output[2] = [5,6]
+
     )DOC");
     AddAttr<int>("axis",
                  "(int, default 0) "
