@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,8 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-from test_parallel_executor_crf import *
-
-if __name__ == '__main__':
-    unittest.main()
+# TODO: define the common functions to build a neural network  
+# __all__ = ['dropout',
+#            'embedding',
+#            'fc',
+#            'label_smooth',
+#            'one_hot',
+#            'pad',
+#            'pad_constant_like',
+#            'pad2d',
+#            'unfold',
+#            'bilinear_tensor_product',
+#            'assign',
+#            'interpolate']

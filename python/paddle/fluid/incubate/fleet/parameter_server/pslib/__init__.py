@@ -402,6 +402,23 @@ class PSLib(Fleet):
                                                        var_list, decay, emb_dim)
         self._role_maker._barrier_worker()
 
+    def clear_one_table(self, table_id):
+        """
+        clear_one_table() will be called by user. It will clear one table.
+
+        Args:
+            table_id(int): table id
+
+        Examples:
+            .. code-block:: python
+
+              fleet.clear_one_table(0)
+        """
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.clear_one_table(table_id)
+        self._role_maker._barrier_worker()
+
     def clear_model(self):
         """
         clear_model() will be called by user. It will clear sparse model.
