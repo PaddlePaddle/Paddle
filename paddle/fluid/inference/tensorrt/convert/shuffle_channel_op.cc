@@ -35,6 +35,12 @@ class ShuffleChannelOpConverter : public OpConverter {
     int w = input_dims.d[2];
     int group = boost::get<int>(op_desc.GetAttr("group"));
 
+    if (engine_->with_dynamic_shape()) {
+      PADDLE_THROW(platform::errors::Fatal(
+          "You are running the TRT Dynamic Shape mode, "
+          "the shuffle_channel op does not support dynamic shape yet"));
+    }
+
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
     nvinfer1::Dims4 reshape_dim(group, c / group, h, w);
     layer->setReshapeDimensions(reshape_dim);

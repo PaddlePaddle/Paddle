@@ -19,10 +19,10 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-void DealCeilMode(const nvinfer1::Dims &input_shape, std::vector<int> ksize,
-                  std::vector<int> strides, std::vector<int> paddings,
-                  nvinfer1::DimsHW *pre_pad, nvinfer1::DimsHW *post_pad,
-                  int input_dims) {
+inline void DealCeilMode(const nvinfer1::Dims &input_shape,
+                         std::vector<int> ksize, std::vector<int> strides,
+                         std::vector<int> paddings, nvinfer1::DimsHW *pre_pad,
+                         nvinfer1::DimsHW *post_pad, int input_dims) {
   int input_height = input_shape.d[input_dims - 2];
   int input_width = input_shape.d[input_dims - 1];
   int floor_h_output_size =
@@ -63,8 +63,6 @@ class Pool2dOpConverter : public OpConverter {
     nvinfer1::Dims input_shape = input1->getDimensions();
     int input_dims = input_shape.nbDims;
 
-    PADDLE_ENFORCE_EQ(input_dims, 3UL);
-
     bool global_pooling = boost::get<bool>(op_desc.GetAttr("global_pooling"));
     std::string pool_type =
         boost::get<std::string>(op_desc.GetAttr("pooling_type"));
@@ -104,6 +102,33 @@ class Pool2dOpConverter : public OpConverter {
       float input_scale = boost::get<float>(op_desc.GetAttr("X_scale"));
       engine_->SetTensorDynamicRange(input1, input_scale);
 #endif
+    }
+
+    if (engine_->with_dynamic_shape()) {
+      if (!adaptive && pool_type == "max" && !global_pooling && !ceil_mode) {
+        auto *pool_layer = TRT_ENGINE_ADD_LAYER(
+            engine_, Pooling, *const_cast<nvinfer1::ITensor *>(input1),
+            nv_pool_type, nv_ksize);
+        PADDLE_ENFORCE_NOT_NULL(pool_layer, "pool layer could not be created.");
+        pool_layer->setStride(nv_strides);
+        pool_layer->setPadding(nv_paddings);
+        layer = pool_layer;
+      } else {
+#if IS_TRT_VERSION_GE(6000)
+        plugin::PoolPluginDynamic *plugin =
+            new plugin::PoolPluginDynamic(ceil_mode, pool_type, adaptive, ksize,
+                                          strides, paddings, global_pooling);
+        layer = engine_->AddPluginV2(&input1, 1, plugin);
+#endif
+      }
+      auto output_name = op_desc.Output("Out")[0];
+      layer->setName(("pool2d (Output: " + output_name + ")").c_str());
+      layer->getOutput(0)->setName(output_name.c_str());
+      engine_->SetITensor(output_name, layer->getOutput(0));
+      if (test_mode) {
+        engine_->DeclareOutput(output_name);
+      }
+      return;
     }
 
     if (global_pooling == true) {
