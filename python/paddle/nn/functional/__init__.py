@@ -14,7 +14,7 @@
 
 # TODO: import all neural network related api under this directory, 
 # including layers, linear, conv, rnn etc.
-# __all__ = [ ]
+__all__ = ['diag_embed', ]
 
 # TODO: define alias in functional directory
 # from .conv import conv2d   #DEFINE_ALIAS
@@ -141,7 +141,7 @@
 # from .extension import target_assign   #DEFINE_ALIAS
 # from .extension import temporal_shift   #DEFINE_ALIAS
 # from .extension import warpctc   #DEFINE_ALIAS
-# from .extension import diag_embed   #DEFINE_ALIAS
+from .extension import diag_embed  #DEFINE_ALIAS
 # from .rnn import gru_unit   #DEFINE_ALIAS
 # from .rnn import lstm   #DEFINE_ALIAS
 # from .rnn import lstm_unit   #DEFINE_ALIAS
