@@ -19,12 +19,15 @@
 #            'Linear',
 #            'UpSample']
 
-from ..fluid.dygraph import layers
-
 __all__ = ['Linear']
 
+from ...fluid.dygraph.layers import Layer
+from ...fluid import core
+from ...fluid import dygraph_utils
+from ...fluid.framework import in_dygraph_mode
 
-class Linear(layers.Layer):
+
+class Linear(Layer):
     """
     Fully-connected linear transformation layer:
 

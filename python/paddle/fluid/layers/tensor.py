@@ -255,15 +255,12 @@ def concat(input, axis=0, name=None):
     """
 
     if in_dygraph_mode():
-        inputs = {'X': input}
         if isinstance(axis, Variable):
             axis = axis.numpy()
             assert axis.shape == (
                 1, ), "axis of type Variable should have shape [1]"
             axis = axis[0]
-        attrs = {'axis': axis}
-        outs = core.ops.concat(inputs, attrs)
-        return outs['Out'][0]
+        return core.ops.concat(input, 'axis', axis)
 
     if not isinstance(input, list):
         warnings.warn(
@@ -562,7 +559,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
           # attr shape is a list which doesn't contain Variable Tensor.
           data1 = fluid.layers.fill_constant(shape=[2,1], value=0, dtype='int64') # data1=[[0],[0]]
           data2 = fluid.layers.fill_constant(shape=[2,1], value=5, dtype='int64', out=data1)
-          # data1=[[0], [0]] data2=[[5], [5]]
+          # data1=[[5], [5]] data2=[[5], [5]]
 
           # attr shape is a list which contains Variable Tensor.
           positive_2 = fluid.layers.fill_constant([1], "int32", 2)
@@ -586,12 +583,13 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
                     shape))
         else:
             shape = list(shape.numpy().astype(int))
-        attrs['shape'] = shape
+        dtype = convert_np_dtype_to_dtype_(dtype)
         if out is None:
             out = _varbase_creator(dtype=dtype)
-        attrs['dtype'] = out.dtype
-        outputs = {'Out': [out]}
-        outs = core.ops.fill_constant({}, attrs, outputs)
+        core.ops.fill_constant(out, 'value',
+                               float(value), 'force_cpu', force_cpu, 'dtype',
+                               dtype, 'str_value', attrs['str_value'], 'shape',
+                               shape)
         out.stop_gradient = True
         return out
 
