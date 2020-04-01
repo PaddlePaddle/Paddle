@@ -171,13 +171,36 @@ class TestWhereAPI(unittest.TestCase):
             assert np.array_equal(out[0], np.where(cond_i, x_i, y_i))
             assert np.array_equal(out[1], x_grad)
 
+    def test_api_broadcast(self, use_cuda=False):
+        main_program = Program()
+        startup_program = Program()
+        with fluid.program_guard(main_program, startup_program):
+            x = fluid.layers.data(name='x', shape=[4, 1], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[4, 2], dtype='float32')
+            x_i = np.array([[0.9383, 0.1983, 3.2, 1.2]]).astype("float32")
+            y_i = np.array(
+                [[1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0]]).astype("float32")
+            cond_i = np.array([[False, False, True, True],
+                               [False, False, True, True]]).astype("bool")
+            result = tensor.where(x > 1, X=x, Y=y)
+
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            out = exe.run(fluid.default_main_program(),
+                          feed={'x': x_i,
+                                'y': y_i},
+                          fetch_list=[result])
+            assert np.array_equal(out[0], np.where(cond_i, x_i, y_i))
+
     def test_fw_bw(self):
         if core.is_compiled_with_cuda():
             self.test_api(use_cuda=True)
+            self.test_api_broadcast(use_cuda=True)
             self.test_grad(use_cuda=True)
             self.test_grad1(use_cuda=True)
             self.test_grad2(use_cuda=True)
         self.test_api(use_cuda=False)
+        self.test_api_broadcast(use_cuda=False)
         self.test_grad(use_cuda=False)
         self.test_grad1(use_cuda=False)
         self.test_grad2(use_cuda=False)

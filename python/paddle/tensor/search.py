@@ -25,7 +25,7 @@ from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_
 from ..fluid import dygraph_utils
 from ..fluid.param_attr import ParamAttr
 from ..fluid import unique_name
-from ..fluid import core
+from ..fluid import core, layers
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
 # TODO: define searching & indexing functions of a tensor  
@@ -70,9 +70,19 @@ def where(Condition, X, Y):
           print(out[0])
     """
     if in_dygraph_mode():
-        inputs = {'Condition': [Condition], 'X': [X], 'Y': [Y]}
-        outs = core.ops.where(inputs)
-        return outs['Out'][0]
+        X_shape = list(X.shape)
+        Y_shape = list(Y.shape)
+        if X_shape == Y_shape:
+            inputs = {'Condition': [Condition], 'X': [X], 'Y': [Y]}
+            outs = core.ops.where(inputs)
+            return outs['Out'][0]
+        else:
+            cond_int = layers.cast(Condition, X.dtype)
+            cond_not_int = layers.cast(layers.logical_not(Condition), X.dtype)
+            out1 = layers.elementwise_mul(X, cond_int)
+            out2 = layers.elementwise_mul(Y, cond_not_int)
+            out = layers.elementwise_add(out1, out2)
+            return out
 
     helper = LayerHelper("where", **locals())
     dtype = helper.input_dtype()
@@ -91,11 +101,21 @@ def where(Condition, X, Y):
     if isinstance(Y, Variable):
         check_dtype(Y.dtype, 'Y', ['float32', 'float64', 'int32', 'int64'],
                     'where', '(When the type of Y in where is Variable.)')
+    X_shape = list(X.shape)
+    Y_shape = list(Y.shape)
 
-    helper.append_op(
-        type='where',
-        inputs={'Condition': Condition,
-                'X': X,
-                'Y': Y},
-        outputs={'Out': [out]})
-    return out
+    if X_shape == Y_shape:
+        helper.append_op(
+            type='where',
+            inputs={'Condition': Condition,
+                    'X': X,
+                    'Y': Y},
+            outputs={'Out': [out]})
+        return out
+    else:
+        cond_int = layers.cast(Condition, X.dtype)
+        cond_not_int = layers.cast(layers.logical_not(Condition), X.dtype)
+        out1 = layers.elementwise_mul(X, cond_int)
+        out2 = layers.elementwise_mul(Y, cond_not_int)
+        out = layers.elementwise_add(out1, out2)
+        return out
