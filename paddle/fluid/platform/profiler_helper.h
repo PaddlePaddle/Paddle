@@ -316,8 +316,27 @@ void SetEvent(bool merge_thread, const Event &analyze_event,
       if (merge_thread) {
         event_name = rit->name();
       } else {
-        event_name =
-            "thread" + std::to_string(rit->thread_id()) + "::" + rit->name();
+        std::vector<std::string> main_thread_event_name{
+            "ParallelExecutor::Run"};
+        auto rit_name = rit->name();
+        size_t start_pos = 0;
+        size_t end_pos = rit_name.find('/', start_pos);
+        while (end_pos != std::string::npos) {
+          if (find(main_thread_event_name.begin(), main_thread_event_name.end(),
+                   rit_name.substr(start_pos, end_pos - start_pos)) ==
+              main_thread_event_name.end()) {
+            break;
+          }
+          start_pos = end_pos + 1;
+          end_pos = rit_name.find('/', start_pos);
+        }
+        std::string thread_name =
+            "thread" + std::to_string(rit->thread_id()) + "::";
+        if (find(main_thread_event_name.begin(), main_thread_event_name.end(),
+                 rit_name) == main_thread_event_name.end()) {
+          rit_name.insert(start_pos, thread_name);
+        }
+        event_name = rit_name;
       }
       auto print_name_size = event_name.size();
       int found_pos = 0;
@@ -625,6 +644,7 @@ void AnalyzeEvent(
       std::string grad_name = event_items[j].name + "_grad";
       for (size_t k = 0; k < table_size; ++k) {
         std::string cname = event_items[k].name;
+        if (fname == "ParallelExecutor::Run") VLOG(0) << cname;
         bool condition = cname.length() > fname.length() &&
                          cname.rfind(fname, 0) == 0 &&
                          !cname.rfind(grad_name, 0) == 0 &&
