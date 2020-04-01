@@ -373,9 +373,9 @@ if(WITH_GPU AND TENSORRT_FOUND)
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_QUANT_RESNET_DIR})
 
-    set(TEST_TRT_DYNAMIC_MODEL "${TRT_MODEL_INSTALL_DIR}/test_trt_dy_conv")
+    set(TEST_TRT_DYNAMIC_MODEL "${TRT_MODEL_INSTALL_DIR}/conv_bn_swish_split_gelu")
     if (NOT EXISTS ${TEST_TRT_DYNAMIC_MODEL})
-        inference_download_and_uncompress(${TEST_TRT_DYNAMIC_MODEL} ${INFERENCE_URL}/tensorrt_test "test_trt_dy_conv.tar.gz")
+        inference_download_and_uncompress(${TEST_TRT_DYNAMIC_MODEL} ${INFERENCE_URL}/tensorrt_test "conv_bn_swish_split_gelu.tar.gz")
     endif()
     inference_analysis_test(trt_dynamic_shape_test SRCS trt_dynamic_shape_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
