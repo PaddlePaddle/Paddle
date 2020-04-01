@@ -358,7 +358,8 @@ def _to_name_str(var):
         else:
             raise TypeError(str(var) + " should be Variable, Operator or str")
 
-    # The item in fetch_list may be tuple returned by Optimizer.minimize()
+    # NOTEz(zhiqiu): The item in fetch_list may be tuple returned by Optimizer.minimize(),
+    # see comments in _split_optimize_ops_in_fetch_list for more details.
     if isinstance(var, tuple):
         var = var[0]
     if isinstance(var, list):
@@ -638,7 +639,7 @@ class Executor(object):
             Possible types of fetch_list are:
                 fetch_list = ['loss']
                 fetch_list = [[sgd, sgd], 'loss']
-                fetch_list = [([sgd, sgd], params_grads), 'loss']
+                fetch_list = [([sgd, sgd], [(param, grad)]), 'loss']
 
         Returns:
             optimize_ops(list): The optimize operators splited from fetch_list.
@@ -663,6 +664,9 @@ class Executor(object):
                     type(item))
 
         for item in fetch_list:
+            # NOTE(zhiqiu): to support (optimizer_ops, param_and_grads) and optimizer_ops in fetch_list
+            # we should handle tuple and list in fetch_list.
+            # TODO(zhiqiu): find a better way to handle that.
             if isinstance(item, list):
                 for i in item:
                     _get_targets(_optimize_ops, _fetch_list, i)
@@ -709,11 +713,10 @@ class Executor(object):
         else:
             origin_program = program
 
+        feed_names = []
         if isinstance(feed, dict):
             feed_names = list(feed.keys())
-
         elif isinstance(feed, list) or isinstance(feed, tuple):
-            feed_names = []
             for i, each in enumerate(feed):
                 feed_names += list(each.keys())
 
@@ -728,9 +731,11 @@ class Executor(object):
         pruned_program = origin_program._prune_with_input(feed_names, targets)
 
         if compiled:
+            # for compiled program, update the underlying program, re-generate graph,
+            # and reset the flag so it can be compiled again.
             program._program = pruned_program
             program._graph = core.Graph(pruned_program.desc)
-            program._compiled = False  # reset the flag so it can be compiled again.
+            program._compiled = False
         else:
             program = pruned_program
 
@@ -777,7 +782,6 @@ class Executor(object):
                         warnings.warn(
                             "The variable %s is not found in program. It is not declared or is pruned."
                             % feed_name)
-
         return feed
 
     '''
@@ -892,7 +896,7 @@ class Executor(object):
                 so the length of this list should be equal to the number of places.
                 The default is None.
             fetch_list(list): This parameter represents the variables that need to be returned
-                after the model runs. The default is None.
+                after the model runs. The default is None. 
             feed_var_name(str): This parameter represents the name of the input variable of
                 the feed operator. The default is "feed".
             fetch_var_name(str): This parameter represents the name of the output variable of
@@ -920,7 +924,8 @@ class Executor(object):
                 in the future version.
             use_prune(bool): This parameter indicates whether the input :code:`Program` will be pruned. 
                 If the parameter is True, the program will be pruned accroding to the given feed and fetch_list.
-                The default is False.
+                The default is False. If the return of :code:`Optimizer.minimize() is set in :code:`fetch_list`, 
+                :code:`use_prune` will be overrided to true, and the program will be pruned.
                 
         Returns:
 
@@ -1083,7 +1088,6 @@ class Executor(object):
         _origin_program = program
         fetch_list, optimize_ops = self._split_optimize_ops_in_fetch_list(
             fetch_list)
-
         if optimize_ops:
             use_prune = True
         if use_prune:
@@ -1094,9 +1098,9 @@ class Executor(object):
                 if isinstance(program, compiler.CompiledProgram):
                     program_scope_cache = self._get_pruned_program_scope_cache(
                         str(id(_origin_program)))
-                    program = copy.copy(
-                        program
-                    )  # copy the original program, so it can be cached.
+                    # copy the original program, so it can be cached.
+                    program = copy.copy(program)
+                    # share the local scopes for same original CompiledProgram.
                     program._share_vars_from = program_scope_cache
                     if self._get_pruned_program_scope_cache(
                             str(id(_origin_program))) is None:

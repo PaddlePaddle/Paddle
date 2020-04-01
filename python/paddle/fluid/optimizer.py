@@ -804,6 +804,8 @@ class Optimizer(object):
             tuple: tuple (optimize_ops, params_grads), A list of operators appended
             by minimize and a list of (param, grad) variable pairs, param is
             ``Parameter``, grad is the gradient value corresponding to the parameter.
+            This tuple can be passed to the ``fetch_list`` in ``Executor.run()`` to indicate the program pruning.
+            If so, the program to be run will be pruned by ``feed`` and  ``fetch_list``, see details in ``Executor``.
 
         Examples:
             Please refer to the example of current Optimizer.

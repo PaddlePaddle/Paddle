@@ -106,12 +106,9 @@ def mock(self, program, feed, fetch, optimize_ops):
 
 @contextlib.contextmanager
 def _mock_guard(mock):
-
     original = fluid.Executor._prune_program
     fluid.Executor._prune_program = mock
-
     yield
-
     fluid.Executor._prune_program = original
 
 
@@ -162,8 +159,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         loss1 = fluid.layers.mean(x=loss1)
         loss2 = fluid.layers.cross_entropy(input=y2, label=label)
         loss2 = fluid.layers.mean(x=loss2)
-        loss1.persistable = True
-        loss2.persistable = True
         return x1, x2, y1, y2, label, loss1, loss2, w1_param_attrs, w2_param_attrs
 
     def test_not_prune(self):
@@ -211,7 +206,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                               use_prune=True)
                 self.assertIsNotNone(scope.find_var(loss1.name))
                 self.assertIsNone(scope.find_var(loss2.name))  #loss2 is pruned
-
                 weight = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor())
                 self.assertTrue(np.array_equal(weight_init,
@@ -228,7 +222,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         with fluid.scope_guard(scope):
             with fluid.program_guard(program, startup_program):
                 (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                x.persistable = True
                 sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.5)
                 sgd_optimizer.minimize(loss1)
                 exe = fluid.Executor(fluid.CPUPlace())
@@ -244,7 +237,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                               use_prune=True)
                 self.assertIsNotNone(scope.find_var(loss1.name))
                 self.assertIsNone(scope.find_var(loss2.name))  #loss2 is pruned
-
                 weight = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor())
                 self.assertFalse(np.array_equal(weight_init,
@@ -275,7 +267,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                               use_prune=True)
                 self.assertIsNotNone(scope.find_var(loss1.name))
                 self.assertIsNone(scope.find_var(loss2.name))
-
                 weight = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor())
                 self.assertFalse(np.array_equal(weight_init,
@@ -301,7 +292,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                               use_prune=True)
                 self.assertIsNotNone(scope.find_var(loss1.name))
                 self.assertIsNone(scope.find_var(loss2.name))
-
                 weight = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor())
                 self.assertTrue(np.array_equal(weight_init,
@@ -349,7 +339,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             with fluid.scope_guard(scope):
                 with fluid.program_guard(program, startup_program):
                     (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                    x.persistable = True
                     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.5)
                     sgd_optimizer.minimize(loss1)
                     exe.run(startup_program)
@@ -386,7 +375,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             with fluid.scope_guard(scope):
                 with fluid.program_guard(program, startup_program):
                     (x, y, label, loss1, loss2, w_param_attrs) = self.net1()
-                    x.persistable = True
                     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.5)
                     sgd_optimizer.minimize(loss1)
                     exe.run(startup_program)
@@ -433,7 +421,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                                     'label': label_np},
                               fetch_list=[loss1.name],
                               use_prune=False)
-
                 weight_without_prune = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor())
 
@@ -495,7 +482,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 compiled_prog2 = fluid.CompiledProgram(
                     program).with_data_parallel(
                         loss_name=loss2.name, places=[fluid.CPUPlace()] * 2)
-                for i in range(2):
+                for i in range(10):
                     if i % 2 == 1:
                         res = exe.run(compiled_prog1,
                                       feed=[{
@@ -509,23 +496,17 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                                       use_prune=True)
                     else:
                         res = exe.run(compiled_prog2,
-                                      feed=[{
-                                          'x2': x_np[0:5, :],
-                                          'label': label_np[0:5, :]
-                                      }, {
-                                          'x2': x_np[5:, :],
-                                          'label': label_np[5:, :]
-                                      }],
+                                      feed={'x2': x_np,
+                                            'label': label_np},
                                       fetch_list=[loss2.name, train2],
                                       use_prune=True)
-
                 weight1 = np.array(
                     scope.find_var(w1_param_attrs.name).get_tensor())
         # expected
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             exe.run(startup_program)
-            for i in range(2):
+            for i in range(10):
                 if i % 2 == 1:
                     exe.run(cloned_program,
                             feed={'x1': x_np,
@@ -606,6 +587,8 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             with fluid.program_guard(program, startup_program):
                 (x1, x2, y1, y2, label, loss1, loss2, w1_param_attrs,
                  w2_param_attrs) = self.net2()
+                loss1.persistable = True
+                loss2.persistable = True
                 sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.5)
                 train1 = sgd_optimizer.minimize(loss1)
                 sgd_optimizer1 = fluid.optimizer.SGD(learning_rate=0.5)
@@ -628,7 +611,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 self.assertIsNotNone(scope.find_var(w2_param_attrs.name))
                 self.assertIsNotNone(scope.find_var(loss1.name))
                 self.assertIsNone(scope.find_var(loss2.name))
-
                 weight1 = np.array(
                     scope.find_var(w1_param_attrs.name).get_tensor())
                 weight2 = np.array(
@@ -657,7 +639,6 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 exe.run(startup_program)
                 x_np = np.random.random(size=(10, 2)).astype('float32')
                 label_np = np.random.randint(1, size=(10, 1)).astype('int64')
-
                 res = exe.run(program,
                               feed={'x': x_np,
                                     'label': label_np},

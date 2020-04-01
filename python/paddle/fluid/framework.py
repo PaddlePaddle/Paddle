@@ -4179,7 +4179,10 @@ class Program(object):
 
                 for idx, op in enumerate(global_block.ops):
                     if name in op.output_arg_names:
-                        if op._is_optimize_op() and not op in targets:
+                        # NOTE(zhiqiu): Find op that generate target name.
+                        # Skip optimize op except for optimize op in targets, 
+                        # since optimize op generates parameters.
+                        if op._is_optimize_op() and op not in targets:
                             continue
                         else:
                             target_op = op
