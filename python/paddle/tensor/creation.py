@@ -109,11 +109,7 @@ def full(shape,
 
     out.stop_gradient = stop_gradient
 
-    if device is None:
+    with device_guard(device):
         out = fill_constant(shape=shape, dtype=dtype, value=fill_value, out=out)
-    else:
-        with device_guard(device):
-            out = fill_constant(
-                shape=shape, dtype=dtype, value=fill_value, out=out)
 
     return out
