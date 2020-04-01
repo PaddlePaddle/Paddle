@@ -23,18 +23,16 @@ namespace operators {
 
 using dnnl::memory;
 using dnnl::primitive;
-// using dnnl::reorder;
 using platform::to_void_cast;
 using Tensor = framework::Tensor;
 using framework::DataLayout;
-// using dnnl::stream;
 using platform::GetMKLDNNFormat;
 using platform::MKLDNNGetDataType;
+using platform::MKLDNNDeviceContext;
+using framework::ExecutionContext;
 
-/**
- * Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
- * original x_dim is returned.
- */
+// Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
+// original x_dim is returned.
 static framework::DDim RowMatrixFromVector(const framework::DDim& x_dim) {
   if (x_dim.size() > 1) {
     return x_dim;
@@ -42,10 +40,8 @@ static framework::DDim RowMatrixFromVector(const framework::DDim& x_dim) {
   return framework::make_ddim({1, x_dim[0]});
 }
 
-/**
- * Get column matrix shape from a vector shape. If the ran of y_dim > 1, the
- * original y_dim is returned.
- */
+// Get column matrix shape from a vector shape. If the ran of y_dim > 1, the
+// original y_dim is returned.
 static framework::DDim ColumnMatrixFromVector(const framework::DDim& y_dim) {
   if (y_dim.size() > 1) {
     return y_dim;
@@ -53,95 +49,204 @@ static framework::DDim ColumnMatrixFromVector(const framework::DDim& y_dim) {
   return framework::make_ddim({y_dim[0], 1});
 }
 
+template <typename XT, typename YT, typename OT>
+class MatMulFactory {
+ public:
+  void CreateAndExecute(const ExecutionContext& ctx) {
+    SetDNNLEngine(ctx);
+    if (IsInitialized()) {
+      UpdateDataPointers(ctx);
+      Execute();
+      SetOutputFormat(ctx);
+      return;
+    }
+    CreateMemories(ctx);
+    CreatePrimitive(ctx);
+    Execute();
+    SetOutputFormat(ctx);
+    SetInitialized();
+  }
+
+ private:
+  struct MatMulDims {
+    const memory::dim BS, M, N, K;
+  };
+
+  void SetDNNLEngine(const ExecutionContext& ctx) {
+    auto& dev_ctx =
+        ctx.template device_context<platform::MKLDNNDeviceContext>();
+    engine_ = dev_ctx.GetEngine();
+  }
+
+  template <typename T>
+  dnnl::memory CreateMemory(const memory::dims& dims,
+                            const memory::dims& strides, const T* data) {
+    auto md = memory::desc(dims, MKLDNNGetDataType<T>(), strides);
+    return dnnl::memory(md, engine_, to_void_cast(data));
+  }
+
+  MatMulDims GetMatmulDims(const ExecutionContext& ctx) {
+    auto dim_x = math::CreateMatrixDescriptor(
+        RowMatrixFromVector(ctx.Input<Tensor>("X")->dims()), 0,
+        ctx.Attr<bool>("transpose_X"));
+    auto dim_y = math::CreateMatrixDescriptor(
+        ColumnMatrixFromVector(ctx.Input<Tensor>("Y")->dims()), 0,
+        ctx.Attr<bool>("transpose_Y"));
+
+    const auto x_bs = dim_x.batch_size_;
+    const auto y_bs = dim_y.batch_size_;
+    PADDLE_ENFORCE_EQ(x_bs > 0 && y_bs > 0 && x_bs != y_bs, false,
+                      platform::errors::InvalidArgument(
+                          "If batch sizes of X and Y are positive,"
+                          "they have to be equal."));
+
+    // Store 1 if both batches are zero, otherwise save the nonzero batch
+    const memory::dim BS = x_bs || y_bs ? std::max(x_bs, y_bs) : 1;
+    const memory::dim M = dim_x.height_;
+    const memory::dim N = dim_y.width_;
+    const memory::dim K = dim_x.width_;
+    return {BS, M, N, K};
+  }
+
+  void CreateMemories(const ExecutionContext& ctx) {
+    auto matmul_dims = GetMatmulDims(ctx);
+    auto BS = matmul_dims.BS;
+    auto M = matmul_dims.M;
+    auto N = matmul_dims.N;
+    auto K = matmul_dims.K;
+    bool x_trans = ctx.Attr<bool>("transpose_X");
+    bool y_trans = ctx.Attr<bool>("transpose_Y");
+
+    typedef memory::dims dims;
+    dims x_dims = {BS, M, K};
+    dims y_dims = {BS, K, N};
+    dims out_dims = {BS, M, N};
+
+    // Translate transA and transB
+    dims x_strides = !x_trans ? dims{M * K, K, 1} : dims{M * K, 1, M};
+    dims y_strides = !y_trans ? dims{N * K, N, 1} : dims{N * K, 1, K};
+    dims out_strides = {M * N, N, 1};
+
+    x_mem_ =
+        CreateMemory<XT>(x_dims, x_strides, ctx.Input<Tensor>("X")->data<XT>());
+    y_mem_ =
+        CreateMemory<YT>(y_dims, y_strides, ctx.Input<Tensor>("Y")->data<YT>());
+    out_mem_ = CreateMemory<OT>(
+        out_dims, out_strides,
+        ctx.Output<Tensor>("Out")->mutable_data<OT>(ctx.GetPlace()));
+  }
+
+  float ComputeOutputScale(const ExecutionContext& ctx) {
+    float scale_x = ctx.Attr<float>("Scale_x");
+    float scale_y = ctx.Attr<float>("Scale_y");
+    bool force_fp32_out = ctx.Attr<bool>("force_fp32_output");
+    float scale_out = force_fp32_out ? 1.f : ctx.Attr<float>("Scale_out");
+    float alpha = ctx.Attr<float>("alpha");
+    return alpha * scale_out / (scale_x * scale_y);
+  }
+
+  void CreatePrimitive(const ExecutionContext& ctx) {
+    dnnl::primitive_attr attr;
+    float scale_out = ComputeOutputScale(ctx);
+    if (scale_out != 1.0f) {
+      constexpr unsigned tensor_wide_scale = 0;
+      attr.set_output_scales(tensor_wide_scale, {scale_out});
+    }
+
+    auto matmul_d = dnnl::matmul::desc(x_mem_.get_desc(), y_mem_.get_desc(),
+                                       out_mem_.get_desc());
+    auto matmul_pd = dnnl::matmul::primitive_desc(matmul_d, attr, engine_);
+    matmul_prim_ = dnnl::matmul(matmul_pd);
+  }
+
+  void Execute() {
+    dnnl::stream stream(engine_);
+    matmul_prim_.execute(stream, {
+                                     {MKLDNN_ARG_SRC, x_mem_},
+                                     {MKLDNN_ARG_WEIGHTS, y_mem_},
+                                     {MKLDNN_ARG_DST, out_mem_},
+                                 });
+    stream.wait();
+  }
+
+  void SetOutputFormat(const ExecutionContext& ctx) {
+    using platform::MKLDNNFormatForSize;
+    auto* out = ctx.Output<Tensor>("Out");
+    auto format =
+        MKLDNNFormatForSize(out->dims().size(), MKLDNNMemoryFormat::nchw);
+    out->set_format(format);
+    out->set_layout(DataLayout::kMKLDNN);
+  }
+
+  void UpdateDataPointers(const ExecutionContext& ctx) {
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* out = ctx.Output<Tensor>("Out");
+    x_mem_.set_data_handle(to_void_cast(x->data<XT>()));
+    y_mem_.set_data_handle(to_void_cast(y->data<YT>()));
+    out_mem_.set_data_handle(out->mutable_data<OT>(ctx.GetPlace()));
+  }
+
+  // If initialized, x memory should've been already initialized
+  bool IsInitialized() { return initialized_; }
+
+  void SetInitialized() { initialized_ = true; }
+
+ private:
+  dnnl::engine engine_;
+  dnnl::memory x_mem_;
+  dnnl::memory y_mem_;
+  dnnl::memory out_mem_;
+  dnnl::matmul matmul_prim_;
+  bool initialized_ = false;
+};
+
+template <typename XT, typename YT, typename OT>
+static std::shared_ptr<MatMulFactory<XT, YT, OT>> GetPrimitiveFactory(
+    const ExecutionContext& ctx) {
+  const auto x_dims = framework::vectorize<int>(ctx.Input<Tensor>("X")->dims());
+  const auto y_dims = framework::vectorize<int>(ctx.Input<Tensor>("Y")->dims());
+  const auto& out_name = ctx.OutputName("Out");
+  const auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
+
+  const std::string key =
+      platform::CreateKey(platform::ThreadIDasStr(), x_dims, y_dims, out_name);
+
+  auto factory =
+      std::static_pointer_cast<MatMulFactory<XT, YT, OT>>(dev_ctx.GetBlob(key));
+  if (factory == nullptr) {
+    factory = std::make_shared<MatMulFactory<XT, YT, OT>>();
+    dev_ctx.SetBlob(key, factory);
+  }
+
+  return factory;
+}
+
+template <typename T>
+constexpr bool IsInt8() {
+  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
+}
+// Choose appropriate primitive factory implementation based on inferred
+// output type (uint8, int8 or float).
+template <typename XT, typename YT>
+static void ExecuteMatMul(const ExecutionContext& ctx) {
+  constexpr bool is_int8 = IsInt8<XT>();
+  const bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
+  constexpr bool fuse_relu = false;  // TODO(intel): Enable eltwise fuses
+  if (!is_int8 || force_fp32_output) {
+    GetPrimitiveFactory<XT, YT, float>(ctx)->CreateAndExecute(ctx);
+  } else if (fuse_relu) {
+    GetPrimitiveFactory<XT, YT, uint8_t>(ctx)->CreateAndExecute(ctx);
+  } else {
+    GetPrimitiveFactory<XT, YT, int8_t>(ctx)->CreateAndExecute(ctx);
+  }
+}
+
 template <typename T>
 class DNNLMatMulKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* out = ctx.Output<Tensor>("Out");
-    auto& dev_ctx =
-        ctx.template device_context<platform::MKLDNNDeviceContext>();
-    const auto& engine = dev_ctx.GetEngine();
-
-    auto dim_x = math::CreateMatrixDescriptor(RowMatrixFromVector(x->dims()), 0,
-                                              ctx.Attr<bool>("transpose_X"));
-    auto dim_y = math::CreateMatrixDescriptor(ColumnMatrixFromVector(y->dims()),
-                                              0, ctx.Attr<bool>("transpose_Y"));
-
-    memory::dim batch_size = 0;
-    if (dim_x.batch_size_ == 0 && dim_y.batch_size_ == 0) {
-      batch_size = 1;
-    } else {
-      PADDLE_ENFORCE(
-          dim_x.batch_size_ == dim_y.batch_size_ || dim_x.batch_size_ == 0 ||
-              dim_y.batch_size_ == 0,
-          "dim_x.batch_size should be equal to dim_y.batch_size, or "
-          "one of dim_x.batch_size and dim_y.batch_size should be 0. "
-          "But got dim_x.batch_size = %d, dim_y.batch_size = %d.",
-          dim_x.batch_size_, dim_y.batch_size_);
-      batch_size = dim_x.batch_size_;
-    }
-    const memory::dim M = dim_x.height_;
-    const memory::dim N = dim_y.width_;
-    const memory::dim K = dim_x.width_;
-
-    memory::dims x_dims = {batch_size, M, K};
-    memory::dims y_dims = {batch_size, K, N};
-    memory::dims out_dims = {batch_size, M, N};
-
-    // Translate transA and transB
-    memory::dims x_strides =
-        !dim_x.trans_ ? memory::dims{M * K, K, 1} : memory::dims{M * K, 1, M};
-    memory::dims y_strides =
-        !dim_y.trans_ ? memory::dims{N * K, N, 1} : memory::dims{N * K, 1, K};
-    memory::dims out_strides = memory::dims{M * N, N, 1};
-
-    // Create memory descriptors and memory objects for x, y and dst
-    auto x_md = memory::desc(x_dims, MKLDNNGetDataType<T>(), x_strides);
-    auto y_md = memory::desc(y_dims, MKLDNNGetDataType<T>(), y_strides);
-    auto x_mem = dnnl::memory(x_md, engine, to_void_cast(x->data<T>()));
-    auto y_mem = dnnl::memory(y_md, engine, to_void_cast(y->data<T>()));
-
-    bool force_fp32_out = ctx.Attr<bool>("force_fp32_output");
-    memory::desc out_md;
-    dnnl::memory out_mem;
-    if (force_fp32_out) {
-      out_md = memory::desc(out_dims, memory::data_type::f32, out_strides);
-      out_mem =
-          dnnl::memory(out_md, engine,
-                       to_void_cast(out->mutable_data<float>(ctx.GetPlace())));
-    } else {
-      out_md = memory::desc(out_dims, MKLDNNGetDataType<T>(), out_strides);
-      out_mem = dnnl::memory(
-          out_md, engine, to_void_cast(out->mutable_data<T>(ctx.GetPlace())));
-    }
-
-    float scale_x = ctx.Attr<float>("Scale_x");
-    float scale_y = ctx.Attr<float>("Scale_y");
-    float scale_out = force_fp32_out ? 1.f : ctx.Attr<float>("Scale_out");
-    float out_shift_scale = scale_out / (scale_x * scale_y);
-    float alpha = ctx.Attr<float>("alpha");
-    float final_scale_out = out_shift_scale * alpha;
-    dnnl::primitive_attr attr;
-    if (final_scale_out != 1.0f)
-      attr.set_output_scales(/* mask */ 0, {final_scale_out});
-
-    auto matmul_d = dnnl::matmul::desc(x_md, y_md, out_md);
-    auto matmul_pd = dnnl::matmul::primitive_desc(matmul_d, attr, engine);
-    auto matmul_prim = dnnl::matmul(matmul_pd);
-
-    dnnl::stream stream(engine);
-    matmul_prim.execute(stream, {
-                                    {MKLDNN_ARG_SRC, x_mem},
-                                    {MKLDNN_ARG_WEIGHTS, y_mem},
-                                    {MKLDNN_ARG_DST, out_mem},
-                                });
-    stream.wait();
-
-    out->set_layout(DataLayout::kMKLDNN);
-    out->set_format(platform::MKLDNNFormatForSize(out->dims().size(),
-                                                  MKLDNNMemoryFormat::nchw));
+    ExecuteMatMul<T, T>(ctx);
   }
 };
 }  // namespace operators
