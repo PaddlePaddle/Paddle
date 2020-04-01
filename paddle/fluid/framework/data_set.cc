@@ -192,8 +192,6 @@ void DatasetImpl<T>::CreateChannel() {
       multi_consume_channel_.push_back(paddle::framework::MakeChannel<T>());
     }
   }
-
-  // FIXME for wasq model
   if (input_pv_channel_ == nullptr) {
     input_pv_channel_ = paddle::framework::MakeChannel<PvInstance>();
   }
@@ -306,13 +304,10 @@ void DatasetImpl<T>::ReleaseMemory() {
     multi_consume_channel_[i] = nullptr;
   }
   std::vector<paddle::framework::Channel<T>>().swap(multi_consume_channel_);
-
-  // FIXME for wasq
   if (input_pv_channel_) {
     input_pv_channel_->Clear();
     input_pv_channel_ = nullptr;
   }
-
   for (size_t i = 0; i < multi_pv_output_.size(); ++i) {
     if (!multi_pv_output_[i]) {
       continue;
@@ -472,7 +467,6 @@ void DatasetImpl<T>::DynamicAdjustChannelNum(int channel_num,
   channel_num_ = channel_num;
   std::vector<paddle::framework::Channel<T>>* origin_channels = nullptr;
   std::vector<paddle::framework::Channel<T>>* other_channels = nullptr;
-  // FIXME for wasq model
   std::vector<paddle::framework::Channel<PvInstance>>* origin_pv_channels =
       nullptr;
   std::vector<paddle::framework::Channel<PvInstance>>* other_pv_channels =
@@ -497,19 +491,16 @@ void DatasetImpl<T>::DynamicAdjustChannelNum(int channel_num,
   if (cur_channel == 0) {
     origin_channels = &multi_output_channel_;
     other_channels = &multi_consume_channel_;
-    // FIXME for wasq model
     origin_pv_channels = &multi_pv_output_;
     other_pv_channels = &multi_pv_consume_;
   } else {
     origin_channels = &multi_consume_channel_;
     other_channels = &multi_output_channel_;
-    // FIXME for wasq model
     origin_pv_channels = &multi_pv_consume_;
     other_pv_channels = &multi_pv_output_;
   }
-  CHECK(origin_channels != nullptr);  // NOLINT
-  CHECK(other_channels != nullptr);   // NOLINT
-  // FIXME for wasq model
+  CHECK(origin_channels != nullptr);     // NOLINT
+  CHECK(other_channels != nullptr);      // NOLINT
   CHECK(origin_pv_channels != nullptr);  // NOLINT
   CHECK(other_pv_channels != nullptr);   // NOLINT
 
@@ -517,7 +508,6 @@ void DatasetImpl<T>::DynamicAdjustChannelNum(int channel_num,
       paddle::framework::MakeChannel<T>();
   std::vector<paddle::framework::Channel<T>> new_channels;
   std::vector<paddle::framework::Channel<T>> new_other_channels;
-  // FIXME for wasq model
   std::vector<paddle::framework::Channel<PvInstance>> new_pv_channels;
   std::vector<paddle::framework::Channel<PvInstance>> new_other_pv_channels;
 
@@ -537,7 +527,6 @@ void DatasetImpl<T>::DynamicAdjustChannelNum(int channel_num,
     input_channel_->SetBlockSize(input_channel_->Size() / channel_num +
                                  (discard_remaining_ins ? 0 : 1));
   }
-  // FIXME for wasq model
   if (static_cast<int>(input_pv_channel_->Size()) >= channel_num) {
     input_pv_channel_->SetBlockSize(input_pv_channel_->Size() / channel_num +
                                     (discard_remaining_ins ? 0 : 1));
@@ -551,7 +540,6 @@ void DatasetImpl<T>::DynamicAdjustChannelNum(int channel_num,
     new_other_channels.push_back(paddle::framework::MakeChannel<T>());
     new_channels.push_back(paddle::framework::MakeChannel<T>());
     new_channels[i]->Write(std::move(local_vec));
-    // FIXME for wasq model
     new_other_pv_channels.push_back(
         paddle::framework::MakeChannel<PvInstance>());
     new_pv_channels.push_back(paddle::framework::MakeChannel<PvInstance>());
@@ -563,7 +551,6 @@ void DatasetImpl<T>::DynamicAdjustChannelNum(int channel_num,
   *origin_channels = new_channels;
   *other_channels = new_other_channels;
 
-  // FIXME for wasq
   origin_pv_channels->clear();
   other_pv_channels->clear();
   *origin_pv_channels = new_pv_channels;
@@ -574,7 +561,6 @@ void DatasetImpl<T>::DynamicAdjustChannelNum(int channel_num,
   std::vector<paddle::framework::Channel<T>>().swap(new_channels);
   std::vector<paddle::framework::Channel<T>>().swap(new_other_channels);
 
-  // FIXME for wasq
   new_pv_channels.clear();
   new_other_pv_channels.clear();
   std::vector<paddle::framework::Channel<PvInstance>>().swap(new_pv_channels);
@@ -634,24 +620,26 @@ void DatasetImpl<T>::CreateReaders() {
     readers_[i]->SetParseContent(parse_content_);
     readers_[i]->SetParseLogKey(parse_logkey_);
     readers_[i]->SetEnablePvPredict(enable_pv_predict_);
+    // Notice: it is only valid for untest of test_paddlebox_datafeed.
+    // In fact, it does not affect the train process when paddle complied wit
+    // Box_Ps.
+    readers_[i]->SetCurrentPhase(current_phase_);
     if (input_channel_ != nullptr) {
       readers_[i]->SetInputChannel(input_channel_.get());
-      // FIXME for wasq model
+    }
+    if (input_pv_channel_ != nullptr) {
       readers_[i]->SetInputPvChannel(input_pv_channel_.get());
     }
     if (cur_channel_ == 0 &&
         static_cast<size_t>(channel_idx) < multi_output_channel_.size()) {
       readers_[i]->SetOutputChannel(multi_output_channel_[channel_idx].get());
       readers_[i]->SetConsumeChannel(multi_consume_channel_[channel_idx].get());
-      // FIXME for wasq model
       readers_[i]->SetOutputPvChannel(multi_pv_output_[channel_idx].get());
       readers_[i]->SetConsumePvChannel(multi_pv_consume_[channel_idx].get());
     } else if (static_cast<size_t>(channel_idx) <
                multi_output_channel_.size()) {
       readers_[i]->SetOutputChannel(multi_consume_channel_[channel_idx].get());
       readers_[i]->SetConsumeChannel(multi_output_channel_[channel_idx].get());
-
-      // FIXME for wasq model
       readers_[i]->SetOutputPvChannel(multi_pv_consume_[channel_idx].get());
       readers_[i]->SetConsumePvChannel(multi_pv_output_[channel_idx].get());
     }
@@ -810,21 +798,17 @@ void MultiSlotDataset::Divide_Pv_Instance() {
     }
     input_channel_->Close();
   }
-  // shuffle input_channel_
   this->LocalShuffle();
 }
 
 void MultiSlotDataset::SetCurrentPhase(int current_phase) {
-  for (int i = 0; i < thread_num_; ++i) {
-    readers_[i]->SetCurrentPhase(current_phase);
-  }
+  current_phase_ = current_phase;
 }
 
 void MultiSlotDataset::Merge_Pv_Instance() {
   if (!input_channel_ || input_channel_->Size() == 0) {
     return;
   }
-
   if (!enable_pv_predict_) {  // means to use Record
     this->LocalShuffle();
   } else {  // means to use Pv
@@ -832,7 +816,6 @@ void MultiSlotDataset::Merge_Pv_Instance() {
     input_channel_->Close();
     std::vector<PvInstance> pv_data;
     input_channel_->ReadAll(input_records_);
-
     int all_records_num = input_records_.size();
     std::vector<Record*> all_records;
     all_records.reserve(all_records_num);

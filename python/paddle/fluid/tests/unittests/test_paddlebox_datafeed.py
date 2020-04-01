@@ -19,30 +19,47 @@ import numpy as np
 import os
 import shutil
 import unittest
+import paddle.fluid.layers as layers
+from paddle.fluid.layers.nn import _pull_box_sparse
 
 
 class TestDataFeed(unittest.TestCase):
     """  TestBaseCase(Merge PV)   """
 
     def setUp(self):
-        self.batch_size = 2
-        self.pv_batch_size = 2
+        self.batch_size = 10
+        self.pv_batch_size = 10
+        self.enable_pv_predict = True
+        self.merge_by_sid = True
+
+    def test_pboxdatafeed(self):
+        self.run_dataset(False)
+
+    def test_pboxdatafeed(self):
+        self.run_dataset(True)
+
+    def set_data_config(self):
         self.dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
         self.dataset.set_feed_type("PaddleBoxDataFeed")
-        self.dataset.set_pv_batch_size(self.pv_batch_size)
         self.dataset.set_parse_logkey(True)
-        self.dataset.set_merge_by_sid(True)
-        self.dataset.set_rank_offset("rank_offset")
-        self.dataset.set_enable_pv_predict(True)
-        self.dataset.set_thread(3)
+        self.dataset.set_thread(2)
+        self.dataset.set_enable_pv_predict(self.enable_pv_predict)
+        self.dataset.set_batch_size(self.batch_size)
+        if self.enable_pv_predict:
+            self.dataset.set_merge_by_sid(self.merge_by_sid)
+            self.dataset.set_rank_offset("rank_offset")
+            self.dataset.set_pv_batch_size(self.pv_batch_size)
 
-    def test_config(self):
-        self.assertTrue(self.dataset.parse_logkey)
-        self.assertTrue(self.dataset.merge_by_sid)
-
-    def test_run_dataset(self):
+    def run_dataset(self, is_cpu):
         x = fluid.layers.data(name='x', shape=[1], dtype='int64', lod_level=0)
         y = fluid.layers.data(name='y', shape=[1], dtype='int64', lod_level=0)
+        rank_offset = fluid.layers.data(
+            name="rank_offset",
+            shape=[-1, 7],
+            dtype="int32",
+            lod_level=0,
+            append_batch_size=False)
+
         emb_x, emb_y = _pull_box_sparse([x, y], size=2)
         emb_xp = _pull_box_sparse(x, size=2)
         concat = layers.concat([emb_x, emb_y], axis=1)
@@ -52,7 +69,6 @@ class TestDataFeed(unittest.TestCase):
                        num_flatten_dims=1,
                        bias_attr=False)
         loss = layers.reduce_mean(fc)
-        layers.Print(loss)
         place = fluid.CPUPlace() if is_cpu or not core.is_compiled_with_cuda(
         ) else fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
@@ -75,6 +91,11 @@ class TestDataFeed(unittest.TestCase):
             data += "1 1702f830fff22104ad7429505f714ccd 1 6 1 7\n"
             f.write(data)
 
+        self.set_data_config()
+        self.dataset.set_use_var([x, y])
+        self.dataset.set_filelist(
+            ["test_run_with_dump_a.txt", "test_run_with_dump_b.txt"])
+
         optimizer = fluid.optimizer.SGD(learning_rate=0.5)
         optimizer = fluid.optimizer.PipelineOptimizer(
             optimizer,
@@ -85,17 +106,43 @@ class TestDataFeed(unittest.TestCase):
             sync_steps=-1)
         optimizer.minimize(loss)
         exe.run(fluid.default_startup_program())
-        self.datasets.load_into_memory()
+        self.dataset.load_into_memory()
+        self.dataset.merge_pv_instance()
+        self.dataset.begin_pass()
+        pv_num = self.dataset.get_pv_data_size()
 
-        self.datasets.begin_pass()
         exe.train_from_dataset(
             program=fluid.default_main_program(),
-            dataset=datasets[0],
+            dataset=self.dataset,
             print_period=1)
-        self.datasets.end_pass(True)
-
+        self.dataset.set_current_phase(0)
+        self.dataset.divide_pv_instance()
+        exe.train_from_dataset(
+            program=fluid.default_main_program(),
+            dataset=self.dataset,
+            print_period=1)
+        self.dataset.end_pass(True)
         os.remove("test_run_with_dump_a.txt")
         os.remove("test_run_with_dump_b.txt")
+
+
+class TestDataFeed2(TestDataFeed):
+    """  TestBaseCase(Merge PV not merge by sid)   """
+
+    def setUp(self):
+        self.batch_size = 10
+        self.pv_batch_size = 10
+        self.enable_pv_predict = True
+        self.merge_by_sid = False
+
+
+class TestDataFeed3(TestDataFeed):
+    """  TestBaseCase(Not Merge PV)   """
+
+    def setUp(self):
+        self.batch_size = 10
+        self.pv_batch_size = 10
+        self.enable_pv_predict = False
 
 
 if __name__ == '__main__':

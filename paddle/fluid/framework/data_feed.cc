@@ -1412,9 +1412,6 @@ void PaddleBoxDataFeed::PutToFeedVec(const std::vector<PvInstance>& pv_vec) {
     }
   }
   GetRankOffset(pv_vec, ins_number);
-  VLOG(3) << "Rank offset is obtained.. ins_number is " << ins_number;
-  VLOG(3) << "Current thread id [" << thread_id_ << "] has " << ins_number
-          << "instances, has " << pv_vec.size() << " pvs";
   PutToFeedVec(ins_vec);
 #endif
 }
@@ -1424,8 +1421,8 @@ int PaddleBoxDataFeed::GetCurrentPhase() {
   auto box_ptr = paddle::framework::BoxWrapper::GetInstance();
   return box_ptr->PassFlag();  // join: 1, update: 0
 #else
-  VLOG(0) << "It should be complied with BOX_PS...";
-  return current_phase_;  // get wrong condition
+  LOG(WARNING) << "It should be complied with BOX_PS...";
+  return current_phase_;
 #endif
 }
 

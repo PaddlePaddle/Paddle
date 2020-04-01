@@ -232,7 +232,6 @@ class DatasetImpl : public Dataset {
   std::vector<std::shared_ptr<paddle::framework::DataFeed>> readers_;
   std::vector<std::shared_ptr<paddle::framework::DataFeed>> preload_readers_;
   paddle::framework::Channel<T> input_channel_;
-  // FIXME for wasq model
   paddle::framework::Channel<PvInstance> input_pv_channel_;
   std::vector<paddle::framework::Channel<PvInstance>> multi_pv_output_;
   std::vector<paddle::framework::Channel<PvInstance>> multi_pv_consume_;
@@ -265,6 +264,7 @@ class DatasetImpl : public Dataset {
   bool parse_logkey_;
   bool merge_by_sid_;
   bool enable_pv_predict_;  // True means to merge pv
+  int current_phase_;       // 1 join, 0 update
   size_t merge_size_;
   bool slots_shuffle_fea_eval_ = false;
   bool gen_uni_feasigns_ = false;
