@@ -508,6 +508,9 @@ def assign(input, output=None):
         elif dtype == VarDesc.VarType.INT64:
             value_name = "int64_values"
             values = [int(v) for v in input.flat]
+        elif dtype == VarDesc.VarType.BOOL:
+            value_name = "bool_values"
+            values = [bool(v) for v in input.flat]
         else:
             raise TypeError(
                 "When the type of 'input' in assign is numpy.ndarray, "

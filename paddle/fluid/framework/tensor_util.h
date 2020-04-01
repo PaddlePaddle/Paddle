@@ -88,7 +88,9 @@ void TensorFromVector(const std::vector<T>& src,
                       const platform::DeviceContext& ctx, Tensor* dst) {
   VLOG(4) << " -------- TensorFromVector start -------" << std::endl;
   auto dst_place = ctx.GetPlace();
-  auto src_ptr = static_cast<const void*>(src.data());
+  auto src_ptr = reinterpret_cast<const void*>(src.data());
+  //    auto src_ptr = static_cast<void*>(src.data());
+
   platform::CPUPlace src_place;
   dst->Resize({static_cast<int64_t>(src.size())});
   auto dst_ptr = static_cast<void*>(dst->mutable_data<T>(dst_place));

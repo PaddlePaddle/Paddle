@@ -17,4 +17,5 @@ limitations under the License. */
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(assign_value, ops::AssignValueKernel<int>,
                         ops::AssignValueKernel<float>,
-                        ops::AssignValueKernel<int64_t>);
+                        ops::AssignValueKernel<int64_t>,
+                        ops::AssignValueKernel<bool>);

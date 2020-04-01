@@ -22,40 +22,48 @@ import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.fluid.layers as layers
 
-# class TestAssignValueOp(op_test.OpTest):
-#     def setUp(self):
-#         self.op_type = "assign_value"
-#         self.inputs = {}
-#         self.attrs = {}
-#         self.init_data()
-#         self.attrs["shape"] = self.value.shape
-#         self.attrs["dtype"] = framework.convert_np_dtype_to_dtype_(
-#             self.value.dtype)
-#         self.outputs = {"Out": self.value}
-#
-#     def init_data(self):
-#         self.value = numpy.random.random(size=(2, 5)).astype(numpy.float64)
-#         self.attrs["fp64_values"] = [float(v) for v in self.value.flat]
-#
-#     def test_forward(self):
-#         self.check_output()
 
-#
-# class TestAssignValueOp2(TestAssignValueOp):
-#     def init_data(self):
-#         self.value = numpy.random.random(size=(2, 5)).astype(numpy.int32)
-#         self.attrs["int32_values"] = [int(v) for v in self.value.flat]
-#
-#
-# class TestAssignValueOp3(TestAssignValueOp):
-#     def init_data(self):
-#         self.value = numpy.random.random(size=(2, 5)).astype(numpy.int64)
-#         self.attrs["int64_values"] = [int(v) for v in self.value.flat]
+class TestAssignValueOp(op_test.OpTest):
+    def setUp(self):
+        self.op_type = "assign_value"
+        self.inputs = {}
+        self.attrs = {}
+        self.init_data()
+        self.attrs["shape"] = self.value.shape
+        self.attrs["dtype"] = framework.convert_np_dtype_to_dtype_(
+            self.value.dtype)
+        self.outputs = {"Out": self.value}
 
-# class TestAssignValueOp4(TestAssignValueOp):
-#     def init_data(self):
-#         self.value = numpy.random.random(size=(2, 5)).astype(numpy.float64)
-#         self.attrs["fp64_values"] = [int(v) for v in self.value.flat]
+    def init_data(self):
+        self.value = numpy.random.random(size=(2, 5)).astype(numpy.float64)
+        self.attrs["fp64_values"] = [float(v) for v in self.value.flat]
+
+    def test_forward(self):
+        self.check_output()
+
+
+class TestAssignValueOp2(TestAssignValueOp):
+    def init_data(self):
+        self.value = numpy.random.random(size=(2, 5)).astype(numpy.int32)
+        self.attrs["int32_values"] = [int(v) for v in self.value.flat]
+
+
+class TestAssignValueOp3(TestAssignValueOp):
+    def init_data(self):
+        self.value = numpy.random.random(size=(2, 5)).astype(numpy.int64)
+        self.attrs["int64_values"] = [int(v) for v in self.value.flat]
+
+
+class TestAssignValueOp4(TestAssignValueOp):
+    def init_data(self):
+        self.value = numpy.random.random(size=(2, 5)).astype(numpy.float64)
+        self.attrs["fp64_values"] = [float(v) for v in self.value.flat]
+
+
+class TestAssignValueOp5(TestAssignValueOp):
+    def init_data(self):
+        self.value = numpy.random.random(size=(2, 5)).astype(numpy.bool)
+        self.attrs["bool_values"] = [bool(v) for v in self.value.flat]
 
 
 class TestAssignApi(unittest.TestCase):
@@ -83,14 +91,20 @@ class TestAssignApi(unittest.TestCase):
         self.assertEqual(fetched_x.dtype, self.value.dtype)
 
 
-# class TestAssignApi2(TestAssignApi):
-#     def init_dtype(self):
-#         self.dtype = "int32"
-#
-#
-# class TestAssignApi3(TestAssignApi):
-#     def init_dtype(self):
-#         self.dtype = "int64"
+class TestAssignApi2(TestAssignApi):
+    def init_dtype(self):
+        self.dtype = "int32"
+
+
+class TestAssignApi3(TestAssignApi):
+    def init_dtype(self):
+        self.dtype = "int64"
+
+
+class TestAssignApi4(TestAssignApi):
+    def init_dtype(self):
+        self.dtype = "bool"
+
 
 if __name__ == '__main__':
     unittest.main()
