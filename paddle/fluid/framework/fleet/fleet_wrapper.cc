@@ -786,6 +786,25 @@ int32_t FleetWrapper::SaveCache(int table_id, const std::string& path,
 #endif
 }
 
+int32_t FleetWrapper::SaveWithWhitelist(int table_id, const std::string& path,
+                                const int mode, const std::string& whitelist_path) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret =
+      pslib_ptr_->_worker_ptr->save_with_whitelist(table_id, path, std::to_string(mode), whitelist_path);
+  ret.wait();
+  int32_t feasign_cnt = ret.get();
+  if (feasign_cnt == -1) {
+    LOG(ERROR) << "table save cache failed";
+    sleep(sleep_seconds_before_fail_exit_);
+    exit(-1);
+  }
+  return feasign_cnt;
+#else
+  VLOG(0) << "FleetWrapper::SaveCache does nothing when no pslib";
+  return -1;
+#endif
+}
+
 void FleetWrapper::ShrinkSparseTable(int table_id) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->shrink(table_id);

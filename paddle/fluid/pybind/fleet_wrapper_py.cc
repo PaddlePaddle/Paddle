@@ -57,6 +57,7 @@ void BindFleetWrapper(py::module* m) {
       .def("get_cache_threshold", &framework::FleetWrapper::GetCacheThreshold)
       .def("cache_shuffle", &framework::FleetWrapper::CacheShuffle)
       .def("save_cache", &framework::FleetWrapper::SaveCache)
+      .def("save_model_with_whitelist", &framework::FleetWrapper::SaveWithWhitelist)
       .def("load_model", &framework::FleetWrapper::LoadModel)
       .def("clear_model", &framework::FleetWrapper::ClearModel)
       .def("clear_one_table", &framework::FleetWrapper::ClearOneTable)
