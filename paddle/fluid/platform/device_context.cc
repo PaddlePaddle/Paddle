@@ -287,11 +287,6 @@ CUDADeviceContext::~CUDADeviceContext() {
   SetDeviceId(place_.device);
   Wait();
   WaitStreamCallback();
-#if defined(PADDLE_WITH_NCCL)
-  if (nccl_comm_) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclCommDestroy(nccl_comm_));
-  }
-#endif
 }
 
 Place CUDADeviceContext::GetPlace() const { return place_; }
