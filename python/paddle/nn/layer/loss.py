@@ -27,8 +27,9 @@ __all__ = [
 class L1Loss(fluid.dygraph.Layer):
     """
     This interface is used to construct a callable object of the ``L1Loss`` class.
-    The L1Loss layer calculates the mean absolute error of input predictions and target label.
-    For input predictions label, and target label, the loss is calculated as follows.
+    The L1Loss layer calculates the L1 Loss of input predictions and target 
+    labels as follows.
+
     If :attr:`reduction` set to ``'none'``, the unreduced loss is:
     .. math::
         Out = |input - label|
@@ -38,15 +39,21 @@ class L1Loss(fluid.dygraph.Layer):
     If :attr:`reduction` set to ``'sum'``, the reduced sum loss is:
     .. math::
         Out = SUM(|input - label|)
+
+    The shape of input predictions and target labels are [N, *], where N is batch_size and `*` 
+    means any number of additional dimensions.
+    If :attr:`reduction` is ``'none'``, the shape of output loss is [N, *], the same as input.
+    If :attr:`reduction` is ``'mean'`` or ``'sum'``, the shape of output loss is [1], which means the output is a scalar.
+    
     Parameters:
-        reduction (str, optional): Indicate how to average the loss by batch_size, 
+        reduction (str, optional): Indicate the reduction to apply to the loss, 
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
-            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned; 
-            If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned. 
-            If :attr:`reduction` is ``'none'``, the unreduced loss is returned. 
-            Default is ``'sum'``.
+            If :attr:`reduction` is ``'none'``, the unreduced loss is returned; 
+            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned. 
+            If :attr:`reduction` is ``'sum'``, the reduced sum loss is returned. 
+            Default is ``'mean'``.
     Returns:
-        None
+        A callable object of L1Loss.
     Examples:
         .. code-block:: python
             # declarative mode
@@ -81,6 +88,10 @@ class L1Loss(fluid.dygraph.Layer):
     """
 
     def __init__(self, reduction='mean'):
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "The value of 'reduction' in L1Loss should be 'sum', 'mean' or 'none', but "
+                "received %s, which is not allowed." % reduction)
         super(L1Loss, self).__init__()
         self.reduction = reduction
 
@@ -89,11 +100,6 @@ class L1Loss(fluid.dygraph.Layer):
             input, 'input', ['float32', 'float64', 'int32', 'int64'], 'l1_loss')
         fluid.data_feeder.check_variable_and_dtype(
             label, 'label', ['float32', 'float64', 'int32', 'int64'], 'l1_loss')
-
-        if self.reduction not in ['sum', 'mean', 'none']:
-            raise ValueError(
-                "The value of 'reduction' in l1_loss should be 'sum', 'mean' or 'none', but "
-                "received %s, which is not allowed." % self.reduction)
 
         unreduced = fluid.layers.elementwise_sub(input, label, act='abs')
 
