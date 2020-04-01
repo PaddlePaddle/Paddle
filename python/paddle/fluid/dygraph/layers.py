@@ -107,12 +107,9 @@ class Layer(core.Layer):
     def register_forward_post_hook(self, hook):
         """Register a forward post-hook for Layer. The hook will be called after `forward` function has been computed.
 
+        It should have the following form, `input` and `output` of the `hook` is `input` and `output` of the `Layer` respectively.
         User can use forward post-hook to change the output of the Layer or perform information statistics tasks on the Layer.
-        
-        It should have the following form, the parameter input's format of the hook is the same as the tuple of the 
-        input parameters of the Layer's `forward` function, the parameter output's format of the hook is the same as 
-        the result of the Layer's `forward` function .
-
+ 
         hook(Layer, input, output) -> None or modified output
 
         Parameters:
@@ -159,10 +156,10 @@ class Layer(core.Layer):
     def register_forward_pre_hook(self, hook):
         """Register a forward pre-hook for Layer. The hook will be called before `forward` function has been computed.
         
+        It should have the following form, `input` of the `hook` is `input` of the `Layer`,
+        hook can either return a tuple or a single modified value in the hook. We will wrap the value into a tuple if 
+        a single value is returned(unless that value is already a tuple).
         User can use forward pre-hook to change the input of the Layer or perform information statistics tasks on the Layer.
-
-        It should have the following form, the parameter input's format of the hook is the same as the tuple of the 
-        input parameters of the Layer's `forward` function .
 
         hook(Layer, input) -> None or modified input
 
