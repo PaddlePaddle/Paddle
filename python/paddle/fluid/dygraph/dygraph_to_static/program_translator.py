@@ -23,10 +23,10 @@ import warnings
 
 from paddle.fluid import framework
 from paddle.fluid import core, executor
-from paddle.fluid.data import data
 from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import convert_to_static
 from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStaticAst
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import data_layer_not_check
 from paddle.fluid.framework import in_dygraph_mode
 
 __all__ = ['ProgramTranslator', 'convert_function_with_cache']
@@ -186,9 +186,9 @@ class ProgramCache(object):
                     batch_data, numpy.ndarray
                 ), "Input {} should be numpy.ndarray, but received {}.".format(
                     feed_name, type(batch_data))
-                feed_layer = data(
+                feed_layer = data_layer_not_check(
                     name=feed_name,
-                    shape=[-1] + list(batch_data.shape[1:]),
+                    shape=list(batch_data.shape),
                     dtype=str(batch_data.dtype))
                 self._inputs.append(feed_layer)
 
