@@ -32,7 +32,7 @@ __all__ = [
     'tensor_array_to_tensor', 'concat', 'sums', 'assign',
     'fill_constant_batch_size_like', 'fill_constant', 'argmin', 'argmax',
     'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite',
-    'range', 'linspace', 'zeros_like', 'ones_like', 'diag', 'eye'
+    'range', 'linspace', 'zeros_like', 'ones_like', 'diag', 'eye', 'addmm'
 ]
 
 
@@ -1475,4 +1475,56 @@ def ones_like(x, out=None):
         inputs={'X': [x]},
         attrs={'value': 1.0},
         outputs={'Out': [out]})
+    return out
+
+
+def addmm(input, x, y, alpha=1.0, beta=1.0, out=None, name=None):
+    """
+    **addmm**
+
+    This operator is used to perform matrix multiplication for input $x$ and $y$.
+    $input$ is added to the final result.
+    The equation is:
+
+    ..  math::
+        Out = alpha * x * y + beta * input
+
+    $Input$, $x$ and $y$ can carry the LoD (Level of Details) information, or not. But the output only shares the LoD information with input $input$.
+
+    Args:
+        input (Variable): The input Tensor/LoDTensor to be added to the final result.
+        x (Variable): The first input Tensor/LoDTensor for matrix multiplication.
+        y (Variable): The second input Tensor/LoDTensor for matrix multiplication.
+        beta (float): Coefficient of $input$.
+        alpha (float): Coefficient of $x*y$.
+        name (str, optional): Name of the output. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default is None.
+
+    Returns:
+        Variable(Tensor/LoDTensor): The output Tensor/LoDTensor of addmm op.
+
+    Examples:
+        ..  code-block:: python
+
+            import paddle.fluid as fluid
+            input = fluid.layers.data(name="input", append_batch_size = False, shape=[2, 3], dtype="float32")
+            x = fluid.layers.data(name="x", append_batch_size = False, shape=[2, 5], dtype="float32")
+            y = fluid.layers.data(name="y", append_batch_size = False, shape=[5, 3], dtype="float32")
+            output = fluid.layers.addmm(input, x, y)
+
+    """
+    inputs = {'Input': input, "X": x, "Y": y}
+    attrs = {'Beta': beta, 'Alpha': alpha}
+
+    helper = LayerHelper("addmm", **locals())
+    check_variable_and_dtype(x, 'Input', ['float32', 'float64'], 'addmm')
+    check_variable_and_dtype(x, 'X', ['float32', 'float64'], 'addmm')
+    check_variable_and_dtype(y, 'Y', ['float32', 'float64'], 'addmm')
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type="addmm", inputs=inputs, attrs=attrs, outputs={"Out": out})
     return out
