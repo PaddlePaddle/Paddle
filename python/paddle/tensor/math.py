@@ -106,10 +106,13 @@ def elementwise_sum(inputs, name=None):
                       [14, 16, 18]]
 
     Args:
-        x (Variable|list(Variable)): ${x_comment}
+        inputs (Variable|list(Variable)):  A Varaible list. The shape and data type of the list elementsshould be consistent. 
+            Variable can be multi-dimensional Tensoror LoDTensor, and data types can be: float32, float64, int32, int64. 
+        name(str, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: ${out_comment}
+        Variable: the sum of input :math:`inputs` . its shape and data types are consistent with :math:`inputs` . 
 
     Examples:
         .. code-block:: python
@@ -142,7 +145,7 @@ def elementwise_sum(inputs, name=None):
 
     helper = LayerHelper('elementwise_sum', **locals())
     out = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype('x'))
+        dtype=helper.input_dtype('inputs'))
     helper.append_op(
         type='sum',
         inputs={'X': inputs},
@@ -160,18 +163,18 @@ def mm(input, mat2, out=None, name=None):
     inputs is bigger than 3, this two inputs' rank should be equal.
 
 
-    Also note that if the raw tensor :math:`x` or :math:`y` is rank-1 and
+    Also note that if the raw tensor :math:`x` or :math:`mat2` is rank-1 and
     nontransposed, the prepended or appended dimension :math:`1` will be
     removed after matrix multiplication.
 
     Args:
         x (Variable): The input variable which is a Tensor or LoDTensor.
-        y (Variable): The input variable which is a Tensor or LoDTensor.
+        mat2 (Variable): The input variable which is a Tensor or LoDTensor.
         out(Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
-        name(str, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+        name(str, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
         Variable: The product Tensor (or LoDTensor) variable.
@@ -180,32 +183,32 @@ def mm(input, mat2, out=None, name=None):
         .. code-block:: python
 
             # Examples to clarify shapes of the inputs and output
-            # x: [B, ..., M, K], y: [B, ..., K, N]
-            # fluid.layers.matmul(x, y)  # out: [B, ..., M, N]
+            # x: [B, ..., M, K], mat2: [B, ..., K, N]
+            # fluid.layers.matmul(x, mat2)  # out: [B, ..., M, N]
 
-            # x: [B, M, K], y: [B, K, N]
-            # fluid.layers.matmul(x, y)  # out: [B, M, N]
+            # x: [B, M, K], mat2: [B, K, N]
+            # fluid.layers.matmul(x, mat2)  # out: [B, M, N]
 
-            # x: [B, M, K], y: [K, N]
-            # fluid.layers.matmul(x, y)  # out: [B, M, N]
+            # x: [B, M, K], mat2: [K, N]
+            # fluid.layers.matmul(x, mat2)  # out: [B, M, N]
 
-            # x: [M, K], y: [K, N]
-            # fluid.layers.matmul(x, y)  # out: [M, N]
+            # x: [M, K], mat2: [K, N]
+            # fluid.layers.matmul(x, mat2)  # out: [M, N]
 
-            # x: [B, M, K], y: [K]
-            # fluid.layers.matmul(x, y)  # out: [B, M]
+            # x: [B, M, K], mat2: [K]
+            # fluid.layers.matmul(x, mat2)  # out: [B, M]
 
-            # x: [K], y: [K]
-            # fluid.layers.matmul(x, y)  # out: [1]
+            # x: [K], mat2: [K]
+            # fluid.layers.matmul(x, mat2)  # out: [1]
 
             import paddle
             import paddle.fluid as fluid
             x = fluid.data(name='x', shape=[2, 3], dtype='float32')
-            y = fluid.data(name='y', shape=[3, 2], dtype='float32')
-            out = paddle.mm(x, y) # out shape is [2, 2]
+            mat2 = fluid.data(name='mat2', shape=[3, 2], dtype='float32')
+            out = paddle.mm(x, mat2) # out shape is [2, 2]
     """
     if in_dygraph_mode():
-        return core.ops.matmul(x, y)
+        return core.ops.matmul(x, mat2)
 
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}

@@ -42,11 +42,11 @@ def elementwise_equal(x, y, name=None):
         x(Variable): Tensor, data type is float32, float64, int32, int64.
         y(Variable): Tensor, data type is float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Variable: output Tensor, it's shape is the same as the input's Tensor,
-        and the data type is bool. The result of this op is stop_gradient 
+        and the data type is bool. The result of this op is stop_gradient. 
 
     Examples:
         .. code-block:: python
@@ -56,7 +56,7 @@ def elementwise_equal(x, y, name=None):
           import numpy as np
           label = fluid.layers.assign(np.array([3, 3], dtype="int32"))
           limit = fluid.layers.assign(np.array([3, 2], dtype="int32"))
-          out1 = paddle.elementwise_equal(x=label,y=limit) #out1=[True, False]
+          out1 = paddle.elementwise_equal(x=label, y=limit) #out1=[True, False]
     """
     helper = LayerHelper("elementwise_equal", **locals())
     out = helper.create_variable_for_type_inference(dtype='bool')
