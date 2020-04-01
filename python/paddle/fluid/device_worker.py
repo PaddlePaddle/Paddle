@@ -156,6 +156,7 @@ class Hogwild(DeviceWorker):
         if opt_info["stat_var_names"]:
             for i in opt_info["stat_var_names"]:
                 hogwild.stat_var_names.extend([i])
+                downpour.stat_var_names.extend([i])
 
         for i in worker.get_desc().dense_table:
             if i.table_id in dense_table_set:
