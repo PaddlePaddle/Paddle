@@ -24,11 +24,12 @@ logger = logging.getLogger(__name__)
 
 __all__ = ['COCOMetric']
 
-
 OUTFILE = './bbox.json'
 
 
-# considered to change to a callback later
+# COCOMetric behavior is different from Metric defined in high
+# level API, COCOMetric will and con only accumulate on the epoch
+# end, so we impliment COCOMetric as not a high level API Metric
 class COCOMetric():
     """
     Metrci for MS-COCO dataset, only support update with batch

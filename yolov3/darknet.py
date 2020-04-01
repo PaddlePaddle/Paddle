@@ -17,9 +17,17 @@ from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
 
 from paddle.fluid.dygraph.nn import Conv2D, BatchNorm
-from paddle.fluid.dygraph.base import to_variable
 
-__all__ = ['DarkNet53', 'ConvBNLayer']
+from model import Model
+from download import get_weights_path
+
+__all__ = ['DarkNet53', 'ConvBNLayer', 'darknet53']
+
+# {num_layers: (url, md5)}
+pretrain_infos = {
+        53: ('https://paddlemodels.bj.bcebos.com/hapi/darknet53.pdparams',
+            '2506357a5c31e865785112fc614a487d')
+}
 
 
 class ConvBNLayer(fluid.dygraph.Layer):
@@ -128,10 +136,13 @@ class LayerWarp(fluid.dygraph.Layer):
 DarkNet_cfg = {53: ([1, 2, 8, 8, 4])}
 
 
-class DarkNet53(fluid.dygraph.Layer):
-    def __init__(self, ch_in=3):
+class DarkNet53(Model):
+    def __init__(self, num_layers=53, ch_in=3):
         super(DarkNet53, self).__init__()
-        self.stages = DarkNet_cfg[53]
+        assert num_layers in DarkNet_cfg.keys(), \
+            "only support num_layers in {} currently" \
+            .format(DarkNet_cfg.keys())
+        self.stages = DarkNet_cfg[num_layers]
         self.stages = self.stages[0:5]
 
         self.conv0 = ConvBNLayer(
@@ -175,3 +186,19 @@ class DarkNet53(fluid.dygraph.Layer):
                 out = self.downsample_list[i](out)
         return blocks[-1:-4:-1]
 
+
+def _darknet(num_layers=53, input_channels=3, pretrained=True):
+    model = DarkNet53(num_layers, input_channels)
+    if pretrained:
+        assert num_layers in pretrain_infos.keys(), \
+                "DarkNet{} do not have pretrained weights now, " \
+                "pretrained should be set as False".format(num_layers)
+        weight_path = get_weights_path(*(pretrain_infos[num_layers]))
+        assert weight_path.endswith('.pdparams'), \
+                "suffix of weight must be .pdparams"
+        model.load(weight_path[:-9])
+    return model
+
+
+def darknet53(input_channels=3, pretrained=True):
+    return _darknet(53, input_channels, pretrained)

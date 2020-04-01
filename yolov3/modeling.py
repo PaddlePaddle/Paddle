@@ -21,9 +21,16 @@ from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
 
 from model import Model, Loss
-from .darknet import DarkNet53, ConvBNLayer
+from download import get_weights_path
+from darknet import darknet53, ConvBNLayer
 
 __all__ = ['YoloLoss', 'YOLOv3']
+
+# {num_layers: (url, md5)}
+pretrain_infos = {
+    53: ('https://paddlemodels.bj.bcebos.com/hapi/yolov3_darknet53.pdparams',
+         'aed7dd45124ff2e844ae3bd5ba6c91d2')
+}
 
 
 class YoloDetectionBlock(fluid.dygraph.Layer):
@@ -97,7 +104,7 @@ class YOLOv3(Model):
         self.nms_posk = 100
         self.draw_thresh = 0.5
 
-        self.block = DarkNet53()
+        self.backbone = darknet53(pretrained=(model_mode=='train'))
         self.block_outputs = []
         self.yolo_blocks = []
         self.route_blocks = []
@@ -137,7 +144,7 @@ class YOLOv3(Model):
         scores = []
         downsample = 32
 
-        feats = self.block(inputs)
+        feats = self.backbone(inputs)
         route = None
         for idx, feat in enumerate(feats):
             if idx > 0:
@@ -218,3 +225,21 @@ class YoloLoss(Loss):
             losses.append(loss)
             downsample //= 2
         return losses
+
+
+def _yolov3_darknet(num_layers=53, num_classes=80,
+                    model_mode='train', pretrained=True):
+    model = YOLOv3(num_classes, model_mode)
+    if pretrained:
+        assert num_layers in pretrain_infos.keys(), \
+                "YOLOv3-DarkNet{} do not have pretrained weights now, " \
+                "pretrained should be set as False".format(num_layers)
+        weight_path = get_weights_path(*(pretrain_infos[num_layers]))
+        assert weight_path.endswith('.pdparams'), \
+                "suffix of weight must be .pdparams"
+        model.load(weight_path[:-9])
+    return model
+
+
+def yolov3_darknet53(num_classes=80, model_mode='train', pretrained=True):
+    return _yolov3_darknet(53, num_classes, model_mode, pretrained)

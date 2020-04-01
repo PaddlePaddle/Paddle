@@ -27,10 +27,10 @@ from paddle.fluid.io import DataLoader
 
 from model import Model, Input, set_device
 from distributed import DistributedBatchSampler
-from yolov3.coco import *
-from yolov3.transforms import *
-from yolov3.modeling import *
-from yolov3.coco_metric import *
+from modeling import yolov3_darknet53, YoloLoss
+from coco_metric import COCOMetric
+from coco import COCODataset
+from transforms import *
 
 NUM_MAX_BOXES = 50
 
@@ -107,7 +107,7 @@ def main():
                               with_background=False,
                               transform=eval_transform)
         # batch_size can only be 1 in evaluation for YOLOv3
-        # prediction bbox is LoDTensor
+        # prediction bbox is a LoDTensor
         batch_sampler = DistributedBatchSampler(dataset,
                                                 batch_size=1,
                                                 shuffle=False,
@@ -121,8 +121,11 @@ def main():
                             return_list=True,
                             collate_fn=eval_collate_fn)
 
-    model = YOLOv3(num_classes=dataset.num_classes,
-                   model_mode='eval' if FLAGS.eval_only else 'train')
+    pretrained = FLAGS.eval_only and FLAGS.weights is None
+    model = yolov3_darknet53(num_classes=dataset.num_classes,
+                   model_mode='eval' if FLAGS.eval_only else 'train',
+                   pretrained=pretrained)
+
     if FLAGS.pretrain_weights is not None:
         model.load(FLAGS.pretrain_weights, skip_mismatch=True, reset_optimizer=True)
 
@@ -143,7 +146,7 @@ def main():
     # but only accumulate at the end of an epoch
     if FLAGS.eval_only:
         if FLAGS.weights is not None:
-            model.load(FLAGS.weights)
+            model.load(FLAGS.weights, reset_optimizer=True)
         preds = model.predict(loader)
         _, _, _, img_ids, bboxes = preds
 
@@ -172,8 +175,10 @@ def main():
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser("Yolov3 Training on COCO")
-    parser.add_argument('data', metavar='DIR', help='path to COCO dataset')
+    parser = argparse.ArgumentParser("Yolov3 Training on VOC")
+    parser.add_argument(
+        "--data", type=str, default='dataset/voc',
+        help="path to dataset directory")
     parser.add_argument(
         "--device", type=str, default='gpu', help="device to use, gpu or cpu")
     parser.add_argument(
