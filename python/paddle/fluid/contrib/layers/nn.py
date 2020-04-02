@@ -1102,6 +1102,8 @@ def tdm_sampler(x,
             'dtype': c_dtype
         })
 
+    slice_vars = []
+    reshape_vars = []
     if output_list:
         output_list = []
         labels_list = []
@@ -1111,7 +1113,9 @@ def tdm_sampler(x,
         if not output_positive:
             positive_flag = 0
 
-        for layer_sample_num in neg_samples_num_list:
+        for i, layer_sample_num in enumerate(neg_samples_num_list):
+            slice_vars.append([])
+            reshape_vars.append([])
             end_offset = start_offset + \
                 layer_sample_num + positive_flag
             layer_samples = slice(
@@ -1120,18 +1124,24 @@ def tdm_sampler(x,
                 labels, axes=[1], starts=[start_offset], ends=[end_offset])
             layer_mask = slice(
                 mask, axes=[1], starts=[start_offset], ends=[end_offset])
+            slice_vars[i].append(layer_samples)
+            slice_vars[i].append(layer_labels)
+            slice_vars[i].append(layer_mask)
 
             layer_samples = reshape(layer_samples,
                                     [-1, layer_sample_num + positive_flag, 1])
             layer_samples.stop_gradient = True
+            reshape_vars[i].append(layer_samples)
 
             layer_labels = reshape(layer_labels,
                                    [-1, layer_sample_num + positive_flag, 1])
             layer_labels.stop_gradient = True
+            reshape_vars[i].append(layer_labels)
 
             layer_mask = reshape(layer_mask,
                                  [-1, layer_sample_num + positive_flag, 1])
             layer_mask.stop_gradient = True
+            reshape_vars[i].append(layer_mask)
 
             output_list.append(layer_samples)
             labels_list.append(layer_labels)
@@ -1142,4 +1152,4 @@ def tdm_sampler(x,
         labels = labels_list
         mask = mask_list
 
-    return (out, labels, mask)
+    return (out, labels, mask, slice_vars, reshape_vars)

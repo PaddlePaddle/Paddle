@@ -48,9 +48,9 @@ class KV_MAPS {
   }
 
   void InitImpl(const std::string& filename) {
-    if (is_initialized_ == true) return;
+    if (is_initialized_ == false)
+        data_->clear();;
     VLOG(1) << "start init implementation!";
-    data_->clear();
     VLOG(1) << "filename: " << filename;
     std::ifstream fin(filename.c_str());
     PADDLE_ENFORCE(fin.good(), "Can not open %s.", filename.c_str());
