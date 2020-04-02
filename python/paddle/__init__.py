@@ -33,7 +33,7 @@ import paddle.compat
 import paddle.distributed
 batch = batch.batch
 import paddle.sysconfig
-import paddle.tensor
+from paddle.tensor import *
 
 #TODO: define alias in tensor and framework directory
 # from .tensor.creation import create_.tensor   #DEFINE_ALIAS
