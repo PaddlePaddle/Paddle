@@ -69,12 +69,6 @@ def where(Condition, X, Y):
           out = exe.run(fluid.default_main_program(),feed={'x':x_i, 'y':y_i}, fetch_list=[result])
           print(out[0])
     """
-    if in_dygraph_mode():
-        return core.ops.where(Condition, X, Y)
-
-    helper = LayerHelper("where", **locals())
-    dtype = helper.input_dtype()
-    out = helper.create_variable_for_type_inference(dtype)
 
     check_type(Condition, 'Condition', (Variable), 'where')
     check_type(X, 'X', (Variable), 'where')
@@ -89,6 +83,13 @@ def where(Condition, X, Y):
     if isinstance(Y, Variable):
         check_dtype(Y.dtype, 'Y', ['float32', 'float64', 'int32', 'int64'],
                     'where', '(When the type of Y in where is Variable.)')
+
+    if in_dygraph_mode():
+        return core.ops.where(Condition, X, Y)
+
+    helper = LayerHelper("where", **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_variable_for_type_inference(dtype)
 
     helper.append_op(
         type='where',
