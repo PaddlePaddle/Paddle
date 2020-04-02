@@ -36,6 +36,9 @@ def sort(input, axis=-1, descending=False, out=None, name=None):
     This OP sorts the input along the given axis, and returns sorted output
     data Varibale and its corresponding index Variable with the same shape as
     :attr:`input`.
+    
+    **NOTICE**: The Variable in the output of this OP has gradient. You could\
+        set Variable :attr:`stop_gradient`.
 
     Args:
         input(Variable): An input N-D Tensor with type float32, float64, int16,
@@ -46,9 +49,10 @@ def sort(input, axis=-1, descending=False, out=None, name=None):
         descending(bool, optional) : Descending is a flag, if set to true,
             algorithm will sort by descending order, else sort by
             ascending order. Default is false.
-        out(Variable, optional): Optional output which can be any created
-            Variable that meets the requirements to store the result of operation.
-            if out is None, a new Varibale will be create to store the result.
+        out(Variable, optional): The default value is None. Optional output 
+            which can be any created Variable that meets the requirements to
+            store the result of operation. if out is None, a new Varibale will
+            be create to store the result.
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
@@ -73,9 +77,9 @@ def sort(input, axis=-1, descending=False, out=None, name=None):
                             [1,7,0,6]]]).astype(np.float32)
             with fluid.dygraph.guard():
                 x = fluid.dygraph.to_variable(in1)
-                out1 = paddle.tensor.sort(input=x, axis=-1)
-                out2 = paddle.tensor.sort(input=x, axis=0)
-                out3 = paddle.tensor.sort(input=x, axis=1)
+                out1 = paddle.sort(input=x, axis=-1)
+                out2 = paddle.sort(input=x, axis=0)
+                out3 = paddle.sort(input=x, axis=1)
                 print(out1[0].numpy())
                 # [[[5. 5. 8. 9.]
                 #   [0. 0. 1. 7.]
