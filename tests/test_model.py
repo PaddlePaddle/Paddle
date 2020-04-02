@@ -139,6 +139,26 @@ class MyCrossEntropy(Loss):
         return [loss1, loss2]
 
 
+class TestMnistDataset(MnistDataset):
+    def __init__(self):
+        super(TestMnistDataset, self).__init__(mode='test')
+
+    def __getitem__(self, idx):
+        return self.images[idx],
+
+    def __len__(self):
+        return len(self.images)
+
+
+def get_predict_accuracy(pred, gt):
+    pred = np.argmax(pred, -1)
+    gt = np.array(gt)
+
+    correct = pred[:, np.newaxis] == gt
+
+    return np.sum(correct) / correct.shape[0]
+
+
 class TestModel(unittest.TestCase):
     def fit(self, dynamic, is_mlp=False):
         device = set_device('gpu')
@@ -152,6 +172,7 @@ class TestModel(unittest.TestCase):
 
         train_dataset = MnistDataset(mode='train')
         val_dataset = MnistDataset(mode='test')
+        test_dataset = TestMnistDataset()
 
         model = MNIST() if not is_mlp else MLP()
         optim = fluid.optimizer.Momentum(
@@ -159,11 +180,22 @@ class TestModel(unittest.TestCase):
         loss = CrossEntropy() if not is_mlp else MyCrossEntropy()
         model.prepare(optim, loss, Accuracy(), inputs, labels, device=device)
         cbk = ProgBarLogger(50)
+
         model.fit(train_dataset,
                   val_dataset,
                   epochs=2,
                   batch_size=batch_size,
                   callbacks=cbk)
+
+        eval_result = model.evaluate(val_dataset, batch_size=batch_size)
+
+        output = model.predict(test_dataset, batch_size=batch_size)
+
+        np.testing.assert_equal(output[0].shape[0], len(test_dataset))
+
+        acc = get_predict_accuracy(output[0], val_dataset.labels)
+
+        np.testing.assert_allclose(acc, eval_result['acc'])
 
     def test_fit_static(self):
         self.fit(False)
