@@ -108,5 +108,36 @@ class TestFillAnyLikeOp_attr_out(unittest.TestCase):
                 msg="full_like output is wrong, out = " + str(out_np))
 
 
+class TestFillAnyLikeOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            #for ci coverage
+
+            input_data = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            output = paddle.full_like(input_data, 2.0)
+
+            def test_input_dtype():
+                paddle.full_like
+
+            self.assertRaises(
+                ValueError,
+                paddle.full_like,
+                input=input_data,
+                fill_value=2,
+                dtype='uint4')
+            self.assertRaises(
+                TypeError,
+                paddle.full_like,
+                input=input_data,
+                fill_value=2,
+                dtype='int16')
+
+            # The argument fill_value's type of full_op  must be bool, float32, float64, int32, int64.
+            def test_fill_value_type():
+                tensor.full(input=input_data, fill_value=[1], dtype="float32")
+
+            self.assertRaises(TypeError, test_fill_value)
+
+
 if __name__ == "__main__":
     unittest.main()

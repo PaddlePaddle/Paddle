@@ -46,7 +46,13 @@ __all__ = [
 ]
 
 
-def full_like(input, fill_value=0.0, out=None):
+def full_like(input,
+              fill_value,
+              out=None,
+              dtype=None,
+              device=None,
+              stop_gradient=True,
+              name=None):
     """
     **full_like**
     This function creates a tensor filled with `fill_value` which has identical shape and dtype 
@@ -64,23 +70,35 @@ def full_like(input, fill_value=0.0, out=None):
           import numpy as np
 
           input = fluid.data(name='input', dtype='float32', shape=[2, 3])
-          output = paddle.tensor.full_like(input, 2.0)
+          output = paddle.full_like(input, 2.0)
           exe = fluid.Executor(fluid.CPUPlace())
           exe.run(fluid.default_startup_program())
           img=np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
           res = exe.run(fluid.default_main_program(), feed={'input':img}, fetch_list=[output])
           print(res) # [array([[2., 2., 2.], [2., 2., 2.]], dtype=float32)]
     """
-
+    if in_dygraph_mode():
+        inputs = {'X': [input]}
+        outs = core.ops.full_like(inputs, {'value': fill_value})
+        return outs['Out'][0]
     helper = LayerHelper("full_like", **locals())
+
+    if dtype is None:
+        dtype = 'float32'
+
+    check_dtype(dtype, 'dtype',
+                ['bool', 'float16', 'float32', 'int32', 'int64'], 'full_like')
+    check_type(fill_value, 'fill_value', (bool, float16, float32, int32, int64),
+               'full_like')
+
     if out is None:
-        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+        out = helper.create_variable_for_type_inference(dtype=dtype)
     helper.append_op(
         type='fill_any_like',
         inputs={'X': [input]},
         attrs={'value': fill_value},
         outputs={'Out': [out]})
-    out.stop_gradient = True
+    out.stop_gradient = stop_gradient
     return out
 
 
