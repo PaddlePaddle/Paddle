@@ -36,7 +36,7 @@ template <typename T, typename InfoT = int, typename OutT = int>
 void TDMChildInner(const framework::ExecutionContext &context,
                    const LoDTensor &input, const LoDTensor &tree_info,
                    LoDTensor *child, LoDTensor *mask) {
-  auto child_nums = context.Attr<int>("Child_nums");
+  auto child_nums = context.Attr<int>("child_nums");
   auto info_dims = tree_info.dims();
   int node_nums = info_dims[0];
   int length = info_dims[1];
@@ -50,7 +50,7 @@ void TDMChildInner(const framework::ExecutionContext &context,
   auto *input_data = input.data<T>();
   auto *tree_info_data = tree_info.data<InfoT>();
 
-  // Tree_info: node_id : item_id; layer_id; ancestor_id; child_id
+  // TreeInfo: node_id : item_id; layer_id; ancestor_id; child_id
   for (int input_ids = 0; input_ids < input_ids_num; ++input_ids) {
     PADDLE_ENFORCE_LT(
         input_data[input_ids], node_nums,
@@ -105,7 +105,7 @@ class TDMChildKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *input_var = ctx.InputVar("X");
-    auto *tree_info_var = ctx.InputVar("Tree_info");
+    auto *tree_info_var = ctx.InputVar("TreeInfo");
 
     auto &input_tensor = input_var->Get<LoDTensor>();
     const auto &input_type = input_tensor.type();
@@ -128,7 +128,7 @@ class TDMChildKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         info_type_match, true,
         platform::errors::InvalidArgument(
-            "Input(Tree_info) holds the wrong type, it holds %s, but "
+            "Input(TreeInfo) holds the wrong type, it holds %s, but "
             "desires to be %s or %s",
             paddle::framework::DataTypeToString(info_type),
             paddle::framework::DataTypeToString(
@@ -137,7 +137,7 @@ class TDMChildKernel : public framework::OpKernel<T> {
                 framework::proto::VarType::INT64)));
 
     auto *child_var = ctx.OutputVar("Child");
-    auto *leaf_mask_var = ctx.OutputVar("Leaf_mask");
+    auto *leaf_mask_var = ctx.OutputVar("LeafMask");
     auto *child_tensor = child_var->GetMutable<framework::LoDTensor>();
     auto *leaf_mask_tensor = leaf_mask_var->GetMutable<framework::LoDTensor>();
 
@@ -147,7 +147,7 @@ class TDMChildKernel : public framework::OpKernel<T> {
                           output_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(out_type_match, true,
                       platform::errors::InvalidArgument(
-                          "Ouput(Child) & Output(Leaf_mask) holds the wrong "
+                          "Ouput(Child) & Output(LeafMask) holds the wrong "
                           "type, it holds %s, but "
                           "desires to be %s or %s",
                           paddle::framework::DataTypeToString(output_type),

@@ -90,9 +90,9 @@ class TestTDMChildOp(OpTest):
         child = np.reshape(children_res_np, self.child_shape)
         leaf_mask = np.reshape(leaf_mask_res_np, self.child_shape)
 
-        self.attrs = {'Child_nums': 2}
-        self.inputs = {'X': x_np, 'Tree_info': tree_info_np}
-        self.outputs = {'Child': child, 'Leaf_mask': leaf_mask}
+        self.attrs = {'child_nums': 2}
+        self.inputs = {'X': x_np, 'TreeInfo': tree_info_np}
+        self.outputs = {'Child': child, 'LeafMask': leaf_mask}
 
     def config(self):
         """set test shape & type"""

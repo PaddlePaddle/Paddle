@@ -27,19 +27,19 @@ class TDMChildOpMaker : public framework::OpProtoAndCheckerMaker {
              "X(Tensor), dtype support int32/int64, X variable is the "
              "node id of TDM-Tree");
     AddInput(
-        "Tree_info",
-        "Tree_info(Tensor), dtype support int32/int64, it stores the node "
+        "TreeInfo",
+        "TreeInfo(Tensor), dtype support int32/int64, it stores the node "
         "information in the following format: item_id(shape=1), "
-        "layer_id(shape=1), parent_id(shape=1), child_id(shape=Child_nums)");
-    AddAttr<int>("Child_nums", "Child_nums(int)",
+        "layer_id(shape=1), parent_id(shape=1), child_id(shape=child_nums)");
+    AddAttr<int>("child_nums", "child_nums(int)",
                  "The child nums of one node, if the node hasn't enough child, "
-                 "it should padding 0 until child nums equal to Child_nums");
+                 "it should padding 0 until child nums equal to child_nums");
     AddOutput("Child",
               "Return the children's node_id of input node, "
               "if input don't have child, return 0");
-    AddOutput("Leaf_mask",
-              "Leaf_mask has the same shape with Child"
-              "If child is leaf node, leaf_mask value = 1, else = 0");
+    AddOutput("LeafMask",
+              "LeafMask has the same shape with Child"
+              "If child is leaf node, LeafMask value = 1, else = 0");
     AddAttr<int>("dtype",
                  "(int, default INT32) "
                  "Output data type.")
@@ -47,7 +47,7 @@ class TDMChildOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC("
      **Tdm Child**
      According to the input node_id on the given tree, return the corresponding child node_id and 
-      whether child is a leaf node by leaf_mask.")DOC");
+      whether child is a leaf node by LeafMask.")DOC");
   }
 };
 
@@ -58,19 +58,19 @@ class TDMChildOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
                       platform::errors::InvalidArgument(
                           "Inputs(X) of TdmChild should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Tree_info"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("TreeInfo"), true,
                       platform::errors::InvalidArgument(
-                          "Inputs(Tree_info) of TdmChild should not be null."));
+                          "Inputs(TreeInfo) of TdmChild should not be null."));
 
-    int child_nums = ctx->Attrs().Get<int>("Child_nums");
+    int child_nums = ctx->Attrs().Get<int>("child_nums");
     PADDLE_ENFORCE_GT(
         child_nums, 0,
         platform::errors::InvalidArgument(
-            "ValueError: The value of the 'Child_nums' must greater than 0. "
-            "But received Child_nums value = %d, ",
+            "ValueError: The value of the 'child_nums' must greater than 0. "
+            "But received child_nums value = %d, ",
             child_nums));
 
-    auto info_dims = ctx->GetInputDim("Tree_info");
+    auto info_dims = ctx->GetInputDim("TreeInfo");
     auto input_dims = ctx->GetInputDim("X");
 
     PADDLE_ENFORCE_EQ(
@@ -84,12 +84,12 @@ class TDMChildOp : public framework::OperatorWithKernel {
     auto output_dims = framework::vectorize(input_dims);
     output_dims.push_back(child_nums);
     ctx->SetOutputDim("Child", framework::make_ddim(output_dims));
-    ctx->SetOutputDim("Leaf_mask", framework::make_ddim(output_dims));
+    ctx->SetOutputDim("LeafMask", framework::make_ddim(output_dims));
 
     if (ctx->GetOutputsVarType("Child")[0] ==
         framework::proto::VarType::LOD_TENSOR) {
       ctx->ShareLoD("X", /*->*/ "Child");
-      ctx->ShareLoD("X", /*->*/ "Leaf_mask");
+      ctx->ShareLoD("X", /*->*/ "LeafMask");
     }
   }
 
