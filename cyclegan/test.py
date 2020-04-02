@@ -22,6 +22,7 @@ import numpy as np
 from scipy.misc import imsave
 
 import paddle.fluid as fluid
+from check import check_gpu, check_version
 
 from model import Model, Input, set_device
 from cyclegan import Generator, GeneratorCombine
@@ -96,5 +97,6 @@ if __name__ == "__main__":
         default='checkpoint/199',
         help="The init model file of directory.")
     FLAGS = parser.parse_args()
-    print(FLAGS)
+    check_gpu(str.lower(FLAGS.device) == 'gpu')
+    check_version()
     main()

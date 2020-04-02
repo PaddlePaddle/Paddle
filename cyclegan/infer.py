@@ -25,6 +25,7 @@ from PIL import Image
 from scipy.misc import imsave
 
 import paddle.fluid as fluid
+from check import check_gpu, check_version
 
 from model import Model, Input, set_device
 from cyclegan import Generator, GeneratorCombine
@@ -101,5 +102,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "-s", "--input_style", type=str, default='A', help="A or B")
     FLAGS = parser.parse_args()
-    print(FLAGS)
+    check_gpu(str.lower(FLAGS.device) == 'gpu')
+    check_version()
     main()

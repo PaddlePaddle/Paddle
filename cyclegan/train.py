@@ -24,10 +24,10 @@ import time
 
 import paddle
 import paddle.fluid as fluid
+from check import check_gpu, check_version
 
 from model import Model, Input, set_device
 
-import reader as reader
 import data as data
 from cyclegan import Generator, Discriminator, GeneratorCombine, GLoss, DLoss
 
@@ -83,6 +83,9 @@ def main():
     d_A.prepare(da_optimizer, DLoss(), inputs=[input_B, fake_B])
     d_B.prepare(db_optimizer, DLoss(), inputs=[input_A, fake_A])
 
+    if FLAGS.resume:
+        g.load(FLAGS.resume)
+
     loader_A = fluid.io.DataLoader(
         data.DataA(),
         feed_list=[x.forward() for x in [input_A]]
@@ -122,7 +125,7 @@ def main():
 
             t = time.time() - start
             if i % 20 == 0:
-                print("epoch: {} | step: {:3d} | g_loss: {:.4f} | " +
+                print("epoch: {} | step: {:3d} | g_loss: {:.4f} | " \
                       "da_loss: {:.4f} | db_loss: {:.4f} | s/step {:.4f}".
                       format(epoch, i, g_loss[0], da_loss[0], db_loss[0], t))
         g.save('{}/{}'.format(FLAGS.checkpoint_path, epoch))
@@ -151,4 +154,6 @@ if __name__ == "__main__":
         type=str,
         help="checkpoint path to resume")
     FLAGS = parser.parse_args()
+    check_gpu(str.lower(FLAGS.device) == 'gpu')
+    check_version()
     main()
