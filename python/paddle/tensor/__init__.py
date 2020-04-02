@@ -41,7 +41,7 @@ __all__ = manipulation.__all__ + linalg.__all__ + creation.__all__
 # from .creation import zeros_like   #DEFINE_ALIAS
 # from .creation import arrange   #DEFINE_ALIAS
 # from .creation import eye   #DEFINE_ALIAS
-# from .creation import full   #DEFINE_ALIAS
+from .creation import full  #DEFINE_ALIAS
 # from .creation import linspace   #DEFINE_ALIAS
 # from .creation import full_like   #DEFINE_ALIAS
 # from .creation import triu   #DEFINE_ALIAS
