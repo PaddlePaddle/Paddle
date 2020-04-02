@@ -171,6 +171,10 @@ std::vector<std::unique_ptr<ir::Graph>> TrySeparateToMultipleSingleDeviceGraphs(
           "issue at https://github.com/PaddlePaddle/Paddle/issues/new. And "
           "we will resolve it with high priority."));
 
+  if (place_num == 1) {
+    return {};
+  }
+
   std::vector<std::unique_ptr<ir::Graph>> graphs(place_num);
   for (auto &g : graphs) {
     g.reset(new ir::Graph(ProgramDesc()));
@@ -208,6 +212,10 @@ std::vector<std::unique_ptr<ir::Graph>> TrySeparateToMultipleSingleDeviceGraphs(
   graph->Erase(kGraphVars);
   graph->Erase(kGraphDepVars);
 
+  for (auto &g : graphs) {
+    CopyGraphAttrIfExists<ProgramDescs>(*graph, g.get(), kProgramDescs);
+    CopyGraphAttrIfExists<FusedVars>(*graph, g.get(), kFusedVars);
+  }
   return graphs;
 }
 

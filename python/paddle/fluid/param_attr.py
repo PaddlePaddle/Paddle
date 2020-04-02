@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import six
+import warnings
 
 from .initializer import Initializer, Xavier, Constant
 from .regularizer import WeightDecayRegularizer
@@ -68,7 +69,6 @@ class ParamAttr(object):
                  learning_rate=1.0,
                  regularizer=None,
                  trainable=True,
-                 gradient_clip=None,
                  do_model_average=True):
         self.name = name
         if isinstance(self.name, six.string_types) and self.name == "":
@@ -78,7 +78,6 @@ class ParamAttr(object):
         self.learning_rate = learning_rate
         self.regularizer = regularizer
         self.trainable = trainable
-        self.gradient_clip = gradient_clip
         self.do_model_average = do_model_average
 
     def _set_default_initializer(self, initializer):
@@ -176,7 +175,6 @@ class ParamAttr(object):
             },
             'regularizer': self.regularizer,
             'trainable': self.trainable,
-            'gradient_clip_attr': self.gradient_clip,
             'do_model_average': self.do_model_average
         }
         if with_initializer:
@@ -248,7 +246,6 @@ class WeightNormParamAttr(ParamAttr):
                  learning_rate=1.0,
                  regularizer=None,
                  trainable=True,
-                 gradient_clip=None,
                  do_model_average=False):
         super(WeightNormParamAttr, self).__init__(
             name=name,
@@ -256,6 +253,5 @@ class WeightNormParamAttr(ParamAttr):
             learning_rate=learning_rate,
             regularizer=regularizer,
             trainable=trainable,
-            gradient_clip=gradient_clip,
             do_model_average=do_model_average)
         self.dim = dim

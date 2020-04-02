@@ -148,6 +148,7 @@ void TensorRTEngine::FreezeNetwork() {
 
   if (with_dynamic_shape_) {
 #if IS_TRT_VERSION_GE(6000)
+    LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
     for (auto &input : min_input_shape_) {
       optim_profile_->setDimensions(
           input.first.c_str(), nvinfer1::OptProfileSelector::kMIN,
@@ -160,6 +161,16 @@ void TensorRTEngine::FreezeNetwork() {
           Vec2TRT_Dims(optim_input_shape_[input.first], input.first, true));
     }
     infer_builder_config_->addOptimizationProfile(optim_profile_.get());
+    if (WithFp16()) {
+      infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
+      if (disable_trt_plugin_fp16()) {
+        LOG(INFO) << "NOTE: In order to achieve higher accuracy, you have "
+                     "disabled the fp16 mode of TRT Plugin,\n"
+                  << "you can reopen it with "
+                     "'config.SetDynamicShapeInfo(min_shape, max_shape, "
+                     "opt_shape, false /*disable_trt_plugin_fp16*/)'";
+      }
+    }
     infer_engine_.reset(infer_builder_->buildEngineWithConfig(
         *network(), *infer_builder_config_));
 #endif

@@ -255,15 +255,12 @@ def concat(input, axis=0, name=None):
     """
 
     if in_dygraph_mode():
-        inputs = {'X': input}
         if isinstance(axis, Variable):
             axis = axis.numpy()
             assert axis.shape == (
                 1, ), "axis of type Variable should have shape [1]"
             axis = axis[0]
-        attrs = {'axis': axis}
-        outs = core.ops.concat(inputs, attrs)
-        return outs['Out'][0]
+        return core.ops.concat(input, 'axis', axis)
 
     if not isinstance(input, list):
         warnings.warn(
@@ -384,6 +381,17 @@ def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
             fluid.layers.array_write(x1, i + 1, array)
             output, output_index = fluid.layers.tensor_array_to_tensor(input=array)
     """
+    if in_dygraph_mode():
+        assert isinstance(
+            input, list), "The 'input' in tensor_array_to_tensor must be list"
+        from .nn import stack, concat
+        from ..dygraph import to_variable
+        op = stack if use_stack else concat
+        res = op(input, axis=axis)
+        sizes = to_variable(
+            numpy.array(list(map(lambda x: int(x.shape[axis]), input))))
+        return res, sizes
+
     helper = LayerHelper('tensor_array_to_tensor', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     out_index = helper.create_variable_for_type_inference(dtype="int32")
@@ -502,10 +510,13 @@ def assign(input, output=None):
         elif dtype == VarDesc.VarType.INT32:
             value_name = "int32_values"
             values = [int(v) for v in input.flat]
+        elif dtype == VarDesc.VarType.INT64:
+            value_name = "int64_values"
+            values = [int(v) for v in input.flat]
         else:
             raise TypeError(
                 "When the type of 'input' in assign is numpy.ndarray, "
-                "the data type of 'input' must be float32 or int32, but "
+                "the data type of 'input' must be float32, int32 or int64, but "
                 "received %s." % convert_dtype(dtype))
         if input.size > 1024 * 1024:
             raise ValueError("The size of input is too big. Please consider "
@@ -559,7 +570,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
           # attr shape is a list which doesn't contain Variable Tensor.
           data1 = fluid.layers.fill_constant(shape=[2,1], value=0, dtype='int64') # data1=[[0],[0]]
           data2 = fluid.layers.fill_constant(shape=[2,1], value=5, dtype='int64', out=data1)
-          # data1=[[0], [0]] data2=[[5], [5]]
+          # data1=[[5], [5]] data2=[[5], [5]]
 
           # attr shape is a list which contains Variable Tensor.
           positive_2 = fluid.layers.fill_constant([1], "int32", 2)
@@ -583,12 +594,12 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
                     shape))
         else:
             shape = list(shape.numpy().astype(int))
-        attrs['shape'] = shape
         if out is None:
             out = _varbase_creator(dtype=dtype)
-        attrs['dtype'] = out.dtype
-        outputs = {'Out': [out]}
-        outs = core.ops.fill_constant({}, attrs, outputs)
+        core.ops.fill_constant(out, 'value',
+                               float(value), 'force_cpu', force_cpu, 'dtype',
+                               out.dtype, 'str_value', attrs['str_value'],
+                               'shape', shape)
         out.stop_gradient = True
         return out
 

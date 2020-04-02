@@ -97,10 +97,8 @@ class TestAssignOpError(unittest.TestCase):
             self.assertRaises(TypeError, fluid.layers.assign, x4)
             x5 = np.array([[2.5, 2.5]], dtype='float64')
             self.assertRaises(TypeError, fluid.layers.assign, x5)
-            x6 = np.array([[2.5, 2.5]], dtype='int64')
+            x6 = np.array([[2.5, 2.5]], dtype='uint8')
             self.assertRaises(TypeError, fluid.layers.assign, x6)
-            x7 = np.array([[2.5, 2.5]], dtype='uint8')
-            self.assertRaises(TypeError, fluid.layers.assign, x7)
 
 
 if __name__ == '__main__':

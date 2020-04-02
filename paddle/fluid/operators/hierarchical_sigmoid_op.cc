@@ -287,7 +287,7 @@ class HierarchicalSigmoidGradOpGradVarTypeInference
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(
     HierarchicalSigmoidGradOpNoNeedBufferVarInference, "Bias");
 
 }  // namespace operators

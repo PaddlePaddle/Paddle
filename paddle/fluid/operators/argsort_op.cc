@@ -118,7 +118,7 @@ class ArgsortGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ArgsortGradNoNeedBufferVarInference, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ArgsortGradNoNeedBufferVarInference, "X");
 
 }  // namespace operators
 }  // namespace paddle
