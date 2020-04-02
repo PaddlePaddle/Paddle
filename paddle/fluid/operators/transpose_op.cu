@@ -667,7 +667,9 @@ class TransposeGPUKernel : public framework::OpKernel<T> {
     auto* x = context.Input<framework::Tensor>("X");
     auto* out = context.Output<framework::Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
-    if (out->numel() == 0) return;
+    if (out->numel() == 0) {
+      return;
+    }
 
     std::vector<int> axis = context.Attr<std::vector<int>>("axis");
     int ndims = axis.size();
@@ -689,7 +691,9 @@ class TransposeGradGPUKernel : public framework::OpKernel<T> {
     if (!x_grad) return;
 
     x_grad->mutable_data<T>(context.GetPlace());
-    if (x_grad->numel() == 0) return;
+    if (x_grad->numel() == 0) {
+      return;
+    }
     std::vector<int> axis = context.Attr<std::vector<int>>("axis");
     std::vector<int> reversed_axis(axis);
 

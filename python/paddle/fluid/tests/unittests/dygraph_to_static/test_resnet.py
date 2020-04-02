@@ -30,7 +30,7 @@ from __future__ import print_function
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
-from paddle.fluid.dygraph.jit import dygraph_to_static_graph
+from paddle.fluid.dygraph.jit import dygraph_to_static_func
 
 import unittest
 import time
@@ -93,7 +93,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
 
         self._batch_norm = BatchNorm(num_filters, act=act)
 
-    @dygraph_to_static_graph
+    @dygraph_to_static_func
     def forward(self, inputs):
         y = self._conv(inputs)
         y = self._batch_norm(y)
@@ -133,7 +133,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
 
         self._num_channels_out = num_filters * 4
 
-    @dygraph_to_static_graph
+    @dygraph_to_static_func
     def forward(self, inputs):
         y = self.conv0(inputs)
         conv1 = self.conv1(y)
@@ -203,7 +203,7 @@ class ResNet(fluid.dygraph.Layer):
             param_attr=fluid.param_attr.ParamAttr(
                 initializer=fluid.initializer.Uniform(-stdv, stdv)))
 
-    @dygraph_to_static_graph
+    @dygraph_to_static_func
     def forward(self, inputs, label):
         y = self.conv(inputs)
         y = self.pool2d_max(y)

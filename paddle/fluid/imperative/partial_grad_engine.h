@@ -32,8 +32,8 @@ class PartialGradEngine : public Engine {
                     const std::vector<std::shared_ptr<VarBase>> &output_grads,
                     const std::vector<std::shared_ptr<VarBase>> &no_grad_vars,
                     const platform::Place &place,
-                    const detail::BackwardStrategy &strategy,
-                    bool create_graph);
+                    const detail::BackwardStrategy &strategy, bool create_graph,
+                    bool retain_graph, bool allow_unused, bool only_inputs);
 
   void Execute() override;
 
@@ -50,6 +50,9 @@ class PartialGradEngine : public Engine {
   platform::Place place_;
   detail::BackwardStrategy strategy_;
   bool create_graph_;
+  bool retain_graph_;
+  bool allow_unused_;
+  bool only_inputs_;
 
   std::vector<std::shared_ptr<VarBase>> results_;
 };

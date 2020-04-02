@@ -59,7 +59,7 @@ if(WITH_COVERAGE OR NOT WITH_AVX OR WIN32)
 endif()
 
 register_operators(EXCLUDES py_func_op warpctc_op dgc_op
-	sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
+    sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
 
 if (WITH_GPU)
     # warpctc_op needs cudnn 7 above
@@ -93,7 +93,7 @@ set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence_padding sequence_scale cos_sim_fun
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence2batch lstm_compute matrix_bit_code gru_compute activation_functions beam_search fc)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} box_wrapper)
 if (WITH_GPU)
-  set(COMMON_OP_DEPS ${COMMON_OP_DEPS} depthwise_conv prelu)
+  set(COMMON_OP_DEPS ${COMMON_OP_DEPS} depthwise_conv prelu bert_encoder_functor)
 endif()
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} device_memory_aligment)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} layer)
@@ -132,3 +132,7 @@ set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 add_subdirectory(benchmark)
 
 cc_test(op_debug_string_test SRCS op_debug_string_test.cc DEPS elementwise_add_op)
+
+if(WITH_MKLDNN)
+include(mkldnn/inplace_op_tests.cmake)
+endif()
