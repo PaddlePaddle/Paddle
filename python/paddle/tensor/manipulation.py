@@ -12,41 +12,42 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define functions to manipulate a tensor  
-# __all__ = ['cast',
-#            'concat',
-#            'expand',
-#            'expand_as',
-#            'flatten',
-#            'gather',
-#            'gather_nd',
-#            'reshape',
-#            'reverse',
-#            'scatter',
-#            'scatter_nd_add',
-#            'scatter_nd',
-#            'shard_index',
-#            'slice',
-#            'split',
-#            'squeeze',
-#            'stack',
-#            'strided_slice',
-#            'transpose',
-#            'unique',
-#            'unique_with_counts',
-#            'unsqueeze',
-#            'unstack',
-#            'flip',
-#            'unbind',
-#            'roll']
-
 from __future__ import print_function
 
+from ..fluid.layers import core
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, convert_np_dtype_to_dtype_
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
-__all__ = ['flip']
+# TODO: define functions to manipulate a tensor  
+__all__ = [
+    #            'cast',
+    #            'concat',
+    #            'expand',
+    #            'expand_as',
+    #            'flatten',
+    #            'gather',
+    #            'gather_nd',
+    #            'reshape',
+    #            'reverse',
+    #            'scatter',
+    #            'scatter_nd_add',
+    #            'scatter_nd',
+    #            'shard_index',
+    #            'slice',
+    #            'split',
+    #            'squeeze',
+    #            'stack',
+    #            'strided_slice',
+    #            'transpose',
+    #            'unique',
+    #            'unique_with_counts',
+    #            'unsqueeze',
+    #            'unstack',
+    'flip',
+    #            'unbind',
+    #            'roll'
+]
 
 
 def flip(input, dims, name=None):
@@ -78,6 +79,11 @@ def flip(input, dims, name=None):
           res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
           print(res) # [[[10,11][8, 9]],[[6, 7],[4, 5]] [[2, 3],[0, 1]]]
     """
+    if in_dygraph_mode():
+        inputs = {'X': [input]}
+        outs = core.ops.flip(inputs, {'dims': dims})
+        return outs['Out'][0]
+
     helper = LayerHelper("flip", **locals())
     check_type(input, 'X', (Variable), 'flip')
     dtype = helper.input_dtype()
