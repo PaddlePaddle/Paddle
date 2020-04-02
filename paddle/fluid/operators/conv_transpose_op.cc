@@ -109,14 +109,19 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   const int offset = (data_layout != DataLayout::kNHWC ? 2 : 1);
   for (size_t i = 0; i < strides.size(); ++i) {
     auto filter_extent = dilations[i] * (filter_dims[i + 2] - 1) + 1;
-    auto infer_shape = (in_dims[i + offset] - 1) * strides[i] -
-                       paddings[2 * i] - paddings[2 * i + 1] + filter_extent;
+    auto infer_shape = (ctx->IsRuntime() && in_dims[i + offset] > 0)
+                           ? (in_dims[i + offset] - 1) * strides[i] -
+                                 paddings[2 * i] - paddings[2 * i + 1] +
+                                 filter_extent
+                           : -1;
     if (output_size.size()) {
-      PADDLE_ENFORCE_EQ((output_size[i] >= infer_shape &&
-                         output_size[i] < infer_shape + strides[i]),
-                        true,
-                        "output_size of Op(ConvTransposeOp) should be "
-                        "in appropriate range.");
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_EQ((output_size[i] >= infer_shape &&
+                           output_size[i] < infer_shape + strides[i]),
+                          true,
+                          "output_size of Op(ConvTransposeOp) should be "
+                          "in appropriate range.");
+      }
       output_shape.push_back(output_size[i]);
     } else {
       output_shape.push_back(infer_shape);
