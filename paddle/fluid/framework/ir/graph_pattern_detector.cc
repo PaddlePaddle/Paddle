@@ -1837,15 +1837,16 @@ PDNode *patterns::MultipleQuantize::operator()() {
 PDNode *patterns::MKLDNNInPlace::operator()() {
   // TODO(jczaja): Enable more mkl-dnn ops e.g. activation, batch_norm....
   auto possible_inplace_op =
-      pattern->NewNode(inplace_to_be_op_repr())->assert_is_ops({"elementwise_add","softmax"});
+      pattern->NewNode(inplace_to_be_op_repr())
+          ->assert_is_ops({"elementwise_add", "softmax"});
 
   // TODO(jczaja): Enable more mkl-dnn ops e.g. activation, batch_norm....
   auto input = pattern->NewNode(inplace_to_be_op_in_repr())
-                   ->assert_is_ops_input({"elementwise_add","softmax"})
+                   ->assert_is_ops_input({"elementwise_add", "softmax"})
                    ->AsInput();
   // TODO(jczaja): Enable more mkl-dnn ops e.g. activation, batch_norm....
   auto output = pattern->NewNode(inplace_to_be_op_out_repr())
-                    ->assert_is_ops_output({"elementwise_add","softmax"})
+                    ->assert_is_ops_output({"elementwise_add", "softmax"})
                     ->AsIntermediate();
 
   auto next_op = pattern->NewNode(next_op_repr())->assert_is_op();
