@@ -12,15 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from paddle.common_ops_import import *
+from ..fluid.layer_helper import LayerHelper
+from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
 # TODO: define functions of linear algebra   
+<<<<<<< 25628587f1fa40fd96594e188f65b2e9f251f63a
 __all__ = [
     'matmul',
     #  'dot',
     #  'einsum',
     #  'morm',
     #  'transpose',
-    #  'dist',
+'dist',
     #  't',
     #  'cross',
     #  'cholesky',
@@ -155,4 +158,36 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
                 'Y': y},
         outputs={'Out': out},
         attrs=attrs)
+    return out
+
+
+def dist(x, y, p=2):
+    """
+    This OP returns the p-norm of (x - y)
+
+    Args:
+        x (Variable): The input Tensor, the data type is float32, float64, int32 or int64.
+        y (Variable): The Right-hand-side input Tensor
+        p (float, optional) – The norm to be computed. Defaul: 2.
+
+    Returns:
+        Variable: Tensor that is the p-norm of (x - y)
+
+    Raises:
+        TypeError: If the data type of `x` or `y` is not in: float32, float64, int32, int64.
+    """
+
+    check_variable_and_dtype(x, 'dtype',
+                             ['float32', 'float64', 'int64', 'int32'], 'dist')
+    check_variable_and_dtype(y, 'dtype',
+                             ['float32', 'float64', 'int64', 'int32'], 'dist')
+    check_type(p, 'p', float, 'dist')
+    helper = LayerHelper("dist", **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+
+    inputs = {"X": [x], "Y": [y]}
+    outputs = {'Out': [out]}
+    attrs = {"p": p}
+    helper.append_op(
+        type='dist', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out

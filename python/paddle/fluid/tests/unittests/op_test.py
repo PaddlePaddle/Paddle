@@ -1029,6 +1029,7 @@ class OpTest(unittest.TestCase):
                     actual_t = np.array(actual)
                     expect_t = expect[0] \
                         if isinstance(expect, tuple) else expect
+
                     self.assertTrue(
                         np.allclose(
                             actual_t, expect_t, atol=atol, equal_nan=equal_nan),
@@ -1340,6 +1341,11 @@ class OpTest(unittest.TestCase):
         ]
         analytic_grads = self._get_gradient(inputs_to_check, place,
                                             output_names, no_grad_set)
+
+        print("numeric_grads: ")
+        print(numeric_grads)
+        print("analytic_grads: ")
+        print(analytic_grads)
         self._assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
                               max_relative_error,
                               "Gradient Check On %s" % str(place))
