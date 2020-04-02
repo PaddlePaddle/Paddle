@@ -39,8 +39,13 @@ class FetchOp : public framework::OperatorBase {
     PADDLE_ENFORCE_NOT_NULL(
         fetch_var,
         platform::errors::NotFound(
-            "Input variable(%s) cannot be found in scope for operator 'Fetch'.",
-            fetch_var_name));
+            "Input variable(%s) cannot be found in scope for operator 'Fetch'."
+            "Please confirm that you have used the format `fetch_var.name` "
+            "instead of the string literal('%s') when using `executor.run` "
+            "method. In other words, the format of "
+            "`executor.run(fetch_list=[fetch_var.name])` "
+            "is recommended.",
+            fetch_var_name, fetch_var_name));
 
     auto out_name = Output("Out");
     auto *out_var = scope.FindVar(out_name);
