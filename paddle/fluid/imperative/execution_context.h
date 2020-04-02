@@ -33,10 +33,11 @@ class DygraphExecutionContext : public framework::ExecutionContext {
                           const framework::Scope& scope,
                           const platform::DeviceContext& device_context,
                           const framework::RuntimeContext& ctx,
+                          std::vector<framework::KernelConfig>* configs,
                           const NameVarMap<VarType>& var_base_map_in,
                           const NameVarMap<VarType>& var_base_map_out,
                           const framework::AttributeMap& attrs)
-      : ExecutionContext(op, scope, device_context, ctx),
+      : ExecutionContext(op, scope, device_context, ctx, configs),
         var_base_map_in_(var_base_map_in),
         var_base_map_out_(var_base_map_out),
         attrs_(attrs) {}
