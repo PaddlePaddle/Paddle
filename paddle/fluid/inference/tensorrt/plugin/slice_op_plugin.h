@@ -79,7 +79,7 @@ class SlicePluginDynamic : public DynamicPluginTensorRT {
   std::vector<int> ends_;
   std::vector<int> axes_;
 
-  bool ban_fp16_;
+  bool ban_fp16_ = false;
 };
 #endif
 
