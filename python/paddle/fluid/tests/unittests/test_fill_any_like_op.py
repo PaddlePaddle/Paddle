@@ -17,6 +17,7 @@ from __future__ import print_function
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
 import paddle.compat as cpt
 import unittest
 import numpy as np
@@ -131,12 +132,6 @@ class TestFillAnyLikeOpError(unittest.TestCase):
                 input=input_data,
                 fill_value=2,
                 dtype='int16')
-
-            # The argument fill_value's type of full_op  must be bool, float32, float64, int32, int64.
-            def test_fill_value_type():
-                tensor.full(input=input_data, fill_value=[1], dtype="float32")
-
-            self.assertRaises(TypeError, test_fill_value)
 
 
 if __name__ == "__main__":

@@ -15,6 +15,7 @@
 from __future__ import print_function
 from ..fluid.framework import Variable
 from ..fluid.initializer import Constant
+from ..fluid.layers import core
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
 from ..fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator, device_guard, OpProtoHolder
@@ -78,9 +79,19 @@ def full_like(input,
           print(res) # [array([[2., 2., 2.], [2., 2., 2.]], dtype=float32)]
     """
     if in_dygraph_mode():
+        if out is None:
+            out = _varbase_creator(dtype=dtype)
+        else:
+            check_variable_and_dtype(out, 'out', [dtype], 'full_like')
+        if stop_gradient:
+            out.stop_gradient = True
+        outputs = {'Out': [out]}
+        attrs = {'value': fill_value}
         inputs = {'X': [input]}
-        outs = core.ops.full_like(inputs, {'value': fill_value})
-        return outs['Out'][0]
+        core.ops.fill_any_like(inputs, attrs, outputs)
+        if stop_gradient:
+            out.stop_gradient = True
+        return out
     helper = LayerHelper("full_like", **locals())
 
     if dtype is None:
@@ -88,8 +99,6 @@ def full_like(input,
 
     check_dtype(dtype, 'dtype',
                 ['bool', 'float16', 'float32', 'int32', 'int64'], 'full_like')
-    check_type(fill_value, 'fill_value', (bool, float16, float32, int32, int64),
-               'full_like')
 
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
