@@ -24,6 +24,7 @@ from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtyp
 from ..fluid.layers import utils
 import numpy
 import warnings
+from ..fluid.layers.tensor import fill_constant
 
 # TODO: define random functions  
 __all__ = [
@@ -100,6 +101,32 @@ def randint(low,
             result_4 = paddle.randint(10)
      """
 
+    def get_new_shape_tensor(list_shape):
+        new_shape_tensor = []
+        for dim in list_shape:
+            if isinstance(dim, Variable):
+                dim.stop_gradient = True
+                new_shape_tensor.append(dim)
+            else:
+                assert (isinstance(dim, int))
+                temp_out = helper.create_variable_for_type_inference('int64')
+                fill_constant([1], 'int64', dim, force_cpu=True, out=temp_out)
+                new_shape_tensor.append(temp_out)
+        return new_shape_tensor
+
+    def get_attr_shape(list_shape):
+        unk_dim_idx = -1
+        attrs_shape = []
+        for dim_idx, dim_size in enumerate(list_shape):
+            if isinstance(dim_size, Variable):
+                attrs_shape.append(-1)
+            else:
+                attrs_shape.append(dim_size)
+                assert dim_size > 0, (
+                    "Each dimension size given in shape must not be negative "
+                    "except one unknown dimension.")
+        return attrs_shape
+
     if dtype is None:
         dtype = 'int32'
     check_dtype(dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'],
@@ -112,6 +139,8 @@ def randint(low,
         shape = [1]
         assert len(shape) > 0, ("The size of argument(shape) can't be zero.")
 
+    helper = LayerHelper("randint", **locals())
+
     if in_dygraph_mode():
         attrs['shape'] = shape
     else:
@@ -122,12 +151,10 @@ def randint(low,
             assert len(shape) > 0, (
                 "The size of argument(shape) can't be zero.")
             if utils._contain_var(shape):
-                inputs['ShapeTensorList'] = utils.get_new_shape_tensor(shape)
+                inputs['ShapeTensorList'] = get_new_shape_tensor(shape)
             else:
-                attrs["shape"] = utils.get_attr_shape(shape)
+                attrs["shape"] = get_attr_shape(shape)
     check_type(shape, 'shape', (list, tuple, Variable), 'randint')
-
-    helper = LayerHelper("randint", **locals())
 
     if high is None:
         high = low

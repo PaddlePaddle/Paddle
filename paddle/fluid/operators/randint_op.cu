@@ -20,9 +20,9 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct UniformGenerator {
+struct UniformIntGenerator {
   T low_, high_;
-  __host__ __device__ UniformGenerator(T low, T high)
+  __host__ __device__ UniformIntGenerator(T low, T high)
       : low_(low), high_(high) {}
 
   __host__ __device__ T operator()(const unsigned int n) const {
@@ -64,7 +64,7 @@ class GPURandintKernel : public framework::OpKernel<T> {
     int64_t size = out->numel();
     thrust::transform(index_sequence_begin, index_sequence_begin + size,
                       thrust::device_ptr<T>(data),
-                      UniformGenerator<T>(low, high));
+                      UniformIntGenerator<T>(low, high));
   }
 };
 
