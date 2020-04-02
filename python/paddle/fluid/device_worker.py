@@ -97,7 +97,8 @@ class Hogwild(DeviceWorker):
             print("program of current device worker is not configured")
             exit(-1)
         opt_info = self._program._fleet_opt
-        if opt_info is None:
+        # when opt_info is None or empty dict, it should return
+        if not opt_info:
             return
 
         program_configs = opt_info["program_configs"]
