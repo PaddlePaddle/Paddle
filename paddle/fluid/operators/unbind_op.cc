@@ -24,10 +24,14 @@ class UnbindOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of UnbindOp should not be null.");
-    PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(), 1UL,
-                      "Outputs(Out) of UnbindOp should not be empty.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"), true,
+        "Input(X) of UnbindOp is not found."
+        "Input(X) should be an N-D Tensor, like [[1,2], [3,4], [5,6]]");
+    PADDLE_ENFORCE_GE(
+        ctx->Outputs("Out").size(), 1UL,
+        "Outputs(Out) of UnbindOp is not found."
+        "The Outputs size is equal the size of Input 'axis' dimension. ");
     auto in_dims = ctx->GetInputDim("X");
     auto outs_names = ctx->Outputs("Out");
     int axis = ctx->Attrs().Get<int>("axis");
@@ -38,13 +42,6 @@ class UnbindOp : public framework::OperatorWithKernel {
     for (size_t i = 0; i < outs_number; ++i) {
       ctx->ShareLoD("X", "Out", 0, i);
     }
-  }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
   }
 };
 
