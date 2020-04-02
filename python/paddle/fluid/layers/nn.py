@@ -34,6 +34,7 @@ from .. import unique_name
 from functools import reduce
 from .. import core
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+import paddle
 
 __all__ = [
     'fc',
@@ -10147,16 +10148,7 @@ def sum(x):
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
 
-    helper = LayerHelper('sum', **locals())
-    out = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype('x'))
-    helper.append_op(
-        type='sum',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'use_mkldnn': False})
-
-    return out
+    return paddle.elementwise_sum(x)
 
 
 @templatedoc()

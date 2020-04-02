@@ -54,7 +54,7 @@ from .creation import full  #DEFINE_ALIAS
 # from .logic import reduce_all   #DEFINE_ALIAS
 # from .logic import reduce_any   #DEFINE_ALIAS
 # from .logic import allclose   #DEFINE_ALIAS
-# from .logic import elementwise_equal   #DEFINE_ALIAS
+from .logic import elementwise_equal  #DEFINE_ALIAS
 # from .logic import isnan   #DEFINE_ALIAS
 # from . import Tensor   #DEFINE_ALIAS
 # from . import LoDTensor   #DEFINE_ALIAS
@@ -105,10 +105,10 @@ from .creation import full  #DEFINE_ALIAS
 # from .math import sum   #DEFINE_ALIAS
 # from .math import sums   #DEFINE_ALIAS
 # from .math import tanh   #DEFINE_ALIAS
-# from .math import elementwise_sum   #DEFINE_ALIAS
+from .math import elementwise_sum  #DEFINE_ALIAS
 # from .math import max   #DEFINE_ALIAS
 # from .math import min   #DEFINE_ALIAS
-# from .math import mm   #DEFINE_ALIAS
+from .math import mm  #DEFINE_ALIAS
 # from .math import div   #DEFINE_ALIAS
 # from .math import add   #DEFINE_ALIAS
 # from .math import atan   #DEFINE_ALIAS
