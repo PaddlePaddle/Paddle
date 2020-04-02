@@ -57,6 +57,12 @@ class RunProgramOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
+    PADDLE_ENFORCE_EQ(
+        tensor.IsInitialized(), true,
+        platform::errors::InvalidArgument(
+            "The tensor in variable %s used by GetKernelTypeForVar method in"
+            "RunProgram(Grad)Op(StaticModelRunner) is not initialized.",
+            var_name));
     return framework::OpKernelType(framework::proto::VarType::FP32,
                                    tensor.place());
   }
@@ -141,6 +147,12 @@ class RunProgramGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
+    PADDLE_ENFORCE_EQ(
+        tensor.IsInitialized(), true,
+        platform::errors::InvalidArgument(
+            "The tensor in variable %s used by GetKernelTypeForVar method in"
+            "RunProgram(Grad)Op(StaticModelRunner) is not initialized.",
+            var_name));
     return framework::OpKernelType(framework::proto::VarType::FP32,
                                    tensor.place());
   }

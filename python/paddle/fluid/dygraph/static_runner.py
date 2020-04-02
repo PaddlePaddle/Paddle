@@ -14,7 +14,6 @@
 
 from __future__ import print_function
 
-import collections
 import logging
 import numpy as np
 import os
@@ -29,7 +28,7 @@ from .base import switch_to_static_graph
 from ... import compat as cpt
 
 # Set Log level
-logging.getLogger().setLevel(logging.ERROR)
+logging.getLogger().setLevel(logging.WARNING)
 
 # DESIGN IDEA: Add an special operator, execute static program inside operator.
 #
@@ -212,6 +211,16 @@ class StaticModelRunner(layers.Layer):
         self._change_is_test_status(True)
 
     def forward(self, inputs):
+        """
+        Executed forward part of StaticModelRunner Layer.
+        Generally execute directly using the Layer object.
+
+        Args:
+            inputs(np.ndarray|Variable|list[np.ndarray|Variable]): the inputs of StaticModelRunner
+        
+        Returns:
+            Variable|list[Variable]: The forward outputs of StaticModelRunner Layer.
+        """
         # Step 1. prepare inputs, outputs, attrs
         if not isinstance(inputs, (list, tuple)):
             inputs = [inputs]
@@ -267,6 +276,20 @@ class StaticModelRunner(layers.Layer):
                 'start_op_index': 0,
                 'end_op_index': self._load_program_desc.block(0).op_size()
             })
+
+        # NOTE: [ why need set param's gradient type here ]
+        # if user set sparse gradient mode, the param's gradient
+        # will be SelectedRows, not LoDTensor. But tracer will just
+        # set param grad VarBase by forward VarBase(LoDTensor)
+        # If we don't change grad_var type here, RunProgramOp need
+        # transform SelectedRows to LoDTensor forcely, it may not
+        # be user wanted result.
+        for param in params:
+            var_type = self._get_grad_vartype(param.name)
+            # NOTE: cannot find var desc maybe no problem, such as in batch_norm
+            if var_type is None:
+                continue
+            param._set_grad_type(var_type)
 
         # Step 3. prepare output, keep same form with inputs
         outs = output_vars
@@ -418,6 +441,14 @@ class StaticModelRunner(layers.Layer):
             if param_grad_name not in all_var_names:
                 logging.info("set %s stop gradient = True" % param_grad_name)
                 self._parameters[param_name].stop_gradient = True
+
+    def _get_grad_vartype(self, name):
+        assert self._program_desc is not None, "The StaticModelRunner not initialized properly."
+        grad_name = name + core.grad_var_suffix()
+        for i in six.moves.range(self._program_desc.num_blocks()):
+            block = self._program_desc.block(i)
+            var_desc = block.find_var_recursive(cpt.to_bytes(grad_name))
+            return var_desc.type() if var_desc is not None else None
 
     def _get_all_var_names(self, program_desc):
         all_var_names = set()

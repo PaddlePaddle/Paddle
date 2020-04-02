@@ -21,7 +21,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -41,69 +40,21 @@ using SelectedRows = framework::SelectedRows;
 
 namespace details {
 
-static void VariableShare(Variable *src_var, Variable *dst_var) {
-  // The previous check ensures that the variable type can only be LoDTensor or
-  // SelectedRows
-  if (src_var->IsType<LoDTensor>()) {
-    auto *lod_tensor = dst_var->GetMutable<LoDTensor>();
-    lod_tensor->ShareDataWith(src_var->Get<LoDTensor>());
-    lod_tensor->set_lod(src_var->Get<LoDTensor>().lod());
-  } else if (src_var->IsType<SelectedRows>()) {
-    auto *selected_rows = dst_var->GetMutable<SelectedRows>();
-    selected_rows->mutable_value()->ShareDataWith(
-        src_var->Get<SelectedRows>().value());
-    selected_rows->set_rows(src_var->Get<SelectedRows>().rows());
-    selected_rows->set_height(src_var->Get<SelectedRows>().height());
-  }
-}
-
-static void VariableCopy(Variable *src_var, const platform::Place &dst_place,
-                         Variable *dst_var) {
-  // The previous check ensures that the variable type can only be LoDTensor or
-  // SelectedRows
-  if (src_var->IsType<LoDTensor>()) {
-    auto *lod_tensor = dst_var->GetMutable<LoDTensor>();
-    TensorCopySync(src_var->Get<LoDTensor>(), dst_place, lod_tensor);
-    lod_tensor->set_lod(src_var->Get<LoDTensor>().lod());
-  } else if (src_var->IsType<SelectedRows>()) {
-    auto *selected_rows = dst_var->GetMutable<SelectedRows>();
-    TensorCopySync(src_var->Get<SelectedRows>().value(), dst_place,
-                   selected_rows->mutable_value());
-    selected_rows->set_rows(src_var->Get<SelectedRows>().rows());
-    selected_rows->set_height(src_var->Get<SelectedRows>().height());
-  }
-}
-
-static void ShareVarsIntoScope(const std::vector<Variable *> vars,
-                               const std::vector<std::string> &var_names,
-                               framework::Scope *scope) {
-  for (size_t i = 0; i < vars.size(); ++i) {
-    auto *var = scope->Var(var_names[i]);
-    if (vars[i]->IsType<LoDTensor>()) {
-      PADDLE_ENFORCE_EQ(
-          vars[i]->Get<LoDTensor>().IsInitialized(), true,
-          platform::errors::InvalidArgument(
-              "The tensor in input variable %s of "
-              "RunProgram(Grad)Op(StaticModelRunner) is not initialized.",
-              var_names[i]));
-      VariableShare(vars[i], var);
-    } else if (vars[i]->IsType<SelectedRows>()) {
-      PADDLE_ENFORCE_EQ(
-          vars[i]->Get<SelectedRows>().value().IsInitialized(), true,
-          platform::errors::InvalidArgument(
-              "The tensor in input variable %s of "
-              "RunProgram(Grad)Op(StaticModelRunner) is not initialized.",
-              var_names[i]));
-      VariableShare(vars[i], var);
-    } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "The RunProgram(Grad)Op(StaticModelRunner) only support input "
-          "variable of type LoDTensor or SelectedRows, "
-          "but received variable %s's type is %s",
-          var_names[i],
-          platform::demangle(framework::ToTypeName(vars[i]->Type()))));
-    }
-  }
+// all input vars should be LoDTensor & is initialized
+static void CheckInputVarStatus(Variable *var, const std::string &var_name) {
+  PADDLE_ENFORCE_EQ(
+      var->IsType<LoDTensor>(), true,
+      platform::errors::InvalidArgument(
+          "The input variable %s of "
+          "RunProgram(Grad)Op(StaticModelRunner) holds "
+          "wrong type. Expect type is LoDTensor, but receive type is %s.",
+          var_name, platform::demangle(framework::ToTypeName(var->Type()))));
+  PADDLE_ENFORCE_EQ(
+      var->Get<LoDTensor>().IsInitialized(), true,
+      platform::errors::InvalidArgument("The tensor in input variable %s of "
+                                        "RunProgram(Grad)Op(StaticModelRunner) "
+                                        "is not initialized.",
+                                        var_name));
 }
 
 static void CheckOutputVarStatus(Variable *src_var, Variable *dst_var,
@@ -145,6 +96,40 @@ static void CheckOutputVarStatus(Variable *src_var, Variable *dst_var,
         "variable of type LoDTensor or SelectedRows, "
         "but received variable %s's type is %s",
         var_name, platform::demangle(framework::ToTypeName(dst_var->Type()))));
+  }
+}
+
+static void VariableShare(Variable *src_var, Variable *dst_var) {
+  // The previous check ensures that the variable type can only be LoDTensor
+  auto *lod_tensor = dst_var->GetMutable<LoDTensor>();
+  lod_tensor->ShareDataWith(src_var->Get<LoDTensor>());
+  lod_tensor->set_lod(src_var->Get<LoDTensor>().lod());
+}
+
+static void ShareVarsIntoScope(const std::vector<Variable *> vars,
+                               const std::vector<std::string> &var_names,
+                               framework::Scope *scope) {
+  for (size_t i = 0; i < vars.size(); ++i) {
+    auto *var = scope->Var(var_names[i]);
+    CheckInputVarStatus(vars[i], var_names[i]);
+    VariableShare(vars[i], var);
+  }
+}
+
+static void VariableCopy(Variable *src_var, const platform::Place &dst_place,
+                         Variable *dst_var) {
+  // The previous check ensures that the variable type can only be LoDTensor or
+  // SelectedRows
+  if (src_var->IsType<LoDTensor>()) {
+    auto *lod_tensor = dst_var->GetMutable<LoDTensor>();
+    TensorCopySync(src_var->Get<LoDTensor>(), dst_place, lod_tensor);
+    lod_tensor->set_lod(src_var->Get<LoDTensor>().lod());
+  } else if (src_var->IsType<SelectedRows>()) {
+    auto *selected_rows = dst_var->GetMutable<SelectedRows>();
+    TensorCopySync(src_var->Get<SelectedRows>().value(), dst_place,
+                   selected_rows->mutable_value());
+    selected_rows->set_rows(src_var->Get<SelectedRows>().rows());
+    selected_rows->set_height(src_var->Get<SelectedRows>().height());
   }
 }
 
@@ -319,7 +304,7 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
                                   /*create_vars=*/true, /*keep_kids=*/true);
 
     // Step 4. copy outputs
-    // TODO(chenweihang): need copy here?
+    // NOTE(chenweihang): can't remove this copy when gradient is SelectedRows
     details::CopyVarsFromScope(input_grad_vars, input_grad_var_names,
                                ctx.GetPlace(), &scope);
     details::CopyVarsFromScope(param_grad_vars, param_grad_names,
