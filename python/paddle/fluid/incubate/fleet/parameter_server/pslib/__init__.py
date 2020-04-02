@@ -484,6 +484,51 @@ class PSLib(Fleet):
             self._fleet_ptr.clear_model()
         self._role_maker._barrier_worker()
 
+    def load_pslib_whitelist(self, table_id, model_path, **kwargs):
+        """
+        load pslib model for one table with whitelist
+
+        Args:
+            table_id(int): load table id
+            model_path(str): load model path, can be local or hdfs/afs path
+            kwargs(dict): user defined params, currently support following:
+                only for load pslib model for one table:
+                    mode(int): load model mode. 0 is for load whole model, 1 is
+                               for load delta model (load diff), default is 0.
+                only for load params from paddle model:
+                    scope(Scope): Scope object
+                    model_proto_file(str): path of program desc proto binary
+                                           file, can be local or hdfs/afs file
+                    var_names(list): var name list
+                    load_combine(bool): load from a file or split param files
+                                        default False.
+
+        Examples:
+            .. code-block:: python
+
+              # load pslib model for one table
+              fleet.load_one_table(0, "hdfs:/my_fleet_model/20190714/0/")
+              fleet.load_one_table(1, "hdfs:/xx/xxx", mode = 0)
+
+              # load params from paddle model
+              fleet.load_one_table(2, "hdfs:/my_paddle_model/",
+                                   scope = my_scope,
+                                   model_proto_file = "./my_program.bin",
+                                   load_combine = False)
+
+              # below is how to save proto binary file
+              with open("my_program.bin", "wb") as fout:
+                  my_program = fluid.default_main_program()
+                  fout.write(my_program.desc.serialize_to_string())
+
+        """
+        self._role_maker._barrier_worker()
+        mode = kwargs.get("mode", 0)
+        elif self._role_maker.is_first_worker():
+            self._fleet_ptr.load_table_with_whitelist(table_id, model_path, mode)
+        self._role_maker._barrier_worker()
+    
+    
     def load_one_table(self, table_id, model_path, **kwargs):
         """
         load pslib model for one table or load params from paddle model
