@@ -125,7 +125,7 @@ from .tensor.creation import full  #DEFINE_ALIAS
 # from .tensor.math import sqrt   #DEFINE_ALIAS
 # from .tensor.math import square   #DEFINE_ALIAS
 # from .tensor.math import stanh   #DEFINE_ALIAS
-# from .tensor.math import sum   #DEFINE_ALIAS
+from .tensor.math import sum  #DEFINE_ALIAS
 # from .tensor.math import sums   #DEFINE_ALIAS
 # from .tensor.math import tanh   #DEFINE_ALIAS
 # from .tensor.math import elementwise_sum   #DEFINE_ALIAS
