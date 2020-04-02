@@ -53,11 +53,6 @@ static constexpr bool CanInplaceAct() {
                     "(bool, default false) Only used in cudnn kernel, need " \
                     "install cudnn")                                         \
           .SetDefault(false);                                                \
-      AddAttr<bool>(                                                         \
-          "is_test",                                                         \
-          "(bool, default false) Set to true for inference only, false "     \
-          "for training. Some layers may run faster when this is true.")     \
-          .SetDefault(false);                                                \
       AddComment(OP_COMMENT);                                                \
     }                                                                        \
   }
@@ -370,10 +365,6 @@ class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false);
     AddComment(R"DOC(
 LeakyRelu Activation Operator.
 
@@ -600,10 +591,6 @@ class SwishOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("beta", "Constant beta of swish operator").SetDefault(1.0f);
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
     AddComment(R"DOC(
 Swish Activation Operator.
