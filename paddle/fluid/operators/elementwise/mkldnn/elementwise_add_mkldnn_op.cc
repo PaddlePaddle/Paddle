@@ -61,26 +61,27 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
     auto dst_tz = framework::vectorize<int64_t>(z->dims());
 
     // Currently MKL-DNN kernel supports only Z <- X + Y, shape(X) == shape(Y)
-    // TODO(jczaja): Binary primitive support broadcasting, so we can support this in kernel
-    platform::BinaryMKLDNNHandler<T> handler(dnnl::algorithm::binary_add,
-src_x_tz, x->format(), y->format(), dev_ctx, ctx.GetPlace(), ctx.OutputName("Out"));
+    // TODO(jczaja): Binary primitive support broadcasting, so we can support
+    // this in kernel
+    platform::BinaryMKLDNNHandler<T> handler(
+        dnnl::algorithm::binary_add, src_x_tz, x->format(), y->format(),
+        dev_ctx, ctx.GetPlace(), ctx.OutputName("Out"));
 
     auto src_x_memory = handler.AcquireSrcMemory(x);
     auto src_y_memory = handler.AcquireSecondSrcMemory(y);
 
     // For Inplace src and and dst are the same memory object
-    auto dst_memory = x->Holder() == z->Holder() ? src_x_memory : handler.AcquireDstMemory(z);
+    auto dst_memory =
+        x->IsSharedBufferWith(*z) ? src_x_memory : handler.AcquireDstMemory(z);
 
     auto binary_prim = handler.AcquireForwardPrimitive();
 
     mkldnn::stream astream(mkldnn_engine);
 
-    std::unordered_map<int, dnnl::memory> args =
-    {
-       {DNNL_ARG_SRC_0, *src_x_memory},
-       {DNNL_ARG_SRC_1, *src_y_memory},
-       {DNNL_ARG_DST,  *dst_memory}
-    };
+    std::unordered_map<int, dnnl::memory> args = {
+        {DNNL_ARG_SRC_0, *src_x_memory},
+        {DNNL_ARG_SRC_1, *src_y_memory},
+        {DNNL_ARG_DST, *dst_memory}};
 
     binary_prim->execute(astream, args);
     astream.wait();

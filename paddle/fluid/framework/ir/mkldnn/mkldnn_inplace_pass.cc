@@ -40,36 +40,39 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
                      Graph* g) {
     VLOG(3) << "Start to handle MKL-DNN In-Place pass";
 
-    GET_IR_NODE_FROM_SUBGRAPH(inplace_to_be_op, inplace_to_be_op,
+    GET_IR_NODE_FROM_SUBGRAPH(prev_op, prev_op, mkldnn_inplace);
+    GET_IR_NODE_FROM_SUBGRAPH(current_op, inplace_to_be_op, mkldnn_inplace);
+    GET_IR_NODE_FROM_SUBGRAPH(current_op_in, inplace_to_be_op_in,
                               mkldnn_inplace);
-    GET_IR_NODE_FROM_SUBGRAPH(inplace_to_be_op_in, inplace_to_be_op_in,
-                              mkldnn_inplace);
-    GET_IR_NODE_FROM_SUBGRAPH(inplace_to_be_op_out, inplace_to_be_op_out,
+    GET_IR_NODE_FROM_SUBGRAPH(current_op_out, inplace_to_be_op_out,
                               mkldnn_inplace);
     GET_IR_NODE_FROM_SUBGRAPH(next_op, next_op, mkldnn_inplace);
+    GET_IR_NODE_FROM_SUBGRAPH(next_op_out, next_op_out, mkldnn_inplace);
 
-    if ((inplace_to_be_op->Op()->HasAttr("use_mkldnn") == false) ||
-        (boost::get<bool>(inplace_to_be_op->Op()->GetAttr("use_mkldnn")) ==
-         false)) {
+    if ((current_op->Op()->HasAttr("use_mkldnn") == false) ||
+        (boost::get<bool>(current_op->Op()->GetAttr("use_mkldnn")) == false)) {
       VLOG(3) << "do not perform mkl-dnn inplace: use_mkldnn missing or set to "
                  "false";
       return;
     }
 
-    auto& infer_inplace = OpInfoMap::Instance()
-                              .Get(inplace_to_be_op->Op()->Type())
-                              .infer_inplace_;
+    auto& infer_inplace =
+        OpInfoMap::Instance().Get(current_op->Op()->Type()).infer_inplace_;
     if (!infer_inplace) {
       VLOG(3) << "do not perform mkl-dnn inplace: missing InplaceInferer";
       return;
     }
 
-    // TODO(jczaja): Enable more ops
-    if (inplace_to_be_op->Op()->Type() != "softmax") {
-      VLOG(3)
-          << "Curently works for softmax only. TODO(jczaja): support other ops";
-      return;
-    }
+    auto count_specific_vars = [](VariableNameMap& mapvar,
+                                  std::string& target_var_name) {
+      unsigned int count = 0;
+      for (auto& it : mapvar) {
+        for (auto& var_name : it.second) {
+          count += (var_name == target_var_name) ? 1 : 0;
+        }
+      }
+      return count;
+    };
 
     // Iterate over all nodes  that are ops
     // and check if in-place to be var is part of inputs
@@ -77,16 +80,39 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
     for (const Node* n : graph->Nodes()) {
       if (n->IsOp()) {
         // Avoid searchin in op that is to be inplace
-        if ((n->id() != inplace_to_be_op->id())) {
+        if ((n->id() != current_op->id())) {
           auto* op = n->Op();
           auto inputs = op->Inputs();
-          auto in_place_input = inplace_to_be_op_in->Name();
+          auto outputs = op->Inputs();
+          auto in_place_input = current_op_in->Name();
           for (auto& it : inputs) {
             for (auto& var_name : it.second) {
               if (var_name == in_place_input) {
-                VLOG(3) << "MKL-DNN in-place pass: in-place var cannot be an "
-                           "input to more than one operator";
-                return;
+                // If next op is already having inplace var
+                // among its inputs then do not perform inplacing
+                if ((n->id() == next_op->id()) &&
+                    count_specific_vars(inputs, var_name) > 0) {
+                  VLOG(3) << "MKL-DNN in-place pass FAIL: in-place var cannot "
+                             "be an "
+                             "input to next op in same chain";
+                  return;
+                }
+
+                // Ok if op that is having current op input as its own
+                // input is directly before current op, and prev op
+                // is also in-place then we can in-placed current op
+                if ((n->id() == prev_op->id()) &&
+                    count_specific_vars(outputs, var_name) > 0) {
+                  VLOG(3) << "MKL-DNN in-place pass: in-place var is "
+                             "an input of prev op, but also of inplaced op. OK";
+
+                } else {
+                  VLOG(3)
+                      << "MKL-DNN in-place pass FAIL: in-place var cannot be "
+                         "an "
+                         "input to more than one operator of diffrent branches";
+                  return;
+                }
               }
             }
           }
@@ -94,16 +120,41 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
       }
     }
 
-    auto original_name = inplace_to_be_op_out->Name();
-    inplace_to_be_op_out->RenameVar(inplace_to_be_op_in->Name());
+    auto original_name = current_op_out->Name();
+    current_op_out->RenameVar(current_op_in->Name());
 
     // Get mapping of input to output
     auto in_to_outs = infer_inplace(false);  // strictly no CUDA for MKL-DNN
     // TODO(jczaja): Support more complex situations
     auto out_name = in_to_outs.begin()->second;
-    inplace_to_be_op->Op()->SetOutput(
-        out_name, std::vector<std::string>({inplace_to_be_op_out->Name()}));
-    next_op->Op()->RenameInput(original_name, inplace_to_be_op_out->Name());
+    current_op->Op()->SetOutput(
+        out_name, std::vector<std::string>({current_op_out->Name()}));
+
+    // If next op in a line is doing inplace 
+    // then we need to update its output as well
+    
+    // Get inferer of next op
+    // If no inferer then we are done 
+    auto& next_op_infer_inplace =
+        OpInfoMap::Instance().Get(next_op->Op()->Type()).infer_inplace_;
+    if (next_op_infer_inplace) {
+      auto in_to_outs = next_op_infer_inplace(false);
+      auto out_name = in_to_outs.begin()->second;
+      auto* op = next_op->Op();
+      auto inputs = op->Inputs();
+      auto outputs = op->Outputs();
+      // Check if in-place happened
+      if(inputs[in_to_outs.begin()->first] == outputs[in_to_outs.begin()->second] ) {
+        VLOG(3) << "MKL-DNN InPlace: Next Op is in-placed , updating its input and output var!";
+        next_op->Op()->SetOutput(
+            out_name, std::vector<std::string>({current_op_out->Name()}));
+        next_op_out->RenameVar(current_op_in->Name());
+      }
+
+    }
+    // Rename input of next op
+    next_op->Op()->RenameInput(original_name, current_op_out->Name());
+
     found_inplace_count++;
     VLOG(3) << "MKL-DNN InPlace applied!";
   };

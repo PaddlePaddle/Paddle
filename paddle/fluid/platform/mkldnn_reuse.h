@@ -353,24 +353,24 @@ class MKLDNNHandler {
 };
 
 template <typename T>
-class BinaryMKLDNNHandler
-    : public platform::MKLDNNHandlerT<T, dnnl::binary> {
+class BinaryMKLDNNHandler : public platform::MKLDNNHandlerT<T, dnnl::binary> {
  public:
   BinaryMKLDNNHandler(const dnnl::algorithm algo,
-                      const std::vector<int64_t>& dims, 
+                      const std::vector<int64_t>& dims,
                       const MKLDNNMemoryFormat src0_fmt,
                       const MKLDNNMemoryFormat src1_fmt,
                       const platform::MKLDNNDeviceContext& dev_ctx,
-                       platform::Place cpu_place, const std::string& uniq_name)
+                      platform::Place cpu_place, const std::string& uniq_name)
       : platform::MKLDNNHandlerT<T, dnnl::binary>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
             platform::CreateKey(dims, uniq_name)) {
     // TODO(jczaja): Add function checking if data already exists
     auto src0_md = dnnl::memory::desc(dims, MKLDNNGetDataType<T>(), src0_fmt);
     auto src1_md = dnnl::memory::desc(dims, MKLDNNGetDataType<T>(), src1_fmt);
-    auto dst_md = memory::desc(dims, MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
+    auto dst_md =
+        memory::desc(dims, MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
 
-    this->AcquireForwardPrimitiveDescriptor( algo, src0_md, src1_md, dst_md);
+    this->AcquireForwardPrimitiveDescriptor(algo, src0_md, src1_md, dst_md);
   }
 
   std::shared_ptr<mkldnn::memory> AcquireSecondSrcMemory(
@@ -379,8 +379,6 @@ class BinaryMKLDNNHandler
     return this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->src_desc(), to_void_cast<T>(input_data), "@src1_mem_p");
   }
-
-
 };
 
 class SumMKLDNNHandler : public MKLDNNHandler {
