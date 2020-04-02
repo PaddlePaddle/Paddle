@@ -61,15 +61,32 @@ def randn(shape,
     Examples:
         .. code-block:: python
 
+            # declarative mode
             import paddle.fluid as fluid
+            import paddle.tensor as tensor
 
-            data = fluid.tensor.randn([2, 4])
-            exe = fluid.Executor()
-            res = exe.run(default_main_program, feed={}, fetch_list=[data])
-            print(res[0])
-            # array([[2.3060477 , 2.676496  , 3.9911983 , 0.9990833 ],
-            #        [2.8675377 , 2.2279181 , 0.79029655, 2.8447366 ]], dtype=float32)
+            data = tensor.randn([2, 4])
+	    place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            res, = exe.run(fluid.default_main_program(), feed={}, fetch_list=[data])
+            print(res)
+            # [[-1.4187592   0.7368311  -0.53748125 -0.0146909 ]
+            #  [-0.66294265 -1.3090698   0.1898754  -0.14065823]]
 
+        .. code-block:: python
+
+            # imperative mode
+            import paddle.tensor as tensor
+            import paddle.fluid as fluid
+            import paddle.fluid.dygraph as dg
+
+            place = fluid.CPUPlace()
+            with dg.guard(place) as g:
+                x = tensor.randn([2, 4])
+                x_np = x.numpy()
+                print(x_np)
+                # [[ 1.5149173  -0.26234224 -0.592486    1.4523455 ]
+                #  [ 0.04581212 -0.85345626  1.1687907  -0.02512913]]
     """
     helper = LayerHelper("randn", **locals())
     check_type(shape, 'shape', (list, tuple), 'randn')
