@@ -10,16 +10,18 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
+#include <thread>
 #include <vector>
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/platform/errors.h"
+#include "paddle/fluid/string/string_helper.h"
 
 namespace gloo {
 namespace rendezvous {
 
 HdfsStore::HdfsStore(const std::string& path) {
   path_ = path;
-  wait_sleep_ms_ = 3000;
+  wait_sleep_ms_ = 10000;
   wait_timeout_ = std::chrono::seconds(999999999);
   retry_times_ = 100;
 }
@@ -35,28 +37,44 @@ void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
   }
   int err_no = 0;
   for (int i = 1; i <= retry_times_; ++i) {
+    err_no = 0;
     std::shared_ptr<FILE> fp =
         paddle::framework::fs_open_write(tmp, &err_no, "");
-    if (err_no != 0) {
-      VLOG(0) << "fs_open_write failed, retry times " << i << " err no "
-              << err_no;
-      fp.reset();
-      sleep(wait_sleep_ms_ / 1000);
-      continue;
-    }
     size_t write_count = fwrite_unlocked(data.data(), 1, data.size(), fp.get());
     if (write_count != data.size()) {
       VLOG(0) << "fwrite_unlocked failed, retry times " << i << " write_count "
               << write_count << " data.size() " << data.size();
-      fp.reset();
-      sleep(2);
-      continue;
+      err_no = -1;
     }
     fp.reset();
-    break;
+    if (err_no != 0) {
+      VLOG(0) << "fs_open_write failed, retry times " << i << " err no "
+              << err_no;
+      sleep(wait_sleep_ms_ / 1000);
+      paddle::framework::fs_remove(tmp);
+      if (i == retry_times_) {
+        VLOG(0) << "fs_open_write failed, retry times reaches limit";
+        exit(-1);
+      }
+    } else {
+      break;
+    }
   }
   paddle::framework::fs_mv(tmp, path);
 #endif
+}
+
+int retry_do_func(std::function<int(void)> func, uint32_t max_try_time,
+                  uint32_t retry_interval_ms) {
+  int ret = -1;
+  for (uint32_t i = 0; i < max_try_time; ++i) {
+    ret = func();
+    if (ret == 0) {
+       break;
+    }
+    usleep(retry_interval_ms * 1000);
+  }
+  return ret;
 }
 
 std::vector<char> HdfsStore::get(const std::string& key) {
@@ -65,19 +83,32 @@ std::vector<char> HdfsStore::get(const std::string& key) {
 #ifdef PADDLE_WITH_GLOO
   // block until key is set
   wait({key});
-  bool is_exists = paddle::framework::fs_exists(path);
+  bool ret = retry_do_func([&path]() {
+    return paddle::framework::fs_exists(path) ? 0 : -1;
+  }, 5, wait_sleep_ms_);
+  bool is_exists = (ret == 0);
   PADDLE_ENFORCE_EQ(is_exists, true,
                     paddle::platform::errors::NotFound(
                         "HdfsStore::get, path not exists: " + path));
-  int err_no = 0;
-  std::shared_ptr<FILE> fp = paddle::framework::fs_open_read(path, &err_no, "");
-  char buffer = '\0';
-  size_t read_count = 0;
-  while (fread(&buffer, 1, 1, fp.get()) == 1) {
-    ++read_count;
-    result.push_back(buffer);
-  }
-  VLOG(3) << "HdfsStore::get read_count " << read_count;
+
+  int read_status = retry_do_func([&path, &result]() {
+    result.clear();
+    int err_no = 0;
+    {
+      std::shared_ptr<FILE> fp = paddle::framework::fs_open_read(path, &err_no, "");
+      char buffer = '\0';
+      size_t read_count = 0;
+      while (fread(&buffer, 1, 1, fp.get()) == 1) {
+        ++read_count;
+        result.push_back(buffer);
+      }
+      VLOG(3) << "HdfsStore::get read_count " << read_count;
+    }
+    return err_no;
+  }, 5, wait_sleep_ms_);
+  PADDLE_ENFORCE_EQ(read_status, 0,
+                    paddle::platform::errors::Fatal(
+                        "HdfsStore::get, path read faied: " + path));
 #endif
   return result;
 }
@@ -92,22 +123,34 @@ void HdfsStore::wait(const std::vector<std::string>& keys,
                      const std::chrono::milliseconds&) {  // NOLINT
 #ifdef PADDLE_WITH_GLOO
   auto start = std::chrono::steady_clock::now();
-  while (!Check(keys)) {
+  std::vector<bool> check_key_status(keys.size(), false);
+  while (!Check(keys, &check_key_status)) {
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::steady_clock::now() - start);
     if (wait_timeout_ != gloo::kNoTimeout && elapsed > wait_timeout_) {
-      PADDLE_ENFORCE_EQ(0, 1, paddle::platform::errors::ExecutionTimeout(
-                                  "HdfsStore::wait, Wait timeout for key(s): " +
-                                  ::gloo::MakeString(keys)));
+      int32_t last_check_rank = -1;
+      for (size_t i = 0; i < check_key_status.size(); ++i) {
+        if (!check_key_status[i]) {
+          last_check_rank = i;
+          break;
+        }
+      }
+      PADDLE_ENFORCE_EQ(0, 1,
+                        paddle::platform::errors::ExecutionTimeout(
+                            "TIMEOUT self_rank = " + std::to_string(self_rank_) +
+                            " pair_rank = " +  std::to_string(last_check_rank)));
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(wait_sleep_ms_));
   }
 #endif
 }
 
+void HdfsStore::SetTimeoutSeconds(int timeout_seconds) {
+  wait_timeout_ = std::chrono::seconds(timeout_seconds);
+}
+
 std::string HdfsStore::EncodeName(const std::string& name) {
-  thread_local std::hash<std::string> hash_func;
-  return std::to_string(hash_func(name));
+  return ::paddle::string::erase_spaces(name);
 }
 
 std::string HdfsStore::TmpPath(const std::string& name) {
@@ -118,21 +161,74 @@ std::string HdfsStore::ObjectPath(const std::string& name) {
   return path_ + "/" + EncodeName(name);
 }
 
-bool HdfsStore::Check(const std::vector<std::string>& keys) {
+bool HdfsStore::Check(const std::vector<std::string>& keys,
+                      std::vector<bool>* keys_check_status) {
 #ifdef PADDLE_WITH_GLOO
+  bool ret = true;
   std::vector<std::string> paths;
   for (const auto& key : keys) {
     paths.push_back(ObjectPath(key));
   }
-  for (const auto& path : paths) {
+  for (size_t i = 0; i < paths.size(); ++i) {
+    if ((*keys_check_status)[i]) {
+      continue;
+    }
+    const auto& path = paths[i];
     bool is_exists = paddle::framework::fs_exists(path);
     VLOG(3) << "HdfsStore::Check " << is_exists << " path " << path;
     if (!is_exists) {
-      return false;
+      ret = false;
     }
+    (*keys_check_status)[i] = is_exists;
   }
+  return ret;
 #endif
   return true;
+}
+
+void ParallelConnectContext::connectFullMesh(
+    Store& store, std::shared_ptr<transport::Device>& dev) {
+  std::vector<char> allBytes;
+  // Create pairs
+  auto transportContext = dev->createContext(rank, size);
+  transportContext->setTimeout(getTimeout());
+  for (int i = 0; i < size; i++) {
+    if (i == rank) {
+      continue;
+    }
+    auto& pair = transportContext->createPair(i);
+    auto addrBytes = pair->address().bytes();
+    allBytes.insert(allBytes.end(), addrBytes.begin(), addrBytes.end());
+  }
+  std::ostringstream storeKey;
+  storeKey << rank;
+  store.set(storeKey.str(), allBytes);
+
+  std::vector<std::shared_ptr<std::thread>> connect_threads(thread_num_);
+  // Connect every pair
+  for (uint32_t i = 0; i < connect_threads.size(); ++i) {
+    connect_threads[i].reset(new std::thread(
+        [&store, &transportContext, this] (
+            size_t thread_idx, size_t thread_num) -> void {
+      for (int i = thread_idx; i < size; i += thread_num) {
+        if (i == rank) {
+          continue;
+        }
+        // Wait for address of other side of this pair to become available
+        std::string key = std::to_string(i);
+        store.wait({key}, getTimeout());
+        // Connect to other side of this pair
+        auto allAddrs = store.get(key);
+        auto addr = extractAddress(allAddrs, i);
+        transportContext->getPair(i)->connect(addr);
+      }
+    }, i, connect_threads.size()));
+  }
+  for (uint32_t i = 0; i < connect_threads.size(); ++i) {
+    connect_threads[i]->join();
+  }
+  device_ = dev;
+  transportContext_ = std::move(transportContext);
 }
 
 }  // namespace rendezvous
@@ -141,27 +237,44 @@ bool HdfsStore::Check(const std::vector<std::string>& keys) {
 namespace paddle {
 namespace framework {
 
-void GlooWrapper::Init(int rank, int size, const std::string& path,
-                       const std::string& fs_name, const std::string& fs_ugi,
-                       const std::string& iface, const std::string& prefix) {
+void GlooWrapper::Init() {
   if (is_initialized_) {
     return;
   }
-  rank_ = rank;
-  size_ = size;
-  std::string cmd = std::string("${HADOOP_HOME}/bin/hadoop fs");
-  cmd += " -D fs.default.name=" + fs_name;
-  cmd += " -D hadoop.job.ugi=" + fs_ugi;
-  paddle::framework::hdfs_set_command(cmd);
 #ifdef PADDLE_WITH_GLOO
   gloo::transport::tcp::attr attr;
-  attr.iface = iface;
-  auto file_store = gloo::rendezvous::HdfsStore(path);
-  auto prefix_store = gloo::rendezvous::PrefixStore(prefix, file_store);
+  attr.iface = iface_;
+  std::shared_ptr<gloo::rendezvous::HdfsStore> file_store = nullptr;
+  std::shared_ptr<gloo::rendezvous::HTTPStore> http_store = nullptr;
+  auto context =
+      std::make_shared<gloo::rendezvous::ParallelConnectContext>(rank_, size_);
+  context->setTimeout(run_timeout_);
   auto dev = gloo::transport::tcp::CreateDevice(attr);
-  auto context = std::make_shared<gloo::rendezvous::Context>(rank, size);
-  context->setTimeout(file_store.wait_timeout_);
-  context->connectFullMesh(prefix_store, dev);
+  switch (store_type_) {
+    case GlooStoreType::HDFS: {
+      std::string cmd = std::string("${HADOOP_HOME}/bin/hadoop fs");
+      cmd += " -D fs.default.name=" + hdfs_name_;
+      cmd += " -D hadoop.job.ugi=" + hdfs_ugi_;
+      paddle::framework::hdfs_set_command(cmd);
+      file_store = std::make_shared<gloo::rendezvous::HdfsStore>(hdfs_path_);
+      file_store->SetTimeoutSeconds(init_timeout_.count());
+      auto prefix_store =
+        std::make_shared<gloo::rendezvous::PrefixStore>(prefix_, *file_store);
+      context->connectFullMesh(*prefix_store, dev);
+      break;
+    }
+    case GlooStoreType::HTTP: {
+      http_store = std::make_shared<gloo::rendezvous::HTTPStore>(
+          http_ip_, http_port_, prefix_ + "_" + http_scope_, rank_);
+      http_store->SetTimeoutSeconds(init_timeout_.count());
+      context->connectFullMesh(*http_store, dev);
+      http_store->Finalize();
+      break;
+    }
+    default:
+      LOG(ERROR) << "unknown store type " << store_type_;
+      exit(-1);
+  }
   context_ = std::move(context);
 #endif
   is_initialized_ = true;
@@ -169,6 +282,9 @@ void GlooWrapper::Init(int rank, int size, const std::string& path,
 
 template std::vector<int64_t> GlooWrapper::AllReduce<int64_t>(
     std::vector<int64_t>& sendbuf,  // NOLINT
+    const std::string& mode);
+template std::vector<float> GlooWrapper::AllReduce<float>(
+    std::vector<float>& sendbuf,  // NOLINT
     const std::string& mode);
 template std::vector<double> GlooWrapper::AllReduce<double>(
     std::vector<double>& sendbuf,  // NOLINT
@@ -180,6 +296,8 @@ template std::vector<int64_t> GlooWrapper::AllGather<int64_t>(
     int64_t& input);  // NOLINT
 template std::vector<uint64_t> GlooWrapper::AllGather<uint64_t>(
     uint64_t& input);  // NOLINT
+template std::vector<float> GlooWrapper::AllGather<float>(
+    float& input);  // NOLINT
 template std::vector<double> GlooWrapper::AllGather<double>(
     double& input);  // NOLINT
 

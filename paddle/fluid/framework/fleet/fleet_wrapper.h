@@ -235,6 +235,10 @@ class FleetWrapper {
   // send client to client message
   std::future<int32_t> SendClientToClientMsg(int msg_type, int to_client_id,
                                              const std::string& msg);
+  // confirm all the updated params in the current pass
+  void Confirm();
+  // revert all the updated params in the current pass
+  void Revert();
   // FleetWrapper singleton
   static std::shared_ptr<FleetWrapper> GetInstance() {
     if (NULL == s_instance_) {

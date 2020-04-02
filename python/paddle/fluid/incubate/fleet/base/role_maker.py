@@ -14,6 +14,7 @@
 """Defination of Role Makers."""
 
 from __future__ import print_function
+from multiprocessing import Process, Manager
 import paddle.fluid as fluid
 import os
 import time
@@ -556,7 +557,21 @@ class GeneralRoleMaker(RoleMakerBase):
         self._role_is_generated = False
         self._hdfs_name = kwargs.get("hdfs_name", "")
         self._hdfs_ugi = kwargs.get("hdfs_ugi", "")
-        self._hdfs_path = kwargs.get("path", "")
+        self._hdfs_path = kwargs.get("path", "").rstrip("/")
+        self._init_timeout_seconds = kwargs.get("init_timeout_seconds", 3600)
+        self._run_timeout_seconds = kwargs.get("run_timeout_seconds", 9999999)
+        ip_port = kwargs.get("http_ip_port", "")
+        self._http_ip_port = []
+        self._http_server = None
+        # if ip_port is not empty, it will use http instead of hdfs
+        if ip_port != "":
+            self._http_ip_port = ip_port.split(":")
+            # it's for communication between processes
+            self._manager = Manager()
+            # global dict to store status
+            self._http_server_d = self._manager.dict()
+            # set running status of http server
+            self._http_server_d["running"] = False
         self._iface = self.__get_default_iface()
         # this environment variable can be empty
         self._prefix = os.getenv("SYS_JOB_ID", "")
@@ -572,17 +587,37 @@ class GeneralRoleMaker(RoleMakerBase):
             trainers_num = len(worker_endpoints)
             if training_role not in ["TRAINER", "PSERVER"]:
                 raise ValueError("TRAINING_ROLE must be PSERVER or TRAINER")
+
             if training_role == "TRAINER":
                 role = Role.WORKER
                 current_id = int(os.environ["PADDLE_TRAINER_ID"])
+                if current_id == 0 and len(self._http_ip_port) != 0:
+                    # child process for http server
+                    self._http_server = Process(
+                        target=self.__start_kv_server, args=(self._http_server_d,))
+                    self._http_server.daemon = True
+                    # set running status to True
+                    self._http_server_d["running"] = True
+                    # start child process
+                    self._http_server.start()
                 self._node_type = 1
                 self._cur_endpoint = worker_endpoints[current_id]
                 gloo = fluid.core.Gloo()
-                gloo.init(current_id,
-                          len(worker_endpoints),
-                          self._hdfs_path.rstrip("/") + "/trainer",
-                          self._hdfs_name, self._hdfs_ugi, self._iface,
-                          self._prefix)
+                gloo.set_rank(current_id)
+                gloo.set_size(len(worker_endpoints))
+                gloo.set_prefix(self._prefix)
+                gloo.set_iface(self._iface)
+                gloo.set_timeout_seconds(
+                    self._init_timeout_seconds, self._run_timeout_seconds)
+                if len(self._http_ip_port) != 0:
+                    gloo.set_http_store(self._http_ip_port[0],
+                                        int(self._http_ip_port[1]),
+                                        "trainer")
+                else:
+                    gloo.set_hdfs_store(self._hdfs_path + "/trainer",
+                                        self._hdfs_name,
+                                        self._hdfs_ugi)
+                gloo.init()
                 self._node_type_comm = gloo
             elif training_role == "PSERVER":
                 role = Role.SERVER
@@ -598,20 +633,40 @@ class GeneralRoleMaker(RoleMakerBase):
                 self._node_type = 0
                 self._cur_endpoint = cur_endpoint
                 gloo = fluid.core.Gloo()
-                gloo.init(current_id,
-                          len(eplist),
-                          self._hdfs_path.rstrip("/") + "/pserver",
-                          self._hdfs_name, self._hdfs_ugi, self._iface,
-                          self._prefix)
+                gloo.set_rank(current_id)
+                gloo.set_size(len(eplist))
+                gloo.set_prefix(self._prefix)
+                gloo.set_iface(self._iface)
+                gloo.set_timeout_seconds(
+                    self._init_timeout_seconds, self._run_timeout_seconds)
+                if len(self._http_ip_port) != 0:
+                    gloo.set_http_store(self._http_ip_port[0],
+                                        int(self._http_ip_port[1]),
+                                        "pserver")
+                else:
+                    gloo.set_hdfs_store(self._hdfs_path + "/pserver",
+                                        self._hdfs_name,
+                                        self._hdfs_ugi)
+                gloo.init()
                 self._node_type_comm = gloo
 
             gloo = fluid.core.Gloo()
             all_list = worker_endpoints + eplist
-            gloo.init(
-                all_list.index(self._cur_endpoint),
-                len(all_list),
-                self._hdfs_path.rstrip("/") + "/all", self._hdfs_name,
-                self._hdfs_ugi, self._iface, self._prefix)
+            gloo.set_rank(all_list.index(self._cur_endpoint))
+            gloo.set_size(len(all_list))
+            gloo.set_prefix(self._prefix)
+            gloo.set_iface(self._iface)
+            gloo.set_timeout_seconds(
+                self._init_timeout_seconds, self._run_timeout_seconds)
+            if len(self._http_ip_port) != 0:
+                gloo.set_http_store(self._http_ip_port[0],
+                                    int(self._http_ip_port[1]),
+                                    "all")
+            else:
+                gloo.set_hdfs_store(self._hdfs_path + "/all",
+                                    self._hdfs_name,
+                                    self._hdfs_ugi)
+            gloo.init()
             self._all_comm = gloo
             self._trainers_num = trainers_num
             self._server_endpoints = eplist
@@ -620,6 +675,11 @@ class GeneralRoleMaker(RoleMakerBase):
             self._rank = all_list.index(self._cur_endpoint)
             self._size = len(all_list)
             self._worker_endpoints = worker_endpoints
+            if self._http_server is not None:
+                # set running status to False
+                self._http_server_d["running"] = False
+                # wait until child process exits
+                self._http_server.join()
             self._role_is_generated = True
 
     def all_gather(self, input):
@@ -871,6 +931,15 @@ class GeneralRoleMaker(RoleMakerBase):
                     if 'broadcast' in ipv4_address:
                         return intf_name
         return "lo"
+
+    def __start_kv_server(self, http_server_d):
+        from paddle.fluid.incubate.fleet.utils.http_server import KVServer
+        http_server = KVServer(int(self._http_ip_port[1]))
+        http_server.start()
+        wait_seconds = 5
+        while http_server_d.get("running", False):
+            time.sleep(wait_seconds)
+        http_server.stop()
 
 
 class UserDefinedRoleMaker(RoleMakerBase):

@@ -31,6 +31,7 @@ limitations under the License. */
 #include <gloo/barrier.h>
 #include <gloo/rendezvous/context.h>
 #include <gloo/rendezvous/file_store.h>
+#include <gloo/rendezvous/http_store.h>
 #include <gloo/rendezvous/prefix_store.h>
 #include <gloo/rendezvous/store.h>
 #include <gloo/transport/tcp/device.h>
@@ -59,18 +60,38 @@ class HdfsStore {
   virtual void wait(const std::vector<std::string>& keys,
                     const std::chrono::milliseconds& timeout);
 
+  virtual void SetTimeoutSeconds(int timeout_seconds);
+
   std::string EncodeName(const std::string& name);
 
   std::string TmpPath(const std::string& name);
 
   std::string ObjectPath(const std::string& name);
 
-  bool Check(const std::vector<std::string>& keys);
+  bool Check(const std::vector<std::string>& keys,
+             std::vector<bool>* keys_check_status);
+
+  void SetRank(int rank) { self_rank_ = rank; }
 
   std::string path_;
   int wait_sleep_ms_;
   std::chrono::seconds wait_timeout_;
   int retry_times_;
+  int self_rank_;
+};
+
+class ParallelConnectContext : public gloo::rendezvous::Context {
+public:
+  ParallelConnectContext(int rank, int size, int base=2) :
+    gloo::rendezvous::Context(rank, size, base) {}
+  virtual ~ParallelConnectContext() {}
+  // in gloo::rendezvous::Context wait&get one by one,
+  // slowly in case big size, especialy in HdfsStore
+  void connectFullMesh(Store& store,
+    std::shared_ptr<transport::Device>& dev);
+
+protected:
+  int thread_num_ = 6;
 };
 
 }  // namespace rendezvous
@@ -79,24 +100,49 @@ class HdfsStore {
 namespace paddle {
 namespace framework {
 
+enum GlooStoreType {
+    HDFS,
+    HTTP
+};
+
 class GlooWrapper {
  public:
   GlooWrapper() {}
 
   virtual ~GlooWrapper() {}
 
-  void Init(int rank, int size, const std::string& path,
-            const std::string& fs_name, const std::string& fs_ugi,
-            const std::string& iface, const std::string& prefix);
+  void Init();
 
-  int Rank() {
-    CHECK_EQ(is_initialized_, true);
-    return rank_;
+  void SetTimeoutSeconds(int init_seconds, int run_seconds) {
+    init_timeout_ = std::chrono::seconds(init_seconds);
+    run_timeout_ = std::chrono::seconds(run_seconds);
   }
 
-  int Size() {
-    CHECK_EQ(is_initialized_, true);
-    return size_;
+  int Rank() { return rank_; }
+
+  int Size() { return size_; }
+
+  void SetRank(int rank) { rank_ = rank; }
+
+  void SetSize(int size) { size_ = size; }
+
+  void SetIface(const std::string& iface) { iface_ = iface; }
+
+  void SetPrefix(const std::string& prefix) { prefix_ = prefix; }
+
+  void SetHdfsStore(const std::string& path, const std::string& fs_name,
+                    const std::string& fs_ugi) {
+    store_type_ = GlooStoreType::HDFS;
+    hdfs_path_ = path;
+    hdfs_name_ = fs_name;
+    hdfs_ugi_ = fs_ugi;
+  }
+
+  void SetHttpStore(const std::string& ip, int port, const std::string& scope) {
+    store_type_ = GlooStoreType::HTTP;
+    http_ip_ = ip;
+    http_port_ = port;
+    http_scope_ = scope;
   }
 
   void Barrier() {
@@ -158,6 +204,19 @@ class GlooWrapper {
 #endif
   int rank_ = 0;
   int size_ = 0;
+  std::chrono::seconds init_timeout_ = std::chrono::seconds(9999999);
+  std::chrono::seconds run_timeout_ = std::chrono::seconds(9999999);
+  std::string iface_ = "lo";
+  std::string prefix_;
+  GlooStoreType store_type_ = GlooStoreType::HDFS;
+  // configs for hdfs store
+  std::string hdfs_path_;
+  std::string hdfs_name_;
+  std::string hdfs_ugi_;
+  std::string http_ip_;
+  // configs for http store
+  int http_port_;
+  std::string http_scope_;
 };
 
 }  // namespace framework
