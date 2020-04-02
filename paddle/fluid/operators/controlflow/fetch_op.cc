@@ -40,11 +40,12 @@ class FetchOp : public framework::OperatorBase {
         fetch_var,
         platform::errors::NotFound(
             "Input variable(%s) cannot be found in scope for operator 'Fetch'."
-            "Please confirm that you have used the format `fetch_var.name` "
-            "instead of the string literal('%s') when using `executor.run` "
-            "method. In other words, the format of "
-            "`executor.run(fetch_list=[fetch_var.name])` "
-            "is recommended.",
+            "Confirm that you have used the fetch `Variable` format "
+            "instead of the string literal('%s') in `fetch_list` "
+            "parameter when using `executor.run` method. In other "
+            "words, the format of "
+            "`executor.run(fetch_list=[fetch_var])`(fetch_var is a "
+            "Variable) is recommended.",
             fetch_var_name, fetch_var_name));
 
     auto out_name = Output("Out");
