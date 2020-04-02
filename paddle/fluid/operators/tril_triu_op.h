@@ -57,9 +57,6 @@ class TrilTriuOpKernel : public framework::OpKernel<T> {
     const bool lower = context.Attr<bool>("lower");
 
     const auto& dims = x->dims();
-    PADDLE_ENFORCE(!contain_unknown_dim(dims),
-                   "Unexpected error occurred invoking TrilTriuOpForward: "
-                   "contain_unknown_dim");
     const auto H = dims[dims.size() - 2];
     const auto W = dims[dims.size() - 1];
 
@@ -87,9 +84,6 @@ class TrilTriuGradOpKernel : public framework::OpKernel<T> {
     const bool lower = context.Attr<bool>("lower");
 
     const auto& dims = d_out->dims();
-    PADDLE_ENFORCE(!contain_unknown_dim(dims),
-                   "Unexpected error occurred invoking TrilTriuOpBackward: "
-                   "contain_unknown_dim");
     const auto H = dims[dims.size() - 2];
     const auto W = dims[dims.size() - 1];
 
