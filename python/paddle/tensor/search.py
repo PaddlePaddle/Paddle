@@ -70,9 +70,7 @@ def where(Condition, X, Y):
           print(out[0])
     """
     if in_dygraph_mode():
-        inputs = {'Condition': [Condition], 'X': [X], 'Y': [Y]}
-        outs = core.ops.where(inputs)
-        return outs['Out'][0]
+        return core.ops.where(Condition, X, Y)
 
     helper = LayerHelper("where", **locals())
     dtype = helper.input_dtype()
