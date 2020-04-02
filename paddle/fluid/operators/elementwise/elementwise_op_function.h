@@ -548,6 +548,63 @@ static __global__ void FastCommonGradBroadcastAllCUDAKernel(
   }
 }
 
+template <typename T, typename OP>
+static __global__ void FastCommonGradBroadcastOneCUDAKernel(
+    const T *x, const T *y, const T *out, const T *dout, int pre, int n,
+    int post, int y_pre, int y_n, int y_post, bool is_xsize, OP op, T *dd) {
+  int tid = threadIdx.x;
+  int bid = blockIdx.x;
+
+  T val(0);
+  if (is_xsize) {
+    // do reduce for x
+    for (int i = tid; i < n; i += ELEMWISE_MAX_BLOCK_DIM) {
+      int b_i = bid / post;
+      int b_j = bid % post;
+      int x_offset = b_i * n * post + b_j;
+      int out_offset = b_i * n * post + i * post + b_j;
+
+      int b_yi = bid / (post * y_pre);
+      int b_yj = bid % y_post;
+      int y_offset = b_yi * y_n + i * y_post + b_yj;
+
+      if (dd) {
+        val += op(x[x_offset], y[y_offset], out[out_offset], dout[out_offset]);
+      }
+    }
+    if (dd) {
+      int h = n > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : n;
+      val = paddle::platform::reduceSum(val, tid, h);
+      if (tid == 0) {
+        dd[bid] = val;
+      }
+    }
+  } else {
+    // do reduce for y
+    for (int i = tid; i < n; i += ELEMWISE_MAX_BLOCK_DIM) {
+      int b_i = bid / post;
+      int b_j = bid % post;
+      int y_offset = b_i * n * post + b_j;
+      int out_offset = b_i * n * post + i * post + b_j;
+
+      int b_yi = bid / (post * y_pre);
+      int b_yj = bid % y_post;
+      int x_offset = (b_yi % y_pre) * y_n + i * y_post + b_yj;
+
+      if (dd) {
+        val += op(x[x_offset], y[y_offset], out[out_offset], dout[out_offset]);
+      }
+    }
+    if (dd) {
+      int h = n > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : n;
+      val = paddle::platform::reduceSum(val, tid, h);
+      if (tid == 0) {
+        dd[bid] = val;
+      }
+    }
+  }
+}
+
 // Check input can be split into 2 parts
 static inline bool SplitDims(const std::vector<int> &y_broadcast_pos,
                              int max_dim) {
@@ -767,6 +824,53 @@ void CommonGradBroadcastCUDA(
         dy_op, dx_data, dy_data);
   };
 
+  auto FastBroadCastOneCUDAF = [&](const std::vector<int> &broadcast_pos,
+                                   int max_dim, bool is_x) {
+    int axis = broadcast_pos[0];
+    int pre = std::accumulate(out_dims_array, out_dims_array + axis, 1,
+                              std::multiplies<int>());
+    int mid = out_dims_array[axis];
+    int post =
+        std::accumulate(out_dims_array + axis + 1, out_dims_array + max_dim, 1,
+                        std::multiplies<int>());
+
+    int k_pre;
+    int k_mid;
+    int k_post;
+
+    if (is_x) {
+      k_pre = std::accumulate(y_dims_array, y_dims_array + axis, 1,
+                              std::multiplies<int>());
+      k_mid = y_dims_array[axis];
+      k_post = std::accumulate(y_dims_array + axis + 1, y_dims_array + max_dim,
+                               1, std::multiplies<int>());
+      int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, mid);
+      int grid_size = pre * post;
+      if (k_pre != pre) k_pre = pre / k_pre;
+      // if (k_post != post) k_post = post / k_post;
+
+      FastCommonGradBroadcastOneCUDAKernel<<<grid_size, block_size, 0,
+                                             stream>>>(
+          x_data, y_data, out_data, dout_data, pre, mid, post, k_pre, k_mid,
+          k_post, true, dx_op, dx_data);
+    } else {
+      k_pre = std::accumulate(x_dims_array, x_dims_array + axis, 1,
+                              std::multiplies<int>());
+      k_mid = x_dims_array[axis];
+      k_post = std::accumulate(x_dims_array + axis + 1, x_dims_array + max_dim,
+                               1, std::multiplies<int>());
+      int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, mid);
+      int grid_size = pre * post;
+
+      FastCommonGradBroadcastOneCUDAKernel<<<grid_size, block_size, 0,
+                                             stream>>>(
+          x_data, y_data, out_data, dout_data, pre, mid, post, k_pre, k_mid,
+          k_post, false, dy_op, dy_data);
+    }
+    VLOG(3) << "FastBroadCastOneCUDAF pre:" << pre << " mid:" << mid
+            << " post:" << post;
+  };
+
   // do fast elementwise if: 1. only one input need to do broadcast, we can
   // fallback
   // to old fast path.
@@ -812,6 +916,9 @@ void CommonGradBroadcastCUDA(
         // finish at end
         LOG(ERROR) << "Error, broadcast should not into w broadcast";
       }
+    } else if (y_broadcast_pos.size() == 1) {
+      FastBroadCastOneCUDAF(y_broadcast_pos, max_dim, false);
+      can_split_y = true;
     }
     can_split_x = SplitDims(x_broadcast_pos, max_dim);
     if (can_split_x) {
@@ -820,6 +927,9 @@ void CommonGradBroadcastCUDA(
       } else {
         LOG(ERROR) << "Error, broadcast should not into w broadcast";
       }
+    } else if (x_broadcast_pos.size() == 1) {
+      FastBroadCastOneCUDAF(x_broadcast_pos, max_dim, true);
+      can_split_x = true;
     }
     VLOG(3) << "CommonBroadcast can_split_y:" << can_split_y
             << " can_split_x:" << can_split_x;
