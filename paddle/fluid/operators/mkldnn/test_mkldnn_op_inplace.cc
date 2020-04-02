@@ -45,9 +45,9 @@ bool TestMain(const platform::Place &place, const std::string& op_type, const fr
 
   std::vector<InputVars> input_names = {
     {"x", scope.Var("x")->GetMutable<framework::LoDTensor>()},
-    {"x1", num_inputs > 1 ? scope.Var("x1")->GetMutable<framework::LoDTensor>() : nullptr}
-    {"x2", num_inputs > 2 ? scope.Var("x2")->GetMutable<framework::LoDTensor>() : nullptr}
-    {"x3", num_inputs > 3 ? scope.Var("x3")->GetMutable<framework::LoDTensor>() : nullptr}
+    {"x1", num_inputs > 1 ? scope.Var("x1")->GetMutable<framework::LoDTensor>() : nullptr},
+    {"x2", num_inputs > 2 ? scope.Var("x2")->GetMutable<framework::LoDTensor>() : nullptr},
+    {"x3", num_inputs > 3 ? scope.Var("x3")->GetMutable<framework::LoDTensor>() : nullptr},
     {"x4", num_inputs > 4 ? scope.Var("x4")->GetMutable<framework::LoDTensor>() : nullptr}
   };
   auto *y = scope.Var("y")->GetMutable<framework::LoDTensor>();
