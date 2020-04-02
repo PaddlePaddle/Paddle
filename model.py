@@ -1125,13 +1125,11 @@ class Model(fluid.dygraph.Layer):
         outputs = []
         for data in tqdm.tqdm(loader):
             data = flatten(data)
-            # if not fluid.in_dygraph_mode():
-            #     data = data[0]
             outputs.append(self.test(data[:len(self._inputs)]))
 
-        # NOTE: we do not stack or concanate here for output lod tensor
-        # may loss its detail info
-        # sample list data to batch data
+        # NOTE: we do not stack or concanate here for output
+        # lod tensor may loss its detail info, just pack sample
+        # list data to batch data
         outputs = list(zip(*outputs))
 
         self._test_dataloader = None
