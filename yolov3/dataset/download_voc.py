@@ -1,4 +1,4 @@
-# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,9 +13,14 @@
 # limitations under the License.
 
 import os
+import os.path as osp
+import sys
 import tarfile
 
-from paddle.dataset.common import download
+from download import _download
+
+import logging
+logger = logging.getLogger(__name__)
 
 DATASETS = {
     'voc': [
@@ -26,7 +31,7 @@ DATASETS = {
 
 def download_decompress_file(data_dir, url, md5):
     logger.info("Downloading from {}".format(url))
-    tar_file = download(url, data_dir, md5)
+    tar_file = _download(url, data_dir, md5)
     logger.info("Decompressing {}".format(tar_file))
     with tarfile.open(tar_file) as tf:
         tf.extractall(path=data_dir)

@@ -1083,7 +1083,7 @@ class Model(fluid.dygraph.Layer):
 
         return eval_result
 
-    def predict(self, test_data, batch_size=1, num_workers=0):
+    def predict(self, test_data, batch_size=1, num_workers=0, stack_outputs=True):
         """
         FIXME: add more comments and usage
         Args:
@@ -1096,6 +1096,12 @@ class Model(fluid.dygraph.Layer):
             num_workers (int): the number of subprocess to load data, 0 for no subprocess 
                 used and loading data in main process. When train_data and eval_data are
                 both the instance of Dataloader, this parameter will be ignored.
+            stack_output (bool): whether stack output field like a batch, as for an output
+                filed of a sample is in shape [X, Y], test_data contains N samples, predict
+                output field will be in shape [N, X, Y] if stack_output is True, and will
+                be a length N list in shape [[X, Y], [X, Y], ....[X, Y]] if stack_outputs
+                is False. stack_outputs as False is used for LoDTensor output situation,
+                it is recommended set as True if outputs contains no LoDTensor. Default False
         """
 
         if fluid.in_dygraph_mode():
@@ -1127,10 +1133,11 @@ class Model(fluid.dygraph.Layer):
             data = flatten(data)
             outputs.append(self.test(data[:len(self._inputs)]))
 
-        # NOTE: we do not stack or concanate here for output
-        # lod tensor may loss its detail info, just pack sample
-        # list data to batch data
+        # NOTE: for lod tensor output, we should not stack outputs
+        # for stacking may loss its detail info
         outputs = list(zip(*outputs))
+        if stack_outputs:
+            outputs = [np.stack(outs, axis=0) for outs in outputs]
 
         self._test_dataloader = None
         if test_loader is not None and self._adapter._nranks > 1 \

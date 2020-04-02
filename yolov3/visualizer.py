@@ -18,12 +18,25 @@ from __future__ import print_function
 import numpy as np
 from PIL import Image, ImageDraw
 
-from colormap import colormap
-
 import logging
 logger = logging.getLogger(__name__)
 
 __all__ = ['draw_bbox']
+
+
+def color_map(num_classes):
+    color_map = num_classes * [0, 0, 0]
+    for i in range(0, num_classes):
+        j = 0
+        lab = i
+        while lab:
+            color_map[i * 3] |= (((lab >> 0) & 1) << (7 - j))
+            color_map[i * 3 + 1] |= (((lab >> 1) & 1) << (7 - j))
+            color_map[i * 3 + 2] |= (((lab >> 2) & 1) << (7 - j))
+            j += 1
+            lab >>= 3
+    color_map = np.array(color_map).reshape(-1, 3)
+    return color_map
 
 
 def draw_bbox(image, catid2name, bboxes, threshold):
@@ -38,7 +51,7 @@ def draw_bbox(image, catid2name, bboxes, threshold):
     draw = ImageDraw.Draw(image)
 
     catid2color = {}
-    color_list = colormap(rgb=True)[:40]
+    color_list = color_map(len(catid2name))
     for bbox in bboxes:
         catid, score, xmin, ymin, xmax, ymax = bbox
 

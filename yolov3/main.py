@@ -1,4 +1,4 @@
-# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -147,7 +147,7 @@ def main():
     if FLAGS.eval_only:
         if FLAGS.weights is not None:
             model.load(FLAGS.weights, reset_optimizer=True)
-        preds = model.predict(loader)
+        preds = model.predict(loader, stack_outputs=False)
         _, _, _, img_ids, bboxes = preds
 
         anno_path = os.path.join(FLAGS.data, 'annotations/instances_val2017.json')

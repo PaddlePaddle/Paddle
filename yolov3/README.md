@@ -78,7 +78,7 @@ YOLOv3 的网络结构由基础特征提取网络、multi-scale特征融合层�
 模型目前支持COCO数据集格式的数据读入和精度评估，我们同时提供了将转换为COCO数据集的格式的Pascal VOC数据集下载，可通过如下命令下载。
 
   ```bash
-  python dataset/voc/download.py
+  python dataset/download_voc.py
   ```
 
 数据目录结构如下：
