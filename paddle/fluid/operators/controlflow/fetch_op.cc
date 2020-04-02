@@ -33,15 +33,15 @@ class FetchOp : public framework::OperatorBase {
                const platform::Place &place) const override {
     auto fetch_var_name = Input("X");
     auto *fetch_var = scope.FindVar(fetch_var_name);
-    PADDLE_ENFORCE(
-        fetch_var != nullptr,
-        "Cannot find the fetch variable(%s) in scope. "
-        "Please confirm that you have used the format `fetch_var.name` "
-        "instead of the string literal('%s') when using `executor.run` "
-        "method. In other words, the format of "
-        "`executor.run(fetch_list=[fetch_var.name])` "
-        "is recommended.",
-        fetch_var_name, fetch_var_name);
+    PADDLE_ENFORCE(fetch_var != nullptr,
+                   "Cannot find the fetch variable(%s) in scope.\n"
+                   "Confirm that you have used the fetch `Variable` format "
+                   "instead of the string literal('%s') in `fetch_list` "
+                   "parameter when using `executor.run` method. In other "
+                   "words, the format of "
+                   "`executor.run(fetch_list=[fetch_var])`(fetch_var is a "
+                   "Variable) is recommended.",
+                   fetch_var_name, fetch_var_name);
 
     auto out_name = this->Output("Out");
     auto *out_var = scope.FindVar(out_name);
