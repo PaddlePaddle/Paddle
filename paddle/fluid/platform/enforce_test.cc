@@ -363,7 +363,7 @@ TEST(enforce, cannot_to_string_type) {
 }
 
 TEST(OP_INOUT_CHECK_MACRO, SUCCESS) {
-  OP_INOUT_CHECK(false, "Input", "X", "dummy");
+  OP_INOUT_CHECK(true, "Input", "X", "dummy");
 }
 
 TEST(OP_INOUT_CHECK_MACRO, FAIL) {
