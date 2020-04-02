@@ -123,19 +123,19 @@ def stack(x, axis=0):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
-            import paddle.tensor as tensor
+            
             # set batch size=None
             x1 = fluid.data(name='x1', shape=[None, 1, 2], dtype='int32')
             x2 = fluid.data(name='x2', shape=[None, 1, 2], dtype='int32')
             # stack Tensor list
-            data = tensor.stack([x1,x2]) # stack according to axis 0, data.shape=[2, None, 1, 2]
+            data = paddle.stack([x1,x2]) # stack according to axis 0, data.shape=[2, None, 1, 2]
 
-            data = tensor.stack([x1,x2], axis=1) # stack according to axis 1, data.shape=[None, 2, 1, 2]
+            data = paddle.stack([x1,x2], axis=1) # stack according to axis 1, data.shape=[None, 2, 1, 2]
 
             # stack single Tensor
-            data = tensor.stack(x1)  # stack according to axis 0, data.shape=[1, None, 1, 2]
+            data = paddle.stack(x1)  # stack according to axis 0, data.shape=[1, None, 1, 2]
 
     """
 
@@ -193,24 +193,24 @@ def split(input, num_or_sections, dim=-1, name=None):
     Example:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
-            import paddle.tensor as tensor
 
             # input is a variable which shape is [3, 9, 5]
             input = fluid.data(
                  name="input", shape=[3, 9, 5], dtype="float32")
 
-            x0, x1, x2 = tensor.split(input, num_or_sections=3, dim=1)
+            x0, x1, x2 = paddle.split(input, num_or_sections=3, dim=1)
             # x0.shape [3, 3, 5]
             # x1.shape [3, 3, 5]
             # x2.shape [3, 3, 5]
 
-            x0, x1, x2 = tensor.split(input, num_or_sections=[2, 3, 4], dim=1)
+            x0, x1, x2 = paddle.split(input, num_or_sections=[2, 3, 4], dim=1)
             # x0.shape [3, 2, 5]
             # x1.shape [3, 3, 5]
             # x2.shape [3, 4, 5]
 
-            x0, x1, x2 = tensor.split(input, num_or_sections=[2, 3, -1], dim=1)
+            x0, x1, x2 = paddle.split(input, num_or_sections=[2, 3, -1], dim=1)
             # x0.shape [3, 2, 5]
             # x1.shape [3, 3, 5]
             # x2.shape [3, 4, 5]
@@ -363,12 +363,12 @@ def squeeze(input, axes, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
-            import paddle.tensor as tensor
+            
             # set batch size=None
             x = fluid.data(name='x', shape=[None, 5, 1, 10])
-            y = tensor.squeeze(input=x, axes=[2]) # y.shape=[None, 5, 10]
+            y = paddle.squeeze(input=x, axes=[2]) # y.shape=[None, 5, 10]
 
     """
     helper = LayerHelper("squeeze", **locals())
@@ -412,10 +412,11 @@ def unsqueeze(input, axes, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
-            import paddle.tensor as tensor
-            x = fluid.layers.data(name='x', shape=[5, 10])
-            y = tensor.unsqueeze(input=x, axes=[1])
+            
+            x = fluid.data(name='x', shape=[5, 10])
+            y = paddle.unsqueeze(input=x, axes=[1])
 
     """
     if not isinstance(axes, (int, list, tuple, Variable)):
@@ -509,11 +510,12 @@ def gather(input, index, overwrite=True):
 
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
-            import paddle.tensor as tensor
+            
             x = fluid.data(name='x', shape=[-1, 5], dtype='float32')
             index = fluid.data(name='index', shape=[-1, 1], dtype='int32')
-            output = tensor.gather(x, index)
+            output = paddle.gather(x, index)
     """
     helper = LayerHelper('gather', **locals())
     dtype = helper.input_dtype()

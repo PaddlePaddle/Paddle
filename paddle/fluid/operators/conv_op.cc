@@ -178,17 +178,6 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 
   auto type = framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
                                       library, customized_type_value);
-#ifdef PADDLE_WITH_CUDA
-  std::vector<framework::KernelConfig>& configs = kernel_configs_map_[type];
-  // TODO(dangqingqing): Currently conv_fusion_op use cudnn but sets use_cudnn
-  // to false. It should be fixed and then here should only create if library
-  // is kCUDNN.
-  if (configs.empty()) {
-    std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>> p(
-        new framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>());
-    configs.push_back(p);
-  }
-#endif
   return type;
 }
 
@@ -563,21 +552,6 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
   auto type = framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
       layout_, library_, customized_type_value);
-#ifdef PADDLE_WITH_CUDA
-  if (library_ == framework::LibraryType::kCUDNN) {
-    std::vector<framework::KernelConfig>& configs = kernel_configs_map_[type];
-    if (configs.empty()) {
-      std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>>
-          p(new framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>());
-      configs.push_back(p);
-
-      std::shared_ptr<
-          framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>>
-          p2(new framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>());
-      configs.push_back(p2);
-    }
-  }
-#endif
   return type;
 }
 
@@ -754,25 +728,6 @@ framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
   auto type = framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
       layout_, library_, customized_type_value);
-#ifdef PADDLE_WITH_CUDA
-  if (library_ == framework::LibraryType::kCUDNN) {
-    std::vector<framework::KernelConfig>& configs = kernel_configs_map_[type];
-    if (configs.empty()) {
-      std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>> p0(
-          new framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>());
-      configs.push_back(p0);
-
-      std::shared_ptr<
-          framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>>
-          p1(new framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>());
-      configs.push_back(p1);
-
-      std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>>
-          p2(new framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>());
-      configs.push_back(p2);
-    }
-  }
-#endif
   return type;
 }
 

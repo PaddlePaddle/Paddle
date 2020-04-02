@@ -86,11 +86,13 @@ def transpose(x, perm, name=None):
 
             # use append_batch_size=False to avoid prepending extra
             # batch size in shape
+            
+            import paddle
             import paddle.fluid as fluid
-            import paddle.tensor as tensor
-            x = fluid.layers.data(name='x', shape=[2, 3, 4],
+            
+            x = fluid.data(name='x', shape=[2, 3, 4],
                             dtype='float32', append_batch_size=False)
-            x_transposed = tensor.transpose(x, perm=[1, 0, 2])
+            x_transposed = paddle.transpose(x, perm=[1, 0, 2])
             print x_transposed.shape
             #(3L, 2L, 4L)
 
@@ -132,6 +134,34 @@ def transpose(x, perm, name=None):
 
 
 def bmm(x, y, name=None):
+    """
+    Applies batched matrix multiplication to two tensors.
+
+    Both of the two input tensors must be three-dementional and share the same batch size.
+
+    if x is a (b, m, k) tensor, y is a (b, k, n) tensor, the output will be a (b, m, n) tensor.
+
+    Args:
+        x (Variable): The input variable which is a Tensor or LoDTensor.
+        y (Variable): The input variable which is a Tensor or LoDTensor.
+        name(str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+
+    Returns:
+        Variable: The product Tensor (or LoDTensor) variable.
+    
+    Examples: 
+        import paddle
+        import paddle.fluid as fluid
+        x = fluid.data(name='x', shape=[10, 3, 4], dtype='float32')
+        y = fluid.data(name='y', shape=[10, 4, 5], dtype='float32')
+        out = paddle.bmm(x, y)
+    """
+    if in_dygraph_mode():
+        inputs = {'X': [x], 'Y': [y]}
+        outs = core.ops.bmm(inputs)
+        return outs['Out'][0]
+
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
         for name, val in var_names.items():

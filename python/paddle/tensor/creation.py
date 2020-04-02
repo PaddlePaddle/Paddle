@@ -79,8 +79,8 @@ def arange(start, end, step, dtype):
 
         .. code-block:: python
 
-             import paddle.fluid as fluid
-             data = fluid.tensor.arange(0, 10, 2, 'int32')
+             import paddle
+             data = paddle.arange(0, 10, 2, 'int32')
 
     """
     helper = LayerHelper("range", **locals())
