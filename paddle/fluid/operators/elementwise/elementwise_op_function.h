@@ -564,6 +564,7 @@ static __global__ void FastCommonGradBroadcastOneCUDAKernel(
       int x_offset = b_i * n * post + b_j;
       int out_offset = b_i * n * post + i * post + b_j;
 
+      // Get y pre rows id with x post and y_pre.
       int b_yi = bid / (post * y_pre);
       int b_yj = bid % y_post;
       int y_offset = b_yi * y_n + i * y_post + b_yj;
@@ -589,7 +590,7 @@ static __global__ void FastCommonGradBroadcastOneCUDAKernel(
 
       int b_yi = bid / (post * y_pre);
       int b_yj = bid % y_post;
-      int x_offset = (b_yi % y_pre) * y_n + i * y_post + b_yj;
+      int x_offset = b_yi * y_n + i * y_post + b_yj;
 
       if (dd) {
         val += op(x[x_offset], y[y_offset], out[out_offset], dout[out_offset]);
@@ -623,6 +624,16 @@ static inline bool SplitDims(const std::vector<int> &y_broadcast_pos,
     }
   }
   return can_split_dim2;
+}
+
+// Suppose only has contiguous dims
+static inline bool CheckContiguousDims(const std::vector<int> &broadcast_pos) {
+  for (int i = 1; i < broadcast_pos.size(); ++i) {
+    if (broadcast_pos[i] != broadcast_pos[i - 1] + 1) {
+      return false;
+    }
+  }
+  return true;
 }
 
 template <typename T, typename DX_OP, typename DY_OP>
@@ -701,6 +712,7 @@ void CommonGradBroadcastCUDA(
       y_broadcast_pos.emplace_back(i);
     }
   }
+
   auto stream = ctx.stream();
   bool can_split_x = false;
   bool can_split_y = false;
@@ -808,10 +820,22 @@ void CommonGradBroadcastCUDA(
     int axis = broadcast_pos[0];
     int pre = std::accumulate(out_dims_array, out_dims_array + axis, 1,
                               std::multiplies<int>());
-    int mid = out_dims_array[axis];
-    int post =
-        std::accumulate(out_dims_array + axis + 1, out_dims_array + max_dim, 1,
-                        std::multiplies<int>());
+    int mid = 1;
+    int post = 1;
+
+    if (broadcast_pos.size() == 1) {
+      mid = out_dims_array[axis];
+      post =
+          std::accumulate(out_dims_array + axis + 1, out_dims_array + max_dim,
+                          1, std::multiplies<int>());
+    } else {
+      mid = std::accumulate(out_dims_array + axis,
+                            out_dims_array + broadcast_pos.back() + 1, 1,
+                            std::multiplies<int>());
+      post =
+          std::accumulate(out_dims_array + broadcast_pos.back() + 1,
+                          out_dims_array + max_dim, 1, std::multiplies<int>());
+    }
 
     VLOG(3) << "FastBroadCastAllCUDAF pre:" << pre << " mid:" << mid
             << " post:" << post;
@@ -846,8 +870,9 @@ void CommonGradBroadcastCUDA(
                                1, std::multiplies<int>());
       int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, mid);
       int grid_size = pre * post;
+      // we need to calc y offset with blockid, so do x_pre/y_pre to get left
+      // size.
       if (k_pre != pre) k_pre = pre / k_pre;
-      // if (k_post != post) k_post = post / k_post;
 
       FastCommonGradBroadcastOneCUDAKernel<<<grid_size, block_size, 0,
                                              stream>>>(
@@ -861,6 +886,7 @@ void CommonGradBroadcastCUDA(
                                1, std::multiplies<int>());
       int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, mid);
       int grid_size = pre * post;
+      if (k_pre != pre) k_pre = pre / k_pre;
 
       FastCommonGradBroadcastOneCUDAKernel<<<grid_size, block_size, 0,
                                              stream>>>(
@@ -885,7 +911,9 @@ void CommonGradBroadcastCUDA(
         LOG(ERROR) << "Error, broadcast should not into w broadcast";
       }
       return;
-    } else if (y_broadcast_pos.size() == 1) {  // for only one dim broadcast.
+    } else if (y_broadcast_pos.size() == 1 ||
+               CheckContiguousDims(y_broadcast_pos)) {  // for only one dim and
+                                                        // contiguous broadcast.
       // If cannot split,  which means input has 3 parts
       FastBroadCastAllCUDAF(y_broadcast_pos, max_dim, true);
       return;
@@ -901,7 +929,8 @@ void CommonGradBroadcastCUDA(
         LOG(ERROR) << "Error, broadcast should not into w broadcast";
       }
       return;
-    } else if (x_broadcast_pos.size() == 1) {
+    } else if (x_broadcast_pos.size() == 1 ||
+               CheckContiguousDims(x_broadcast_pos)) {
       FastBroadCastAllCUDAF(x_broadcast_pos, max_dim, false);
       return;
     }
@@ -1601,6 +1630,10 @@ void CommonElementwiseBroadcastBackward(
     dx->clear();
     dx->mutable_data<T>(x_dims, ctx.GetPlace());
   }
+
+  VLOG(3) << "CommonElementwiseBroadcastBackward xdims:"
+          << framework::make_ddim(x_dims_array)
+          << " ydim:" << framework::make_ddim(y_dims_array);
 
   if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef __NVCC__
