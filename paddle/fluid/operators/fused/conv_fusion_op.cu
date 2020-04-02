@@ -14,10 +14,10 @@ limitations under the License. */
 
 #include <array>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/conv_cudnn_helper.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/operators/math/padding.h"
+#include "paddle/fluid/platform/cudnn_helper.h"
 
 DECLARE_int64(cudnn_exhaustive_search_times);
 
@@ -233,7 +233,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         return fwd_perf_stat[0].algo;
       };
       AlgorithmsCache<cudnnConvolutionFwdAlgo_t>& algo_cache =
-          *(ConvSearchCache::Instance().GetConvFusion());
+          ctx.GetKernelConfig<AlgorithmsCache<cudnnConvolutionFwdAlgo_t>>(0);
       int search_times = ctx.Attr<int>("search_times");
       search_times = std::max(
           static_cast<int>(FLAGS_cudnn_exhaustive_search_times), search_times);
@@ -245,9 +245,8 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         algo = algo_cache.GetAlgorithm(x_dims[2] * x_dims[3], search_times, 0,
                                        search_func);
       } else {
-        auto dtype = platform::CudnnDataType<T>::type;
         algo = algo_cache.GetAlgorithm(x_dims, f_dims, strides, paddings,
-                                       dilations, 0, dtype, search_func);
+                                       dilations, 0, search_func);
       }
       VLOG(3) << "choose algo " << algo;
     }
