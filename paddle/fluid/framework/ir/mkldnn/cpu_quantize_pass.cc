@@ -564,15 +564,17 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(matmul_in_y, matmul_in_y, matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(matmul_out, matmul_out, matmul_pattern);
 
-    bool are_all_inputs_unsigned{false};
-    auto input_x_scale =
-        GetScaleValueForNode(matmul_in_x, &are_all_inputs_unsigned);
-    auto input_y_scale =
-        GetScaleValueForNode(matmul_in_y, &are_all_inputs_unsigned);
-    QuantizeInput(g, matmul_op, matmul_in_x, "X", input_x_scale,
-                  are_all_inputs_unsigned, "Scale_x");
-    QuantizeInput(g, matmul_op, matmul_in_y, "Y", input_y_scale,
-                  are_all_inputs_unsigned, "Scale_y");
+    bool is_x_unsigned{false}, is_y_unsigned{false};
+    auto input_x_scale = GetScaleValueForNode(matmul_in_x, &is_x_unsigned);
+    auto input_y_scale = GetScaleValueForNode(matmul_in_y, &is_y_unsigned);
+    PADDLE_ENFORCE_EQ(
+        is_x_unsigned, is_y_unsigned,
+        platform::errors::InvalidArgument(
+            "Matmul inputs should have the same value of is_unsigned"));
+    QuantizeInput(g, matmul_op, matmul_in_x, "X", input_x_scale, is_x_unsigned,
+                  "Scale_x");
+    QuantizeInput(g, matmul_op, matmul_in_y, "Y", input_y_scale, is_y_unsigned,
+                  "Scale_y");
 
     bool is_output_unsigned{false};
     auto output_scale = GetScaleValueForNode(matmul_out, &is_output_unsigned);

@@ -1354,7 +1354,6 @@ PDNode *patterns::Matmul::operator()() {
   auto prev_op_y = pattern->NewNode(prev_op_y_repr())->assert_is_op();
 
   auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
-
   auto matmul_in_x = pattern->NewNode(matmul_in_x_repr())
                          ->AsInput()
                          ->assert_is_op_input("matmul", "X");
