@@ -44,8 +44,7 @@ class TestDnnlMatMulOp(OpTest):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
     def test_check_grad_normal(self):
         pass
@@ -134,8 +133,7 @@ class TestDnnlMatMulOpInt8(TestDnnlMatMulOp):
         }
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(atol=1, check_dygraph=False)
+        self.check_output(atol=1)
 
 
 class TestDnnlMatMulOpInt8ForceFP32(TestDnnlMatMulOpInt8):
