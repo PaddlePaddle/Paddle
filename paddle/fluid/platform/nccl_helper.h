@@ -244,7 +244,6 @@ class NCCLCommunicator {
 
     // as Executor have no way to use ncclComm created by ParallelExecutor,
     // we assign all flatten contexts to NCCLCommContext to fix.
-    /*
     int nranks = static_cast<int>(trainers_num * places.size());
     int nrings = static_cast<int>(flat_ctxs_.size());
     for (int ring_id = 0; ring_id < nrings; ++ring_id) {
@@ -255,7 +254,7 @@ class NCCLCommunicator {
         NCCLCommContext::Instance().AssignNCCLComm(ctx.comm_, nranks, rank,
                                                    dev_id, ring_id);
       }
-    }*/
+    }
   }
 
   void InitHierarchicalCtxs(const std::vector<platform::Place> &places,
