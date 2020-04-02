@@ -1,25 +1,24 @@
 # SLIM Quantization-aware training (QAT) for INT8 MKL-DNN
 
-This document describes how to use [Paddle Slim](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/advanced_usage/paddle_slim/paddle_slim.md) to convert a quantization-aware trained model into INT8 MKL-DNN quantized model.
+This document describes how to use [Paddle Slim](https://paddlepaddle.github.io/PaddleSlim/index.html) to convert a quantization-aware trained model into INT8 MKL-DNN quantized model and run it.
 
 In **Release 1.5**, we have released the first approach to the MKL-DNN-based quantization of QAT models, called QAT1. It enabled the `conv2d` and `mul` INT8 MKL-DNN kernels for QAT trained models (GoogleNet, MobileNetV1, MobileNetV2, ResNet50, ResNet101, VGG16, and VGG19) with 0.05% accuracy diff.
 
 In **Release 1.6**, a new approach was introduced, called QAT2, which adds support for more performance optimizations and more INT8 MKL-DNN kernels. INT8 MKL-DNN models obtained using QAT2 have much better inference performance than using QAT1, with only a little bit bigger accuracy diff.
 
-In **Release 1.7**, a support for [Ernie (NLP) QAT trained model](https://github.com/PaddlePaddle/benchmark/tree/master/Inference/c%2B%2B/ernie) was added to the QAT2.
+In **Release 1.7**, a support for [Ernie (NLP) QAT trained model](https://github.com/PaddlePaddle/benchmark/tree/master/Inference/c%2B%2B/ernie/mkldnn) was added to the QAT2.
 
 In this document we focus on the QAT2 approach only. 
 
 ## 0. Prerequisites
-* PaddlePaddle in version 1.7.1 or higher is required. It can be installed as a python package using
-  ```pip install paddlepaddle==1.7.1``` command.
-
+* PaddlePaddle in version 1.7.1 or higher is required. For instructions on how to install it see the [installation document](https://www.paddlepaddle.org.cn/install/quick).
+  
 * MKL-DNN and MKL are required. The highest performance gain can be observed using CPU servers supporting AVX512 instructions.
-* INT8 accuracy is best on CPU servers supporting AVX512 VNNI extension (e.g. CLX class Intel processors).
+* INT8 accuracy is best on CPU servers supporting AVX512 VNNI extension (e.g. CLX class Intel processors). A linux server supports AVX512 VNNI instructions if the output of the command `lscpu` contains the `avx512_vnni` entry in the `Flags` section.
 
 ## 1. Introduction
 
-There are two forms of quantization supported in PaddlePaddle: [post-training quantization](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/inference/tests/api/int8_mkldnn_quantization.md) (PTQ) and quantization-aware training (QAT). PTQ is more automatic and requires less model preparation than QAT, but usually QAT gives better accuracy with similar performance. In this document we focus on QAT2 approach to the QAT and INT8 quantization.
+There are two forms of quantization supported in PaddlePaddle: [post-training quantization](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/inference/tests/api/int8_mkldnn_quantization.md) (PTQ) and quantization-aware training (QAT). Using both PTQ and QAT a user can convert models created by PaddleSlim into INT8 models and run INT8 inference on CPU. PTQ is more automatic and requires less model preparation than QAT, but usually QAT gives better accuracy with similar performance. In this document we focus on QAT2 approach to the QAT and INT8 quantization.
 
 ## 2. How to turn an FP32 model into a QAT model?
 
@@ -52,7 +51,7 @@ All the `fake_quantize_*` and `fake_dequantize_*` operators are being removed fr
 
 ### Dequantizing weights
 
-Weights of `conv2d` and `mul` operators are assumed to be fake-quantized (quantized, but kept as floats) in QAT models. Here, the information about the scale from `fake_dequantize_max_abs` operators is used to fake-dequantize the weights back to the full float range of values. At this moment the model becomes an unoptimized clean FP32 inference model.
+Weights of `conv2d`, `depthwise_conv2d` and `mul` operators are assumed to be fake-quantized (with integer values in the `int8` range, but kept as `float`s) in QAT models. Here, the information about the scale from `fake_dequantize_max_abs` operators is used to fake-dequantize the weights back to the full float range of values. At this moment the model becomes an unoptimized clean FP32 inference model.
 
 ### Optimizing FP32 graph
 
