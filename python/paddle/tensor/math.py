@@ -71,6 +71,7 @@ __all__ = [# 'abs',
             ]
 
 from paddle.common_ops_import import *
+from paddle.fluid.layers.layer_function_generator import autodoc, templatedoc, _generate_doc_string_
 
 
 @dygraph_only
