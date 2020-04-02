@@ -42,7 +42,7 @@ void TDMChildInner(const framework::ExecutionContext &context,
   int length = info_dims[1];
 
   int input_ids_num = input.numel();
-  VLOG(4) << "TDM child : input numel -> " << input_ids_num;
+  VLOG(4) << "TDM child op: input numel ->  " << input_ids_num;
 
   std::vector<OutT> child_vec{};
   std::vector<OutT> item_mask_vec{};
