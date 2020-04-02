@@ -93,7 +93,7 @@ def allclose(input, other, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
           import paddle.fluid as fluid
           import numpy as np
 
-          use_cuda = True
+          use_cuda = fluid.core.is_compiled_with_cuda()
 
           a = fluid.data(name="a", shape=[2], dtype='float32')
           b = fluid.data(name="b", shape=[2], dtype='float32')
