@@ -4076,56 +4076,7 @@ class Program(object):
         Returns:
             Program:  A new, pruned program.
         """
-
-        #NOTE(zhiqiu): we sync the original program first, since its program may diff with
-        # its desc due to modifying desc in c++ space. E.g. save op will add kLookupTablePath in desc.
-        self._sync_with_cpp()
-
-        if not isinstance(targets, list):
-            targets = [targets]
-
-        targets_idx = []
-        for t in targets:
-            if not isinstance(t, Operator):
-                if isinstance(t, Variable):
-                    name = t.name
-                elif isinstance(t, six.string_types):
-                    name = str(t)
-                else:
-                    raise ValueError("All targets of prune() can only be "
-                                     "Variable or Operator.")
-                # After transpiler processing, the op that output this
-                # variable maybe has been changed, so t.op is not reliable
-                # and we need to find the current op that generate this
-                # variable here.
-                target_op = None
-                global_block = self.global_block()
-                for idx, op in enumerate(global_block.ops):
-                    if name in op.output_arg_names:
-                        if op._is_optimize_op() and not op in targets:
-                            continue
-                        else:
-                            target_op = op
-                            break
-                t = target_op
-                if t is None:
-                    raise ValueError("The target variable must have an "
-                                     "associated operator that generates it.")
-
-            targets_idx.append([t.block.idx, t.idx])
-        res = Program()
-        res.desc, pruned_origin_block_id_map = core.prune(self.desc,
-                                                          set(), targets_idx)
-        res.blocks = [
-            Block(res, i) for i in six.moves.range(res.desc.num_blocks())
-        ]
-        res._sync_with_cpp()
-
-        res._copy_param_info_from(self)
-        res._copy_data_info_from(self, pruned_origin_block_id_map)
-        res._copy_dist_param_info_from(self)
-
-        return res
+        return self._prune_with_input([], targets)
 
     def _prune_with_input(self, feeded_var_names, targets):
         """
@@ -4176,7 +4127,6 @@ class Program(object):
                 # variable here.
                 target_op = None
                 global_block = self.global_block()
-
                 for idx, op in enumerate(global_block.ops):
                     if name in op.output_arg_names:
                         # NOTE(zhiqiu): Find op that generate target name.
@@ -4187,7 +4137,6 @@ class Program(object):
                         else:
                             target_op = op
                             break
-
                 t = target_op
                 if t is None:
                     raise ValueError("The target variable must have an "
