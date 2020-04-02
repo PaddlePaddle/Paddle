@@ -13,9 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/where_op.h"
-#include <memory>
-#include <string>
-#include <vector>
 
 namespace paddle {
 namespace operators {
