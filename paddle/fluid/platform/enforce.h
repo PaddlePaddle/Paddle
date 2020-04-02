@@ -373,29 +373,26 @@ struct EnforceNotMet : public std::exception {
  * Examples:
  *    GET_DATA_SAFELY(ctx.Input<LoDTensor>("X"), "Input", "X", "Mul");
 */
-#define GET_DATA_SAFELY(__PTR, __ROLE, __NAME, __OP_TYPE)                     \
-  (([&]() -> std::add_lvalue_reference<decltype(*(__PTR))>::type {            \
-    static_assert(std::is_pointer<decltype(__PTR)>::value,                    \
-                  "The __PTR passed in PADDLE_GET_DATA_SAFELY macro must be " \
-                  "pointer type.");                                           \
-    auto ptr = (__PTR);                                                       \
-    if (UNLIKELY(nullptr == ptr)) {                                           \
-      __THROW_ERROR_INTERNAL__(                                               \
-          "%s\n  [Hint: pointer " #__PTR " should not be null.]",             \
-          paddle::platform::errors::NotFound(                                 \
-              "Unable to get %s data of %s %s in operator %s. "               \
-              "Possible reasons are:\n"                                       \
-              "  1. The %s is not the %s of operator %s;\n"                   \
-              "  2. The %s has no corresponding variable passed in;\n"        \
-              "  3. The %s corresponding variable is not initialized.",       \
-              paddle::platform::demangle(                                     \
-                  typeid(std::add_lvalue_reference<decltype(*ptr)>::type)     \
-                      .name()),                                               \
-              #__ROLE, #__NAME, #__OP_TYPE, #__NAME, #__ROLE, #__OP_TYPE,     \
-              #__NAME, #__NAME)                                               \
-              .ToString());                                                   \
-    }                                                                         \
-    return *ptr;                                                              \
+#define GET_DATA_SAFELY(__PTR, __ROLE, __NAME, __OP_TYPE)                 \
+  (([&]() -> std::add_lvalue_reference<decltype(*(__PTR))>::type {        \
+    auto* ptr = (__PTR);                                                  \
+    if (UNLIKELY(nullptr == ptr)) {                                       \
+      __THROW_ERROR_INTERNAL__(                                           \
+          "%s\n  [Hint: pointer " #__PTR " should not be null.]",         \
+          paddle::platform::errors::NotFound(                             \
+              "Unable to get %s data of %s %s in operator %s. "           \
+              "Possible reasons are:\n"                                   \
+              "  1. The %s is not the %s of operator %s;\n"               \
+              "  2. The %s has no corresponding variable passed in;\n"    \
+              "  3. The %s corresponding variable is not initialized.",   \
+              paddle::platform::demangle(                                 \
+                  typeid(std::add_lvalue_reference<decltype(*ptr)>::type) \
+                      .name()),                                           \
+              #__ROLE, #__NAME, #__OP_TYPE, #__NAME, #__ROLE, #__OP_TYPE, \
+              #__NAME, #__NAME)                                           \
+              .ToString());                                               \
+    }                                                                     \
+    return *ptr;                                                          \
   })())
 
 /** OTHER EXCEPTION AND ENFORCE **/
