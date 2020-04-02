@@ -77,7 +77,7 @@ def main():
 
     step_per_epoch = int(len(train_dataset) / FLAGS.batch_size \
                          / ParallelEnv().nranks)
-    optim = make_optimizer(len(train_dataset), model.parameters())
+    optim = make_optimizer(step_per_epoch, model.parameters())
 
     inputs = [Input([None, 8, 3, 224, 224], 'float32', name='image')]
     labels = [Input([None, 1], 'int64', name='label')]
