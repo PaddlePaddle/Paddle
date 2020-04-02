@@ -352,10 +352,10 @@ class TestTensorConcatAPIWithLoDTensorArray(unittest.TestCase):
 
 class TestTensorConcatDygraghAPI(unittest.TestCase):
     def test_api(self):
-        in1 = np.array([[1, 2, 3], [4, 5, 6]])
-        in2 = np.array([[11, 12, 13], [14, 15, 16]])
-        in3 = np.array([[21, 22], [23, 24]])
         with fluid.dygraph.guard():
+            in1 = np.array([[1, 2, 3], [4, 5, 6]])
+            in2 = np.array([[11, 12, 13], [14, 15, 16]])
+            in3 = np.array([[21, 22], [23, 24]])
             x1 = fluid.dygraph.to_variable(in1)
             x2 = fluid.dygraph.to_variable(in2)
             x3 = fluid.dygraph.to_variable(in3)
