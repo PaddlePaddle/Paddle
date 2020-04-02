@@ -524,7 +524,7 @@ class PSLib(Fleet):
         """
         self._role_maker._barrier_worker()
         mode = kwargs.get("mode", 0)
-        elif self._role_maker.is_first_worker():
+        if self._role_maker.is_first_worker():
             self._fleet_ptr.load_table_with_whitelist(table_id, model_path, mode)
         self._role_maker._barrier_worker()
     
