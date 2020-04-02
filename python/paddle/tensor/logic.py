@@ -40,14 +40,18 @@ __all__ = [
 def equal(x, y, axis=-1, name=None):
     """
     This OP returns the truth value of :math:`x == y`. True if two inputs have the same elements, False otherwise.
-    note: This OP has no gradient, and supports broadcasting by :attr:axis.
+
+    **NOTICE**: The output of this OP has no gradient, and this OP supports broadcasting by :attr:`axis`.
 
     Args:
         x(Variable): Tensor, data type is float32, float64, int32, int64.
         y(Variable): Tensor, data type is float32, float64, int32, int64.
         axis(int32, optional): If X.dimension != Y.dimension, Y.dimension
             must be a subsequence of x.dimension. And axis is the start 
-            dimension index for broadcasting Y onto X.
+            dimension index for broadcasting Y onto X. For more detail, 
+            please refer to OP:`elementwise_add`.
+        name(str, optional): Normally there is no need for user to set this property. 
+            For more information, please refer to :ref:`api_guide_Name`.Default: None.
 
     Returns:
         Variable: output Tensor, data type is bool, value is [False] or [True].
@@ -63,12 +67,12 @@ def equal(x, y, axis=-1, name=None):
           label_1 = fluid.layers.assign(np.array([1, 2], dtype="int32"))
           limit = fluid.layers.assign(np.array([3, 4], dtype="int32"))
           out1 = paddle.equal(x=label, y=limit) #out1=[True]
-          out2 = paddle.equal(x=label_1, y=limit) #out1=[False]
+          out2 = paddle.equal(x=label_1, y=limit) #out2=[False]
 
         .. code-block:: python
 
-          import paddle.tensor as tensor
           import paddle.fluid as fluid
+          import paddle
           import numpy as np
 
           def gen_data():
@@ -79,7 +83,13 @@ def equal(x, y, axis=-1, name=None):
 
           x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
           y = fluid.data(name="y", shape=[3,4], dtype='float32')
-          out = paddle.equal(x, y, axis=1) #out=[False]
+          out = paddle.equal(x, y, axis=1)
+          place = fluid.CPUPlace()
+          exe = fluid.Executor(place)
+
+          res = exe.run(feed=gen_data(),
+                            fetch_list=[out])
+          print(res[0]) #[False]
     """
     helper = LayerHelper("equal_reduce", **locals())
     out = helper.create_variable_for_type_inference(dtype='bool')

@@ -43,7 +43,8 @@ __all__ = [
 def linspace(start, stop, num, dtype, out=None, device=None, name=None):
     """
     This OP return fixed number of evenly spaced values within a given interval.
-    note: This OP has no gradient.
+    
+    **NOTICE**: The output of this OP has no gradient.
 
     Args:
         start(float|Variable): The input :attr:`start` is start variable of range. It is a float scalar, \
