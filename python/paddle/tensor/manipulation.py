@@ -102,15 +102,12 @@ def concat(input, axis=0, name=None):
     """
 
     if in_dygraph_mode():
-        inputs = {'X': input}
         if isinstance(axis, Variable):
             axis = axis.numpy()
             assert axis.shape == (
                 1, ), "axis of type Variable should have shape [1]"
             axis = axis[0]
-        attrs = {'axis': axis}
-        outs = core.ops.concat(inputs, attrs)
-        return outs['Out'][0]
+        return core.ops.concat(input, 'axis', axis)
 
     if not isinstance(input, list):
         warnings.warn(
