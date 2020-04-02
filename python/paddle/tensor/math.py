@@ -132,7 +132,7 @@ def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
     if dtype is not None:
         if dtype in ['float64', 'int64']:
             if (convert_dtype(input.dtype) == "float32" and dtype == "float64") or \
-               (convert_dtype(input.dtype) == "float32" and dtype == "int64"):
+               (convert_dtype(input.dtype) == "int32" and dtype == "int64"):
                 attrs.update({
                     'in_dtype': input.dtype,
                     'out_dtype': convert_np_dtype_to_dtype_(dtype)

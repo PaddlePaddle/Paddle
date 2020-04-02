@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
+import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
@@ -427,6 +428,48 @@ class Test1DReduceWithAxes1(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+class TestReduceWithDtype(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.inputs = {'X': np.random.random((6, 2, 10)).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].sum().astype('float64')}
+        self.attrs = {'reduce_all': True}
+        self.attrs.update({
+            'in_dtype': int(convert_np_dtype_to_dtype_(np.float32)),
+            'out_dtype': int(convert_np_dtype_to_dtype_(np.float64))
+        })
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestReduceWithDtype1(TestReduceWithDtype):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.inputs = {'X': np.random.random((6, 2, 10)).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].sum(axis=1)}
+        self.attrs = {'dim': [1]}
+        self.attrs.update({
+            'in_dtype': int(convert_np_dtype_to_dtype_(np.float32)),
+            'out_dtype': int(convert_np_dtype_to_dtype_(np.float64))
+        })
+
+
+class TestReduceWithDtype2(TestReduceWithDtype):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.inputs = {'X': np.random.random((6, 2, 10)).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].sum(axis=1, keepdims=True)}
+        self.attrs = {'dim': [1], 'keep_dim': True}
+        self.attrs.update({
+            'in_dtype': int(convert_np_dtype_to_dtype_(np.float32)),
+            'out_dtype': int(convert_np_dtype_to_dtype_(np.float64))
+        })
+
+
 class TestReduceSumOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
@@ -449,6 +492,37 @@ class TestReduceMeanOpError(unittest.TestCase):
             # The input dtype of reduce_mean_op  must be float32 or float64 or int32 or int64.
             x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
             self.assertRaises(TypeError, fluid.layers.reduce_mean, x2)
+
+
+class TestSumOpError(unittest.TestCase):
+    def test_errors(self):
+        def test_dtype1():
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                data = fluid.data(name="data", shape=[10], dtype="float32")
+                paddle.sum(data, dtype="int32")
+
+        self.assertRaises(ValueError, test_dtype1)
+
+        def test_dtype2():
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                data = fluid.data(name="data", shape=[10], dtype="float32")
+                paddle.sum(data, dtype="float32")
+
+        self.assertRaises(ValueError, test_dtype2)
+
+        def test_dtype3():
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                data = fluid.data(name="data", shape=[10], dtype="int32")
+                paddle.sum(data, dtype="bool")
+
+        self.assertRaises(ValueError, test_dtype3)
+
+        def test_dtype4():
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                data = fluid.data(name="data", shape=[10], dtype="int32")
+                paddle.sum(data, dtype="int32")
+
+        self.assertRaises(ValueError, test_dtype3)
 
 
 if __name__ == '__main__':
