@@ -11,5 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+# TODO: define activation functions of neural network  
+
+from . import loss
 from . import norm
-__all__ = [norm]
+
+__all__ = [norm, loss]

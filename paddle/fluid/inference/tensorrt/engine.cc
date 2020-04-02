@@ -148,6 +148,7 @@ void TensorRTEngine::FreezeNetwork() {
 
   if (with_dynamic_shape_) {
 #if IS_TRT_VERSION_GE(6000)
+    LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
     for (auto &input : min_input_shape_) {
       optim_profile_->setDimensions(
           input.first.c_str(), nvinfer1::OptProfileSelector::kMIN,

@@ -14,7 +14,7 @@
 
 # TODO: import all neural network related api under this directory, 
 # including layers, linear, conv, rnn etc.
-# __all__ = [ ]
+__all__ = []
 
 from .layer import norm
 
@@ -61,7 +61,8 @@ __all__ += norm.__all__
 # from .layer.loss import NCELoss   #DEFINE_ALIAS
 # from .layer.loss import CrossEntropyLoss   #DEFINE_ALIAS
 # from .layer.loss import MSELoss   #DEFINE_ALIAS
-# from .layer.loss import L1Loss   #DEFINE_ALIAS
+from .layer.loss import L1Loss  #DEFINE_ALIAS
+from .layer import loss  #DEFINE_ALIAS
 # from .layer.loss import NLLLoss   #DEFINE_ALIAS
 # from .layer.loss import BCELoss   #DEFINE_ALIAS
 # from .layer.learning_rate import CosineDecay   #DEFINE_ALIAS
