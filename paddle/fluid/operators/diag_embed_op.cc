@@ -22,11 +22,17 @@ class DiagEmbedOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of DiagEmbedOp should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Input"), true,
+        platform::errors::InvalidArgument(
+            "Input holds the wrong type, it holds %s, but desires to be %s.",
+            'NULL', 'Variable'));
 
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of DiagEmbedOp should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("Out"), true,
+        platform::errors::InvalidArgument(
+            "Output holds the wrong type, it holds %s, but desires to be %s.",
+            'NULL', 'Variable'));
 
     int offset = ctx->Attrs().Get<int>("offset");
     int dim1 = ctx->Attrs().Get<int>("dim1");
@@ -38,18 +44,23 @@ class DiagEmbedOp : public framework::OperatorWithKernel {
     int dim2_ = dim2 < 0 ? x_dims.size() + dim2 + 1 : dim2;
     int offset_ = std::abs(offset);
 
-    PADDLE_ENFORCE_LE(std::abs(dim1), x_dims.size(),
-                      "Dim1 is out of range (expected to be in range of [%ld, "
-                      "%ld], but got %ld).",
-                      -(x_dims.size() + 1), x_dims.size(), dim1);
-    PADDLE_ENFORCE_LE(std::abs(dim2), x_dims.size(),
-                      "Dim2 is out of range (expected to be in range of [%ld, "
-                      "%ld], but got %ld).",
-                      -(x_dims.size() + 1), x_dims.size(), dim2);
+    PADDLE_ENFORCE_LE(
+        std::abs(dim1), x_dims.size(),
+        platform::errors::OutOfRange(
+            "Dim1 is out of range (expected to be in range of [%ld, "
+            "%ld], but got %ld).",
+            -(x_dims.size() + 1), x_dims.size(), dim1));
+    PADDLE_ENFORCE_LE(
+        std::abs(dim2), x_dims.size(),
+        platform::errors::OutOfRange(
+            "Dim2 is out of range (expected to be in range of [%ld, "
+            "%ld], but got %ld).",
+            -(x_dims.size() + 1), x_dims.size(), dim2));
     PADDLE_ENFORCE_NE(dim1_, dim2_,
-                      "diagonal dimensions should not be identical "
-                      "%ld vs %ld.",
-                      dim1, dim2);
+                      platform::errors::InvalidArgument(
+                          "diagonal dimensions should not be identical "
+                          "%ld vs %ld.",
+                          dim1, dim2));
 
     int new_dim_len = offset_ + x_dims[x_dims.size() - 1];
     auto sizes = vectorize(x_dims);
