@@ -801,11 +801,12 @@ class Optimizer(object):
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
             no_grad_set (set, optional): Set of ``Variable``  or ``Variable.name`` that don't need
-                to be updated. The default value is None.
-            grad_clip (GradClipBase, optional) : Gradient clipping strategy, static
-                graph mode does not need to use this argument. Currently, this argument
-                only supports gradient clipping in dygraph mode. In the future, this
-                argument my be adjusted. The default value is None.
+                to be updated. The default value is None.   
+            grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+                some derived class of ``GradientClipBase`` . There are three cliping strategies 
+                ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+                :ref:`api_fluid_clip_GradientClipByValue` ). Default value: None, and there is no 
+                gradient clipping.
 
         Returns:
             tuple: tuple (optimize_ops, params_grads), A list of operators appended
