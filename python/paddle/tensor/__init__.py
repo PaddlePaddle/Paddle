@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define alias in tensor and framework directory
-# from .creation import create_   #DEFINE_ALIAS
-# from .creation import create_lod_   #DEFINE_ALIAS
+
+#TODO: define alias in tensor and framework directory
+# from .creation import create_tensor   #DEFINE_ALIAS
+# from .creation import create_lod_tensor   #DEFINE_ALIAS
 # from .creation import create_random_int_lod   #DEFINE_ALIAS
-# from .creation import crop_   #DEFINE_ALIAS
+# from .creation import crop_tensor   #DEFINE_ALIAS
 # from .creation import diag   #DEFINE_ALIAS
 # from .creation import eye   #DEFINE_ALIAS
 # from .creation import fill_constant   #DEFINE_ALIAS
-# from .creation import get__from_selected_rows   #DEFINE_ALIAS
+# from .creation import get_tensor_from_selected_rows   #DEFINE_ALIAS
 # from .creation import linspace   #DEFINE_ALIAS
 # from .creation import ones   #DEFINE_ALIAS
 # from .creation import ones_like   #DEFINE_ALIAS
