@@ -21,6 +21,8 @@
 
 USE_OP(softmax);
 USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
+USE_OP(elementwise_add);
+USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
 
 namespace paddle {
 namespace framework {
@@ -83,9 +85,12 @@ class MKLDNNInplacePassTest {
     SetOp(&prog, "elementwise_add", "elementwise_add1",
           std::vector<std::string>({"h", "i"}), std::vector<std::string>({"j"}),
           mkldnn_enabled_op.compare("elementwise_add") == 0);
+    SetOp(&prog, "elementwise_add", "elementwise_add2",
+          std::vector<std::string>({"j", "k"}), std::vector<std::string>({"l"}),
+          mkldnn_enabled_op.compare("elementwise_add") == 0);
     if (branched == true) {
       SetOp(&prog, "softmax", "softmax2", std::vector<std::string>({"g"}),
-            std::vector<std::string>({"k"}),
+            std::vector<std::string>({"m"}),
             mkldnn_enabled_op.compare("softmax") == 0);
     }
 
@@ -140,10 +145,14 @@ TEST(MKLDNNInplacePass, inplace_softmax) {
 }
 
 TEST(MKLDNNInplacePass, inplace_softmax_branched) {
-  // softmax to be mkl-dnn enabled and made in-place
+  // softmax not mkl-dnn enabled so no in-place
   MKLDNNInplacePassTest().MainTest("softmax", true, 0);
 }
 
+TEST(MKLDNNInplacePass, inplace_elementwise_add) {
+  // Two elementwise_add mkl-dnn enabled op instances to be made inplace
+  MKLDNNInplacePassTest().MainTest("elementwise_add", false, 2);
+}
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

@@ -64,13 +64,6 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
 
-    // TODO(jczaja): Enable more ops
-    if (inplace_to_be_op->Op()->Type() != "softmax") {
-      VLOG(3)
-          << "Curently works for softmax only. TODO(jczaja): support other ops";
-      return;
-    }
-
     // Iterate over all nodes  that are ops
     // and check if in-place to be var is part of inputs
     // if positive then do not perform inplace

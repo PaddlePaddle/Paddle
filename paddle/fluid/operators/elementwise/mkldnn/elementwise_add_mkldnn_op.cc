@@ -69,7 +69,7 @@ src_x_tz, x->format(), y->format(), dev_ctx, ctx.GetPlace(), ctx.OutputName("Out
     auto src_y_memory = handler.AcquireSecondSrcMemory(y);
 
     // For Inplace src and and dst are the same memory object
-    auto dst_memory = x->IsSharedBufferWith(z) ? src_x_memory : handler.AcquireDstMemory(z);
+    auto dst_memory = x->IsSharedBufferWith(*z) ? src_x_memory : handler.AcquireDstMemory(z);
 
     auto binary_prim = handler.AcquireForwardPrimitive();
 
