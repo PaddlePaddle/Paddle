@@ -206,7 +206,7 @@ def monkey_patch_varbase():
 
     def __nonzero__(self):
         numel = np.prod(self.shape)
-        assert numel == 1, "If you want to use if/while logic to determine whether the variable is None type, please use code like if variable is None or if Variable is not None. If you want to use if/while logic for Variable, Variable can only contain one element."
+        assert numel == 1, "When Variable is used as the condition of if/while , Variable can only contain one element."
         tensor = self.value().get_tensor()
         assert tensor._is_initialized(), "tensor not initialized"
         return bool(np.all(tensor.__array__() > 0))
