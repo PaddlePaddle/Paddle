@@ -935,6 +935,24 @@ int32_t FleetWrapper::CopyTable(const uint64_t src_table_id,
 #endif
 }
 
+void FleetWrapper::Confirm() {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->confirm();
+  ret.wait();
+#else
+  VLOG(0) << "FleetWrapper::Confirm does nothing when no pslib";
+#endif
+}
+
+void FleetWrapper::Revert() {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->revert();
+  ret.wait();
+#else
+  VLOG(0) << "FleetWrapper::Revert does nothing when no pslib";
+#endif
+}
+
 int32_t FleetWrapper::CopyTableByFeasign(
     const uint64_t src_table_id, const uint64_t dest_table_id,
     const std::vector<uint64_t>& feasign_list) {
@@ -952,24 +970,6 @@ int32_t FleetWrapper::CopyTableByFeasign(
 #else
   VLOG(0) << "FleetWrapper::CopyTableByFeasign does nothing when no pslib";
   return 0;
-#endif
-}
-
-void FleetWrapper::Confirm() {
-#ifdef PADDLE_WITH_PSLIB
-  auto ret = pslib_ptr_->_worker_ptr->confirm();
-  ret.wait();
-#else
-  VLOG(0) << "FleetWrapper::Confirm does nothing when no pslib";
-#endif
-}
-
-void FleetWrapper::Revert() {
-#ifdef PADDLE_WITH_PSLIB
-  auto ret = pslib_ptr_->_worker_ptr->revert();
-  ret.wait();
-#else
-  VLOG(0) << "FleetWrapper::Revert does nothing when no pslib";
 #endif
 }
 
