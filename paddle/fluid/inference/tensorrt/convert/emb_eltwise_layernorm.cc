@@ -83,10 +83,26 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     nvinfer1::ILayer* layer = nullptr;
 
     if (engine_->with_dynamic_shape()) {
-      plugin::EmbEltwiseLayernormPluginDynamic* plugin =
-          new plugin::EmbEltwiseLayernormPluginDynamic(input_embs, bias, scale,
-                                                       emb_sizes, bias_size,
-                                                       scale_size, hidden, eps);
+      plugin::DynamicPluginTensorRT* plugin = nullptr;
+      auto use_fp16 = engine_->WithFp16();
+      if (use_fp16) {
+#ifdef SUPPORTS_CUDA_FP16
+        plugin =
+            new plugin::EmbEltwiseLayernormPluginDynamic<half>(input_embs, bias, scale,
+                                                               emb_sizes, bias_size,
+                                                               scale_size, hidden, eps);
+#else
+        PADDLE_THROW(platform::errors::Fatal(
+            "use EmbEltwiseLayernormPluginDynamic FP16, but GPU doesn't have FP16."));
+#endif
+      }
+      else {
+
+        plugin =
+            new plugin::EmbEltwiseLayernormPluginDynamic<float>(input_embs, bias, scale,
+                                                                emb_sizes, bias_size,
+                                                                scale_size, hidden, eps);
+      }
       layer = engine_->AddPluginV2(input_ids.data(), input_num, plugin);
     } else {
       PADDLE_THROW(platform::errors::Fatal(
