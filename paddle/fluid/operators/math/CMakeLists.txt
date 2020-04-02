@@ -7,7 +7,7 @@ function(math_library TARGET)
     set(cc_srcs)
     set(cu_srcs)
     set(hip_srcs)
-    set(math_common_deps device_context framework_proto)
+    set(math_common_deps device_context framework_proto enforce)
     set(multiValueArgs DEPS)
     cmake_parse_arguments(math_library "${options}" "${oneValueArgs}"
             "${multiValueArgs}" ${ARGN})
@@ -56,12 +56,14 @@ math_library(sequence_pooling DEPS math_function jit_kernel_helper)
 math_library(sequence_scale)
 math_library(softmax DEPS math_function jit_kernel_helper)
 math_library(beam_search DEPS math_function)
+math_library(fc DEPS blas)
 
 math_library(matrix_bit_code)
 
 math_library(unpooling)
 math_library(vol2col)
 math_library(prelu)
+math_library(bert_encoder_functor)
 math_library(tree2col DEPS math_function)
 
 cc_test(math_function_test SRCS math_function_test.cc DEPS math_function)

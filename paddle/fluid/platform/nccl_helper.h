@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _WIN32
+#ifdef PADDLE_WITH_NCCL
 #pragma once
 
 #include <stdio.h>
@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
@@ -63,11 +64,11 @@ class NCCLGroupGuard {
 
   inline NCCLGroupGuard() {
     NCCLMutex().lock();
-    PADDLE_ENFORCE(dynload::ncclGroupStart());
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclGroupStart());
   }
 
-  inline ~NCCLGroupGuard() {
-    PADDLE_ENFORCE(dynload::ncclGroupEnd());
+  inline ~NCCLGroupGuard() PADDLE_MAY_THROW {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclGroupEnd());
     NCCLMutex().unlock();
   }
 };
@@ -94,7 +95,7 @@ struct NCCLContextMap {
   explicit NCCLContextMap(const std::vector<platform::Place> &places,
                           ncclUniqueId *nccl_id = nullptr,
                           size_t num_trainers = 1, size_t trainer_id = 0) {
-    PADDLE_ENFORCE(!places.empty());
+    PADDLE_ENFORCE_EQ(!places.empty(), true);
     order_.reserve(places.size());
     for (auto &p : places) {
       int dev_id = boost::get<CUDAPlace>(p).device;
@@ -109,7 +110,7 @@ struct NCCLContextMap {
     // if num_trainers == 1, should create a new nccl id for local comms.
     if (num_trainers == 1 && nccl_id == nullptr) {
       std::lock_guard<std::mutex> guard(NCCLGroupGuard::NCCLMutex());
-      PADDLE_ENFORCE(platform::dynload::ncclCommInitAll(
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclCommInitAll(
           comms.get(), static_cast<int>(order_.size()), order_.data()));
     } else {
       PADDLE_ENFORCE_NOT_NULL(nccl_id);
@@ -126,8 +127,8 @@ struct NCCLContextMap {
           }
           VLOG(1) << "init nccl rank:" << rank << ", nranks:" << nranks
                   << ", gpu_id:" << gpu_id << ", dev_id:" << order_[i];
-          PADDLE_ENFORCE(cudaSetDevice(gpu_id));
-          PADDLE_ENFORCE(platform::dynload::ncclCommInitRank(
+          PADDLE_ENFORCE_CUDA_SUCCESS(cudaSetDevice(gpu_id));
+          PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclCommInitRank(
               comms.get() + i, nranks, *nccl_id, rank));
         }
       }
@@ -179,7 +180,7 @@ inline std::string GetHierarchicalInterNCCLVarName(size_t pos) {
 class NCCLCommunicator {
  public:
   NCCLCommunicator() {}
-  virtual ~NCCLCommunicator() {}
+  virtual ~NCCLCommunicator() PADDLE_MAY_THROW {}
 
   NCCLContextMap *DefaultFlatCtx() const {
     if (flat_ctxs_.size() == 0) {
@@ -232,14 +233,27 @@ class NCCLCommunicator {
       auto ptr = new platform::NCCLContextMap(places);
       VLOG(1) << "init local trainer";
       flat_ctxs_.emplace_back(ptr);
-      return;
+    } else {
+      for (size_t i = 0; i < nccl_ids.size(); i++) {
+        auto ptr = new platform::NCCLContextMap(places, nccl_ids[i],
+                                                trainers_num, trainer_id);
+        VLOG(1) << "init trainer_id:" << trainer_id << ", comm no:" << i;
+        flat_ctxs_.emplace_back(ptr);
+      }
     }
 
-    for (size_t i = 0; i < nccl_ids.size(); i++) {
-      auto ptr = new platform::NCCLContextMap(places, nccl_ids[i], trainers_num,
-                                              trainer_id);
-      VLOG(1) << "init trainer_id:" << trainer_id << ", comm no:" << i;
-      flat_ctxs_.emplace_back(ptr);
+    // as Executor have no way to use ncclComm created by ParallelExecutor,
+    // we assign all flatten contexts to NCCLCommContext to fix.
+    int nranks = static_cast<int>(trainers_num * places.size());
+    int nrings = static_cast<int>(flat_ctxs_.size());
+    for (int ring_id = 0; ring_id < nrings; ++ring_id) {
+      for (size_t p = 0; p < places.size(); ++p) {
+        int rank = trainer_id * places.size() + p;
+        int dev_id = boost::get<CUDAPlace>(places[p]).device;
+        auto &ctx = flat_ctxs_[ring_id]->contexts_.at(dev_id);
+        NCCLCommContext::Instance().AssignNCCLComm(ctx.comm_, nranks, rank,
+                                                   dev_id, ring_id);
+      }
     }
   }
 
@@ -249,13 +263,13 @@ class NCCLCommunicator {
                             size_t trainers_num, size_t trainer_id,
                             size_t inter_trainers_num,
                             size_t exter_trainers_num) {
-    PADDLE_ENFORCE(trainers_num == inter_trainers_num * exter_trainers_num,
-                   "trainers_num:%llu != inter_trainers_num:%llu * "
-                   "exter_trainers_num:%llu",
-                   trainers_num, inter_trainers_num, exter_trainers_num);
+    PADDLE_ENFORCE_EQ(trainers_num, inter_trainers_num * exter_trainers_num,
+                      "trainers_num:%llu != inter_trainers_num:%llu * "
+                      "exter_trainers_num:%llu",
+                      trainers_num, inter_trainers_num, exter_trainers_num);
 
-    PADDLE_ENFORCE(inter_trainers_num > 1, "inter_trainers_num:%llu must > 1",
-                   inter_trainers_num);
+    PADDLE_ENFORCE_GT(inter_trainers_num, 1, "inter_trainers_num:%llu must > 1",
+                      inter_trainers_num);
 
     int inter_trainer_id = trainer_id % inter_trainers_num;
     for (size_t i = 0; i < inter_nccl_ids.size(); i++) {

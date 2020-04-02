@@ -100,7 +100,7 @@ where:
 Therefore, the calculation can be separated into 3 steps:
 Step 1: row-wise operation to calculate max_i
 Step 2: row-wise operation to calculate logDiffMaxSum_i
-Step 3: caculate tmp_i_j, and finally get softmax_i_j and cross\_entropy_i
+Step 3: calculate tmp_i_j, and finally get softmax_i_j and cross\_entropy_i
 To save memory, we can share memory among max_i, logDiffMaxSum_i and
 cross\_entropy_i.
 In this way, the 3 steps should be changed to:
@@ -150,10 +150,7 @@ static __global__ void RowReductionForMax(const T* logits_data, T* max_data,
 
   cur_max = BlockReduce<T, BlockDim>(temp_storage).Reduce(cur_max, cub::Max());
 
-  if (threadIdx.x == 0) {
-    max_data[blockIdx.x] =
-        cur_max < static_cast<T>(-64) ? static_cast<T>(-64) : cur_max;
-  }
+  if (threadIdx.x == 0) max_data[blockIdx.x] = cur_max;
 }
 
 // Make sure that BlockDim <= axis_dim
@@ -175,6 +172,12 @@ static __global__ void RowReductionForDiffMaxSum(const T* logits_data,
   auto block_max = max_data[blockIdx.x];
   int step = BlockDim * remain;
 
+  // In numeric stable mode softmax_with_loss, we calc loss with
+  // tmp_i_j = x_i_j - max_i - logDiffMaxSum_i, instead of
+  // log(exp(x_i_j - max_i)/DiffMaxSum_i). Therefore, log(0) will not occur.
+  // Also we calc softmax_i_j = e^{tmp_i_j}, the maximum and minimum value will
+  // be 1.0 and 0.0, represent prob is 1.0 and 0.0.
+  // So there is no need to clip on shift_softmax.
   softmax[beg_idx] = logits_data[beg_idx] - block_max;
   T diff_max_sum = exp_on_device(softmax[beg_idx]);
   auto idx = beg_idx + step;
@@ -197,6 +200,10 @@ static __global__ void RowReductionForDiffMaxSum(const T* logits_data,
     softmax[beg_idx] -= diff_max_sum;
     beg_idx += step;
   }
+
+  // Note(zhiqiu): since different threads may use max_data[blockIdx.x] to
+  // calculate diff_max_sum, __syncthreads() is needed here.
+  __syncthreads();
   if (threadIdx.x == 0) max_data[blockIdx.x] = 0;
 }
 
@@ -412,18 +419,18 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
     const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
     int axis_dim = logits->dims()[axis];
 
+    const int n = SizeToAxis(axis, logits->dims());
+    const int d = SizeFromAxis(axis, logits->dims());
+
+    auto* softmax_data = softmax->mutable_data<T>(context.GetPlace());
+    auto* loss_data = loss->mutable_data<T>(context.GetPlace());
+
     if (axis_dim == 1) {
       math::SetConstant<platform::CUDADeviceContext, T> set_constant;
       set_constant(context.cuda_device_context(), softmax, static_cast<T>(1));
       set_constant(context.cuda_device_context(), loss, static_cast<T>(0));
       return;
     }
-
-    const int n = SizeToAxis(axis, logits->dims());
-    const int d = SizeFromAxis(axis, logits->dims());
-
-    auto* softmax_data = softmax->mutable_data<T>(context.GetPlace());
-    auto* loss_data = loss->mutable_data<T>(context.GetPlace());
 
     auto soft_label = context.Attr<bool>("soft_label");
     auto ignore_index = context.Attr<int>("ignore_index");

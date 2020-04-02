@@ -28,33 +28,23 @@ namespace details {
 typedef std::vector<std::vector<std::pair<std::string, const LoDTensor *>>>
     GradientAndLoDTensor;
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 FusedAllReduceOpHandle::FusedAllReduceOpHandle(
     ir::Node *node, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places, const size_t num_of_all_reduce,
     const platform::NCCLCommunicator *ctxs)
-    : NCCLOpHandleBase(node, places, ctxs),
-      local_scopes_(local_scopes),
-      num_of_all_reduce_(num_of_all_reduce) {
-  PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
-}
+    : AllReduceOpHandle(node, local_scopes, places, ctxs),
+      num_of_all_reduce_(num_of_all_reduce) {}
 #else
-
 FusedAllReduceOpHandle::FusedAllReduceOpHandle(
     ir::Node *node, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places, const size_t num_of_all_reduce)
-    : OpHandleBase(node),
-      local_scopes_(local_scopes),
-      places_(places),
-      num_of_all_reduce_(num_of_all_reduce) {
-  PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
-}
-
+    : AllReduceOpHandle(node, local_scopes, places),
+      num_of_all_reduce_(num_of_all_reduce) {}
 #endif
 
 void FusedAllReduceOpHandle::RunImpl() {
   platform::RecordEvent record_event(Name());
-
   VLOG(4) << this->DebugString();
 
   WaitInputVarGenerated();
@@ -70,6 +60,30 @@ void FusedAllReduceOpHandle::RunImpl() {
   PADDLE_ENFORCE_EQ(
       in_var_handles.size(), out_var_handles.size(),
       "The NoDummyInputSize and NoDummyOutputSize should be equal.");
+
+  // Note: some gradient op doesn't have CUDAKernel, so the gradients of
+  // those op are in CPUPlace, in this case, the all reduce should not be fused.
+  if (InputIsInDifferentPlace(in_var_handles)) {
+    for (size_t j = 0; j < num_of_all_reduce_; ++j) {
+      std::vector<VarHandle *> dev_inputs;
+      std::vector<VarHandle *> dev_outputs;
+      dev_inputs.reserve(place_num);
+      dev_outputs.reserve(place_num);
+      for (size_t idx = 0; idx < place_num; ++idx) {
+        dev_inputs.emplace_back(in_var_handles.at(j * place_num + idx));
+        dev_outputs.emplace_back(out_var_handles.at(j * place_num + idx));
+      }
+      AllReduceImpl(dev_inputs, dev_outputs);
+    }
+  } else {
+    FusedAllReduceFunc(in_var_handles, out_var_handles);
+  }
+}
+
+void FusedAllReduceOpHandle::FusedAllReduceFunc(
+    const std::vector<VarHandle *> &in_var_handles,
+    const std::vector<VarHandle *> &out_var_handles) {
+  size_t place_num = places_.size();
 
   GradientAndLoDTensor grads_tensor;
   grads_tensor.resize(place_num);
@@ -87,14 +101,11 @@ void FusedAllReduceOpHandle::RunImpl() {
         static_cast<framework::proto::VarType::Type>(0);
     GetDTypeAndNumel(g_tensor, &ele_dtype, &element_num);
 
-    if (numel == -1) {
+    if (scope_idx == 0) {
       numel = element_num;
-    }
-    if (dtype == static_cast<framework::proto::VarType::Type>(0)) {
       dtype = ele_dtype;
-      PADDLE_ENFORCE_NE(ele_dtype,
-                        static_cast<framework::proto::VarType::Type>(0));
     }
+
     PADDLE_ENFORCE_EQ(ele_dtype, dtype);
 
     // Check whether the address space is contiguous.
@@ -134,66 +145,36 @@ void FusedAllReduceOpHandle::RunImpl() {
   }
 
   std::vector<const void *> lod_tensor_data;
+  lod_tensor_data.reserve(place_num);
   for (size_t scope_idx = 0; scope_idx < place_num; ++scope_idx) {
     auto data = grads_tensor.at(scope_idx).at(0).second->data<void>();
     lod_tensor_data.emplace_back(data);
   }
+  std::vector<std::string> grad_var_names;
+  grad_var_names.reserve(place_num);
+  for (auto &grad_t : grads_tensor) {
+    grad_var_names.emplace_back(grad_t.at(0).first);
+  }
 
-  if (platform::is_gpu_place(places_[0])) {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-    PADDLE_ENFORCE(nccl_ctxs_, "nccl_ctxs should not be nullptr.");
-    int nccl_dtype = platform::ToNCCLDataType(dtype);
-    std::vector<std::function<void()>> all_reduce_calls;
-    for (size_t i = 0; i < local_scopes_.size(); ++i) {
-      auto &p = places_[i];
-      void *buffer = const_cast<void *>(lod_tensor_data.at(i));
+  AllReduceFunc(lod_tensor_data, dtype, numel, this->places_, grad_var_names);
+}
 
-      all_reduce_calls.emplace_back([=] {
-        NCCLAllReduce(p, buffer, buffer, numel,
-                      static_cast<ncclDataType_t>(nccl_dtype), ncclSum);
-      });
-    }
-
-    VLOG(10) << "fusedallreduce size:" << numel * SizeOfType(dtype);
-
-    this->RunAndRecordEvent([&] {
-      if (all_reduce_calls.size() == 1UL) {
-        // Do not use NCCLGroup when manage NCCL by per thread per device
-        all_reduce_calls[0]();
-      } else {
-        platform::NCCLGroupGuard guard;
-        for (auto &call : all_reduce_calls) {
-          call();
-        }
+bool FusedAllReduceOpHandle::InputIsInDifferentPlace(
+    const std::vector<VarHandle *> &in_var_handles) const {
+  for (size_t scope_idx = 0; scope_idx < local_scopes_.size(); ++scope_idx) {
+    auto *local_scope = local_exec_scopes_[scope_idx];
+    size_t place_num = places_.size();
+    for (size_t j = 0; j < in_var_handles.size(); j += place_num) {
+      auto var_name = in_var_handles[j]->name();
+      auto var = local_scope->FindVar(var_name);
+      PADDLE_ENFORCE_NOT_NULL(var, "%s is not found in local scope.", var_name);
+      auto &lod_tensor = var->Get<LoDTensor>();
+      if (!is_same_place(lod_tensor.place(), places_.at(scope_idx))) {
+        return true;
       }
-    });
-#else
-    PADDLE_THROW("Not compiled with CUDA");
-#endif
-  } else {
-    // Special handle CPU only Operator's gradient. Like CRF
-    auto grad_name = grads_tensor.at(0).at(0).first;
-    auto &trg = *this->local_exec_scopes_[0]
-                     ->FindVar(grad_name)
-                     ->GetMutable<framework::LoDTensor>();
-
-    // Reduce All data to trg in CPU
-    ReduceBufferData func(lod_tensor_data, trg.data<void>(), numel);
-    VisitDataType(trg.type(), func);
-
-    for (size_t i = 1; i < local_exec_scopes_.size(); ++i) {
-      auto &scope = *local_exec_scopes_[i];
-      auto &p = places_[i];
-      auto *var = scope.FindVar(grad_name);
-      auto *dev_ctx = dev_ctxes_.at(p);
-      size_t size = numel * SizeOfType(trg.type());
-      RunAndRecordEvent(p, [&trg, var, dev_ctx, p, size] {
-        auto dst_ptr = var->GetMutable<framework::LoDTensor>()->data<void>();
-        platform::CPUPlace cpu_place;
-        memory::Copy(cpu_place, dst_ptr, cpu_place, trg.data<void>(), size);
-      });
     }
   }
+  return false;
 }
 
 void FusedAllReduceOpHandle::GetGradLoDTensor(
@@ -202,12 +183,16 @@ void FusedAllReduceOpHandle::GetGradLoDTensor(
     std::vector<std::pair<std::string, const LoDTensor *>> *grad_tensor) const {
   auto *local_scope = local_exec_scopes_[scope_idx];
   size_t place_num = places_.size();
-
   for (size_t j = 0; j < in_var_handles.size(); j += place_num) {
     auto var_name = in_var_handles[j]->name();
     PADDLE_ENFORCE_EQ(var_name, out_var_handles[j]->name());
-    auto &lod_tensor = local_scope->FindVar(var_name)->Get<LoDTensor>();
-    PADDLE_ENFORCE_EQ(lod_tensor.place(), places_.at(scope_idx));
+    auto var = local_scope->FindVar(var_name);
+    PADDLE_ENFORCE_NOT_NULL(var, "%s is not found in local scope.", var_name);
+    auto &lod_tensor = var->Get<LoDTensor>();
+
+    PADDLE_ENFORCE_EQ(
+        platform::is_same_place(lod_tensor.place(), places_.at(scope_idx)),
+        true, "%s(%d) is not in the right place.", var_name, scope_idx);
     grad_tensor->emplace_back(std::make_pair(var_name, &lod_tensor));
   }
 }

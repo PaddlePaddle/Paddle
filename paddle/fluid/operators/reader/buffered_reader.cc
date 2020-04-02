@@ -17,8 +17,8 @@
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
-
 #include "paddle/fluid/platform/profiler.h"
+
 namespace paddle {
 namespace operators {
 namespace reader {
@@ -26,18 +26,12 @@ BufferedReader::~BufferedReader() {
   VLOG(1) << "~BufferedReader";
   reader_->Shutdown();
   while (!position_.empty()) {
-    position_.front().wait();
+    auto &front = position_.front();
+    if (front.valid()) {
+      front.wait();
+    }
     position_.pop();
   }
-#ifdef PADDLE_WITH_CUDA
-  if (platform::is_gpu_place(place_)) {
-    platform::SetDeviceId(boost::get<platform::CUDAPlace>(place_).device);
-    PADDLE_ENFORCE(cudaStreamDestroy(stream_));
-    for (auto &event : events_) {
-      PADDLE_ENFORCE(cudaEventDestroy(event));
-    }
-  }
-#endif
 }
 
 BufferedReader::BufferedReader(
@@ -50,16 +44,16 @@ BufferedReader::BufferedReader(
   VLOG(1) << "BufferedReader";
 #ifdef PADDLE_WITH_CUDA
   if (platform::is_gpu_place(place_)) {
-    platform::SetDeviceId(boost::get<platform::CUDAPlace>(place_).device);
+    int dev_idx = boost::get<platform::CUDAPlace>(place_).device;
     compute_stream_ =
         ((platform::CUDADeviceContext *)(platform::DeviceContextPool::Instance()
                                              .Get(place_)))
             ->stream();
     events_.resize(buffer_size);
     for (auto &event : events_) {
-      PADDLE_ENFORCE(cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
+      event = platform::CudaEventResourcePool::Instance().New(dev_idx);
     }
-    PADDLE_ENFORCE(cudaStreamCreateWithFlags(&stream_, cudaStreamNonBlocking));
+    stream_ = platform::CudaStreamResourcePool::Instance().New(dev_idx);
   }
 #endif
   cpu_buffer_.resize(buffer_size);
@@ -109,8 +103,14 @@ void BufferedReader::ReadAsync(size_t i) {
       // gpu[i].mutable_data() is called, since some ops release
       // gpu memory immediately without waiting gpu kernel ends
       platform::SetDeviceId(boost::get<platform::CUDAPlace>(place_).device);
-      PADDLE_ENFORCE(cudaEventRecord(events_[i], compute_stream_));
-      PADDLE_ENFORCE(cudaStreamWaitEvent(stream_, events_[i], 0));
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          cudaEventRecord(events_[i].get(), compute_stream_),
+          platform::errors::Fatal(
+              "cudaEventRecord raises unexpected exception"));
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          cudaStreamWaitEvent(stream_.get(), events_[i].get(), 0),
+          platform::errors::Fatal(
+              "cudaStreamWaitEvent raises unexpected exception"));
 
       platform::RecordEvent record_event("BufferedReader:MemoryCopy");
       for (size_t i = 0; i < cpu.size(); ++i) {
@@ -122,11 +122,11 @@ void BufferedReader::ReadAsync(size_t i) {
         if (platform::is_cuda_pinned_place(cpu_place)) {
           memory::Copy(boost::get<platform::CUDAPlace>(place_), gpu_ptr,
                        boost::get<platform::CUDAPinnedPlace>(cpu_place),
-                       cpu_ptr, size, stream_);
+                       cpu_ptr, size, stream_.get());
         } else if ((platform::is_gpu_place(cpu_place))) {
           memory::Copy(boost::get<platform::CUDAPlace>(place_), gpu_ptr,
                        boost::get<platform::CUDAPlace>(cpu_place), cpu_ptr,
-                       size, stream_);
+                       size, stream_.get());
         } else {
           platform::CUDAPinnedPlace cuda_pinned_place;
           framework::LoDTensor cuda_pinned_tensor;
@@ -137,13 +137,18 @@ void BufferedReader::ReadAsync(size_t i) {
                        boost::get<platform::CPUPlace>(cpu_place), cpu_ptr,
                        size);
           memory::Copy(boost::get<platform::CUDAPlace>(place_), gpu_ptr,
-                       cuda_pinned_place, cuda_pinned_ptr, size, stream_);
-          PADDLE_ENFORCE(cudaStreamSynchronize(stream_),
-                         "cuda stream sync error.");
+                       cuda_pinned_place, cuda_pinned_ptr, size, stream_.get());
+          PADDLE_ENFORCE_CUDA_SUCCESS(
+              cudaStreamSynchronize(stream_.get()),
+              platform::errors::Fatal(
+                  "cudaStreamSynchronize raises unexpected exception"));
         }
         gpu[i].set_lod(cpu[i].lod());
       }
-      PADDLE_ENFORCE(cudaStreamSynchronize(stream_));
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          cudaStreamSynchronize(stream_.get()),
+          platform::errors::Fatal(
+              "cudaStreamSynchronize raises unexpected exception"));
     }
 #endif
     return i;

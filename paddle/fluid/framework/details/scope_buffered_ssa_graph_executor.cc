@@ -21,10 +21,10 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/profiler.h"
-
 namespace paddle {
 namespace framework {
 namespace details {
+
 ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
     ExecutionStrategy strategy, std::vector<Scope *> local_scopes,
     std::vector<Scope *> local_exec_scopes, std::vector<VariableInfo> var_infos,
@@ -35,35 +35,76 @@ ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
       local_scopes_(std::move(local_scopes)),
       local_exec_scopes_(std::move(local_exec_scopes)),
       var_infos_(std::move(var_infos)),
-      places_(std::move(places)) {
+      places_(std::move(places)),
+      scope_monitor_(places_, local_exec_scopes_) {
   PADDLE_ENFORCE_EQ(local_scopes_.size(), local_exec_scopes_.size());
   PrepareLocalExeScopes();
 }
 
-FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
-    const std::vector<std::string> &fetch_tensors) {
+FetchResultType ScopeBufferedSSAGraphExecutor::Run(
+    const std::vector<std::string> &fetch_tensors, bool return_merged) {
   if (drop_scope_counter_ == 0) {
     platform::RecordEvent e("InitLocalVars");
     InitVariables();
   }
 
-  std::vector<framework::LoDTensor> fetch_data;
+  FetchResultType fetch_data;
   std::exception_ptr eptr = nullptr;
-  try {
-    fetch_data = underlying_executor_->Run(fetch_tensors);
-  } catch (...) {
-    eptr = std::current_exception();
+
+  auto exe_run_func = [&]() {
+    try {
+      fetch_data = underlying_executor_->Run(fetch_tensors, return_merged);
+    } catch (...) {
+      eptr = std::current_exception();
+    }
+  };
+
+  if (strategy_.num_iteration_per_drop_scope_ == 1) {
+    exe_run_func();
+  } else {
+    scope_monitor_.Apply(exe_run_func, fetch_tensors.size() > 0);
+  }
+
+  if (VLOG_IS_ON(5)) {
+    for (auto *scope : local_exec_scopes_) {
+      VLOG(5) << "Left "
+              << string::HumanReadableSize(GetScopeVarMemorySize(scope))
+              << " on scope " << scope << " before deleting";
+    }
   }
 
   ++drop_scope_counter_;
-  if (drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
+  if (drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_ ||
+      DropScopeOrNot()) {
     DropLocalExeScopes();
   }
+
+  if (VLOG_IS_ON(5)) {
+    for (auto *scope : local_exec_scopes_) {
+      VLOG(5) << "Left "
+              << string::HumanReadableSize(GetScopeVarMemorySize(scope))
+              << " on scope " << scope << " after deleting";
+    }
+  }
+
   if (eptr) {
     std::rethrow_exception(eptr);
   } else {
     return fetch_data;
   }
+}
+
+bool ScopeBufferedSSAGraphExecutor::DropScopeOrNot() const {
+  for (auto &var : tensor_array_vars_) {
+    auto tensor_array = var->GetMutable<LoDTensorArray>();
+    for (LoDTensor &tensor : *tensor_array) {
+      if (tensor.IsInitialized()) {
+        return true;
+      }
+    }
+    tensor_array->clear();
+  }
+  return false;
 }
 
 void ScopeBufferedSSAGraphExecutor::InitVariables() {
@@ -103,7 +144,7 @@ void ScopeBufferedSSAGraphExecutor::DropLocalExeScopes() {
   for (auto &p : places_) {
     platform::DeviceContextPool::Instance().Get(p)->Wait();
   }
-
+  scope_monitor_.ClearHistoryLocalExecScopes();
   for (size_t i = 0; i < local_exec_scopes_.size(); ++i) {
     local_exec_scopes_[i]->EraseVarsExcept(preserve_vars_[i]);
     local_exec_scopes_[i]->DropKids();
@@ -138,6 +179,9 @@ void ScopeBufferedSSAGraphExecutor::PrepareLocalExeScopes() {
         Variable *tmp_var = local_scope->Var(info.name_);
         preserve_vars_[idx].emplace(tmp_var);
         tmp_var_infos_[idx].emplace_back(tmp_var, info.type_);
+        if (info.type_ == proto::VarType::LOD_TENSOR_ARRAY) {
+          tensor_array_vars_.emplace_back(tmp_var);
+        }
       }
     }
   }

@@ -25,87 +25,159 @@ namespace framework {
 namespace ir {
 
 void FCFusePass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE(graph);
+  PADDLE_ENFORCE_NOT_NULL(graph);
   FusePassBase::Init("fc_fuse", graph);
 
-  std::unordered_set<Node*> nodes2delete;
+  int found_fc_count = 0;
+  for (bool with_relu : {true, false}) {
+    found_fc_count += ApplyFCPattern(graph, with_relu);
+  }
 
+  AddStatis(found_fc_count);
+}
+
+int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
   GraphPatternDetector gpd;
   auto* x = gpd.mutable_pattern()
                 ->NewNode("fc_fuse/x")
                 ->AsInput()
                 ->assert_is_op_input("mul", "X");
   patterns::FC fc_pattern(gpd.mutable_pattern(), "fc_fuse");
-  fc_pattern(x, true /*with bias*/);
+  fc_pattern(x, true /*with bias*/, with_relu);
 
   int found_fc_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (subgraph.count(x) <= 0) {
+      LOG(WARNING) << "The subgraph is empty.";
+      return;
+    }
+
     VLOG(4) << "handle FC fuse";
     GET_IR_NODE_FROM_SUBGRAPH(w, w, fc_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(fc_bias, bias, fc_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(fc_out, Out, fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(bias, bias, fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_out, elementwise_add_out,
+                              fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul, mul, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_add, elementwise_add, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul_out, mul_out, fc_pattern);
+    Node* relu = nullptr;
+    Node* relu_out = nullptr;
+    if (with_relu) {
+      GET_IR_NODE_FROM_SUBGRAPH(tmp_relu, relu, fc_pattern);
+      GET_IR_NODE_FROM_SUBGRAPH(tmp_relu_out, relu_out, fc_pattern);
+      relu = tmp_relu;
+      relu_out = tmp_relu_out;
+    }
 
-    auto base_op_desc = mul->Op();
     // Create an FC Node.
-    // OpDesc desc(base_op_desc, nullptr);
     OpDesc desc;
-    std::string fc_x_in = subgraph.at(x)->Name();
-    std::string fc_Y_in = w->Name();
-    std::string fc_bias_in = fc_bias->Name();
-    std::string fc_out_out = fc_out->Name();
+    desc.SetType("fc");
 
-    desc.SetInput("Input", std::vector<std::string>({fc_x_in}));
-    desc.SetInput("W", std::vector<std::string>({fc_Y_in}));
-    desc.SetInput("Bias", std::vector<std::string>({fc_bias_in}));
-    desc.SetOutput("Out", std::vector<std::string>({fc_out_out}));
+    // Set inputs of fc
+    desc.SetInput("Input", {subgraph.at(x)->Name()});
+    desc.SetInput("W", {w->Name()});
+    desc.SetInput("Bias", {bias->Name()});
+
+    // Set output of fc
+    std::string fc_out_name =
+        with_relu ? relu_out->Name() : elementwise_add_out->Name();
+    desc.SetOutput("Out", std::vector<std::string>({fc_out_name}));
+
+    // Set attrs of fc
     desc.SetAttr("in_num_col_dims", mul->Op()->GetAttr("x_num_col_dims"));
+    std::string activation_type = with_relu ? "relu" : "";
+    desc.SetAttr("activation_type", activation_type);
+
+    // This is to add padding for dimension 128 on concern of MKL performance
+    bool use_gpu = Has("use_gpu") ? Get<bool>("use_gpu") : false;
+    bool use_fc_padding =
+        Has("use_fc_padding") ? Get<bool>("use_fc_padding") : true;
+    const std::string& w_name = patterns::UniqueKey(w->Name());
+    VarDesc w_key(w_name);
+    w_key.SetPersistable(true);
+    auto* w_node = g->CreateVarNode(&w_key);
+    if (!use_gpu && use_fc_padding) {
+      auto* scope = param_scope();
+      auto* weight = scope->FindVar(w->Name())->GetMutable<LoDTensor>();
+      auto* weight_data = weight->data<float>();
+      auto weight_dims = weight->dims();
+      int weight_num = product(weight_dims);
+      int w_h = weight_dims[0];
+      int w_w = weight_dims[1];
+      if (w_h % 128 == 0 && w_w % 128 == 0) {
+        auto* w_var = scope->Var(w_name);
+        auto* w_tensor = w_var->GetMutable<framework::LoDTensor>();
+
+        auto* weight_data_tmp = new float[weight_num];
+        for (int i = 0; i < w_h; i++) {
+          memcpy(weight_data_tmp + i * w_w, weight_data + i * w_w,
+                 w_w * sizeof(float));
+        }
+        w_tensor->Resize(DDim{weight_dims[0] + 4, weight_dims[1] + 4});
+        auto* weight_data_new =
+            w_tensor->mutable_data<float>(platform::CPUPlace());
+        for (int i = 0; i < w_h; i++) {
+          memcpy(weight_data_new + i * (w_w + 4), weight_data_tmp + i * w_w,
+                 w_w * sizeof(float));
+        }
+        delete[] weight_data_tmp;
+        desc.SetInput("W", {w_name});
+        desc.SetAttr("padding_weights", true);
+        desc.Flush();
+      }
+    }
 
     // For anakin subgraph int8
     // When in anakin subgraph int8 mode, the pattern like "fake_quant + mul +
-    // fake_dequant"
-    // can be detected by the quant_dequant_fuse_pass. This pass will add
-    // "input_scale",
-    // "weight_scale" which are extracted from fake_quant op and fake_dequant op
-    // to mul op,
-    // and then delete the fake_quant op and fake_dequant op in the graph. If
-    // the mul op
-    // has the scale info, we should add those to the fused fc.
-    if (base_op_desc->HasAttr("enable_int8")) {
-      desc.SetAttr("enable_int8", base_op_desc->GetAttr("enable_int8"));
-      desc.SetAttr("input_scale", base_op_desc->GetAttr("input_scale"));
-      desc.SetAttr("weight_scale", base_op_desc->GetAttr("weight_scale"));
-      if (base_op_desc->HasAttr("out_scale"))
-        desc.SetAttr("out_scale", base_op_desc->GetAttr("out_scale"));
+    // fake_dequant" can be detected by the quant_dequant_fuse_pass. This pass
+    // will add "input_scale", "weight_scale" which are extracted from
+    // fake_quant op and fake_dequant op to mul op, and then delete the
+    // fake_quant op and fake_dequant op in the graph. If the mul op has the
+    // scale info, we should add those to the fused fc.
+    auto* mul_op_desc = mul->Op();
+    if (mul_op_desc->HasAttr("enable_int8")) {
+      desc.SetAttr("enable_int8", mul_op_desc->GetAttr("enable_int8"));
+      desc.SetAttr("Input_scale", mul_op_desc->GetAttr("X_scale"));
+      desc.SetAttr("weight_scale", mul_op_desc->GetAttr("weight_scale"));
+      if (mul_op_desc->HasAttr("out_scale"))
+        desc.SetAttr("out_scale", mul_op_desc->GetAttr("out_scale"));
       auto elementwise_desc = elementwise_add->Op();
       if (elementwise_desc->HasAttr("out_scale"))
         desc.SetAttr("out_scale", elementwise_desc->GetAttr("out_scale"));
     }
 
-    desc.SetType("fc");
-
     auto fc_node = g->CreateOpNode(&desc);  // OpDesc will be copied.
-    GraphSafeRemoveNodes(graph, {mul, elementwise_add, mul_out});
+    if (with_relu) {
+      GraphSafeRemoveNodes(
+          graph, {mul, elementwise_add, mul_out, elementwise_add_out, relu});
+    } else {
+      GraphSafeRemoveNodes(graph, {mul, elementwise_add, mul_out});
+    }
 
-    PADDLE_ENFORCE(subgraph.count(x));
     IR_NODE_LINK_TO(subgraph.at(x), fc_node);
-    IR_NODE_LINK_TO(w, fc_node);
-    IR_NODE_LINK_TO(fc_bias, fc_node);
-    IR_NODE_LINK_TO(fc_node, fc_out);
+    if (desc.GetAttrIfExists<bool>("padding_weights")) {
+      IR_NODE_LINK_TO(w_node, fc_node);
+    } else {
+      GraphSafeRemoveNodes(g, {w_node});
+      IR_NODE_LINK_TO(w, fc_node);
+    }
+    IR_NODE_LINK_TO(bias, fc_node);
+    if (with_relu) {
+      IR_NODE_LINK_TO(fc_node, relu_out);
+    } else {
+      IR_NODE_LINK_TO(fc_node, elementwise_add_out);
+    }
 
     found_fc_count++;
   };
-
   gpd(graph, handler);
-
-  AddStatis(found_fc_count);
+  return found_fc_count;
 }
 
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(fc_fuse_pass, paddle::framework::ir::FCFusePass);
+REGISTER_PASS(fc_fuse_pass, paddle::framework::ir::FCFusePass)
+    .RequirePassAttr("use_gpu");

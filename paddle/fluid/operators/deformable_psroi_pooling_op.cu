@@ -28,6 +28,7 @@
 #include <limits>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/deformable_psroi_pooling_op.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -231,10 +232,8 @@ class DeformablePSROIPoolCUDAKernel : public framework::OpKernel<T> {
     }
 
     auto& dev_ctx = ctx.cuda_device_context();
-    auto& allocator =
-        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
     int bytes = roi_batch_id_list.numel() * sizeof(int);
-    auto roi_ptr = allocator.Allocate(bytes);
+    auto roi_ptr = memory::Alloc(dev_ctx, bytes);
     int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
     const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     memory::Copy(gplace, roi_id_data, cplace, roi_batch_id_data, bytes,
@@ -499,10 +498,8 @@ class DeformablePSROIPoolGradCUDAKernel : public framework::OpKernel<T> {
       }
     }
 
-    auto& allocator =
-        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
     int bytes = roi_batch_id_list.numel() * sizeof(int);
-    auto roi_ptr = allocator.Allocate(bytes);
+    auto roi_ptr = memory::Alloc(dev_ctx, bytes);
     int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
     const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     memory::Copy(gplace, roi_id_data, cplace, roi_batch_id_data, bytes,

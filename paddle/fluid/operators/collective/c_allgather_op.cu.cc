@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <memory>
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
@@ -28,17 +28,17 @@ template <typename T>
 class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
     ncclDataType_t dtype = platform::ToNCCLDataType(in->type());
 
     int nranks = ctx.Attr<int>("nranks");
     int rid = ctx.Attr<int>("ring_id");
-    auto comm = platform::NCCLCommContext::Instance().Get(rid);
+    auto place = ctx.GetPlace();
+    auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
     PADDLE_ENFORCE_EQ(nranks, comm->nranks());
 
-    auto place = ctx.GetPlace();
     framework::DDim out_dims = in->dims();
     out_dims[0] *= nranks;
     out->mutable_data<T>(out_dims, place);
@@ -55,7 +55,7 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
       stream = comm->stream();
     }
 
-    PADDLE_ENFORCE(platform::dynload::ncclAllGather(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllGather(
         send_buff, recv_buff, send_numel, static_cast<ncclDataType_t>(dtype),
         comm->comm(), stream));
 #else

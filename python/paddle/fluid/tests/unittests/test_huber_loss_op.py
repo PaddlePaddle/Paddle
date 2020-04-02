@@ -30,26 +30,30 @@ def huber_loss_forward(val, delta):
 class TestHuberLossOp(OpTest):
     def setUp(self):
         self.op_type = 'huber_loss'
-        samples_num = 64
-        delta = 1.0
-        self.inputs = {
-            'X': np.random.uniform(0, 1., (samples_num, 1)).astype('float32'),
-            'Y': np.random.uniform(0, 1., (samples_num, 1)).astype('float32'),
-        }
+        self.delta = 1.0
+        self.init_input()
+        shape = self.set_shape()
         residual = self.inputs['Y'] - self.inputs['X']
         loss = np.vectorize(huber_loss_forward)(residual,
-                                                delta).astype('float32')
-        self.attrs = {'delta': delta}
-        self.outputs = {
-            'Residual': residual,
-            'Out': loss.reshape((samples_num, 1))
+                                                self.delta).astype('float32')
+        self.attrs = {'delta': self.delta}
+        self.outputs = {'Residual': residual, 'Out': loss.reshape(shape)}
+
+    def init_input(self):
+        shape = self.set_shape()
+        self.inputs = {
+            'X': np.random.uniform(0, 1., shape).astype('float32'),
+            'Y': np.random.uniform(0, 1., shape).astype('float32'),
         }
+
+    def set_shape(self):
+        return (100, 1)
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.008)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
@@ -58,6 +62,21 @@ class TestHuberLossOp(OpTest):
     def test_check_grad_ingore_y(self):
         self.check_grad(
             ['X'], 'Out', max_relative_error=0.008, no_grad_set=set('residual'))
+
+
+def TestHuberLossOp1(TestHuberLossOp):
+    def set_shape(self):
+        return (64)
+
+
+def TestHuberLossOp2(TestHuberLossOp):
+    def set_shape(self):
+        return (6, 6)
+
+
+def TestHuberLossOp2(TestHuberLossOp):
+    def set_shape(self):
+        return (6, 6, 1)
 
 
 if __name__ == '__main__':

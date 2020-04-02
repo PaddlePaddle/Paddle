@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include <paddle/fluid/platform/device_context.h>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/sum_op.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -67,22 +68,6 @@ __global__ void SumSelectedRowsCUDAKernel(T **sr_in_out, int64_t N,
 }
 
 template <class T>
-__global__ void SumAlign4CUDAKernel(const T *in_0, const T *in_1, T *out,
-                                    int64_t N) {
-  int id = blockIdx.x * blockDim.x + threadIdx.x;
-  for (int i = id; i < N / 4; i += blockDim.x * gridDim.x) {
-    const float4 *in0_4 = reinterpret_cast<float4 *>(in_0);
-    const float4 *in1_4 = reinterpret_cast<float4 *>(in_1);
-    float4 tmp;
-    tmp.x = in0_4[i].x + in1_4[i].x;
-    tmp.y = in0_4[i].y + in1_4[i].y;
-    tmp.z = in0_4[i].z + in1_4[i].z;
-    tmp.w = in0_4[i].w + in1_4[i].w;
-    reinterpret_cast<float4 *>(out)[i] = tmp;
-  }
-}
-
-template <class T>
 void SumToLoDTensor(const framework::ExecutionContext &context) {
   auto in_vars = context.MultiInputVar("X");
   const size_t in_num = in_vars.size();
@@ -127,19 +112,19 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
       in_vars[1]->IsType<framework::LoDTensor>()) {
     auto &in_0 = in_vars[0]->Get<framework::LoDTensor>();
     auto &in_1 = in_vars[1]->Get<framework::LoDTensor>();
-
-    auto length = in_0.numel();
-    if (length && in_0.IsInitialized() && in_1.IsInitialized()) {
+    int64_t length_0 = in_0.numel();
+    int64_t length_1 = in_1.numel();
+    if (length_0 && length_1 && in_0.IsInitialized() && in_1.IsInitialized()) {
       auto result = EigenVector<T>::Flatten(*out);
       auto &place = *dev_ctx.eigen_device();
       auto in_0_e = EigenVector<T>::Flatten(in_0);
       auto in_1_e = EigenVector<T>::Flatten(in_1);
       result.device(place) = in_0_e + in_1_e;
-    } else if (length && in_0.IsInitialized()) {
+    } else if (length_0 && in_0.IsInitialized()) {
       auto result = EigenVector<T>::Flatten(*out);
       auto &place = *dev_ctx.eigen_device();
       result.device(place) = EigenVector<T>::Flatten(in_0);
-    } else if (length && in_1.IsInitialized()) {
+    } else if (length_1 && in_1.IsInitialized()) {
       auto result = EigenVector<T>::Flatten(*out);
       auto &place = *dev_ctx.eigen_device();
       result.device(place) = EigenVector<T>::Flatten(in_1);
@@ -162,8 +147,10 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
   for (int i = start; i < in_num; ++i) {
     if (in_vars[i]->IsType<framework::LoDTensor>()) {
       auto &in_i = in_vars[i]->Get<framework::LoDTensor>();
-      in_data.emplace_back(in_i.data<T>());
       lod_length = in_i.numel();
+      if (lod_length && in_i.IsInitialized()) {
+        in_data.emplace_back(in_i.data<T>());
+      }
     } else if (in_vars[i]->IsType<framework::SelectedRows>()) {
       selectrow_index.push_back(i);
     }
@@ -197,8 +184,7 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
     }
     if (!sr_in_out_data.empty()) {
       auto tmp_sr_in_out_array =
-          platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx).Allocate(
-              sr_in_out_data.size() * sizeof(T *));
+          memory::Alloc(dev_ctx, sr_in_out_data.size() * sizeof(T *));
 
       memory::Copy(boost::get<platform::CUDAPlace>(dev_ctx.GetPlace()),
                    tmp_sr_in_out_array->ptr(), platform::CPUPlace(),
@@ -216,9 +202,7 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
   }
   // if indata not null, merge into one kernel call.
   if (!in_data.empty()) {
-    auto tmp_in_array =
-        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx).Allocate(
-            in_data.size() * sizeof(T *));
+    auto tmp_in_array = memory::Alloc(dev_ctx, in_data.size() * sizeof(T *));
 
     memory::Copy(boost::get<platform::CUDAPlace>(dev_ctx.GetPlace()),
                  tmp_in_array->ptr(), platform::CPUPlace(),

@@ -45,8 +45,14 @@ int GetCUDAMultiProcessors(int i);
 //! Get the MaxThreads of each MultiProcessor of the ith GPU.
 int GetCUDAMaxThreadsPerMultiProcessor(int i);
 
+//! Get the MaxThreads of each block of the ith GPU.
+int GetCUDAMaxThreadsPerBlock(int i);
+
 //! Get the current GPU device id in system.
 int GetCurrentDeviceId();
+
+//! Get the maximum GridDim size for GPU buddy allocator.
+dim3 GetGpuMaxGridDimSize(int);
 
 //! Get a list of device ids from environment variable or use all.
 std::vector<int> GetSelectedDevices();
@@ -94,6 +100,24 @@ void GpuMemcpyPeerSync(void *dst, int dst_device, const void *src,
 
 //! Set memory dst with value count size asynchronously
 void GpuMemsetAsync(void *dst, int value, size_t count, cudaStream_t stream);
+
+//! Blocks until stream has completed all operations.
+void GpuStreamSync(cudaStream_t stream);
+
+//! CudaMalloc with recorded info
+cudaError_t RecordedCudaMalloc(void **ptr, size_t size, int dev_id);
+
+//! CudaFree with recorded info
+void RecordedCudaFree(void *p, size_t size, int dev_id);
+
+//! Get available and total gpu memory with considering limitation
+bool RecordedCudaMemGetInfo(size_t *avail, size_t *total, size_t *actual_avail,
+                            size_t *actual_total, int dev_id);
+
+//! Get recorded cudaMalloc size. If record is disabled, return 0.
+uint64_t RecordedCudaMallocSize(int dev_id);
+
+bool IsCudaMallocRecorded(int dev_id);
 
 }  // namespace platform
 }  // namespace paddle

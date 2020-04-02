@@ -52,10 +52,13 @@ class AssignValueOpMaker : public framework::OpProtoAndCheckerMaker {
                               "Shape of values.");
     AddAttr<int>("dtype", "data type of values")
         .InEnum({framework::proto::VarType::INT32,
-                 framework::proto::VarType::FP32});
-    AddAttr<std::vector<float>>("fp32_values", "store the float values")
+                 framework::proto::VarType::FP32,
+                 framework::proto::VarType::INT64});
+    AddAttr<std::vector<float>>("fp32_values", "store the float32 values")
         .SetDefault({});
-    AddAttr<std::vector<int>>("int32_values", "store the int values")
+    AddAttr<std::vector<int>>("int32_values", "store the int32 values")
+        .SetDefault({});
+    AddAttr<std::vector<int64_t>>("int64_values", "store the int64 values")
         .SetDefault({});
     AddComment(R"DOC(
 AssignValue operator
@@ -70,7 +73,10 @@ $$Out = values$$
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(assign_value, ops::AssignValueOp, ops::AssignValueOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    assign_value, ops::AssignValueOp, ops::AssignValueOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(assign_value, ops::AssignValueKernel<int>,
-                       ops::AssignValueKernel<float>);
+                       ops::AssignValueKernel<float>,
+                       ops::AssignValueKernel<int64_t>);

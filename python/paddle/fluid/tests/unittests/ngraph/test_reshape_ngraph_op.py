@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest, sys
 sys.path.append("../")
 
-from test_reshape_op import TestReshapeOp, TestReshapeOpDimInfer1, TestReshapeOpDimInfer2, TestReshapeOpWithInputShape
+from test_reshape_op import TestReshapeOp, TestReshapeOpDimInfer1, TestReshapeOpDimInfer2
 
 if __name__ == '__main__':
     unittest.main()

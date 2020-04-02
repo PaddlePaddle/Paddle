@@ -77,17 +77,16 @@ class PixelShuffleOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-class PixelShuffleGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class PixelShuffleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("pixel_shuffle_grad");
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetAttrMap(Attrs());
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetAttrMap(this->Attrs());
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   }
 };
 
@@ -120,7 +119,8 @@ class PixelShuffleGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(pixel_shuffle, ops::PixelShuffleOp, ops::PixelShuffleOpMaker,
-                  ops::PixelShuffleGradMaker);
+                  ops::PixelShuffleGradMaker<paddle::framework::OpDesc>,
+                  ops::PixelShuffleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(pixel_shuffle_grad, ops::PixelShuffleGradOp);
 

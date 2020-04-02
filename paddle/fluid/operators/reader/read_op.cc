@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
@@ -19,6 +20,26 @@
 
 namespace paddle {
 namespace operators {
+
+// Returns true if the two dimensions are compatible.
+// A dimension is compatible with the other if:
+// 1. The length of the dimensions are same.
+// 2. Each non-negative number of the two dimensions are same.
+// 3. For negative number in a dimension, it means unknown so it is compatible
+//    with any number.
+bool DimensionIsCompatibleWith(const framework::DDim& first,
+                               const framework::DDim& second) {
+  int dim_size = first.size();
+  if (dim_size != second.size()) {
+    return false;
+  }
+  for (int i = 0; i < dim_size; ++i) {
+    if (first[i] >= 0 && second[i] >= 0 && first[i] != second[i]) {
+      return false;
+    }
+  }
+  return true;
+}
 
 class ReadInferShape : public framework::InferShapeBase {
  public:
@@ -89,10 +110,32 @@ class ReadOp : public framework::OperatorBase {
       VLOG(3) << "throw_eof_exp";
       PADDLE_THROW_EOF();
     }
-    PADDLE_ENFORCE_EQ(ins.size(), out_arg_names.size());
+    PADDLE_ENFORCE_EQ(ins.size(), out_arg_names.size(),
+                      "input size and output size of read_op do not match");
+
+    const std::vector<framework::DDim>& shapes = reader->Shapes();
+    const std::vector<framework::proto::VarType::Type>& var_types =
+        reader->VarTypes();
+    const std::vector<bool>& need_check_feed = reader->NeedCheckFeed();
+    PADDLE_ENFORCE_EQ(out_arg_names.size(), need_check_feed.size(),
+                      "output size of read_op and the number of fed "
+                      "variables of reader do not match");
+
     for (size_t i = 0; i < out_arg_names.size(); ++i) {
       auto* out =
           scope.FindVar(out_arg_names[i])->GetMutable<framework::LoDTensor>();
+      if (need_check_feed[i]) {
+        auto in_dims = ins[i].dims();
+        PADDLE_ENFORCE_EQ(DimensionIsCompatibleWith(shapes[i], in_dims), true,
+                          "The fed Variable %s should have dimensions = %d, "
+                          "shape = [%s], but received fed shape [%s]",
+                          out_arg_names[i], shapes[i].size(), shapes[i],
+                          in_dims);
+        PADDLE_ENFORCE_EQ(
+            ins[i].type(), var_types[i],
+            "The data type of fed Variable %s must be %s, but received %s",
+            out_arg_names[i], var_types[i], ins[i].type());
+      }
       out->ShareDataWith(ins[i]);
       out->set_lod(ins[i].lod());
     }
@@ -113,6 +156,10 @@ class ReadOpMaker : public framework::OpProtoAndCheckerMaker {
         " and it is set by ParallelExecutor instance, not users.")
         .SetDefault(true);
     AddAttr<bool>("infer_out", "").SetDefault(true);
+    AddAttr<bool>("drop_last",
+                  "Whether to drop last batches whose number is less than "
+                  "actual used device number.")
+        .SetDefault(true);
     AddComment(R"DOC(
       Read Operator
 
@@ -125,5 +172,8 @@ class ReadOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(read, ops::ReadOp, ops::ReadInferShape, ops::ReadOpMaker,
-                  paddle::framework::EmptyGradOpMaker, ops::ReadInferVarType);
+REGISTER_OPERATOR(
+    read, ops::ReadOp, ops::ReadInferShape, ops::ReadOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::ReadInferVarType);

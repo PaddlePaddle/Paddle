@@ -36,23 +36,29 @@ class FetchBarrierOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
     std::vector<std::string> eps = Attr<std::vector<std::string>>("endpoints");
+
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(
             Attr<int>("trainer_id"));
 
-    PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
-
+    std::vector<distributed::VarHandlePtr> rets;
     for (auto& ep : eps) {
       VLOG(3) << "fetch barrier, ep: " << ep;
-      rpc_client->AsyncSendFetchBarrier(ep);
+      rets.push_back(rpc_client->AsyncSendFetchBarrier(ep));
     }
-    PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
+
+    for (size_t i = 0; i < rets.size(); i++) {
+      PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, "internal error in RPCClient");
+    }
   }
 };
 
 class FetchBarrierOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
+    AddInput("X", "(Any) Dummy inputs, used for control dependency")
+        .AsDispensable()
+        .AsDuplicable();
     AddOutput("Out", "(Any) Dummy outputs, used for control dependency")
         .AsDuplicable();
     AddComment(R"DOC(
@@ -80,6 +86,8 @@ class FetchBarrierOpShapeInference : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(fetch_barrier, ops::FetchBarrierOp,
-                  paddle::framework::EmptyGradOpMaker, ops::FetchBarrierOpMaker,
-                  ops::FetchBarrierOpShapeInference);
+REGISTER_OPERATOR(
+    fetch_barrier, ops::FetchBarrierOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::FetchBarrierOpMaker, ops::FetchBarrierOpShapeInference);

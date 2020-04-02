@@ -51,7 +51,7 @@ class UnfoldOpMaker : public framework::OpProtoAndCheckerMaker {
 
 This Operator is used to extract sliding local blocks from a batched input tensor, also known
 as im2col when operated on batched 2D image tensor. For each block under the convolution filter,
-all element will be rearranged as a column. While the convolution filter silding over the input
+all element will be rearranged as a column. While the convolution filter sliding over the input
 feature map, a series of such columns will be formed. 
     )DOC");
   }
@@ -76,7 +76,7 @@ class UnfoldOp : public framework::OperatorWithKernel {
     // Only [N, C, H, W] input supported now
     PADDLE_ENFORCE(
         in_dims.size() == 4,
-        "Input shold be 4-D tensor of format [N, C, H, W], but get %u",
+        "Input should be 4-D tensor of format [N, C, H, W], but get %u",
         in_dims.size());
     PADDLE_ENFORCE(
         in_dims.size() - kernel_sizes.size() == 2U,
@@ -86,7 +86,7 @@ class UnfoldOp : public framework::OperatorWithKernel {
         in_dims.size(), kernel_sizes.size());
     PADDLE_ENFORCE_EQ(
         strides.size(), kernel_sizes.size(),
-        "The dims of strides shold be the same with that of kernel_sizes. "
+        "The dims of strides should be the same with that of kernel_sizes. "
         "But recieved dims(strides: %u) != dims(kernel_sizes: %u).",
         strides.size(), kernel_sizes.size());
     PADDLE_ENFORCE_EQ(
@@ -96,7 +96,7 @@ class UnfoldOp : public framework::OperatorWithKernel {
         paddings.size(), strides.size());
     PADDLE_ENFORCE_EQ(
         strides.size(), dilations.size(),
-        "The dims of strides shold be the same with that of dilations. "
+        "The dims of strides should be the same with that of dilations. "
         "But recieved dims(strides: %u) != dims(dilations: %u).",
         strides.size(), dilations.size());
 
@@ -120,8 +120,9 @@ class UnfoldOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -141,37 +142,36 @@ class UnfoldGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<framework::Tensor>(framework::GradVarName("Y"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Y")),
+                                   ctx.device_context());
   }
 };
 
-class UnfoldGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class UnfoldGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("unfold_grad");
-    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
-    op->SetInput("X", Input("X"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
+    op->SetInput("X", this->Input("X"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(UnfoldGradOpNoNeedBufferVarsInference,
-                                      "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(UnfoldGradOpNoNeedBufferVarsInference, "X");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(unfold, ops::UnfoldOp, ops::UnfoldOpMaker,
-                  ops::UnfoldGradDescMaker);
+                  ops::UnfoldGradMaker<paddle::framework::OpDesc>,
+                  ops::UnfoldGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(unfold_grad, ops::UnfoldGradOp,
                   ops::UnfoldGradOpNoNeedBufferVarsInference);
 

@@ -22,6 +22,22 @@ class ElementwiseModOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Mod"; }
   std::string GetEquation() const override { return "Out = X \\\\% Y"; }
+
+  void AddInputX() override {
+    AddInput("X",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64.");
+  }
+
+  void AddInputY() override {
+    AddInput("Y",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64.");
+  }
+
+  std::string GetOpFuntionality() const override {
+    return "Mod two tensors element-wise";
+  }
 };
 }  // namespace operators
 }  // namespace paddle
@@ -33,4 +49,6 @@ REGISTER_OP_WITHOUT_GRADIENT(elementwise_mod, ops::ElementwiseOp,
 REGISTER_OP_CPU_KERNEL(
     elementwise_mod,
     ops::ElementwiseModKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseModKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::ElementwiseModKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::ElementwiseModFPKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::ElementwiseModFPKernel<paddle::platform::CPUDeviceContext, double>);

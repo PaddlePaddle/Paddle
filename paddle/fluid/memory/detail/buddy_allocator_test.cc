@@ -16,6 +16,9 @@ limitations under the License. */
 
 #include <memory>
 
+#ifdef WITH_GPERFTOOLS
+#include "gperftools/profiler.h"
+#endif
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
@@ -23,6 +26,9 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
+
+#include <fstream>
+#include <string>
 
 DECLARE_double(fraction_of_gpu_memory_to_use);
 DECLARE_uint64(initial_gpu_memory_in_mb);
@@ -220,7 +226,7 @@ TEST(BuddyAllocator, AllocFromAvailableWhenFractionIsOne) {
   FLAGS_reallocate_gpu_memory_in_mb = 0;
 
   void* p = nullptr;
-  EXPECT_TRUE(cudaMalloc(&p, static_cast<size_t>(4) << 30) == cudaSuccess);
+  EXPECT_TRUE(cudaMalloc(&p, static_cast<size_t>(3) << 30) == cudaSuccess);
 
   // BuddyAllocator should be able to alloc the remaining GPU
   BuddyAllocator buddy_allocator(
@@ -228,11 +234,82 @@ TEST(BuddyAllocator, AllocFromAvailableWhenFractionIsOne) {
       platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
 
   TestBuddyAllocator(&buddy_allocator, static_cast<size_t>(1) << 30);
-  TestBuddyAllocator(&buddy_allocator, static_cast<size_t>(5) << 30);
+  TestBuddyAllocator(&buddy_allocator, static_cast<size_t>(2) << 30);
 
   if (p) {
     EXPECT_TRUE(cudaFree(p) == cudaSuccess);
   }
+}
+
+TEST(BuddyAllocator, SpeedAna) {
+  // In a 16 GB machine, the pool size will be about 160 MB
+  FLAGS_fraction_of_gpu_memory_to_use = 0.5;
+  FLAGS_initial_gpu_memory_in_mb = 0;
+  FLAGS_reallocate_gpu_memory_in_mb = 0;
+
+  BuddyAllocator buddy_allocator(
+      std::unique_ptr<SystemAllocator>(new GPUAllocator(TEST_GPU_ID)),
+      platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
+
+  // Less than pool size
+  TestBuddyAllocator(&buddy_allocator, 10);
+  TestBuddyAllocator(&buddy_allocator, 10 << 10);
+  TestBuddyAllocator(&buddy_allocator, 10 << 20);
+
+  std::fstream in_file;
+  in_file.open("buddy_allocator_test_data", std::ios::in);
+
+  std::vector<void*> vec_ptr;
+  std::vector<int> vec_size;
+  std::vector<int> vec_pos;
+  std::vector<bool> vec_free_flag;
+
+  std::string line;
+  int size, id;
+  while (in_file >> size >> id) {
+    vec_size.push_back(size);
+    vec_pos.push_back(id);
+  }
+
+  vec_ptr.reserve(vec_size.size());
+
+  auto start = std::chrono::steady_clock::now();
+
+#ifdef WITH_GPERFTOOLS
+  ProfilerStart("test.prof");
+#endif
+  for (size_t loop = 0; loop < 5000; ++loop) {
+    vec_ptr.clear();
+    for (size_t i = 0; i < vec_size.size(); ++i) {
+      if (vec_pos[i] == -1) {
+        auto res = buddy_allocator.Alloc(vec_size[i]);
+
+        vec_ptr.push_back(res);
+      } else {
+        vec_ptr.push_back(nullptr);
+
+        auto free_ptr = vec_ptr[vec_pos[i]];
+        EXPECT_NE(free_ptr, nullptr);
+
+        vec_ptr[vec_pos[i]] = nullptr;
+
+        buddy_allocator.Free(free_ptr);
+      }
+    }
+
+    for (size_t i = 0; i < vec_size.size(); ++i) {
+      if (vec_ptr[i] != nullptr) {
+        buddy_allocator.Free(vec_ptr[i]);
+      }
+    }
+  }
+
+#ifdef WITH_GPERFTOOLS
+  ProfilerStop();
+#endif
+  auto end = std::chrono::steady_clock::now();
+  std::chrono::duration<double> diff = end - start;
+  std::cerr << "time cost " << diff.count() << std::endl;
 }
 
 #endif

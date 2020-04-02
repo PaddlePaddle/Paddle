@@ -80,7 +80,7 @@ std::shared_ptr<ngraph::Node> GroupedGradConvolutionFilter(
     auto data_slice = std::make_shared<ngraph::op::Slice>(
         data_batch, lower_bound, upper_bound);
 
-    size_t filter_step = data_shape.at(0);
+    size_t filter_step = filter_shape.at(0) / groups;
 
     const std::vector<size_t> filter_lower_bound{i * filter_step, 0, 0, 0};
     const std::vector<size_t> filter_upper_bound{
@@ -127,7 +127,7 @@ std::shared_ptr<ngraph::Node> GroupedGradConvolutionData(
     auto data_slice = std::make_shared<ngraph::op::Slice>(
         data_batch, lower_bound, upper_bound);
 
-    size_t filter_step = data_shape.at(0);
+    size_t filter_step = filter_shape.at(0) / groups;
 
     const std::vector<size_t> filter_lower_bound{i * filter_step, 0, 0, 0};
     const std::vector<size_t> filter_upper_bound{

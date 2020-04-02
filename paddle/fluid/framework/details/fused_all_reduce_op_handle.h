@@ -17,10 +17,11 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/framework/details/all_reduce_op_handle.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/framework/details/nccl_op_handle.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
@@ -29,15 +30,15 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-struct FusedAllReduceOpHandle : public NCCLOpHandleBase {
+#if defined(PADDLE_WITH_NCCL)
+struct FusedAllReduceOpHandle : public AllReduceOpHandle {
   FusedAllReduceOpHandle(ir::Node *node,
                          const std::vector<Scope *> &local_scopes,
                          const std::vector<platform::Place> &places,
                          const size_t num_of_all_reduce,
                          const platform::NCCLCommunicator *ctxs);
 #else
-struct FusedAllReduceOpHandle : public OpHandleBase {
+struct FusedAllReduceOpHandle : public AllReduceOpHandle {
   FusedAllReduceOpHandle(ir::Node *node,
                          const std::vector<Scope *> &local_scopes,
                          const std::vector<platform::Place> &places,
@@ -45,22 +46,10 @@ struct FusedAllReduceOpHandle : public OpHandleBase {
 #endif
   std::string Name() const override;
 
-  // Delay and buffer nccl_all_reduce together can significantly increase
-  // performance. Disable this feature by returning false.
-  bool IsMultiDeviceTransfer() override { return true; };
-
  protected:
   void RunImpl() override;
 
-  std::vector<Scope *> GetLocalScopes() override { return local_scopes_; }
-
  private:
-  std::vector<Scope *> local_scopes_;
-#if !(defined(PADDLE_WITH_CUDA) && !defined(_WIN32))
-  // NCCLOpHandleBase already have these attributes.
-  // Will polish it by class inheritance framework.
-  std::vector<platform::Place> places_;
-#endif
   size_t num_of_all_reduce_;
 
   // Check the dtype of the input
@@ -74,6 +63,12 @@ struct FusedAllReduceOpHandle : public OpHandleBase {
                         const std::vector<VarHandle *> &out_var_handles,
                         std::vector<std::pair<std::string, const LoDTensor *>>
                             *grad_tensor) const;
+
+  bool InputIsInDifferentPlace(
+      const std::vector<VarHandle *> &in_var_handles) const;
+
+  void FusedAllReduceFunc(const std::vector<VarHandle *> &in_var_handles,
+                          const std::vector<VarHandle *> &out_var_handles);
 };
 
 }  // namespace details

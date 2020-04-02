@@ -36,7 +36,7 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
         if (op_types_list.empty()) {
           op->SetAttr("use_quantizer", true);
         } else if (std::find(op_types_list.begin(), op_types_list.end(),
-                             n->Name()) != op_types_list.end()) {
+                             op->Type()) != op_types_list.end()) {
           op->SetAttr("use_quantizer", true);
         }
       }
@@ -51,6 +51,9 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
 REGISTER_PASS(cpu_quantize_placement_pass,
               paddle::framework::ir::CPUQuantizePlacementPass)
     // a vector of operator type names to be quantized ("conv2d" etc.)
-    .RequirePassAttr("quantize_enabled_op_types")
+    // the second param is the default value for this vector
+    .DefaultPassAttr("quantize_enabled_op_types",
+                     new std::unordered_set<std::string>())
     // a vector of operator ids that are to be excluded from quantization
-    .RequirePassAttr("quantize_excluded_op_ids");
+    // the second param is the default value for this vector
+    .DefaultPassAttr("quantize_excluded_op_ids", new std::unordered_set<int>());

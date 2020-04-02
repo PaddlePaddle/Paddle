@@ -23,9 +23,11 @@ limitations under the License. */
 #endif
 #include <stdlib.h>   // for malloc and free
 #include <algorithm>  // for std::max
+#include <string>
+#include <utility>
 
 #include "gflags/gflags.h"
-#include "paddle/fluid/platform/assert.h"
+#include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
@@ -108,47 +110,53 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
   // if size is 0.  We just make sure it does.
   if (size <= 0) return nullptr;
 
-  paddle::platform::CUDADeviceGuard guard(gpu_id_);
-
   void* p;
-  cudaError_t result = cudaMalloc(&p, size);
+  auto result = platform::RecordedCudaMalloc(&p, size, gpu_id_);
 
   if (result == cudaSuccess) {
     *index = 0;
     gpu_alloc_size_ += size;
     return p;
   } else {
-    LOG(WARNING) << "Cannot malloc " << size / 1024.0 / 1024.0
-                 << " MB GPU memory. Please shrink "
-                    "FLAGS_fraction_of_gpu_memory_to_use or "
-                    "FLAGS_initial_gpu_memory_in_mb or "
-                    "FLAGS_reallocate_gpu_memory_in_mb"
-                    "environment variable to a lower value. "
-                 << "Current FLAGS_fraction_of_gpu_memory_to_use value is "
-                 << FLAGS_fraction_of_gpu_memory_to_use
-                 << ". Current FLAGS_initial_gpu_memory_in_mb value is "
-                 << FLAGS_initial_gpu_memory_in_mb
-                 << ". Current FLAGS_reallocate_gpu_memory_in_mb value is "
-                 << FLAGS_reallocate_gpu_memory_in_mb;
-    return nullptr;
+    size_t avail, total, actual_avail, actual_total;
+    bool is_limited = platform::RecordedCudaMemGetInfo(
+        &avail, &total, &actual_avail, &actual_total, gpu_id_);
+
+    std::string err_msg;
+    if (is_limited) {
+      auto limit_size = (total >> 20);
+      err_msg = string::Sprintf(
+          "\n   3) Set environment variable `FLAGS_gpu_memory_limit_mb` to a "
+          "larger value. Currently `FLAGS_gpu_memory_limit_mb` is %d, so the "
+          "maximum GPU memory usage is limited to %d MB.\n"
+          "      The command is `export FLAGS_gpu_memory_limit_mb=xxx`.",
+          limit_size, limit_size);
+    }
+
+    PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
+        "\n\nOut of memory error on GPU %d. "
+        "Cannot allocate %s memory on GPU %d, "
+        "available memory is only %s.\n\n"
+        "Please check whether there is any other process using GPU %d.\n"
+        "1. If yes, please stop them, or start PaddlePaddle on another GPU.\n"
+        "2. If no, please try one of the following suggestions:\n"
+        "   1) Decrease the batch size of your model.\n"
+        "   2) FLAGS_fraction_of_gpu_memory_to_use is %.2lf now, "
+        "please set it to a higher value but less than 1.0.\n"
+        "      The command is "
+        "`export FLAGS_fraction_of_gpu_memory_to_use=xxx`.%s\n\n",
+        gpu_id_, string::HumanReadableSize(size), gpu_id_,
+        string::HumanReadableSize(avail), gpu_id_,
+        FLAGS_fraction_of_gpu_memory_to_use, err_msg));
   }
 }
 
 void GPUAllocator::Free(void* p, size_t size, size_t index) {
-  cudaError_t err;
   PADDLE_ENFORCE_EQ(index, 0);
   PADDLE_ENFORCE_GE(gpu_alloc_size_, size);
   gpu_alloc_size_ -= size;
-  err = cudaFree(p);
 
-  // Purposefully allow cudaErrorCudartUnloading, because
-  // that is returned if you ever call cudaFree after the
-  // driver has already shutdown. This happens only if the
-  // process is terminating, in which case we don't care if
-  // cudaFree succeeds.
-  if (err != cudaErrorCudartUnloading) {
-    PADDLE_ENFORCE(err, "cudaFree{Host} failed in GPUAllocator::Free.");
-  }
+  platform::RecordedCudaFree(p, size, gpu_id_);
 }
 
 bool GPUAllocator::UseGpu() const { return true; }

@@ -39,6 +39,12 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
     auto kernels = ctx->Attrs().Get<std::vector<int>>("kernels");
     auto strides = ctx->Attrs().Get<std::vector<int>>("strides");
     auto paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
+    if (!ctx->IsRuntime()) {
+      // set lod level for compile-time
+      framework::VarDesc* out_desc =
+          boost::get<framework::VarDesc*>(ctx->GetOutputVarPtrs("Out")[0]);
+      out_desc->SetLoDLevel(1);
+    }
 
     ctx->SetOutputDim("Out",
                       {in_dim[0], img_channels * kernels[0] * kernels[1]});
@@ -147,19 +153,18 @@ class Im2SequenceGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class Im2SequenceGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class Im2SequenceGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("im2sequence_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -168,7 +173,8 @@ class Im2SequenceGradDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(im2sequence, ops::Im2SequenceOp, ops::Im2SequenceOpMaker,
-                  ops::Im2SequenceGradDescMaker);
+                  ops::Im2SequenceGradMaker<paddle::framework::OpDesc>,
+                  ops::Im2SequenceGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(im2sequence_grad, ops::Im2SequenceGradOp);
 REGISTER_OP_CPU_KERNEL(
     im2sequence,

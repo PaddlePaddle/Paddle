@@ -37,14 +37,14 @@ using OpAndGradOpPair = std::pair<OpVariantSet, OpVariantSet>;
 // recurrent_grad ops at block 0 and the function will find all recurrent and
 // recurrent_grad ops across blocks.
 void PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
-    OpAndGradOpPair *op_pair);
+    const framework::ProgramDesc &program, OpAndGradOpPair *op_pair);
 
 // Set vars to skip eager deletion on input recurrent and recurrent_grad for
 // preparing safe eager deletion. The input block_id must be 0 and caller can
 // input all ops in the block. The function will find all recurrent and
 // recurrent_grad ops across blocks.
 void PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
-    int block_id,
+    const framework::ProgramDesc &program, int block_id,
     const std::vector<std::unique_ptr<paddle::framework::OperatorBase>>
         &all_ops);
 

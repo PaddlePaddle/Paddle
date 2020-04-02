@@ -13,8 +13,47 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
+#include <memory>
+#include <string>
 
-REGISTER_REDUCE_OP(reduce_sum);
+namespace paddle {
+namespace operators {
+
+// NOTE: Input(Out) is unnecessary in reduce_sum_grad, and Input(X) needs no
+// buffer
+
+template <typename T>
+class ReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("reduce_sum_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetAttrMap(this->Attrs());
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReduceSumGradNoNeedBufferVarInference, "X");
+
+}  // namespace operators
+}  // namespace paddle
+
+class ReduceSumOpMaker : public ops::ReduceOpMaker {
+ protected:
+  virtual std::string GetName() const { return "reduce_sum"; }
+  virtual std::string GetOpType() const { return "Reduce reduce_sum"; }
+};
+
+REGISTER_OPERATOR(reduce_sum, ops::ReduceOp, ReduceSumOpMaker,
+                  ops::ReduceSumOpGradMaker<paddle::framework::OpDesc>,
+                  ops::ReduceSumOpGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(reduce_sum_grad, ops::ReduceGradOp,
+                  ops::ReduceSumGradNoNeedBufferVarInference);
+
 REGISTER_OP_CPU_KERNEL(
     reduce_sum, ops::ReduceKernel<paddle::platform::CPUDeviceContext, float,
                                   ops::SumFunctor>,
@@ -23,13 +62,13 @@ REGISTER_OP_CPU_KERNEL(
     ops::ReduceKernel<paddle::platform::CPUDeviceContext, int, ops::SumFunctor>,
     ops::ReduceKernel<paddle::platform::CPUDeviceContext, int64_t,
                       ops::SumFunctor>);
-REGISTER_OP_CPU_KERNEL(
-    reduce_sum_grad,
-    ops::ReduceSumGradKernel<paddle::platform::CPUDeviceContext, float,
-                             ops::SumGradFunctor>,
-    ops::ReduceSumGradKernel<paddle::platform::CPUDeviceContext, double,
-                             ops::SumGradFunctor>,
-    ops::ReduceSumGradKernel<paddle::platform::CPUDeviceContext, int,
-                             ops::SumGradFunctor>,
-    ops::ReduceSumGradKernel<paddle::platform::CPUDeviceContext, int64_t,
-                             ops::SumGradFunctor>);
+
+template <typename T>
+using CPUReduceSumGradKernel =
+    ops::ReduceSumGradKernel<paddle::platform::CPUDeviceContext, T,
+                             ops::SumGradFunctor, true>;
+
+REGISTER_OP_CPU_KERNEL(reduce_sum_grad, CPUReduceSumGradKernel<float>,
+                       CPUReduceSumGradKernel<double>,
+                       CPUReduceSumGradKernel<int>,
+                       CPUReduceSumGradKernel<int64_t>);

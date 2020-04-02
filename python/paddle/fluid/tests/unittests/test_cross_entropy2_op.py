@@ -20,7 +20,7 @@ import six
 
 class CrossEntropy2OpTestBase(OpTest):
     def initParameters(self):
-        return [32, 64], 'float32', -100
+        return [32, 64], 'float64', -100, False
 
     def calc_output(self, logits, label, ignore_index):
         ret = np.zeros(shape=label.shape, dtype=logits.dtype)
@@ -33,21 +33,24 @@ class CrossEntropy2OpTestBase(OpTest):
         return ret, match_x
 
     def setUp(self):
-        self.shape, self.dtype, self.ignore_index = self.initParameters()
+        self.shape, self.dtype, self.ignore_index, self.drop_last_dim = self.initParameters(
+        )
         self.op_type = 'cross_entropy2'
         feature_size = int(self.shape[-1])
         batch_size = int(np.prod(self.shape) / feature_size)
         logits = (np.random.random(size=self.shape) + 1).astype(self.dtype)
+        label_shape = self.shape[0:-1] if self.drop_last_dim else self.shape[
+            0:-1] + [1]
         label = np.random.random_integers(
-            low=0, high=feature_size - 1,
-            size=self.shape[0:-1] + [1]).astype('int64')
+            low=0, high=feature_size - 1, size=label_shape).astype('int64')
         outputs, match_x = self.calc_output(
             np.reshape(logits, [batch_size, feature_size]),
             np.reshape(label, [batch_size, 1]), self.ignore_index)
         self.inputs = {'X': logits, 'Label': label}
+        out_shape = label_shape
         self.outputs = {
-            'Y': np.reshape(outputs, label.shape),
-            'MatchX': np.reshape(match_x, label.shape),
+            'Y': np.reshape(outputs, out_shape),
+            'MatchX': np.reshape(match_x, self.shape[:-1] + [1]),
             'XShape': np.zeros(
                 shape=logits.shape, dtype=logits.dtype)
         }
@@ -65,17 +68,27 @@ class CrossEntropy2OpTestBase(OpTest):
 
 class CrossEntropy2OpTest2(CrossEntropy2OpTestBase):
     def initParameters(self):
-        return [32, 64], 'float64', 3
+        return [32, 64], 'float64', 3, False
+
+
+class CrossEntropy2OpTest2RemoveLastDim(CrossEntropy2OpTestBase):
+    def initParameters(self):
+        return [32, 64], 'float64', 3, True
 
 
 class CrossEntropy2OpTest3(CrossEntropy2OpTestBase):
     def initParameters(self):
-        return [4, 8, 16, 32], 'float32', -100
+        return [4, 8, 16, 32], 'float64', -100, False
+
+
+class CrossEntropy2OpTest3RemoveLastDim(CrossEntropy2OpTestBase):
+    def initParameters(self):
+        return [4, 8, 16, 32], 'float64', -100, True
 
 
 class CrossEntropy2OpTest4(CrossEntropy2OpTestBase):
     def initParameters(self):
-        return [4, 8, 16, 32], 'float32', 3
+        return [4, 8, 16, 32], 'float64', 3, False
 
 
 if __name__ == '__main__':

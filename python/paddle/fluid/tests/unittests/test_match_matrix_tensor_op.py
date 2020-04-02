@@ -30,7 +30,7 @@ class TestMatchMatrixTensorOp(OpTest):
         self.op_type = "match_matrix_tensor"
 
     def set_data(self):
-        ix, iy, h, dim_t = [5, 8, 3, 4]
+        ix, iy, h, dim_t = [5, 8, 20, 4]
         x_lod = [[1, 2, 2]]
         y_lod = [[3, 1, 4]]
         self.init_data(ix, x_lod, iy, y_lod, h, dim_t)
@@ -71,15 +71,15 @@ class TestMatchMatrixTensorOp(OpTest):
         self.outputs = {'Out': (out, out_lod), 'Tmp': tmp}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.005)
+        self.check_grad(['X', 'Y'], 'Out', check_dygraph=False)
 
 
 class TestMatchMatrixTensorOpCase1(TestMatchMatrixTensorOp):
     def set_data(self):
-        ix, iy, h, dim_t = [5, 8, 16, 4]
+        ix, iy, h, dim_t = [5, 8, 25, 4]
         x_lod = [[5]]
         y_lod = [[8]]
         self.init_data(ix, x_lod, iy, y_lod, h, dim_t)
@@ -87,9 +87,9 @@ class TestMatchMatrixTensorOpCase1(TestMatchMatrixTensorOp):
 
 class TestMatchMatrixTensorOpCase2(TestMatchMatrixTensorOp):
     def set_data(self):
-        ix, iy, h, dim_t = [7, 8, 1, 4]
-        x_lod = [[2, 3, 2]]
-        y_lod = [[3, 1, 4]]
+        ix, iy, h, dim_t = [105, 120, 1, 4]
+        x_lod = [[30, 45, 30]]
+        y_lod = [[45, 15, 60]]
         self.init_data(ix, x_lod, iy, y_lod, h, dim_t)
 
 
@@ -111,7 +111,7 @@ class TestMatchMatrixTensorOpCase4(TestMatchMatrixTensorOp):
     def test_api(self):
         x_lod_tensor = fluid.layers.data(name='x', shape=[10], lod_level=1)
         y_lod_tensor = fluid.layers.data(name='y', shape=[10], lod_level=1)
-        out, out_tmp = fluid.layers.match_matrix_tensor(
+        out, out_tmp = fluid.contrib.match_matrix_tensor(
             x=x_lod_tensor, y=y_lod_tensor, channel_num=3)
 
         place = fluid.CPUPlace()

@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <algorithm>
 #include <string>
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence_pooling.h"
@@ -159,12 +160,14 @@ class SequencePoolFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
                   const std::string pooltype, T pad_value,
-                  const framework::LoDTensor& input, framework::Tensor* output,
-                  bool is_test, framework::Tensor* index = nullptr) {
-    auto& lod = input.lod()[0];
+                  const framework::LoDTensor& input,
+                  framework::LoDTensor* output, bool is_test,
+                  framework::Tensor* index = nullptr) {
+    auto lod_level = input.lod().size();
+    auto& lod = input.lod()[lod_level - 1];
     const size_t item_dim = output->numel() / output->dims()[0];
     dim3 threads(1024, 1);
-    dim3 grid(lod.size(), 1);
+    dim3 grid(std::max(static_cast<int>(lod.size()) - 1, 1), 1);
     if (pooltype == "MAX") {
       sequence_pool_kernel<
           T, MaxPoolFunctor<T>><<<grid, threads, 0, context.stream()>>>(
@@ -319,14 +322,16 @@ template <typename T>
 class SequencePoolGradFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
-                  const std::string pooltype, const framework::Tensor& out_grad,
+                  const std::string pooltype,
+                  const framework::LoDTensor& out_grad,
                   framework::LoDTensor* in_grad,
                   /* max pool has index */
                   const framework::Tensor* index = nullptr) {
-    auto& lod = in_grad->lod()[0];
+    auto lod_level = in_grad->lod().size();
+    auto& lod = in_grad->lod()[lod_level - 1];
     const size_t item_dim = in_grad->numel() / in_grad->dims()[0];
     dim3 threads(1024, 1);
-    dim3 grid(lod.size(), 1);
+    dim3 grid(std::max(static_cast<int>(lod.size()) - 1, 1), 1);
     if (pooltype == "MAX") {
       sequence_pool_grad_kernel<
           T, MaxPoolGradFunctor<T>><<<grid, threads, 0, context.stream()>>>(

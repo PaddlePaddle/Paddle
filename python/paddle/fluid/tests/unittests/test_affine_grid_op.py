@@ -56,22 +56,18 @@ class TestAffineGridOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['Theta'],
-            'Output',
-            no_grad_set=['OutputShape'],
-            max_relative_error=0.006)
+        self.check_grad(['Theta'], 'Output', no_grad_set=['OutputShape'])
 
     def initTestCase(self):
-        self.theta_shape = (3, 2, 3)
-        self.output_shape = np.array([3, 2, 5, 7]).astype("int32")
+        self.theta_shape = (17, 2, 3)
+        self.output_shape = np.array([17, 2, 5, 7]).astype("int32")
         self.dynamic_shape = False
 
 
 class TestAffineGridOpCase1(TestAffineGridOp):
     def initTestCase(self):
-        self.theta_shape = (3, 2, 3)
-        self.output_shape = np.array([3, 2, 5, 7]).astype("int32")
+        self.theta_shape = (20, 2, 3)
+        self.output_shape = np.array([20, 2, 5, 7]).astype("int32")
         self.dynamic_shape = True
 
 

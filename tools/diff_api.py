@@ -15,7 +15,7 @@ differ = difflib.Differ()
 result = differ.compare(origin, new)
 
 error = False
-print('API Difference is: ')
+diffs = []
 for each_diff in result:
     if each_diff[0] in ['-', '?']:  # delete or change API is not allowed
         error = True
@@ -23,13 +23,16 @@ for each_diff in result:
         error = True
 
     if each_diff[0] != ' ':
-        print(each_diff)
+        diffs.append(each_diff)
+'''
+If you modify/add/delete the API files, including code and comment, 
+please follow these steps in order to pass the CI:
 
+  1. cd ${paddle_path}, compile paddle;
+  2. pip install build/python/dist/(build whl package);
+  3. run "python tools/print_signatures.py paddle.fluid> paddle/fluid/API.spec"
+'''
 if error:
-    print(
-        '''If you modify/add/delete the API files, including code and comment, please follow these steps in order to pass the CI:
-    1. cd ${paddle_path}, compile paddle;
-    2. pip install build/python/dist/(build whl package);
-    3. run "python tools/print_signatures.py paddle.fluid> paddle/fluid/API.spec"'''
-    )
-    sys.exit(1)
+    print('API Difference is: ')
+    for each_diff in diffs:
+        print(each_diff)

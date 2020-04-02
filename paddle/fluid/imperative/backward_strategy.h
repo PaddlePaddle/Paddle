@@ -16,17 +16,12 @@
 // Created by Jiabin on 2019-04-25.
 //
 #pragma once
-#ifndef PADDLE_BACKWARDSTRATEGY_H
-#define PADDLE_BACKWARDSTRATEGY_H
-
-#endif  // PADDLE_BACKWARDSTRATEGY_H
 
 namespace paddle {
 namespace imperative {
 namespace detail {
 
-class BackwardStrategy {
- public:
+struct BackwardStrategy {
   /* DyGraph now support two kinds of backward strategy, one is sorted sum
    * gradient, another is sum gradient once they are created */
   // TODO(jiabin): add more Strategy when we support

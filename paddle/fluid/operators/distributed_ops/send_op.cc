@@ -41,22 +41,14 @@ class SendOp : public framework::OperatorBase {
     auto ins = Inputs("X");
 
     auto epmap = Attr<std::vector<std::string>>("epmap");
-    int sync_send = Attr<int>("sync_mode");
     auto trainer_id = Attr<int>("trainer_id");
 
     auto send_varnames = Attr<std::vector<std::string>>("send_varnames");
     auto height_sections = Attr<std::vector<int64_t>>("sections");
+    auto use_send_handler = Attr<bool>("use_send_handler");
 
     if (send_varnames.size() > 0) {
-      PADDLE_ENFORCE_EQ(ins.size(), 1, "");
-      if (distributed::Communicator::GetInstance() == nullptr) {
-        auto send_functor = distributed::ParameterSend<float>();
-        auto rpc_ctx = distributed::RpcContext(ins[0], send_varnames, epmap,
-                                               height_sections, trainer_id);
-        send_functor(rpc_ctx, scope, true);
-      } else {
-        distributed::Communicator::GetInstance()->Send(ins[0], scope);
-      }
+      distributed::Communicator::GetInstance()->Send(ins, send_varnames, scope);
     } else {
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
@@ -66,21 +58,33 @@ class SendOp : public framework::OperatorBase {
           distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
 
       std::vector<distributed::VarHandlePtr> rets;
-      for (size_t i = 0; i < ins.size(); i++) {
-        if (NeedSend(scope, ins[i])) {
-          VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
-          rets.push_back(
-              rpc_client->AsyncSendVar(epmap[i], ctx, scope, ins[i]));
-        } else {
-          VLOG(3) << "don't send no-initialied variable: " << ins[i];
+      if (use_send_handler) {
+        for (size_t i = 0; i < ins.size(); i++) {
+          if (NeedSend(scope, ins[i])) {
+            VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
+            rets.push_back(
+                rpc_client->AsyncSendVar(epmap[i], ctx, scope, ins[i]));
+          } else {
+            VLOG(3) << "don't send no-initialied variable: " << ins[i];
+          }
+        }
+      } else {
+        for (size_t i = 0; i < ins.size(); i++) {
+          for (size_t j = 0; j < epmap.size(); j++) {
+            if (NeedSend(scope, ins[i])) {
+              VLOG(3) << "sending " << ins[i] << " to " << epmap[j];
+              rets.push_back(rpc_client->AsyncDistributeNotify(epmap[j], ctx,
+                                                               scope, ins[i]));
+            } else {
+              VLOG(3) << "don't send no-initialied variable: " << ins[i];
+            }
+          }
         }
       }
-      if (sync_send) {
-        for (size_t i = 0; i < rets.size(); i++) {
-          VLOG(7) << "before sync_send " << ins[i] << "from " << epmap[i];
-          PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
-          VLOG(7) << "after sync_send " << ins[i] << "from " << epmap[i];
-        }
+      for (size_t i = 0; i < rets.size(); i++) {
+        VLOG(7) << "before sync_send " << ins[i] << "from " << epmap[i];
+        PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, "internal error in RPCClient");
+        VLOG(7) << "after sync_send " << ins[i] << "from " << epmap[i];
       }
     }
   }
@@ -98,10 +102,6 @@ Send operator
 
 This operator will send variables to listen_and_serve op at the parameter server.
 )DOC");
-    AddAttr<int>("sync_mode",
-                 "(int, default 0)"
-                 "sync send or async send.")
-        .SetDefault(0);
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
     AddAttr<std::vector<std::string>>("epmap",
                                       "(string vector, default 127.0.0.1:6164)"
@@ -116,13 +116,22 @@ This operator will send variables to listen_and_serve op at the parameter server
     AddAttr<std::vector<std::string>>(
         "send_varnames",
         "(vector<string>) "
-        "the splited output varnames to send to pserver")
+        "the split output varnames to send to pserver")
         .SetDefault(std::vector<std::string>{});
     AddAttr<int>("num",
                  "(int, default 0)"
                  "Number of sub-tensors. This must evenly divide "
                  "Input.dims()[axis]")
         .SetDefault(0);
+    AddAttr<bool>("merge_add",
+                  "(bool, default 0)"
+                  "merge method, true represent add, false represent average")
+        .SetDefault(false);
+    AddAttr<bool>(
+        "use_send_handler",
+        "(bool, default 1)"
+        "if it's true, use send handler, other wise, use notify handler")
+        .SetDefault(true);
   }
 };
 
@@ -136,5 +145,8 @@ class SendOpShapeInference : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(send, ops::SendOp, paddle::framework::EmptyGradOpMaker,
-                  ops::SendOpMaker, ops::SendOpShapeInference);
+REGISTER_OPERATOR(
+    send, ops::SendOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::SendOpMaker, ops::SendOpShapeInference);

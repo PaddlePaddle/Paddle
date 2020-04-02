@@ -85,6 +85,10 @@ class PassStrategy : public PaddlePassBuilder {
   explicit PassStrategy(const std::vector<std::string> &passes)
       : PaddlePassBuilder(passes) {}
 
+  /** Enable the use of cuDNN kernel
+   */
+  virtual void EnableCUDNN() {}
+
   /** The MKLDNN control exists in both CPU and GPU mode, because there can be
    * still some CPU kernels running in CPU mode.
    */
@@ -124,6 +128,7 @@ class CpuPassStrategy : public PassStrategy {
 
   virtual ~CpuPassStrategy() = default;
 
+  void EnableCUDNN() override;
   void EnableNgraph() override;
   void EnableMKLDNN() override;
   void EnableMkldnnQuantizer() override;
@@ -142,16 +147,21 @@ class GpuPassStrategy : public PassStrategy {
   explicit GpuPassStrategy(const GpuPassStrategy &other)
       : PassStrategy(other.AllPasses()) {
     use_gpu_ = true;
+    use_cudnn_ = other.use_cudnn_;
   }
 
+  void EnableCUDNN() override;
   void EnableNgraph() override;
   void EnableMKLDNN() override;
   void EnableMkldnnQuantizer() override;
 
   virtual ~GpuPassStrategy() = default;
+
+ protected:
+  bool use_cudnn_{false};
 };
 
 extern const std::vector<std::string> kTRTSubgraphPasses;
-extern const std::vector<std::string> kAnakinSubgraphPasses;
+extern const std::vector<std::string> kLiteSubgraphPasses;
 
 }  // namespace paddle

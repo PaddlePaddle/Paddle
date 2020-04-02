@@ -33,8 +33,7 @@ function yellow(){
 }
 
 path='http://paddlepaddle.org/download?url='
-#release_version=`curl -s https://pypi.org/project/paddlepaddle/|grep -E "/project/paddlepaddle/"|grep "release"|awk -F '/' '{print $(NF-1)}'|head -1`
-release_version=1.5.1
+release_version=`curl -s https://pypi.org/project/paddlepaddle/|grep -E "/project/paddlepaddle/"|grep "release"|awk -F '/' '{print $(NF-1)}'|head -1`
 python_list=(
 "27"
 "35"
@@ -144,6 +143,10 @@ function checkLinuxCUDA(){
            CUDA=`cat /usr/local/cuda9/version.txt | grep 'CUDA Version'|awk -F '[ .]' '{print $3}'`
            tmp_cuda9=$CUDA
          fi
+         if [ -f "/usr/local/cuda10/version.txt" ];then
+           CUDA=`cat /usr/local/cuda10/version.txt | grep 'CUDA Version'|awk -F '[ .]' '{print $3}'`
+           tmp_cuda10=$CUDA
+         fi
        fi
 
        if [ "$tmp_cuda" != "" ];then
@@ -154,6 +157,9 @@ function checkLinuxCUDA(){
        fi
        if [ "$tmp_cuda9" != "" ];then
          echo "检测结果：找到CUDA $tmp_cuda9"
+       fi
+       if [ "$tmp_cuda10" != "" ];then
+         echo "检测结果：找到CUDA $tmp_cuda10"
        fi
 
        if [ "$CUDA" == "" ];then
@@ -184,11 +190,11 @@ function checkLinuxCUDA(){
             fi
        fi
 
-       if [ "$CUDA" == "8" ] || [ "$CUDA" == "9" ];then
+       if [ "$CUDA" == "8" ] || [ "$CUDA" == "9" ] || [ "$CUDA" == "10" ];then
           echo "您的CUDA版本是${CUDA}"
           break
        else
-          echo "目前支持CUDA8/9，暂不支持您的CUDA${CUDA}，将为您安装CPU版本的PaddlePaddle"
+          echo "目前支持CUDA8/9/10，暂不支持您的CUDA${CUDA}，将为您安装CPU版本的PaddlePaddle"
           echo
           use_cpu
        fi
@@ -202,13 +208,7 @@ function checkLinuxCUDA(){
 function checkLinuxMathLibrary(){
   while true
     do
-      if [ "$AVX" ==  "" ];then
-        echo "正在检测您环境中是否存在AVX指令集..."
-        echo
-        echo "检测结果：您电脑上没有AVX指令集，目前针对无AVX指令集的环境，我们仅提供支持mkl数学库的PaddlePaddle，将为您安装此版本的PaddlePaddle"
-        math='mkl'
-        break
-      elif [ "$GPU" == "gpu" ];then
+      if [ "$GPU" == "gpu" ];then
         math='mkl'
         echo "检测到您的机器上配备GPU，推荐您使用mkl数学库"
         break
@@ -245,7 +245,7 @@ function checkLinuxPaddleVersion(){
                2. 稳定版（推荐）：如您无特殊开发需求，建议使用此版本，目前最新的版本号为 ${release_version}
                 => 请输入数字1或2。如输入其他字符或直接回车，将会默认选择【 2. 稳定版 】 。请在这里输入并回车：" paddle_version
         if [ "$paddle_version" == "" ];then
-          paddle_version="release-${release_version}"
+          paddle_version="2"
           echo "您选择了数字【2】，为您安装release-${release_version}"
           break
         fi
@@ -322,7 +322,7 @@ function checkLinuxPython(){
     while true
       do
         read -p "没有找到默认的python版本,请输入要安装的python路径:"  python_path
-        python_path=`$python_path -V`
+        python_path=`$python_path -V 2>&1` #add 2>&1
         if [ "$python_path" != "" ];then
           break
         else
@@ -340,11 +340,12 @@ function checkLinuxPython(){
       case $check_python in
         n)
           read -p "请指定您的python路径:" new_python_path
-          python_V=`$new_python_path -V 2>/dev/null`
+          python_V=`$new_python_path -V 2>&1` # 2>/dev/null --> 2>&1
           if [ "$python_V" != "" ];then
             python_path=$new_python_path
-            python_version=`$python_path -V 2>&1|awk -F '[ .]' '{print $2$3}'`
-            pip_version=`python -m pip -V|awk -F '[ .]' '{print $2}'`
+            python_version=`$python_path -V 2>&1|awk -F '[ .]' 'NR==1{print $2$3}'`
+            echo $python_path
+            pip_version=`$python_path -m pip -V|awk -F '[ .]' 'NR==1{print $2}'`
             echo "您的python版本为${python_version}"
             break
           else
@@ -361,13 +362,19 @@ function checkLinuxPython(){
       esac
   done
 
-  if [ "$pip_version" -lt 9 ];then
+  if [ "$pip_version" -lt 10 ];then
     echo "您的pip版本小于9.0.1  请升级pip (pip install --upgrade pip)"
     exit 0
   fi
 
+
   if [ "$python_version" == "27" ];then
-     uncode=`python -c "import pip._internal;print(pip._internal.pep425tags.get_supported())"|grep "cp27mu"`
+     python_version_all=`$python_path -V 2>&1|awk -F '[ .]' '{print $4}'`
+     if [[ $python_version_all -le 15 ]];then
+        echo "Python2版本小于2.7.15,请更新Python2版本或使用Python3"
+        exit 0
+      fi
+     uncode=`$python_path -c "import pip._internal;print(pip._internal.pep425tags.get_supported())"|grep "cp27mu"`
      if [[ "$uncode" == "" ]];then
         uncode=
      else
@@ -384,122 +391,97 @@ function checkLinuxPython(){
   done
 }
 
-function checkLinuxAVX(){
-  while true
-  do
-    if [[ "$AVX" != "" ]];then
-      AVX="avx"
-      break
-    else
-      if [ "$CUDA" == "8" -a "$CUDNN" == "7" ] || [ "$GPU" == "cpu" ];then
-        AVX="noavx"
-        break
-      else
-        echo "Step 6. 检测是否有avx"
-        echo
-        echo "检测结果：未能找到avx，我们仅提供CPU版本或配置为CUDA8 cuDNN7的GPU版本的安装包"
-        break
-      fi
-    fi
-  done
-}
 
 function PipLinuxInstall(){
-  wheel_cpu_release="http://paddle-wheel.bj.bcebos.com/${release_version}-${GPU}-${AVX}-${math}/paddlepaddle-${release_version}-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
-  wheel_gpu_release="http://paddle-wheel.bj.bcebos.com/${release_version}-gpu-cuda${CUDA}-cudnn${CUDNN}-${AVX}-${math}/paddlepaddle_gpu-${release_version}.post${CUDA}${CUDNN}-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
-  wheel_gpu_release_noavx="http://paddle-wheel.bj.bcebos.com/${release_version}-gpu-cuda${CUDA}-cudnn${CUDNN}-${AVX}-${math}/paddlepaddle_gpu-${release_version}-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
-  wheel_cpu_develop="http://paddle-wheel.bj.bcebos.com/latest-cpu-${AVX}-${math}/paddlepaddle-latest-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
-  wheel_gpu_develop="http://paddle-wheel.bj.bcebos.com/latest-gpu-cuda${CUDA}-cudnn${CUDNN}-${AVX}-${math}/paddlepaddle_gpu-latest-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
+  wheel_cpu_release="http://paddle-wheel.bj.bcebos.com/${release_version}-${GPU}-${math}/paddlepaddle-${release_version}-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
+  wheel_gpu_release="http://paddle-wheel.bj.bcebos.com/${release_version}-gpu-cuda${CUDA}-cudnn${CUDNN}-${math}/paddlepaddle_gpu-${release_version}.post${CUDA}${CUDNN}-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
+  wheel_cpu_develop="http://paddle-wheel.bj.bcebos.com/0.0.0-cpu-${math}/paddlepaddle-0.0.0-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
+  wheel_gpu_develop="http://paddle-wheel.bj.bcebos.com/0.0.0-gpu-cuda${CUDA}-cudnn${CUDNN}-${math}/paddlepaddle_gpu-0.0.0-cp${python_version}-cp${python_version}m${uncode}-linux_x86_64.whl"
+
 
   if [[ "$paddle_version" == "2" ]];then
     if [[ "$GPU" == "gpu" ]];then
-        if [[ ${AVX} == "avx" ]];then
-          rm -rf `echo $wheel_gpu_release|awk -F '/' '{print $NF}'`
+          rm -rf `echo $wheel_cpu_release|awk -F '/' '{print $NF}'`
+          echo $wheel_gpu_release
           wget -q $wheel_gpu_release
           if [ "$?" == "0" ];then
-            $python_path -m pip install ${use_virtualenv} -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_release
+            $python_path -m pip install -U ${use_virtualenv} -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_release
             if [ "$?" == 0 ];then
               echo 安装成功
+              exit 0
             else
               echo 安装失败
               exit 1
             fi
           else
             echo paddlepaddle whl包下载失败
+            echo "wget err: $wheel_gpu_release"
             exit 1
           fi
-        else
-          rm -rf `echo $wheel_gpu_release_novax|awk -F '/' '{print $NF}'`
-          wget -q $wheel_gpu_release_novax
-          if [ "$?" == "0" ];then
-            $python_path -m pip install ${use_virtualenv} -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_release_noavx
-            if [ "$?" == 0 ];then
-              echo 安装成功
-            else
-              echo 安装失败
-              exit 1
-            fi
-          else
-            echo paddlepaddle whl包下载失败
-            exit 1
-          fi
-        fi
     else
+        echo $wheel_cpu_release
         rm -rf `echo $wheel_cpu_release|awk -F '/' '{print $NF}'`
         wget -q $wheel_cpu_release
         if [ "$?" == "0" ];then
-          $python_path -m pip install ${use_virtualenv} -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_cpu_release
+          $python_path -m pip install -U ${use_virtualenv} -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_cpu_release
           if [ "$?" == 0 ];then
               echo 安装成功
+              exit 0
             else
               echo 安装失败
               exit 1
             fi
         else
           echo paddlepaddle whl包下载失败
-          exit 1
-        fi
-    fi
-  else
-    if [[ "$GPU" == "gpu" ]];then
-        rm -rf `echo $wheel_gpu_develop|awk -F '/' '{print $NF}'`
-        wget -q $wheel_gpu_develop
-        if [ "$?" == "0" ];then
-          $python_path -m pip install ${use_virtualenv} -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_develop
-          if [ "$?" == 0 ];then
-              echo 安装成功
-            else
-              echo 安装失败
-              exit 1
-            fi
-        else
-          echo paddlepaddle whl包下载失败
-          exit 1
-        fi
-    else
-        rm -rf `echo $wheel_cpu_develop|awk -F '/' '{print $NF}'`
-        wget -q $wheel_cpu_develop
-        if [ "$?" == "0" ];then
-          $python_path -m pip install ${use_virtualenv} -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_cpu_develop
-          if [ "$?" == 0 ];then
-              echo 安装成功
-            else
-              echo 安装失败
-              exit 1
-            fi
-        else
-          echo paddlepaddle whl包下载失败
+          echo "wget err: $wheel_cpu_release"
           exit 1
         fi
     fi
   fi
+  if [[ "$GPU" == "gpu" ]];then
+        echo $wheel_gpu_develop
+        rm -rf `echo $wheel_gpu_develop|awk -F '/' '{print $NF}'`
+        wget -q $wheel_gpu_develop
+        if [ "$?" == "0" ];then
+          echo $python_path,111
+          $python_path -m pip install -U ${use_virtualenv} -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_gpu_develop
+          if [ "$?" == 0 ];then
+              echo 安装成功
+              exit 0
+            else
+              echo 安装失败
+              exit 1
+            fi
+        else
+          echo paddlepaddle whl包下载失败
+          echo "wget err: $wheel_gpu_develop" 
+          exit 1
+        fi
+  else
+        echo $wheel_cpu_develop
+        rm -rf `echo $wheel_cpu_develop|awk -F '/' '{print $NF}'`
+        wget -q $wheel_cpu_develop
+        if [ "$?" == "0" ];then
+          $python_path -m pip install -U ${use_virtualenv} -i https://mirrors.aliyun.com/pypi/simple --trusted-host=mirrors.aliyun.com $wheel_cpu_develop
+          if [ "$?" == 0 ];then
+              echo 安装成功
+              exit 0
+            else
+              echo 安装失败
+              exit 1
+            fi
+        else
+          echo paddlepaddle whl包下载失败
+          echo "wget err: $wheel_cpu_develop"
+          exit 1
+        fi
+    fi
 }
 
 
 function checkLinuxGPU(){
   read -n1 -p "即将检测您的机器是否含GPU，请按回车键继续..."
   echo
-  AVX=`cat /proc/cpuinfo |grep avx|tail -1|grep avx`
   which nvidia-smi >/dev/null 2>&1
   if [ "$?" != "0" ];then
     GPU='cpu'
@@ -730,8 +712,6 @@ gpu_list=(
   echo
   checkLinuxPython
   echo
-  checkLinuxAVX
-  echo
   echo "Step 6.是否使用Python的虚拟环境"
   use_virtualenv="--user"
   checkPythonVirtualenv
@@ -757,6 +737,9 @@ function checkMacPython2(){
           if [[ $? == "0" ]];then
                if [ "$python_version" == "" ] || ( [ "$python_root" == "/usr/bin/python" ] && ( [ "$python_version" \< "$python_min" ] || ( [ "$python_version" \> "$python_min" ] && [ ${#python_version} -lt ${#python_min} ] ) ) );then
                     clearMacPythonEnv
+               elif [[ "$python_version" < "2.7.15" ]];then
+                    echo -e "          => 在您的环境中找到 \033[32m[ $python_version ]\033[0m,此版本小于2.7.15不建议使用,请选择其他版本."
+                    exit
                else
                     check_python=`echo $python_version | grep "Python 2"`
                     if [[ -n "$check_python" ]];then
@@ -877,7 +860,7 @@ function initCheckMacPython2(){
 
 function initCheckMacPython3(){
    echo
-   yellow "          您选择了Python "$python_V"，正在寻找符合您要求的Python 2版本"
+   yellow "          您选择了Python "$python_V"，正在寻找符合您要求的Python 3版本"
    echo
    python_root=`which python3`
    checkMacPython3
@@ -974,20 +957,6 @@ function checkMacPythonVersion(){
   done
 }
 
-function checkMacAVX(){
-    read -n1 -p "Step 4. 检测您的Mac是否支持AVX指令集，请按回车键继续..."
-    if [[ $AVX != "" ]];then
-        AVX="avx"
-        echo ""
-        green "          检测结果：支持"
-        echo ""
-        return 0
-    else
-        red "            检测结果：不支持。非常抱歉，PaddlePaddle在Mac系统暂不提供no_avx类型的安装包，您可以选择在Linux系统中安装no_avx版的PaddlePaddle, 请按回车键退出..."
-        echo
-        return 1
-    fi
-}
 
 function checkMacGPU(){
     read -n1 -p "Step 5. 选择CPU/GPU版本，请按回车键继续..."
@@ -1003,7 +972,6 @@ function checkMacGPU(){
 
 function macos() {
   path='http://paddlepaddle.org/download?url='
-  AVX=`sysctl -a | grep cpu | grep AVX1.0 | tail -1 | grep AVX`
 
   while true
       do
@@ -1012,8 +980,6 @@ function macos() {
 
         checkMacPythonVersion
 
-        checkMacAVX
-
         checkMacGPU
 
 
@@ -1021,9 +987,8 @@ function macos() {
         echo
         yellow "即将为您下载并安装PaddlePaddle，请按回车键继续..."
         read -n1 -p ""
-        echo
         if [[ $paddle_version == "2" ]];then
-            $python_root -m pip install paddlepaddle
+            $python_root -m pip install -U  paddlepaddle
             if [[ $? == "0" ]];then
                green "安装成功，可以使用: ${python_root} 来启动安装了PaddlePaddle的Python解释器"
                break
@@ -1037,7 +1002,7 @@ function macos() {
             fi
         else
             if [[ -f $whl_cpu_develop ]];then
-                $python_root -m pip install $whl_cpu_develop
+                $python_root -m pip installi -U $whl_cpu_develop
                 if [[ $? == "0" ]];then
                    rm -rf $whl_cpu_develop
                    # TODO add install success check here

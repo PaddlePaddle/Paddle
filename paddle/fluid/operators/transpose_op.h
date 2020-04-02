@@ -21,6 +21,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+enum { kTransposeMKLDNNFP32 = 1, kTransposeMKLDNNINT8 = 2 };
+
 template <typename DeviceContext, typename T>
 inline void TransCompute(const int dim, const DeviceContext& dev_ctx,
                          const framework::Tensor& in, framework::Tensor* out,
@@ -62,7 +64,9 @@ class TransposeKernel : public framework::OpKernel<T> {
     auto* x = context.Input<framework::Tensor>("X");
     auto* out = context.Output<framework::Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
-
+    if (out->numel() == 0) {
+      return;
+    }
     std::vector<int> axis = context.Attr<std::vector<int>>("axis");
     int ndims = axis.size();
     auto& dev_ctx = context.template device_context<DeviceContext>();
@@ -81,6 +85,10 @@ class TransposeGradKernel : public framework::OpKernel<T> {
     if (!x_grad) return;
 
     x_grad->mutable_data<T>(context.GetPlace());
+    if (x_grad->numel() == 0) {
+      return;
+    }
+
     std::vector<int> axis = context.Attr<std::vector<int>>("axis");
     std::vector<int> reversed_axis(axis);
 

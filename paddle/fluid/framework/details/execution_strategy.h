@@ -31,11 +31,12 @@ struct ExecutionStrategy {
   // iterations the framework cleans up a local execution scope.
   // In some models, the value of this parameter has a great
   // influence on the performance(about 15%) of the program.
-  size_t num_iteration_per_drop_scope_{1};
+  size_t num_iteration_per_drop_scope_{100};
   // At present, the kExperimental executor is the fastest in most models.
   ExecutorType type_{kExperimental};
   // This debug option.
   bool dry_run_{false};
+  bool thread_barrier_{false};
 
   // only use with async_ssa_graph_executor
   // and pyreader with data queue

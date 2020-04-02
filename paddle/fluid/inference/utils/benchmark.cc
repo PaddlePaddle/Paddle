@@ -39,7 +39,9 @@ std::string Benchmark::SerializeToString() const {
 }
 void Benchmark::PersistToFile(const std::string &path) const {
   std::ofstream file(path, std::ios::app);
-  PADDLE_ENFORCE(file.is_open(), "Can not open %s to add benchmark", path);
+  PADDLE_ENFORCE_EQ(
+      file.is_open(), true,
+      platform::errors::Unavailable("Can not open %s to add benchmark.", path));
   file << SerializeToString();
   file.flush();
   file.close();

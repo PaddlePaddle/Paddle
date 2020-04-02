@@ -43,7 +43,6 @@ __all__ = [
     "train",
     "test",
     "validation",
-    "convert",
     "fetch",
     "get_dict",
 ]
@@ -113,7 +112,7 @@ def reader_creator(tar_file, file_name, src_dict_size, trg_dict_size, src_lang):
         trg_dict = __load_dict(tar_file, trg_dict_size,
                                ("de" if src_lang == "en" else "en"))
 
-        # the indice for start mark, end mark, and unk are the same in source
+        # the index for start mark, end mark, and unk are the same in source
         # language and target language. Here uses the source language
         # dictionary to determine their indices.
         start_id = src_dict[START_MARK]
@@ -325,33 +324,3 @@ def fetch():
     """
     paddle.v4.dataset.common.download(DATA_URL, "wmt16", DATA_MD5,
                                       "wmt16.tar.gz")
-
-
-def convert(path, src_dict_size, trg_dict_size, src_lang):
-    """Converts dataset to recordio format.
-    """
-
-    paddle.dataset.common.convert(
-        path,
-        train(
-            src_dict_size=src_dict_size,
-            trg_dict_size=trg_dict_size,
-            src_lang=src_lang),
-        1000,
-        "wmt16_train")
-    paddle.dataset.common.convert(
-        path,
-        test(
-            src_dict_size=src_dict_size,
-            trg_dict_size=trg_dict_size,
-            src_lang=src_lang),
-        1000,
-        "wmt16_test")
-    paddle.dataset.common.convert(
-        path,
-        validation(
-            src_dict_size=src_dict_size,
-            trg_dict_size=trg_dict_size,
-            src_lang=src_lang),
-        1000,
-        "wmt16_validation")

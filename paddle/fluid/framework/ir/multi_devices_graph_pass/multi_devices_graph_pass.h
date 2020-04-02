@@ -35,7 +35,6 @@ namespace ir {
 
 constexpr char kLossVarName[] = "loss_var_name";
 constexpr char kStrategy[] = "strategy";
-constexpr char kNRanks[] = "nranks";
 
 class MultiDevSSAGraphBuilderBase : public ir::Pass {
  protected:
@@ -95,7 +94,7 @@ class MultiDevSSAGraphBuilderBase : public ir::Pass {
   void CreateOpHandleIOs(ir::Graph *result, ir::Node *node,
                          size_t device_id) const;
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
   mutable platform::NCCLContextMap *nccl_ctxs_{nullptr};
   mutable platform::NCCLCommunicator *multi_nccl_ctxs_{nullptr};
 #endif
@@ -124,7 +123,7 @@ class AsyncSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
                           const std::string &g_name) const override {}
 
   bool NeedCollectiveForGrad(const std::string &grad_name,
-                             std::vector<ir::Node *> ops) const {
+                             std::vector<ir::Node *> ops) const override {
     return false;
   }
 
@@ -132,13 +131,6 @@ class AsyncSSAGraphBuilder : public MultiDevSSAGraphBuilderBase {
     if (node->Op()->Type() == "recv") {
       VLOG(1) << "set recv op do_not_run to true";
       node->Op()->SetAttr("do_not_run", 1);
-      node->Op()->Flush();
-    } else if (node->Name() == "lookup_table" || node->Name() == "nce" ||
-               node->Name() == "hierarchical_sigmoid") {
-      // in async_mode, we do not need remote prefetch, because communicator
-      // will do async parameter recv.
-      VLOG(1) << "set " << node->Name() << " op remote_prefetch to false";
-      node->Op()->SetAttr("remote_prefetch", false);
       node->Op()->Flush();
     }
     return false;

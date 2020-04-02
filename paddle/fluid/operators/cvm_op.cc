@@ -52,8 +52,9 @@ class CVMOp : public framework::OperatorWithKernel {
   // is determined by its input "X".
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   platform::CPUPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -93,8 +94,9 @@ class CVMGradientOp : public framework::OperatorWithKernel {
   // is determined by its input "X".
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   platform::CPUPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Y")),
+                                   ctx.device_context());
   }
 };
 
@@ -123,30 +125,36 @@ CVM Operator.
   }
 };
 
-class CVMGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class CVMGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("cvm_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("CVM", Input("CVM"));
-    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("CVM", this->Input("CVM"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(CVMNoNeedBufferVarInference, "CVM");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(CVMGradNoNeedBufferVarInference, "X");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(cvm, ops::CVMOp, ops::CVMOpMaker, ops::CVMGradOpDescMaker);
+REGISTER_OPERATOR(cvm, ops::CVMOp, ops::CVMOpMaker,
+                  ops::CVMGradOpMaker<paddle::framework::OpDesc>,
+                  ops::CVMGradOpMaker<paddle::imperative::OpBase>,
+                  ops::CVMNoNeedBufferVarInference);
 
-REGISTER_OPERATOR(cvm_grad, ops::CVMGradientOp);
+REGISTER_OPERATOR(cvm_grad, ops::CVMGradientOp,
+                  ops::CVMGradNoNeedBufferVarInference);
 
 REGISTER_OP_CPU_KERNEL(cvm, ops::CVMOpKernel<float>, ops::CVMOpKernel<double>);
 

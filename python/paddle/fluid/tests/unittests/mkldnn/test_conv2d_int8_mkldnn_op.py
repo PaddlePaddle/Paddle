@@ -20,14 +20,12 @@ import numpy as np
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest
 from paddle.fluid.tests.unittests.test_conv2d_op import conv2d_forward_naive, TestConv2dOp
-from mkldnn_op_test import format_reorder
 
 
 def conv2d_forward_refer(input, filter, group, conv_param):
     out, in_n, out_h, out_w, out_c = conv2d_forward_naive(input, filter, group,
                                                           conv_param)
-    size = [in_n, out_c, out_h, out_w]
-    return format_reorder(out, size)
+    return out
 
 
 class TestConv2dInt8Op(TestConv2dOp):
@@ -37,7 +35,7 @@ class TestConv2dInt8Op(TestConv2dOp):
         self.exhaustive_search = False
         self.use_cuda = False
         self.use_mkldnn = False
-        self.data_format = "AnyLayout"
+        self.data_format = "NCHW"
         self.weighttype = np.float32
         self.use_mkldnn = True
         self.init_group()
@@ -79,10 +77,8 @@ class TestConv2dInt8Op(TestConv2dOp):
             if self.fuse_residual:
                 input_residual = np.random.randint(
                     -5, 5, self.input_residual_size).astype(self.srctype)
-                output_tmp = np.round(output1 - output2 + format_reorder(
-                    input_residual, self.input_residual_size).astype(
-                        self.srctype) * (self.scale_out / self.scale_in_eltwise
-                                         ))
+                output_tmp = np.round(output1 - output2 + input_residual.astype(
+                    self.srctype) * (self.scale_out / self.scale_in_eltwise))
                 if self.fuse_activation == "relu":
                     output = np.maximum(output_tmp, 0).astype(self.dsttype)
                 else:
@@ -109,10 +105,9 @@ class TestConv2dInt8Op(TestConv2dOp):
                 input_residual = np.random.randint(
                     0, 10, self.input_residual_size).astype(self.srctype)
                 output_tmp_res = np.round(output1 * (self.scale_out / (
-                    self.scale_in * self.scale_weights[0])) + format_reorder(
-                        input_residual, self.input_residual_size).astype(
-                            np.int32) * (self.scale_out / self.scale_in_eltwise
-                                         ))
+                    self.scale_in * self.scale_weights[
+                        0])) + input_residual.astype(np.int32) * (
+                            self.scale_out / self.scale_in_eltwise))
                 if self.fuse_activation == "relu":
                     output = np.maximum(output_tmp_res, 0).astype(self.dsttype)
                 else:
@@ -151,7 +146,9 @@ class TestConv2dInt8Op(TestConv2dOp):
         self.outputs = {'Output': output}
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace(), atol=0)
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output_with_place(
+            core.CPUPlace(), atol=0, check_dygraph=False)
 
     def test_check_grad(self):
         pass
@@ -347,6 +344,28 @@ create_test_int8_class(TestWithStride)
 create_test_int8_class(TestWithGroup)
 create_test_int8_class(TestWith1x1)
 create_test_int8_class(TestWithInput1x1Filter1x1)
+
+
+class TestConv2dOp_AsyPadding_INT_MKLDNN(TestConv2dInt8Op):
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+
+    def init_paddings(self):
+        self.pad = [0, 0, 1, 2]
+        self.padding_algorithm = "EXPLICIT"
+
+
+class TestConv2dOp_Same_INT_MKLDNN(TestConv2dOp_AsyPadding_INT_MKLDNN):
+    def init_paddings(self):
+        self.pad = [0, 0]
+        self.padding_algorithm = "SAME"
+
+
+class TestConv2dOp_Valid_INT_MKLDNN(TestConv2dOp_AsyPadding_INT_MKLDNN):
+    def init_paddings(self):
+        self.pad = [1, 1]
+        self.padding_algorithm = "VALID"
+
 
 if __name__ == '__main__':
     unittest.main()

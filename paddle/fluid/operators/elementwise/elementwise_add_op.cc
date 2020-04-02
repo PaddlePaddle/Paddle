@@ -20,24 +20,72 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class ElementwiseAddDoubleGradDescMaker
-    : public framework::SingleGradOpDescMaker {
+template <typename T>
+struct SameDimsElemwiseAdd<
+    platform::CPUDeviceContext, T,
+    typename std::enable_if<std::is_floating_point<T>::value>::type> {
+  void operator()(const framework::ExecutionContext &ctx,
+                  const framework::Tensor *x, const framework::Tensor *y,
+                  framework::Tensor *z) {
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
+    blas.VADD(x->numel(), x->data<T>(), y->data<T>(), z->data<T>());
+  }
+};
+
+template <typename T>
+struct SameDimsElemwiseAdd<
+    platform::CPUDeviceContext, T,
+    typename std::enable_if<!std::is_floating_point<T>::value>::type> {
+  void operator()(const framework::ExecutionContext &ctx,
+                  const framework::Tensor *x, const framework::Tensor *y,
+                  framework::Tensor *z) {
+    auto eigen_x = framework::EigenVector<T>::Flatten(*x);
+    auto eigen_y = framework::EigenVector<T>::Flatten(*y);
+    auto eigen_z = framework::EigenVector<T>::Flatten(*z);
+    auto &place = *ctx.template device_context<platform::CPUDeviceContext>()
+                       .eigen_device();
+    eigen_z.device(place) = eigen_x + eigen_y;
+  }
+};
+
+class ElementwiseAddOpMaker : public ElementwiseOpMaker {
+ protected:
+  std::string GetName() const override { return "Add"; }
+  std::string GetEquation() const override { return "Out = X + Y"; }
+
+  void AddInputX() override {
+    AddInput("X",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
+  }
+
+  void AddInputY() override {
+    AddInput("Y",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
+  }
+
+  std::string GetOpFuntionality() const override {
+    return "Add two tensors element-wise";
+  }
+};
+
+template <typename T>
+class ElementwiseAddDoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("elementwise_add_grad_grad");
-    op->SetInput("Y", Input("Y"));
-    op->SetInput("DOut", Input(framework::GradVarName("Out")));
-    op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
-    op->SetInput("DDY", OutputGrad(framework::GradVarName("Y")));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
+    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    op->SetInput("DDY", this->OutputGrad(framework::GradVarName("Y")));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
 
-    op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
-    return op;
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
   }
 };
 
@@ -45,16 +93,19 @@ class ElementwiseAddDoubleGradDescMaker
 }  // namespace paddle
 
 REGISTER_ELEMWISE_GRAD_MAKER(elementwise_add, Add);
-REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(elementwise_add, "Add",
-                                           "Out = X + Y");
+REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(elementwise_add, Add);
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(elementwise_add_grad, ops::ElementwiseOpExplicitGrad,
-                  ops::ElementwiseGradOpInplace,
-                  ops::ElementwiseGradNoBufVarsInference,
-                  ops::ElementwiseAddDoubleGradDescMaker);
+REGISTER_OPERATOR(
+    elementwise_add_grad, ops::ElementwiseOpGrad, ops::ElementwiseGradOpInplace,
+    ops::ElementwiseGradNoBufVarsInference,
+    ops::ElementwiseAddDoubleGradMaker<paddle::framework::OpDesc>,
+    ops::ElementwiseAddDoubleGradMaker<paddle::imperative::OpBase>);
+
 REGISTER_OPERATOR(elementwise_add_grad_grad,
-                  ops::ElementwiseOpDoubleGradWithoutDXDY);
+                  ops::ElementwiseOpDoubleGradWithoutDXDY,
+                  ops::ElementwiseDoubleGradOpInplace,
+                  ops::ElementwiseDoubleGradNoBufVarsInference);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_add,

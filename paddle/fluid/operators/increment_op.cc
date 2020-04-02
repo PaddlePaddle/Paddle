@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/increment_op.h"
+#include <memory>
 #include <string>
 
 namespace paddle {
@@ -65,17 +66,16 @@ $$Out = X + step$$
   }
 };
 
-class IncrementGradOpMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class IncrementGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("increment");
-    grad_op->SetInput("X", Output("Out"));
-    grad_op->SetOutput("Out", Input("X"));
-    grad_op->SetAttr("step", -boost::get<float>(GetAttr("step")));
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetInput("X", this->Output("Out"));
+    grad_op->SetOutput("Out", this->Input("X"));
+    grad_op->SetAttr("step", -boost::get<float>(this->GetAttr("step")));
   }
 };
 
@@ -84,7 +84,8 @@ class IncrementGradOpMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(increment, ops::IncrementOp, ops::IncrementOpMaker,
-                  ops::IncrementGradOpMaker);
+                  ops::IncrementGradOpMaker<paddle::framework::OpDesc>,
+                  ops::IncrementGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     increment, ops::IncrementKernel<paddle::platform::CPUDeviceContext, float>,
     ops::IncrementKernel<paddle::platform::CPUDeviceContext, double>,

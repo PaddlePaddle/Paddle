@@ -66,7 +66,7 @@ class TestFillAnyLikeOpOverflow(TestFillAnyLikeOp):
     def test_check_output(self):
         exception = None
         try:
-            self.check_output()
+            self.check_output(check_dygraph=False)
         except core.EnforceNotMet as ex:
             exception = ex
         self.assertIsNotNone(exception)

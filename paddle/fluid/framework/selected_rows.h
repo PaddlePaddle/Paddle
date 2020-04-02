@@ -58,7 +58,7 @@ class SelectedRows {
     rwlock_.reset(new RWLock);
   }
 
-  platform::Place place() const { return value_->place(); }
+  const platform::Place& place() const { return value_->place(); }
 
   const Tensor& value() const { return *value_; }
 

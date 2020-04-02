@@ -199,9 +199,9 @@ void FlListenAndServOp::RunImpl(const framework::Scope &scope,
   rpc_service_.reset(new RPCSERVER_T(endpoint, fan_in));
 
   request_send_handler_.reset(
-      new distributed::RequestSendHandler(sync_mode, false));
+      new distributed::RequestSendHandler(!sync_mode, false));
   request_get_handler_.reset(
-      new distributed::RequestGetHandler(sync_mode, false));
+      new distributed::RequestGetHandler(!sync_mode, false));
 
   rpc_service_->RegisterRPC(distributed::kRequestSend,
                             request_send_handler_.get(),
@@ -265,6 +265,8 @@ class FlListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
 void FlSignalHandler::StopAndExit(int signal_num) {
   // Do not use VLOG here for the device for printing maybe already released.
   // exit will release interal allocated resoureces.
+  auto file_path = string::Sprintf("/tmp/paddle.%d.port", ::getpid());
+  remove(file_path.c_str());
   exit(0);
 }
 

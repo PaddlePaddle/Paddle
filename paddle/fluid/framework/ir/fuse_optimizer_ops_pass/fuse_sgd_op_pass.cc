@@ -42,7 +42,7 @@ class FuseSgdOpPass : public FuseOptimizerOpPass {
 
     int op_role = boost::get<int>(
         sgd_ops[0]->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
-    VLOG(7) << "Insert sgd to graph ";
+    VLOG(6) << "Insert sgd to graph.";
     // Add fused scale
     OpDesc Sgd_desc(sgd_ops[0]->Op()->Block());
     Sgd_desc.SetType("sgd");

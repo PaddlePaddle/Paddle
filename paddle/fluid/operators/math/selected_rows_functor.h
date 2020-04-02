@@ -93,6 +93,18 @@ struct MergeAdd {
                   const bool sorted_result = false);
 };
 
+template <typename DeviceContext, typename T>
+struct MergeAverage {
+  framework::SelectedRows operator()(const DeviceContext& context,
+                                     const framework::SelectedRows& input);
+  void operator()(const DeviceContext& context,
+                  const framework::SelectedRows& input,
+                  framework::SelectedRows* output);
+  void operator()(const DeviceContext& context,
+                  const std::vector<const framework::SelectedRows*>& inputs,
+                  framework::SelectedRows* output);
+};
+
 enum class ScatterOps { ASSIGN, ADD, SUB, SUBBY, MUL, DIV, DIVBY };
 
 // out = selected_rows_in / tensor

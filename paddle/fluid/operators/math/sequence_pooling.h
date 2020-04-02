@@ -28,7 +28,7 @@ class SequencePoolFunctor {
   /* max pool has index output */
   void operator()(const DeviceContext& context, const std::string pooltype,
                   T pad_value, const framework::LoDTensor& input,
-                  framework::Tensor* output, bool is_test = false,
+                  framework::LoDTensor* output, bool is_test = false,
                   framework::Tensor* index = nullptr);
 };
 
@@ -36,7 +36,7 @@ template <typename DeviceContext, typename T>
 class SequencePoolGradFunctor {
  public:
   void operator()(const DeviceContext& context, const std::string pooltype,
-                  const framework::Tensor& out_grad,
+                  const framework::LoDTensor& out_grad,
                   framework::LoDTensor* in_grad,
                   /* max pool has index */
                   const framework::Tensor* index = nullptr);

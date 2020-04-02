@@ -17,10 +17,12 @@
 template <typename T>
 using Kernel =
     paddle::operators::SeqConcatKernel<paddle::platform::CUDADeviceContext, T>;
-REGISTER_OP_CUDA_KERNEL(sequence_concat, Kernel<float>, Kernel<double>);
+REGISTER_OP_CUDA_KERNEL(sequence_concat, Kernel<float>, Kernel<double>,
+                        Kernel<int>, Kernel<int64_t>);
 template <typename T>
 using GradKernel =
     paddle::operators::SeqConcatGradKernel<paddle::platform::CUDADeviceContext,
                                            T>;
 REGISTER_OP_CUDA_KERNEL(sequence_concat_grad, GradKernel<float>,
-                        GradKernel<double>);
+                        GradKernel<double>, GradKernel<int>,
+                        GradKernel<int64_t>);

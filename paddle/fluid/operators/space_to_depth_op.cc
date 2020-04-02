@@ -131,25 +131,23 @@ class SpaceToDepthOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(SpaceToDepthGradOpNoBuffer, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SpaceToDepthGradOpNoBuffer, "X");
 
-class SpaceToDepthGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SpaceToDepthGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
-
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("space_to_depth_grad");
 
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetInput("X", Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput("X", this->Input("X"));
 
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
 
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -167,9 +165,9 @@ class SpaceToDepthGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
   }
 };
 }  // namespace operators
@@ -178,16 +176,19 @@ class SpaceToDepthGradOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(space_to_depth, ops::SpaceToDepthOp, ops::SpaceToDepthOpMaker,
-                  ops::SpaceToDepthGradOpDescMaker);
+                  ops::SpaceToDepthGradOpMaker<paddle::framework::OpDesc>,
+                  ops::SpaceToDepthGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(space_to_depth_grad, ops::SpaceToDepthGradOp,
                   ops::SpaceToDepthGradOpNoBuffer);
 REGISTER_OP_CPU_KERNEL(
     space_to_depth,
     ops::SpaceToDepthKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SpaceToDepthKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::SpaceToDepthKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SpaceToDepthKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     space_to_depth_grad,
     ops::SpaceToDepthGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SpaceToDepthGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::SpaceToDepthGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SpaceToDepthGradKernel<paddle::platform::CPUDeviceContext, int64_t>);

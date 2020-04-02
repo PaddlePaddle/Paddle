@@ -15,81 +15,73 @@
 #include "paddle/fluid/framework/ir/fc_fuse_pass.h"
 
 #include <gtest/gtest.h>
-#include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-void SetOp(ProgramDesc* prog, const std::string& type,
-           const std::vector<std::string>& inputs,
-           const std::vector<std::string>& outputs) {
-  auto* op = prog->MutableBlock(0)->AppendOp();
-  op->SetType(type);
-  if (type == "mul") {
-    op->SetInput("X", {inputs[0]});
-    op->SetInput("Y", {inputs[1]});
-    op->SetAttr("x_num_col_dims", {1});
-  } else if (type == "elementwise_add") {
-    op->SetInput("X", inputs);
-  }
-  op->SetOutput("Out", outputs);
-  op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
-              static_cast<int>(OpRole::kForward));
+void AddVarToScope(Scope* param_scope, const std::string& name,
+                   const DDim& dims) {
+  auto* tensor = param_scope->Var(name)->GetMutable<LoDTensor>();
+  tensor->Resize(dims);
+  tensor->mutable_data<float>(platform::CPUPlace());
 }
 
-// a->OP0->b
-// a->OP1->c
-// (b, c)->mul->d
-// (d, e)->elementwise_add->f
-ProgramDesc BuildProgramDesc() {
-  ProgramDesc prog;
-  for (auto& v : std::vector<std::string>({"a", "b", "c", "d", "e", "f"})) {
-    auto* var = prog.MutableBlock(0)->Var(v);
-    var->SetType(proto::VarType::SELECTED_ROWS);
-    if (v == "c") {
-      var->SetPersistable(true);
-    }
-  }
-
-  SetOp(&prog, "OP0", std::vector<std::string>({"a"}),
-        std::vector<std::string>({"b"}));
-  SetOp(&prog, "OP1", std::vector<std::string>({"a"}),
-        std::vector<std::string>({"c"}));
-  SetOp(&prog, "mul", std::vector<std::string>({"b", "c"}),
-        std::vector<std::string>({"d"}));
-  SetOp(&prog, "elementwise_add", std::vector<std::string>({"d", "e"}),
-        std::vector<std::string>({"f"}));
-
-  return prog;
+Scope* CreateParamScope() {
+  auto param_scope = new Scope();
+  AddVarToScope(param_scope, "conv2d_filters_0", {});
+  AddVarToScope(param_scope, "conv2d_bias_0", {});
+  AddVarToScope(param_scope, "weights_0", {});
+  AddVarToScope(param_scope, "weights_1", {});
+  AddVarToScope(param_scope, "bias_1", {});
+  AddVarToScope(param_scope, "bias_2", {});
+  return param_scope;
 }
 
 TEST(FCFusePass, basic) {
-  auto prog = BuildProgramDesc();
+  // inputs                     operator            output
+  // --------------------------------------------------------
+  // (a, filters_0 bias_0)      conv2d           -> conv2d_out
+  // conv2d_out                 relu             -> relu_out_0
+  // (relu_out_0, weights_0)    mul              -> mul_out_0
+  // (mul_out_0, bias_1)        elementwise_add  -> add_out_0
+  // add_out_0                  relu             -> relu_out_1
+  // (relu_out_1, weights_1)    mul              -> mul_out_1
+  // (mul_out_1, bias_2)        elementwise_add  -> add_out_1
+  Layers layers;
+  auto* a = layers.data("a");
+  auto* filters_0 = layers.data("conv2d_filters_0", {}, true);
+  auto* bias_0 = layers.data("conv2d_bias_0", {}, true);
+  auto* conv2d_out = layers.conv2d(a, filters_0, bias_0, false);
+  auto* relu_out_0 = layers.relu(conv2d_out);
+  auto* weights_0 = layers.data("weights_0", {}, true);
+  auto* mul_out_0 = layers.mul(relu_out_0, weights_0);
+  auto* bias_1 = layers.data("bias_1", {}, true);
+  auto* add_out_0 = layers.elementwise_add(mul_out_0, bias_1);
+  auto* relu_out_1 = layers.relu(add_out_0);
+  auto* weights_1 = layers.data("weights_1", {}, true);
+  auto* mul_out_1 = layers.mul(relu_out_1, weights_1);
+  auto* bias_2 = layers.data("bias_2", {}, true);
+  auto* add_out_1 = layers.elementwise_add(mul_out_1, bias_2);
+  VLOG(4) << add_out_1;
 
-  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
-
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   auto pass = PassRegistry::Instance().Get("fc_fuse_pass");
-
-  int pre_nodes = graph->Nodes().size();
+  pass->Set("use_gpu", new bool(true));
+  graph->Set("__param_scope__", CreateParamScope());
+  int num_nodes_before = graph->Nodes().size();
+  int num_mul_nodes_before = GetNumOpNodes(graph, "mul");
+  VLOG(3) << DebugString(graph);
 
   graph.reset(pass->Apply(graph.release()));
+  int num_nodes_after = graph->Nodes().size();
+  int num_fc_nodes_after = GetNumOpNodes(graph, "fc");
+  VLOG(3) << DebugString(graph);
 
-  int after_nodes = graph->Nodes().size();
-
-  // Remove 3 Nodes: MUL,ELEMENTWISE_ADD, mul_out
-  // Add 1 Node: FC
-  EXPECT_EQ(pre_nodes - 2, after_nodes);
-
-  // Assert fc op in newly generated graph
-  int fc_count = 0;
-
-  for (auto* node : graph->Nodes()) {
-    if (node->IsOp() && node->Op()->Type() == "fc") {
-      ++fc_count;
-    }
-  }
-  EXPECT_EQ(fc_count, 1);
+  PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after + 6);
+  PADDLE_ENFORCE_EQ(num_fc_nodes_after, 2);
+  PADDLE_ENFORCE_EQ(num_mul_nodes_before, num_fc_nodes_after);
 }
 
 }  // namespace ir

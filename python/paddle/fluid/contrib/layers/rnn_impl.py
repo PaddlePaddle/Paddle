@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid import layers
+import copy
+
+from paddle.fluid import layers, unique_name
 from paddle.fluid.dygraph import Layer
+from paddle.fluid.dygraph.layer_object_helper import LayerObjectHelper
 from paddle.fluid.layers.control_flow import StaticRNN
 
 __all__ = ['BasicGRUUnit', 'basic_gru', 'BasicLSTMUnit', 'basic_lstm']
@@ -80,6 +83,10 @@ class BasicGRUUnit(Layer):
                  activation=None,
                  dtype='float32'):
         super(BasicGRUUnit, self).__init__(name_scope, dtype)
+        # reserve old school _full_name and _helper for static graph save load
+        self._full_name = unique_name.generate(name_scope + "/" +
+                                               self.__class__.__name__)
+        self._helper = LayerObjectHelper(self._full_name)
 
         self._name = name_scope
         self._hiden_size = hidden_size
@@ -93,23 +100,41 @@ class BasicGRUUnit(Layer):
         self._input_size = input.shape[-1]
         assert (self._input_size > 0)
 
+        if self._param_attr is not None and self._param_attr.name is not None:
+            gate_param_attr = copy.deepcopy(self._param_attr)
+            candidate_param_attr = copy.deepcopy(self._param_attr)
+            gate_param_attr.name += "_gate"
+            candidate_param_attr.name += "_candidate"
+        else:
+            gate_param_attr = self._param_attr
+            candidate_param_attr = self._param_attr
+
         self._gate_weight = self.create_parameter(
-            attr=self._param_attr,
+            attr=gate_param_attr,
             shape=[self._input_size + self._hiden_size, 2 * self._hiden_size],
             dtype=self._dtype)
 
         self._candidate_weight = self.create_parameter(
-            attr=self._param_attr,
+            attr=candidate_param_attr,
             shape=[self._input_size + self._hiden_size, self._hiden_size],
             dtype=self._dtype)
 
+        if self._bias_attr is not None and self._bias_attr.name is not None:
+            gate_bias_attr = copy.deepcopy(self._bias_attr)
+            candidate_bias_attr = copy.deepcopy(self._bias_attr)
+            gate_bias_attr.name += "_gate"
+            candidate_bias_attr.name += "_candidate"
+        else:
+            gate_bias_attr = self._bias_attr
+            candidate_bias_attr = self._bias_attr
+
         self._gate_bias = self.create_parameter(
-            self._bias_attr,
+            attr=gate_bias_attr,
             shape=[2 * self._hiden_size],
             dtype=self._dtype,
             is_bias=True)
         self._candidate_bias = self.create_parameter(
-            self._bias_attr,
+            attr=candidate_bias_attr,
             shape=[self._hiden_size],
             dtype=self._dtype,
             is_bias=True)
@@ -127,7 +152,7 @@ class BasicGRUUnit(Layer):
         r_hidden = r * pre_hidden
 
         candidate = layers.matmul(
-            layers.concat([input, pre_hidden], 1), self._candidate_weight)
+            layers.concat([input, r_hidden], 1), self._candidate_weight)
         candidate = layers.elementwise_add(candidate, self._candidate_bias)
 
         c = self._activation(candidate)
@@ -151,7 +176,7 @@ def basic_gru(input,
               dtype='float32',
               name='basic_gru'):
     """
-    GRU implementation using basic operator, supports multiple layers and bidirection gru.
+    GRU implementation using basic operator, supports multiple layers and bidirectional gru.
 
     .. math::
             u_t & = actGate(W_ux xu_{t} + W_uh h_{t-1} + b_u)
@@ -176,9 +201,14 @@ def basic_gru(input,
         sequence_length (Variabe|None): A Tensor (shape [batch_size]) stores each real length of each instance,
                         This tensor will be convert to a mask to mask the padding ids
                         If it's None means NO padding ids
-        dropout_prob(float|0.0): Dropout prob, dropout ONLY works after rnn output of earch layers, 
+        dropout_prob(float|0.0): Dropout prob, dropout ONLY works after rnn output of each layers, 
                              NOT between time steps
         bidirectional (bool|False): If it is bidirectional
+        batch_first (bool|True): The shape format of the input and output tensors. If true,
+            the shape format should be :attr:`[batch_size, seq_len, hidden_size]`. If false,
+            the shape format should be :attr:`[seq_len, batch_size, hidden_size]`. By default
+            this function accepts input and emits output in batch-major form to be consistent
+            with most of data format, though a bit less efficient because of extra transposes.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
             weight matrix. Note:
             If it is set to None or one attribute of ParamAttr, gru_unit will
@@ -234,17 +264,39 @@ def basic_gru(input,
 
     for i in range(num_layers):
         new_name = name + "_layers_" + str(i)
+        if param_attr is not None and param_attr.name is not None:
+            layer_param_attr = copy.deepcopy(param_attr)
+            layer_param_attr.name += "_fw_w_" + str(i)
+        else:
+            layer_param_attr = param_attr
+        if bias_attr is not None and bias_attr.name is not None:
+            layer_bias_attr = copy.deepcopy(bias_attr)
+            layer_bias_attr.name += "_fw_b_" + str(i)
+        else:
+            layer_bias_attr = bias_attr
         fw_unit_list.append(
-            BasicGRUUnit(new_name, hidden_size, param_attr, bias_attr,
-                         gate_activation, activation, dtype))
+            BasicGRUUnit(new_name, hidden_size, layer_param_attr,
+                         layer_bias_attr, gate_activation, activation, dtype))
     if bidirectional:
         bw_unit_list = []
 
         for i in range(num_layers):
             new_name = name + "_reverse_layers_" + str(i)
+            if param_attr is not None and param_attr.name is not None:
+                layer_param_attr = copy.deepcopy(param_attr)
+                layer_param_attr.name += "_bw_w_" + str(i)
+            else:
+                layer_param_attr = param_attr
+            if bias_attr is not None and bias_attr.name is not None:
+                layer_bias_attr = copy.deepcopy(bias_attr)
+                layer_bias_attr.name += "_bw_b_" + str(i)
+            else:
+                layer_bias_attr = bias_attr
+
             bw_unit_list.append(
-                BasicGRUUnit(new_name, hidden_size, param_attr, bias_attr,
-                             gate_activation, activation, dtype))
+                BasicGRUUnit(new_name, hidden_size, layer_param_attr,
+                             layer_bias_attr, gate_activation, activation,
+                             dtype))
 
     if batch_first:
         input = layers.transpose(input, [1, 0, 2])
@@ -345,7 +397,7 @@ def basic_gru(input,
         last_hidden = fw_last_hidden
 
         if batch_first:
-            rnn_out = fluid.layser.transpose(rnn_out, [1, 0, 2])
+            rnn_out = layers.transpose(rnn_out, [1, 0, 2])
 
         return rnn_out, last_hidden
 
@@ -367,7 +419,7 @@ def basic_lstm(input,
                dtype='float32',
                name='basic_lstm'):
     """
-    LSTM implementation using basic operators, supports multiple layers and bidirection LSTM.
+    LSTM implementation using basic operators, supports multiple layers and bidirectional LSTM.
 
     .. math::
            i_t &= \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + b_i)
@@ -401,9 +453,14 @@ def basic_lstm(input,
         sequence_length (Variabe|None): A tensor (shape [batch_size]) stores each real length of each instance,
                         This tensor will be convert to a mask to mask the padding ids
                         If it's None means NO padding ids
-        dropout_prob(float|0.0): Dropout prob, dropout ONLY work after rnn output of earch layers, 
+        dropout_prob(float|0.0): Dropout prob, dropout ONLY work after rnn output of each layers, 
                              NOT between time steps
         bidirectional (bool|False): If it is bidirectional
+        batch_first (bool|True): The shape format of the input and output tensors. If true,
+            the shape format should be :attr:`[batch_size, seq_len, hidden_size]`. If false,
+            the shape format should be :attr:`[seq_len, batch_size, hidden_size]`. By default
+            this function accepts input and emits output in batch-major form to be consistent
+            with most of data format, though a bit less efficient because of extra transposes.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
             weight matrix. Note:
             If it is set to None or one attribute of ParamAttr, lstm_unit will
@@ -464,12 +521,22 @@ def basic_lstm(input,
 
     for i in range(num_layers):
         new_name = name + "_layers_" + str(i)
+        if param_attr is not None and param_attr.name is not None:
+            layer_param_attr = copy.deepcopy(param_attr)
+            layer_param_attr.name += "_fw_w_" + str(i)
+        else:
+            layer_param_attr = param_attr
+        if bias_attr is not None and bias_attr.name is not None:
+            layer_bias_attr = copy.deepcopy(bias_attr)
+            layer_bias_attr.name += "_fw_b_" + str(i)
+        else:
+            layer_bias_attr = bias_attr
         fw_unit_list.append(
             BasicLSTMUnit(
                 new_name,
                 hidden_size,
-                param_attr=param_attr,
-                bias_attr=bias_attr,
+                param_attr=layer_param_attr,
+                bias_attr=layer_bias_attr,
                 gate_activation=gate_activation,
                 activation=activation,
                 forget_bias=forget_bias,
@@ -479,12 +546,22 @@ def basic_lstm(input,
 
         for i in range(num_layers):
             new_name = name + "_reverse_layers_" + str(i)
+            if param_attr is not None and param_attr.name is not None:
+                layer_param_attr = copy.deepcopy(param_attr)
+                layer_param_attr.name += "_bw_w_" + str(i)
+            else:
+                layer_param_attr = param_attr
+            if bias_attr is not None and bias_attr.name is not None:
+                layer_bias_attr = copy.deepcopy(bias_attr)
+                layer_bias_attr.name += "_bw_b_" + str(i)
+            else:
+                layer_bias_attr = param_attr
             bw_unit_list.append(
                 BasicLSTMUnit(
                     new_name,
                     hidden_size,
-                    param_attr=param_attr,
-                    bias_attr=bias_attr,
+                    param_attr=layer_param_attr,
+                    bias_attr=layer_bias_attr,
                     gate_activation=gate_activation,
                     activation=activation,
                     forget_bias=forget_bias,
@@ -700,6 +777,10 @@ class BasicLSTMUnit(Layer):
                  forget_bias=1.0,
                  dtype='float32'):
         super(BasicLSTMUnit, self).__init__(name_scope, dtype)
+        # reserve old school _full_name and _helper for static graph save load
+        self._full_name = unique_name.generate(name_scope + "/" +
+                                               self.__class__.__name__)
+        self._helper = LayerObjectHelper(self._full_name)
 
         self._name = name_scope
         self._hiden_size = hidden_size

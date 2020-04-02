@@ -89,7 +89,7 @@ class SequenceMaskKernel : public framework::OpKernel<Tx> {
         maxlen = *max_len_tensor->data<int32_t>();
       }
 
-      auto y_dim = framework::vectorize2int(x->dims());
+      auto y_dim = framework::vectorize<int>(x->dims());
       y_dim.push_back(maxlen);
       y->Resize(framework::make_ddim(y_dim));
 
@@ -110,7 +110,7 @@ class SequenceMaskKernel : public framework::OpKernel<Tx> {
 #else
       maxlen = static_cast<int>(*std::max_element(x_data, x_data + x_numel));
 #endif
-      auto y_dim = framework::vectorize2int(x->dims());
+      auto y_dim = framework::vectorize<int>(x->dims());
       y_dim.push_back(maxlen);
       y->Resize(framework::make_ddim(y_dim));
     }

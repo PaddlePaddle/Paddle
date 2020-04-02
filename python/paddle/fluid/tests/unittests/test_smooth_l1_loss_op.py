@@ -30,7 +30,7 @@ def smooth_l1_loss_forward(val, sigma2):
 class TestSmoothL1LossOp1(OpTest):
     def setUp(self):
         self.op_type = "smooth_l1_loss"
-        dims = (5, 10)
+        dims = (5, 20)
         self.inputs = {
             'X': np.random.random(dims).astype("float32"),
             'Y': np.random.random(dims).astype("float32")
@@ -64,7 +64,7 @@ class TestSmoothL1LossOp1(OpTest):
 class TestSmoothL1LossOp2(OpTest):
     def setUp(self):
         self.op_type = "smooth_l1_loss"
-        dims = (5, 10)
+        dims = (5, 20)
         self.inputs = {
             'X': np.random.random(dims).astype("float32"),
             'Y': np.random.random(dims).astype("float32"),

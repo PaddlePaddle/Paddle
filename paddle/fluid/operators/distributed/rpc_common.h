@@ -27,12 +27,15 @@ struct RpcContext {
 
   RpcContext(const std::string &name, const std::vector<std::string> &names,
              const std::vector<std::string> &emap,
-             const std::vector<int64_t> &sections, int id)
+             const std::vector<int64_t> &sections, int id,
+             bool merge_add_ = true, bool use_send_handler_ = true)
       : var_name(name),
         splited_var_names(names),
         epmap(emap),
         height_sections(sections),
-        trainer_id(id) {}
+        trainer_id(id),
+        merge_add(merge_add_),
+        use_send_handler(use_send_handler_) {}
 
   RpcContext(const RpcContext &ctx) {
     var_name = ctx.var_name;
@@ -40,6 +43,8 @@ struct RpcContext {
     epmap = ctx.epmap;
     height_sections = ctx.height_sections;
     trainer_id = ctx.trainer_id;
+    merge_add = ctx.merge_add;
+    use_send_handler = ctx.use_send_handler;
   }
 
   std::string var_name;
@@ -47,6 +52,8 @@ struct RpcContext {
   std::vector<std::string> epmap;
   std::vector<int64_t> height_sections;
   int trainer_id;
+  bool merge_add;
+  bool use_send_handler;
 };
 
 inline std::ostream &operator<<(std::ostream &os, const RpcContext &rpc_ctx) {
@@ -70,6 +77,9 @@ inline std::ostream &operator<<(std::ostream &os, const RpcContext &rpc_ctx) {
     os << section << ", ";
   }
   os << "]\n";
+
+  os << "merge add: " << rpc_ctx.merge_add;
+  os << "; send handler: " << rpc_ctx.use_send_handler << "\n";
   os << "}";
   return os;
 }

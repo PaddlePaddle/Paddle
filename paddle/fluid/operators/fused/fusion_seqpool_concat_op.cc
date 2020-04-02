@@ -42,12 +42,18 @@ void FusionSeqPoolConcatOp::InferShape(
   PADDLE_ENFORCE_EQ(ins_dims[0].size(), 2,
                     "The dims size of first input should be 2.");
   ctx->SetOutputDim("Out", {-1, ins_dims[0][axis] * static_cast<int>(n)});
+
+  if (!ctx->IsRuntime()) {
+    // when compiling, the LodLevel of Out is set to be 1, which is consistent
+    // with that in running time.
+    ctx->SetLoDLevel("Out", 1);
+  }
 }
 
 framework::OpKernelType FusionSeqPoolConcatOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   return framework::OpKernelType(
-      framework::GetDataTypeOfVar(ctx.MultiInputVar("X")[0]), ctx.GetPlace());
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
 }
 
 void FusionSeqPoolConcatOpMaker::Make() {

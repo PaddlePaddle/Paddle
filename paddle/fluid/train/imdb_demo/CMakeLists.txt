@@ -16,15 +16,13 @@ include_directories("${PADDLE_LIB}/third_party/install/protobuf/include")
 include_directories("${PADDLE_LIB}/third_party/install/glog/include")
 include_directories("${PADDLE_LIB}/third_party/install/gflags/include")
 include_directories("${PADDLE_LIB}/third_party/install/xxhash/include")
-include_directories("${PADDLE_LIB}/third_party/install/snappy/include")
-include_directories("${PADDLE_LIB}/third_party/install/snappystream/include")
 include_directories("${PADDLE_LIB}/third_party/install/zlib/include")
 
 include_directories("${PADDLE_LIB}/third_party/boost")
 include_directories("${PADDLE_LIB}/third_party/eigen3")
+include_directories("${PADDLE_LIB}/third_party/threadpool")
+include_directories("${PADDLE_LIB}/third_party/dlpack")
 
-link_directories("${PADDLE_LIB}/third_party/install/snappy/lib")
-link_directories("${PADDLE_LIB}/third_party/install/snappystream/lib")
 link_directories("${PADDLE_LIB}/third_party/install/protobuf/lib")
 link_directories("${PADDLE_LIB}/third_party/install/glog/lib")
 link_directories("${PADDLE_LIB}/third_party/install/gflags/lib")
@@ -74,5 +72,5 @@ target_link_libraries(demo_trainer
 	${ARCHIVE_END}
 	${MATH_LIB}
 	${MKLDNN_LIB}
-	glog gflags protobuf snappystream snappy z xxhash
+	glog gflags protobuf z xxhash
 	${EXTERNAL_LIB})

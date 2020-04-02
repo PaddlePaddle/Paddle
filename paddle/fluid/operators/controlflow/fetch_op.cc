@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -55,7 +56,25 @@ class FetchOp : public framework::OperatorBase {
     // FIXME(yuyang18): Should we assume the fetch operator always generate
     // CPU outputs?
     if (src_item.IsInitialized() && src_item.numel() > 0) {
+#ifdef PADDLE_WITH_MKLDNN
+      // Conversion from MKL-DNN to Paddle
+      if (src_item.layout() == framework::DataLayout::kMKLDNN) {
+        framework::Tensor out;
+        // Convert to desired Paddle layout, apart from grads of filter
+        // as params are not a subject to paddle's data_format
+        framework::innerTransDataLayoutFromMKLDNN(
+            src_item.layout(),
+            fetch_var_name == framework::GradVarName("Filter")
+                ? framework::DataLayout::kNCHW
+                : paddle::platform::get_cur_paddle_data_layout(),
+            src_item, &out, platform::CPUPlace());
+        TensorCopySync(out, platform::CPUPlace(), &dst_item);
+      } else {
+        TensorCopySync(src_item, platform::CPUPlace(), &dst_item);
+      }
+#else
       TensorCopySync(src_item, platform::CPUPlace(), &dst_item);
+#endif
     } else {
       // Not copy, if the src tensor is empty.
       dst_item.clear();
@@ -84,6 +103,8 @@ It should not be configured by users directly.
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(fetch, paddle::operators::FetchOp,
-                  paddle::framework::EmptyGradOpMaker,
-                  paddle::operators::FetchOpInfoMaker);
+REGISTER_OPERATOR(
+    fetch, paddle::operators::FetchOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    paddle::operators::FetchOpInfoMaker);

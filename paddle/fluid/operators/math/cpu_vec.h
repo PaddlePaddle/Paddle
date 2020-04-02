@@ -160,7 +160,7 @@ inline void vec_sum<float, platform::avx>(const size_t n, const float* x,
   end = n & ~(block - 1);
   __m256 tmp = _mm256_setzero_ps();
   for (i = 0; i < end; i += block) {
-    tmp = _mm256_add_ps(tmp, _mm256_load_ps(x + i));
+    tmp = _mm256_add_ps(tmp, _mm256_loadu_ps(x + i));
   }
 
   __m256 hsum = _mm256_hadd_ps(tmp, tmp);

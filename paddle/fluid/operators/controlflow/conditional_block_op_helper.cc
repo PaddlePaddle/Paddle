@@ -29,16 +29,12 @@ static bool IsMatchedConditionalBlockOpAndConditionalBlockGradOp(
 }
 
 static void FindAllConditionalBlockAndConditionalBlockGradOp(
-    std::vector<OpVariant> *fwd_ops, std::vector<OpVariant> *bwd_ops) {
+    const framework::ProgramDesc &program, std::vector<OpVariant> *fwd_ops,
+    std::vector<OpVariant> *bwd_ops) {
   PADDLE_ENFORCE_GE(fwd_ops->size(), bwd_ops->size());
 
-  if (fwd_ops->empty()) return;
-
-  const auto *program =
-      fwd_ops->front().Attr<framework::BlockDesc *>("sub_block")->Program();
-
-  for (size_t i = 1; i < program->Size(); ++i) {
-    auto &block = program->Block(i);
+  for (size_t i = 1; i < program.Size(); ++i) {
+    auto &block = program.Block(i);
     for (size_t j = 0; j < block.OpSize(); ++j) {
       auto *op = block.Op(j);
       if (op->Type() == "conditional_block") {
@@ -86,9 +82,10 @@ static void SetSkipVarsForConditionalBlockOp(OpVariant *fwd_op,
 }
 
 static void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOpImpl(
-    std::vector<OpVariant> *ifelse_ops,
+    const framework::ProgramDesc &program, std::vector<OpVariant> *ifelse_ops,
     std::vector<OpVariant> *ifelse_grad_ops) {
-  FindAllConditionalBlockAndConditionalBlockGradOp(ifelse_ops, ifelse_grad_ops);
+  FindAllConditionalBlockAndConditionalBlockGradOp(program, ifelse_ops,
+                                                   ifelse_grad_ops);
 
   VLOG(2) << "Found conditional_block op num: " << ifelse_ops->size()
           << ", conditional_block_grad op num: " << ifelse_grad_ops->size();
@@ -121,7 +118,7 @@ static void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOpImpl(
 }
 
 void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
-    int block_id,
+    const framework::ProgramDesc &program, int block_id,
     const std::vector<std::unique_ptr<framework::OperatorBase>> &all_ops) {
   // If block_id is not 0, returns
   // This is because all conditional_block_ops and conditional_block_grad_ops
@@ -143,11 +140,12 @@ void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
     }
   }
 
-  PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOpImpl(&fwd_ops,
-                                                                  &bwd_ops);
+  PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOpImpl(
+      program, &fwd_ops, &bwd_ops);
 }
 
 void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
+    const framework::ProgramDesc &program,
     const std::vector<framework::OperatorBase *> &ifelse_ops,
     const std::vector<framework::OperatorBase *> &ifelse_grad_ops) {
   std::vector<OpVariant> fwd_ops, bwd_ops;
@@ -161,8 +159,8 @@ void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
     bwd_ops.emplace_back(op);
   }
 
-  PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOpImpl(&fwd_ops,
-                                                                  &bwd_ops);
+  PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOpImpl(
+      program, &fwd_ops, &bwd_ops);
 }
 
 }  // namespace operators

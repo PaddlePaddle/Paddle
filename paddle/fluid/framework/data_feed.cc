@@ -105,15 +105,20 @@ bool DataFeed::SetFileList(const std::vector<std::string>& files) {
 }
 
 void DataFeed::SetBatchSize(int batch_size) {
-  PADDLE_ENFORCE(batch_size > 0, "Illegal batch size: %d.", batch_size);
+  PADDLE_ENFORCE_GT(batch_size, 0,
+                    platform::errors::InvalidArgument(
+                        "Batch size %d is illegal.", batch_size));
   default_batch_size_ = batch_size;
 }
 
 bool DataFeed::PickOneFile(std::string* filename) {
-  PADDLE_ENFORCE(mutex_for_pick_file_ != nullptr,
-                 "should call SetFileListMutex before PickOneFile");
-  PADDLE_ENFORCE(file_idx_ != nullptr,
-                 "should call SetFileListIndex before PickOneFile");
+  PADDLE_ENFORCE_NOT_NULL(
+      mutex_for_pick_file_,
+      platform::errors::PreconditionNotMet(
+          "You should call SetFileListMutex before PickOneFile"));
+  PADDLE_ENFORCE_NOT_NULL(
+      file_idx_, platform::errors::PreconditionNotMet(
+                     "You should call SetFileListIndex before PickOneFile"));
   std::unique_lock<std::mutex> lock(*mutex_for_pick_file_);
   if (*file_idx_ == filelist_.size()) {
     VLOG(3) << "DataFeed::PickOneFile no more file to pick";
@@ -133,7 +138,9 @@ void DataFeed::CheckSetFileList() {
 }
 
 void DataFeed::CheckStart() {
-  PADDLE_ENFORCE(finish_start_, "Datafeed has not started running yet.");
+  PADDLE_ENFORCE_EQ(finish_start_, true,
+                    platform::errors::PreconditionNotMet(
+                        "Datafeed has not started running yet."));
 }
 
 void DataFeed::AssignFeedVar(const Scope& scope) {
@@ -224,6 +231,7 @@ InMemoryDataFeed<T>::InMemoryDataFeed() {
   this->thread_id_ = 0;
   this->thread_num_ = 1;
   this->parse_ins_id_ = false;
+  this->parse_content_ = false;
   this->input_channel_ = nullptr;
   this->output_channel_ = nullptr;
   this->consume_channel_ = nullptr;
@@ -308,6 +316,11 @@ void InMemoryDataFeed<T>::SetThreadNum(int thread_num) {
 }
 
 template <typename T>
+void InMemoryDataFeed<T>::SetParseContent(bool parse_content) {
+  parse_content_ = parse_content;
+}
+
+template <typename T>
 void InMemoryDataFeed<T>::SetParseInsId(bool parse_ins_id) {
   parse_ins_id_ = parse_ins_id;
 }
@@ -378,7 +391,7 @@ void MultiSlotDataFeed::Init(
       use_slots_is_dense_.push_back(slot.is_dense());
       std::vector<int> local_shape;
       if (slot.is_dense()) {
-        for (size_t j = 0; j < slot.shape_size(); ++j) {
+        for (int j = 0; j < slot.shape_size(); ++j) {
           if (slot.shape(j) > 0) {
             total_dims_without_inductive_[i] *= slot.shape(j);
           }
@@ -387,7 +400,7 @@ void MultiSlotDataFeed::Init(
           }
         }
       }
-      for (size_t j = 0; j < slot.shape_size(); ++j) {
+      for (int j = 0; j < slot.shape_size(); ++j) {
         local_shape.push_back(slot.shape(j));
       }
       use_slots_shape_.push_back(local_shape);
@@ -550,13 +563,14 @@ bool MultiSlotDataFeed::ParseOneInstanceFromPipe(
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
       int idx = use_slots_index_[i];
       int num = strtol(&str[pos], &endptr, 10);
-      PADDLE_ENFORCE(
-          num,
-          "The number of ids can not be zero, you need padding "
-          "it in data generator; or if there is something wrong with "
-          "the data, please check if the data contains unresolvable "
-          "characters.\nplease check this error line: %s",
-          str);
+      PADDLE_ENFORCE_NE(
+          num, 0,
+          platform::errors::InvalidArgument(
+              "The number of ids can not be zero, you need padding "
+              "it in data generator; or if there is something wrong with "
+              "the data, please check if the data contains unresolvable "
+              "characters.\nplease check this error line: %s",
+              str));
       if (idx != -1) {
         (*instance)[idx].Init(all_slots_type_[i]);
         if ((*instance)[idx].GetType()[0] == 'f') {  // float
@@ -722,7 +736,7 @@ void MultiSlotInMemoryDataFeed::Init(
       use_slots_is_dense_.push_back(slot.is_dense());
       std::vector<int> local_shape;
       if (slot.is_dense()) {
-        for (size_t j = 0; j < slot.shape_size(); ++j) {
+        for (int j = 0; j < slot.shape_size(); ++j) {
           if (slot.shape(j) > 0) {
             total_dims_without_inductive_[i] *= slot.shape(j);
           }
@@ -731,7 +745,7 @@ void MultiSlotInMemoryDataFeed::Init(
           }
         }
       }
-      for (size_t j = 0; j < slot.shape_size(); ++j) {
+      for (int j = 0; j < slot.shape_size(); ++j) {
         local_shape.push_back(slot.shape(j));
       }
       use_slots_shape_.push_back(local_shape);
@@ -765,6 +779,18 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
       instance->ins_id_ = std::string(str + pos, len);
       pos += len + 1;
       VLOG(3) << "ins_id " << instance->ins_id_;
+    }
+    if (parse_content_) {
+      int num = strtol(&str[pos], &endptr, 10);
+      CHECK(num == 1);  // NOLINT
+      pos = endptr - str + 1;
+      size_t len = 0;
+      while (str[pos + len] != ' ') {
+        ++len;
+      }
+      instance->content_ = std::string(str + pos, len);
+      pos += len + 1;
+      VLOG(3) << "content " << instance->content_;
     }
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
       int idx = use_slots_index_[i];
@@ -890,8 +916,14 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
   std::vector<std::vector<size_t>> offset(use_slots_.size(),
                                           std::vector<size_t>{0});
   std::vector<bool> visit(use_slots_.size(), false);
+  ins_content_vec_.clear();
+  ins_content_vec_.reserve(ins_vec.size());
+  ins_id_vec_.clear();
+  ins_id_vec_.reserve(ins_vec.size());
   for (size_t i = 0; i < ins_vec.size(); ++i) {
     auto& r = ins_vec[i];
+    ins_id_vec_.push_back(r.ins_id_);
+    ins_content_vec_.push_back(r.content_);
     for (auto& item : r.float_feasigns_) {
       batch_float_feasigns[item.slot()].push_back(item.sign().float_feasign_);
       visit[item.slot()] = true;
@@ -1040,13 +1072,13 @@ void PrivateInstantDataFeed<T>::Init(const DataFeedDesc& data_feed_desc) {
       use_slots_is_dense_.push_back(slot.is_dense());
       std::vector<int> local_shape;
       if (slot.is_dense()) {
-        for (size_t j = 0; j < slot.shape_size(); ++j) {
+        for (int j = 0; j < slot.shape_size(); ++j) {
           if (slot.shape(j) == -1) {
             multi_inductive_shape_index_[i].push_back(j);
           }
         }
       }
-      for (size_t j = 0; j < slot.shape_size(); ++j) {
+      for (int j = 0; j < slot.shape_size(); ++j) {
         local_shape.push_back(slot.shape(j));
       }
       use_slots_shape_.push_back(local_shape);

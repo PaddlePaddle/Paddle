@@ -59,6 +59,7 @@ class TestNpairLossOp(unittest.TestCase):
         place = core.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
+
         embeddings_anchor = np.random.rand(num_data,
                                            feat_dim).astype(np.float32)
         embeddings_positive = np.random.rand(num_data,
@@ -71,21 +72,29 @@ class TestNpairLossOp(unittest.TestCase):
             row_labels,
             l2_reg=reg_lambda)
 
-        anc = fluid.layers.create_tensor(
-            dtype='float32', persistable=True, name='anc')
-        pos = fluid.layers.create_tensor(
-            dtype='float32', persistable=True, name='pos')
-        lab = fluid.layers.create_tensor(
-            dtype='float32', persistable=True, name='lab')
-        fluid.layers.assign(input=embeddings_anchor, output=anc)
-        fluid.layers.assign(input=embeddings_positive, output=pos)
-        fluid.layers.assign(input=row_labels, output=lab)
+        anc = fluid.layers.data(
+            dtype='float32',
+            name='anc',
+            shape=embeddings_anchor.shape,
+            append_batch_size=False)
+        pos = fluid.layers.data(
+            dtype='float32',
+            name='pos',
+            shape=embeddings_positive.shape,
+            append_batch_size=False)
+        lab = fluid.layers.data(
+            dtype='float32',
+            name='lab',
+            shape=row_labels.shape,
+            append_batch_size=False)
 
         npair_loss_op = fluid.layers.npair_loss(
             anchor=anc, positive=pos, labels=lab, l2_reg=reg_lambda)
-        out_tensor = exe.run(feed={'anc': anc,
-                                   'pos': pos,
-                                   'lab': lab},
+        out_tensor = exe.run(feed={
+            'anc': embeddings_anchor,
+            'pos': embeddings_positive,
+            'lab': row_labels
+        },
                              fetch_list=[npair_loss_op.name])
 
         self.__assert_close(

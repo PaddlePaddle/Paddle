@@ -47,10 +47,8 @@ class SoftmaxOp : public framework::OperatorWithKernel {
                    "R is the rank of Input(X).");
 
     auto use_cudnn = ctx->Attrs().Get<bool>("use_cudnn");
-    auto use_mkldnn = ctx->Attrs().Get<bool>("use_mkldnn");
     if (axis != rank_x - 1 && axis != -1) {
       PADDLE_ENFORCE(!use_cudnn, "CUDNN kernel only support axis as -1.");
-      PADDLE_ENFORCE(!use_mkldnn, "MKLDNN kernel only support axis as -1.");
     }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
@@ -78,7 +76,7 @@ class SoftmaxOp : public framework::OperatorWithKernel {
     }
 #endif
 
-    auto input_data_type = ctx.Input<Tensor>("X")->type();
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     if (input_data_type == framework::proto::VarType::FP16) {
       PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                      "float16 can only be used on GPU place");
@@ -189,8 +187,8 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
       layout_ = framework::DataLayout::kMKLDNN;
     }
 #endif
-    auto input_data_type =
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type();
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
     if (input_data_type == framework::proto::VarType::FP16) {
       PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                      "float16 can only be used on GPU place");
@@ -201,24 +199,29 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class SoftmaxOpGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SoftmaxOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("softmax_grad");
 
-    op->SetInput("Out", Output("Out"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetInput("Out", this->Output("Out"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
 
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   }
 };
+
+DECLARE_INPLACE_OP_INFERER(SoftmaxInplaceInferer, {"X", "Out"});
+
+// NOTE(zjl): AVX implementation of SoftmaxGrad does not support in-place
+DECLARE_CUDA_ONLY_INPLACE_OP_INFERER(SoftmaxGradInplaceInferer,
+                                     {"Out", framework::GradVarName("X")});
 
 }  // namespace operators
 }  // namespace paddle
@@ -226,8 +229,12 @@ class SoftmaxOpGradMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker,
-                  ops::SoftmaxOpInferVarType, ops::SoftmaxOpGradMaker);
-REGISTER_OPERATOR(softmax_grad, ops::SoftmaxOpGrad);
+                  ops::SoftmaxOpInferVarType,
+                  ops::SoftmaxOpGradMaker<paddle::framework::OpDesc>,
+                  ops::SoftmaxOpGradMaker<paddle::imperative::OpBase>,
+                  ops::SoftmaxInplaceInferer);
+REGISTER_OPERATOR(softmax_grad, ops::SoftmaxOpGrad,
+                  ops::SoftmaxGradInplaceInferer);
 REGISTER_OP_CPU_KERNEL(
     softmax, ops::SoftmaxKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SoftmaxKernel<paddle::platform::CPUDeviceContext, double>);

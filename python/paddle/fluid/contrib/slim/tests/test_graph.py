@@ -123,7 +123,7 @@ class TestGraph(unittest.TestCase):
             for op in backup_graph.all_op_nodes():
                 if op.name().find('conv2d') > -1:
                     backup_marked_nodes.add(op)
-            backup_graph.draw('.', 'backup', backup_marked_nodes)
+            backup_graph.draw('./origin', 'backup', backup_marked_nodes)
         self.assertFalse(graph.has_circle())
         self.assertEqual(graph.graph_num(), 1)
         nodes = graph.topology_sort()

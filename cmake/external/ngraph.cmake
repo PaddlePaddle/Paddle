@@ -12,32 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_library(ngraph INTERFACE)
-
-IF(WIN32 OR APPLE)
-    MESSAGE(WARNING
-        "Windows or Mac is not supported with nGraph in Paddle yet."
-        "Force WITH_NGRAPH=OFF")
-    SET(WITH_NGRAPH OFF CACHE STRING "Disable nGraph in Windows and MacOS" FORCE)
-ENDIF()
-
-IF(${WITH_NGRAPH} AND NOT ${WITH_MKLDNN})
-    MESSAGE(WARNING
-        "nGraph needs mkl-dnn to be enabled."
-        "Force WITH_NGRAPH=OFF")
-    SET(WITH_NGRAPH OFF CACHE STRING "Disable nGraph if mkl-dnn is disabled" FORCE)
-ENDIF()
-
-IF(NOT ${WITH_NGRAPH})
-    return()
-ENDIF()
-
 INCLUDE(GNUInstallDirs)
 
 INCLUDE(ExternalProject)
 
 SET(NGRAPH_PROJECT         "extern_ngraph")
-SET(NGRAPH_GIT_TAG         "v0.24.0-rc.2")
+SET(NGRAPH_GIT_TAG         "972dd2f5ecfa18e3819b17c47698fae9795b499f")
 SET(NGRAPH_SOURCES_DIR     ${THIRD_PARTY_PATH}/ngraph)
 SET(NGRAPH_INSTALL_DIR     ${THIRD_PARTY_PATH}/install/ngraph)
 SET(NGRAPH_INC_DIR         ${NGRAPH_INSTALL_DIR}/include)
@@ -57,6 +37,7 @@ SET(NGRAPH_TBB_LIB         ${NGRAPH_LIB_DIR}/${NGRAPH_TBB_LIB_NAME})
 ExternalProject_Add(
     ${NGRAPH_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
+    ${SHALLOW_CLONE}
     DEPENDS                  ${MKLDNN_PROJECT} ${MKLML_PROJECT}
     GIT_REPOSITORY           ${NGRAPH_GIT_REPO}
     GIT_TAG                  ${NGRAPH_GIT_TAG}
@@ -78,6 +59,7 @@ ExternalProject_Add(
     CMAKE_ARGS               -DMKLML_LIB_DIR=${MKLML_INSTALL_DIR}/lib
 )
 
+add_library(ngraph INTERFACE)
 add_dependencies(ngraph ${NGRAPH_PROJECT})
 target_compile_definitions(ngraph INTERFACE -DPADDLE_WITH_NGRAPH)
 target_include_directories(ngraph INTERFACE ${NGRAPH_INC_DIR})

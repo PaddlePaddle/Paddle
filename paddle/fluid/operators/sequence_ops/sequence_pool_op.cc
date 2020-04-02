@@ -24,14 +24,25 @@ class SequencePoolOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequencePoolOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SequencePoolOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "Input(X) of SequencePoolOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) of SequencePoolOp should not be null.");
+
+    if (!ctx->IsRuntime()) {
+      // Check the lod_level for compile-time.
+      auto in_lod_level = ctx->GetLoDLevel("X");
+      PADDLE_ENFORCE_GT(
+          in_lod_level, 0,
+          "The LoD level Input(X) of sequence_pool should be larger than 0.");
+      ctx->SetLoDLevel("Out", in_lod_level - 1);
+    }
+
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     if (ctx->Attrs().Get<std::string>("pooltype") == "MAX") {
-      PADDLE_ENFORCE(ctx->HasOutput("MaxIndex"),
-                     "Output(MaxIndex) of SequencePoolOp should not be null.");
+      PADDLE_ENFORCE_EQ(
+          ctx->HasOutput("MaxIndex"), true,
+          "Output(MaxIndex) of SequencePoolOp should not be null.");
       ctx->SetOutputDim("MaxIndex", ctx->GetInputDim("X"));
     }
   }
@@ -43,7 +54,7 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(LoDTensor) The variable-length input of SequencePoolOp");
     AddOutput("Out",
               "(Tensor) The output of SequencePoolOp does not contain LoD "
-              "infomation.");
+              "information.");
     AddOutput("MaxIndex",
               "(Tensor<int>) This tensor is used for the sequence max-pooling "
               "to record the max indexes.")
@@ -82,7 +93,7 @@ Assume X is a [7,M,N] LoDTensor, and X->lod()[0] = [0, 2, 5, 7], 7=2+3+2.
 Besides, for the sake of simplicity, we assume M=1 and N=1,
 and the value of X = [[1, 3], [2, 4, 6], [5, 1]].
 
-Thus, Out is a [3,1,1] Tensor without LoD infomation.
+Thus, Out is a [3,1,1] Tensor without LoD information.
 And for different pooltype, the value of Out is as follows:
 
 - AVERAGE: [2, 4, 3], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2
@@ -102,9 +113,10 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Gradient of Out should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("X"), "The input X should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+                      "Gradient of Out should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "The input X should not be null.");
     auto og_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(og_dims.size(), x_dims.size(),
@@ -120,40 +132,41 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 
-class SequencePoolGradOpMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SequencePoolGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op_desc_ptr = new framework::OpDesc();
+  void Apply(GradOpPtr<T> op_desc_ptr) const override {
     op_desc_ptr->SetType("sequence_pool_grad");
-    op_desc_ptr->SetInput("X", Input("X"));
-    if (boost::get<std::string>(GetAttr("pooltype")) == "MAX") {
-      op_desc_ptr->SetInput("MaxIndex", Output("MaxIndex"));
+    op_desc_ptr->SetInput("X", this->Input("X"));
+    if (boost::get<std::string>(this->GetAttr("pooltype")) == "MAX") {
+      op_desc_ptr->SetInput("MaxIndex", this->Output("MaxIndex"));
     }
-    op_desc_ptr->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op_desc_ptr->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op_desc_ptr->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(op_desc_ptr);
+    op_desc_ptr->SetInput(framework::GradVarName("Out"),
+                          this->OutputGrad("Out"));
+    op_desc_ptr->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op_desc_ptr->SetAttrMap(this->Attrs());
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
-    SequencePoolGradOpNoNeedBufferVarsInference, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequencePoolGradOpNoNeedBufferVarsInference,
+                                    "X");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_pool, ops::SequencePoolOp, ops::SequencePoolOpMaker,
-                  ops::SequencePoolGradOpMaker);
+                  ops::SequencePoolGradOpMaker<paddle::framework::OpDesc>,
+                  ops::SequencePoolGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sequence_pool_grad, ops::SequencePoolGradOp,
                   ops::SequencePoolGradOpNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(

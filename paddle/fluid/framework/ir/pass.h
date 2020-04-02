@@ -60,10 +60,25 @@ class Pass {
     try {
       return *boost::any_cast<AttrType *>(attrs_.at(attr_name));
     } catch (boost::bad_any_cast &) {
-      PADDLE_THROW(
-          "Invalid attribute type of %s error, expected: %s, actual: %s",
-          attr_name, typeid(AttrType *).name(),
-          attrs_.at(attr_name).type().name());
+      auto TypeToString = [](const std::type_info &info) -> std::string {
+        if (std::type_index(info) == std::type_index(typeid(bool *))) {
+          return "bool";
+        } else if (std::type_index(info) == std::type_index(typeid(int *))) {
+          return "int";
+        } else if (std::type_index(info) ==
+                   std::type_index(typeid(const int *))) {
+          return "const int";
+        } else if (std::type_index(info) ==
+                   std::type_index(typeid(std::string *))) {
+          return "std::string";
+        }
+        return info.name();
+      };
+
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Invalid type for attritube %s, expected: %s, actual: %s", attr_name,
+          TypeToString(typeid(AttrType *)),
+          TypeToString(attrs_.at(attr_name).type())));
     }
   }
 
@@ -85,8 +100,14 @@ class Pass {
   // Set a pointer to the attribute. Pass takes ownership of the attribute.
   template <typename AttrType>
   void Set(const std::string &attr_name, AttrType *attr) {
-    PADDLE_ENFORCE(attrs_.count(attr_name) == 0, "%s already set in the pass",
-                   attr_name);
+    if (default_pass_attrs_.count(attr_name) == 0) {
+      PADDLE_ENFORCE_EQ(attrs_.count(attr_name), 0,
+                        platform::errors::InvalidArgument(
+                            "Attribute %s already set in the pass", attr_name));
+    } else {
+      VLOG(3) << "Setting the attribute " << attr_name << " for the pass "
+              << type_;
+    }
     attrs_[attr_name] = attr;
     attr_dels_[attr_name] = [attr, attr_name]() {
       VLOG(3) << "deleting " << attr_name;
@@ -125,11 +146,21 @@ class Pass {
     required_graph_attrs_.insert(attrs.begin(), attrs.end());
   }
 
+  // Pass doesn't take ownership. PassRegistrar should delete default_attrs
+  void RegisterDefaultPassAttrs(
+      std::map<std::string, boost::any> default_attr_values) {
+    for (auto const &attr_name : default_attr_values) {
+      default_pass_attrs_.insert(attr_name.first);
+    }
+    attrs_.insert(default_attr_values.begin(), default_attr_values.end());
+  }
+
   void RegisterType(const std::string &type) { type_ = type; }
 
   mutable bool applied_{false};
   std::string type_;
   std::unordered_set<std::string> required_pass_attrs_;
+  std::unordered_set<std::string> default_pass_attrs_;
   std::unordered_set<std::string> required_graph_attrs_;
   std::map<std::string, boost::any> attrs_;
   std::map<std::string, std::function<void(void)>> attr_dels_;
@@ -159,7 +190,9 @@ class PassRegistry {
   }
 
   void Insert(const std::string &pass_type, const PassCreator &pass_creator) {
-    PADDLE_ENFORCE(!Has(pass_type), "Pass %s has been registered", pass_type);
+    PADDLE_ENFORCE_NE(Has(pass_type), true,
+                      platform::errors::AlreadyExists(
+                          "Pass %s has been registered.", pass_type));
     map_.insert({pass_type, pass_creator});
   }
 
@@ -186,13 +219,35 @@ struct PassRegistrar : public Registrar {
           std::unique_ptr<Pass> pass(new PassType());
           pass->RegisterRequiredPassAttrs(this->required_pass_attrs_);
           pass->RegisterRequiredGraphAttrs(this->required_graph_attrs_);
+          pass->RegisterDefaultPassAttrs(this->default_attr_values_);
           pass->RegisterType(pass_type);
           return pass;
         });
   }
 
+  ~PassRegistrar() {
+    for (auto &attr : default_attr_values_) {
+      if (default_attr_dels_.find(attr.first) != default_attr_dels_.end()) {
+        default_attr_dels_[attr.first]();
+      }
+    }
+    default_attr_values_.clear();
+    default_attr_dels_.clear();
+  }
+
   PassRegistrar<PassType> &RequirePassAttr(const std::string &attr) {
     required_pass_attrs_.insert(attr);
+    return *this;
+  }
+
+  // PassRegistrar takes ownership of default_attr_value
+  template <typename AttrType>
+  PassRegistrar<PassType> &DefaultPassAttr(const std::string &attr,
+                                           AttrType &&default_attr_value) {
+    default_attr_values_[attr] = default_attr_value;
+    default_attr_dels_[attr] = [default_attr_value, attr]() {
+      delete default_attr_value;
+    };
     return *this;
   }
 
@@ -204,6 +259,8 @@ struct PassRegistrar : public Registrar {
  private:
   std::unordered_set<std::string> required_pass_attrs_;
   std::unordered_set<std::string> required_graph_attrs_;
+  std::map<std::string, boost::any> default_attr_values_;
+  std::map<std::string, std::function<void(void)>> default_attr_dels_;
 };
 
 #define STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(uniq_name, msg)                   \

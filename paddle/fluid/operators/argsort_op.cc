@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/argsort_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -21,7 +22,7 @@ class ArgsortOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of ArgsortOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
@@ -49,6 +50,24 @@ class ArgsortOp : public framework::OperatorWithKernel {
   }
 };
 
+class ArgsortGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+    ctx->ShareLoD("X", /*-->*/ framework::GradVarName("X"));
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
+  }
+};
+
 class ArgsortOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -73,15 +92,50 @@ Output(Indices) gives the sorted order along the given axis Attr(axis).
                  "When axis < 0, the actual axis will be the |axis|'th "
                  "counting backwards. Default -1, the last dimension.")
         .SetDefault(-1);
+    AddAttr<bool>(
+        "descending",
+        "(bool, default false) The descending attribute is a flag to tell"
+        "algorithm how to sort the input data."
+        "If descending is true, will sort by descending order,"
+        "else if false, sort by ascending order. Default value is false.")
+        .SetDefault(false);
   }
 };
+
+template <typename T>
+class ArgsortGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("argsort_grad");
+    op->SetInput("Indices", this->Output("Indices"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ArgsortGradNoNeedBufferVarInference, "X");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(argsort, ops::ArgsortOp, ops::ArgsortOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+                  ops::ArgsortGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ArgsortGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(argsort_grad, ops::ArgsortGradOp,
+                  ops::ArgsortGradNoNeedBufferVarInference);
 REGISTER_OP_CPU_KERNEL(argsort,
                        ops::ArgsortKernel<paddle::platform::CPUPlace, float>,
-                       ops::ArgsortKernel<paddle::platform::CPUPlace, double>);
+                       ops::ArgsortKernel<paddle::platform::CPUPlace, double>,
+                       ops::ArgsortKernel<paddle::platform::CPUPlace, int>,
+                       ops::ArgsortKernel<paddle::platform::CPUPlace, int64_t>);
+REGISTER_OP_CPU_KERNEL(
+    argsort_grad, ops::ArgsortGradientKernel<paddle::platform::CPUPlace, float>,
+    ops::ArgsortGradientKernel<paddle::platform::CPUPlace, double>,
+    ops::ArgsortGradientKernel<paddle::platform::CPUPlace, int>,
+    ops::ArgsortGradientKernel<paddle::platform::CPUPlace, int64_t>);

@@ -77,8 +77,8 @@ class SpectralNormOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Weight")->type(),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Weight"), ctx.GetPlace());
   }
 };
 
@@ -88,11 +88,12 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Weight",
              "The input weight tensor of spectral_norm operator, "
              "This can be a 2-D, 3-D, 4-D, 5-D tensor which is the "
-             "weights of fc, conv1d, conv2d, conv3d layer.");
+             "weights of fc, conv1d, conv2d, conv3d layer. "
+             "The data type is float32 or float64.");
     AddInput("U",
              "The weight_u tensor of spectral_norm operator, "
              "This can be a 1-D tensor in shape [H, 1],"
-             "H is the 1st dimentions of Weight after reshape"
+             "H is the 1st dimensions of Weight after reshape"
              "corresponding by Attr(dim). As for Attr(dim) = 1"
              "in conv2d layer with weight shape [M, C, K1, K2]"
              "Weight will be reshape to [C, M*K1*K2], U will"
@@ -100,7 +101,7 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("V",
              "The weight_v tensor of spectral_norm operator, "
              "This can be a 1-D tensor in shape [W, 1], "
-             "W is the 2nd dimentions of Weight after reshape "
+             "W is the 2nd dimensions of Weight after reshape "
              "corresponding by Attr(dim). As for Attr(dim) = 1 "
              "in conv2d layer with weight shape [M, C, K1, K2] "
              "Weight will be reshape to [C, M*K1*K2], V will "
@@ -123,7 +124,9 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1);
     AddAttr<float>("eps",
                    "epsilon for numerical stability in "
-                   "calculating norms")
+                   "calculating norms, it will be added to "
+                   "the denominator to aviod divide zero. "
+                   "Default 1e-12.")
         .SetDefault(1e-12);
 
     AddComment(R"DOC(
@@ -165,25 +168,23 @@ class SpectralNormOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-class SpectralNormGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SpectralNormGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("spectral_norm_grad");
 
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetInput("Weight", Input("Weight"));
-    op->SetInput("U", Input("U"));
-    op->SetInput("V", Input("V"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput("Weight", this->Input("Weight"));
+    op->SetInput("U", this->Input("U"));
+    op->SetInput("V", this->Input("V"));
 
-    op->SetOutput(framework::GradVarName("Weight"), InputGrad("Weight"));
+    op->SetOutput(framework::GradVarName("Weight"), this->InputGrad("Weight"));
 
-    op->SetAttrMap(Attrs());
-
-    return op;
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -206,8 +207,8 @@ class SpectralNormOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Weight")->type(),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Weight"), ctx.GetPlace());
   }
 };
 
@@ -216,7 +217,8 @@ class SpectralNormOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(spectral_norm, ops::SpectralNormOp, ops::SpectralNormOpMaker,
-                  ops::SpectralNormGradOpDescMaker);
+                  ops::SpectralNormGradOpMaker<paddle::framework::OpDesc>,
+                  ops::SpectralNormGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(spectral_norm_grad, ops::SpectralNormOpGrad);
 REGISTER_OP_CPU_KERNEL(
     spectral_norm,

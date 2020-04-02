@@ -18,10 +18,18 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
 namespace operators {
+
+template <typename T>
+inline HOSTDEVICE T inverse(T s) {
+  T eps = 1e-6;
+  return s <= 1e-30 ? 1.0 / (s + eps) : 1.0 / s;
+}
 
 template <typename DeviceContext, typename T>
 struct FindAbsMaxFunctor {
@@ -184,9 +192,7 @@ class FakeMovingAverageAbsMaxKernelBase : public framework::OpKernel<T> {
     // training
     auto* in_accum = context.Input<framework::Tensor>("InAccum");
     auto* in_state = context.Input<framework::Tensor>("InState");
-    auto& allocator =
-        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
-    auto cur_scale = allocator.Allocate(1 * sizeof(T));
+    auto cur_scale = memory::Alloc(dev_ctx, sizeof(T));
     T* cur_scale_data = static_cast<T*>(cur_scale->ptr());
 
     FindAbsMaxFunctor<DeviceContext, T>()(dev_ctx, in->data<T>(), in->numel(),
@@ -251,9 +257,7 @@ class MovingAverageAbsMaxScaleKernel : public framework::OpKernel<T> {
     // training
     auto* in_accum = context.Input<framework::Tensor>("InAccum");
     auto* in_state = context.Input<framework::Tensor>("InState");
-    auto& allocator =
-        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx);
-    auto cur_scale = allocator.Allocate(1 * sizeof(T));
+    auto cur_scale = memory::Alloc(dev_ctx, sizeof(T));
     T* cur_scale_data = static_cast<T*>(cur_scale->ptr());
 
     FindAbsMaxFunctor<DeviceContext, T>()(dev_ctx, in->data<T>(), in->numel(),

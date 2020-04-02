@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/cos_sim_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -73,8 +74,12 @@ class CosSimOp : public framework::OperatorWithKernel {
 class CosSimOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "The 1st input of cos_sim op.");
-    AddInput("Y", "The 2nd input of cos_sim op.");
+    AddInput("X",
+             "The 1st input of cos_sim op, LoDTensor with shape ``[N_1, N_2, "
+             "..., N_k]``, the data type is float32.");
+    AddInput("Y",
+             "The 2nd input of cos_sim op, Tensor with shape ``[N_1 or 1, N_2, "
+             "..., N_k]``, the data type is float32.");
     AddOutput("Out", "The output of cos_sim op.");
     AddOutput("XNorm",
               "Norm of the first input, reduced along the 1st "
@@ -161,12 +166,33 @@ class CosSimOpGrad : public framework::OperatorWithKernel {
   }
 };
 
+template <typename T>
+class CosSimGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("cos_sim_grad");
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput("Y", this->Input("Y"));
+    grad_op->SetInput("XNorm", this->Output("XNorm"));
+    grad_op->SetInput("YNorm", this->Output("YNorm"));
+    grad_op->SetInput("Out", this->Output("Out"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(cos_sim, ops::CosSimOp, ops::CosSimOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::CosSimGradOpMaker<paddle::framework::OpDesc>,
+                  ops::CosSimGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(cos_sim_grad, ops::CosSimOpGrad);
 REGISTER_OP_CPU_KERNEL(
     cos_sim, ops::CosSimKernel<paddle::platform::CPUDeviceContext, float>);

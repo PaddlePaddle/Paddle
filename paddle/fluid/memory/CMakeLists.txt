@@ -1,12 +1,24 @@
 add_subdirectory(detail)
 add_subdirectory(allocation)
-cc_library(malloc SRCS malloc.cc DEPS place enforce allocator_facade profiler)
+
+if (WITH_MKLDNN)
+    set(MKLDNN_CTX_DEPS mkldnn)
+else ()
+    set(MKLDNN_CTX_DEPS)
+endif()
+
+cc_library(malloc SRCS malloc.cc DEPS
+    place enforce allocator_facade profiler ${MKLDNN_CTX_DEPS})
 cc_library(memcpy SRCS memcpy.cc DEPS place)
 
-cc_library(memory
-        DEPS
-        malloc
-        memcpy)
+cc_library(memory DEPS malloc memcpy)
+
+if (WITH_GPU)
+    nv_test(malloc_test
+            SRCS malloc_test.cu
+            DEPS device_context malloc)
+endif()
+
 #if (WITH_GPU)
 #   nv_test(pinned_memory_test SRCS pinned_memory_test.cu  DEPS place memory)
 #endif()

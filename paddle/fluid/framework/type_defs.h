@@ -20,6 +20,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
@@ -30,7 +31,7 @@ class InferShapeContext;
 class InferVarTypeContext;
 class BlockDesc;
 class Variable;
-class NoNeedBufferVarsInference;
+class InferNoNeedBufferVarsFN;
 
 using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 // TODO(panyx0718): Replace vector with something like gtl::Vector.
@@ -54,17 +55,20 @@ using GradOpMakerFN = std::function<std::vector<std::unique_ptr<OpDesc>>(
     std::unordered_map<std::string, std::string>* /*grad_to_var*/,
     const std::vector<BlockDesc*>& grad_block)>;
 
+using DygraphGradOpMakerFN =
+    std::function<std::shared_ptr<imperative::GradOpNode>(
+        const std::string& /*op_type*/,
+        const imperative::NameVarBaseMap& /*var_base_map_in*/,
+        const imperative::NameVarBaseMap& /*var_base_map_out*/,
+        const framework::AttributeMap& /*attributes*/)>;
+
 using InferVarTypeFN =
     std::function<void(framework::InferVarTypeContext* /*context*/)>;
 
 using InferShapeFN = std::function<void(InferShapeContext*)>;
 
 using InplacePair = std::unordered_map<std::string, std::string>;
-using InferInplaceOpFN = std::function<InplacePair(const OpDesc&, bool)>;
-
-using InferNoNeedBufferVarsFN = std::function<std::unordered_set<std::string>(
-    const VariableNameMap& /*inputs*/, const VariableNameMap& /*outputs*/,
-    const AttributeMap& /*attrs*/)>;
+using InferInplaceOpFN = std::function<InplacePair(bool /*use_cuda*/)>;
 
 }  // namespace framework
 }  // namespace paddle

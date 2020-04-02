@@ -38,9 +38,9 @@ class Tensor {
 #ifdef PADDLE_WITH_MKLDNN
 
  public:
-  inline mkldnn::memory::format format() const { return format_; }
+  inline mkldnn::memory::format_tag format() const { return format_; }
 
-  inline void set_format(const mkldnn::memory::format format) {
+  inline void set_format(const mkldnn::memory::format_tag format) {
     format_ = format;
   }
 
@@ -54,7 +54,7 @@ class Tensor {
    *       this field.
    */
 
-  mkldnn::memory::format format_ = mkldnn::memory::format::format_undef;
+  mkldnn::memory::format_tag format_ = mkldnn::memory::format_tag::undef;
 #endif
 
  public:
@@ -87,12 +87,12 @@ class Tensor {
    * @note    If not exist, then allocation.
    */
   template <typename T>
-  T* mutable_data(platform::Place place, size_t requested_size = 0);
+  T* mutable_data(const platform::Place& place, size_t requested_size = 0);
 
-  void* mutable_data(platform::Place place, proto::VarType::Type type,
+  void* mutable_data(const platform::Place& place, proto::VarType::Type type,
                      size_t requested_size = 0);
 
-  void* mutable_data(platform::Place place, size_t requested_size = 0);
+  void* mutable_data(const platform::Place& place, size_t requested_size = 0);
 
   /**
    * @brief     Return a pointer to mutable memory block.
@@ -104,7 +104,8 @@ class Tensor {
    * @note      If not exist, then allocation.
    */
   template <typename T>
-  T* mutable_data(DDim dims, platform::Place place, size_t requested_size = 0);
+  T* mutable_data(const DDim& dims, const platform::Place& place,
+                  size_t requested_size = 0);
 
   /*! Return the dimensions of the memory block. */
   const DDim& dims() const;
@@ -128,7 +129,7 @@ class Tensor {
    */
   Tensor Slice(int64_t begin_idx, int64_t end_idx) const;
 
-  platform::Place place() const {
+  const platform::Place& place() const {
     PADDLE_ENFORCE_NOT_NULL(
         holder_, "Tensor not initialized yet when Tensor::place() is called.");
     return holder_->place();
@@ -159,6 +160,10 @@ class Tensor {
     offset_ = tensor.offset_;
   }
 
+  bool IsSharedBufferWith(const Tensor& src) const {
+    return holder_ && holder_ == src.Holder();
+  }
+
   const std::shared_ptr<memory::Allocation>& Holder() const { return holder_; }
   size_t offset() const { return offset_; }
 
@@ -167,6 +172,9 @@ class Tensor {
   }
 
   void ResetHolder(std::shared_ptr<memory::Allocation> holder);
+
+  void ResetHolderWithType(std::shared_ptr<memory::Allocation> holder,
+                           const proto::VarType::Type type);
 
  private:
   /*! holds the memory block if allocated. */

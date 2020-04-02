@@ -192,13 +192,13 @@ class EagerDeletionRecurrentOpTest1(unittest.TestCase):
 
     def test_backward(self, rtol=0.01):
         self.check_forward()
+        num_grad = self.get_numerical_gradient()
 
         with fluid.program_guard(self.main_program, self.startup_program):
             append_backward(self.output)
 
         ana_grad = [np.array(x) for x in self.backward()]
 
-        num_grad = self.get_numerical_gradient()
         for idx, name in enumerate(self.data_field):
             self.assertEqual(num_grad[idx].shape, ana_grad[idx].shape)
             self.assertTrue(
@@ -601,6 +601,7 @@ class EagerDeletionRecurrentOpParallelExecutorTest(
         exec_strategy = fluid.ExecutionStrategy()
         parallel_exe = fluid.ParallelExecutor(
             use_cuda=False,
+            loss_name=self.output.name,
             main_program=self.main_program,
             build_strategy=build_strategy,
             exec_strategy=exec_strategy)

@@ -27,6 +27,14 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
+#define IS_TRT_VERSION_GE(version)                       \
+  ((NV_TENSORRT_MAJOR * 1000 + NV_TENSORRT_MINOR * 100 + \
+    NV_TENSORRT_PATCH * 10 + NV_TENSORRT_BUILD) >= version)
+
+#define TRT_VERSION                                    \
+  NV_TENSORRT_MAJOR * 1000 + NV_TENSORRT_MINOR * 100 + \
+      NV_TENSORRT_PATCH * 10 + NV_TENSORRT_BUILD
+
 namespace dy = paddle::platform::dynload;
 
 // TensorRT data type to size
@@ -102,6 +110,14 @@ class NaiveProfiler : public nvinfer1::IProfiler {
     printf("Time over all layers: %4.3f\n", totalTime);
   }
 };
+
+inline size_t ProductDim(const nvinfer1::Dims& dims) {
+  size_t v = 1;
+  for (int i = 0; i < dims.nbDims; i++) {
+    v *= dims.d[i];
+  }
+  return v;
+}
 
 }  // namespace tensorrt
 }  // namespace inference

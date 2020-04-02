@@ -43,12 +43,16 @@ void ZeroCopyTensor::Reshape(const std::vector<int> &shape) {
 template <typename T>
 T *ZeroCopyTensor::mutable_data(PaddlePlace place) {
   EAGER_GET_TENSOR;
+  PADDLE_ENFORCE_GT(
+      tensor->numel(), 0,
+      "You should call ZeroCopyTensor::Reshape(const std::vector<int> &shape)"
+      "function before retrieving mutable_data from input tensor.");
   switch (static_cast<int>(place)) {
     case static_cast<int>(PaddlePlace::kCPU): {
       return tensor->mutable_data<T>(platform::CPUPlace());
     }
     case static_cast<int>(PaddlePlace::kGPU): {
-      return tensor->mutable_data<T>(platform::CUDAPlace());
+      return tensor->mutable_data<T>(platform::CUDAPlace(device_));
     }
     default:
       PADDLE_THROW("Unsupported place: %d", static_cast<int>(place));
@@ -83,8 +87,8 @@ PaddleDType ZeroCopyTensor::type() const {
     return PaddleDType::INT64;
   } else if (type == framework::proto::VarType::INT32) {
     return PaddleDType::INT32;
-  } else {
-    LOG(ERROR) << "unknown type, only support float32 and int64 now.";
+  } else if (type == framework::proto::VarType::UINT8) {
+    return PaddleDType::UINT8;
   }
   return PaddleDType::FLOAT32;
 }
@@ -95,7 +99,7 @@ void ZeroCopyTensor::copy_from_cpu(const T *data) {
   PADDLE_ENFORCE_GE(
       tensor->numel(), 0,
       "You should call ZeroCopyTensor::Reshape(const std::vector<int> &shape)"
-      "function before copy data from cpu.");
+      "function before copying data from cpu.");
   size_t ele_size = tensor->numel() * sizeof(T);
 
   if (place_ == PaddlePlace::kCPU) {
@@ -112,7 +116,7 @@ void ZeroCopyTensor::copy_from_cpu(const T *data) {
     memory::Copy(gpu_place, static_cast<void *>(t_data), platform::CPUPlace(),
                  data, ele_size, dev_ctx->stream());
 #else
-    PADDLE_THROW("Not compile with CUDA, should not reach here.");
+    PADDLE_THROW("Not compiled with CUDA, should not reach here.");
 #endif
   }
 }
@@ -134,7 +138,8 @@ void ZeroCopyTensor::copy_to_cpu(T *data) {
         static_cast<const platform::CUDADeviceContext *>(pool.Get(gpu_place));
     memory::Copy(platform::CPUPlace(), static_cast<void *>(data), gpu_place,
                  t_data, ele_num * sizeof(T), dev_ctx->stream());
-    cudaDeviceSynchronize();
+
+    cudaStreamSynchronize(dev_ctx->stream());
 #else
     PADDLE_THROW("Not compile with CUDA, should not reach here.");
 #endif
@@ -143,9 +148,11 @@ void ZeroCopyTensor::copy_to_cpu(T *data) {
 template void ZeroCopyTensor::copy_from_cpu<float>(const float *data);
 template void ZeroCopyTensor::copy_from_cpu<int64_t>(const int64_t *data);
 template void ZeroCopyTensor::copy_from_cpu<int32_t>(const int32_t *data);
+template void ZeroCopyTensor::copy_from_cpu<uint8_t>(const uint8_t *data);
 template void ZeroCopyTensor::copy_to_cpu<float>(float *data);
 template void ZeroCopyTensor::copy_to_cpu<int64_t>(int64_t *data);
 template void ZeroCopyTensor::copy_to_cpu<int32_t>(int32_t *data);
+template void ZeroCopyTensor::copy_to_cpu<uint8_t>(uint8_t *data);
 
 template float *ZeroCopyTensor::data<float>(PaddlePlace *place,
                                             int *size) const;
@@ -153,9 +160,12 @@ template int64_t *ZeroCopyTensor::data<int64_t>(PaddlePlace *place,
                                                 int *size) const;
 template int32_t *ZeroCopyTensor::data<int32_t>(PaddlePlace *place,
                                                 int *size) const;
+template uint8_t *ZeroCopyTensor::data<uint8_t>(PaddlePlace *place,
+                                                int *size) const;
 template float *ZeroCopyTensor::mutable_data<float>(PaddlePlace place);
 template int64_t *ZeroCopyTensor::mutable_data<int64_t>(PaddlePlace place);
 template int32_t *ZeroCopyTensor::mutable_data<int32_t>(PaddlePlace place);
+template uint8_t *ZeroCopyTensor::mutable_data<uint8_t>(PaddlePlace place);
 
 void *ZeroCopyTensor::FindTensor() const {
   PADDLE_ENFORCE(!name_.empty(),
@@ -172,7 +182,7 @@ void *ZeroCopyTensor::FindTensor() const {
 std::vector<int> ZeroCopyTensor::shape() const {
   EAGER_GET_TENSOR;
   PADDLE_ENFORCE(tensor_, "not found tensor called %s in the scope", name_);
-  return framework::vectorize2int(tensor->dims());
+  return framework::vectorize<int>(tensor->dims());
 }
 
 void ZeroCopyTensor::SetLoD(const std::vector<std::vector<size_t>> &x) {

@@ -20,50 +20,27 @@ from collections import defaultdict
 from paddle.fluid import core
 from paddle.fluid import framework
 
-__all__ = ['Tracer']
-
-
-def release_op(op):
-    del framework._dygraph_tracer()._ops[op._trace_id]
-
 
 class Tracer(core.Tracer):
     """
-    Python wrapper of dygraph tracer
+    Tracer is used to execute and record the operators executed, to construct the 
+    computation graph in dygraph model. Tracer has two mode, :code:`train_mode`
+    and :code:`eval_mode`. In :code:`train_mode`, Tracer would add backward network 
+    automatically and perform AutoGrad by method :code:`loss.backward()`. 
+    In :code:`eval_mode`, Tracer would not add backward network.
+
+    This is a low level API, users don't need to use it directly.
     """
 
-    def __init__(self, block):
-        super(Tracer, self).__init__(block)
+    def __init__(self):
+        super(Tracer, self).__init__()
 
-        self._ops = defaultdict()
-        self._vars = defaultdict()
-        self._trace_id = 0
         self._train_mode = True
 
-    def trace_var(self, name, var):
-        self._vars[name] = var
-
-    def all_parameters(self):
-        return list((item for name, item in six.iteritems(self._vars)
-                     if isinstance(item, framework.Parameter)))
-
-    def _clear_ops(self):
-        self._ops = defaultdict()
-        self._trace_id = 0
-
-    def trace_op(self, op, inputs, outputs, stop_gradient=False):
-        # record op's trace id
-        op.iop._trace_id = self._trace_id
-
-        self.trace(op.iop, inputs, outputs, op.attrs,
-                   framework._current_expected_place(), stop_gradient)
-
-        if not stop_gradient and self._train_mode:
-            self._trace_id += 1
-            self._ops[op.iop._trace_id] = op
-
-            # register backward hooks and variables if needed
-            op.iop.register_backward_hooks(release_op)
+    def trace_op(self, type, inputs, outputs, attrs, stop_gradient=False):
+        self.trace(type, inputs, outputs, attrs,
+                   framework._current_expected_place(), self._train_mode and
+                   not stop_gradient)
 
     def train_mode(self):
         self._train_mode = True

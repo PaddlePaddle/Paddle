@@ -150,34 +150,42 @@ However the output only shares the LoD with input `X`.
   }
 };
 
-class SigmoidCrossEntropyWithLogitsGradOpDescMaker
-    : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SigmoidCrossEntropyWithLogitsGradOpMaker
+    : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("sigmoid_cross_entropy_with_logits_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("Label", Input("Label"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Label", this->Input("Label"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
+
+DECLARE_INPLACE_OP_INFERER(SigmoidCrossEntropyWithLogitsInplaceInferer,
+                           {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(SigmoidCrossEntropyWithLogitsGradInplaceInferer,
+                           {framework::GradVarName("Out"),
+                            framework::GradVarName("X")});
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(sigmoid_cross_entropy_with_logits,
-                  ops::SigmoidCrossEntropyWithLogitsOp,
-                  ops::SigmoidCrossEntropyWithLogitsOpMaker,
-                  ops::SigmoidCrossEntropyWithLogitsGradOpDescMaker);
+REGISTER_OPERATOR(
+    sigmoid_cross_entropy_with_logits, ops::SigmoidCrossEntropyWithLogitsOp,
+    ops::SigmoidCrossEntropyWithLogitsOpMaker,
+    ops::SigmoidCrossEntropyWithLogitsGradOpMaker<paddle::framework::OpDesc>,
+    ops::SigmoidCrossEntropyWithLogitsGradOpMaker<paddle::imperative::OpBase>,
+    ops::SigmoidCrossEntropyWithLogitsInplaceInferer);
 REGISTER_OPERATOR(sigmoid_cross_entropy_with_logits_grad,
-                  ops::SigmoidCrossEntropyWithLogitsGradOp);
+                  ops::SigmoidCrossEntropyWithLogitsGradOp,
+                  ops::SigmoidCrossEntropyWithLogitsGradInplaceInferer);
 REGISTER_OP_CPU_KERNEL(
     sigmoid_cross_entropy_with_logits,
     ops::SigmoidCrossEntropyWithLogitsKernel<paddle::platform::CPUDeviceContext,

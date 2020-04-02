@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,47 +14,94 @@
 
 #pragma once
 
-#include <map>
-#include <set>
+#include <atomic>
+#include <future>  // NOLINT
+#include <memory>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
-
-#include "paddle/fluid/framework/op_desc.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/imperative/engine.h"
+#include "ThreadPool.h"
+#include "paddle/fluid/imperative/basic_engine.h"
+#include "paddle/fluid/imperative/jit/program_desc_tracer.h"
 #include "paddle/fluid/imperative/layer.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace imperative {
 
-void CreateGradOp(const framework::OpDesc& op_desc,
-                  const std::unordered_set<std::string>& no_grad_set,
-                  const std::vector<framework::BlockDesc*>& grad_sub_block,
-                  framework::OpDesc** grad_op_desc,
-                  std::unordered_map<std::string, std::string>* grad_to_var);
-
-platform::Place GetExpectedPlace(platform::Place place, VarBasePtrMap inputs);
-
-class Tracer {
+class UniqueNameGenerator {
  public:
-  explicit Tracer(framework::BlockDesc* root_block);
-
-  virtual ~Tracer() {}
-
-  void Trace(OpBase* op, const VarBasePtrMap& inputs,
-             VarBasePtrMap* outputs,  // NOLINT
-             framework::AttributeMap attrs_map,
-             const platform::Place expected_place,
-             const bool stop_gradient = false);
+  explicit UniqueNameGenerator(std::string prefix = "") : prefix_(prefix) {}
+  std::string Generate(std::string key = "tmp") {
+    return prefix_ + key + "_" + std::to_string(id_++);
+  }
 
  private:
-  platform::Place GetPlace(const VarBasePtrMap& inputs);
-
-  framework::BlockDesc* root_block_;
+  std::atomic<int> id_{0};
+  std::string prefix_;
 };
+
+class Tracer {
+  DISABLE_COPY_AND_ASSIGN(Tracer);
+
+ public:
+  Tracer()
+      : basic_engine_(new BasicEngine()),
+        program_desc_tracer_(new jit::ProgramDescTracer()),
+        generator_(new UniqueNameGenerator()) {
+    expected_place_ = platform::CPUPlace();
+  }
+
+  ~Tracer() = default;
+
+  void TraceOp(const std::string& type, const NameVarBaseMap& ins,
+               const NameVarBaseMap& outs, framework::AttributeMap attrs,
+               const platform::Place& place, bool trace_bacward);
+
+  void TraceOp(const std::string& type, const NameVarBaseMap& ins,
+               const NameVarBaseMap& outs, framework::AttributeMap attrs);
+
+  bool ComputeRequiredGrad(const NameVarBaseMap& ins,
+                           const NameVarBaseMap& outs, bool trace_backward);
+
+  void SetEnableProgramDescTracing(bool enabled) {
+    enable_program_desc_tracing_ = enabled;
+  }
+
+  bool IsProgramDescTracingEnabled() const {
+    return enable_program_desc_tracing_;
+  }
+
+  jit::ProgramDescTracer* GetProgramDescTracer() {
+    return program_desc_tracer_.get();
+  }
+
+  std::string GenerateUniqueName(std::string key = "tmp") {
+    return generator_->Generate(key);
+  }
+
+  BasicEngine* GetEngine() const { return basic_engine_.get(); }
+
+  platform::Place ExpectedPlace() const { return expected_place_; }
+
+  void SetExpectedPlace(platform::Place place) { expected_place_ = place; }
+
+  bool NoGrad() const { return no_grad_; }
+
+  void SetNoGrad(bool no_grad) { no_grad_ = no_grad; }
+
+ private:
+  std::unique_ptr<BasicEngine> basic_engine_;
+  std::unique_ptr<jit::ProgramDescTracer> program_desc_tracer_;
+  bool enable_program_desc_tracing_{false};
+  std::unique_ptr<UniqueNameGenerator> generator_;
+  platform::Place expected_place_;
+  bool no_grad_{false};
+};
+
+// To access static variable current_tracer
+const std::shared_ptr<Tracer>& GetCurrentTracer();
+void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer_);
 
 }  // namespace imperative
 }  // namespace paddle

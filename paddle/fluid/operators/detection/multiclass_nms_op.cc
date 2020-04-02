@@ -13,7 +13,7 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detection/poly_util.h"
+#include "paddle/fluid/operators/detection/nms_util.h"
 
 namespace paddle {
 namespace operators {
@@ -74,94 +74,19 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
     } else {
       ctx->SetOutputDim("Out", {-1, box_dims[2] + 2});
     }
+    if (!ctx->IsRuntime()) {
+      ctx->SetLoDLevel("Out", std::max(ctx->GetLoDLevel("BBoxes"), 1));
+    }
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>("Scores")->type(),
+        OperatorWithKernel::IndicateVarDataType(ctx, "Scores"),
         platform::CPUPlace());
   }
 };
-
-template <class T>
-bool SortScorePairDescend(const std::pair<float, T>& pair1,
-                          const std::pair<float, T>& pair2) {
-  return pair1.first > pair2.first;
-}
-
-template <class T>
-static inline void GetMaxScoreIndex(
-    const std::vector<T>& scores, const T threshold, int top_k,
-    std::vector<std::pair<T, int>>* sorted_indices) {
-  for (size_t i = 0; i < scores.size(); ++i) {
-    if (scores[i] > threshold) {
-      sorted_indices->push_back(std::make_pair(scores[i], i));
-    }
-  }
-  // Sort the score pair according to the scores in descending order
-  std::stable_sort(sorted_indices->begin(), sorted_indices->end(),
-                   SortScorePairDescend<int>);
-  // Keep top_k scores if needed.
-  if (top_k > -1 && top_k < static_cast<int>(sorted_indices->size())) {
-    sorted_indices->resize(top_k);
-  }
-}
-
-template <class T>
-static inline T BBoxArea(const T* box, const bool normalized) {
-  if (box[2] < box[0] || box[3] < box[1]) {
-    // If coordinate values are is invalid
-    // (e.g. xmax < xmin or ymax < ymin), return 0.
-    return static_cast<T>(0.);
-  } else {
-    const T w = box[2] - box[0];
-    const T h = box[3] - box[1];
-    if (normalized) {
-      return w * h;
-    } else {
-      // If coordinate values are not within range [0, 1].
-      return (w + 1) * (h + 1);
-    }
-  }
-}
-
-template <class T>
-static inline T JaccardOverlap(const T* box1, const T* box2,
-                               const bool normalized) {
-  if (box2[0] > box1[2] || box2[2] < box1[0] || box2[1] > box1[3] ||
-      box2[3] < box1[1]) {
-    return static_cast<T>(0.);
-  } else {
-    const T inter_xmin = std::max(box1[0], box2[0]);
-    const T inter_ymin = std::max(box1[1], box2[1]);
-    const T inter_xmax = std::min(box1[2], box2[2]);
-    const T inter_ymax = std::min(box1[3], box2[3]);
-    T norm = normalized ? static_cast<T>(0.) : static_cast<T>(1.);
-    T inter_w = inter_xmax - inter_xmin + norm;
-    T inter_h = inter_ymax - inter_ymin + norm;
-    const T inter_area = inter_w * inter_h;
-    const T bbox1_area = BBoxArea<T>(box1, normalized);
-    const T bbox2_area = BBoxArea<T>(box2, normalized);
-    return inter_area / (bbox1_area + bbox2_area - inter_area);
-  }
-}
-
-template <class T>
-T PolyIoU(const T* box1, const T* box2, const size_t box_size,
-          const bool normalized) {
-  T bbox1_area = PolyArea<T>(box1, box_size, normalized);
-  T bbox2_area = PolyArea<T>(box2, box_size, normalized);
-  T inter_area = PolyOverlapArea<T>(box1, box2, box_size, normalized);
-  if (bbox1_area == 0 || bbox2_area == 0 || inter_area == 0) {
-    // If coordinate values are invalid
-    // if area size <= 0,  return 0.
-    return T(0.);
-  } else {
-    return inter_area / (bbox1_area + bbox2_area - inter_area);
-  }
-}
 
 template <class T>
 void SliceOneClass(const platform::DeviceContext& ctx,
@@ -328,7 +253,8 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
   void MultiClassOutput(const platform::DeviceContext& ctx,
                         const Tensor& scores, const Tensor& bboxes,
                         const std::map<int, std::vector<int>>& selected_indices,
-                        const int scores_size, Tensor* outs) const {
+                        const int scores_size, Tensor* outs,
+                        int* oindices = nullptr, const int offset = 0) const {
     int64_t class_num = scores.dims()[1];
     int64_t predict_dim = scores.dims()[1];
     int64_t box_size = bboxes.dims()[1];
@@ -358,9 +284,15 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
         if (scores_size == 3) {
           bdata = bboxes_data + idx * box_size;
           odata[count * out_dim + 1] = sdata[idx];  // score
+          if (oindices != nullptr) {
+            oindices[count] = offset + idx;
+          }
         } else {
           bdata = bbox.data<T>() + idx * box_size;
           odata[count * out_dim + 1] = *(scores_data + idx * class_num + label);
+          if (oindices != nullptr) {
+            oindices[count] = offset + idx * class_num + label;
+          }
         }
         // xmin, ymin, xmax, ymax or multi-points coordinates
         std::memcpy(odata + count * out_dim + 2, bdata, box_size * sizeof(T));
@@ -373,7 +305,8 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     auto* boxes = ctx.Input<LoDTensor>("BBoxes");
     auto* scores = ctx.Input<LoDTensor>("Scores");
     auto* outs = ctx.Output<LoDTensor>("Out");
-
+    bool return_index = ctx.HasOutput("Index") ? true : false;
+    auto index = ctx.Output<LoDTensor>("Index");
     auto score_dims = scores->dims();
     auto score_size = score_dims.size();
     auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
@@ -406,35 +339,55 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
 
     int num_kept = batch_starts.back();
     if (num_kept == 0) {
-      T* od = outs->mutable_data<T>({1, 1}, ctx.GetPlace());
-      od[0] = -1;
-      batch_starts = {0, 1};
+      if (return_index) {
+        outs->mutable_data<T>({0, out_dim}, ctx.GetPlace());
+        index->mutable_data<int>({0, 1}, ctx.GetPlace());
+      } else {
+        T* od = outs->mutable_data<T>({1, 1}, ctx.GetPlace());
+        od[0] = -1;
+        batch_starts = {0, 1};
+      }
     } else {
       outs->mutable_data<T>({num_kept, out_dim}, ctx.GetPlace());
+      int offset = 0;
+      int* oindices = nullptr;
       for (int i = 0; i < n; ++i) {
         if (score_size == 3) {
           scores_slice = scores->Slice(i, i + 1);
           boxes_slice = boxes->Slice(i, i + 1);
           scores_slice.Resize({score_dims[1], score_dims[2]});
           boxes_slice.Resize({score_dims[2], box_dim});
+          if (return_index) {
+            offset = i * score_dims[2];
+          }
         } else {
           auto boxes_lod = boxes->lod().back();
           scores_slice = scores->Slice(boxes_lod[i], boxes_lod[i + 1]);
           boxes_slice = boxes->Slice(boxes_lod[i], boxes_lod[i + 1]);
+          if (return_index) {
+            offset = boxes_lod[i] * score_dims[1];
+          }
         }
         int64_t s = batch_starts[i];
         int64_t e = batch_starts[i + 1];
         if (e > s) {
           Tensor out = outs->Slice(s, e);
+          if (return_index) {
+            int* output_idx =
+                index->mutable_data<int>({num_kept, 1}, ctx.GetPlace());
+            oindices = output_idx + s;
+          }
           MultiClassOutput(dev_ctx, scores_slice, boxes_slice, all_indices[i],
-                           score_dims.size(), &out);
+                           score_dims.size(), &out, oindices, offset);
         }
       }
     }
 
     framework::LoD lod;
     lod.emplace_back(batch_starts);
-
+    if (return_index) {
+      index->set_lod(lod);
+    }
     outs->set_lod(lod);
   }
 };
@@ -474,7 +427,7 @@ class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("nms_top_k",
                  "(int64_t) "
                  "Maximum number of detections to be kept according to the "
-                 "confidences aftern the filtering detections based on "
+                 "confidences after the filtering detections based on "
                  "score_threshold");
     AddAttr<float>("nms_threshold",
                    "(float, default: 0.3) "
@@ -519,10 +472,45 @@ This operator support multi-class and batched inputs. It applying NMS
 independently for each class. The outputs is a 2-D LoDTenosr, for each
 image, the offsets in first dimension of LoDTensor are called LoD, the number
 of offset is N + 1, where N is the batch size. If LoD[i + 1] - LoD[i] == 0,
-means there is no detected bbox for this image. If there is no detected boxes
-for all images, all the elements in LoD are set to {1}, and the Out only 
-contains one value which is -1.
+means there is no detected bbox for this image.
 )DOC");
+  }
+};
+
+class MultiClassNMS2Op : public MultiClassNMSOp {
+ public:
+  MultiClassNMS2Op(const std::string& type,
+                   const framework::VariableNameMap& inputs,
+                   const framework::VariableNameMap& outputs,
+                   const framework::AttributeMap& attrs)
+      : MultiClassNMSOp(type, inputs, outputs, attrs) {}
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    MultiClassNMSOp::InferShape(ctx);
+
+    auto box_dims = ctx->GetInputDim("BBoxes");
+    auto score_dims = ctx->GetInputDim("Scores");
+    auto score_size = score_dims.size();
+    if (score_size == 3) {
+      ctx->SetOutputDim("Index", {box_dims[1], 1});
+    } else {
+      ctx->SetOutputDim("Index", {-1, 1});
+    }
+    if (!ctx->IsRuntime()) {
+      ctx->SetLoDLevel("Index", std::max(ctx->GetLoDLevel("BBoxes"), 1));
+    }
+  }
+};
+
+class MultiClassNMS2OpMaker : public MultiClassNMSOpMaker {
+ public:
+  void Make() override {
+    MultiClassNMSOpMaker::Make();
+    AddOutput("Index",
+              "(LoDTensor) A 2-D LoDTensor with shape [No, 1] represents the "
+              "index of selected bbox. The index is the absolute index cross "
+              "batches.")
+        .AsIntermediate();
   }
 };
 
@@ -530,8 +518,15 @@ contains one value which is -1.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(multiclass_nms, ops::MultiClassNMSOp,
-                  ops::MultiClassNMSOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    multiclass_nms, ops::MultiClassNMSOp, ops::MultiClassNMSOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(multiclass_nms, ops::MultiClassNMSKernel<float>,
+                       ops::MultiClassNMSKernel<double>);
+REGISTER_OPERATOR(
+    multiclass_nms2, ops::MultiClassNMS2Op, ops::MultiClassNMS2OpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OP_CPU_KERNEL(multiclass_nms2, ops::MultiClassNMSKernel<float>,
                        ops::MultiClassNMSKernel<double>);

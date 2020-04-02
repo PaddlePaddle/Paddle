@@ -23,21 +23,31 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Emission",
-             "(LoDTensor, default LoDTensor<float>) "
-             "A 2-D LoDTensor with shape [N x D], where N is the size of the "
+             "(LoDTensor/Tensor<float>). When a LoDTensor input,A 2-D LoDTensor"
+             " with shape [N x D], where N is the size of the "
              "mini-batch and D is the total tag number. The unscaled emission "
-             "weight matrix for the linear chain CRF. ");
+             "weight matrix for the linear chain CRF. When a Tensor input,"
+             "A Tensor with shape [N x S x D], where N is batch number,"
+             "S is max length of sequences, D is the total tag number."
+             "A LoDTensor or Tensor with type float32, float64.");
     AddInput("Transition",
              "(Tensor, default Tensor<float>) A 2-D Tensor with shape "
              "[(D + 2) x D]. The learnable parameter for the linear_chain_crf "
              "operator. See more details in the operator's comments.");
     AddInput("Label",
-             "(LoDTensor, default LoDTensor<int64_t>) A LoDTensor with shape "
+             "(LoDTensor/Tensor<int64_t>), when a LoDTensor input,  "
              "[N x 1], where N is the total element number in a mini-batch. "
-             "The ground truth.");
+             "when a Tensor input, [N x S], where N is batch number. "
+             "S is max length of sequences. The ground truth."
+             "A  LoDTensor or Tensor with int64.");
+    AddInput("Length",
+             "(Tensor, default Tensor<int64_t>) A Tensor with shape "
+             "[M x 1], where M is the sequence number in a mini-batch."
+             "A Tensor with type int64.")
+        .AsDispensable();
     AddOutput(
         "Alpha",
-        "(Tensor, default Tensor<float>) A 2-D Tensor with shape [N x D]. "
+        "(Tensor, default Tensor<float>), the same shape with Emission. "
         "The forward vectors for the entire batch. Denote it as $\alpha$. "
         "$\alpha$ is a memo table used to calculate the normalization "
         "factor in CRF. $\alpha[k, v]$ stores the unnormalized "
@@ -49,17 +59,19 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate();
     AddOutput(
         "EmissionExps",
-        "(Tensor, default Tensor<float>) A 2-D Tensor with shape [N x D]. "
+        "(Tensor, default Tensor<float>), the same shape with Emission. "
         "The exponentials of Input(Emission). This is an intermediate "
         "computational result in forward computation, and will be reused in "
-        "backward computation.")
+        "backward computation."
+        "A LoDTensor or Tensor with type float32, float64.")
         .AsIntermediate();
     AddOutput(
         "TransitionExps",
         "(Tensor, default Tensor<float>) A 2-D Tensor with shape "
         "[(D + 2) x D]. The exponentials of Input(Transition). This is an "
         "intermediate computational result in forward computation, and "
-        "will be reused in backward computation.")
+        "will be reused in backward computation."
+        "A LoDTensor or Tensor with type float32, float64.")
         .AsIntermediate();
     AddOutput(
         "LogLikelihood",
@@ -67,7 +79,7 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
         "likelihood of each training sample in a mini-batch. This is a 2-D "
         "tensor with shape [S x 1], where S is the sequence number in a "
         "mini-batch. Note: S is equal to the sequence number in a mini-batch. "
-        "The output is no longer a LoDTensor.");
+        "A Tensor with type float32, float64.");
     AddComment(R"DOC(
 Conditional Random Field defines an undirected probabilistic graph with nodes
 denoting random variables and edges denoting dependencies between these
@@ -145,11 +157,6 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("LogLikelihood"),
                    "Output(LogLikelihood) should be not null.");
 
-    auto emission_dims = ctx->GetInputDim("Emission");
-    PADDLE_ENFORCE_EQ(emission_dims.size(), 2,
-                      "The Input(Emission) should be a 2-D tensor.");
-    PADDLE_ENFORCE(emission_dims[0], "An empty mini-batch is not allowed.");
-
     auto transition_dims = ctx->GetInputDim("Transition");
     PADDLE_ENFORCE_EQ(transition_dims.size(), 2,
                       "The Input(Transition) should be a 2-D tensor.");
@@ -164,20 +171,48 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
           "An invalid dimension for the Input(Transition), which should "
           "be a 2-D tensor with shape [(D + 2) x D].");
     }
-    PADDLE_INFERSHAPE_ENFORCE_EQ(
-        ctx, emission_dims[1], transition_dims[1],
-        "The 2nd dimension of the Input(Emission) and the Input(Transition) "
-        "should be equal to the tag number.");
+    auto emission_dims = ctx->GetInputDim("Emission");
+    PADDLE_ENFORCE_NE(emission_dims[0], 0,
+                      "An empty mini-batch is not allowed.");
+    if (ctx->HasInput("Length")) {
+      PADDLE_ENFORCE_EQ(emission_dims.size(), 3,
+                        "The Input(Emission) should be a 3-D tensor.");
+      auto label_dims = ctx->GetInputDim("Label");
+      PADDLE_ENFORCE_EQ(
+          (label_dims.size() == 3UL && label_dims[2] == 1) ||
+              (label_dims.size() == 2UL),
+          true,
+          "The Input(Label) should be a 3-D tensor with last "
+          "dimension fixed to 1 or a 2-D tensor in padding mode.");
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_EQ(emission_dims[0], label_dims[0],
+                          "The batch size of Input(Emission) and Input(Label) "
+                          "should be the same.");
+        PADDLE_ENFORCE_EQ(emission_dims[1], label_dims[1],
+                          "The max length of Input(Emission) and Input(Label) "
+                          "should be the same.");
+      }
+    } else {
+      PADDLE_ENFORCE_EQ(emission_dims.size(), 2,
+                        "The Input(Emission) should be a 2-D tensor.");
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_EQ(emission_dims[1], transition_dims[1],
+                          "The 2nd dimension of the Input(Emission) and the "
+                          "Input(Transition) "
+                          "should be equal to the tag number.");
+      }
 
-    auto label_dims = ctx->GetInputDim("Label");
-    PADDLE_ENFORCE(label_dims.size() == 2UL && label_dims[1] == 1UL,
-                   "The Input(Label) should be a 2-D tensor with the 2nd "
-                   "dimensions fixed to 1.");
-    PADDLE_INFERSHAPE_ENFORCE_EQ(
-        ctx, emission_dims[0], label_dims[0],
-        "The height of Input(Emission) and the height of Input(Label) "
-        "should be the same.");
-
+      auto label_dims = ctx->GetInputDim("Label");
+      PADDLE_ENFORCE_EQ(label_dims.size(), 2,
+                        "The Input(Label) should be a 2-D tensor with the 2nd "
+                        "dimensions fixed to 1.");
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_EQ(
+            emission_dims[0], label_dims[0],
+            "The height of Input(Emission) and the height of Input(Label) "
+            "should be the same.");
+      }
+    }
     ctx->SetOutputDim("Alpha", emission_dims);
     ctx->SetOutputDim("EmissionExps", emission_dims);
     ctx->SetOutputDim("TransitionExps", transition_dims);
@@ -193,8 +228,9 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
   // is determined by its input "Emission".
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<LoDTensor>("Emission")->type(),
-                                   platform::CPUPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Emission"),
+        platform::CPUPlace());
   }
 };
 
@@ -210,44 +246,15 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("LogLikelihood")),
                    "Input(LogLikelihood@GRAD) shoudl be not null.");
 
-    auto emission_exps_dims = ctx->GetInputDim("EmissionExps");
-    PADDLE_ENFORCE_EQ(emission_exps_dims.size(), 2,
-                      "The Input(EmissionExps) should be a 2-D tensor.");
-    PADDLE_ENFORCE(emission_exps_dims[0],
-                   "An empty mini-batch is not allowed.");
-
     auto transition_exps_dims = ctx->GetInputDim("TransitionExps");
-    PADDLE_ENFORCE_EQ(transition_exps_dims.size(), 2,
-                      "The Input(TransitionExps) should be a 2-D tensor.");
-    bool check = true;
-    if ((!ctx->IsRuntime()) &&
-        (transition_exps_dims[0] <= 0 || transition_exps_dims[1] <= 0)) {
-      check = false;
-    }
-    if (check) {
-      PADDLE_ENFORCE_EQ(
-          transition_exps_dims[0] - 2, transition_exps_dims[1],
-          "An invalid dimension for the Input(TransitionExps), which should "
-          "be a 2-D tensor with shape [(D + 2) x D].");
-    }
-    PADDLE_INFERSHAPE_ENFORCE_EQ(
-        ctx, emission_exps_dims[1], transition_exps_dims[1],
-        "The 2nd dimension of the Input(EmissionExps) and the "
-        "Input(TransitionExps) should be equal to the tag number.");
-
-    auto label_dims = ctx->GetInputDim("Label");
-    PADDLE_ENFORCE(label_dims.size() == 2UL && label_dims[1] == 1UL,
-                   "The Input(Label) should be a 2-D tensor with the 2nd "
-                   "dimensions fixed to 1.");
-    PADDLE_INFERSHAPE_ENFORCE_EQ(
-        ctx, emission_exps_dims[0], label_dims[0],
-        "The height of Input(EmissionExps) and the height of Input(Label) "
-        "should be the same.");
-
+    auto emission_exps_dims = ctx->GetInputDim("EmissionExps");
     if (ctx->HasOutput(framework::GradVarName("Emission"))) {
       ctx->SetOutputDim(framework::GradVarName("Emission"), emission_exps_dims);
-      ctx->ShareLoD("Emission", framework::GradVarName("Emission"));
+      if (ctx->HasInput("Length") == false) {
+        ctx->ShareLoD("Emission", framework::GradVarName("Emission"));
+      }
     }
+
     if (ctx->HasOutput(framework::GradVarName("Transition"))) {
       ctx->SetOutputDim(framework::GradVarName("Transition"),
                         transition_exps_dims);
@@ -261,49 +268,51 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<LoDTensor>(framework::GradVarName("LogLikelihood"))->type(),
+        OperatorWithKernel::IndicateVarDataType(
+            ctx, framework::GradVarName("LogLikelihood")),
         platform::CPUPlace());
   }
 };
 
-class LinearChainCRFGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class LinearChainCRFGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("linear_chain_crf_grad");
-    op->SetAttrMap(Attrs());
-
-    op->SetInput("Emission", Input("Emission"));
-    op->SetInput("Transition", Input("Transition"));
-    op->SetInput("Label", Input("Label"));
-
-    op->SetInput("Alpha", Output("Alpha"));
-    op->SetInput("EmissionExps", Output("EmissionExps"));
-    op->SetInput("TransitionExps", Output("TransitionExps"));
-
+    op->SetAttrMap(this->Attrs());
+    op->SetInput("Emission", this->Input("Emission"));
+    op->SetInput("Transition", this->Input("Transition"));
+    op->SetInput("Label", this->Input("Label"));
+    op->SetInput("Alpha", this->Output("Alpha"));
+    op->SetInput("EmissionExps", this->Output("EmissionExps"));
+    op->SetInput("TransitionExps", this->Output("TransitionExps"));
+    if (this->HasInput("Length")) {
+      op->SetInput("Length", this->Input("Length"));
+    }
     op->SetInput(framework::GradVarName("LogLikelihood"),
-                 OutputGrad("LogLikelihood"));
+                 this->OutputGrad("LogLikelihood"));
 
-    op->SetOutput(framework::GradVarName("Emission"), InputGrad("Emission"));
+    op->SetOutput(framework::GradVarName("Emission"),
+                  this->InputGrad("Emission"));
     op->SetOutput(framework::GradVarName("Transition"),
-                  InputGrad("Transition"));
-
-    return op;
+                  this->InputGrad("Transition"));
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
-    LinearChainCRFGradNoNeedBufferVarsInference, "Transition", "Emission");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(LinearChainCRFGradNoNeedBufferVarsInference,
+                                    "Transition", "Emission");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(linear_chain_crf, ops::LinearChainCRFOp,
-                  ops::LinearChainCRFOpMaker, ops::LinearChainCRFGradDescMaker);
+                  ops::LinearChainCRFOpMaker,
+                  ops::LinearChainCRFGradMaker<paddle::framework::OpDesc>,
+                  ops::LinearChainCRFGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(linear_chain_crf_grad, ops::LinearChainCRFGradOp,
                   ops::LinearChainCRFGradNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(

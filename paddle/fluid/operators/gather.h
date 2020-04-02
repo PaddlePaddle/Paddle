@@ -36,10 +36,16 @@ using framework::Tensor;
 template <typename T, typename IndexT = int>
 void CPUGather(const platform::DeviceContext& ctx, const Tensor& src,
                const Tensor& index, Tensor* output) {
-  PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()));
+  PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true);
   // check index of shape 1-D
-  PADDLE_ENFORCE(index.dims().size() == 1 ||
-                 (index.dims().size() == 2 && index.dims()[1] == 1));
+  if (index.dims().size() == 2) {
+    PADDLE_ENFORCE_EQ(index.dims()[1], 1,
+                      "index.dims()[1] should be 1 when index.dims().size() == "
+                      "2 in gather_op.");
+  } else {
+    PADDLE_ENFORCE_EQ(index.dims().size(), 1,
+                      "index.dims().size() should be 1 or 2 in gather_op.");
+  }
   int64_t index_size = index.dims()[0];
 
   auto src_dims = src.dims();
@@ -57,6 +63,52 @@ void CPUGather(const platform::DeviceContext& ctx, const Tensor& src,
   for (int64_t i = 0; i < index_size; ++i) {
     IndexT index_ = p_index[i];
     memcpy(p_output + i * slice_size, p_src + index_ * slice_size, slice_bytes);
+  }
+}
+
+template <typename T, typename IndexT = int>
+void CPUGatherNd(const platform::DeviceContext& ctx, const Tensor& input,
+                 const Tensor& index, Tensor* output) {
+  PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
+                    "It should be running on the CPU");
+
+  auto index_dims = index.dims();
+  auto index_dims_size = index_dims.size();
+  auto input_dims = input.dims();
+  auto input_dims_size = input_dims.size();
+
+  const T* p_input = input.data<T>();
+  const IndexT* p_index = index.data<IndexT>();
+  T* p_output = output->data<T>();
+
+  // final dim
+  int64_t end_size = index_dims[index_dims_size - 1];
+  // remain dim
+  auto remain_ddim = framework::slice_ddim(index_dims, 0, index_dims_size - 1);
+  int64_t remain_numel = framework::product(remain_ddim);
+  // slice size
+  int64_t slice_size = 1;
+  for (int64_t i = end_size; i < input_dims_size; ++i) {
+    slice_size *= input_dims[i];
+  }
+  const size_t slice_bytes = slice_size * sizeof(T);
+
+  for (int64_t i = 0; i < remain_numel; ++i) {
+    int64_t index_ = 0;
+    int64_t temp = 1;
+    for (int64_t j = end_size - 1; j >= 0; --j) {
+      IndexT index_value = p_index[i * end_size + j];
+      PADDLE_ENFORCE_LT(index_value, input_dims[j],
+                        "Input(index[-1)] has wrong value, it is %d",
+                        index_value);
+      PADDLE_ENFORCE_GE(index_value, 0UL,
+                        "The value of Input(index) must be no less than 0");
+
+      index_ += (index_value * temp);
+      temp *= input_dims[j];
+    }
+    memcpy(p_output + i * slice_size, p_input + index_ * slice_size,
+           slice_bytes);
   }
 }
 

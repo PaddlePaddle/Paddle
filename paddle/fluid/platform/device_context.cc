@@ -18,10 +18,38 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/rw_lock.h"
+#include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 
 #include "glog/logging.h"
+
+namespace paddle {
+namespace memory {
+
+AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
+  auto place = dev_ctx.GetPlace();
+#ifdef PADDLE_WITH_CUDA
+  if (size == 0 || !platform::is_gpu_place(place)) {
+    return Alloc(place, size);
+  }
+  auto* default_dev_ctx = static_cast<platform::CUDADeviceContext*>(
+      platform::DeviceContextPool::Instance().Get(place));
+  auto& desired_dev_ctx =
+      static_cast<const platform::CUDADeviceContext&>(dev_ctx);
+  if (default_dev_ctx->stream() == desired_dev_ctx.stream()) {
+    return Alloc(place, size);
+  } else {
+    return allocation::CUDADeviceContextAllocatorPool::Instance().Alloc(
+        desired_dev_ctx, size);
+  }
+#else
+  return Alloc(place, size);
+#endif
+}
+
+}  // namespace memory
+}  // namespace paddle
 
 namespace paddle {
 namespace platform {
@@ -89,47 +117,6 @@ DeviceContextPool::DeviceContextPool(
   }
 }
 
-DeviceTemporaryAllocator* DeviceTemporaryAllocator::allocators = nullptr;
-
-#ifdef PADDLE_WITH_CUDA
-platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
-    const platform::Place& place, const cudaStream_t& stream) {
-  PADDLE_ENFORCE(platform::is_gpu_place(place));
-  auto place_stream = std::make_pair(place, stream);
-  std::unique_lock<std::mutex> lock(mtx_);
-  auto it = device_allocator_.find(place_stream);
-  if (it == device_allocator_.end()) {
-    auto tmp_allocator = new TemporaryAllocator(place);
-    tmp_allocator->SetCallback([stream]() {
-      PADDLE_ENFORCE(cudaStreamSynchronize(stream));
-      PADDLE_ENFORCE(cudaGetLastError());
-    });
-    device_allocator_[place_stream].reset(tmp_allocator);
-    return *tmp_allocator;
-  } else {
-    return *it->second;
-  }
-}
-
-template <>
-platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
-    const platform::CUDADeviceContext& dev_ctx) {
-  return Get(dev_ctx.GetPlace(), dev_ctx.stream());
-}
-#endif
-
-template <>
-platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
-    const platform::CPUDeviceContext& dev_ctx) {
-  return cpu_allocator_;
-}
-
-platform::TemporaryAllocator& DeviceTemporaryAllocator::Get(
-    const platform::Place& place) {
-  PADDLE_ENFORCE(platform::is_cpu_place(place), "You should pass CPUPlace");
-  return cpu_allocator_;
-}
-
 CPUDeviceContext::CPUDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
 }
@@ -169,7 +156,9 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
     if (UNLIKELY(num_bytes == 0)) {
       return nullptr;
     }
-    auto buf = paddle::memory::Alloc(place_, num_bytes);
+    auto buf = memory::Alloc(place_, num_bytes);
+    VLOG(4) << "Eigen allocated at " << buf->ptr() << ", size" << buf->size()
+            << " requested " << num_bytes;
     void* retv = buf->ptr();
     {
       std::lock_guard<std::mutex> lock(mtx_);
@@ -197,7 +186,7 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
       char* scratch =
           static_cast<char*>(scratchpad()) + Eigen::kCudaScratchSize;
       semaphore_ = reinterpret_cast<unsigned int*>(scratch);
-      PADDLE_ENFORCE(
+      PADDLE_ENFORCE_CUDA_SUCCESS(
           cudaMemsetAsync(semaphore_, 0, sizeof(unsigned int), *stream_));
     }
     return semaphore_;
@@ -213,36 +202,23 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   mutable std::unordered_map<void*, memory::AllocationPtr> allocations_;
 };
 
-CudnnHolder::CudnnHolder(const cudaStream_t* stream, const CUDAPlace& place)
-    : workspace_(nullptr), stream_(stream), place_(place) {
-  PADDLE_ENFORCE(cudaSetDevice(place_.device));
-  PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
-  PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, *stream_));
-}
-
-CudnnHolder::~CudnnHolder() {
-  PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
-}
-
-void CudnnHolder::ReallocateWorkspace(size_t required_workspace_len) {
-  if (required_workspace_len <= WorkspaceSize()) {
+void CudnnWorkspaceHandle::ReallocWorkspace(size_t required_workspace_bytes) {
+  if (required_workspace_bytes <= WorkspaceSize()) {
     return;
   }
-  if (workspace_ != nullptr) {
-    // Maybe someone is using the current workspace
-    PADDLE_ENFORCE(cudaStreamSynchronize(*stream_));
-    workspace_.reset();
-  }
-  workspace_ = paddle::memory::Alloc(place_, required_workspace_len);
+  // reset allocation first before re-allocate to save memory
+  allocation_.reset();
+  allocation_ = memory::Alloc(device_context_, required_workspace_bytes);
 }
 
-CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
-    : place_(place), cudnn_holder_(nullptr) {
+CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   CUDADeviceGuard guard(place_.device);
   compute_capability_ = GetCUDAComputeCapability(place_.device);
   multi_process_ = GetCUDAMultiProcessors(place_.device);
   max_threads_per_mp_ = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
-  PADDLE_ENFORCE(cudaStreamCreate(&stream_));
+  max_grid_dim_size_ = GetGpuMaxGridDimSize(place_.device);
+  max_threads_per_block_ = GetCUDAMaxThreadsPerBlock(place_.device);
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream_));
   eigen_stream_.reset(new EigenCudaStreamDevice());
   eigen_stream_->Reinitialize(&stream_, place);
   eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
@@ -302,6 +278,14 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
             << "Please recompile or reinstall Paddle with compatible CUDNN "
                "version.";
       }
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          dynload::cudnnCreate(&cudnn_handle_),
+          "Failed to create Cudnn handle in DeviceContext");
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          dynload::cudnnSetStream(cudnn_handle_, stream_),
+          "Failed to set stream for Cudnn handle in DeviceContext");
+    } else {
+      cudnn_handle_ = nullptr;
     }
   }
 
@@ -316,10 +300,14 @@ CUDADeviceContext::~CUDADeviceContext() {
   cublas_tensor_core_handle_.reset();
   eigen_stream_.reset();
   eigen_device_.reset();
-  PADDLE_ENFORCE(cudaStreamDestroy(stream_));
-#if !defined(_WIN32)
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(stream_));
+  if (cudnn_handle_) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_),
+                                "Failed to destory Cudnn handle");
+  }
+#if defined(PADDLE_WITH_NCCL)
   if (nccl_comm_) {
-    PADDLE_ENFORCE(dynload::ncclCommDestroy(nccl_comm_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclCommDestroy(nccl_comm_));
   }
 #endif
 }
@@ -327,21 +315,20 @@ CUDADeviceContext::~CUDADeviceContext() {
 Place CUDADeviceContext::GetPlace() const { return place_; }
 
 void CUDADeviceContext::Wait() const {
-  auto& allocator =
-      DeviceTemporaryAllocator::Instance().Get<CUDADeviceContext>(*this);
-  allocator.Release([this]() {
-    cudaError_t e_sync = cudaStreamSynchronize(stream_);
-    if (e_sync != 0) {
-      LOG(FATAL) << "cudaStreamSynchronize " << cudaGetErrorString(e_sync)
-                 << " errno:" << e_sync;
-    }
+  cudaError_t e_sync = cudaSuccess;
+#if !defined(_WIN32)
+  e_sync = cudaStreamSynchronize(stream_);
+#else
+  while (e_sync = cudaStreamQuery(stream_)) {
+    if (e_sync == cudaErrorNotReady) continue;
+    break;
+  }
+#endif
 
-    cudaError_t e_get = cudaGetLastError();
-    if (e_get != 0) {
-      LOG(FATAL) << "cudaGetLastError  " << cudaGetErrorString(e_get)
-                 << " errno:" << e_get;
-    }
-  });
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      e_sync, platform::errors::Fatal(
+                  "cudaStreamSynchronize raises error: %s, errono: %d",
+                  cudaGetErrorString(e_sync), static_cast<int>(e_sync)));
 }
 
 int CUDADeviceContext::GetComputeCapability() const {
@@ -352,6 +339,12 @@ int CUDADeviceContext::GetMaxPhysicalThreadCount() const {
   return multi_process_ * max_threads_per_mp_;
 }
 
+int CUDADeviceContext::GetSMCount() const { return multi_process_; }
+
+int CUDADeviceContext::GetMaxThreadsPerBlock() const {
+  return max_threads_per_block_;
+}
+
 Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
   return eigen_device_.get();
 }
@@ -360,21 +353,14 @@ bool CUDADeviceContext::tensor_core_available() const {
   return cublas_tensor_core_handle_ != nullptr;
 }
 
-CudnnHolder* CUDADeviceContext::cudnn_holder() const {
-  std::call_once(init_cudnn_, [&]() {
-    if (dynload::HasCUDNN()) {
-      cudnn_holder_.reset(new CudnnHolder(&stream_, place_));
-    }
-  });
-  return cudnn_holder_.get();
+dim3 CUDADeviceContext::GetCUDAMaxGridDimSize() const {
+  return max_grid_dim_size_;
 }
 
-cudnnHandle_t CUDADeviceContext::cudnn_handle() const {
-  return cudnn_holder()->cudnn_handle();
-}
+cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
 
 CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
-  return CudnnWorkspaceHandle(cudnn_holder());
+  return CudnnWorkspaceHandle(*this, &cudnn_handle_mtx_);
 }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
@@ -397,7 +383,9 @@ Place CUDAPinnedDeviceContext::GetPlace() const { return place_; }
 
 #ifdef PADDLE_WITH_MKLDNN
 MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
-    : CPUDeviceContext(place), engine_(mkldnn::engine::cpu, 0), p_blobmap_() {
+    : CPUDeviceContext(place),
+      engine_(mkldnn::engine::kind::cpu, 0),
+      p_blobmap_() {
   p_blobmap_.reset(new BlobMap());
   p_mutex_.reset(new std::mutex());
 }
@@ -412,6 +400,10 @@ thread_local std::string cur_input_shape_str = "";
 // the cache capacity of different input shapes for MKLDNN.
 // Default 1 means fixed input shape, not dynamic shape.
 thread_local int cur_input_shape_cache_capacity = 1;
+// Recently registered data_format. This is needed to
+// know for converting MKL-DNN Tensor to non MKL-DNN
+thread_local paddle::framework::DataLayout cur_paddle_data_layout =
+    paddle::framework::DataLayout::kNCHW;
 }  // namespace
 
 void set_cur_mkldnn_session_id(size_t sid) { cur_mkldnn_session_id = sid; }
@@ -421,6 +413,14 @@ void set_cur_input_shape_str(std::string input_shape_str) {
 }
 void set_cur_input_shape_cache_capacity(int input_shape_cache_capacity) {
   cur_input_shape_cache_capacity = input_shape_cache_capacity;
+}
+
+void set_cur_paddle_data_layout(framework::DataLayout dl) {
+  cur_paddle_data_layout = dl;
+}
+
+framework::DataLayout get_cur_paddle_data_layout(void) {
+  return cur_paddle_data_layout;
 }
 
 void MKLDNNDeviceContext::ResetBlobMap() const { p_blobmap_->clear(); }

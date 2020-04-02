@@ -15,6 +15,8 @@
 from __future__ import print_function
 
 from . import framework
+from . import core
+from .framework import in_dygraph_mode
 import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
 from .core import VarDesc
@@ -22,55 +24,10 @@ from . import unique_name
 
 __all__ = [
     'Constant', 'Uniform', 'Normal', 'TruncatedNormal', 'Xavier', 'Bilinear',
-    'MSRA', 'force_init_on_cpu', 'init_on_cpu', 'ConstantInitializer',
-    'UniformInitializer', 'NormalInitializer', 'TruncatedNormalInitializer',
-    'XavierInitializer', 'BilinearInitializer', 'MSRAInitializer',
-    'NumpyArrayInitializer'
+    'MSRA', 'ConstantInitializer', 'UniformInitializer', 'NormalInitializer',
+    'TruncatedNormalInitializer', 'XavierInitializer', 'BilinearInitializer',
+    'MSRAInitializer', 'NumpyArrayInitializer'
 ]
-
-_force_init_on_cpu_ = False
-
-
-def force_init_on_cpu():
-    """
-    The flag of whether force to init variables on CPU.
-
-    Returns:
-        bool: the state if we should force init on CPU.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            if fluid.initializer.force_init_on_cpu():
-                step = fluid.layers.create_global_var(
-                    shape=[2,3], value=1.0, dtype='float32')
-
-    """
-    return _force_init_on_cpu_
-
-
-@signature_safe_contextmanager
-def init_on_cpu():
-    """
-    Force the variable to be inited on CPU.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            with fluid.initializer.init_on_cpu():
-                step = fluid.layers.create_global_var(
-                    shape=[2,3], value=1.0, dtype='float32')
-
-    """
-    global _force_init_on_cpu_
-
-    pre_state = force_init_on_cpu()
-    _force_init_on_cpu_ = True
-    yield
-    _force_init_on_cpu_ = pre_state
 
 
 class Initializer(object):
@@ -130,13 +87,13 @@ class ConstantInitializer(Initializer):
     """Implements the constant initializer
 
     Args:
-        value (float): constant value to initialize the variable
+        value (float32): constant value to initialize the variable 
 
     Examples:
         .. code-block:: python
 
     	    import paddle.fluid as fluid
-            x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+            x = fluid.data(name="data", shape=[8, 32, 32], dtype="float32")
 	    fc = fluid.layers.fc(input=x, size=10,
     		param_attr=fluid.initializer.Constant(value=2.0))
 
@@ -184,7 +141,7 @@ class ConstantInitializer(Initializer):
                 "shape": var.shape,
                 "dtype": int(out_dtype),
                 "value": float(self._value),
-                'force_cpu': self._force_cpu or force_init_on_cpu()
+                'force_cpu': self._force_cpu
             },
             stop_gradient=True)
 
@@ -219,7 +176,7 @@ class UniformInitializer(Initializer):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[1], dtype='float32')
+            x = fluid.data(name='x', shape=[None, 1], dtype='float32')
             fc = fluid.layers.fc(input=x, size=10,
     		param_attr=fluid.initializer.Uniform(low=-0.5, high=0.5))
     """
@@ -281,6 +238,7 @@ class UniformInitializer(Initializer):
 
         op = block._prepend_op(
             type="uniform_random",
+            inputs={},
             outputs={"Out": out_var},
             attrs={
                 "shape": var.shape,
@@ -319,7 +277,7 @@ class NormalInitializer(Initializer):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+            x = fluid.data(name="data", shape=[None, 32, 32], dtype="float32")
             fc = fluid.layers.fc(input=x, size=10,
                 param_attr=fluid.initializer.Normal(loc=0.0, scale=2.0))
 
@@ -402,7 +360,7 @@ class TruncatedNormalInitializer(Initializer):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[1], dtype='float32')
+            x = fluid.data(name='x', shape=[None, 1], dtype='float32')
             fc = fluid.layers.fc(input=x, size=10,
                 param_attr=fluid.initializer.TruncatedNormal(loc=0.0, scale=2.0))
     """
@@ -495,10 +453,10 @@ class XavierInitializer(Initializer):
 
 
     Args:
-        uniform (bool): whether to use uniform or normal distribution
-        fan_in (float): fan_in for Xavier initialization. If None, it is
+        uniform (bool,default True): whether to use uniform ,if False use normal distribution
+        fan_in (float,default None): fan_in for Xavier initialization. If None, it is
                 inferred from the variable.
-        fan_out (float): fan_out for Xavier initialization. If None, it is
+        fan_out (float,default None): fan_out for Xavier initialization. If None, it is
                  inferred from the variable.
         seed (int): random seed
 
@@ -509,7 +467,7 @@ class XavierInitializer(Initializer):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            queries = fluid.layers.data(name='x', shape=[1], dtype='float32')
+            queries = fluid.data(name='x', shape=[None,1], dtype='float32')
             fc = fluid.layers.fc(
                 input=queries, size=10,
                 param_attr=fluid.initializer.Xavier(uniform=False))
@@ -565,6 +523,7 @@ class XavierInitializer(Initializer):
             limit = np.sqrt(6.0 / float(fan_in + fan_out))
             op = block._prepend_op(
                 type="uniform_random",
+                inputs={},
                 outputs={"Out": out_var},
                 attrs={
                     "shape": out_var.shape,
@@ -625,9 +584,9 @@ class MSRAInitializer(Initializer):
 
     Args:
         uniform (bool): whether to use uniform or normal distribution
-        fan_in (float): fan_in for MSRAInitializer. If None, it is\
-        inferred from the variable.
-        seed (int): random seed
+        fan_in (float32|None): fan_in for MSRAInitializer. If None, it is\
+        inferred from the variable. default is None.
+        seed (int32): random seed
 
     Note:
         It is recommended to set fan_in to None for most cases.
@@ -636,7 +595,7 @@ class MSRAInitializer(Initializer):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="data", shape=[32, 32], dtype="float32")
+            x = fluid.data(name="data", shape=[8, 32, 32], dtype="float32")
             fc = fluid.layers.fc(input=x, size=10,
                 param_attr=fluid.initializer.MSRA(uniform=False))
 
@@ -691,6 +650,7 @@ class MSRAInitializer(Initializer):
             limit = np.sqrt(6.0 / float(fan_in))
             op = block._prepend_op(
                 type="uniform_random",
+                inputs={},
                 outputs={"Out": out_var},
                 attrs={
                     "shape": out_var.shape,
@@ -739,13 +699,16 @@ class BilinearInitializer(Initializer):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import math
             factor = 2
             C = 2
+            B = 8
+            H = W = 32
             w_attr = fluid.param_attr.ParamAttr(
                 learning_rate=0., 
                 regularizer=fluid.regularizer.L2Decay(0.),
                 initializer=fluid.initializer.Bilinear())
-            x = fluid.layers.data(name="data", shape=[3, 32, 32], 
+            x = fluid.data(name="data", shape=[B, 3, H, W], 
                                   dtype="float32")
             conv_up = fluid.layers.conv2d_transpose(
                 input=x,
@@ -774,7 +737,7 @@ class BilinearInitializer(Initializer):
         super(BilinearInitializer, self).__init__()
 
     def __call__(self, var, block):
-        """Add biliear initialization ops for a variable
+        """Add bilinear initialization ops for a variable
 
         Args:
             var (Variable): Variable that needs to be initialized.
@@ -858,15 +821,20 @@ class BilinearInitializer(Initializer):
 
 class NumpyArrayInitializer(Initializer):
     """Init an parameter with an numpy array
+    This op initialize the variable by numpy array.
 
     Args:
         value (numpy): numpy array to initialize the variable
+
+    Returns:
+        A Tensor variable initialized by numpy.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[5], dtype='float32')
+            import numpy
+            x = fluid.data(name="x", shape=[2, 1], dtype='float32')
             fc = fluid.layers.fc(input=x, size=10,
                 param_attr=fluid.initializer.NumpyArrayInitializer(numpy.array([1,2])))
     """

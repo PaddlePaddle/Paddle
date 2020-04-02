@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_reducescatter_op.h"
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
@@ -26,16 +26,21 @@ template <typename T>
 class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
 
     int rid = ctx.Attr<int>("ring_id");
-    auto comm = platform::NCCLCommContext::Instance().Get(rid);
+    auto place = ctx.GetPlace();
+    auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
     int nranks = comm->nranks();
 
-    auto place = ctx.GetPlace();
     auto out_dims = in->dims();
+    PADDLE_ENFORCE_EQ(out_dims[0] % nranks, 0,
+                      platform::errors::InvalidArgument(
+                          "The input tensor X's "
+                          "dim[0] (%d) should be divisible by nranks(%d)",
+                          out_dims[0], nranks));
     out_dims[0] = out_dims[0] / nranks;
     out->mutable_data<T>(out_dims, place);
 
@@ -52,7 +57,7 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
       stream = comm->stream();
     }
 
-    PADDLE_ENFORCE(platform::dynload::ncclReduceScatter(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclReduceScatter(
         send_buff, recv_buff, recv_numel, static_cast<ncclDataType_t>(dtype),
         ncclSum, comm->comm(), stream));
 #else

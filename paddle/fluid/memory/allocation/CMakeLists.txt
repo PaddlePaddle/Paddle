@@ -6,6 +6,12 @@ cc_library(best_fit_allocator SRCS best_fit_allocator.cc DEPS allocator)
 cc_library(naive_best_fit_allocator SRCS naive_best_fit_allocator.cc DEPS allocator buddy_allocator profiler)
 cc_test(buffered_allocator_test SRCS buffered_allocator_test.cc DEPS locked_allocator buffered_allocator cpu_allocator best_fit_allocator)
 
+if (WITH_MKLDNN)
+  set(MKLDNN_CTX_DEPS mkldnn)
+else ()
+  set(MKLDNN_CTX_DEPS)
+endif()
+
 if (WITH_GPU)
   nv_library(cuda_allocator SRCS cuda_allocator.cc DEPS allocator cuda_device_guard)
 endif()
@@ -46,6 +52,10 @@ cc_library(allocator_facade SRCS allocator_facade.cc DEPS allocator_strategy)
 
 cc_test(retry_allocator_test SRCS retry_allocator_test.cc DEPS retry_allocator locked_allocator cpu_allocator)
 if (WITH_TESTING)
+  if (WITH_GPU)
+    target_link_libraries(retry_allocator_test cuda_allocator)
+  endif()
+
   set_tests_properties(retry_allocator_test PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 endif()
 
@@ -55,3 +65,9 @@ cc_test(allocator_facade_frac_flags_test SRCS allocator_facade_frac_flags_test.c
 
 cc_library(auto_growth_best_fit_allocator SRCS auto_growth_best_fit_allocator.cc DEPS allocator aligned_allocator)
 cc_test(auto_growth_best_fit_allocator_facade_test SRCS auto_growth_best_fit_allocator_facade_test.cc DEPS cpu_allocator auto_growth_best_fit_allocator)
+cc_test(auto_growth_best_fit_allocator_test SRCS auto_growth_best_fit_allocator_test.cc DEPS auto_growth_best_fit_allocator)
+
+if(NOT WIN32)
+  cc_library(mmap_allocator SRCS mmap_allocator.cc DEPS allocator)
+  cc_test(mmap_allocator_test SRCS mmap_allocator_test.cc DEPS mmap_allocator allocator)
+endif(NOT WIN32)

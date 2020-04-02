@@ -62,7 +62,7 @@ class HDFSClient(object):
         dfs = 'fs'
         self.pre_commands.append(dfs)
 
-        for k, v in configs.iteritems():
+        for k, v in configs.items():
             config_command = '-D%s=%s' % (k, v)
             self.pre_commands.append(config_command)
 
@@ -312,9 +312,9 @@ class HDFSClient(object):
     @staticmethod
     def make_local_dirs(local_path):
         """
-        create a directiory local, is same to mkdir
+        create a directory local, is same to mkdir
         Args:
-            local_path: local path that wants to create a directiory.
+            local_path: local path that wants to create a directory.
         """
         try:
             os.makedirs(local_path)

@@ -23,6 +23,7 @@ INCLUDE_DIRECTORIES(${LEVELDB_INCLUDE_DIR})
 ExternalProject_Add(
     extern_leveldb
     ${EXTERNAL_PROJECT_LOG_ARGS}
+    ${SHALLOW_CLONE}
     PREFIX ${LEVELDB_SOURCES_DIR}
     GIT_REPOSITORY "https://github.com/google/leveldb"
     GIT_TAG v1.18

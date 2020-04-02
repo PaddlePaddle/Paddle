@@ -15,6 +15,7 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/framework/mixed_vector.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/float16.h"
@@ -264,8 +265,7 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
     const T** dev_ins_data = nullptr;
     if (!has_same_shape || in_num < 2 || in_num > 4) {
       tmp_dev_ins_data =
-          platform::DeviceTemporaryAllocator::Instance().Get(context).Allocate(
-              inputs_data.size() * sizeof(T*));
+          memory::Alloc(context, inputs_data.size() * sizeof(T*));
       memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
                    tmp_dev_ins_data->ptr(), platform::CPUPlace(),
                    static_cast<void*>(inputs_data.data()),
@@ -292,8 +292,7 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
       }
     } else {
       auto tmp_dev_ins_col_data =
-          platform::DeviceTemporaryAllocator::Instance().Get(context).Allocate(
-              inputs_col.size() * sizeof(int));
+          memory::Alloc(context, inputs_col.size() * sizeof(int));
       memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
                    tmp_dev_ins_col_data->ptr(), platform::CPUPlace(),
                    static_cast<void*>(inputs_col.data()),
@@ -356,8 +355,7 @@ class SplitFunctor<platform::CUDADeviceContext, T> {
     T** dev_out_gpu_data = nullptr;
     if (!has_same_shape || o_num < 2 || o_num > 4) {
       tmp_dev_outs_data =
-          platform::DeviceTemporaryAllocator::Instance().Get(context).Allocate(
-              outputs_data.size() * sizeof(T*));
+          memory::Alloc(context, outputs_data.size() * sizeof(T*));
       memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
                    tmp_dev_outs_data->ptr(), platform::CPUPlace(),
                    reinterpret_cast<void*>(outputs_data.data()),
@@ -384,8 +382,9 @@ class SplitFunctor<platform::CUDADeviceContext, T> {
       }
     } else {
       auto tmp_dev_ins_col_data =
-          platform::DeviceTemporaryAllocator::Instance().Get(context).Allocate(
-              outputs_cols.size() * sizeof(int));
+          memory::Alloc(context,
+
+                        outputs_cols.size() * sizeof(int));
       memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
                    tmp_dev_ins_col_data->ptr(), platform::CPUPlace(),
                    reinterpret_cast<void*>(outputs_cols.data()),

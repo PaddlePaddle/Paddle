@@ -38,21 +38,6 @@ std::unordered_map<std::string, FileReaderCreator>& FileReaderRegistry() {
   return regs;
 }
 
-std::unique_ptr<framework::ReaderBase> CreateReaderByFileName(
-    const std::string& file_name) {
-  size_t separator_pos = file_name.find_last_of(kFileFormatSeparator);
-  PADDLE_ENFORCE_NE(separator_pos, std::string::npos,
-                    "File name illegal! A legal file name should be like: "
-                    "[file_name].[file_format] (e.g., 'data_file.recordio').");
-  std::string filetype = file_name.substr(separator_pos + 1);
-
-  auto itor = FileReaderRegistry().find(filetype);
-  PADDLE_ENFORCE(itor != FileReaderRegistry().end(),
-                 "No file reader registered for '%s' format.", filetype);
-  framework::ReaderBase* reader = (itor->second)(file_name);
-  return std::unique_ptr<framework::ReaderBase>(reader);
-}
-
 void FileReaderMakerBase::Make() {
   AddOutput("Out", "(ReaderHolder): The created random reader.").AsDuplicable();
   AddAttr<std::vector<int>>("shape_concat", "The concat of all data's shapes.");
@@ -65,6 +50,10 @@ void FileReaderMakerBase::Make() {
       "It means the reader will generate two data each time,"
       "whose shapes are [2,3,4] and [5,6] respectively.");
   AddAttr<std::vector<int>>("lod_levels", "The LoD levels of each data.");
+  AddAttr<std::vector<int>>("dtypes",
+                            "The int value of enum dtypes of each data.");
+  AddAttr<std::vector<int>>("need_check_feed",
+                            "Whether to check shape and dtypes of input");
   AddAttr<bool>(
       "use_data_config",
       "Use the config of all datas like shape_concat/ranks/lod_levels")
@@ -92,6 +81,17 @@ void FileReaderInferShape::operator()(framework::InferShapeContext* ctx) const {
                       "The number of 'lod_levels'(%d) doesn't match the number "
                       "of 'shapes'(%d).",
                       lod_levels.size(), shapes.size());
+    const auto dtypes = ctx->Attrs().Get<std::vector<int>>("dtypes");
+    PADDLE_ENFORCE_EQ(
+        dtypes.size(), shapes.size(),
+        "The number of 'dtypes'(%d) doesn't match the number of 'shapes'(%d).",
+        dtypes.size(), shapes.size());
+    const auto need_check_feed =
+        ctx->Attrs().Get<std::vector<int>>("need_check_feed");
+    PADDLE_ENFORCE_EQ(need_check_feed.size(), shapes.size(),
+                      "The number of 'need_check_feed'(%d) doesn't match the "
+                      "number of 'shapes'(%d).",
+                      need_check_feed.size(), shapes.size());
     framework::VarDesc* reader =
         boost::get<framework::VarDesc*>(ctx->GetOutputVarPtrs("Out")[0]);
     reader->SetLoDLevels(lod_levels);

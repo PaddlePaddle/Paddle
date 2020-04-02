@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/sequence_ops/sequence_reshape_op.h"
+#include <memory>
 #include "paddle/fluid/framework/ddim.h"
 
 namespace paddle {
@@ -36,6 +37,9 @@ class SequenceReshapeOp : public framework::OperatorWithKernel {
     } else {
       // when compiling, the batch size is undetermined, just set to -1
       ctx->SetOutputDim("Out", {-1, static_cast<int64_t>(new_dim)});
+      // when compiling, the LodLevel of Out is set to be 1, which is consistent
+      // with that in running time.
+      ctx->SetLoDLevel("Out", 1);
     }
   }
 };
@@ -97,19 +101,19 @@ class SequenceReshapeGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class SequenceReshapeGradOpMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SequenceReshapeGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op_desc_ptr = new framework::OpDesc();
+  void Apply(GradOpPtr<T> op_desc_ptr) const override {
     op_desc_ptr->SetType("sequence_reshape_grad");
-    op_desc_ptr->SetInput("X", Input("X"));
-    op_desc_ptr->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op_desc_ptr->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op_desc_ptr->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(op_desc_ptr);
+    op_desc_ptr->SetInput("X", this->Input("X"));
+    op_desc_ptr->SetInput(framework::GradVarName("Out"),
+                          this->OutputGrad("Out"));
+    op_desc_ptr->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op_desc_ptr->SetAttrMap(this->Attrs());
   }
 };
 
@@ -118,7 +122,9 @@ class SequenceReshapeGradOpMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_reshape, ops::SequenceReshapeOp,
-                  ops::SequenceReshapeOpMaker, ops::SequenceReshapeGradOpMaker);
+                  ops::SequenceReshapeOpMaker,
+                  ops::SequenceReshapeGradOpMaker<paddle::framework::OpDesc>,
+                  ops::SequenceReshapeGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sequence_reshape_grad, ops::SequenceReshapeGradOp);
 REGISTER_OP_CPU_KERNEL(
     sequence_reshape,

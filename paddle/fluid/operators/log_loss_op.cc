@@ -105,20 +105,20 @@ class LogLossGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class LogLossGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class LogLossGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("log_loss_grad");
-    op->SetInput("Predicted", Input("Predicted"));
-    op->SetInput("Labels", Input("Labels"));
-    op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
-    op->SetOutput(framework::GradVarName("Predicted"), InputGrad("Predicted"));
-    op->SetAttrMap(Attrs());
-    return op;
+    op->SetInput("Predicted", this->Input("Predicted"));
+    op->SetInput("Labels", this->Input("Labels"));
+    op->SetInput(framework::GradVarName("Loss"), this->OutputGrad("Loss"));
+    op->SetOutput(framework::GradVarName("Predicted"),
+                  this->InputGrad("Predicted"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -127,7 +127,8 @@ class LogLossGradDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(log_loss, ops::LogLossOp, ops::LogLossOpMaker<float>,
-                  ops::LogLossGradDescMaker);
+                  ops::LogLossGradMaker<paddle::framework::OpDesc>,
+                  ops::LogLossGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(log_loss_grad, ops::LogLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     log_loss, ops::LogLossKernel<paddle::platform::CPUDeviceContext, float>);

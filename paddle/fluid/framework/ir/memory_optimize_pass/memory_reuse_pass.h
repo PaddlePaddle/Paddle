@@ -133,6 +133,9 @@ class MemoryReusePass : public Pass {
   mutable std::vector<std::unordered_set<std::string>> reused_out_var_names_;
 
   mutable std::vector<std::unordered_map<std::string, VarDesc *>> var_descs_;
+  mutable details::PinnedVars *pinned_var_set_;
+
+  bool IsPinnedVar(const VarDesc &out_var_desc) const;
 };
 
 }  // namespace ir

@@ -61,7 +61,7 @@ def parse_args():
         "--log_dir",
         default="logs",
         type=str,
-        help="The path for each process's log.If it's not setted, the log will printed to default pipe."
+        help="The path for each process's log.If it's not set, the log will printed to default pipe."
     )
 
     # positional
@@ -100,18 +100,16 @@ def start_procs(args):
     user_endpoints_port = [x.split(":")[1] for x in user_endpoints.split(",")]
     for i in range(server_num):
         current_env.update({
-            "PADDLE_TRAINERS_NUM": str(server_num),
-            "PADDLE_PORT": ",".join(user_endpoints_port),
-            #"POD_IP": user_endpoints_ips[i],
-            "CURRENT_ENDPOINT":
-            user_endpoints_ips[i] + ":" + user_endpoints_port[i],
-            "PADDLE_PSERVERS": ",".join(user_endpoints_ips),
-            "PADDLE_TRAINING_ROLE": "PSERVER"
+            "PADDLE_PSERVERS_IP_PORT_LIST": user_endpoints,
+            "PADDLE_PORT": user_endpoints_port[i],
+            "TRAINING_ROLE": "PSERVER",
+            "PADDLE_TRAINERS_NUM": str(worker_num),
+            "POD_IP": user_endpoints_ips[i]
         })
+
         cmd = [sys.executable, "-u", args.training_script
                ] + args.training_script_args
         cmds.append(cmd)
-        print(cmd)
         if args.log_dir is not None:
             os.system("mkdir -p {}".format(args.log_dir))
             fn = open("%s/serverlog.%d" % (args.log_dir, i), "w")
@@ -123,15 +121,13 @@ def start_procs(args):
 
     for i in range(worker_num):
         current_env.update({
-            "PADDLE_PSERVERS": ",".join(user_endpoints_ips),
-            "PADDLE_PORT": ",".join(user_endpoints_port),
+            "PADDLE_PSERVERS_IP_PORT_LIST": user_endpoints,
             "PADDLE_TRAINERS_NUM": str(worker_num),
-            "PADDLE_TRAINING_ROLE": "TRAINER",
+            "TRAINING_ROLE": "TRAINER",
             "PADDLE_TRAINER_ID": str(i)
         })
         cmd = [sys.executable, "-u", args.training_script
                ] + args.training_script_args
-        print(cmd)
         cmds.append(cmd)
         if args.log_dir is not None:
             os.system("mkdir -p {}".format(args.log_dir))
@@ -142,16 +138,20 @@ def start_procs(args):
             proc = subprocess.Popen(cmd, env=current_env)
         procs.append(proc)
 
-    for i in range(0, len(procs)):
-        proc = procs[i]
-
-        proc.wait()
+    # only wait worker to finish here
+    for i, proc in enumerate(procs):
+        if i < server_num:
+            continue
+        procs[i].wait()
         if len(log_fns) > 0:
             log_fns[i].close()
 
-        if proc.returncode != 0:
-            raise subprocess.CalledProcessError(
-                returncode=procs[i].returncode, cmd=cmds[i])
+    print("all workers exit, going to finish parameter server", file=sys.stderr)
+    for i in range(server_num):
+        if len(log_fns) > 0:
+            log_fns[i].close()
+        procs[i].terminate()
+    print("all parameter server are killed", file=sys.stderr)
 
 
 def launch():

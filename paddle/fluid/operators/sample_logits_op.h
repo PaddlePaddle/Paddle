@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -33,7 +34,8 @@ using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 template <typename T>
 struct TolerableValue {
   HOSTDEVICE T operator()(const T& x) const {
-    PADDLE_ASSERT(std::is_floating_point<T>::value);
+    PADDLE_ENFORCE(std::is_floating_point<T>::value,
+                   "TolerableValue should be float in sample_logits_op.");
     const T kApproInf = 1e20;
     if (x == INFINITY) return kApproInf;
     if (x == -INFINITY) return -kApproInf;
@@ -47,11 +49,12 @@ static void CPUTakeAlongD1(const platform::DeviceContext& ctx,
                            const framework::Tensor& array,
                            const framework::Tensor& index,
                            framework::Tensor* value) {
-  PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()));
+  PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true);
   // UNDERSTAND: check shape src(B, C), index(B, K), out should also be (B, K)
-  PADDLE_ENFORCE(index.dims().size() == 2 && array.dims().size() == 2 &&
-                 index.dims()[0] == array.dims()[0] &&
-                 index.dims() == value->dims());
+  PADDLE_ENFORCE_EQ(index.dims().size(), 2);
+  PADDLE_ENFORCE_EQ(array.dims().size(), 2);
+  PADDLE_ENFORCE_EQ(index.dims()[0], array.dims()[0]);
+  PADDLE_ENFORCE_EQ(index.dims(), value->dims());
 
   const auto batch_size = index.dims()[0];
   const auto num_take = index.dims()[1];
@@ -86,11 +89,12 @@ static void CPUPutAlongD1(const platform::DeviceContext& ctx,
                           framework::Tensor* array,
                           const framework::Tensor& index,
                           const framework::Tensor& value) {
-  PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()));
+  PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true);
   // UNDERSTAND: check shape src(B, C), index(B, K), out should also be (B, K)
-  PADDLE_ENFORCE(index.dims().size() == 2 && array->dims().size() == 2 &&
-                 index.dims()[0] == array->dims()[0] &&
-                 index.dims() == value.dims());
+  PADDLE_ENFORCE_EQ(index.dims().size(), 2);
+  PADDLE_ENFORCE_EQ(array->dims().size(), 2);
+  PADDLE_ENFORCE_EQ(index.dims()[0], array->dims()[0]);
+  PADDLE_ENFORCE_EQ(index.dims(), value.dims());
   const auto batch_size = index.dims()[0];
   const auto num_put = index.dims()[1];
   auto array_dims = array->dims();
@@ -145,8 +149,8 @@ class SampleLogitsKernel : public framework::OpKernel<T> {
  public:
   using Tensor = framework::Tensor;
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE(platform::is_cpu_place(context.GetPlace()),
-                   "This kernel only runs on CPU.");
+    PADDLE_ENFORCE_EQ(platform::is_cpu_place(context.GetPlace()), true,
+                      "This kernel only runs on CPU.");
     VLOG(3) << "Enter SampleLogitsKernel";
     // get necessary inputs
     const Tensor* logits = context.Input<Tensor>("Logits");
@@ -191,8 +195,15 @@ class SampleLogitsKernel : public framework::OpKernel<T> {
           context.Input<Tensor>("CustomizedSamples");
       const Tensor* customized_probabilities =
           context.Input<Tensor>("CustomizedProbabilities");
-      samples->ShareDataWith(*customized_samples);
-      probabilities->ShareDataWith(*customized_probabilities);
+      PADDLE_ENFORCE_EQ(customized_samples, samples,
+                        platform::errors::InvalidArgument(
+                            "CustomizedSamples must be the same Tensor with "
+                            "Samples when use_customized_samples = True"));
+      PADDLE_ENFORCE_EQ(
+          customized_probabilities, probabilities,
+          platform::errors::InvalidArgument(
+              "CustomizedProbabilities must be the same Tensor with "
+              "Probabilities when use_customized_samples = True"));
     } else {
       samples->mutable_data<int64_t>(context.GetPlace());
       probabilities->mutable_data<T>(samples_dim, context.GetPlace());

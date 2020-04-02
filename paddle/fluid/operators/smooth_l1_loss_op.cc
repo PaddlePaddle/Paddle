@@ -135,11 +135,13 @@ class SmoothL1LossGradOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_GE(out_dims.size(), 2,
                       "The tensor rank of Input(Out@Grad) should be 2.");
-    PADDLE_INFERSHAPE_ENFORCE_EQ(ctx, out_dims[0], in_dims[0],
-                                 "The 1st dimension of Input(Out@Grad) must be "
-                                 "same as input.");
-    PADDLE_INFERSHAPE_ENFORCE_EQ(
-        ctx, out_dims[1], 1, "The 2nd dimension of Input(Out@Grad) must be 1.");
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(out_dims[0], in_dims[0],
+                        "The 1st dimension of Input(Out@Grad) must be "
+                        "same as input.");
+      PADDLE_ENFORCE_EQ(out_dims[1], 1,
+                        "The 2nd dimension of Input(Out@Grad) must be 1.");
+    }
 
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
@@ -152,24 +154,23 @@ class SmoothL1LossGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class SmoothL1LossGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SmoothL1LossGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("smooth_l1_loss_grad");
-    op->SetInput("InsideWeight", Input("InsideWeight"));
-    op->SetInput("OutsideWeight", Input("OutsideWeight"));
-    op->SetInput("Diff", Output("Diff"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetInput("InsideWeight", this->Input("InsideWeight"));
+    op->SetInput("OutsideWeight", this->Input("OutsideWeight"));
+    op->SetInput("Diff", this->Output("Diff"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
 
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
   }
 };
 
@@ -178,7 +179,8 @@ class SmoothL1LossGradMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(smooth_l1_loss, ops::SmoothL1LossOp, ops::SmoothL1LossOpMaker,
-                  ops::SmoothL1LossGradMaker);
+                  ops::SmoothL1LossGradMaker<paddle::framework::OpDesc>,
+                  ops::SmoothL1LossGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(smooth_l1_loss_grad, ops::SmoothL1LossGradOp);
 REGISTER_OP_CPU_KERNEL(
     smooth_l1_loss,

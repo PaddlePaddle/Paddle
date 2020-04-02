@@ -31,18 +31,6 @@ using framework::DataLayout;
 using mkldnn::stream;
 using platform::GetMKLDNNFormat;
 
-std::string CreateKey(const paddle::framework::ExecutionContext& ctx,
-                      const mkldnn::memory::data_type& src_dt,
-                      const std::vector<int>& src_tz, const float scale_data) {
-  std::string key;
-  key.reserve(platform::MKLDNNHandler::MaxKeyLength);
-  platform::MKLDNNHandler::AppendKey(&key, std::to_string(src_dt));
-  platform::MKLDNNHandler::AppendKeyDims(&key, src_tz);
-  platform::MKLDNNHandler::AppendKey(&key, std::to_string(scale_data));
-  platform::MKLDNNHandler::AppendKey(&key, ctx.op().Output("Output"));
-  return key;
-}
-
 template <typename T>
 class DeQuantOpKernel : public framework::OpKernel<T> {
  public:
@@ -58,13 +46,13 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
     float* output_data = output->mutable_data<float>(ctx.GetPlace());
     std::vector<float> reorder_scale = {1.0f / scale_data};
 
-    std::vector<primitive> pipeline;
-    std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
-    std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
+    auto src_tz = paddle::framework::vectorize<int64_t>(input->dims());
+    auto dst_tz = paddle::framework::vectorize<int64_t>(output->dims());
     mkldnn::memory::data_type src_dt =
         paddle::framework::ToMKLDNNDataType(input->type());
-    mkldnn::memory::format src_fmt = input->format();
-    std::string key = CreateKey(ctx, src_dt, src_tz, reorder_scale[0]);
+    MKLDNNMemoryFormat src_fmt = input->format();
+    std::string key =
+        platform::CreateKey(src_dt, src_tz, ctx.OutputName("Output"));
     const std::string key_prim = key + "@reorder_p";
     const std::string key_src_mem = key + "@src_mem";
     const std::string key_dst_mem = key + "@dst_mem";
@@ -80,22 +68,20 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
       attri.set_output_scales(mask, reorder_scale);
 
       auto src_md = platform::MKLDNNMemDesc({src_tz}, src_dt, src_fmt);
-      auto src_pd = mkldnn::memory::primitive_desc(src_md, engine);
-      src_memory =
-          std::make_shared<mkldnn::memory>(src_pd, to_void_cast<T>(input_data));
-      std::shared_ptr<primitive::at> src_memory_p =
-          std::shared_ptr<primitive::at>(new primitive::at(*src_memory));
+      src_memory = std::make_shared<mkldnn::memory>(
+          src_md, engine, to_void_cast<T>(input_data));
 
-      auto dst_md = platform::MKLDNNMemDesc({dst_tz}, memory::data_type::f32,
-                                            memory::format::nchw);
-      auto dst_pd = mkldnn::memory::primitive_desc(dst_md, engine);
+      auto dst_md =
+          platform::MKLDNNMemDesc({dst_tz}, memory::data_type::f32,
+                                  platform::MKLDNNFormatForSize(
+                                      dst_tz.size(), MKLDNNMemoryFormat::nchw));
+
       dst_memory = std::make_shared<mkldnn::memory>(
-          dst_pd, to_void_cast<float>(output_data));
+          dst_md, engine, to_void_cast<float>(output_data));
 
       auto reorder_pd = std::shared_ptr<reorder::primitive_desc>(
-          new reorder::primitive_desc(src_pd, dst_pd, attri));
-      reorder_p = std::shared_ptr<reorder>(
-          new reorder(*reorder_pd, *src_memory_p, *dst_memory));
+          new reorder::primitive_desc(*src_memory, *dst_memory, attri));
+      reorder_p = std::shared_ptr<reorder>(new reorder(*reorder_pd));
       dev_ctx.SetBlob(key_prim, reorder_p);
       dev_ctx.SetBlob(key_src_mem, src_memory);
       dev_ctx.SetBlob(key_dst_mem, dst_memory);
@@ -109,9 +95,11 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
       dst_memory->set_data_handle(output->mutable_data<float>(ctx.GetPlace()));
     }
 
-    pipeline.push_back(*reorder_p);
-    stream(stream::kind::eager).submit(pipeline).wait();
+    mkldnn::stream astream(engine);
+    reorder_p->execute(astream, *src_memory, *dst_memory);
+    astream.wait();
 
+    output->set_layout(DataLayout::kMKLDNN);
     output->set_format(GetMKLDNNFormat(*dst_memory));
   }
 };

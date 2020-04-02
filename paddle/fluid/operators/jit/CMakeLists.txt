@@ -18,7 +18,7 @@ if(WITH_XBYAK)
     add_subdirectory(gen)
 endif()
 
-cc_library(jit_kernel_helper SRCS ${jit_kernel_cc_srcs} DEPS ${JIT_KERNEL_DEPS})
+cc_library(jit_kernel_helper INTERFACE SRCS ${jit_kernel_cc_srcs} DEPS jit_kernel_base ${JIT_KERNEL_DEPS})
 cc_test(jit_kernel_test SRCS test.cc DEPS jit_kernel_helper)
 if(NOT WIN32)
     cc_binary(jit_kernel_benchmark SRCS benchmark.cc DEPS jit_kernel_helper device_tracer tensor)

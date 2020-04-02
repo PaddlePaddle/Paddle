@@ -1,5 +1,4 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -43,13 +42,7 @@ class RowConvOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("X");
     auto filter_dims = ctx->GetInputDim("Filter");
-    PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank should be 2.");
     PADDLE_ENFORCE_EQ(filter_dims.size(), 2, "Input(Y)'s rank should be 2.");
-    if (ctx->IsRuntime() || (x_dims[1] > 0 && filter_dims[1] > 0)) {
-      PADDLE_ENFORCE_EQ(
-          x_dims[1], filter_dims[1],
-          "The 2nd dimension of Input(X) and Input(Filter) should be same.");
-    }
 
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", "Out");
@@ -84,21 +77,20 @@ class RowConvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "the input(X) is a LodTensor, which supports "
+             "the input(X) is a LodTensor or tensor, LodTensor(X) supports "
              "variable time-length input sequences. The underlying tensor "
              "in this LoDTensor is a matrix with shape (T x N), where T "
              "is the total time steps in this mini-batch and N is the input "
-             "data dimension.");
+             "data dimension. the shape of Tensor input(X) has shape "
+             "(B x T x N), B is batch size;");
     AddInput("Filter",
              "the input(Filter) is a learnable parameter. It "
              "is a 2-D tensor with shape (future_context x N), where, "
              "future_context is the future context length and N is the data "
              "dimension.");
     AddOutput("Out",
-              "the output(Out) is a LodTensor, which supports "
-              "variable time-length input sequences. The underlying tensor "
-              "in this LodTensor is a matrix with shape T x N, i.e., the "
-              "same shape as X.");
+              "the output(Out) is a LodTensor or Tensor, which has same type"
+              " and same shape as X.");
     AddComment(R"DOC(
 :strong:`Row-convolution operator`
 
@@ -152,8 +144,26 @@ class RowConvKernel<platform::CPUDeviceContext, T>
 
     out->mutable_data<T>(context.GetPlace());
 
-    auto batch_indices = x->lod()[0];
-    auto input_dim = x->dims()[1];  // 'in' is of size T x N
+    bool is_tensor = x->lod().empty();
+    int batch_size = 0;
+    if (is_tensor) {
+      batch_size = x->dims()[0];
+    } else {
+      batch_size = x->lod()[0].size() - 1;
+    }
+    framework::Vector<size_t> batch_indices(batch_size + 1);
+    int input_dim = 0;
+    int timesteps = 0;
+    if (is_tensor) {
+      for (int i = 0; i < batch_size + 1; i++) {
+        batch_indices[i] = i;
+      }
+      input_dim = x->dims()[2];
+      timesteps = x->dims()[1];
+    } else {
+      batch_indices = x->lod()[0];
+      input_dim = x->dims()[1];
+    }
     size_t num_sequence = batch_indices.size() - 1;
 
     auto future_context = filter->dims()[0];
@@ -162,11 +172,23 @@ class RowConvKernel<platform::CPUDeviceContext, T>
     for (size_t i = 0; i < num_sequence; i++) {
       int start = static_cast<int>(batch_indices[i]);
       int end = static_cast<int>(batch_indices[i + 1]);
-      int current_timesteps = end - start;
+      int current_timesteps = 0;
+      if (is_tensor) {
+        current_timesteps = timesteps;
+      } else {
+        current_timesteps = end - start;
+      }
+      // int current_timesteps = end - start;
       Tensor cur_input_sequence =
           x->Slice(start, end);  // Current input sequence
+      cur_input_sequence =
+          cur_input_sequence.Resize({current_timesteps, input_dim});
+
       Tensor cur_output_sequence =
           out->Slice(start, end);  // Current output sequence
+      cur_output_sequence =
+          cur_output_sequence.Resize({current_timesteps, input_dim});
+
       auto cip_seq = EigenMatrix<T>::From(cur_input_sequence);
       auto cot_seq = EigenMatrix<T>::From(cur_output_sequence);
 
@@ -198,11 +220,30 @@ class RowConvGradKernel<platform::CPUDeviceContext, T>
     auto *dx = context.Output<LoDTensor>(framework::GradVarName("X"));
     auto *d_filter = context.Output<Tensor>(framework::GradVarName("Filter"));
 
-    auto input_dim = x->dims()[1];  // 'x' is of size T x N
-    auto batch_indices = x->lod()[0];
+    auto &x_lod = x->lod();
+    bool is_tensor = x_lod.empty();
+    int batch_size = 0;
+    if (is_tensor) {
+      batch_size = x->dims()[0];
+    } else {
+      batch_size = x->lod()[0].size() - 1;
+    }
+    framework::Vector<size_t> batch_indices(batch_size + 1);
+    int timesteps = 0;
+    int input_dim = 0;
+    if (is_tensor) {
+      for (int i = 0; i < batch_size + 1; i++) {
+        batch_indices[i] = i;
+      }
+      input_dim = x->dims()[2];
+      timesteps = x->dims()[1];
+    } else {
+      batch_indices = x->lod()[0];
+      input_dim = x->dims()[1];
+    }
+
     size_t num_sequence = batch_indices.size() - 1;
     auto future_context = filter->dims()[0];
-
     if (d_filter) {
       d_filter->mutable_data<T>(context.GetPlace());
       auto dweights =
@@ -213,14 +254,19 @@ class RowConvGradKernel<platform::CPUDeviceContext, T>
         int start = static_cast<int>(batch_indices[i]);
         int end = static_cast<int>(batch_indices[i + 1]);
 
+        int current_timesteps = 0;
+        if (is_tensor) {
+          current_timesteps = timesteps;
+        } else {
+          current_timesteps = end - start;
+        }
         Tensor cur_input = x->Slice(start, end);  // Current input sequence
+        cur_input = cur_input.Resize({current_timesteps, input_dim});
         Tensor cur_doutput =
             d_out->Slice(start, end);  // Current output grad sequence
-
+        cur_doutput = cur_doutput.Resize({current_timesteps, input_dim});
         auto cur_ip = EigenMatrix<T>::From(cur_input);
         auto cur_dout = EigenMatrix<T>::From(cur_doutput);
-        int current_timesteps = end - start;
-
         for (int k = 0; k < current_timesteps;
              k++) {  // For different time steps in the same sequence
           for (int w = 0; (w < future_context) && ((k + w) < current_timesteps);
@@ -241,15 +287,23 @@ class RowConvGradKernel<platform::CPUDeviceContext, T>
         int start = static_cast<int>(batch_indices[i]);
         int end = static_cast<int>(batch_indices[i + 1]);
 
+        int current_timesteps = 0;
+        if (is_tensor) {
+          current_timesteps = timesteps;
+        } else {
+          current_timesteps = end - start;
+        }
+
         Tensor cur_doutput =
             d_out->Slice(start, end);  // Current output grad sequence
+        cur_doutput = cur_doutput.Resize({current_timesteps, input_dim});
         Tensor cur_dinput =
             dx->Slice(start, end);  // Current input grad sequence
+        cur_dinput = cur_dinput.Resize({current_timesteps, input_dim});
 
         auto cur_dout = EigenMatrix<T>::From(cur_doutput);
         auto cur_dip = EigenMatrix<T>::From(cur_dinput);
         cur_dip.setZero();
-        int current_timesteps = end - start;
 
         for (int k = 0; k < current_timesteps;
              k++) {  // For different time steps in the same sequence
@@ -266,21 +320,20 @@ class RowConvGradKernel<platform::CPUDeviceContext, T>
   }
 };
 
-class RowConvGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class RowConvGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("row_conv_grad");
-    op->SetAttrMap(Attrs());
-    op->SetInput("X", Input("X"));
-    op->SetInput("Filter", Input("Filter"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
-    return op;
+    op->SetAttrMap(this->Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Filter", this->Input("Filter"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Filter"), this->InputGrad("Filter"));
   }
 };
 
@@ -289,7 +342,8 @@ class RowConvGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(row_conv, ops::RowConvOp, ops::RowConvOpMaker,
-                  ops::RowConvGradOpDescMaker);
+                  ops::RowConvGradOpMaker<paddle::framework::OpDesc>,
+                  ops::RowConvGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(row_conv_grad, ops::RowConvGradOp);
 REGISTER_OP_CPU_KERNEL(
     row_conv, ops::RowConvKernel<paddle::platform::CPUDeviceContext, float>);

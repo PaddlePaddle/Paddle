@@ -64,35 +64,35 @@ class MeanGradOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto input_data_type =
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type();
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
-class MeanGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class MeanGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* grad_op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("mean_grad");
-    grad_op->SetInput("X", Input("X"));
-    grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(MeanGradNoNeedBufferVarsInference, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(MeanGradNoNeedBufferVarsInference, "X");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(mean, ops::MeanOp, ops::MeanOpMaker, ops::MeanOpInferVarType,
-                  ops::MeanGradMaker);
+                  ops::MeanGradMaker<paddle::framework::OpDesc>,
+                  ops::MeanGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(mean_grad, ops::MeanGradOp,
                   ops::MeanGradNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(

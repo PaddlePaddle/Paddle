@@ -73,12 +73,12 @@ class ShrinkRNNMemoryOp : public ArrayOp {
 class ShrinkRNNMemoryOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensor) The RNN step memory to be shrinked.");
+    AddInput("X", "(LoDTensor) The RNN step memory to be shrank.");
     AddInput("RankTable", "(LoDRankTable) The lod_rank_table of dynamic RNN.");
     AddInput("I",
              "(LoDTensor) The step index. The RNN step memory 'X' will be "
-             "shrinked to match the size of the input of the index'th step.");
-    AddOutput("Out", "(LoDTensor) The shrinked RNN step memory.");
+             "shrank to match the size of the input of the index'th step.");
+    AddOutput("Out", "(LoDTensor) The shrank RNN step memory.");
     AddComment(R"DOC(
 This operator is used to shrink output batch of memory defined in dynamic RNN.
 
@@ -100,8 +100,10 @@ class ShrinkRNNMemoryInferShape : public framework::InferShapeBase {
     PADDLE_ENFORCE(context->HasInput("I"));
     PADDLE_ENFORCE(context->HasInput("RankTable"));
     context->SetOutputDim("Out", context->GetInputDim("X"));
+    // For runtime, output's lod is computed according to input's lod, but
+    // remove the finished sequence. It is set in detail kernel implementation.
     if (!context->IsRuntime()) {
-      context->DecreaseLoDLevel("X", /*->*/ "Out");
+      context->ShareLoD("X", /*->*/ "Out");
     }
   }
 };
@@ -160,19 +162,18 @@ class ShrinkRNNMemoryGradInferShape : public framework::InferShapeBase {
   }
 };
 
-class ShrinkRNNGradOpMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ShrinkRNNGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("shrink_rnn_memory_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -182,6 +183,8 @@ class ShrinkRNNGradOpMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(shrink_rnn_memory, ops::ShrinkRNNMemoryOp,
                   ops::ShrinkRNNMemoryInferShape,
-                  ops::ShrinkRNNMemoryOpProtoMaker, ops::ShrinkRNNGradOpMaker);
+                  ops::ShrinkRNNMemoryOpProtoMaker,
+                  ops::ShrinkRNNGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ShrinkRNNGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(shrink_rnn_memory_grad, ops::ShrinkRNNMemoryGradOp,
                   ops::ShrinkRNNMemoryGradInferShape);

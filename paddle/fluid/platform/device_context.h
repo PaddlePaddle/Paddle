@@ -18,12 +18,11 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/platform/temporary_allocator.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_helper.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
-#if !defined(__APPLE__) && !defined(_WIN32)
+#if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
 #include "paddle/fluid/platform/gpu_info.h"
@@ -31,6 +30,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "mkldnn.hpp"
+#include "paddle/fluid/framework/data_layout.h"
 #endif
 
 #include <map>
@@ -45,74 +45,9 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
-/*! \brief device temporary allocator singleton.
- *
- * Some operator needs temporary memory during computation, for example,
- * conv_gemm, which needs use col to store the result of im2col. If we
- * create a stack memory which is used by CUDA Kernel, before the
- * Computation(...) returns, we should add ctx->Wait(), because the
- * execution of CUDA is async, if there doesn't have ctx->Wait(),
- * the temporary memory will be released before the CUDA Kernel uses
- * it.
- *
- * DeviceTemporaryAllocator is a singleton, which contains a
- * `TemporaryAllocator` for each <Place, Stream>. And the TemporaryAllocator
- * contains a temp_allocation_queue which is used to store the temporary
- * allocations. The allocation, which is allocated by TemporaryAllocator,
- * is a unique_ptr,  and when it is not held by any variable, it will be
- * pushed into the temp_allocation_queue. There are two opportunities to free
- * the allocations of temp_allocation_queue:
- *  - when the Stream calls cudaStreamSynchronize;
- *  - when the allocation size of opportunities exceeds a certain threshold
- *    (defined by FLAGS_limit_of_tmp_allocation).
- *
- * */
-class DeviceTemporaryAllocator {
- public:
-  static DeviceTemporaryAllocator& Instance() {
-    PADDLE_ENFORCE_NOT_NULL(allocators,
-                            "Need to Create DeviceTemporaryAllocator first!");
-    return *allocators;
-  }
-
-  static DeviceTemporaryAllocator& Init() {
-    if (allocators == nullptr) {
-      allocators = new DeviceTemporaryAllocator();
-    }
-    return *allocators;
-  }
-
-/*! \brief  Return handle of single temporary allocator. */
-#ifdef PADDLE_WITH_CUDA
-  platform::TemporaryAllocator& Get(const platform::Place& place,
-                                    const cudaStream_t& stream);
-#endif
-  template <typename DeviceContext>
-  platform::TemporaryAllocator& Get(const DeviceContext& dev_ctx);
-
-  platform::TemporaryAllocator& Get(const platform::Place& place);
-
- private:
-  DeviceTemporaryAllocator() : cpu_allocator_(platform::CPUPlace()) {}
-
-  static DeviceTemporaryAllocator* allocators;
-
-  platform::TemporaryAllocator cpu_allocator_;
-
-#ifdef PADDLE_WITH_CUDA
-  std::map<std::pair<platform::Place, cudaStream_t>,
-           std::unique_ptr<platform::TemporaryAllocator>>
-      device_allocator_;
-#endif
-
-  std::mutex mtx_;
-
-  DISABLE_COPY_AND_ASSIGN(DeviceTemporaryAllocator);
-};
-
 class DeviceContext {
  public:
-  virtual ~DeviceContext() {}
+  virtual ~DeviceContext() PADDLE_MAY_THROW {}
   virtual Place GetPlace() const = 0;
 
   virtual void Wait() const {}
@@ -143,102 +78,7 @@ struct DefaultDeviceContextType<platform::CPUPlace> {
 #ifdef PADDLE_WITH_CUDA
 
 class EigenCudaStreamDevice;
-class CudnnHolder {
- public:
-  CudnnHolder(const cudaStream_t* stream, const CUDAPlace& place);
-  ~CudnnHolder();
-  cudnnHandle_t cudnn_handle() const { return cudnn_handle_; }
-
- private:
-  friend class CudnnWorkspaceHandle;
-  void ReallocateWorkspace(size_t required_workspace_len);
-
-  template <typename Callback>
-  void RunFuncImpl(Callback&& cudnn_func, size_t required_workspace_len) {
-    if (required_workspace_len > WorkspaceSize()) {
-      ReallocateWorkspace(required_workspace_len);
-    }
-    VLOG(2) << "Cudnn workspace size: "
-            << static_cast<double>(WorkspaceSize()) / (1 << 20) << " MB";
-    cudnn_func(WorkspacePtr());
-  }
-
-  /*! \brief Reset workspace thus release the memory */
-  inline void ResetWorkspace() {
-    if (workspace_) {
-      // Maybe someone is using the current workspace
-      PADDLE_ENFORCE(cudaStreamSynchronize(*stream_));
-      workspace_ = nullptr;
-    }
-  }
-
-  inline void* WorkspacePtr() {
-    if (workspace_) {
-      return workspace_->ptr();
-    } else {
-      return nullptr;
-    }
-  }
-
-  inline size_t WorkspaceSize() {
-    if (workspace_) {
-      return workspace_->size();
-    } else {
-      return 0;
-    }
-  }
-
-  std::mutex& Mutex() { return mtx_; }
-
-  cudnnHandle_t cudnn_handle_;
-  memory::AllocationPtr workspace_;
-
-  const cudaStream_t* stream_;  // not owned;
-  const CUDAPlace place_;
-
-  std::mutex mtx_;
-};
-
-class CudnnWorkspaceHandle {
- public:
-  /*! \brief The lock would not be acquired when constructor calls.
-   *  The lock would be acquired when RunFunc() is called first time. */
-  inline explicit CudnnWorkspaceHandle(CudnnHolder* holder) : holder_(holder) {}
-
-  /*! \brief Thread which call RunFunc() would acquire the lock first
-   *  before invoking cudnn functions. */
-  template <typename Callback>
-  inline void RunFunc(Callback&& cudnn_func, size_t required_workspace_len) {
-    if (!guard_) {
-      guard_.reset(new std::lock_guard<std::mutex>(holder_->Mutex()));
-    }
-    holder_->RunFuncImpl(std::forward<Callback>(cudnn_func),
-                         required_workspace_len);
-  }
-
-  /*! \brief Thread which call RunFuncSync() would acquire the lock first
-   *  before invoking cudnn function and release gpu memory after running
-   *  the function. Currently this function is only used when cudnn
-   *  exhaustive searching and callers have to guarantee that the input function
-   *  is host blocking */
-  template <typename Callback>
-  inline void RunFuncSync(Callback&& cudnn_func,
-                          size_t required_workspace_len) {
-    if (!guard_) {
-      guard_.reset(new std::lock_guard<std::mutex>(holder_->Mutex()));
-    }
-    holder_->RunFuncImpl(std::forward<Callback>(cudnn_func),
-                         required_workspace_len);
-    holder_->ResetWorkspace();
-  }
-
-  CudnnWorkspaceHandle(CudnnWorkspaceHandle&&) = default;
-  CudnnWorkspaceHandle& operator=(CudnnWorkspaceHandle&&) = delete;
-
- private:
-  CudnnHolder* holder_;  // not own
-  std::unique_ptr<std::lock_guard<std::mutex>> guard_;
-};
+class CudnnWorkspaceHandle;
 
 class CUDADeviceContext : public DeviceContext {
  public:
@@ -256,6 +96,15 @@ class CUDADeviceContext : public DeviceContext {
 
   /*! \brief  Return the max physical thread count in the device context */
   int GetMaxPhysicalThreadCount() const;
+
+  /*! \brief  Return the SM count in the device context */
+  int GetSMCount() const;
+
+  /*! \brief  Return the Max thread num of block in the device context */
+  int GetMaxThreadsPerBlock() const;
+
+  /*! \brief  Return the max grid dim size in the device context */
+  dim3 GetCUDAMaxGridDimSize() const;
 
   /*! \brief  Return eigen device in the device context. */
   Eigen::GpuDevice* eigen_device() const;
@@ -295,7 +144,7 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return cuda stream in the device context. */
   cudaStream_t stream() const;
 
-#if !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
   /*! \brief  Return nccl communicators. */
   ncclComm_t nccl_comm() const { return nccl_comm_; }
 
@@ -306,7 +155,7 @@ class CUDADeviceContext : public DeviceContext {
   template <typename Callback>
   void RecordEvent(cudaEvent_t ev, Callback callback) {
     callback();
-    PADDLE_ENFORCE(cudaEventRecord(ev, stream_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(ev, stream_));
   }
 
   template <typename Callback>
@@ -323,13 +172,15 @@ class CUDADeviceContext : public DeviceContext {
 
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
-  mutable std::unique_ptr<CudnnHolder> cudnn_holder_;
   cudaStream_t stream_;
+
+  cudnnHandle_t cudnn_handle_;
+  mutable std::mutex cudnn_handle_mtx_;
 
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;
 
-#if !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
   // NCCL communicator (single process version) for NCCL collective operations.
   // NCCL collective operations provides fast collectives over multiple GPUs
   // both within and across nodes.
@@ -343,12 +194,62 @@ class CUDADeviceContext : public DeviceContext {
   int driver_version_;
   int multi_process_;
   int max_threads_per_mp_;
+  int max_threads_per_block_;
+  dim3 max_grid_dim_size_;
 
   // StreamCallbackManager is thread-safe
   std::unique_ptr<StreamCallbackManager> callback_manager_;
-  CudnnHolder* cudnn_holder() const;
 
   DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);
+};
+
+class CudnnWorkspaceHandle {
+ public:
+  inline CudnnWorkspaceHandle(const CUDADeviceContext& dev_ctx, std::mutex* mtx)
+      : device_context_(dev_ctx), mtx_(mtx) {}
+
+  template <typename Callback>
+  inline void RunFunc(Callback&& cudnn_func, size_t required_workspace_bytes) {
+    if (required_workspace_bytes > WorkspaceSize()) {
+      ReallocWorkspace(required_workspace_bytes);
+    }
+    VLOG(2) << "Cudnn workspace size at RunFunc: "
+            << static_cast<double>(WorkspaceSize()) / (1 << 20) << " MB";
+    {
+      std::lock_guard<std::mutex> guard(*mtx_);
+      cudnn_func(allocation_ ? allocation_->ptr() : nullptr);
+    }
+  }
+
+  /*! \brief Thread which call RunFuncSync() would release gpu memory after
+   *  running the function. Currently this function is only used when cudnn
+   *  exhaustive searching and callers have to guarantee that the input function
+   *  is host blocking */
+  template <typename Callback>
+  inline void RunFuncSync(Callback&& cudnn_func,
+                          size_t required_workspace_bytes) {
+    RunFunc(cudnn_func, required_workspace_bytes);
+    ResetWorkspace();
+  }
+
+  void ReallocWorkspace(size_t required_workspace_bytes);
+
+  inline void ResetWorkspace() { allocation_ = nullptr; }
+
+  inline size_t WorkspaceSize() {
+    if (allocation_ == nullptr) {
+      return 0;
+    }
+    return allocation_->size();
+  }
+
+  CudnnWorkspaceHandle(CudnnWorkspaceHandle&&) = default;
+  CudnnWorkspaceHandle& operator=(CudnnWorkspaceHandle&&) = delete;
+
+ private:
+  memory::allocation::AllocationPtr allocation_;
+  const CUDADeviceContext& device_context_;
+  std::mutex* mtx_;
 };
 
 template <>
@@ -397,6 +298,8 @@ void set_cur_mkldnn_session_id(size_t);
 size_t get_cur_mkldnn_session_id(void);
 void set_cur_input_shape_str(std::string input_shape_str);
 void set_cur_input_shape_cache_capacity(int input_shape_cache_capacity);
+void set_cur_paddle_data_layout(framework::DataLayout);
+framework::DataLayout get_cur_paddle_data_layout(void);
 
 class MKLDNNDeviceContext : public CPUDeviceContext {
  public:
@@ -441,6 +344,8 @@ class DeviceContextPool {
     }
     return *pool;
   }
+
+  static void SetPool(DeviceContextPool* dev_pool) { pool = dev_pool; }
 
   /*! \brief  Return handle of single device context. */
   platform::DeviceContext* Get(const platform::Place& place);

@@ -32,12 +32,15 @@ static constexpr char kOutputs[] = "Out";
 static constexpr char kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
 
 void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
-    int block_id,
+    const framework::ProgramDesc &program, int block_id,
     const std::vector<std::unique_ptr<framework::OperatorBase>> &all_ops);
 
 void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
+    const framework::ProgramDesc &program,
     const std::vector<framework::OperatorBase *> &while_ops,
     const std::vector<framework::OperatorBase *> &while_grad_ops);
+
+bool GetCondData(const framework::LoDTensor &cond);
 
 }  // namespace operators
 }  // namespace paddle

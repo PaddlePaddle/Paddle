@@ -17,16 +17,8 @@ import unittest
 from test_dist_base import TestDistBase
 import os
 
-
-def skip_ci(func):
-    on_ci = bool(int(os.environ.get("SKIP_UNSTABLE_CI", '0')))
-
-    def __func__(*args, **kwargs):
-        if on_ci:
-            return
-        return func(*args, **kwargs)
-
-    return __func__
+import os
+flag_name = os.path.splitext(__file__)[0]
 
 
 class TestDistSeResneXtNCCL(TestDistBase):
@@ -35,11 +27,14 @@ class TestDistSeResneXtNCCL(TestDistBase):
         self._use_reader_alloc = False
         self._nccl2_mode = True
 
-    @skip_ci
     def test_dist_train(self):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place("dist_se_resnext.py", delta=1e-5)
+            self.check_with_place(
+                "dist_se_resnext.py",
+                delta=1e-5,
+                check_error_log=True,
+                log_name=flag_name)
 
 
 class TestDistSeResneXtNCCLMP(TestDistBase):
@@ -49,7 +44,6 @@ class TestDistSeResneXtNCCLMP(TestDistBase):
         self._nccl2_mode = True
         self._mp_mode = True
 
-    @skip_ci
     def test_dist_train(self):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
@@ -57,7 +51,8 @@ class TestDistSeResneXtNCCLMP(TestDistBase):
                 "dist_se_resnext.py",
                 delta=1e-5,
                 check_error_log=True,
-                need_envs={"NCCL_P2P_DISABLE": "1"})
+                need_envs={"NCCL_P2P_DISABLE": "1"},
+                log_name=flag_name)
 
 
 if __name__ == "__main__":

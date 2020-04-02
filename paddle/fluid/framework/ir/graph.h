@@ -86,9 +86,17 @@ class Graph {
   }
 
   template <typename AttrType>
+  AttrType &GetOrInit(const std::string &attr_name) {
+    if (!Has(attr_name)) {
+      Set(attr_name, new AttrType);
+    }
+    return Get<AttrType>(attr_name);
+  }
+
+  template <typename AttrType>
   AttrType &Get(const std::string &attr_name) const {
-    PADDLE_ENFORCE(Has(attr_name), "%s attr not registered for graph.",
-                   attr_name);
+    PADDLE_ENFORCE_EQ(Has(attr_name), true, "%s attr not registered for graph.",
+                      attr_name);
     try {
       return *boost::any_cast<AttrType *>(attrs_.at(attr_name));
     } catch (boost::bad_any_cast &) {
@@ -101,8 +109,10 @@ class Graph {
 
   template <typename AttrType>
   void Set(const std::string &attr_name, AttrType *attr) {
-    PADDLE_ENFORCE(attrs_.count(attr_name) == 0, "%s already set in the graph",
-                   attr_name);
+    PADDLE_ENFORCE_EQ(
+        attrs_.count(attr_name), 0,
+        platform::errors::AlreadyExists(
+            "The attribute %s has been set in the graph.", attr_name));
     attrs_[attr_name] = attr;
     attr_dels_[attr_name] = [attr, attr_name]() {
       VLOG(3) << "deleting " << attr_name;
@@ -112,15 +122,19 @@ class Graph {
 
   template <typename AttrType>
   void SetNotOwned(const std::string &attr_name, AttrType *attr) {
-    PADDLE_ENFORCE(attrs_.count(attr_name) == 0, "%s already set in the graph",
-                   attr_name);
+    PADDLE_ENFORCE_EQ(
+        attrs_.count(attr_name), 0,
+        platform::errors::AlreadyExists(
+            "The attribute %s has been set in the graph.", attr_name));
     attrs_[attr_name] = attr;
     attr_dels_[attr_name] = []() {};
   }
 
   void Erase(const std::string &attr_name) {
-    PADDLE_ENFORCE(attrs_.count(attr_name) != 0, "%s not set in the graph",
-                   attr_name);
+    PADDLE_ENFORCE_NE(
+        attrs_.count(attr_name), 0,
+        platform::errors::NotFound(
+            "The attribute %s has not been set in the graph.", attr_name));
     attr_dels_[attr_name]();
     attrs_.erase(attr_name);
     attr_dels_.erase(attr_name);
@@ -130,7 +144,7 @@ class Graph {
 
   // Create a normal variable with non-null VarDesc.
   ir::Node *CreateVarNode(VarDesc *var_desc) {
-    PADDLE_ENFORCE(var_desc);
+    PADDLE_ENFORCE_NOT_NULL(var_desc);
     auto *x = AddNode(new ir::Node(var_desc));
     x->SetId(num_node_created_++);
     return x;
@@ -138,7 +152,7 @@ class Graph {
 
   // Create a normal runnable operator with OpDesc.
   ir::Node *CreateOpNode(OpDesc *op_desc) {
-    PADDLE_ENFORCE(op_desc);
+    PADDLE_ENFORCE_NOT_NULL(op_desc);
     auto *x = AddNode(new ir::Node(op_desc));
     x->SetId(num_node_created_++);
     return x;
@@ -178,7 +192,7 @@ class Graph {
   }
 
   std::unique_ptr<ir::Node> RemoveNode(ir::Node *node) {
-    PADDLE_ENFORCE(node_set_.find(node) != node_set_.end());
+    PADDLE_ENFORCE_EQ(node_set_.find(node) != node_set_.end(), true);
     std::unique_ptr<ir::Node> ret;
     ret.reset(nodes_.at(node).release());
     nodes_.erase(node);
@@ -204,7 +218,7 @@ class Graph {
 
   // This method takes ownership of `node`.
   ir::Node *AddNode(ir::Node *node) {
-    PADDLE_ENFORCE(node_set_.find(node) == node_set_.end());
+    PADDLE_ENFORCE_EQ(node_set_.find(node) == node_set_.end(), true);
     nodes_[node].reset(node);
     node_set_.insert(node);
     return node;

@@ -289,7 +289,7 @@ void OpTester::SetupTensor(framework::LoDTensor *tensor,
     }
   } else if (initializer == "file") {
     std::ifstream is(filename);
-    for (size_t i = 0; i < cpu_tensor.numel(); ++i) {
+    for (int i = 0; i < cpu_tensor.numel(); ++i) {
       T value;
       is >> value;
       cpu_ptr[i] = static_cast<T>(value);

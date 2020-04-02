@@ -25,8 +25,9 @@ framework::OpKernelType QuantOp::GetExpectedKernelType(
   framework::LibraryType library_ = framework::LibraryType::kMKLDNN;
   framework::DataLayout layout_ = framework::DataLayout::kMKLDNN;
 
-  return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                 ctx.GetPlace(), layout_, library_);
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
+      layout_, library_);
 }
 
 void QuantOpMaker::Make() {
@@ -36,6 +37,9 @@ void QuantOpMaker::Make() {
                 "(bool, default false) Only used in mkldnn INT8 kernel")
       .SetDefault(false);
   AddAttr<float>("Scale", "scale data").SetDefault({1.0f});
+  AddAttr<std::string>("output_format",
+                       "Convert format to NHWC or NCHW during quantization.")
+      .SetDefault("NHWC");
   AddComment(R"DOC(This op will quantize data from FP32 to INT8)DOC");
 }
 

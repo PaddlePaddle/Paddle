@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/async_executor.h"
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/data_feed.pb.h"
+#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/place.h"
@@ -45,7 +46,11 @@ void BindFleetWrapper(py::module* m) {
       .def("push_dense", &framework::FleetWrapper::PushDenseVarsSync)
       .def("pull_dense", &framework::FleetWrapper::PullDenseVarsSync)
       .def("init_server", &framework::FleetWrapper::InitServer)
-      .def("run_server", &framework::FleetWrapper::RunServer)
+      .def("run_server", (uint64_t (framework::FleetWrapper::*)(void)) &
+                             framework::FleetWrapper::RunServer)
+      .def("run_server", (uint64_t (framework::FleetWrapper::*)(  // NOLINT
+                             const std::string&, uint32_t)) &     // NOLINT
+                             framework::FleetWrapper::RunServer)
       .def("init_worker", &framework::FleetWrapper::InitWorker)
       .def("init_model", &framework::FleetWrapper::PushDenseParamSync)
       .def("save_model", &framework::FleetWrapper::SaveModel)
@@ -54,7 +59,9 @@ void BindFleetWrapper(py::module* m) {
       .def("save_cache", &framework::FleetWrapper::SaveCache)
       .def("load_model", &framework::FleetWrapper::LoadModel)
       .def("clear_model", &framework::FleetWrapper::ClearModel)
+      .def("clear_one_table", &framework::FleetWrapper::ClearOneTable)
       .def("stop_server", &framework::FleetWrapper::StopServer)
+      .def("finalize_worker", &framework::FleetWrapper::FinalizeWorker)
       .def("gather_servers", &framework::FleetWrapper::GatherServers)
       .def("gather_clients", &framework::FleetWrapper::GatherClients)
       .def("get_clients_info", &framework::FleetWrapper::GetClientsInfo)
@@ -62,10 +69,18 @@ void BindFleetWrapper(py::module* m) {
            &framework::FleetWrapper::CreateClient2ClientConnection)
       .def("shrink_sparse_table", &framework::FleetWrapper::ShrinkSparseTable)
       .def("shrink_dense_table", &framework::FleetWrapper::ShrinkDenseTable)
+      .def("print_table_stat", &framework::FleetWrapper::PrintTableStat)
       .def("client_flush", &framework::FleetWrapper::ClientFlush)
       .def("load_from_paddle_model",
            &framework::FleetWrapper::LoadFromPaddleModel)
-      .def("load_model_one_table", &framework::FleetWrapper::LoadModelOneTable);
+      .def("load_model_one_table", &framework::FleetWrapper::LoadModelOneTable)
+      .def("set_client2client_config",
+           &framework::FleetWrapper::SetClient2ClientConfig)
+      .def("set_pull_local_thread_num",
+           &framework::FleetWrapper::SetPullLocalThreadNum)
+      .def("copy_table", &framework::FleetWrapper::CopyTable)
+      .def("copy_table_by_feasign",
+           &framework::FleetWrapper::CopyTableByFeasign);
 }  // end FleetWrapper
 }  // end namespace pybind
 }  // end namespace paddle

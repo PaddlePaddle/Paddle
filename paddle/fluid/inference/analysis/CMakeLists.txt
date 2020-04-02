@@ -11,14 +11,12 @@ cc_library(analysis_helper SRCS helper.cc DEPS framework_proto proto_desc graph 
 
 cc_library(ir_pass_manager SRCS ir_pass_manager.cc DEPS graph pass ${INFER_IR_PASSES} analysis_helper)
 
-cc_library(argument SRCS argument.cc DEPS scope proto_desc)
-cc_library(analysis_pass SRCS analysis_pass.cc DEPS proto_desc)
+cc_library(argument INTERFACE SRCS argument.cc DEPS scope proto_desc)
+cc_library(analysis_pass INTERFACE SRCS analysis_pass.cc DEPS proto_desc)
 
-cc_library(analysis SRCS
-  analyzer.cc
-  analysis_pass
+cc_library(analysis SRCS analyzer.cc
   DEPS ${analysis_deps} analysis_helper
-  ${INFER_IR_PASSES}
+  analysis_pass ${INFER_IR_PASSES}
   )
 
 cc_test(test_dot SRCS dot_tester.cc DEPS analysis)

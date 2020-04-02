@@ -149,6 +149,7 @@ int main(int argc, char* argv[]) {
         dataset_ptr->GetReaders();
     PADDLE_ENFORCE_EQ(readers.size(), 1,
                       "readers num should be equal to thread num");
+    readers[0]->SetPlace(paddle::platform::CPUPlace());
     const std::vector<std::string>& input_feed_names =
         readers[0]->GetUseSlotAlias();
     for (auto name : input_feed_names) {

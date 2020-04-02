@@ -88,7 +88,7 @@ class TestParallelExecutorBase(unittest.TestCase):
                 build_strategy=build_strategy,
                 exec_strategy=exec_strategy)
         else:
-            binary = compiler.CompiledProgram(main)
+            binary = main
 
         if batch_size is not None:
             batch_size *= fluid.core.get_cuda_device_count(

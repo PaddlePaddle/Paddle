@@ -85,6 +85,9 @@ class Scope {
   /// Find the scope or an ancestor scope that contains the given variable.
   const Scope* FindScope(const Variable* var) const;
 
+  /// Find the scope or an ancestor scope that contains the given variable name.
+  const Scope* FindScope(const std::string& name) const;
+
   void DeleteScope(Scope* scope) const;
 
   /// Drop all kids scopes belonged to this scope.
@@ -125,6 +128,9 @@ class Scope {
   // Called by FindScope.
   const Scope* FindScopeInternal(const Variable* var) const;
 
+  // Called by FindScope.
+  const Scope* FindScopeInternal(const std::string& name) const;
+
   // Called by Rename.
   void RenameInternal(const std::string& origin_name,
                       const std::string& new_name) const;
@@ -141,9 +147,12 @@ class Scope {
 
   DISABLE_COPY_AND_ASSIGN(Scope);
 
+#ifndef PADDLE_ON_INFERENCE
+
  private:
   mutable RWLock kids_lock_;
   mutable RWLock vars_lock_;
+#endif
 };
 
 // Generate some debug string about the inherience structure of scope, quite

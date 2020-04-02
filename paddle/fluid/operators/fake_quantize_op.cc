@@ -58,11 +58,12 @@ struct ClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
                   const framework::Tensor& in, const framework::Tensor& scale,
                   const int bin_cnt, framework::Tensor* out) {
     T s = scale.data<T>()[0];
+    T inv_s = inverse(s);
     platform::Transform<platform::CPUDeviceContext> trans;
     trans(ctx, in.data<T>(), in.data<T>() + in.numel(),
           out->mutable_data<T>(ctx.GetPlace()), ClipFunctor<T>(-s, s));
     auto out_e = framework::EigenVector<T>::Flatten(*out);
-    out_e.device(*ctx.eigen_device()) = (bin_cnt / s * out_e).round();
+    out_e.device(*ctx.eigen_device()) = (bin_cnt * inv_s * out_e).round();
   }
 };
 
@@ -74,12 +75,14 @@ struct ClipAndFakeQuantDequantFunctor<platform::CPUDeviceContext, T> {
                   const framework::Tensor& in, const framework::Tensor& scale,
                   const int bin_cnt, framework::Tensor* out) {
     T s = scale.data<T>()[0];
+    T inv_s = inverse(s);
+
     platform::Transform<platform::CPUDeviceContext> trans;
     trans(ctx, in.data<T>(), in.data<T>() + in.numel(),
           out->mutable_data<T>(ctx.GetPlace()), ClipFunctor<T>(-s, s));
     auto out_e = framework::EigenVector<T>::Flatten(*out);
     out_e.device(*ctx.eigen_device()) =
-        (s / bin_cnt) * (bin_cnt / s * out_e).round();
+        (s / bin_cnt) * (bin_cnt * inv_s * out_e).round();
   }
 };
 template struct ClipAndFakeQuantDequantFunctor<platform::CPUDeviceContext,
@@ -105,9 +108,10 @@ struct ChannelClipAndFakeQuantFunctor<platform::CPUDeviceContext, T> {
     }
     for (int i = 0; i < channel; i++) {
       T s = scale_data[i];
+      T inv_s = inverse(s);
       framework::Tensor one_channel_out = out->Slice(i, i + 1);
       auto out_e = framework::EigenVector<T>::Flatten(one_channel_out);
-      out_e.device(*ctx.eigen_device()) = (bin_cnt / s * out_e).round();
+      out_e.device(*ctx.eigen_device()) = (bin_cnt * inv_s * out_e).round();
     }
   }
 };
@@ -190,8 +194,9 @@ class FakeQuantizeAbsMaxOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -241,8 +246,8 @@ class FakeChannelWiseQuantizeAbsMaxOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
@@ -303,8 +308,9 @@ class FakeQuantizeRangeAbsMaxOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -375,8 +381,9 @@ class FakeQuantOrWithDequantMovingAverageAbsMaxOp
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -450,8 +457,8 @@ class MovingAverageAbsMaxScaleOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
@@ -490,43 +497,54 @@ $$Out = X$$
 namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 
-REGISTER_OPERATOR(fake_quantize_abs_max, ops::FakeQuantizeAbsMaxOp,
-                  ops::FakeQuantizeAbsMaxOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    fake_quantize_abs_max, ops::FakeQuantizeAbsMaxOp,
+    ops::FakeQuantizeAbsMaxOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(fake_quantize_abs_max,
                        ops::FakeQuantizeAbsMaxKernel<CPU, float>);
 
-REGISTER_OPERATOR(fake_quantize_range_abs_max, ops::FakeQuantizeRangeAbsMaxOp,
-                  ops::FakeQuantizeRangeAbsMaxOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    fake_quantize_range_abs_max, ops::FakeQuantizeRangeAbsMaxOp,
+    ops::FakeQuantizeRangeAbsMaxOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(fake_quantize_range_abs_max,
                        ops::FakeQuantizeRangeAbsMaxKernel<CPU, float>);
 
-REGISTER_OPERATOR(fake_quantize_moving_average_abs_max,
-                  ops::FakeQuantOrWithDequantMovingAverageAbsMaxOp,
-                  ops::FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    fake_quantize_moving_average_abs_max,
+    ops::FakeQuantOrWithDequantMovingAverageAbsMaxOp,
+    ops::FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(fake_quantize_moving_average_abs_max,
                        ops::FakeQuantizeMovingAverageAbsMaxKernel<CPU, float>);
 
-REGISTER_OPERATOR(fake_quantize_dequantize_moving_average_abs_max,
-                  ops::FakeQuantOrWithDequantMovingAverageAbsMaxOp,
-                  ops::FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    fake_quantize_dequantize_moving_average_abs_max,
+    ops::FakeQuantOrWithDequantMovingAverageAbsMaxOp,
+    ops::FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     fake_quantize_dequantize_moving_average_abs_max,
     ops::FakeQuantizeDequantizeMovingAverageAbsMaxKernel<CPU, float>);
 
-REGISTER_OPERATOR(fake_channel_wise_quantize_abs_max,
-                  ops::FakeChannelWiseQuantizeAbsMaxOp,
-                  ops::FakeChannelWiseQuantizeAbsMaxOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    fake_channel_wise_quantize_abs_max, ops::FakeChannelWiseQuantizeAbsMaxOp,
+    ops::FakeChannelWiseQuantizeAbsMaxOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(fake_channel_wise_quantize_abs_max,
                        ops::FakeChannelWiseQuantizeAbsMaxKernel<CPU, float>);
 
-REGISTER_OPERATOR(moving_average_abs_max_scale, ops::MovingAverageAbsMaxScaleOp,
-                  ops::MovingAverageAbsMaxScaleOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    moving_average_abs_max_scale, ops::MovingAverageAbsMaxScaleOp,
+    ops::MovingAverageAbsMaxScaleOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(moving_average_abs_max_scale,
                        ops::MovingAverageAbsMaxScaleKernel<CPU, float>);

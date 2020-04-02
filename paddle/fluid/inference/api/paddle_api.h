@@ -23,6 +23,7 @@
  */
 
 #include <cassert>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -37,6 +38,7 @@ enum PaddleDType {
   FLOAT32,
   INT64,
   INT32,
+  UINT8,
   // TODO(Superjomn) support more data types if needed.
 };
 
@@ -149,8 +151,8 @@ class ZeroCopyTensor {
 
   /** Get the memory in CPU or GPU with specific data type, should Reshape first
    * to tell the data size.
-   * Once can directly call this data to feed the data.
-   * This is for write the input tensor.
+   * One can directly call this data to feed the data.
+   * This is for writing the input tensor.
    */
   template <typename T>
   T* mutable_data(PaddlePlace place);
@@ -219,6 +221,12 @@ class PaddlePredictor {
   /** \brief Get input names of the model
    */
   virtual std::vector<std::string> GetInputNames() { return {}; }
+
+  /** \brief Get input shapes of the model
+   */
+  virtual std::map<std::string, std::vector<int64_t>> GetInputTensorShape() {
+    return {};
+  }
 
   /** \brief Get output names of the model
    */
@@ -344,7 +352,6 @@ enum class PaddleEngineKind {
   kNative = 0,        /*!< Use the native Fluid facility. */
   kAutoMixedTensorRT, /*!< Automatically mix Fluid with TensorRT. */
   kAnalysis,          /*!< More optimization. */
-  kAnakin             /*!< Use Anakin for inference, not mature yet. */
 };
 
 template <typename ConfigT, PaddleEngineKind engine>

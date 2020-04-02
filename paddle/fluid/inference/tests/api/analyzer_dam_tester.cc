@@ -262,33 +262,6 @@ void compare(bool use_mkldnn = false) {
       reinterpret_cast<const PaddlePredictor::Config *>(&cfg), input_slots_all);
 }
 
-// Compare result of NativeConfig and AnalysisConfig with memory optimization.
-TEST(Analyzer_dam, compare_with_static_memory_optim) {
-  // The small dam will core in CI, but works in local.
-  if (FLAGS_max_turn_num == 9) {
-    AnalysisConfig cfg, cfg1;
-    DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
-
-    std::vector<std::vector<PaddleTensor>> input_slots_all;
-    SetInput(&input_slots_all);
-    // Run the first time to force to update memory cache
-    SetConfig(&cfg);
-    cfg.EnableMemoryOptim(true, true /*force update*/);
-
-    CompareNativeAndAnalysis(
-        reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
-        input_slots_all);
-
-    // Run second time to use the memory cache and perform memory optimization.
-    SetConfig(&cfg1);
-    cfg1.EnableMemoryOptim(true, false /*do not force update*/);
-
-    CompareNativeAndAnalysis(
-        reinterpret_cast<const PaddlePredictor::Config *>(&cfg1),
-        input_slots_all);
-  }
-}
-
 TEST(Analyzer_dam, compare_with_dynamic_memory_optim) {
   // The small dam will core in CI, but works in local.
   if (FLAGS_max_turn_num == 9) {

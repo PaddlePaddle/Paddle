@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/gru_op.h"
+#include <memory>
 #include <string>
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/detail/gru_cpu_kernel.h"
@@ -112,7 +113,7 @@ class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate();
     AddOutput(
         "BatchResetHiddenPrev",
-        "(LoDTensor) The reseted hidden state LoDTensor organized in batches. "
+        "(LoDTensor) The reset hidden state LoDTensor organized in batches. "
         "This LoDTensor is a matrix with shape (T X D) and has the same LoD "
         "with `BatchGate`.")
         .AsIntermediate();
@@ -220,6 +221,13 @@ class GRUGradOp : public framework::OperatorWithKernel {
     auto weight_grad_name = framework::GradVarName("Weight");
     if (ctx->HasOutput(weight_grad_name))
       ctx->SetOutputDim(weight_grad_name, weight_dims);
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Hidden")),
+                                   ctx.device_context());
   }
 };
 
@@ -376,13 +384,51 @@ class GRUCPUKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename T>
+class GRUGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("gru_grad");
+    grad_op->SetInput("Input", this->Input("Input"));
+    grad_op->SetInput("H0", this->Input("H0"));
+    grad_op->SetInput("Bias", this->Input("Bias"));
+    grad_op->SetInput("Weight", this->Input("Weight"));
+
+    grad_op->SetInput("BatchGate", this->Output("BatchGate"));
+    grad_op->SetInput("BatchResetHiddenPrev",
+                      this->Output("BatchResetHiddenPrev"));
+    grad_op->SetInput("BatchHidden", this->Output("BatchHidden"));
+    grad_op->SetInput("Hidden", this->Output("Hidden"));
+
+    grad_op->SetInput(framework::GradVarName("Hidden"),
+                      this->OutputGrad("Hidden"));
+
+    grad_op->SetOutput(framework::GradVarName("H0"), this->InputGrad("H0"));
+    grad_op->SetOutput(framework::GradVarName("Input"),
+                       this->InputGrad("Input"));
+    grad_op->SetOutput(framework::GradVarName("Weight"),
+                       this->InputGrad("Weight"));
+    grad_op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
+
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(GRUGradOpNoNeedBufferVarInference, "Input",
+                                    "Bias");
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(gru, ops::GRUOp, ops::GRUOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(gru_grad, ops::GRUGradOp);
+                  ops::GRUGradOpMaker<paddle::framework::OpDesc>,
+                  ops::GRUGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(gru_grad, ops::GRUGradOp,
+                  ops::GRUGradOpNoNeedBufferVarInference);
 REGISTER_OP_CPU_KERNEL(gru, ops::GRUCPUKernel<float>,
                        ops::GRUCPUKernel<double>);
 REGISTER_OP_CPU_KERNEL(

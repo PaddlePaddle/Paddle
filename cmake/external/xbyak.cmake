@@ -1,4 +1,4 @@
-# Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,18 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(WITH_XBYAK ON)
-if(WIN32 OR APPLE)
-    SET(WITH_XBYAK OFF CACHE STRING "Disable XBYAK in Windows and MacOS" FORCE)
-    return()
-endif()
-
 include(ExternalProject)
 
 set(XBYAK_PROJECT       extern_xbyak)
 set(XBYAK_PREFIX_DIR    ${THIRD_PARTY_PATH}/xbyak)
+SET(XBYAK_SOURCE_DIR     ${THIRD_PARTY_PATH}/xbyak/src/extern_xbyak)
 set(XBYAK_INSTALL_ROOT  ${THIRD_PARTY_PATH}/install/xbyak)
 set(XBYAK_INC_DIR       ${XBYAK_INSTALL_ROOT}/include)
+set(XBYAK_REPOSITORY    https://github.com/herumi/xbyak.git)
+set(XBYAK_TAG           v5.661) # Jul 26th
 
 include_directories(${XBYAK_INC_DIR})
 include_directories(${XBYAK_INC_DIR}/xbyak)
@@ -34,13 +31,19 @@ add_definitions(-DPADDLE_WITH_XBYAK)
 add_definitions(-DXBYAK64)
 add_definitions(-DXBYAK_NO_OP_NAMES)
 
+cache_third_party(${XBYAK_PROJECT}
+    REPOSITORY    ${XBYAK_REPOSITORY}
+    TAG           ${XBYAK_TAG}
+    DIR           XBYAK_SOURCE_DIR)
+
 ExternalProject_Add(
     ${XBYAK_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
+    ${SHALLOW_CLONE}
+    "${XBYAK_DOWNLOAD_CMD}"
     DEPENDS             ""
-    GIT_REPOSITORY      "https://github.com/herumi/xbyak.git"
-    GIT_TAG             "v5.661"  # Jul 26th
     PREFIX              ${XBYAK_PREFIX_DIR}
+    SOURCE_DIR          ${XBYAK_SOURCE_DIR}
     UPDATE_COMMAND      ""
     CMAKE_ARGS          -DCMAKE_INSTALL_PREFIX=${XBYAK_INSTALL_ROOT}
     CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${XBYAK_INSTALL_ROOT}

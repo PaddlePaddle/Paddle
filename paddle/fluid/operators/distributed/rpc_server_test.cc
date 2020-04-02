@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 
 #include "paddle/fluid/operators/distributed/distributed.h"
+#include "paddle/fluid/operators/distributed/heart_beat_monitor.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/distributed/rpc_client.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
@@ -116,6 +117,9 @@ void StartServer(const std::string& rpc_name) {
   g_req_handler->SetExecutor(&exe);
 
   g_rpc_service->RegisterRPC(rpc_name, g_req_handler.get());
+
+  distributed::HeartBeatMonitor::Init(2, true, "w@grad");
+
   g_req_handler->SetRPCServer(g_rpc_service.get());
 
   std::thread server_thread(
@@ -127,7 +131,8 @@ void StartServer(const std::string& rpc_name) {
 TEST(PREFETCH, CPU) {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
-  g_req_handler.reset(new distributed::RequestPrefetchHandler(true));
+  g_req_handler.reset(new distributed::RequestPrefetchHandler(
+      distributed::DistributedMode::kSync));
   g_rpc_service.reset(new RPCSERVER_T("127.0.0.1:0", 1));
   distributed::RPCClient* client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
@@ -169,7 +174,8 @@ TEST(PREFETCH, CPU) {
 TEST(COMPLETE, CPU) {
   setenv("http_proxy", "", 1);
   setenv("https_proxy", "", 1);
-  g_req_handler.reset(new distributed::RequestSendHandler(true));
+  g_req_handler.reset(
+      new distributed::RequestSendHandler(distributed::DistributedMode::kSync));
   g_rpc_service.reset(new RPCSERVER_T("127.0.0.1:0", 2));
   distributed::RPCClient* client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);

@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
+#include "paddle/fluid/memory/allocation/allocator.h"
 
 DECLARE_bool(use_pinned_memory);
 
@@ -67,5 +68,17 @@ TEST(CUDAPinnedAllocator, Alloc) {
   paddle::memory::detail::CUDAPinnedAllocator a;
   TestAllocator(&a, 2048);
   TestAllocator(&a, 0);
+}
+
+TEST(GPUAllocator, AllocFailure) {
+  paddle::memory::detail::GPUAllocator allocator(0);
+  size_t index;
+  size_t alloc_size = (static_cast<size_t>(1) << 40);  // Very large number
+  try {
+    allocator.Alloc(&index, alloc_size);
+    ASSERT_TRUE(false);
+  } catch (paddle::memory::allocation::BadAlloc&) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetLastError());
+  }
 }
 #endif

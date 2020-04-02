@@ -43,10 +43,10 @@ struct SequenceSoftmaxFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext &ctx, const LoDTensor &x,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/
                   LoDTensor *out) {
-    size_t hight = ref_lod.size() - 1;
+    size_t height = ref_lod.size() - 1;
     const T *in_data = x.data<T>();
     T *out_data = out->mutable_data<T>(ctx.GetPlace());
-    for (size_t i = 0; i < hight; ++i) {
+    for (size_t i = 0; i < height; ++i) {
       size_t span = ref_lod[i + 1] - ref_lod[i];
       T result = 0;
       for (size_t j = 0; j < span; ++j) {
@@ -65,13 +65,13 @@ struct SequenceSoftmaxGradFunctor<platform::CPUDeviceContext, T> {
                   const LoDTensor &out,
                   const framework::Vector<size_t> &ref_lod, /*referenced lod*/
                   LoDTensor *dx) {
-    size_t hight = ref_lod.size() - 1;
+    size_t height = ref_lod.size() - 1;
 
     const T *softmax_grad_data = dout.data<T>();
     const T *softmax = out.data<T>();
     T *dx_data = dx->mutable_data<T>(ctx.GetPlace());
 
-    for (size_t i = 0; i < hight; ++i) {
+    for (size_t i = 0; i < height; ++i) {
       size_t span = ref_lod[i + 1] - ref_lod[i];
       T result = 0;
       for (size_t j = 0; j < span; ++j) {
@@ -95,6 +95,9 @@ class SequenceSoftmaxKernel : public framework::OpKernel<T> {
 
     auto lod = x->lod();
     auto dims = x->dims();
+    PADDLE_ENFORCE_EQ(lod.empty(), false,
+                      "Input(X) Tensor of SequenceSoftmaxOp does not contain "
+                      "LoD information.");
 
     const size_t level = lod.size() - 1;
     PADDLE_ENFORCE_GT(

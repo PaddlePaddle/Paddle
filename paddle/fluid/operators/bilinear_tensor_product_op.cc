@@ -147,29 +147,27 @@ class BilinearTensorProductOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class BilinearTensorProductGradOpDescMaker
-    : public framework::SingleGradOpDescMaker {
+template <typename T>
+class BilinearTensorProductGradOpMaker
+    : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("bilinear_tensor_product_grad");
-    op->SetAttrMap(Attrs());
-    op->SetInput("X", Input("X"));
-    op->SetInput("Y", Input("Y"));
-    op->SetInput("Weight", Input("Weight"));
-    if (ForwardOp().Inputs().count("Bias") > 0) {
-      op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
+    op->SetAttrMap(this->Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput("Weight", this->Input("Weight"));
+    if (this->HasInput("Bias")) {
+      op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
     }
 
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
-    op->SetOutput(framework::GradVarName("Weight"), InputGrad("Weight"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-
-    return op;
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    op->SetOutput(framework::GradVarName("Weight"), this->InputGrad("Weight"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
   }
 };
 
@@ -177,9 +175,11 @@ class BilinearTensorProductGradOpDescMaker
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(bilinear_tensor_product, ops::BilinearTensorProductOp,
-                  ops::BilinearTensorProductOpMaker,
-                  ops::BilinearTensorProductGradOpDescMaker);
+REGISTER_OPERATOR(
+    bilinear_tensor_product, ops::BilinearTensorProductOp,
+    ops::BilinearTensorProductOpMaker,
+    ops::BilinearTensorProductGradOpMaker<paddle::framework::OpDesc>,
+    ops::BilinearTensorProductGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(bilinear_tensor_product_grad,
                   ops::BilinearTensorProductOpGrad);
 REGISTER_OP_CPU_KERNEL(

@@ -17,20 +17,20 @@ INCLUDE(ExternalProject)
 SET(DGC_SOURCES_DIR "${THIRD_PARTY_PATH}/dgc")
 SET(DGC_INSTALL_DIR "${THIRD_PARTY_PATH}/install/dgc")
 SET(DGC_INCLUDE_DIR "${DGC_INSTALL_DIR}/include" CACHE PATH "dgc include directory." FORCE)
-SET(DGC_LIBRARIES "${DGC_INSTALL_DIR}/lib/libdgc.a" CACHE FILEPATH "dgc library." FORCE)
+SET(DGC_LIBRARIES   "${DGC_INSTALL_DIR}/lib/libdgc.a" CACHE FILEPATH "dgc library." FORCE)
 INCLUDE_DIRECTORIES(${DGC_INCLUDE_DIR})
 
 ExternalProject_Add(
     extern_dgc
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    GIT_REPOSITORY "https://github.com/PaddlePaddle/Fleet"
-    GIT_TAG "2d04dc3800cdd0601f1b65d547dabcc60b0cf9dc"
-    SOURCE_DIR "${DGC_SOURCES_DIR}"
+    URL             "http://fleet.bj.bcebos.com/collective_ef2216a.tgz"
+    URL_MD5         "2f67549fd5f1262383d83289abc4f88f"
+    SOURCE_DIR      "${DGC_SOURCES_DIR}"
     CONFIGURE_COMMAND ""
-    BUILD_COMMAND cd collective && make -j
+    BUILD_COMMAND make -j $(nproc)
     INSTALL_COMMAND mkdir -p ${DGC_INSTALL_DIR}/lib/  ${DGC_INCLUDE_DIR}/dgc
-        && cp ${DGC_SOURCES_DIR}/collective/build/lib/libdgc.a ${DGC_LIBRARIES}
-        && cp ${DGC_SOURCES_DIR}/collective/build/include/dgc.h ${DGC_INCLUDE_DIR}/dgc/
+        && cp ${DGC_SOURCES_DIR}/build/lib/libdgc.a ${DGC_LIBRARIES}
+        && cp ${DGC_SOURCES_DIR}/build/include/dgc.h ${DGC_INCLUDE_DIR}/dgc/
     BUILD_IN_SOURCE 1
 )
 

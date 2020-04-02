@@ -39,13 +39,6 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
       const std::vector<ir::Node *> &adam_ops, ir::Graph *graph) const {
     auto fused_adam_node =
         FuseAdamOps(aux_var_set, fused_vars_name, adam_ops, graph);
-    auto fused_scale1 =
-        FuseScaleOps(aux_var_set.at("Beta1Pow"), fused_vars_name.at("Beta1Pow"),
-                     adam_ops, graph);
-    auto fused_scale2 =
-        FuseScaleOps(aux_var_set.at("Beta2Pow"), fused_vars_name.at("Beta2Pow"),
-                     adam_ops, graph);
-    RemoveCycleDepsBetweenOpNodes(graph, fused_scale1, fused_scale2);
     return fused_adam_node;
   }
 
@@ -124,7 +117,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     // NOTE: fused_var is only exist in scope, so the graph doesn't have
     // fused_var node.
 
-    VLOG(7) << "Insert adam to graph ";
+    VLOG(6) << "Insert adam to graph ";
     OpDesc adam_desc(adam_ops[0]->Op()->Block());
     adam_desc.SetType("adam");
     adam_desc.SetInput(kParam, {fused_vars_name.at(kParam)});
@@ -139,6 +132,8 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     adam_desc.SetOutput("ParamOut", {fused_vars_name.at(kParam)});
     adam_desc.SetOutput("Moment1Out", {fused_vars_name.at("Moment1")});
     adam_desc.SetOutput("Moment2Out", {fused_vars_name.at("Moment2")});
+    adam_desc.SetOutput("Beta1PowOut", {fused_vars_name.at("Beta1Pow")});
+    adam_desc.SetOutput("Beta2PowOut", {fused_vars_name.at("Beta2Pow")});
     adam_desc.SetAttr("beta1", beta1);
     adam_desc.SetAttr("beta2", beta2);
     adam_desc.SetAttr("epsilon", epsilon);
@@ -180,7 +175,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
       scale_ops.emplace_back(*scale_op_iter);
     }
     PADDLE_ENFORCE_EQ(scale_ops.size(), beta_name.size());
-    VLOG(7) << "The number of scale op is " << scale_ops.size() << ".";
+    VLOG(6) << "The number of scale op is " << scale_ops.size() << ".";
     // Check attributions
     // NOTE: If new attribution is added, the following code maybe need change.
     int op_role = boost::get<int>(
@@ -205,7 +200,7 @@ class FuseAdamOpPass : public FuseOptimizerOpPass {
     // NOTE: fused_var is only exist in scope, so the graph doesn't have
     // fused_var node.
 
-    VLOG(7) << "Insert fused scale to graph.";
+    VLOG(6) << "Insert fused scale to graph.";
     OpDesc scale_desc(scale_ops[0]->Op()->Block());
     scale_desc.SetType("scale");
     scale_desc.SetInput("X", {fused_var_name});

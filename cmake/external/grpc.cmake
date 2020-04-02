@@ -1,4 +1,4 @@
-# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,10 +13,6 @@
 # limitations under the License.
 #
 
-IF(NOT WITH_DISTRIBUTE)
-    return()
-ENDIF()
-
 include (ExternalProject)
 
 SET(GRPC_SOURCES_DIR ${THIRD_PARTY_PATH}/grpc)
@@ -29,8 +25,12 @@ ProcessorCount(NUM_OF_PROCESSOR)
 
 IF(APPLE)
   SET(BUILD_CMD make -n HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin | sed "s/-Werror//g" | sh)
+  SET(GRPC_INSTALL_CMD make prefix=${GRPC_INSTALL_DIR} install) 
 ELSE()
-  SET(BUILD_CMD make HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin)
+  SET(GRPC_CFLAGS "-Wno-error -std=c11 ${CLFAGS}")
+  SET(GRPC_CXXFLAGS "-Wno-error -std=c++11 ${CXXFLAGS}")
+  SET(BUILD_CMD make CFLAGS=${GRPC_CFLAGS} CXXFLAGS=${GRPC_CXXFLAGS} HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin) 
+  SET(GRPC_INSTALL_CMD make prefix=${GRPC_INSTALL_DIR} install CFLAGS=${GRPC_CFLAGS} CXXFLAGS=${GRPC_CXXFLAGS})
 ENDIF()
 
 # FIXME(wuyi): do not build zlib cares protobuf twice, find a way to build grpc with them
@@ -44,19 +44,18 @@ ExternalProject_Add(
     # 3. keep only zlib, cares, protobuf, boringssl under "third_party",
     #    checkout and clean other dirs under third_party
     # 4. remove .git, and package the directory.
-    URL "http://paddlepaddledeps.bj.bcebos.com/grpc-v1.10.x.tar.gz"
-    URL_MD5  "1f268a2aff6759839dccd256adcc91cf"
+    URL          http://paddlepaddledeps.bj.bcebos.com/grpc-v1.10.x_paddle.tar.gz
+    URL_MD5      f5442d137ddccee252e194b1bc90f98c
     PREFIX          ${GRPC_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
-    PATCH_COMMAND cp ${PADDLE_SOURCE_DIR}/patches/grpc/grpc_library.h ${GRPC_SOURCES_DIR}/src/extern_grpc/include/grpcpp/impl/codegen/grpc_library.h && cp ${PADDLE_SOURCE_DIR}/patches/grpc/completion_queue.h ${GRPC_SOURCES_DIR}/src/extern_grpc/include/grpcpp/impl/codegen/completion_queue.h
     # NOTE(yuyang18):
     # Disable -Werror, otherwise the compile will fail in MacOS.
     # It seems that we cannot configure that by make command.
     # Just dry run make command and remove `-Werror`, then use a shell to run make commands
     BUILD_COMMAND  ${BUILD_CMD}
-    INSTALL_COMMAND make prefix=${GRPC_INSTALL_DIR} install
+    INSTALL_COMMAND ${GRPC_INSTALL_CMD}
 )
 
 ADD_LIBRARY(grpc++_unsecure STATIC IMPORTED GLOBAL)

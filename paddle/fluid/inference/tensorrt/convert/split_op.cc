@@ -35,16 +35,59 @@ class SplitOpConverter : public OpConverter {
     // Get Attrs
     PADDLE_ENFORCE(input_num == 1);
     int axis = boost::get<int>(op_desc.GetAttr("axis"));
-    std::vector<int> output_lengths =
-        boost::get<std::vector<int>>(op_desc.GetAttr("sections"));
     // split on batch is not supported in TensorRT
     PADDLE_ENFORCE(axis != 0);
-    axis += (axis < 0) ? input_dims.nbDims : -1;
 
-    PADDLE_ENFORCE(output_lengths.size() == output_num);
-    plugin::SplitPlugin* plugin = new plugin::SplitPlugin(axis, output_lengths);
-    nvinfer1::IPluginLayer* layer =
-        engine_->AddPlugin(&input, input_num, plugin);
+    std::vector<int> output_lengths =
+        boost::get<std::vector<int>>(op_desc.GetAttr("sections"));
+    int num = 0;
+    if (op_desc.HasAttr("num")) {
+      num = boost::get<int>(op_desc.GetAttr("num"));
+    }
+
+    if (engine_->with_dynamic_shape()) {
+#if IS_TRT_VERSION_GE(6000)
+      axis += (axis < 0) ? input_dims.nbDims : 0;
+#endif
+    } else {
+      axis += (axis < 0) ? input_dims.nbDims : -1;
+    }
+
+    PADDLE_ENFORCE_NE(input_dims.d[axis], -1,
+                      platform::errors::InvalidArgument(
+                          "The (%d) dim of input should not be -1", axis));
+    if (num > 0) {
+      int64_t in_axis_dim = input_dims.d[axis];
+      PADDLE_ENFORCE_EQ(in_axis_dim % num, 0,
+                        "Tensor split does not result"
+                        " in an equal division");
+      size_t out_axis_dim = in_axis_dim / num;
+      for (int i = 0; i < num; ++i) {
+        output_lengths.push_back(out_axis_dim);
+      }
+    }
+
+    PADDLE_ENFORCE_EQ(
+        output_lengths.size(), output_num,
+        platform::errors::InvalidArgument(
+            "The output_length should be equal to the output size."));
+
+    nvinfer1::ILayer* layer = nullptr;
+    if (engine_->with_dynamic_shape()) {
+#if IS_TRT_VERSION_GE(6000)
+      plugin::SplitPluginDynamic* plugin =
+          new plugin::SplitPluginDynamic(axis, output_lengths);
+      layer = engine_->AddPluginV2(&input, input_num, plugin);
+#else
+      PADDLE_THROW(platform::errors::Fatal(
+          "You are running the TRT Dynamic Shape mode, need to confirm that "
+          "your TRT version is no less than 6.0"));
+#endif
+    } else {
+      plugin::SplitPlugin* plugin =
+          new plugin::SplitPlugin(axis, output_lengths);
+      layer = engine_->AddPlugin(&input, input_num, plugin);
+    }
 
     std::string layer_name = "split (Output: ";
     for (size_t i = 0; i < output_num; i++) {

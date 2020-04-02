@@ -60,18 +60,11 @@ inline const char* cudnnGetErrorString(cudnnStatus_t status) {
 #define CUDNN_VERSION_MIN(major, minor, patch) \
   (CUDNN_VERSION >= ((major)*1000 + (minor)*100 + (patch)))
 
-#define CUDNN_ENFORCE(condition)                                     \
-  do {                                                               \
-    auto status = condition;                                         \
-    if (UNLIKELY(status != CUDNN_STATUS_SUCCESS)) {                  \
-      PADDLE_THROW(::paddle::platform::cudnnGetErrorString(status)); \
-    }                                                                \
-  } while (false)
-
 enum class DataLayout {  // Not use
   kNHWC,
   kNCHW,
   kNCDHW,
+  kNDHWC,  // add, liyamei
   kNCHW_VECT_C,
 };
 
@@ -82,7 +75,7 @@ enum class PoolingMode {
   kAverageInclusive,
 };
 
-enum ActivationMode {
+enum class ActivationMode {
   kNone,  // activation identity
   kSigmoid,
   kRelu,
@@ -212,6 +205,8 @@ inline cudnnTensorFormat_t GetCudnnTensorFormat(
       return CUDNN_TENSOR_NCHW;
     case DataLayout::kNCDHW:
       return CUDNN_TENSOR_NCHW;  // NOTE: cudnn treat NdTensor as the same
+    case DataLayout::kNDHWC:
+      return CUDNN_TENSOR_NHWC;  // add, liyamei
     default:
       PADDLE_THROW("Unknown cudnn equivalent for order");
   }
@@ -221,10 +216,10 @@ inline cudnnTensorFormat_t GetCudnnTensorFormat(
 class ScopedTensorDescriptor {
  public:
   ScopedTensorDescriptor() {
-    PADDLE_ENFORCE(dynload::cudnnCreateTensorDescriptor(&desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreateTensorDescriptor(&desc_));
   }
-  ~ScopedTensorDescriptor() {
-    PADDLE_ENFORCE(dynload::cudnnDestroyTensorDescriptor(desc_));
+  ~ScopedTensorDescriptor() PADDLE_MAY_THROW {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyTensorDescriptor(desc_));
   }
 
   inline cudnnTensorDescriptor_t descriptor(const cudnnTensorFormat_t format,
@@ -238,14 +233,31 @@ class ScopedTensorDescriptor {
       strides[i] = dims[i + 1] * strides[i + 1];
     }
     // Update tensor descriptor dims setting if groups > 1
-    // NOTE: Assume using NCHW or NCDHW order
-    std::vector<int> dims_with_group(dims.begin(), dims.end());  // copy
+    // NOTE: Here, Assume using NCHW or NCDHW order
+    std::vector<int> dims_with_group(dims.begin(), dims.end());
     if (groups > 1) {
       dims_with_group[1] = dims_with_group[1] / groups;
     }
-    PADDLE_ENFORCE(dynload::cudnnSetTensorNdDescriptor(
-        desc_, type, dims_with_group.size(), dims_with_group.data(),
-        strides.data()));
+
+    if (dims.size() == 4) {
+      if (format == CUDNN_TENSOR_NCHW) {
+        PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensorNdDescriptor(
+            desc_, type, dims_with_group.size(), dims_with_group.data(),
+            strides.data()));
+      } else {  // CUDNN_TENSOR_NHWC
+        PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensor4dDescriptor(
+            desc_, format, type, dims[0], dims[3], dims[1], dims[2]));
+      }
+    } else if (dims.size() == 5) {
+      if (format == CUDNN_TENSOR_NCHW) {
+        PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensorNdDescriptor(
+            desc_, type, dims_with_group.size(), dims_with_group.data(),
+            strides.data()));
+      } else {  // CUDNN_TENSOR_NHWC
+        PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensorNdDescriptorEx(
+            desc_, format, type, dims.size(), dims.data()));
+      }
+    }
     return desc_;
   }
 
@@ -265,10 +277,10 @@ class ScopedTensorDescriptor {
 class ScopedFilterDescriptor {
  public:
   ScopedFilterDescriptor() {
-    PADDLE_ENFORCE(dynload::cudnnCreateFilterDescriptor(&desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreateFilterDescriptor(&desc_));
   }
-  ~ScopedFilterDescriptor() {
-    PADDLE_ENFORCE(dynload::cudnnDestroyFilterDescriptor(desc_));
+  ~ScopedFilterDescriptor() PADDLE_MAY_THROW {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyFilterDescriptor(desc_));
   }
 
   inline cudnnFilterDescriptor_t descriptor(const cudnnTensorFormat_t format,
@@ -284,7 +296,7 @@ class ScopedFilterDescriptor {
       kernel_with_group[0] /= groups;
       // NOTE: input filter(C) of the filter is already asserted to be C/groups.
     }
-    PADDLE_ENFORCE(dynload::cudnnSetFilterNdDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetFilterNdDescriptor(
         desc_, type, format, kernel_with_group.size(),
         kernel_with_group.data()));
     return desc_;
@@ -306,10 +318,12 @@ class ScopedFilterDescriptor {
 class ScopedConvolutionDescriptor {
  public:
   ScopedConvolutionDescriptor() {
-    PADDLE_ENFORCE(dynload::cudnnCreateConvolutionDescriptor(&desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cudnnCreateConvolutionDescriptor(&desc_));
   }
-  ~ScopedConvolutionDescriptor() {
-    PADDLE_ENFORCE(dynload::cudnnDestroyConvolutionDescriptor(desc_));
+  ~ScopedConvolutionDescriptor() PADDLE_MAY_THROW {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cudnnDestroyConvolutionDescriptor(desc_));
   }
 
   inline cudnnConvolutionDescriptor_t descriptor(
@@ -332,7 +346,7 @@ class ScopedConvolutionDescriptor {
 
     cudnnDataType_t compute_type =
         (type == CUDNN_DATA_DOUBLE) ? CUDNN_DATA_DOUBLE : CUDNN_DATA_FLOAT;
-    PADDLE_ENFORCE(dynload::cudnnSetConvolutionNdDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetConvolutionNdDescriptor(
         desc_, pads.size(), pads.data(), strides.data(), dilations.data(),
         CUDNN_CROSS_CORRELATION, compute_type));
     return desc_;
@@ -353,10 +367,10 @@ class ScopedConvolutionDescriptor {
 class ScopedPoolingDescriptor {
  public:
   ScopedPoolingDescriptor() {
-    PADDLE_ENFORCE(dynload::cudnnCreatePoolingDescriptor(&desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreatePoolingDescriptor(&desc_));
   }
-  ~ScopedPoolingDescriptor() {
-    PADDLE_ENFORCE(dynload::cudnnDestroyPoolingDescriptor(desc_));
+  ~ScopedPoolingDescriptor() PADDLE_MAY_THROW {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyPoolingDescriptor(desc_));
   }
 
   inline cudnnPoolingDescriptor_t descriptor(const PoolingMode& mode,
@@ -365,7 +379,7 @@ class ScopedPoolingDescriptor {
                                              const std::vector<int>& strides) {
     PADDLE_ENFORCE_EQ(kernel.size(), pads.size());
     PADDLE_ENFORCE_EQ(kernel.size(), strides.size());
-    PADDLE_ENFORCE(dynload::cudnnSetPoolingNdDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetPoolingNdDescriptor(
         desc_, (GetPoolingMode(mode)),
         CUDNN_PROPAGATE_NAN,  // Always propagate nans.
         kernel.size(), kernel.data(), pads.data(), strides.data()));
@@ -380,16 +394,18 @@ class ScopedPoolingDescriptor {
 class ScopedSpatialTransformerDescriptor {
  public:
   ScopedSpatialTransformerDescriptor() {
-    PADDLE_ENFORCE(dynload::cudnnCreateSpatialTransformerDescriptor(&desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cudnnCreateSpatialTransformerDescriptor(&desc_));
   }
-  ~ScopedSpatialTransformerDescriptor() {
-    PADDLE_ENFORCE(dynload::cudnnDestroySpatialTransformerDescriptor(desc_));
+  ~ScopedSpatialTransformerDescriptor() PADDLE_MAY_THROW {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cudnnDestroySpatialTransformerDescriptor(desc_));
   }
 
   template <typename T>
   inline cudnnSpatialTransformerDescriptor_t descriptor(const int nbDims,
                                                         const int dimA[]) {
-    PADDLE_ENFORCE(dynload::cudnnSetSpatialTransformerNdDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetSpatialTransformerNdDescriptor(
         desc_, CUDNN_SAMPLER_BILINEAR, CudnnDataType<T>::type, nbDims, dimA));
     return desc_;
   }
@@ -402,10 +418,12 @@ class ScopedSpatialTransformerDescriptor {
 class ScopedActivationDescriptor {
  public:
   ScopedActivationDescriptor() {
-    PADDLE_ENFORCE(dynload::cudnnCreateActivationDescriptor(&desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cudnnCreateActivationDescriptor(&desc_));
   }
-  ~ScopedActivationDescriptor() {
-    PADDLE_ENFORCE(dynload::cudnnDestroyActivationDescriptor(desc_));
+  ~ScopedActivationDescriptor() PADDLE_MAY_THROW {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cudnnDestroyActivationDescriptor(desc_));
   }
 
   template <typename T>
@@ -441,7 +459,7 @@ class ScopedActivationDescriptor {
         PADDLE_THROW("unrecognized activation mode: %d .",
                      static_cast<int>(activation_mode));
     }
-    CUDNN_ENFORCE(dynload::cudnnSetActivationDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetActivationDescriptor(
         desc_, mode, CUDNN_NOT_PROPAGATE_NAN, relu_ceiling));
     return desc_;
   }
@@ -467,15 +485,15 @@ inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {
 class ScopedCTCLossDescriptor {
  public:
   ScopedCTCLossDescriptor() {
-    PADDLE_ENFORCE(dynload::cudnnCreateCTCLossDescriptor(&desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreateCTCLossDescriptor(&desc_));
   }
-  ~ScopedCTCLossDescriptor() {
-    PADDLE_ENFORCE(dynload::cudnnDestroyCTCLossDescriptor(desc_));
+  ~ScopedCTCLossDescriptor() PADDLE_MAY_THROW {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyCTCLossDescriptor(desc_));
   }
 
   template <typename T>
   inline cudnnCTCLossDescriptor_t descriptor() {
-    PADDLE_ENFORCE(
+    PADDLE_ENFORCE_CUDA_SUCCESS(
         dynload::cudnnSetCTCLossDescriptor(desc_, CudnnDataType<T>::type));
     return desc_;
   }

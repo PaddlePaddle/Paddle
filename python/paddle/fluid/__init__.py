@@ -44,6 +44,8 @@ from .data_feed_desc import *
 from . import dataset
 from .dataset import *
 
+from .data import *
+
 from . import trainer_desc
 from . import inferencer
 
@@ -62,6 +64,7 @@ from . import average
 from . import metrics
 from . import transpiler
 from . import incubate
+from .input import embedding, one_hot
 from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
@@ -72,7 +75,6 @@ from .transpiler import DistributeTranspiler, \
     memory_optimize, release_memory, DistributeTranspilerConfig
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
 from . import clip
-from . import dygraph_grad_clip
 from . import profiler
 from . import unique_name
 from . import parallel_executor
@@ -83,18 +85,26 @@ from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 from . import install_check
 from .dygraph.nn import *
 from .dygraph.layers import *
-
+from .dygraph.base import enable_dygraph, disable_dygraph
+from .io import save, load, load_program_state, set_program_state
+from .dygraph.checkpoint import save_dygraph, load_dygraph
+from .dygraph.varbase_patch_methods import monkey_patch_varbase
 Tensor = LoDTensor
 
 __all__ = framework.__all__ + executor.__all__ + \
     trainer_desc.__all__ + inferencer.__all__ + transpiler.__all__ + \
     parallel_executor.__all__ + lod_tensor.__all__ + \
-    data_feed_desc.__all__ + compiler.__all__ + backward.__all__ + [
+    data_feed_desc.__all__ + compiler.__all__ + backward.__all__  + [
         'io',
         'initializer',
+        'embedding',
+        'one_hot',
         'layers',
         'contrib',
+        'data',
         'dygraph',
+        'enable_dygraph',
+        'disable_dygraph',
         'transpiler',
         'nets',
         'optimizer',
@@ -111,12 +121,13 @@ __all__ = framework.__all__ + executor.__all__ + \
         'WeightNormParamAttr',
         'DataFeeder',
         'clip',
-        'dygraph_grad_clip',
         'profiler',
         'unique_name',
-        'recordio_writer',
         'Scope',
         'install_check',
+        'save',
+        'load',
+        'VarBase'
     ]
 
 
@@ -152,14 +163,16 @@ def __bootstrap__():
     sysstr = platform.system()
     read_env_flags = [
         'check_nan_inf', 'fast_check_nan_inf', 'benchmark',
-        'eager_delete_scope', 'initial_cpu_memory_in_mb', 'init_allocated_mem',
-        'free_idle_memory', 'paddle_num_threads', "dist_threadpool_size",
-        'eager_delete_tensor_gb', 'fast_eager_deletion_mode',
-        'memory_fraction_of_eager_deletion', 'allocator_strategy',
-        'reader_queue_speed_test_mode', 'print_sub_graph_dir',
-        'pe_profile_fname', 'inner_op_parallelism', 'enable_parallel_graph',
-        'fuse_parameter_groups_size', 'multiple_of_cupti_buffer_size',
-        'fuse_parameter_memory_size', 'tracer_profile_fname', 'dygraph_debug'
+        'eager_delete_scope', 'fraction_of_cpu_memory_to_use',
+        'initial_cpu_memory_in_mb', 'init_allocated_mem', 'paddle_num_threads',
+        'dist_threadpool_size', 'eager_delete_tensor_gb',
+        'fast_eager_deletion_mode', 'memory_fraction_of_eager_deletion',
+        'allocator_strategy', 'reader_queue_speed_test_mode',
+        'print_sub_graph_dir', 'pe_profile_fname', 'inner_op_parallelism',
+        'enable_parallel_graph', 'fuse_parameter_groups_size',
+        'multiple_of_cupti_buffer_size', 'fuse_parameter_memory_size',
+        'tracer_profile_fname', 'dygraph_debug', 'use_system_allocator',
+        'enable_unused_var_check', 'free_idle_chunk', 'free_when_no_cache_hit'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
@@ -176,22 +189,17 @@ def __bootstrap__():
     if core.is_compiled_with_dist():
         #env for rpc
         read_env_flags.append('rpc_deadline')
+        read_env_flags.append('rpc_retry_times')
         read_env_flags.append('rpc_server_profile_path')
         read_env_flags.append('enable_rpc_profiler')
         read_env_flags.append('rpc_send_thread_num')
         read_env_flags.append('rpc_get_thread_num')
         read_env_flags.append('rpc_prefetch_thread_num')
         read_env_flags.append('rpc_disable_reuse_port')
+        read_env_flags.append('rpc_retry_bind_port')
 
-        # env for communicator
-        read_env_flags.append('communicator_independent_recv_thread')
-        read_env_flags.append('communicator_send_queue_size')
-        read_env_flags.append('communicator_min_send_grad_num_before_recv')
-        read_env_flags.append('communicator_thread_pool_size')
-        read_env_flags.append('communicator_max_merge_var_num')
-        read_env_flags.append('communicator_fake_rpc')
-        read_env_flags.append('communicator_send_wait_times')
-        read_env_flags.append('communicator_merge_sparse_grad')
+        read_env_flags.append('worker_update_interval_secs')
+
         if core.is_compiled_with_brpc():
             read_env_flags.append('max_body_size')
             #set brpc max body size
@@ -203,9 +211,8 @@ def __bootstrap__():
             'reallocate_gpu_memory_in_mb', 'cudnn_deterministic',
             'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
             'cudnn_exhaustive_search', 'selected_gpus', 'sync_nccl_allreduce',
-            'limit_of_tmp_allocation',
-            'times_excess_than_required_tmp_allocation',
-            'cudnn_batchnorm_spatial_persistent'
+            'cudnn_batchnorm_spatial_persistent', 'gpu_allocator_retry_time',
+            'local_exe_sub_scope_limit', 'gpu_memory_limit_mb'
         ]
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])
@@ -218,3 +225,4 @@ def __bootstrap__():
 # Consider paddle.init(args) or paddle.main(args)
 monkey_patch_variable()
 __bootstrap__()
+monkey_patch_varbase()

@@ -61,7 +61,10 @@ class IOUSimilarityOpMaker : public framework::OpProtoAndCheckerMaker {
              "[xmin, ymin] is the left top coordinate of the box if the "
              "input is image feature map, and [xmax, ymax] is the right "
              "bottom coordinate of the box.");
-
+    AddAttr<bool>("box_normalized",
+                  "(bool, default true) "
+                  "whether treat the priorbox as a normalized box")
+        .SetDefault(true);
     AddOutput("Out",
               "(LoDTensor, the lod is same as input X) The output of "
               "iou_similarity op, a tensor with shape [N, M] "
@@ -87,9 +90,10 @@ $$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(iou_similarity, ops::IOUSimilarityOp,
-                  ops::IOUSimilarityOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    iou_similarity, ops::IOUSimilarityOp, ops::IOUSimilarityOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(
     iou_similarity,

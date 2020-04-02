@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Unit testing for affine_channel_op
+"""
 
 from __future__ import print_function
 
@@ -36,9 +39,9 @@ class TestAffineChannelOp(OpTest):
         self.op_type = "affine_channel"
         self.init_test_case()
 
-        x = np.random.random(self.shape).astype("float32")
-        scale = np.random.random(self.C).astype("float32")
-        bias = np.random.random(self.C).astype("float32")
+        x = np.random.random(self.shape).astype("float64")
+        scale = np.random.random(self.C).astype("float64")
+        bias = np.random.random(self.C).astype("float64")
 
         y = affine_channel(x, scale, bias, self.layout)
 
@@ -59,15 +62,15 @@ class TestAffineChannelOp(OpTest):
         self.check_grad(['X'], 'Out', no_grad_set=set(['Scale', 'Bias']))
 
     def init_test_case(self):
-        self.shape = [2, 32, 14, 14]
-        self.C = 32
+        self.shape = [2, 100, 12, 12]
+        self.C = 100
         self.layout = 'NCHW'
 
 
 class TestAffineChannelNHWC(TestAffineChannelOp):
     def init_test_case(self):
-        self.shape = [2, 14, 14, 32]
-        self.C = 32
+        self.shape = [2, 12, 12, 100]
+        self.C = 100
         self.layout = 'NHWC'
 
     def test_check_grad_stopgrad_dx(self):
@@ -79,8 +82,8 @@ class TestAffineChannelNHWC(TestAffineChannelOp):
 
 class TestAffineChannel2D(TestAffineChannelOp):
     def init_test_case(self):
-        self.shape = [16, 64]
-        self.C = 64
+        self.shape = [8, 100]
+        self.C = 100
         self.layout = 'NCHW'
 
     def test_check_grad_stopgrad_dx(self):
@@ -90,29 +93,28 @@ class TestAffineChannel2D(TestAffineChannelOp):
         return
 
 
-class TestAffineChannelNCHWLargeShape(TestAffineChannelOp):
-    def init_test_case(self):
-        self.shape = [4, 128, 112, 112]
-        self.C = 128
-        self.layout = 'NCHW'
+# TODO(qingqing): disable unit testing for large shape
+#class TestAffineChannelNCHWLargeShape(TestAffineChannelOp):
+#    def init_test_case(self):
+#        self.shape = [4, 128, 112, 112]
+#        self.C = 128
+#        self.layout = 'NCHW'
+#
+#    # since the gradient check is very slow in large shape, so skip check_grad
+#    def test_check_grad(self):
+#        pass
+#
+#    def test_check_grad_stopgrad_dx(self):
+#        pass
+#
+#    def test_check_grad_stopgrad_dscale_dbias(self):
+#        pass
 
-    # since the gradient check is very slow in large shape, so skip check_grad
-    def test_check_grad(self):
-        pass
-
-    def test_check_grad_stopgrad_dx(self):
-        pass
-
-    def test_check_grad_stopgrad_dscale_dbias(self):
-        pass
-
-
-class TestAffineChannelNHWCLargeShape(TestAffineChannelNCHWLargeShape):
-    def init_test_case(self):
-        self.shape = [64, 32, 32, 512]
-        self.C = 512
-        self.layout = 'NHWC'
-
+#class TestAffineChannelNHWCLargeShape(TestAffineChannelNCHWLargeShape):
+#    def init_test_case(self):
+#        self.shape = [64, 32, 32, 128]
+#        self.C = 128
+#        self.layout = 'NHWC'
 
 if __name__ == '__main__':
     unittest.main()

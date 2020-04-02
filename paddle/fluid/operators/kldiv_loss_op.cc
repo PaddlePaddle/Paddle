@@ -58,8 +58,8 @@ class KLDivLossOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
@@ -69,10 +69,12 @@ class KLDivLossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "The input tensor of KL divergence loss operator. "
              "This is a tensor with shape of [N, *], where N is the "
-             "batch size, * means any number of additional dimensions.");
+             "batch size, * means any number of additional dimensions. "
+             "The data type is float32 or flaot64");
     AddInput("Target",
              "The  tensor of KL divergence loss operator. "
-             "This is a tensor with shape of Input(X).");
+             "This is a tensor with shape of Input(X). "
+             "The data type is same as Input(X)");
     AddOutput(
         "Loss",
         "The output KL divergence loss tensor. if Attr(reduction) is "
@@ -90,7 +92,8 @@ class KLDivLossOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddComment(R"DOC(
          This operator calculates the Kullback-Leibler divergence loss
-         between Input(X) and Input(Target).
+         between Input(X) and Input(Target). Notes that Input(X) is the
+         log-probability and Input(Target) is the probability.
 
          KL divergence loss is calculated as follows:
 
@@ -133,37 +136,41 @@ class KLDivLossOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Loss")),
                                    ctx.GetPlace());
   }
 };
 
-class KLDivLossOpGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class KLDivLossOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op = new framework::OpDesc();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("kldiv_loss_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("Target", Input("Target"));
-    op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Target", this->Input("Target"));
+    op->SetInput(framework::GradVarName("Loss"), this->OutputGrad("Loss"));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
 
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   }
 };
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(KLDivLossGradNoNeedBufferVarInference, "X");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(kldiv_loss, ops::KLDivLossOp, ops::KLDivLossOpMaker,
-                  ops::KLDivLossOpGradMaker);
-REGISTER_OPERATOR(kldiv_loss_grad, ops::KLDivLossOpGrad);
+                  ops::KLDivLossOpGradMaker<paddle::framework::OpDesc>,
+                  ops::KLDivLossOpGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(kldiv_loss_grad, ops::KLDivLossOpGrad,
+                  ops::KLDivLossGradNoNeedBufferVarInference);
 REGISTER_OP_CPU_KERNEL(
     kldiv_loss, ops::KLDivLossKernel<paddle::platform::CPUDeviceContext, float>,
     ops::KLDivLossKernel<paddle::platform::CPUDeviceContext, double>);

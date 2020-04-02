@@ -223,6 +223,46 @@ TEST(selected_rows_functor, cpu_add_to) {
   EXPECT_EQ(tensor1_data[9 * row_numel + 6], 5.0);
 }
 
+TEST(selected_rows_functor, cpu_merge_average_float) {
+  paddle::platform::CPUPlace cpu_place;
+  paddle::platform::CPUDeviceContext ctx(cpu_place);
+  paddle::operators::math::SetConstant<paddle::platform::CPUDeviceContext,
+                                       float>
+      functor;
+  int64_t height = 10;
+  int64_t row_numel = 10;
+
+  std::vector<int64_t> rows{0, 4, 4, 7};
+  std::unique_ptr<paddle::framework::SelectedRows> selected_rows{
+      new paddle::framework::SelectedRows(rows, height)};
+  auto* in_value = selected_rows->mutable_value();
+  in_value->mutable_data<float>(
+      paddle::framework::make_ddim(
+          {static_cast<int64_t>(rows.size()), row_numel}),
+      cpu_place);
+  functor(ctx, in_value, 1.0);
+
+  paddle::operators::math::scatter::MergeAverage<
+      paddle::platform::CPUDeviceContext, float>
+      merge_average_functor;
+  paddle::framework::SelectedRows output =
+      merge_average_functor(ctx, *selected_rows);
+
+  auto out_height = output.height();
+  EXPECT_EQ(out_height, height);
+
+  auto& out_rows = output.rows();
+  EXPECT_EQ(out_rows[0], 0);
+  EXPECT_EQ(out_rows[1], 4);
+  EXPECT_EQ(out_rows[2], 7);
+
+  auto* out_data = output.value().data<float>();
+
+  EXPECT_EQ(out_data[0 * row_numel], 1.0);
+  EXPECT_EQ(out_data[1 * row_numel], 2.0);
+  EXPECT_EQ(out_data[2 * row_numel], 1.0);
+}
+
 TEST(selected_rows_functor, cpu_merge_add_float) {
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CPUDeviceContext ctx(cpu_place);

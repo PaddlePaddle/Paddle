@@ -42,6 +42,13 @@ class LeakyReluOpConverter : public OpConverter {
         engine_, Activation, *input, nvinfer1::ActivationType::kLEAKY_RELU);
     layer->setAlpha(alpha);
     output_layer = layer;
+
+    bool enable_int8 = boost::get<bool>(op_desc.HasAttr("enable_int8"));
+    if (enable_int8) {
+      CHECK(op_desc.HasAttr("X_scale"));
+      float in_scale = boost::get<float>(op_desc.GetAttr("X_scale"));
+      engine_->SetTensorDynamicRange(input, in_scale);
+    }
 #else
     platform::CPUPlace place;
     std::unique_ptr<framework::LoDTensor> alpha_tensor(
@@ -81,7 +88,7 @@ class LeakyReluOpConverter : public OpConverter {
     std::string alpha_name = op_desc.Output("Out")[0] + "_alpha";
     PADDLE_ENFORCE(engine_->weight_map.find(alpha_name) ==
                    engine_->weight_map.end());
-    engine_->weight_map[alpha_name] = std::move(alpha_tensor);
+    engine_->SetWeights(alpha_name, std::move(alpha_tensor));
 #endif
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(output_layer, "leaky_relu", {output_name},

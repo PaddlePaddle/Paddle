@@ -14,10 +14,6 @@ limitations under the License. */
 #pragma once
 
 #include <Python.h>
-#include <string>
-#include <vector>
-#include "paddle/fluid/imperative/layer.h"
-#include "paddle/fluid/imperative/nccl_context.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 

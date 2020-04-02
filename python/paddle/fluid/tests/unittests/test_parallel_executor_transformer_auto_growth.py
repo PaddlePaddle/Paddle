@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-os.environ['RECORDIO_FILENAME'] = './auto_growth_pe_transformer.wmt16.recordio'
-
 import unittest
 from test_parallel_executor_transformer import *
 

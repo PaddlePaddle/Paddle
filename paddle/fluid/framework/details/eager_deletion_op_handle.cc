@@ -31,10 +31,12 @@ namespace framework {
 namespace details {
 
 EagerDeletionOpHandle::EagerDeletionOpHandle(
-    ir::Node *node, Scope *scope, const platform::Place &place,
+    ir::Node *node, Scope *scope, size_t scope_idx,
+    const platform::Place &place,
     const std::unordered_set<ir::MemOptVarInfo *> &vars, GarbageCollector *gc)
     : OpHandleBase(node),
       scope_(scope),
+      scope_idx_(scope_idx),
       place_(place),
       var_infos_(vars.begin(), vars.end()),
       gc_(gc) {
@@ -50,7 +52,8 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
     }
   }
 #endif
-  PADDLE_ENFORCE(!vars.empty(), "Var names cannot be empty");
+  PADDLE_ENFORCE_NE(vars.empty(), true, platform::errors::InvalidArgument(
+                                            "Variable names are empty."));
   for (auto *var : var_infos_) {
     PADDLE_ENFORCE_NOT_NULL(var);
   }
@@ -96,7 +99,8 @@ void EagerDeletionOpHandle::RunImpl() {
   std::deque<std::shared_ptr<memory::Allocation>> garbages;
   for (size_t i = 0; i < var_infos_.size(); ++i) {
     auto *var_info = var_infos_[i];
-    if (var_info->IsSkipped() || !var_info->DecreaseRefCnt()) {
+    if (var_info->IsSkippedAllMemoryOptimization() ||
+        !var_info->DecreaseRefCnt()) {
       continue;
     }
 

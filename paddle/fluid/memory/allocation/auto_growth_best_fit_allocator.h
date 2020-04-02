@@ -27,7 +27,7 @@ namespace allocation {
 
 class AutoGrowthBestFitAllocator : public Allocator {
  public:
-  explicit AutoGrowthBestFitAllocator(
+  AutoGrowthBestFitAllocator(
       const std::shared_ptr<Allocator> &underlying_allocator, size_t alignment,
       size_t chunk_size = 0);
 
@@ -39,6 +39,8 @@ class AutoGrowthBestFitAllocator : public Allocator {
   void FreeImpl(Allocation *allocation) override;
 
  private:
+  void FreeIdleChunks();
+
   template <typename T>
   using List = std::list<T>;
 

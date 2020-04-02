@@ -65,28 +65,33 @@ double GetFuseParameterMemorySize() { return FLAGS_fuse_parameter_memory_size; }
 class CoalesceGradTensorPass : public ir::Pass {
  protected:
   void ApplyImpl(ir::Graph *graph) const {
+    if (Get<size_t>(details::kNRanks) <= 1) {
+      VLOG(6) << "The number of place is" << Get<size_t>(details::kNRanks)
+              << ", there doesn't need apply FuseAllReduceOpPass.";
+      return;
+    }
     ir::Graph &result = *graph;
-
     details::ParamsAndGrads params_grads;
     RecordParamsAndGrads(result, &params_grads);
 
-    VLOG(10) << "The number of params and grads is:" << params_grads.size();
-    if (params_grads.size() == 0) {
-      return;
-    }
-
-    auto vars_info = GetVarInfo(result);
     ResetAttribute<details::ParamsAndGrads>(details::kParamsAndDenseGrads,
                                             &result);
     ResetAttribute<details::ParamsAndGrads>(details::kParamsAndSparseGrads,
                                             &result);
     ResetAttribute<details::GroupParamsAndGrads>(
         details::kGroupParamsAndDenseGrads, &result);
+
+    VLOG(10) << "The number of params and grads is:" << params_grads.size();
+    if (params_grads.size() == 0) {
+      return;
+    }
+
     auto &p_g_dense_grad =
         result.Get<details::ParamsAndGrads>(details::kParamsAndDenseGrads);
     auto &p_g_sparse_grad =
         result.Get<details::ParamsAndGrads>(details::kParamsAndSparseGrads);
 
+    auto vars_info = GetVarInfo(result);
     for (auto &param_grad : params_grads) {
       if (IsLoDTensorType(GetTypeOfVar(vars_info, param_grad.second))) {
         p_g_dense_grad.emplace_back(param_grad);
@@ -118,33 +123,37 @@ class CoalesceGradTensorPass : public ir::Pass {
         p_g_dense_grad.size(), num_of_p_g_dense_grad,
         "The number of p_g_dense_grad is not consistent with before.");
 
+    auto &pinned_var_set =
+        graph->GetOrInit<details::PinnedVars>(details::kPinnedVars);
     if (IsUnifiedDtype(p_g_dense_grad, vars_info)) {
-      SetGradientPersistable(p_g_dense_grad, vars_info);
+      RecordGradients(p_g_dense_grad, vars_info, &pinned_var_set);
       CoalesceTensors(vars_info, p_g_dense_grad, &result);
     } else {
       for (auto &sub_param_grad : group_params_grads) {
-        SetGradientPersistable(p_g_dense_grad, vars_info);
-        PADDLE_ENFORCE(IsUnifiedDtype(sub_param_grad, vars_info),
-                       "The data type of the same group is not consistent.");
+        RecordGradients(p_g_dense_grad, vars_info, &pinned_var_set);
+        PADDLE_ENFORCE_EQ(IsUnifiedDtype(sub_param_grad, vars_info), true,
+                          "The data type of the same group is not consistent.");
         CoalesceTensors(vars_info, sub_param_grad, &result);
       }
     }
   }
 
-  void SetGradientPersistable(
+  void RecordGradients(
       const std::vector<std::pair<std::string, std::string>> &sub_param_grad,
-      const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info)
-      const {
+      const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
+      std::unordered_set<std::string> *pinned_var_set) const {
+    // The Gradients should not be reused during memory optimization.
     for (auto &p_g : sub_param_grad) {
       auto iter = vars_info.find(p_g.second);
-      PADDLE_ENFORCE(iter != vars_info.end(), "%s is not found.", p_g.second);
-      PADDLE_ENFORCE(!iter->second.empty());
-      // Set persistable
+      PADDLE_ENFORCE_EQ(iter != vars_info.end(), true, "%s is not found.",
+                        p_g.second);
+      PADDLE_ENFORCE_EQ(!iter->second.empty(), true);
       for (auto it : iter->second) {
         PADDLE_ENFORCE_NOT_NULL(it->Var());
-        it->Var()->SetPersistable(true);
+        pinned_var_set->insert(it->Var()->Name());
       }
-      PADDLE_ENFORCE(IsLoDTensorType(GetTypeOfVar(vars_info, p_g.second)));
+      PADDLE_ENFORCE_EQ(IsLoDTensorType(GetTypeOfVar(vars_info, p_g.second)),
+                        true);
     }
   }
 
@@ -267,7 +276,7 @@ class CoalesceGradTensorPass : public ir::Pass {
       }
 
       auto dtype =
-          GetDtypeOfVar(vars_info, group_params_grads->at(i).front().first);
+          GetDtypeOfVar(vars_info, group_params_grads->at(i).front().second);
       VLOG(10) << out.str()
                << ", group size:" << group_params_grads->at(i).size()
                << ", group memory size:" << static_cast<double>(gps_size) / kMB
@@ -411,8 +420,10 @@ class CoalesceGradTensorPass : public ir::Pass {
       const std::unordered_map<std::string, std::vector<Node *>> &vars_info,
       const std::string &var_name) const {
     auto grad_iter = vars_info.find(var_name);
-    PADDLE_ENFORCE(grad_iter != vars_info.end(), "%s is not found.", var_name);
-    PADDLE_ENFORCE(!grad_iter->second.empty());
+    PADDLE_ENFORCE_EQ(grad_iter != vars_info.end(), true, "%s is not found.",
+                      var_name);
+    PADDLE_ENFORCE_EQ(!grad_iter->second.empty(), true, "%s is not found.",
+                      var_name);
     PADDLE_ENFORCE_NOT_NULL(grad_iter->second.front()->Var());
     return grad_iter->second.front()->Var();
   }
@@ -421,26 +432,19 @@ class CoalesceGradTensorPass : public ir::Pass {
                             details::ParamsAndGrads *params_grads) const {
     std::vector<ir::Node *> topo_nodes = ir::TopologySortOperations(graph);
     for (auto &node : topo_nodes) {
-      try {
-        bool is_bk_op =
-            static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
-                                  OpProtoAndCheckerMaker::OpRoleAttrName())) &
-                              static_cast<int>(OpRole::kBackward));
-        if (!is_bk_op) continue;
-        // Currently, we assume that once gradient is generated, it can be
-        // broadcast, and each gradient is only broadcast once.
-        auto backward_vars =
-            boost::get<std::vector<std::string>>(node->Op()->GetNullableAttr(
-                OpProtoAndCheckerMaker::OpRoleVarAttrName()));
-        PADDLE_ENFORCE_EQ(backward_vars.size() % 2, static_cast<size_t>(0));
-        for (size_t i = 0; i < backward_vars.size(); i += 2) {
-          VLOG(10) << "Trainable parameter: " << backward_vars[i]
-                   << ", gradient: " << backward_vars[i + 1];
+      auto &op_desc = *(node->Op());
 
-          params_grads->emplace_back(std::make_pair(
-              backward_vars[i] /*param*/, backward_vars[i + 1] /*grad*/));
-        }
-      } catch (boost::bad_get e) {
+      bool is_bk_op = details::IsOpRole(op_desc, OpRole::kBackward);
+      if (!is_bk_op) continue;
+      // Currently, we assume that once gradient is generated, it can be
+      // broadcast, and each gradient is only broadcast once.
+      auto backward_vars = details::GetOpRoleVarsOrEmpty(op_desc);
+      for (size_t i = 0; i < backward_vars.size(); i += 2) {
+        VLOG(10) << "Trainable parameter: " << backward_vars[i]
+                 << ", gradient: " << backward_vars[i + 1];
+
+        params_grads->emplace_back(std::make_pair(
+            backward_vars[i] /*param*/, backward_vars[i + 1] /*grad*/));
       }
     }
   }
@@ -454,28 +458,34 @@ class CoalesceGradTensorPass : public ir::Pass {
     std::vector<std::string> params_name;
     grads_name.reserve(params_grads.size());
     params_name.reserve(params_grads.size());
+
+    auto dtype = GetDtypeOfVar(vars_info, params_grads.front().second);
     for (auto &p_g : params_grads) {
       params_name.emplace_back(p_g.first);
       grads_name.emplace_back(p_g.second);
+      auto next_dtype = GetDtypeOfVar(vars_info, p_g.second);
+      PADDLE_ENFORCE_EQ(next_dtype, dtype);
     }
 
     result->Get<details::ProgramDescs>(details::kProgramDescs).emplace_back();
     ProgramDesc &program_desc =
         result->Get<details::ProgramDescs>(details::kProgramDescs).back();
     auto *global_block = program_desc.MutableBlock(0);
-    AppendAllocSpaceForVarsOp(params_name, grads_name, fused_var_name,
+    AppendAllocSpaceForVarsOp(params_name, grads_name, fused_var_name, dtype,
                               global_block);
   }
 
   void AppendAllocSpaceForVarsOp(const std::vector<std::string> &params_name,
                                  const std::vector<std::string> &grads_name,
                                  const std::string &fused_var_name,
+                                 const proto::VarType::Type &dtype,
                                  BlockDesc *global_block) const {
     auto op_desc = global_block->AppendOp();
     op_desc->SetType("coalesce_tensor");
     op_desc->SetInput("Input", params_name);
     op_desc->SetOutput("Output", grads_name);
     op_desc->SetOutput("FusedOutput", {fused_var_name});
+    op_desc->SetAttr("dtype", static_cast<int>(dtype));
   }
 };
 }  // namespace ir
@@ -483,4 +493,5 @@ class CoalesceGradTensorPass : public ir::Pass {
 }  // namespace paddle
 
 REGISTER_PASS(coalesce_grad_tensor_pass,
-              paddle::framework::ir::CoalesceGradTensorPass);
+              paddle::framework::ir::CoalesceGradTensorPass)
+    .RequirePassAttr(paddle::framework::details::kNRanks);

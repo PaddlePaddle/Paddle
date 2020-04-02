@@ -23,6 +23,8 @@
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/details/var_handle.h"
 
+#include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -42,7 +44,10 @@ typedef std::vector<std::unordered_map<std::string, std::vector<VarHandle *>>>
     GraphVars;
 constexpr char kGraphVars[] = "vars";
 
+constexpr char kNRanks[] = "nranks";
+
 constexpr char kPlaces[] = "places";
+constexpr char kGlobalScope[] = "global_scope";
 constexpr char kLocalScopes[] = "local_scopes";
 constexpr char kNCCLCtxs[] = "nccl_ctxs";
 constexpr char kUseHierarchicalAllReduce[] = "use_hierarchical_allreduce";
@@ -68,9 +73,49 @@ constexpr char kParamsAndSparseGrads[] = "params_and_sparse_grads";
 typedef std::vector<ProgramDesc> ProgramDescs;
 constexpr char kProgramDescs[] = "program_descs";
 
+typedef std::unordered_set<std::string> PinnedVars;
+constexpr char kPinnedVars[] = "pinned_vars";
+
 typedef std::vector<std::vector<std::pair<std::string, std::string>>>
     GroupParamsAndGrads;
 constexpr char kGroupParamsAndDenseGrads[] = "group_params_dense_grads";
+
+inline bool IsOpRole(const OpDesc &op, OpRole role) {
+  const auto &attrs = op.GetAttrMap();
+  auto iter = attrs.find(OpProtoAndCheckerMaker::OpRoleAttrName());
+  if (iter == attrs.end()) return false;
+  return static_cast<bool>(boost::get<int>(iter->second) &
+                           static_cast<int>(role));
+}
+
+inline std::vector<std::string> GetOpRoleVarsOrEmpty(const OpDesc &op) {
+  const auto &attrs = op.GetAttrMap();
+  auto iter = attrs.find(OpProtoAndCheckerMaker::OpRoleVarAttrName());
+  if (iter == attrs.end()) return {};
+  auto &ret = boost::get<std::vector<std::string>>(iter->second);
+  PADDLE_ENFORCE_EQ(
+      ret.size() % 2, 0,
+      platform::errors::InvalidArgument(
+          "The size of attribute %s must be an even number, but got %d",
+          OpProtoAndCheckerMaker::OpRoleVarAttrName(), ret.size()));
+  return boost::get<std::vector<std::string>>(iter->second);
+}
+
+std::vector<std::unique_ptr<ir::Graph>> TrySeparateToMultipleSingleDeviceGraphs(
+    ir::Graph *graph);
+
+bool HasDropLastReadOp(const ir::Graph &graph);
+
+bool HasKeepLastReadOp(const ir::Graph &graph);
+
+template <typename T>
+void CopyGraphAttrIfExists(const ir::Graph &src, ir::Graph *dst,
+                           const std::string &name) {
+  if (src.Has(name)) {
+    auto &attr = src.Get<T>(name);
+    dst->Set(name, new T(attr));
+  }
+}
 
 }  // namespace details
 }  // namespace framework

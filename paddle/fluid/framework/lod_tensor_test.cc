@@ -155,6 +155,26 @@ TEST(LoD, SplitLoDTensor) {
   EXPECT_EQ(lods[1].lod(), lod1);
 }
 
+TEST(LoD, SplitLoDTensorWithZeroBatchSize) {
+  LoD lod;
+  lod.push_back(std::vector<size_t>({0}));
+
+  platform::CPUPlace place;
+  LoDTensor lod_tensor;
+  lod_tensor.Resize({0, 5});
+  lod_tensor.mutable_data<float>(place);
+  lod_tensor.set_lod(lod);
+
+  std::vector<platform::Place> places{platform::CPUPlace(),
+                                      platform::CPUPlace()};
+  LoD lod_res;
+  lod_res.push_back(std::vector<size_t>({0}));
+
+  auto lods = lod_tensor.SplitLoDTensor(places);
+  EXPECT_EQ(lods[0].lod(), lod_res);
+  EXPECT_EQ(lods[1].lod(), lod_res);
+}
+
 TEST(LoD, MergeLoDTensor) {
   LoD lod;
   lod.push_back(std::vector<size_t>({0, 2, 4, 5, 6}));
@@ -185,7 +205,15 @@ TEST(LoD, MergeLoDTensor) {
     dst_ptr[i] = i;
   }
 
-  std::vector<const LoDTensor*> lods{&lod_tensor0, &lod_tensor1};
+  LoDTensor lod_tensor2;
+  LoD lod2;
+  lod2.push_back(std::vector<size_t>({0}));
+  lod2.push_back(std::vector<size_t>({0}));
+  lod_tensor2.set_lod(lod2);
+  lod_tensor2.Resize({0});
+  dst_ptr = lod_tensor2.mutable_data<float>(place);
+
+  std::vector<const LoDTensor*> lods{&lod_tensor0, &lod_tensor1, &lod_tensor2};
 
   LoDTensor lod_tensor;
   lod_tensor.MergeLoDTensor(lods, place);

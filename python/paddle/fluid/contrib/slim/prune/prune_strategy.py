@@ -635,31 +635,35 @@ class UniformPruneStrategy(PruneStrategy):
         _logger.info('Get ratios: {}'.format([round(r, 2) for r in ratios]))
         return pruned_params, ratios
 
+    def restore_from_checkpoint(self, context):
+        self._prune(context, self.params, self.ratios)
+
+    def _prune(self, context, params, ratios):
+        self._prune_parameters(context.optimize_graph, context.scope, params,
+                               ratios, context.place)
+
+        model_size = context.eval_graph.numel_params()
+        flops = context.eval_graph.flops()
+        _logger.debug('\n################################')
+        _logger.debug('#          pruning eval graph    #')
+        _logger.debug('################################\n')
+        self._prune_graph(context.eval_graph, context.optimize_graph)
+        context.optimize_graph.update_groups_of_conv()
+        context.eval_graph.update_groups_of_conv()
+
+        _logger.info(
+            '------------------finish pruning--------------------------------')
+        _logger.info('Pruned size: {:.2f}'.format(1 - (float(
+            context.eval_graph.numel_params()) / model_size)))
+        _logger.info('Pruned flops: {:.2f}'.format(1 - (float(
+            context.eval_graph.flops()) / flops)))
+
     def on_epoch_begin(self, context):
         if context.epoch_id == self.start_epoch:
             params, ratios = self._get_best_ratios(context)
-
-            self._prune_parameters(context.optimize_graph, context.scope,
-                                   params, ratios, context.place)
-
-            model_size = context.eval_graph.numel_params()
-            flops = context.eval_graph.flops()
-            _logger.debug('\n################################')
-            _logger.debug('#          pruning eval graph    #')
-            _logger.debug('################################\n')
-            self._prune_graph(context.eval_graph, context.optimize_graph)
-            context.optimize_graph.update_groups_of_conv()
-            context.eval_graph.update_groups_of_conv()
-
-            _logger.info(
-                '------------------finish pruning--------------------------------'
-            )
-            _logger.info('Pruned size: {:.2f}'.format(1 - (float(
-                context.eval_graph.numel_params()) / model_size)))
-            _logger.info('Pruned flops: {:.2f}'.format(1 - (float(
-                context.eval_graph.flops()) / flops)))
-            #            metric = self._eval_graph(context)
-            #            _logger.info('Metric after pruning: {:.2f}'.format(metric))
+            self.params = params
+            self.ratios = ratios
+            self._prune(context, params, ratios)
             _logger.info(
                 '------------------UniformPruneStrategy.on_compression_begin finish--------------------------------'
             )
@@ -737,7 +741,7 @@ class SensitivePruneStrategy(PruneStrategy):
 
     def _format_sensitivities(self, sensitivities):
         """
-        Print formated sensitivities in debug log level.
+        Print formatted sensitivities in debug log level.
         """
         tb = pt.PrettyTable()
         tb.field_names = ["parameter", "size"] + [
@@ -778,7 +782,6 @@ class SensitivePruneStrategy(PruneStrategy):
                 }
 
         metric = None
-
         for param in sensitivities.keys():
             ratio = self.delta_rate
             while ratio < 1:
@@ -821,7 +824,7 @@ class SensitivePruneStrategy(PruneStrategy):
                 # restore pruned parameters
                 for param_name in param_backup.keys():
                     param_t = context.scope.find_var(param_name).get_tensor()
-                    param_t.set(self.param_backup[param_name], context.place)
+                    param_t.set(param_backup[param_name], context.place)
 
 #                pruned_metric = self._eval_graph(context)
 

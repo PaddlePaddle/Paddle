@@ -16,11 +16,15 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <algorithm>
+#include <functional>  // for multiplies
 #include <iterator>
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
+#include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/transform.h"
 
 #ifdef __NVCC__
@@ -29,10 +33,18 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 constexpr int ELEMWISE_MAX_BLOCK_DIM = 1024;
+#define BLOCK_X 32
+#define BLOCK_Y 32
 #endif
 
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/for_range.h"
+#define GetDivMod(dividend, divisor, div, mod) \
+  do {                                         \
+    const auto dividend_copy = dividend;       \
+    *div = dividend_copy / divisor;            \
+    *mod = dividend_copy % divisor;            \
+  } while (0)
 
 namespace paddle {
 namespace operators {
@@ -47,27 +59,842 @@ namespace operators {
  * 2. shape(X) = (2, 3, 4, 5), shape(Y) = (4,5)
  *    pre=2*3, n=4*5, post=1
  *    x.shape(6, 20, 1) * y.shape(1, 20, 1).broadcast(6, 20, 1)
+ *
+ * New parameter: *is_run_common_broadcast* is a flag to record whether to run
+ * common broadcast code.
  */
 inline void get_mid_dims(const framework::DDim &x_dims,
                          const framework::DDim &y_dims, const int axis,
-                         int *pre, int *n, int *post) {
+                         int *pre, int *n, int *post,
+                         int *is_run_common_broadcast) {
   *pre = 1;
   *n = 1;
   *post = 1;
+  *is_run_common_broadcast = 0;
   for (int i = 0; i < axis; ++i) {
     (*pre) *= x_dims[i];
   }
-
   for (int i = 0; i < y_dims.size(); ++i) {
-    PADDLE_ENFORCE_EQ(x_dims[i + axis], y_dims[i],
-                      "Broadcast dimension mismatch.");
+    if (x_dims[i + axis] != y_dims[i]) {
+      PADDLE_ENFORCE(y_dims[i] == 1 || x_dims[i + axis] == 1,
+                     "ShapeError: broadcast dimension mismatch. Operands "
+                     "could not be broadcast together with the shape of "
+                     "X = [%s] and the shape of Y = [%s]. Received [%d] "
+                     "in X is not equal to [%d] in Y",
+                     x_dims, y_dims, x_dims[i + axis], y_dims[i]);
+      *is_run_common_broadcast = 1;
+      return;
+    }
     (*n) *= y_dims[i];
   }
-
   for (int i = axis + y_dims.size(); i < x_dims.size(); ++i) {
     (*post) *= x_dims[i];
   }
 }
+inline int GetElementwiseIndex(const int *x_dims_array, const int max_dim,
+                               const int *index_array) {
+  int index_ = 0;
+  for (int i = 0; i < max_dim; i++) {
+    if (x_dims_array[i] > 1) {
+      index_ = index_ * x_dims_array[i] + index_array[i];
+    }
+  }
+  return index_;
+}
+
+inline void UpdateElementwiseIndexArray(const int *out_dims_array,
+                                        const int max_dim, int *index_array) {
+  for (int i = max_dim - 1; i >= 0; --i) {
+    ++index_array[i];
+    if (index_array[i] >= out_dims_array[i]) {
+      index_array[i] -= out_dims_array[i];
+    } else {
+      break;
+    }
+  }
+}
+
+inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
+                                   const framework::DDim &y_dims,
+                                   int *x_dims_array, int *y_dims_array,
+                                   int *out_dims_array, const int max_dim,
+                                   const int axis) {
+  PADDLE_ENFORCE_GE(axis, 0, "Axis should be in range [0, %d)", axis);
+  PADDLE_ENFORCE_LT(axis, max_dim, "Axis should be in range [0, %d)", axis);
+  if (x_dims.size() > y_dims.size()) {
+    std::fill(y_dims_array, y_dims_array + axis, 1);
+    if (axis + y_dims.size() < max_dim) {
+      std::fill(y_dims_array + axis + y_dims.size(), y_dims_array + max_dim, 1);
+    }
+    std::copy(x_dims.Get(), x_dims.Get() + x_dims.size(), x_dims_array);
+    std::copy(y_dims.Get(), y_dims.Get() + y_dims.size(), y_dims_array + axis);
+  } else {
+    std::fill(x_dims_array, x_dims_array + axis, 1);
+    if (axis + x_dims.size() < max_dim) {
+      std::fill(x_dims_array + axis + x_dims.size(), x_dims_array + max_dim, 1);
+    }
+    std::copy(x_dims.Get(), x_dims.Get() + x_dims.size(), x_dims_array + axis);
+    std::copy(y_dims.Get(), y_dims.Get() + y_dims.size(), y_dims_array);
+  }
+
+  for (int i = 0; i < max_dim; i++) {
+    PADDLE_ENFORCE(x_dims_array[i] == y_dims_array[i] || x_dims_array[i] <= 1 ||
+                       y_dims_array[i] <= 1,
+                   "ShapeError: broadcast dimension mismatch. Operands could "
+                   "not be broadcast together with the shape of X = [%s] and "
+                   "the shape of Y = [%s]. Received [%d] in X is not equal to "
+                   "[%d] in Y at i:%d",
+                   x_dims, y_dims, x_dims_array[i], y_dims_array[i], i);
+    if ((x_dims_array[i] > 1 || y_dims_array[i] > 1) ||
+        (x_dims_array[i] == 1 && y_dims_array[i] == 1)) {
+      out_dims_array[i] = std::max(x_dims_array[i], y_dims_array[i]);
+    } else {
+      out_dims_array[i] = -1;
+    }
+  }
+}
+
+template <typename Functor, typename T, typename OutType = T>
+void CommonForwardBroadcastCPU(const framework::Tensor *x,
+                               const framework::Tensor *y, framework::Tensor *z,
+                               int *x_dims_array, int *y_dims_array,
+                               int *out_dims_array, int max_dim,
+                               const platform::CPUDeviceContext &ctx,
+                               Functor func,
+                               const bool is_xsize_larger = true) {
+  std::vector<int> index_array(max_dim, 0);
+  const T *x_data = x->data<T>();
+  const T *y_data = y->data<T>();
+  OutType *out_data = z->mutable_data<OutType>(ctx.GetPlace());
+
+  const int out_size = std::accumulate(out_dims_array, out_dims_array + max_dim,
+                                       1, std::multiplies<int>());
+  int x_index, y_index;
+  for (int out_index = 0; out_index < out_size; ++out_index) {
+    x_index = GetElementwiseIndex(x_dims_array, max_dim, index_array.data());
+    y_index = GetElementwiseIndex(y_dims_array, max_dim, index_array.data());
+    if (is_xsize_larger) {
+      out_data[out_index] = func(x_data[x_index], y_data[y_index]);
+    } else {
+      out_data[out_index] = func(y_data[y_index], x_data[x_index]);
+    }
+
+    UpdateElementwiseIndexArray(out_dims_array, max_dim, index_array.data());
+  }
+}
+
+#ifdef __NVCC__
+template <typename Functor, typename T>
+__global__ void CommonForwardBroadcastCUDAKernel(
+    const int *x_strides_array, const int *y_strides_array,
+    const int *out_dims_array, const T *x, const T *y, T *out, int out_size,
+    int max_dim, Functor func, const bool is_xsize_larger) {
+  for (int out_index = blockIdx.x * blockDim.x + threadIdx.x;
+       out_index < out_size; out_index += blockDim.x * gridDim.x) {
+    int x_index = 0;
+    int y_index = 0;
+    int out_index_quotient = out_index;
+    int remainder = 0;
+#pragma unroll
+    for (int i = max_dim - 1; i >= 0; --i) {
+      GetDivMod(out_index_quotient, out_dims_array[i], &out_index_quotient,
+                &remainder);
+      x_index += remainder * x_strides_array[i];
+      y_index += remainder * y_strides_array[i];
+    }
+    if (is_xsize_larger) {
+      out[out_index] = func(x[x_index], y[y_index]);
+    } else {
+      out[out_index] = func(y[y_index], x[x_index]);
+    }
+  }
+}
+
+template <typename Functor, typename T>
+void CommonForwardBroadcastCUDA(
+    const framework::Tensor *x, const framework::Tensor *y,
+    framework::Tensor *z, int *x_dims_array, int *y_dims_array,
+    int *out_dims_array, int max_dim, const platform::CUDADeviceContext &ctx,
+    Functor func, const bool is_xsize_larger = true) {
+  const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+  auto cplace = platform::CPUPlace();
+  const T *x_data = x->data<T>();
+  const T *y_data = y->data<T>();
+  T *out_data = z->mutable_data<T>(ctx.GetPlace());
+
+  std::vector<int> x_strides_array(max_dim);
+  std::vector<int> y_strides_array(max_dim);
+  int x_stride = 1;
+  int y_stride = 1;
+  for (int i = max_dim - 1; i >= 0; i--) {
+    x_strides_array[i] = x_dims_array[i] == 1 ? 0 : x_stride;
+    y_strides_array[i] = y_dims_array[i] == 1 ? 0 : y_stride;
+    x_stride *= x_dims_array[i];
+    y_stride *= y_dims_array[i];
+  }
+
+  int bytes = max_dim * sizeof(int);
+  auto x_strides_array_tmp = memory::Alloc(ctx, bytes);
+  int *x_strides_array_gpu =
+      reinterpret_cast<int *>(x_strides_array_tmp->ptr());
+  memory::Copy(gplace, x_strides_array_gpu, cplace, x_strides_array.data(),
+               bytes, ctx.stream());
+
+  auto y_strides_array_tmp = memory::Alloc(ctx, bytes);
+  int *y_strides_array_gpu =
+      reinterpret_cast<int *>(y_strides_array_tmp->ptr());
+  memory::Copy(gplace, y_strides_array_gpu, cplace, y_strides_array.data(),
+               bytes, ctx.stream());
+
+  auto out_dims_array_tmp = memory::Alloc(ctx, bytes);
+  int *out_dims_array_gpu = reinterpret_cast<int *>(out_dims_array_tmp->ptr());
+  memory::Copy(gplace, out_dims_array_gpu, cplace, out_dims_array, bytes,
+               ctx.stream());
+
+  const int out_size = std::accumulate(out_dims_array, out_dims_array + max_dim,
+                                       1, std::multiplies<int>());
+  dim3 gird_size = dim3(
+      (out_size + PADDLE_CUDA_THREAD_SIZE - 1) / PADDLE_CUDA_THREAD_SIZE, 1);
+  dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
+
+  CommonForwardBroadcastCUDAKernel<
+      Functor, T><<<gird_size, block_size, 0, ctx.stream()>>>(
+      x_strides_array_gpu, y_strides_array_gpu, out_dims_array_gpu, x_data,
+      y_data, out_data, out_size, max_dim, func, is_xsize_larger);
+}
+
+#endif  // __NVCC__
+
+template <typename T, typename DX_OP, typename DY_OP>
+void CommonGradBroadcastCPU(
+    const framework::Tensor &x, const framework::Tensor &y,
+    const framework::Tensor &out, const framework::Tensor &dout,
+    framework::Tensor *dx, framework::Tensor *dy, int *x_dims_array,
+    int *y_dims_array, int *out_dims_array, int max_dim,
+    const platform::CPUDeviceContext &ctx, DX_OP dx_op, DY_OP dy_op) {
+  std::vector<int> index_array(max_dim, 0);
+  const T *x_data = x.data<T>();
+  const T *y_data = y.data<T>();
+  const T *out_data = out.data<T>();
+  const T *dout_data = dout.data<T>();
+  T *dx_data = dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace());
+  T *dy_data = dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace());
+  if (dx_data != nullptr) {
+    memset(dx_data, 0, dx->numel() * sizeof(T));
+  }
+  if (dy_data != nullptr) {
+    memset(dy_data, 0, dy->numel() * sizeof(T));
+  }
+  const int out_size = std::accumulate(out_dims_array, out_dims_array + max_dim,
+                                       1, std::multiplies<int>());
+  int x_index, y_index;
+  for (int out_index = 0; out_index < out_size; ++out_index) {
+    x_index = GetElementwiseIndex(x_dims_array, max_dim, index_array.data());
+    y_index = GetElementwiseIndex(y_dims_array, max_dim, index_array.data());
+    if (dx_data != nullptr) {
+      dx_data[x_index] += dx_op(x_data[x_index], y_data[y_index],
+                                out_data[out_index], dout_data[out_index]);
+    }
+    if (dy_data != nullptr) {
+      dy_data[y_index] += dy_op(x_data[x_index], y_data[y_index],
+                                out_data[out_index], dout_data[out_index]);
+    }
+
+    UpdateElementwiseIndexArray(out_dims_array, max_dim, index_array.data());
+  }
+}
+
+inline void ComputeBroadcastKernelSize(int *x_dims_array, int *out_dims_array,
+                                       int *x_blocks, int *x_threads,
+                                       int max_dim) {
+  *x_blocks = 1;
+  *x_threads = 1;
+  for (int i = 0; i < max_dim; i++) {
+    if (x_dims_array[i] == out_dims_array[i]) {
+      *x_blocks *= x_dims_array[i];
+    } else {
+      *x_threads *= out_dims_array[i];
+    }
+  }
+}
+
+inline void ComputeBroadcastTranspositionArray(const int *x_one_indexs,
+                                               int *x_trans_indexs,
+                                               const int max_dim,
+                                               const int x_one_size) {
+  int diff = max_dim - x_one_size;
+  std::copy_n(x_one_indexs, x_one_size, x_trans_indexs + diff);
+  int p = 0;
+  int q = diff;
+  for (int i = 0; i < max_dim; ++i) {
+    if (q < max_dim && i == x_trans_indexs[q]) {
+      ++q;
+    } else {
+      x_trans_indexs[p++] = i;
+    }
+  }
+}
+
+#ifdef __NVCC__
+template <typename T, typename DX_OP>
+__global__ void CommonGradBroadcastCUDAKernel(
+    const int *x_strides_array, const int *y_strides_array,
+    const int *out_dims_array, const int *y_strides_order,
+    const int *y_dims_order, const T *x, const T *y, const T *out,
+    const T *dout, T *dx, int out_size, int max_dim, int thread_num,
+    DX_OP dx_op) {
+  T val(0);
+  int i = blockIdx.x;
+  int tid = threadIdx.x;
+  for (int j = tid; j < thread_num; j += blockDim.x) {
+    const int X_index = i * thread_num + j;
+    int out_index = X_index;
+    int C_index = 0;
+    int B_index = i * thread_num + j;
+    int remainder = 0;
+#pragma unroll
+    for (int d = max_dim - 1; d >= 0; --d) {
+      GetDivMod(B_index, y_dims_order[d], &B_index, &remainder);
+      C_index += remainder * y_strides_order[d];
+    }
+    int x_index = 0;
+    int y_index = 0;
+    int C_index_val = C_index;
+#pragma unroll
+    for (int d = max_dim - 1; d >= 0; --d) {
+      GetDivMod(C_index_val, out_dims_array[d], &C_index_val, &remainder);
+      x_index += remainder * x_strides_array[d];
+      y_index += remainder * y_strides_array[d];
+    }
+    out_index = C_index;
+    val += dx_op(x[x_index], y[y_index], out[out_index], dout[out_index]);
+  }
+  val = paddle::platform::reduceSum(val, tid, thread_num);
+  if (threadIdx.x == 0) {
+    dx[i] = val;
+  }
+}
+
+template <typename T, typename DY_OP>
+static __global__ void CommonGradBroadcast1CUDAKernelHeight(
+    const T *x, const T *y, const T *out, const T *dout, int h, int w,
+    DY_OP dy_op, T *dy, int x_h, int x_w, bool is_y) {
+  int j = blockIdx.x;
+  int i = threadIdx.x;
+  int tid = threadIdx.x;
+  T val(0);
+
+  if (is_y) {
+    do {
+      int out_offset = i * w + j;
+      int x_offset = (i % x_h) * x_w + j % x_w;
+      if (dy) {
+        val += dy_op(x[x_offset], y[j], out[out_offset], dout[out_offset]);
+      }
+      i += ELEMWISE_MAX_BLOCK_DIM;
+    } while (i < h);
+
+    if (dy) {
+      h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
+      val = paddle::platform::reduceSum(val, tid, h);
+      if (threadIdx.x == 0) {
+        dy[j] = val;
+      }
+    }
+  } else {
+    do {
+      int out_offset = i * w + j;
+      int y_offset = (i % x_h) * x_w + j % x_w;
+      if (dy) {
+        val += dy_op(x[j], y[y_offset], out[out_offset], dout[out_offset]);
+      }
+      i += ELEMWISE_MAX_BLOCK_DIM;
+    } while (i < h);
+
+    if (dy) {
+      h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
+      val = paddle::platform::reduceSum(val, tid, h);
+      if (threadIdx.x == 0) {
+        dy[j] = val;
+      }
+    }
+  }
+}
+
+template <typename T, typename DY_OP>
+static __global__ void FastCommonGradBroadcastCUDAKernelHeight(
+    const T *x, const T *y, const T *out, const T *dout, int h, int w,
+    DY_OP dy_op, T *dy, int x_h, int x_w, bool is_y) {
+  __shared__ T sdata[BLOCK_Y][BLOCK_X + 1];
+
+  T val(0);
+  size_t width_stride = gridDim.x * blockDim.x;
+  size_t idx = threadIdx.x + blockDim.x * blockIdx.x;
+  size_t full_width =
+      (w & (~((uint64_t)(BLOCK_X - 1)))) + ((w & (BLOCK_X - 1)) ? BLOCK_X : 0);
+  size_t full_height =
+      (h & (~((uint64_t)(BLOCK_Y - 1)))) + ((h & (BLOCK_Y - 1)) ? BLOCK_Y : 0);
+  if (is_y) {
+    for (int m = idx; m < full_width; m += width_stride) {
+      sdata[threadIdx.y][threadIdx.x] = 0;
+      for (int n = threadIdx.y; n < full_height; n += BLOCK_Y) {
+        int out_offset = n * w + m;
+        int x_offset = (n % x_h) * x_w + m % x_w;
+        if (dy) {
+          if (m < w && n < h) {
+            T val = dy_op(x[x_offset], y[m], out[out_offset], dout[out_offset]);
+            sdata[threadIdx.y][threadIdx.x] += val;
+          }
+          __syncthreads();
+        }
+      }
+      if (dy) {
+        T my_val = sdata[threadIdx.x][threadIdx.y];
+        for (int i = warpSize >> 1; i > 0; i >>= 1) {
+          my_val += platform::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
+        }
+        __syncthreads();
+        if ((threadIdx.x == 0)) {
+          sdata[0][threadIdx.y] = my_val;
+        }
+        __syncthreads();
+        if (threadIdx.y == 0 && m < w) {
+          dy[m] = sdata[0][threadIdx.x];
+        }
+      }
+    }
+  } else {
+    for (int m = idx; m < full_width; m += width_stride) {
+      sdata[threadIdx.y][threadIdx.x] = 0;
+      for (int n = threadIdx.y; n < full_height; n += BLOCK_Y) {
+        int out_offset = n * w + m;
+        int y_offset = (n % x_h) * x_w + m % x_w;
+        if (dy) {
+          if (m < w && n < h) {
+            T val = dy_op(x[m], y[y_offset], out[out_offset], dout[out_offset]);
+            sdata[threadIdx.y][threadIdx.x] += val;
+          }
+          __syncthreads();
+        }
+      }
+      if (dy) {
+        T my_val = sdata[threadIdx.x][threadIdx.y];
+        for (int i = warpSize >> 1; i > 0; i >>= 1) {
+          my_val += platform::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
+        }
+        __syncthreads();
+        if ((threadIdx.x == 0)) {
+          sdata[0][threadIdx.y] = my_val;
+        }
+        __syncthreads();
+        if (threadIdx.y == 0 && m < w) {
+          dy[m] = sdata[0][threadIdx.x];
+        }
+      }
+    }
+  }
+}
+
+template <typename T, typename DY_OP, typename DX_OP>
+static __global__ void FastCommonGradBroadcastAllCUDAKernel(
+    const T *x, const T *y, const T *out, const T *dout, int pre, int n,
+    int post, bool is_xsize_larger, DX_OP dx_op, DY_OP dy_op, T *dx, T *dy) {
+  int tid = threadIdx.x;
+  int bid = blockIdx.x;
+
+  T val(0);
+  if (is_xsize_larger) {
+    for (int i = tid; i < n; i += ELEMWISE_MAX_BLOCK_DIM) {
+      int b_i = bid / post;
+      int b_j = bid % post;
+      int x_offset = b_i * n * post + i * post + b_j;
+      int y_offset = b_i * post + b_j;
+      if (dx) {
+        dx[x_offset] =
+            dx_op(x[x_offset], y[y_offset], out[x_offset], dout[x_offset]);
+      }
+      if (dy) {
+        val += dy_op(x[x_offset], y[y_offset], out[x_offset], dout[x_offset]);
+      }
+    }
+    if (dy) {
+      int h = n > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : n;
+      val = paddle::platform::reduceSum(val, tid, h);
+      if (tid == 0) {
+        dy[bid] = val;
+      }
+    }
+  } else {
+    for (int i = tid; i < n; i += ELEMWISE_MAX_BLOCK_DIM) {
+      int b_i = bid / post;
+      int b_j = bid % post;
+      int y_offset = b_i * n * post + i * post + b_j;
+      int x_offset = b_i * post + b_j;
+      if (dy) {
+        dy[y_offset] =
+            dy_op(x[x_offset], y[y_offset], out[x_offset], dout[x_offset]);
+      }
+      if (dx) {
+        val += dx_op(x[x_offset], y[y_offset], out[x_offset], dout[x_offset]);
+      }
+    }
+    if (dx) {
+      int h = n > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : n;
+      val = paddle::platform::reduceSum(val, tid, h);
+      if (tid == 0) {
+        dx[bid] = val;
+      }
+    }
+  }
+}
+
+// Check input can be split into 2 parts
+static inline bool SplitDims(const std::vector<int> &y_broadcast_pos,
+                             int max_dim) {
+  bool can_split_dim2 = true;
+  // must at start or end.
+  if (y_broadcast_pos[0] != 0 &&
+      y_broadcast_pos[y_broadcast_pos.size() - 1] != max_dim - 1) {
+    can_split_dim2 = false;
+  } else {
+    for (int i = 1; i < y_broadcast_pos.size(); ++i) {
+      // dim must be continue
+      if (y_broadcast_pos[i] != y_broadcast_pos[i - 1] + 1) {
+        can_split_dim2 = false;
+        break;
+      }
+    }
+  }
+  return can_split_dim2;
+}
+
+template <typename T, typename DX_OP, typename DY_OP>
+void CommonGradBroadcastCUDA(
+    const framework::Tensor &x, const framework::Tensor &y,
+    const framework::Tensor &out, const framework::Tensor &dout,
+    framework::Tensor *dx, framework::Tensor *dy, int *x_dims_array,
+    int *y_dims_array, int *out_dims_array, int max_dim,
+    const platform::CUDADeviceContext &ctx, DX_OP dx_op, DY_OP dy_op) {
+  const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+  auto cplace = platform::CPUPlace();
+  const T *x_data = x.data<T>();
+  const T *y_data = y.data<T>();
+  const T *out_data = out.data<T>();
+  const T *dout_data = dout.data<T>();
+  T *dx_data = dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace());
+  T *dy_data = dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace());
+
+  std::vector<int> x_one_indexs;
+  std::vector<int> y_one_indexs;
+  for (int i = 0; i < max_dim; i++) {
+    if (x_dims_array[i] != y_dims_array[i]) {
+      if (x_dims_array[i] == 1) {
+        x_one_indexs.push_back(i);
+      }
+      if (y_dims_array[i] == 1) {
+        y_one_indexs.push_back(i);
+      }
+    }
+  }
+
+  std::vector<int> x_trans_indexs(max_dim);
+  std::vector<int> y_trans_indexs(max_dim);
+  ComputeBroadcastTranspositionArray(x_one_indexs.data(), x_trans_indexs.data(),
+                                     max_dim, x_one_indexs.size());
+  ComputeBroadcastTranspositionArray(y_one_indexs.data(), y_trans_indexs.data(),
+                                     max_dim, y_one_indexs.size());
+
+  // compute array stride for cuda kernel;
+  // e.g. x.dims=[2,3,4], x_stride=[12,4,1]
+  std::vector<int> x_strides_array(max_dim);
+  std::vector<int> y_strides_array(max_dim);
+  std::vector<int> out_strides_array(max_dim);
+  int x_stride = 1;
+  int y_stride = 1;
+  int z_stride = 1;
+  for (int i = max_dim - 1; i >= 0; i--) {
+    x_strides_array[i] = x_dims_array[i] == 1 ? 0 : x_stride;
+    y_strides_array[i] = y_dims_array[i] == 1 ? 0 : y_stride;
+    out_strides_array[i] = z_stride;
+    x_stride *= x_dims_array[i];
+    y_stride *= y_dims_array[i];
+    z_stride *= out_dims_array[i];
+  }
+
+  std::vector<int> x_strides_order(max_dim);
+  std::vector<int> y_strides_order(max_dim);
+  std::vector<int> x_dims_order(max_dim);
+  std::vector<int> y_dims_order(max_dim);
+  for (int i = 0; i < max_dim; ++i) {
+    x_strides_order[i] = out_strides_array[x_trans_indexs[i]];
+    y_strides_order[i] = out_strides_array[y_trans_indexs[i]];
+    x_dims_order[i] = out_dims_array[x_trans_indexs[i]];
+    y_dims_order[i] = out_dims_array[y_trans_indexs[i]];
+  }
+  std::vector<int> x_broadcast_pos;
+  std::vector<int> y_broadcast_pos;
+
+  int bytes = max_dim * sizeof(int);
+
+  for (int i = 0; i < max_dim; ++i) {
+    if (x_dims_array[i] != out_dims_array[i] && x_dims_array[i] == 1) {
+      x_broadcast_pos.emplace_back(i);
+    }
+    if (y_dims_array[i] != out_dims_array[i] && y_dims_array[i] == 1) {
+      y_broadcast_pos.emplace_back(i);
+    }
+  }
+  auto stream = ctx.stream();
+  bool can_split_x = false;
+  bool can_split_y = false;
+
+  auto FastCommonCUDAF = [&](const std::vector<int> &broadcast_pos, bool is_y) {
+    int h =
+        std::accumulate(out_dims_array, out_dims_array + broadcast_pos.size(),
+                        1, std::multiplies<int>());
+    int w =
+        std::accumulate(out_dims_array + broadcast_pos.size(),
+                        out_dims_array + max_dim, 1, std::multiplies<int>());
+
+    VLOG(3) << "FastCommonCUDAF elementwise w:" << w << " h:" << h
+            << " is_y:" << is_y;
+
+    int split_h;
+    int split_w;
+    int kh = h;
+    int kw = w;
+
+    if (is_y) {
+      split_h =
+          std::accumulate(x_dims_array, x_dims_array + broadcast_pos.size(), 1,
+                          std::multiplies<int>());
+      split_w =
+          std::accumulate(x_dims_array + broadcast_pos.size(),
+                          x_dims_array + max_dim, 1, std::multiplies<int>());
+
+    } else {
+      split_h =
+          std::accumulate(y_dims_array, y_dims_array + broadcast_pos.size(), 1,
+                          std::multiplies<int>());
+      split_w =
+          std::accumulate(y_dims_array + broadcast_pos.size(),
+                          y_dims_array + max_dim, 1, std::multiplies<int>());
+    }
+
+    if (h > split_h) kh = split_h;
+    if (w > split_w) kw = split_w;
+
+    if (is_y) {
+      if (w < 16 || h < 16) {
+        int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, h);
+        int grid_size = w;
+        CommonGradBroadcast1CUDAKernelHeight<<<grid_size, block_size, 0,
+                                               stream>>>(
+            x_data, y_data, out_data, dout_data, h, w, dy_op, dy_data, kh, kw,
+            is_y);
+      } else {
+        dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
+        int grid_size = (w + BLOCK_X - 1) / BLOCK_X;
+        FastCommonGradBroadcastCUDAKernelHeight<<<grid_size, block_size, 0,
+                                                  stream>>>(
+            x_data, y_data, out_data, dout_data, h, w, dy_op, dy_data, kh, kw,
+            is_y);
+      }
+    } else {
+      if (w < 16 || h < 16) {
+        int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, h);
+        int grid_size = w;
+        CommonGradBroadcast1CUDAKernelHeight<<<grid_size, block_size, 0,
+                                               stream>>>(
+            x_data, y_data, out_data, dout_data, h, w, dx_op, dx_data, kh, kw,
+            is_y);
+      } else {
+        dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
+        int grid_size = (w + BLOCK_X - 1) / BLOCK_X;
+        FastCommonGradBroadcastCUDAKernelHeight<<<grid_size, block_size, 0,
+                                                  stream>>>(
+            x_data, y_data, out_data, dout_data, h, w, dx_op, dx_data, kh, kw,
+            is_y);
+      }
+    }
+  };
+
+  auto FastBroadCastHeightCUDAF = [&](const std::vector<int> &broadcast_pos,
+                                      bool x_large) {
+    int h =
+        std::accumulate(out_dims_array, out_dims_array + broadcast_pos.size(),
+                        1, std::multiplies<int>());
+    int w =
+        std::accumulate(out_dims_array + broadcast_pos.size(),
+                        out_dims_array + max_dim, 1, std::multiplies<int>());
+
+    VLOG(3) << "FastBroadCastHeightCUDAF w:" << w << " h:" << h;
+
+    if (w < 16 || h < 16) {
+      int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, h);
+      int grid_size = w;
+      ElemwiseGradBroadcast1CUDAKernel<<<grid_size, block_size, 0, stream>>>(
+          x_data, y_data, out_data, dout_data, h, w, x_large, dx_op, dy_op,
+          dx_data, dy_data);
+    } else {
+      dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
+      int grid_size = (w + BLOCK_X - 1) / BLOCK_X;
+      FastElemwiseGradBroadcast1CUDAKernel<<<grid_size, block_size, 0,
+                                             stream>>>(
+          x_data, y_data, out_data, dout_data, h, w, x_large, dx_op, dy_op,
+          dx_data, dy_data);
+    }
+  };
+
+  auto FastBroadCastAllCUDAF = [&](const std::vector<int> &broadcast_pos,
+                                   int max_dim, bool is_x_large) {
+    int axis = broadcast_pos[0];
+    int pre = std::accumulate(out_dims_array, out_dims_array + axis, 1,
+                              std::multiplies<int>());
+    int mid = out_dims_array[axis];
+    int post =
+        std::accumulate(out_dims_array + axis + 1, out_dims_array + max_dim, 1,
+                        std::multiplies<int>());
+
+    VLOG(3) << "FastBroadCastAllCUDAF pre:" << pre << " mid:" << mid
+            << " post:" << post;
+
+    int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, mid);
+    int grid_size = pre * post;
+
+    FastCommonGradBroadcastAllCUDAKernel<<<grid_size, block_size, 0, stream>>>(
+        x_data, y_data, out_data, dout_data, pre, mid, post, is_x_large, dx_op,
+        dy_op, dx_data, dy_data);
+  };
+
+  // do fast elementwise if: 1. only one input need to do broadcast, we can
+  // fallback
+  // to old fast path.
+  // 2. if both x and y need broadcast, then do it one by one.
+  if (x_broadcast_pos.empty() && !y_broadcast_pos.empty()) {
+    can_split_y = SplitDims(y_broadcast_pos, max_dim);
+    if (can_split_y) {
+      // only y need to do broadcast on h
+      if (y_broadcast_pos[0] == 0) {
+        FastBroadCastHeightCUDAF(y_broadcast_pos, true);
+      } else {
+        LOG(ERROR) << "Error, broadcast should not into w broadcast";
+      }
+      return;
+    } else if (y_broadcast_pos.size() == 1) {  // for only one dim broadcast.
+      // If cannot split,  which means input has 3 parts
+      FastBroadCastAllCUDAF(y_broadcast_pos, max_dim, true);
+      return;
+    }
+  } else if (y_broadcast_pos.empty() && !x_broadcast_pos.empty()) {
+    // only x need broadcast
+    can_split_x = SplitDims(x_broadcast_pos, max_dim);
+    if (can_split_x) {
+      if (x_broadcast_pos[0] == 0) {
+        FastBroadCastHeightCUDAF(x_broadcast_pos, false);
+      } else {
+        // x need to do broadcast on w
+        LOG(ERROR) << "Error, broadcast should not into w broadcast";
+      }
+      return;
+    } else if (x_broadcast_pos.size() == 1) {
+      FastBroadCastAllCUDAF(x_broadcast_pos, max_dim, false);
+      return;
+    }
+  } else if (!x_broadcast_pos.empty() && !y_broadcast_pos.empty()) {
+    // do x and y broadcast each.
+    can_split_y = SplitDims(y_broadcast_pos, max_dim);
+    if (can_split_y) {
+      // begin at start.
+      if (y_broadcast_pos[0] == 0) {
+        FastCommonCUDAF(y_broadcast_pos, true);
+      } else {
+        // finish at end
+        LOG(ERROR) << "Error, broadcast should not into w broadcast";
+      }
+    }
+    can_split_x = SplitDims(x_broadcast_pos, max_dim);
+    if (can_split_x) {
+      if (x_broadcast_pos[0] == 0) {
+        FastCommonCUDAF(x_broadcast_pos, false);
+      } else {
+        LOG(ERROR) << "Error, broadcast should not into w broadcast";
+      }
+    }
+    VLOG(3) << "CommonBroadcast can_split_y:" << can_split_y
+            << " can_split_x:" << can_split_x;
+    // if both x and y into fast path then return
+    if (can_split_y && can_split_x) return;
+  }
+
+  // Should remove memory copy, use reg instead.
+  int x_blocks = 0;
+  int x_threads = 0;
+  ComputeBroadcastKernelSize(x_dims_array, out_dims_array, &x_blocks,
+                             &x_threads, max_dim);
+  int y_blocks = 0;
+  int y_threads = 0;
+  ComputeBroadcastKernelSize(y_dims_array, out_dims_array, &y_blocks,
+                             &y_threads, max_dim);
+
+  auto x_strides_array_tmp = memory::Alloc(ctx, bytes);
+  int *x_strides_array_gpu =
+      reinterpret_cast<int *>(x_strides_array_tmp->ptr());
+  memory::Copy(gplace, x_strides_array_gpu, cplace, x_strides_array.data(),
+               bytes, ctx.stream());
+
+  auto y_strides_array_tmp = memory::Alloc(ctx, bytes);
+  int *y_strides_array_gpu =
+      reinterpret_cast<int *>(y_strides_array_tmp->ptr());
+  memory::Copy(gplace, y_strides_array_gpu, cplace, y_strides_array.data(),
+               bytes, ctx.stream());
+
+  auto out_dims_array_tmp = memory::Alloc(ctx, bytes);
+  int *out_dims_array_gpu = reinterpret_cast<int *>(out_dims_array_tmp->ptr());
+  memory::Copy(gplace, out_dims_array_gpu, cplace, out_dims_array, bytes,
+               ctx.stream());
+
+  const int out_size = std::accumulate(out_dims_array, out_dims_array + max_dim,
+                                       1, std::multiplies<int>());
+  int x_block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, x_threads);
+  int y_block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, y_threads);
+  if (dx && !can_split_x) {
+    auto x_strides_order_tmp = memory::Alloc(ctx, bytes);
+    int *x_strides_order_gpu =
+        reinterpret_cast<int *>(x_strides_order_tmp->ptr());
+    memory::Copy(gplace, x_strides_order_gpu, cplace, x_strides_order.data(),
+                 bytes, ctx.stream());
+
+    auto x_dims_order_tmp = memory::Alloc(ctx, bytes);
+    int *x_dims_order_gpu = reinterpret_cast<int *>(x_dims_order_tmp->ptr());
+    memory::Copy(gplace, x_dims_order_gpu, cplace, x_dims_order.data(), bytes,
+                 ctx.stream());
+    CommonGradBroadcastCUDAKernel<
+        T, DX_OP><<<x_blocks, x_block_size, 0, ctx.stream()>>>(
+        x_strides_array_gpu, y_strides_array_gpu, out_dims_array_gpu,
+        x_strides_order_gpu, x_dims_order_gpu, x_data, y_data, out_data,
+        dout_data, dx_data, out_size, max_dim, x_threads, dx_op);
+  }
+  if (dy && !can_split_y) {
+    auto y_strides_order_tmp = memory::Alloc(ctx, bytes);
+    int *y_strides_order_gpu =
+        reinterpret_cast<int *>(y_strides_order_tmp->ptr());
+    memory::Copy(gplace, y_strides_order_gpu, cplace, y_strides_order.data(),
+                 bytes, ctx.stream());
+
+    auto y_dims_order_tmp = memory::Alloc(ctx, bytes);
+    int *y_dims_order_gpu = reinterpret_cast<int *>(y_dims_order_tmp->ptr());
+    memory::Copy(gplace, y_dims_order_gpu, cplace, y_dims_order.data(), bytes,
+                 ctx.stream());
+    CommonGradBroadcastCUDAKernel<
+        T, DY_OP><<<y_blocks, y_block_size, 0, ctx.stream()>>>(
+        x_strides_array_gpu, y_strides_array_gpu, out_dims_array_gpu,
+        y_strides_order_gpu, y_dims_order_gpu, x_data, y_data, out_data,
+        dout_data, dy_data, out_size, max_dim, y_threads, dy_op);
+  }
+}
+
+#endif  // __NVCC__
 
 inline framework::DDim trim_trailing_singular_dims(
     const framework::DDim &dims) {
@@ -76,7 +903,7 @@ inline framework::DDim trim_trailing_singular_dims(
   for (; actual_dims_size != 0; --actual_dims_size) {
     if (dims[actual_dims_size - 1] != 1) break;
   }
-
+  if (actual_dims_size == dims.size()) return dims;
   std::vector<int> trim_dims;
   trim_dims.resize(actual_dims_size);
   for (int i = 0; i < actual_dims_size; ++i) {
@@ -171,7 +998,6 @@ class MidWiseTransformIterator<T, platform::CPUDeviceContext>
         }
       }
     }
-
     return *this;
   }
 
@@ -243,13 +1069,19 @@ template <typename Functor, typename T, typename DeviceContext,
 class TransformFunctor {
  public:
   TransformFunctor(const framework::Tensor *x, const framework::Tensor *y,
-                   framework::Tensor *z, const DeviceContext &ctx, Functor func)
+                   framework::Tensor *z, const DeviceContext &ctx, Functor func,
+                   const bool is_xsize_larger = true)
       : x_(x->data<T>()),
         y_(y->data<T>()),
         z_(z->mutable_data<OutType>(ctx.GetPlace())),
         nx_(x->numel()),
         ctx_(ctx),
-        func_(func) {}
+        func_(func),
+        is_xsize_larger_(is_xsize_larger) {
+    if (is_xsize_larger_ == false) {
+      nx_ = y->numel();
+    }
+  }
 
   inline void Run() const {
     platform::Transform<DeviceContext> trans;
@@ -258,14 +1090,24 @@ class TransformFunctor {
 
   inline void RunRowWise(int n, int pre) const {
     platform::Transform<DeviceContext> trans;
-    trans(ctx_, x_, x_ + nx_, RowwiseTransformIterator<T, DeviceContext>(y_, n),
-          z_, func_);
+    if (is_xsize_larger_) {
+      trans(ctx_, x_, x_ + nx_,
+            RowwiseTransformIterator<T, DeviceContext>(y_, n), z_, func_);
+    } else {
+      trans(ctx_, y_, y_ + nx_,
+            RowwiseTransformIterator<T, DeviceContext>(x_, n), z_, func_);
+    }
   }
 
   inline void RunMidWise(int n, int pre, int post) const {
     platform::Transform<DeviceContext> trans;
-    trans(ctx_, x_, x_ + nx_,
-          MidWiseTransformIterator<T, DeviceContext>(y_, n, post), z_, func_);
+    if (is_xsize_larger_) {
+      trans(ctx_, x_, x_ + nx_,
+            MidWiseTransformIterator<T, DeviceContext>(y_, n, post), z_, func_);
+    } else {
+      trans(ctx_, y_, y_ + nx_,
+            MidWiseTransformIterator<T, DeviceContext>(x_, n, post), z_, func_);
+    }
   }
 
  private:
@@ -275,6 +1117,7 @@ class TransformFunctor {
   int64_t nx_;
   const DeviceContext &ctx_;
   Functor func_;
+  bool is_xsize_larger_;
 };
 
 template <typename T, typename DX_OP, typename DY_OP>
@@ -301,20 +1144,42 @@ struct ElemwiseGradNoBroadcast {
 
 template <typename T, typename DX_OP, typename DY_OP>
 static void ElemwiseGradBroadcast1CPU(const T *x, const T *y, const T *out,
-                                      const T *dout, int h, int w, DX_OP dx_op,
+                                      const T *dout, int h, int w,
+                                      bool is_xsize_larger, DX_OP dx_op,
                                       DY_OP dy_op, T *dx, T *dy) {
-  for (int i = 0; i < h; ++i) {
-    for (int j = 0; j < w; ++j) {
-      int x_offset = i * w + j;
-      if (dx != nullptr) {
-        dx[x_offset] = dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+  if (is_xsize_larger) {
+    for (int i = 0; i < h; ++i) {
+      for (int j = 0; j < w; ++j) {
+        int x_offset = i * w + j;
+        if (dx != nullptr) {
+          dx[x_offset] =
+              dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+        }
+        if (dy != nullptr) {
+          T tmp = dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+          if (i == 0) {
+            dy[j] = tmp;
+          } else {
+            dy[j] += tmp;
+          }
+        }
       }
-      if (dy != nullptr) {
-        T tmp = dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
-        if (i == 0) {
-          dy[j] = tmp;
-        } else {
-          dy[j] += tmp;
+    }
+  } else {  // x.dims < y.dims, broadcast for x.
+    for (int i = 0; i < h; ++i) {
+      for (int j = 0; j < w; ++j) {
+        int y_offset = i * w + j;
+        if (dy != nullptr) {
+          dy[y_offset] =
+              dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+        }
+        if (dx != nullptr) {
+          T tmp = dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+          if (i == 0) {
+            dx[j] = tmp;
+          } else {
+            dx[j] += tmp;
+          }
         }
       }
     }
@@ -325,41 +1190,58 @@ static void ElemwiseGradBroadcast1CPU(const T *x, const T *y, const T *out,
 template <typename T, typename DX_OP, typename DY_OP>
 static __global__ void ElemwiseGradBroadcast1CUDAKernel(
     const T *x, const T *y, const T *out, const T *dout, int h, int w,
-    DX_OP dx_op, DY_OP dy_op, T *dx, T *dy) {
+    bool is_xsize_larger, DX_OP dx_op, DY_OP dy_op, T *dx, T *dy) {
   int j = blockIdx.x;
   int i = threadIdx.x;
   int tid = threadIdx.x;
   T val(0);
+  if (is_xsize_larger) {
+    do {
+      int x_offset = i * w + j;
+      if (dx) {
+        dx[x_offset] = dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+      }
+      if (dy) {
+        val += dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+      }
+      i += ELEMWISE_MAX_BLOCK_DIM;
+    } while (i < h);
 
-  do {
-    int x_offset = i * w + j;
-    if (dx) {
-      dx[x_offset] = dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
-    }
     if (dy) {
-      val += dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+      h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
+      val = paddle::platform::reduceSum(val, tid, h);
+      if (threadIdx.x == 0) {
+        dy[j] = val;
+      }
     }
-    i += ELEMWISE_MAX_BLOCK_DIM;
-  } while (i < h);
+  } else {  // x.dims < y.dims, broadcast for x.
+    do {
+      int y_offset = i * w + j;
+      if (dy) {
+        dy[y_offset] = dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+      }
+      if (dx) {
+        val += dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+      }
+      i += ELEMWISE_MAX_BLOCK_DIM;
+    } while (i < h);
 
-  if (dy) {
-    h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-    val = paddle::platform::reduceSum(val, tid, h);
-    if (threadIdx.x == 0) {
-      dy[j] = val;
+    if (dx) {
+      h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
+      val = paddle::platform::reduceSum(val, tid, h);
+      if (threadIdx.x == 0) {
+        dx[j] = val;
+      }
     }
   }
 }
-
-#define BLOCK_X 32
-#define BLOCK_Y 32
 
 // suppose use 2D block is fast because more parallel
 // and memory coalesced
 template <typename T, typename DX_OP, typename DY_OP>
 static __global__ void FastElemwiseGradBroadcast1CUDAKernel(
     const T *x, const T *y, const T *out, const T *dout, int h, int w,
-    DX_OP dx_op, DY_OP dy_op, T *dx, T *dy) {
+    bool is_xsize_larger, DX_OP dx_op, DY_OP dy_op, T *dx, T *dy) {
   __shared__ T sdata[BLOCK_Y][BLOCK_X + 1];
 
   T val(0);
@@ -369,33 +1251,66 @@ static __global__ void FastElemwiseGradBroadcast1CUDAKernel(
       (w & (~((uint64_t)(BLOCK_X - 1)))) + ((w & (BLOCK_X - 1)) ? BLOCK_X : 0);
   size_t full_height =
       (h & (~((uint64_t)(BLOCK_Y - 1)))) + ((h & (BLOCK_Y - 1)) ? BLOCK_Y : 0);
-
-  for (int m = idx; m < full_width; m += width_stride) {
-    sdata[threadIdx.y][threadIdx.x] = 0;
-    for (int n = threadIdx.y; n < full_height; n += BLOCK_Y) {
-      int x_offset = n * w + m;
-      if (dx && m < w && n < h) {
-        dx[x_offset] = dx_op(x[x_offset], y[m], out[x_offset], dout[x_offset]);
+  if (is_xsize_larger) {
+    for (int m = idx; m < full_width; m += width_stride) {
+      sdata[threadIdx.y][threadIdx.x] = 0;
+      for (int n = threadIdx.y; n < full_height; n += BLOCK_Y) {
+        int x_offset = n * w + m;
+        if (dx && m < w && n < h) {
+          dx[x_offset] =
+              dx_op(x[x_offset], y[m], out[x_offset], dout[x_offset]);
+        }
+        if (dy) {
+          if (m < w && n < h) {
+            T val = dy_op(x[x_offset], y[m], out[x_offset], dout[x_offset]);
+            sdata[threadIdx.y][threadIdx.x] += val;
+          }
+          __syncthreads();
+        }
       }
       if (dy) {
-        if (m < w && n < h) {
-          T val = dy_op(x[x_offset], y[m], out[x_offset], dout[x_offset]);
-          sdata[threadIdx.y][threadIdx.x] += val;
+        T my_val = sdata[threadIdx.x][threadIdx.y];
+        for (int i = warpSize >> 1; i > 0; i >>= 1)
+          my_val += platform::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
+        __syncthreads();
+        if ((threadIdx.x == 0)) {
+          sdata[0][threadIdx.y] = my_val;
         }
         __syncthreads();
+        if (threadIdx.y == 0 && m < w) {
+          dy[m] = sdata[0][threadIdx.x];
+        }
       }
     }
-    if (dy) {
-      T my_val = sdata[threadIdx.x][threadIdx.y];
-      for (int i = warpSize >> 1; i > 0; i >>= 1)
-        my_val += platform::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
-      __syncthreads();
-      if ((threadIdx.x == 0)) {
-        sdata[0][threadIdx.y] = my_val;
+  } else {  // x.dims < y.dims, broadcast for x.
+    for (int m = idx; m < full_width; m += width_stride) {
+      sdata[threadIdx.y][threadIdx.x] = 0;
+      for (int n = threadIdx.y; n < full_height; n += BLOCK_Y) {
+        int y_offset = n * w + m;
+        if (dy && m < w && n < h) {
+          dy[y_offset] =
+              dy_op(x[m], y[y_offset], out[y_offset], dout[y_offset]);
+        }
+        if (dx) {
+          if (m < w && n < h) {
+            T val = dx_op(x[m], y[y_offset], out[y_offset], dout[y_offset]);
+            sdata[threadIdx.y][threadIdx.x] += val;
+          }
+          __syncthreads();
+        }
       }
-      __syncthreads();
-      if (threadIdx.y == 0 && m < w) {
-        dy[m] = sdata[0][threadIdx.x];
+      if (dx) {
+        T my_val = sdata[threadIdx.x][threadIdx.y];
+        for (int i = warpSize >> 1; i > 0; i >>= 1)
+          my_val += platform::CudaShuffleXorSync(0xFFFFFFFF, my_val, i);
+        __syncthreads();
+        if ((threadIdx.x == 0)) {
+          sdata[0][threadIdx.y] = my_val;
+        }
+        __syncthreads();
+        if (threadIdx.y == 0 && m < w) {
+          dx[m] = sdata[0][threadIdx.x];
+        }
       }
     }
   }
@@ -404,21 +1319,21 @@ static __global__ void FastElemwiseGradBroadcast1CUDAKernel(
 template <typename T, typename DX_OP, typename DY_OP>
 static void ElemwiseGradBroadcast1CUDA(cudaStream_t stream, const T *x,
                                        const T *y, const T *out, const T *dout,
-                                       int h, int w, DX_OP dx_op, DY_OP dy_op,
-                                       T *dx, T *dy) {
+                                       int h, int w, bool is_xsize_larger,
+                                       DX_OP dx_op, DY_OP dy_op, T *dx, T *dy) {
   // For small case use 1D block
   constexpr int half_walf = 16;
   if (w < half_walf || h < half_walf) {
     int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, h);
     int gird_size = w;
     ElemwiseGradBroadcast1CUDAKernel<<<gird_size, block_size, 0, stream>>>(
-        x, y, out, dout, h, w, dx_op, dy_op, dx, dy);
+        x, y, out, dout, h, w, is_xsize_larger, dx_op, dy_op, dx, dy);
   } else {
     // suppose perfoemance improves with h increased.
     dim3 block_size = dim3(BLOCK_X, BLOCK_Y);
     int grid_size = (w + BLOCK_X - 1) / BLOCK_X;
     FastElemwiseGradBroadcast1CUDAKernel<<<grid_size, block_size, 0, stream>>>(
-        x, y, out, dout, h, w, dx_op, dy_op, dx, dy);
+        x, y, out, dout, h, w, is_xsize_larger, dx_op, dy_op, dx, dy);
   }
 }
 
@@ -427,21 +1342,44 @@ static void ElemwiseGradBroadcast1CUDA(cudaStream_t stream, const T *x,
 template <typename T, typename DX_OP, typename DY_OP>
 static void ElemwiseGradBroadcast2CPU(const T *x, const T *y, const T *out,
                                       const T *dout, int pre, int n, int post,
-                                      DX_OP dx_op, DY_OP dy_op, T *dx, T *dy) {
-  for (int i = 0; i < pre; ++i) {
-    for (int j = 0; j < n; ++j) {
-      for (int k = 0; k < post; ++k) {
-        int x_offset = i * n * post + j * post + k;
-        if (dx != nullptr) {
-          dx[x_offset] =
-              dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+                                      bool is_xsize_larger, DX_OP dx_op,
+                                      DY_OP dy_op, T *dx, T *dy) {
+  if (is_xsize_larger) {
+    for (int i = 0; i < pre; ++i) {
+      for (int j = 0; j < n; ++j) {
+        for (int k = 0; k < post; ++k) {
+          int x_offset = i * n * post + j * post + k;
+          if (dx != nullptr) {
+            dx[x_offset] =
+                dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+          }
+          if (dy != nullptr) {
+            T tmp = dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+            if (i == 0 && k == 0) {
+              dy[j] = tmp;
+            } else {
+              dy[j] += tmp;
+            }
+          }
         }
-        if (dy != nullptr) {
-          T tmp = dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
-          if (i == 0 && k == 0) {
-            dy[j] = tmp;
-          } else {
-            dy[j] += tmp;
+      }
+    }
+  } else {  // x.dims < y.dims, broadcast for x.
+    for (int i = 0; i < pre; ++i) {
+      for (int j = 0; j < n; ++j) {
+        for (int k = 0; k < post; ++k) {
+          int y_offset = i * n * post + j * post + k;
+          if (dy != nullptr) {
+            dy[y_offset] =
+                dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+          }
+          if (dx != nullptr) {
+            T tmp = dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+            if (i == 0 && k == 0) {
+              dx[j] = tmp;
+            } else {
+              dx[j] += tmp;
+            }
           }
         }
       }
@@ -453,37 +1391,66 @@ static void ElemwiseGradBroadcast2CPU(const T *x, const T *y, const T *out,
 template <typename T, typename DX_OP, typename DY_OP>
 static __global__ void ElemwiseGradBroadcast2CUDAKernel(
     const T *x, const T *y, const T *out, const T *dout, int pre, int n,
-    int post, DX_OP dx_op, DY_OP dy_op, T *dx, T *dy) {
+    int post, bool is_xsize_larger, DX_OP dx_op, DY_OP dy_op, T *dx, T *dy) {
   int tid = threadIdx.x;
   int j = blockIdx.x;
 
   T val(0);
   int ttid = tid;
 
-  while (true) {
-    int i = ttid / post;
-    int k = ttid % post;
-    if (i >= pre) break;
+  if (is_xsize_larger) {
+    while (true) {
+      int i = ttid / post;
+      int k = ttid % post;
+      if (i >= pre) break;
 
-    int x_offset = i * n * post + j * post + k;
+      int x_offset = i * n * post + j * post + k;
 
-    if (dx != nullptr) {
-      dx[x_offset] = dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+      if (dx != nullptr) {
+        dx[x_offset] = dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+      }
+
+      if (dy != nullptr) {
+        val += dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+      }
+
+      ttid += ELEMWISE_MAX_BLOCK_DIM;
     }
 
-    if (dy != nullptr) {
-      val += dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+    if (dy) {
+      int h = pre * post;
+      h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
+      val = paddle::platform::reduceSum(val, tid, h);
+      if (threadIdx.x == 0) {
+        dy[j] = val;
+      }
+    }
+  } else {  // x.dims < y.dims, broadcast for x.
+    while (true) {
+      int i = ttid / post;
+      int k = ttid % post;
+      if (i >= pre) break;
+
+      int y_offset = i * n * post + j * post + k;
+
+      if (dy != nullptr) {
+        dy[y_offset] = dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+      }
+
+      if (dx != nullptr) {
+        val += dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+      }
+
+      ttid += ELEMWISE_MAX_BLOCK_DIM;
     }
 
-    ttid += ELEMWISE_MAX_BLOCK_DIM;
-  }
-
-  if (dy) {
-    int h = pre * post;
-    h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-    val = paddle::platform::reduceSum(val, tid, h);
-    if (threadIdx.x == 0) {
-      dy[j] = val;
+    if (dx) {
+      int h = pre * post;
+      h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
+      val = paddle::platform::reduceSum(val, tid, h);
+      if (threadIdx.x == 0) {
+        dx[j] = val;
+      }
     }
   }
 }
@@ -491,15 +1458,56 @@ static __global__ void ElemwiseGradBroadcast2CUDAKernel(
 template <typename T, typename DX_OP, typename DY_OP>
 static void ElemwiseGradBroadcast2CUDA(cudaStream_t stream, const T *x,
                                        const T *y, const T *out, const T *dout,
-                                       int pre, int n, int post, DX_OP dx_op,
+                                       int pre, int n, int post,
+                                       bool is_xsize_larger, DX_OP dx_op,
                                        DY_OP dy_op, T *dx, T *dy) {
   int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, pre * post);
   int gird_size = n;
   ElemwiseGradBroadcast2CUDAKernel<<<gird_size, block_size, 0, stream>>>(
-      x, y, out, dout, pre, n, post, dx_op, dy_op, dx, dy);
+      x, y, out, dout, pre, n, post, is_xsize_larger, dx_op, dy_op, dx, dy);
 }
 
 #endif
+
+template <typename DeviceContext, typename T, typename DX_OP, typename DY_OP>
+void CommonElementwiseBroadcastBackward(
+    const framework::ExecutionContext &ctx, const framework::DDim &x_dims,
+    const framework::DDim &y_dims, const framework::Tensor &x,
+    const framework::Tensor &y, const framework::Tensor &out,
+    const framework::Tensor &dout, int axis, framework::Tensor *dx,
+    framework::Tensor *dy, DX_OP dx_op, DY_OP dy_op) {
+  int max_dim = std::max(x_dims.size(), y_dims.size());
+  axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
+  std::vector<int> x_dims_array(max_dim);
+  std::vector<int> y_dims_array(max_dim);
+  std::vector<int> out_dims_array(max_dim);
+  GetBroadcastDimsArrays(x_dims, y_dims, x_dims_array.data(),
+                         y_dims_array.data(), out_dims_array.data(), max_dim,
+                         axis);
+
+  // for inplace strategy. memset will make dx and dout clear and get wrong
+  // result.
+  if (dx && dx->IsSharedBufferWith(dout)) {
+    dx->clear();
+    dx->mutable_data<T>(x_dims, ctx.GetPlace());
+  }
+
+  if (platform::is_gpu_place(ctx.GetPlace())) {
+#ifdef __NVCC__
+    CommonGradBroadcastCUDA<T, DX_OP, DY_OP>(
+        x, y, out, dout, dx, dy, x_dims_array.data(), y_dims_array.data(),
+        out_dims_array.data(), max_dim,
+        ctx.template device_context<platform::CUDADeviceContext>(), dx_op,
+        dy_op);
+#endif
+  } else {
+    CommonGradBroadcastCPU<T, DX_OP, DY_OP>(
+        x, y, out, dout, dx, dy, x_dims_array.data(), y_dims_array.data(),
+        out_dims_array.data(), max_dim,
+        ctx.template device_context<platform::CPUDeviceContext>(), dx_op,
+        dy_op);
+  }
+}
 
 template <typename DeviceContext, typename T, typename DX_OP, typename DY_OP>
 void ElemwiseGradComputeNoBroadcast(
@@ -524,32 +1532,57 @@ void ElemwiseGradComputeNoBroadcast(
 
 template <typename DeviceContext, typename T, typename DX_OP, typename DY_OP>
 void ElemwiseGradComputeWithBroadcast(
-    const framework::ExecutionContext &ctx, const framework::DDim &x_dim,
-    const framework::DDim &y_dim_untrimed, const framework::Tensor &x,
+    const framework::ExecutionContext &ctx, const framework::DDim &x_dims,
+    const framework::DDim &y_dims, const framework::Tensor &x,
     const framework::Tensor &y, const framework::Tensor &out,
     const framework::Tensor &dout, int axis, framework::Tensor *dx,
     framework::Tensor *dy, DX_OP dx_op, DY_OP dy_op) {
-  axis = (axis == -1 ? x_dim.size() - y_dim_untrimed.size() : axis);
-  auto y_dim = trim_trailing_singular_dims(y_dim_untrimed);
-  axis = (y_dim.size() == 0) ? x_dim.size() : axis;
+  bool is_xsize_larger = true;
 
-  int pre, n, post;
-  get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post);
+  int max_dim = x_dims.size();
+  if (x_dims.size() < y_dims.size()) {
+    is_xsize_larger = false;
+    max_dim = y_dims.size();
+  }
+
+  axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
+  PADDLE_ENFORCE_GE(axis, 0, "Axis should be in range [0, %d)", axis);
+  PADDLE_ENFORCE_LT(axis, max_dim, "Axis should be in range [0, %d)", axis);
+
+  int pre, n, post, is_run_common_broadcast, axis_trim = 0;
+  if (is_xsize_larger) {
+    auto y_dims_trimed = trim_trailing_singular_dims(y_dims);
+    axis_trim = (y_dims_trimed.size() == 0) ? x_dims.size() : axis;
+    get_mid_dims(x_dims, y_dims_trimed, axis_trim, &pre, &n, &post,
+                 &is_run_common_broadcast);
+  } else {
+    auto x_dims_trimed = trim_trailing_singular_dims(x_dims);
+    axis_trim = (x_dims_trimed.size() == 0) ? y_dims.size() : axis;
+    get_mid_dims(y_dims, x_dims_trimed, axis_trim, &pre, &n, &post,
+                 &is_run_common_broadcast);
+  }
+
+  // special case for common backward implementation.
+  if (is_run_common_broadcast) {
+    CommonElementwiseBroadcastBackward<DeviceContext, T, DX_OP, DY_OP>(
+        ctx, x_dims, y_dims, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
+    return;
+  }
   if (post == 1) {
-    int h = pre;
-    int w = n;
     if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef __NVCC__
       ElemwiseGradBroadcast1CUDA(
           ctx.template device_context<DeviceContext>().stream(), x.data<T>(),
-          y.data<T>(), out.data<T>(), dout.data<T>(), h, w, dx_op, dy_op,
+          y.data<T>(), out.data<T>(), dout.data<T>(), pre, n, is_xsize_larger,
+          dx_op, dy_op,
           dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
           dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
 #endif
     } else {
       ElemwiseGradBroadcast1CPU(
-          x.data<T>(), y.data<T>(), out.data<T>(), dout.data<T>(), h, w, dx_op,
-          dy_op, dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
+          x.data<T>(), y.data<T>(), out.data<T>(), dout.data<T>(), pre, n,
+          is_xsize_larger, dx_op, dy_op,
+          dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
           dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
     }
   } else {
@@ -557,17 +1590,53 @@ void ElemwiseGradComputeWithBroadcast(
 #ifdef __NVCC__
       ElemwiseGradBroadcast2CUDA(
           ctx.template device_context<DeviceContext>().stream(), x.data<T>(),
-          y.data<T>(), out.data<T>(), dout.data<T>(), pre, n, post, dx_op,
-          dy_op, dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
+          y.data<T>(), out.data<T>(), dout.data<T>(), pre, n, post,
+          is_xsize_larger, dx_op, dy_op,
+          dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
           dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
 #endif
     } else {
       ElemwiseGradBroadcast2CPU(
           x.data<T>(), y.data<T>(), out.data<T>(), dout.data<T>(), pre, n, post,
-          dx_op, dy_op,
+          is_xsize_larger, dx_op, dy_op,
           dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
           dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
     }
+  }
+}
+
+template <typename Functor, typename DeviceContext, typename T,
+          typename OutType = T>
+void CommonElementwiseBroadcastForward(
+    const framework::ExecutionContext &ctx, const framework::Tensor *x,
+    const framework::Tensor *y, framework::Tensor *z,
+    const framework::DDim &x_dims, const framework::DDim &y_dims, Functor func,
+    int axis, const bool is_xsize_larger = true) {
+  int max_dim = std::max(x_dims.size(), y_dims.size());
+  axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
+  PADDLE_ENFORCE_GE(axis, 0, "Axis should be in range [0, %d)", axis);
+  PADDLE_ENFORCE_LT(axis, max_dim, "Axis should be in range [0, %d)", axis);
+  std::vector<int> x_dims_array(max_dim);
+  std::vector<int> y_dims_array(max_dim);
+  std::vector<int> out_dims_array(max_dim);
+  GetBroadcastDimsArrays(x_dims, y_dims, x_dims_array.data(),
+                         y_dims_array.data(), out_dims_array.data(), max_dim,
+                         axis);
+
+  if (platform::is_gpu_place(ctx.GetPlace())) {
+#ifdef __NVCC__
+    CommonForwardBroadcastCUDA<Functor, T>(
+        x, y, z, x_dims_array.data(), y_dims_array.data(),
+        out_dims_array.data(), max_dim,
+        ctx.template device_context<platform::CUDADeviceContext>(), func,
+        is_xsize_larger);
+#endif
+  } else {
+    CommonForwardBroadcastCPU<Functor, T, OutType>(
+        x, y, z, x_dims_array.data(), y_dims_array.data(),
+        out_dims_array.data(), max_dim,
+        ctx.template device_context<platform::CPUDeviceContext>(), func,
+        is_xsize_larger);
   }
 }
 
@@ -583,7 +1652,7 @@ void ElemwiseGradCompute(const framework::ExecutionContext &ctx,
   if (x.dims() == y.dims()) {
     ElemwiseGradComputeNoBroadcast<DeviceContext, T, DX_OP, DY_OP>(
         ctx, x_dim, y_dim, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
-  } else {  // Y is a scalar
+  } else {
     ElemwiseGradComputeWithBroadcast<DeviceContext, T, DX_OP, DY_OP>(
         ctx, x_dim, y_dim, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
   }
@@ -601,97 +1670,63 @@ void ElemwiseExplicitGradCompute(const framework::ExecutionContext &ctx,
                                  const framework::Tensor &dout, int axis,
                                  framework::Tensor *dx, framework::Tensor *dy,
                                  DX_OP dx_op, DY_OP dy_op) {
-  if (dy == nullptr) {
-    const framework::DDim &dx_dims = dout.dims();
-    auto dy_dims = dx_dims;
+  const framework::DDim &x_dim = x.dims();
+  const framework::DDim &y_dim = y.dims();
+  if (x.dims() == y.dims()) {
     ElemwiseGradComputeNoBroadcast<DeviceContext, T, DX_OP, DY_OP>(
-        ctx, dx_dims, dy_dims, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
+        ctx, x_dim, y_dim, dout, dout, out, dout, axis, dx, dy, dx_op, dy_op);
   } else {
-    if (dout.dims() == dy->dims()) {
-      const framework::DDim &dx_dims = dout.dims();
-      const framework::DDim &dy_dims = dy->dims();
-      ElemwiseGradComputeNoBroadcast<DeviceContext, T, DX_OP, DY_OP>(
-          ctx, dx_dims, dy_dims, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
-    } else {  // Y is a scalar
-      auto dx_dims = dout.dims();
-      const framework::DDim &dy_dims = dy->dims();
-      ElemwiseGradComputeWithBroadcast<DeviceContext, T, DX_OP, DY_OP>(
-          ctx, dx_dims, dy_dims, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
-    }
-  }
-}
-
-// Deprecated
-template <typename DeviceContext, typename T, typename functor,
-          typename broadcastfunctor, typename broadcast2functor>
-void ElementwiseGradCompute(const framework::ExecutionContext &ctx,
-                            const framework::Tensor *x,
-                            const framework::Tensor *y,
-                            const framework::Tensor *out,
-                            const framework::Tensor *dout, int axis,
-                            framework::Tensor *dx, framework::Tensor *dy) {
-  auto &place = *ctx.template device_context<DeviceContext>().eigen_device();
-
-  auto x_dims = x->dims();
-  auto y_dims = y->dims();
-
-  if (dx) {
-    dx->mutable_data<T>(ctx.GetPlace());
-  }
-  if (dy) {
-    dy->mutable_data<T>(ctx.GetPlace());
-  }
-
-  if (x_dims == y_dims) {
-    functor f;
-    f(place, x, y, out, dx, dy, dout);
-    return;
-  }
-
-  axis = (axis == -1 ? x_dims.size() - y_dims.size() : axis);
-  trim_trailing_singular_dims(y_dims);
-  axis = (y_dims.size() == 0) ? x_dims.size() : axis;
-
-  int pre, n, post;
-  get_mid_dims(x_dims, y_dims, axis, &pre, &n, &post);
-
-  if (post == 1) {
-    broadcastfunctor f;
-    f(place, x, y, out, dx, dy, dout, pre, n);
-    return;
-  } else {
-    broadcast2functor f;
-    f(place, x, y, out, dx, dy, dout, pre, n, post);
-    return;
+    ElemwiseGradComputeWithBroadcast<DeviceContext, T, DX_OP, DY_OP>(
+        ctx, x_dim, y_dim, dout, dout, out, dout, axis, dx, dy, dx_op, dy_op);
   }
 }
 
 template <typename Functor, typename DeviceContext, typename T,
           typename OutType = T>
-
 void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
                           const framework::Tensor *x,
                           const framework::Tensor *y, int axis, Functor func,
                           framework::Tensor *z) {
-  TransformFunctor<Functor, T, DeviceContext, OutType> functor(
-      x, y, z, ctx.template device_context<DeviceContext>(), func);
   auto x_dims = x->dims();
-  auto y_dims_untrimed = y->dims();
-  PADDLE_ENFORCE_GE(x_dims.size(), y_dims_untrimed.size(),
-                    "Rank of first input must >= rank of second input.");
-  if (x_dims == y_dims_untrimed) {
+  auto y_dims = y->dims();
+  bool is_xsize_larger = true;
+  int max_dim = x_dims.size();
+  if (x_dims.size() < y_dims.size()) {
+    is_xsize_larger = false;
+    max_dim = y_dims.size();
+  }
+  TransformFunctor<Functor, T, DeviceContext, OutType> functor(
+      x, y, z, ctx.template device_context<DeviceContext>(), func,
+      is_xsize_larger);
+  if (x_dims == y_dims) {
     functor.Run();
     return;
   }
 
-  axis = (axis == -1 ? x_dims.size() - y_dims_untrimed.size() : axis);
-  PADDLE_ENFORCE(axis >= 0 && axis < x_dims.size(),
-                 "Axis should be in range [0, x_dims)");
-  auto y_dims = trim_trailing_singular_dims(y_dims_untrimed);
-  axis = (y_dims.size() == 0) ? x_dims.size() : axis;
+  axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
+  PADDLE_ENFORCE_GE(axis, 0, "Axis should be in range [0, %d)", axis);
+  PADDLE_ENFORCE_LT(axis, max_dim, "Axis should be in range [0, %d)", axis);
 
-  int pre, n, post;
-  get_mid_dims(x_dims, y_dims, axis, &pre, &n, &post);
+  int pre, n, post, is_run_common_broadcast, axis_trim = 0;
+  if (is_xsize_larger) {
+    auto y_dims_trimed = trim_trailing_singular_dims(y_dims);
+    axis_trim = (y_dims_trimed.size() == 0) ? x_dims.size() : axis;
+    get_mid_dims(x_dims, y_dims_trimed, axis_trim, &pre, &n, &post,
+                 &is_run_common_broadcast);
+  } else {
+    auto x_dims_trimed = trim_trailing_singular_dims(x_dims);
+    axis_trim = (x_dims_trimed.size() == 0) ? y_dims.size() : axis;
+    get_mid_dims(y_dims, x_dims_trimed, axis_trim, &pre, &n, &post,
+                 &is_run_common_broadcast);
+  }
+  // special case for common implementation.
+  // case 1: x=[2,3,1,5], y=[2,1,4,1]
+  // case 2: x=[2,3,4], y=[1,1,4]
+  if (is_run_common_broadcast == 1) {
+    CommonElementwiseBroadcastForward<Functor, DeviceContext, T, OutType>(
+        ctx, x, y, z, x_dims, y_dims, func, axis, is_xsize_larger);
+    return;
+  }
   if (post == 1) {
     functor.RunRowWise(n, pre);
     return;
@@ -955,9 +1990,8 @@ void FusedElemwiseAndActComputeWithBroadcast(
   auto y_dim = trim_trailing_singular_dims(y_dim_untrimed);
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
-  int pre, n, post;
-  get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post);
-
+  int pre, n, post, is_run_common_broadcast;
+  get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post, &is_run_common_broadcast);
   if (post == 1) {
     int h = pre;
     int w = n;
@@ -1469,8 +2503,8 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
   auto y_dim = trim_trailing_singular_dims(y_dim_untrimed);
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
-  int pre, n, post;
-  get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post);
+  int pre, n, post, is_run_common_broadcast;
+  get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post, &is_run_common_broadcast);
   if (post == 1) {
     int h = pre;
     int w = n;
@@ -1604,16 +2638,7 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
   } else {
     // Whether the shape of Y is a continuous subsequence of X,
     // For more information please refer to the op's introduction.
-    bool bcast_y = x.dims().size() >= y.dims().size();
-    if (x.dims().size() == y.dims().size()) {
-      for (int i = 0; i < x.dims().size(); ++i) {
-        if (x.dims()[i] < y.dims()[i]) {
-          bcast_y = false;
-          break;
-        }
-      }
-    }
-
+    bool bcast_y = x.numel() >= y.numel();
     // z = f1(x, f2(y))
     // z = f1(f2(x, y))
     if (bcast_y) {  // Y should be broadcast.

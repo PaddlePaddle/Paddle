@@ -15,33 +15,104 @@
 from __future__ import print_function
 
 from . import core
-import numpy
+import numpy as np
 import os
 import six
 from six.moves import zip, range, xrange
 import multiprocessing
+import warnings
 
-from .framework import Variable, default_main_program, _current_expected_place
+from .framework import Variable, default_main_program, _current_expected_place, in_dygraph_mode
 from .framework import _cpu_num, _cuda_ids
 __all__ = ['DataFeeder']
 
 
 def convert_dtype(dtype):
-    if dtype == core.VarDesc.VarType.FP32:
-        return 'float32'
-    elif dtype == core.VarDesc.VarType.INT64:
-        return 'int64'
-    elif dtype == core.VarDesc.VarType.FP64:
-        return 'float64'
-    elif dtype == core.VarDesc.VarType.FP16:
-        return 'float16'
-    elif dtype == core.VarDesc.VarType.INT32:
-        return 'int32'
-    elif dtype == core.VarDesc.VarType.UINT8:
-        return 'uint8'
+    if isinstance(dtype, core.VarDesc.VarType):
+        if dtype == core.VarDesc.VarType.BOOL:
+            return 'bool'
+        elif dtype == core.VarDesc.VarType.FP16:
+            return 'float16'
+        elif dtype == core.VarDesc.VarType.FP32:
+            return 'float32'
+        elif dtype == core.VarDesc.VarType.FP64:
+            return 'float64'
+        elif dtype == core.VarDesc.VarType.INT8:
+            return 'int8'
+        elif dtype == core.VarDesc.VarType.INT16:
+            return 'int16'
+        elif dtype == core.VarDesc.VarType.INT32:
+            return 'int32'
+        elif dtype == core.VarDesc.VarType.INT64:
+            return 'int64'
+        elif dtype == core.VarDesc.VarType.UINT8:
+            return 'uint8'
+    elif isinstance(dtype, type):
+        if dtype in [
+                np.bool, np.float16, np.float32, np.float64, np.int8, np.int16,
+                np.int32, np.int64, np.uint8
+        ]:
+            return dtype.__name__
     else:
-        raise ValueError("dtype must be any of [int32, float32, int64, "
-                         "float64, uint8]")
+        if dtype in [
+                'bool', 'float16', 'float32', 'float64', 'int8', 'int16',
+                'int32', 'int64', 'uint8', u'bool', u'float16', u'float32',
+                u'float64', u'int8', u'int16', u'int32', u'int64', u'uint8'
+        ]:
+            # this code is a little bit dangerous, since error could happen
+            # when casting no-asci code to str in python2.
+            # but since the set itself is limited, so currently, it is good.
+            # however, jointly supporting python2 and python3, (as well as python4 maybe)
+            # may still be a long-lasting problem.
+            return str(dtype)
+
+    raise ValueError(
+        "dtype must be any of [bool, float16, float32, float64, int8, int16, "
+        "int32, int64, uint8]")
+
+
+def check_variable_and_dtype(input,
+                             input_name,
+                             expected_dtype,
+                             op_name,
+                             extra_message=''):
+    check_type(input, input_name, Variable, op_name, extra_message)
+    check_dtype(input.dtype, input_name, expected_dtype, op_name, extra_message)
+
+
+def check_type(input, input_name, expected_type, op_name, extra_message=''):
+    # NOTE [ Why skip dynamic graph check ]:
+    # 1. If the input type / dtype of a layer is wrong, it will be reported
+    # directly on that line. User can easily print the relevant information
+    # on which line. It is easier to debug, so there is no need to check
+    # in dynamic graph mode.
+    # 2. Performance considerations. Because these checks are executed at
+    # each step in dynamic graph mode, it will bring a heavy performance burden.
+    if in_dygraph_mode():
+        return
+    if not isinstance(input, expected_type):
+        raise TypeError(
+            "The type of '%s' in %s must be %s, but received %s. %s" %
+            (input_name, op_name, expected_type, type(input), extra_message))
+
+
+def check_dtype(input_dtype,
+                input_name,
+                expected_dtype,
+                op_name,
+                extra_message=''):
+    # See NOTE [ Why skip dynamic graph check ]
+    if in_dygraph_mode():
+        return
+    if convert_dtype(input_dtype) in ['float16']:
+        warnings.warn(
+            "The data type of '%s' in %s only support float16 in GPU now. %s" %
+            (input_name, op_name, extra_message))
+    if convert_dtype(input_dtype) not in expected_dtype:
+        raise TypeError(
+            "The data type of '%s' in %s must be %s, but received %s. %s" %
+            (input_name, op_name, expected_dtype, convert_dtype(input_dtype),
+             extra_message))
 
 
 class DataToLoDTensorConverter(object):
@@ -82,7 +153,7 @@ class DataToLoDTensorConverter(object):
                     format(self.shape, shape))
 
     def done(self):
-        arr = numpy.array(self.data, dtype=self.dtype)
+        arr = np.array(self.data, dtype=self.dtype)
         if self.shape:
             if len(arr.shape) != len(self.shape):
                 try:
@@ -140,82 +211,59 @@ class BatchedTensorProvider(object):
 class DataFeeder(object):
     """
     DataFeeder converts the data that returned by a reader into a data
-    structure that can feed into Executor and ParallelExecutor. The reader
-    usually returns a list of mini-batch data entries. Each data entry in
-    the list is one sample. Each sample is a list or a tuple with one
-    feature or multiple features.
+    structure that can feed into Executor. The reader is usually a 
+    python generator that returns a list of mini-batch data entries. 
 
-    The simple usage shows below:
-
-    ..  code-block:: python
-
-        import paddle.fluid as fluid
-        place = fluid.CPUPlace()
-        img = fluid.layers.data(name='image', shape=[1, 28, 28])
-        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-        feeder = fluid.DataFeeder([img, label], fluid.CPUPlace())
-        result = feeder.feed([([0] * 784, [9]), ([1] * 784, [1])])
-
-
-    If you want to feed data into GPU side separately in advance when you
-    use multi-GPU to train a model, you can use `decorate_reader` function.
-
-    ..  code-block:: python
-
-        import paddle
-        import paddle.fluid as fluid
-        
-        place=fluid.CUDAPlace(0)
-        data = fluid.layers.data(name='data', shape=[3, 224, 224], dtype='float32')
-        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-        
-        feeder = fluid.DataFeeder(place=place, feed_list=[data, label])
-        reader = feeder.decorate_reader(
-                paddle.batch(paddle.dataset.flowers.train(), batch_size=16), multi_devices=True)
-
-    Args:
-        feed_list(list): The Variables or Variables'name that will
-            feed into model.
-        place(Place): place indicates feed data into CPU or GPU, if you want to
-            feed data into GPU, please using `fluid.CUDAPlace(i)` (`i` represents
-            the GPU id), or if you want to feed data into CPU, please using
-            `fluid.CPUPlace()`.
-        program(Program): The Program that will feed data into, if program
-            is None, it will use default_main_program(). Default None.
+    Parameters:
+        feed_list (list): Variables or names of Variables that need
+            to feed.
+        place (:ref:`api_fluid_CPUPlace` | :ref:`api_fluid_CUDAPlace` ): 
+            place indicates the device (CPU | GPU) the data will be fed into, if 
+            you want to feed data into GPU, please using :code:`fluid.CUDAPlace(i)` 
+            (:code:`i` represents the GPU id), or if you want to feed data into CPU, 
+            please using :code:`fluid.CPUPlace()`.
+        program (:ref:`api_fluid_Program` , optional): The Program that will 
+            feed data into, if program is None, it will use default_main_program(). 
+            Default None.
 
     Raises:
-        ValueError: If some Variable is not in this Program.
+        :code:`ValueError` - If some Variables are not in this Program.
 
-    Examples:
+    Example:
         ..  code-block:: python
-
 
             import numpy as np
             import paddle
             import paddle.fluid as fluid
             
             place = fluid.CPUPlace()
-            
             def reader():
-                yield [np.random.random([4]).astype('float32'), np.random.random([3]).astype('float32')],
+                for _ in range(4):
+                    yield np.random.random([4]).astype('float32'), np.random.random([3]).astype('float32'),
             
             main_program = fluid.Program()
             startup_program = fluid.Program()
             
             with fluid.program_guard(main_program, startup_program):
-                data_1 = fluid.layers.data(name='data_1', shape=[1, 2, 2])
-                data_2 = fluid.layers.data(name='data_2', shape=[1, 1, 3])
+                data_1 = fluid.data(name='data_1', shape=[None, 2, 2], dtype='float32')
+                data_2 = fluid.data(name='data_2', shape=[None, 1, 3], dtype='float32')
                 out = fluid.layers.fc(input=[data_1, data_2], size=2)
                 # ...
-            
             feeder = fluid.DataFeeder([data_1, data_2], place)
-                        
+            
             exe = fluid.Executor(place)
             exe.run(startup_program)
-            for data in reader():
-                outs = exe.run(program=main_program,
-                               feed=feeder.feed(data),
-                               fetch_list=[out])
+            
+            feed_data = feeder.feed(reader())
+            
+            # print feed_data to view feed results
+            # print(feed_data['data_1'])
+            # print(feed_data['data_2'])
+            
+            outs = exe.run(program=main_program,
+                            feed=feed_data,
+                            fetch_list=[out])
+            print(outs)
 
     """
 
@@ -240,31 +288,41 @@ class DataFeeder(object):
 
     def feed(self, iterable):
         """
-        According to feed_list and iterable, converters the input into
-        a data structure that can feed into Executor and ParallelExecutor.
+        According to :code:`feed_list` of :code:`DataFeeder` and :code:`iterable` , converts 
+        the input into a data structure that can feed into Executor.
 
-        Args:
-            iterable(list|tuple): the input data.
+        Parameters:
+            iterable (generator): user defined python generator to read the raw input data
 
-        Returns:
-            dict: the result of conversion.
+        Returns: 
+            :code:`dict`: a :code:`dict` that contains (variable name - converted tensor) pairs
 
-        Examples:
+        Example:
             ..  code-block:: python
 
-                import numpy.random as random
+                # In this example, reader - generator will return a list of ndarray of 3 elements
+                # feed API will convert each ndarray input into a tensor
+                # the return result is a dict with keys: data_1, data_2, data_3
+                # result['data_1']  a LoD-Tensor with shape of  [5, 2, 1, 3]. 5 is batch size, and [2, 1, 3] is the real shape of data_1.
+                # result['data_2'], result['data_3'] are similar.
+                import numpy as np
                 import paddle.fluid as fluid
                 
                 def reader(limit=5):
-                    for i in range(limit):
-                        yield random.random([784]).astype('float32'), random.random([1]).astype('int64'), random.random([256]).astype('float32')
+                    for i in range(1, limit + 1):
+                        yield np.ones([6]).astype('float32') * i , np.ones([1]).astype('int64') * i, np.random.random([9]).astype('float32')
                 
-                data_1 = fluid.layers.data(name='data_1', shape=[1, 28, 28])
-                data_2 = fluid.layers.data(name='data_2', shape=[1], dtype='int64')
-                data_3 = fluid.layers.data(name='data_3', shape=[16, 16], dtype='float32')
+                data_1 = fluid.data(name='data_1', shape=[None, 2, 1, 3])
+                data_2 = fluid.data(name='data_2', shape=[None, 1], dtype='int64')
+                data_3 = fluid.data(name='data_3', shape=[None, 3, 3], dtype='float32')
                 feeder = fluid.DataFeeder(['data_1','data_2', 'data_3'], fluid.CPUPlace())
                 
-                result = feeder.feed(reader()) 
+                
+                result = feeder.feed(reader())
+                print(result['data_1'])
+                print(result['data_2'])
+                print(result['data_3'])
+
         """
         converter = []
         for lod_level, shape, dtype in six.moves.zip(
@@ -278,8 +336,8 @@ class DataFeeder(object):
 
         for each_sample in iterable:
             assert len(each_sample) == len(converter), (
-                "The number of fields in data (%s) does not match " +
-                "len(feed_list) (%s)") % (len(each_sample), len(converter))
+                "The number of fields in data (%d) does not match " +
+                "len(feed_list) (%d)") % (len(each_sample), len(converter))
             for each_converter, each_slot in six.moves.zip(converter,
                                                            each_sample):
                 each_converter.feed(each_slot)
@@ -291,46 +349,57 @@ class DataFeeder(object):
 
     def feed_parallel(self, iterable, num_places=None):
         """
-        Takes multiple mini-batches. Each mini-batch will be feed on each
-        device in advance.
+        Similar with feed function, feed_parallel is used with multiple devices (CPU|GPU).
+        Here :code:`iterable` is a list of python generators. The data return by each 
+        generator in the list will be fed into a separate device.        
 
-        Args:
-            iterable(list|tuple): the input data.
-            num_places(int): the number of devices. Default None.
+        Parameters:
+            iterable (list|tuple): list of user-defined python generators. The element 
+                number should match the :code:`num_places`.
+            num_places (int, optional): the number of devices. If not provided (None), 
+                all available devices on the machine will be used. Default None.
 
-        Returns:
-            dict: the result of conversion.
+        Returns: 
+            :code:`generator`: a :code:`generator` that generate dict which contains (variable name - converted tensor) pairs, 
+            the total number of dicts will be generated matches with the :code:`num_places`
 
-        Notes:
-            The number of devices and number of mini-batches must be same.
+        .. note::        
+            The number of devices - :code:`num_places` should equal to the generator (element of :code:`iterable` ) number
 
-        Examples:
+        Example:
             ..  code-block:: python
 
-                import numpy.random as random
+                import numpy as np
                 import paddle.fluid as fluid
-                
-                def reader(limit=10):
-                    for i in range(limit):
-                        yield [random.random([784]).astype('float32'), random.random([1]).astype('float32')],
-                
-                x = fluid.layers.data(name='x', shape=[1, 28, 28])
-                y = fluid.layers.data(name='y', shape=[1], dtype='float32')
-                
-                fluid.layers.elementwise_add(x, y)
-                
+
+                def generate_reader(batch_size, base=0, factor=1):
+                    def _reader():
+                        for i in range(batch_size):
+                            yield np.ones([4]) * factor + base, np.ones([4]) * factor + base + 5
+                    return _reader()
+
+                x = fluid.data(name='x', shape=[None, 2, 2])
+                y = fluid.data(name='y', shape=[None, 2, 2], dtype='float32')
+
+                z = fluid.layers.elementwise_add(x, y)
+
                 feeder = fluid.DataFeeder(['x','y'], fluid.CPUPlace())
-                place_num = 2 
+                place_num = 2
                 places = [fluid.CPUPlace() for x in range(place_num)]
                 data = []
                 exe = fluid.Executor(fluid.CPUPlace())
                 exe.run(fluid.default_startup_program())
                 program = fluid.CompiledProgram(fluid.default_main_program()).with_data_parallel(places=places)
-                for item in reader():
-                    data.append(item)
-                    if place_num == len(data):
-                        exe.run(program=program, feed=list(feeder.feed_parallel(data, place_num)), fetch_list=[])
-                        data = []
+
+                # print sample feed_parallel r result
+                # for item in list(feeder.feed_parallel([generate_reader(5, 0, 1), generate_reader(3, 10, 2)], 2)):
+                #     print(item['x'])
+                #     print(item['y'])
+
+                reader_list = [generate_reader(5, 0, 1), generate_reader(3, 10, 2)]
+                res = exe.run(program=program, feed=list(feeder.feed_parallel(reader_list, 2)), fetch_list=[z])
+                print(res)
+
         """
         if isinstance(self.place, core.CUDAPlace):
             places = [
@@ -371,52 +440,64 @@ class DataFeeder(object):
                         num_places=None,
                         drop_last=True):
         """
-        Converter the input data into a data that returned by reader into
-        multiple mini-batches. Each mini-batch will be feed on each device.
+        Decorate the reader (generator) to fit multiple devices. The reader generate
+        multiple mini-batches. Each mini-batch will be fed into a single device.
 
-        Args:
-            reader(function): the reader is the function which can generate data.
-            multi_devices(bool): whether to use multiple devices or not.
-            num_places(int): if multi_devices is True, you can specify the number
-                of GPU to use, if multi_devices is None, the function will use all the
-                GPU of the current machine. Default None.
-            drop_last(bool): whether to drop the last batch if the
-                size of the last batch is less than batch_size. Default True.
+        Parameters:
+            reader(generator): a user defined python generator used to get :code:`mini-batch` of data.
+                A :code:`mini-batch` can be regarded as a python generator that returns batches of input 
+                entities, just like the below :code:`_mini_batch` in the code example.                      
+            multi_devices(bool): indicate whether to use multiple devices or not.
+            num_places(int, optional): if :code:`multi_devices` is True, you can specify the number
+                of devices(CPU|GPU) to use, if multi_devices is None, the function will use all the
+                devices of the current machine. Default None.
+            drop_last(bool, optional): whether to drop the last round of data if it is not enough to 
+                feed all devices. Default True.
 
-        Returns:
-            dict: the result of conversion.
-
+        Returns: 
+            :code:`generator`: a new :code:`generator` which return converted dicts that can be fed into Executor
+            
         Raises:
-            ValueError: If drop_last is False and the data batch cannot fit for devices.
+            :code:`ValueError`: If drop_last is False and the data cannot fit devices perfectly.
 
-        Examples:
+        Example:
             ..  code-block:: python
 
-                import numpy.random as random
+                import numpy as np
                 import paddle
                 import paddle.fluid as fluid
                 import paddle.fluid.compiler as compiler
                 
-                def reader(limit=10):
-                    for i in range(limit):
-                        yield (random.random([784]).astype('float32'), random.random([1]).astype('int64')),
+                def reader():
+                    def _mini_batch(batch_size):
+                        for i in range(batch_size):
+                            yield np.random.random([16]).astype('float32'), np.random.randint(10, size=[1])
+
+                    for _ in range(10):
+                        yield _mini_batch(np.random.randint(1, 10))
                 
-                place=fluid.CUDAPlace(0)
-                data = fluid.layers.data(name='data', shape=[1, 28, 28], dtype='float32')
-                label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+                place_num = 3
+                places = [fluid.CPUPlace() for _ in range(place_num)]
                 
+                # a simple network sample
+                data = fluid.data(name='data', shape=[None, 4, 4], dtype='float32')
+                label = fluid.data(name='label', shape=[None, 1], dtype='int64')
                 hidden = fluid.layers.fc(input=data, size=10)
                 
-                feeder = fluid.DataFeeder(place=place, feed_list=[data, label])
-                reader = feeder.decorate_reader(reader, multi_devices=True)
+                feeder = fluid.DataFeeder(place=places[0], feed_list=[data, label])
+                reader = feeder.decorate_reader(reader, multi_devices=True, num_places=3, drop_last=True)
                 
-                exe = fluid.Executor(place)
+                exe = fluid.Executor(places[0])
                 exe.run(fluid.default_startup_program())
                 compiled_prog = compiler.CompiledProgram(
-                         fluid.default_main_program()).with_data_parallel()
+                         fluid.default_main_program()).with_data_parallel(places=places)
+                
                 for i,data in enumerate(reader()):
-                    print('iteration : ', i + 1)
+                    # print data if you like
+                    # print(i, data)
                     ret = exe.run(compiled_prog, feed=data, fetch_list=[hidden])
+                    print(ret)
+
         """
 
         def __reader_creator__():
@@ -438,63 +519,3 @@ class DataFeeder(object):
                         "not implemented")
 
         return __reader_creator__
-
-
-class NumpyToLoDTensorConverter(object):
-    def __init__(self, place):
-        self.place = place
-        self.data = []
-        self._reset()
-
-    def _reset(self):
-        self.data = []
-
-    def feed(self, data):
-        self.data.append(data)
-
-    def done(self):
-        arr = numpy.array(self.data)
-        t = core.LoDTensor()
-        t.set(arr, self.place)
-        self._reset()
-        return t
-
-
-class ListTensorProvider(object):
-    def __init__(self, generator, places):
-        self.generator = generator
-        self.converters = []
-        self.places = []
-        if places:
-            if not isinstance(places, (list, tuple)):
-                places = [places]
-            assert len(
-                places) == 1, "dygraph mode CAN NOT specify multiple places."
-            for place in places:
-                if isinstance(place, (core.CUDAPlace, core.CPUPlace)):
-                    self.places.append(place)
-                else:
-                    raise ValueError(
-                        "Please specify a valid place values such as core.CPUPlace or core.CUDAPlace"
-                    )
-        if len(self.places) == 0:
-            self.places.append(_current_expected_place())
-
-    def _readData(self, iterable, places):
-        for place, each_sample in six.moves.zip(places, iterable):
-            for item in each_sample:
-                if len(self.converters) < len(item):
-                    for i in item:
-                        self.converters.append(NumpyToLoDTensorConverter(place))
-                for each_converter, each_slot in six.moves.zip(self.converters,
-                                                               item):
-                    each_converter.feed(each_slot)
-            yield [c.done() for c in self.converters]
-
-    def __call__(self):
-        item = []
-        for batch in self.generator():
-            item.append(batch)
-            if len(item) == len(self.places):
-                yield list(self._readData(item, self.places))
-                item = []

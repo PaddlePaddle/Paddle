@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <fstream>
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -27,6 +28,7 @@
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_type_traits.h"
+#include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include "paddle/fluid/inference/api/helper.h"
@@ -47,12 +49,6 @@
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #endif
-
-#if PADDLE_WITH_ANAKIN
-#include "paddle/fluid/inference/anakin/convert/op_converter.h"
-#endif
-
-DECLARE_bool(profile);
 
 namespace paddle {
 
@@ -75,16 +71,69 @@ bool IsPersistable(const framework::VarDesc *var) {
 }
 }  // namespace
 
+bool PaddleTensorToLoDTensor(const PaddleTensor &pt, framework::LoDTensor *t,
+                             const platform::Place &place) {
+  framework::DDim ddim = framework::make_ddim(pt.shape);
+  void *input_ptr;
+  if (pt.dtype == PaddleDType::INT64) {
+    input_ptr = t->mutable_data<int64_t>(ddim, place);
+  } else if (pt.dtype == PaddleDType::FLOAT32) {
+    input_ptr = t->mutable_data<float>(ddim, place);
+  } else if (pt.dtype == PaddleDType::INT32) {
+    input_ptr = t->mutable_data<int32_t>(ddim, place);
+  } else {
+    LOG(ERROR) << "unsupported feed type " << pt.dtype;
+    return false;
+  }
+
+  PADDLE_ENFORCE_NOT_NULL(
+      input_ptr,
+      paddle::platform::errors::Fatal(
+          "Cannot convert to LoDTensor because LoDTensor creation failed."));
+  PADDLE_ENFORCE_NOT_NULL(
+      pt.data.data(),
+      paddle::platform::errors::InvalidArgument(
+          "The data contained in the input PaddleTensor is illegal."));
+
+  if (platform::is_cpu_place(place)) {
+    // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
+    std::memcpy(static_cast<void *>(input_ptr), pt.data.data(),
+                pt.data.length());
+  } else {
+#ifdef PADDLE_WITH_CUDA
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto *dev_ctx =
+        static_cast<const platform::CUDADeviceContext *>(pool.Get(place));
+    auto dst_gpu_place = boost::get<platform::CUDAPlace>(place);
+    memory::Copy(dst_gpu_place, static_cast<void *>(input_ptr),
+                 platform::CPUPlace(), pt.data.data(), pt.data.length(),
+                 dev_ctx->stream());
+#else
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "Not compile with CUDA, should not reach here."));
+#endif
+  }
+  // TODO(Superjomn) Low performance, need optimization for heavy LoD copy.
+  framework::LoD lod;
+  for (auto &level : pt.lod) {
+    lod.emplace_back(level);
+  }
+  t->set_lod(lod);
+  return true;
+}
+
 bool AnalysisPredictor::Init(
     const std::shared_ptr<framework::Scope> &parent_scope,
     const std::shared_ptr<framework::ProgramDesc> &program) {
   VLOG(3) << "Predictor::init()";
-  if (FLAGS_profile) {
-    LOG(WARNING) << "Profiler is actived, might affect the performance";
-    LOG(INFO) << "You can turn off by set gflags '-profile false'";
+  if (config_.with_profile_) {
+    LOG(WARNING) << "Profiler is activated, which might affect the performance";
     auto tracking_device = config_.use_gpu() ? platform::ProfilerState::kAll
                                              : platform::ProfilerState::kCPU;
     platform::EnableProfiler(tracking_device);
+  } else {
+    LOG(INFO) << "Profiler is deactivated, and no profiling report will be "
+                 "generated.";
   }
 
   // no matter with or without MKLDNN
@@ -120,11 +169,7 @@ bool AnalysisPredictor::PrepareScope(
     scope_ = parent_scope;
     status_is_cloned_ = true;
   } else {
-    if (config_.use_gpu_) {
-      paddle::framework::InitDevices(false, {config_.device_id_});
-    } else {
-      paddle::framework::InitDevices(false, {});
-    }
+    paddle::framework::InitDevices(false);
     scope_.reset(new paddle::framework::Scope());
     status_is_cloned_ = false;
   }
@@ -142,6 +187,11 @@ bool AnalysisPredictor::PrepareProgram(
     // If config_.ir_optim() is False, parameters is loaded in LoadParameters(),
     // still need to create other persistable variables.
     // So in both case, create persistable variables at first.
+    if (!CheckOperatorCompatible()) {
+      LOG(WARNING) << "WARNING: Results may be DIFF! "
+                      "Please use the corresponding version of the model and "
+                      "prediction library, and do not use the develop branch.";
+    }
     executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
 
     // if enable_ir_optim_ is false,
@@ -241,11 +291,6 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     return false;
   }
 
-  // Collect variable shapes for memory optimization.
-  if (need_collect_var_shapes_for_memory_optim()) {
-    CollectVarShapes();
-  }
-
   VLOG(3) << "predict cost: " << timer.toc() << "ms";
 
   // All the containers in the scope will be hold in inference, but the
@@ -280,47 +325,10 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
   feed_tensors_.resize(inputs.size());
 
   for (size_t i = 0; i < inputs.size(); ++i) {
-    auto &input = feed_tensors_[i];
-    framework::DDim ddim = framework::make_ddim(inputs[i].shape);
-    void *input_ptr;
-    if (inputs[i].dtype == PaddleDType::INT64) {
-      input_ptr = input.mutable_data<int64_t>(ddim, place_);
-    } else if (inputs[i].dtype == PaddleDType::FLOAT32) {
-      input_ptr = input.mutable_data<float>(ddim, place_);
-    } else if (inputs[i].dtype == PaddleDType::INT32) {
-      input_ptr = input.mutable_data<int32_t>(ddim, place_);
-    } else {
-      LOG(ERROR) << "unsupported feed type " << inputs[i].dtype;
+    framework::LoDTensor *input = &feed_tensors_[i];
+    if (!PaddleTensorToLoDTensor(inputs[i], input, place_)) {
       return false;
     }
-
-    PADDLE_ENFORCE_NOT_NULL(input_ptr);
-    PADDLE_ENFORCE_NOT_NULL(inputs[i].data.data());
-
-    if (platform::is_cpu_place(place_)) {
-      // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
-      std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data(),
-                  inputs[i].data.length());
-    } else {
-#ifdef PADDLE_WITH_CUDA
-      platform::DeviceContextPool &pool =
-          platform::DeviceContextPool::Instance();
-      auto *dev_ctx =
-          static_cast<const platform::CUDADeviceContext *>(pool.Get(place_));
-      auto dst_gpu_place = boost::get<platform::CUDAPlace>(place_);
-      memory::Copy(dst_gpu_place, static_cast<void *>(input_ptr),
-                   platform::CPUPlace(), inputs[i].data.data(),
-                   inputs[i].data.length(), dev_ctx->stream());
-#else
-      PADDLE_THROW("Not compile with CUDA, should not reach here.");
-#endif
-    }
-    // TODO(Superjomn) Low performance, need optimization for heavy LoD copy.
-    framework::LoD lod;
-    for (auto &level : inputs[i].lod) {
-      lod.emplace_back(level);
-    }
-    input.set_lod(lod);
     int idx = -1;
     if (config_.specify_input_name_) {
       auto name = inputs[i].name;
@@ -332,7 +340,7 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     } else {
       idx = boost::get<int>(feeds_[i]->GetAttr("col"));
     }
-    framework::SetFeedVariable(scope, input, "feed", idx);
+    framework::SetFeedVariable(scope, *input, "feed", idx);
   }
   return true;
 }
@@ -387,15 +395,12 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
 
 void AnalysisPredictor::PrepareArgument() {
   argument_.SetUseGPU(config_.use_gpu());
+  argument_.SetUseFcPadding(config_.use_fc_padding());
   argument_.SetGPUDeviceId(config_.gpu_device_id());
   argument_.SetEnableAnalysisOptim(config_.enable_ir_optim_);
   argument_.SetEnableMemoryOptim(config_.enable_memory_optim());
-  argument_.SetStaticMemoryOptim(config_.static_memory_optim_);
-  argument_.SetStaticMemoryOptimForceUpdate(
-      config_.static_memory_optim_force_update_);
   argument_.SetModelFromMemory(config_.model_from_memory_);
   // Analyze inference_program
-  argument_.SetUseAnakin(config_.anakin_engine_enabled());
   argument_.SetPredictorID(predictor_id_);
   argument_.SetOptimCacheDir(config_.opt_cache_dir_);
   if (!config_.model_dir().empty()) {
@@ -420,17 +425,17 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
     argument_.SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
     argument_.SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
+    argument_.SetMinInputShape(config_.min_input_shape_);
+    argument_.SetMaxInputShape(config_.max_input_shape_);
+    argument_.SetOptimInputShape(config_.optim_input_shape_);
+    argument_.SetCloseTrtPluginFp16(config_.disable_trt_plugin_fp16_);
   }
 
-  if (config_.anakin_engine_enabled()) {
-    argument_.SetAnakinMaxBatchSize(config_.anakin_max_batchsize_);
-    argument_.SetAnakinMaxInputShape(config_.anakin_max_input_shape_);
-    argument_.SetAnakinMinSubgraphSize(config_.anakin_min_subgraph_size_);
-    argument_.SetAnakinPrecisionMode(config_.anakin_precision_mode_);
-    argument_.SetAnakinAutoConfigLayout(config_.anakin_auto_config_layout_);
-    argument_.SetAnakinPassesFilter(config_.anakin_passes_filter_);
-    argument_.SetAnakinOpsFilter(config_.anakin_ops_filter_);
-    LOG(INFO) << "Anakin subgraph engine is enabled";
+  if (config_.lite_engine_enabled()) {
+    argument_.SetLitePrecisionMode(config_.lite_precision_mode_);
+    argument_.SetLitePassesFilter(config_.lite_passes_filter_);
+    argument_.SetLiteOpsFilter(config_.lite_ops_filter_);
+    LOG(INFO) << "Lite subgraph engine is enabled";
   }
 
   if (config_.use_mkldnn_) {
@@ -453,6 +458,7 @@ void AnalysisPredictor::PrepareArgument() {
     passes.clear();
     LOG(INFO) << "ir_optim is turned off, no IR pass will be executed";
   }
+  argument_.SetDisableLogs(config_.glog_info_disabled());
   argument_.SetIrAnalysisPasses(passes);
   argument_.SetAnalysisPasses(config_.pass_builder()->AnalysisPasses());
   argument_.SetScopeNotOwned(scope_.get());
@@ -472,12 +478,16 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   // when the predictor settings are complete, we release these stores.
   argument_.PartiallyRelease();
   config_.PartiallyRelease();
-  LOG(INFO) << "== optimize end ==";
+  LOG(INFO) << "======= optimize end =======";
 }
 
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig &config) {
+  if (config.glog_info_disabled()) {
+    FLAGS_logtostderr = 1;
+    FLAGS_minloglevel = 2;  // GLOG_ERROR
+  }
   VLOG(3) << "create AnalysisConfig";
   PADDLE_ENFORCE(config.is_valid(),
                  "Note: Each config can only be used for one predictor.");
@@ -498,12 +508,11 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     }
 
     if (fraction_of_gpu_memory >= 0.0f || fraction_of_gpu_memory <= 0.95f) {
-      flags.push_back("dummpy");
+      flags.push_back("dummy");
       std::string flag = "--fraction_of_gpu_memory_to_use=" +
                          std::to_string(fraction_of_gpu_memory);
       flags.push_back(flag);
-      flags.push_back("--selected_gpus=" +
-                      std::to_string(config.gpu_device_id()));
+      flags.push_back("--cudnn_deterministic=True");
       VLOG(3) << "set flag: " << flag;
       framework::InitGflags(flags);
     }
@@ -574,6 +583,18 @@ std::vector<std::string> AnalysisPredictor::GetInputNames() {
     input_names.push_back(item.second);
   }
   return input_names;
+}
+
+std::map<std::string, std::vector<int64_t>>
+AnalysisPredictor::GetInputTensorShape() {
+  std::map<std::string, std::vector<int64_t>> input_shapes;
+  std::vector<std::string> names = GetInputNames();
+  for (std::string name : names) {
+    auto *var = inference_program_->Block(0).FindVar(name);
+    PADDLE_ENFORCE_NOT_NULL(var, "input %s does not exist.", name);
+    input_shapes[name] = var->GetShape();
+  }
+  return input_shapes;
 }
 
 std::vector<std::string> AnalysisPredictor::GetOutputNames() {
@@ -792,7 +813,7 @@ AnalysisPredictor::~AnalysisPredictor() {
     SaveTrtCalibToDisk();
   }
 #endif
-  if (FLAGS_profile) {
+  if (config_.with_profile_) {
     platform::DisableProfiler(platform::EventSortingKey::kTotal,
                               "./profile.log");
   }
@@ -806,13 +827,6 @@ AnalysisPredictor::~AnalysisPredictor() {
     mkldnn_quantizer_ = nullptr;
   }
 #endif
-
-  // TODO(Superjomn) deduce the directory path.
-  std::string out_path = inference::analysis::GetMemoryCachePath(
-      config_.model_dir(), config_.prog_file());
-  if (need_collect_var_shapes_for_memory_optim()) {
-    SerializeBatchVarShapes(out_path);
-  }
 }
 
 std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
@@ -822,68 +836,41 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
   return std::unique_ptr<PaddlePredictor>(x);
 }
 
-void AnalysisPredictor::CollectVarShapes() {
-  VLOG(4) << "Collecting var shapes";
-  if (batch_var_shapes_.size() >= max_shape_collect_count_) return;
-  std::map<std::string, std::vector<int>> var_shapes;
-  for (auto var_name : inference_program_->Block(0).LocalVarNames()) {
-    auto *var = sub_scope_->FindVar(var_name);
-    PADDLE_ENFORCE_NOT_NULL(var);
-    if (var->Type() == framework::VarTypeTrait<framework::LoDTensor>::kId ||
-        var->Type() == framework::VarTypeTrait<framework::Tensor>::kId) {
-      auto &tensor = var->Get<framework::LoDTensor>();
-      auto shape = framework::vectorize(tensor.dims());
-      var_shapes[var_name].assign(shape.begin(), shape.end());
-    }
-  }
-  batch_var_shapes_.push_back(var_shapes);
-  LOG_FIRST_N(INFO, 1) << "Collected " << batch_var_shapes_.size()
-                       << " batch of var shapes for analysis";
-}
-
-void AnalysisPredictor::SerializeBatchVarShapes(const std::string &path) {
-  LOG(INFO) << "serialize batch var shapes to " << path;
-  std::ofstream file(path);
-  if (!file.is_open()) {
-    LOG(ERROR) << "failed to serialize the var shapes to " << path;
-    return;
-  }
-
-  // The sirialized data format:
-  // <tensor_name>:dim0,dim1,dim2,;
-  for (auto &batch : batch_var_shapes_) {
-    for (auto &ele : batch) {
-      file << ele.first << ":";
-      for (size_t i = 0; i < ele.second.size() - 1; i++) {
-        file << ele.second[i] << ",";
-      }
-      file << ele.second.back() << ";";
-    }
-    file << "\n";
-  }
-}
-
-bool AnalysisPredictor::need_collect_var_shapes_for_memory_optim() {
-  if (need_collect_var_shapes_ >= 0) return need_collect_var_shapes_;
-  bool need = false;
-  // check if the cache exists
-  if (!config_.enable_memory_optim()) {
-    need = false;
-  } else if (config_.static_memory_optim_ &&
-             !inference::IsFileExists(inference::analysis::GetMemoryCachePath(
-                 config_.model_dir(), config_.prog_file()))) {
-    need = true;
-  } else if (config_.static_memory_optim_ &&
-             config_.static_memory_optim_force_update_) {
-    need = true;
-  }
-
-  need_collect_var_shapes_ = need ? 1 : 0;
-  return need;
-}
-
 std::string AnalysisPredictor::GetSerializedProgram() const {
   return inference_program_->Proto()->SerializeAsString();
+}
+
+bool AnalysisPredictor::CheckOperatorCompatible() {
+  if (!inference_program_) {
+    LOG(FATAL) << "Inference program version check failed because the program "
+                  "does not exist.";
+    return false;
+  }
+  bool res = true;
+  op_compatible_map_.ReadFromProto(*inference_program_->OpCompatibleMap());
+  const auto &version = framework::DumpVersion(framework::kCurProgramVersion);
+  LOG(INFO) << "MODEL VERSION: "
+            << framework::DumpVersion(inference_program_->Version());
+  LOG(INFO) << "PREDICTOR VERSION: " << version;
+  std::set<std::string> op_types;
+  for (size_t i = 0; i < inference_program_->Size(); ++i) {
+    const auto &block = inference_program_->Block(i);
+    for (const auto *op : block.AllOps()) {
+      op_types.insert(op->Type());
+    }
+  }
+  for (const auto type : op_types) {
+    auto compatible_type =
+        op_compatible_map_.IsRequireMiniVersion(type, version);
+    if (compatible_type != framework::OpCompatibleType::compatible) {
+      if (!framework::kCurProgramVersion) {
+        LOG(WARNING) << " - Version incompatible ("
+                     << static_cast<int>(compatible_type) << ") " << type;
+      }
+      res = false;
+    }
+  }
+  return res;
 }
 
 // Add SaveOptimModel
@@ -961,34 +948,10 @@ USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
 USE_TRT_CONVERTER(shuffle_channel);
 USE_TRT_CONVERTER(swish);
-#endif
-
-#if PADDLE_WITH_ANAKIN
-USE_ANAKIN_CONVERTER(mul);
-USE_ANAKIN_CONVERTER(fc);
-USE_ANAKIN_CONVERTER(conv2d);
-USE_ANAKIN_CONVERTER(conv2d_fusion);
-USE_ANAKIN_CONVERTER(concat);
-USE_ANAKIN_CONVERTER(split);
-USE_ANAKIN_CONVERTER(relu);
-USE_ANAKIN_CONVERTER(sigmoid);
-USE_ANAKIN_CONVERTER(tanh);
-USE_ANAKIN_CONVERTER(pool2d);
-USE_ANAKIN_CONVERTER(elementwise_add);
-USE_ANAKIN_CONVERTER(elementwise_mul);
-USE_ANAKIN_CONVERTER(batch_norm);
-USE_ANAKIN_CONVERTER(flatten);
-USE_ANAKIN_CONVERTER(reshape);
-USE_ANAKIN_CONVERTER(transpose);
-USE_ANAKIN_CONVERTER(softmax);
-USE_ANAKIN_CONVERTER(detection_out);
-USE_ANAKIN_CONVERTER(density_prior_box);
-USE_ANAKIN_CONVERTER(dropout);
-USE_ANAKIN_CONVERTER(sum);
-USE_ANAKIN_CONVERTER(prior_box);
-USE_ANAKIN_CONVERTER(leaky_relu);
-USE_ANAKIN_CONVERTER(affine_channel);
-USE_ANAKIN_CONVERTER(relu6);
-USE_ANAKIN_CONVERTER(swish);
-USE_ANAKIN_CONVERTER(shuffle_channel);
+USE_TRT_CONVERTER(instance_norm);
+USE_TRT_CONVERTER(layer_norm);
+USE_TRT_CONVERTER(gelu);
+USE_TRT_CONVERTER(multihead_matmul);
+USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
+USE_TRT_CONVERTER(skip_layernorm);
 #endif

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <time.h>
 #include "paddle/fluid/framework/device_worker.h"
+#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 
 namespace paddle {
 namespace framework {
@@ -32,8 +33,8 @@ void PullDenseWorker::Initialize(const TrainerDesc& param) {
   threshold_ = param_.threshold();
   thread_num_ = param_.device_num();
   sleep_time_ms_ = param_.sleep_time_ms();
-  for (size_t i = 0;
-       i < dwp_param_.program_config(0).pull_dense_table_id_size(); ++i) {
+  for (int i = 0; i < dwp_param_.program_config(0).pull_dense_table_id_size();
+       ++i) {
     uint64_t tid = static_cast<uint64_t>(
         dwp_param_.program_config(0).pull_dense_table_id(i));
     TableParameter table;
@@ -67,7 +68,7 @@ void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
     }
   }
 
-  int MAX_FAIL_NUM = 20;
+  size_t MAX_FAIL_NUM = 20;
   if (pull_dense_fail_times_ > MAX_FAIL_NUM) {
     LOG(FATAL) << "Pull Dense Failed Times More Than " << MAX_FAIL_NUM
                << " Times";
@@ -80,16 +81,13 @@ void PullDenseWorker::Stop() {
   if (running_) {
     running_ = false;
     t_.join();
-    // pull dense when stop, to make sure local dense params are same as
-    // pserver, so save paddle model will save dense model same as pserver
-    PullDense(true);
   }
 }
 
 void PullDenseWorker::PullDense(bool force_update) {
   pull_dense_status_.resize(0);
-  for (size_t i = 0;
-       i < dwp_param_.program_config(0).pull_dense_table_id_size(); ++i) {
+  for (int i = 0; i < dwp_param_.program_config(0).pull_dense_table_id_size();
+       ++i) {
     uint64_t tid = static_cast<uint64_t>(
         dwp_param_.program_config(0).pull_dense_table_id(i));
     if (force_update || CheckUpdateParam(tid)) {
@@ -130,7 +128,8 @@ bool PullDenseWorker::CheckUpdateParam(uint64_t table_id) {
   auto& version = training_versions_[table_id];
   current_version_[table_id] =
       *(std::min_element(version.begin(), version.end()));
-  if (current_version_[table_id] - last_versions_[table_id] < threshold_) {
+  if (current_version_[table_id] - last_versions_[table_id] <
+      static_cast<size_t>(threshold_)) {
     return false;
   }
   return true;
@@ -139,6 +138,17 @@ bool PullDenseWorker::CheckUpdateParam(uint64_t table_id) {
 void PullDenseWorker::ResetThreadVersion(uint64_t table_id) {
   std::lock_guard<std::mutex> lock(mutex_for_version_);
   last_versions_[table_id] = current_version_[table_id];
+}
+
+int PullDenseWorker::GetThreadIdByScope(const Scope* scope) {
+  if (scope_to_thread_id_.find(scope) != scope_to_thread_id_.end()) {
+    return scope_to_thread_id_[scope];
+  }
+  return -1;
+}
+
+void PullDenseWorker::SetThreadIdByScope(const Scope* scope, int tid) {
+  scope_to_thread_id_[scope] = tid;
 }
 
 }  // namespace framework

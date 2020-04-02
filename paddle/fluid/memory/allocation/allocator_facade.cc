@@ -37,9 +37,13 @@
 #endif
 
 DEFINE_int64(
-    gpu_allocator_retry_time, 0,
+    gpu_allocator_retry_time, 10000,
     "The retry time (milliseconds) when allocator fails "
     "to allocate memory. No retry if this value is not greater than 0");
+
+DEFINE_bool(use_system_allocator, false,
+            "Whether to use system allocator to allocate CPU and GPU memory. "
+            "Only used for unittests.");
 
 namespace paddle {
 namespace memory {
@@ -47,6 +51,8 @@ namespace allocation {
 
 class AllocatorFacadePrivate {
  public:
+  using AllocatorMap = std::map<platform::Place, std::shared_ptr<Allocator>>;
+
   AllocatorFacadePrivate() {
     auto strategy = GetAllocatorStrategy();
     switch (strategy) {
@@ -80,11 +86,21 @@ class AllocatorFacadePrivate {
       }
     }
     InitZeroSizeAllocators();
+    InitSystemAllocators();
+
+    if (FLAGS_gpu_allocator_retry_time > 0) {
+      WrapCUDARetryAllocator(FLAGS_gpu_allocator_retry_time);
+    }
+
+    CheckAllocThreadSafe();
   }
 
   inline const std::shared_ptr<Allocator>& GetAllocator(
       const platform::Place& place, size_t size) {
-    const auto& allocators = (size > 0 ? allocators_ : zero_size_allocators_);
+    const auto& allocators =
+        (size > 0 ? (UNLIKELY(FLAGS_use_system_allocator) ? system_allocators_
+                                                          : allocators_)
+                  : zero_size_allocators_);
     auto iter = allocators.find(place);
     PADDLE_ENFORCE(iter != allocators.end(),
                    "No such allocator for the place, %s", place);
@@ -92,6 +108,19 @@ class AllocatorFacadePrivate {
   }
 
  private:
+  void InitSystemAllocators() {
+    system_allocators_[platform::CPUPlace()] = std::make_shared<CPUAllocator>();
+#ifdef PADDLE_WITH_CUDA
+    system_allocators_[platform::CUDAPinnedPlace()] =
+        std::make_shared<CPUPinnedAllocator>();
+    int device_count = platform::GetCUDADeviceCount();
+    for (int i = 0; i < device_count; ++i) {
+      platform::CUDAPlace p(i);
+      system_allocators_[p] = std::make_shared<CUDAAllocator>(p);
+    }
+#endif
+  }
+
   void InitNaiveBestFitCPUAllocator() {
     allocators_[platform::CPUPlace()] =
         std::make_shared<NaiveBestFitAllocator>(platform::CPUPlace());
@@ -117,6 +146,8 @@ class AllocatorFacadePrivate {
   class ZeroSizeAllocator : public Allocator {
    public:
     explicit ZeroSizeAllocator(platform::Place place) : place_(place) {}
+
+    bool IsAllocThreadSafe() const override { return true; }
 
    protected:
     Allocation* AllocateImpl(size_t size) override {
@@ -145,9 +176,33 @@ class AllocatorFacadePrivate {
     }
   }
 
+  static void CheckAllocThreadSafe(const AllocatorMap& allocators) {
+    for (auto& pair : allocators) {
+      PADDLE_ENFORCE_EQ(pair.second->IsAllocThreadSafe(), true,
+                        platform::errors::InvalidArgument(
+                            "Public allocators must be thread safe"));
+    }
+  }
+
+  void CheckAllocThreadSafe() const {
+    CheckAllocThreadSafe(allocators_);
+    CheckAllocThreadSafe(zero_size_allocators_);
+    CheckAllocThreadSafe(system_allocators_);
+  }
+
+  void WrapCUDARetryAllocator(size_t retry_time) {
+    PADDLE_ENFORCE_GT(retry_time, 0, "Retry time must be larger than 0");
+    for (auto& pair : allocators_) {
+      if (platform::is_gpu_place(pair.first)) {
+        pair.second = std::make_shared<RetryAllocator>(pair.second, retry_time);
+      }
+    }
+  }
+
  private:
-  std::map<platform::Place, std::shared_ptr<Allocator>> allocators_;
-  std::map<platform::Place, std::shared_ptr<Allocator>> zero_size_allocators_;
+  AllocatorMap allocators_;
+  AllocatorMap zero_size_allocators_;
+  AllocatorMap system_allocators_;
 };
 
 // Pimpl. Make interface clean.

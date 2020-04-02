@@ -92,13 +92,13 @@ struct CudnnRNNCache {
     int stride_a[3];
 
     for (size_t i = 0; i < max_length_; ++i) {
-      CUDNN_ENFORCE(
+      PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnCreateTensorDescriptor(&x_desc_[i]));
-      CUDNN_ENFORCE(
+      PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnCreateTensorDescriptor(&y_desc_[i]));
-      CUDNN_ENFORCE(
+      PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnCreateTensorDescriptor(&dx_desc_[i]));
-      CUDNN_ENFORCE(
+      PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnCreateTensorDescriptor(&dy_desc_[i]));
       dim_a[0] = batch_size_;
       dim_a[1] = input_size_;
@@ -107,9 +107,9 @@ struct CudnnRNNCache {
       stride_a[0] = dim_a[2] * dim_a[1];
       stride_a[1] = dim_a[2];
       stride_a[2] = 1;
-      CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
           x_desc_[i], CUDNN_DATA_FLOAT, 3, dim_a, stride_a));
-      CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
           dx_desc_[i], CUDNN_DATA_FLOAT, 3, dim_a, stride_a));
 
       dim_a[0] = batch_size_;
@@ -120,9 +120,9 @@ struct CudnnRNNCache {
       stride_a[1] = dim_a[2];
       stride_a[2] = 1;
 
-      CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
           y_desc_[i], CUDNN_DATA_FLOAT, 3, dim_a, stride_a));
-      CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
           dy_desc_[i], CUDNN_DATA_FLOAT, 3, dim_a, stride_a));
     }
 
@@ -134,63 +134,74 @@ struct CudnnRNNCache {
     stride_a[1] = dim_a[2];
     stride_a[2] = 1;
 
-    CUDNN_ENFORCE(platform::dynload::cudnnCreateTensorDescriptor(&hx_desc_));
-    CUDNN_ENFORCE(platform::dynload::cudnnCreateTensorDescriptor(&cx_desc_));
-    CUDNN_ENFORCE(platform::dynload::cudnnCreateTensorDescriptor(&hy_desc_));
-    CUDNN_ENFORCE(platform::dynload::cudnnCreateTensorDescriptor(&cy_desc_));
-    CUDNN_ENFORCE(platform::dynload::cudnnCreateTensorDescriptor(&dhx_desc_));
-    CUDNN_ENFORCE(platform::dynload::cudnnCreateTensorDescriptor(&dcx_desc_));
-    CUDNN_ENFORCE(platform::dynload::cudnnCreateTensorDescriptor(&dhy_desc_));
-    CUDNN_ENFORCE(platform::dynload::cudnnCreateTensorDescriptor(&dcy_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnCreateTensorDescriptor(&hx_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnCreateTensorDescriptor(&cx_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnCreateTensorDescriptor(&hy_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnCreateTensorDescriptor(&cy_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnCreateTensorDescriptor(&dhx_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnCreateTensorDescriptor(&dcx_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnCreateTensorDescriptor(&dhy_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnCreateTensorDescriptor(&dcy_desc_));
 
-    CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
         hx_desc_, CUDNN_DATA_FLOAT, 3, dim_a, stride_a));
-    CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
         cx_desc_, CUDNN_DATA_FLOAT, 3, dim_a, stride_a));
-    CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
         hy_desc_, CUDNN_DATA_FLOAT, 3, dim_a, stride_a));
-    CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
         cy_desc_, CUDNN_DATA_FLOAT, 3, dim_a, stride_a));
-    CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
         dhx_desc_, CUDNN_DATA_FLOAT, 3, dim_a, stride_a));
-    CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
         dcx_desc_, CUDNN_DATA_FLOAT, 3, dim_a, stride_a));
-    CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
         dhy_desc_, CUDNN_DATA_FLOAT, 3, dim_a, stride_a));
-    CUDNN_ENFORCE(platform::dynload::cudnnSetTensorNdDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
         dcy_desc_, CUDNN_DATA_FLOAT, 3, dim_a, stride_a));
 
-    CUDNN_ENFORCE(
+    PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnCreateDropoutDescriptor(&dropout_desc_));
 
     size_t state_size;
-    CUDNN_ENFORCE(
-        platform::dynload::cudnnDropoutGetStatesSize(handle, &state_size);
-        dropout_state_.Resize({static_cast<int64_t>(state_size)}));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDropoutGetStatesSize(handle, &state_size));
+    dropout_state_.Resize({static_cast<int64_t>(state_size)});
     auto *dropout_state_data = dropout_state_.mutable_data<uint8_t>(place);
-    CUDNN_ENFORCE(platform::dynload::cudnnSetDropoutDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetDropoutDescriptor(
         dropout_desc_, handle, dropout_prob_, dropout_state_data, state_size,
         seed_));
 
-    CUDNN_ENFORCE(platform::dynload::cudnnCreateRNNDescriptor(&rnn_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnCreateRNNDescriptor(&rnn_desc_));
 
 #if CUDNN_VERSION >= 6000
-    CUDNN_ENFORCE(platform::dynload::cudnnSetRNNDescriptor_v6(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetRNNDescriptor_v6(
         handle, rnn_desc_, hidden_size_, num_layers_, dropout_desc_,
         CUDNN_LINEAR_INPUT,
         is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL, CUDNN_LSTM,
         CUDNN_RNN_ALGO_STANDARD, CUDNN_DATA_FLOAT));
 #else
-    CUDNN_ENFORCE(platform::dynload::cudnnSetRNNDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetRNNDescriptor(
         rnn_desc_, hidden_size_, num_layers_, dropout_desc_, CUDNN_LINEAR_INPUT,
         is_bidirec_ ? CUDNN_BIDIRECTIONAL : CUDNN_UNIDIRECTIONAL, CUDNN_LSTM,
         CUDNN_DATA_FLOAT));
 #endif
 
-    CUDNN_ENFORCE(platform::dynload::cudnnCreateFilterDescriptor(&w_desc_));
-    CUDNN_ENFORCE(platform::dynload::cudnnCreateFilterDescriptor(&dw_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnCreateFilterDescriptor(&w_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnCreateFilterDescriptor(&dw_desc_));
 
-    CUDNN_ENFORCE(platform::dynload::cudnnGetRNNParamsSize(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnGetRNNParamsSize(
         handle, rnn_desc_, x_desc_[0], &weights_size_, CUDNN_DATA_FLOAT));
 
     PADDLE_ENFORCE_EQ(weights_size_, sizeof(float) * weight_numel,
@@ -199,15 +210,16 @@ struct CudnnRNNCache {
     dim_w[0] = weights_size_ / sizeof(float);
     dim_w[1] = 1;
     dim_w[2] = 1;
-    CUDNN_ENFORCE(platform::dynload::cudnnSetFilterNdDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetFilterNdDescriptor(
         w_desc_, CUDNN_DATA_FLOAT, CUDNN_TENSOR_NCHW, 3, dim_w));
-    CUDNN_ENFORCE(platform::dynload::cudnnSetFilterNdDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetFilterNdDescriptor(
         dw_desc_, CUDNN_DATA_FLOAT, CUDNN_TENSOR_NCHW, 3, dim_w));
 
-    CUDNN_ENFORCE(platform::dynload::cudnnGetRNNWorkspaceSize(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnGetRNNWorkspaceSize(
         handle, rnn_desc_, max_length_, x_desc_, &workspace_size_));
-    CUDNN_ENFORCE(platform::dynload::cudnnGetRNNTrainingReserveSize(
-        handle, rnn_desc_, max_length_, x_desc_, &reserve_size_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnGetRNNTrainingReserveSize(
+            handle, rnn_desc_, max_length_, x_desc_, &reserve_size_));
 
     reserve_data_.Resize({static_cast<int64_t>(reserve_size_)});
     reserve_data_.mutable_data<uint8_t>(place);
@@ -218,13 +230,13 @@ struct CudnnRNNCache {
 
   void release() {
     for (size_t i = 0; i < max_length_; ++i) {
-      CUDNN_ENFORCE(
+      PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnDestroyTensorDescriptor(x_desc_[i]));
-      CUDNN_ENFORCE(
+      PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnDestroyTensorDescriptor(y_desc_[i]));
-      CUDNN_ENFORCE(
+      PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnDestroyTensorDescriptor(dx_desc_[i]));
-      CUDNN_ENFORCE(
+      PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cudnnDestroyTensorDescriptor(dy_desc_[i]));
     }
 
@@ -233,21 +245,32 @@ struct CudnnRNNCache {
     delete[] dx_desc_;
     delete[] dy_desc_;
 
-    CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(hx_desc_));
-    CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(cx_desc_));
-    CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(hy_desc_));
-    CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(cy_desc_));
-    CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(dhx_desc_));
-    CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(dcx_desc_));
-    CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(dhy_desc_));
-    CUDNN_ENFORCE(platform::dynload::cudnnDestroyTensorDescriptor(dcy_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDestroyTensorDescriptor(hx_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDestroyTensorDescriptor(cx_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDestroyTensorDescriptor(hy_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDestroyTensorDescriptor(cy_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDestroyTensorDescriptor(dhx_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDestroyTensorDescriptor(dcx_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDestroyTensorDescriptor(dhy_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDestroyTensorDescriptor(dcy_desc_));
 
-    CUDNN_ENFORCE(
+    PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnDestroyDropoutDescriptor(dropout_desc_));
-    CUDNN_ENFORCE(platform::dynload::cudnnDestroyRNNDescriptor(rnn_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDestroyRNNDescriptor(rnn_desc_));
 
-    CUDNN_ENFORCE(platform::dynload::cudnnDestroyFilterDescriptor(w_desc_));
-    CUDNN_ENFORCE(platform::dynload::cudnnDestroyFilterDescriptor(dw_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDestroyFilterDescriptor(w_desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDestroyFilterDescriptor(dw_desc_));
   }
 };
 

@@ -20,7 +20,7 @@
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/framework/details/nccl_op_handle.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
@@ -29,7 +29,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
 class AllReduceOpHandle : public NCCLOpHandleBase {
  public:
   AllReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
@@ -54,16 +54,26 @@ class AllReduceOpHandle : public OpHandleBase {
 
   std::vector<Scope *> local_scopes_;
 
-#if !(defined(PADDLE_WITH_CUDA) && !defined(_WIN32))
+#ifndef PADDLE_WITH_NCCL
   // NCCLOpHandleBase already have these attributes.
   // Will polish it by class inheritance framework.
   std::vector<platform::Place> places_;
 #endif
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  void RunAllReduceFuncs(
+#if defined(PADDLE_WITH_NCCL)
+  void NCCLAllReduceFunc(
       const std::vector<std::function<void()>> &all_reduce_calls);
+
+  void SyncNCCLAllReduce();
 #endif
+
+  void AllReduceImpl(const std::vector<VarHandle *> &in_var_handles,
+                     const std::vector<VarHandle *> &out_var_handles);
+
+  void AllReduceFunc(std::vector<const void *> lod_tensor_data,
+                     const framework::proto::VarType::Type &dtype,
+                     int64_t numel, const std::vector<platform::Place> &places,
+                     const std::vector<std::string> &out_var_handles);
 };
 
 }  // namespace details

@@ -14,26 +14,19 @@
 
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace imperative {
 
-struct Runnable {};
-
 class Engine {
+  DISABLE_COPY_AND_ASSIGN(Engine);
+
  public:
-  virtual ~Engine() {}
-
-  virtual void Enqueue(Runnable* runnable) = 0;
-
-  virtual size_t Size() const = 0;
-
-  virtual void Sync() = 0;
+  Engine() = default;
+  virtual ~Engine() = default;
+  virtual void Execute() = 0;
 };
-
-Engine* GetEngine();
 
 }  // namespace imperative
 }  // namespace paddle

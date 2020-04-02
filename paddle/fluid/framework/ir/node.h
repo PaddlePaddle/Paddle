@@ -66,12 +66,12 @@ class Node {
   std::string Name() const { return name_; }
 
   VarDesc* Var() const {
-    PADDLE_ENFORCE(IsVar());
+    PADDLE_ENFORCE_EQ(IsVar(), true);
     return var_desc_.get();
   }
 
   OpDesc* Op() const {
-    PADDLE_ENFORCE(IsOp());
+    PADDLE_ENFORCE_EQ(IsOp(), true);
     return op_desc_.get();
   }
 

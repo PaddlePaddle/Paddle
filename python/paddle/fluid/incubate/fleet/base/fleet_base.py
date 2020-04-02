@@ -23,6 +23,7 @@ from paddle.fluid.optimizer import SGD
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
 from paddle.fluid.incubate.fleet.base.role_maker import UserDefinedRoleMaker
+from paddle.fluid.contrib.mixed_precision.decorator import OptimizerWithMixedPrecision
 
 
 class Mode:
@@ -159,6 +160,9 @@ class Fleet(object):
         Returns:
             list: files belongs to this worker.
         """
+        if not isinstance(files, list):
+            raise TypeError("files should be a list of file need to be read.")
+
         trainer_id = self.worker_index()
         trainers = self.worker_num()
 
@@ -192,11 +196,27 @@ class Fleet(object):
         self._executor = Executor(fluid.CPUPlace())
 
         if role_maker and not isinstance(role_maker, RoleMakerBase):
-            raise ValueError("role_maker must be an instance of RoleMakerBase")
+            raise TypeError("role_maker must be an instance of RoleMakerBase")
 
         self._role_maker = role_maker
         self._role_maker.generate_role()
         self._is_initialized = True
+
+    def all_reduce_worker(self, input, output):
+        """
+        all reduce between workers, only support array of one dim.
+
+        Args:
+            input(list|numpy.array): array of one dim
+            output(list|numpy.array): array of one dim
+        """
+        self._role_maker.all_reduce_worker(input, output)
+
+    def barrier_worker(self):
+        """
+        barrier between workers
+        """
+        self._role_maker.barrier_worker()
 
     @abc.abstractmethod
     def init_worker(self):
@@ -254,8 +274,9 @@ class DistributedOptimizer(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, optimizer, strategy=None):
-        if not isinstance(optimizer, SGD.__bases__):
-            raise ValueError("optimizer must be an instance of Optimizer")
+        if not isinstance(optimizer, SGD.__bases__) \
+                 and not isinstance(optimizer, OptimizerWithMixedPrecision):
+            raise TypeError("optimizer must be an instance of Optimizer")
 
         self._optimizer = optimizer
         self._strategy = strategy

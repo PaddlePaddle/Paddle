@@ -16,7 +16,7 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
-#include "paddle/fluid/operators/math/fc_compute.h"
+#include "paddle/fluid/operators/math/fc.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
 namespace paddle {
@@ -67,8 +67,8 @@ void FusionSeqExpandConcatFCOp::InferShape(
 
 framework::OpKernelType FusionSeqExpandConcatFCOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(ctx.MultiInput<LoDTensor>("X")[0]->type(),
-                                 ctx.device_context());
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.device_context());
 }
 
 void FusionSeqExpandConcatFCOpMaker::Make() {
@@ -165,8 +165,11 @@ class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
     T* fc_out_data = fc_out->mutable_data<T>(ctx.GetPlace());
 
     auto blas = math::GetBlas<DeviceContext, T>(ctx);
-    math::FCCompute<DeviceContext, T>(blas, total_T, D, M0, ref_in_data, w_data,
-                                      out_data, b ? b->data<T>() : NULL);
+
+    auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    math::FCFunctor<DeviceContext, T> fc;
+    fc(dev_ctx, total_T, D, M0, ref_in_data, w_data, out_data,
+       b ? b->data<T>() : NULL);
     w_data = w_data + M0 * D;
     // first write on
     blas.MatMul(N, D, M1, in1_data, w_data, fc_out_data);
