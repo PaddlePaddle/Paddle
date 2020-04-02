@@ -88,6 +88,163 @@ class Sequential(Layer):
         return input
 
 
+class ParameterDict(Layer):
+    """
+    Holds parameters in a dictionary.
+
+    ``ParameterDict`` can be indexed like a regular Python dictionary, but parameters it
+    contains are properly registered, and will be visible by all Layer methods.
+
+    ParameterDict is an **ordered** dictionary that respects
+
+    * the order of insertion, and
+
+    * in ``ParameterDict.update``, the order of the merged ``OrderedDict``
+      or another ``ParameterDict`` (the argument to ``ParameterDict.update`).
+
+    Note that ``ParameterDict.update`` with other unordered mapping
+    types (e.g., Python's plain ``dict``) does not preserve the order of the
+    merged mapping.
+
+    Parameters:
+        parameters (iterable, optional): a mapping (dictionary) of
+            (string : Parameter) or an iterable of key-value pairs
+            of type (string, Parameter)
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+
+            class MyLayer(fluid.Layer):
+                def __init__(self, num_stacked_param):
+                    super(MyLayer, self).__init__()
+                    # create ParameterList with iterable Parameters
+                    self.params = fluid.dygraph.ParameterList(
+                        [fluid.layers.create_parameter(
+                            shape=[2, 2], dtype='float32')] * num_stacked_param)
+
+                def forward(self, x):
+                    for i, p in enumerate(self.params):
+                        tmp = self._helper.create_variable_for_type_inference('float32')
+                        self._helper.append_op(
+                            type="mul",
+                            inputs={"X": x,
+                                    "Y": p},
+                            outputs={"Out": tmp},
+                            attrs={"x_num_col_dims": 1,
+                                   "y_num_col_dims": 1})
+                        x = tmp
+                    return x
+
+            data_np = np.random.uniform(-1, 1, [5, 2]).astype('float32')
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(data_np)
+                num_stacked_param = 4
+                model = MyLayer(num_stacked_param)
+                print(len(model.params))  # 4
+                res = model(x)
+                print(res.shape)  # [5, 2]
+
+                replaced_param = fluid.layers.create_parameter(shape=[2, 3], dtype='float32')
+                model.params[num_stacked_param - 1] = replaced_param  # replace last param
+                res = model(x)
+                print(res.shape)  # [5, 3]
+                model.params.append(fluid.layers.create_parameter(shape=[3, 4], dtype='float32'))  # append param
+                print(len(model.params))  # 5
+                res = model(x)
+                print(res.shape)  # [5, 4]
+    """
+
+    def __init__(self, parameters=None):
+        super(ParameterDict, self).__init__()
+        if parameters is not None:
+            self.update(parameters)
+
+    def __getitem__(self, key):
+        return self._parameters[key]
+
+    def __setitem__(self, key, parameter):
+        self.register_parameter(key, parameter)
+
+    def __delitem__(self, key):
+        del self._parameters[key]
+
+    def __len__(self):
+        return len(self._parameters)
+
+    def __iter__(self):
+        return iter(self._parameters.keys())
+
+    def __contains__(self, key):
+        return key in self._parameters
+
+    def clear(self):
+        """
+        Remove all items from the ParameterDict.
+        """
+        self._parameters.clear()
+
+    def pop(self, key):
+        """
+        Remove key from the ParameterDict and return its parameter.
+
+        Parameters:
+            key (string): key to pop from the ParameterDict
+        """
+        value = self[key]
+        del self[key]
+        return value
+
+    def keys(self):
+        """
+        Return an iterable of the ParameterDict keys.
+        """
+        return self._parameters.keys()
+
+    def items(self):
+        """
+        Return an iterable of the ParameterDict key/value pairs.
+        """
+        return self._parameters.items()
+
+    def values(self):
+        """
+        Return an iterable of the ParameterDict values.
+        """
+        return self._parameters.values()
+
+    def update(self, parameters):
+        """
+        Update the ParameterDict with the key-value pairs from a
+        mapping or an iterable, overwriting existing keys.
+
+        .. note::
+            If :attr:`parameters` is an ``OrderedDict``, a ParameterDict, or
+            an iterable of key-value pairs, the order of new elements in it is preserved.
+
+        Parameters:
+            parameters (iterable): a dictionary from string to Parameter, or an iterable of
+                key-value pairs of type (string, Parameter)
+        """
+        assert isinstance(
+            parameters, (OrderedDict, ParameterDict, dict, list, tuple)
+        ), "'parameters' argument must be type of OrderedDict, ParameterDict, dict, list, or tuple"
+        if isinstance(parameters, (OrderedDict, ParameterDict)):
+            for k, p in parameters.items():
+                self.add_parameter(k, p)
+        elif isinstance(parameters, dict):
+            for k, p in sorted(parameters.items()):
+                self.add_parameter(k, p)
+        else:
+            for p in parameters:
+                assert len(
+                    p
+                ) == 2, "ParameterDict update with list or tuple requires elements with length 2"
+                self.add_parameter(p[0], p[1])
+
+
 class ParameterList(Layer):
     """ParameterList Container.
 
@@ -171,6 +328,133 @@ class ParameterList(Layer):
         idx = len(self._parameters)
         self.add_parameter(str(idx), parameter)
         return self
+
+
+class LayerDict(Layer):
+    """
+    LayerDict holds sublayers, and sublayers it contains are properly registered.
+    Holded sublayers can be indexed like a regular Python dictionary.
+
+    LayerDict is an **ordered** dictionary that respects
+
+    * the order of insertion, and
+
+    * in ``LayerDict.update``, the order of the merged ``OrderedDict``
+      or another ``LayerDict`` (the argument to ``LayerDict.update``).
+
+    Note that ``LayerDict.update`` with other unordered mapping
+    types (e.g., Python's plain ``dict``) does not preserve the order of the
+    merged mapping.
+
+    Parameters:
+        sublayers (iterable of Layer, optional): sublayers to hold
+
+    Examples:
+        .. code-block:: python
+            import paddle.fluid as fluid
+            import numpy as np
+
+            class MyLayer(fluid.Layer):
+                def __init__(self):
+                    super(MyLayer, self).__init__()
+                    self.linears = fluid.dygraph.LayerList(
+                        [fluid.dygraph.Linear(10, 10) for i in range(10)])
+
+                def forward(self, x):
+                    # LayerList can act as an iterable, or be indexed using ints
+                    for i, l in enumerate(self.linears):
+                        x = self.linears[i // 2](x) + l(x)
+                    return x
+    """
+
+    def __init__(self, layers=None):
+        super(LayerDict, self).__init__()
+        if layers is not None:
+            self.update(layers)
+
+    def __getitem__(self, key):
+        return self._layers[key]
+
+    def __setitem__(self, key, layer):
+        self.add_sublayer(key, layer)
+
+    def __delitem__(self, key):
+        del self._sub_layers[key]
+
+    def __len__(self):
+        return len(self._sub_layers)
+
+    def __iter__(self):
+        return iter(self._sub_layers)
+
+    def __contains__(self, key):
+        return key in self._sub_layers
+
+    def clear(self):
+        """
+        Remove all items from the LayerDict.
+        """
+        self._layers.clear()
+
+    def pop(self, key):
+        """
+        Remove key from the LayerDict and return its layer.
+
+        Parameters:
+            key (string): key to pop from the LayerDict
+        """
+        v = self[key]
+        del self[key]
+        return v
+
+    def keys(self):
+        """
+        Return an iterable of the LayerDict keys.
+        """
+        return self._layers.keys()
+
+    def items(self):
+        """
+        Return an iterable of the LayerDict key/value pairs.
+        """
+        return self._layers.items()
+
+    def values(self):
+        """
+        Return an iterable of the LayerDict values.
+        """
+        return self._layers.values()
+
+    def update(self, layers):
+        """
+        Update the LayerDict with the key-value pairs from a  or an OrderedDict or  iterable, overwriting existing keys.
+
+        .. note::
+            If :attr:`layers` is an ``OrderedDict``, a ``LayerDict``, or
+            an iterable of key-value pairs, the order of new elements in it is preserved.
+
+        Parameters:
+            other (iterable): a mapping (dictionary) from string to Layer,
+                or an iterable of key-value pairs of type (string, Layer)
+        """
+        assert isinstance(
+            layers, (OrderedDict, LayerDict, dict, list, tuple)
+        ), "'layers' argument must be type of OrderedDict, LayerDict, dict, list, or tuple"
+        if isinstance(layers, (OrderedDict, LayerDict)):
+            for k, l in layers.items():
+                self.add_sublayer(k, l)
+        elif isinstance(layers, dict):
+            for k, l in sorted(layers.items()):
+                self.add_sublayer(k, l)
+        else:
+            for l in layers:
+                assert len(
+                    l
+                ) == 2, "ParameterDict update with list or tuple requires elements with length 2"
+                self.add_sublayer(l[0], l[1])
+
+    def forward(self):
+        raise NotImplementedError()
 
 
 class LayerList(Layer):
