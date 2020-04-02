@@ -23,13 +23,16 @@ class TrilTriuOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of TrilTriuOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of TrilTriuOp should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"), true,
+        platform::errors::NotFound("Input(X) of TrilTriuOp is not found."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("Out"), true,
+        platform::errors::NotFound("Output(Out) of TrilTriuOp is not found."));
     const auto& x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                      "Input(X)'s rank must be at least 2 in TrilTriuOp.");
+                      platform::errors::InvalidArgument(
+                          "Input(X)'s rank must be at least 2 in TrilTriuOp."));
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -67,10 +70,12 @@ class TrilTriuGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) of TrilTriuOp should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output(X@Grad) of TrilTriuOp should not be null");
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+                      platform::errors::NotFound(
+                          "Input(Out@GRAD) of TrilTriuOp should not be null"));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
+                      platform::errors::NotFound(
+                          "Output(X@Grad) of TrilTriuOp should not be null"));
     ctx->SetOutputDim(framework::GradVarName("X"),
                       ctx->GetInputDim(framework::GradVarName("Out")));
   }
