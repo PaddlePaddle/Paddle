@@ -96,7 +96,7 @@ if __name__ == "__main__":
         "-m",
         "--init_model",
         type=str,
-        default='checkpoint/194',
+        default='checkpoint/199',
         help="The init model file of directory.")
     parser.add_argument(
         "-s", "--input_style", type=str, default='A', help="A or B")
