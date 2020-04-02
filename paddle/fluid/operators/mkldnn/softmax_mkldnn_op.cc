@@ -95,7 +95,7 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     auto softmax_src_memory_p = handler.AcquireSrcMemory(input);
     auto softmax_p = handler.AcquireForwardPrimitive();
     // For Inplace src and and dst are the same memory object
-    auto softmax_dst_memory_p = input->Holder() == output->Holder()
+    auto softmax_dst_memory_p = input->IsSharedBufferWith(output)
                                     ? softmax_src_memory_p
                                     : handler.AcquireDstMemory(output);
 
