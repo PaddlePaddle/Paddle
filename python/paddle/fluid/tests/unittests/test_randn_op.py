@@ -17,10 +17,9 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
 
 
 class TestRandnOp(unittest.TestCase):

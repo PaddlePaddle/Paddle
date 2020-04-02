@@ -66,7 +66,7 @@ def randn(shape,
             import paddle.tensor as tensor
 
             data = tensor.randn([2, 4])
-	    place = fluid.CPUPlace()
+            place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             res, = exe.run(fluid.default_main_program(), feed={}, fetch_list=[data])
             print(res)
