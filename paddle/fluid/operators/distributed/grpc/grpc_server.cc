@@ -601,7 +601,7 @@ void AsyncGRPCServer::HandleRequest(
   while (true) {
     VLOG(4) << "HandleRequest " << rpc_name << " wait next";
     if (!cq->Next(&tag, &ok)) {
-      LOG(WARNING) << "CompletionQueue " << rpc_name << " shutdown!";
+      VLOG(4) << "CompletionQueue " << rpc_name << " shutdown!";
       break;
     }
 

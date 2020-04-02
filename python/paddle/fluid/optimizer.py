@@ -65,7 +65,7 @@ class Optimizer(object):
                  parameter_list=None,
                  regularization=None,
                  name=None):
-        self._parameter_list = None
+        self._parameter_list = parameter_list
         if framework.in_dygraph_mode():
             if not isinstance(learning_rate, float) and \
                     not isinstance(learning_rate, LearningRateDecay):
@@ -76,9 +76,7 @@ class Optimizer(object):
                 self._name = unique_name.generate(name)
             else:
                 self._name = unique_name.generate(self.__class__.__name__)
-            if parameter_list is not None:
-                self._parameter_list = parameter_list
-            else:
+            if self._parameter_list is None:
                 raise AttributeError(
                     "parameter_list argument given to the Optimizer should not be None in dygraph mode."
                 )
@@ -623,7 +621,8 @@ class Optimizer(object):
                 is None, at this time :ref:`api_fluid_default_startup_program` will be used.
             parameter_list (list, optional): List of ``Variable`` or ``Variable.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
-                will be updated.
+                will be updated. This also can be set in constructor (i.e. `__init__` function).
+                If set in both, argument in this interface has a high priority.
             no_grad_set (set, optional): Set of ``Variable``  or ``Variable.name`` that don't need
                 to be updated. The default value is None.
             callbacks (list, optional): list of callable objects to run when appending backward
@@ -662,6 +661,8 @@ class Optimizer(object):
                 "The loss.shape should be (1L,), but the current loss.shape is {}. " \
                 "Maybe that you should call fluid.layers.mean to process the current loss.".format(
                     loss.shape)
+            parameter_list = parameter_list if parameter_list \
+                else self._parameter_list
             with program_guard(program, startup_program):
                 params_grads = append_backward(loss, parameter_list,
                                                act_no_grad_set, callbacks)
@@ -799,7 +800,8 @@ class Optimizer(object):
                 is None, at this time :ref:`api_fluid_default_startup_program` will be used.
             parameter_list (list, optional): List of ``Variable`` or ``Variable.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
-                will be updated.
+                will be updated. This also can be set in constructor (i.e. `__init__` function).
+                If set in both, argument in this interface has a high priority.
             no_grad_set (set, optional): Set of ``Variable``  or ``Variable.name`` that don't need
                 to be updated. The default value is None.
             grad_clip (GradClipBase, optional) : Gradient clipping strategy, static
@@ -822,7 +824,8 @@ class Optimizer(object):
                     "'grad_clip' should be an instance of GradientClipBase's derived class"
                 )
             self._grad_clip = grad_clip
-
+        parameter_list = parameter_list if parameter_list \
+            else self._parameter_list
         params_grads = self.backward(
             loss,
             startup_program=startup_program,
