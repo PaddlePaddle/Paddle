@@ -238,12 +238,12 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
     if not soft_label:
         return cross_entropy2(input, label, ignore_index)
 
+    if in_dygraph_mode():
+        return core.ops.cross_entropy(input, label, "soft_label", soft_label,
+                                      "ignore_index", ignore_index)
+
     inputs = {'X': [input], 'Label': [label]}
     attrs = {"soft_label": soft_label, "ignore_index": ignore_index}
-
-    if in_dygraph_mode():
-        outs = core.ops.cross_entropy(inputs, attrs)
-        return outs['Y'][0]
 
     check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
                              'cross_entropy')
@@ -255,13 +255,13 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
 
 
 def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
+    if in_dygraph_mode():
+        loss, _, _ = core.ops.cross_entropy2(input, label, 'ignore_index',
+                                             ignore_index)
+        return loss
+
     inputs = {'X': [input], 'Label': [label]}
     attrs = {'ignore_index': ignore_index}
-
-    if in_dygraph_mode():
-        outs = core.ops.cross_entropy2(inputs, attrs)
-        return outs['Y'][0]
-
     check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
                              'cross_entropy2')
     helper = LayerHelper('cross_entropy2', **locals())
@@ -1233,21 +1233,22 @@ def softmax_with_cross_entropy(logits,
             out = fluid.layers.softmax_with_cross_entropy(
                 logits=fc, label=label)
     """
+    if in_dygraph_mode():
+        softmax, loss = core.ops.softmax_with_cross_entropy(
+            logits, label, 'soft_label', soft_label, 'ignore_index',
+            ignore_index, 'numeric_stable_mode', numeric_stable_mode, 'axis',
+            axis)
+        if not return_softmax:
+            return loss
+        else:
+            return loss, softmax
+
     attrs = {
         'soft_label': soft_label,
         'ignore_index': ignore_index,
         'numeric_stable_mode': numeric_stable_mode,
         'axis': axis
     }
-
-    if in_dygraph_mode():
-        inputs = {'Logits': [logits], 'Label': [label]}
-        outs = core.ops.softmax_with_cross_entropy(inputs, attrs)
-        if not return_softmax:
-            return outs['Loss'][0]
-        else:
-            return outs['Loss'][0], outs['Softmax'][0]
-
     helper = LayerHelper('softmax_with_cross_entropy', **locals())
     softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)
     loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
