@@ -20,6 +20,32 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+void TransDataLayout(const framework::LoDTensor &src_var,
+                     std::string fetch_var_name,
+                     framework::LoDTensor *dst_var) {
+  if (src_var.IsInitialized() && src_var.numel() > 0) {
+#ifdef PADDLE_WITH_MKLDNN
+    if (src_var.layout() == framework::DataLayout::kMKLDNN) {
+      framework::Tensor out;
+      framework::innerTransDataLayoutFromMKLDNN(
+          src_var.layout(),
+          fetch_var_name == framework::GradVarName("Filter")
+              ? framework::DataLayout::kNCHW
+              : paddle::platform::get_cur_paddle_data_layout(),
+          src_var, &out, platform::CPUPlace());
+      TensorCopySync(out, platform::CPUPlace(), dst_var);
+    } else {
+      TensorCopySync(src_var, platform::CPUPlace(), dst_var);
+    }
+#else
+    TensorCopySync(src_var, platform::CPUPlace(), dst_var);
+#endif
+  } else {
+    dst_var->clear();
+    dst_var->Resize({0});
+  }
+  dst_var->set_lod(src_var.lod());
+}
 
 class FetchOp : public framework::OperatorBase {
  public:
@@ -36,53 +62,43 @@ class FetchOp : public framework::OperatorBase {
     PADDLE_ENFORCE(fetch_var != nullptr,
                    "Cannot find fetch variable in scope, fetch_var_name is %s",
                    fetch_var_name);
-
     auto out_name = this->Output("Out");
     auto *out_var = scope.FindVar(out_name);
     PADDLE_ENFORCE(out_var != nullptr,
                    "Cannot find out_var in scope, out_var_name is %s",
                    out_name);
-
     auto col = static_cast<size_t>(Attr<int>("col"));
-
-    auto *fetch_list = out_var->GetMutable<framework::FeedFetchList>();
-    auto &src_item = fetch_var->Get<framework::FeedFetchType>();
-
-    if (col >= fetch_list->size()) {
-      fetch_list->resize(col + 1);
-    }
-    auto &dst_item = fetch_list->at(col);
-
-    // FIXME(yuyang18): Should we assume the fetch operator always generate
-    // CPU outputs?
-    if (src_item.IsInitialized() && src_item.numel() > 0) {
-#ifdef PADDLE_WITH_MKLDNN
-      // Conversion from MKL-DNN to Paddle
-      if (src_item.layout() == framework::DataLayout::kMKLDNN) {
-        framework::Tensor out;
-        // Convert to desired Paddle layout, apart from grads of filter
-        // as params are not a subject to paddle's data_format
-        framework::innerTransDataLayoutFromMKLDNN(
-            src_item.layout(),
-            fetch_var_name == framework::GradVarName("Filter")
-                ? framework::DataLayout::kNCHW
-                : paddle::platform::get_cur_paddle_data_layout(),
-            src_item, &out, platform::CPUPlace());
-        TensorCopySync(out, platform::CPUPlace(), &dst_item);
-      } else {
-        TensorCopySync(src_item, platform::CPUPlace(), &dst_item);
+    if (out_var->IsType<framework::FeedFetchList>()) {
+      auto *fetch_list = out_var->GetMutable<framework::FeedFetchList>();
+      if (col >= fetch_list->size()) {
+        fetch_list->resize(col + 1);
       }
-#else
-      TensorCopySync(src_item, platform::CPUPlace(), &dst_item);
-#endif
+      auto *dst_item = &(fetch_list->at(col));
+      auto &src_item = fetch_var->Get<framework::FeedFetchType>();
+      TransDataLayout(src_item, fetch_var_name, dst_item);
     } else {
-      // Not copy, if the src tensor is empty.
-      dst_item.clear();
-      dst_item.Resize({0});
+      auto *fetch_list = out_var->GetMutable<framework::FetchVarList>();
+      if (col >= fetch_list->size()) {
+        fetch_list->resize(col + 1);
+      }
+      if (fetch_var->IsType<framework::LoDTensor>()) {
+        auto &src_item = fetch_var->Get<framework::LoDTensor>();
+        auto *dst_item =
+            &(boost::get<framework::LoDTensor>(fetch_list->at(col)));
+        TransDataLayout(src_item, fetch_var_name, dst_item);
+      } else if (fetch_var->IsType<framework::LoDTensorArray>()) {
+        auto &src_item = fetch_var->Get<framework::LoDTensorArray>();
+        auto &item = fetch_list->at(col);
+        std::vector<framework::LoDTensor> temp;
+        temp.resize(src_item.size());
+        item = temp;
+        framework::LoDTensorArray *dst_item =
+            &(boost::get<framework::LoDTensorArray>(item));
+        for (size_t i = 0; i < src_item.size(); i++) {
+          TransDataLayout(src_item[i], fetch_var_name, &(dst_item->at(i)));
+        }
+      }
     }
-    dst_item.set_lod(src_item.lod());
-
-    VLOG(3) << "Fetch variable " << fetch_var_name << " to " << out_name;
   }
 };
 

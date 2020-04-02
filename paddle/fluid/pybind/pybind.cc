@@ -101,6 +101,7 @@ DECLARE_bool(use_ngraph);
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensor2DArray);
+PYBIND11_MAKE_OPAQUE(paddle::framework::FetchVarList);
 
 namespace paddle {
 namespace pybind {
@@ -977,6 +978,9 @@ All parameter, weight, gradient are variables in Paddle.
       .def("get_lod_tensor_array",
            [](Variable &self) { return self.GetMutable<LoDTensorArray>(); },
            py::return_value_policy::reference)
+      .def("get_fetch_var_list",
+           [](Variable &self) { return self.GetMutable<FetchVarList>(); },
+           py::return_value_policy::reference)
 #if (defined(PADDLE_WITH_NCCL))
       .def("get_communicator",
            [](Variable &self) -> platform::Communicator * {
@@ -1577,6 +1581,28 @@ All parameter, weight, gradient are variables in Paddle.
              py::list res(self.size());
              for (size_t i = 0; i < self.size(); ++i) {
                res[i] = py::cast(std::move(self[i]));
+             }
+             self.clear();
+             return res;
+           },
+           py::return_value_policy::take_ownership);
+
+  py::class_<FetchVarList>(m, "FetchVarList", R"DOC()DOC")
+      .def("_move_to_list",
+           [](FetchVarList &self) -> py::list {
+             py::list res(self.size());
+             for (size_t i = 0; i < self.size(); ++i) {
+               if (data_is_lod_tensor(self[i])) {
+                 LoDTensor item = boost::get<LoDTensor>(self[i]);
+                 res[i] = py::cast(std::move(item));
+               } else if (data_is_lod_tensor_array(self[i])) {
+                 LoDTensorArray item = boost::get<LoDTensorArray>(self[i]);
+                 py::list temp(item.size());
+                 for (size_t j = 0; j < item.size(); ++j) {
+                   temp[j] = py::cast(std::move(item[j]));
+                 }
+                 res[i] = std::move(temp);
+               }
              }
              self.clear();
              return res;

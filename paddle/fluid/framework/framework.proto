@@ -126,6 +126,7 @@ message VarType {
     LOD_TENSOR_ARRAY = 13;
     PLACE_LIST = 14;
     READER = 15;
+    FETCH_VAR_LIST = 16;
     // Any runtime decided variable type is raw
     // raw variables should manage their own allocations
     // in operators like nccl_op

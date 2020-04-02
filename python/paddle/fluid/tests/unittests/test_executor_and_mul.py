@@ -40,6 +40,20 @@ class TestExecutor(unittest.TestCase):
         self.assertEqual((100, 100), out.shape)
         self.assertTrue(numpy.allclose(out, numpy.dot(a_np, b_np)))
 
+    def test_lod_tensor_array(self):
+        x = data(name='x', shape=[1], dtype='float32')
+        i = layers.fill_constant(shape=[1], dtype='int64', value=0)
+        init_array = layers.array_write(x=x, i=i)
+        layers.increment(i)
+        layers.array_write(x=x, i=i, array=init_array)
+        x_np = numpy.random.random(1).astype('float32')
+        exe = fluid.Executor(fluid.CPUPlace())
+        exe.run(fluid.default_startup_program())
+        res = exe.run(feed={'x': x_np}, fetch_list=[x, init_array])
+        self.assertTrue(numpy.allclose(res[0], x_np))
+        self.assertTrue(numpy.allclose(res[1][0], x_np))
+        self.assertTrue(numpy.allclose(res[1][1], x_np))
+
 
 if __name__ == '__main__':
     unittest.main()

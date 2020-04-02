@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
@@ -23,6 +24,38 @@ using FeedFetchType = LoDTensor;
 using FeedFetchList = std::vector<FeedFetchType>;
 using FetchUnmergedList = std::vector<std::vector<FeedFetchType>>;
 using FetchResultType = boost::variant<FeedFetchList, FetchUnmergedList>;
+
+class FetchVar : public boost::variant<LoDTensor, LoDTensorArray> {
+ private:
+  using FetchVarBase = boost::variant<LoDTensor, LoDTensorArray>;
+
+ public:
+  FetchVar() = default;
+  FetchVar(const LoDTensor &lod_tensor) : FetchVarBase(lod_tensor) {}  // NOLINT
+  FetchVar(const LoDTensorArray &lod_tensor_array)                     // NOLINT
+      : FetchVarBase(lod_tensor_array) {}                              // NOLINT
+};
+
+// using FetchVar = boost::variant<LoDTensor, LoDTensorArray>;
+using FetchVarList = std::vector<FetchVar>;
+
+struct DataIsLoDTensor : public boost::static_visitor<bool> {
+  bool operator()(const LoDTensor &data) const { return true; }
+  bool operator()(const LoDTensorArray &) const { return false; }
+};
+
+struct DataIsLoDTensorArray : public boost::static_visitor<bool> {
+  bool operator()(const LoDTensor &) const { return false; }
+  bool operator()(const LoDTensorArray &data) const { return true; }
+};
+
+inline bool data_is_lod_tensor(const FetchVar &data) {
+  return boost::apply_visitor(DataIsLoDTensor(), data);
+}
+
+inline bool data_is_lod_tensor_array(const FetchVar &data) {
+  return boost::apply_visitor(DataIsLoDTensorArray(), data);
+}
 
 static const char kFeedOpType[] = "feed";
 static const char kFetchOpType[] = "fetch";

@@ -311,6 +311,16 @@ def has_fetch_operators(block, fetch_targets, fetch_holder_name):
     return fetch_count > 0
 
 
+def _has_lod_tensor_array(program, fetch_list):
+    global_block = program.global_block()
+    fetch_var_names = list(map(_to_name_str, fetch_list))
+    for fetch_var_name in fetch_var_names:
+        fetch_var = global_block.var(fetch_var_name)
+        if fetch_var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+            return True
+    return False
+
+
 def _fetch_var(name, scope=None, return_numpy=True):
     """
     Fetch the value of the variable with the given name from the
@@ -545,7 +555,7 @@ class Executor(object):
         else:
             fetch_var = global_block.create_var(
                 name=fetch_var_name,
-                type=core.VarDesc.VarType.FETCH_LIST,
+                type=core.VarDesc.VarType.FETCH_VAR_LIST,
                 persistable=True)
 
         # prepend feed operators
@@ -901,6 +911,11 @@ class Executor(object):
                 use_program_cache=use_program_cache)
 
         program._compile(scope, self.place)
+
+        if _has_lod_tensor_array(program._program, fetch_list):
+            raise ValueError("Currently, The type of item in fetch_list should be" \
+                "LoDTensor the program is compiled.")
+
         if program._is_inference:
             return self._run_inference(program._executor, feed)
         else:
@@ -977,7 +992,7 @@ class Executor(object):
         else:
             self._default_executor.run_prepared_ctx(ctx, scope, False, False,
                                                     False)
-        arr = scope.find_var(fetch_var_name).get_lod_tensor_array()
+        arr = scope.find_var(fetch_var_name).get_fetch_var_list()
         tensors = arr._move_to_list()
         if return_numpy:
             return as_numpy(tensors)

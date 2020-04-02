@@ -49,11 +49,13 @@ void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
     var->GetMutable<ReaderHolder>();
   } else if (var_type == proto::VarType::RAW) {
     // GetMutable will be called in operator
+  } else if (var_type == proto::VarType::FETCH_VAR_LIST) {
+    var->GetMutable<framework::FetchVarList>();
   } else {
     PADDLE_THROW(
         "Variable type %d is not in "
         "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
-        "LOD_RANK_TABLE, PLACE_LIST, READER, RAW]",
+        "LOD_RANK_TABLE, PLACE_LIST, FETCH_VAR_LIST, READER, RAW]",
         var_type);
   }
 }
