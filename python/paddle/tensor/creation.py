@@ -12,23 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import numpy as np
-import warnings
-import six
-import os
-import inspect
-from ..fluid.layer_helper import LayerHelper
-from ..fluid.param_attr import ParamAttr
-from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, convert_np_dtype_to_dtype_
-from ..fluid import core
-from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
-from ..fluid.layers import utils
-
 # TODO: define functions to get create a tensor  
+
+from __future__ import print_function
+from ..fluid.framework import Variable
+from ..fluid.initializer import Constant
+from ..fluid.layer_helper import LayerHelper
+from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
+from ..fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator, device_guard
+from ..fluid.layers import fill_constant
+
 __all__ = [
-    #            'create_tensor', 
+    'create_tensor',
     #            'create_lod_tensor', 
     #            'create_random_int_lodtensor',
     #            'crop_tensor', 
@@ -42,15 +37,14 @@ __all__ = [
     #            'zeros', 
     #            'zeros_like', 
     #            'arrange',
-    'eye'
+    'eye',
+    'full',
+    #            'linspace',
+    #            'full_like',
+    #            'triu',
+    #            'tril',
+    #            'meshgrid'
 ]
-
-#            'full',
-#            'linspace',
-#            'full_like',
-#            'triu',
-#            'tril',
-#            'meshgrid'
 
 
 def eye(num_rows,
@@ -117,4 +111,72 @@ def eye(num_rows,
         },
         stop_gradient=True)
     out.stop_gradient = stop_gradient
+    return out
+
+
+def full(shape,
+         fill_value,
+         out=None,
+         dtype=None,
+         device=None,
+         stop_gradient=True,
+         name=None):
+    """
+    This function return a Tensor with the `fill_value` which size is same as `shape`
+    
+    Args:
+        shape(list|tuple|Variable): Shape of the Tensor to be created.
+                The data type is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
+                the elements of it should be integers or Tensors with shape [1].
+                If ``shape`` is an Variable, it should be an 1-D Tensor .
+        value(float): The constant value used to initialize the Tensor to be created.
+        out(Variable, optional): Optional output which can be any created 
+            Variable that meets the requirements to store the result of operation.
+            if out is None, a new Varibale will be create to store the result.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output tensor
+            which can be float16, float32, float64, int32, int64, if dytpe is `None`, the data
+            type of created tensor is `float32`
+        device(str, optional): This parameter specifies that the Tensor is created 
+            on the GPU or CPU.
+        stop_gradient(bool, optional): Indicating if we stop gradient from current(out) Variable,
+            default value is True.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this
+            property.  For more information, please refer to :ref:`api_guide_Name`.
+    
+    Examples:
+        .. code-block:: python
+
+          import paddle.tensor as tensor
+          import paddle.fluid as fluid
+
+          data1 = tensor.full(shape=[2,1], full_value=0, dtype='int64') # data1=[[0],[0]]
+          data2 = tensor.full(shape=[2,1], full_value=5, dtype='int64', device='gpu') # data2=[[5],[5]]
+
+          # attr shape is a list which contains Variable Tensor.
+          positive_2 = fluid.layers.fill_constant([1], "int32", 2)
+          data3 = tensor.full(shape=[1, positive_2], dtype='float32', full_value=1.5) # data3=[1.5, 1.5]
+
+          # attr shape is an Variable Tensor.
+          shape = fluid.layers.fill_constant([1,2], "int32", 2) # shape=[2,2]
+          data4 = tensor.full(shape=shape, dtype='bool', full_value=True) # data4=[[True,True],[True,True]]
+    """
+
+    helper = LayerHelper("full", **locals())
+
+    if dtype is None:
+        dtype = 'float32'
+
+    check_dtype(dtype, 'create data type',
+                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+                'full')
+    check_type(shape, 'shape', (Variable, list, tuple), 'full')
+
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+
+    out.stop_gradient = stop_gradient
+
+    with device_guard(device):
+        out = fill_constant(shape=shape, dtype=dtype, value=fill_value, out=out)
+
     return out
