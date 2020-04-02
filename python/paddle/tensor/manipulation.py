@@ -58,7 +58,7 @@ def flip(input, dims, name=None):
     Args:
         input (Variable): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor
             should be float32, float64, int32, int64, bool.
-        dims(list): The axis to flip on.
+        dims (list): The axis to flip on.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
 
@@ -90,6 +90,7 @@ def flip(input, dims, name=None):
     check_dtype(dtype, 'X',
                 ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
                 'flip')
+    check_type(dims, 'dims', (list, tuple), 'flip')
     assert len(dims) > 0, 'len(dims) must be greater than 0.'
     if name is None:
         out = helper.create_variable_for_type_inference(dtype)
