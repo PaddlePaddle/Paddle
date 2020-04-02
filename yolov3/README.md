@@ -75,29 +75,27 @@ YOLOv3 的网络结构由基础特征提取网络、multi-scale特征融合层�
 
 ### 数据准备
 
-在[MS-COCO数据集](http://cocodataset.org/#download)上进行训练，通过如下方式下载数据集。
+模型目前支持COCO数据集格式的数据读入和精度评估，我们同时提供了将转换为COCO数据集的格式的Pascal VOC数据集下载，可通过如下命令下载。
 
   ```bash
-  python dataset/coco/download.py
+  python dataset/voc/download.py
   ```
 
 数据目录结构如下：
 
   ```
-  dataset/coco/
+  dataset/voc/
   ├── annotations
-  │   ├── instances_train2014.json
   │   ├── instances_train2017.json
-  │   ├── instances_val2014.json
   │   ├── instances_val2017.json
   |   ...
   ├── train2017
-  │   ├── 000000000009.jpg
-  │   ├── 000000580008.jpg
+  │   ├── 1013.jpg
+  │   ├── 1014.jpg
   |   ...
   ├── val2017
-  │   ├── 000000000139.jpg
-  │   ├── 000000000285.jpg
+  │   ├── 2551.jpg
+  │   ├── 2552.jpg
   |   ...
   ```
 
@@ -140,14 +138,16 @@ YOLOv3模型输出为LoDTensor，只支持使用batch_size为1进行评估，可
 1. 自动下载Paddle发布的[YOLOv3-DarkNet53](https://paddlemodels.bj.bcebos.com/hapi/yolov3_darknet53.pdparams)权重评估
 
 ```bash
-python main.py --data=<path/to/dataset> --eval_only
+python main.py --data=dataset/voc  --eval_only
 ```
 
 2. 加载checkpoint进行精度评估
 
 ```bash
-python main.py --data=<path/to/dataset> --eval_only --weights=yolo_checkpoint/final
+python main.py --data=dataset/voc --eval_only --weights=yolo_checkpoint/no_mixup/final
 ```
+
+同样可以通过指定`-d`参数进行动态图模式的评估。
 
 #### 评估精度
 
@@ -166,6 +166,33 @@ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.599
 Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.294
 Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.506
 Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.670
+```
+
+### 模型推断及可视化
+
+可通过如下两种方式进行模型推断。
+
+1. 自动下载Paddle发布的[YOLOv3-DarkNet53](https://paddlemodels.bj.bcebos.com/hapi/yolov3_darknet53.pdparams)权重评估
+
+```bash
+python infer.py --label_list=dataset/voc/label_list.txt --infer_image=image/dog.jpg
+```
+
+2. 加载checkpoint进行精度评估
+
+```bash
+python infer.py --label_list=dataset/voc/label_list.txt --infer_image=image/dog.jpg --weights=yolo_checkpoint/mo_mixup/final
+```
+
+推断结果可视化图像会保存于`--output`指定的文件夹下，默认保存于`./output`目录。
+
+模型推断会输出如下检测结果日志：
+
+```text
+2020-04-02 08:26:47,268-INFO: detect bicycle at [116.14993, 127.278336, 579.7716, 438.44214] score: 0.97
+2020-04-02 08:26:47,273-INFO: detect dog at [127.44086, 215.71997, 316.04276, 539.7584] score: 0.99
+2020-04-02 08:26:47,274-INFO: detect car at [475.42343, 80.007484, 687.16095, 171.27374] score: 0.98
+2020-04-02 08:26:47,274-INFO: Detection bbox results save in output/dog.jpg
 ```
 
 ## 参考论文

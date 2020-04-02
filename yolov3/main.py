@@ -196,8 +196,6 @@ if __name__ == '__main__':
     parser.add_argument(
         "-b", "--batch_size", default=8, type=int, help="batch size")
     parser.add_argument(
-        "-n", "--num_devices", default=1, type=int, help="number of devices")
-    parser.add_argument(
         "-j", "--num_workers", default=4, type=int, help="reader worker number")
     parser.add_argument(
         "-p", "--pretrain_weights", default=None, type=str,

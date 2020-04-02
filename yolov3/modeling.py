@@ -91,8 +91,8 @@ class YOLOv3(Model):
     def __init__(self, num_classes=80, model_mode='train'):
         super(YOLOv3, self).__init__()
         self.num_classes = num_classes
-        assert str.lower(model_mode) in ['train', 'eval'], \
-            "model_mode should be 'train' or 'val', but got " \
+        assert str.lower(model_mode) in ['train', 'eval', 'test'], \
+            "model_mode should be 'train' 'eval' or 'test', but got " \
             "{}".format(model_mode)
         self.model_mode = str.lower(model_mode)
         self.anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45,
@@ -157,7 +157,7 @@ class YOLOv3(Model):
                 route = self.route_blocks[idx](route)
                 route = fluid.layers.resize_nearest(route, scale=2)
 
-            if self.model_mode == 'eval':
+            if self.model_mode != 'train':
                 anchor_mask = self.anchor_masks[idx]
                 mask_anchors = []
                 for m in anchor_mask:
@@ -181,16 +181,21 @@ class YOLOv3(Model):
         if self.model_mode == 'train':
             return outputs
 
-        return outputs + [img_id[0, :], fluid.layers.multiclass_nms(
-                bboxes=fluid.layers.concat(boxes, axis=1),
-                scores=fluid.layers.concat(scores, axis=2),
-                score_threshold=self.valid_thresh,
-                nms_top_k=self.nms_topk,
-                keep_top_k=self.nms_posk,
-                nms_threshold=self.nms_thresh,
-                background_label=-1)
-]
+        preds = [img_id[0, :],
+                 fluid.layers.multiclass_nms(
+                    bboxes=fluid.layers.concat(boxes, axis=1),
+                    scores=fluid.layers.concat(scores, axis=2),
+                    score_threshold=self.valid_thresh,
+                    nms_top_k=self.nms_topk,
+                    keep_top_k=self.nms_posk,
+                    nms_threshold=self.nms_thresh,
+                    background_label=-1)]
 
+        if self.model_mode == 'test':
+            return preds
+
+        # model_mode == "eval"
+        return outputs + preds
 
 class YoloLoss(Loss):
     def __init__(self, num_classes=80, num_max_boxes=50):
