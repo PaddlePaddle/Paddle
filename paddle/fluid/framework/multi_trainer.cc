@@ -69,7 +69,6 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
     workers_[i]->SetRootScope(root_scope_);
     workers_[i]->CreateDeviceResource(main_program);  // Program
     workers_[i]->BindingDataFeedMemory();
-    workers_[i]->CacheProgram(main_program);
   }
 }
 

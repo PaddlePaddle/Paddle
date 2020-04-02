@@ -148,7 +148,7 @@ class DeviceWorker {
   virtual void CreateEvent() {};
   virtual void SetWokerNum(int num) {};
   virtual void CreateThreadParam(const ProgramDesc &main_program) {};
-  virtual void CacheProgram(const ProgramDesc &main_program) {};
+  virtual void Schedule(int taskid) {};
   #ifdef PADDLE_WITH_CUDA
   virtual void SetStream(cudaStream_t stream) {}
   #endif
@@ -301,10 +301,18 @@ class DownpourWorker : public HogwildWorker {
   std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
 };
 
+enum HeterTaskState {
+  PULL_SPARSE,
+  OP_RUN,
+  XPU,
+  PUSH_SPARSE,
+  DONE
+};
+
 class HeterTask {
 public:
   void UpdateState();
-  void PackTask(Scope* scope, int taskid, );
+  void PackTask(Scope* scope, int taskid, DataFeed* reader);
 
   Scope* scope_;
   int taskid_;
@@ -315,15 +323,7 @@ public:
   std::map<uint64_t, std::vector<std::vector<float>>> feature_values_;
   std::map<uint64_t, std::vector<std::vector<float>>> feature_grads_;
   std::map<uint64_t, std::vector<uint64_t>> sparse_push_keys_;
-}
-
-enum HeterTaskState {
-  PULL_SPARSE;
-  OP_RUN;
-  XPU;
-  PUSH_SPARSE;
-  DONE;
-}
+};
 
 template <class T>
 class HeterObjectPool {
@@ -360,18 +360,18 @@ struct HeterNode {
 template <class K, class T>
 class HeterList {
 public:
-  Heterlist() 
-    : _head(new HeterNode<K, T>)
-    , _tail(new HeterNode<K, T>) {
-    _head->prev = NULL;
-    _head->next = _tail;
-    _tail->prev = _head;
-    _tail->next = NULL;
+  HeterList() 
+    : head_(new HeterNode<K, T>)
+    , tail_(new HeterNode<K, T>) {
+    head_->prev = NULL;
+    head_->next = tail_;
+    tail_->prev = head_;
+    tail_->next = NULL;
   }
 
   ~HeterList() {
-    delete _head;
-    delete _tail;
+    delete head_;
+    delete tail_;
   }
 
   bool TryPut(K& key, T& value) {
@@ -383,7 +383,7 @@ public:
       HeterNode<K, T>* node = new HeterNode<K, T>;
       node->key = key;
       node->value = value;
-      _map[node->key] = node;
+      map_[node->key] = node;
       attach(node);
       return true;
     }
@@ -394,15 +394,15 @@ public:
     HeterNode<K, T>* node = new HeterNode<K, T>;
     node->key = key;
     node->value = value;
-    _map[node->key] = node;
+    map_[node->key] = node;
     attach(node);
     return true;
   }
 
   T Get(const K &key) {
     std::lock_guard<std::mutex> lock(mutex_);
-    auto iter = _map.find(key);
-    if (iter != _map.end()) {
+    auto iter = map_.find(key);
+    if (iter != map_.end()) {
       HeterNode<K, T>* node = iter->second;
       detach(node);
       T ret = std::move(node->value);
@@ -419,18 +419,18 @@ private:
     }
 
     void attach(HeterNode<K, T> *node) {
-      node->prev = _head;
-      node->next = _head->next;
-      _head->next->prev = node;
-      _head->next = node;
+      node->prev = head_;
+      node->next = head_->next;
+      head_->next->prev = node;
+      head_->next = node;
     }
 
 private:
-    HeterNode<K, T> *_head;
-    HeterNode<K, T> *_tail;
-    std::unordered_map<K, HeterNode<K, T>*> _map;
+    HeterNode<K, T> *head_;
+    HeterNode<K, T> *tail_;
+    std::unordered_map<K, HeterNode<K, T>*> map_;
     std::unordered_set<K> task_map_;
-    std::mutex _mutex;
+    std::mutex mutex_;
 };
 
 #ifdef PADDLE_WITH_CUDA
@@ -440,7 +440,6 @@ class HeterCpuWorker : public HogwildWorker {
   virtual ~HeterCpuWorker() {}
   virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
-  virtual void SetStream(cudaStream_t stream) { copy_stream_ = stream; }
   virtual void CreateEvent();
   virtual void TrainFilesWithProfiler();
   virtual void SetNeedDump(bool need_dump_field);
@@ -448,7 +447,7 @@ class HeterCpuWorker : public HogwildWorker {
   virtual void CreatePinVar();
   virtual void SetWokerNum(int num) { worker_num_ = num; }
   virtual void CreateThreadParam(const ProgramDesc &main_program);
-  virtual void CacheProgram(const ProgramDesc &main_program) { program_ = main_program; }
+  virtual void Schedule(int taskid);
   template <typename T>
   void MemCpy(LoDTensor* tensor, LoDTensor* root_tensor,
               const paddle::platform::Place& thread_place,

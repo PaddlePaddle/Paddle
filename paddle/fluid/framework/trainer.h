@@ -127,6 +127,7 @@ class HeterTrainer : public MultiTrainer {
   virtual void InitDumpEnv();
   virtual Scope* GetWorkerScope(int thread_id);
   virtual void DumpWork(int tid);
+  virtual void RegisterHeterCallback();
 
  protected:
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;

@@ -198,7 +198,7 @@ void FleetWrapper::HeterPullSparseVars(
     pull_result_ptr.push_back(t.data());
   }
   auto status = pslib_ptr_->_worker_ptr->heter_pull_sparse(workerid,
-      pull_result_ptr.data(), table_id, fea_keys.data(), fea_keys.size());
+      pull_result_ptr.data(), table_id, fea_keys.data(), fea_keys.size(), task->taskid_);
   pull_sparse_status.push_back(std::move(status));
   for (auto& t : pull_sparse_status) {
     t.wait();
@@ -655,11 +655,10 @@ void FleetWrapper::HeterPushSparseVars(
   int grad_dim = emb_dim;
   int show_index = 0;
   int click_index = 1;
-  bool in_cpu = true;
-  auto& fea_keys = (task->features_)[tid];
-  auto& fea_labels = (task->feature_labels_)[tid];
-  auto& push_values = (task->feature_grads_)[tid];
-  auto& sparse_push_keys = (task->sparse_push_keys_)[tid];
+  auto& fea_keys = (task->features_)[table_id];
+  auto& fea_labels = (task->feature_labels_)[table_id];
+  auto& push_values = (task->feature_grads_)[table_id];
+  auto& sparse_push_keys = (task->sparse_push_keys_)[table_id];
 
   if (use_cvm) {
     offset = 0;
@@ -683,26 +682,6 @@ void FleetWrapper::HeterPushSparseVars(
     t.resize(emb_dim + offset + slot_offset);
   }
   uint64_t fea_idx = 0u;
-  if (!platform::is_cpu_place(place)) {
-    in_cpu = false;
-    cudaEventSynchronize(event);
-    
-    Variable* g_var = scope.FindVar(sparse_grad_names[0]);
-    LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
-    float* g = g_tensor->data<float>();
-    
-    Variable *pin_var = scope.FindVar(sparse_grad_names[0] + "pin");
-    LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();
-    float *pin_g = pin_tensor->mutable_data<float>(g_tensor->dims(), platform::CUDAPinnedPlace());
-    #ifdef PADDLE_WITH_CUDA
-    memory::Copy(
-        platform::CUDAPinnedPlace(),
-        pin_g,
-        boost::get<platform::CUDAPlace>(place),
-        g, sizeof(float) * g_tensor->numel(), stream);
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, stream));
-    #endif
-  }
   for (size_t i = 0;
        i < sparse_key_names.size() && i < sparse_grad_names.size(); ++i) {
     Variable* var = scope.FindVar(sparse_key_names[i]);
@@ -730,32 +709,6 @@ void FleetWrapper::HeterPushSparseVars(
       exit(-1);
     }
     float* g = g_tensor->data<float>();
-    if (!in_cpu) {
-      
-      Variable *pin_var = scope.FindVar(sparse_grad_names[i] + "pin");
-      LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();
-      g = pin_tensor->data<float>();
-
-      cudaEventSynchronize(event);
-      if (i + 1 < sparse_grad_names.size()) {
-    
-        Variable* next_g_var = scope.FindVar(sparse_grad_names[i + 1]);
-        LoDTensor* next_g_tensor = next_g_var->GetMutable<LoDTensor>();
-        float* next_g = next_g_tensor->data<float>();
-        
-        Variable *next_pin_var = scope.FindVar(sparse_grad_names[i + 1] + "pin");
-        LoDTensor* next_pin_tensor = next_pin_var->GetMutable<LoDTensor>();
-        float * next_pin_g = next_pin_tensor->mutable_data<float>(next_g_tensor->dims(), platform::CUDAPinnedPlace());
-        #ifdef PADDLE_WITH_CUDA
-        memory::Copy(
-            platform::CUDAPinnedPlace(),
-            next_pin_g,
-            boost::get<platform::CUDAPlace>(place),
-            next_g, sizeof(float) * next_g_tensor->numel(), stream);
-        PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, stream));
-        #endif
-      }
-    }
 
     if (scale_sparse_gradient_with_batch_size_ && grad_dim > 0) {
       int dim = emb_dim + offset;
@@ -1109,7 +1062,7 @@ int FleetWrapper::RegisterClientToClientMsgHandler(int msg_type,
   return 0;
 }
 
-int FleetWrapper::RegisterHeterCallback(MsgHandlerFunc handler) {
+int FleetWrapper::RegisterHeterCallback(HeterCallBackFunc handler) {
 #ifdef PADDLE_WITH_PSLIB
   VLOG(3) << "calling FleetWrapper::RegisterHeterCallback";
   VLOG(3) << "pslib_ptr_=" << pslib_ptr_;

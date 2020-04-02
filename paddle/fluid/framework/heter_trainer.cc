@@ -87,8 +87,8 @@ void HeterTrainer::RegisterHeterCallback() {
   fleet_ptr->RegisterHeterCallback(
     [this](int worker, int taskid) {
       workers_[worker]->Schedule(taskid);
-    };
-  )
+    }
+  );
 }
 
 void HeterTrainer::DumpWork(int tid) {

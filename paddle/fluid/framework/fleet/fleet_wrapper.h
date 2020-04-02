@@ -27,6 +27,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 
@@ -249,7 +250,7 @@ class FleetWrapper {
   
   typedef std::function<void (int, int)> HeterCallBackFunc;
   
-  int RegisterHeterCallback(MsgHandlerFunc handler);
+  int RegisterHeterCallback(HeterCallBackFunc handler);
 
   // send client to client message
   std::future<int32_t> SendClientToClientMsg(int msg_type, int to_client_id,

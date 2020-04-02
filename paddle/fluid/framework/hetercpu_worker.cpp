@@ -29,14 +29,14 @@ namespace framework {
 
 void HeterTask::PackTask(Scope* thread_scope, int taskid, DataFeed* reader) {
   
-  auto &block = program_.Block(0);
+  //auto &block = program_.Block(0);
   scope_ = thread_scope->NewScope();
-  for (auto &var : block.AllVars()) {
-    if (!var->Persistable()) {
-      auto *ptr = scope_->Var(var->Name());
-      InitializeVariable(ptr, var->GetType());
-    }
-  }
+  //for (auto &var : block.AllVars()) {
+  //  if (!var->Persistable()) {
+  //    auto *ptr = scope_->Var(var->Name());
+  //    InitializeVariable(ptr, var->GetType());
+  //  }
+  //}
   state_ = PULL_SPARSE;
   auto& use_slots = reader->use_slots_;
   for (size_t i = 0; i < use_slots.size(); ++i) {
