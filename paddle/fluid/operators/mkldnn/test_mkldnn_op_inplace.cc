@@ -95,7 +95,7 @@ framework::OpRegistry::CreateOp(op_type, {{"X", {"x"}}, {"Y", {"x1"}}}, {{"Out",
   // Get in-place result
   auto &out_tensor = scope.FindVar("x")->Get<framework::LoDTensor>();
   PADDLE_ENFORCE_EQ(
-      &out_tensor, x,
+      &out_tensor, input_names[0].tensor,
       platform::errors::InvalidArgument(
           "Input and output vars should share tensor for In-place test"));
 
