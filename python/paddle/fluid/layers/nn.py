@@ -50,6 +50,7 @@ __all__ = [
     'adaptive_pool2d',
     'adaptive_pool3d',
     'batch_norm',
+    'inplace_abn',
     'instance_norm',
     'data_norm',
     'conv2d_transpose',
@@ -192,11 +193,8 @@ def _elementwise_op_in_dygraph(x,
                                act=None,
                                use_mkldnn=False,
                                op_name=None):
-    attrs = {'axis': axis, 'use_mkldnn': use_mkldnn}
-    inputs = {'X': [x], 'Y': [y]}
     op = getattr(core.ops, op_name)
-    outs = op(inputs, attrs)
-    out = outs['Out'][0]
+    out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
 
     return dygraph_utils._append_activation_in_dygraph(
         out, act, use_mkldnn=use_mkldnn)
@@ -498,6 +496,148 @@ def embedding(input,
             'padding_idx': padding_idx
         })
     return tmp
+
+
+def _pull_sparse(input,
+                 size,
+                 table_id,
+                 accessor_class,
+                 name="embedding",
+                 ctr_label_name="",
+                 padding_id=0,
+                 dtype='float32',
+                 scale_sparse_grad=True):
+    """
+    **Pull Fleet Sparse Layer**
+
+    This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
+    Fleet lookup table. The result of this lookup is the embedding of each ID in the
+    :attr:`input`.
+
+    Args:
+        input(Variable|list of Variable): Input is a Tensor<int64> Variable, which
+            contains the IDs information.
+        size(int): The embedding size parameter, which indicates the size of
+            each embedding vector respectively.
+        table_id(int): the fleet table id of this embedding.
+        accessor_class(str): the pslib accessor of the table, default is DownpourCtrAccessor.
+        ctr_label_name(str): the layer name of click.
+        padding_id(int): the padding id during lookup, default is 0.
+        dtype(str): The dtype refers to the data type of output tensor. Only supports
+            float32 now.
+        scale_sparse_grad(bool): whether to scale sparse gradient with batch size. default
+            is True.
+
+    Returns:
+        Variable|list of Variable: The tensor variable storing the embeddings of the \
+                  supplied inputs.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          emb = fluid.layers.nn._pull_sparse(
+              input=data, size=11, table_id=0, accessor_class="DownpourCtrAccessor")
+    """
+    helper = LayerHelper(name, **locals())
+    inputs = helper.multiple_input()
+    outs = [helper.create_variable_for_type_inference(dtype)]
+    input_names = [i.name for i in inputs]
+    attrs = {
+        'EmbeddingDim': size,
+        'TableId': table_id,
+        'AccessorClass': accessor_class,
+        'CtrLabelName': ctr_label_name,
+        'PaddingId': padding_id,
+        'ScaleSparseGrad': scale_sparse_grad,
+        'InputNames': input_names,
+        # this is only for compatible with embedding op
+        'is_distributed': True
+    }
+    # this is only for compatible with embedding op
+    w, _ = helper.create_or_get_global_variable(
+        name=name, shape=[size], dtype=dtype, is_bias=False, persistable=True)
+    helper.append_op(
+        type='pull_sparse',
+        inputs={'Ids': inputs,
+                'W': w},
+        outputs={'Out': outs},
+        attrs=attrs)
+    if len(outs) == 1:
+        return outs[0]
+    return outs
+
+
+def _pull_sparse_v2(input,
+                    size,
+                    table_id,
+                    accessor_class,
+                    name="embedding",
+                    ctr_label_name="",
+                    padding_id=0,
+                    dtype='float32',
+                    scale_sparse_grad=True):
+    """
+    **Pull Fleet Sparse Layer**
+
+    This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
+    Fleet lookup table. The result of this lookup is the embedding of each ID in the
+    :attr:`input`.
+
+    Args:
+        input(Variable|list of Variable): Input is a Tensor<int64> Variable, which
+            contains the IDs information.
+        size(int): The embedding size parameter, which indicates the size of
+            each embedding vector respectively.
+        table_id(int): the pslib table id of this embedding.
+        accessor_class(str): the fleet accessor of the table, default is DownpourCtrAccessor.
+        ctr_label_name(str): the layer name of click.
+        padding_id(int): the padding id during lookup, default is 0.
+        dtype(str): The dtype refers to the data type of output tensor. Only supports
+            float32 now.
+        scale_sparse_grad(bool): whether to scale sparse gradient with batch size. default
+            is True.
+
+    Returns:
+        Variable|list of Variable: The tensor variable storing the embeddings of the \
+                  supplied inputs.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          emb = fluid.layers.nn._pull_sparse_v2(
+              input=data, size=11, table_id=0, accessor_class="DownpourCtrAccessor")
+    """
+    helper = LayerHelper(name, **locals())
+    inputs = helper.multiple_input()
+    outs = [helper.create_variable_for_type_inference(dtype)]
+    input_names = [i.name for i in inputs]
+    attrs = {
+        'EmbeddingDim': size,
+        'TableId': table_id,
+        'AccessorClass': accessor_class,
+        'CtrLabelName': ctr_label_name,
+        'PaddingId': padding_id,
+        'ScaleSparseGrad': scale_sparse_grad,
+        'InputNames': input_names,
+        # this is only for compatible with embedding op
+        'is_distributed': True
+    }
+    # this is only for compatible with embedding op
+    w, _ = helper.create_or_get_global_variable(
+        name=name, shape=[size], dtype=dtype, is_bias=False, persistable=True)
+    helper.append_op(
+        type='pull_sparse_v2',
+        inputs={'Ids': inputs,
+                'W': w},
+        outputs={'Out': outs},
+        attrs=attrs)
+    if len(outs) == 1:
+        return outs[0]
+    return outs
 
 
 def _pull_box_sparse(input, size, dtype='float32'):
@@ -835,11 +975,16 @@ def dropout(x,
         return attrs
 
     if in_dygraph_mode():
-        attrs = get_attrs(default_main_program(), dropout_prob, is_test, seed)
-        attrs['is_test'] = not _dygraph_tracer()._train_mode
-        inputs = {'X': [x]}
-        outs = core.ops.dropout(inputs, attrs)
-        return outs['Out'][0]
+        if (seed is None or
+                seed == 0) and default_main_program().random_seed != 0:
+            seed = default_main_program().random_seed
+        seed = seed if seed is not None else 0
+        _is_test = not _dygraph_tracer()._train_mode
+        out, mask = core.ops.dropout(x, 'dropout_prob', dropout_prob, 'is_test',
+                                     _is_test, 'fix_seed', seed is not None,
+                                     'seed', seed, 'dropout_implementation',
+                                     dropout_implementation)
+        return out
 
     helper = LayerHelper('dropout', **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
@@ -1118,12 +1263,12 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
                              fetch_list=[result[0]])
             print(output)
     """
-    inputs = {"X": [input]}
-    attrs = {"axis": axis, "use_cudnn": use_cudnn}
 
     if in_dygraph_mode():
-        outs = core.ops.softmax(inputs, attrs)
-        return outs['Out'][0]
+        return core.ops.softmax(input, 'axis', axis, 'use_cudnn', use_cudnn)
+
+    inputs = {"X": [input]}
+    attrs = {"axis": axis, "use_cudnn": use_cudnn}
 
     helper = LayerHelper('softmax', **locals())
     check_variable_and_dtype(input, 'input', ['float16', 'float32', 'float64'],
@@ -2494,9 +2639,9 @@ def batch_norm(input,
 	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
 	     Default: None.
         data_layout (str, optional): Specify the data format of the input, and the data format of the output 
-            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
-            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`.
+             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+             `[batch_size, input_channels, input_height, input_width]`.
         in_place(bool, Default False): Make the input and output of batch norm reuse memory.
         name(str|None): For detailed information, please refer to :ref:`api_guide_Name`. 
             Usually name is no need to set and None by default. 
@@ -2513,7 +2658,6 @@ def batch_norm(input,
             or is_test to true, and the behavior is equivalent.
             In train mode, when setting use_global_stats True, the global mean
             and variance are also used during train period.
-
     Returns:
         A Variable holding Tensor which is the result after applying batch normalization on the input, 
         has same shape and data type with input. 
@@ -2626,8 +2770,8 @@ def batch_norm(input,
         reserve_space = helper.create_variable_for_type_inference(
             dtype=core.VarDesc.VarType.FP16, stop_gradient=True)
 
-    batch_norm_out = input if in_place else helper.create_variable_for_type_inference(
-        dtype)
+    batch_norm_out = input if in_place else \
+            helper.create_variable_for_type_inference(dtype)
 
     inputs = {
         "X": input,
@@ -2663,6 +2807,209 @@ def batch_norm(input,
         type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
 
     return helper.append_activation(batch_norm_out)
+
+
+def inplace_abn(input,
+                act=None,
+                is_test=False,
+                momentum=0.9,
+                epsilon=1e-05,
+                param_attr=None,
+                bias_attr=None,
+                data_layout='NCHW',
+                name=None,
+                moving_mean_name=None,
+                moving_variance_name=None,
+                do_model_average_for_mean_and_var=True,
+                use_global_stats=False,
+                act_alpha=1.0):
+    """
+    **In-place Activation Batch Normalization Layer**
+    
+    This layer calculates batch normalization and activation with in-place memory.
+    For batch normalization calculations, see `fluid.layers.batch_norm`.
+    For in-place activation batch normalization, see `In-Place Activated BatchNorm for 
+    Memory-Optimized Training of DNNs <https://arxiv.org/abs/1712.02616>`_
+
+    `inplace_abn` only support activation type as `None`, `identity`, `leaky_relu`,
+    `elu` currently.
+    `inplace_abn` only support data type as `float32`, `float64` currently.
+
+    Note:
+        if build_strategy.sync_batch_norm=True, the batch_norm in network will use 
+        sync_batch_norm automatically.
+        `is_test = True` can only be used in test program and inference program, `is_test` CANNOT be set to True in train program, if you want to use global status from pre_train model in train program, please set `use_global_stats = True`.
+
+    Args:
+        input(Variable): The rank of input variable can be 2, 3, 4, 5. The data type 
+            is float16 or float32 or float64.
+        act(string, Default None): Activation type, linear|relu|prelu|...
+        is_test (bool, Default False): A flag indicating whether it is in
+            test phrase or not.
+        momentum(float|Variable, Default 0.9): The value used for the moving_mean and
+            moving_var computation. This should be a float number or a Variable with
+            shape [1] and data type as float32. The updated formula is:
+            :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
+            :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
+            Default is 0.9.
+        epsilon(float, Default 1e-05): A value added to the denominator for
+            numerical stability. Default is 1e-5.
+        param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
+             of inplace_abn. If it is set to None or one attribute of ParamAttr, inplace_abn 
+	     will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+	     If the Initializer of the param_attr is not set, the parameter is initialized 
+	     with Xavier. Default: None.
+        bias_attr(ParamAttr|None): The parameter attribute for the bias of inplace_abn.
+             If it is set to None or one attribute of ParamAttr, inplace_abn 
+	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
+	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
+	     Default: None.
+        data_layout (str, optional): Specify the data format of the input, and the data format of the output 
+             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+             `[batch_size, input_channels, input_height, input_width]`.
+        name(str|None): For detailed information, please refer to :ref:`api_guide_Name`. 
+            Usually name is no need to set and None by default. 
+        moving_mean_name(str, Default None): The name of moving_mean which store the global Mean. If it 
+            is set to None, inplace_abn will save global mean with a random name, otherwise, inplace_abn 
+            will save global mean with the string.
+        moving_variance_name(str, Default None): The name of the moving_variance which store the global Variance.
+            If it is set to None, inplace_abn, will save global variance with a random name, otherwise, inplace_abn 
+            will save global variance with the string.
+        do_model_average_for_mean_and_var(bool, Default True): Whether parameter mean and variance should do model
+            average when model average is enabled.
+        use_global_stats(bool, Default False): Whether to use global mean and
+            variance. In inference or test mode, set use_global_stats to true
+            or is_test to true, and the behavior is equivalent.
+            In train mode, when setting use_global_stats True, the global mean
+            and variance are also used during train period.
+        act_alpha(float, Default 1.0): when activation is in ['elu', 'identity', 'leaky_relu'],
+            inplace activative batch normalization will be used, and alpha parameter for activation
+            can be given by this parameter.
+    Returns:
+        A Variable holding Tensor which is the result after applying batch normalization and activation on the input, 
+        has same shape and data type with input. 
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
+            hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
+            hidden2 = fluid.layers.inplace_abn(input=hidden1)
+            hidden3 = fluid.layers.inplace_abn(input=hidden2, act='leaky_relu', act_alpha=0.2)
+
+    """
+    assert act in [None, 'identity', 'leaky_relu', 'elu'], \
+        "inplace_abn only support act as None, 'identity', " \
+        "'leaky_relu', 'elu' currently"
+    assert bias_attr is not False, "bias_attr should not be False in inplace_abn."
+    helper = LayerHelper('inplace_abn', **locals())
+
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'inplace_abn')
+    dtype = helper.input_dtype()
+
+    has_reserve_space = False
+    if data_layout == 'NHWC':
+        flag = os.environ.get('FLAGS_cudnn_batchnorm_spatial_persistent')
+        if flag is not None and flag.lower() in ['true', '1']:
+            has_reserve_space = True
+
+    input_shape = input.shape
+    if data_layout == 'NCHW':
+        channel_num = input_shape[1]
+    else:
+        if data_layout == 'NHWC':
+            channel_num = input_shape[-1]
+        else:
+            raise ValueError("unsupported data layout:" + data_layout)
+
+    param_shape = [channel_num]
+
+    # create parameter
+    scale = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=param_shape,
+        dtype=dtype,
+        default_initializer=Constant(1.0))
+    bias = helper.create_parameter(
+        attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
+
+    mean = helper.create_parameter(
+        attr=ParamAttr(
+            name=moving_mean_name,
+            initializer=Constant(0.0),
+            trainable=False,
+            do_model_average=do_model_average_for_mean_and_var),
+        shape=param_shape,
+        dtype=dtype)
+    mean.stop_gradient = True
+
+    variance = helper.create_parameter(
+        attr=ParamAttr(
+            name=moving_variance_name,
+            initializer=Constant(1.0),
+            trainable=False,
+            do_model_average=do_model_average_for_mean_and_var),
+        shape=param_shape,
+        dtype=dtype)
+    variance.stop_gradient = True
+
+    # create output
+    # mean and mean_out share the same memory
+    mean_out = mean
+    # variance and variance out share the same memory
+    variance_out = variance
+    saved_mean = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
+    saved_variance = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
+
+    reserve_space = None
+    if has_reserve_space:
+        reserve_space = helper.create_variable_for_type_inference(
+            dtype=core.VarDesc.VarType.FP16, stop_gradient=True)
+
+    batch_norm_out = input
+
+    inputs = {
+        "X": input,
+        "Scale": scale,
+        "Bias": bias,
+        "Mean": mean,
+        "Variance": variance
+    }
+    attrs = {
+        "epsilon": epsilon,
+        "is_test": is_test,
+        "data_layout": data_layout,
+        "use_mkldnn": False,
+        "fuse_with_relu": False,
+        "use_global_stats": use_global_stats,
+        "activation": act,
+        "alpha": act_alpha,
+    }
+    if isinstance(momentum, Variable):
+        inputs['MomemtumTensor'] = momentum
+    else:
+        attrs['momentum'] = momentum
+
+    outputs = {
+        "Y": batch_norm_out,
+        "MeanOut": mean_out,
+        "VarianceOut": variance_out,
+        "SavedMean": saved_mean,
+        "SavedVariance": saved_variance
+    }
+    if reserve_space is not None:
+        outputs["ReserveSpace"] = reserve_space
+
+    helper.append_op(
+        type="inplace_abn", inputs=inputs, outputs=outputs, attrs=attrs)
+
+    return batch_norm_out
 
 
 def instance_norm(input,
@@ -3887,17 +4234,17 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
     """
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
+
+    if in_dygraph_mode():
+        reduce_all = True if dim == None or dim == [] else False
+        dim = dim if dim != None and dim != [] else [0]
+        return core.ops.reduce_sum(input, 'dim', dim, 'keep_dim', keep_dim,
+                                   'reduce_all', reduce_all)
     attrs = {
         'dim': dim if dim != None and dim != [] else [0],
         'keep_dim': keep_dim,
         'reduce_all': True if dim == None or dim == [] else False
     }
-
-    if in_dygraph_mode():
-        inputs = {'X': [input]}
-        outs = core.ops.reduce_sum(inputs, attrs)
-        return outs['Out'][0]
-
     check_variable_and_dtype(
         input, 'input', ['float32', 'float64', 'int32', 'int64'], 'reduce_sum')
     helper = LayerHelper('reduce_sum', **locals())
@@ -3962,17 +4309,17 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
 
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
+
+    if in_dygraph_mode():
+        reduce_all = True if dim == None or dim == [] else False
+        dim = dim if dim != None and dim != [] else [0]
+        return core.ops.reduce_mean(input, 'dim', dim, 'keep_dim', keep_dim,
+                                    'reduce_all', reduce_all)
     attrs = {
         'dim': dim if dim != None and dim != [] else [0],
         'keep_dim': keep_dim,
         'reduce_all': True if dim == None or dim == [] else False
     }
-
-    if in_dygraph_mode():
-        inputs = {'X': [input]}
-        outs = core.ops.reduce_mean(inputs, attrs)
-        return outs['Out'][0]
-
     check_variable_and_dtype(
         input, 'input', ['float32', 'float64', 'int32', 'int64'], 'reduce_mean')
     helper = LayerHelper('reduce_mean', **locals())
@@ -4333,19 +4680,20 @@ def split(input, num_or_sections, dim=-1, name=None):
             # x2.shape [3, 4, 5]
     """
     if in_dygraph_mode():
-        inputs = {'X': [input]}
-        attrs = {}
+        num = None
+        attrs = ()
+
         if isinstance(dim, Variable):
             dim = dim.numpy()
             assert dim.shape == (1,
                                  ), "dim of type Variable should have shape [1]"
             dim = dim[0]
         dim = (len(input.shape) + dim) if dim < 0 else dim
-        attrs['axis'] = dim
+        attrs += ('axis', dim)
 
         if isinstance(num_or_sections, int):
             num = num_or_sections
-            attrs['num'] = num_or_sections
+            attrs += ('num', num_or_sections)
         elif isinstance(num_or_sections, (list, tuple)):
             num = len(num_or_sections)
             if utils._contain_var(num_or_sections):
@@ -4354,14 +4702,12 @@ def split(input, num_or_sections, dim=-1, name=None):
                     "received %s, which contains Variable." %
                     (type(num_or_sections)))
             else:
-                attrs['sections'] = list(num_or_sections)
+                attrs += ('sections', list(num_or_sections))
         else:
             raise TypeError(
                 "The type of 'num_or_sections' in split must be int or list in Dygraph mode, but "
                 "received %s." % (type(num_or_sections)))
-
-        res = core.ops.split(inputs, attrs, {}, {'Out': num})
-        return res['Out']
+        return core.ops.split(input, num, *attrs)
 
     if not isinstance(num_or_sections, (int, list, tuple)):
         raise TypeError(
@@ -4596,9 +4942,8 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     }
 
     if in_dygraph_mode():
-        inputs = {'X': [x], 'Y': [y]}
-        outs = core.ops.matmul(inputs, attrs)
-        return outs['Out'][0]
+        return core.ops.matmul(x, y, 'transpose_X', transpose_x, 'transpose_Y',
+                               transpose_y, 'alpha', float(alpha))
 
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
@@ -4716,20 +5061,15 @@ def topk(input, k, name=None):
             vk_values, vk_indices = layers.topk(input2, k=vk) #vk_values.shape=[None, 13, k], vk_indices.shape=[None, 13, k]
 
     """
+    if in_dygraph_mode():
+        _k = k.numpy().item(0) if isinstance(k, Variable) else k
+        out, indices = core.ops.top_k(input, 'k', _k)
+        out.stop_gradient = True
+        indices.stop_gradient = True
+        return out, indices
+
     inputs = {"X": [input]}
     attrs = {}
-
-    if in_dygraph_mode():
-        if isinstance(k, Variable):
-            k = k.numpy()
-            assert k.shape == (1, ), "k of type Variable should have shape [1]"
-            k = k[0]
-        attrs = {'k': k}
-        outs = core.ops.top_k(inputs, attrs)
-        outs['Out'][0].stop_gradient = True
-        outs['Indices'][0].stop_gradient = True
-        return outs['Out'][0], outs['Indices'][0]
-
     if isinstance(k, Variable):
         inputs['K'] = [k]
     else:
@@ -4965,10 +5305,8 @@ def transpose(x, perm, name=None):
 
     """
     if in_dygraph_mode():
-        attrs = {'axis': perm}
-        inputs = {'X': [x]}
-        outs = core.ops.transpose2(inputs, attrs)
-        return outs['Out'][0]
+        out, _ = core.ops.transpose2(x, 'axis', perm)
+        return out
 
     check_variable_and_dtype(
         x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
@@ -5413,11 +5751,10 @@ def one_hot(input, depth, allow_out_of_range=False):
             assert depth.shape == (
                 1, ), "depth of type Variable should have shape [1]"
             depth = depth[0]
-        inputs = {'X': [input]}
-        attrs = {'depth': depth, 'allow_out_of_range': allow_out_of_range}
-        outs = core.ops.one_hot(inputs, attrs)
-        outs['Out'][0].stop_gradient = True
-        return outs['Out'][0]
+        out = core.ops.one_hot(input, 'depth', depth, 'allow_out_of_range',
+                               allow_out_of_range)
+        out.stop_gradient = True
+        return out
 
     helper = LayerHelper("one_hot", **locals())
     one_hot_out = helper.create_variable_for_type_inference(dtype='float32')
@@ -5597,9 +5934,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                 "The type of 'shape' in reshape must be list[int] or tuple(int) in Dygraph mode, but "
                 "received %s." % type(shape))
 
-        inputs = {'X': [x]}
-        outs = core.ops.reshape2(inputs, attrs)
-        out = outs['Out'][0]
+        out, _ = core.ops.reshape2(x, 'shape', shape)
         return dygraph_utils._append_activation_in_dygraph(out, act)
 
     check_variable_and_dtype(
@@ -6274,12 +6609,8 @@ def label_smooth(label,
         raise ValueError("The value of epsilon must be between 0 and 1.")
 
     if in_dygraph_mode():
-        inputs = {"X": [label]}
-        if prior_dist:
-            inputs["PriorDist"] = [prior_dist]
-        attrs = {"epsilon": float(epsilon)}
-        outs = core.ops.label_smooth(inputs, attrs)
-        return outs['Out'][0]
+        return core.ops.label_smooth(label, prior_dist, 'epsilon',
+                                     float(epsilon))
 
     helper = LayerHelper("label_smooth", **locals())
     label.stop_gradient = True
@@ -7854,11 +8185,10 @@ def log(x, name=None):
             res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res])
             print(res_val) # [[0.], [0.6931472]]
     """
-    inputs = {'X': [x]}
     if in_dygraph_mode():
-        outs = core.ops.log(inputs)
-        return outs['Out'][0]
+        return core.ops.log(x)
 
+    inputs = {'X': [x]}
     helper = LayerHelper('log', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
@@ -7894,11 +8224,10 @@ def relu(x, name=None):
                 # [[0.  0. ]
                 #  [1.  2.6]]
 """
-    inputs = {'X': [x]}
     if in_dygraph_mode():
-        outs = core.ops.relu(inputs)
-        return outs['Out'][0]
+        return core.ops.relu(x)
 
+    inputs = {'X': [x]}
     helper = LayerHelper('relu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
@@ -8480,6 +8809,13 @@ def pad2d(input,
           result = fluid.layers.pad2d(input=data, paddings=[1, 2, 3, 4],
                                       mode='reflect')
     """
+
+    if in_dygraph_mode():
+        _paddings = paddings.numpy().tolist() if isinstance(
+            paddings, Variable) else paddings
+        return core.ops.pad2d(input, 'mode', mode, 'pad_value', pad_value,
+                              'data_format', data_format, 'paddings', _paddings)
+
     attrs = {'mode': mode, 'pad_value': pad_value, 'data_format': data_format}
     inputs = {'X': [input]}
     if isinstance(paddings, Variable):
@@ -8487,10 +8823,6 @@ def pad2d(input,
         attrs['paddings'] = []
     else:
         attrs['paddings'] = paddings
-
-    if in_dygraph_mode():
-        outs = core.ops.pad2d(inputs, attrs)
-        return outs['Out'][0]
 
     helper = LayerHelper('pad2d', **locals())
 
@@ -8927,12 +9259,11 @@ def leaky_relu(x, alpha=0.02, name=None):
             res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res])
             print(res_val) # [[-0.1, 2], [3, -0.4]]
     """
+    if in_dygraph_mode():
+        return core.ops.leaky_relu(x, 'alpha', alpha)
+
     inputs = {'X': [x]}
     attrs = {'alpha': alpha}
-    if in_dygraph_mode():
-        outs = core.ops.leaky_relu(inputs, attrs)
-        return outs['Out'][0]
-
     helper = LayerHelper('leaky_relu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -9351,24 +9682,21 @@ def expand(x, expand_times, name=None):
             expanded_2 = fluid.layers.expand(data_2, expand_times=expand_times)
             # the shape of expanded_2 is [48, 56].
     """
-    inputs = {"X": [x]}
-    attrs = {}
-
     if in_dygraph_mode():
         if isinstance(expand_times, (list, tuple)):
             if utils._contain_var(expand_times):
                 raise TypeError(
                     "The type of 'expand_times' in expand must be list[int] or tuple(int) in Dygraph mode, but "
                     "received %s, which contains Variable." % type(shape))
-            attrs['expand_times'] = expand_times
         else:
             raise TypeError(
                 "The type of 'expand_times' in expand must be list[int] or tuple(int) in Dygraph mode, but "
                 "received %s." % type(shape))
 
-        outs = core.ops.expand(inputs, attrs)
-        return outs['Out'][0]
+        return core.ops.expand(x, 'expand_times', expand_times)
 
+    inputs = {"X": [x]}
+    attrs = {}
     check_variable_and_dtype(
         x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand')
     check_type(expand_times, 'expand_times', (list, tuple, Variable), 'expand')
@@ -9908,8 +10236,6 @@ def slice(input, axes, starts, ends):
     """
     if in_dygraph_mode():
         infer_flags = list(1 for i in range(len(axes)))
-        inputs = {'Input': [input]}
-
         if isinstance(starts, (list, tuple)):
             if utils._contain_var(starts):
                 raise TypeError(
@@ -9930,14 +10256,8 @@ def slice(input, axes, starts, ends):
                 "The type of 'ends' in slice must be list[int] or tuple(int) in Dygraph mode, but "
                 "received %s." % type(shape))
 
-        attrs = {
-            'axes': axes,
-            'starts': starts,
-            'ends': ends,
-            'infer_flags': infer_flags
-        }
-        outs = core.ops.slice(inputs, attrs)
-        return outs['Out'][0]
+        return core.ops.slice(input, 'axes', axes, 'starts', starts, 'ends',
+                              ends, 'infer_flags', infer_flags)
 
     if not isinstance(starts, (list, tuple, Variable)):
         raise ValueError(
@@ -10392,6 +10712,14 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
             print(res) # [array([[ 3.,  5.,  7.], [ 9., 11., 13.]], dtype=float32)]
 
     """
+
+    if in_dygraph_mode():
+        _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
+        out = core.ops.scale(x, 'scale',
+                             float(_scale), 'bias',
+                             float(bias), 'bias_after_scale', bias_after_scale)
+        return dygraph_utils._append_activation_in_dygraph(out)
+
     inputs = {'X': [x]}
     attrs = {
         'bias': float(bias),
@@ -10401,11 +10729,6 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
         inputs['ScaleTensor'] = [scale]
     else:
         attrs['scale'] = float(scale)
-
-    if in_dygraph_mode():
-        outs = core.ops.scale(inputs, attrs)
-        return dygraph_utils._append_activation_in_dygraph(outs['Out'][0])
-
     helper = LayerHelper('scale', **locals())
     if name is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -11369,9 +11692,7 @@ def mean(x, name=None):
             mean = fluid.layers.mean(input)
     """
     if in_dygraph_mode():
-        inputs = {"X": [x]}
-        outs = core.ops.mean(inputs)
-        return outs['Out'][0]
+        return core.ops.mean(x)
 
     helper = LayerHelper("mean", **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'mean')
@@ -11453,12 +11774,12 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
             
 
     """
+    if in_dygraph_mode():
+        return core.ops.mul(x, y, 'x_num_col_dims', x_num_col_dims,
+                            'y_num_col_dims', y_num_col_dims)
+
     inputs = {"X": [x], "Y": [y]}
     attrs = {"x_num_col_dims": x_num_col_dims, "y_num_col_dims": y_num_col_dims}
-    if in_dygraph_mode():
-        outs = core.ops.mul(inputs, attrs)
-        return outs['Out'][0]
-
     helper = LayerHelper("mul", **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'mul')
     check_variable_and_dtype(y, 'y', ['float16', 'float32', 'float64'], 'mul')

@@ -105,6 +105,8 @@ write_version_py(filename='@PADDLE_BINARY_DIR@/python/paddle/version.py')
 
 
 packages=['paddle',
+          'paddle.nn',
+          'paddle.nn.layer',
           'paddle.libs',
           'paddle.utils',
           'paddle.dataset',
@@ -112,6 +114,7 @@ packages=['paddle',
           'paddle.distributed',
           'paddle.tensor',
           'paddle.fluid',
+          'paddle.tensor',
           'paddle.fluid.dygraph',
           'paddle.fluid.dygraph.dygraph_to_static',
           'paddle.fluid.proto',

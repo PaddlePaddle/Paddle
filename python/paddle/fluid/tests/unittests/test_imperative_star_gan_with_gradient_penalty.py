@@ -112,9 +112,9 @@ class InstanceNorm(fluid.dygraph.Layer):
 
     def forward(self, input):
         if fluid.in_dygraph_mode():
-            inputs = {'X': [input], 'Scale': [self.scale], 'Bias': [self.bias]}
-            attrs = {'epsilon': self.epsilon}
-            return fluid.core.ops.instance_norm(inputs, attrs)['Y'][0]
+            out, _, _ = fluid.core.ops.instance_norm(
+                input, self.scale, self.bias, 'epsilon', self.epsilon)
+            return out
         else:
             return fluid.layers.instance_norm(
                 input,
