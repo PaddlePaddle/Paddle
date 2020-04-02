@@ -183,5 +183,19 @@ class TestWhereAPI(unittest.TestCase):
         self.test_grad2(use_cuda=False)
 
 
+class TestWhereDygraphAPI(unittest.TestCase):
+    def test_api(self):
+        x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float64")
+        y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype("float64")
+        cond_i = np.array([False, False, True, True]).astype("bool")
+
+        with fluid.dygraph.guard():
+            x = fluid.dygraph.to_variable(x_i)
+            y = fluid.dygraph.to_variable(y_i)
+            cond = fluid.dygraph.to_variable(cond_i)
+            out = tensor.where(cond, x, y)
+            assert np.array_equal(out.numpy(), np.where(cond_i, x_i, y_i))
+
+
 if __name__ == '__main__':
     unittest.main()

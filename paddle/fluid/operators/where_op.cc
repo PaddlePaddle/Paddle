@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/where_op.h"
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -142,6 +145,9 @@ class WhereOpGradMaker : public framework::SingleGradOpMaker<T> {
     grad->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
   }
 };
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(WhereGradNoNeedBufferVarsInference, "X",
+                                    "Y");
 }  // namespace operators
 }  // namespace paddle
 
@@ -150,7 +156,8 @@ REGISTER_OPERATOR(where, ops::WhereOp, ops::WhereOpMaker,
                   ops::WhereOpGradMaker<paddle::framework::OpDesc>,
                   ops::WhereOpGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(where_grad, ops::WhereGradOp);
+REGISTER_OPERATOR(where_grad, ops::WhereGradOp,
+                  ops::WhereGradNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(
     where, ops::WhereKernel<paddle::platform::CPUDeviceContext, float>,
     ops::WhereKernel<paddle::platform::CPUDeviceContext, double>,
