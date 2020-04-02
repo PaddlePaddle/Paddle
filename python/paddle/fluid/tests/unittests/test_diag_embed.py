@@ -17,6 +17,8 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.nn.functional as F
+import paddle.fluid.dygraph as dg
 
 
 class TestDiagEmbedOp(OpTest):
@@ -42,6 +44,18 @@ class TestDiagEmbedOpCase1(TestDiagEmbedOp):
         self.attrs = {'offset': -1, 'dim1': 0, 'dim2': 2}
         self.target = np.stack([np.diag(r, -1) for r in self.inputs['Input']],
                                1)
+
+
+class TestDiagEmbedAPICase(unittest.TestCase):
+    def test_case1(self):
+        diag_embed = np.random.randn(2, 3).astype('float32')
+        with dg.guard():
+            data1 = F.diag_embed(diag_embed)
+            data2 = F.diag_embed(diag_embed, offset=1, dim1=0, dim2=2)
+            target1 = np.stack([np.diag(r, 0) for r in diag_embed], 0)
+            target2 = np.stack([np.diag(r, -1) for r in diag_embed], 1)
+            self.assertTrue(np.allclose(data1.numpy(), target1))
+            self.assertTrue(np.allclose(data2.numpy(), target2))
 
 
 if __name__ == "__main__":

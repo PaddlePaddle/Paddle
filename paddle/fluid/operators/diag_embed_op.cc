@@ -24,15 +24,11 @@ class DiagEmbedOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Input"), true,
-        platform::errors::InvalidArgument(
-            "Input holds the wrong type, it holds %s, but desires to be %s.",
-            'NULL', 'Variable'));
+        platform::errors::NotFound("Input of DiagEmbedOp is not found."));
 
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("Out"), true,
-        platform::errors::InvalidArgument(
-            "Output holds the wrong type, it holds %s, but desires to be %s.",
-            'NULL', 'Variable'));
+        platform::errors::NotFound("Output of DiagEmbedOp is not found."));
 
     int offset = ctx->Attrs().Get<int>("offset");
     int dim1 = ctx->Attrs().Get<int>("dim1");
