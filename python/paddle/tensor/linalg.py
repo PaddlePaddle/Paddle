@@ -16,15 +16,15 @@ from paddle.common_ops_import import *
 # TODO: define functions of linear algebra   
 __all__ = [
     'matmul',
-    #          'dot',
-    #          'einsum',
-    #          'morm',
-    #          'transpose',
-    #          'dist',
-    #          't',
-    #          'cross',
-    #          'cholesky',
-    #          'tensordot'
+    # 'dot',
+    # 'einsum',
+    # 'morm',
+    # 'transpose',
+    # 'dist',
+    # 't',
+    # 'cross',
+    # 'cholesky',
+    # 'tensordot'
 ]
 
 

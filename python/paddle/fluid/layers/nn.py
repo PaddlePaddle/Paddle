@@ -14,14 +14,16 @@
 """
 All layers just related to the neural network.
 """
-
 from __future__ import print_function
 
-import numpy as np
-import warnings
-import six
 import os
 import inspect
+import warnings
+
+import numpy as np
+import six
+
+import paddle
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program
