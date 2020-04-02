@@ -26,12 +26,10 @@ class UnbindOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("X"), true,
-        "Input(X) of UnbindOp is not found."
-        "Input(X) should be an N-D Tensor, like [[1,2], [3,4], [5,6]]");
+        platform::errors::NotFound("Input(X) of UnbindOp is not found."));
     PADDLE_ENFORCE_GE(
         ctx->Outputs("Out").size(), 1UL,
-        "Outputs(Out) of UnbindOp is not found."
-        "The Outputs size is equal the size of Input 'axis' dimension. ");
+        platform::errors::NotFound("Outputs(Out) of UnbindOp is not found."));
     auto in_dims = ctx->GetInputDim("X");
     auto outs_names = ctx->Outputs("Out");
     int axis = ctx->Attrs().Get<int>("axis");
