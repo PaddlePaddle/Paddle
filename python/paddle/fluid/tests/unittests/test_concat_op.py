@@ -249,33 +249,6 @@ class TestConcatAPI(unittest.TestCase):
         assert np.array_equal(res_3, np.concatenate((input_2, input_3), axis=1))
 
 
-class TestTensorConcatAPI(unittest.TestCase):
-    def test_api(self):
-        x_1 = fluid.data(shape=[None, 1, 4, 5], dtype='int32', name='x_1')
-        tensor.concat([x_1, x_1], 0)
-
-        input_2 = np.random.random([2, 1, 4, 5]).astype("int32")
-        input_3 = np.random.random([2, 2, 4, 5]).astype("int32")
-        x_2 = fluid.data(shape=[2, 1, 4, 5], dtype='int32', name='x_2')
-        x_3 = fluid.data(shape=[2, 2, 4, 5], dtype='int32', name='x_3')
-        positive_1_int32 = fluid.layers.fill_constant([1], "int32", 1)
-        positive_1_int64 = fluid.layers.fill_constant([1], "int64", 1)
-        out_1 = tensor.concat(input=[x_2, x_3], axis=1)
-        out_2 = tensor.concat(input=[x_2, x_3], axis=positive_1_int32)
-        out_3 = tensor.concat(input=[x_2, x_3], axis=positive_1_int64)
-
-        exe = fluid.Executor(place=fluid.CPUPlace())
-        [res_1, res_2, res_3] = exe.run(
-            fluid.default_main_program(),
-            feed={"x_1": input_2,
-                  "x_2": input_2,
-                  "x_3": input_3},
-            fetch_list=[out_1, out_2, out_3])
-        assert np.array_equal(res_1, np.concatenate((input_2, input_3), axis=1))
-        assert np.array_equal(res_2, np.concatenate((input_2, input_3), axis=1))
-        assert np.array_equal(res_3, np.concatenate((input_2, input_3), axis=1))
-
-
 class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
     """
     Test concat api when the input(x) is a LoDTensorArray.
@@ -311,6 +284,90 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
                 res[0],
                 np.concatenate(
                     [self.x] * self.iter_num, axis=self.axis)))
+
+
+class TestTensorConcatAPI(unittest.TestCase):
+    def test_api(self):
+        x_1 = fluid.data(shape=[None, 1, 4, 5], dtype='int32', name='x_1')
+        tensor.concat([x_1, x_1], 0)
+
+        input_2 = np.random.random([2, 1, 4, 5]).astype("int32")
+        input_3 = np.random.random([2, 2, 4, 5]).astype("int32")
+        x_2 = fluid.data(shape=[2, 1, 4, 5], dtype='int32', name='x_2')
+        x_3 = fluid.data(shape=[2, 2, 4, 5], dtype='int32', name='x_3')
+        positive_1_int32 = fluid.layers.fill_constant([1], "int32", 1)
+        positive_1_int64 = fluid.layers.fill_constant([1], "int64", 1)
+        out_1 = tensor.concat(input=[x_2, x_3], axis=1)
+        out_2 = tensor.concat(input=[x_2, x_3], axis=positive_1_int32)
+        out_3 = tensor.concat(input=[x_2, x_3], axis=positive_1_int64)
+
+        exe = fluid.Executor(place=fluid.CPUPlace())
+        [res_1, res_2, res_3] = exe.run(
+            fluid.default_main_program(),
+            feed={"x_1": input_2,
+                  "x_2": input_2,
+                  "x_3": input_3},
+            fetch_list=[out_1, out_2, out_3])
+        assert np.array_equal(res_1, np.concatenate((input_2, input_3), axis=1))
+        assert np.array_equal(res_2, np.concatenate((input_2, input_3), axis=1))
+        assert np.array_equal(res_3, np.concatenate((input_2, input_3), axis=1))
+
+
+class TestTensorConcatAPIWithLoDTensorArray(unittest.TestCase):
+    """
+    Test concat api when the input(x) is a LoDTensorArray.
+    """
+
+    def setUp(self):
+        self.axis = 1
+        self.iter_num = 3
+        self.input_shape = [2, 3]
+        self.x = np.random.random(self.input_shape).astype("float32")
+        self.place = fluid.CUDAPlace(0) \
+            if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+        self.set_program()
+
+    def set_program(self):
+        self.program = fluid.Program()
+        with fluid.program_guard(self.program):
+            input = fluid.layers.assign(self.x)
+            tensor_array = fluid.layers.create_array(dtype='float32')
+            zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
+
+            for i in range(self.iter_num):
+                fluid.layers.array_write(input, zero + i, tensor_array)
+
+            self.out_var = tensor.concat(tensor_array, axis=self.axis)
+
+    def test_case(self):
+        self.assertTrue(self.out_var.shape[self.axis] == -1)
+        exe = fluid.Executor(self.place)
+        res = exe.run(self.program, fetch_list=self.out_var)
+        self.assertTrue(
+            np.array_equal(
+                res[0],
+                np.concatenate(
+                    [self.x] * self.iter_num, axis=self.axis)))
+
+
+class TestTensorConcatDygraghAPI(unittest.TestCase):
+    def test_api(self):
+        in1 = np.array([[1, 2, 3], [4, 5, 6]])
+        in2 = np.array([[11, 12, 13], [14, 15, 16]])
+        in3 = np.array([[21, 22], [23, 24]])
+        with fluid.dygraph.guard():
+            x1 = fluid.dygraph.to_variable(in1)
+            x2 = fluid.dygraph.to_variable(in2)
+            x3 = fluid.dygraph.to_variable(in3)
+            out1 = tensor.concat(input=[x1, x2, x3], axis=-1)
+            out2 = tensor.concat(input=[x1, x2], axis=0)
+
+            assert np.array_equal(
+                out1.numpy(), np.concatenate(
+                    (in1, in2, in3), axis=-1))
+            assert np.array_equal(
+                out2.numpy(), np.concatenate(
+                    (in1, in2), axis=0))
 
 
 if __name__ == '__main__':
