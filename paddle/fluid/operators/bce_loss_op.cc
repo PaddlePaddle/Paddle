@@ -104,11 +104,12 @@ class BCELossOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "(Tensor, default Tensor<float>), the input is a tensor of logits"
              "computed by the previous operator, which is always the result of"
-             "a sigmoid operator. Input must between in 0 and 1.)"
+             "a sigmoid operator. Input must between in 0 and 1.");
     AddInput("Label",
              "(Tensor, default Tensor<float>), have same shape with input"
              "label should between in 0 and 1.");
-    AddOutput("Out", "(Tensor, default Tensor<float>), have same shape with"
+    AddOutput("Out",
+              "(Tensor, default Tensor<float>), have same shape with"
               "input");
     AddComment(R"DOC(
 BinaryCrossEntropy operator.
