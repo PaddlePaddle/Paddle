@@ -56,6 +56,10 @@ def select_output(input, outputs, mask):
         Variable: The outputs variables
     """
     helper = LayerHelper('select_output', **locals())
+    check_type(input, 'input', (Variable), 'select_output')
+    check_variable_and_dtype(mask, 'mask', ['int32'], 'select_output')
+    check_type(outputs, 'outputs', (list, tuple), 'select_output')
+
     helper.append_op(
         type='select_output',
         inputs={'X': input,
@@ -80,14 +84,12 @@ def select_input(inputs, mask):
         Variable: The selected input variable
     """
     helper = LayerHelper('select_input', **locals())
-    if isinstance(inputs, list) or isinstance(inputs, tuple):
-        input_dtype = inputs[0].dtype
-        input_shape = inputs[0].shape
-        input_type = inputs[0].type
-    else:
-        input_dtype = inputs.dtype
-        input_shape = inputs.shape
-        input_type = inputs.type
+    check_type(inputs, 'inputs', (list, tuple), 'select_input')
+    check_variable_and_dtype(mask, 'mask', ['int32'], 'select_input')
+
+    input_dtype = inputs[0].dtype
+    input_shape = inputs[0].shape
+    input_type = inputs[0].type
 
     out = helper.create_variable(
         dtype=input_dtype, shape=input_shape, type=input_type)

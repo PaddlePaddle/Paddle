@@ -26,8 +26,12 @@ namespace operators {
 // Returns the integer in mask whose numel must be 1. The integer means the
 // selected branch number.
 inline int GetBranchNumber(const framework::LoDTensor &mask) {
-  PADDLE_ENFORCE_EQ(mask.numel(), 1,
-                    "Mask in SelectOutputOp must have numel 1.");
+  PADDLE_ENFORCE_EQ(
+      mask.numel(), 1,
+      platform::errors::InvalidArgument(
+          "Mask in SelectInputOp or SelectOutputOp must have numel 1. "
+          "But received %d, and it's shape is [%s].",
+          mask.numel(), mask.dims()));
   if (platform::is_cpu_place(mask.place())) {
     return mask.data<int>()[0];
   }
@@ -37,8 +41,9 @@ inline int GetBranchNumber(const framework::LoDTensor &mask) {
   framework::TensorCopySync(mask, platform::CPUPlace(), cpu_mask.get());
 #else
   PADDLE_THROW(
-      "This version of PaddlePaddle doen NOT support GPU but got GPU tensor "
-      "Mask in SelectOutputOp. Please compile WITH_GPU option");
+      "This version of PaddlePaddle does NOT support GPU but got GPU tensor "
+      "Mask in SelectInputOp or SelectOutputOp. Please compile WITH_GPU "
+      "option");
 #endif
   return cpu_mask->data<int>()[0];
 }
