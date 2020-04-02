@@ -134,7 +134,7 @@ Examples:
         import paddle.fluid as fluid
 
         inputs = fluid.data(name="x", shape = [None, 4], dtype='float32')
-        output = paddle.tensor.math.%s(inputs)
+        output = paddle.%s(inputs)
 
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())
