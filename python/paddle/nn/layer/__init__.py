@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import common
+# TODO: define activation functions of neural network  
 
-__all__ = [common]
+from . import common
+from . import loss
+__all__ = [common, loss]
