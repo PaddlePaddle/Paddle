@@ -298,6 +298,41 @@ class PSLib(Fleet):
             self._fleet_ptr.save_model(dirname, mode)
         self._role_maker._barrier_worker()
 
+    def save_model_with_whitelist(self,
+                                  executor,
+                                  dirname,
+                                  whitelist_path,
+                                  main_program=None,
+                                  **kwargs):
+        """
+        save model with whitelist, mode is consistent with fleet.save_persistables,
+        when using fleet, it will save sparse and dense feature
+
+        Args:
+            executor(Executor): fluid executor
+            dirname(str): save path. It can be hdfs/afs path or local path
+            main_program(Program): fluid program, default None
+            kwargs: use define property, current support following
+                mode(int): 0 means save all pserver model,
+                           1 means save delta pserver model (save diff),
+                           2 means save xbox base,
+                           3 means save batch model.
+
+        Example:
+            .. code-block:: python
+
+              fleet.save_persistables(dirname="/you/path/to/model", mode = 0)
+
+        """
+        mode = kwargs.get("mode", 0)
+        table_id = kwargs.get("table_id", 0)
+        self._fleet_ptr.client_flush()
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.save_model_with_whitelist(table_id, dirname, mode,
+                                                      whitelist_path)
+        self._role_maker._barrier_worker()
+
     def save_cache_model(self, executor, dirname, main_program=None, **kwargs):
         """
         save sparse cache table,
@@ -449,6 +484,51 @@ class PSLib(Fleet):
             self._fleet_ptr.clear_model()
         self._role_maker._barrier_worker()
 
+    def load_pslib_whitelist(self, table_id, model_path, **kwargs):
+        """
+        load pslib model for one table with whitelist
+
+        Args:
+            table_id(int): load table id
+            model_path(str): load model path, can be local or hdfs/afs path
+            kwargs(dict): user defined params, currently support following:
+                only for load pslib model for one table:
+                    mode(int): load model mode. 0 is for load whole model, 1 is
+                               for load delta model (load diff), default is 0.
+                only for load params from paddle model:
+                    scope(Scope): Scope object
+                    model_proto_file(str): path of program desc proto binary
+                                           file, can be local or hdfs/afs file
+                    var_names(list): var name list
+                    load_combine(bool): load from a file or split param files
+                                        default False.
+
+        Examples:
+            .. code-block:: python
+
+              # load pslib model for one table
+              fleet.load_one_table(0, "hdfs:/my_fleet_model/20190714/0/")
+              fleet.load_one_table(1, "hdfs:/xx/xxx", mode = 0)
+
+              # load params from paddle model
+              fleet.load_one_table(2, "hdfs:/my_paddle_model/",
+                                   scope = my_scope,
+                                   model_proto_file = "./my_program.bin",
+                                   load_combine = False)
+
+              # below is how to save proto binary file
+              with open("my_program.bin", "wb") as fout:
+                  my_program = fluid.default_main_program()
+                  fout.write(my_program.desc.serialize_to_string())
+
+        """
+        self._role_maker._barrier_worker()
+        mode = kwargs.get("mode", 0)
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.load_table_with_whitelist(table_id, model_path, mode)
+        self._role_maker._barrier_worker()
+    
+    
     def load_one_table(self, table_id, model_path, **kwargs):
         """
         load pslib model for one table or load params from paddle model
