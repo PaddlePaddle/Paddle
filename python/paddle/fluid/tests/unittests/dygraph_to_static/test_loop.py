@@ -90,8 +90,7 @@ class TestNameVisitor(unittest.TestCase):
             while_loop_dyfunc, for_loop_dyfunc, while_loop_dyfunc_with_none
         ]
         self.loop_var_names = [
-            set(["i", "x"]), set(["i", "ret", "max_len"]),
-            set(["i", "x", "flag"])
+            set(["i", "x"]), set(["i", "ret", "max_len"]), set(["i", "x"])
         ]
         self.create_var_names = [set(), set(["ret"]), set()]
 

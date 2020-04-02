@@ -93,10 +93,6 @@ class GeluOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Only used in cudnn kernel, need "
                   "install cudnn")
         .SetDefault(false);
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false);
     AddComment(R"DOC(
 Gelu Activation Operator. 
 
