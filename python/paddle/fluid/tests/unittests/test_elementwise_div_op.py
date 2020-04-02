@@ -247,6 +247,8 @@ class TestDivOp(unittest.TestCase):
             self.assertEqual((np_res == np_y_1).all(), True)
 
     def test_out_gpu(self):
+        if not fluid.core.is_compiled_with_cuda():
+            return
         with fluid.program_guard(fluid.Program()):
             x = fluid.data(name="x", shape=[3], dtype="float32")
             y = fluid.data(name='y', shape=[3], dtype='float32')

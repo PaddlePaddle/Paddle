@@ -401,6 +401,8 @@ class TestAddOp(unittest.TestCase):
             self.assertEqual((np_res == np_y_1).all(), True)
 
     def test_out_gpu(self):
+        if not fluid.core.is_compiled_with_cuda():
+            return
         with fluid.program_guard(fluid.Program()):
             x = fluid.data(name="x", shape=[3], dtype="float32")
             y = fluid.data(name='y', shape=[3], dtype='float32')
@@ -426,7 +428,7 @@ class TestAddOp(unittest.TestCase):
             y_1 = paddle.add(x, y, name='add_res')
             self.assertEqual(('add_res' in y_1.name), True)
 
-    def test_alpha_1(self):
+    def test_alpha(self):
         with fluid.program_guard(fluid.Program()):
 
             def gen_data():
@@ -445,7 +447,9 @@ class TestAddOp(unittest.TestCase):
             z_expected = np.array([12., 53., 24.])
             self.assertEqual((z_value == z_expected).all(), True)
 
-    def test_alpha_2(self):
+    def test_alpha_gpu(self):
+        if not fluid.core.is_compiled_with_cuda():
+            return
         with fluid.program_guard(fluid.Program()):
 
             def gen_data():
