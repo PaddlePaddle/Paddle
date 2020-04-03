@@ -832,7 +832,7 @@ def _append_backward_ops_(block,
         target_block(Block): the block which is going to hold new generated grad ops
         no_grad_dict(dict):
             key(int)  block index
-            val(set) a set of varibale names. These varibales have no gradient
+            val(set) a set of variable names. These variables have no gradient
         grad_to_var(dict)(output argument):
             key(str): grad variable name
             val(str): corresponding forward variable name

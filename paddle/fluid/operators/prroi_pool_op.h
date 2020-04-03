@@ -293,7 +293,7 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
     } else {
       PADDLE_ENFORCE_EQ(rois->lod().empty(), false,
                         platform::errors::InvalidArgument(
-                            "the lod of Input ROIs shoule not be empty when "
+                            "the lod of Input ROIs should not be empty when "
                             "BatchRoINums is None!"));
       auto rois_lod = rois->lod().back();
       int rois_batch_size = rois_lod.size() - 1;

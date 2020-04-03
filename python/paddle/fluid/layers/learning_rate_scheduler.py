@@ -32,7 +32,7 @@ from . import tensor
 from ..initializer import init_on_cpu
 from ..framework import default_main_program, Parameter, unique_name, name_scope
 from ..framework import Variable
-from ..dygraph import base as imperative_base
+from ..framework import in_dygraph_mode
 from ..dygraph import learning_rate_scheduler as imperate_lr
 
 __all__ = [
@@ -88,7 +88,7 @@ def noam_decay(d_model, warmup_steps):
                          warmup_steps)
     """
     with default_main_program()._lr_schedule_guard():
-        if imperative_base.enabled():
+        if in_dygraph_mode():
             decay = imperate_lr.NoamDecay(d_model, warmup_steps)
             return decay
         else:
@@ -109,7 +109,7 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     training progresses. By using this function, the learning rate will be decayed by
     'decay_rate' every 'decay_steps' steps.
 
-    Decayed learning rate calcualtes as follows:
+    Decayed learning rate calculates as follows:
 
     >>> if staircase == True:
     >>>     decayed_learning_rate = learning_rate * decay_rate ^ floor(global_step / decay_steps)
@@ -143,7 +143,7 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
 
     """
     with default_main_program()._lr_schedule_guard():
-        if imperative_base.enabled():
+        if in_dygraph_mode():
             decay = imperate_lr.ExponentialDecay(learning_rate, decay_steps,
                                                  decay_rate, staircase)
             return decay
@@ -165,7 +165,7 @@ def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     training progresses. By using this function, the learning rate will be decayed by
     natural exponential power 'decay_rate' every 'decay_steps' steps.
 
-    Decayed learning rate calcualtes as follows:
+    Decayed learning rate calculates as follows:
 
     >>> if not staircase:
     >>>     decayed_learning_rate = learning_rate * exp(- decay_rate * (global_step / decay_steps))
@@ -178,7 +178,7 @@ def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
         decay_steps(int): The learning rate decay steps. See the decay computation above.
         decay_rate(float): The learning rate decay rate. See the decay computation above.
         staircase(bool): If True, decay the learning rate at discrete intervals, which 
-                         means the learning rate will be decayed by natual exponential power
+                         means the learning rate will be decayed by natural exponential power
                          `decay_rate` every `decay_steps`. If False, learning rate will be
                          decayed continuously and following the formula above. Default: False
 
@@ -199,7 +199,7 @@ def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
 
     """
     with default_main_program()._lr_schedule_guard():
-        if imperative_base.enabled():
+        if in_dygraph_mode():
             decay = imperate_lr.NaturalExpDecay(learning_rate, decay_steps,
                                                 decay_rate, staircase)
             return decay
@@ -222,7 +222,7 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     training progresses. By using this function, an inverse decay function will be
     applied to the initial learning rate.
 
-    Decayed learning rate calcualtes as follows:
+    Decayed learning rate calculates as follows:
 
     >>> if staircase == True:
     >>>     decayed_learning_rate = learning_rate / (1 + decay_rate * floor(global_step / decay_step))
@@ -255,7 +255,7 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
 		    staircase=True))
     """
     with default_main_program()._lr_schedule_guard():
-        if imperative_base.enabled():
+        if in_dygraph_mode():
             decay = imperate_lr.InverseTimeDecay(learning_rate, decay_steps,
                                                  decay_rate, staircase)
             return decay
@@ -311,7 +311,7 @@ def polynomial_decay(learning_rate,
 
     """
     with default_main_program()._lr_schedule_guard():
-        if imperative_base.enabled():
+        if in_dygraph_mode():
             decay = imperate_lr.PolynomialDecay(learning_rate, decay_steps,
                                                 end_learning_rate, power, cycle)
             return decay
@@ -380,7 +380,7 @@ def piecewise_decay(boundaries, values):
         if len(values) - len(boundaries) != 1:
             raise ValueError("len(values) - len(boundaries) should be 1")
 
-        if imperative_base.enabled():
+        if in_dygraph_mode():
             decay = imperate_lr.PiecewiseDecay(boundaries, values, 0)
             return decay
         else:
@@ -444,7 +444,7 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
     """
 
     with default_main_program()._lr_schedule_guard():
-        if imperative_base.enabled():
+        if in_dygraph_mode():
             decay = imperate_lr.CosineDecay(learning_rate, step_each_epoch,
                                             epochs)
             return decay
@@ -520,7 +520,7 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
     linear_step = float(end_lr) - float(start_lr)
     with default_main_program()._lr_schedule_guard():
 
-        if imperative_base.enabled():
+        if in_dygraph_mode():
             lr = imperate_lr.LinearLrWarmup(learning_rate, warmup_steps,
                                             start_lr, end_lr)
             return lr

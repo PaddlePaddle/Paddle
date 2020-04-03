@@ -112,7 +112,7 @@ class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate();
     AddOutput(
         "BatchResetHiddenPrev",
-        "(LoDTensor) The reseted hidden state LoDTensor organized in batches. "
+        "(LoDTensor) The reset hidden state LoDTensor organized in batches. "
         "This LoDTensor is a matrix with shape (T X D) and has the same LoD "
         "with `BatchGate`.")
         .AsIntermediate();

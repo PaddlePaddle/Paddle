@@ -119,7 +119,7 @@ class CudnnLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0.0);
     AddAttr<bool>("is_bidirec",
                   "is_bidirec"
-                  "if it is bidirection rnn"
+                  "if it is bidirectional rnn"
                   "The will affect the shape of the Out, last_h, and last_c")
         .SetDefault(false);
     AddAttr<int>("input_size", "input size ot the Input Tensor").SetDefault(10);

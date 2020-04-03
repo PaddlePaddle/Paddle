@@ -113,7 +113,7 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<std::vector<std::string>>(
         "table_names",
-        "(string vector, the splited table names that will be fetched from "
+        "(string vector, the split table names that will be fetched from "
         "parameter server)"
         "in the order of input variables for mapping")
         .SetDefault({});

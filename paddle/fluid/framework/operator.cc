@@ -648,7 +648,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
     PADDLE_ENFORCE_EQ(
         in_var_list.size(), out_var_list.size(),
         platform::errors::PreconditionNotMet(
-            "Op [%s]: Input var size should be equal with ouput var size",
+            "Op [%s]: Input var size should be equal with output var size",
             op_.Type()));
 
     auto& out_var_names = op_.Outputs(out);
@@ -981,7 +981,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 
   if (!transfered_inplace_vars.empty()) {
-    // there is inplace variable has been transfered.
+    // there is inplace variable has been transferred.
     TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
   }
   if (FLAGS_enable_unused_var_check) {

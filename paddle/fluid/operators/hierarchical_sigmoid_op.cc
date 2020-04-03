@@ -144,7 +144,7 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate();
     AddOutput(
         "W_Out",
-        "(LoDTensor, optinal) using input 'W' as Output to make it mutable"
+        "(LoDTensor, optional) using input 'W' as Output to make it mutable"
         "When we are using prefetch")
         .AsIntermediate();
     AddAttr<AttrType>("num_classes", "(int, optional), The number of classes")
@@ -162,7 +162,7 @@ class HierarchicalSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<std::vector<std::string>>(
         "table_names",
-        "(string vector, the splited table names that will be fetched from "
+        "(string vector, the split table names that will be fetched from "
         "parameter server)"
         "in the order of input variables for mapping")
         .SetDefault({});

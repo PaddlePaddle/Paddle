@@ -101,7 +101,7 @@ class TRTConvertValidation {
     DeclVar(name, dim_vec);
   }
 
-  // Declare a parameter varaible in the scope.
+  // Declare a parameter variable in the scope.
   void DeclParamVar(const std::string& name, const nvinfer1::Dims& dims) {
     DeclVar(name, dims, true);
   }

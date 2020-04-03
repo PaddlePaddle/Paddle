@@ -24,7 +24,7 @@ class TestInferenceApi(unittest.TestCase):
     def test_inference_api(self):
         tensor32 = np.random.randint(10, 20, size=[20, 2]).astype('int32')
         paddletensor32 = PaddleTensor(tensor32)
-        value32 = np.array(paddletensor32.data.int32_data()).reshape(*[20, 2])
+        value32 = np.array(paddletensor32.data.int32_data()).reshape(* [20, 2])
         dtype32 = paddletensor32.dtype
         self.assertEqual(value32.all(), tensor32.all())
         self.assertEqual(dtype32, PaddleDType.INT32)
@@ -38,7 +38,7 @@ class TestInferenceApi(unittest.TestCase):
 
         tensor64 = np.random.randint(10, 20, size=[20, 2]).astype('int64')
         paddletensor64 = PaddleTensor(tensor64)
-        value64 = np.array(paddletensor64.data.int64_data()).reshape(*[20, 2])
+        value64 = np.array(paddletensor64.data.int64_data()).reshape(* [20, 2])
         dtype64 = paddletensor64.dtype
         self.assertEqual(value64.all(), tensor64.all())
         self.assertEqual(dtype64, PaddleDType.INT64)
@@ -53,7 +53,7 @@ class TestInferenceApi(unittest.TestCase):
         tensor_float = np.random.randn(20, 2).astype('float32')
         paddletensor_float = PaddleTensor(tensor_float)
         value_float = np.array(paddletensor_float.data.float_data()).reshape(
-            *[20, 2])
+            * [20, 2])
         dtype_float = paddletensor_float.dtype
         self.assertEqual(value_float.all(), tensor_float.all())
         self.assertEqual(dtype_float, PaddleDType.FLOAT32)

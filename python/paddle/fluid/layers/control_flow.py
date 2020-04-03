@@ -215,7 +215,7 @@ def Print(input,
     Args:
         input (Variable): A Tensor to print.
         summarize (int): Number of elements in the tensor to be print. If it's
-                vaule is -1, then all elements in the tensor will be print.
+                value is -1, then all elements in the tensor will be print.
         message (str): A string message to print as a prefix.
         first_n (int): Only log `first_n` number of times.
         print_tensor_name (bool, optional): Print the tensor name. Default: True.
@@ -703,7 +703,7 @@ class StaticRNN(object):
         Args:
             mem(Variable): the memory variable.
             var(Variable): the plain variable generated in RNN block, used to update memory.
-                           var and mem should hava same dims and data type.
+                           var and mem should have same dims and data type.
 
         Returns:
             None
@@ -1020,7 +1020,7 @@ def lod_rank_table(x, level=0):
     of LoD, this layer creates a LodRankTable object. A LoDRankTable object
     contains a list of bi-element tuples. Each tuple consists of an index and
     a length, both of which are int type. Refering to specified level of LoD,
-    the index is the sequence index number and the length representes the
+    the index is the sequence index number and the length represents the
     sequence length. Please note that the list is ranked in descending order by
     the length. The following is an example:
 
@@ -1180,7 +1180,7 @@ def increment(x, value=1.0, in_place=True):
     Notice that the number of elements in :attr:`x` must be equal to 1.
 
     Parameters:
-        x (Variable): A tensor that must alway contain only one element, its data type supports
+        x (Variable): A tensor that must always contain only one element, its data type supports
             float32, float64, int32 and int64.
         value (float, optional): The amount to increment the data of :attr:`x`. Default: 1.0.
         in_place (bool, optional): Whether the OP should be performed in-place. Default: True.
@@ -1669,7 +1669,7 @@ def array_length(array):
     """
     This OP is used to get the length of the input array :ref:`api_fluid_LoDTensorArray` .
     It can be used together with :ref:`api_fluid_layers_array_read` , :ref:`api_fluid_layers_array_write` , 
-    :ref:`api_fluid_layers_While` OP to traverse, read and wirte LoDTensorArray.
+    :ref:`api_fluid_layers_While` OP to traverse, read and write LoDTensorArray.
 
     Args:
         array (LoDTensorArray): The input array that will be used to compute the length.
@@ -1750,7 +1750,7 @@ class ConditionalBlock(object):
 
     Args:
         inputs (Variable): bool conditions.
-        is_scalar_condition (bool): whether the branch is controled by a scalar.
+        is_scalar_condition (bool): whether the branch is controlled by a scalar.
         name(str): name of this ConditionalBlock.
 
     Examples:
@@ -2540,7 +2540,7 @@ class DynamicRNN(object):
     The total number of time steps is determined by the longest sequence.
     DynamicRNN will not pad all sequences to the same length, instead it will
     sort the sequences internally by the sequence length in descending order.
-    The input sequences will be shrinked because only sequences of which the
+    The input sequences will be shrank because only sequences of which the
     length is larger than the time step will participate the remaining calculation.
 
     If defined :code:`drnn = DynamicRNN()`, then users can call :code:`drnn()`
@@ -2828,7 +2828,7 @@ class DynamicRNN(object):
                 Optional data types are: bool, float16, float32, float64, int8, int16, int32, int64, uint8.
 
         Returns:
-            Variable: The input LoDTensor after sorted and shrinked. If there are :code:`num_sequences` \
+            Variable: The input LoDTensor after sorted and shrank. If there are :code:`num_sequences` \
                 sequences in RNN's input LoDTensor whose length is larger than :code:`step_idx` , \
                 the static input Tensor will be sorted to the same order as RNN's input and \
                 will only retain data corresponding to those :code:`num_sequences` sequences. \
@@ -2927,7 +2927,7 @@ class DynamicRNN(object):
 
     def __call__(self, *args, **kwargs):
         """
-        This function is used to get the output  sequneces of DynamicRNN.
+        This function is used to get the output  sequences of DynamicRNN.
 
         Args:
             None
@@ -2969,10 +2969,10 @@ class DynamicRNN(object):
                 If setting shape to :math:`\{D_1, D_2, ...\}` , the shape of memory Tensor
                 will be :math:`\{batch\_size, D_1, D_2, ...\}` , where batch_size is
                 determined by RNN's input sequences. The default value is None.
-            value (float, optional): When init is None, it is used as initalized value
+            value (float, optional): When init is None, it is used as initialized value
                 of memory. The default value is 0.0.
             need_reorder (bool, optional): When init is not None, it determines whether
-                the memory needs to reorder like the RNN's input sequeneces. It should be
+                the memory needs to reorder like the RNN's input sequences. It should be
                 set to True when the initialized memory depends on the order of input samples.
                 The default value is False.
             dtype (str|numpy.dtype, optional): When init is None, it is used to set the
@@ -2980,9 +2980,9 @@ class DynamicRNN(object):
                 are: "float32", "float64", "int32", "int64".
 
         Returns:
-            Variable: The memory LoDTensor after shrinked.  If there are :code:`num_sequences` \
+            Variable: The memory LoDTensor after shrank.  If there are :code:`num_sequences` \
                 sequences in RNN's input LoDTensor whose length is larger than :code:`step_idx` , \
-                the memory Tensor also need to be shrinked and will only retain data \
+                the memory Tensor also need to be shrank and will only retain data \
                 corresponding to those :code:`num_sequences` sequences.
 
         Raises:

@@ -116,7 +116,7 @@ def var_conv_2d(input,
     """
     The var_conv_2d layer calculates the output base on the :attr:`input` with variable length,
     row, col, input channel, filter size and strides. Both :attr:`input`, :attr:`row`,
-    and :attr:`col` are 1-level LodTensor. The covolution operation is same as conv2d layer with 
+    and :attr:`col` are 1-level LodTensor. The convolution operation is same as conv2d layer with 
     padding. Besides, input.dims[1] should be 1. 
 
     .. code-block:: text
@@ -133,9 +133,9 @@ def var_conv_2d(input,
                 output.dims = [174, 1]  # where 174 = 90 + 84
 
     Args:
-        input (Variable): The input shoud be 1-level LodTensor with dims[1] equals 1.
-        row (Variable): The row shoud be 1-level LodTensor to provide height information.
-        col (Variable): The col shoud be 1-level LodTensor to provide width information.
+        input (Variable): The input should be 1-level LodTensor with dims[1] equals 1.
+        row (Variable): The row should be 1-level LodTensor to provide height information.
+        col (Variable): The col should be 1-level LodTensor to provide width information.
         input_channel (int): The number of input channel.
         output_channel (int): The number of output channel.
         filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
@@ -325,9 +325,9 @@ def sequence_topk_avg_pooling(input, row, col, topks, channel_num):
 
     Args:
         input (Variable): The input should be 2D LodTensor with dims[1] equals 1.
-        row (Variable): The row shoud be 1-level LodTensor to provide the height information
+        row (Variable): The row should be 1-level LodTensor to provide the height information
                         of the input tensor data.
-        col (Variable): The col shoud be 1-level LodTensor to provide the width information
+        col (Variable): The col should be 1-level LodTensor to provide the width information
                         of the input tensor data.
         topks (list): A list of incremental value to average the topk feature.
         channel_num (int): The number of input channel.
@@ -555,7 +555,7 @@ def multiclass_nms2(bboxes,
                                  low confidence score. If not provided, 
                                  consider all boxes.
         nms_top_k (int): Maximum number of detections to be kept according to
-                         the confidences aftern the filtering detections based
+                         the confidences after the filtering detections based
                          on score_threshold.
         nms_threshold (float): The threshold to be used in NMS. Default: 0.3
         nms_eta (float): The threshold to be used in NMS. Default: 1.0

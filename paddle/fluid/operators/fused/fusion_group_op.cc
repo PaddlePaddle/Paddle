@@ -76,7 +76,7 @@ class FusionGroupOpMaker : public framework::OpProtoAndCheckerMaker {
 fusion_group Operator.
 
 It is used to execute a generated CUDA kernel which fuse the computation of
-multiple operators into one. It supports serveral types:
+multiple operators into one. It supports several types:
 0, fused computation of elementwise operations in which all the dims of inputs
     and outputs should be exactly the same.
 )DOC");

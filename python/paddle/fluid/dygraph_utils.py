@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .. import core
-from ..framework import dygraph_only
+from . import core
+from .framework import dygraph_only
 
 
 @dygraph_only

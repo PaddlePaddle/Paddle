@@ -50,7 +50,7 @@ void PrintCuptiHint() {
   static bool showed = false;
   if (showed) return;
   showed = true;
-  LOG(WARNING) << "Invalid timestamp occured. Please try increasing the "
+  LOG(WARNING) << "Invalid timestamp occurred. Please try increasing the "
                   "FLAGS_multiple_of_cupti_buffer_size.";
 }
 

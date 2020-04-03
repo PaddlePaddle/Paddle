@@ -87,18 +87,18 @@ class ParallelExecutorPrivate {
   inline bool HasGarbageCollectors() const { return !gcs_.empty(); }
 
   /**
-   * NOTE(zengjinle): the feeded variables of users should not be reused,
-   * because users may feed them into another network. Changing the feeded
+   * NOTE(zengjinle): the fed variables of users should not be reused,
+   * because users may feed them into another network. Changing the fed
    * variables that users can visit may cause calculation wrong, which is
    * a very subtle bug when traning networks. However, these variables
    * can be garbage collected.
    *
    * ParallelExecutor provides 2 methods to feed variables:
    *
-   *  - FeedTensorsIntoLocalScopes: this method would share memory of feeded
+   *  - FeedTensorsIntoLocalScopes: this method would share memory of fed
    *                                variables, so we have to skip these.
    *
-   *  - FeedAndSplitTensorIntoLocalScopes: this method would copy data of feeded
+   *  - FeedAndSplitTensorIntoLocalScopes: this method would copy data of fed
    *                                       variables, so we do not need to skip
    *                                       them.
    */

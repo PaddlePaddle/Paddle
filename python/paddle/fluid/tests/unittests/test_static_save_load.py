@@ -285,7 +285,7 @@ class TestSaveLoadBase(unittest.TestCase):
                 if isinstance(var, framework.Parameter) or var.persistable:
                     t = np.array(fluid.global_scope().find_var(var.name)
                                  .get_tensor())
-                    # make sure all the paramerter or optimzier var have been update
+                    # make sure all the paramerter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
@@ -299,7 +299,7 @@ class TestSaveLoadBase(unittest.TestCase):
 
                     new_t = np.array(fluid.global_scope().find_var(var.name)
                                      .get_tensor())
-                    # make sure all the paramerter or optimzier var have been set to zero
+                    # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             fluid.load(main_program, "./test_1.pdparams", exe)
@@ -394,7 +394,7 @@ class TestSaveLoadPartial(unittest.TestCase):
                 if isinstance(var, framework.Parameter) or var.persistable:
                     t = np.array(fluid.global_scope().find_var(var.name)
                                  .get_tensor())
-                    # make sure all the paramerter or optimzier var have been update
+                    # make sure all the paramerter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
@@ -408,7 +408,7 @@ class TestSaveLoadPartial(unittest.TestCase):
 
                     new_t = np.array(fluid.global_scope().find_var(var.name)
                                      .get_tensor())
-                    # make sure all the paramerter or optimzier var have been set to zero
+                    # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             fluid.load(test_program, "./test_1.pdopt", None)
@@ -496,7 +496,7 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
                 if isinstance(var, framework.Parameter) or var.persistable:
                     t = np.array(fluid.global_scope().find_var(var.name)
                                  .get_tensor())
-                    # make sure all the paramerter or optimzier var have been update
+                    # make sure all the paramerter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
@@ -510,7 +510,7 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
 
                     new_t = np.array(fluid.global_scope().find_var(var.name)
                                      .get_tensor())
-                    # make sure all the paramerter or optimzier var have been set to zero
+                    # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             fluid.load(main_program, "./test_1", exe)
@@ -605,7 +605,7 @@ class TestProgramStatePartial(unittest.TestCase):
                 if isinstance(var, framework.Parameter) or var.persistable:
                     t = np.array(fluid.global_scope().find_var(var.name)
                                  .get_tensor())
-                    # make sure all the paramerter or optimzier var have been update
+                    # make sure all the paramerter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
@@ -619,7 +619,7 @@ class TestProgramStatePartial(unittest.TestCase):
 
                     new_t = np.array(fluid.global_scope().find_var(var.name)
                                      .get_tensor())
-                    # make sure all the paramerter or optimzier var have been set to zero
+                    # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             #fluid.load(test_program, "./test_1", None )
@@ -652,7 +652,7 @@ class TestProgramStatePartial(unittest.TestCase):
 
                     new_t = np.array(fluid.global_scope().find_var(var.name)
                                      .get_tensor())
-                    # make sure all the paramerter or optimzier var have been set to zero
+                    # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             fluid.set_program_state(test_program, program_state_1)
@@ -672,7 +672,7 @@ class TestProgramStatePartial(unittest.TestCase):
 
                     new_t = np.array(fluid.global_scope().find_var(var.name)
                                      .get_tensor())
-                    # make sure all the paramerter or optimzier var have been set to zero
+                    # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             fluid.set_program_state(test_program, program_state_2)
@@ -692,7 +692,7 @@ class TestProgramStatePartial(unittest.TestCase):
 
                     new_t = np.array(fluid.global_scope().find_var(var.name)
                                      .get_tensor())
-                    # make sure all the paramerter or optimzier var have been set to zero
+                    # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             fluid.set_program_state(test_program, program_state_3)
@@ -777,7 +777,7 @@ class TestVariableInit(unittest.TestCase):
             if isinstance(var, framework.Parameter) or var.persistable:
                 t = np.array(fluid.global_scope().find_var(var.name)
                              .get_tensor())
-                # make sure all the paramerter or optimzier var have been update
+                # make sure all the paramerter or optimizer var have been update
                 base_map[var.name] = t
 
         for var in program.list_vars():
@@ -868,7 +868,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
                 if isinstance(var, framework.Parameter) or var.persistable:
                     t = np.array(fluid.global_scope().find_var(var.name)
                                  .get_tensor())
-                    # make sure all the paramerter or optimzier var have been update
+                    # make sure all the paramerter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
@@ -883,7 +883,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
 
                     new_t = np.array(fluid.global_scope().find_var(var.name)
                                      .get_tensor())
-                    # make sure all the paramerter or optimzier var have been set to zero
+                    # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             fluid.load(main_program, "test_path", exe)
@@ -905,7 +905,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 fluid.load(main_program, "test_path", exe)
 
-            # check unused paramter
+            # check unused parameter
 
             fluid.load(test_clone_program, "test_path", exe)
 
@@ -984,7 +984,7 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                 if isinstance(var, framework.Parameter) or var.persistable:
                     t = np.array(fluid.global_scope().find_var(var.name)
                                  .get_tensor())
-                    # make sure all the paramerter or optimzier var have been update
+                    # make sure all the paramerter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
@@ -1000,7 +1000,7 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
 
                     new_t = np.array(fluid.global_scope().find_var(var.name)
                                      .get_tensor())
-                    # make sure all the paramerter or optimzier var have been set to zero
+                    # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             file_model_path = os.path.join("test_path", "model_single")
@@ -1136,7 +1136,7 @@ class TestProgramStateOldSave(unittest.TestCase):
                 if isinstance(var, framework.Parameter) or var.persistable:
                     t = np.array(fluid.global_scope().find_var(var.name)
                                  .get_tensor())
-                    # make sure all the paramerter or optimzier var have been update
+                    # make sure all the paramerter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
@@ -1150,7 +1150,7 @@ class TestProgramStateOldSave(unittest.TestCase):
 
                     new_t = np.array(fluid.global_scope().find_var(var.name)
                                      .get_tensor())
-                    # make sure all the paramerter or optimzier var have been set to zero
+                    # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             #fluid.load(test_program, "./test_1", None )
@@ -1247,7 +1247,7 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
                 if isinstance(var, framework.Parameter) or var.persistable:
                     t = np.array(fluid.global_scope().find_var(var.name)
                                  .get_tensor())
-                    # make sure all the paramerter or optimzier var have been update
+                    # make sure all the paramerter or optimizer var have been update
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
 
@@ -1262,7 +1262,7 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
 
                     new_t = np.array(fluid.global_scope().find_var(var.name)
                                      .get_tensor())
-                    # make sure all the paramerter or optimzier var have been set to zero
+                    # make sure all the paramerter or optimizer var have been set to zero
                     self.assertTrue(np.sum(np.abs(new_t)) == 0)
 
             #fluid.load(test_program, "./test_1", None )

@@ -63,7 +63,7 @@ class SequenceTopkAvgPoolingOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput(
         "Out",
         "(Tensor) The output of SequenceTopkPoolingOp does not contain LoD "
-        "infomation.");
+        "information.");
     AddOutput("pos", "(Tensor<int>) store the topk index ").AsIntermediate();
     AddAttr<std::vector<int>>("topks", "topks");
     AddAttr<int>("channel_num", "channel number");

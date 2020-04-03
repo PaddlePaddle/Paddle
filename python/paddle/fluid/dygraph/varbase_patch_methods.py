@@ -27,7 +27,7 @@ def monkey_patch_varbase():
     def set_value(self, value):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Set a new value for this Variable.
 
@@ -76,7 +76,7 @@ def monkey_patch_varbase():
     def backward(self, backward_strategy=None):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Run backward of current Graph which starts from current Variable
 
@@ -116,13 +116,13 @@ def monkey_patch_varbase():
             self._run_backward(backward_strategy, framework._dygraph_tracer())
         else:
             raise ValueError(
-                "Variable.backward() is only avaliable in DyGraph mode")
+                "Variable.backward() is only available in DyGraph mode")
 
     @framework.dygraph_only
     def gradient(self):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Get the Gradient of Current Variable
 

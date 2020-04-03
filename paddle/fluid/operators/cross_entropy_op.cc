@@ -203,7 +203,7 @@ class CrossEntropyOpMaker : public framework::OpProtoAndCheckerMaker {
               "represents the cross entropy loss.");
     AddAttr<bool>("soft_label",
                   "(bool, default false), a flag indicating whether to "
-                  "interpretate the given labels as soft labels.")
+                  "interpretant the given labels as soft labels.")
         .SetDefault(false);
     AddAttr<int>("ignore_index",
                  "(int, default -100), Specifies a target value that is"

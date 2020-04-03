@@ -387,3 +387,7 @@ if(WITH_MKLDNN)
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
             ARGS --infer_model=${INT8_DATA_DIR}/resnet50/model)
  endif()
+
+inference_analysis_test(test_analyzer_capi_ner SRCS analyzer_capi_ner_tester.cc 
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
+        ARGS --infer_model=${CHINESE_NER_INSTALL_DIR}/model)

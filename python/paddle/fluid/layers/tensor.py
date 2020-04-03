@@ -448,7 +448,7 @@ def assign(input, output=None):
 
     Parameters:
         input (Variable|numpy.ndarray): A tensor or numpy ndarray, its data type supports
-            float32, float64, int32 and int64.
+            float16, float32, float64, int32 and int64.
         output (Variable, optional): A tensor. If :attr:`output` is None, a new tensor will
             be created as :attr:`output`. Default: None.
 
@@ -469,9 +469,10 @@ def assign(input, output=None):
     helper = LayerHelper('assign', **locals())
     check_type(input, 'input', (Variable, numpy.ndarray), 'assign')
     if isinstance(input, Variable):
-        check_dtype(input.dtype, 'input',
-                    ['float32', 'float64', 'int32', 'int64', 'bool'], 'assign',
-                    '(When the type of input in assign is Variable.)')
+        check_dtype(
+            input.dtype, 'input',
+            ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+            'assign', '(When the type of input in assign is Variable.)')
         if output is None:
             output = helper.create_variable_for_type_inference(
                 dtype=input.dtype)
@@ -511,9 +512,9 @@ def assign(input, output=None):
 def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     """
     This OP creates a Tensor with specified `shape` and `dtype`, and
-    initializes it with a constant specifed by `value`.
+    initializes it with a constant specified by `value`.
 
-    The attribute `stop_gradient` of the created Tensor is setted to True.
+    The attribute `stop_gradient` of the created Tensor is set to True.
 
     Args:
         shape(list|tuple|Variable): Shape of the Tensor to be created.
@@ -523,7 +524,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output tensor which can
             be float16, float32, float64, int32, int64.
         value(float): The constant value used to initialize the Tensor to be created.
-        force_cpu(True): data should be on CPU if it's true, defalut value is False.
+        force_cpu(True): data should be on CPU if it's true, default value is False.
         out(Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
@@ -675,7 +676,7 @@ def fill_constant_batch_size_like(input,
                                   output_dim_idx=0,
                                   force_cpu=False):
     """
-    This OP creates a Tesnor accroding the shape and dtype, and initializes the
+    This OP creates a Tesnor according the shape and dtype, and initializes the
     Tensor with the constants provided in ``value``. When the input is LoDTensor
     and the input_dim_idx is 0, the output_dim_idx dimension is set to the value
     of the batch_size input by the input, the Stop_gradient attribute of the created
@@ -693,7 +694,7 @@ def fill_constant_batch_size_like(input,
             The default value is 0.
         output_dim_idx(int): Used to specify which dimension of Tensor is created to be set
             the value of batch_size of input Tensor. The default value is 0.
-        force_cpu(bool): data should be on CPU if it's true, defalut value is False.
+        force_cpu(bool): data should be on CPU if it's true, default value is False.
 
     Returns:
         Variable: Tensor which will be created according to dtype.
@@ -1086,7 +1087,7 @@ def save_combine(x, file_path, overwrite=True):
 
 def load_combine(out, file_path):
     """
-    Loads a list of vairables from a single file.
+    Loads a list of variable from a single file.
 
     Args:
         out(list): The list of variables to be read from the disk file.
@@ -1295,7 +1296,7 @@ def zeros_like(x, out=None):
         x(Variable): The input tensor which specifies shape and dtype, the input data dtype could be bool, float32, float64, int32, int64.
         out(Variable, optional): If is :attr:`None` , the op will create the variable as output, the data type and shape of \
             this variable will be same as input :attr:`x`. If is a tensor, the data type and shape need to be same as input :attr:`x`. 
-            The defalut value is :attr:`None` .
+            The default value is :attr:`None` .
 
     Returns:
         Variable: The N-D tensor, the element in tensor is related to input data type, if the input data type is bool, \

@@ -97,7 +97,7 @@ class GRUUnitOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate();
     AddOutput("ResetHiddenPrev",
               "(Tensor) Matrix with shape [batch_size, frame_size] for the "
-              "reseted hidden state of previous time step.")
+              "reset hidden state of previous time step.")
         .AsIntermediate();
     AddOutput("Hidden",
               "(Tensor) The GRU hidden state of the current time step "
