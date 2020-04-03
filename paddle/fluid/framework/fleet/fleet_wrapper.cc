@@ -576,11 +576,13 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     size_t len = tensor->numel();
     int64_t* ids = tensor->data<int64_t>();
     int slot = 0;
-    //if (dump_slot) {
-     // slot = boost::lexical_cast<int>(sparse_key_names[i]);     
-    //}
     if (dump_slot) {
-      slot = 1;
+      try {
+        slot = boost::lexical_cast<int>(sparse_key_names[i]);     
+      } catch(boost::bad_lexical_cast& e)  {  
+         // bad lexical cast: source type value could not be interpreted as target  
+        slot = 1;
+      }
     }
     Variable* g_var = scope.FindVar(sparse_grad_names[i]);
     if (g_var == nullptr) {
