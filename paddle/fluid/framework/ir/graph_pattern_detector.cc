@@ -1836,6 +1836,8 @@ PDNode *patterns::MultipleQuantize::operator()() {
 
 PDNode *patterns::MKLDNNInPlace::operator()() {
   // TODO(jczaja): Enable more mkl-dnn ops e.g. activation, batch_norm....
+  auto prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
+
   auto possible_inplace_op =
       pattern->NewNode(inplace_to_be_op_repr())
           ->assert_is_ops({"elementwise_add", "softmax"});
@@ -1854,6 +1856,9 @@ PDNode *patterns::MKLDNNInPlace::operator()() {
   // Check if op is MKL-DNN enabled
   possible_inplace_op->assert_op_attr("use_mkldnn", true);
 
+
+  // linked structure
+  prev_op->LinksTo({input});
   possible_inplace_op->LinksTo({output});
   possible_inplace_op->LinksFrom({input});
   next_op->LinksFrom({output});
