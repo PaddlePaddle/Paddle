@@ -78,7 +78,7 @@ from .tensor.logic import equal  #DEFINE_ALIAS
 # from .tensor.logic import reduce_any   #DEFINE_ALIAS
 # from .tensor.logic import allclose   #DEFINE_ALIAS
 # from .tensor.logic import elementwise_equal   #DEFINE_ALIAS
-# from .tensor.logic import isnan   #DEFINE_ALIAS
+from .tensor.logic import isnan  #DEFINE_ALIAS
 # from .tensor..tensor import Tensor   #DEFINE_ALIAS
 # from .tensor..tensor import LoDTensor   #DEFINE_ALIAS
 # from .tensor..tensor import LoDTensorArray   #DEFINE_ALIAS

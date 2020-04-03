@@ -55,7 +55,7 @@ from .logic import equal  #DEFINE_ALIAS
 # from .logic import reduce_any   #DEFINE_ALIAS
 # from .logic import allclose   #DEFINE_ALIAS
 # from .logic import elementwise_equal   #DEFINE_ALIAS
-# from .logic import isnan   #DEFINE_ALIAS
+from .logic import isnan  #DEFINE_ALIAS
 # from . import Tensor   #DEFINE_ALIAS
 # from . import LoDTensor   #DEFINE_ALIAS
 # from . import LoDTensorArray   #DEFINE_ALIAS

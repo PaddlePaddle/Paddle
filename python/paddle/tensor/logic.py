@@ -33,8 +33,32 @@ __all__ = [
     #            'reduce_any',
     #            'allclose',
     #            'elementwise_equal',
-    #            'isnan'
+    'isnan'
 ]
+
+from paddle.fluid.layer_helper import LayerHelper
+
+
+def isnan(x):
+    """
+    Test if any of x contains a NAN
+    Args:
+       x (Variable): The Tensor/LoDTensor to be checked.
+    Returns:
+       Variable: The tensor variable storing the output, only a bool value, indicating that whether there is NAN in x or not.
+    
+    Examples:
+        .. code-block:: python
+    
+          import paddle
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name="input", shape=[4, 32, 32], dtype="float32")
+          res = paddle.tensor.isnan(data)
+    """
+    helper = LayerHelper("isnan", **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type="isnan", inputs={"X": x}, outputs={"Out": out})
+    return out
 
 
 def equal(x, y, axis=-1, name=None):
