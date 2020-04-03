@@ -320,6 +320,7 @@ class TestArgsortOpDescendingAxisNeg2GPU(TestArgsortOpAxisNeg2GPU):
     def init_direction(self):
         self.descending = True
 
+
 class TestSortOnCPU(TestArgsortOpCPU):
     def init_place(self):
         self.place = core.CPUPlace()

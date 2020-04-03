@@ -192,7 +192,7 @@ from .tensor.logic import equal  #DEFINE_ALIAS
 # from .tensor.search import where   #DEFINE_ALIAS
 # from .tensor.search import index_select   #DEFINE_ALIAS
 # from .tensor.search import nonzero   #DEFINE_ALIAS
-from .tensor.search import sort   #DEFINE_ALIAS
+from .tensor.search import sort  #DEFINE_ALIAS
 # from .framework.framework import set_default_dtype   #DEFINE_ALIAS
 # from .framework.framework import get_default_dtype   #DEFINE_ALIAS
 # from .framework.random import manual_seed   #DEFINE_ALIAS

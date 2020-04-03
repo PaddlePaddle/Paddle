@@ -13,17 +13,19 @@
 # limitations under the License.
 
 # TODO: define searching & indexing functions of a tensor  
-__all__ = ['argmax',
-#            'argmin',
-#            'argsort',
-#            'has_inf',
-#            'has_nan',
-#            'masked_select',
-#            'topk',
-#            'where',
-#            'index_select',
-#            'nonzero',
-           'sort']
+__all__ = [
+    'argmax',
+    #            'argmin',
+    #            'argsort',
+    #            'has_inf',
+    #            'has_nan',
+    #            'masked_select',
+    #            'topk',
+    #            'where',
+    #            'index_select',
+    #            'nonzero',
+    'sort'
+]
 
 from paddle.common_ops_import import *
 import warnings
