@@ -450,5 +450,19 @@ class TestReduceMeanOpError(unittest.TestCase):
             self.assertRaises(TypeError, fluid.layers.reduce_mean, x2)
 
 
+class TestSumOpWithKeepDimAndReduceAll(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
+        self.attrs = {'reduce_all': True, 'keep_dim': True}
+        self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 if __name__ == '__main__':
     unittest.main()

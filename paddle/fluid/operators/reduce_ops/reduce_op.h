@@ -81,6 +81,7 @@ class ReduceGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     bool reduce_all = context.Attr<bool>("reduce_all");
+    bool keep_dim = context.Attr<bool>("keep_dim");
     auto dims = context.Attr<std::vector<int>>("dim");
 
     auto* input0 = context.Input<Tensor>("X");
