@@ -119,6 +119,28 @@ python main.py --data=<path/to/dataset> --eval_only --weights=tsm_checkpoint/fin
 |:-:|:-:|
 |76%|98%|
 
+### 模型推断
+
+可通过如下两种方式进行模型推断。
+
+1. 自动下载Paddle发布的[TSM-ResNet50](https://paddlemodels.bj.bcebos.com/hapi/tsm_resnet50.pdparams)权重推断
+
+```bash
+python infer.py --data=<path/to/dataset> --label_list=<path/to/label_list> --infer_file=<path/to/pickle>
+```
+
+2. 加载checkpoint进行精度推断
+
+```bash
+python infer.py --data=<path/to/dataset> --label_list=<path/to/label_list> --infer_file=<path/to/pickle> --weights=tsm_checkpoint/final
+```
+
+模型推断结果会以如下日志形式输出
+
+```text
+2020-04-03 07:37:16,321-INFO: Sample ./kineteics/val_10/data_batch_10-042_6 predict label: 6, ground truth label: 6
+```
+
 ## 参考论文
 
 - [Temporal Shift Module for Efficient Video Understanding](https://arxiv.org/abs/1811.08383v1), Ji Lin, Chuang Gan, Song Han

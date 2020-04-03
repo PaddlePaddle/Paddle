@@ -56,21 +56,32 @@ class KineticsDataset(Dataset):
     """
 
     def __init__(self,
-                 file_list,
-                 pickle_dir,
+                 file_list=None,
+                 pickle_dir=None,
+                 pickle_file=None,
                  label_list=None,
                  mode='train',
                  seg_num=8,
                  seg_len=1,
                  transform=None):
-        assert os.path.isfile(file_list), \
-                "file_list {} not a file".format(file_list)
-        with open(file_list) as f:
-            self.pickle_paths = [l.strip() for l in f]
+        assert str.lower(mode) in ['train', 'val', 'test'], \
+                "mode can only be 'train' 'val' or 'test'"
+        self.mode = str.lower(mode)
 
-        assert os.path.isdir(pickle_dir), \
-                "pickle_dir {} not a directory".format(pickle_dir)
-        self.pickle_dir = pickle_dir
+        if self.mode in ['train', 'val']:
+            assert os.path.isfile(file_list), \
+                    "file_list {} not a file".format(file_list)
+            with open(file_list) as f:
+                self.pickle_paths = [l.strip() for l in f]
+
+            assert os.path.isdir(pickle_dir), \
+                    "pickle_dir {} not a directory".format(pickle_dir)
+            self.pickle_dir = pickle_dir
+        else:
+            assert os.path.isfile(pickle_file), \
+                    "pickle_file {} not a file".format(pickle_file)
+            self.pickle_dir = ''
+            self.pickle_paths = [pickle_file]
 
         self.label_list = label_list
         if self.label_list is not None:
@@ -78,10 +89,6 @@ class KineticsDataset(Dataset):
                 "label_list {} not a file".format(self.label_list)
             with open(self.label_list) as f:
                 self.label_list = [int(l.strip()) for l in f]
-
-        assert mode in ['train', 'val'], \
-                "mode can only be 'train' or 'val'"
-        self.mode = mode
 
         self.seg_num = seg_num
         self.seg_len = seg_len
