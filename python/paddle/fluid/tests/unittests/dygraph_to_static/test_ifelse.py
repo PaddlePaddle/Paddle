@@ -100,7 +100,7 @@ def dyfunc_ifExp_with_while(x):
     def body(i, ten, y):
         # It will be converted into `layers.cond` as followed.
         # map_func(lambda x: fluid.layers.cond(i==0, lambda: x, lambda: add_fn(x), y)
-        y = map_func(lambda x: x if i == 0 else add_fn(x), y)
+        y = map_func(lambda x: x if (i == 0) is not None else add_fn(x), y)
         i += 1
         return [i, ten, y]
 
