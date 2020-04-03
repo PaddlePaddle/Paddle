@@ -191,6 +191,7 @@ void PrivateQueueDataFeed<T>::ReadThread() {
     T instance;
     while (ParseOneInstanceFromPipe(&instance)) {
       queue_->Put(instance);
+      instance = T();
     }
   }
   queue_->Close();
@@ -436,6 +437,7 @@ void MultiSlotDataFeed::ReadThread() {
     while (ParseOneInstanceFromPipe(&instance)) {
       ins_num++;
       queue_->Put(instance);
+      instance = Record();
     }
     VLOG(3) << "filename: " << filename << " inst num: " << ins_num;
   }

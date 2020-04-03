@@ -688,6 +688,8 @@ class QueueDataset(DatasetBase):
         """
         super(QueueDataset, self).__init__()
         self.proto_desc.name = "MultiSlotDataFeed"
+        self.parse_ins_id = False
+        self.parse_content = False
 
     def _prepare_to_run(self):
         """
@@ -701,6 +703,8 @@ class QueueDataset(DatasetBase):
         self.dataset.set_thread_num(self.thread_num)
         self.dataset.set_filelist(self.filelist)
         self.dataset.set_data_feed_desc(self.desc())
+        self.dataset.set_parse_ins_id(self.parse_ins_id)
+        self.dataset.set_parse_content(self.parse_content)
         self.dataset.create_readers()
 
     def local_shuffle(self):
@@ -750,6 +754,13 @@ class QueueDataset(DatasetBase):
         raise NotImplementedError(
             "QueueDataset does not support global shuffle, "
             "please use InMemoryDataset for global_shuffle")
+
+    def set_parse_ins_id(self, parse_ins_id):
+        self.parse_ins_id = parse_ins_id
+
+    def set_parse_content(self, parse_content):
+        self.parse_content = parse_content
+
 
 
 class FileInstantDataset(DatasetBase):
