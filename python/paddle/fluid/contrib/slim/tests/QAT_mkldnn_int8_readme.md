@@ -44,6 +44,10 @@ Notes:
    ```... → input1 → conv2d → output3 → ...```
    and the quantization scales have to be collected for the `input1` and `outpu3` tensors in the QAT model.
 2. Quantization of the following operators is supported: `conv2d`, `depthwise_conv2d`, `mul`, `fc`, `pool2d`, `reshape2`, `transpose2`, `concat`.
+3. The longest sequence of consecutive quantizable operators in the model, the biggest performance boost can be achieved through quantization:
+   ```... → conv2d → conv2d → pool2d → conv2d → conv2d → ...``` 
+   Quantizing single operator separated from other quantizable operators can give no performance benefits or even slow down the inference:
+   ```... → swish → fc → softmax → ...`
 
 ### Removing fake operators
 
@@ -191,7 +195,7 @@ You can use the `qat2_int8_image_classification_comparison.py` script to reprodu
 
 * `--qat_model` - a path to a QAT model that will be transformed into INT8 model.
 * `--fp32_model` - a path to an FP32 model whose accuracy will be measured and compared to the accuracy of the INT8 model.
-* `--quantized_ops` - a comma-separated list of names of operators to be quantized. For Image Classification models mentioned above the list comprises of `conv2d` and `pool2d` operators.
+* `--quantized_ops` - a comma-separated list of names of operators to be quantized. The list depends on which operators have quantization scales provided in the model. Also, it may be more optimal in terms of performance to choose only certain types of operators for quantization. For Image Classification models mentioned above the list comprises of `conv2d` and `pool2d` operators.
 * `--infer_data` - a path to the validation dataset.
 
 ```bash
