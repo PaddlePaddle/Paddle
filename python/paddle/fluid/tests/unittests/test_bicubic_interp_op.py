@@ -87,7 +87,6 @@ def bicubic_interp_np(input,
             h = ratio_h * (k + 0.5) - 0.5
         input_y = int(h)
         y_t = h - input_y
-        # print("y_t:",y_t)
         for l in range(out_w):
             if (align_corners):
                 w = ratio_w * l
@@ -126,7 +125,6 @@ class TestBicubicInterpOp(OpTest):
         self.init_test_case()
         self.op_type = "bicubic_interp"
         input_np = np.random.random(self.input_shape).astype("float64")
-        # print("input:",input_np)
 
         if self.data_layout == "NCHW":
             in_h = self.input_shape[2]
@@ -164,9 +162,6 @@ class TestBicubicInterpOp(OpTest):
     def test_check_output(self):
         self.check_output()
         self.check_output_with_place(place=core.CUDAPlace(0))
-
-    # def test_check_output_gpu(self):
-    #    self.check_output_with_place(place=core.CUDAPlace(0))
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', in_place=True)
