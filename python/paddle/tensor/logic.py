@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.common_ops_import import *
-import paddle.fluid as fluid
+from ..fluid.layer_helper import LayerHelper
+from ..fluid.data_feeder import check_type
+from ..fluid.layers.layer_function_generator import templatedoc
 
-# TODO: define logic functions of a tensor
-<<<<<<< ac032226c225f808ed381a8e24e5b14d99d565b9
+# TODO: define logic functions of a tensor  
 __all__ = [
     'equal',
     #            'greater_equal',
@@ -32,7 +32,7 @@ __all__ = [
     #            'not_equal',
     #            'reduce_all',
     #            'reduce_any',
-    #            'allclose',
+    'allclose',
     #            'elementwise_equal',
     #            'isnan'
 ]
@@ -41,29 +41,68 @@ __all__ = [
 def equal(x, y, axis=-1, name=None):
     """
     This OP returns the truth value of :math:`x == y`. True if two inputs have the same elements, False otherwise.
-=======
-# __all__ = ['equal',
-#            'greater_equal',
-#            'greater_than',
-#            'is_empty',
-#            'isfinite',
-#            'less_equal',
-#            'less_than',
-#            'logical_and',
-#            'logical_not',
-#            'logical_or',
-#            'logical_xor',
-#            'not_equal',
-#            'reduce_all',
-#            'reduce_any',
-#            'elementwise_equal',
-#            'isnan']
 
-from ..fluid.layer_helper import LayerHelper
-from ..fluid.data_feeder import check_type
-from ..fluid.layers.layer_function_generator import templatedoc
+    **NOTICE**: The output of this OP has no gradient, and this OP supports broadcasting by :attr:`axis`.
 
-__all__ = ['allclose']
+    Args:
+        x(Variable): Tensor, data type is float32, float64, int32, int64.
+        y(Variable): Tensor, data type is float32, float64, int32, int64.
+        axis(int32, optional): If X.dimension != Y.dimension, Y.dimension
+            must be a subsequence of x.dimension. And axis is the start 
+            dimension index for broadcasting Y onto X. For more detail, 
+            please refer to OP:`elementwise_add`.
+        name(str, optional): Normally there is no need for user to set this property. 
+            For more information, please refer to :ref:`api_guide_Name`.Default: None.
+
+    Returns:
+        Variable: output Tensor, data type is bool, value is [False] or [True].
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import paddle
+          import numpy as np
+
+          label = fluid.layers.assign(np.array([3, 4], dtype="int32"))
+          label_1 = fluid.layers.assign(np.array([1, 2], dtype="int32"))
+          limit = fluid.layers.assign(np.array([3, 4], dtype="int32"))
+          out1 = paddle.equal(x=label, y=limit) #out1=[True]
+          out2 = paddle.equal(x=label_1, y=limit) #out2=[False]
+
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import paddle
+          import numpy as np
+
+          def gen_data():
+              return {
+                    "x": np.ones((2, 3, 4, 5)).astype('float32'),
+                    "y": np.zeros((3, 4)).astype('float32')
+                }
+
+          x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+          y = fluid.data(name="y", shape=[3,4], dtype='float32')
+          out = paddle.equal(x, y, axis=1)
+          place = fluid.CPUPlace()
+          exe = fluid.Executor(place)
+
+          res = exe.run(feed=gen_data(),
+                            fetch_list=[out])
+          print(res[0]) #[False]
+    """
+    helper = LayerHelper("equal_reduce", **locals())
+    out = helper.create_variable_for_type_inference(dtype='bool')
+    attrs = {}
+    attrs['axis'] = axis
+    helper.append_op(
+        type='equal_reduce',
+        inputs={'X': [x],
+                'Y': [y]},
+        attrs=attrs,
+        outputs={'Out': [out]})
+    return out
 
 
 @templatedoc()
@@ -72,11 +111,11 @@ def allclose(input, other, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     ${comment}
 
     Args:
-        input(${input_type}): ${input_comment}.
-        other(${other_type}): ${other_comment}.
-        rtol(${rtol_type}, optional): ${rtol_comment}.
-        atol(${atol_type}, optional): ${atol_comment}.
-        equal_nan(${equal_nan_type}, optional): ${equal_nan_comment}.
+        input(inputtype):{input_comment}.
+        other(othertype):{other_comment}.
+        rtol(rtoltype,optional):{rtol_comment}.
+        atol(atoltype,optional):{atol_comment}.
+        equal_nan(equalnantype,optional):{equal_nan_comment}.
         name(STR, optional): The default value is None.
                         Normally there is no need for user to set this property.
                         For more information, please refer to :ref:`api_guide_Name`.
@@ -136,66 +175,14 @@ def allclose(input, other, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     check_type(rtol, 'rtol', float, 'allclose')
     check_type(atol, 'atol', float, 'allclose')
     check_type(equal_nan, 'equal_nan', bool, 'allclose')
->>>>>>> add example for allclose_op.
 
-    **NOTICE**: The output of this OP has no gradient, and this OP supports broadcasting by :attr:`axis`.
-
-    Args:
-        x(Variable): Tensor, data type is float32, float64, int32, int64.
-        y(Variable): Tensor, data type is float32, float64, int32, int64.
-        axis(int32, optional): If X.dimension != Y.dimension, Y.dimension
-            must be a subsequence of x.dimension. And axis is the start
-            dimension index for broadcasting Y onto X. For more detail,
-            please refer to OP:`elementwise_add`.
-        name(str, optional): Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name`.Default: None.
-
-    Returns:
-        Variable: output Tensor, data type is bool, value is [False] or [True].
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          import paddle
-          import numpy as np
-
-          label = fluid.layers.assign(np.array([3, 4], dtype="int32"))
-          label_1 = fluid.layers.assign(np.array([1, 2], dtype="int32"))
-          limit = fluid.layers.assign(np.array([3, 4], dtype="int32"))
-          out1 = paddle.equal(x=label, y=limit) #out1=[True]
-          out2 = paddle.equal(x=label_1, y=limit) #out2=[False]
-
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          import paddle
-          import numpy as np
-
-          def gen_data():
-              return {
-                    "x": np.ones((2, 3, 4, 5)).astype('float32'),
-                    "y": np.zeros((3, 4)).astype('float32')
-                }
-
-          x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
-          y = fluid.data(name="y", shape=[3,4], dtype='float32')
-          out = paddle.equal(x, y, axis=1)
-          place = fluid.CPUPlace()
-          exe = fluid.Executor(place)
-
-          res = exe.run(feed=gen_data(),
-                            fetch_list=[out])
-          print(res[0]) #[False]
-    """
-    helper = LayerHelper("equal_reduce", **locals())
+    helper = LayerHelper("allclose", **locals())
     out = helper.create_variable_for_type_inference(dtype='bool')
-    attrs = {}
-    attrs['axis'] = axis
+
+    inputs = {'Input': input, 'Other': other}
+    outputs = {'Out': out}
+    attrs = {'rtol': rtol, 'atol': atol, 'equal_nan': equal_nan}
     helper.append_op(
-        type='equal_reduce',
-        inputs={'X': [x],
-                'Y': [y]},
-        attrs=attrs,
-        outputs={'Out': [out]})
+        type='allclose', inputs=inputs, outputs=outputs, attrs=attrs)
+
     return out
