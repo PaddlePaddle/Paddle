@@ -1,0 +1,50 @@
+MODEL:
+  name: "BMN"
+  tscale: 100
+  dscale: 100
+  feat_dim: 400
+  prop_boundary_ratio: 0.5
+  num_sample: 32
+  num_sample_perbin: 3
+  anno_file: "./activitynet_1.3_annotations.json"
+  feat_path: './fix_feat_100'
+
+TRAIN:
+  subset: "train"
+  epoch: 9
+  batch_size: 4
+  num_workers: 4
+  use_shuffle: True
+  device: "gpu"
+  num_gpus: 4
+  learning_rate: 0.001
+  learning_rate_decay: 0.1
+  lr_decay_iter: 4200
+  l2_weight_decay: 1e-4
+
+VALID:
+  subset: "validation"
+
+TEST:
+  subset: "validation"
+  batch_size: 1
+  num_workers: 1
+  use_buffer: False
+  snms_alpha: 0.001
+  snms_t1: 0.5
+  snms_t2: 0.9
+  output_path: "output/EVAL/BMN_results"
+  result_path: "evaluate_results"
+
+INFER:
+  subset: "test"
+  batch_size: 1
+  num_workers: 1
+  use_buffer: False
+  snms_alpha: 0.4
+  snms_t1: 0.5
+  snms_t2: 0.9
+  filelist: './infer.list'
+  output_path: "output/INFER/BMN_results"
+  result_path: "predict_results"
+
