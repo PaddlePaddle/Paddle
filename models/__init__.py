@@ -1,3 +1,4 @@
 from .resnet import *
-from .mobilenet import *
+from .mobilenetv1 import *
+from .mobilenetv2 import *
 from .vgg import *
