@@ -34,6 +34,7 @@ void ModelParallelWorker::Initialize(const TrainerDesc& trainer_desc) {
   for (auto& op_desc : program->Block(0).AllOps()) {
     ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
+  VLOG(3) << "program size: " << program->Size();
 }
 
 void ModelParallelWorker::AutoSetCPUAffinity(bool reuse) {
@@ -81,7 +82,7 @@ void ModelParallelWorker::TrainFiles() {
     device_reader_->Start();
     device_reader_->AssignFeedVar(*minibatch_scope_);
     while (true) {
-      // Start a macrobatch.
+      // Start a minibatch.
       // forward pass:
       for (int i = 0; i < num_macrobatches_; ++i) {
         device_reader_->Next();
@@ -116,7 +117,8 @@ void ModelParallelWorker::TrainFiles() {
             op_role == static_cast<int>(OpRole::kLRSched)) {
           VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                   << " for minibatch scope";
-          op->Run(*minibatch_scope_, place_);
+          // op->Run(*minibatch_scope_, place_);
+          op->Run(*macrobatch_scopes_[num_macrobatches_ - 1], place_);
         }
       }
       dev_ctx_->Wait();
@@ -156,7 +158,8 @@ void ModelParallelWorker::TrainFiles() {
             op_role == static_cast<int>(OpRole::kLRSched)) {
           VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                   << " for minibatch scope ";
-          op->Run(*minibatch_scope_, place_);
+          op->Run(*macrobatch_scopes_[num_macrobatches_ - 1], place_);
+          cudaDeviceSynchronize();
         }
       }
       dev_ctx_->Wait();

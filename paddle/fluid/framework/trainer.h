@@ -200,7 +200,7 @@ class ModelParallelTrainer : public TrainerBase {
   Scope* minibatch_scope_;
 
   void CopyParameters(int section_id, int macrobatch_id,
-                      const ProgramDesc& program);
+                      const ProgramDesc& program, const platform::Place& place);
   bool isPersistableVarGrad(std::string name);
 };
 

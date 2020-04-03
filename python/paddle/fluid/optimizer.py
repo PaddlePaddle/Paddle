@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import numpy as np
+import time
 from collections import defaultdict
 
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
@@ -29,6 +30,7 @@ from .framework import program_guard
 from .initializer import Constant
 from .layer_helper import LayerHelper
 from .layers import ops
+from .layers import control_flow
 from .regularizer import append_regularization_ops
 from .dygraph import base as imperative_base
 from .dygraph import no_grad
@@ -4161,19 +4163,24 @@ class LookaheadOptimizer(object):
         return mini_out
 
 
-OpRole = core.op_proto_and_checker_maker.OpRole
+#LR_DECAY_OPS = [
+#    "increment", "cast", "fill_constant", "fill_constant", "less_than",
+#    "logical_not", "conditional_block", "fill_constant",
+#    "fill_constant", "less_than", "logical_not", "logical_and",
+#    "logical_and", "conditional_block", "fill_constant",
+#    "conditional_block"
+#]
 
 
 class ModelParallelOptimizer(object):
     """
     ModelParallel Optimizer
 
-    Train with model parallel mode. The program will be split by devices where ops run on. 
-
-    So the length of place_list and concurrency_list must be also 2*k-1.
+    Train with model parallel mode. The program will be split by devices
+    where ops run. 
 
     Args:
-        optimizer (Optimizer): The based optimizer, such as SGD.
+        optimizer (Optimizer): The base optimizer, such as SGD.
         num_macrobatches (int): Number of macrobatches. [Optional. Default:1].
         start_cpu_core_id (int): specify the first cpu core id if cpu is used. [Optional. Default:0].
 
@@ -4192,23 +4199,22 @@ class ModelParallelOptimizer(object):
                 concat = layers.concat([emb_x, emb_y], axis=1)
                 fc = layers.fc(input=concat, name="fc", size=1, num_flatten_dims=1, bias_attr=False)
                 loss = layers.reduce_mean(fc)
-            optimizer = fluid.optimizer.SGD(learning_rate=0.5)
-            optimizer = fluid.optimizer.ModelParallelOptimizer(optimizer,
-                    num_macrobatches=4,
-                    )
+            optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+            optimizer = fluid.optimizer.ModelParallelOptimizer(optimizer, num_macrobatches=4)
             optimizer.minimize(loss)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
             filelist = [] # you should set your own filelist, e.g. filelist = ["dataA.txt"]
-            dataset = fluid.DatasetFactory().create_dataset("FileInstantDataset")
+            dataset = fluid.DatasetFactory().create_dataset()
             dataset.set_use_var([x,y])
+            batch_size = 1
             dataset.set_batch_size(batch_size)
             dataset.set_filelist(filelist)
             exe.train_from_dataset(
                         fluid.default_main_program(),
                         dataset,
-                        thread=2,
+                        thread=1,
                         debug=False,
                         fetch_list=[],
                         fetch_info=[],
@@ -4217,81 +4223,98 @@ class ModelParallelOptimizer(object):
 
     def __init__(self, optimizer, num_macrobatches=1, start_cpu_core_id=0):
         if framework.in_dygraph_mode():
-            raise Exception("In dygraph, don't support PipelineOptimizer.")
-        # TODO: check properties
+            raise Exception("In dygraph mode, ModelParallelOptimizer "
+                            "is not supported now.")
+        if not isinstance(optimizer, Optimizer):
+            raise ValueError("optimizer must be an instance of Optimizer, "
+                             "but the given type is {}.".format(
+                                 type(optimizer)))
+
         self._optimizer = optimizer
         self._place_list = None
+        assert start_cpu_core_id>=0, \
+            "start_cpu_core_id can not be a negative value."
         self._start_cpu_core_id = start_cpu_core_id
+        assert num_macrobatches>=1, \
+            "num_macrobatches must be a positive value."
         self._num_macrobatches = num_macrobatches
         op_maker = core.op_proto_and_checker_maker
-        self.op_role_key = op_maker.kOpRoleAttrName()
-        self.op_role_var_key = op_maker.kOpRoleVarAttrName()
+        self._op_role = core.op_proto_and_checker_maker.OpRole
+        self._op_role_key = op_maker.kOpRoleAttrName()
+        self._op_role_var_key = op_maker.kOpRoleVarAttrName()
+        self._op_device_key = op_maker.kOpDeviceAttrName()
 
     def _create_vars(self, block, main_program):
+        # Create vars for block, copied from main_program
         used_var_set = set()
         for op_idx in range(block.desc.op_size()):
             op_desc = block.desc.op(op_idx)
             vars = op_desc.input_arg_names() + op_desc.output_arg_names()
-            for var in vars:
-                if var in used_var_set or "blocking_queue" in var:
+            for var_name in vars:
+                # var for which name contains "blocking_queue" 
+                # only exists in startup program 
+                if var_name in used_var_set or "blocking_queue" in var_name:
                     continue
-                used_var_set.add(var)
-                source_var = main_program.block(0).var(str(var))
+                used_var_set.add(var_name)
+                source_var = main_program.block(0).var(var_name)
                 block._clone_variable(source_var, False)
 
     def _is_backward_op(self, op):
-        return self.op_role_key in op.attr_names and \
-            int(op.all_attrs()[self.op_role_key]) & int(OpRole.Backward)
+        return self._op_role_key in op.attr_names and \
+            int(op.all_attrs()[self._op_role_key]) & int(self._op_role.Backward)
 
     def _is_update_op(self, op):
         return 'Param' in op.input_names and 'Grad' in op.input_names and \
             "LearningRate" in op.input_names
 
     def _is_optimizer_op(self, op):
-        return self.op_role_key in op.attr_names and \
-            int(op.all_attrs()[self.op_role_key]) & int(OpRole.Optimize)
+        return self._op_role_key in op.attr_names and \
+            int(op.all_attrs()[self._op_role_key]) & int(self._op_role.Optimize)
 
     def _split_program(self, main_program):
+        """
+        Split program into section programs according to devices that ops run on.
+
+        Args:
+            main_program (Program): the main program
+        """
         programs = []
+        # Map from device to its corresponding section program info
         device_program_map = dict()
         block = main_program.block(0)
-        op_maker = core.op_proto_and_checker_maker
-        op_device = op_maker.kOpDeviceAttrName()
         for op in block.ops:
-            assert op.has_attr(op_device)
-            #if not op.has_attr(op_device):
-            #    cur_device = "gpu"
-            #else:
-            #    cur_device = op.attr(op_device)
-            cur_device = op.attr(op_device)
-            assert cur_device
-            #if cur_device is None:
-            #    cur_device = "gpu"
-            #if cur_device == "":
-            #    cur_device = "cpu"
-            if cur_device not in device_program_map:
+            device = op.attr(self._op_device_key)
+
+            # Todo: add op_device attr for sum op in backward pass
+            if device == "" and op.type == "sum":
+                device = "gpu"
+
+            if device not in device_program_map:
                 program = {
                     "program": Program(),
                     "input_set": set(),
                     "output_set": set()
                 }
-                device_program_map[cur_device] = program
-            program = device_program_map[cur_device]
+                device_program_map[device] = program
+            program = device_program_map[device]
             op_desc = op.desc
             ap_op = program["program"].block(0).desc.append_op()
             ap_op.copy_from(op_desc)
+
         for key in sorted(device_program_map.keys()):
             program = device_program_map[key]
             programs.append(program)
+
         return programs
 
     def _find_real_prev_op(self, ops, cur_op, var_name):
         """
-        Find the real prev op that outputs var_name variable.
+        Find the real previous op that outputs variable named var_name.
 
         Args:
             ops (list): A list of ops.
-            cur_op (Operator): Current operator which has var_name variable.
+            cur_op (Operator): Current operator which has variable named
+                               var_name as input.
             var_name (string): Variable name.
         """
         prev_op = []
@@ -4304,7 +4327,9 @@ class ModelParallelOptimizer(object):
         if prev_op:
             if not len(prev_op) == 1:
                 raise ValueError("There must be only one previous op "
-                                 "that outputs {0} variable.".format(var_name))
+                                 "that outputs {} variable for op {}, "
+                                 "but previous ops are {}".format(
+                                     var_name, op.type, prev_op))
             else:
                 return prev_op[0]
         return None
@@ -4317,54 +4342,187 @@ class ModelParallelOptimizer(object):
         op_desc._rename_output(old_name, new_name)
 
     def _create_var(self, block, ref_var, name):
-        block.create_var(
-            name=name,
-            var_type=ref_var.type,
-            shape=ref_var.shape,
-            dtype=ref_var.dtype)
+        """
+        Create a new var for block, which has the same type,
+        shape and dtype as ref_var.
+        """
+        new_var = block._clone_variable(ref_var, False)
+        new_var.name = name
+        return new_var
 
-    def _insert_enq_deq_ops(self, block, startup_program):
+    def _get_data_var_info(self, block):
+        """
+        Get all data vars and rename them.
+
+        For ModelParallelTrainer, all data vars are binded to
+        minibatch scope, so we have to feed them to the macromatch
+        to avoid conflicts. The vars feeded to macrobatch have to
+        be renamed.
+        """
+        op_maker = core.op_proto_and_checker_maker
+        op_device = op_maker.kOpDeviceAttrName()
+
+        raw_name_new_name_map = dict()
+        # Because we will create vars in block, it is more safe
+        # to get all var_names before iteration.
+        var_names = [var_name for var_name in block.vars]
+        for var_name in var_names:
+            var = block.var(var_name)
+            if not var.is_data:
+                continue
+            assert var.name not in raw_name_new_name_map
+            new_name = unique_name.generate(var.name)
+            raw_name_new_name_map[var.name] = new_name
+            new_var = self._create_var(block, var, new_name)
+            new_var.is_data = False
+
+        # map of data to devices that that data may on
+        data_devices_map = dict()
+        for op in block.ops:
+            device = op.attr(self._op_device_key)
+            for var_name in op.input_arg_names:
+                if var_name in raw_name_new_name_map:
+                    if not var_name in data_devices_map:
+                        data_devices_map[var_name] = []
+                    if not device in data_devices_map[var_name]:
+                        data_devices_map[var_name].append(device)
+                    new_name = raw_name_new_name_map[var_name]
+                    self._rename_arg(op, var_name, new_name)
+        return data_devices_map, raw_name_new_name_map
+
+    def _rename_var_in_block(self, block, raw_name_new_name_map):
+        for op in block.ops:
+            if op.type == "enqueue" or op.type == "dequeue":
+                continue
+            for var_name in op.input_arg_names:
+                if var_name in raw_name_new_name_map:
+                    new_name = raw_name_new_name_map[var_name]
+                    self._rename_arg(op, var_name, new_name)
+
+    def _insert_enq_deq_for_data_var(self, block, programs, startup, devices):
+        """
+        Insert enqueue and dequeue ops for data var
+        """
+        op_maker = core.op_proto_and_checker_maker
+        op_device = op_maker.kOpDeviceAttrName()
+        data_devices_map, raw_name_new_name_map = self._get_data_var_info(block)
+
+        first_prog = programs[0]['program']
+        first_prog._sync_with_cpp()
+        first_block = first_prog.block(0)
+        first_device = devices[0]
+        for var_name in data_devices_map.keys():
+            for device in data_devices_map[var_name]:
+                # step1: generate queue for each pair of data var and device
+                # that that data on
+                queue_name = var_name
+                queue_name = unique_name.generate(queue_name)
+                queue_var = startup.block(0).create_var(
+                    type=core.VarDesc.VarType.RAW)
+                startup.block(0).append_op(
+                    type='gen_queue',
+                    attrs={
+                        'queue_names': [queue_name],
+                        'queue_size': self._num_macrobatches
+                    })
+                first_block._insert_op(
+                    index=0,
+                    type='enqueue',
+                    inputs={
+                        'blocking_queue': queue_name,
+                        'lod_tensor': var_name
+                    },
+                    attrs={
+                        self._op_device_key: first_device,
+                        self._op_role_key: self._op_role.Forward
+                    })
+                assert device in devices
+                index = devices.index(device)
+                prog = programs[index]['program']
+                prog._sync_with_cpp()
+                block = prog.block(0)
+                index = 0
+                if device == first_device:
+                    index = 1
+                new_name = raw_name_new_name_map[var_name]
+                block._insert_op(
+                    index=index,
+                    type='dequeue',
+                    inputs={'blocking_queue': queue_name, },
+                    attrs={
+                        self._op_device_key: device,
+                        self._op_role_key: self._op_role.Forward,
+                        'lod_tensors': [new_name]
+                    })
+                self._rename_var_in_block(block, raw_name_new_name_map)
+
+    def _strip_grad_suffix(self, name):
+        """
+        Strip the grad suffix from the given variable name
+        """
+        pos = name.find(core.grad_var_suffix())
+        return name[:pos] if pos != -1 else name
+
+    def _append_grad_suffix(self, name):
+        """
+        Append grad suffix to the given variable name
+        """
+        return name + core.grad_var_suffix()
+
+    def _check_validation(self, block):
+        """
+        Check whether ops in a block are all validate.
+        """
+        op_maker = core.op_proto_and_checker_maker
+        op_device = op_maker.kOpDeviceAttrName()
+        for op in block.ops:
+            type = op.type
+            if op.has_attr('sub_block'):
+                raise ValueError("We do not support program with "
+                                 "sub blocks now.")
+            if not op._has_kernel(type):
+                raise ValueError("Does not support op({}) without "
+                                 "kernel now.".format(op.type))
+            assert op.has_attr(self._op_device_key), \
+                "op ({}) has no {} attribute.".format(op.type, self._op_device_key)
+            device = op.attr(self._op_device_key)
+            # Todo: add op_device for sum op in backward pass
+            # we set it as "gpu" just for test
+            if device == "" and op.type == "sum":
+                device = "gpu"
+            assert device, "op {} has no op_device attribute.".format(op.type)
+
+    def _insert_enq_deq_ops_for_boundaries(self, block, startup_program):
+        """
+        Insert a pair of enqueue and dequeue ops for every two
+        consecutive ops on different devices.
+        """
         op_maker = core.op_proto_and_checker_maker
         op_device = op_maker.kOpDeviceAttrName()
         devices = set()
         startup_block = startup_program.global_block()
-        grad_queue_map = dict()
 
         for index, op in reversed(list(enumerate(block.ops))):
-            offset = index
-            type = op.type
-            if not op._has_kernel(type):
+            if op.type == "print":
                 continue
-            #if not op.has_attr(op_device) or op.attr(op_device) == "":
-            #    cur_device = "cpu"
-            #else:
-            #    cur_device = op.attr(op_device)
-            assert op.has_attr(op_device)
             cur_device = op.attr(op_device)
-            assert cur_device
-            #if type == "fill_constant":
-            #    cur_device = "gpu"
+            # Todo: add op_device for sum op in backward pass
+            # we set it as "gpu" just for test
+            if cur_device == "" and op.type == "sum":
+                cur_device = "gpu"
             devices.add(cur_device)
+
             for var_name in op.input_arg_names:
                 prev_op = self._find_real_prev_op(block.ops, op, var_name)
                 if prev_op is None:
                     continue
-                if not prev_op._has_kernel(prev_op.type):
-                    continue
-                #if not prev_op.has_attr(op_device) or prev_op.attr(
-                #        op_device) == "":
-                #    prev_device = "cpu"
-                #else:
-                #    prev_device = prev_op.attr(op_device)
-                assert prev_op.has_attr(op_device)
                 prev_device = prev_op.attr(op_device)
-                assert prev_device, "%s has no op_device" % prev_op
-                #if prev_op.type == "fill_constant":
-                #    prev_device = "gpu"
+                # Todo: add op_device for sum op in backward pass
+                # we set it as "gpu" just for test
+                if prev_device == "" and prev_op.type == "sum":
+                    prev_device = "gpu"
+
                 if prev_device != cur_device:
-                    print("generate and insert queue for var %s" % var_name)
-                    print("prev_op %s, device %s, cur_op %s, device %s" %
-                          (prev_op.type, prev_device, op.type, cur_device))
                     queue_name = var_name + "_blocking_queue"
                     queue_name = unique_name.generate(queue_name)
                     queue_var = startup_block.create_var(
@@ -4377,13 +4535,9 @@ class ModelParallelOptimizer(object):
                             'queue_names': [queue_name],
                             'queue_size': self._num_macrobatches
                         })
-                    #ref_var = block._var_recursive(var_name)
-                    #renamed = unique_name.generate(var_name)
-                    #self._create_var(block, ref_var, renamed)
-                    #self._rename_arg(op, var_name, renamed)
-                    op_role = op.all_attrs()[self.op_role_key]
+                    op_role = op.all_attrs()[self._op_role_key]
                     block._insert_op(
-                        index=offset,
+                        index=index,
                         type='enqueue',
                         inputs={
                             'blocking_queue': queue_name,
@@ -4391,23 +4545,41 @@ class ModelParallelOptimizer(object):
                         },
                         attrs={
                             'op_device': prev_device,
-                            self.op_role_key: op_role
+                            self._op_role_key: op_role
                         })
                     block._insert_op(
-                        index=offset + 1,
+                        index=index + 1,
                         type='dequeue',
-                        inputs={'blocking_queue': queue_name, },
+                        inputs={'blocking_queue': queue_name},
                         attrs={
                             'op_device': cur_device,
-                            #'lod_tensors': [renamed],
                             'lod_tensors': [var_name],
-                            self.op_role_key: op_role
+                            self._op_role_key: op_role
                         })
-                    offset += 2
+        return devices
+
+    def _insert_enq_deq_ops_for_update(self, block, startup_program):
+        """
+        Insert enqueue op for gradients for parameters and dequeue_N ops.
+        """
+        op_maker = core.op_proto_and_checker_maker
+        op_device = op_maker.kOpDeviceAttrName()
+        startup_block = startup_program.global_block()
+        grad_queue_map = dict()
+
+        for index, op in reversed(list(enumerate(block.ops))):
+            offset = index
+            if op.type == "print":
+                continue
+            device = op.attr(op_device)
+            # Todo: add op_device for sum op in backward pass
+            # we set it as "gpu" just for test
+            if device == "" and op.type == "sum":
+                device = "gpu"
             # Backward pass
             if self._is_backward_op(op) and \
-                    self.op_role_var_key in op.attr_names:
-                op_role_var = op.all_attrs()[self.op_role_var_key]
+                    self._op_role_var_key in op.attr_names:
+                op_role_var = op.all_attrs()[self._op_role_var_key]
 
                 if len(op_role_var) == 0:
                     continue
@@ -4416,21 +4588,7 @@ class ModelParallelOptimizer(object):
                     grad_name = op_role_var[i + 1]
                     grad_var = block.vars[grad_name]
                     assert grad_name in grad_queue_map
-                    if grad_name in grad_queue_map:
-                        queue_name = grad_queue_map[grad_name]
-                    else:
-                        queue_name = grad_name + "_blocking_queue"
-                        queue_name = unique_name.generate(queue_name)
-                        queue_var = startup_block.create_var(
-                            name=queue_name,
-                            persistable=True,
-                            type=core.VarDesc.VarType.RAW)
-                        startup_block.append_op(
-                            type='gen_queue',
-                            attrs={
-                                'queue_names': [queue_name],
-                                'queue_size': self._num_macrobatches
-                            })
+                    queue_name = grad_queue_map[grad_name]
                     block._insert_op(
                         index=offset + 1,
                         type='enqueue',
@@ -4439,14 +4597,14 @@ class ModelParallelOptimizer(object):
                             'lod_tensor': grad_name
                         },
                         attrs={
-                            'op_device': cur_device,
-                            self.op_role_key: OpRole.Backward
+                            op_device: cur_device,
+                            self._op_role_key: self._op_role.Backward
                         })
                     offset += 1
             # Optimizer pass
-            if self._is_optimizer_op(op):
-                assert self.op_role_var_key in op.attr_names
-                op_role_var = op.all_attrs()[self.op_role_var_key]
+            if self._is_update_op(op):
+                assert self._op_role_var_key in op.attr_names
+                op_role_var = op.all_attrs()[self._op_role_var_key]
                 assert len(op_role_var) % 2 == 0
                 assert len(op_role_var) == 2
                 grad_name = op_role_var[1]
@@ -4465,44 +4623,142 @@ class ModelParallelOptimizer(object):
                         'queue_names': [queue_name],
                         'queue_size': self._num_macrobatches
                     })
+                orig_var_name = self._strip_grad_suffix(grad_name)
                 for _ in range(self._num_macrobatches):
-                    u_grad_name = unique_name.generate(grad_name)
+                    u_name = unique_name.generate(orig_var_name)
+                    u_grad_name = self._append_grad_suffix(u_name)
                     self._create_var(block, ref_var, u_grad_name)
                     grad_names.append(u_grad_name)
+                scale_name = unique_name.generate(grad_name)
+                self._create_var(block, ref_var, scale_name)
+                scale_var = block.var(scale_name)
                 block._insert_op(
                     index=offset,
                     type='dequeue',
                     inputs={'blocking_queue': queue_name, },
                     attrs={
-                        'op_device': cur_device,
+                        op_device: cur_device,
                         'lod_tensors': grad_names,
-                        self.op_role_key: OpRole.Optimize
+                        self._op_role_key: self._op_role.Optimize
                     })
                 block._insert_op(
                     index=offset + 1,
                     type='sum',
                     inputs={'X': grad_names, },
+                    outputs={'Out': scale_var},
+                    attrs={
+                        op_device: cur_device,
+                        self._op_role_key: self._op_role.Optimize
+                    })
+                block._insert_op(
+                    index=offset + 2,
+                    type='scale',
+                    inputs={'X': scale_var, },
                     outputs={'Out': ref_var},
                     attrs={
-                        'op_device': cur_device,
-                        self.op_role_key: OpRole.Optimize
+                        'scale': 1.0 / self._num_macrobatches,
+                        op_device: cur_device,
+                        self._op_role_key: self._op_role.Optimize
                     })
-
-        return devices
 
     def minimize(self,
                  loss,
                  startup_program=None,
                  parameter_list=None,
-                 no_grad_set=None):
+                 no_grad_set=None,
+                 print_list=list(),
+                 print_param_grad=False):
         block = loss.block
         if startup_program is None:
             startup_program = default_startup_program()
-        self._optimizer.minimize(loss, startup_program, parameter_list,
-                                 no_grad_set)
-        devices = self._insert_enq_deq_ops(block, startup_program)
+        _, params_grads = self._optimizer.minimize(loss, startup_program,
+                                                   parameter_list, no_grad_set)
+        self._check_validation(block)
+        devices = self._insert_enq_deq_ops_for_boundaries(block,
+                                                          startup_program)
         device_list = sorted(devices)
+        if "cpu" in device_list:
+            assert device_list[0] == "cpu", \
+                "If CPU device is used, it must be the first device."
         program = block.program
+
+        # Insert print for params and grads
+        if print_param_grad:
+            for param, grad in params_grads:
+                if param.persistable:
+                    print_list.append(param.name)
+                    print_list.append(grad.name)
+        #print_list.append('fc_0.w_0@GRAD_0')
+        #print_list.append('fc_0.w_0@GRAD_1')
+        #print_list.append('fc_0.w_0@GRAD')
+        #print_list.append('label')
+        print_list.append('mean_0.tmp_0')
+        print_list.append('accuracy_0.tmp_0')
+        print_list.append('accuracy_1.tmp_0')
+        # Insert print op for debug
+        for name in print_list:
+            role = 2
+            persistable = True
+            if 'mean_0.tmp_0' == name:
+                role = 1
+                persistable = False
+            if 'accuracy_0.tmp_0' == name:
+                role = 1
+                persistable = False
+            if 'accuracy_1.tmp_0' == name:
+                role = 1
+                persistable = False
+            if 'fc_0.w_0@GRAD' == name:
+                role = 1
+                persistable = False
+            if 'label' == name:
+                role = 0
+                persistable = False
+            var = block.var(name)
+            print_var_name = 'print_' + var.name
+            block.create_var(
+                name=print_var_name,
+                var_type=var.type,
+                shape=var.shape,
+                dtype=var.dtype,
+                persistable=persistable)
+            print_var = block.var(print_var_name)
+            if name == "learning_rate_0":
+                block._insert_op(
+                    0,
+                    type='print',
+                    inputs={'In': var},
+                    outputs={'Out': print_var},
+                    attrs={
+                        'first_n': -1,
+                        'summarize': 40,
+                        'message': "",
+                        'print_tensor_name': True,
+                        'print_tensor_type': True,
+                        'print_tensor_shape': True,
+                        'print_tensor_lod': True,
+                        'op_device': 'gpu',
+                        'op_role': int(role),
+                        'print_phase': 'BOTH'
+                    })
+            else:
+                block.append_op(
+                    type='print',
+                    inputs={'In': var},
+                    outputs={'Out': print_var},
+                    attrs={
+                        'first_n': -1,
+                        'summarize': 40,
+                        'message': "",
+                        'print_tensor_name': True,
+                        'print_tensor_type': True,
+                        'print_tensor_shape': True,
+                        'print_tensor_lod': True,
+                        'op_device': 'gpu',
+                        'op_role': int(role),
+                        'print_phase': 'BOTH'
+                    })
+
         place_list = []
         for device in devices:
             if device == "cpu":
@@ -4520,6 +4776,9 @@ class ModelParallelOptimizer(object):
             for p in program_list:
                 self._create_vars(p["program"].block(0), program)
                 #print("sub program: ", p)
+            #time.sleep(10)
+        self._insert_enq_deq_for_data_var(block, program_list, startup_program,
+                                          sorted(devices))
         place_list = sorted(place_list)
         place_id_list = [-1, 0]
         program._pipeline_opt = {
@@ -4529,7 +4788,7 @@ class ModelParallelOptimizer(object):
             "place_list": place_list,
             "place_id_list": place_id_list,
             "sync_steps": -1,
-            #"concurrency_list": [2],
             "queue_size": self._num_macrobatches,
             "start_cpu_core_id": self._start_cpu_core_id,
         }
+        return program_list
