@@ -90,8 +90,8 @@ struct EmbeddingVSumFunctor {
     int64_t idx_width = ids_t->numel() / ids_lod.back();
     auto *output = output_t->mutable_data<T>(context.GetPlace());
 
-    PADDLE_ENFORCE_LE(table_width * idx_width, out_width);
-    PADDLE_ENFORCE_GT(ids_lod.size(), 1UL, "The LoD[0] could NOT be empty");
+    PADDLE_ENFORCE_LE(table_width * idx_width, out_width, platform::errors::InvalidArgument("The product of table_width and idx_width should be less than or equal to out_width. But received the product of table_width and idx_width is %d, out_width is %d", table_width * idx_width, out_width));
+    PADDLE_ENFORCE_GT(ids_lod.size(), 1UL, platform::errors::InvalidArgument("The LoD[0] should be greater than 1. But received LoD[0] = %d", ids_lod.size()));
 
     jit::emb_seq_pool_attr_t attr(table_height, table_width, 0, idx_width,
                                   out_width, jit::SeqPoolType::kSum);
@@ -129,8 +129,7 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
         FusedEmbeddingSeqPoolLastDim(table_var->dims(), ids_t->dims());
     const auto &ids_lod = ids_t->lod();
     // in run time, the LoD of ids must be 1
-    PADDLE_ENFORCE_EQ(ids_lod.size(), 1UL,
-                      "The LoD level of Input(Ids) must be 1");
+    PADDLE_ENFORCE_EQ(ids_lod.size(), 1UL, platform::errors::InvalidArgument("The LoD level of Input(Ids) should be 1. But received Ids's LoD level = %d", ids_lod.size()));
     int64_t batch_size = ids_lod[0].size() - 1;
     // in run time, the shape from Ids -> output
     // should be [seq_length, 1] -> [batch_size, last_dim]
@@ -243,8 +242,7 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       memset(d_table_data, 0, d_table->numel() * sizeof(T));
 
       const auto &ids_lod = ids->lod();
-      PADDLE_ENFORCE_EQ(ids_lod.size(), 1UL,
-                        "The LoD level of Input(Ids) must be 1");
+      PADDLE_ENFORCE_EQ(ids_lod.size(), 1UL, platform::errors::InvalidArgument("The LoD level of Input(Ids) should be 1. But received Ids's LoD level = %d", ids_lod.size()));
       const std::vector<uint64_t> offset = ids_lod[0];
       auto len = ids->numel();
       int idx_width = len / offset.back();
