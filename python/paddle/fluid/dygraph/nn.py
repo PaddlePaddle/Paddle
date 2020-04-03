@@ -1203,7 +1203,7 @@ class Dropout(layers.Layer):
    Dropout layer can be removed for efficiency concern.
 
    Parameters:
-       prob (float, optional): Probability of setting units to zero. Default: 0.5
+       p (float, optional): Probability of setting units to zero. Default: 0.5
        seed (int, optional): A Python integer used to create random seeds. If this
                    parameter is set to None, a random seed is used.
                    NOTE: If an integer seed is given, always the same output
@@ -1213,17 +1213,17 @@ class Dropout(layers.Layer):
                                        1. downgrade_in_infer(default), downgrade the outcome at inference
 
                                           - train: out = input * mask
-                                          - inference: out = input * (1.0 - dropout_prob)
+                                          - inference: out = input * (1.0 - p)
 
                                           (mask is a tensor same shape with input, value is 0 or 1
                                           ratio of 0 is dropout_prob)
                                        2. upscale_in_train, upscale the outcome at training time
 
-                                          - train: out = input * mask / ( 1.0 - dropout_prob )
+                                          - train: out = input * mask / ( 1.0 - p )
                                           - inference: out = input
 
                                           (mask is a tensor same shape with input, value is 0 or 1
-                                          ratio of 0 is dropout_prob)
+                                          ratio of 0 is p)
        is_test (bool, optional): A flag indicating whether it is in test phrase or not.
                    This flag only has effect on static graph mode. For dygraph mode, please use ``eval()``.
                    Default: False.
@@ -1242,7 +1242,7 @@ class Dropout(layers.Layer):
            x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
            with fluid.dygraph.guard():
                x = to_variable(x)
-               m = fluid.dygraph.Dropout(prob=0.5)
+               m = fluid.dygraph.Dropout(p=0.5)
                droped_train = m(x)
                # switch to eval mode
                m.eval()
@@ -1250,15 +1250,14 @@ class Dropout(layers.Layer):
    """
 
     def __init__(self,
-                 prob=0.5,
+                 p=0.5,
                  seed=None,
                  dropout_implementation="downgrade_in_infer",
                  is_test=False):
         super(Dropout, self).__init__()
-        assert isinstance(prob,
-                          (float, int)), "prob argument should be a number"
-        assert 0 <= prob <= 1, "prob argument should between 0 and 1"
-        self._dropout_prob = prob
+        assert isinstance(p, (float, int)), "p argument should be a number"
+        assert 0 <= p <= 1, "p argument should between 0 and 1"
+        self._dropout_prob = p
         assert isinstance(seed, int), "seed argument should be a integer"
         self._seed = seed
         assert dropout_implementation in (
