@@ -24,9 +24,9 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 
 from model import Model, CrossEntropy, Input, set_device
 from metrics import Accuracy
+from models import tsm_resnet50
 
 from check import check_gpu, check_version
-from modeling import tsm_resnet50
 from kinetics_dataset import KineticsDataset
 from transforms import *
 

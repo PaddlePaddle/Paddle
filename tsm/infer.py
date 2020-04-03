@@ -20,9 +20,9 @@ import argparse
 import numpy as np
 
 from model import Input, set_device
+from models import tsm_resnet50
 
 from check import check_gpu, check_version
-from modeling import tsm_resnet50
 from kinetics_dataset import KineticsDataset
 from transforms import *
 
