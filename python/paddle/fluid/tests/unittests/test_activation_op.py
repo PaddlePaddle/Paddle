@@ -88,6 +88,14 @@ class TestParameter(object):
                              fetch_list=[data, out])
             self.assertEqual(result[0], result[1])
 
+    def test_dygraph(self):
+        with fluid.dygraph.guard():
+            np_x = np.array([0.1])
+            x = fluid.dygraph.to_variable(np_x)
+            z = eval("paddle.%s(x).numpy()" % self.op_type)
+            z_expected = eval("np.%s(np_x)" % self.op_type)
+            self.assertEqual(z, z_expected)
+
 
 class TestSigmoid(TestActivation):
     def setUp(self):
@@ -163,6 +171,14 @@ class TestAtan(TestActivation, TestParameter):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+    def test_dygraph(self):
+        with fluid.dygraph.guard():
+            np_x = np.array([0.1])
+            x = fluid.dygraph.to_variable(np_x)
+            z = paddle.atan(x).numpy()
+            z_expected = np.arctan(np_x)
+            self.assertEqual(z, z_expected)
 
 
 class TestTanhShrink(TestActivation):
