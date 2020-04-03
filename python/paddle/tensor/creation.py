@@ -13,11 +13,10 @@
 # limitations under the License.
 
 from paddle.common_ops_import import *
-import paddle.fluid as fluid
 
 # TODO: define functions to get create a tensor  
 __all__ = [
-    #            'create_tensor', 
+    'create_tensor',
     #            'create_lod_tensor', 
     #            'create_random_int_lodtensor',
     #            'crop_tensor', 
@@ -32,7 +31,7 @@ __all__ = [
     #            'zeros_like', 
     #            'arrange',
     #            'eye',
-    #            'full',
+    'full',
     #            'full_like',
     #            'triu',
     #            'tril',
@@ -62,6 +61,7 @@ def linspace(start, stop, num, dtype, out=None, device=None, name=None):
             the paddle program. Default: None.
         name(str, optional): Normally there is no need for user to set this property. 
             For more information, please refer to :ref:`api_guide_Name`.Default: None.
+
     Returns:
         Variable, the output data type will be float32, float64.: The 1-D tensor with fixed number of evenly spaced values, \
         the data shape of this tensor is :math:`[num]` . If the :attr:`num` is set 1, the output tensor just has \
@@ -78,11 +78,11 @@ def linspace(start, stop, num, dtype, out=None, device=None, name=None):
     helper = LayerHelper("linspace", **locals())
 
     if not isinstance(start, Variable):
-        start = fluid.layers.fill_constant([1], dtype, start)
+        start = fill_constant([1], dtype, start)
     if not isinstance(stop, Variable):
-        stop = fluid.layers.fill_constant([1], dtype, stop)
+        stop = fill_constant([1], dtype, stop)
     if not isinstance(num, Variable):
-        num = fluid.layers.fill_constant([1], 'int32', num)
+        num = fill_constant([1], 'int32', num)
 
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=start.dtype)
@@ -107,7 +107,7 @@ def linspace(start, stop, num, dtype, out=None, device=None, name=None):
                 "The value of 'device' in linspace operation must be cpu or gpu, but received %s."
                 % (device))
         else:
-            with fluid.device_guard(device):
+            with device_guard(device):
                 helper.append_op(
                     type='linspace',
                     inputs={'Start': start,
@@ -121,5 +121,73 @@ def linspace(start, stop, num, dtype, out=None, device=None, name=None):
                     'Stop': stop,
                     'Num': num},
             outputs={'Out': [out]})
+
+    return out
+
+
+def full(shape,
+         fill_value,
+         out=None,
+         dtype=None,
+         device=None,
+         stop_gradient=True,
+         name=None):
+    """
+    This function return a Tensor with the `fill_value` which size is same as `shape`
+    
+    Args:
+        shape(list|tuple|Variable): Shape of the Tensor to be created.
+                The data type is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
+                the elements of it should be integers or Tensors with shape [1].
+                If ``shape`` is an Variable, it should be an 1-D Tensor .
+        value(float): The constant value used to initialize the Tensor to be created.
+        out(Variable, optional): Optional output which can be any created 
+            Variable that meets the requirements to store the result of operation.
+            if out is None, a new Varibale will be create to store the result.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output tensor
+            which can be float16, float32, float64, int32, int64, if dytpe is `None`, the data
+            type of created tensor is `float32`
+        device(str, optional): This parameter specifies that the Tensor is created 
+            on the GPU or CPU.
+        stop_gradient(bool, optional): Indicating if we stop gradient from current(out) Variable,
+            default value is True.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this
+            property.  For more information, please refer to :ref:`api_guide_Name`.
+    
+    Examples:
+        .. code-block:: python
+
+          import paddle.tensor as tensor
+          import paddle.fluid as fluid
+
+          data1 = tensor.full(shape=[2,1], full_value=0, dtype='int64') # data1=[[0],[0]]
+          data2 = tensor.full(shape=[2,1], full_value=5, dtype='int64', device='gpu') # data2=[[5],[5]]
+
+          # attr shape is a list which contains Variable Tensor.
+          positive_2 = fluid.layers.fill_constant([1], "int32", 2)
+          data3 = tensor.full(shape=[1, positive_2], dtype='float32', full_value=1.5) # data3=[1.5, 1.5]
+
+          # attr shape is an Variable Tensor.
+          shape = fluid.layers.fill_constant([1,2], "int32", 2) # shape=[2,2]
+          data4 = tensor.full(shape=shape, dtype='bool', full_value=True) # data4=[[True,True],[True,True]]
+    """
+
+    helper = LayerHelper("full", **locals())
+
+    if dtype is None:
+        dtype = 'float32'
+
+    check_dtype(dtype, 'create data type',
+                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+                'full')
+    check_type(shape, 'shape', (Variable, list, tuple), 'full')
+
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+
+    out.stop_gradient = stop_gradient
+
+    with device_guard(device):
+        out = fill_constant(shape=shape, dtype=dtype, value=fill_value, out=out)
 
     return out

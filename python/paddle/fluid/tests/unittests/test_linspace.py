@@ -72,7 +72,7 @@ class TestLinspaceOpNumOneCase(OpTest):
 
 class TestLinspaceAPI(unittest.TestCase):
     def test_out(self):
-        with program_guard(Program()):
+        with program_guard(fluid.Program()):
             out_1 = fluid.data(name="out_1", shape=[5], dtype="float32")
             out_2 = paddle.tensor.linspace(0, 10, 5, dtype='float32', out=out_1)
             exe = fluid.Executor(place=fluid.CPUPlace())
