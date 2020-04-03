@@ -19,7 +19,7 @@ from paddle.fluid.regularizer import L2Decay
 from paddle.fluid.dygraph.nn import Conv2D, BatchNorm
 
 from model import Model
-from download import get_weights_path
+from .download import get_weights_path
 
 __all__ = ['DarkNet53', 'ConvBNLayer', 'darknet53']
 

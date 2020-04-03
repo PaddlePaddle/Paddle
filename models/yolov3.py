@@ -21,10 +21,10 @@ from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
 
 from model import Model, Loss
-from download import get_weights_path
-from darknet import darknet53, ConvBNLayer
+from .darknet import darknet53, ConvBNLayer
+from .download import get_weights_path
 
-__all__ = ['YoloLoss', 'YOLOv3']
+__all__ = ['YoloLoss', 'YOLOv3', 'yolov3_darknet53']
 
 # {num_layers: (url, md5)}
 pretrain_infos = {

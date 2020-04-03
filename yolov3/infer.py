@@ -25,7 +25,8 @@ from paddle.fluid.optimizer import Momentum
 from paddle.fluid.io import DataLoader
 
 from model import Model, Input, set_device
-from modeling import yolov3_darknet53, YoloLoss
+from models import yolov3_darknet53, YoloLoss
+
 from coco import COCODataset
 from transforms import *
 from visualizer import draw_bbox
