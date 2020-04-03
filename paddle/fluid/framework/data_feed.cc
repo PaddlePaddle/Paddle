@@ -1260,11 +1260,6 @@ bool MultiSlotFileInstantDataFeed::ParseOneMiniBatch() {
 bool PaddleBoxDataFeed::Start() {
 #ifdef _LINUX
   int phase = GetCurrentPhase();  // join: 1, update: 0
-  if (phase == -1) {
-    VLOG(0) << "It should be complied with BoxPS";
-    this->finish_start_ = true;
-    return true;
-  }
   this->CheckSetFileList();
   if (enable_pv_predict_ && phase == 1) {
     // join phase : input_pv_channel to output_pv_channel
@@ -1290,11 +1285,6 @@ int PaddleBoxDataFeed::Next() {
 #ifdef _LINUX
   int phase = GetCurrentPhase();  // join: 1, update: 0
   this->CheckStart();
-  if (phase == -1) {
-    VLOG(0) << "It should be complied with BoxPS";
-    return 0;
-  }
-
   if (enable_pv_predict_ && phase == 1) {
     // join phase : output_pv_channel to consume_pv_channel
     CHECK(output_pv_channel_ != nullptr);

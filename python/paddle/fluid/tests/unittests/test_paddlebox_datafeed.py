@@ -108,6 +108,7 @@ class TestDataFeed(unittest.TestCase):
         self.dataset.begin_pass()
         pv_num = self.dataset.get_pv_data_size()
 
+        self.dataset.set_current_phase(1)
         exe.train_from_dataset(
             program=fluid.default_main_program(),
             dataset=self.dataset,
