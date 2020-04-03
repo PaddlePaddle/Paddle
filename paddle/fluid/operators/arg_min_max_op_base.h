@@ -65,7 +65,7 @@ struct VisitDataArgMinMaxFunctor {
   void apply() const {
     auto& x = *(ctx.Input<framework::LoDTensor>("X"));
     auto& out = *(ctx.Output<framework::LoDTensor>("Out"));
-    out.mutable_data<Tout>(ctx.GetPlace());
+    out.template mutable_data<Tout>(ctx.GetPlace());
     auto axis = ctx.Attr<int64_t>("axis");
     auto keepdims = ctx.Attr<bool>("keepdims");
     auto x_rank = x.dims().size();
