@@ -14,17 +14,19 @@
 
 import unittest
 import os
+import sys
 
 
 class TestRunFluidByModule(unittest.TestCase):
     def test_module(self):
-        res = os.system('python -m "paddle.fluid"')
+        print(sys.executable)
+        res = os.system(sys.executable + ' -m "paddle.fluid.reader"')
         self.assertEqual(res, 0)  # 0 means status OK
 
 
 class TestRunFluidByCommand(unittest.TestCase):
     def test_command(self):
-        res = os.system('python -c "import paddle.fluid"')
+        res = os.system(sys.executable + ' -c "import paddle.fluid"')
         self.assertEqual(res, 0)  # 0 means status OK
 
 
