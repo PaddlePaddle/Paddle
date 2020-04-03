@@ -42,14 +42,14 @@ import paddle.nn
 # from .tensor.creation import crop_.tensor   #DEFINE_ALIAS
 # from .tensor.creation import diag   #DEFINE_ALIAS
 # from .tensor.creation import eye   #DEFINE_ALIAS
-# from .tensor.creation import fill_constant   #DEFINE_ALIAS
+from .tensor.creation import fill_constant  #DEFINE_ALIAS
 # from .tensor.creation import get_.tensor_from_selected_rows   #DEFINE_ALIAS
 from .tensor.creation import linspace  #DEFINE_ALIAS
-# from .tensor.creation import ones   #DEFINE_ALIAS
-# from .tensor.creation import ones_like   #DEFINE_ALIAS
+from .tensor.creation import ones  #DEFINE_ALIAS
+from .tensor.creation import ones_like  #DEFINE_ALIAS
 # from .tensor.creation import range   #DEFINE_ALIAS
-# from .tensor.creation import zeros   #DEFINE_ALIAS
-# from .tensor.creation import zeros_like   #DEFINE_ALIAS
+from .tensor.creation import zeros  #DEFINE_ALIAS
+from .tensor.creation import zeros_like  #DEFINE_ALIAS
 # from .tensor.creation import arrange   #DEFINE_ALIAS
 # from .tensor.creation import eye   #DEFINE_ALIAS
 from .tensor.creation import full  #DEFINE_ALIAS
