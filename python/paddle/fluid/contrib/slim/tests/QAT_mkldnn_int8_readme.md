@@ -14,7 +14,7 @@ In this document we focus on the QAT2 approach only.
 * PaddlePaddle in version 1.7.1 or higher is required. For instructions on how to install it see the [installation document](https://www.paddlepaddle.org.cn/install/quick).
   
 * MKL-DNN and MKL are required. The highest performance gain can be observed using CPU servers supporting AVX512 instructions.
-* INT8 accuracy is best on CPU servers supporting AVX512 VNNI extension (e.g. CLX class Intel processors). A linux server supports AVX512 VNNI instructions if the output of the command `lscpu` contains the `avx512_vnni` entry in the `Flags` section.
+* INT8 accuracy is best on CPU servers supporting AVX512 VNNI extension (e.g. CLX class Intel processors). A linux server supports AVX512 VNNI instructions if the output of the command `lscpu` contains the `avx512_vnni` entry in the `Flags` section. AVX512 VNNI support on Windows can be checked using the [`coreinfo`]( https://docs.microsoft.com/en-us/sysinternals/downloads/coreinfo) tool.
 
 ## 1. Introduction
 
