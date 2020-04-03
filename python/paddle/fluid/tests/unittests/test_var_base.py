@@ -189,6 +189,25 @@ class TestVarBase(unittest.TestCase):
                 np.array_equal(var.numpy(),
                                fluid.framework._var_base_to_np(var)))
 
+    def test_if(self):
+        with fluid.dygraph.guard():
+            var1 = fluid.dygraph.to_variable(np.array([[[0]]]))
+            var2 = fluid.dygraph.to_variable(np.array([[[1]]]))
+
+            var1_bool = False
+            var2_bool = False
+
+            if var1:
+                var1_bool = True
+
+            if var2:
+                var2_bool = True
+
+            assert var1_bool == False, "if var1 should be false"
+            assert var2_bool == True, "if var2 should be true"
+            assert bool(var1) == False, "bool(var1) is False"
+            assert bool(var2) == True, "bool(var2) is True"
+
 
 if __name__ == '__main__':
     unittest.main()
