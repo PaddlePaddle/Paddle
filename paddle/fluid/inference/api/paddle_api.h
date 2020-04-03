@@ -143,10 +143,8 @@ class PaddleBuf {
 
  private:
   void Free();
-  // pointer to the data memory.
-  void* data_{nullptr};
-  // number of memory bytes.
-  size_t length_{0};
+  void* data_{nullptr};  ///< pointer to the data memory.
+  size_t length_{0};     ///< number of memory bytes.
   bool memory_owned_{true};
 };
 
@@ -155,13 +153,11 @@ class PaddleBuf {
 ///
 struct PaddleTensor {
   PaddleTensor() = default;
-  // variable name.
-  std::string name;
+  std::string name;  ///<  variable name.
   std::vector<int> shape;
-  // blob of data.
-  PaddleBuf data;
+  PaddleBuf data;  ///<  blob of data.
   PaddleDType dtype;
-  std::vector<std::vector<size_t>> lod;  // Tensor+LoD equals LoDTensor
+  std::vector<std::vector<size_t>> lod;  ///<  Tensor+LoD equals LoDTensor
 };
 
 enum class PaddlePlace { kUNK = -1, kCPU, kGPU };
@@ -323,22 +319,22 @@ class PaddlePredictor {
 /// place of inference, etc.)
 ///
 struct NativeConfig : public PaddlePredictor::Config {
-  // GPU related fields.
+  /// GPU related fields.
   bool use_gpu{false};
   int device{0};
   float fraction_of_gpu_memory{
-      -1.f}; /*!< Change to a float in (0,1] if needed. */
+      -1.f};  ///< Change to a float in (0,1] if needed.
 
-  // Specify the exact path of program and parameter files.
   std::string prog_file;
-  std::string param_file;
+  std::string
+      param_file;  ///< Specify the exact path of program and parameter files.
 
-  // Specify the variable's name of each input if input tensors don't follow
-  // the `feeds` and `fetches` of the phase `save_inference_model`.
-  bool specify_input_name{false};
+  bool specify_input_name{false};  ///< Specify the variable's name of each
+                                   ///< input if input tensors don't follow the
+                                   ///< `feeds` and `fetches` of the phase
+                                   ///< `save_inference_model`.
 
-  // Set and get the number of cpu math library threads.
-  //
+  /// Set and get the number of cpu math library threads.
   void SetCpuMathLibraryNumThreads(int cpu_math_library_num_threads) {
     cpu_math_library_num_threads_ = cpu_math_library_num_threads;
   }
@@ -347,9 +343,9 @@ struct NativeConfig : public PaddlePredictor::Config {
   }
 
  protected:
-  // number of cpu math library (such as MKL, OpenBlas) threads for each
-  // instance.
-  int cpu_math_library_num_threads_{1};
+  int cpu_math_library_num_threads_{1};  ///< number of cpu math library (such
+                                         ///< as MKL, OpenBlas) threads for each
+                                         ///< instance.
 };
 
 ///
@@ -375,9 +371,9 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
 /// versions.
 ///
 enum class PaddleEngineKind {
-  kNative = 0,        /*!< Use the native Fluid facility. */
-  kAutoMixedTensorRT, /*!< Automatically mix Fluid with TensorRT. */
-  kAnalysis,          /*!< More optimization. */
+  kNative = 0,         ///< Use the native Fluid facility.
+  kAutoMixedTensorRT,  ///< Automatically mix Fluid with TensorRT.
+  kAnalysis,           ///< More optimization.
 };
 
 template <typename ConfigT, PaddleEngineKind engine>
