@@ -43,7 +43,7 @@ class AllcloseKernel : public framework::OpKernel<T> {
     auto out_v = framework::EigenScalar<bool>::From(*out);
 
     auto left = (input_v - other_v).abs();
-    auto right = atol + rtol * other_v.abs();
+    auto right = static_cast<T>(atol) + static_cast<T>(rtol) * other_v.abs();
     auto compare_res = left <= right;
 
     if (equal_nan) {

@@ -298,7 +298,7 @@ headers = (
     list(find_files('*', '${BOOST_INCLUDE_DIR}/boost')) + # boost
     list(find_files('*', '${XXHASH_INSTALL_DIR}/include')) + # xxhash
     list(find_files('*', '${PROTOBUF_INCLUDE_DIR}')) + # protobuf
-    list(find_files('*', '${DLPACK_INCLUDE_DIR}')) + # dlpack
+    list(find_files('*', '${DLPACK_INCLUDE_DIR}')) + # dlpack 
     list(find_files('*.h', '${THREADPOOL_INCLUDE_DIR}'))) # threadpool
 
 if '${WITH_MKLDNN}' == 'ON':
@@ -312,31 +312,31 @@ class InstallCommand(InstallCommandBase):
                                             'include')
         self.install_lib = self.install_platlib
         return ret
-
+  
 
 class InstallHeaders(Command):
     """Override how headers are copied.
     """
     description = 'install C/C++ header files'
-
+  
     user_options = [('install-dir=', 'd',
                      'directory to install header files to'),
                     ('force', 'f',
                      'force installation (overwrite existing files)'),
                    ]
-
+  
     boolean_options = ['force']
-
+  
     def initialize_options(self):
         self.install_dir = None
         self.force = 0
         self.outfiles = []
-
+  
     def finalize_options(self):
         self.set_undefined_options('install',
                                    ('install_headers', 'install_dir'),
                                    ('force', 'force'))
-
+  
     def mkdir_and_copy_file(self, header):
         if 'pb.h' in header:
             install_dir = re.sub('${PADDLE_BINARY_DIR}/', '', header)
@@ -359,7 +359,7 @@ class InstallHeaders(Command):
         if not os.path.exists(install_dir):
             self.mkpath(install_dir)
         return self.copy_file(header, install_dir)
-
+  
     def run(self):
         if os.name == 'nt' or sys.platform == 'darwin':
             return
@@ -370,10 +370,10 @@ class InstallHeaders(Command):
         for header in hdrs:
             (out, _) = self.mkdir_and_copy_file(header)
             self.outfiles.append(out)
-
+  
     def get_inputs(self):
         return self.distribution.headers or []
-
+  
     def get_outputs(self):
         return self.outfiles
 
@@ -412,7 +412,7 @@ with redirect_stdout():
     )
 
 # As there are a lot of files in purelib which causes many logs,
-# we don't print them on the screen, and you can open `setup.py.log`
+# we don't print them on the screen, and you can open `setup.py.log` 
 # for the full logs.
 if os.path.exists('${SETUP_LOG_FILE}'):
     os.system('grep -v "purelib" ${SETUP_LOG_FILE}')
