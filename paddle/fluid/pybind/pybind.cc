@@ -1154,8 +1154,10 @@ All parameter, weight, gradient are variables in Paddle.
       prog_with_targets.MutableBlock(t[0])->Op(t[1])->SetIsTarget(true);
     }
     proto::ProgramDesc pruned_desc;
-    Prune(*prog_with_targets.Proto(), feeded_var_names, &pruned_desc);
-    return new ProgramDesc(pruned_desc);
+    auto pruned_origin_block_id_map =
+        Prune(*prog_with_targets.Proto(), feeded_var_names, &pruned_desc);
+    return std::make_tuple(ProgramDesc(pruned_desc),
+                           pruned_origin_block_id_map);
   });
   m.def("prune_backward",
         [](const framework::ProgramDesc &program) {

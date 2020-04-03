@@ -182,8 +182,8 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
 
 def if_with_and_or(x_v, label=None):
     batch_size = fluid.layers.shape(x_v)
-    if x_v and (fluid.layers.mean(x_v).numpy()[0] > 0 or
-                label is not None) and batch_size[0] > 1 and True:
+    if x_v is not None and (fluid.layers.mean(x_v).numpy()[0] > 0 or
+                            label is not None) and batch_size[0] > 1 and True:
         x_v = x_v - 1
     else:
         x_v = x_v + 1
@@ -198,16 +198,16 @@ def if_with_and_or_1(x, y=None):
     batch_size = fluid.layers.shape(x)
     if batch_size[0] > 1 and y is not None:
         x = x + 1
-    if y or batch_size[0] > 1:
+    if y is not None or batch_size[0] > 1:
         x = x - 1
     return x
 
 
 def if_with_and_or_2(x, y=None):
     batch_size = fluid.layers.shape(x)
-    if x and batch_size[0] > 1 and y is not None:
+    if x is not None and batch_size[0] > 1 and y is not None:
         x = x + 1
-    if batch_size[0] > 1 or y or x is not None:
+    if batch_size[0] > 1 or y is not None or x is not None:
         x = x - 1
     return x
 
@@ -215,9 +215,10 @@ def if_with_and_or_2(x, y=None):
 def if_with_and_or_3(x, y=None):
     batch_size = fluid.layers.shape(x)
     mean_res = fluid.layers.mean(x)
-    if x and batch_size[0] > 1 and y is not None and mean_res.numpy()[0] > 0:
+    if x is not None and batch_size[0] > 1 and y is not None and mean_res.numpy(
+    )[0] > 0:
         x = x + 1
-    if mean_res.numpy()[0] > 0 and (x and batch_size[0] > 1) and y:
+    if mean_res.numpy()[0] > 0 and (x is not None and batch_size[0] > 1) and y:
         x = x - 1
     return x
 
@@ -225,8 +226,10 @@ def if_with_and_or_3(x, y=None):
 def if_with_and_or_4(x, y=None):
     batch_size = fluid.layers.shape(x)
     mean_res = fluid.layers.mean(x)
-    if (x and batch_size[0] > 1) or (y is not None and mean_res.numpy()[0] > 0):
+    if (x is not None and batch_size[0] > 1) or (y is not None and
+                                                 mean_res.numpy()[0] > 0):
         x = x + 1
-    if (x or batch_size[0] > 1) and (y is not None or mean_res.numpy()[0] > 0):
+    if (x is not None or batch_size[0] > 1) and (y is not None or
+                                                 mean_res.numpy()[0] > 0):
         x = x - 1
     return x
