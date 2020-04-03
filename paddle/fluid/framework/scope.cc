@@ -126,8 +126,8 @@ void Scope::DeleteScope(Scope* scope) const {
   SCOPE_KIDS_WRITER_LOCK
   auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
   PADDLE_ENFORCE_NE(it, this->kids_.end(),
-                    platform::errors::NotFound("%p Cannot find %p as kid scope",
-                                               this, scope));
+                    platform::errors::NotFound(
+                        "%p is not found in %p as kid scope", scope, this));
   this->kids_.erase(it);
   // When making memory benchmark on Fluid, we have to delete scope sync.
   if (FLAGS_benchmark || FLAGS_eager_delete_scope) {

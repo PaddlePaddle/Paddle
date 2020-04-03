@@ -39,7 +39,7 @@ void ScopePool::Remove(Scope *s) {
   }
   PADDLE_ENFORCE_GT(
       has_scope, 0,
-      platform::errors::NotFound("Global scope %s is not found in ScopePool. "
+      platform::errors::NotFound("Global scope %p is not found in ScopePool. "
                                  "Deleting a nonexistent scope is not allowed.",
                                  s));
   DeleteScope(s);
