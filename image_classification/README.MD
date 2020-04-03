@@ -30,6 +30,7 @@
 ```bash
 python -u main.py --arch resnet50 /path/to/imagenet -d
 ```
+-d 是使用动态模式训练，默认为静态图模式。
 
 ### 多卡训练
 执行如下命令进行训练
@@ -72,3 +73,10 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 python -m paddle.distributed.launch main.py --arch 
 | 模型 | top1 acc | top5 acc |
 | --- | --- | --- |
 | ResNet50 | 76.28 | 93.04 | 
+
+
+## 参考文献
+- ResNet: [Deep Residual Learning for Image Recognitio](https://arxiv.org/abs/1512.03385), Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
+- MobileNetV2: [MobileNetV2: Inverted Residuals and Linear Bottlenecks](https://arxiv.org/pdf/1801.04381v4.pdf), Mark Sandler, Andrew Howard, Menglong Zhu, Andrey Zhmoginov, Liang-Chieh Chen
+- VGG: [Very Deep Convolutional Networks for Large-scale Image Recognition](https://arxiv.org/pdf/1409.1556), Karen Simonyan, Andrew Zisserman
+

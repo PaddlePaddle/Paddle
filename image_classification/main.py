@@ -37,23 +37,35 @@ from paddle.fluid.io import BatchSampler, DataLoader
 
 def make_optimizer(step_per_epoch, parameter_list=None):
     base_lr = FLAGS.lr
-    momentum = 0.9
-    weight_decay = 1e-4
+    lr_scheduler = FLAGS.lr_scheduler
+    momentum = FLAGS.momentum
+    weight_decay = FLAGS.weight_decay
 
-    boundaries = [step_per_epoch * e for e in [30, 60, 80]]
-    values = [base_lr * (0.1**i) for i in range(len(boundaries) + 1)]
-    learning_rate = fluid.layers.piecewise_decay(
-        boundaries=boundaries, values=values)
+    if lr_scheduler == 'piecewise':
+        boundaries = [step_per_epoch * e for e in [30, 60, 80]]
+        values = [base_lr * (0.1**i) for i in range(len(boundaries) + 1)]
+        learning_rate = fluid.layers.piecewise_decay(
+            boundaries=boundaries, values=values)
+    elif lr_scheduler == 'cosine':
+        learning_rate = fluid.layers.cosine_decay(base_lr, step_per_epoch,
+                                                  FLAGS.epoch)
+    else:
+        raise ValueError(
+            "Expected lr_scheduler in ['piecewise', 'cosine'], but got {}".
+            format(lr_scheduler))
+
     learning_rate = fluid.layers.linear_lr_warmup(
         learning_rate=learning_rate,
         warmup_steps=5 * step_per_epoch,
         start_lr=0.,
         end_lr=base_lr)
+
     optimizer = fluid.optimizer.Momentum(
         learning_rate=learning_rate,
         momentum=momentum,
         regularization=fluid.regularizer.L2Decay(weight_decay),
         parameter_list=parameter_list)
+
     return optimizer
 
 
@@ -138,6 +150,14 @@ if __name__ == '__main__':
         help="checkpoint path to resume")
     parser.add_argument(
         "--eval-only", action='store_true', help="enable dygraph mode")
+    parser.add_argument(
+        "--lr-scheduler",
+        default='piecewise',
+        type=str,
+        help="learning rate scheduler")
+    parser.add_argument(
+        "--weight-decay", default=1e-4, type=float, help="weight decay")
+    parser.add_argument("--momentum", default=0.9, type=float, help="momentum")
     FLAGS = parser.parse_args()
     assert FLAGS.data, "error: must provide data path"
     main()
