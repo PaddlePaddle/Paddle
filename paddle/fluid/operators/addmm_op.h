@@ -56,25 +56,25 @@ class AddMMKernel : public framework::OpKernel<T> {
 
     // broadcast mode check
     if (x_dims[0] != input_dims[0]) {
-      PADDLE_ENFORCE(input_dims[0] == 1,
-                     "When x_dims[0] is not equal with input_dims[0], "
-                     "input_dims[0] must be 1 but got %s",
-                     input_dims[0]);
-      PADDLE_ENFORCE(y_dims[1] == input_dims[1] || input_dims[1] == 1,
-                     "The input tensor shape mismatch, input shape=[%s], "
-                     "x shape=[%s], y shape=[%s]",
-                     input_dims, x_dims, y_dims);
+      PADDLE_ENFORCE_EQ(input_dims[0], 1,
+                        "When x_dims[0] is not equal with input_dims[0], "
+                        "input_dims[0] must be 1 but got %s",
+                        input_dims[0]);
+      PADDLE_ENFORCE_EQ(y_dims[1] == input_dims[1] || input_dims[1] == 1, true,
+                        "The input tensor shape mismatch, input shape=[%s], "
+                        "x shape=[%s], y shape=[%s]",
+                        input_dims, x_dims, y_dims);
     }
     // broadcast mode check
     if (y_dims[1] != input_dims[1]) {
-      PADDLE_ENFORCE(input_dims[1] == 1,
-                     "When y_dims[1] is not equal with input_dims[0], "
-                     "input_dims[0] must be 1 but got %s",
-                     input_dims[1]);
-      PADDLE_ENFORCE(x_dims[0] == input_dims[0] || input_dims[0] == 1,
-                     "The input tensor shape mismatch, input shape=[%s], "
-                     "x shape=[%s], y shape=[%s]",
-                     input_dims, x_dims, y_dims);
+      PADDLE_ENFORCE_EQ(input_dims[1], 1,
+                        "When y_dims[1] is not equal with input_dims[0], "
+                        "input_dims[0] must be 1 but got %s",
+                        input_dims[1]);
+      PADDLE_ENFORCE_EQ(x_dims[0] == input_dims[0] || input_dims[0] == 1, true,
+                        "The input tensor shape mismatch, input shape=[%s], "
+                        "x shape=[%s], y shape=[%s]",
+                        input_dims, x_dims, y_dims);
     }
     // broadcast mode check
     PADDLE_ENFORCE_EQ(
