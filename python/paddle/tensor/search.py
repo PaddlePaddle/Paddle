@@ -67,7 +67,7 @@ def index_sample(x, index):
 
         .. code-block:: python
 
-            import paddle.tensor as tensor
+            import paddle
             import paddle.fluid as fluid
             import numpy as np
 
@@ -85,7 +85,7 @@ def index_sample(x, index):
 
             x = fluid.data(name='x', shape=[-1, 5], dtype='float64')
             index = fluid.data(name='index', shape=[-1, 3], dtype='int32')
-            output = tensor.index_sample(x=x, index=index)
+            output = paddle.index_sample(x=x, index=index)
 
     """
     helper = LayerHelper("index_sample", **locals())

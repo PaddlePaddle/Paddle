@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-#TODO: define alias in tensor and framework directory
+# TODO: define alias in tensor and framework directory
 # from .creation import create_tensor   #DEFINE_ALIAS
 # from .creation import create_lod_tensor   #DEFINE_ALIAS
 # from .creation import create_random_int_lod   #DEFINE_ALIAS
@@ -30,7 +29,7 @@
 # from .creation import zeros_like   #DEFINE_ALIAS
 # from .creation import arrange   #DEFINE_ALIAS
 # from .creation import eye   #DEFINE_ALIAS
-from .creation import full  #DEFINE_ALIAS
+from .creation import full  # DEFINE_ALIAS
 # from .creation import linspace   #DEFINE_ALIAS
 # from .creation import full_like   #DEFINE_ALIAS
 # from .creation import triu   #DEFINE_ALIAS
@@ -168,11 +167,6 @@ from .creation import full  #DEFINE_ALIAS
 # from .search import topk   #DEFINE_ALIAS
 # from .search import where   #DEFINE_ALIAS
 # from .search import index_select   #DEFINE_ALIAS
+from .search import index_sample  # DEFINE_ALIAS
 # from .search import nonzero   #DEFINE_ALIAS
 # from .search import sort   #DEFINE_ALIAS
-
-from __future__ import print_function
-from . import search
-from .search import *
-
-__all__ = search.__all__

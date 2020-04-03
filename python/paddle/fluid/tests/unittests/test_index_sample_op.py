@@ -98,7 +98,7 @@ class TestCase4(TestIndexSampleOp):
 class TestIndexSampleShape(unittest.TestCase):
     def test_shape(self):
         import paddle.fluid as fluid
-        import paddle.tensor as tensor
+        import paddle
 
         # create x value
         x_shape = (2, 5)
@@ -113,7 +113,7 @@ class TestIndexSampleShape(unittest.TestCase):
 
         x = fluid.data(name='x', shape=[-1, 5], dtype='float64')
         index = fluid.data(name='index', shape=[-1, 3], dtype='int32')
-        output = tensor.index_sample(x=x, index=index)
+        output = paddle.index_sample(x=x, index=index)
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place=place)
