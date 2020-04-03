@@ -22,7 +22,6 @@ import six
 import paddle.fluid as fluid
 from paddle import compat as cpt
 from paddle.fluid import core, framework, executor
-from paddle.fluid.dygraph.static_runner import DescParser
 
 
 @contextlib.contextmanager
