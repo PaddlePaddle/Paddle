@@ -83,7 +83,6 @@ void BasicEngine::CheckBackwardInputs(const OpBase& op) {
       }
 
       if (tensor && !tensor->IsInitialized()) {
-        // if grad var has OverridedStopGradient skip this Op
         VLOG(6) << "Set ungenerated Grad: " << var->Name() << " as zero";
         auto* dev_ctx = platform::DeviceContextPool::Instance().Get(op.place());
         tensor->mutable_data(op.place(), var->DataType());
@@ -139,16 +138,7 @@ void BasicEngine::PrepareDeps() {
     q.pop();
 
     for (auto& cur_op : *cur_node) {
-      PADDLE_ENFORCE_NE(
-          cur_op.GetInsMap().empty() && cur_op.GetOutsMap().empty(), true,
-          platform::errors::NotFound(
-              "Inputs and outputs of %s do not exist. "
-              "This may be because you call \"backward()\" twice for the same "
-              "subgraph. Please try to call \"stop_gradient = True\" or "
-              "\"detach()\" if you use some same vars between two "
-              "\"backward()\" "
-              "calls.",
-              cur_op.Type()));
+      cur_op.EnforceHasInOut();
       PrepareGradAccumulators(cur_op);
     }
 

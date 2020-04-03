@@ -77,12 +77,14 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "quant_conv2d_dequant_fuse_pass",            //
       "delete_quant_dequant_op_pass",              //
       // "fc_fuse_pass",                                 //
-      "simplify_with_basic_ops_pass",  //
-      "multihead_matmul_fuse_pass",    //
-      "conv_bn_fuse_pass",             //
-      "fc_fuse_pass",                  //
-      "tensorrt_subgraph_pass",        //
-      "conv_bn_fuse_pass",             //
+      "simplify_with_basic_ops_pass",           //
+      "embedding_eltwise_layernorm_fuse_pass",  //
+      "multihead_matmul_fuse_pass_v2",          //
+      "skip_layernorm_fuse_pass",               //
+      "conv_bn_fuse_pass",                      //
+      "fc_fuse_pass",                           //
+      "tensorrt_subgraph_pass",                 //
+      "conv_bn_fuse_pass",                      //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
       "conv_elementwise_add_act_fuse_pass",   //
@@ -198,7 +200,9 @@ void CpuPassStrategy::EnableMKLDNN() {
              "conv_relu6_mkldnn_fuse_pass",       //
              "conv_swish_mkldnn_fuse_pass",       //
              // Disabled due to topology-dependent speed-up
-             // "fc_mkldnn_pass"
+             // "fc_mkldnn_pass",
+             "mkldnn_inplace_pass",  // This pass should be activated after
+                                     // fuses
          })) {
       passes_.push_back(pass);
     }
