@@ -192,7 +192,7 @@ def full(shape,
         out = fill_constant(shape=shape, dtype=dtype, value=fill_value, out=out)
 
     return out
- 
+
 
 def _tril_triu_op(helper):
     """Base op of tril_op and triu_op
@@ -231,20 +231,20 @@ def _tril_triu_op(helper):
 
 def tril(input, diagonal=0, name=None):
     """
-    This op returns the lower triangular part of the matrix (2-D tensor) or batch of matrices
-    :attr:`input`, the other elements of the result tensor :attr:`out` are set to 0.
-    The lower triangular part of the matrix is defined as the elements on and
-    below the diagonal.
+    This op returns the lower triangular part of a matrix (2-D tensor) or batch
+    of matrices :attr:`input`, the other elements of the result tensor are set 
+    to 0. The lower triangular part of the matrix is defined as the elements 
+    on and below the diagonal.
 
     Args:
         input (Variable): The input variable which is a Tensor.
-            Support data types: float64, float32, in32, int64.
+            Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
         diagonal (int, optional): The diagonal to consider, default value is 0.
             If :attr:`diagonal` = 0, all elements on and below the main diagonal are
             retained. A positive value includes just as many diagonals above the main
             diagonal, and similarly a negative value excludes just as many diagonals below
             the main diagonal. The main diagonal are the set of indices
-            :math:`\lbrace (i, i) \rbrace` for :math:`i \in [0, \min\{d_{1}, d_{2}\} - 1]` where
+            :math:`\{(i, i)\}` for :math:`i \in [0, \min\{d_{1}, d_{2}\} - 1]` where
             :math:`d_{1}, d_{2}` are the dimensions of the matrix.
         name (str, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -255,44 +255,50 @@ def tril(input, diagonal=0, name=None):
 
     Raises:
         TypeError: diagonal is not a int type.
+
         ValueError: dimension of :attr:`input` is less than 2.
 
      Example:
         .. code-block:: python
 
-        import numpy as np
-        import paddle.fluid as fluid
+            import numpy as np
+            import paddle.tensor as tensor
+            import paddle.fluid as fluid
 
-        data = np.arange(1, 13, dtype="int64").reshape(3,-1)
-        # array([[ 1,  2,  3,  4],
-        #        [ 5,  6,  7,  8],
-        #        [ 9, 10, 11, 12]])
-        x = fluid.data(shape=(-1, 4), dtype='int64', name='x')
-        exe = fluid.Executor(fluid.CPUPlace())
+            data = np.arange(1, 13, dtype="int64").reshape(3,-1)
+            # array([[ 1,  2,  3,  4],
+            #        [ 5,  6,  7,  8],
+            #        [ 9, 10, 11, 12]])
+            x = fluid.data(shape=(-1, 4), dtype='int64', name='x')
+            exe = fluid.Executor(fluid.CPUPlace())
 
-        # example 1, default diagonal
-        tril = fluid.layers.tril(x)
-        tril_out, = exe.run(fluid.default_main_program(), feed={"x": data},
-            fetch_list=[tril], return_numpy=True)
-        # array([[ 1,  0,  0,  0],
-        #        [ 5,  6,  0,  0],
-        #        [ 9, 10, 11,  0]])
+            # example 1, default diagonal
+            tril = tensor.tril(x)
+            tril_out, = exe.run(fluid.default_main_program(), feed={"x": data},
+                fetch_list=[tril], return_numpy=True)
+            # array([[ 1,  0,  0,  0],
+            #        [ 5,  6,  0,  0],
+            #        [ 9, 10, 11,  0]])
 
-        # example 2, positive diagonal value
-        tril = fluid.layers.tril(x, diagonal=2)
-        tril_out, = exe.run(fluid.default_main_program(), feed={"x": data},
-            fetch_list=[tril], return_numpy=True)
-        # array([[ 1,  2,  3,  0],
-        #        [ 5,  6,  7,  8],
-        #        [ 9, 10, 11, 12]])
+        .. code-block:: python
 
-        # example 3, negative diagonal value
-        tril = fluid.layers.tril(x, diagonal=-1)
-        tril_out, = exe.run(fluid.default_main_program(), feed={"x": data},
-            fetch_list=[tril], return_numpy=True)
-        # array([[ 0,  0,  0,  0],
-        #        [ 5,  0,  0,  0],
-        #        [ 9, 10,  0,  0]])
+            # example 2, positive diagonal value
+            tril = tensor.tril(x, diagonal=2)
+            tril_out, = exe.run(fluid.default_main_program(), feed={"x": data},
+                fetch_list=[tril], return_numpy=True)
+            # array([[ 1,  2,  3,  0], 
+            #        [ 5,  6,  7,  8],
+            #        [ 9, 10, 11, 12]])
+
+        .. code-block:: python
+
+            # example 3, negative diagonal value
+            tril = tensor.tril(x, diagonal=-1)
+            tril_out, = exe.run(fluid.default_main_program(), feed={"x": data},
+                fetch_list=[tril], return_numpy=True)
+            # array([[ 0,  0,  0,  0],
+            #        [ 5,  0,  0,  0],
+            #        [ 9, 10,  0,  0]])
 
    """
 
@@ -302,19 +308,19 @@ def tril(input, diagonal=0, name=None):
 def triu(input, diagonal=0, name=None):
     """
     This op returns the upper triangular part of a matrix (2-D tensor) or batch of matrices
-    :attr:`input`, the other elements of the result tensor :attr:`out` are set to 0.
+    :attr:`input`, the other elements of the result tensor are set to 0.
     The upper triangular part of the matrix is defined as the elements on and
     above the diagonal.
 
     Args:
         input (Variable): The input variable which is a Tensor.
-            Support data types: float64, float32, in32, int64.
+            Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
         diagonal (int, optional): The diagonal to consider, default value is 0.
             If :attr:`diagonal` = 0, all elements on and above the main diagonal are
             retained. A positive value excludes just as many diagonals above the main
             diagonal, and similarly a negative value includes just as many diagonals below
             the main diagonal. The main diagonal are the set of indices
-            :math:`\lbrace (i, i) \rbrace` for :math:`i \in [0, \min\{d_{1}, d_{2}\} - 1]` where
+            :math:`\{(i, i)\}` for :math:`i \in [0, \min\{d_{1}, d_{2}\} - 1]` where
             :math:`d_{1}, d_{2}` are the dimensions of the matrix.
         name (str, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -325,13 +331,15 @@ def triu(input, diagonal=0, name=None):
 
     Raises:
         TypeError: diagonal is not int.
+
         ValueError: dimension of :attr:`input` is less than 2.
 
      Example:
-        .. code-block:: python
+        .. code-block:: python 
 
             import numpy as np
             import paddle.fluid as fluid
+            import paddle.tensor as tensor
 
             data = np.arange(1, 13, dtype="int64").reshape(3,-1)
             # array([[ 1,  2,  3,  4],
@@ -340,10 +348,8 @@ def triu(input, diagonal=0, name=None):
             x = fluid.data(shape=(-1, 4), dtype='int64', name='x')
             exe = fluid.Executor(fluid.CPUPlace())
 
-        .. code-block:: python
-
             # example 1, default diagonal
-            triu = fluid.layers.triu(x)
+            triu = tensor.triu(x)
             triu_out, = exe.run(fluid.default_main_program(), feed={"x": data},
                 fetch_list=[triu], return_numpy=True)
             # array([[ 1,  2,  3,  4],
@@ -353,7 +359,7 @@ def triu(input, diagonal=0, name=None):
         .. code-block:: python
 
             # example 2, positive diagonal value
-            triu = fluid.layers.triu(x, diagonal=2)
+            triu = tensor.triu(x, diagonal=2)
             triu_out, = exe.run(fluid.default_main_program(), feed={"x": data},
                 fetch_list=[triu], return_numpy=True)
             # array([[0, 0, 3, 4],
@@ -363,7 +369,7 @@ def triu(input, diagonal=0, name=None):
         .. code-block:: python
 
             # example 3, negative diagonal value
-            triu = fluid.layers.triu(x, diagonal=-1)
+            triu = tensor.triu(x, diagonal=-1)
             triu_out, = exe.run(fluid.default_main_program(), feed={"x": data},
                 fetch_list=[triu], return_numpy=True)
             # array([[ 1,  2,  3,  4],
