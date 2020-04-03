@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+from paddle.fluid import Program, program_guard
 
 
 class TestLodResetOpByAttr(OpTest):
@@ -130,6 +131,25 @@ class TestLodAppendOpByAttr(OpTest):
     def test_check_grad(self):
         # TODO(wangzhongpu): support lod in dygraph mode
         self.check_grad(["X"], "Out", check_dygraph=False)
+
+
+class TestLodResetOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+
+            def test_Variable():
+                # The input must be Variable.
+                x1 = fluid.create_lod_tensor(
+                    np.array([1, 1, 1, 1, 1, 1]), [3, 3], fluid.CPUPlace())
+                y1 = fluid.create_lod_tensor(
+                    np.array([1, 1, 1, 1, 1, 1]), [2, 2, 2], fluid.CPUPlace())
+                self.assertRaises(TypeError, fluid.layers.lod_reset, [x1, y1])
+
+            def test_type():
+                # dtype must be float32 or float64 or int32 or int64
+                x2 = fluid.layers.data(shape=[4], dtype='uint8', name='x4')
+                y2 = fluid.layers.data(shape=[4], dtype='uint8', name='x5')
+                self.assertRaises(TypeError, fluid.layers.lod_reset, [x2, y2])
 
 
 if __name__ == '__main__':

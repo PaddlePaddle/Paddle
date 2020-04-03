@@ -38,9 +38,14 @@ class LoDResetKernel : public framework::OpKernel<T> {
       if (lod_t->lod().size() > 0) {
         auto y_lod = lod_t->lod();
         auto last_level = y_lod[y_lod.size() - 1];
-        PADDLE_ENFORCE_EQ((int64_t)(last_level.back()), in->dims()[0],
-                          "Last value of `Y`'s last level LoD should be equal "
-                          "to the first dimension of `X`");
+        PADDLE_ENFORCE_EQ(
+            (int64_t)(last_level.back()), in->dims()[0],
+            platform::errors::InvalidArgument(
+                "Last value of `Y`'s last level LoD %s should be equal "
+                "to the first dimension of `X`. But reveived Last value of "
+                "`Y`'s last level LoD is %s, the first dimension of `X` is "
+                "%s. ",
+                (int64_t)(last_level.back()), in->dims()[0]));
         out->set_lod(y_lod);
         return;  // early return, since lod already set
       } else {
@@ -56,16 +61,28 @@ class LoDResetKernel : public framework::OpKernel<T> {
       level0 = ctx.Attr<std::vector<int>>("target_lod");
     }
 
-    PADDLE_ENFORCE_GT(level0.size(), 1UL,
-                      "Size of target LoD should be greater than 1.");
+    PADDLE_ENFORCE_GT(
+        level0.size(), 1UL,
+        platform::errors::InvalidArgument(
+            "Size of target LoD should be greater than 1. But the "
+            "size of target LoD is %s.",
+            level0.size()));
     PADDLE_ENFORCE_EQ(level0[0], 0,
-                      "Target LoD should be a vector starting from 0.");
-    PADDLE_ENFORCE_EQ(level0.back(), in->dims()[0],
-                      "Target LoD should be a vector end with the "
-                      "first dimension of Input(X).");
+                      platform::errors::InvalidArgument(
+                          "Target LoD should be a vector starting from 0. But "
+                          "target LoD starts from %s.",
+                          level0[0]));
+    PADDLE_ENFORCE_EQ(
+        level0.back(), in->dims()[0],
+        platform::errors::InvalidArgument(
+            "Target LoD should be a vector end with the "
+            "first dimension of Input(X). But the target end dimention is %s "
+            "and the first dimension of Input(X) is %s.",
+            level0.back(), in->dims()[0]));
     for (size_t i = 0; i < level0.size() - 1; ++i) {
-      PADDLE_ENFORCE(level0[i + 1] >= level0[i],
-                     "Target LoD should be an ascending vector.");
+      PADDLE_ENFORCE_GE(level0[i + 1], level0[i],
+                        platform::errors::InvalidArgument(
+                            "Target LoD should be an ascending vector."));
     }
 
     // cast level0 to size_t
