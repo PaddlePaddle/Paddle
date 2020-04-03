@@ -30,7 +30,6 @@ namespace operators {
 using Tensor = framework::Tensor;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 template <typename T, size_t D, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
