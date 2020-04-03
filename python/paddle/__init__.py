@@ -86,7 +86,7 @@ from .tensor.creation import full  #DEFINE_ALIAS
 # from .tensor.random import uniform   #DEFINE_ALIAS
 # from .tensor.random import shuffle   #DEFINE_ALIAS
 # from .tensor.random import randn   #DEFINE_ALIAS
-# from .tensor.random import randperm   #DEFINE_ALIAS
+from .tensor.random import randperm
 # from .tensor.random import rand   #DEFINE_ALIAS
 # from .tensor.random import randint   #DEFINE_ALIAS
 # from .tensor.math import abs   #DEFINE_ALIAS
