@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .layer.activation import *
-
 # TODO: import all neural network related api under this directory, 
 # including layers, linear, conv, rnn etc.
 __all__ = []
-__all__ += layer.activation.__all__
 
 # TODO: define alias in nn directory
 # from .clip import ErrorClipByValue   #DEFINE_ALIAS
@@ -59,7 +56,8 @@ __all__ += layer.activation.__all__
 # from .layer.loss import NCELoss   #DEFINE_ALIAS
 # from .layer.loss import CrossEntropyLoss   #DEFINE_ALIAS
 # from .layer.loss import MSELoss   #DEFINE_ALIAS
-# from .layer.loss import L1Loss   #DEFINE_ALIAS
+from .layer.loss import L1Loss  #DEFINE_ALIAS
+from .layer import loss  #DEFINE_ALIAS
 # from .layer.loss import NLLLoss   #DEFINE_ALIAS
 # from .layer.loss import BCELoss   #DEFINE_ALIAS
 # from .layer.learning_rate import CosineDecay   #DEFINE_ALIAS
@@ -76,7 +74,7 @@ __all__ += layer.activation.__all__
 # from .layer.norm import SpectralNorm   #DEFINE_ALIAS
 # from .layer.activation import PReLU   #DEFINE_ALIAS
 # from .layer.activation import ReLU   #DEFINE_ALIAS
-# from .layer.activation import Sigmoid   #DEFINE_ALIAS
+from .layer.activation import Sigmoid  #DEFINE_ALIAS
 # from .layer.activation import Softmax   #DEFINE_ALIAS
 # from .layer.activation import LogSoftmax   #DEFINE_ALIAS
 # from .layer.rnn import RNNCell   #DEFINE_ALIAS
@@ -186,7 +184,7 @@ __all__ += layer.activation.__all__
 # from .functional.activation import relu   #DEFINE_ALIAS
 # from .functional.activation import relu6   #DEFINE_ALIAS
 # from .functional.activation import selu   #DEFINE_ALIAS
-# from .functional.activation import sigmoid   #DEFINE_ALIAS
+from .functional.activation import sigmoid  #DEFINE_ALIAS
 # from .functional.activation import soft_relu   #DEFINE_ALIAS
 # from .functional.activation import softmax   #DEFINE_ALIAS
 # from .functional.activation import softplus   #DEFINE_ALIAS
