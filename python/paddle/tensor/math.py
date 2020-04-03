@@ -81,7 +81,7 @@ def pow(input, exponent, out=None, name=None):
         input(Variable): A ``Tensor`` or ``LoDTensor`` . The data type is ``float32`` or ``float64``.
         exponent(float32|Variable): A scalar with type ``float32`` or a ``Tensor`` with shape [1] and type ``float32``.
         out (Variable, optional):  The Variable that stores results of the operation. 
-            If out is None, a new Varibale will be create to store the results.
+            If out is None, a new Variable will be created to store the results.
         name(str, optional): The default value is None. Normally there is no need for user to set this property. 
             For more information, please refer to :ref:`api_guide_Name` .
 
@@ -166,7 +166,7 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, out=None, name=None):
             The attribute `y_num_col_dims` determines how $y$ is flattened. See comments of `x_num_col_dims` for more details. 
             Default is 1. 
         out(Variable, optinal): The Variable that stores results of the operation. If out is None, 
-            a new Varibale will be create to store the results.
+            a new Variable will be created to store the results.
         name (str, optional): Name of the output. Normally there is no need for user to set this property. 
             For more information, please refer to :ref:`api_guide_Name`. Default is None. If both of out and name are not None, 
             the output name will be same as out. 
