@@ -83,26 +83,56 @@ class TestAllcloseLayer(unittest.TestCase):
             x_v_1 = fluid.dygraph.to_variable(x_1)
             y_v_1 = fluid.dygraph.to_variable(y_1)
             ret_1 = paddle.allclose(
-                x_v_1, y_v_1, rtol=1e-05, atol=1e-08, equal_nan=False)
+                x_v_1,
+                y_v_1,
+                rtol=1e-05,
+                atol=1e-08,
+                equal_nan=False,
+                name='test_1')
             self.assertEqual(ret_1.numpy()[0], False)
             ret_1 = paddle.allclose(
-                x_v_1, y_v_1, rtol=1e-05, atol=1e-08, equal_nan=True)
+                x_v_1,
+                y_v_1,
+                rtol=1e-05,
+                atol=1e-08,
+                equal_nan=True,
+                name='test_2')
             self.assertEqual(ret_1.numpy()[0], False)
             x_v_2 = fluid.dygraph.to_variable(x_2)
             y_v_2 = fluid.dygraph.to_variable(y_2)
             ret_2 = paddle.allclose(
-                x_v_2, y_v_2, rtol=1e-05, atol=1e-08, equal_nan=False)
+                x_v_2,
+                y_v_2,
+                rtol=1e-05,
+                atol=1e-08,
+                equal_nan=False,
+                name='test_3')
             self.assertEqual(ret_2.numpy()[0], True)
             ret_2 = paddle.allclose(
-                x_v_2, y_v_2, rtol=1e-05, atol=1e-08, equal_nan=True)
+                x_v_2,
+                y_v_2,
+                rtol=1e-05,
+                atol=1e-08,
+                equal_nan=True,
+                name='test_4')
             self.assertEqual(ret_2.numpy()[0], True)
             x_v_3 = fluid.dygraph.to_variable(x_3)
             y_v_3 = fluid.dygraph.to_variable(y_3)
             ret_3 = paddle.allclose(
-                x_v_3, y_v_3, rtol=1e-05, atol=1e-08, equal_nan=False)
+                x_v_3,
+                y_v_3,
+                rtol=1e-05,
+                atol=1e-08,
+                equal_nan=False,
+                name='test_5')
             self.assertEqual(ret_3.numpy()[0], False)
             ret_3 = paddle.allclose(
-                x_v_3, y_v_3, rtol=1e-05, atol=1e-08, equal_nan=True)
+                x_v_3,
+                y_v_3,
+                rtol=1e-05,
+                atol=1e-08,
+                equal_nan=True,
+                name='test_6')
             self.assertEqual(ret_3.numpy()[0], True)
 
 
