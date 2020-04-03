@@ -1242,7 +1242,7 @@ class Dropout(layers.Layer):
            x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
            with fluid.dygraph.guard():
                x = to_variable(x)
-               m = fluid.dygraph.Dropout(dropout_prob=0.5)
+               m = fluid.dygraph.Dropout(prob=0.5)
                droped_train = m(x)
                # switch to eval mode
                m.eval()
