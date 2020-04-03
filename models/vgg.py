@@ -131,9 +131,8 @@ def _vgg(arch, cfg, batch_norm, pretrained, **kwargs):
 
 
 def vgg11(pretrained=False, **kwargs):
-    r"""VGG 11-layer model from
-    `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_
-
+    """VGG 11-layer model from
+    
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
@@ -141,9 +140,8 @@ def vgg11(pretrained=False, **kwargs):
 
 
 def vgg11_bn(pretrained=False, **kwargs):
-    r"""VGG 11-layer model with batch normalization
-    `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_
-
+    """VGG 11-layer model with batch normalization
+    
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
