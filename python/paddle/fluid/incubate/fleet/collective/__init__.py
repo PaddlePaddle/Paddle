@@ -145,8 +145,9 @@ class DistributedStrategy(fluid.BuildStrategy):
         self.mode = "nccl2"  # or collective
         self.collective_mode = None  # local_sgd or grad_allreduce
         self.nccl_comm_num = 1
-        self.forward_recompute = False
+        self.forward_recompute = False  # use RecomputeOptimizer
         self.recompute_checkpoints = []
+        self.mixed_precision = False  # use mixed precision optimizer
 
         self.exec_strategy = fluid.ExecutionStrategy()
 
@@ -194,11 +195,12 @@ class CollectiveOptimizer(DistributedOptimizer):
         if strategy is None:
             strategy = DistributedStrategy()
         super(CollectiveOptimizer, self).__init__(optimizer, strategy)
-        if strategy.forward_recompute:
-            self.forward_recompute = True
-            self.recompute_checkpoints = strategy.recompute_checkpoints
-        else:
-            self.forward_recompute = False
+        self._forward_recompute = strategy.forward_recompute
+        if (not isinstance(strategy.recompute_checkpoints, list)):
+            raise ValueError("DistStrategy.recompute_checkpoints should"
+                             "be a List")
+        self._recompute_checkpoints = strategy.recompute_checkpoints
+        self._mixed_precision = strategy.mixed_precision
         self.print_config = False
 
     def backward(self,
@@ -375,6 +377,10 @@ class CollectiveOptimizer(DistributedOptimizer):
 
         return self._compiled_program
 
+    def raiseOptimizeError(strategy_name, optimize_name):
+        raise ValueError("can not use {0} when you set DistStrategy.{1} "
+                         "as True".format(optimize_name, strategy_name))
+
     def minimize(self,
                  loss,
                  startup_program=None,
@@ -405,13 +411,28 @@ class CollectiveOptimizer(DistributedOptimizer):
 
         self._check_collective_mode(main_program, self._optimizer,
                                     self._strategy)
+        # only white list optimizer is allowed here
+        if self._forward_recompute and len(self._recompute_checkpoints) > 0:
+            if self._optimizer.__class__.__name__ in [
+                    "RecomputeOptimizer", "OptimizerWithMixedPrecision"
+            ]:
+                self.raiseOptimizeError("forward_recompute",
+                                        self._optimizer.__class__.__name__)
 
-        if self.forward_recompute:
-            assert (isinstance(self.recompute_checkpoints, list) and
-                    len(self.recompute_checkpoints) > 0)
             self._optimizer = \
                 fluid.optimizer.RecomputeOptimizer(self._optimizer)
-            self._optimizer._set_checkpoints(self.recompute_checkpoints)
+            self._optimizer._set_checkpoints(self._recompute_checkpoints)
+
+        if self._mixed_precision:
+            if self._optimizer.__class__.__name__ in [
+                    "OptimizerWithMixedPrecision", "DGCMomentumOptimizer"
+            ]:
+                self.raiseOptimizeError("mixed_precision",
+                                        self._optimizer.__class__.__name__)
+            self._optimizer = fluid.contrib.mixed_precision.decorate(
+                self._optimizer,
+                init_loss_scaling=1.0,
+                use_dynamic_loss_scaling=True)
 
         optimize_ops, param_grads = self._optimizer.minimize(
             loss,
