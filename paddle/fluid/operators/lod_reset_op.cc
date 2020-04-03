@@ -182,7 +182,7 @@ class LoDResetGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "LoDResetGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Out")), "Output",
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Output",
                    framework::GradVarName("Out"), "LoDResetGrad");
 
     auto x_grad_name = framework::GradVarName("X");
