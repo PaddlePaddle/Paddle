@@ -624,39 +624,32 @@ __global__ void KeBicubicInterpFw(
 
     } else {
       for (int k = 0; k < 4; k++) {
-        int access_y = max(min(input_y - 1 + k ,
-                               static_cast<int>((in_img_h - 1)), 0);
-        int access_x_0 = max(min(input_x - 1,
-                                 static_cast<int>((in_img_w -1)), 0);
-        int access_x_1 = max(min(input_x + 0,
-                                 static_cast<int>((in_img_w -1)), 0);
-        int access_x_2 = max(min(input_x + 1,
-                                 static_cast<int>((in_img_w -1)), 0);
-        int access_x_3 = max(min(input_x + 2,
-                                 static_cast<int>((in_img_w -1)), 0);
+        int access_y =
+            max(min(input_y - 1 + k, static_cast<int>((in_img_h - 1))), 0);
+        int access_x_0 =
+            max(min(input_x - 1, static_cast<int>((in_img_w - 1))), 0);
+        int access_x_1 =
+            max(min(input_x + 0, static_cast<int>((in_img_w - 1))), 0);
+        int access_x_2 =
+            max(min(input_x + 1, static_cast<int>((in_img_w - 1))), 0);
+        int access_x_3 =
+            max(min(input_x + 2, static_cast<int>((in_img_w - 1))), 0);
 
-        const T* in_pos_0 = &in[out_id_h * input_w +
-                                access_y * in_img_w * num_channels +
-                                access_x_0 * num_channels +
-                                channel_id];
-        const T* in_pos_1 = &in[out_id_h * input_w +
-                                access_y * in_img_w * num_channels +
-                                access_x_1 * num_channels +
-                                channel_id];
-        const T* in_pos_2 = &in[out_id_h * input_w +
-                                access_y * in_img_w * num_channels +
-                                access_x_2 * num_channels +
-                                channel_id];
-        const T* in_pos_3 = &in[out_id_h * input_w +
-                                access_y * in_img_w * num_channels +
-                                access_x_3 * num_channels +
-                                channel_id];
+        const T* in_pos_0 =
+            &in[out_id_h * input_w + access_y * in_img_w * num_channels +
+                access_x_0 * num_channels + channel_id];
+        const T* in_pos_1 =
+            &in[out_id_h * input_w + access_y * in_img_w * num_channels +
+                access_x_1 * num_channels + channel_id];
+        const T* in_pos_2 =
+            &in[out_id_h * input_w + access_y * in_img_w * num_channels +
+                access_x_2 * num_channels + channel_id];
+        const T* in_pos_3 =
+            &in[out_id_h * input_w + access_y * in_img_w * num_channels +
+                access_x_3 * num_channels + channel_id];
 
-        coefficients[k] = Kecubic_interp(in_pos_0[0],
-                                         in_pos_1[0],
-                                         in_pos_2[0],
-                                         in_pos_3[0],
-                                         x_t);
+        coefficients[k] = Kecubic_interp(in_pos_0[0], in_pos_1[0], in_pos_2[0],
+                                         in_pos_3[0], x_t);
       }
 
       out[out_id_h * output_w + out_id_w] =
@@ -718,10 +711,12 @@ __global__ void KeBicubicInterpBw(
 
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 4; j++) {
-        int access_y = max(min(static_cast<int>((input_y - 1 + j),
-                                   static_cast<int>(in_img_h -1)), 0);
-        int access_x = max(min(static_cast<int>((input_x - 1 + i),
-                                   static_cast<int>(in_img_w -1)), 0);
+        int access_y = max(min(static_cast<int>(input_y - 1 + j),
+                               static_cast<int>(in_img_h - 1)),
+                           0);
+        int access_x = max(min(static_cast<int>(input_x - 1 + i),
+                               static_cast<int>(in_img_w - 1)),
+                           0);
         if (data_layout == DataLayout::kNCHW) {
           in_pos = &in[out_id_h * input_w + channel_id * in_img_size +
                        access_y * in_img_w + access_x];
@@ -729,8 +724,8 @@ __global__ void KeBicubicInterpBw(
           in_pos = &in[out_id_h * input_w + access_y * in_img_w * num_channels +
                        access_x * num_channels + channel_id];
         }
-        platform::CudaAtomicAdd(
-            &in_pos[0], (out_pos[0] * y_coeffs[j] * x_coeffs[i]));
+        platform::CudaAtomicAdd(&in_pos[0],
+                                (out_pos[0] * y_coeffs[j] * x_coeffs[i]));
       }
     }
   }
