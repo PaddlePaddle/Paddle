@@ -73,6 +73,4 @@ class GPURandintKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(randint, ops::GPURandintKernel<int>,
-                        ops::GPURandintKernel<int64_t>,
-                        ops::GPURandintKernel<float>,
-                        ops::GPURandintKernel<double>);
+                        ops::GPURandintKernel<int64_t>)

@@ -21,7 +21,7 @@ from op_test import OpTest
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, program_guard
 import paddle
 
 
@@ -67,9 +67,14 @@ class TestRandintOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_shape)
 
             def test_dtype():
-                paddle.randint(5, shape=[32, 32], dtype='int8')
+                paddle.randint(5, shape=[32, 32], dtype='float32')
 
             self.assertRaises(TypeError, test_dtype)
+
+            def test_low_high():
+                paddle.randint(low=5, high=5, shape=[32, 32], dtype='int32')
+
+            self.assertRaises(ValueError, test_low_high)
 
 
 class TestRandintOp_attr_tensorlist(OpTest):
@@ -137,11 +142,11 @@ class TestRandintAPI(unittest.TestCase):
             dim_1 = fluid.layers.fill_constant([1], "int64", 32)
             dim_2 = fluid.layers.fill_constant([1], "int32", 50)
             output4 = paddle.randint(
-                low=-100, high=100, shape=[dim_1, 5], dtype='float32')
+                low=-100, high=100, shape=[dim_1, 5], dtype='int32')
             # shape is a tensor and dtype is 'float64'
             var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
             output5 = paddle.randint(
-                low=1, high=1000, shape=var_shape, dtype='float64')
+                low=1, high=1000, shape=var_shape, dtype='int64')
 
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():

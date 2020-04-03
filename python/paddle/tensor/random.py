@@ -48,7 +48,7 @@ def randint(low,
             name=None):
     """
     This function returns a Tensor filled with random integers from the "discrete uniform" distribution of the
-    specified dtype in the interval [low, high). If high is None (the default), then results are from [0, low).
+    specified data type in the interval [low, high). If high is None (the default), then results are from [0, low).
 
     Args:
         low (int): The lower bound on the range of random values to generate, the low is included in the range.
@@ -64,14 +64,20 @@ def randint(low,
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output Tensor
-            which can be float32, float64, int32, int64, if dytpe is `None`, the data
-            type of created Tensor is `int32`
+            which can be int32, int64, if dytpe is `None`, the data
+            type of created Tensor is `int64`
         device(str, optional): This parameter specifies that the Tensor is created 
             on the GPU or CPU.
         stop_gradient(bool, optional): Indicating if we stop gradient from current(out) Variable,
             default value is False.
         name(str, optional): The default value is None.  Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns: 
+        Variable: A Tensor of the specified shape filled with random integers.
+
+    Raises:
+        TypeError: Randint's low must less then high.
 
     Examples:
         .. code-block:: python
@@ -91,13 +97,13 @@ def randint(low,
             # example 3:
             # attr shape is a Variable, the data type must be int64 or int32.
             var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
-            result_3 = padddle.randint(low=-5, high=5, shape=var_shape, dtype="float32")
+            result_3 = padddle.randint(low=-5, high=5, shape=var_shape, dtype="int32")
             var_shape_int32 = fluid.data(name='var_shape_int32', shape=[2], dtype="int32")
-            result_4 = paddle.randint(low=-5, high=5, shape=var_shape_int32, dtype="float64")
+            result_4 = paddle.randint(low=-5, high=5, shape=var_shape_int32, dtype="int64")
 
             # example 4:
             # Input only one parameter
-            # low=0, high=10, shape=[1], dtype='int32'
+            # low=0, high=10, shape=[1], dtype='int64'
             result_4 = paddle.randint(10)
      """
 
@@ -108,7 +114,7 @@ def randint(low,
                 dim.stop_gradient = True
                 new_shape_tensor.append(dim)
             else:
-                assert (isinstance(dim, int))
+                assert isinstance(dim, int) or isinstance(dim, long)
                 temp_out = helper.create_variable_for_type_inference('int64')
                 fill_constant([1], 'int64', dim, force_cpu=True, out=temp_out)
                 new_shape_tensor.append(temp_out)
@@ -128,9 +134,8 @@ def randint(low,
         return attrs_shape
 
     if dtype is None:
-        dtype = 'int32'
-    check_dtype(dtype, 'dtype', ['int32', 'int64', 'float32', 'float64'],
-                'randint')
+        dtype = 'int64'
+    check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint')
 
     inputs = dict()
     attrs = dict()
@@ -161,6 +166,10 @@ def randint(low,
         low = 0
     attrs['low'] = low
     attrs['high'] = high
+    if (low >= high):
+        raise ValueError(
+            "randint's low must less then high, but received low = {0}, "
+            "high = {1}".format(low, high))
 
     if out is None:
         if name is None:

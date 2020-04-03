@@ -60,9 +60,10 @@ class RandintOp : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument("Output(Out) of RandintOp is null."));
     PADDLE_ENFORCE_LT(
         ctx->Attrs().Get<int>("low"), ctx->Attrs().Get<int>("high"),
-        platform::errors::InvalidArgument(
-            "randint's low must less then max, but got: low = %d, high = %d",
-            ctx->Attrs().Get<int>("low"), ctx->Attrs().Get<int>("high")));
+        platform::errors::InvalidArgument("randint's low must less then high, "
+                                          "but received: low = %d, high = %d.",
+                                          ctx->Attrs().Get<int>("low"),
+                                          ctx->Attrs().Get<int>("high")));
 
     if (ctx->HasInputs("ShapeTensorList")) {
       // top prority shape
@@ -82,13 +83,12 @@ class RandintOp : public framework::OperatorWithKernel {
     auto& shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
     if (ctx->HasInput("ShapeTensor") && shape.empty()) {
       auto shape_dims = ctx->GetInputDim("ShapeTensor");
-      PADDLE_ENFORCE_EQ(
-          shape_dims.size(), 1,
-          platform::errors::InvalidArgument(
-              "ShapeError: Input(ShapeTensor)' dimension size of "
-              "Op(randint) must be 1."
-              "But received ShapeTensor's dimensions = %d, shape = [%s]",
-              shape_dims.size(), shape_dims));
+      PADDLE_ENFORCE_EQ(shape_dims.size(), 1,
+                        platform::errors::InvalidArgument(
+                            "ShapeError: Input(ShapeTensor)' dimension size of "
+                            "Op(randint) must be 1."
+                            "But received ShapeTensor's dimensions = %d.",
+                            shape_dims.size()));
       int num_ele = 1;
       for (int i = 0; i < shape_dims.size(); ++i) {
         num_ele *= shape_dims[i];
@@ -145,14 +145,14 @@ class RandintOpMaker : public framework::OpProtoAndCheckerMaker {
 This operator initializes a tensor with random integers sampled from a
 uniform distribution. The random result is in set [low, high).
 )DOC");
-    AddAttr<std::vector<int64_t>>("shape", "The shape of the output tensor")
+    AddAttr<std::vector<int64_t>>("shape", "The shape of the output tensor.")
         .SetDefault({});
     AddAttr<int>("low",
                  "The lower bound on the range of random values to generate.");
     AddAttr<int>("high",
                  "The upper bound on the range of random values to generate.");
-    AddAttr<int>("dtype", "Output tensor data type. [Default INT32].")
-        .SetDefault(framework::proto::VarType::INT32);
+    AddAttr<int>("dtype", "Output tensor data type. [Default INT64].")
+        .SetDefault(framework::proto::VarType::INT64);
   }
 };
 
@@ -167,6 +167,4 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
 
 REGISTER_OP_CPU_KERNEL(randint, ops::CPURandintKernel<int>,
-                       ops::CPURandintKernel<int64_t>,
-                       ops::CPURandintKernel<float>,
-                       ops::CPURandintKernel<double>);
+                       ops::CPURandintKernel<int64_t>)
