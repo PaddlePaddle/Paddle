@@ -105,7 +105,7 @@ class ReduceGradKernel : public framework::OpKernel<T> {
     // not be set as Input in grad Maker, use Out_grad to replace here
     if (!input1) input1 = input2;
 
-    if (reduce_all) {
+    if (reduce_all && !keep_dim) {
       auto x = EigenVector<T>::Flatten(*input0);
       auto x_reduce = EigenVector<T>::From(*input1);
       auto x_reduce_grad = EigenVector<T>::From(*input2);
