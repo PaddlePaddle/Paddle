@@ -30,7 +30,7 @@ from ..fluid.layers import fill_constant
 
 # TODO: define functions to get create a tensor  
 __all__ = [
-    'create_tensor',
+    #            'create_tensor',
     #            'create_lod_tensor', 
     #            'create_random_int_lodtensor',
     #            'crop_tensor', 
@@ -43,7 +43,7 @@ __all__ = [
     #            'range', 
     #            'zeros', 
     #            'zeros_like', 
-    'arrange',
+    'arange',
     #            'eye',
     'full',
     #            'linspace',
