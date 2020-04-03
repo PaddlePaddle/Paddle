@@ -133,7 +133,8 @@ class TestDnnlMatMulOpInt8(TestDnnlMatMulOp):
         }
 
     def test_check_output(self):
-        self.check_output(atol=1)
+        int_atol = 1
+        self.check_output(atol=int_atol)
 
 
 class TestDnnlMatMulOpInt8ForceFP32(TestDnnlMatMulOpInt8):

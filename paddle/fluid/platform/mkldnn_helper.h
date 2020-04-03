@@ -18,7 +18,7 @@ limitations under the License. */
 #include <string>
 #include <utility>
 #include <vector>
-#include "dnnl.hpp"
+#include "mkldnn.hpp"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
 namespace paddle {
