@@ -143,42 +143,69 @@ struct PaddleTensor {
 
 enum class PaddlePlace { kUNK = -1, kCPU, kGPU };
 
-/** Tensor without copy, currently only supports `AnalysisPredictor`.
- */
+/// \brief Represents an n-dimensional array of values.
+/// The ZeroCopyTensor is used to store the input or output of the network.
+/// Zero copy means that the tensor supports direct copy of host or device data
+/// to device,
+/// eliminating additional CPU copy. ZeroCopyTensor is only used in the
+/// AnalysisPredictor.
+/// It is obtained through PaddlePredictor::GetinputTensor()
+/// and PaddlePredictor::GetOutputTensor() interface.
 class ZeroCopyTensor {
  public:
+  /// \brief Reset the shape of the tensor.
+  /// Generally it's only used for the input tensor.
+  /// Reshape must be called before calling mutable_data() or copy_from_cpu()
+  /// \param shape The shape to set.
   void Reshape(const std::vector<int>& shape);
 
-  /** Get the memory in CPU or GPU with specific data type, should Reshape first
-   * to tell the data size.
-   * One can directly call this data to feed the data.
-   * This is for writing the input tensor.
-   */
+  /// \brief Get the memory pointer in CPU or GPU with specific data type.
+  /// Please Reshape the tensor first before call this.
+  /// It's usually used to get input data pointer.
+  /// \param place The place of the tensor.
   template <typename T>
   T* mutable_data(PaddlePlace place);
-  /** Get the memory directly, will return the place and element size by
-   * pointer.
-   * This is for reading the output tensor.
-   */
+
+  /// \brief Get the memory pointer directly.
+  /// It's usually used to get the output data pointer.
+  /// \param[out] place To get the device type of the tensor.
+  /// \param[out] size To get the data size of the tensor.
+  /// \return The tensor data buffer pointer.
   template <typename T>
   T* data(PaddlePlace* place, int* size) const;
 
+  /// \brief Copy the host memory to tensor data.
+  /// It's usually used to set the input tensor data.
+  /// \param data The pointer of the data, from which the tensor will copy.
   template <typename T>
   void copy_from_cpu(const T* data);
 
+  /// \brief Copy the tensor data to the host memory.
+  /// It's usually used to get the output tensor data.
+  /// \param[out] data The tensor will copy the data to the address.
   template <typename T>
   void copy_to_cpu(T* data);
 
+  /// \brief Return the shape of the Tensor.
   std::vector<int> shape() const;
 
+  /// \brief Set lod info of the tensor.
+  /// More about LOD can be seen here:
+  ///  https://www.paddlepaddle.org.cn/documentation/docs/zh/beginners_guide/basic_concept/lod_tensor.html#lodtensor
+  /// \param x the lod info.
   void SetLoD(const std::vector<std::vector<size_t>>& x);
+  /// \brief Return the lod info of the tensor.
   std::vector<std::vector<size_t>> lod() const;
+  /// \brief Return the name of the tensor.
   const std::string& name() const { return name_; }
   void SetPlace(PaddlePlace place, int device = -1) {
     place_ = place;
     device_ = device;
   }
 
+  /// \brief Return the data type of the tensor.
+  /// It's usually used to get the output tensor data type.
+  /// \return The data type of the tensor.
   PaddleDType type() const;
 
  protected:
@@ -199,8 +226,8 @@ class ZeroCopyTensor {
   int device_;
 };
 
-/** A simple Inference API for Paddle.
- */
+/// \brief A Predictor for executing inference on a model.
+/// Base class for AnalysisPredictor and NativePaddlePredictor.
 class PaddlePredictor {
  public:
   struct Config;
@@ -208,85 +235,79 @@ class PaddlePredictor {
   PaddlePredictor(const PaddlePredictor&) = delete;
   PaddlePredictor& operator=(const PaddlePredictor&) = delete;
 
-  /** Predict an record.
-   * The caller should be responsible for allocating and releasing the memory of
-   * `inputs`. `inputs` should be available until Run returns. Caller should be
-   * responsible for the output tensor's buffer, either allocated or passed from
-   * outside.
-   */
+  /// \brief This interface takes input and runs the network.
+  /// There are redundant copies of data between hosts in this operation,
+  /// so it is more recommended to use the zecopyrun interface
+  /// \param[in] inputs An list of PaddleTensor as the input to the network.
+  /// \param[out] output_data Pointer to the tensor list, which holds the output
+  /// paddletensor
+  /// \param[in] batch_size This setting has been discarded and can be ignored.
+  /// \return Whether the run is successful
   virtual bool Run(const std::vector<PaddleTensor>& inputs,
                    std::vector<PaddleTensor>* output_data,
                    int batch_size = -1) = 0;
 
-  /** \brief Get input names of the model
-   */
+  /// \brief  Used to get the name of the network input.
+  /// Be inherited by AnalysisPredictor, Only used in ZeroCopy scenarios.
+  /// \return Input tensor names.
   virtual std::vector<std::string> GetInputNames() { return {}; }
 
-  /** \brief Get input shapes of the model
-   */
+  /// \brief Get the input shape of the model.
+  /// \return A map contains all the input names and shape defined in the model.
   virtual std::map<std::string, std::vector<int64_t>> GetInputTensorShape() {
     return {};
   }
 
-  /** \brief Get output names of the model
-   */
+  /// \brief Used to get the name of the network output.
+  /// Be inherited by AnalysisPredictor, Only used in ZeroCopy scenarios.
+  /// \return Output tensor names.
   virtual std::vector<std::string> GetOutputNames() { return {}; }
 
-  /** \brief Get a mutable tensor directly.
-   *
-   * NOTE Only works in AnalysisPredictor.
-   *
-   * One can also use this to modify any temporary variable related tensors in
-   * the predictor.
-   *
-   */
+  /// \brief Get the input ZeroCopyTensor by name.
+  /// Be inherited by AnalysisPredictor, Only used in ZeroCopy scenarios.
+  /// The name is obtained from the GetInputNames() interface.
+  /// \param name The input tensor name.
+  /// \return Return the corresponding input ZeroCopyTensor.
   virtual std::unique_ptr<ZeroCopyTensor> GetInputTensor(
       const std::string& name) {
     return nullptr;
   }
-  /**
-   * \brief Get an immutable tensor without copy.
-   *
-   * NOTE Only works in AnalysisPredictor.
-   * One can use this API to get any temporary tensors in the predictor and
-   * read it.
-   */
+
+  /// \brief Get the output ZeroCopyTensor by name.
+  /// Be inherited by AnalysisPredictor, Only used in ZeroCopy scenarios.
+  /// The name is obtained from the GetOutputNames() interface.
+  /// \param name The output tensor name.
+  /// \return Return the corresponding output ZeroCopyTensor.
   virtual std::unique_ptr<ZeroCopyTensor> GetOutputTensor(
       const std::string& name) {
     return nullptr;
   }
-  /**
-   * \brief Run the predictor with zero-copied inputs and outputs.
-   *
-   * NOTE Only works in AnalysisPredictor.
-   *
-   * This will save the IO copy for transfering inputs and outputs to predictor
-   * workspace and get some performance improvement.
-   * To use it, one should call the `AnalysisConfig.SwitchUseFeedFetchOp(true)`
-   * and then use the `GetInputTensor` and `GetOutputTensor` to directly write
-   * or read the input/output tensors.
-   */
+  /// \brief Run the network with zero-copied inputs and outputs.
+  /// Be inherited by AnalysisPredictor and only used in ZeroCopy scenarios.
+  /// This will save the IO copy for transfering inputs and outputs to predictor
+  /// workspace
+  /// and get some performance improvement.
+  /// To use it, one should call the AnalysisConfig.SwitchUseFeedFetchOp(true)
+  /// and then use the `GetInputTensor` and `GetOutputTensor`
+  /// to directly write or read the input/output tensors.
+  /// \return Whether the run is successful
   virtual bool ZeroCopyRun() { return false; }
 
-  /** Clone a predictor that share the model weights, the Cloned predictor
-   * should be thread-safe.
-   */
+  /// \brief Clone an existing predictor
+  /// When using clone, the same network will be created,
+  /// and the parameters between them are shared.
+  /// \return unique_ptr which contains the pointer of predictor
   virtual std::unique_ptr<PaddlePredictor> Clone() = 0;
 
-  /** Destroy the Predictor.
-   */
+  /// \brief Destroy the Predictor.
   virtual ~PaddlePredictor() = default;
 
-  /** \brief Get the serialized model program that executes in inference phase.
-   * Its data type is ProgramDesc, which is a protobuf message.
-   */
   virtual std::string GetSerializedProgram() const {
     assert(false);  // Force raise error.
     return "NotImplemented";
   }
 
-  /** The common configs for all the predictors.
-   */
+  /// \brief Base class for NativeConfig and AnalysisConfig.
   struct Config {
     std::string model_dir; /*!< path to the model directory. */
   };
