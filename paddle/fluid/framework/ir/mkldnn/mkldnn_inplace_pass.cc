@@ -41,8 +41,7 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
     VLOG(3) << "Start to handle MKL-DNN In-Place pass";
 
     GET_IR_NODE_FROM_SUBGRAPH(prev_op, prev_op, mkldnn_inplace);
-    GET_IR_NODE_FROM_SUBGRAPH(current_op, inplace_to_be_op,
-                              mkldnn_inplace);
+    GET_IR_NODE_FROM_SUBGRAPH(current_op, inplace_to_be_op, mkldnn_inplace);
     GET_IR_NODE_FROM_SUBGRAPH(current_op_in, inplace_to_be_op_in,
                               mkldnn_inplace);
     GET_IR_NODE_FROM_SUBGRAPH(current_op_out, inplace_to_be_op_out,
@@ -50,31 +49,29 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(next_op, next_op, mkldnn_inplace);
 
     if ((current_op->Op()->HasAttr("use_mkldnn") == false) ||
-        (boost::get<bool>(current_op->Op()->GetAttr("use_mkldnn")) ==
-         false)) {
+        (boost::get<bool>(current_op->Op()->GetAttr("use_mkldnn")) == false)) {
       VLOG(3) << "do not perform mkl-dnn inplace: use_mkldnn missing or set to "
                  "false";
       return;
     }
 
-    auto& infer_inplace = OpInfoMap::Instance()
-                              .Get(current_op->Op()->Type())
-                              .infer_inplace_;
+    auto& infer_inplace =
+        OpInfoMap::Instance().Get(current_op->Op()->Type()).infer_inplace_;
     if (!infer_inplace) {
       VLOG(3) << "do not perform mkl-dnn inplace: missing InplaceInferer";
       return;
     }
 
-    auto count_specific_vars = [](VariableNameMap& mapvar, std::string& target_var_name) {
+    auto count_specific_vars = [](VariableNameMap& mapvar,
+                                  std::string& target_var_name) {
       unsigned int count = 0;
       for (auto& it : mapvar) {
         for (auto& var_name : it.second) {
           count += (var_name == target_var_name) ? 1 : 0;
-        } 
+        }
       }
       return count;
-    }; 
-
+    };
 
     // Iterate over all nodes  that are ops
     // and check if in-place to be var is part of inputs
@@ -92,23 +89,27 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
               if (var_name == in_place_input) {
                 // If next op is already having inplace var
                 // among its inputs then do not perform inplacing
-                if ((n->id() == next_op->id()) && 
+                if ((n->id() == next_op->id()) &&
                     count_specific_vars(inputs, var_name) > 0) {
-                    VLOG(3) << "MKL-DNN in-place pass FAIL: in-place var cannot be an "
-                               "input to next op in same chain";
-                    return;
+                  VLOG(3) << "MKL-DNN in-place pass FAIL: in-place var cannot "
+                             "be an "
+                             "input to next op in same chain";
+                  return;
                 }
 
                 // Ok if op that is having current op input as its own
                 // input is directly before current op, and prev op
                 // is also in-place then we can in-placed current op
-                if ((n->id() == prev_op->id()) && count_specific_vars(outputs, var_name) > 0 ) {
+                if ((n->id() == prev_op->id()) &&
+                    count_specific_vars(outputs, var_name) > 0) {
                   VLOG(3) << "MKL-DNN in-place pass: in-place var is "
                              "an input of prev op, but also of inplaced op. OK";
 
                 } else {
-                  VLOG(3) << "MKL-DNN in-place pass FAIL: in-place var cannot be an "
-                             "input to more than one operator of diffrent branches";
+                  VLOG(3)
+                      << "MKL-DNN in-place pass FAIL: in-place var cannot be "
+                         "an "
+                         "input to more than one operator of diffrent branches";
                   return;
                 }
               }

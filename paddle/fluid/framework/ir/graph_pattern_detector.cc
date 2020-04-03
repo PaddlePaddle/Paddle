@@ -1856,7 +1856,6 @@ PDNode *patterns::MKLDNNInPlace::operator()() {
   // Check if op is MKL-DNN enabled
   possible_inplace_op->assert_op_attr("use_mkldnn", true);
 
-
   // linked structure
   prev_op->LinksTo({input});
   possible_inplace_op->LinksTo({output});

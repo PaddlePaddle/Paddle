@@ -64,8 +64,9 @@ class MKLDNNInplacePassTest {
                                bool branched) {
     ProgramDesc prog;
 
-    for (auto& v : std::vector<std::string>(
-             {"a", "weights", "bias", "f", "g", "h", "i", "j", "k", "l", "m", "z"})) {
+    for (auto& v :
+         std::vector<std::string>({"a", "weights", "bias", "f", "g", "h", "i",
+                                   "j", "k", "l", "m", "z"})) {
       auto* var = prog.MutableBlock(0)->Var(v);
       var->SetType(proto::VarType::SELECTED_ROWS);
       if (v == "weights" || v == "bias") {
@@ -88,9 +89,9 @@ class MKLDNNInplacePassTest {
     SetOp(&prog, "elementwise_add", "elementwise_add2",
           std::vector<std::string>({"j", "k"}), std::vector<std::string>({"l"}),
           mkldnn_enabled_op.compare("elementwise_add") == 0);
-      SetOp(&prog, "relu", "relu2", std::vector<std::string>({"l"}),
-            std::vector<std::string>({"m"}),
-            mkldnn_enabled_op.compare("softmax") == 0);
+    SetOp(&prog, "relu", "relu2", std::vector<std::string>({"l"}),
+          std::vector<std::string>({"m"}),
+          mkldnn_enabled_op.compare("softmax") == 0);
     if (branched == true) {
       SetOp(&prog, "softmax", "softmax2", std::vector<std::string>({"g"}),
             std::vector<std::string>({"z"}),
