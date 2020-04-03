@@ -13,10 +13,10 @@
 # limitations under the License.
 
 #TODO: define alias in tensor and framework directory
-# from .creation import create_   #DEFINE_ALIAS
-# from .creation import create_lod_   #DEFINE_ALIAS
+# from .creation import create_tensor   #DEFINE_ALIAS
+# from .creation import create_lod_tensor   #DEFINE_ALIAS
 # from .creation import create_random_int_lod   #DEFINE_ALIAS
-# from .creation import crop_   #DEFINE_ALIAS
+# from .creation import crop_tensor   #DEFINE_ALIAS
 # from .creation import diag   #DEFINE_ALIAS
 # from .creation import eye   #DEFINE_ALIAS
 # from .creation import fill_constant   #DEFINE_ALIAS

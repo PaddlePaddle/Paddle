@@ -15,6 +15,7 @@
 from paddle.common_ops_import import *
 
 # TODO: define functions to get create a tensor  
+
 __all__ = [
     'create_tensor',
     #            'create_lod_tensor', 
