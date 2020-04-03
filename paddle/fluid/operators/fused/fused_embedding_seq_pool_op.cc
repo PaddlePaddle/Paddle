@@ -24,9 +24,9 @@ class FusedEmbeddingSeqPoolOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override { 
-    OP_INOUT_CHECK(ctx->HasInput("W"), "Input", "W", "FusedEmbeddingSeqPool")
-    OP_INOUT_CHECK(ctx->HasInput("Ids"), "Input", "Ids", "FusedEmbeddingSeqPool")
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "FusedEmbeddingSeqPool")
+    OP_INOUT_CHECK(ctx->HasInput("W"), "Input", "W", "FusedEmbeddingSeqPool");
+    OP_INOUT_CHECK(ctx->HasInput("Ids"), "Input", "Ids", "FusedEmbeddingSeqPool");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "FusedEmbeddingSeqPool");
     auto table_dims = ctx->GetInputDim("W");
     auto ids_dims = ctx->GetInputDim("Ids");
     const std::string& combiner = ctx->Attrs().Get<std::string>("combiner");
