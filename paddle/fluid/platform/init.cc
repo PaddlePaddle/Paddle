@@ -53,7 +53,6 @@ std::once_flag glog_warning_once_flag;
 void InitGflags(std::vector<std::string> argv) {
   std::call_once(gflags_init_flag, [&]() {
     FLAGS_logtostderr = true;
-    argv.insert(argv.begin(), "dummy");
     int argc = argv.size();
     char **arr = new char *[argv.size()];
     std::string line;
