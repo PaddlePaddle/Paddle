@@ -13,11 +13,8 @@
 # limitations under the License.
 from __future__ import print_function
 import paddle.fluid as fluid
-import paddle.compat as cpt
 import paddle.fluid.core as core
-import numpy as np
 import os
-import shutil
 import unittest
 import paddle.fluid.layers as layers
 from paddle.fluid.layers.nn import _pull_box_sparse
@@ -32,23 +29,23 @@ class TestDataFeed(unittest.TestCase):
         self.enable_pv_predict = True
         self.merge_by_sid = True
 
-    def test_pboxdatafeed(self):
-        self.run_dataset(False)
-
-    def test_pboxdatafeed(self):
-        self.run_dataset(True)
-
     def set_data_config(self):
         self.dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
         self.dataset.set_feed_type("PaddleBoxDataFeed")
         self.dataset.set_parse_logkey(True)
-        self.dataset.set_thread(2)
+        self.dataset.set_thread(1)
         self.dataset.set_enable_pv_predict(self.enable_pv_predict)
         self.dataset.set_batch_size(self.batch_size)
         if self.enable_pv_predict:
             self.dataset.set_merge_by_sid(self.merge_by_sid)
             self.dataset.set_rank_offset("rank_offset")
             self.dataset.set_pv_batch_size(self.pv_batch_size)
+
+    def test_pboxdatafeed(self):
+        self.run_dataset(False)
+
+    def test_pboxdatafeed(self):
+        self.run_dataset(True)
 
     def run_dataset(self, is_cpu):
         x = fluid.layers.data(name='x', shape=[1], dtype='int64', lod_level=0)
