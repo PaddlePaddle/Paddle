@@ -70,7 +70,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
 void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const NameVarBaseMap& outs,
                      framework::AttributeMap attrs) {
-  TraceOp(type, ins, outs, std::move(attrs), expected_place_, no_grad_);
+  TraceOp(type, ins, outs, std::move(attrs), expected_place_, has_grad_);
 }
 
 bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,

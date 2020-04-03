@@ -1661,7 +1661,7 @@ class GRUUnit(layers.Layer):
             'HiddenPrev': [hidden],
             'Weight': [self.weight]
         }
-        if self.bias:
+        if self.bias is not None:
             inputs['Bias'] = [self.bias]
         attrs = {
             'activation': self.activation,
@@ -2114,7 +2114,7 @@ class BilinearTensorProduct(layers.Layer):
 
     def forward(self, x, y):
         self._inputs = {"X": x, "Y": y, "Weight": self.weight}
-        if self.bias:
+        if self.bias is not None:
             self._inputs["Bias"] = self.bias
         if self._name is not None:
             out = self._helper.create_variable(
