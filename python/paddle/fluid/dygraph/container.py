@@ -248,6 +248,9 @@ class LayerList(Layer):
             index (int): index to insert.
             sublayer (Layer): sublayer to insert
         """
+        assert isinstance(index, int) and \
+               0 <= index < len(self._sub_layers), \
+            "index should be an integer in range [0, len(self))"
         for i in range(len(self._sub_layers), index, -1):
             self._sub_layers[str(i)] = self._sub_layers[str(i - 1)]
         self._sub_layers[str(index)] = sublayer
