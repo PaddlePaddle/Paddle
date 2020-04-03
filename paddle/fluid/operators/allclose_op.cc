@@ -22,31 +22,27 @@ namespace operators {
 class AllcloseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Input", "(Tensor), The first input tensor to compare.");
-    AddInput("Other", "(Tensor), The second input tensor to compare.");
-    AddOutput("Out", "(Tensor). The output tensor of allclose op.");
+    AddInput("Input", "The first input tensor to compare.");
+    AddInput("Other", "The second input tensor to compare.");
+    AddOutput("Out", "The output tensor of allclose op.");
 
-    AddAttr<float>("rtol",
-                   "(float, optional). The relative tolerance. Default: 1e-5.")
+    AddAttr<float>("rtol", "The relative tolerance. Default: :math:`1e-5` .")
         .SetDefault(1e-5);
-    AddAttr<float>("atol",
-                   "(float, optional). The absolute tolerance. Default: 1e-8.")
+    AddAttr<float>("atol", "The absolute tolerance. Default: :math:`1e-8` .")
         .SetDefault(1e-8);
     AddAttr<bool>("equal_nan",
-                  "(bool, optional). If `True`, then two `NaN`s will be "
-                  "compared as equal. Default: False.")
+                  "If :math:`True` , then two :math:`NaNs` will be "
+                  "compared as equal. Default: :math:`False` .")
         .SetDefault(false);
 
     AddComment(R"DOC( 
-This operator checks if all `input` and `other` satisfy the condition:
+This operator checks if all :math:`input` and :math:`other` satisfy the condition:
 
-$$
-\left| input - other \right| \leq atol + rtol \times \left| other \right|
-$$
+:math:`\left| input - other \right| \leq atol + rtol \times \left| other \right|`
 
-elementwise, for all elements of `input` and `other`. The behaviour of this
-operator is analogous to `numpy.allclose`, namely that it returns `True` if
-two tensors are element-wise equal within a tolerance.
+elementwise, for all elements of :math:`input` and :math:`other`. The behaviour of this
+operator is analogous to :math:`numpy.allclose`, namely that it returns :math:`True` if
+two tensors are elementwise equal within a tolerance.
 )DOC");
   }
 };

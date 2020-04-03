@@ -72,23 +72,24 @@ def allclose(input, other, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     ${comment}
 
     Args:
-        input(${input_type}): ${input_comment}
-        other(${other_type}): ${other_comment}
-        rtol(${rtol_type}, optional): ${rtol_comment}
-        atol(${atol_type}, optional): ${atol_comment}
-        equal_nan(${equal_nan_type}, optional): ${equal_nan_comment}
-        name(str, optional): The default value is None.
+        input(${input_type}): ${input_comment}.
+        other(${other_type}): ${other_comment}.
+        rtol(${rtol_type}, optional): ${rtol_comment}.
+        atol(${atol_type}, optional): ${atol_comment}.
+        equal_nan(${equal_nan_type}, optional): ${equal_nan_comment}.
+        name(STR, optional): The default value is None.
                         Normally there is no need for user to set this property.
                         For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        ${out_comment}
+        ${out_comment}.
 
     Return Type:
         ${out_type}
         
     Examples:
         .. code-block:: python
+
           import paddle
           import paddle.fluid as fluid
           import numpy as np
@@ -131,6 +132,7 @@ def allclose(input, other, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
           print(result_v, result_nan_v)
           # Output: (array([False]), array([ True]))
     """
+
     check_type(rtol, 'rtol', float, 'allclose')
     check_type(atol, 'atol', float, 'allclose')
     check_type(equal_nan, 'equal_nan', bool, 'allclose')
