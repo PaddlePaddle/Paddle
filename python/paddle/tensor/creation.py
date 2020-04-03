@@ -78,20 +78,6 @@ def full_like(input,
           res = exe.run(fluid.default_main_program(), feed={'input':img}, fetch_list=[output])
           print(res) # [array([[2., 2., 2.], [2., 2., 2.]], dtype=float32)]
     """
-    if in_dygraph_mode():
-        if out is None:
-            out = _varbase_creator(dtype=dtype)
-        else:
-            check_variable_and_dtype(out, 'out', [dtype], 'full_like')
-        if stop_gradient:
-            out.stop_gradient = True
-        outputs = {'Out': [out]}
-        attrs = {'value': fill_value}
-        inputs = {'X': [input]}
-        core.ops.fill_any_like(inputs, attrs, outputs)
-        if stop_gradient:
-            out.stop_gradient = True
-        return out
     helper = LayerHelper("full_like", **locals())
 
     if dtype is None:
