@@ -201,6 +201,7 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     auto *program = block->Program();
     auto start_op_index = ctx.Attr<int64_t>("start_op_index");
     auto end_op_index = ctx.Attr<int64_t>("end_op_index");
+    auto is_test = ctx.Attr<bool>("is_test");
 
     // NOTE(chenweihang): In order not to add new variable type, use vector
     // here. Originally, here can use scope directly.
@@ -229,7 +230,7 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     // Step 3. run ops
     exe.RunPartialPreparedContext(exe_ctx.get(), &scope, start_op_index,
                                   end_op_index, /*create_local_scope=*/false,
-                                  /*create_vars=*/true, /*keep_kids=*/true);
+                                  /*create_vars=*/true, /*keep_kids=*/!is_test);
 
     // Step 4. Get Output
     details::ShareVarsFromScope(output_vars, output_var_names, &scope);

@@ -173,13 +173,15 @@ class StaticModelRunner(layers.Layer):
         # Step 0. key variable definitions
         self._load_program_desc = None
         self._program_desc = None
-        self._inner_scope = None
+        self._inner_scope = core.Scope()
         # the layer outputs var desc
         self._output_descs = []
         # input, output, params name list
         self._input_names = []
         self._output_names = []
         self._param_names = []
+        # train or eval flag
+        self._is_test = False
 
         # Step 1. load program desc from disk
         # the saved model hold feed, fetch & scale op, no need, can be remove
@@ -201,11 +203,13 @@ class StaticModelRunner(layers.Layer):
     def train(self):
         # TODO: remove global train_mode setting
         framework._dygraph_tracer().train_mode()
+        self._is_test = False
         self._change_is_test_status(False)
 
     def eval(self):
         # TODO: remove global train_mode setting
         framework._dygraph_tracer().eval_mode()
+        self._is_test = True
         self._change_is_test_status(True)
 
     def forward(self, inputs):
@@ -258,7 +262,6 @@ class StaticModelRunner(layers.Layer):
         tmp_scope_vec = core.VarBase(core.VarDesc.VarType.FP32, [],
                                      "program_out_scope",
                                      core.VarDesc.VarType.STEP_SCOPES, True)
-        self._inner_scope = core.Scope()
         tmp_scope_vec.value().set_scope(self._inner_scope)
 
         # Step 2. run prorgam by op
@@ -271,7 +274,8 @@ class StaticModelRunner(layers.Layer):
             attrs={
                 'global_block': self._program_desc.block(0),
                 'start_op_index': 0,
-                'end_op_index': self._load_program_desc.block(0).op_size()
+                'end_op_index': self._load_program_desc.block(0).op_size(),
+                'is_test': self._is_test
             })
 
         # NOTE: [ why need set param's gradient type here ]

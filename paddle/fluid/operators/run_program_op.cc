@@ -94,6 +94,10 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int64_t>("end_op_index",
                      "(int64_t)"
                      "The index of the op to stop execution");
+    AddAttr<bool>("is_test",
+                  "(bool, default false) Set to true for inference only, false "
+                  "for training.")
+        .SetDefault(false);
     AddComment(R"DOC(
 RunProgram operator.
 
