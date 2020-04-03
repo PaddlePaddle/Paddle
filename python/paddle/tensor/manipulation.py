@@ -79,11 +79,6 @@ def flip(input, dims, name=None):
           res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
           print(res) # [[[10,11][8, 9]],[[6, 7],[4, 5]] [[2, 3],[0, 1]]]
     """
-    if in_dygraph_mode():
-        inputs = {'X': [input]}
-        outs = core.ops.flip(inputs, {'dims': dims})
-        return outs['Out'][0]
-
     helper = LayerHelper("flip", **locals())
     check_type(input, 'X', (Variable), 'flip')
     dtype = helper.input_dtype()

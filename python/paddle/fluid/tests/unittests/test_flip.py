@@ -48,6 +48,16 @@ class TestFlipOp_API(unittest.TestCase):
                 (out_np == out_ref).all(),
                 msg='flip output is wrong, out =' + str(out_np))
 
+    def test_dygraph(self):
+        img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
+        with fluid.dygraph.guard():
+            inputs = fluid.dygraph.to_variable(img)
+            ret = paddle.flip(inputs, [0])
+            out_ref = np.array([[4, 5, 6], [1, 2, 3]]).astype(np.float32)
+            self.assertTrue(
+                (ret.numpy() == out_ref).all(),
+                msg='flip output is wrong, out =' + str(ret.numpy()))
+
 
 class TestFlipOp(OpTest):
     def setUp(self):
