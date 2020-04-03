@@ -83,7 +83,7 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
                 // among its inputs then do not perform inplacing
                 if ((n->id() == next_op->id()) && 
                   (std::find_if( inputs.begin(), inputs.end(),
-                  [var_name](const auto& el) {return el.second == var_name; }) != inputs.end())) {
+                  [var_name](VariableNameMap::iterator el) {return el.second == var_name; }) != inputs.end())) {
                     VLOG(3) << "MKL-DNN in-place pass FAIL: in-place var cannot be an "
                                "input to next op in same chain";
                     return;
@@ -94,7 +94,7 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
                 // is also in-place then we can in-placed current op
                 if ((n->id() == prev_op->id()) &&
                   (std::find_if( outputs.begin(), outputs.end(),
-                  [var_name](const auto& el) {return el.second == var_name; }) != outputs.end())) {
+                  [var_name](VariableNameMap::Iterator el) {return el.second == var_name; }) != outputs.end())) {
                   VLOG(3) << "MKL-DNN in-place pass: in-place var is "
                              "an input of prev op, but also of inplaced op. OK";
 
