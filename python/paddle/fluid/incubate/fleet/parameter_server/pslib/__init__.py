@@ -567,6 +567,32 @@ class PSLib(Fleet):
                         model_proto_file, table_var_names, load_combine)
         self._role_maker._barrier_worker()
 
+    def load_model(self, model_dir=None, **kwargs):
+        mode = kwargs.get("mode", 0)
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.load_model(model_dir, mode)
+        self._role_maker._barrier_worker()
+
+    def save_model(self, model_dir=None, **kwargs):
+        mode = kwargs.get("mode", 0)
+        prefix = kwargs.get("prefix", None)
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.save_model(model_dir, mode)
+        self._role_maker._barrier_worker()
+
+    def save_one_table(self, table_id, model_dir, **kwargs):
+        mode = kwargs.get("mode", 0)
+        prefix = kwargs.get("prefix", None)
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            if prefix is not None:
+                self._fleet_ptr.save_model_one_table_with_prefix(table_id, model_dir, mode, prefix)
+            else:
+                self._fleet_ptr.save_model_one_table(table_id, model_dir, mode)
+        self._role_maker._barrier_worker()
+
     def _set_opt_info(self, opt_info):
         """
         this function saves the result from DistributedOptimizer.minimize()
