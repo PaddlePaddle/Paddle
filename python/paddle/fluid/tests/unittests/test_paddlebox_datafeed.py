@@ -103,12 +103,12 @@ class TestDataFeed(unittest.TestCase):
             sync_steps=-1)
         optimizer.minimize(loss)
         exe.run(fluid.default_startup_program())
+        self.dataset.set_current_phase(1)
         self.dataset.load_into_memory()
         self.dataset.merge_pv_instance()
         self.dataset.begin_pass()
         pv_num = self.dataset.get_pv_data_size()
 
-        self.dataset.set_current_phase(1)
         exe.train_from_dataset(
             program=fluid.default_main_program(),
             dataset=self.dataset,
