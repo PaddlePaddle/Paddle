@@ -1031,9 +1031,12 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             output_vars = body(*loop_vars)
         if not isinstance(output_vars, (list, tuple)):
             output_vars = [output_vars]
-        if len(output_vars) != len(loop_vars):
+        try:
+            assert_same_structure(output_vars, loop_vars, check_types=False)
+        except ValueError as e:
             raise ValueError("body in while_loop should return the same arity "
-                             "(length and structure) and types as loop_vars")
+                             "(length and structure) as loop_vars: {0}".format(
+                                 e))
         now_cond = cond(*output_vars)
         map_structure(assign, output_vars, loop_vars)
         assign(now_cond, pre_cond)
@@ -1284,6 +1287,31 @@ def array_write(x, i, array=None):
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
 
     """
+    if in_dygraph_mode():
+        assert isinstance(
+            x, Variable
+        ), "The input data 'x' in array_write must be Variable in dygraph mode"
+        assert isinstance(
+            i, Variable
+        ), "The index 'i' in array_write must be Variable in dygraph mode"
+        assert i.shape == [
+            1
+        ], "The shape of index 'i' should be [1] in dygraph mode"
+        i = i.numpy()[0]
+        if array is None:
+            array = create_array(x.dtype)
+        assert isinstance(
+            array,
+            list), "The 'array' in array_write must be a list in dygraph mode"
+        assert i <= len(
+            array
+        ), "The index 'i' should not be greater than the length of 'array' in dygraph mode"
+        if i < len(array):
+            array[i] = x
+        else:
+            array.append(x)
+        return array
+
     helper = LayerHelper('array_write', **locals())
     if array is None:
         array = helper.create_variable(
@@ -1319,6 +1347,9 @@ def create_array(dtype):
           data = fluid.layers.create_array(dtype='float32') # Create a float32 LoDTensorArray.
 
     """
+    if in_dygraph_mode():
+        return []
+
     helper = LayerHelper("array", **locals())
     return helper.create_variable(
         name="{0}.out".format(helper.name),
@@ -1640,6 +1671,19 @@ def array_read(array, i):
             #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux, 
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
+    if in_dygraph_mode():
+        assert isinstance(
+            array,
+            list), "The 'array' in array_read must be list in dygraph mode"
+        assert isinstance(
+            i, Variable
+        ), "The index 'i' in array_read must be Variable in dygraph mode"
+        assert i.shape == [
+            1
+        ], "The shape of index 'i' should be [1] in dygraph mode"
+        i = i.numpy()[0]
+        return array[i]
+
     helper = LayerHelper('array_read', **locals())
     if not isinstance(
             array,
@@ -1736,6 +1780,12 @@ def array_length(array):
             #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux, 
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
+    if in_dygraph_mode():
+        assert isinstance(
+            array,
+            list), "The 'array' in array_write must be a list in dygraph mode"
+        return len(array)
+
     helper = LayerHelper('array_length', **locals())
     tmp = helper.create_variable_for_type_inference(dtype='int64')
     tmp.stop_gradient = True

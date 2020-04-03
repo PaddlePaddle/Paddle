@@ -222,8 +222,7 @@ DECLARE_INPLACE_OP_INFERER(LoDResetGradInplaceInferer,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(LoDResetGradNoNeedBufferVarInference,
-                                      "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(LoDResetGradNoNeedBufferVarInference, "X");
 
 }  // namespace operators
 }  // namespace paddle

@@ -86,13 +86,15 @@ void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
 
 void PreparePass(std::unique_ptr<ir::Graph>* graph, const ProgramDesc& prog,
                  const std::initializer_list<std::string> variable_names,
-                 int* original_nodes_num, int* current_nodes_num) {
+                 int* original_nodes_num, int* current_nodes_num,
+                 std::string var_without_scale = "") {
   auto place = paddle::platform::CPUPlace();
   NaiveExecutor exe{place};
   Scope scope;
   exe.CreateVariables(prog, 0, true, &scope);
   auto* scales = new VarQuantScale();
   for (auto& v : variable_names) {
+    if (v.compare(var_without_scale) == 0) continue;
     InitTensorHolder(&scope, place, v.c_str());
     LoDTensor tensor;
     tensor.Resize({1});
@@ -475,6 +477,42 @@ TEST(CpuQuantizePass, reshapeBetweenNonQuantizedOp) {
                   transpose_count, reshape_count, quant_count, dequant_count,
                   added_nodes_count, 2.0f * 127);
 }
+
+void MainTestCheckScales(
+    const ProgramDesc& prog,
+    const std::initializer_list<std::string> variable_names,
+    const std::string& var_without_scale) {
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
+  std::stringstream error_msg_ss;
+  error_msg_ss << "Quantization scale for the variable " << var_without_scale
+               << " is missing.";
+  bool caught_exception = false;
+  try {
+    int original_nodes_num, current_nodes_num;
+    PreparePass(&graph, prog, variable_names, &original_nodes_num,
+                &current_nodes_num, var_without_scale);
+  } catch (paddle::platform::EnforceNotMet& error) {
+    caught_exception = true;
+    std::string ex_msg = error.what();
+    EXPECT_NE(ex_msg.find(error_msg_ss.str()), std::string::npos);
+  }
+  EXPECT_TRUE(caught_exception);
+}
+
+// (a, w)->Conv->o
+ProgramDesc BuildProgramDescCheckScalesConv() {
+  ProgramDesc prog;
+  SetOp(&prog, "conv2d", "Conv", {"a", "w"}, {"o"}, true, true);
+  return prog;
+}
+
+// Check if an exception with a proper message is thrown when quantization scale
+// is missing for a variable
+TEST(CPUQuantizePass, check_scales) {
+  const std::initializer_list<std::string> var_names = {"a", "w", "o"};
+  MainTestCheckScales(BuildProgramDescCheckScalesConv(), var_names, "a");
+}
+
 }  // namespace
 
 }  // namespace ir

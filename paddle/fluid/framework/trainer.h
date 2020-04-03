@@ -101,6 +101,8 @@ class DistMultiTrainer : public MultiTrainer {
   DistMultiTrainer() {}
   virtual ~DistMultiTrainer() {}
   virtual void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set);
+  virtual void InitTrainerEnv(const ProgramDesc& main_program,
+                              const platform::Place& place);
   virtual void InitOtherEnv(const ProgramDesc& main_program);
   virtual void Run();
   virtual void Finalize();
