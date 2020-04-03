@@ -889,16 +889,11 @@ class SGDOptimizer(Optimizer):
 
     @no_grad
     def _append_optimize_op(self, block, param_and_grad):
+        lr = self._create_param_lr(param_and_grad)
         if framework.in_dygraph_mode():
-            inputs = {
-                "Param": [param_and_grad[0]],
-                "Grad": [param_and_grad[1]],
-                "LearningRate": [self._create_param_lr(param_and_grad)]
-            }
-            attrs = {}
-            outputs = {'ParamOut': [param_and_grad[0]]}
-            outs = core.ops.sgd(inputs, attrs, outputs)
-            return outs['ParamOut'][0]
+            core.ops.sgd(param_and_grad[0], lr, param_and_grad[1],
+                         param_and_grad[0])
+            return None
 
         assert isinstance(block, framework.Block)
         # create the optimize op
@@ -907,7 +902,7 @@ class SGDOptimizer(Optimizer):
             inputs={
                 "Param": param_and_grad[0],
                 "Grad": param_and_grad[1],
-                "LearningRate": self._create_param_lr(param_and_grad)
+                "LearningRate": lr
             },
             outputs={"ParamOut": param_and_grad[0]},
             stop_gradient=True)
@@ -1009,24 +1004,27 @@ class MomentumOptimizer(Optimizer):
 
         velocity_acc = self._get_accumulator(self._velocity_acc_str,
                                              param_and_grad[0])
-        attrs = {"mu": self._momentum, "use_nesterov": self._use_nesterov}
+        lr = self._create_param_lr(param_and_grad)
 
+        if framework.in_dygraph_mode():
+            _, _ = core.ops.momentum(param_and_grad[0], param_and_grad[1],
+                                     velocity_acc, lr, param_and_grad[0],
+                                     velocity_acc, 'mu', self._momentum,
+                                     'use_nesterov', self._use_nesterov)
+            return None
+
+        attrs = {"mu": self._momentum, "use_nesterov": self._use_nesterov}
         inputs = {
             "Param": [param_and_grad[0]],
             "Grad": [param_and_grad[1]],
             "Velocity": [velocity_acc],
-            "LearningRate": [self._create_param_lr(param_and_grad)]
+            "LearningRate": [lr]
         }
 
         outputs = {
             "ParamOut": [param_and_grad[0]],
             "VelocityOut": [velocity_acc]
         }
-
-        if framework.in_dygraph_mode():
-            core.ops.momentum(inputs, attrs, outputs)
-            return None
-
         # create the momentum optimize op
         momentum_op = block.append_op(
             type=self.type,
@@ -1849,12 +1847,27 @@ class AdamOptimizer(Optimizer):
                                               param_and_grad[0])
         beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
                                               param_and_grad[0])
-
+        lr = self._create_param_lr(param_and_grad)
         # create the adam optimize op
+
+        if framework.in_dygraph_mode():
+            _beta1 = self._beta1 if not isinstance(
+                self._beta1, Variable) else self._beta1.numpy().item(0)
+            _beta2 = self._beta2 if not isinstance(
+                self._beta2, Variable) else self._beta2.numpy().item(0)
+            _, _, _, _, _ = core.ops.adam(
+                param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
+                beta1_pow_acc, beta2_pow_acc, param_and_grad[0], moment1,
+                moment2, beta1_pow_acc, beta2_pow_acc, 'epsilon', self._epsilon,
+                'lazy_mode', self._lazy_mode, 'min_row_size_to_use_multithread',
+                1000, 'beta1', _beta1, 'beta2', _beta2)
+
+            return None
+
         inputs = {
             "Param": [param_and_grad[0]],
             "Grad": [param_and_grad[1]],
-            "LearningRate": [self._create_param_lr(param_and_grad)],
+            "LearningRate": [lr],
             "Moment1": [moment1],
             "Moment2": [moment2],
             "Beta1Pow": [beta1_pow_acc],
@@ -1881,10 +1894,6 @@ class AdamOptimizer(Optimizer):
             inputs['Beta2Tensor'] = self._beta2
         else:
             attrs['beta2'] = self._beta2
-
-        if framework.in_dygraph_mode():
-            core.ops.adam(inputs, attrs, outputs)
-            return None
 
         adam_op = block.append_op(
             type=self.type,
