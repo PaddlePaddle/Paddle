@@ -33,6 +33,7 @@ import paddle.compat
 import paddle.distributed
 batch = batch.batch
 import paddle.sysconfig
+import paddle.nn
 
 #TODO: define alias in tensor and framework directory
 # from .tensor.creation import create_.tensor   #DEFINE_ALIAS
@@ -43,7 +44,7 @@ import paddle.sysconfig
 # from .tensor.creation import eye   #DEFINE_ALIAS
 # from .tensor.creation import fill_constant   #DEFINE_ALIAS
 # from .tensor.creation import get_.tensor_from_selected_rows   #DEFINE_ALIAS
-# from .tensor.creation import linspace   #DEFINE_ALIAS
+from .tensor.creation import linspace  #DEFINE_ALIAS
 # from .tensor.creation import ones   #DEFINE_ALIAS
 # from .tensor.creation import ones_like   #DEFINE_ALIAS
 # from .tensor.creation import range   #DEFINE_ALIAS
@@ -51,7 +52,7 @@ import paddle.sysconfig
 # from .tensor.creation import zeros_like   #DEFINE_ALIAS
 # from .tensor.creation import arrange   #DEFINE_ALIAS
 # from .tensor.creation import eye   #DEFINE_ALIAS
-# from .tensor.creation import full   #DEFINE_ALIAS
+from .tensor.creation import full  #DEFINE_ALIAS
 # from .tensor.creation import linspace   #DEFINE_ALIAS
 # from .tensor.creation import full_like   #DEFINE_ALIAS
 # from .tensor.creation import triu   #DEFINE_ALIAS
@@ -61,7 +62,7 @@ import paddle.sysconfig
 # from .tensor.stat import reduce_mean   #DEFINE_ALIAS
 # from .tensor.stat import std   #DEFINE_ALIAS
 # from .tensor.stat import var   #DEFINE_ALIAS
-# from .tensor.logic import equal   #DEFINE_ALIAS
+from .tensor.logic import equal  #DEFINE_ALIAS
 # from .tensor.logic import greater_equal   #DEFINE_ALIAS
 # from .tensor.logic import greater_than   #DEFINE_ALIAS
 # from .tensor.logic import is_empty   #DEFINE_ALIAS

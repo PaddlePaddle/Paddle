@@ -201,7 +201,7 @@ void OperationMap::InsertMultivariateElementwiseOperations() {
   auto insert_handler_without_input = [&](std::string op_type, std::string expr,
                                           std::vector<std::string> grad_exprs) {
     int type = 0;
-    int num_oprands = -1;
+    int num_oprands = 0;
     Insert(type, num_oprands, op_type, expr, grad_exprs, {}, {"Out"});
   };
   // fill_constant:

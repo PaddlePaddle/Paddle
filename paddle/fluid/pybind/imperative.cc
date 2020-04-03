@@ -695,8 +695,8 @@ void BindImperative(py::module *m_ptr) {
       .def_property("_enable_program_desc_tracing",
                     &imperative::Tracer::IsProgramDescTracingEnabled,
                     &imperative::Tracer::SetEnableProgramDescTracing)
-      .def_property("_train_mode", &imperative::Tracer::NoGrad,
-                    &imperative::Tracer::SetNoGrad)
+      .def_property("_train_mode", &imperative::Tracer::HasGrad,
+                    &imperative::Tracer::SetHasGrad)
       .def_property(
           "_expected_place",
           [](const imperative::Tracer &self) -> py::object {

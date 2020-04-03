@@ -77,6 +77,7 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
       auto* op = node->Op();
       AttributeMap attr = *(op->MutableAttrMap());
 
+      // Input ids should be set in fixed order, like:
       //  - X, Y in forward operations
       //  - X, Y, Out, out@GRAD in backward operations
       std::vector<int> input_ids;
