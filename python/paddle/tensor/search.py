@@ -31,7 +31,7 @@ from paddle.common_ops_import import *
 import warnings
 
 
-def sort(input, axis=-1, descending=False, out=None, name=None):
+def sort(input, axis=0, descending=False, out=None, name=None):
     """
     This OP sorts the input along the given axis, and returns sorted output
     data Varibale and its corresponding index Variable with the same shape as
