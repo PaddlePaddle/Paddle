@@ -168,4 +168,4 @@ from .logic import equal  #DEFINE_ALIAS
 # from .search import where   #DEFINE_ALIAS
 # from .search import index_select   #DEFINE_ALIAS
 # from .search import nonzero   #DEFINE_ALIAS
-# from .search import sort   #DEFINE_ALIAS
+from .search import sort   #DEFINE_ALIAS
