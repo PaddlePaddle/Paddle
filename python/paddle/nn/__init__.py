@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .layer.activation import *
-
 # TODO: import all neural network related api under this directory, 
 # including layers, linear, conv, rnn etc.
 __all__ = []

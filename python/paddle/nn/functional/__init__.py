@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .activation import *
-
 # TODO: import all neural network related api under this directory, 
 # including layers, linear, conv, rnn etc.
 __all__ = []
-__all__ += activation.__all__
 
 # TODO: define alias in functional directory
 # from .conv import conv2d   #DEFINE_ALIAS
@@ -116,7 +113,7 @@ __all__ += activation.__all__
 # from .activation import logsigmoid   #DEFINE_ALIAS
 # from .activation import maxout   #DEFINE_ALIAS
 # from .activation import prelu   #DEFINE_ALIAS
-# from .activation import relu   #DEFINE_ALIAS
+from .activation import relu  #DEFINE_ALIAS
 # from .activation import relu6   #DEFINE_ALIAS
 # from .activation import selu   #DEFINE_ALIAS
 # from .activation import sigmoid   #DEFINE_ALIAS
@@ -128,7 +125,7 @@ __all__ += activation.__all__
 # from .activation import swish   #DEFINE_ALIAS
 # from .activation import tanh_shrink   #DEFINE_ALIAS
 # from .activation import thresholded_relu   #DEFINE_ALIAS
-# from .activation import log_softmax   #DEFINE_ALIAS
+from .activation import log_softmax  #DEFINE_ALIAS
 # from .extension import add_position_encoding   #DEFINE_ALIAS
 # from .extension import autoincreased_step_counter   #DEFINE_ALIAS
 # from .extension import continuous_value_model   #DEFINE_ALIAS

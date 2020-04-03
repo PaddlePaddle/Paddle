@@ -142,7 +142,7 @@ def log_softmax(input, axis=None, dtype=None, name=None):
     """
 
     axis = -1 if axis is None else axis
-    dtype = dtype if dtype is None else convert_np_dtype_to_dtype_(dtype)
+    dtype = convert_np_dtype_to_dtype_(dtype) if dtype is not None else dtype
 
     if in_dygraph_mode():
         outs_cast = input if dtype is None \
