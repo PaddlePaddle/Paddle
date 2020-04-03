@@ -255,11 +255,9 @@ def tril(input, diagonal=0, name=None):
 
     Raises:
         TypeError: diagonal is not a int type.
-
         ValueError: dimension of :attr:`input` is less than 2.
 
-
-     Example:
+    Examples:
         .. code-block:: python
 
             import numpy as np
@@ -331,13 +329,11 @@ def triu(input, diagonal=0, name=None):
         it's data type is the same as input's Tensor.
 
     Raises:
-        TypeError: diagonal is not int.
-
+        TypeError: diagonal is not a int type.
         ValueError: dimension of :attr:`input` is less than 2.
 
-
-     Example:
-        .. code-block:: python 
+    Examples:
+        .. code-block:: python
 
             import numpy as np
             import paddle.fluid as fluid
