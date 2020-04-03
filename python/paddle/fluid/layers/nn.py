@@ -25,8 +25,7 @@ import inspect
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program
-from ..dygraph import base
-from ..dygraph import dygraph_utils
+from .. import dygraph_utils
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
 from .tensor import concat, assign, fill_constant, zeros
@@ -34,7 +33,6 @@ from . import utils
 from .. import unique_name
 from functools import reduce
 from .. import core
-from ..dygraph import layers
 from ..data_feeder import convert_dtype, check_type_and_dtype, check_type, check_dtype
 
 __all__ = [
@@ -10320,9 +10318,6 @@ def _elementwise_op(helper):
     op_type = helper.layer_type
     x = helper.kwargs.get('x', None)
     y = helper.kwargs.get('y', None)
-    if in_dygraph_mode():
-        x = base.to_variable(x)
-        y = base.to_variable(y)
 
     assert x is not None, 'x cannot be None in {}'.format(op_type)
     assert y is not None, 'y cannot be None in {}'.format(op_type)
