@@ -233,7 +233,7 @@ class TestImperative(unittest.TestCase):
             l0 = fluid.Linear(2, 2)
             self.assertTrue(l0.weight._grad_ivar() is None)
             l1 = fluid.Linear(2, 2)
-            with fluid.dygraph.no_grad_guard():
+            with fluid.dygraph.no_grad():
                 self.assertTrue(l1.weight.stop_gradient is False)
                 tmp = l1.weight * 2
                 self.assertTrue(tmp.stop_gradient)
