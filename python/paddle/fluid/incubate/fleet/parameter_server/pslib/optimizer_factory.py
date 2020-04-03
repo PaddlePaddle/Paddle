@@ -13,7 +13,7 @@
 # limitations under the License.
 """Optimizer Factory."""
 
-__all__ = ["DistributedAdam"]
+__all__ = ["DistributedAdam", "FLEET_GLOBAL_DICT"]
 import paddle.fluid as fluid
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table_inputs
@@ -22,6 +22,20 @@ from google.protobuf import text_format
 from collections import OrderedDict
 from .node import DownpourWorker, DownpourServer
 from . import ps_pb2 as pslib
+
+# this dict is for store info about pull/push sparse ops.
+FLEET_GLOBAL_DICT = {
+    # global settings
+    "enable": False,
+    "emb_to_table": {},
+    "emb_to_accessor": {},
+    "emb_to_size": {},
+    # current embedding settings
+    "cur_sparse_id": 0,
+    "cur_accessor": "",
+    "click_name": "",
+    "scale_sparse_grad": None,
+}
 
 
 class DistributedOptimizerImplBase(object):
@@ -67,6 +81,12 @@ class DistributedAdam(DistributedOptimizerImplBase):
             ".batch_size", ".batch_square_sum", ".batch_sum",
             ".batch_size@GRAD", ".batch_square_sum@GRAD", ".batch_sum@GRAD"
         ]
+        self.supported_embedding_types = [
+            "lookup_table", "pull_sparse", "pull_sparse_v2"
+        ]
+        self.supported_embedding_grad_types = [
+            "lookup_table_grad", "push_sparse", "push_sparse_v2"
+        ]
 
     def _find_distributed_lookup_table_inputs(self, program, table_names):
         """
@@ -84,7 +104,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
             inputs_dict[table_name] = []
 
         for op in program.global_block().ops:
-            if op.type == "lookup_table":
+            if op.type in self.supported_embedding_types:
                 if op.input("W")[0] in table_names:
                     inputs_dict[op.input("W")[0]].extend(
                         [local_vars[name] for name in op.input("Ids")])
@@ -106,7 +126,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
             outputs_dict[table_name] = []
 
         for op in program.global_block().ops:
-            if op.type == "lookup_table":
+            if op.type in self.supported_embedding_types:
                 if op.input("W")[0] in table_names:
                     outputs_dict[op.input("W")[0]].extend(
                         [local_vars[name] for name in op.output("Out")])
@@ -119,10 +139,10 @@ class DistributedAdam(DistributedOptimizerImplBase):
             grads_dict[table_name] = []
 
         for op in program.global_block().ops:
-            if op.type == "lookup_table_grad" and op.input("W")[
-                    0] in table_names:
-                grads_dict[op.input("W")[0]].extend(
-                    [local_vars[name] for name in op.input("Out@GRAD")])
+            if op.type in self.supported_embedding_grad_types:
+                if op.input("W")[0] in table_names:
+                    grads_dict[op.input("W")[0]].extend(
+                        [local_vars[name] for name in op.input("Out@GRAD")])
         return grads_dict
 
     def _find_multi_distributed_lookup_table(self, losses):
@@ -135,7 +155,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         ret_list = []
         for loss in losses:
             for op in loss.block.program.global_block().ops:
-                if op.type == "lookup_table":
+                if op.type in self.supported_embedding_types:
                     if op.attr('is_distributed') is True:
                         table_name = op.input("W")[0]
                         if table_name not in table_names:
@@ -251,6 +271,71 @@ class DistributedAdam(DistributedOptimizerImplBase):
                         ps_param.trainer_param[idx])
                     idx += 1
 
+        # check config in op defination and fleet config
+        if FLEET_GLOBAL_DICT["enable"]:
+            one_slot = None
+            strategy["device_worker"] = "Hogwild"
+            emb_to_table = FLEET_GLOBAL_DICT["emb_to_table"]
+            emb_to_accessor = FLEET_GLOBAL_DICT["emb_to_accessor"]
+            emb_to_size = FLEET_GLOBAL_DICT["emb_to_size"]
+            if len(sparse_table_to_index) != len(emb_to_table):
+                raise ValueError(
+                    "sparse tables from  program != sparse tables from op: %s "
+                    "vs %s" % (len(sparse_table_to_index), len(emb_to_table)))
+            for key in sparse_table_to_index:
+                if key not in emb_to_table or \
+                        sparse_table_to_index[key] != emb_to_table[key]:
+                    print("sparse_table_to_index ", sparse_table_to_index)
+                    print("emb_to_table ", emb_to_table)
+                    raise ValueError("key error: %s" % key)
+                if strategy.get(key) is None:
+                    strategy[key] = dict()
+                st = strategy[key]
+
+                accessor = None
+                if st.get("sparse_accessor_class") is not None:
+                    accessor = st["sparse_accessor_class"]
+                tables = \
+                    server.get_desc().downpour_server_param.downpour_table_param
+                for table in tables:
+                    if table.table_id == sparse_table_to_index[key]:
+                        accessor = table.accessor.accessor_class
+                        break
+
+                for loss in losses:
+                    for op in loss.block.program.global_block().ops:
+                        if op.type in self.supported_embedding_types:
+                            if accessor is not None \
+                                    and op.has_attr("AccessorClass"):
+                                op._set_attr("AccessorClass", accessor)
+                            if one_slot is None:
+                                one_slot = loss.block.program.\
+                                    global_block().var(op.input("Ids")[0])
+
+                # if accessor is None, use default accessor in op definition
+                if accessor is None:
+                    accessor = emb_to_accessor[key]
+                # set sparse_embedx_dim in strategy,
+                # user do not have to set it in config_fleet
+                if accessor == "DownpourFeatureValueAccessor" \
+                        or accessor == "DownpourCtrAccessor" \
+                        or accessor == "DownpourUnitAccessor":
+                    if st.get("sparse_embedx_dim") is not None \
+                            and st["sparse_embedx_dim"] != emb_to_size[key] - 3:
+                        raise ValueError("fleet config sparse_embedx_dim=%s not"
+                                         " equal to embedding size - 3 = %s" %
+                                         (st["sparse_embedx_dim"],
+                                          emb_to_size[key] - 3))
+                    st["sparse_embedx_dim"] = emb_to_size[key] - 3
+                elif accessor == "DownpourSparseValueAccessor":
+                    if st.get("sparse_embedx_dim") is not None \
+                            and st["sparse_embedx_dim"] != emb_to_size[key]:
+                        raise ValueError("fleet config sparse_embedx_dim=%s not"
+                                         " equal to embedding size = %s" %
+                                         (st["sparse_embedx_dim"],
+                                          emb_to_size[key]))
+                    st["sparse_embedx_dim"] = emb_to_size[key]
+
         # ServerParameter add all sparse tables
         for tn in sparse_table_to_index:
             sparse_table_index = sparse_table_to_index[tn]
@@ -328,6 +413,19 @@ class DistributedAdam(DistributedOptimizerImplBase):
                     worker.add_dense_table(
                         dense_table_index, self._learning_rate, params, grads,
                         dense_start_table_id, sparse_table_names)
+
+                    if FLEET_GLOBAL_DICT["enable"]:
+                        cur_prog = losses[loss_index].block.program
+                        cur_prog.global_block().append_op(
+                            type="push_dense",
+                            inputs={"Ids": one_slot},
+                            attrs={
+                                "InputNames": [i.name for i in grads],
+                                "TableId": dense_table_index,
+                                "ScaleDataNorm":
+                                strategy.get("scale_datanorm", -1)
+                            })
+
                     if "pull_dense" in program_configs[
                             program_id] and "push_dense" in program_configs[
                                 program_id] and len(program_configs[program_id][
@@ -358,6 +456,20 @@ class DistributedAdam(DistributedOptimizerImplBase):
                             dense_table_index, self._learning_rate,
                             data_norm_params, data_norm_grads,
                             dense_start_table_id, sparse_table_names)
+
+                        if FLEET_GLOBAL_DICT["enable"]:
+                            cur_prog = losses[loss_index].block.program
+                            cur_prog.global_block().append_op(
+                                type="push_dense",
+                                inputs={"Ids": one_slot},
+                                attrs={
+                                    "InputNames":
+                                    [i.name for i in data_norm_grads],
+                                    "TableId": dense_table_index,
+                                    "ScaleDataNorm":
+                                    strategy.get("scale_datanorm", -1)
+                                })
+
                     program_configs[program_id]["pull_dense"].extend(
                         [dense_table_index])
                     program_configs[program_id]["push_dense"].extend(
@@ -418,8 +530,13 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["dump_fields_path"] = strategy.get("dump_fields_path", "")
         opt_info["dump_param"] = strategy.get("dump_param", [])
         if server._server.downpour_server_param.downpour_table_param[
-                0].accessor.accessor_class == "DownpourCtrAccessor":
+                0].accessor.accessor_class in [
+                    "DownpourCtrAccessor", "DownpourCtrDoubleAccessor"
+                ]:
             opt_info["dump_slot"] = True
+        elif server._server.downpour_server_param.downpour_table_param[
+                0].accessor.accessor_class == "DownpourSparseValueAccessor":
+            opt_info["no_cvm"] = True
         opt_info["adjust_ins_weight"] = strategy.get("adjust_ins_weight", {})
         opt_info["copy_table"] = strategy.get("copy_table", {})
         opt_info["loss_names"] = strategy.get("loss_names", [])

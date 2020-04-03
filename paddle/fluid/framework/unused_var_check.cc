@@ -41,6 +41,8 @@ const std::unordered_set<std::string> op_has_unsed_vars_white_list = {
     "batch_norm_grad",                 // 0
     "sync_batch_norm",                 // 0
     "sync_batch_norm_grad",            // 0
+    "inplace_abn",                     // 0
+    "inplace_abn_grad",                // 0
     "dgc_momentum",                    // 0
     "fake_quantize_range_abs_max",     // 0
     "rmsprop",                         // 0

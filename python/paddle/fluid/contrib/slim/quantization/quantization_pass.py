@@ -1247,6 +1247,9 @@ class AddQuantDequantPass(object):
         "leaky_relu", "tanh", "swish"
     ]
 
+    # To be compatible with PaddleSlim, not remove _activation_type for now
+    _activation_type = ["relu", "relu6", "leaky_relu", "tanh", "swish"]
+
     def __init__(self,
                  scope=None,
                  place=None,

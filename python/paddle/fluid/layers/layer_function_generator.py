@@ -253,10 +253,8 @@ def generate_activation_fn(op_type):
 
     def func(x, name=None):
         if in_dygraph_mode():
-            inputs = {'X': [x]}
             op = getattr(core.ops, op_type)
-            outs = op(inputs)
-            return outs['Out'][0]
+            return op(x)
 
         check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                                  op_type)
