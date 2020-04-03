@@ -258,6 +258,7 @@ def tril(input, diagonal=0, name=None):
 
         ValueError: dimension of :attr:`input` is less than 2.
 
+
      Example:
         .. code-block:: python
 
@@ -333,6 +334,7 @@ def triu(input, diagonal=0, name=None):
         TypeError: diagonal is not int.
 
         ValueError: dimension of :attr:`input` is less than 2.
+
 
      Example:
         .. code-block:: python 
