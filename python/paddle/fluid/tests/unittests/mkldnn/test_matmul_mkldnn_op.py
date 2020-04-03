@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest, os
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
 
 
 @skip_check_grad_ci(reason="DNNL's MatMul doesn't implemend grad kernel.")
