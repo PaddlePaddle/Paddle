@@ -110,12 +110,11 @@ class MKLDNNInplacePassTest {
     unsigned use_mkldnn_true_count = 0;
     std::unordered_map<std::string, std::string> input_names;
     std::unordered_map<std::string, std::string> output_names;
+
     input_names["softmax"] = "X";
     output_names["softmax"] = "Out";
-    input_names["batch_norm"] = "X";
-    output_names["batch_norm"] = "Y";
-    input_names["layer_norm"] = "X";
-    output_names["layer_norm"] = "Y";
+    input_names["elementwise_add"] = "X";
+    output_names["elementwise_add"] = "Out";
 
     VLOG(3) << DebugString(graph);
 
@@ -145,7 +144,7 @@ TEST(MKLDNNInplacePass, inplace_softmax) {
 }
 
 TEST(MKLDNNInplacePass, inplace_softmax_branched) {
-  // softmax not mkl-dnn enabled so no in-place
+  // softmax's input is shared by two branches. so no in-place
   MKLDNNInplacePassTest().MainTest("softmax", true, 0);
 }
 
