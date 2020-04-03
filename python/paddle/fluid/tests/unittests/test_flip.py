@@ -16,8 +16,47 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-
+import paddle
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
 from op_test import OpTest
+
+
+class TestFlipOp_API(unittest.TestCase):
+    """Test flip api."""
+
+    def test_static_graph(self):
+        startup_program = fluid.Program()
+        train_program = fluid.Program()
+        with fluid.program_guard(train_program, startup_program):
+            dims = [0]
+            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            output = paddle.flip(input, dims)
+            place = fluid.CPUPlace()
+            if fluid.core.is_compiled_with_cuda():
+                place = fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+            exe.run(startup_program)
+            img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
+            res = exe.run(train_program,
+                          feed={'input': img},
+                          fetch_list=[output])
+            out_np = np.array(res[0])
+            out_ref = np.array([[4, 5, 6], [1, 2, 3]]).astype(np.float32)
+            self.assertTrue(
+                (out_np == out_ref).all(),
+                msg='flip output is wrong, out =' + str(out_np))
+
+    def test_dygraph(self):
+        img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
+        with fluid.dygraph.guard():
+            inputs = fluid.dygraph.to_variable(img)
+            ret = paddle.flip(inputs, [0])
+            out_ref = np.array([[4, 5, 6], [1, 2, 3]]).astype(np.float32)
+            self.assertTrue(
+                (ret.numpy() == out_ref).all(),
+                msg='flip output is wrong, out =' + str(ret.numpy()))
 
 
 class TestFlipOp(OpTest):
