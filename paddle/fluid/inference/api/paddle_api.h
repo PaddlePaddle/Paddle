@@ -156,29 +156,33 @@ class ZeroCopyTensor {
   /// \brief Reset the shape of the tensor.
   /// Generally it's only used for the input tensor.
   /// Reshape must be called before calling mutable_data() or copy_from_cpu()
+  /// \param shape The shape to set.
   void Reshape(const std::vector<int>& shape);
 
   /// \brief Get the memory pointer in CPU or GPU with specific data type.
   /// Please Reshape the tensor first before call this.
   /// It's usually used to get input data pointer.
+  /// \param place The place of the tensor.
   template <typename T>
   T* mutable_data(PaddlePlace place);
 
   /// \brief Get the memory pointer directly.
   /// It's usually used to get the output data pointer.
-  /// @param place To get the device type of the tensor.
-  /// @param size To get the data size of the tensor.
+  /// \param[out] place To get the device type of the tensor.
+  /// \param[out] size To get the data size of the tensor.
   /// \return The tensor data buffer pointer.
   template <typename T>
   T* data(PaddlePlace* place, int* size) const;
 
   /// \brief Copy the host memory to tensor data.
   /// It's usually used to set the input tensor data.
+  /// \param data The pointer of the data, from which the tensor will copy.
   template <typename T>
   void copy_from_cpu(const T* data);
 
   /// \brief Copy the tensor data to the host memory.
   /// It's usually used to get the output tensor data.
+  /// \param[out] data The tensor will copy the data to the address.
   template <typename T>
   void copy_to_cpu(T* data);
 
@@ -187,7 +191,8 @@ class ZeroCopyTensor {
 
   /// \brief Set lod info of the tensor.
   /// More about LOD can be seen here:
-  //  https://www.paddlepaddle.org.cn/documentation/docs/zh/beginners_guide/basic_concept/lod_tensor.html#lodtensor
+  ///  https://www.paddlepaddle.org.cn/documentation/docs/zh/beginners_guide/basic_concept/lod_tensor.html#lodtensor
+  /// \param x the lod info.
   void SetLoD(const std::vector<std::vector<size_t>>& x);
   /// \brief Return the lod info of the tensor.
   std::vector<std::vector<size_t>> lod() const;
@@ -200,6 +205,7 @@ class ZeroCopyTensor {
 
   /// \brief Return the data type of the tensor.
   /// It's usually used to get the output tensor data type.
+  /// \return The data type of the tensor.
   PaddleDType type() const;
 
  protected:
@@ -232,10 +238,10 @@ class PaddlePredictor {
   /// \brief This interface takes input and runs the network.
   /// There are redundant copies of data between hosts in this operation,
   /// so it is more recommended to use the zecopyrun interface
-  /// @param inputs An list of PaddleTensor as the input to the network.
-  /// @param output_data Pointer to the tensor list, which holds the output
+  /// \param[in] inputs An list of PaddleTensor as the input to the network.
+  /// \param[out] output_data Pointer to the tensor list, which holds the output
   /// paddletensor
-  /// @param batch_size This setting has been discarded and can be ignored.
+  /// \param[in] batch_size This setting has been discarded and can be ignored.
   /// \return Whether the run is successful
   virtual bool Run(const std::vector<PaddleTensor>& inputs,
                    std::vector<PaddleTensor>* output_data,
@@ -260,7 +266,7 @@ class PaddlePredictor {
   /// \brief Get the input ZeroCopyTensor by name.
   /// Be inherited by AnalysisPredictor, Only used in ZeroCopy scenarios.
   /// The name is obtained from the GetInputNames() interface.
-  /// @param name The input tensor name.
+  /// \param name The input tensor name.
   /// \return Return the corresponding input ZeroCopyTensor.
   virtual std::unique_ptr<ZeroCopyTensor> GetInputTensor(
       const std::string& name) {
@@ -270,7 +276,7 @@ class PaddlePredictor {
   /// \brief Get the output ZeroCopyTensor by name.
   /// Be inherited by AnalysisPredictor, Only used in ZeroCopy scenarios.
   /// The name is obtained from the GetOutputNames() interface.
-  /// @param name The output tensor name.
+  /// \param name The output tensor name.
   /// \return Return the corresponding output ZeroCopyTensor.
   virtual std::unique_ptr<ZeroCopyTensor> GetOutputTensor(
       const std::string& name) {
