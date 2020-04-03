@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from six.moves import reduce
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.param_attr import ParamAttr
