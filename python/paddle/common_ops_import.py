@@ -11,11 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from six.moves import reduce
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator
-from paddle.fluid.framework import Variable
+from paddle.fluid.framework import Variable, device_guard
 from paddle.fluid.initializer import Constant
 from paddle.fluid.core import VarDesc
 from paddle.fluid import core

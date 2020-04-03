@@ -44,7 +44,7 @@ import paddle.nn
 # from .tensor.creation import eye   #DEFINE_ALIAS
 # from .tensor.creation import fill_constant   #DEFINE_ALIAS
 # from .tensor.creation import get_.tensor_from_selected_rows   #DEFINE_ALIAS
-# from .tensor.creation import linspace   #DEFINE_ALIAS
+from .tensor.creation import linspace  #DEFINE_ALIAS
 # from .tensor.creation import ones   #DEFINE_ALIAS
 # from .tensor.creation import ones_like   #DEFINE_ALIAS
 # from .tensor.creation import range   #DEFINE_ALIAS
@@ -62,7 +62,7 @@ from .tensor.creation import full  #DEFINE_ALIAS
 # from .tensor.stat import reduce_mean   #DEFINE_ALIAS
 # from .tensor.stat import std   #DEFINE_ALIAS
 # from .tensor.stat import var   #DEFINE_ALIAS
-# from .tensor.logic import equal   #DEFINE_ALIAS
+from .tensor.logic import equal  #DEFINE_ALIAS
 # from .tensor.logic import greater_equal   #DEFINE_ALIAS
 # from .tensor.logic import greater_than   #DEFINE_ALIAS
 # from .tensor.logic import is_empty   #DEFINE_ALIAS
