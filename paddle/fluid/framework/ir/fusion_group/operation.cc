@@ -118,7 +118,7 @@ void OperationMap::InsertUnaryElementwiseOperations() {
   // square:
   //  out = x^2
   //  dx = dout * 2.0 * x
-  insert_handler("square", "${0} * ${0}", {"${2} * %{2.0} * %{0.0}"});
+  insert_handler("square", "${0} * ${0}", {"${2} * %{2.0} * ${0}"});
 
   // scale
   // out = (bias_after_scale) ? scale * X +  bias : scale(X + bias)
