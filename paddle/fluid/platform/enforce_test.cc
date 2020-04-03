@@ -377,3 +377,17 @@ TEST(GET_DATA_SAFELY_MACRO, FAIL) {
   }
   EXPECT_TRUE(caught_exception);
 }
+
+TEST(OP_INOUT_CHECK_MACRO, SUCCESS) {
+  OP_INOUT_CHECK(true, "Input", "X", "dummy");
+}
+
+TEST(OP_INOUT_CHECK_MACRO, FAIL) {
+  bool caught_exception = false;
+  try {
+    OP_INOUT_CHECK(false, "Input", "X", "dummy");
+  } catch (paddle::platform::EnforceNotMet& error) {
+    caught_exception = true;
+  }
+  EXPECT_TRUE(caught_exception);
+}

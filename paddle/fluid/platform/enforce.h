@@ -395,6 +395,27 @@ struct EnforceNotMet : public std::exception {
     return *ptr;                                                            \
   })())
 
+/*
+ * Summary: This macro is used to check whether op has specified
+ * Input or Output Variables. Because op's Input and Output
+ * checking are written similarly, so abstract this macro.
+ *
+ * Parameters:
+ *     __EXPR: (bool), the bool expression
+ *     __ROLE: (string), Input or Output
+ *     __NAME: (string), Input or Output name
+ *     __OP_TYPE: (string), the op type
+ *
+ * Examples:
+ *    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Mul");
+*/
+#define OP_INOUT_CHECK(__EXPR, __ROLE, __NAME, __OP_TYPE)                   \
+  do {                                                                      \
+    PADDLE_ENFORCE_EQ(__EXPR, true, paddle::platform::errors::NotFound(     \
+                                        "No %s(%s) found for %s operator.", \
+                                        __ROLE, __NAME, __OP_TYPE));        \
+  } while (0)
+
 /** OTHER EXCEPTION AND ENFORCE **/
 
 struct EOFException : public std::exception {
