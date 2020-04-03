@@ -192,13 +192,14 @@ void Scope::RenameInternal(const std::string& origin_name,
   auto origin_it = vars_.find(origin_name);
   PADDLE_ENFORCE_NE(
       origin_it, vars_.end(),
-      platform::errors::NotFound("Original variable with name %s is not found.",
-                                 origin_name));
+      platform::errors::NotFound(
+          "Original variable with name %s is not found in the scope.",
+          origin_name));
   auto new_it = vars_.find(new_name);
   PADDLE_ENFORCE_EQ(
       new_it, vars_.end(),
       platform::errors::AlreadyExists(
-          "The variable with name %s already exists in the scope", new_name));
+          "The variable with name %s already exists in the scope.", new_name));
   vars_[new_name].reset(origin_it->second.release());
   vars_.erase(origin_it);
 }
