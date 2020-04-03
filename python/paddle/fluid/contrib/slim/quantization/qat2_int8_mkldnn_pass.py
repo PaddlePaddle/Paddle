@@ -294,6 +294,23 @@ class Qat2Int8MkldnnPass(object):
         tensor = self._scope.find_var(name).get_tensor()
         tensor.set(array, self._place)
 
+    def _update_activations(self, graph):
+        for op in graph.all_op_nodes():
+            if op.name() in self._conv_ops and not op.op().has_attr(
+                    "fuse_activation"):
+                activation = ""
+                if op.op().has_attr("fuse_relu") and op.op().attr("fuse_relu"):
+                    activation = "relu"
+                elif op.op().has_attr("fuse_brelu") and op.op().attr(
+                        "fuse_brelu"):
+                    activation = "relu6"
+                    alpha = 6.0
+                    if op.op().has_attr("fuse_brelu_threshold"):
+                        alpha = op.op().attr("fuse_brelu_threshold")
+                    op.set_attr("fuse_alpha", alpha)
+                op.set_attr("fuse_activation", activation)
+        return graph
+
     def _remove_ctrl_vars(self, graph):
         remove_ctr_vars = set()
         for node in graph.all_var_nodes():
@@ -303,6 +320,7 @@ class Qat2Int8MkldnnPass(object):
         return graph
 
     def _optimize_fp32_graph(self, graph):
+        graph = self._update_activations(graph)
         graph = self._remove_ctrl_vars(graph)
         graph = self._apply_pass(graph, 'mkldnn_placement_pass',
                                  ['mkldnn_enabled_op_types'], [set()])

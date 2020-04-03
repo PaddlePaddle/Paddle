@@ -32,15 +32,9 @@ class MulOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::NotFound("Input(X) of MulOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Y"), true,
-        platform::errors::NotFound("Input(Y) of MulOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
-        platform::errors::NotFound("Output(Out) of MulOp should not be null."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Mul");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "Mul");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Mul");
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");

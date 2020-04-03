@@ -21,24 +21,27 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 
-TEST(AnalysisPredictor, use_gpu) {
-  std::string model_dir = FLAGS_infer_model + "/test_trt_dy_conv";
+void TestDynamic(bool with_dynamic = true) {
+  std::string model_dir = FLAGS_infer_model + "/conv_bn_swish_split_gelu";
   AnalysisConfig config;
   config.EnableUseGpu(100, 0);
-  config.SetModel(model_dir);
+  config.SetModel(model_dir + "/model", model_dir + "/params");
   config.SwitchUseFeedFetchOps(false);
   // Set the input's min, max, opt shape
-  std::map<std::string, std::vector<int>> min_input_shape = {
-      {"image", {1, 1, 3, 3}}};
-  std::map<std::string, std::vector<int>> max_input_shape = {
-      {"image", {1, 1, 10, 10}}};
-  std::map<std::string, std::vector<int>> opt_input_shape = {
-      {"image", {1, 1, 3, 3}}};
+
   config.EnableTensorRtEngine(1 << 30, 1, 1,
                               AnalysisConfig::Precision::kFloat32, false, true);
+  if (with_dynamic) {
+    std::map<std::string, std::vector<int>> min_input_shape = {
+        {"image", {1, 1, 3, 3}}};
+    std::map<std::string, std::vector<int>> max_input_shape = {
+        {"image", {1, 1, 10, 10}}};
+    std::map<std::string, std::vector<int>> opt_input_shape = {
+        {"image", {1, 1, 3, 3}}};
 
-  config.SetTRTDynamicShapeInfo(min_input_shape, max_input_shape,
-                                opt_input_shape);
+    config.SetTRTDynamicShapeInfo(min_input_shape, max_input_shape,
+                                  opt_input_shape);
+  }
   auto predictor = CreatePaddlePredictor(config);
   auto input_names = predictor->GetInputNames();
   int channels = 1;
@@ -63,6 +66,9 @@ TEST(AnalysisPredictor, use_gpu) {
   out_data.resize(out_num);
   output_t->copy_to_cpu(out_data.data());
 }
+
+TEST(AnalysisPredictor, trt_dynamic) { TestDynamic(true); }
+TEST(AnalysisPredictor, trt_static) { TestDynamic(false); }
 
 }  // namespace inference
 }  // namespace paddle
