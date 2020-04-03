@@ -141,6 +141,37 @@ def find_true_prev_op(ops, cur_op, var_name):
     return None
 
 
+def find_true_post_op(ops, cur_op, var_name):
+    """
+    if there are post ops, return them, if there is no post op,
+    return None instead.
+    Args:
+        ops (list): A list of ops.
+        cur_op (Operator): Current operator which has var_name variable.
+        var_name (string): Variable name.
+    """
+    post_op = []
+    for op in ops:
+        if op == cur_op:
+            break
+        for in_name in op.input_names:
+            for in_var_name in op.input(in_name):
+                if in_var_name == var_name:
+                    post_op.append(op)
+    if post_op != []:
+        return post_op
+    return None
+
+
+def find_op_index(block_desc, cur_op_desc):
+    """
+    """
+    for idx in range(block_desc.op_size()):
+        if cur_op_desc == block_desc.op(idx):
+            return idx
+    return -1
+
+
 def _is_in_black_varnames(op, amp_lists):
     for in_name in op.input_arg_names:
         if in_name in amp_lists.black_varnames:
@@ -277,7 +308,24 @@ def update_role_var_grad(main_prog, params_grads):
 
             # Maximize the all_reduce overlap, and perform the cast
             # operation after gradients transfer.
+            # optimize op should stay behind forward and backward ops
             op._set_attr('op_role', OPTIMIZE)
+            post_ops = find_true_post_op(block.ops, op, g.name)
+            if post_ops is not None:
+                raise ValueError("The cast op {0}'s output should not be"
+                                 "used by a non-optimize op, however, it"
+                                 "is used by {1}".format(op, post_ops[0]))
+            new_op_desc = block.desc.append_op()
+            print("append op")
+            new_op_desc.copy_from(op.desc)
+
+            print("copy op")
+            op_idx = find_op_index(block.desc, op.desc)
+            if op_idx == -1:
+                raise ValueError("The op {0} is not in program".format(op))
+            block.desc._remove_op(op_idx, op_idx + 1)
+            print("remove op_idx: ", op_idx)
+        block._sync_with_cpp()
 
 
 def update_loss_scaling(is_overall_finite, prev_loss_scaling, num_good_steps,
