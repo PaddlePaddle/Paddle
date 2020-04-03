@@ -65,7 +65,7 @@ class MKLDNNInplacePassTest {
     ProgramDesc prog;
 
     for (auto& v : std::vector<std::string>(
-             {"a", "weights", "bias", "f", "g", "h", "i", "j", "k"})) {
+             {"a", "weights", "bias", "f", "g", "h", "i", "j", "k", "l", "m", "z"})) {
       auto* var = prog.MutableBlock(0)->Var(v);
       var->SetType(proto::VarType::SELECTED_ROWS);
       if (v == "weights" || v == "bias") {
@@ -88,9 +88,12 @@ class MKLDNNInplacePassTest {
     SetOp(&prog, "elementwise_add", "elementwise_add2",
           std::vector<std::string>({"j", "k"}), std::vector<std::string>({"l"}),
           mkldnn_enabled_op.compare("elementwise_add") == 0);
+      SetOp(&prog, "relu", "relu2", std::vector<std::string>({"l"}),
+            std::vector<std::string>({"m"}),
+            mkldnn_enabled_op.compare("softmax") == 0);
     if (branched == true) {
       SetOp(&prog, "softmax", "softmax2", std::vector<std::string>({"g"}),
-            std::vector<std::string>({"m"}),
+            std::vector<std::string>({"z"}),
             mkldnn_enabled_op.compare("softmax") == 0);
     }
 
@@ -110,12 +113,11 @@ class MKLDNNInplacePassTest {
     unsigned use_mkldnn_true_count = 0;
     std::unordered_map<std::string, std::string> input_names;
     std::unordered_map<std::string, std::string> output_names;
+
     input_names["softmax"] = "X";
     output_names["softmax"] = "Out";
-    input_names["batch_norm"] = "X";
-    output_names["batch_norm"] = "Y";
-    input_names["layer_norm"] = "X";
-    output_names["layer_norm"] = "Y";
+    input_names["elementwise_add"] = "X";
+    output_names["elementwise_add"] = "Out";
 
     VLOG(3) << DebugString(graph);
 
@@ -145,7 +147,7 @@ TEST(MKLDNNInplacePass, inplace_softmax) {
 }
 
 TEST(MKLDNNInplacePass, inplace_softmax_branched) {
-  // softmax not mkl-dnn enabled so no in-place
+  // softmax's input is shared by two branches. so no in-place
   MKLDNNInplacePassTest().MainTest("softmax", true, 0);
 }
 

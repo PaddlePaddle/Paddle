@@ -1099,7 +1099,8 @@ struct MKLDNNInPlace : public PatternBase {
       : PatternBase(pattern, name_scope, "mkldnn_inplace") {}
   PDNode* operator()();
 
-  // MKL-DNN's in-place ops: BatchNorm, Softmax, Layer Norm
+  // MKL-DNN's in-place ops: BatchNorm, Softmax, Elementwise_add
+  PATTERN_DECL_NODE(prev_op);
   PATTERN_DECL_NODE(inplace_to_be_op);
   PATTERN_DECL_NODE(inplace_to_be_op_in);
   PATTERN_DECL_NODE(inplace_to_be_op_out);
