@@ -19,6 +19,7 @@ import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest
 
 
+@skip_check_grad_ci(reason="DNNL's MatMul doesn't implemend grad kernel.")
 class TestDnnlMatMulOp(OpTest):
     def generate_data(self):
         self.x = np.random.random((1, 2, 2)).astype("float32")

@@ -24,12 +24,12 @@ namespace operators {
 using dnnl::memory;
 using dnnl::primitive;
 using platform::to_void_cast;
-using Tensor = framework::Tensor;
 using framework::DataLayout;
 using platform::GetMKLDNNFormat;
 using platform::MKLDNNGetDataType;
 using platform::MKLDNNDeviceContext;
 using framework::ExecutionContext;
+using Tensor = framework::Tensor;
 
 // Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
 // original x_dim is returned.
@@ -86,15 +86,15 @@ class MatMulFactory {
   }
 
   MatMulDims GetMatmulDims(const ExecutionContext& ctx) {
-    auto dim_x = math::CreateMatrixDescriptor(
+    auto mat_dim_x = math::CreateMatrixDescriptor(
         RowMatrixFromVector(ctx.Input<Tensor>("X")->dims()), 0,
         ctx.Attr<bool>("transpose_X"));
-    auto dim_y = math::CreateMatrixDescriptor(
+    auto mat_dim_y = math::CreateMatrixDescriptor(
         ColumnMatrixFromVector(ctx.Input<Tensor>("Y")->dims()), 0,
         ctx.Attr<bool>("transpose_Y"));
 
-    const auto x_bs = dim_x.batch_size_;
-    const auto y_bs = dim_y.batch_size_;
+    const auto x_bs = mat_dim_x.batch_size_;
+    const auto y_bs = mat_dim_y.batch_size_;
     PADDLE_ENFORCE_EQ(x_bs > 0 && y_bs > 0 && x_bs != y_bs, false,
                       platform::errors::InvalidArgument(
                           "If batch sizes of X and Y are positive,"
@@ -102,9 +102,9 @@ class MatMulFactory {
 
     // Store 1 if both batches are zero, otherwise save the nonzero batch
     const memory::dim BS = x_bs || y_bs ? std::max(x_bs, y_bs) : 1;
-    const memory::dim M = dim_x.height_;
-    const memory::dim N = dim_y.width_;
-    const memory::dim K = dim_x.width_;
+    const memory::dim M = mat_dim_x.height_;
+    const memory::dim N = mat_dim_y.width_;
+    const memory::dim K = mat_dim_x.width_;
     return {BS, M, N, K};
   }
 
