@@ -68,6 +68,7 @@ class PostTrainingQuantization(object):
                  model_dir=None,
                  model_filename=None,
                  params_filename=None,
+                 batch_generator=None,
                  sample_generator=None,
                  batch_size=10,
                  batch_nums=None,
@@ -95,9 +96,14 @@ class PostTrainingQuantization(object):
                 When all parameters were saved in a single binary file, set it 
                 as the real filename. If parameters were saved in separate files, 
                 set it as 'None'. Default is 'None'.
-            sample_generator(Python Generator): The sample generator provides 
-                calibrate data for DataLoader, and it only returns a sample every 
-                time.
+            batch_generator(Python Generator): The batch generator provides 
+                calibrate data for DataLoader, and it returns a batch every
+                time. Note that, sample_generator and batch_generator, only one
+                should be set. Beisdes, batch_generator supports lod tensor.
+            sample_generator(Python Generator): The sample generator provides
+                calibrate data for DataLoader, and it only returns a sample every
+                time. Note that, sample_generator and batch_generator, only one
+                should be set. Beisdes, sample_generator dose not support lod tensor.
             batch_size(int, optional): The batch size of DataLoader. Default is 10.
             batch_nums(int, optional): If batch_nums is not None, the number of 
                 calibrate data is batch_size*batch_nums. If batch_nums is None, use 
@@ -165,8 +171,9 @@ class PostTrainingQuantization(object):
 
         assert executor is not None, "The executor cannot be None."
         assert model_dir is not None, "The model_dir cannot be None."
-        assert sample_generator is not None, \
-            "The sample_generator cannot be None."
+        assert any([gen is not None] for gen in [sample_generator,
+            batch_generator]), "The sample_generator and batch_generator " \
+            "cannot be None in the same time."
         assert algo in ['KL', 'abs_max', 'min_max'], \
             "The algo should be KL, abs_max or min_max."
 
@@ -176,6 +183,7 @@ class PostTrainingQuantization(object):
         self._model_filename = model_filename
         self._params_filename = params_filename
         self._sample_generator = sample_generator
+        self._batch_generator = batch_generator
         self._batch_size = batch_size
         self._batch_nums = batch_nums
         self._algo = algo
@@ -287,11 +295,15 @@ class PostTrainingQuantization(object):
             for var_name in self._feed_list]
         self._data_loader = io.DataLoader.from_generator(
             feed_list=feed_vars, capacity=3 * self._batch_size, iterable=True)
-        self._data_loader.set_sample_generator(
-            self._sample_generator,
-            batch_size=self._batch_size,
-            drop_last=True,
-            places=self._place)
+        if self._sample_generator is not None:
+            self._data_loader.set_sample_generator(
+                self._sample_generator,
+                batch_size=self._batch_size,
+                drop_last=True,
+                places=self._place)
+        elif self._batch_generator is not None:
+            self._data_loader.set_batch_generator(
+                self._batch_generator, places=self._place)
 
     def _collect_quantized_varnames(self):
         '''
