@@ -17,7 +17,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -293,12 +292,10 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     auto *scores = context.Input<Tensor>("Scores");
     auto *bbox_deltas = context.Input<Tensor>("BboxDeltas");
     auto *im_info = context.Input<Tensor>("ImInfo");
-    auto anchors = detail::Ref(context.Input<Tensor>("Anchors"),
-                               "Cannot find input Anchors(%s) in scope",
-                               context.InputNames("Anchors")[0]);
-    auto variances = detail::Ref(context.Input<Tensor>("Variances"),
-                                 "Cannot find input Variances(%s) in scope",
-                                 context.InputNames("Variances")[0]);
+    auto anchors = GET_DATA_SAFELY(context.Input<Tensor>("Anchors"), "Input",
+                                   "Anchors", "GenerateProposals");
+    auto variances = GET_DATA_SAFELY(context.Input<Tensor>("Variances"),
+                                     "Input", "Variances", "GenerateProposals");
 
     auto *rpn_rois = context.Output<LoDTensor>("RpnRois");
     auto *rpn_roi_probs = context.Output<LoDTensor>("RpnRoiProbs");
