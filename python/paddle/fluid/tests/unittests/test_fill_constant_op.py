@@ -190,7 +190,7 @@ class TestFillConstantOp1_ShapeTensor(OpTest):
 
 
 # Situation 4: value is a tensor
-class TestFillConstantOp1_ShapeTensor(OpTest):
+class TestFillConstantOp1_ValueTensor(OpTest):
     def setUp(self):
         '''Test fill_constant op with specified value
         '''
@@ -208,6 +208,30 @@ class TestFillConstantOp1_ShapeTensor(OpTest):
         self.shape = [123, 92]
         self.value = 3.8
         self.dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output()
+
+
+# Situation 5: value is a tensor
+class TestFillConstantOp2_ValueTensor(OpTest):
+    def setUp(self):
+        '''Test fill_constant op with specified value
+        '''
+        self.op_type = "fill_constant"
+        self.init_data()
+
+        self.inputs = {
+            "ShapeTensor": np.array(self.shape).astype("int32"),
+            'ValueTensor': np.array([self.value]).astype("int32")
+        }
+        self.attrs = {'value': self.value, 'dtype': 2}
+        self.outputs = {'Out': np.full(self.shape, self.value)}
+
+    def init_data(self):
+        self.shape = [123, 92]
+        self.value = 3
+        self.dtype = np.int32
 
     def test_check_output(self):
         self.check_output()
