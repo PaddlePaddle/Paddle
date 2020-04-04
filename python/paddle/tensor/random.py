@@ -37,7 +37,7 @@ def randperm(n,
              stop_gradient=True,
              seed=0):
     """
-    This operator returns a random permutation of integers from 0 to n - 1.
+    ${comment}
 
     Args:
         n (int): The upper bound (exclusive), and it should be greater than 0.
@@ -59,17 +59,14 @@ def randperm(n,
             permutation every time. Default: 0.
 
     Returns:
-        Variable: A Tensor with a random permutation of integers from 0 to n - 1,
-            and the shape of returned tensor is [n].
+        ${out_comment}.
 
-    Raise:
-        TypeError: The dtype must be one of int32 and int64, and the data type 
-            of out Tensor must be the same as the dtype. 
-        ValueError: The input n should be greater than 0 in randperm op.
-        ValueError: The input device should in [None, 'cpu', 'gpu'].
+    Return Type:
+        ${out_type}
 
     Examples:
         .. code-block:: python
+
 	    import paddle
 	    import paddle.fluid as fluid
 
