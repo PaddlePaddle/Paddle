@@ -72,7 +72,9 @@ int retry_do_func(std::function<int(void)> func, uint32_t max_try_time,
     if (ret == 0) {
       break;
     }
+#ifdef _LINUX
     usleep(retry_interval_ms * 1000);
+#endif
   }
   return ret;
 }
@@ -106,7 +108,9 @@ std::vector<char> HdfsStore::get(const std::string& key) {
           }
           VLOG(3) << "HdfsStore::get read_count " << read_count;
         }
-        return err_no; }, 5, wait_sleep_ms_);
+        return err_no;
+      },
+      5, wait_sleep_ms_);
   PADDLE_ENFORCE_EQ(read_status, 0,
                     paddle::platform::errors::Fatal(
                         "HdfsStore::get, path read faied: " + path));
@@ -137,9 +141,9 @@ void HdfsStore::wait(const std::vector<std::string>& keys,
         }
       }
       PADDLE_ENFORCE_EQ(0, 1,
-                        paddle::platform::errors::ExecutionTimeout(
-                            "TIMEOUT self_rank = " + std::to_string(self_rank_) +
-                            " pair_rank = " +  std::to_string(last_check_rank)));
+                        platform::errors::ExecutionTimeout(
+                            "TIMEOUT self_rank = %d pair_rank = %d",
+                            self_rank_, last_check_rank));
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(wait_sleep_ms_));
   }
