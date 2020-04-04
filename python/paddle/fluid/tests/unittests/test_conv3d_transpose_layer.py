@@ -193,8 +193,7 @@ class Conv3DTransposeErrorTestCase(Conv3DTransposeTestCase):
                 self.paddle_nn_layer()
 
 
-def suite():
-    suite = unittest.TestSuite()
+def add_cases(suite):
     suite.addTest(Conv3DTransposeTestCase(methodName='runTest', act="tanh"))
     suite.addTest(
         Conv3DTransposeTestCase(
@@ -244,11 +243,9 @@ def suite():
             use_cudnn=False,
             act="sigmoid",
             padding="valid"))
-    return suite
 
 
-def error_suite():
-    suite = unittest.TestSuite()
+def add_error_cases(suite):
     suite.addTest(
         Conv3DTransposeErrorTestCase(
             methodName='runTest', use_cudnn="not_valid"))
@@ -258,10 +255,14 @@ def error_suite():
     suite.addTest(
         Conv3DTransposeErrorTestCase(
             methodName='runTest', output_size="not_valid"))
+
+
+def load_tests(loader, standard_tests, pattern):
+    suite = unittest.TestSuite()
+    add_cases(suite)
+    add_error_cases(suite)
     return suite
 
 
 if __name__ == '__main__':
-    runner = unittest.TextTestRunner()
-    runner.run(suite())
-    runner.run(error_suite())
+    unittest.main()

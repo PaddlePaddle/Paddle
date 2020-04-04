@@ -188,8 +188,7 @@ class Conv3DErrorTestCase(Conv3DTestCase):
                 self.paddle_nn_layer()
 
 
-def suite():
-    suite = unittest.TestSuite()
+def add_cases(suite):
     suite.addTest(Conv3DTestCase(methodName='runTest'))
     suite.addTest(
         Conv3DTestCase(
@@ -229,21 +228,23 @@ def suite():
             use_cudnn=False,
             act="sigmoid",
             padding="valid"))
-    return suite
 
 
-def error_suite():
-    suite = unittest.TestSuite()
+def add_error_cases(suite):
     suite.addTest(
         Conv3DErrorTestCase(
             methodName='runTest', use_cudnn="not_valid"))
     suite.addTest(
         Conv3DErrorTestCase(
             methodName='runTest', num_channels=5, groups=2))
+
+
+def load_tests(loader, standard_tests, pattern):
+    suite = unittest.TestSuite()
+    add_cases(suite)
+    add_error_cases(suite)
     return suite
 
 
 if __name__ == '__main__':
-    runner = unittest.TextTestRunner()
-    runner.run(suite())
-    runner.run(error_suite())
+    unittest.main()
