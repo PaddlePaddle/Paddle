@@ -580,7 +580,8 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
           # attr shape is an Variable Tensor.
           shape = fluid.layers.fill_constant([1,2], "int32", 2) # shape=[2,2]
           data4 = fluid.layers.fill_constant(shape=shape, dtype='bool', value=True) # data4=[[True,True],[True,True]]
-          # attr shape is an Variable Tensor.
+          
+          # attr value is an Variable Tensor.
           val = fluid.layers.fill_constant([1], "float32", 2.0) # val=[2.0]
           data5 = fluid.layers.fill_constant(shape=[2,1], value=val, dtype='float32') #data5=[[2.0],[2.0]]
     """
