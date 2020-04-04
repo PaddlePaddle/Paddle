@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid.core as core
 from op_test import OpTest
 import paddle.fluid as fluid
@@ -68,12 +69,12 @@ class TestAddMMOpError(unittest.TestCase):
                 np.array([[-1]]), [[1]], fluid.CPUPlace())
             x2 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.CPUPlace())
-            self.assertRaises(TypeError, fluid.layers.addmm, input, x1, x2)
+            self.assertRaises(TypeError, paddle.addmm, input, x1, x2)
             # The input dtype of mul_op must be float32 or float64.
             input = fluid.layers.data(name='input', shape=[4], dtype="int32")
             x3 = fluid.layers.data(name='x3', shape=[4], dtype="int32")
             x4 = fluid.layers.data(name='x4', shape=[4], dtype="int32")
-            self.assertRaises(TypeError, fluid.layers.addmm, input, x3, x4)
+            self.assertRaises(TypeError, paddle.addmm, input, x3, x4)
 
 
 class TestAddMMOp2(TestAddMMOp):
