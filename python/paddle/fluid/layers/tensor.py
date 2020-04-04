@@ -551,8 +551,8 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output tensor which can
             be float16, float32, float64, int32, int64.
         value(float16|float32|float64|int32|int64|Variable): The constant value used to initialize 
-        the Tensor to be created.force_cpu(True): data should be on CPU if it's true,
-        default value is False. If value is an Variable, it should be an 1-D Tensor.
+            the Tensor to be created. If value is an Variable, it should be an 1-D Tensor.
+        force_cpu(True): data should be on CPU if it's true, default value is False.
         out(Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
@@ -580,6 +580,9 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
           # attr shape is an Variable Tensor.
           shape = fluid.layers.fill_constant([1,2], "int32", 2) # shape=[2,2]
           data4 = fluid.layers.fill_constant(shape=shape, dtype='bool', value=True) # data4=[[True,True],[True,True]]
+          # attr shape is an Variable Tensor.
+          val = fluid.layers.fill_constant([1], "float32", 2.0) # val=[2.0]
+          data5 = fluid.layers.fill_constant(shape=[2,1], value=val, dtype='float32') #data5=[[2.0],[2.0]]
     """
     inputs = {}
     attrs = {'force_cpu': force_cpu}
