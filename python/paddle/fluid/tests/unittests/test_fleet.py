@@ -80,13 +80,15 @@ class TestFleet1(unittest.TestCase):
         except:
             print("do not support pslib test, skip")
             return
-        try:
+        #try:
+        if True:
             # worker should call these methods instead of server
             # the following is only for test when with_pslib=off
             def test_func():
                 """
                 it is only a test function
                 """
+                print("hah")
                 return True
 
             fleet._role_maker.is_first_worker = test_func
@@ -96,9 +98,9 @@ class TestFleet1(unittest.TestCase):
             fleet.save_one_table(0, "./model_002", prefix="hahaha")
             fleet.load_model("./model_0003")
             fleet.load_one_table(0, "./model_004")
-        except:
-            print("do not support pslib test, skip")
-            return
+        #except:
+        #    print("do not support pslib test, skip")
+        #    return
 
 
 if __name__ == "__main__":
