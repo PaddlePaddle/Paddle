@@ -86,7 +86,6 @@ class AddMMKernel : public framework::OpKernel<T> {
 
     float alpha = context.template Attr<float>("Alpha");
     float beta = context.template Attr<float>("Beta");
-
     auto blas = math::GetBlas<DeviceContext, T>(context);
 
     // calc broadcast dim

@@ -69,20 +69,17 @@ class AddMMOp : public framework::OperatorWithKernel {
                           "if you put exe.run(startup_program) "
                           "after optimizer.minimize function.",
                           ctx->Inputs("Y").front()));
-
     // dim check
     PADDLE_ENFORCE_EQ(ndim_input, 2,
                       platform::errors::InvalidArgument(
                           "The input tensor input's dimension must be 2. "
                           "But received input's dimension = [%s].",
                           ndim_input));
-
     PADDLE_ENFORCE_EQ(ndim_x, 2,
                       platform::errors::InvalidArgument(
                           "The input tensor x's dimension must be 2. "
                           "But received x's dimension = [%s].",
                           ndim_x));
-
     PADDLE_ENFORCE_EQ(ndim_y, 2,
                       platform::errors::InvalidArgument(
                           "The input tensor y's dimension must be 2. "
