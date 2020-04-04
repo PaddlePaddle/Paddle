@@ -40,7 +40,8 @@ TEST(TEST_GLOO, store_1) {
   store.EncodeName("1");
   store.TmpPath("1");
   store.ObjectPath("1");
-  store.Check(std::vector<std::string>{"test"});
+  std::vector<bool> status(1, False);
+  store.Check(std::vector<std::string>{"test"}, &status);
 
   auto gw = paddle::framework::GlooWrapper();
   gw.Init(0, 1, "", "", "", "", "");
