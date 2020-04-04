@@ -26,4 +26,3 @@ from paddle.fluid.layers.layer_function_generator import templatedoc
 import paddle.fluid as fluid
 import numpy
 import warnings
-
