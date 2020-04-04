@@ -76,16 +76,16 @@ def randperm(n,
 	    num = 6
 	    is_use_gpu = False
 
-	    data_1 = paddle.tensor.randperm(num)
+	    data_1 = paddle.randperm(num)
 	    fluid.layers.Print(data_1)
 
-	    data_2 = paddle.tensor.randperm(num, dtype="int32", seed=1)
+	    data_2 = paddle.randperm(num, dtype="int32", seed=1)
 	    fluid.layers.Print(data_2)
 
-	    data_3 = paddle.tensor.randperm(num, stop_gradient=False, device="cpu")
+	    data_3 = paddle.randperm(num, stop_gradient=False, device="cpu")
 	    fluid.layers.Print(data_3)
 
-	    paddle.tensor.randperm(num, out=data_3)
+	    paddle.randperm(num, out=data_3)
 	    fluid.layers.Print(data_3)
 
 	    place = fluid.CUDAPlace(0) if is_use_gpu else fluid.CPUPlace()
