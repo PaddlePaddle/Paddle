@@ -187,7 +187,7 @@ class TestAPICase_Error(unittest.TestCase):
             z = layers.fill_constant(shape=[1], dtype='float32', value=0.2)
             pred_1 = layers.less_than(z, x)  # true
 
-            # The type of 'pred_fn_pairs' in case must be list or  tuple
+            # The type of 'pred_fn_pairs' in case must be list or tuple
             def type_error_pred_fn_pairs():
                 layers.case(pred_fn_pairs=1, default=fn_1)
 

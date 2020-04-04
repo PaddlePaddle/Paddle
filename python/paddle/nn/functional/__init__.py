@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: import all neural network related api under this directory, 
+# TODO: import all neural network related api under this directory,
 # including layers, linear, conv, rnn etc.
 __all__ = ['diag_embed', ]
 
 # TODO: define alias in functional directory
-# from .conv import conv2d   #DEFINE_ALIAS
-# from .conv import conv2d_transpose   #DEFINE_ALIAS
-# from .conv import conv3d   #DEFINE_ALIAS
-# from .conv import conv3d_transpose   #DEFINE_ALIAS
+from .conv import conv2d  #DEFINE_ALIAS
+from .conv import conv2d_transpose  #DEFINE_ALIAS
+from .conv import conv3d  #DEFINE_ALIAS
+from .conv import conv3d_transpose  #DEFINE_ALIAS
 # from .loss import bpr_loss   #DEFINE_ALIAS
 # from .loss import center_loss   #DEFINE_ALIAS
 # from .loss import cross_entropy   #DEFINE_ALIAS

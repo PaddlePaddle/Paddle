@@ -3857,10 +3857,10 @@ def conv2d_transpose(input,
 
     if output_size is None:
         output_size = []
-    elif isinstance(output_size, list) or isinstance(output_size, int):
+    elif isinstance(output_size, (list, tuple, int)):
         output_size = utils.convert_to_list(output_size, 2, 'output_size')
     else:
-        raise ValueError("output_size should be list or int")
+        raise ValueError("output_size should be int, list[int] or tuple[int]")
     groups = 1 if groups is None else groups
     filter_shape = [input_channel, num_filters // groups] + filter_size
 
@@ -4129,7 +4129,7 @@ def conv3d_transpose(input,
         if output_size is None:
             raise ValueError("output_size must be set when filter_size is None")
         if isinstance(output_size, int):
-            output_size = [output_size, output_size]
+            output_size = [output_size, output_size, output_size]
 
         d_in = input.shape[2] if data_format == 'NCDHW' else input.shape[1]
         h_in = input.shape[3] if data_format == 'NCDHW' else input.shape[2]
@@ -4149,6 +4149,13 @@ def conv3d_transpose(input,
     if len(padding) == 6 and utils._is_symmetric_padding(padding, 3):
         padding = [padding[0], padding[2], padding[4]]
 
+    if output_size is None:
+        output_size = []
+    elif isinstance(output_size, (list, tuple, int)):
+        output_size = utils.convert_to_list(output_size, 3, 'output_size')
+    else:
+        raise ValueError("output_size should be int, list[int] or tuple[int]")
+
     groups = 1 if groups is None else groups
     filter_shape = [input_channel, num_filters // groups] + filter_size
     img_filter = helper.create_parameter(
@@ -4166,6 +4173,7 @@ def conv3d_transpose(input,
                 'Filter': [img_filter]},
         outputs={'Output': pre_bias},
         attrs={
+            'output_size': output_size,
             'strides': stride,
             'paddings': padding,
             'padding_algorithm': padding_algorithm,
