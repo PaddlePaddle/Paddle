@@ -136,9 +136,9 @@ class KVHTTPServer(BaseHTTPServer.HTTPServer, object):
         """
         get deleted size in key.
         """
-        ret = -1
+        ret = 0
         with self.delete_kv_lock:
-            ret = self.delete_kv.get(key, -1)
+            ret = self.delete_kv.get(key, 0)
         return ret
 
 
@@ -150,6 +150,7 @@ class KVServer:
         """Init."""
         self.http_server = KVHTTPServer(port, KVHandler, size)
         self.listen_thread = None
+        self.size = {}
 
     def start(self):
         """
@@ -174,8 +175,8 @@ class KVServer:
         Returns:
             ret(bool): whether the server should stop
         """
-        for key in size:
+        for key in self.size:
             s = self.http_server.get_deleted_size(key)
-            if s != size
+            if s != self.size.get(key, 0)
                 return False
         return True
