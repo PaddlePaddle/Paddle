@@ -1803,8 +1803,7 @@ class ConditionalBlockGuard(BlockGuard):
     """
 
     def __init__(self, block):
-        if not isinstance(block, ConditionalBlock):
-            raise TypeError("block should be conditional block")
+        check_type(block, "block", ConditionalBlock, "ConditionalBlockGuard")
         super(ConditionalBlockGuard, self).__init__(block.helper.main_program)
         self.block = block
 
@@ -1846,8 +1845,7 @@ class ConditionalBlock(object):
 
     def __init__(self, inputs, is_scalar_condition=False, name=None):
         for each_input in inputs:
-            if not isinstance(each_input, Variable):
-                raise TypeError("Each input should be variable")
+            check_type(each_input, "input", Variable, "ConditionalBlock")
         self.inputs = inputs
         self.is_scalar_condition = is_scalar_condition
         self.helper = LayerHelper('conditional_block', name=name)
