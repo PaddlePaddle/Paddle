@@ -2372,8 +2372,9 @@ class Switch(object):
         if not self.inside_scope:
             raise ValueError("case should be called inside with")
 
-        check_variable_and_dtype(condition, 'condition', ['bool'],
-                                 'the member function case of Switch')
+        check_variable_and_dtype(
+            condition, 'condition', ['bool'],
+            'the member function case of fluid.layers.Switch')
 
         if len(self.pre_not_conditions) == 0:
             cond_block = ConditionalBlock([condition], is_scalar_condition=True)
