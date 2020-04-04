@@ -72,8 +72,10 @@ static void FindAllOpAndGradOp(const framework::ProgramDesc &program,
   OpVariantSet &ops = op_and_grad_op->first;
   OpVariantSet &grad_ops = op_and_grad_op->second;
 
-  PADDLE_ENFORCE_GE(ops.size(), grad_ops.size(),
-                    "There are extra grad ops in the graph or program");
+  PADDLE_ENFORCE_GE(
+      ops.size(), grad_ops.size(),
+      platform::errors::InvalidArgument(
+          "There are more grad ops than forward ops in the graph or program"));
 
   for (size_t i = 1; i < program.Size(); ++i) {
     auto &block = program.Block(i);
@@ -87,8 +89,10 @@ static void FindAllOpAndGradOp(const framework::ProgramDesc &program,
     }
   }
 
-  PADDLE_ENFORCE_GE(ops.size(), grad_ops.size(),
-                    "There are extra grad ops in the graph or program");
+  PADDLE_ENFORCE_GE(
+      ops.size(), grad_ops.size(),
+      platform::errors::InvalidArgument(
+          "There are more grad ops than forward ops in the graph or program"));
 }
 
 // Returns GradVarName of input var names
@@ -167,9 +171,10 @@ static void SetRecurrentOpAndRecurrentGradOpSkipVarAttr(
   auto &in_grads =
       bwd_op.Outputs().at(framework::GradVarName(RecurrentBase::kInputs));
 
-  PADDLE_ENFORCE_EQ(
-      fwd_input.size(), in_grads.size(),
-      "Backward input gradient number does not match forward input number.");
+  PADDLE_ENFORCE_EQ(fwd_input.size(), in_grads.size(),
+                    platform::errors::PreconditionNotMet(
+                        "Backward input gradient number does not match forward "
+                        "input number."));
   for (size_t i = 0; i < in_grads.size(); ++i) {
     if (in_grads[i] == framework::kEmptyVarName) {
       continue;
@@ -182,8 +187,9 @@ static void SetRecurrentOpAndRecurrentGradOpSkipVarAttr(
   auto &param_grads =
       bwd_op.Outputs().at(framework::GradVarName(RecurrentBase::kParameters));
   PADDLE_ENFORCE_EQ(fwd_param.size(), param_grads.size(),
-                    "Backward parameter gradient number does not match forward "
-                    "parameter number.");
+                    platform::errors::PreconditionNotMet(
+                        "Backward parameter gradient number does not match "
+                        "forward parameter number."));
   for (size_t i = 0; i < fwd_param.size(); ++i) {
     if (param_grads[i] == framework::kEmptyVarName) {
       continue;
@@ -241,12 +247,16 @@ void PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
     const OpVariant *matched_fwd_op = nullptr;
     for (auto &fwd_op : recurrent_ops) {
       if (IsMatchedRecurrentOpAndRecurrentGradOp(fwd_op, bwd_op)) {
-        PADDLE_ENFORCE(matched_fwd_op == nullptr,
-                       "Found multiple matched recurrent op");
+        PADDLE_ENFORCE_EQ(matched_fwd_op, nullptr,
+                          platform::errors::PreconditionNotMet(
+                              "Found multiple recurrent forward op matches "
+                              "recurrent grad op"));
         matched_fwd_op = &fwd_op;
       }
     }
-    PADDLE_ENFORCE_NOT_NULL(matched_fwd_op, "Cannot find matched forward op");
+    PADDLE_ENFORCE_NOT_NULL(
+        matched_fwd_op,
+        platform::errors::PreconditionNotMet("Cannot find matched forward op"));
     SetRecurrentOpAndRecurrentGradOpSkipVarAttr(*matched_fwd_op, bwd_op);
     recurrent_ops.erase(*matched_fwd_op);
   }
