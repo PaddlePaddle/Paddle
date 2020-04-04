@@ -79,7 +79,7 @@ static void DistFunction(const framework::ExecutionContext& context) {
 
   Eigen::DSizes<int, Rank> x_bcast_dims;
   Eigen::DSizes<int, Rank> y_bcast_dims;
-  if (x_dims.size() > y_dims.size()) {
+  if (x_dims.size() >= y_dims.size()) {
     GetBraodcastDims<Rank>(x_new_dims, y_new_dims, &y_bcast_dims);
     GetBraodcastDims<Rank>(x_new_dims, x_new_dims, &x_bcast_dims);
   } else {
@@ -126,6 +126,7 @@ static void DistGradFunction(const framework::ExecutionContext& context) {
   auto y_dims = context.Input<Tensor>("Y")->dims();
   auto out_dims = context.Input<Tensor>("Out")->dims();
 
+  VLOG(0) << "00000000000000000";
   // first: make new dims with same size as rank
   framework::DDim x_new_dims = GetNewDims(x_dims, Rank);
   framework::DDim y_new_dims = GetNewDims(y_dims, Rank);
@@ -133,41 +134,76 @@ static void DistGradFunction(const framework::ExecutionContext& context) {
   auto x_t = EigenTensor<T, Rank>::From(*x, x_new_dims);
   auto y_t = EigenTensor<T, Rank>::From(*y, y_new_dims);
   auto out_t = EigenTensor<T, Rank>::From(*out, out_new_dims);
+  VLOG(0) << "11111111111111111";
 
   Eigen::DSizes<int, Rank> x_bcast_dims;
   Eigen::DSizes<int, Rank> y_bcast_dims;
   Eigen::DSizes<int, Rank> out_bcast_dims;
-  if (x_dims.size() > y_dims.size()) {
+  framework::DDim new_dims;
+  if (x_dims.size() >= y_dims.size()) {
     GetBraodcastDims<Rank>(x_new_dims, y_new_dims, &y_bcast_dims);
     GetBraodcastDims<Rank>(x_new_dims, x_new_dims, &x_bcast_dims);
     GetBraodcastDims<Rank>(x_new_dims, out_new_dims, &out_bcast_dims);
+    new_dims = x_new_dims;
   } else {
     GetBraodcastDims<Rank>(y_new_dims, x_new_dims, &x_bcast_dims);
     GetBraodcastDims<Rank>(y_new_dims, y_new_dims, &y_bcast_dims);
     GetBraodcastDims<Rank>(y_new_dims, out_new_dims, &out_bcast_dims);
+    new_dims = y_new_dims;
   }
 
+  VLOG(0) << "22222222222222222";
   auto& place =
       *context.template device_context<DeviceContext>().eigen_device();
   x_grad->mutable_data<T>(context.GetPlace());
   y_grad->mutable_data<T>(context.GetPlace());
-  auto x_grad_t = EigenTensor<T, Rank>::From(*x_grad, x_new_dims);
+  auto x_grad_t = EigenTensor<T, Rank>::From(*x_grad, x_new_dims);  // change
   auto y_grad_t = EigenTensor<T, Rank>::From(*y_grad, y_new_dims);
   auto out_grad_t = EigenTensor<T, Rank>::From(*out_grad, out_new_dims);
+  framework::Tensor grad;
+  grad.mutable_data<T>(new_dims, context.GetPlace());
+  auto grad_t = EigenTensor<T, Rank>::From(grad);  // change
 
+  VLOG(0) << "33333333333333333";
   auto x_minux_y = x_t.broadcast(x_bcast_dims) - y_t.broadcast(y_bcast_dims);
+  auto x_minux_y_abs = x_minux_y.abs();
   if (p == 0) {
-    x_grad_t.device(place) = x_grad_t.setZero();
+    grad_t.device(place) = grad_t.setZero();
   } else if (p == INFINITY || p == -INFINITY) {
-    x_grad_t.device(place) = x_minux_y * x_minux_y.abs().pow(-1) *
-                             out_grad_t.broadcast(out_bcast_dims);
+    // 1. sign(x-y)
+    grad_t.device(place) = x_minux_y * x_minux_y_abs.pow(-1);
+    // 2. z = |x-y|, z(z == out) = out_grad, z(z != out) = 0
+    grad_t.device(place) =
+        (x_minux_y_abs == out_t.broadcast(out_bcast_dims)).template cast<T>() *
+        out_grad_t.broadcast(out_bcast_dims) * grad_t;
   } else {
     auto factor = out_t.broadcast(out_bcast_dims).pow(1 - p);
-    x_grad_t.device(place) = x_minux_y.abs().pow(p - 2) * factor * x_minux_y *
-                             out_grad_t.broadcast(out_bcast_dims);
+    grad_t.device(place) = x_minux_y.abs().pow(p - 2) * factor * x_minux_y *
+                           out_grad_t.broadcast(out_bcast_dims);
   }
 
-  y_grad_t.device(place) = -x_grad_t;
+  VLOG(0) << "44444444444444444";
+  auto offsets = Eigen::array<int, Rank>();
+  auto extents = Eigen::array<int, Rank>();
+  if (x_dims.size() >= y_dims.size()) {
+    x_grad_t.device(place) = grad_t;
+    VLOG(0) << "5555555555555555555";
+    for (size_t i = 0; i < Rank; ++i) {
+      offsets[i] = 0;
+      extents[i] = y_new_dims[i];
+    }
+    y_grad_t.device(place) = -x_grad_t.slice(offsets, extents);
+    VLOG(0) << "666666666666666666666";
+  } else {
+    y_grad_t.device(place) = grad_t;
+    VLOG(0) << "7777777777777777777";
+    for (size_t i = 0; i < Rank; ++i) {
+      offsets[i] = 0;
+      extents[i] = x_new_dims[i];
+    }
+    x_grad_t.device(place) = -y_grad_t.slice(offsets, extents);
+    VLOG(0) << "88888888888888888";
+  }
 }
 
 template <typename DeviceContext, typename T>
