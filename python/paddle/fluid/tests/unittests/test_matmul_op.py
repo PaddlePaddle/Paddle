@@ -272,17 +272,6 @@ class API_TestMm(unittest.TestCase):
 
         self.assertEqual((np_res == expected_result).all(), True)
 
-        with fluid.dygraph.guard():
-            with fluid.program_guard(fluid.Program()):
-                np_x = np.random.rand(1, 2)
-                np_y = np.random.rand(2, 1)
-                x = fluid.dygraph.to_variable(np_x)
-                y = fluid.dygraph.to_variable(np_y)
-                z = paddle.mm(x, y)
-                np_z = z.numpy()
-                expected_result = np.matmul(np_x, np_y)
-        self.assertEqual((np_z == expected_result).all(), True)
-
 
 class API_TestMmError(unittest.TestCase):
     def test_errors(self):

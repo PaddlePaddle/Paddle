@@ -19,6 +19,7 @@ import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest
 from scipy.special import expit, erf
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 
@@ -66,6 +67,36 @@ class TestActivation(OpTest):
         pass
 
 
+class TestParameter(object):
+    def test_out(self):
+        with fluid.program_guard(fluid.Program()):
+            data = fluid.layers.data(name="X", shape=[1])
+            out = eval("paddle.%s(data, out=data)" % self.op_type)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            result = exe.run(feed={"X": np.array([0.1])},
+                             fetch_list=[data, out])
+            self.assertEqual(result[0], result[1])
+
+    def test_out_name(self):
+        with fluid.program_guard(fluid.Program()):
+            data = fluid.layers.data(name="X", shape=[1])
+            out = eval("paddle.%s(data, name='Y', out=data)" % self.op_type)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            result = exe.run(feed={"X": np.array([0.1])},
+                             fetch_list=[data, out])
+            self.assertEqual(result[0], result[1])
+
+    def test_dygraph(self):
+        with fluid.dygraph.guard():
+            np_x = np.array([0.1])
+            x = fluid.dygraph.to_variable(np_x)
+            z = eval("paddle.%s(x).numpy()" % self.op_type)
+            z_expected = eval("np.%s(np_x)" % self.op_type)
+            self.assertEqual(z, z_expected)
+
+
 class TestSigmoid(TestActivation):
     def setUp(self):
         self.op_type = "sigmoid"
@@ -103,7 +134,7 @@ class TestLogSigmoid(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
 
-class TestTanh(TestActivation):
+class TestTanh(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "tanh"
         self.init_dtype()
@@ -125,7 +156,7 @@ class TestTanh(TestActivation):
         self.dtype = np.float32
 
 
-class TestAtan(TestActivation):
+class TestAtan(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "atan"
         self.init_dtype()
@@ -140,6 +171,14 @@ class TestAtan(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+    def test_dygraph(self):
+        with fluid.dygraph.guard():
+            np_x = np.array([0.1])
+            x = fluid.dygraph.to_variable(np_x)
+            z = paddle.atan(x).numpy()
+            z_expected = np.arctan(np_x)
+            self.assertEqual(z, z_expected)
 
 
 class TestTanhShrink(TestActivation):
@@ -200,7 +239,7 @@ class TestSoftShrink(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestSqrt(TestActivation):
+class TestSqrt(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "sqrt"
         self.init_dtype()
@@ -324,7 +363,7 @@ class TestAcos(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestSin(TestActivation):
+class TestSin(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "sin"
         self.init_dtype()
