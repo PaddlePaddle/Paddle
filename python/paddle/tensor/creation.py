@@ -250,7 +250,7 @@ def tril(input, diagonal=0, name=None):
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: Tensor, results of upper triangular operation by the specified diagonal of input tensor,
+        Variable: Tensor, results of lower triangular operation by the specified diagonal of input tensor,
         it's data type is the same as input's Tensor.
 
     Raises:
