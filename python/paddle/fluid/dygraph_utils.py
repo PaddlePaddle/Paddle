@@ -55,7 +55,7 @@ def _append_bias_in_dygraph(input, bias=None, axis=1):
 
     Return the Variable after bias operation
     """
-    if not bias:
+    if bias is None:
         return input
 
     return core.ops.elementwise_add(input, bias, 'axis', axis)
