@@ -26,12 +26,12 @@ namespace operators {
 // Returns the integer in mask whose numel must be 1. The integer means the
 // selected branch number.
 inline int GetBranchNumber(const framework::LoDTensor &mask) {
-  PADDLE_ENFORCE_EQ(
-      mask.numel(), 1,
-      platform::errors::InvalidArgument(
-          "Mask in SelectInputOp or SelectOutputOp must have numel 1. "
-          "But received %d, and it's shape is [%s].",
-          mask.numel(), mask.dims()));
+  PADDLE_ENFORCE_EQ(mask.numel(), 1,
+                    platform::errors::InvalidArgument(
+                        "The numel of Input(Mask) in SelectInputOp or "
+                        "SelectOutputOp must be 1. "
+                        "But received %d, and it's shape is [%s].",
+                        mask.numel(), mask.dims()));
   if (platform::is_cpu_place(mask.place())) {
     return mask.data<int>()[0];
   }
