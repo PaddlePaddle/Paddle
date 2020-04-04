@@ -64,7 +64,6 @@ class DiagEmbedCUDAKernel : public framework::OpKernel<T> {
     T* out_data = out->mutable_data<T>(context.GetPlace());
     math::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.cuda_device_context();
-    // auto& dev_ctx = context.template device_context<DeviceContext>();
     set_zero(dev_ctx, out, static_cast<T>(0.0));
 
     auto out_dims = out->dims();
