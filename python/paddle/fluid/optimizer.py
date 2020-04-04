@@ -621,8 +621,7 @@ class Optimizer(object):
                 is None, at this time :ref:`api_fluid_default_startup_program` will be used.
             parameter_list (list, optional): List of ``Variable`` or ``Variable.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
-                will be updated. This also can be set in constructor (i.e. `__init__` function).
-                If set in both, argument in this interface has a high priority.
+                will be updated.
             no_grad_set (set, optional): Set of ``Variable``  or ``Variable.name`` that don't need
                 to be updated. The default value is None.
             callbacks (list, optional): list of callable objects to run when appending backward
@@ -800,8 +799,7 @@ class Optimizer(object):
                 is None, at this time :ref:`api_fluid_default_startup_program` will be used.
             parameter_list (list, optional): List of ``Variable`` or ``Variable.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
-                will be updated. This also can be set in constructor (i.e. `__init__` function).
-                If set in both, argument in this interface has a high priority.
+                will be updated.
             no_grad_set (set, optional): Set of ``Variable``  or ``Variable.name`` that don't need
                 to be updated. The default value is None.
             grad_clip (GradClipBase, optional) : Gradient clipping strategy, static
