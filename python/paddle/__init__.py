@@ -34,6 +34,7 @@ import paddle.distributed
 batch = batch.batch
 import paddle.sysconfig
 import paddle.nn
+import paddle.tensor
 
 #TODO: define alias in tensor and framework directory
 # from .tensor.creation import create_.tensor   #DEFINE_ALIAS
@@ -42,14 +43,14 @@ import paddle.nn
 # from .tensor.creation import crop_.tensor   #DEFINE_ALIAS
 # from .tensor.creation import diag   #DEFINE_ALIAS
 # from .tensor.creation import eye   #DEFINE_ALIAS
-# from .tensor.creation import fill_constant   #DEFINE_ALIAS
+from .tensor.creation import fill_constant  #DEFINE_ALIAS
 # from .tensor.creation import get_.tensor_from_selected_rows   #DEFINE_ALIAS
 from .tensor.creation import linspace  #DEFINE_ALIAS
-# from .tensor.creation import ones   #DEFINE_ALIAS
-# from .tensor.creation import ones_like   #DEFINE_ALIAS
+from .tensor.creation import ones  #DEFINE_ALIAS
+from .tensor.creation import ones_like  #DEFINE_ALIAS
 # from .tensor.creation import range   #DEFINE_ALIAS
-# from .tensor.creation import zeros   #DEFINE_ALIAS
-# from .tensor.creation import zeros_like   #DEFINE_ALIAS
+from .tensor.creation import zeros  #DEFINE_ALIAS
+from .tensor.creation import zeros_like  #DEFINE_ALIAS
 # from .tensor.creation import arrange   #DEFINE_ALIAS
 # from .tensor.creation import eye   #DEFINE_ALIAS
 from .tensor.creation import full  #DEFINE_ALIAS
@@ -181,7 +182,7 @@ from .tensor.math import tanh  #DEFINE_ALIAS
 from .tensor.manipulation import flip  #DEFINE_ALIAS
 # from .tensor.manipulation import unbind   #DEFINE_ALIAS
 # from .tensor.manipulation import roll   #DEFINE_ALIAS
-# from .tensor.search import argmax   #DEFINE_ALIAS
+from .tensor.search import argmax  #DEFINE_ALIAS
 # from .tensor.search import argmin   #DEFINE_ALIAS
 # from .tensor.search import argsort   #DEFINE_ALIAS
 # from .tensor.search import has_inf   #DEFINE_ALIAS
@@ -191,7 +192,7 @@ from .tensor.manipulation import flip  #DEFINE_ALIAS
 # from .tensor.search import where   #DEFINE_ALIAS
 # from .tensor.search import index_select   #DEFINE_ALIAS
 # from .tensor.search import nonzero   #DEFINE_ALIAS
-# from .tensor.search import sort   #DEFINE_ALIAS
+from .tensor.search import sort  #DEFINE_ALIAS
 # from .framework.framework import set_default_dtype   #DEFINE_ALIAS
 # from .framework.framework import get_default_dtype   #DEFINE_ALIAS
 # from .framework.random import manual_seed   #DEFINE_ALIAS
