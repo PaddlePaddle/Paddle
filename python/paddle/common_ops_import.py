@@ -20,7 +20,7 @@ from paddle.fluid.framework import Variable, device_guard
 from paddle.fluid.initializer import Constant
 from paddle.fluid.core import VarDesc
 from paddle.fluid import core
-from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
+from paddle.fluid.data_feeder import check_type, check_dtype, check_variable_and_dtype, convert_dtype
 from paddle.fluid.layers import utils
 from paddle.fluid.layers import fill_constant
 import numpy
