@@ -1,4 +1,3 @@
-# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -42,7 +41,8 @@ def make_optimizer(step_per_epoch, parameter_list=None):
     weight_decay = FLAGS.weight_decay
 
     if lr_scheduler == 'piecewise':
-        boundaries = [step_per_epoch * e for e in [30, 60, 80]]
+        milestones = FLAGS.milestones
+        boundaries = [step_per_epoch * e for e in milestones]
         values = [base_lr * (0.1**i) for i in range(len(boundaries) + 1)]
         learning_rate = fluid.layers.piecewise_decay(
             boundaries=boundaries, values=values)
@@ -155,6 +155,12 @@ if __name__ == '__main__':
         default='piecewise',
         type=str,
         help="learning rate scheduler")
+    parser.add_argument(
+        "--milestones",
+        nargs='+',
+        type=int,
+        default=[30, 60, 80],
+        help="piecewise decay milestones")
     parser.add_argument(
         "--weight-decay", default=1e-4, type=float, help="weight decay")
     parser.add_argument("--momentum", default=0.9, type=float, help="momentum")

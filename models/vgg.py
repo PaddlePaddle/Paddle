@@ -12,21 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import time
-import math
-import sys
-import numpy as np
-import argparse
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.initializer import MSRA
-from paddle.fluid.param_attr import ParamAttr
-from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
 from paddle.fluid.dygraph.container import Sequential
-from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid import framework
 
 from model import Model
 from .download import get_weights_path
@@ -65,7 +54,15 @@ class Classifier(fluid.dygraph.Layer):
 
 
 class VGG(Model):
-    def __init__(self, features, num_classes=1000, init_weights=True):
+    """VGG model from
+    `"Very Deep Convolutional Networks For Large-Scale Image Recognition" <https://arxiv.org/pdf/1409.1556.pdf>`_
+
+    Args:
+        features (fluid.dygraph.Layer): vgg features create by function make_layers.
+        num_classes (int): output dim of last fc layer. Default: 1000.
+    """
+
+    def __init__(self, features, num_classes=1000):
         super(VGG, self).__init__()
         self.features = features
         classifier = Classifier(num_classes)
@@ -74,9 +71,7 @@ class VGG(Model):
 
     def forward(self, x):
         x = self.features(x)
-        # x = fluid.layers.adaptive_pool2d(x, pool_size=(7, 7), pool_type='avg')
-        # x = fluid.layers.flatten(x, 1)
-        x = fluid.layers.reshape(x, [-1, 7 * 7 * 512])
+        x = fluid.layers.flatten(x, 1)
         x = self.classifier(x)
         return x
 
@@ -116,9 +111,8 @@ cfgs = {
 
 
 def _vgg(arch, cfg, batch_norm, pretrained, **kwargs):
-    if pretrained:
-        kwargs['init_weights'] = False
     model = VGG(make_layers(cfgs[cfg], batch_norm=batch_norm), **kwargs)
+
     if pretrained:
         assert arch in model_urls, "{} model do not have a pretrained model now, you should set pretrained=False".format(
             arch)
@@ -127,6 +121,7 @@ def _vgg(arch, cfg, batch_norm, pretrained, **kwargs):
         assert weight_path.endswith(
             '.pdparams'), "suffix of weight must be .pdparams"
         model.load(weight_path[:-9])
+
     return model
 
 

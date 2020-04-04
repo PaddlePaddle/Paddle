@@ -12,29 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import time
-import sys
-import math
 import numpy as np
-import argparse
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
-from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
-from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid import framework
 
 from model import Model
 from .download import get_weights_path
 
-__all__ = [
-    'MobileNetV1', 'mobilnetv1_x0_25', 'mobilnetv1_x0_5', 'mobilnetv1_x0_75',
-    'mobilnetv1_x1_0', 'mobilnetv1_x1_25', 'mobilnetv1_x1_5',
-    'mobilnetv1_x1_75', 'mobilnetv1_x2_0'
-]
+__all__ = ['MobileNetV1', 'mobilenet_v1']
 
 model_urls = {}
 
@@ -114,6 +102,14 @@ class DepthwiseSeparable(fluid.dygraph.Layer):
 
 
 class MobileNetV1(Model):
+    """MobileNetV1 model from
+    `"MobileNets: Efficient Convolutional Neural Networks for Mobile Vision Applications" <https://arxiv.org/abs/1704.04861>`_.
+
+    Args:
+        scale (float): scale of channels in each layer. Default: 1.0.
+        class_dim (int): output dim of last fc layer. Default: 1000.
+    """
+
     def __init__(self, scale=1.0, class_dim=1000):
         super(MobileNetV1, self).__init__()
         self.scale = scale
@@ -261,41 +257,6 @@ def _mobilenet(arch, pretrained=False, **kwargs):
     return model
 
 
-def mobilnetv1_x1_0(pretrained=False):
-    model = _mobilenet('mobilenetv1_1.0', pretrained, scale=1.0)
-    return model
-
-
-def mobilnetv1_x0_25(pretrained=False):
-    model = _mobilenet('mobilenetv1_0.25', pretrained, scale=0.25)
-    return model
-
-
-def mobilnetv1_x0_5(pretrained=False):
-    model = _mobilenet('mobilenetv1_0.5', pretrained, scale=0.5)
-    return model
-
-
-def mobilnetv1_x0_75(pretrained=False):
-    model = _mobilenet('mobilenetv1_0.75', pretrained, scale=0.75)
-    return model
-
-
-def mobilnetv1_x1_25(pretrained=False):
-    model = _mobilenet('mobilenetv1_1.25', pretrained, scale=1.25)
-    return model
-
-
-def mobilnetv1_x1_5(pretrained=False):
-    model = _mobilenet('mobilenetv1_1.5', pretrained, scale=1.5)
-    return model
-
-
-def mobilnetv1_x1_75(pretrained=False):
-    model = _mobilenet('mobilenetv1_1.75', pretrained, scale=1.75)
-    return model
-
-
-def mobilnetv1_x2_0(pretrained=False):
-    model = _mobilenet('mobilenetv1_2.0', pretrained, scale=2.0)
+def mobilenet_v1(pretrained=False, scale=1.0):
+    model = _mobilenet('mobilenetv1_' + str(scale), pretrained, scale=scale)
     return model

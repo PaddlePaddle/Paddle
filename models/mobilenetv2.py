@@ -12,29 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import time
-import math
-import sys
 import numpy as np
-import argparse
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
-from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
-from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid import framework
 
 from model import Model
 from .download import get_weights_path
 
-__all__ = [
-    'MobileNetV2', 'mobilnetv2_x0_25', 'mobilnetv2_x0_5', 'mobilnetv2_x0_75',
-    'mobilnetv2_x1_0', 'mobilnetv2_x1_25', 'mobilnetv2_x1_5',
-    'mobilnetv2_x1_75', 'mobilnetv2_x2_0'
-]
+__all__ = ['MobileNetV2', 'mobilenet_v2']
 
 model_urls = {}
 
@@ -160,7 +147,15 @@ class InvresiBlocks(fluid.dygraph.Layer):
 
 
 class MobileNetV2(Model):
-    def __init__(self, class_dim=1000, scale=1.0):
+    """MobileNetV2 model from
+    `"MobileNetV2: Inverted Residuals and Linear Bottlenecks" <https://arxiv.org/abs/1801.04381>`_.
+
+    Args:
+        scale (float): scale of channels in each layer. Default: 1.0.
+        class_dim (int): output dim of last fc layer. Default: 1000.
+    """
+
+    def __init__(self, scale=1.0, class_dim=1000):
         super(MobileNetV2, self).__init__()
         self.scale = scale
         self.class_dim = class_dim
@@ -243,41 +238,11 @@ def _mobilenet(arch, pretrained=False, **kwargs):
     return model
 
 
-def mobilnetv2_x1_0(pretrained=False):
-    model = _mobilenet('mobilenetv2_1.0', pretrained, scale=1.0)
-    return model
-
-
-def mobilnetv2_x0_25(pretrained=False):
-    model = _mobilenet('mobilenetv2_0.25', pretrained, scale=0.25)
-    return model
-
-
-def mobilnetv2_x0_5(pretrained=False):
-    model = _mobilenet('mobilenetv2_0.5', pretrained, scale=0.5)
-    return model
-
-
-def mobilnetv2_x0_75(pretrained=False):
-    model = _mobilenet('mobilenetv2_0.75', pretrained, scale=0.75)
-    return model
-
-
-def mobilnetv2_x1_25(pretrained=False):
-    model = _mobilenet('mobilenetv2_1.25', pretrained, scale=1.25)
-    return model
-
-
-def mobilnetv2_x1_5(pretrained=False):
-    model = _mobilenet('mobilenetv2_1.5', pretrained, scale=1.5)
-    return model
-
-
-def mobilnetv2_x1_75(pretrained=False):
-    model = _mobilenet('mobilenetv2_1.75', pretrained, scale=1.75)
-    return model
-
-
-def mobilnetv2_x2_0(pretrained=False):
-    model = _mobilenet('mobilenetv2_2.0', pretrained, scale=2.0)
+def mobilenet_v2(pretrained=False, scale=1.0):
+    """MobileNetV2
+    
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
+    model = _mobilenet('mobilenetv2_' + str(scale), pretrained, scale=scale)
     return model

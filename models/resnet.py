@@ -157,6 +157,15 @@ class BottleneckBlock(fluid.dygraph.Layer):
 
 
 class ResNet(Model):
+    """ResNet model from
+    `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
+
+    Args:
+        Block (BasicBlock|BottleneckBlock): block module of model.
+        depth (int): layers of resnet, default: 50.
+        num_classes (int): output dim of last fc layer, default: 1000.
+    """
+
     def __init__(self, Block, depth=50, num_classes=1000):
         super(ResNet, self).__init__()
 
@@ -240,20 +249,45 @@ def _resnet(arch, Block, depth, pretrained):
 
 
 def resnet18(pretrained=False):
+    """ResNet 18-layer model
+    
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
     return _resnet('resnet18', BasicBlock, 18, pretrained)
 
 
 def resnet34(pretrained=False):
+    """ResNet 34-layer model
+    
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
     return _resnet('resnet34', BasicBlock, 34, pretrained)
 
 
 def resnet50(pretrained=False):
+    """ResNet 50-layer model
+    
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
     return _resnet('resnet50', BottleneckBlock, 50, pretrained)
 
 
 def resnet101(pretrained=False):
+    """ResNet 101-layer model
+    
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
     return _resnet('resnet101', BottleneckBlock, 101, pretrained)
 
 
 def resnet152(pretrained=False):
+    """ResNet 152-layer model
+    
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
     return _resnet('resnet152', BottleneckBlock, 152, pretrained)
