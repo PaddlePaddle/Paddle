@@ -934,7 +934,7 @@ def mm(input, mat2, out=None, name=None):
     return out
 
 
-def addmm(input, x, y, alpha=1.0, beta=1.0, out=None):
+def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
     """
     **addmm**
 
@@ -989,11 +989,7 @@ def addmm(input, x, y, alpha=1.0, beta=1.0, out=None):
     check_variable_and_dtype(x, 'Input', ['float32', 'float64'], 'addmm')
     check_variable_and_dtype(x, 'X', ['float32', 'float64'], 'addmm')
     check_variable_and_dtype(y, 'Y', ['float32', 'float64'], 'addmm')
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        out = helper.create_variable(
-            name=name, dtype=input.dtype, persistable=False)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(
         type="addmm", inputs=inputs, attrs=attrs, outputs={"Out": out})
