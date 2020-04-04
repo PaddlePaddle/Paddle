@@ -370,19 +370,19 @@ def full(shape,
     Examples:
         .. code-block:: python
 
-          import paddle.tensor as tensor
+          import paddle
           import paddle.fluid as fluid
 
-          data1 = tensor.full(shape=[2,1], full_value=0, dtype='int64') # data1=[[0],[0]]
-          data2 = tensor.full(shape=[2,1], full_value=5, dtype='int64', device='gpu') # data2=[[5],[5]]
+          data1 = paddle.full(shape=[2,1], full_value=0, dtype='int64') # data1=[[0],[0]]
+          data2 = paddle.full(shape=[2,1], full_value=5, dtype='int64', device='gpu') # data2=[[5],[5]]
 
           # attr shape is a list which contains Variable Tensor.
           positive_2 = fluid.layers.fill_constant([1], "int32", 2)
-          data3 = tensor.full(shape=[1, positive_2], dtype='float32', full_value=1.5) # data3=[1.5, 1.5]
+          data3 = paddle.full(shape=[1, positive_2], dtype='float32', full_value=1.5) # data3=[1.5, 1.5]
 
           # attr shape is an Variable Tensor.
           shape = fluid.layers.fill_constant([1,2], "int32", 2) # shape=[2,2]
-          data4 = tensor.full(shape=shape, dtype='bool', full_value=True) # data4=[[True,True],[True,True]]
+          data4 = paddle.full(shape=shape, dtype='bool', full_value=True) # data4=[[True,True],[True,True]]
     """
 
     helper = LayerHelper("full", **locals())
