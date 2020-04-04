@@ -951,8 +951,8 @@ def addmm(input, x, y, alpha=1.0, beta=1.0, out=None):
         input (Variable): The input Tensor/LoDTensor to be added to the final result.
         x (Variable): The first input Tensor/LoDTensor for matrix multiplication.
         y (Variable): The second input Tensor/LoDTensor for matrix multiplication.
-        beta (float): Coefficient of $input$.
         alpha (float): Coefficient of $x*y$.
+        beta (float): Coefficient of $input$.
         name (str, optional): Name of the output. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default is None.
 
     Returns:
@@ -969,16 +969,16 @@ def addmm(input, x, y, alpha=1.0, beta=1.0, out=None):
             x = fluid.data(name='x', shape=[5,2], dtype='float32')
             y = fluid.data(name='y', shape=[2,4], dtype='float32')
             out = paddle.addmm( input=input, x=x, y=y, alpha=1.0, beta=1.0 )
-
+            
             data_x = np.random.rand(5, 2).astype(np.float32)
             data_y = np.random.rand(2, 4).astype(np.float32)
             data_input = np.random.rand(5, 4).astype(np.float32)
 
             place =  fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
             exe = fluid.Executor(place)
-            results = exe.run(fluid.default_main_program(), fetch_list=[out], feed={"input": data_input, 'x': data_x, "y": data_y})
+            results = exe.run(fluid.default_main_program(), 
+                              fetch_list=[out], feed={"input": data_input, 'x': data_x, "y": data_y})
             print( np.array(results[0]) )
-
     """
     inputs = {'Input': input, "X": x, "Y": y}
     attrs = {'Alpha': alpha, 'Beta': beta}
