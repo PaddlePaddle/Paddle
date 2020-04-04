@@ -36,12 +36,8 @@ class SoftMaxOpConverter : public OpConverter {
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "softmax", {output_name}, test_mode);
 
-    if (op_desc.HasAttr("out_scale")) {
-#if IS_TRT_VERSION_GE(5000)
-      float out_scale = boost::get<float>(op_desc.GetAttr("out_scale"));
-      engine_->SetTensorDynamicRange(layer->getOutput(0), out_scale);
-#endif
-    }
+    // The trt will not run int for softmax.
+    engine_->SetTensorDynamicRange(input1, 1.0);
   }
 };
 

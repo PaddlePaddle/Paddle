@@ -20,48 +20,69 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
 #include "paddle/fluid/framework/ir/node.h"
-#include "paddle/fluid/framework/ir/pass_tester_helper.h"
+#include "paddle/fluid/framework/ir/subgraph_detector.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 namespace fusion_group {
 
-struct SubGraph {
-  int type{-1};
-  std::string func_name;
-  bool save_intermediate_out{false};
-
+class SubGraph {
+ public:
   SubGraph() = default;
-  SubGraph(int t, std::string f, bool s, const std::unordered_set<Node*>& n)
-      : type(t), func_name(f), save_intermediate_out(s), nodes_set(n) {}
+  explicit SubGraph(int type) : type_(type) {}
+  SubGraph(int type, std::string func_name, bool save_intermediate_out,
+           const std::unordered_set<Node*>& nodes_set)
+      : type_(type),
+        func_name_(func_name),
+        save_intermediate_out_(save_intermediate_out) {
+    for (auto* n : nodes_set) {
+      nodes_set_.insert(n);
+      if (n && n->IsOp() && n->Op()) {
+        // If the node is an op node, then add its input/output var nodes
+        //  into the subgraph.
+        for (auto* in : n->inputs) {
+          nodes_set_.insert(in);
+        }
+        for (auto* out : n->outputs) {
+          nodes_set_.insert(out);
+        }
+      }
+    }
+  }
 
-  bool IsEmpty() { return nodes_set.empty(); }
+  bool IsValid(int min_subgraph_size) {
+    int num_operations = GetNumOperations();
+    if (num_operations < min_subgraph_size) {
+      VLOG(2) << "There are only " << num_operations
+              << " operations in the subgraph. Expected at least "
+              << min_subgraph_size;
+      return false;
+    }
 
-  const std::unordered_set<Node*>& Nodes() const { return nodes_set; }
+    return true;
+  }
 
+  int GetType() const { return type_; }
+
+  void SetFuncName(std::string func_name) { func_name_ = func_name; }
+  std::string GetFuncName() const { return func_name_; }
+
+  const std::unordered_set<Node*>& Nodes() const { return nodes_set_; }
   const std::vector<Node*>& SortedNodes() {
-    if (!is_sorted) {
-      Sort();
+    if (!is_sorted_) {
+      TopologicalSort();
     }
-    return sorted_nodes;
+    return sorted_nodes_;
   }
 
-  size_t GetNumNodes() { return nodes_set.size(); }
+  size_t GetNumNodes() { return nodes_set_.size(); }
 
-  bool Has(Node* n) { return nodes_set.find(n) != nodes_set.end(); }
-
-  void Insert(Node* n) {
-    if (nodes_set.find(n) == nodes_set.end()) {
-      VLOG(5) << "Insert " << n->Name() << " to subgraph " << this;
-      nodes_set.insert(n);
-      is_sorted = false;
-    }
-  }
+  bool Has(Node* n) { return nodes_set_.find(n) != nodes_set_.end(); }
 
   int GetNumOperations() {
     int num_operations = 0;
-    for (auto* n : nodes_set) {
+    for (auto* n : nodes_set_) {
       if (n && n->IsOp() && n->Op()) {
         num_operations++;
       }
@@ -96,203 +117,109 @@ struct SubGraph {
 
   std::vector<Node*> GetOutputVarNodes() {
     // The order of output nodes should be consistant anywhere..
-    std::vector<Node*> output_vars;
+    std::vector<Node*> output_vars_all;
     for (auto* n : SortedNodes()) {
       if (n && n->IsVar() && n->Var()) {
-        if (save_intermediate_out) {
-          // If the var_node is the output of some op_node in the subgraph, it
-          // is considered the output var node of the subgraph.
-          bool is_found = false;
+        // If the var_node is the output of some op_node in the subgraph, it
+        // is considered the output var node of the subgraph.
+        bool is_found = false;
+        for (auto* in : n->inputs) {
+          if (Has(in)) {
+            is_found = true;
+          }
+        }
+        if (is_found) {
+          output_vars_all.push_back(n);
+        }
+      }
+    }
+
+    if (save_intermediate_out_) {
+      return output_vars_all;
+    }
+
+    std::vector<Node*> output_vars_outside;
+    for (auto* n : output_vars_all) {
+      // If one of the var_node's outputs is the input of some operator
+      // outside the subgraph, it is considered the output var node of the
+      // subgraph.
+      bool is_found = true;
+      if (n->outputs.size() == 0U) {
+        is_found = false;
+      }
+      for (auto* out : n->outputs) {
+        if (!Has(out)) {
+          is_found = false;
+        }
+      }
+      if (!is_found) {
+        output_vars_outside.push_back(n);
+      }
+    }
+    return output_vars_outside;
+  }
+
+ private:
+  void TopologicalSort() {
+    if (!is_sorted_) {
+      std::unordered_map<Node*, std::vector<Node*>> inputs_map;
+      std::unordered_map<Node*, std::vector<Node*>> outputs_map;
+      for (auto* n : nodes_set_) {
+        inputs_map[n] = n->inputs;
+        outputs_map[n] = n->outputs;
+      }
+
+      for (auto* n : nodes_set_) {
+        if (n && n->IsVar() && n->Var()) {
+          // Set the input of subgraph's input var node to null.
+          std::vector<Node*> inputs;
           for (auto* in : n->inputs) {
             if (Has(in)) {
-              is_found = true;
+              inputs.push_back(in);
             }
           }
-          if (is_found) {
-            output_vars.push_back(n);
-          }
-        } else {
-          // If one of the var_node's outputs is the input of some operator
-          // outside the subgraph, it is considered the output var node of the
-          // subgraph.
-          bool is_found = true;
-          if (n->outputs.size() == 0U) {
-            is_found = false;
-          }
+          // Set the output of subgraph's output var node to null.
+          std::vector<Node*> outputs;
           for (auto* out : n->outputs) {
-            if (!Has(out)) {
-              is_found = false;
+            if (Has(out)) {
+              outputs.push_back(out);
             }
           }
-          if (!is_found) {
-            output_vars.push_back(n);
-          }
+          n->inputs = inputs;
+          n->outputs = outputs;
         }
       }
+      // Collect the start points of the subgraph.
+      std::vector<Node*> start_points;
+      for (auto* n : nodes_set_) {
+        if (n->inputs.empty()) {
+          start_points.push_back(n);
+        }
+      }
+      // Sort the subgraph.
+      NodesTSIterator x(start_points);
+      for (auto& n : iterator_range<NodesTSIterator>(
+               NodesTSIterator(start_points), NodesTSIterator())) {
+        sorted_nodes_.push_back(&n);
+      }
+      // Reset the inputs, outputs.
+      for (auto* n : nodes_set_) {
+        n->inputs = inputs_map[n];
+        n->outputs = outputs_map[n];
+      }
     }
-    return output_vars;
+    is_sorted_ = true;
   }
 
  private:
-  int FindIndexInSortedNodes(Node* n) {
-    for (size_t i = 0; i < sorted_nodes.size(); ++i) {
-      if (n == sorted_nodes[i]) {
-        return static_cast<int>(i);
-      }
-    }
-    return -1;
-  }
+  int type_{-1};
+  std::string data_type_;
+  std::string func_name_;
+  bool save_intermediate_out_{true};
 
-  void SortVarsBasedOnSortedOps() {
-    // Insert var nodes to sorted_nodes.
-    std::unordered_map<std::string, Node*> sorted_vars;
-    for (auto* n : nodes_set) {
-      if (n && n->IsVar() && n->Var()) {
-        int from = 0;
-        int to = sorted_nodes.size();
-
-        for (auto* in : n->inputs) {
-          if (in && in->IsOp() && in->Op()) {
-            int index = FindIndexInSortedNodes(in);
-            // Insert after input op node
-            if (index >= 0) {
-              from = index + 1 > from ? index + 1 : from;
-            }
-          }
-        }
-
-        for (auto* out : n->outputs) {
-          if (out && out->IsOp() && out->Op()) {
-            int index = FindIndexInSortedNodes(out);
-            // Insert before output op node
-            if (index >= 0) {
-              to = index < to ? index : to;
-            }
-          }
-        }
-
-        if (from > to) {
-          LOG(INFO) << "subgraph: {\n" << DebugString(Nodes()) << "}\n";
-          LOG(INFO) << "sorted nodes: {\n"
-                    << DebugString(sorted_nodes) << "}\n";
-        }
-        PADDLE_ENFORCE_LE(from, to, "Range [%d, %d] is invalid.", from, to);
-        sorted_nodes.insert(sorted_nodes.begin() + to, n);
-        sorted_vars[n->Name()] = n;
-      }
-    }
-  }
-
-  std::vector<Node*> SortedOps() {
-    Node* start_op_n = nullptr;
-    std::unordered_set<Node*> ops;
-    for (auto* op_n : nodes_set) {
-      if (op_n && op_n->IsOp() && op_n->Op()) {
-        // Initialize ops to all ops in the subgraph.
-        ops.insert(op_n);
-
-        if (!start_op_n) {
-          // Find start op node whose inputs are produced outside the subgraph.
-          bool is_found = false;
-          for (auto* prev_op_n : GetPrevOpNodes(op_n)) {
-            if (Has(prev_op_n)) {
-              is_found = true;
-              break;
-            }
-          }
-          if (!is_found) {
-            start_op_n = op_n;
-          }
-        }
-      }
-    }
-
-    std::vector<Node*> sorted_ops;
-    sorted_ops.push_back(start_op_n);
-    ops.erase(start_op_n);
-    while (ops.size() > 0U) {
-      std::unordered_set<Node*> erased_ops;
-      for (auto* op_n : ops) {
-        bool found_connected_ops = false;
-        int from = 1;
-        int to = sorted_ops.size();
-        std::unordered_set<Node*> prev_op_nodes = GetPrevOpNodes(op_n);
-        std::unordered_set<Node*> next_op_nodes = GetNextOpNodes(op_n);
-        for (int i = sorted_ops.size(); i >= 0; --i) {
-          if (prev_op_nodes.find(sorted_ops[i]) != prev_op_nodes.end()) {
-            // Insert after i (i + 1)
-            found_connected_ops = true;
-            from = (i + 1 > from) ? i + 1 : from;
-          }
-          if (next_op_nodes.find(sorted_ops[i]) != next_op_nodes.end()) {
-            // Insert before i
-            found_connected_ops = true;
-            to = (i < to) ? i : to;
-          }
-        }
-        if (found_connected_ops) {
-          if (from > to) {
-            LOG(INFO) << "subgraph: {\n" << DebugString(Nodes()) << "}\n";
-          }
-          PADDLE_ENFORCE_LE(from, to, "Range [%d, %d] is invalid.", from, to);
-          sorted_ops.insert(sorted_ops.begin() + to, op_n);
-          erased_ops.insert(op_n);
-        }
-      }
-      PADDLE_ENFORCE_GT(erased_ops.size(), 0U);
-      for (auto* op_n : erased_ops) {
-        ops.erase(op_n);
-      }
-    }
-    return sorted_ops;
-  }
-
-  std::unordered_set<Node*> GetPrevOpNodes(Node* op_n) {
-    PADDLE_ENFORCE_EQ(op_n && op_n->IsOp() && op_n->Op(), true,
-                      "Node %p is not a op node.", op_n);
-
-    std::unordered_set<Node*> prev_op_nodes;
-    for (auto* in_var : op_n->inputs) {
-      if (in_var && in_var->IsVar() && in_var->Var()) {
-        for (auto* prev_op_n : in_var->inputs) {
-          if (prev_op_n && prev_op_n->IsOp() && prev_op_n->Op()) {
-            prev_op_nodes.insert(prev_op_n);
-          }
-        }
-      }
-    }
-    return prev_op_nodes;
-  }
-
-  std::unordered_set<Node*> GetNextOpNodes(Node* op_n) {
-    PADDLE_ENFORCE_EQ(op_n && op_n->IsOp() && op_n->Op(), true,
-                      "Node %p is not a op node.", op_n);
-
-    std::unordered_set<Node*> next_op_nodes;
-    for (auto* out_var : op_n->outputs) {
-      if (out_var && out_var->IsVar() && out_var->Var()) {
-        for (auto* next_op_n : out_var->outputs) {
-          if (next_op_n && next_op_n->IsOp() && next_op_n->Op()) {
-            next_op_nodes.insert(next_op_n);
-          }
-        }
-      }
-    }
-    return next_op_nodes;
-  }
-
-  void Sort() {
-    if (!is_sorted) {
-      sorted_nodes = SortedOps();
-      SortVarsBasedOnSortedOps();
-    }
-    is_sorted = true;
-  }
-
- private:
-  std::unordered_set<Node*> nodes_set;
-  bool is_sorted{false};
-  std::vector<Node*> sorted_nodes;
+  std::unordered_set<Node*> nodes_set_;
+  bool is_sorted_{false};
+  std::vector<Node*> sorted_nodes_;
 };
 
 }  // namespace fusion_group

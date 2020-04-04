@@ -26,10 +26,14 @@ from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 
 from paddle.fluid import compiler
+from paddle.distributed.fs_wrapper import LocalFS, BDFS
 
 import os
 import sys
 import six
+import json
+import re
+import shutil
 
 
 class LambConfig(object):
@@ -42,6 +46,21 @@ class DistFCConfig(object):
         pass
 
 
+class TrainStatus(object):
+    def __init__(self, epoch_no=-1):
+        # completed epoch
+        self._epoch_no = epoch_no
+
+    def next(self):
+        return self._epoch_no + 1
+
+    def __eq__(self, t):
+        return self._epoch_no == t._epoch_no
+
+    def __ne__(self, t):
+        return not self == t
+
+
 class Collective(Fleet):
     def __init__(self):
         super(Collective, self).__init__(Mode.COLLECTIVE)
@@ -51,6 +70,8 @@ class Collective(Fleet):
         self._origin_program = None
         self._transpiled_program = None
         self.main_program = None
+        self._checkoint_prefix = "__paddle_fleet_checkpoint__"
+        self._param_file_name = "_paddle_fleet_param__"
 
     def init_worker(self):
         logging.warn(
@@ -103,7 +124,11 @@ class Collective(Fleet):
                                 executor, main_program, None, None,
                                 export_for_deployment)
 
-    def save_persistables(self, executor, dirname, main_program=None):
+    def save_persistables(self,
+                          executor,
+                          dirname,
+                          main_program=None,
+                          filename=None):
         """
         This function filters out all variables with `persistable==True` from
         the give `main_program` and then saves these variables to the folder
@@ -125,7 +150,182 @@ class Collective(Fleet):
             "In fleet.save_inference_model() function, main_program " \
             "must be as Program type."
 
-        io.save_persistables(executor, dirname, main_program, None)
+        io.save_persistables(executor, dirname, main_program, filename=filename)
+
+    def _save_train_status(self, path, train_status):
+        d = {}
+        d["epoch_no"] = train_status._epoch_no
+
+        file_name = "{}/fleet_train_status".format(path)
+        with open(file_name, 'w') as f:
+            json.dump(d, f)
+
+    def _load_train_status(self, path):
+        file_name = "{}/fleet_train_status".format(path)
+
+        r = TrainStatus()
+        if not os.path.isfile(file_name):
+            return r
+
+        d = {}
+        with open(file_name, 'r') as f:
+            d = json.load(f)
+
+        assert "epoch_no" in d, "Can't find epoch_no in dict from train_status file:{}".format(
+            d)
+        r._epoch_no = d["epoch_no"]
+        assert r._epoch_no >= 0, "Data in checkpoint file is not valid:{}".format(
+            d)
+
+        return r
+
+    def _get_last_checkpoint_no(self, root_path, fs):
+        """
+        only get the first depth
+        """
+        max_no = -1
+        d = {}
+        dirs = fs.list_dirs(root_path)
+        for dir in dirs:
+            g = dir.split(".")
+            if len(g) != 2:
+                continue
+
+            if g[0] != "__paddle_fleet_checkpoint__":
+                continue
+
+            try:
+                n = int(g[1])
+                if n > max_no:
+                    max_no = n
+            except:
+                continue
+
+        return max_no
+
+    def clean_redundant_check_points(self,
+                                     root_path,
+                                     fs=LocalFS(),
+                                     checkpoint_num=1):
+        max_no = self._get_last_checkpoint_no(root_path, fs)
+        if max_no < 0:
+            return
+
+        if checkpoint_num < 1:
+            checkpoint_num = 1
+
+        dirs = fs.list_dirs(root_path)
+        for dir in dirs:
+            g = dir.split(".")
+            if len(g) != 2:
+                continue
+
+            if g[0] != self._checkoint_prefix:
+                continue
+
+            try:
+                n = int(g[1])
+                if n <= max_no - checkpoint_num:
+                    path = "{}/{}.{}".format(root_path, self._checkoint_prefix,
+                                             n)
+                    fs.rmr(path)
+            except Exception as e:
+                print(e)
+                continue
+
+    def save_check_point(self,
+                         executor,
+                         path,
+                         train_status,
+                         main_program=None,
+                         fs=LocalFS(),
+                         local_cache_path=".cache",
+                         remain_all_checkpoint=True):
+        """
+        This function save persistables and current epoch num to path.
+        """
+
+        if main_program == None:
+            main_program = self._transpiled_program
+
+        if not fs.stat(path):
+            fs.mkdir(path)
+
+        max_no = self._get_last_checkpoint_no(path, fs=fs)
+        if max_no < 0:
+            max_no = -1
+
+        real_path = "{}/{}.{}".format(path, self._checkoint_prefix, max_no + 1)
+        tmp_path = "{}.tmp".format(real_path)
+        saved_path = tmp_path
+
+        local_fs = LocalFS()
+
+        cache_path = None
+        if fs.need_upload_download():
+            cache_path = "{}/{}.{}.saved_cache".format(
+                local_cache_path, self._checkoint_prefix, max_no + 1)
+            if not local_fs.stat(cache_path):
+                local_fs.mkdir(cache_path)
+            saved_path = cache_path
+
+        self.save_persistables(
+            executor=executor,
+            dirname=saved_path,
+            main_program=main_program,
+            filename=self._param_file_name)
+        self._save_train_status(path=saved_path, train_status=train_status)
+
+        if fs.need_upload_download():
+            fs.delete(tmp_path)
+            fs.upload(cache_path, tmp_path)
+        fs.mv(tmp_path, real_path)
+
+        if not remain_all_checkpoint:
+            self.clean_redundant_check_points(path)
+
+    def load_check_point(self,
+                         executor,
+                         path,
+                         trainer_id,
+                         main_program=None,
+                         fs=LocalFS(),
+                         local_cache_path=".cache",
+                         ignore_empty=True):
+        """
+        This function load persistables and current epoch num from path.
+        """
+        max_no = self._get_last_checkpoint_no(path, fs)
+
+        if not ignore_empty:
+            assert max_no >= 0, "Can't find checkpoint"
+
+        if max_no < 0:
+            return None
+
+        local_fs = LocalFS()
+        if fs.need_upload_download():
+            cache_path = "{}/{}.{}.load_cache.{}".format(
+                local_cache_path, self._checkoint_prefix, max_no, trainer_id)
+            if local_fs.stat(cache_path):
+                local_fs.delete(cache_path)
+
+        real_path = "{}/{}.{}".format(path, self._checkoint_prefix, max_no)
+        load_path = real_path
+        if fs.need_upload_download():
+            fs.download(real_path, cache_path)
+            load_path = cache_path
+
+        if main_program == None:
+            main_program = self._transpiled_program
+
+        io.load_persistables(
+            executor=executor,
+            dirname=load_path,
+            main_program=main_program,
+            filename=self._param_file_name)
+
+        return self._load_train_status(load_path)
 
 
 fleet = Collective()
@@ -220,7 +420,7 @@ class CollectiveOptimizer(DistributedOptimizer):
 
     def _check_collective_mode(self, main_program, optimizer, strategy):
         """
-        Check the conflict condtions.
+        Check the conflict conditions.
         """
         if strategy.use_local_sgd:
             strategy.mode = "collective"
@@ -392,7 +592,7 @@ class CollectiveOptimizer(DistributedOptimizer):
             tuple: (optimize_ops, params_grads) which are, list of operators appended;
             and list of (param, grad) Variables pair for optimization.
         Note that in parameter server mode, a worker will not get anything about optimize_os
-        Because optmizer algorithms run on pserver side. We will make this usable in pserver
+        Because optimizer algorithms run on pserver side. We will make this usable in pserver
         process, but currently the optimization part is written into Fleet(). A user does not
         need to care about how to startup a pserver node.
         """

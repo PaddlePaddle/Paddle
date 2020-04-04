@@ -178,17 +178,6 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 
   auto type = framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
                                       library, customized_type_value);
-#ifdef PADDLE_WITH_CUDA
-  std::vector<framework::KernelConfig>& configs = kernel_configs_map_[type];
-  // TODO(dangqingqing): Currently conv_fusion_op use cudnn but sets use_cudnn
-  // to false. It should be fixed and then here should only create if library
-  // is kCUDNN.
-  if (configs.empty()) {
-    std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>> p(
-        new framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>());
-    configs.push_back(p);
-  }
-#endif
   return type;
 }
 
@@ -563,21 +552,6 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
   auto type = framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
       layout_, library_, customized_type_value);
-#ifdef PADDLE_WITH_CUDA
-  if (library_ == framework::LibraryType::kCUDNN) {
-    std::vector<framework::KernelConfig>& configs = kernel_configs_map_[type];
-    if (configs.empty()) {
-      std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>>
-          p(new framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>());
-      configs.push_back(p);
-
-      std::shared_ptr<
-          framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>>
-          p2(new framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>());
-      configs.push_back(p2);
-    }
-  }
-#endif
   return type;
 }
 
@@ -612,8 +586,7 @@ class Conv2DGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("Input", this->Input("Input"));
     op->SetInput("Filter", this->Input("Filter"));
@@ -624,8 +597,6 @@ class Conv2DGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("Filter"), this->InputGrad("Filter"));
     op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
     op->SetAttrMap(this->Attrs());
-
-    return std::unique_ptr<T>(op);
   }
 };
 
@@ -634,8 +605,7 @@ class Conv3DGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("Input", this->Input("Input"));
     op->SetInput("Filter", this->Input("Filter"));
@@ -649,8 +619,6 @@ class Conv3DGradMaker : public framework::SingleGradOpMaker<T> {
     }
 
     op->SetAttrMap(this->Attrs());
-
-    return std::unique_ptr<T>(op);
   }
 };
 
@@ -663,8 +631,7 @@ class Conv2DDoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     // I, W, dO, ddI, ddW
     op->SetInput("Input", this->Input("Input"));
@@ -682,16 +649,14 @@ class Conv2DDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetOutput("DDOutput",
                   ddx.empty()
-                      ? this->Empty()
+                      ? this->EmptyInputGrad()
                       : this->InputGrad(framework::GradVarName("Output")));
-    op->SetOutput("DFilter",
-                  ddx.empty() ? this->Empty() : this->InputGrad("Filter"));
-    op->SetOutput("DInput",
-                  ddw.empty() ? this->Empty() : this->InputGrad("Input"));
+    op->SetOutput("DFilter", ddx.empty() ? this->EmptyInputGrad()
+                                         : this->InputGrad("Filter"));
+    op->SetOutput("DInput", ddw.empty() ? this->EmptyInputGrad()
+                                        : this->InputGrad("Input"));
 
     op->SetAttrMap(this->Attrs());
-
-    return std::unique_ptr<T>(op);
   }
 };
 
@@ -704,8 +669,7 @@ class Conv3DDoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<T> Apply() const override {
-    auto* op = new T();
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     // I, W, dO, ddI, ddW
     op->SetInput("Input", this->Input("Input"));
@@ -720,16 +684,14 @@ class Conv3DDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetOutput("DDOutput",
                   ddx.empty()
-                      ? this->Empty()
+                      ? this->EmptyInputGrad()
                       : this->InputGrad(framework::GradVarName("Output")));
-    op->SetOutput("DFilter",
-                  ddx.empty() ? this->Empty() : this->InputGrad("Filter"));
-    op->SetOutput("DInput",
-                  ddw.empty() ? this->Empty() : this->InputGrad("Input"));
+    op->SetOutput("DFilter", ddx.empty() ? this->EmptyInputGrad()
+                                         : this->InputGrad("Filter"));
+    op->SetOutput("DInput", ddw.empty() ? this->EmptyInputGrad()
+                                        : this->InputGrad("Input"));
 
     op->SetAttrMap(this->Attrs());
-
-    return std::unique_ptr<T>(op);
   }
 };
 
@@ -766,25 +728,6 @@ framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
   auto type = framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
       layout_, library_, customized_type_value);
-#ifdef PADDLE_WITH_CUDA
-  if (library_ == framework::LibraryType::kCUDNN) {
-    std::vector<framework::KernelConfig>& configs = kernel_configs_map_[type];
-    if (configs.empty()) {
-      std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>> p0(
-          new framework::AlgorithmsCache<cudnnConvolutionFwdAlgo_t>());
-      configs.push_back(p0);
-
-      std::shared_ptr<
-          framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>>
-          p1(new framework::AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>());
-      configs.push_back(p1);
-
-      std::shared_ptr<framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>>
-          p2(new framework::AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>());
-      configs.push_back(p2);
-    }
-  }
-#endif
   return type;
 }
 

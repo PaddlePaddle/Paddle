@@ -242,8 +242,6 @@ class TestDygraphResnet(unittest.TestCase):
             optimizer = optimizer_setting(
                 train_parameters, parameter_list=resnet.parameters())
             np.random.seed(seed)
-            import random
-            random.seed = seed
 
             batch_py_reader = fluid.io.PyReader(capacity=1)
             batch_py_reader.decorate_sample_list_generator(
@@ -330,8 +328,6 @@ class TestDygraphResnet(unittest.TestCase):
             optimizer = optimizer_setting(train_parameters)
 
             np.random.seed(seed)
-            import random
-            random.seed = seed
             train_reader = paddle.batch(
                 paddle.dataset.flowers.train(use_xmap=False),
                 batch_size=batch_size)

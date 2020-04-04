@@ -21,6 +21,46 @@ from . import core
 __all__ = ['L1Decay', 'L2Decay', 'L1DecayRegularizer', 'L2DecayRegularizer']
 
 
+def _create_regularization_of_grad(param, grad, regularization=None):
+    """ Create and add backward regularization Operators
+
+    Function helper of append_regularization_ops.
+    """
+    # If no gradient or no regularization is specified,  then we don't need to do anything
+    if grad is None or (param.regularizer is None and regularization is None):
+        return grad
+    regularization_term = None
+    if param.regularizer is not None:
+        # Add variable for regularization term in grad block
+        regularization_term = param.regularizer(param, grad, grad.block)
+    elif regularization is not None:
+        regularization_term = regularization(param, grad, grad.block)
+
+    assert regularization_term is not None
+
+    new_grad = grad
+    if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
+        # FIXME(zcd): If the grad is SELECTED_ROWS, after regularization,
+        # the grad's type and name will be changed. But the gradient's name
+        # is used in ParallelExecutor Reduce mode, so I add a flag for
+        # the new_grad here.
+        new_grad = grad.block.create_var(
+            name=grad.name + core.kNewGradSuffix(),
+            dtype=param.dtype,
+            shape=param.shape,
+            lod_level=param.lod_level,
+            type=core.VarDesc.VarType.LOD_TENSOR)
+
+    inputs = {"X": [grad, regularization_term]}
+    outputs = {"Out": [new_grad]}
+    if in_dygraph_mode():
+        new_grad = core.ops.sum([grad, regularization_term])
+    else:
+        grad.block.append_op(type='sum', inputs=inputs, outputs=outputs)
+
+    return new_grad
+
+
 def append_regularization_ops(parameters_and_grads, regularization=None):
     """Create and add backward regularization Operators
 
@@ -43,47 +83,18 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
         Exception: Unknown regularization type
     """
     params_and_grads = []
-    for param, grad in parameters_and_grads:
-        # If no gradient then we don't need to do anything
-        if grad is None:
-            params_and_grads.append((param, grad))
-            continue
-        with param.block.program._optimized_guard(
-            [param, grad]), framework.name_scope('regularization'):
-            regularization_term = None
-            if param.regularizer is not None:
-                # Add variable for regularization term in grad block
-                regularization_term = param.regularizer(param, grad, grad.block)
-            elif regularization is not None:
-                regularization_term = regularization(param, grad, grad.block)
-
-            # If no regularization specified, then we don't need to do anything
-            if regularization_term is None:
-                params_and_grads.append((param, grad))
-                continue
-
-            new_grad = grad
-            if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
-                # FIXME(zcd): If the grad is SELECTED_ROWS, after regularization,
-                # the grad's type and name will be changed. But the gradient's name
-                # is used in ParallelExecutor Reduce mode, so I add a flag for
-                # the new_grad here.
-                new_grad = grad.block.create_var(
-                    name=grad.name + core.kNewGradSuffix(),
-                    dtype=param.dtype,
-                    shape=param.shape,
-                    lod_level=param.lod_level,
-                    type=core.VarDesc.VarType.LOD_TENSOR)
-
-            inputs = {"X": [grad, regularization_term]}
-            outputs = {"Out": [new_grad]}
-            if in_dygraph_mode():
-                core.ops.sum(inputs, {}, outputs)
-            else:
-                grad.block.append_op(type='sum', inputs=inputs, outputs=outputs)
-
+    if in_dygraph_mode():
+        for param, grad in parameters_and_grads:
+            new_grad = _create_regularization_of_grad(param, grad,
+                                                      regularization)
             params_and_grads.append((param, new_grad))
-
+    else:
+        with framework.name_scope('regularization'):
+            for param, grad in parameters_and_grads:
+                with param.block.program._optimized_guard([param, grad]):
+                    new_grad = _create_regularization_of_grad(param, grad,
+                                                              regularization)
+                    params_and_grads.append((param, new_grad))
     return params_and_grads
 
 
@@ -172,8 +183,7 @@ class L2DecayRegularizer(WeightDecayRegularizer):
         attrs = {"scale": self._regularization_coeff}
 
         if framework.in_dygraph_mode():
-            outs = core.ops.scale(inputs, attrs)
-            return outs['Out'][0]
+            return core.ops.scale(param, "scale", self._regularization_coeff)
         else:
             decay = block.create_var(
                 dtype=param.dtype, shape=param.shape, lod_level=param.lod_level)

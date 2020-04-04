@@ -109,14 +109,30 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   const int offset = (data_layout != DataLayout::kNHWC ? 2 : 1);
   for (size_t i = 0; i < strides.size(); ++i) {
     auto filter_extent = dilations[i] * (filter_dims[i + 2] - 1) + 1;
-    auto infer_shape = (in_dims[i + offset] - 1) * strides[i] -
-                       paddings[2 * i] - paddings[2 * i + 1] + filter_extent;
+    auto infer_shape = (ctx->IsRuntime() || in_dims[i + offset] > 0)
+                           ? (in_dims[i + offset] - 1) * strides[i] -
+                                 paddings[2 * i] - paddings[2 * i + 1] +
+                                 filter_extent
+                           : -1;
     if (output_size.size()) {
-      PADDLE_ENFORCE_EQ((output_size[i] >= infer_shape &&
-                         output_size[i] < infer_shape + strides[i]),
-                        true,
-                        "output_size of Op(ConvTransposeOp) should be "
-                        "in appropriate range.");
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_GE(
+            output_size[i], infer_shape,
+            platform::errors::InvalidArgument(
+                "output_size of Op(ConvTransposeOp) should not be "
+                "less than the infered output size. But received output_size = "
+                "[%s], whose dim %d is less than the infered output size [%s]",
+                framework::make_ddim(output_size), i, infer_shape));
+        PADDLE_ENFORCE_LT(
+            output_size[i], infer_shape + strides[i],
+            platform::errors::InvalidArgument(
+                "output_size of Op(ConvTransposeOp) should be less "
+                "than infered size + stride. But received output_size = [%s], "
+                "whose dim %d is not less than the infered output size (%d) + "
+                "stride (%d) = %d",
+                framework::make_ddim(output_size), i, infer_shape, strides[i],
+                infer_shape + strides[i]));
+      }
       output_shape.push_back(output_size[i]);
     } else {
       output_shape.push_back(infer_shape);
@@ -267,7 +283,7 @@ void Conv2DTransposeOpMaker::Make() {
                "workspace is a section of GPU memory which will be "
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
-               "better hardward. This size should be carefully setted.")
+               "better hardward. This size should be carefully set.")
       .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
   AddComment(R"DOC(
 Convolution2D Transpose Operator.
@@ -368,7 +384,7 @@ void Conv3DTransposeOpMaker::Make() {
                "workspace is a section of GPU memory which will be "
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
-               "better hardward. This size should be carefully setted.")
+               "better hardward. This size should be carefully set.")
       .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
   AddComment(R"DOC(
 Convolution3D Transpose Operator.
@@ -441,8 +457,7 @@ class ConvTransposeGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("Input", this->Input("Input"));
     op->SetInput("Filter", this->Input("Filter"));
@@ -454,7 +469,6 @@ class ConvTransposeGradOpMaker : public framework::SingleGradOpMaker<T> {
     }
     op->SetInput(framework::GradVarName("Output"), this->OutputGrad("Output"));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 

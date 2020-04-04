@@ -345,7 +345,7 @@ class Pad2dCPUKernel : public framework::OpKernel<T> {
     GetPaddings(pads, context);
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
-    T value = context.Attr<T>("pad_value");
+    T value = static_cast<T>(context.Attr<float>("pad_value"));
 
     auto* x = context.Input<Tensor>("X");
     auto in_dims = x->dims();
@@ -563,7 +563,7 @@ class Pad2dOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("NCHW");
     AddComment(R"DOC(
 Pad2d Operator.
-Pad 2-d images accordding to 'paddings' and 'mode'. 
+Pad 2-d images according to 'paddings' and 'mode'. 
 If mode is 'reflect', paddings[0] and paddings[1] must be no greater
 than height-1. And the width dimension has the same condition.
 
@@ -633,8 +633,7 @@ class Pad2dOpGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto* bind = new T();
+  void Apply(GradOpPtr<T> bind) const override {
     bind->SetInput("X", this->Input("X"));
     if (this->HasInput("Paddings")) {
       bind->SetInput("Paddings", this->Input("Paddings"));
@@ -643,13 +642,11 @@ class Pad2dOpGradMaker : public framework::SingleGradOpMaker<T> {
     bind->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     bind->SetAttrMap(this->Attrs());
     bind->SetType("pad2d_grad");
-    return std::unique_ptr<T>(bind);
   }
 };
 
 // TODO(zjl): Paddings can also be skipped!
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(Pad2dOpGradNoNeedBufferVarsInference,
-                                      "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(Pad2dOpGradNoNeedBufferVarsInference, "X");
 
 }  // namespace operators
 }  // namespace paddle

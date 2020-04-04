@@ -27,11 +27,11 @@ namespace ir {
  */
 class MKLDNNPlacementPass : public PlacementPassBase {
  private:
-  const std::string GetPlacementName() const { return "MKLDNN"; }
+  const std::string GetPlacementName() const override { return "MKLDNN"; }
 
-  const std::string GetAttrName() const { return "use_mkldnn"; }
+  const std::string GetAttrName() const override { return "use_mkldnn"; }
 
-  const std::unordered_set<std::string> GetOpTypesList() const {
+  const std::unordered_set<std::string> GetOpTypesList() const override {
     return Get<std::unordered_set<std::string>>("mkldnn_enabled_op_types");
   }
 };

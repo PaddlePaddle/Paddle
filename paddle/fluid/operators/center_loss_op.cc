@@ -129,8 +129,7 @@ class CenterLossOpGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> retv(new T());
+  void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("center_loss_grad");
     retv->SetInput(framework::GradVarName("Loss"), this->OutputGrad("Loss"));
     retv->SetInput("SampleCenterDiff", this->Output("SampleCenterDiff"));
@@ -138,9 +137,11 @@ class CenterLossOpGradMaker : public framework::SingleGradOpMaker<T> {
     retv->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
 
     retv->SetAttrMap(this->Attrs());
-    return retv;
   }
 };
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(CenterLossGradNoNeedBufVarsInferer, "X");
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -151,7 +152,8 @@ REGISTER_OPERATOR(center_loss, ops::CenterLossOp, ops::CenterLossOpMaker,
                   ops::CenterLossOpGradMaker<paddle::framework::OpDesc>,
                   ops::CenterLossOpGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(center_loss_grad, ops::CenterLossGradOp);
+REGISTER_OPERATOR(center_loss_grad, ops::CenterLossGradOp,
+                  ops::CenterLossGradNoNeedBufVarsInferer);
 
 REGISTER_OP_CPU_KERNEL(center_loss, ops::CenterLossKernel<CPUCtx, float>,
                        ops::CenterLossKernel<CPUCtx, double>);

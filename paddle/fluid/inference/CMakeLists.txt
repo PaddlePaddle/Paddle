@@ -14,7 +14,7 @@
 #
 
 if(WITH_TESTING)
-  include(tests/test.cmake) # some generic cmake funtion for inference
+  include(tests/test.cmake) # some generic cmake function for inference
 endif()
 
 # TODO(panyx0718): Should this be called paddle_fluid_inference_api_internal?
@@ -30,10 +30,6 @@ if (TENSORRT_FOUND)
   add_subdirectory(tensorrt)
 endif()
 
-if (ANAKIN_SUBGRAPH)
-  add_subdirectory(anakin)
-endif()
-
 if (WITH_LITE)
   add_subdirectory(lite)
 endif()
@@ -43,6 +39,20 @@ get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(cuda_modules GLOBAL PROPERTY CUDA_MODULES)
 
 add_subdirectory(api)
+
+# Create static inference library if needed
+# All static libs in inference/api
+set(STATIC_INFERENCE_API paddle_inference_api analysis_predictor zero_copy_tensor reset_tensor_array
+              analysis_config paddle_pass_builder activation_functions ${mkldnn_quantizer_cfg})
+create_static_lib(paddle_fluid ${fluid_modules} ${STATIC_INFERENCE_API})
+
+if(NOT APPLE)
+  # TODO(liuyiqu: Temporarily disable the link flag because it is not support on Mac.
+  set(LINK_FLAGS "-Wl,--retain-symbols-file ${CMAKE_CURRENT_SOURCE_DIR}/paddle_fluid.sym")
+  set_target_properties(paddle_fluid PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
+endif()
+
+# C inference API
 add_subdirectory(capi)
 
 if(WITH_TESTING)
@@ -57,20 +67,6 @@ if(NOT ON_INFER)
   return()
 endif()
 
-# Create static inference library if needed
-# All static libs in inference/api
-set(STATIC_INFERENCE_API paddle_inference_api analysis_predictor zero_copy_tensor reset_tensor_array 
-              analysis_config paddle_pass_builder activation_functions ${mkldnn_quantizer_cfg})
-create_static_lib(paddle_fluid ${fluid_modules} ${STATIC_INFERENCE_API})
-if(NOT APPLE)
-  # TODO(liuyiqu: Temporarily disable the link flag because it is not support on Mac.
-  set(LINK_FLAGS "-Wl,--retain-symbols-file ${CMAKE_CURRENT_SOURCE_DIR}/paddle_fluid.sym")
-  set_target_properties(paddle_fluid PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
-endif()
-
-if(ANAKIN_FOUND)
-    set(ANAKIN_SHARED_INFERENCE_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/api/api_anakin_engine.cc)
-endif()
 set(SHARED_INFERENCE_SRCS
     io.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/../framework/data_feed.cc
@@ -80,8 +76,8 @@ set(SHARED_INFERENCE_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/api/api_impl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/analysis_predictor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc
-    ${mkldnn_quantizer_src_file}
-    ${ANAKIN_SHARED_INFERENCE_SRCS})
+    ${CMAKE_CURRENT_SOURCE_DIR}/utils/io_utils.cc
+    ${mkldnn_quantizer_src_file})
 
 # Create shared inference library defaultly
 cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}

@@ -31,7 +31,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
-#include "paddle/fluid/framework/operator_kernel_configs.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -53,8 +52,8 @@ constexpr char kEmptyVarName[] = "@EMPTY@";
 constexpr char kTempVarName[] = "@TEMP@";
 
 /// If a variable's name has a certain suffix, it means that the
-/// variable is the gradient of another varibale.
-/// e.g. Variable "x@GRAD" is the gradient of varibale "x".
+/// variable is the gradient of another variable.
+/// e.g. Variable "x@GRAD" is the gradient of variable "x".
 constexpr char kGradVarSuffix[] = "@GRAD";
 
 constexpr size_t kGradVarSuffixSize = 5U;
@@ -185,6 +184,7 @@ class OperatorBase {
   virtual std::vector<std::string> OutputVars(bool has_intermediate) const;
 
   void SetIsCalledByExecutor(bool x) { run_by_executor_ = x; }
+
   virtual void RuntimeInferShape(const Scope& scope,
                                  const platform::Place& place,
                                  const RuntimeContext& ctx) const {}
@@ -215,30 +215,12 @@ class OperatorBase {
                        const platform::Place& place) const = 0;
 };
 
-#ifdef PADDLE_WITH_CUDA
-using KernelConfig = boost::variant<
-    std::shared_ptr<AlgorithmsCache<cudnnConvolutionFwdAlgo_t>>,
-    std::shared_ptr<AlgorithmsCache<cudnnConvolutionBwdDataAlgo_t>>,
-    std::shared_ptr<AlgorithmsCache<cudnnConvolutionBwdFilterAlgo_t>>>;
-#else
-using KernelConfig = boost::variant<boost::blank>;
-#endif
-
-using OpKernelConfigsMap =
-    std::unordered_map<OpKernelType, std::vector<KernelConfig>,
-                       OpKernelType::Hash>;
-
 class ExecutionContext {
  public:
   ExecutionContext(const OperatorBase& op, const Scope& scope,
                    const platform::DeviceContext& device_context,
-                   const RuntimeContext& ctx,
-                   std::vector<KernelConfig>* configs)
-      : op_(op),
-        scope_(scope),
-        device_context_(device_context),
-        ctx_(ctx),
-        kernel_configs_(configs) {}
+                   const RuntimeContext& ctx)
+      : op_(op), scope_(scope), device_context_(device_context), ctx_(ctx) {}
   virtual ~ExecutionContext() {}
 
   virtual std::string InputName(const std::string& name) const {
@@ -404,15 +386,6 @@ class ExecutionContext {
     return temp_tensor;
   }
 
-  template <typename T>
-  T& GetKernelConfig(size_t idx) const {
-    PADDLE_ENFORCE(
-        kernel_configs_ && kernel_configs_->size() > static_cast<size_t>(idx),
-        "%s selected kernel doesn't have kernel config %lu <= %lu",
-        op_.Type().c_str(), kernel_configs_->size(), idx);
-    return *boost::get<std::shared_ptr<T>>((*kernel_configs_)[idx]);
-  }
-
   const RuntimeContext Context() const { return ctx_; }
 
   std::string DebugString() const { return op_.DebugString(); }
@@ -422,7 +395,6 @@ class ExecutionContext {
   const Scope& scope_;
   const platform::DeviceContext& device_context_;
   const RuntimeContext& ctx_;
-  mutable std::vector<KernelConfig>* kernel_configs_;
 };
 
 template <>
@@ -498,8 +470,6 @@ class OperatorWithKernel : public OperatorBase {
 
   virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
 
-  std::vector<KernelConfig>* GetKernelConfig(const OpKernelType& key) const;
-
   // change this to public so that in dygraph mode we can call it to check if we
   // need transform data
   virtual OpKernelType GetKernelTypeForVar(
@@ -517,7 +487,8 @@ class OperatorWithKernel : public OperatorBase {
                RuntimeContext* runtime_ctx) const;
 
   /**
-   * Transfer data from scope to a transfered scope. If there is no data need to
+   * Transfer data from scope to a transferred scope. If there is no data need
+   * to
    * be tranfered, it returns nullptr.
    *
    * * transfered_inplace_vars is a output vector.
@@ -535,11 +506,11 @@ class OperatorWithKernel : public OperatorBase {
                     const platform::Place& place) const;
 
  protected:
-  mutable OpKernelConfigsMap kernel_configs_map_;
   mutable std::unique_ptr<OpKernelType> kernel_type_;
   mutable std::unique_ptr<OpKernelFunc> kernel_func_;
   mutable std::unique_ptr<RuntimeContext> runtime_ctx_;
   mutable const Scope* pre_scope_ = nullptr;
+  mutable bool need_prepare_data_ = true;
   mutable bool enable_cache_runtime_context_ = false;
   mutable bool all_kernels_must_compute_runtime_shape_ = false;
   mutable std::mutex cache_update_mutex_;

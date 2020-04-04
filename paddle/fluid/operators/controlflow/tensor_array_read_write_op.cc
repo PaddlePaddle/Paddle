@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/array_operator.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
+#include "paddle/fluid/operators/math/math_function.h"
+
 namespace paddle {
 namespace operators {
 
@@ -80,16 +82,23 @@ $$A[i] = T$$
 class WriteToArrayInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("I"), "Must set the subscript index");
-    if (context->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(framework::product(context->GetInputDim("I")), 1,
-                        "The number of element of subscript index must be 1");
-    }
+    PADDLE_ENFORCE_EQ(
+        context->HasInput("I"), true,
+        platform::errors::InvalidArgument(
+            "Read/Write array operation must set the subscript index."));
+
+    // TODO(wangchaochaohu) control flow Op do not support runtime infer shape
+    // Later we add [ontext->GetInputDim("I")) == 1] check when it's supported
+
     if (!context->HasInput("X")) {
       return;
     }
 
-    PADDLE_ENFORCE(context->HasOutput("Out"), NotHasOutError());
+    PADDLE_ENFORCE_EQ(
+        context->HasOutput("Out"), true,
+        platform::errors::InvalidArgument(
+            "Read/Write array operation must set the output Tensor "
+            "to get the result."));
     context->SetOutputDim("Out", context->GetInputDim("X"));
 
     // When compile time, we need to:
@@ -103,13 +112,6 @@ class WriteToArrayInferShape : public framework::InferShapeBase {
     if (!context->IsRuntime()) {
       context->ShareLoD("X", /*->*/ "Out");
     }
-  }
-
- protected:
-  virtual const char *NotHasXError() const { return "Must set the lod tensor"; }
-
-  virtual const char *NotHasOutError() const {
-    return "Must set the lod tensor array";
   }
 };
 
@@ -138,10 +140,15 @@ class ReadFromArrayOp : public ArrayOp {
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
     auto *x = scope.FindVar(Input("X"));
-    PADDLE_ENFORCE(x != nullptr, "X must be set");
+    PADDLE_ENFORCE_NOT_NULL(
+        x,
+        platform::errors::InvalidArgument(
+            "X(Input Variable) must be set when we call read array operation"));
     auto &x_array = x->Get<framework::LoDTensorArray>();
     auto *out = scope.FindVar(Output("Out"));
-    PADDLE_ENFORCE(out != nullptr, "Out must be set");
+    PADDLE_ENFORCE_NOT_NULL(out, platform::errors::InvalidArgument(
+                                     "Out(Output Varibale) must be set when we "
+                                     "call read array operation"));
     size_t offset = GetOffset(scope, place);
     if (offset < x_array.size()) {
       auto *out_tensor = out->GetMutable<framework::LoDTensor>();
@@ -152,6 +159,21 @@ class ReadFromArrayOp : public ArrayOp {
       out_tensor->set_lod(x_array[offset].lod());
     } else {
       VLOG(10) << "offset " << offset << " >= " << x_array.size();
+      // set grad of the writed tensor to 0 when used as write_to_array_grad
+      auto *fw_var = scope.FindVar(Input("X_W"));
+      if (fw_var == nullptr) return;
+      auto &fw_var_tensor = fw_var->Get<framework::LoDTensor>();
+
+      framework::AttributeMap attrs;
+      attrs["dtype"] = fw_var_tensor.type();
+      attrs["shape"] = framework::vectorize<int>(fw_var_tensor.dims());
+      attrs["value"] = 0.0f;
+
+      auto zero_op = framework::OpRegistry::CreateOp(
+          "fill_constant", {}, {{"Out", {Output("Out")}}}, attrs);
+      zero_op->Run(scope, place);
+      auto *out_tensor = out->GetMutable<framework::LoDTensor>();
+      out_tensor->set_lod(fw_var_tensor.lod());
     }
   }
 };
@@ -163,6 +185,10 @@ class ReadFromArrayProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("I",
              "(Tensor) the subscript index in tensor array. The number of "
              "element should be 1");
+    AddInput("X_W",
+             "(Tensor) the writed tensor when used as the grad op of "
+             "write_to_array. We use this to fill zero gradient.")
+        .AsDispensable();
     AddOutput("Out", "(LoDTensor) the tensor will be read from.");
     AddComment(R"DOC(
 ReadFromArray Operator.
@@ -178,15 +204,7 @@ $$T = A[i]$$
   }
 };
 
-class ReadFromArrayInferShape : public WriteToArrayInferShape {
- protected:
-  const char *NotHasXError() const override {
-    return "The input array X must be set";
-  }
-  const char *NotHasOutError() const override {
-    return "The output tensor out must be set";
-  }
-};
+class ReadFromArrayInferShape : public WriteToArrayInferShape {};
 
 template <typename T>
 class WriteToArrayGradMaker : public framework::SingleGradOpMaker<T> {
@@ -194,14 +212,13 @@ class WriteToArrayGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("read_from_array");
     grad_op->SetInput("I", this->Input("I"));
     grad_op->SetInput("X", this->OutputGrad("Out"));
+    grad_op->SetInput("X_W", this->Input("X"));
     grad_op->SetOutput("Out", this->InputGrad("X"));
     grad_op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(grad_op);
   }
 };
 
@@ -211,14 +228,12 @@ class ReadFromArrayGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("write_to_array");
     grad_op->SetInput("I", this->Input("I"));
     grad_op->SetInput("X", this->OutputGrad("Out"));
     grad_op->SetOutput("Out", this->InputGrad("X"));
     grad_op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(grad_op);
   }
 };
 

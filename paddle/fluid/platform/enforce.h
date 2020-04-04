@@ -48,7 +48,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/dynload/curand.h"
-#if !defined(__APPLE__) && !defined(_WIN32)
+#if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
@@ -348,6 +348,29 @@ struct EnforceNotMet : public std::exception {
 #define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) \
   __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <=, >, __VA_ARGS__)
 
+/** EXTENDED TOOL FUNCTIONS WITH CHECKING **/
+
+/*
+ * Summary: This macro is used to check whether op has specified
+ * Input or Output Variables. Because op's Input and Output
+ * checking are written similarly, so abstract this macro.
+ *
+ * Parameters:
+ *     __EXPR: (bool), the bool expression
+ *     __ROLE: (string), Input or Output
+ *     __NAME: (string), Input or Output name
+ *     __OP_TYPE: (string), the op type
+ *
+ * Examples:
+ *    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Mul");
+*/
+#define OP_INOUT_CHECK(__EXPR, __ROLE, __NAME, __OP_TYPE)                   \
+  do {                                                                      \
+    PADDLE_ENFORCE_EQ(__EXPR, true, paddle::platform::errors::NotFound(     \
+                                        "No %s(%s) found for %s operator.", \
+                                        __ROLE, __NAME, __OP_TYPE));        \
+  } while (0)
+
 /** OTHER EXCEPTION AND ENFORCE **/
 
 struct EOFException : public std::exception {
@@ -462,7 +485,7 @@ inline void throw_on_error(cublasStatus_t stat, const std::string& msg) {
 #endif
 }
 
-#if !defined(__APPLE__) && !defined(_WIN32)
+#if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 inline bool is_error(ncclResult_t nccl_result) {
   return nccl_result != ncclSuccess;
 }
@@ -502,7 +525,7 @@ DEFINE_CUDA_STATUS_TYPE(curandStatus_t, CURAND_STATUS_SUCCESS);
 DEFINE_CUDA_STATUS_TYPE(cudnnStatus_t, CUDNN_STATUS_SUCCESS);
 DEFINE_CUDA_STATUS_TYPE(cublasStatus_t, CUBLAS_STATUS_SUCCESS);
 
-#if !defined(__APPLE__) && !defined(_WIN32)
+#if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
 #endif
 

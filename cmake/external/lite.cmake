@@ -25,7 +25,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   set(LITE_INSTALL_DIR ${THIRD_PARTY_PATH}/install/lite)
 
   # No quotes, so cmake can resolve it as a command with arguments.
-  set(LITE_BUILD_COMMAND $(MAKE) -j)
+  set(LITE_BUILD_COMMAND $(MAKE) publish_inference -j)
   set(LITE_OPTIONAL_ARGS -DWITH_MKL=ON
                          -DLITE_WITH_CUDA=${WITH_GPU}
                          -DWITH_MKLDNN=OFF
@@ -34,16 +34,17 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                          -DWITH_LITE=OFF
                          -DLITE_WITH_LIGHT_WEIGHT_FRAMEWORK=OFF
                          -DWITH_PYTHON=OFF
-                         -DWITH_TESTING=ON
+                         -DWITH_TESTING=OFF
                          -DLITE_BUILD_EXTRA=ON
                          -DCUDNN_ROOT=${CUDNN_ROOT}
+                         -DLITE_WITH_STATIC_CUDA=OFF
                          -DLITE_WITH_ARM=OFF)
 
   ExternalProject_Add(
       ${LITE_PROJECT}
       ${EXTERNAL_PROJECT_LOG_ARGS}
       GIT_REPOSITORY      "https://github.com/PaddlePaddle/Paddle-Lite.git"
-      GIT_TAG             b30dc65b264f7bc3753ba862ff4e529ea2af6665
+      GIT_TAG             0f875ef367bd2dbfa2e557eb2a2fc841bacdf6cf
       PREFIX              ${LITE_SOURCES_DIR}
       UPDATE_COMMAND      ""
       BUILD_COMMAND       ${LITE_BUILD_COMMAND}
@@ -74,7 +75,7 @@ include_directories(${LITE_SOURCE_DIR})
 include_directories(${LITE_BINARY_DIR})
 
 function(external_lite_static_libs alias path)
-  add_library(${alias} STATIC IMPORTED GLOBAL)
+  add_library(${alias} SHARED IMPORTED GLOBAL)
   SET_PROPERTY(TARGET ${alias} PROPERTY IMPORTED_LOCATION
                ${path})
   if (LITE_PROJECT)
@@ -82,6 +83,6 @@ function(external_lite_static_libs alias path)
   endif()
 endfunction()
 
-external_lite_static_libs(lite_full_static ${LITE_BINARY_DIR}/lite/api/libapi_full_static.a)
+external_lite_static_libs(lite_full_static ${LITE_BINARY_DIR}/inference_lite_lib/cxx/lib/libpaddle_full_api_shared.so)
 
 add_definitions(-DPADDLE_WITH_LITE)

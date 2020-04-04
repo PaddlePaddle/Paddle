@@ -49,7 +49,7 @@ class BilinearTensorProductKernel : public framework::OpKernel<T> {
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
-    // Create the intermediate variable to caculate the result of
+    // Create the intermediate variable to calculate the result of
     // Input(X) multiplied by Input(Weight_i), the formula is:
     // left_mul = X Weight_i.
     Tensor left_mul;

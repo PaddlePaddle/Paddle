@@ -162,7 +162,6 @@ class GpuPassStrategy : public PassStrategy {
 };
 
 extern const std::vector<std::string> kTRTSubgraphPasses;
-extern const std::vector<std::string> kAnakinSubgraphPasses;
 extern const std::vector<std::string> kLiteSubgraphPasses;
 
 }  // namespace paddle

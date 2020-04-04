@@ -145,8 +145,7 @@ class SequenceScatterGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("sequence_scatter_grad");
     op->SetInput("Ids", this->Input("Ids"));
     op->SetInput("Updates", this->Input("Updates"));
@@ -155,11 +154,10 @@ class SequenceScatterGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("Updates"),
                   this->InputGrad("Updates"));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(
     SequenceScatterGradNoNeedBufferVarsInference, "Updates");
 
 }  // namespace operators

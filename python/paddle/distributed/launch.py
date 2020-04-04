@@ -13,18 +13,18 @@
 # limitations under the License.
 """
 paddle.distributed.launch is a module that spawns multiple distributed 
-process on each trainning node for gpu trainning.
+process on each training node for gpu training.
 Usage:
     In both of single node training or multiple node training, this module 
 launch a process on each of the given gpu card.
-    1. for single node trainning with all visible gpu cards:
+    1. for single node training with all visible gpu cards:
        python -m paddle.distributed.launch \
          your_training_py (arg1 arg2 and all others)
     
-    2. for single node trainning with [0,4) cards
+    2. for single node training with [0,4) cards
        python -m paddle.distributed.launch --selected_gpus="0,1,2,3" \
          your_training_py (arg1 arg2 and all others)
-    3. for mulitple node training such as two node:192.168.0.16, 192.168.0.17
+    3. for multiple node training such as two node:192.168.0.16, 192.168.0.17
         on 192.168.0.16:
             python -m paddle.distributed.launch --cluster_node_ips="192.168.0.16,192.168.0.17" \
                 --node_ip=192.168.0.16 \
@@ -36,7 +36,6 @@ launch a process on each of the given gpu card.
 """
 
 from __future__ import print_function
-import logging
 import sys
 from sys import version
 import subprocess
@@ -45,15 +44,11 @@ import time
 import six
 import copy
 from argparse import ArgumentParser, REMAINDER
+import paddle
 import paddle.fluid as fluid
 
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-log_handler = logging.StreamHandler()
-log_format = logging.Formatter(
-    '%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s')
-log_handler.setFormatter(log_format)
-logger.addHandler(log_handler)
+from paddle.distributed.utils import *
+import paddle.distributed.cloud_utils as cloud_utils
 
 
 def _print_arguments(args):
@@ -101,7 +96,7 @@ POD_IP (current node ip address, not needed for local training)
     parser.add_argument(
         "--started_port",
         type=int,
-        default=6170,
+        default=None,
         help="The trainer's started port on a single node")
 
     parser.add_argument(
@@ -114,14 +109,20 @@ POD_IP (current node ip address, not needed for local training)
         "--selected_gpus",
         type=str,
         default=None,
-        help="It's for gpu trainning and the trainning process will run on the selected_gpus,"
-        "each process is bound to a single GPU. And if it's not setted, this module will use all the gpu cards for training."
+        help="It's for gpu training and the training process will run on the selected_gpus,"
+        "each process is bound to a single GPU. And if it's not set, this module will use all the gpu cards for training."
     )
+
+    parser.add_argument(
+        "--log_level",
+        type=int,
+        default=20,  # logging.INFO, details are here:https://docs.python.org/3/library/logging.html#levels
+        help="Logging level, default is logging.INFO")
 
     parser.add_argument(
         "--log_dir",
         type=str,
-        help="The path for each process's log.If it's not setted, the log will printed to default pipe."
+        help="The path for each process's log.If it's not set, the log will printed to default pipe."
     )
 
     #positional
@@ -138,154 +139,97 @@ POD_IP (current node ip address, not needed for local training)
     return parser.parse_args()
 
 
-def terminate_procs(procs):
-    for p in procs:
-        if p.poll() is None:
-            p.terminate()
-
-
-def start_procs(args):
-    """
-    """
-    default_env = os.environ.copy()
-
-    current_node_ip = args.node_ip
+def get_cluster_from_args(args, selected_gpus):
     node_ips = [x.strip() for x in args.cluster_node_ips.split(',')]
-    node_id = node_ips.index(current_node_ip)
-    if args.use_paddlecloud:
-        trainer_nums = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
-        if trainer_nums != 1:
-            #you can automatically get ip info while using paddlecloud multi nodes mode.
-            current_node_ip = os.getenv("POD_IP")
-            assert current_node_ip is not None, "POD_IP should not be None"
-            node_ips = os.getenv("PADDLE_TRAINERS")
-            assert node_ips is not None, "PADDLE_TRAINERS should not be None"
-            node_ips = node_ips.split(",")
-            node_id = os.getenv("PADDLE_TRAINER_ID")
-            assert node_id is not None, "PADDLE_TRAINER_ID should not be None"
-            node_id = int(node_id)
+    node_ip = args.node_ip
+    node_rank = node_ips.index(node_ip)
 
-            if args.node_ip != "127.0.0.1" and current_node_ip != args.node_ip:
-                logger.warning(
-                    "Please NOTE: When using paddlecloud, current_node_ip is \
-automatically got from POD_IP. Your input node_ip: {} doesn't equals to \
-current_node_ip: {} from paddlecloud environment."
-                    .format(args.node_ip, current_node_ip))
-            if args.cluster_node_ips != "127.0.0.1" and args.cluster_node_ips != ",".join(
-                    node_ips):
-                logger.warning(
-                    "Please NOTE: When using paddlecloud, cluster_node_ips is \
-automatically got from PADDLE_TRAINERS(multi nodes) or POD_IP(single node).\
-Your input cluster_node_ips: {} doesn't equals to IPs: {} from \
-paddlecloud environment.".format(args.cluster_node_ips, node_ips))
-    num_nodes = len(node_ips)
+    logger.debug("parsed from args:node_ips:{} node_ip:{} node_rank:{}".format(
+        node_ips, node_ip, node_rank))
 
-    if args.selected_gpus is None:
+    free_ports = None
+    if not args.use_paddlecloud and len(
+            node_ips) <= 1 and args.started_port is None:
+        free_ports = find_free_ports(len(selected_gpus))
+        if free_ports is not None:
+            free_ports = list(free_ports)
+    else:
+        free_ports = [
+            x
+            for x in range(args.started_port, args.started_port + len(
+                selected_gpus))
+        ]
+
+    return get_cluster(node_ips, node_ip, free_ports, selected_gpus)
+
+
+def get_gpus(selected_gpus):
+    if selected_gpus is None:
         gpus_num = fluid.core.get_cuda_device_count()
         selected_gpus = [str(x) for x in range(0, gpus_num)]
     else:
-        selected_gpus = [x.strip() for x in args.selected_gpus.split(',')]
-    selected_gpus_num = len(selected_gpus)
-
-    trainers_endpoints = ""
-    for ip in node_ips:
-        for i in range(selected_gpus_num):
-            if trainers_endpoints != "":
-                trainers_endpoints += ","
-            trainers_endpoints += "%s:%d" % (ip, args.started_port + i)
-
-    nranks = num_nodes * selected_gpus_num
-
-    if args.print_config:
-        print("trainers_endpoints:", trainers_endpoints, ", node_id:", node_id,
-              ", current_node_ip:", current_node_ip, ", num_nodes:", num_nodes,
-              ", node_ips:", node_ips, ", nranks:", nranks)
-
-    current_env = copy.copy(default_env)
-    #paddle broadcast ncclUniqueId use socket, and
-    #proxy maybe make trainers unreachable, so delete them.
-    #if we set them to "", grpc will log error message "bad uri"
-    #so just delete them.
-    current_env.pop("http_proxy", None)
-    current_env.pop("https_proxy", None)
-
-    procs = []
-    log_fns = []
-    cmds = []
-    ranks = []
-    for i in range(0, selected_gpus_num):
-        rank = (node_id * selected_gpus_num + i)
-        current_env.update({
-            "FLAGS_selected_gpus": "%s" % selected_gpus[i],
-            "PADDLE_TRAINER_ID": "%d" % rank,
-            "PADDLE_CURRENT_ENDPOINT":
-            "%s:%d" % (current_node_ip, args.started_port + i),
-            "PADDLE_TRAINERS_NUM": "%d" % nranks,
-            "PADDLE_TRAINER_ENDPOINTS": trainers_endpoints
-        })
-
-        cmd = [sys.executable, "-u", args.training_script
-               ] + args.training_script_args
-        cmds.append(cmd)
-
-        if args.log_dir is not None:
-            os.system("mkdir -p {}".format(args.log_dir))
-            fn = open("%s/workerlog.%d" % (args.log_dir, i), "w")
-            log_fns.append(fn)
-            proc = subprocess.Popen(cmd, env=current_env, stdout=fn, stderr=fn)
+        cuda_visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
+        if cuda_visible_devices is None or cuda_visible_devices == "":
+            selected_gpus = [x.strip() for x in selected_gpus.split(',')]
         else:
-            proc = subprocess.Popen(cmd, env=current_env)
+            # change selected_gpus into relative values
+            # e.g. CUDA_VISIBLE_DEVICES=4,5,6,7; args.selected_gpus=4,5,6,7;
+            # therefore selected_gpus=0,1,2,3
+            cuda_visible_devices_list = cuda_visible_devices.split(',')
+            for x in selected_gpus.split(','):
+                assert x in cuda_visible_devices_list, "Can't find "\
+                "your selected_gpus %s in CUDA_VISIBLE_DEVICES[%s]."\
+                % (x, cuda_visible_devices)
+            selected_gpus = [
+                cuda_visible_devices_list.index(x.strip())
+                for x in selected_gpus.split(',')
+            ]
 
-        procs.append(proc)
-        ranks.append(rank)
-
-    try:
-        alive = True
-        error = False
-        error_rank = []
-        # wait all process finish or one error
-        while alive and not error:
-            alive = False
-            for rank, p in zip(ranks, procs):
-                ret = p.poll()
-                if ret is None:
-                    alive = True
-                elif ret != 0:
-                    error = True
-                    error_rank.append(rank)
-            time.sleep(1)
-
-        if error:
-            terminate_procs(procs)
-            exit(1)
-
-    except KeyboardInterrupt:
-        logger.warning("KeyboardInterrupt, exit")
-        terminate_procs(procs)
-        raise
-    except SystemExit:
-        logger.error(
-            "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log.".
-            format(nranks, error_rank))
-        terminate_procs(procs)
-        raise
-    except:
-        logger.error(
-            "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log.".
-            format(nranks, error_rank))
-        terminate_procs(procs)
-        raise
-    finally:
-        for fn in log_fns:
-            fn.close()
+    return selected_gpus
 
 
-def launch():
-    args = _parse_args()
-    if args.print_config:
-        _print_arguments(args)
-    start_procs(args)
+def launch(args):
+    # parse arguments, used for cloud-single-machine and local
+    selected_gpus = get_gpus(args.selected_gpus)
+    trainers_num = cloud_utils.get_trainers_num()
+    logger.debug("parsed from args trainerss_num:{} selected_gpus:{}".format(
+        trainers_num, selected_gpus))
+
+    cluster = None
+    pod = None
+
+    if args.use_paddlecloud and trainers_num != 1:
+        cluster, pod = cloud_utils.get_cloud_cluster(
+            args.cluster_node_ips, args.node_ip, args.started_port,
+            selected_gpus)
+        logger.info("get cluster from cloud:{}".format(cluster))
+    else:
+        cluster, pod = get_cluster_from_args(args, selected_gpus)
+        logger.info("get cluster from args:{}".format(cluster))
+
+    procs = start_local_trainers(
+        cluster,
+        pod,
+        training_script=args.training_script,
+        training_script_args=args.training_script_args,
+        log_dir=args.log_dir)
+
+    while True:
+        alive = watch_local_trainers(procs, cluster.trainers_nranks())
+
+        if not alive:
+            logger.info("Local procs complete, POD info:{}".format(pod))
+            break
+
+        time.sleep(3)
 
 
 if __name__ == "__main__":
-    launch()
+    args = _parse_args()
+
+    logger = get_logger(args.log_level)
+
+    if args.print_config:
+        _print_arguments(args)
+
+    launch(args)

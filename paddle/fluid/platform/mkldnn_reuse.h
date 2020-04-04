@@ -411,7 +411,7 @@ class ActivationMKLDNNHandler
  public:
   ActivationMKLDNNHandler(const std::vector<int64_t>& dims,
                           mkldnn::algorithm algorithm, float alpha, float beta,
-                          const MKLDNNMemoryFormat fmt, bool is_test,
+                          const MKLDNNMemoryFormat fmt,
                           const platform::MKLDNNDeviceContext& dev_ctx,
                           platform::Place cpu_place,
                           const std::string& unique_name)
@@ -422,10 +422,8 @@ class ActivationMKLDNNHandler
             platform::CreateKey(dims, unique_name)) {
     auto md = mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), fmt);
 
-    this->AcquireForwardPrimitiveDescriptor(
-        is_test ? mkldnn::prop_kind::forward_inference
-                : mkldnn::prop_kind::forward_training,
-        algorithm, md, alpha, beta);
+    this->AcquireForwardPrimitiveDescriptor(mkldnn::prop_kind::forward_training,
+                                            algorithm, md, alpha, beta);
   }
 
   ActivationMKLDNNHandler(const std::vector<int64_t>& dims,
@@ -978,12 +976,14 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
       constexpr float scale = 1.0f;
       post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
                                      fuse_alpha, fuse_beta);
-    }
-
-    if (fuse_activation == "relu6") {
+    } else if (fuse_activation == "relu6") {
       constexpr float scale = 1.0f;
       post_operations.append_eltwise(scale,
                                      mkldnn::algorithm::eltwise_bounded_relu,
+                                     fuse_alpha, fuse_beta);
+    } else if (fuse_activation == "swish") {
+      constexpr float scale = 1.0f;
+      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_swish,
                                      fuse_alpha, fuse_beta);
     }
     conv_attr.set_post_ops(post_operations);
@@ -1143,13 +1143,14 @@ static void SetDstMemoryQuantized(
     const framework::ExecutionContext& ctx, framework::Tensor* output,
     std::vector<int64_t> dst_tz, const mkldnn::engine& engine,
     std::shared_ptr<mkldnn::memory::desc>& dst_md,  // NOLINT
-    std::shared_ptr<mkldnn::memory>& dst_memory) {  // NOLINT
+    std::shared_ptr<mkldnn::memory>& dst_memory,    // NOLINT
+    MKLDNNMemoryFormat output_format) {
   T* output_data = output->mutable_data<T>(ctx.GetPlace());
   const size_t dst_dims = dst_tz.size();
   MKLDNNMemoryFormat dst_fmt;
   PADDLE_ENFORCE_LE(dst_dims, 5,
                     "Dst memory for quantization can not have dims > 5");
-  dst_fmt = platform::MKLDNNFormatForSize(dst_dims, MKLDNNMemoryFormat::nhwc);
+  dst_fmt = platform::MKLDNNFormatForSize(dst_dims, output_format);
 
   auto tmp_dst_md = platform::MKLDNNMemDesc(
       {dst_tz}, paddle::framework::ToMKLDNNDataType(

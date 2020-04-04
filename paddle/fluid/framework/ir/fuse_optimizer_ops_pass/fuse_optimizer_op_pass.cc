@@ -382,7 +382,7 @@ const VarDesc *FuseOptimizerOpPass::GetVarDescFromVarsInfo(
     const std::string &var_name) const {
   auto grad_iter = vars_info.find(var_name);
   PADDLE_ENFORCE_EQ(grad_iter != vars_info.end(), true,
-                    "The gradient varibale %s is not found.", var_name);
+                    "The gradient variable %s is not found.", var_name);
   PADDLE_ENFORCE_EQ(!grad_iter->second.empty(), true,
                     "The gradient var node %s is not found.", var_name);
   PADDLE_ENFORCE_NOT_NULL(grad_iter->second.front()->Var(),

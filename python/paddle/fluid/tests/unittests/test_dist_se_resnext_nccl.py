@@ -27,7 +27,6 @@ class TestDistSeResneXtNCCL(TestDistBase):
         self._use_reader_alloc = False
         self._nccl2_mode = True
 
-    @unittest.skip(reason="Skip unstable ci")
     def test_dist_train(self):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
@@ -45,7 +44,6 @@ class TestDistSeResneXtNCCLMP(TestDistBase):
         self._nccl2_mode = True
         self._mp_mode = True
 
-    @unittest.skip(reason="Skip unstable ci")
     def test_dist_train(self):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():

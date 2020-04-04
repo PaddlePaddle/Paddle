@@ -151,7 +151,7 @@ class SequenceSoftmaxGradOp : public framework::OperatorWithKernel {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(
     SequenceSoftmaxGradOpNoNeedBufferVarsInferer, "X");
 
 }  // namespace operators

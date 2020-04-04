@@ -131,12 +131,12 @@ class TestNCECase1SelectedRows(unittest.TestCase):
 
     @staticmethod
     def get_train_data(batch_size):
-        batchs = []
+        batches = []
         for i in range(batch_size):
             input = np.random.randn(batch_size, 10).astype(np.float32)
             labels = np.random.randint(0, 20, (batch_size, 1))
-            batchs.append([input, labels])
-        return batchs
+            batches.append([input, labels])
+        return batches
 
     def get_optimizer(self):
         # SGD optimizer

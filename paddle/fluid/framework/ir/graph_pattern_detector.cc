@@ -131,7 +131,7 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
 }
 
 // The intermediate Nodes can only link to the nodes inside the pattern, or this
-// subgraph will be droped.
+// subgraph will be dropped.
 void GraphPatternDetector::ValidateByNodeRole(
     std::vector<GraphPatternDetector::subgraph_t> *subgraphs) {
   std::vector<GraphPatternDetector::subgraph_t> result;
@@ -656,6 +656,17 @@ bool HasInput(Node *op, const std::string &argument) {
   return true;
 }
 
+bool HasOutput(Node *op, const std::string &argument) {
+  PADDLE_ENFORCE_EQ(
+      op->IsOp(), true,
+      platform::errors::InvalidArgument(
+          "First parameter of function HasOuput must be Node::Op"));
+  auto const &names = op->Op()->OutputNames();
+  if (std::find(names.begin(), names.end(), argument) == names.end())
+    return false;
+  return true;
+}
+
 bool IsNthOutput(Node *var, Node *op, const std::string &argument, size_t nth) {
   PADDLE_ENFORCE_EQ(
       var->IsVar(), true,
@@ -665,7 +676,8 @@ bool IsNthOutput(Node *var, Node *op, const std::string &argument, size_t nth) {
       op->IsOp(), true,
       platform::errors::InvalidArgument(
           "Second parameter of function IsNthOutput must be Node::Op"));
-  if (op->Op()->Output(argument).size() <= nth) return false;
+  if (!HasOutput(op, argument) || op->Op()->Output(argument).size() <= nth)
+    return false;
   return var->Name() == op->Op()->Output(argument)[nth];
 }
 
@@ -1510,6 +1522,25 @@ PDNode *patterns::FcDequant::operator()() {
   return dequant_out;
 }
 
+PDNode *patterns::DequantScale::operator()() {
+  // Create Operators
+  auto dequant_op =
+      pattern->NewNode(dequant_op_repr())->assert_is_op("dequantize");
+  auto scale_op = pattern->NewNode(scale_op_repr())->assert_is_op("scale");
+
+  auto dequant_out = pattern->NewNode(dequant_out_repr())
+                         ->AsOutput()
+                         ->assert_is_op_output("dequantize", "Output");
+  auto scale_out = pattern->NewNode(scale_out_repr())
+                       ->AsOutput()
+                       ->assert_is_op_output("scale", "Out");
+
+  dequant_op->LinksTo({dequant_out});
+  scale_op->LinksFrom({dequant_out}).LinksTo({scale_out});
+
+  return scale_out;
+}
+
 PDNode *patterns::PriorBox::operator()() {
   auto prior_box_op =
       pattern->NewNode(prior_box_op_repr())->assert_is_op("prior_box");
@@ -1803,6 +1834,35 @@ PDNode *patterns::MultipleQuantize::operator()() {
   return prev_out;
 }
 
+PDNode *patterns::MKLDNNInPlace::operator()() {
+  // TODO(jczaja): Enable more mkl-dnn ops e.g. activation, elementwise_add,
+  // batch_norm....
+  auto possible_inplace_op =
+      pattern->NewNode(inplace_to_be_op_repr())->assert_is_ops({"softmax"});
+
+  // TODO(jczaja): Enable more mkl-dnn ops e.g. activation, elementwise_add,
+  // batch_norm....
+  auto input = pattern->NewNode(inplace_to_be_op_in_repr())
+                   ->assert_is_ops_input({"softmax"})
+                   ->AsInput();
+  // TODO(jczaja): Enable more mkl-dnn ops e.g. activation, elementwise_add,
+  // batch_norm....
+  auto output = pattern->NewNode(inplace_to_be_op_out_repr())
+                    ->assert_is_ops_output({"softmax"})
+                    ->AsIntermediate();
+
+  auto next_op = pattern->NewNode(next_op_repr())->assert_is_op();
+
+  // Check if op is MKL-DNN enabled
+  possible_inplace_op->assert_op_attr("use_mkldnn", true);
+
+  possible_inplace_op->LinksTo({output});
+  possible_inplace_op->LinksFrom({input});
+  next_op->LinksFrom({output});
+
+  return possible_inplace_op;
+}
+
 // a -> transpose_op(1) -> transpose_out_a -> flatten_op(1) -> flatten_out_a
 // b -> transpose_op(2) -> transpose_out_b -> flatten_op(2) -> flatten_out_b
 // ...
@@ -1864,173 +1924,6 @@ PDNode *patterns::TransposeFlattenConcat::operator()(
 
   concat_op->LinksFrom(flatten_outs).LinksTo({concat_out});
   return concat_out;
-}
-
-PDNode *patterns::AnakinDetectionPattern::operator()(
-    std::vector<PDNode *> conv_in, int times, std::string priorbox_type,
-    bool is_reshape) {
-  // The times represents the repeat times of the
-  // {prior_box, prior_box_loc_out, flatten, prior_box_var_out, reshape}
-  const int kNumFields = 7;
-  const int kPriorBoxLocOffset = 1;
-  const int kReshape1Offset = 2;
-  const int kReshape1OutOffset = 3;
-  const int kPriorBoxVarOffset = 4;
-  const int kReshape2Offset = 5;
-  const int kReshape2OutOffset = 6;
-
-  const int kBoxCoderThirdInputOffset = times;
-  const int kMultiClassSecondInputNmsOffset = times + 1;
-
-  std::vector<PDNode *> nodes;
-  std::string op_after_priorbox = is_reshape ? "reshape2" : "flatten2";
-
-  for (int i = 0; i < times; i++) {
-    nodes.push_back(
-        pattern->NewNode(GetNodeName("prior_box" + std::to_string(i)))
-            ->assert_is_op(priorbox_type));
-    nodes.push_back(pattern->NewNode(GetNodeName("box_out" + std::to_string(i)))
-                        ->assert_is_op_output(priorbox_type, "Boxes")
-                        ->assert_is_op_input(op_after_priorbox, "X")
-                        ->AsIntermediate());
-    nodes.push_back(
-        pattern->NewNode(GetNodeName("reshape1" + std::to_string(i)))
-            ->assert_is_op(op_after_priorbox));
-
-    nodes.push_back(
-        pattern->NewNode(GetNodeName("reshape1_out" + std::to_string(i)))
-            ->assert_is_op_output(op_after_priorbox)
-            ->assert_is_op_nth_input("concat", "X", i)
-            ->AsIntermediate());
-
-    nodes.push_back(
-        pattern->NewNode(GetNodeName("box_var_out" + std::to_string(i)))
-            ->assert_is_op_output(priorbox_type, "Variances")
-            ->assert_is_op_input(op_after_priorbox, "X")
-            ->AsIntermediate());
-    nodes.push_back(
-        pattern->NewNode(GetNodeName("reshape2" + std::to_string(i)))
-            ->assert_is_op(op_after_priorbox));
-
-    nodes.push_back(
-        pattern->NewNode(GetNodeName("reshape2_out" + std::to_string(i)))
-            ->assert_is_op_output(op_after_priorbox)
-            ->assert_is_op_nth_input("concat", "X", i)
-            ->AsIntermediate());
-  }
-
-  auto concat_op1 = pattern->NewNode(GetNodeName("concat1"))
-                        ->assert_is_op("concat")
-                        ->assert_op_has_n_inputs("concat", times);
-  auto concat_out1 = pattern->NewNode(GetNodeName("concat1_out"))
-                         ->assert_is_op_output("concat")
-                         ->AsIntermediate();
-
-  auto concat_op2 = pattern->NewNode(GetNodeName("concat2"))
-                        ->assert_is_op("concat")
-                        ->assert_op_has_n_inputs("concat", times);
-  auto concat_out2 = pattern->NewNode(GetNodeName("concat2_out"))
-                         ->assert_is_op_output("concat")
-                         ->AsIntermediate();
-
-  auto box_coder_op = pattern->NewNode(GetNodeName("box_coder"))
-                          ->assert_is_op("box_coder")
-                          ->assert_op_has_n_inputs("box_coder", 3);
-
-  auto box_coder_out = pattern->NewNode(GetNodeName("box_coder_out"))
-                           ->assert_is_op_output("box_coder")
-                           ->AsIntermediate();
-
-  auto transpose_before_nms =
-      pattern->NewNode(GetNodeName("transpose_before_nms"))
-          ->assert_is_op("transpose2");
-
-  auto transpose_before_nms_out =
-      pattern->NewNode(GetNodeName("transpose_before_nms_out"))
-          ->assert_is_op_output("transpose2")
-          ->assert_is_op_input("multiclass_nms", "Scores")
-          ->AsIntermediate();
-
-  auto multiclass_nms_op = pattern->NewNode(GetNodeName("multiclass_nms"))
-                               ->assert_is_op("multiclass_nms")
-                               ->assert_op_has_n_inputs("multiclass_nms", 2);
-
-  auto multiclass_nms_out = pattern->NewNode(GetNodeName("multiclass_nms_out"))
-                                ->assert_is_op_output("multiclass_nms")
-                                ->AsOutput();
-
-  std::vector<PDNode *> reshape1_outs;
-  std::vector<PDNode *> reshape2_outs;
-
-  for (int i = 0; i < times; i++) {
-    conv_in[i]->AsInput();
-    // prior_box
-    nodes[i * kNumFields]->LinksFrom({conv_in[i]});
-    // prior_box box out
-    nodes[i * kNumFields + kPriorBoxLocOffset]->LinksFrom(
-        {nodes[i * kNumFields]});
-    // reshape
-    nodes[i * kNumFields + kReshape1Offset]->LinksFrom(
-        {nodes[i * kNumFields + kPriorBoxLocOffset]});
-    // reshape_out
-    nodes[i * kNumFields + kReshape1OutOffset]->LinksFrom(
-        {nodes[i * kNumFields + kReshape1Offset]});
-
-    nodes[i * kNumFields + kPriorBoxVarOffset]->LinksFrom(
-        {nodes[i * kNumFields]});
-    // reshape
-    nodes[i * kNumFields + kReshape2Offset]->LinksFrom(
-        {nodes[i * kNumFields + kPriorBoxVarOffset]});
-    // reshape_out
-    nodes[i * kNumFields + kReshape2OutOffset]->LinksFrom(
-        {nodes[i * kNumFields + kReshape2Offset]});
-
-    reshape1_outs.push_back(nodes[i * kNumFields + kReshape1OutOffset]);
-    reshape2_outs.push_back(nodes[i * kNumFields + kReshape2OutOffset]);
-  }
-
-  concat_op1->LinksFrom(reshape1_outs);
-  concat_op2->LinksFrom(reshape2_outs);
-  concat_out1->LinksFrom({concat_op1});
-  concat_out2->LinksFrom({concat_op2});
-
-  conv_in[kBoxCoderThirdInputOffset]->AsInput();
-  conv_in[kMultiClassSecondInputNmsOffset]->AsInput();
-
-  box_coder_op->LinksFrom(
-      {concat_out1, concat_out2, conv_in[kBoxCoderThirdInputOffset]});
-  box_coder_out->LinksFrom({box_coder_op});
-
-  transpose_before_nms->LinksFrom({conv_in[kMultiClassSecondInputNmsOffset]});
-  transpose_before_nms_out->LinksFrom({transpose_before_nms});
-
-  multiclass_nms_op->LinksFrom({box_coder_out, transpose_before_nms_out})
-      .LinksTo({multiclass_nms_out});
-
-  return multiclass_nms_out;
-}
-
-PDNode *patterns::FillConstantElementWiseMulFuse::operator()(
-    PDNode *elementwise_op_input) {
-  auto fill_constant =
-      pattern->NewNode(fill_constant_repr())->assert_is_op("fill_constant");
-
-  auto fill_constant_out = pattern->NewNode(fill_constant_out_repr())
-                               ->assert_is_op_output("fill_constant")
-                               ->assert_is_op_input("elementwise_mul", "Y")
-                               ->AsIntermediate();
-
-  auto elementwise_mul_op =
-      pattern->NewNode(elementwise_mul_repr())->assert_is_op("elementwise_mul");
-
-  auto elementwise_mul_out = pattern->NewNode(elementwise_mul_out_repr())
-                                 ->assert_is_op_output("elementwise_mul")
-                                 ->AsOutput();
-
-  fill_constant_out->LinksFrom({fill_constant});
-  elementwise_mul_op->LinksFrom({elementwise_op_input, fill_constant_out});
-  elementwise_mul_out->LinksFrom({elementwise_mul_op});
-  return elementwise_mul_out;
 }
 
 void patterns::QuantDequantOpFuse::operator()(PDNode *quant_op_input,

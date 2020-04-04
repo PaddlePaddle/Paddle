@@ -16,6 +16,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -34,10 +35,14 @@ using VarDescMetaMap =
     std::map<std::weak_ptr<VarBase>, std::unique_ptr<framework::VarDesc>,
              std::owner_less<std::weak_ptr<VarBase>>>;
 
+using VarBaseSet = std::set<std::shared_ptr<VarBase>,
+                            std::owner_less<std::shared_ptr<VarBase>>>;
+
 using TracedProgramTuple =
     std::tuple<std::unique_ptr<framework::ProgramDesc> /*program*/,
                std::vector<std::string> /*feed_var_names*/,
-               std::vector<std::string> /*fetch_var_names*/>;
+               std::vector<std::string> /*fetch_var_names*/,
+               std::vector<std::shared_ptr<VarBase>> /*persistable_vars*/>;
 
 class ProgramDescTracer {
   DISABLE_COPY_AND_ASSIGN(ProgramDescTracer);
@@ -58,11 +63,13 @@ class ProgramDescTracer {
   void Reset();
 
  private:
-  void InsertVarIfNotExist(const std::shared_ptr<VarBase> &new_var);
+  void InsertVarIfNotExist(const std::shared_ptr<VarBase> &new_var,
+                           bool is_input);
 
  private:
   std::vector<std::unique_ptr<OpDescMeta>> ops_;
   VarDescMetaMap vars_;
+  VarBaseSet non_exist_input_vars_;
 };
 
 }  // namespace jit
