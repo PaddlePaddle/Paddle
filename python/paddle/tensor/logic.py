@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.common_ops_import import *
-import paddle.fluid as fluid
+from ..fluid.layer_helper import LayerHelper
+from ..fluid.data_feeder import check_type
+from ..fluid.layers.layer_function_generator import templatedoc
 
 # TODO: define logic functions of a tensor  
 __all__ = [
@@ -31,7 +32,7 @@ __all__ = [
     #            'not_equal',
     #            'reduce_all',
     #            'reduce_any',
-    #            'allclose',
+    'allclose',
     #            'elementwise_equal',
     #            'isnan'
 ]
@@ -101,4 +102,87 @@ def equal(x, y, axis=-1, name=None):
                 'Y': [y]},
         attrs=attrs,
         outputs={'Out': [out]})
+    return out
+
+
+@templatedoc()
+def allclose(input, other, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
+    """
+    ${comment}
+
+    Args:
+        input(inputtype):{input_comment}.
+        other(othertype):{other_comment}.
+        rtol(rtoltype,optional):{rtol_comment}.
+        atol(atoltype,optional):{atol_comment}.
+        equal_nan(equalnantype,optional):{equal_nan_comment}.
+        name(STR, optional): The default value is None.
+                        Normally there is no need for user to set this property.
+                        For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        ${out_comment}.
+
+    Return Type:
+        ${out_type}
+        
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          import paddle.fluid as fluid
+          import numpy as np
+
+          use_cuda = fluid.core.is_compiled_with_cuda()
+
+          a = fluid.data(name="a", shape=[2], dtype='float32')
+          b = fluid.data(name="b", shape=[2], dtype='float32')
+
+          result = paddle.allclose(a, b, rtol=1e-05, atol=1e-08,
+                                  equal_nan=False, name="ignore_nan")
+          result_nan = paddle.allclose(a, b, rtol=1e-05, atol=1e-08,
+                                      equal_nan=True, name="equal_nan")
+
+          place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+          exe = fluid.Executor(place)
+          exe.run(fluid.default_startup_program())
+
+          x = np.array([10000., 1e-07]).astype("float32")
+          y = np.array([10000.1, 1e-08]).astype("float32")
+          result_v, result_nan_v = exe.run(
+              feed={'a': x, 'b': y},
+              fetch_list=[result, result_nan])
+          print(result_v, result_nan_v)
+          # Output: (array([False]), array([False]))
+
+          x = np.array([10000., 1e-08]).astype("float32")
+          y = np.array([10000.1, 1e-09]).astype("float32")
+          result_v, result_nan_v = exe.run(
+              feed={'a': x, 'b': y},
+              fetch_list=[result, result_nan])
+          print(result_v, result_nan_v)
+          # Output: (array([ True]), array([ True]))
+
+          x = np.array([1.0, float('nan')]).astype("float32")
+          y = np.array([1.0, float('nan')]).astype("float32")
+          result_v, result_nan_v = exe.run(
+              feed={'a': x, 'b': y},
+              fetch_list=[result, result_nan])
+          print(result_v, result_nan_v)
+          # Output: (array([False]), array([ True]))
+    """
+
+    check_type(rtol, 'rtol', float, 'allclose')
+    check_type(atol, 'atol', float, 'allclose')
+    check_type(equal_nan, 'equal_nan', bool, 'allclose')
+
+    helper = LayerHelper("allclose", **locals())
+    out = helper.create_variable_for_type_inference(dtype='bool')
+
+    inputs = {'Input': input, 'Other': other}
+    outputs = {'Out': out}
+    attrs = {'rtol': rtol, 'atol': atol, 'equal_nan': equal_nan}
+    helper.append_op(
+        type='allclose', inputs=inputs, outputs=outputs, attrs=attrs)
+
     return out

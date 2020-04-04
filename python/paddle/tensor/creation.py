@@ -32,11 +32,11 @@ __all__ = [
     #            'fill_constant', 
     #            'get_tensor_from_selected_rows', 
     'linspace',
-    #            'ones', 
-    #            'ones_like', 
+    'ones',
+    'ones_like',
     #            'range', 
-    #            'zeros', 
-    #            'zeros_like', 
+    'zeros',
+    'zeros_like',
     #            'arrange',
     #            'eye',
     'full',
@@ -181,6 +181,218 @@ def linspace(start, stop, num, dtype, out=None, device=None, name=None):
                     'Num': num},
             outputs={'Out': [out]})
 
+    return out
+
+
+def ones(shape, dtype=None, out=None, device=None):
+    """
+    The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 1.
+
+    Args:
+        shape(tuple|list): Shape of output tensor.
+        dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor, it supports
+            bool, float16, float32, float64, int32 and int64.
+        out(Variable, optional): Optional output which can be any created 
+            Variable that meets the requirements to store the result of operation.
+            if out is None, a new Varibale will be create to store the result.
+        device(str, optional): Which device to run the operator. The :attr:`device` must be
+            None,'cpu', 'gpu'. If :attr:`device` is None, it will be choose the device that the user set in 
+            the paddle program. Default value is False.
+
+    Returns:
+        Variable: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 1.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          data = paddle.ones(shape=[3, 2], dtype='float32') # [[1., 1.], [1., 1.], [1., 1.]]
+          data = paddle.ones(shape=[2, 2], dtype='float32', device='cpu') # [[1., 1.], [1., 0.]]
+    """
+    check_dtype(dtype, 'create data type',
+                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+                'zeros')
+
+    if device is not None:
+        if device not in ['cpu', 'gpu']:
+            raise ValueError(
+                "The value of 'device' in zeros_op must be cpu or gpu, but received %s."
+                % (device))
+        with fluid.device_guard(device):
+            return fill_constant(value=1.0, shape=shape, dtype=dtype, out=out)
+    return fill_constant(value=1.0, shape=shape, dtype=dtype, out=out)
+
+
+def ones_like(input, dtype=None, device=None, name=None):
+    """
+    This function creates a ones tensor which has identical shape and dtype 
+    with `input`.
+
+    Args:
+        input(Variable): The input tensor which specifies shape and dtype.The dtype of input can be 
+            float32, float64, int32, int64.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type can be set bool, float32, float64, int32, int64. 
+            The default value is None, the dtype is the same as input.
+        device(str, optional): Which device to run the operator. The :attr:`device` must be
+            None, 'cpu', 'gpu'. If :attr:`device` is None, it will be choose the device that the user set in 
+            the paddle program. Default value is None.
+        name(str, optional): The name of output variable, normally there is no need for user to set this this property. 
+            Default value is None, the framework set the name of output variable.  
+    Returns:
+        out(Variable): The tensor variable storing the output.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          import paddle.fluid as fluid
+
+          x = fluid.layers.data(name='x', dtype='float32', shape=[3], append_batch_size=False)
+          data = paddle.ones_like(x) # data=[1.0, 1.0, 1.0]
+          data1 = paddle.ones_like(input=x, device="gpu") data1=[1.0, 1.0. 1.0]
+
+    """
+
+    helper = LayerHelper("zeros_like", **locals())
+
+    attrs = {"value": 1.0}
+    var_dtype = None
+    if dtype is not None:
+        check_dtype(
+            dtype, 'create data type',
+            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            'zeros_like')
+        var_dtype = convert_np_dtype_to_dtype_(dtype)
+        attrs["dtype"] = var_dtype
+    else:
+        var_dtype = input.dtype
+
+    out = helper.create_variable_for_type_inference(dtype=var_dtype)
+
+    if device is not None:
+        if device not in ['cpu', 'gpu']:
+            raise ValueError(
+                "The value of 'device' in zeros_op must be cpu or gpu, but received %s."
+                % (device))
+        with fluid.device_guard(device):
+            helper.append_op(
+                type='fill_any_like',
+                inputs={'X': [input]},
+                attrs=attrs,
+                outputs={'Out': [out]})
+            return out
+    helper.append_op(
+        type='fill_any_like',
+        inputs={'X': [input]},
+        attrs=attrs,
+        outputs={'Out': [out]})
+    out.stop_gradient = True
+    return out
+
+
+def zeros(shape, dtype, out=None, device=None):
+    """
+    The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
+
+    Args:
+        shape(tuple|list): Shape of output tensor.
+        dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor, it supports
+            bool, float16, float32, float64, int32 and int64.
+        out(Variable, optional): Optional output which can be any created 
+            Variable that meets the requirements to store the result of operation.
+            if out is None, a new Varibale will be create to store the result.
+        device(str, optional): Which device to run the operator. The :attr:`device` must be
+            None,'cpu', 'gpu'. If :attr:`device` is None, it will be choose the device that the user set in 
+            the paddle program. Default value is False.
+
+    Returns:
+        Variable: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 0.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          data = paddle.zeros(shape=[3, 2], dtype='float32') # [[0., 0.], [0., 0.], [0., 0.]]
+          data = paddle.zeros(shape=[2, 2], dtype='float32', device='cpu') # [[0., 0.], [0., 0.]]
+    """
+    check_dtype(dtype, 'create data type',
+                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+                'zeros')
+    if device is not None:
+        if device not in ['cpu', 'gpu']:
+            raise ValueError(
+                "The value of 'device' in zeros_op must be cpu or gpu, but received %s."
+                % (device))
+        with fluid.device_guard(device):
+            return fill_constant(value=0.0, shape=shape, dtype=dtype, out=out)
+
+    return fill_constant(value=0.0, shape=shape, dtype=dtype, out=out)
+
+
+def zeros_like(input, dtype=None, device=None, name=None):
+    """
+    This function creates a zeros tensor which has identical shape and dtype 
+    with `input`.
+
+    Args:
+        input(Variable): The input tensor which specifies shape and dtype.The dtype of input can be 
+            bool, float32, float64, int32, int64.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type can be set bool, float32, float64, int32, int64. 
+            The default value is None, the dtype is the same as input.
+        device(str, optional): Which device to run the operator. The :attr:`device` must be
+            None, 'cpu', 'gpu'. If :attr:`device` is None, it will be choose the device that the user set in 
+            the paddle program. Default value is None.
+        name(str, optional): The name of output variable, normally there is no need for user to set this this property. 
+            Default value is None, the framework set the name of output variable.  
+
+    Returns:
+        out(Variable): The tensor variable storing the output.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          import paddle.fluid as fluid
+
+          x = fluid.layers.data(name='x', dtype='float32', shape=[3], append_batch_size=False)
+          data = paddle.ones_like(x) # data=[1.0, 1.0, 1.0]
+          data1 = paddle.ones_like(input=x, device="gpu") data1=[1.0, 1.0. 1.0]
+
+    """
+
+    helper = LayerHelper("zeros_like", **locals())
+
+    attrs = {"value": 0.0}
+    var_dtype = None
+    if dtype is not None:
+        check_dtype(dtype, 'create data type',
+                    ['bool', 'float32', 'float64', 'int32', 'int64'],
+                    'zeros_like')
+        var_dtype = convert_np_dtype_to_dtype_(dtype)
+        attrs["dtype"] = var_dtype
+    else:
+        var_dtype = input.dtype
+
+    out = helper.create_variable_for_type_inference(dtype=var_dtype)
+
+    if device is not None:
+        if device not in ['cpu', 'gpu']:
+            raise ValueError(
+                "The value of 'device' in zeros_op must be cpu or gpu, but received %s."
+                % (device))
+        with fluid.device_guard(device):
+            helper.append_op(
+                type='fill_any_like',
+                inputs={'X': [input]},
+                attrs=attrs,
+                outputs={'Out': [out]})
+            return out
+    helper.append_op(
+        type='fill_any_like',
+        inputs={'X': [input]},
+        attrs=attrs,
+        outputs={'Out': [out]})
+    out.stop_gradient = True
     return out
 
 
