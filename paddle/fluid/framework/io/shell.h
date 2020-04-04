@@ -71,6 +71,13 @@ extern std::string shell_get_command_output(const std::string& cmd,
                                             int time_out = -1,
                                             int sleep_inter = -1,
                                             bool print_cmd = false);
+#if !defined(_WIN32) && !defined(__APPLE__)
+extern void popen_bidirectional_internal(const char* command,
+                                         FILE*& fp_read,               // NOLINT
+                                         FILE*& fp_write, pid_t& pid,  // NOLINT
+                                         bool read,                    // NOLINT
+                                         bool write);
+#endif
 
 }  // namespace framework
 }  // namespace paddle
