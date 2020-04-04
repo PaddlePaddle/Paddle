@@ -147,17 +147,21 @@ class Conv2D(layers.Layer):
     Examples:
         .. code-block:: python
 
-          from paddle.fluid.dygraph.base import to_variable
-          import paddle.fluid as fluid
-          from paddle.fluid.dygraph import Conv2D
           import numpy as np
+          from paddle import fluid
+          import paddle.fluid.dygraph as dg
+          from paddle import nn
 
-          data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
-          with fluid.dygraph.guard():
-              conv2d = Conv2D(3, 2, 3)
-              data = to_variable(data)
-              conv = conv2d(data)
-
+          x = np.random.uniform(-1, 1, (2, 4, 8, 8)).astype('float32')
+          place = fluid.CPUPlace()
+          with dg.guard(place):
+              x_var = dg.to_variable(x)
+              conv = nn.Conv2D(4, 6, (3, 3))
+              y_var = conv(x_var)
+              y_np = y_var.numpy()
+              print(y_np.shape)
+          
+          # (2, 6, 6, 6)
     """
 
     def __init__(self,
@@ -341,15 +345,21 @@ class Conv2DTranspose(layers.Layer):
     Examples:
        .. code-block:: python
 
-          import paddle.fluid as fluid
           import numpy as np
+          from paddle import fluid
+          import paddle.fluid.dygraph as dg
+          from paddle import nn
 
-          with fluid.dygraph.guard():
-              data = np.random.random((3, 32, 32, 5)).astype('float32')
-              conv2DTranspose = fluid.dygraph.nn.Conv2DTranspose(
-                    num_channels=32, num_filters=2, filter_size=3)
-              ret = conv2DTranspose(fluid.dygraph.base.to_variable(data))
-
+          x = np.random.uniform(-1, 1, (2, 4, 8, 8)).astype('float32')
+          place = fluid.CPUPlace()
+          with dg.guard(place):
+              x_var = dg.to_variable(x)
+              conv = nn.Conv2DTranspose(4, 6, (3, 3))
+              y_var = conv(x_var)
+              y_np = y_var.numpy()
+              print(y_np.shape)
+          
+          # (2, 6, 10, 10)
     """
 
     def __init__(self,
@@ -524,15 +534,21 @@ class Conv3D(layers.Layer):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          import numpy
+          import numpy as np
+          from paddle import fluid
+          import paddle.fluid.dygraph as dg
+          from paddle import nn
 
-          with fluid.dygraph.guard():
-              data = numpy.random.random((5, 3, 12, 32, 32)).astype('float32')
-              conv3d = fluid.dygraph.nn.Conv3D(
-                    num_channels=3, num_filters=2, filter_size=3, act="relu")
-              ret = conv3d(fluid.dygraph.base.to_variable(data))
-
+          x = np.random.uniform(-1, 1, (2, 4, 8, 8, 8)).astype('float32')
+          place = fluid.CPUPlace()
+          with dg.guard(place):
+              x_var = dg.to_variable(x)
+              conv = nn.Conv3D(4, 6, (3, 3, 3))
+              y_var = conv(x_var)
+              y_np = y_var.numpy()
+              print(y_np.shape)
+          
+          # (2, 6, 6, 6, 6)
     """
 
     def __init__(self,
@@ -732,18 +748,21 @@ class Conv3DTranspose(layers.Layer):
     Examples:
        .. code-block:: python
 
-         import paddle.fluid as fluid
-         import numpy
+          import numpy as np
+          from paddle import fluid
+          import paddle.fluid.dygraph as dg
+          from paddle import nn
 
-         with fluid.dygraph.guard():
-             data = numpy.random.random((5, 3, 12, 32, 32)).astype('float32')
-             conv3dTranspose = fluid.dygraph.nn.Conv3DTranspose(
-                    num_channels=3,
-                    num_filters=12,
-                    filter_size=12,
-                    use_cudnn=False)
-             ret = conv3dTranspose(fluid.dygraph.base.to_variable(data))
-
+          x = np.random.uniform(-1, 1, (2, 4, 8, 8, 8)).astype('float32')
+          place = fluid.CPUPlace()
+          with dg.guard(place):
+              x_var = dg.to_variable(x)
+              conv = nn.Conv3DTranspose(4, 6, (3, 3, 3))
+              y_var = conv(x_var)
+              y_np = y_var.numpy()
+              print(y_np.shape)
+          
+          # (2, 6, 10, 10, 10)
     """
 
     def __init__(self,
