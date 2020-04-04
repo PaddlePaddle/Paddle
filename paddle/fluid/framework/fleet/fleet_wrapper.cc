@@ -932,12 +932,13 @@ void FleetWrapper::SaveModelOneTable(const uint64_t table_id,
 #endif
 }
 
-void FleetWrapper::SaveModelOneTablePrefix(
-    const uint64_t table_id, const std::string& path, const int mode,
-    const std::string& prefix) {
+void FleetWrapper::SaveModelOneTablePrefix(const uint64_t table_id,
+                                           const std::string& path,
+                                           const int mode,
+                                           const std::string& prefix) {
 #ifdef PADDLE_WITH_PSLIB
-  auto ret = pslib_ptr_->_worker_ptr->save(
-      table_id, path, std::to_string(mode), prefix);
+  auto ret = pslib_ptr_->_worker_ptr->save(table_id, path, std::to_string(mode),
+                                           prefix);
   ret.wait();
   if (ret.get() != 0) {
     LOG(ERROR) << "save model (with prefix) of table id: " << table_id

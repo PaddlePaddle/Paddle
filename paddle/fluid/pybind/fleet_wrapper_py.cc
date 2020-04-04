@@ -78,8 +78,7 @@ void BindFleetWrapper(py::module* m) {
            &framework::FleetWrapper::SetClient2ClientConfig)
       .def("set_pull_local_thread_num",
            &framework::FleetWrapper::SetPullLocalThreadNum)
-      .def("save_model_one_table",
-           &framework::FleetWrapper::SaveModelOneTable)
+      .def("save_model_one_table", &framework::FleetWrapper::SaveModelOneTable)
       .def("save_model_one_table_with_prefix",
            &framework::FleetWrapper::SaveModelOneTablePrefix)
       .def("copy_table", &framework::FleetWrapper::CopyTable)
