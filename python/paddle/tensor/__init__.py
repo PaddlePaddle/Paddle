@@ -158,7 +158,7 @@ from .math import tanh  #DEFINE_ALIAS
 from .manipulation import flip  #DEFINE_ALIAS
 # from .manipulation import unbind   #DEFINE_ALIAS
 # from .manipulation import roll   #DEFINE_ALIAS
-# from .search import argmax   #DEFINE_ALIAS
+from .search import argmax  #DEFINE_ALIAS
 # from .search import argmin   #DEFINE_ALIAS
 # from .search import argsort   #DEFINE_ALIAS
 # from .search import has_inf   #DEFINE_ALIAS

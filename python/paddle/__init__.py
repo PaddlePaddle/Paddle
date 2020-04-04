@@ -182,7 +182,7 @@ from .tensor.math import tanh  #DEFINE_ALIAS
 from .tensor.manipulation import flip  #DEFINE_ALIAS
 # from .tensor.manipulation import unbind   #DEFINE_ALIAS
 # from .tensor.manipulation import roll   #DEFINE_ALIAS
-# from .tensor.search import argmax   #DEFINE_ALIAS
+from .tensor.search import argmax  #DEFINE_ALIAS
 # from .tensor.search import argmin   #DEFINE_ALIAS
 # from .tensor.search import argsort   #DEFINE_ALIAS
 # from .tensor.search import has_inf   #DEFINE_ALIAS
