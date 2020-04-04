@@ -178,7 +178,7 @@ from .tensor.logic import equal  #DEFINE_ALIAS
 # from .tensor.manipulation import unique_with_counts   #DEFINE_ALIAS
 # from .tensor.manipulation import unsqueeze   #DEFINE_ALIAS
 # from .tensor.manipulation import unstack   #DEFINE_ALIAS
-# from .tensor.manipulation import flip   #DEFINE_ALIAS
+from .tensor.manipulation import flip  #DEFINE_ALIAS
 # from .tensor.manipulation import unbind   #DEFINE_ALIAS
 # from .tensor.manipulation import roll   #DEFINE_ALIAS
 # from .tensor.search import argmax   #DEFINE_ALIAS
