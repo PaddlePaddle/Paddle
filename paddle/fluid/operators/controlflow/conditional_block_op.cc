@@ -56,7 +56,9 @@ class ConditionalBlockOp : public ConditionalOp {
 
     if (need_run) {
       auto *scope_var = scope.FindVar(Output(ConditionalOp::kScope));
-      PADDLE_ENFORCE(scope_var != nullptr, "Must set scope");
+      PADDLE_ENFORCE_NE(scope_var, nullptr,
+                        platform::errors::InvalidArgument(
+                            "Scope must be set in conditional_block_op"));
       auto *scopes = scope_var->GetMutable<std::vector<framework::Scope *>>();
       scopes->resize(1);
       scopes->front() = &scope.NewScope();
@@ -245,7 +247,10 @@ class ConditionalBlockGradOp : public ConditionalOp {
 class ConditionalBlockGradInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInputs(ConditionalOp::kCondition));
+    PADDLE_ENFORCE_EQ(
+        context->HasInputs(ConditionalOp::kCondition), true,
+        platform::errors::InvalidArgument(
+            "Condition must be set in conditional_block_grad_op"));
     if (context->HasInputs(ConditionalOp::kInputs) &&
         context->HasOutputs(framework::GradVarName(ConditionalOp::kInputs))) {
       context->SetOutputsDim(framework::GradVarName(ConditionalOp::kInputs),
