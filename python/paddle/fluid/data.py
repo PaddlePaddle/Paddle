@@ -103,10 +103,6 @@ def data(name, shape, dtype='float32', lod_level=0):
 
     check_type(name, 'name', (six.binary_type, six.text_type), 'data')
     check_type(shape, 'shape', (list, tuple), 'data')
-    check_dtype(dtype, 'dtype', [
-        'bool', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32',
-        'int64', 'uint8'
-    ], 'data')
 
     shape = list(shape)
     for i in six.moves.range(len(shape)):

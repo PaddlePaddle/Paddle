@@ -37,13 +37,6 @@ class TestApiDataError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_shape_type)
 
-            # 3. The 'dtype' in fluid.data must be
-            # [bool, float16, float32, float64, int8, int16, int32, int64, uint8].
-            def test_dtype():
-                fluid.data(name='data2', shape=[1], dtype="int")
-
-            self.assertRaises(ValueError, test_dtype)
-
     def test_layers_data(self):
         with program_guard(Program(), Program()):
 
@@ -58,13 +51,6 @@ class TestApiDataError(unittest.TestCase):
                 layers.data(name='data1', shape=2, dtype="bool")
 
             self.assertRaises(TypeError, test_shape_type)
-
-            # 3. The 'dtype' in layers.data must be
-            # [bool, float16, float32, float64, int8, int16, int32, int64, uint8].
-            def test_dtype():
-                layers.data(name='data2', shape=[1], dtype="int")
-
-            self.assertRaises(ValueError, test_dtype)
 
 
 if __name__ == "__main__":
