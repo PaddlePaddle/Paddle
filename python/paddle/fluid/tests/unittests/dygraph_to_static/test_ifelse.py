@@ -146,6 +146,12 @@ class TestDygraphIfElseWithAndOr4(TestDygraphIfElse):
         self.dyfunc = if_with_and_or_4
 
 
+class TestDygraphIfElseWithClassVar(TestDygraphIfElse):
+    def setUp(self):
+        self.x = np.random.random([10, 16]).astype('float32')
+        self.dyfunc = if_with_class_var
+
+
 class TestDygraphIfElseNet(unittest.TestCase):
     """
     TestCase for the transformation from control flow `if/else`
