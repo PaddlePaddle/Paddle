@@ -112,10 +112,10 @@ class ArgMinMaxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dtype = ctx.Attr<int>("dtype");
-    auto& x = *(ctx.Input<framework::LoDTensor>("X"));
     if (dtype < 0) {
       framework::VisitDataType(
-          static_cast<framework::proto::VarType::Type>(x.type()),
+          static_cast<framework::proto::VarType::Type>(
+              framework::proto::VarType::INT64),
           VisitDataArgMinMaxFunctor<DeviceContext, T, EnumArgMinMaxValue>(ctx));
       return;
     }
