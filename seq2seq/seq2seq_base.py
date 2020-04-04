@@ -86,7 +86,7 @@ class Encoder(Layer):
             param_attr=ParamAttr(initializer=UniformInitializer(
                 low=-init_scale, high=init_scale)))
         self.stack_lstm = RNN(EncoderCell(num_layers, embed_dim, hidden_size,
-                                          init_scale),
+                                          dropout_prob, init_scale),
                               is_reverse=False,
                               time_major=False)
 
@@ -114,7 +114,7 @@ class Decoder(Layer):
             param_attr=ParamAttr(initializer=UniformInitializer(
                 low=-init_scale, high=init_scale)))
         self.stack_lstm = RNN(DecoderCell(num_layers, embed_dim, hidden_size,
-                                          init_scale),
+                                          dropout_prob, init_scale),
                               is_reverse=False,
                               time_major=False)
         self.output_layer = Linear(

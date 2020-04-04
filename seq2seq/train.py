@@ -17,8 +17,7 @@ import os
 import six
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import time
-import contextlib
+import random
 from functools import partial
 
 import numpy as np
@@ -34,16 +33,17 @@ from seq2seq_base import BaseModel, CrossEntropyCriterion
 from seq2seq_attn import AttentionModel
 from model import Input, set_device
 from callbacks import ProgBarLogger
-from metrics import Metric
-
-
-class PPL(Metric):
-    pass
+from reader import Seq2SeqDataset, Seq2SeqBatchSampler, SortType, prepare_train_input
 
 
 def do_train(args):
     device = set_device("gpu" if args.use_gpu else "cpu")
-    fluid.enable_dygraph(device)  #if args.eager_run else None
+    fluid.enable_dygraph(device) if args.eager_run else None
+
+    if args.enable_ce:
+        fluid.default_main_program().random_seed = 102
+        fluid.default_startup_program().random_seed = 102
+        args.shuffle = False
 
     # define model
     inputs = [
@@ -58,6 +58,45 @@ def do_train(args):
     ]
     labels = [Input([None, None, 1], "int64", name="label"), ]
 
+    # def dataloader
+    data_loaders = [None, None]
+    data_prefixes = [args.train_data_prefix, args.eval_data_prefix
+                     ] if args.eval_data_prefix else [args.train_data_prefix]
+    for i, data_prefix in enumerate(data_prefixes):
+        dataset = Seq2SeqDataset(
+            fpattern=data_prefix + "." + args.src_lang,
+            trg_fpattern=data_prefix + "." + args.tar_lang,
+            src_vocab_fpath=args.vocab_prefix + "." + args.src_lang,
+            trg_vocab_fpath=args.vocab_prefix + "." + args.tar_lang,
+            token_delimiter=None,
+            start_mark="<s>",
+            end_mark="</s>",
+            unk_mark="<unk>")
+        (args.src_vocab_size, args.trg_vocab_size, bos_id, eos_id,
+         unk_id) = dataset.get_vocab_summary()
+        batch_sampler = Seq2SeqBatchSampler(
+            dataset=dataset,
+            use_token_batch=False,
+            batch_size=args.batch_size,
+            pool_size=args.batch_size * 20,
+            sort_type=SortType.POOL,
+            shuffle=args.shuffle)
+        data_loader = DataLoader(
+            dataset=dataset,
+            batch_sampler=batch_sampler,
+            places=device,
+            feed_list=None if fluid.in_dygraph_mode() else
+            [x.forward() for x in inputs + labels],
+            collate_fn=partial(
+                prepare_train_input,
+                bos_id=bos_id,
+                eos_id=eos_id,
+                pad_id=eos_id),
+            num_workers=0,
+            return_list=True)
+        data_loaders[i] = data_loader
+    train_loader, eval_loader = data_loaders
+
     model = AttentionModel(args.src_vocab_size, args.tar_vocab_size,
                            args.hidden_size, args.hidden_size, args.num_layers,
                            args.dropout)
@@ -69,39 +108,12 @@ def do_train(args):
         CrossEntropyCriterion(),
         inputs=inputs,
         labels=labels)
-
-    batch_size = 32
-    src_seq_len = 10
-    trg_seq_len = 12
-    iter_num = 10
-
-    def random_generator():
-        for i in range(iter_num):
-            src = np.random.randint(2, args.src_vocab_size,
-                                    (batch_size, src_seq_len)).astype("int64")
-            src_length = np.random.randint(1, src_seq_len,
-                                           (batch_size, )).astype("int64")
-            trg = np.random.randint(2, args.tar_vocab_size,
-                                    (batch_size, trg_seq_len)).astype("int64")
-            trg_length = np.random.randint(1, trg_seq_len,
-                                           (batch_size, )).astype("int64")
-            label = np.random.randint(
-                1, trg_seq_len, (batch_size, trg_seq_len, 1)).astype("int64")
-            yield src, src_length, trg, trg_length, label
-
-    model.fit(train_data=random_generator, log_freq=1)
-    exit(0)
-
-    data_loaders = [None, None]
-    data_files = [args.training_file, args.validation_file
-                  ] if args.validation_file else [args.training_file]
-    train_loader, eval_loader = data_loaders
-
     model.fit(train_data=train_loader,
-              eval_data=None,
+              eval_data=eval_loader,
               epochs=1,
               eval_freq=1,
               save_freq=1,
+              log_freq=1,
               verbose=2)
 
 

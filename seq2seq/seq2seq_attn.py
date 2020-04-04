@@ -41,9 +41,10 @@ class AttentionLayer(Layer):
             bias_attr=bias)
 
     def forward(self, hidden, encoder_output, encoder_padding_mask):
-        query = self.input_proj(hidden)
+        # query = self.input_proj(hidden)
+        encoder_output = self.input_proj(encoder_output)
         attn_scores = layers.matmul(
-            layers.unsqueeze(query, [1]), encoder_output, transpose_y=True)
+            layers.unsqueeze(hidden, [1]), encoder_output, transpose_y=True)
         if encoder_padding_mask is not None:
             attn_scores = layers.elementwise_add(attn_scores,
                                                  encoder_padding_mask)
@@ -73,7 +74,9 @@ class DecoderCell(RNNCell):
                     BasicLSTMCell(
                         input_size=input_size + hidden_size
                         if i == 0 else hidden_size,
-                        hidden_size=hidden_size)))
+                        hidden_size=hidden_size,
+                        param_attr=ParamAttr(initializer=UniformInitializer(
+                            low=-init_scale, high=init_scale)))))
         self.attention_layer = AttentionLayer(hidden_size)
 
     def forward(self,
@@ -107,8 +110,8 @@ class Decoder(Layer):
             size=[vocab_size, embed_dim],
             param_attr=ParamAttr(initializer=UniformInitializer(
                 low=-init_scale, high=init_scale)))
-        self.lstm_attention = RNN(DecoderCell(num_layers, embed_dim,
-                                              hidden_size, init_scale),
+        self.lstm_attention = RNN(DecoderCell(
+            num_layers, embed_dim, hidden_size, dropout_prob, init_scale),
                                   is_reverse=False,
                                   time_major=False)
         self.output_layer = Linear(
