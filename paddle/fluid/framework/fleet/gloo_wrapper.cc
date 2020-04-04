@@ -10,7 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
-#include <thread>
+#include <thread>  // NOLINT
 #include <vector>
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/platform/errors.h"
@@ -91,21 +91,22 @@ std::vector<char> HdfsStore::get(const std::string& key) {
                     paddle::platform::errors::NotFound(
                         "HdfsStore::get, path not exists: " + path));
 
-  int read_status = retry_do_func([&path, &result]() {
-    result.clear();
-    int err_no = 0;
-    {
-      std::shared_ptr<FILE> fp = paddle::framework::fs_open_read(path, &err_no, "");
-      char buffer = '\0';
-      size_t read_count = 0;
-      while (fread(&buffer, 1, 1, fp.get()) == 1) {
-        ++read_count;
-        result.push_back(buffer);
-      }
-      VLOG(3) << "HdfsStore::get read_count " << read_count;
-    }
-    return err_no;
-  }, 5, wait_sleep_ms_);
+  int read_status = retry_do_func(
+      [&path, &result]() {
+        result.clear();
+        int err_no = 0;
+        {
+          std::shared_ptr<FILE> fp =
+              paddle::framework::fs_open_read(path, &err_no, "");
+          char buffer = '\0';
+          size_t read_count = 0;
+          while (fread(&buffer, 1, 1, fp.get()) == 1) {
+            ++read_count;
+            result.push_back(buffer);
+          }
+          VLOG(3) << "HdfsStore::get read_count " << read_count;
+        }
+        return err_no; }, 5, wait_sleep_ms_);
   PADDLE_ENFORCE_EQ(read_status, 0,
                     paddle::platform::errors::Fatal(
                         "HdfsStore::get, path read faied: " + path));
@@ -186,6 +187,7 @@ bool HdfsStore::Check(const std::vector<std::string>& keys,
   return true;
 }
 
+#ifdef PADDLE_WITH_GLOO
 void ParallelConnectContext::connectFullMesh(
     Store& store, std::shared_ptr<transport::Device>& dev) {
   std::vector<char> allBytes;
@@ -230,7 +232,7 @@ void ParallelConnectContext::connectFullMesh(
   device_ = dev;
   transportContext_ = std::move(transportContext);
 }
-
+#endif
 }  // namespace rendezvous
 }  // namespace gloo
 
