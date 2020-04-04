@@ -265,8 +265,6 @@ class PostTrainingQuantization(object):
             the program of quantized model.
         '''
         self._load_model_data()
-        if self._is_full_quantize:
-            self._check_full_quantization()
         self._collect_target_varnames()
         self._set_activation_persistable()
 
@@ -351,15 +349,6 @@ class PostTrainingQuantization(object):
         elif self._batch_generator is not None:
             self._data_loader.set_batch_generator(
                 self._batch_generator, places=self._place)
-
-    def _check_full_quantization(self):
-        unsupport_op_type = set()
-        for op in self._program.global_block().ops:
-            if op.type not in self._support_quantize_op_type:
-                unsupport_op_type.add(op.type)
-        if len(unsupport_op_type) != 0:
-            _logger.warning("Some ops are not supported for quantization: {}".
-                            format(unsupport_op_type))
 
     def _collect_target_varnames(self):
         '''

@@ -1154,8 +1154,10 @@ All parameter, weight, gradient are variables in Paddle.
       prog_with_targets.MutableBlock(t[0])->Op(t[1])->SetIsTarget(true);
     }
     proto::ProgramDesc pruned_desc;
-    Prune(*prog_with_targets.Proto(), feeded_var_names, &pruned_desc);
-    return new ProgramDesc(pruned_desc);
+    auto pruned_origin_block_id_map =
+        Prune(*prog_with_targets.Proto(), feeded_var_names, &pruned_desc);
+    return std::make_tuple(ProgramDesc(pruned_desc),
+                           pruned_origin_block_id_map);
   });
   m.def("prune_backward",
         [](const framework::ProgramDesc &program) {
@@ -1492,8 +1494,10 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
-  m.def("run_cmd", [](const std::string &cmd) -> const std::string {
-    return paddle::framework::shell_get_command_output(cmd);
+  m.def("run_cmd", [](const std::string &cmd, int time_out = -1,
+                      int sleep_inter = -1) -> const std::string {
+    return paddle::framework::shell_get_command_output(cmd, time_out,
+                                                       sleep_inter);
   });
 #ifdef PADDLE_WITH_CUDA
   m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
