@@ -274,8 +274,8 @@ class API_TestMm(unittest.TestCase):
 
         with fluid.dygraph.guard():
             with fluid.program_guard(fluid.Program()):
-                np_x = np.random.rand(3, 4).astype(np.float32)
-                np_y = np.random.rand(4, 3).astype(np.float32)
+                np_x = np.random.rand(1, 2)
+                np_y = np.random.rand(2, 1)
                 x = fluid.dygraph.to_variable(np_x)
                 y = fluid.dygraph.to_variable(np_y)
                 z = paddle.mm(x, y)
