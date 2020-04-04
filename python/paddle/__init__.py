@@ -76,7 +76,7 @@ from .tensor.logic import equal  #DEFINE_ALIAS
 # from .tensor.logic import not_equal   #DEFINE_ALIAS
 # from .tensor.logic import reduce_all   #DEFINE_ALIAS
 # from .tensor.logic import reduce_any   #DEFINE_ALIAS
-# from .tensor.logic import allclose   #DEFINE_ALIAS
+from .tensor.logic import allclose  #DEFINE_ALIAS
 # from .tensor.logic import elementwise_equal   #DEFINE_ALIAS
 # from .tensor.logic import isnan   #DEFINE_ALIAS
 # from .tensor..tensor import Tensor   #DEFINE_ALIAS
@@ -92,7 +92,7 @@ from .tensor.logic import equal  #DEFINE_ALIAS
 # from .tensor.math import abs   #DEFINE_ALIAS
 # from .tensor.math import acos   #DEFINE_ALIAS
 # from .tensor.math import asin   #DEFINE_ALIAS
-# from .tensor.math import atan   #DEFINE_ALIAS
+from .tensor.math import atan  #DEFINE_ALIAS
 # from .tensor.math import ceil   #DEFINE_ALIAS
 # from .tensor.math import cos   #DEFINE_ALIAS
 # from .tensor.math import cumsum   #DEFINE_ALIAS
@@ -121,13 +121,13 @@ from .tensor.logic import equal  #DEFINE_ALIAS
 # from .tensor.math import rsqrt   #DEFINE_ALIAS
 # from .tensor.math import scale   #DEFINE_ALIAS
 # from .tensor.math import sign   #DEFINE_ALIAS
-# from .tensor.math import sin   #DEFINE_ALIAS
-# from .tensor.math import sqrt   #DEFINE_ALIAS
+from .tensor.math import sin  #DEFINE_ALIAS
+from .tensor.math import sqrt  #DEFINE_ALIAS
 # from .tensor.math import square   #DEFINE_ALIAS
 # from .tensor.math import stanh   #DEFINE_ALIAS
 # from .tensor.math import sum   #DEFINE_ALIAS
 # from .tensor.math import sums   #DEFINE_ALIAS
-# from .tensor.math import tanh   #DEFINE_ALIAS
+from .tensor.math import tanh  #DEFINE_ALIAS
 # from .tensor.math import elementwise_sum   #DEFINE_ALIAS
 # from .tensor.math import max   #DEFINE_ALIAS
 # from .tensor.math import min   #DEFINE_ALIAS
