@@ -43,7 +43,6 @@ class MeshgridOp : public framework::OperatorWithKernel {
 
     for (size_t i = 0; i < inputs_num; i++) {
       out_shape[i] = inputs_dims[i][0];
-      VLOG(3) << "out shape " << out_shape[i];
     }
     auto out_dims = framework::make_ddim(std::vector<int>(out_shape));
     std::vector<framework::DDim> outs_dims(outputs_num, out_dims);
@@ -128,13 +127,11 @@ class MeshgridGradOpMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("meshgrid_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X", false));
-    return op;
   }
 };
 
@@ -145,7 +142,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(meshgrid, ops::MeshgridOp, ops::MeshgridOpMaker,
                   ops::MeshgridGradOpMaker<paddle::framework::OpDesc>,
                   ops::MeshgridGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(meshgrid_grad, ops::MeshgridGradOp)
+REGISTER_OPERATOR(meshgrid_grad, ops::MeshgridGradOp);
 REGISTER_OP_CPU_KERNEL(
     meshgrid, ops::MeshgridKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MeshgridKernel<paddle::platform::CPUDeviceContext, double>,
