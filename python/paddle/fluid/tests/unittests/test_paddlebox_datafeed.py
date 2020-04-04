@@ -74,9 +74,9 @@ class TestDataFeed(unittest.TestCase):
             data = "1 1702f830eee19501ad7429505f714c1d 1 1 1 9\n"
             data += "1 1702f830eee19502ad7429505f714c1d 1 2 1 8\n"
             data += "1 1702f830eee19503ad7429505f714c1d 1 3 1 7\n"
-            data += "1 1702f830eee22201ad7429505f714c2d 1 4 1 6\n"
-            data += "1 1702f830eee19101ad7429505f714c3d 1 5 1 5\n"
-            data += "1 1702f830eee19102ad7429505f714c3d 1 6 1 4\n"
+            data += "1 1702f830eee0de01ad7429505f714c2d 1 4 1 6\n"
+            data += "1 1702f830eee0df01ad7429505f714c3d 1 5 1 5\n"
+            data += "1 1702f830eee0df02ad7429505f714c3d 1 6 1 4\n"
             f.write(data)
         with open("test_run_with_dump_b.txt", "w") as f:
             data = "1 1702f830fff22201ad7429505f715c1d 1 1 1 1\n"
