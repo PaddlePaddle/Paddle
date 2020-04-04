@@ -91,7 +91,6 @@ cases = {
     'success': {
         (2, 2, 3, 4, 5): [-100, -3, -1, 0, 2, 4, 100],  # normal shape
         (10, 10, 1, 1): [-100, -1, 0, 1, 100],  # small size of matrix
-        # (1024, 1024): [-1023, -857, 0, 505, 1023], # large size of matrix
     },
     'diagonal: TypeError': {
         (20, 20): [
