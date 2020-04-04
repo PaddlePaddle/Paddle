@@ -736,17 +736,19 @@ class TestPow_factor_tensor(TestActivation):
         out_3 = paddle.pow(x, factor_1, out=res)
         out_4 = paddle.pow(x, factor_1, name='pow_res')
         out_5 = paddle.pow(x, factor_1, out=res, name='pow_res')
+        out_6 = paddle.pow(x, factor_2)
         self.assertEqual(('pow_res' in out_4.name), True)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
-        res_1, res_2, res_3, res = exe.run(
+        res_1, res_2, res_3, res, res_6 = exe.run(
             fluid.default_main_program(),
             feed={"x": input},
-            fetch_list=[out_1, out_2, out_3, res])
+            fetch_list=[out_1, out_2, out_3, res, out_6])
 
         assert np.array_equal(res_1, np.power(input, 2))
         assert np.array_equal(res_2, np.power(input, 3))
         assert np.array_equal(res_3, res)
+        assert np.array_equal(res_6, np.power(input, 3))
 
 
 class TestSTanh(TestActivation):
