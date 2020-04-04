@@ -505,11 +505,20 @@ void GRPCClient::Proceed() {
                  << " meets grpc error, error_code:" << c->status_.error_code()
                  << " error_message:" << c->status_.error_message()
                  << " error_details:" << c->status_.error_details();
-      {
-        std::lock_guard<std::mutex> lk(sync_mutex_);
-        ok_ = false;
+
+      if (c->GetVarHandlePtr()->method() == kPrefetchRPC) {
+        VLOG(0) << c->GetVarHandlePtr()->String()
+                << " meets grpc error, error_code:" << c->status_.error_code()
+                << " should retry!";
+        c->GetVarHandlePtr()->should_retry = true;
+        c->Finish(false);
+      } else {
+        {
+          std::lock_guard<std::mutex> lk(sync_mutex_);
+          ok_ = false;
+        }
+        c->Finish(false);
       }
-      c->Finish(false);
     } else if (c->status_.error_code() == grpc::StatusCode::UNAVAILABLE) {
       VLOG(3) << c->GetVarHandlePtr()->String()
               << " meets grpc error, error_code:" << c->status_.error_code()

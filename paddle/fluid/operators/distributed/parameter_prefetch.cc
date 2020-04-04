@@ -113,13 +113,16 @@ void prefetch_core(
           context.Attr<int>("trainer_id"));
 
   std::vector<distributed::VarHandlePtr> rets;
+
+  int64_t prefetch_timeout = 60000;
+
   for (size_t i = 0; i < in_var_names.size(); i++) {
     if (NeedSend(*local_scope.get(), in_var_names[i])) {
       VLOG(3) << "sending " << in_var_names[i] << " to " << tables[i].second
               << " to get " << out_var_names[i] << " back";
       rets.push_back(rpc_client->AsyncPrefetchVar(
           tables[i].second, actual_ctx, *local_scope.get(), in_var_names[i],
-          out_var_names[i], tables[i].first));
+          out_var_names[i], tables[i].first, prefetch_timeout));
     } else {
       VLOG(3) << "don't send no-initialied variable: " << out_var_names[i];
     }
