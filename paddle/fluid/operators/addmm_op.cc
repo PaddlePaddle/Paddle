@@ -149,12 +149,18 @@ class AddMMGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
-                      "Input(Input) should not be null");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) should not be null");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Y"), true, "Input(Y) should not be null");
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      "Input(Out@GRAD) should not be null");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Input"), true,
+        platform::errors::NotFound("Input(Input) should not be null"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"), true,
+        platform::errors::NotFound("Input(X) should not be null"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Y"), true,
+        platform::errors::NotFound("Input(Y) should not be null"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput(framework::GradVarName("Out")), true,
+        platform::errors::NotFound("Input(Out@GRAD) should not be null"));
     auto input_dims = ctx->GetInputDim("Input");
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
