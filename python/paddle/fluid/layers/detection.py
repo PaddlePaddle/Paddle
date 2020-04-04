@@ -691,11 +691,7 @@ def iou_similarity(x, y, box_normalized=True, name=None):
             #             [0.       ]] with shape: [2, 1]
     """
     helper = LayerHelper("iou_similarity", **locals())
-    if name is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        out = helper.create_variable(
-            name=name, dtype=x.dtype, persistable=False)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(
         type="iou_similarity",
@@ -827,12 +823,8 @@ def box_coder(prior_box,
     """
     helper = LayerHelper("box_coder", **locals())
 
-    if name is None:
-        output_box = helper.create_variable_for_type_inference(
-            dtype=prior_box.dtype)
-    else:
-        output_box = helper.create_variable(
-            name=name, dtype=prior_box.dtype, persistable=False)
+    output_box = helper.create_variable_for_type_inference(
+        dtype=prior_box.dtype)
 
     inputs = {"PriorBox": prior_box, "TargetBox": target_box}
     attrs = {
@@ -876,11 +868,7 @@ def polygon_box_transform(input, name=None):
             out = fluid.layers.polygon_box_transform(input)
     """
     helper = LayerHelper("polygon_box_transform", **locals())
-    if name is None:
-        output = helper.create_variable_for_type_inference(dtype=input.dtype)
-    else:
-        output = helper.create_variable(
-            name=name, dtype=prior_box.input, persistable=False)
+    output = helper.create_variable_for_type_inference(dtype=input.dtype)
 
     helper.append_op(
         type="polygon_box_transform",
@@ -979,11 +967,7 @@ def yolov3_loss(x,
         raise TypeError(
             "Attr use_label_smooth of yolov3_loss must be a bool value")
 
-    if name is None:
-        loss = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        loss = helper.create_variable(
-            name=name, dtype=x.dtype, persistable=False)
+    loss = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     objectness_mask = helper.create_variable_for_type_inference(dtype='int32')
     gt_match_mask = helper.create_variable_for_type_inference(dtype='int32')
