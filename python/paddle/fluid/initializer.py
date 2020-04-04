@@ -130,7 +130,7 @@ class Initializer(object):
 
 class ConstantInitializer(Initializer):
     """Implements the constant initializer
-    
+
     Args:
         value (float32): constant value to initialize the variable 
         force_cpu (bool): place for initialization, if set true, initialization will
