@@ -550,8 +550,9 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
                 If ``shape`` is an Variable, it should be an 1-D Tensor .
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output tensor which can
             be float16, float32, float64, int32, int64.
-        value(float): The constant value used to initialize the Tensor to be created.
-        force_cpu(True): data should be on CPU if it's true, default value is False.
+        value(float16|float32|float64|int32|int64|Variable): The constant value used to initialize 
+        the Tensor to be created.force_cpu(True): data should be on CPU if it's true,
+        default value is False. If value is an Variable, it should be an 1-D Tensor.
         out(Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
@@ -580,11 +581,12 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
           shape = fluid.layers.fill_constant([1,2], "int32", 2) # shape=[2,2]
           data4 = fluid.layers.fill_constant(shape=shape, dtype='bool', value=True) # data4=[[True,True],[True,True]]
     """
-    attrs = {'value': float(value), 'force_cpu': force_cpu}
     inputs = {}
+    attrs = {'force_cpu': force_cpu}
     if isinstance(value, Variable):
         inputs['ValueTensor'] = value
     else:
+        attrs['value'] = float(value)
         if convert_dtype(dtype) in ['int64', 'int32']:
             attrs['str_value'] = str(int(value))
         else:
@@ -599,6 +601,13 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
             shape = list(shape.numpy().astype(int))
         if out is None:
             out = _varbase_creator(dtype=dtype)
+
+        if isinstance(value, Variable):
+            if convert_dtype(dtype) in ['int64', 'int32']:
+                attrs['str_value'] = str(int(value.numpy()))
+            else:
+                attrs['str_value'] = str(float(value.numpy()))
+
         core.ops.fill_constant(out, 'value',
                                float(value), 'force_cpu', force_cpu, 'dtype',
                                out.dtype, 'str_value', attrs['str_value'],
@@ -611,7 +620,6 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
                 'fill_constant')
     check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
-    attrs = {'value': float(value), 'force_cpu': force_cpu}
     inputs = utils._get_shape_tensor_inputs(
         inputs=inputs,
         helper=helper,

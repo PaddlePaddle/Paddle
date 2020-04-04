@@ -103,7 +103,7 @@ class FillConstantKernel : public framework::OpKernel<T> {
       auto *value_tensor = ctx.Input<framework::Tensor>("ValueTensor");
       const T *tensor_data = value_tensor->data<T>();
       framework::Tensor cpu_tensor;
-      if (platform::is_gpu_place(tensor->place())) {
+      if (platform::is_gpu_place(value_tensor->place())) {
         TensorCopySync(*value_tensor, platform::CPUPlace(), &cpu_tensor);
         tensor_data = cpu_tensor.data<T>();
       }
