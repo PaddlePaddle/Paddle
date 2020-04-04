@@ -70,7 +70,7 @@ int retry_do_func(std::function<int(void)> func, uint32_t max_try_time,
   for (uint32_t i = 0; i < max_try_time; ++i) {
     ret = func();
     if (ret == 0) {
-       break;
+      break;
     }
     usleep(retry_interval_ms * 1000);
   }
@@ -83,9 +83,9 @@ std::vector<char> HdfsStore::get(const std::string& key) {
 #ifdef PADDLE_WITH_GLOO
   // block until key is set
   wait({key});
-  bool ret = retry_do_func([&path]() {
-    return paddle::framework::fs_exists(path) ? 0 : -1;
-  }, 5, wait_sleep_ms_);
+  bool ret = retry_do_func(
+      [&path]() { return paddle::framework::fs_exists(path) ? 0 : -1; }, 5,
+      wait_sleep_ms_);
   bool is_exists = (ret == 0);
   PADDLE_ENFORCE_EQ(is_exists, true,
                     paddle::platform::errors::NotFound(

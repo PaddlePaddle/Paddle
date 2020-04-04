@@ -159,8 +159,8 @@ class DownpourServer(Server):
                     'sparse_delta_keep_days', 16)
                 table.accessor.downpour_accessor_param.delete_after_unseen_days = strategy.get(
                     'sparse_delete_after_unseen_days', 30)
-                table.accessor.downpour_accessor_param.ssd_unseenday_threshold = strategy.get(
-                    'sparse_ssd_unseenday_threshold', 1)
+                #table.accessor.downpour_accessor_param.ssd_unseenday_threshold = strategy.get(
+                #    'sparse_ssd_unseenday_threshold', 1)
                 table.accessor.downpour_accessor_param.show_click_decay_rate = strategy.get(
                     'sparse_show_click_decay_rate', 0.98)
                 table.accessor.downpour_accessor_param.delete_threshold = strategy.get(

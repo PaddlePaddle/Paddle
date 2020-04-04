@@ -592,9 +592,14 @@ class GeneralRoleMaker(RoleMakerBase):
                 role = Role.WORKER
                 current_id = int(os.environ["PADDLE_TRAINER_ID"])
                 if current_id == 0 and len(self._http_ip_port) != 0:
+                    size_d = {
+                        "trainer": len(worker_endpoints),
+                        "pserver": len(eplist),
+                        "all": len(worker_endpoints) + len(eplist)
+                    }
                     # child process for http server
                     self._http_server = Process(
-                        target=self.__start_kv_server, args=(self._http_server_d,))
+                        target=self.__start_kv_server, args=(self._http_server_d, size_d))
                     self._http_server.daemon = True
                     # set running status to True
                     self._http_server_d["running"] = True
@@ -932,12 +937,12 @@ class GeneralRoleMaker(RoleMakerBase):
                         return intf_name
         return "lo"
 
-    def __start_kv_server(self, http_server_d):
+    def __start_kv_server(self, http_server_d, size_d):
         from paddle.fluid.incubate.fleet.utils.http_server import KVServer
-        http_server = KVServer(int(self._http_ip_port[1]))
+        http_server = KVServer(int(self._http_ip_port[1]), size_d)
         http_server.start()
         wait_seconds = 5
-        while http_server_d.get("running", False):
+        while http_server_d.get("running", False) and not http_server.shoud_stop():
             time.sleep(wait_seconds)
         http_server.stop()
 
