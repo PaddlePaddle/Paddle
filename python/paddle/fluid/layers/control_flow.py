@@ -26,7 +26,7 @@ import numpy
 import warnings
 import six
 from functools import reduce, partial
-from ..data_feeder import convert_dtype, check_variable_and_dtype
+from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type
 from ... import compat as cpt
 from ..backward import _infer_var_data_type_shape_
 
@@ -1724,6 +1724,9 @@ def shrink_memory(x, i, table):
         usage.
     """
     helper = LayerHelper('shrink_memory', **locals())
+    check_type(x, 'x', (Variable), 'shrink_memory')
+    check_type(i, 'i', (Variable), 'shrink_memory')
+    check_type(table, 'table', (Variable), 'shrink_memory')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='shrink_rnn_memory',
