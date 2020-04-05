@@ -75,7 +75,7 @@ __all__ = [
 #            'log1p',
 #            'erf',
 #            'addcmul',
-#            'addmm']
+           'addmm'
 ]
 # yapf: enable.
 
@@ -648,6 +648,7 @@ for func in [
         skip_attrs_set={"x_data_format", "y_data_format", "axis"
                         }) + """\n""" + str(func.__doc__)
 
+
 def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
     """
     Computes the sum of tensor elements over the given dimension.
@@ -747,6 +748,7 @@ def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
         outputs={'Out': out},
         attrs=attrs)
     return out
+
 
 @templatedoc(op_type="sum")
 def elementwise_sum(inputs, name=None):
@@ -929,4 +931,68 @@ def mm(input, mat2, out=None, name=None):
     helper.append_op(
         type='matmul', inputs={'X': input,
                                'Y': mat2}, outputs={'Out': out})
+    return out
+
+
+def addmm(input, x, y, alpha=1.0, beta=1.0, out=None):
+    """
+    **addmm**
+
+    This operator is used to perform matrix multiplication for input $x$ and $y$.
+    $input$ is added to the final result.
+    The equation is:
+
+    ..  math::
+        Out = alpha * x * y + beta * input
+
+    $Input$, $x$ and $y$ can carry the LoD (Level of Details) information, or not. But the output only shares the LoD information with input $input$.
+
+    Args:
+        input (Variable): The input Tensor/LoDTensor to be added to the final result.
+        x (Variable): The first input Tensor/LoDTensor for matrix multiplication.
+        y (Variable): The second input Tensor/LoDTensor for matrix multiplication.
+        beta (float): Coefficient of $input$.
+        alpha (float): Coefficient of $x*y$.
+        name (str, optional): Name of the output. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default is None.
+
+    Returns:
+        Variable(Tensor/LoDTensor): The output Tensor/LoDTensor of addmm op.
+
+    Examples:
+        ..  code-block:: python
+
+            import numpy as np
+            import paddle
+            import paddle.fluid as fluid
+
+            input = fluid.data(name='input', shape=[5, 4], dtype='float32')
+            x = fluid.data(name='x', shape=[5,2], dtype='float32')
+            y = fluid.data(name='y', shape=[2,4], dtype='float32')
+            out = paddle.addmm( input=input, x=x, y=y, alpha=1.0, beta=1.0 )
+
+            data_x = np.random.rand(5, 2).astype(np.float32)
+            data_y = np.random.rand(2, 4).astype(np.float32)
+            data_input = np.random.rand(5, 4).astype(np.float32)
+
+            place =  fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            results = exe.run(fluid.default_main_program(), fetch_list=[out], feed={"input": data_input, 'x': data_x, "y": data_y})
+            print( np.array(results[0]) )
+
+    """
+    inputs = {'Input': input, "X": x, "Y": y}
+    attrs = {'Alpha': alpha, 'Beta': beta}
+
+    helper = LayerHelper("addmm", **locals())
+    check_variable_and_dtype(x, 'Input', ['float32', 'float64'], 'addmm')
+    check_variable_and_dtype(x, 'X', ['float32', 'float64'], 'addmm')
+    check_variable_and_dtype(y, 'Y', ['float32', 'float64'], 'addmm')
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=input.dtype, persistable=False)
+
+    helper.append_op(
+        type="addmm", inputs=inputs, attrs=attrs, outputs={"Out": out})
     return out
