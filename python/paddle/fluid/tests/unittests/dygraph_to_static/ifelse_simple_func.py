@@ -233,3 +233,20 @@ def if_with_and_or_4(x, y=None):
                                                  mean_res.numpy()[0] > 0):
         x = x - 1
     return x
+
+
+def if_with_class_var(x, y=None):
+    class Foo(object):
+        def __init__(self):
+            self.a = 1
+            self.b = 2
+
+    foo = Foo()
+    batch_size = fluid.layers.shape(x)
+    mean_res = fluid.layers.mean(x)
+
+    if batch_size[0] > foo.a:
+        x = x + foo.b
+    else:
+        x = x - foo.b
+    return x

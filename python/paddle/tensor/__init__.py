@@ -32,8 +32,8 @@ from .creation import linspace  #DEFINE_ALIAS
 from .creation import full  #DEFINE_ALIAS
 # from .creation import linspace   #DEFINE_ALIAS
 from .creation import full_like  #DEFINE_ALIAS
-# from .creation import triu   #DEFINE_ALIAS
-# from .creation import tril   #DEFINE_ALIAS
+from .creation import triu  #DEFINE_ALIAS
+from .creation import tril  #DEFINE_ALIAS
 # from .creation import meshgrid   #DEFINE_ALIAS
 # from .stat import mean   #DEFINE_ALIAS
 # from .stat import reduce_mean   #DEFINE_ALIAS
@@ -86,9 +86,9 @@ from .math import atan  #DEFINE_ALIAS
 # from .math import floor   #DEFINE_ALIAS
 # from .math import increment   #DEFINE_ALIAS
 # from .math import log   #DEFINE_ALIAS
-# from .math import mul   #DEFINE_ALIAS
+from .math import mul  #DEFINE_ALIAS
 # from .math import multiplex   #DEFINE_ALIAS
-# from .math import pow   #DEFINE_ALIAS
+from .math import pow  #DEFINE_ALIAS
 # from .math import reciprocal   #DEFINE_ALIAS
 # from .math import reduce_max   #DEFINE_ALIAS
 # from .math import reduce_min   #DEFINE_ALIAS
@@ -109,8 +109,8 @@ from .math import tanh  #DEFINE_ALIAS
 # from .math import max   #DEFINE_ALIAS
 # from .math import min   #DEFINE_ALIAS
 # from .math import mm   #DEFINE_ALIAS
-# from .math import div   #DEFINE_ALIAS
-# from .math import add   #DEFINE_ALIAS
+from .math import div  #DEFINE_ALIAS
+from .math import add  #DEFINE_ALIAS
 # from .math import atan   #DEFINE_ALIAS
 # from .math import logsumexp   #DEFINE_ALIAS
 # from .math import inverse   #DEFINE_ALIAS
