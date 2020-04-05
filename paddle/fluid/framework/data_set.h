@@ -66,7 +66,7 @@ class Dataset {
   virtual void SetParseInsId(bool parse_ins_id) = 0;
   virtual void SetParseContent(bool parse_content) = 0;
   virtual void SetParseLogKey(bool parse_logkey) = 0;
-  virtual void SetEnablePvPredict(bool enable_pv_predict) = 0;
+  virtual void SetEnablePvMerge(bool enable_pv_merge) = 0;
   virtual void SetMergeBySid(bool is_merge) = 0;
   // set merge by ins id
   virtual void SetMergeByInsId(int merge_size) = 0;
@@ -125,9 +125,9 @@ class Dataset {
   // merge by ins id
   virtual void MergeByInsId() = 0;
   // merge pv instance
-  virtual void Merge_Pv_Instance() = 0;
+  virtual void PreprocessInstance() = 0;
   // divide pv instance
-  virtual void Divide_Pv_Instance() = 0;
+  virtual void PostprocessInstance() = 0;
   // only for untest
   virtual void SetCurrentPhase(int current_phase) = 0;
   virtual void GenerateLocalTablesUnlock(int table_id, int feadim,
@@ -173,7 +173,7 @@ class DatasetImpl : public Dataset {
   virtual void SetParseInsId(bool parse_ins_id);
   virtual void SetParseContent(bool parse_content);
   virtual void SetParseLogKey(bool parse_logkey);
-  virtual void SetEnablePvPredict(bool enable_pv_predict);
+  virtual void SetEnablePvMerge(bool enable_pv_merge);
   virtual void SetMergeBySid(bool is_merge);
 
   virtual void SetMergeByInsId(int merge_size);
@@ -210,8 +210,8 @@ class DatasetImpl : public Dataset {
   virtual int64_t GetPvDataSize();
   virtual int64_t GetShuffleDataSize();
   virtual void MergeByInsId() {}
-  virtual void Merge_Pv_Instance() {}
-  virtual void Divide_Pv_Instance() {}
+  virtual void PreprocessInstance() {}
+  virtual void PostprocessInstance() {}
   virtual void SetCurrentPhase(int current_phase) {}
   virtual void GenerateLocalTablesUnlock(int table_id, int feadim,
                                          int read_thread_num,
@@ -263,8 +263,8 @@ class DatasetImpl : public Dataset {
   bool parse_content_;
   bool parse_logkey_;
   bool merge_by_sid_;
-  bool enable_pv_predict_;  // True means to merge pv
-  int current_phase_;       // 1 join, 0 update
+  bool enable_pv_merge_;  // True means to merge pv
+  int current_phase_;     // 1 join, 0 update
   size_t merge_size_;
   bool slots_shuffle_fea_eval_ = false;
   bool gen_uni_feasigns_ = false;
@@ -279,8 +279,8 @@ class MultiSlotDataset : public DatasetImpl<Record> {
  public:
   MultiSlotDataset() {}
   virtual void MergeByInsId();
-  virtual void Merge_Pv_Instance();
-  virtual void Divide_Pv_Instance();
+  virtual void PreprocessInstance();
+  virtual void PostprocessInstance();
   virtual void SetCurrentPhase(int current_phase);
   virtual void GenerateLocalTablesUnlock(int table_id, int feadim,
                                          int read_thread_num,

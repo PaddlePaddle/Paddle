@@ -234,7 +234,7 @@ InMemoryDataFeed<T>::InMemoryDataFeed() {
   this->parse_ins_id_ = false;
   this->parse_content_ = false;
   this->parse_logkey_ = false;
-  this->enable_pv_predict_ = false;
+  this->enable_pv_merge_ = false;
   this->current_phase_ = 1;  // 1:join ;0:update
   this->input_channel_ = nullptr;
   this->output_channel_ = nullptr;
@@ -348,8 +348,8 @@ void InMemoryDataFeed<T>::SetParseLogKey(bool parse_logkey) {
 }
 
 template <typename T>
-void InMemoryDataFeed<T>::SetEnablePvPredict(bool enable_pv_predict) {
-  enable_pv_predict_ = enable_pv_predict;
+void InMemoryDataFeed<T>::SetEnablePvMerge(bool enable_pv_merge) {
+  enable_pv_merge_ = enable_pv_merge;
 }
 
 template <typename T>
@@ -1261,7 +1261,7 @@ bool PaddleBoxDataFeed::Start() {
 #ifdef _LINUX
   int phase = GetCurrentPhase();  // join: 1, update: 0
   this->CheckSetFileList();
-  if (enable_pv_predict_ && phase == 1) {
+  if (enable_pv_merge_ && phase == 1) {
     // join phase : input_pv_channel to output_pv_channel
     if (output_pv_channel_->Size() == 0 && input_pv_channel_->Size() != 0) {
       std::vector<PvInstance> data;
@@ -1285,7 +1285,7 @@ int PaddleBoxDataFeed::Next() {
 #ifdef _LINUX
   int phase = GetCurrentPhase();  // join: 1, update: 0
   this->CheckStart();
-  if (enable_pv_predict_ && phase == 1) {
+  if (enable_pv_merge_ && phase == 1) {
     // join phase : output_pv_channel to consume_pv_channel
     CHECK(output_pv_channel_ != nullptr);
     CHECK(consume_pv_channel_ != nullptr);
@@ -1386,7 +1386,7 @@ void PaddleBoxDataFeed::AssignFeedVar(const Scope& scope) {
   MultiSlotInMemoryDataFeed::AssignFeedVar(scope);
   // set rank offset memory
   int phase = GetCurrentPhase();  // join: 1, update: 0
-  if (enable_pv_predict_ && phase == 1) {
+  if (enable_pv_merge_ && phase == 1) {
     rank_offset_ = scope.FindVar(rank_offset_name_)->GetMutable<LoDTensor>();
   }
 }

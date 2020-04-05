@@ -159,7 +159,7 @@ class DataFeed {
   virtual void SetParseInsId(bool parse_ins_id) {}
   virtual void SetParseContent(bool parse_content) {}
   virtual void SetParseLogKey(bool parse_logkey) {}
-  virtual void SetEnablePvPredict(bool enable_pv_predict) {}
+  virtual void SetEnablePvMerge(bool enable_pv_merge) {}
   virtual void SetCurrentPhase(int current_phase) {}
   virtual void SetFileListMutex(std::mutex* mutex) {
     mutex_for_pick_file_ = mutex;
@@ -295,7 +295,7 @@ class InMemoryDataFeed : public DataFeed {
   virtual void SetParseInsId(bool parse_ins_id);
   virtual void SetParseContent(bool parse_content);
   virtual void SetParseLogKey(bool parse_logkey);
-  virtual void SetEnablePvPredict(bool enable_pv_predict);
+  virtual void SetEnablePvMerge(bool enable_pv_merge);
   virtual void SetCurrentPhase(int current_phase);
   virtual void LoadIntoMemory();
 
@@ -309,7 +309,7 @@ class InMemoryDataFeed : public DataFeed {
   bool parse_ins_id_;
   bool parse_content_;
   bool parse_logkey_;
-  bool enable_pv_predict_;
+  bool enable_pv_merge_;
   int current_phase_{-1};  // only for untest
   std::ifstream file_;
   std::shared_ptr<FILE> fp_;

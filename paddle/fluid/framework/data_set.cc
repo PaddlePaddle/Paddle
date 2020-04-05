@@ -47,7 +47,7 @@ DatasetImpl<T>::DatasetImpl() {
   fleet_send_sleep_seconds_ = 0;
   merge_by_insid_ = false;
   merge_by_sid_ = true;
-  enable_pv_predict_ = false;
+  enable_pv_merge_ = false;
   merge_size_ = 2;
   parse_ins_id_ = false;
   parse_content_ = false;
@@ -147,8 +147,8 @@ void DatasetImpl<T>::SetMergeBySid(bool is_merge) {
 }
 
 template <typename T>
-void DatasetImpl<T>::SetEnablePvPredict(bool enable_pv_predict) {
-  enable_pv_predict_ = enable_pv_predict;
+void DatasetImpl<T>::SetEnablePvMerge(bool enable_pv_merge) {
+  enable_pv_merge_ = enable_pv_merge;
 }
 
 template <typename T>
@@ -619,10 +619,10 @@ void DatasetImpl<T>::CreateReaders() {
     readers_[i]->SetParseInsId(parse_ins_id_);
     readers_[i]->SetParseContent(parse_content_);
     readers_[i]->SetParseLogKey(parse_logkey_);
-    readers_[i]->SetEnablePvPredict(enable_pv_predict_);
+    readers_[i]->SetEnablePvMerge(enable_pv_merge_);
     // Notice: it is only valid for untest of test_paddlebox_datafeed.
-    // In fact, it does not affect the train process when paddle complied wit
-    // Box_Ps.
+    // In fact, it does not affect the train process when paddle is
+    // complied with Box_Ps.
     readers_[i]->SetCurrentPhase(current_phase_);
     if (input_channel_ != nullptr) {
       readers_[i]->SetInputChannel(input_channel_.get());
@@ -687,7 +687,7 @@ void DatasetImpl<T>::CreatePreLoadReaders() {
     preload_readers_[i]->SetParseInsId(parse_ins_id_);
     preload_readers_[i]->SetParseContent(parse_content_);
     preload_readers_[i]->SetParseLogKey(parse_logkey_);
-    preload_readers_[i]->SetEnablePvPredict(enable_pv_predict_);
+    preload_readers_[i]->SetEnablePvMerge(enable_pv_merge_);
     preload_readers_[i]->SetInputChannel(input_channel_.get());
     preload_readers_[i]->SetOutputChannel(nullptr);
     preload_readers_[i]->SetConsumeChannel(nullptr);
@@ -714,7 +714,7 @@ int64_t DatasetImpl<T>::GetMemoryDataSize() {
 
 template <typename T>
 int64_t DatasetImpl<T>::GetPvDataSize() {
-  if (enable_pv_predict_) {
+  if (enable_pv_merge_) {
     return input_pv_channel_->Size();
   } else {
     VLOG(0) << "It does not merge pv..";
@@ -774,9 +774,9 @@ int DatasetImpl<T>::ReceiveFromClient(int msg_type, int client_id,
 // explicit instantiation
 template class DatasetImpl<Record>;
 
-void MultiSlotDataset::Divide_Pv_Instance() {
+void MultiSlotDataset::PostprocessInstance() {
   // divide pv instance, and merge to input_channel_
-  if (enable_pv_predict_) {
+  if (enable_pv_merge_) {
     input_channel_->Open();
     input_channel_->Write(std::move(input_records_));
     for (size_t i = 0; i < multi_pv_consume_.size(); ++i) {
@@ -805,11 +805,11 @@ void MultiSlotDataset::SetCurrentPhase(int current_phase) {
   current_phase_ = current_phase;
 }
 
-void MultiSlotDataset::Merge_Pv_Instance() {
+void MultiSlotDataset::PreprocessInstance() {
   if (!input_channel_ || input_channel_->Size() == 0) {
     return;
   }
-  if (!enable_pv_predict_) {  // means to use Record
+  if (!enable_pv_merge_) {  // means to use Record
     this->LocalShuffle();
   } else {  // means to use Pv
     auto fleet_ptr = FleetWrapper::GetInstance();

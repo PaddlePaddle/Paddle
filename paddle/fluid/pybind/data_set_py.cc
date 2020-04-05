@@ -253,13 +253,13 @@ void BindDataset(py::module *m) {
            py::call_guard<py::gil_scoped_release>())
       .def("set_merge_by_sid", &framework::Dataset::SetMergeBySid,
            py::call_guard<py::gil_scoped_release>())
-      .def("merge_pv_instance", &framework::Dataset::Merge_Pv_Instance,
+      .def("preprocess_instance", &framework::Dataset::PreprocessInstance,
            py::call_guard<py::gil_scoped_release>())
-      .def("divide_pv_instance", &framework::Dataset::Divide_Pv_Instance,
+      .def("postprocess_instance", &framework::Dataset::PostprocessInstance,
            py::call_guard<py::gil_scoped_release>())
       .def("set_current_phase", &framework::Dataset::SetCurrentPhase,
            py::call_guard<py::gil_scoped_release>())
-      .def("set_enable_pv_predict", &framework::Dataset::SetEnablePvPredict,
+      .def("set_enable_pv_merge", &framework::Dataset::SetEnablePvMerge,
            py::call_guard<py::gil_scoped_release>())
 
       .def("set_merge_by_lineid", &framework::Dataset::SetMergeByInsId,

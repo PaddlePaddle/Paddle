@@ -26,7 +26,7 @@ class TestDataFeed(unittest.TestCase):
     def setUp(self):
         self.batch_size = 10
         self.pv_batch_size = 10
-        self.enable_pv_predict = True
+        self.enable_pv_merge = True
         self.merge_by_sid = True
 
     def set_data_config(self):
@@ -34,9 +34,9 @@ class TestDataFeed(unittest.TestCase):
         self.dataset.set_feed_type("PaddleBoxDataFeed")
         self.dataset.set_parse_logkey(True)
         self.dataset.set_thread(1)
-        self.dataset.set_enable_pv_predict(self.enable_pv_predict)
+        self.dataset.set_enable_pv_merge(self.enable_pv_merge)
         self.dataset.set_batch_size(self.batch_size)
-        if self.enable_pv_predict:
+        if self.enable_pv_merge:
             self.dataset.set_merge_by_sid(self.merge_by_sid)
             self.dataset.set_rank_offset("rank_offset")
             self.dataset.set_pv_batch_size(self.pv_batch_size)
@@ -105,7 +105,7 @@ class TestDataFeed(unittest.TestCase):
         exe.run(fluid.default_startup_program())
         self.dataset.set_current_phase(1)
         self.dataset.load_into_memory()
-        self.dataset.merge_pv_instance()
+        self.dataset.preprocess_instance()
         self.dataset.begin_pass()
         pv_num = self.dataset.get_pv_data_size()
 
@@ -114,7 +114,7 @@ class TestDataFeed(unittest.TestCase):
             dataset=self.dataset,
             print_period=1)
         self.dataset.set_current_phase(0)
-        self.dataset.divide_pv_instance()
+        self.dataset.postprocess_instance()
         exe.train_from_dataset(
             program=fluid.default_main_program(),
             dataset=self.dataset,
@@ -130,7 +130,7 @@ class TestDataFeed2(TestDataFeed):
     def setUp(self):
         self.batch_size = 10
         self.pv_batch_size = 10
-        self.enable_pv_predict = True
+        self.enable_pv_merge = True
         self.merge_by_sid = False
 
 
@@ -140,7 +140,7 @@ class TestDataFeed3(TestDataFeed):
     def setUp(self):
         self.batch_size = 10
         self.pv_batch_size = 10
-        self.enable_pv_predict = False
+        self.enable_pv_merge = False
 
 
 if __name__ == '__main__':

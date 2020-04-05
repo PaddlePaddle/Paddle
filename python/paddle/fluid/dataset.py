@@ -173,7 +173,7 @@ class DatasetBase(object):
 
     def set_pv_batch_size(self, pv_batch_size):
         """
-        Set pv batch size. It will be effective during enable_pv_predict
+        Set pv batch size. It will be effective during enable_pv_merge
 
         Examples:
             .. code-block:: python
@@ -343,7 +343,7 @@ class InMemoryDataset(DatasetBase):
         self.parse_content = False
         self.parse_logkey = False
         self.merge_by_sid = True
-        self.enable_pv_predict = False
+        self.enable_pv_merge = False
         self.merge_by_lineid = False
         self.fleet_send_sleep_seconds = None
 
@@ -368,7 +368,7 @@ class InMemoryDataset(DatasetBase):
         self.dataset.set_parse_content(self.parse_content)
         self.dataset.set_parse_logkey(self.parse_logkey)
         self.dataset.set_merge_by_sid(self.merge_by_sid)
-        self.dataset.set_enable_pv_predict(self.enable_pv_predict)
+        self.dataset.set_enable_pv_merge(self.enable_pv_merge)
         self.dataset.set_data_feed_desc(self.desc())
         self.dataset.create_channel()
         self.dataset.create_readers()
@@ -469,27 +469,27 @@ class InMemoryDataset(DatasetBase):
         """
         self.merge_by_sid = merge_by_sid
 
-    def set_enable_pv_predict(self, enable_pv_predict):
+    def set_enable_pv_merge(self, enable_pv_merge):
         """
         Set if Dataset need to merge pv.
 
         Args:
-            enable_pv_predict(bool): if enable_pv_predict or not
+            enable_pv_merge(bool): if enable_pv_merge or not
 
         Examples:
             .. code-block:: python
 
               import paddle.fluid as fluid
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
-              dataset.set_enable_pv_predict(True)
+              dataset.set_enable_pv_merge(True)
 
         """
-        self.enable_pv_predict = enable_pv_predict
+        self.enable_pv_merge = enable_pv_merge
 
-    def merge_pv_instance(self):
+    def preprocess_instance(self):
         """
         Merge pv instance and convey it from input_channel to input_pv_channel. 
-        It will be effective when enable_pv_predict_ is True.
+        It will be effective when enable_pv_merge_ is True.
 
         Examples:
             .. code-block:: python
@@ -499,10 +499,10 @@ class InMemoryDataset(DatasetBase):
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
               dataset.load_into_memory()
-              dataset.merge_pv_instance()
+              dataset.preprocess_instance()
 
         """
-        self.dataset.merge_pv_instance()
+        self.dataset.preprocess_instance()
 
     def set_current_phase(self, current_phase):
         """
@@ -522,7 +522,7 @@ class InMemoryDataset(DatasetBase):
         """
         self.dataset.set_current_phase(current_phase)
 
-    def divide_pv_instance(self):
+    def postprocess_instance(self):
         """
         Divide pv instance and convey it to input_channel.
 
@@ -534,12 +534,12 @@ class InMemoryDataset(DatasetBase):
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
               dataset.load_into_memory()
-              dataset.merge_pv_instance()
+              dataset.preprocess_instance()
               exe.train_from_dataset(dataset)
-              dataset.divide_pv_instance()
+              dataset.postprocess_instance()
 
         """
-        self.dataset.divide_pv_instance()
+        self.dataset.postprocess_instance()
 
     def set_fleet_send_batch_size(self, fleet_send_batch_size=1024):
         """
