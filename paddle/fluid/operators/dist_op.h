@@ -64,23 +64,6 @@ static framework::DDim GetNewDims(const framework::DDim& in_dims, int rank) {
   return framework::make_ddim(new_dims_vec);
 }
 
-template <int Rank>
-static void GetReshapeAndReduceDims(
-    const framework::DDim& x_dims, const framework::DDim& y_dims,
-    const Eigen::DSizes<int, Rank>& x_bcast_dims,
-    const Eigen::DSizes<int, Rank>& y_bcast_dims,
-    Eigen::DSizes<int, Rank * 2>* x_reshape_dims,
-    Eigen::DSizes<int, Rank * 2>* y_reshape_dims,
-    Eigen::DSizes<int, Rank>* reduce_dims) {
-  for (int i = 0; i < x_dims.size(); ++i) {
-    (*x_reshape_dims)[2 * i] = x_bcast_dims[i];
-    (*x_reshape_dims)[2 * i + 1] = x_dims[i];
-    (*y_reshape_dims)[2 * i] = y_bcast_dims[i];
-    (*y_reshape_dims)[2 * i + 1] = y_dims[i];
-    (*reduce_dims)[i] = 2 * i;
-  }
-}
-
 template <typename DeviceContext, typename T, int Rank>
 static void DistFunction(const framework::ExecutionContext& context) {
   auto* x = context.Input<Tensor>("X");
@@ -92,7 +75,7 @@ static void DistFunction(const framework::ExecutionContext& context) {
   auto x_dims = context.Input<Tensor>("X")->dims();
   auto y_dims = context.Input<Tensor>("Y")->dims();
 
-  // first: make new dims with same size as rank
+  // new dims with same size as rank, e.g. (rank=3, (4, 3) => (1, 4, 3))
   framework::DDim x_new_dims = GetNewDims(x_dims, Rank);
   framework::DDim y_new_dims = GetNewDims(y_dims, Rank);
 
@@ -105,6 +88,10 @@ static void DistFunction(const framework::ExecutionContext& context) {
   Eigen::DSizes<int, Rank> x_bcast_dims;
   Eigen::DSizes<int, Rank> y_bcast_dims;
   GetBraodcastDims<Rank>(x_new_dims, y_new_dims, &x_bcast_dims, &y_bcast_dims);
+  // p=0 means number of non-zero elements of (x-y)
+  // p=inf means the maximum of |x-y|
+  // p=-inf means the minimum of |x-y|
+  // p=1,...N, Lp-norm = pow(sum(pow(|x-y|, p)), 1/p)
   if (p == 0) {
     out_t.device(place) =
         (x_t.broadcast(x_bcast_dims) != y_t.broadcast(y_bcast_dims))
@@ -145,7 +132,6 @@ static void DistGradFunction(const framework::ExecutionContext& context) {
   auto y_dims = context.Input<Tensor>("Y")->dims();
   auto out_dims = context.Input<Tensor>("Out")->dims();
 
-  // first: make new dims with same size as rank
   framework::DDim x_new_dims = GetNewDims(x_dims, Rank);
   framework::DDim y_new_dims = GetNewDims(y_dims, Rank);
   framework::DDim out_new_dims = GetNewDims(out_dims, Rank);
@@ -169,38 +155,48 @@ static void DistGradFunction(const framework::ExecutionContext& context) {
       *context.template device_context<DeviceContext>().eigen_device();
   x_grad->mutable_data<T>(context.GetPlace());
   y_grad->mutable_data<T>(context.GetPlace());
-  auto x_grad_t = EigenTensor<T, Rank>::From(*x_grad, x_new_dims);  // change
+  auto x_grad_t = EigenTensor<T, Rank>::From(*x_grad, x_new_dims);
   auto y_grad_t = EigenTensor<T, Rank>::From(*y_grad, y_new_dims);
   auto out_grad_t = EigenTensor<T, Rank>::From(*out_grad, out_new_dims);
   framework::Tensor grad;
   grad.mutable_data<T>(new_dims, context.GetPlace());
-  auto grad_t = EigenTensor<T, Rank>::From(grad);  // change
+  auto grad_t = EigenTensor<T, Rank>::From(grad);
 
   auto x_minux_y = x_t.broadcast(x_bcast_dims) - y_t.broadcast(y_bcast_dims);
   auto x_minux_y_abs = x_minux_y.abs();
-  T eps = static_cast<T>(1.0e-10f);
+  auto sign =
+      (x_minux_y > static_cast<T>(0)).template cast<T>() * static_cast<T>(1.0) +
+      (x_minux_y < static_cast<T>(0)).template cast<T>() * static_cast<T>(-1.0);
+
+  // 1: Lp-norm(z), z = x-y, compute dz
   if (p == 0) {
     grad_t.device(place) = grad_t.setZero();
   } else if (p == INFINITY || p == -INFINITY) {
-    // 1. sign(x-y)
-    grad_t.device(place) = x_minux_y / (x_minux_y_abs + eps);
-    // 2. z = |x-y|, z(z == out) = out_grad, z(z != out) = 0
+    // p=inf or -inf, Lp-norm = |z_i|, the j-th element of dz tends to 0 if
+    // j!=i, or equals sign(z_i) if j=i.
     grad_t.device(place) =
         (x_minux_y_abs == out_t.broadcast(out_bcast_dims)).template cast<T>() *
-        out_grad_t.broadcast(out_bcast_dims) * grad_t;
+        sign * out_grad_t.broadcast(out_bcast_dims);
   } else {
-    auto factor = (out_t.broadcast(out_bcast_dims) + eps).pow(1 - p);
-    grad_t.device(place) = (x_minux_y.abs() + eps).pow(p - 2) * factor *
-                           x_minux_y * out_grad_t.broadcast(out_bcast_dims);
+    // dz = pow(out, 1-p) * pow(abs(x-y), p-1) * sign(x-y)
+    auto factor = out_t.broadcast(out_bcast_dims).pow(1 - p);
+    grad_t.device(place) = x_minux_y_abs.pow(p - 1) * factor * sign *
+                           out_grad_t.broadcast(out_bcast_dims);
   }
 
   Eigen::DSizes<int, Rank * 2> x_reshape_dims;
   Eigen::DSizes<int, Rank * 2> y_reshape_dims;
   Eigen::DSizes<int, Rank> reduce_dims;
-  GetReshapeAndReduceDims<Rank>(x_new_dims, y_new_dims, x_bcast_dims,
-                                y_bcast_dims, &x_reshape_dims, &y_reshape_dims,
-                                &reduce_dims);
+  for (int i = 0; i < x_dims.size(); ++i) {
+    x_reshape_dims[2 * i] = x_bcast_dims[i];
+    x_reshape_dims[2 * i + 1] = x_new_dims[i];
+    y_reshape_dims[2 * i] = y_bcast_dims[i];
+    y_reshape_dims[2 * i + 1] = y_new_dims[i];
+    reduce_dims[i] = 2 * i;
+  }
 
+  // 2: if x or y is broadcasted in forward function,
+  // the grad need to be sum along the broadcasted dimensions
   x_grad_t.device(place) = grad_t.reshape(x_reshape_dims)
                                .sum(reduce_dims)
                                .reshape(x_grad_t.dimensions());

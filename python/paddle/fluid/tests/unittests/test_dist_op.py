@@ -27,6 +27,7 @@ def dist(x, y, p):
         out = np.min(np.abs(x - y))
     else:
         out = np.power(np.sum(np.power(np.abs(x - y), p)), 1.0 / p)
+        print(out.dtype)
     return np.array(out).astype(x.dtype)
 
 
@@ -36,7 +37,7 @@ class TestDistOp(OpTest):
         self.attrs = {}
         self.init_case()
         np.random.seed(0)
-        """
+
         self.inputs = {
             "X": np.random.random(self.x_shape).astype("float64"),
             "Y": np.random.random(self.y_shape).astype("float64")
@@ -48,15 +49,16 @@ class TestDistOp(OpTest):
             # "X": np.array([[3, 3], [3, 3]]).astype("float64"),
             # "Y": np.array([1, 1]).astype("float64")
         }
+        """
         self.attrs["p"] = self.p
         self.outputs = {
             "Out": dist(self.inputs["X"], self.inputs["Y"], self.attrs["p"])
         }
 
     def init_case(self):
-        self.x_shape = (4, 1, 2)
-        self.y_shape = (5, 1, 2, 2)
-        self.p = -1
+        self.x_shape = (4, 3, 1, 2)
+        self.y_shape = (2, 2)
+        self.p = 1
         # self.p = float("inf")
 
     def test_check_output(self):

@@ -57,6 +57,26 @@ class DistOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("p", "the norm to be computed.").SetDefault(2.0f);
     AddComment(R"DOC(
 Dist Operator.
+Given two tensors X and Y, compute Lp-norm of (X-Y).
+where, Z = X - Y
+$$
+\left \| Z \right \|_{p} = (\sum_{i=i}^{m} |z_i|^p)^{1/p}
+$$
+
+1. when p = 0, the 0-norm of z is simply the number of non-zero elements of z.
+$$
+\left \| Z \right \|_{\infty} = (z_{1}^{p} + z_{2}^{p} + ... + z_{n}^{p})^{1/p}
+$$
+
+2. when p = inf, the inf-norm of Z is the maximum element of Z.
+$$
+\left \| Z \right \|_{\infty} = \max_{i}\left | z_i \right |
+$$
+
+3. when p = -inf, the inf-norm of Z is the minimum element of Z.
+$$
+\left \| Z \right \|_{-\infty} = \min_{i}\left | z_i \right |
+$$
     )DOC");
   }
 };

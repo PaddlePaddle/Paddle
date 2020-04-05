@@ -16,7 +16,6 @@ from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
 # TODO: define functions of linear algebra   
-<<<<<<< 25628587f1fa40fd96594e188f65b2e9f251f63a
 __all__ = [
     'matmul',
     #  'dot',
@@ -163,25 +162,48 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
 
 def dist(x, y, p=2):
     """
-    This OP returns the p-norm of (x - y)
+    This OP returns the p-norm of (x - y). The shapes of x and y must be broadcastable.
+    where, z = x - y,
+    .. math::
+
+    \left \| z \right \|_{p} = (\sum_{i=i}^{m} |z_i|^p)^{1/p}
+
+    when p = 0, the 0-norm of z is simply the number of non-zero elements of z.
+    when p = inf, the inf-norm of z is the maximum element of z.
+    when p = -inf, the inf-norm of z is the minimum element of z.
 
     Args:
-        x (Variable): The input Tensor, the data type is float32, float64, int32 or int64.
-        y (Variable): The Right-hand-side input Tensor
-        p (float, optional) – The norm to be computed. Defaul: 2.
+        x (Variable): The input Tensor, the data type is float32 and float64.
+        y (Variable): The Right-hand-side input Tensor with the same data type as x.
+        p (float|int, optional) – The norm to be computed. Defaul: 2.
 
     Returns:
         Variable: Tensor that is the p-norm of (x - y)
 
     Raises:
-        TypeError: If the data type of `x` or `y` is not in: float32, float64, int32, int64.
+        TypeError: If the data type of `x` or `y` is not float32 or float64.
+        TypeError: If the type of `p` is not float or int.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.fluid as fluid
+
+            is_use_gpu = False
+            data = fluid.layers.fill_constant(name='x', shape=[2, 2], value=3, dtype='float32')
+            data = fluid.layers.fill_constant(name='x', shape=[2, 2], value=1, dtype='float32')
+            dist = paddle.dist(x, y, 2) # dist = [8]
+
+            data = fluid.layers.fill_constant(name='x', shape=[3, 2, 2], value=3, dtype='float32')
+            data = fluid.layers.fill_constant(name='x', shape=[2, 2], value=1, dtype='float32')
+            dist = paddle.dist(x, y, 1)
+
+
     """
 
-    check_variable_and_dtype(x, 'dtype',
-                             ['float32', 'float64', 'int64', 'int32'], 'dist')
-    check_variable_and_dtype(y, 'dtype',
-                             ['float32', 'float64', 'int64', 'int32'], 'dist')
-    check_type(p, 'p', float, 'dist')
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'dist')
+    check_variable_and_dtype(y, 'dtype', ['float32', 'float64'], 'dist')
+    check_type(p, 'p', (float, int), 'dist')
     helper = LayerHelper("dist", **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
 
