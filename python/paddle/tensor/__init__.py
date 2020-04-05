@@ -13,15 +13,15 @@
 # limitations under the License.
 
 #TODO: define alias in tensor and framework directory
-# from .creation import create_   #DEFINE_ALIAS
-# from .creation import create_lod_   #DEFINE_ALIAS
+# from .creation import create_tensor   #DEFINE_ALIAS
+# from .creation import create_lod_tensor   #DEFINE_ALIAS
 # from .creation import create_random_int_lod   #DEFINE_ALIAS
-# from .creation import crop_   #DEFINE_ALIAS
+# from .creation import crop_tensor   #DEFINE_ALIAS
 # from .creation import diag   #DEFINE_ALIAS
 # from .creation import eye   #DEFINE_ALIAS
 # from .creation import fill_constant   #DEFINE_ALIAS
 # from .creation import get__from_selected_rows   #DEFINE_ALIAS
-# from .creation import linspace   #DEFINE_ALIAS
+from .creation import linspace  #DEFINE_ALIAS
 # from .creation import ones   #DEFINE_ALIAS
 # from .creation import ones_like   #DEFINE_ALIAS
 # from .creation import range   #DEFINE_ALIAS
@@ -32,14 +32,14 @@
 from .creation import full  #DEFINE_ALIAS
 # from .creation import linspace   #DEFINE_ALIAS
 # from .creation import full_like   #DEFINE_ALIAS
-# from .creation import triu   #DEFINE_ALIAS
-# from .creation import tril   #DEFINE_ALIAS
+from .creation import triu  #DEFINE_ALIAS
+from .creation import tril  #DEFINE_ALIAS
 # from .creation import meshgrid   #DEFINE_ALIAS
 # from .stat import mean   #DEFINE_ALIAS
 # from .stat import reduce_mean   #DEFINE_ALIAS
 # from .stat import std   #DEFINE_ALIAS
 # from .stat import var   #DEFINE_ALIAS
-# from .logic import equal   #DEFINE_ALIAS
+from .logic import equal  #DEFINE_ALIAS
 # from .logic import greater_equal   #DEFINE_ALIAS
 # from .logic import greater_than   #DEFINE_ALIAS
 # from .logic import is_empty   #DEFINE_ALIAS
@@ -53,8 +53,8 @@ from .creation import full  #DEFINE_ALIAS
 # from .logic import not_equal   #DEFINE_ALIAS
 # from .logic import reduce_all   #DEFINE_ALIAS
 # from .logic import reduce_any   #DEFINE_ALIAS
-# from .logic import allclose   #DEFINE_ALIAS
-# from .logic import elementwise_equal   #DEFINE_ALIAS
+from .logic import allclose  #DEFINE_ALIAS
+from .logic import elementwise_equal  #DEFINE_ALIAS
 # from .logic import isnan   #DEFINE_ALIAS
 # from . import Tensor   #DEFINE_ALIAS
 # from . import LoDTensor   #DEFINE_ALIAS
@@ -69,7 +69,7 @@ from .creation import full  #DEFINE_ALIAS
 # from .math import abs   #DEFINE_ALIAS
 # from .math import acos   #DEFINE_ALIAS
 # from .math import asin   #DEFINE_ALIAS
-# from .math import atan   #DEFINE_ALIAS
+from .math import atan  #DEFINE_ALIAS
 # from .math import ceil   #DEFINE_ALIAS
 # from .math import cos   #DEFINE_ALIAS
 # from .math import cumsum   #DEFINE_ALIAS
@@ -86,9 +86,9 @@ from .creation import full  #DEFINE_ALIAS
 # from .math import floor   #DEFINE_ALIAS
 # from .math import increment   #DEFINE_ALIAS
 # from .math import log   #DEFINE_ALIAS
-# from .math import mul   #DEFINE_ALIAS
+from .math import mul  #DEFINE_ALIAS
 # from .math import multiplex   #DEFINE_ALIAS
-# from .math import pow   #DEFINE_ALIAS
+from .math import pow  #DEFINE_ALIAS
 # from .math import reciprocal   #DEFINE_ALIAS
 # from .math import reduce_max   #DEFINE_ALIAS
 # from .math import reduce_min   #DEFINE_ALIAS
@@ -98,19 +98,19 @@ from .creation import full  #DEFINE_ALIAS
 # from .math import rsqrt   #DEFINE_ALIAS
 # from .math import scale   #DEFINE_ALIAS
 # from .math import sign   #DEFINE_ALIAS
-# from .math import sin   #DEFINE_ALIAS
-# from .math import sqrt   #DEFINE_ALIAS
+from .math import sin  #DEFINE_ALIAS
+from .math import sqrt  #DEFINE_ALIAS
 # from .math import square   #DEFINE_ALIAS
 # from .math import stanh   #DEFINE_ALIAS
-# from .math import sum   #DEFINE_ALIAS
+from .math import sum  #DEFINE_ALIAS
 # from .math import sums   #DEFINE_ALIAS
-# from .math import tanh   #DEFINE_ALIAS
-# from .math import elementwise_sum   #DEFINE_ALIAS
+from .math import tanh  #DEFINE_ALIAS
+from .math import elementwise_sum  #DEFINE_ALIAS
 # from .math import max   #DEFINE_ALIAS
 # from .math import min   #DEFINE_ALIAS
-# from .math import mm   #DEFINE_ALIAS
-# from .math import div   #DEFINE_ALIAS
-# from .math import add   #DEFINE_ALIAS
+from .math import mm  #DEFINE_ALIAS
+from .math import div  #DEFINE_ALIAS
+from .math import add  #DEFINE_ALIAS
 # from .math import atan   #DEFINE_ALIAS
 # from .math import logsumexp   #DEFINE_ALIAS
 # from .math import inverse   #DEFINE_ALIAS
@@ -155,10 +155,10 @@ from .creation import full  #DEFINE_ALIAS
 # from .manipulation import unique_with_counts   #DEFINE_ALIAS
 # from .manipulation import unsqueeze   #DEFINE_ALIAS
 # from .manipulation import unstack   #DEFINE_ALIAS
-# from .manipulation import flip   #DEFINE_ALIAS
+from .manipulation import flip  #DEFINE_ALIAS
 # from .manipulation import unbind   #DEFINE_ALIAS
 # from .manipulation import roll   #DEFINE_ALIAS
-# from .search import argmax   #DEFINE_ALIAS
+from .search import argmax  #DEFINE_ALIAS
 # from .search import argmin   #DEFINE_ALIAS
 # from .search import argsort   #DEFINE_ALIAS
 # from .search import has_inf   #DEFINE_ALIAS
@@ -168,4 +168,4 @@ from .creation import full  #DEFINE_ALIAS
 from .search import where  #DEFINE_ALIAS
 # from .search import index_select   #DEFINE_ALIAS
 # from .search import nonzero   #DEFINE_ALIAS
-# from .search import sort   #DEFINE_ALIAS
+from .search import sort  #DEFINE_ALIAS

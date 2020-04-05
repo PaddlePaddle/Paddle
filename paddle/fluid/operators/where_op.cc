@@ -22,25 +22,24 @@ class WhereOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Condition"), true,
-                      platform::errors::NotFound(
-                          "Input(Condition) of where should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::NotFound("Input(X) of where should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Y"), true,
-        platform::errors::NotFound("Input(Y) of where should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
-        platform::errors::NotFound("Output(Out) of where should not be null."));
+    OP_INOUT_CHECK(ctx->HasInput("Condition"), "Input", "Condition", "Where");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Where");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "Where");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Where");
 
+    auto cond_dims = ctx->GetInputDim("Condition");
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
+    PADDLE_ENFORCE_EQ(
+        cond_dims, x_dims,
+        platform::errors::InvalidArgument(
+            "The size of Inputs(Condition) and Inputs(X) should be same. "
+            "But received Condition's shape is [%s], X's shape is [%s]",
+            cond_dims, x_dims));
     PADDLE_ENFORCE_EQ(x_dims, y_dims,
                       platform::errors::InvalidArgument(
-                          "The size of Inputs(Y) and Inputs(Y) should be same. "
-                          "But received X size = %d, Y size = %d",
+                          "The size of Inputs(X) and Inputs(Y) should be same. "
+                          "But received X's shape is [%s], Y's shape is [%s]",
                           x_dims, y_dims));
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
@@ -60,18 +59,11 @@ class WhereGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Condition"), true,
-                      platform::errors::NotFound(
-                          "Input(Condition) of where should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::NotFound("Input(X) of where should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Y"), true,
-        platform::errors::NotFound("Input(Y) of where should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      platform::errors::NotFound(
-                          "Input(Out@GRAD) of where should not be null."));
+    OP_INOUT_CHECK(ctx->HasInput("Condition"), "Input", "Condition", "Where");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Where");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "Where");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "Where");
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
