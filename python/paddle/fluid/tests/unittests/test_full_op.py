@@ -21,7 +21,7 @@ from op_test import OpTest
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
-import paddle.tensor as tensor
+import paddle
 from paddle.fluid import compiler, Program, program_guard
 
 
@@ -37,35 +37,35 @@ class TestFullAPI(unittest.TestCase):
         shape_tensor_int64 = fluid.data(
             name="shape_tensor_int64", shape=[2], dtype="int64")
 
-        out_1 = tensor.full(
+        out_1 = paddle.full(
             shape=[1, 2], dtype="float32", fill_value=1.1, device='gpu')
 
-        out_2 = tensor.full(
+        out_2 = paddle.full(
             shape=[1, positive_2_int32],
             dtype="float32",
             fill_value=1.1,
             device='cpu')
 
-        out_3 = tensor.full(
+        out_3 = paddle.full(
             shape=[1, positive_2_int64],
             dtype="float32",
             fill_value=1.1,
             device='gpu')
 
-        out_4 = tensor.full(
+        out_4 = paddle.full(
             shape=shape_tensor_int32,
             dtype="float32",
             fill_value=1.2,
             out=out_3)
 
-        out_5 = tensor.full(
+        out_5 = paddle.full(
             shape=shape_tensor_int64,
             dtype="float32",
             fill_value=1.1,
             device='gpu',
             stop_gradient=False)
 
-        out_6 = tensor.full(
+        out_6 = paddle.full(
             shape=shape_tensor_int64, dtype=np.float32, fill_value=1.1)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
@@ -91,10 +91,10 @@ class TestFullOpError(unittest.TestCase):
             #for ci coverage
             x1 = fluid.layers.data(name='x1', shape=[1], dtype="int16")
             self.assertRaises(
-                ValueError, tensor.full, shape=[1], fill_value=5, dtype='uint4')
+                ValueError, paddle.full, shape=[1], fill_value=5, dtype='uint4')
             self.assertRaises(
                 TypeError,
-                tensor.full,
+                paddle.full,
                 shape=[1],
                 fill_value=5,
                 dtype='int16',
@@ -105,17 +105,17 @@ class TestFullOpError(unittest.TestCase):
             x2 = fluid.layers.data(name='x2', shape=[1], dtype="int32")
 
             self.assertRaises(
-                TypeError, tensor.full, shape=[1], fill_value=5, dtype='uint8')
+                TypeError, paddle.full, shape=[1], fill_value=5, dtype='uint8')
 
             # The argument shape's type of full_op  must be list, tuple or Variable.
             def test_shape_type():
-                tensor.full(shape=1, dtype="float32", fill_value=1)
+                paddle.full(shape=1, dtype="float32", fill_value=1)
 
             self.assertRaises(TypeError, test_shape_type)
 
             # The argument shape's size of full_op must not be 0.
             def test_shape_size():
-                tensor.full(shape=[], dtype="float32", fill_value=1)
+                paddle.full(shape=[], dtype="float32", fill_value=1)
 
             self.assertRaises(AssertionError, test_shape_size)
 
@@ -123,14 +123,14 @@ class TestFullOpError(unittest.TestCase):
             def test_shape_tensor_dtype():
                 shape = fluid.data(
                     name="shape_tensor", shape=[2], dtype="float32")
-                tensor.full(shape=shape, dtype="float32", fill_value=1)
+                paddle.full(shape=shape, dtype="float32", fill_value=1)
 
             self.assertRaises(TypeError, test_shape_tensor_dtype)
 
             def test_shape_tensor_list_dtype():
                 shape = fluid.data(
                     name="shape_tensor_list", shape=[1], dtype="bool")
-                tensor.full(shape=[shape, 2], dtype="float32", fill_value=1)
+                paddle.full(shape=[shape, 2], dtype="float32", fill_value=1)
 
             self.assertRaises(TypeError, test_shape_tensor_list_dtype)
 

@@ -128,7 +128,6 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
                           framework::ToTypeName(param_var->Type())));
 
     using paddle::framework::LoDTensor;
-    using paddle::operators::detail::Ref;
 
     int64_t min_row_size_to_use_multithread =
         ctx.Attr<int64_t>("min_row_size_to_use_multithread");

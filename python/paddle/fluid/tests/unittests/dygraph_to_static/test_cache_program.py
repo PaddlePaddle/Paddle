@@ -78,7 +78,7 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
             # set optimizer
             # TODO: Need a better interfaces to set optimizer.
             program_translator = ProgramTranslator()
-            program_translator.set_optimizer(adam, 'avg_loss')
+            program_translator.set_optimizer(adam, 'avg_loss.tmp_1')
 
             for batch_id in range(self.batch_num):
                 pred, avg_loss = static_net(self.data)
