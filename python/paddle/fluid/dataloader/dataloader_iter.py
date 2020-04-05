@@ -39,6 +39,11 @@ MP_INDICES_CHECK_INTERVAL = 5
 
 
 def _default_collate_fn(batch):
+    sample = batch[0]
+    # dataset has only 1 field
+    if isinstance(sample, np.ndarray):
+        return [np.stack(batch, axis=0)]
+
     # batch each field
     slots = []
     for items in batch:
@@ -534,6 +539,11 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             else:
                 if self._return_list:
                     data = self._reader.read_next_list()
+                    # static graph organized data on multi-device with list, if
+                    # place number is 1, there is only 1 device, extra the data
+                    # from list for devices to be compatible with dygraph mode
+                    if len(self._places) == 1:
+                        data = data[0]
                 else:
                     data = self._reader.read_next()
             self._on_output_batch()

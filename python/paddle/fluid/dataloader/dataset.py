@@ -28,8 +28,7 @@ class Dataset(object):
     implement following methods:
 
     :math:`__getitem__`: get sample from dataset with a given index. This
-    method is required by reading dataset sample in `fluid.io.DataLoader`
-    subprocesses.
+    method is required by reading dataset sample in `fluid.io.DataLoader`.
     :math:`__len__`: return dataset sample number. This method is required
     by some implements of `fluid.io.BatchSampler`
 

@@ -99,19 +99,20 @@ class DataLoaderBase(object):
 
 class DataLoader(object):
     """
-    DataLoader prodives an iterator over given dataset once by the
-    batch_sampler.
+    DataLoader prodives an iterator which iterates given dataset
+    once by the batch_sampler.
 
     DataLoader supports single-process and multi-prcess data loading,
     multi-process workers will be used to load data asynchronously if
     num_workers is set as a positive number.
 
-    DataLoader only supports map-style dataset currently, for a 
-    map-style dataset, please see `fluid.io.Dataset`.
+    DataLoader only supports map-style dataset(can get a sample from
+    dataset with a given index) currently, for a map-style dataset,
+    please see `fluid.io.Dataset`.
 
     Args:  
-        dataset: the dataset to load data from, should be an instance
-            of subclass of `fluid.io.Dataset`.
+        dataset(Dataset): the dataset to load data from, should be an
+            instance of subclass of `fluid.io.Dataset`.
         feed_list (list(Variable)|tuple(Variable)): feed variable list.
             The variables should be created by :code:`fluid.data()`.
             :attr:`feed_list` must be set if :attr:`return_list` is
@@ -141,8 +142,9 @@ class DataLoader(object):
         drop_last(bool): whether drop the last incomplete batch dataset size
             is not divisible by the batch size, a substitution parameter
             for :attr:`batch_sampler`, see :attr:`batch_size`. Default False
-        collate_fn(callable): define the performations when merges mini-batch
-            by a list of samples, None for do nothing. Default None
+        collate_fn(callable): function to generate mini-batch data by merging
+            the sample list, None for only stack each fields of sample in axis
+            0. Default None
         num_workers(int): the number of subprocess to load data, 0 for no
             subprocess used and loading data in main process. Default 0
         use_buffer_reader (bool): whether to use bufferred reader. 
@@ -163,7 +165,7 @@ class DataLoader(object):
             None.
 
     Returns:
-        loader: an iterable object for data iterating
+        DataLoader: an iterable object for data iterating
 
     Examples:
         
