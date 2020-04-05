@@ -33,11 +33,23 @@ void FusionSquaredMatSubOp::InferShape(
   OP_INOUT_CHECK(ctx->HasOutput("Out"), "Out", "Out", "FusionSquaredMatSub");
   auto x_dims = ctx->GetInputDim("X");
   auto y_dims = ctx->GetInputDim("Y");
-  PADDLE_ENFORCE_EQ(x_dims.size(), y_dims.size(),
-                    "Input tensors dims size should be equal.");
-  PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input tensors should be a Matrix.");
-  PADDLE_ENFORCE_EQ(x_dims[1], y_dims[0], "Inputs Matrix should be multiply.");
-
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(), y_dims.size(),
+      platform::errors::InvalidArgument("The input tensor X's dims size should "
+                                        "be equal to Y's. But received X's "
+                                        "dims size = %d, Y's dims size = %d.",
+                                        x_dims.size(), y_dims.size()));
+  PADDLE_ENFORCE_EQ(x_dims.size(), 2,
+                    platform::errors::InvalidArgument(
+                        "The input tensor X's dims size should be 2. But "
+                        "received X's dims size = %d.",
+                        x_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      x_dims[1], y_dims[0],
+      platform::errors::InvalidArgument("The input tensor X's dims[1] should "
+                                        "be equal to Y's dims[0]. But received "
+                                        "X's dims[1] = %d, Y's dims[0] = %d.",
+                                        x_dims[1], y_dims[0]));
   ctx->SetOutputDim("SquaredX", x_dims);
   ctx->SetOutputDim("SquaredY", y_dims);
   ctx->SetOutputDim("SquaredXY", {x_dims[0], y_dims[1]});
