@@ -114,18 +114,17 @@ class DataLoader(object):
             of subclass of `fluid.io.Dataset`.
         feed_list (list(Variable)|tuple(Variable)): feed variable list.
             The variables should be created by :code:`fluid.data()`.
-            This should be None in dygraph graph mode, but cannot be
-            None in static graph mode. Default None.
+            :attr:`feed_list` must be set if :attr:`return_list` is
+            False. Default None.
         places(list(Place)|tuple(Place)): a list of Place, to put data
             onto. Default None.
         return_list (bool): whether the return value on each device is 
-            presented as a list. It is only valid when iterable=True. 
-            If return_list=False, the return value on each device would 
-            be a dict of str -> LoDTensor, where the key of the dict is 
-            the name of each fed variables. If return_list=True, the 
-            return value on each device would be a list(LoDTensor). It is
-            recommended to use return_list=False in static graph mode and
-            use return_list=True in dygraph mode.  
+            presented as a list. If :attr:`return_list=False`, the return
+            value on each device would be a dict of str -> LoDTensor, where
+            the key of the dict is the name of each fed variables. If 
+            :attr:`return_list=True`, the return value on each device would
+            be a list(LoDTensor). :attr:`return_list` can only be True
+            in dynamic graph mode. Default False.
         batch_sampler(BatchSampler): an instance of `fluid.io.BatchSampler`
             to generate batch indices to draw samples from :attr:`dataset`
             and combine a batch. Default None.
@@ -150,10 +149,11 @@ class DataLoader(object):
             and occupies a little more CPU or GPU memory, i.e., the memory
             of one batch input data. Default True.
         use_shared_memory (bool): whether to use shared memory to speed up
-            putting data into inter-process queue, enable use_shared_memory
-            only when the shared memory space on your machine(e.g. space of
-            '/dev/shm' on Linux operating sysytem) is large enough. Default
-            True.
+            putting data into inter-process queue, set :attr:`use_shared_memory`
+            as True only when the shared memory space on your machine(e.g.
+            space of '/dev/shm' on Linux operating sysytem) is large enough.
+            Shared memory will only be enabled in multi-process mode(num_workers
+            > 0). Default False.
         timeout(int): the timeout value for getting data form output queue
             of subprocesses. Default 0.
         worker_init_fn(callable): init function which will be called with
@@ -281,7 +281,7 @@ class DataLoader(object):
                  collate_fn=None,
                  num_workers=0,
                  use_buffer_reader=True,
-                 use_shared_memory=True,
+                 use_shared_memory=False,
                  timeout=0,
                  worker_init_fn=None):
         self.return_list = return_list
@@ -293,8 +293,9 @@ class DataLoader(object):
             "dataset should be subclass instance of fluid.io.Dataset"
         self.dataset = dataset
 
-        if not in_dygraph_mode():
-            assert feed_list is not None, "feed_list should be set in static mode"
+        if not return_list and not in_dygraph_mode():
+            assert feed_list is not None, \
+                    "feed_list should be set when return_list=False"
         self.feed_list = feed_list
 
         assert places is not None, "places cannot be None"
@@ -314,9 +315,6 @@ class DataLoader(object):
 
         self.use_shared_memory = use_shared_memory
         if use_shared_memory and num_workers == 0:
-            logging.warning(
-                "use_shared_memory can only be used in multi-process mode(" \
-                "num_workers > 0), set use_shared_memory as False")
             self.use_shared_memory = False
 
         assert timeout >= 0, "timeout should be a non-negative value"
@@ -740,6 +738,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
         self._need_check_feed = []
         self._blocking_queue = core.init_lod_tensor_blocking_queue(
             core.Variable(), self._capacity, False)
+        self._reader = None
         self._reader = core.create_py_reader(
             self.queue, self._var_names, self._shapes, self._dtypes,
             self._need_check_feed, self._places, self._use_double_buffer, True)
@@ -988,6 +987,7 @@ class GeneratorLoader(DataLoaderBase):
         ]
         self._queue = core.init_lod_tensor_blocking_queue(
             core.Variable(), self._capacity, self._keep_order)
+        self._reader = None
         self._reader = core.create_py_reader(
             self.queue, self._var_names, self._shapes, self._dtypes,
             self._need_check_feed, self._places, self._use_double_buffer,
