@@ -26,15 +26,7 @@ class FillConstantOp : public framework::OperatorWithKernel {
                       "Output(Out) of FillConstantOp should not be null.");
 
     auto& shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
-    if (ctx->IsRuntime() && ctx->HasInput("ValueTensor")) {
-      auto value_tensor = ctx->Inputs("ValueTensor");
-      PADDLE_ENFORCE_EQ(
-          value_tensor.size(), 1,
-          platform::errors::InvalidArgument(
-              "When use Tensor as value to set Tensor value in fill_cosntant, "
-              "value input(ValueTensor) size must be 1, but got %d",
-              value_tensor.size()));
-    }
+
     if (shape.empty() && ctx->HasInput("ShapeTensor")) {
       auto shape_dims = ctx->GetInputDim("ShapeTensor");
       int num_ele = 1;
