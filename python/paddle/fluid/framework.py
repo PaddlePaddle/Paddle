@@ -31,7 +31,6 @@ import sys
 import logging
 from .. import compat as cpt
 from .proto import framework_pb2
-from .data_feeder import check_type
 
 from . import core
 from . import unique_name
@@ -4988,6 +4987,7 @@ def program_guard(main_program, startup_program=None):
              data = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
     
     """
+    from .data_feeder import check_type
     check_type(main_program, 'main_program', (Program), 'fluid.program_guard')
     main_program = switch_main_program(main_program)
     if startup_program is not None:
