@@ -110,9 +110,9 @@ from .tensor.math import atan  #DEFINE_ALIAS
 # from .tensor.math import floor   #DEFINE_ALIAS
 # from .tensor.math import increment   #DEFINE_ALIAS
 # from .tensor.math import log   #DEFINE_ALIAS
-# from .tensor.math import mul   #DEFINE_ALIAS
+from .tensor.math import mul  #DEFINE_ALIAS
 # from .tensor.math import multiplex   #DEFINE_ALIAS
-# from .tensor.math import pow   #DEFINE_ALIAS
+from .tensor.math import pow  #DEFINE_ALIAS
 # from .tensor.math import reciprocal   #DEFINE_ALIAS
 # from .tensor.math import reduce_max   #DEFINE_ALIAS
 # from .tensor.math import reduce_min   #DEFINE_ALIAS
