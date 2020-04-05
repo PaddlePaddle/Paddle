@@ -7885,7 +7885,11 @@ def gather_nd(input, index, name=None):
     """
     helper = LayerHelper('gather_nd', **locals())
     dtype = helper.input_dtype()
-    output = helper.create_variable_for_type_inference(dtype)
+    if name is None:
+        output = helper.create_variable_for_type_inference(dtype)
+    else:
+        output = helper.create_variable(
+            name=name, dtype=dtype, persistable=False)
     helper.append_op(
         type="gather_nd",
         inputs={"X": input,
@@ -8048,7 +8052,11 @@ def scatter_nd_add(ref, index, updates, name=None):
 
     helper = LayerHelper('scatter_nd_add', **locals())
     dtype = helper.input_dtype(input_param_name='ref')
-    output = helper.create_variable_for_type_inference(dtype)
+    if name is None:
+        output = helper.create_variable_for_type_inference(dtype)
+    else:
+        output = helper.create_variable(
+            name=name, dtype=dtype, persistable=False)
     helper.append_op(
         type="scatter_nd_add",
         inputs={"X": ref,
@@ -10631,7 +10639,11 @@ def _elementwise_op(helper):
     axis = helper.kwargs.get('axis', -1)
     use_mkldnn = helper.kwargs.get('use_mkldnn', False)
     name = helper.kwargs.get('name', None)
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
 
     helper.append_op(
         type=op_type,
@@ -10726,7 +10738,11 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     else:
         attrs['scale'] = float(scale)
     helper = LayerHelper('scale', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
 
     helper.append_op(
         type='scale', inputs=inputs, outputs={'Out': out}, attrs=attrs)
@@ -11362,7 +11378,11 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
         assert x.dtype == y.dtype
 
     if out is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        if name is None:
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        else:
+            out = helper.create_variable(
+                name=name, dtype=x.dtype, persistable=False)
 
     if binary_op:
         helper.append_op(
@@ -11684,7 +11704,11 @@ def mean(x, name=None):
 
     helper = LayerHelper("mean", **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'mean')
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
 
     helper.append_op(
         type="mean", inputs={"X": x}, attrs={}, outputs={"Out": out})
@@ -11767,7 +11791,11 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
     helper = LayerHelper("mul", **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'mul')
     check_variable_and_dtype(y, 'y', ['float16', 'float32', 'float64'], 'mul')
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
 
     helper.append_op(
         type="mul", inputs={"X": x,
@@ -11813,7 +11841,11 @@ def maxout(x, groups, name=None, axis=1):
     if axis == -1:
         axis = 3
 
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
 
     helper.append_op(
         type="maxout",
@@ -11913,7 +11945,12 @@ def space_to_depth(x, blocksize, name=None):
     if not (isinstance(blocksize, int)):
         raise ValueError("blocksize must be a python Int")
 
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    if name is None:
+        out = helper.create_variable_for_type_inference(
+            dtype=x.dtype)  #fix create
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
 
     helper.append_op(
         type="space_to_depth",
@@ -11986,7 +12023,12 @@ def affine_channel(x,
 
     """
     helper = LayerHelper("affine_channel", **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
 
     helper.append_op(
         type="affine_channel",
@@ -12100,7 +12142,11 @@ def similarity_focus(input, axis, indexes, name=None):
     if len(indexes) == 0:
         raise ValueError("indexes can not be empty.")
 
-    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=input.dtype, persistable=False)
     helper.append_op(
         type='similarity_focus',
         inputs={'X': input},
@@ -12302,7 +12348,11 @@ def log_loss(input, label, epsilon=1e-4, name=None):
     """
     helper = LayerHelper('log_loss', **locals())
 
-    loss = helper.create_variable_for_type_inference(dtype=input.dtype)
+    if name is None:
+        loss = helper.create_variable_for_type_inference(dtype=input.dtype)
+    else:
+        loss = helper.create_variable(
+            name=name, dtype=input.dtype, persistable=False)
 
     helper.append_op(
         type='log_loss',
@@ -12366,7 +12416,10 @@ def add_position_encoding(input, alpha, beta, name=None):
     helper = LayerHelper('add_position_encoding', **locals())
     dtype = helper.input_dtype()
 
-    out = helper.create_variable_for_type_inference(dtype=dtype)
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+    else:
+        out = helper.create_variable(name=name, dtype=dtype, persistable=False)
 
     helper.append_op(
         type="add_position_encoding",
@@ -12433,7 +12486,11 @@ def bilinear_tensor_product(x,
 
     w = helper.create_parameter(
         attr=helper.param_attr, shape=param_shape, dtype=dtype, is_bias=False)
-    out = helper.create_variable_for_type_inference(dtype=dtype)
+
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+    else:
+        out = helper.create_variable(name=name, dtype=dtype, persistable=False)
 
     inputs = {"X": x, "Y": y, "Weight": w}
     if helper.bias_attr:

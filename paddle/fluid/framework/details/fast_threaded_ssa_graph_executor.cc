@@ -150,13 +150,8 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
             "Possible reasons are:\n"
             "  1. The variable to be fetched is not defined in main program.\n"
             "  2. The variable to be fetched is not an input or output of any "
-            "operator.\n"
-            "  3. Confirm that you have used the fetch `Variable` format "
-            "instead of the string literal('%s') in `fetch_list` parameter "
-            "when using `executor.run` method. In other words, the format of "
-            "`executor.run(fetch_list=[fetch_var])`(fetch_var is a Variable) "
-            "is recommended.",
-            var_name, var_name));
+            "operator.",
+            var_name));
 
     auto &vars = fetched_var_it->second;
 
