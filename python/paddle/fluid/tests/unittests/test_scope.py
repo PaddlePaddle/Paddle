@@ -48,6 +48,16 @@ class TestScope(unittest.TestCase):
         self.assertTrue(var.is_int())
         self.assertEqual(10, var.get_int())
 
+    def test_scope_pool(self):
+        paddle_c = paddle.fluid.core
+        scope = paddle_c.Scope()
+        # Delete the scope.
+        scope._remove_from_pool()
+        with self.assertRaisesRegex(
+                Exception, "Deleting a nonexistent scope is not allowed*"):
+            # It is not allowed to delete a nonexistent scope。
+            scope._remove_from_pool()
+
 
 if __name__ == '__main__':
     unittest.main()
