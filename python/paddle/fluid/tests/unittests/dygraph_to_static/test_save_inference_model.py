@@ -51,8 +51,9 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
         layer = SimpleFcLayer(fc_size)
 
         program_translator = ProgramTranslator.get_instance()
+        program_cache = ProgramTranslator().get_program_cache
         adam = fluid.optimizer.SGD(learning_rate=0.001)
-        program_translator.set_optimizer(adam, 'mean.tmp_0')
+        program_translator.set_optimizer(adam, 'mean')
 
         for i in range(5):
             out = layer(x)
