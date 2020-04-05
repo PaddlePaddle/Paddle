@@ -118,8 +118,9 @@ class AddMMGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<framework::LoDTensor>("X");
     auto* y = ctx.Input<framework::LoDTensor>("Y");
-
     auto* dout = ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    auto in_dims = ctx.Input<framework::LoDTensor>("Input")->dims();
+
     auto* dinput =
         ctx.Output<framework::LoDTensor>(framework::GradVarName("Input"));
     auto* dx = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
@@ -146,15 +147,15 @@ class AddMMGradKernel : public framework::OpKernel<T> {
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
     if (dinput) {
       dinput->mutable_data<T>(ctx.GetPlace());
-      total_elems = dinput->dims()[0] * dinput->dims()[1];
+      total_elems = in_dims[0] * in_dims[1];
 
       auto& place =
           *ctx.template device_context<DeviceContext>().eigen_device();
       auto eigen_dout = EigenTensor<T, 2>::From(*dout);
       auto eigen_dinput = EigenTensor<T, 2>::From(*dinput);
 
-      bool row_compress = dinput->dims()[0] != dout->dims()[0];
-      bool col_compress = dinput->dims()[1] != dout->dims()[1];
+      bool row_compress = in_dims[0] != dout->dims()[0];
+      bool col_compress = in_dims[1] != dout->dims()[1];
       auto eigen_dinput_shape = Array2(dinput->dims()[0], dinput->dims()[1]);
 
       if (row_compress && col_compress) {
