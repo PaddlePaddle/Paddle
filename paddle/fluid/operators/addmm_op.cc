@@ -161,9 +161,9 @@ class AddMMGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput(framework::GradVarName("Out")), true,
         platform::errors::NotFound("Input(Out@GRAD) should not be null"));
-    auto input_dims = ctx->GetInputDim("Input");
-    auto x_dims = ctx->GetInputDim("X");
-    auto y_dims = ctx->GetInputDim("Y");
+    const auto& input_dims = ctx->GetInputDim("Input");
+    const auto& x_dims = ctx->GetInputDim("X");
+    const auto& y_dims = ctx->GetInputDim("Y");
 
     auto input_grad_name = framework::GradVarName("Input");
     auto x_grad_name = framework::GradVarName("X");
