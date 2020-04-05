@@ -308,8 +308,10 @@ def update_role_var_grad(main_prog, params_grads):
 
             # Maximize the all_reduce overlap, and perform the cast
             # operation after gradients transfer.
-            # optimize op should stay behind forward and backward ops
             op._set_attr('op_role', OPTIMIZE)
+            # optimize op should stay behind forward and backward ops
+            if op == block.ops[-1]:
+                continue
             post_ops = find_true_post_op(block.ops, op, g.name)
             if post_ops is not None:
                 raise ValueError("The cast op {0}'s output should not be"
