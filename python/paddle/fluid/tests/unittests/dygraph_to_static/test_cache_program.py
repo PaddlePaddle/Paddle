@@ -21,7 +21,7 @@ from collections import Counter
 import paddle.fluid as fluid
 
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
-from paddle.fluid.dygraph.jit import dygraph_to_static_output
+from paddle.fluid.dygraph.dygraph_to_static import convert_function_with_cache
 
 from test_fetch_feed import Pool2D, Linear
 
@@ -109,6 +109,20 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
             np.allclose(dygraph_loss, static_loss),
             msg='dygraph is {}\n static_res is \n{}'.format(dygraph_loss,
                                                             static_loss))
+
+
+def simple_func(x):
+    inputs = fluid.dygraph.to_variable(x)
+    mean = fluid.layers.mean(inputs)
+    return mean
+
+
+class TestConvertWithCache(unittest.TestCase):
+    def test_cache(self):
+        static_func = convert_function_with_cache(simple_func)
+        # Get transformed function from cache.
+        cached_func = convert_function_with_cache(simple_func)
+        self.assertTrue(id(static_func), id(cached_func))
 
 
 if __name__ == '__main__':

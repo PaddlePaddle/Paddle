@@ -28,6 +28,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_communicator_geo)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_half_async)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_sync)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_checkpoint)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
@@ -300,9 +301,10 @@ if(WITH_DISTRIBUTE)
     if(NOT APPLE)
         if(WITH_GPU)
             # NOTE. test_launch only work in gpu collective mode
-            bash_test_modules(test_launch MODULES test_launch.sh)
+            bash_test_modules(test_launch MODULES test_launch.sh  ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+            py_test_modules(test_fleet_checkpoint MODULES test_fleet_checkpoint)
         endif()
-        bash_test_modules(test_launch_ps MODULES test_launch_ps.sh)
+        bash_test_modules(test_launch_ps MODULES test_launch_ps.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
 
         set(dist_ut_port 1000)
         foreach(TEST_OP ${DIST_TEST_OPS})
@@ -357,10 +359,11 @@ set_tests_properties(test_parallel_executor_test_while_train test_parallel_execu
         test_optimizer_in_control_flow test_dataloader_keep_order
         test_dataloader_unkeep_order
         test_parallel_executor_inference_feed_partial_data
+        test_parallel_ssa_graph_inference_feed_partial_data
         test_fetch_unmerged
         test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
 
-set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op
+set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op test_inplace_abn_op
         test_parallel_executor_seresnext_base_gpu
         test_parallel_executor_seresnext_with_reduce_gpu
         test_parallel_executor_seresnext_with_fuse_all_reduce_gpu

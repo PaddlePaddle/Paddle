@@ -101,6 +101,8 @@ inline std::vector<std::string> GetOpRoleVarsOrEmpty(const OpDesc &op) {
   return boost::get<std::vector<std::string>>(iter->second);
 }
 
+bool IsDataParallelInferenceGraph(const ir::Graph &graph);
+
 std::vector<std::unique_ptr<ir::Graph>> TrySeparateToMultipleSingleDeviceGraphs(
     ir::Graph *graph);
 
