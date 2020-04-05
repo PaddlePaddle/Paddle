@@ -91,8 +91,6 @@ def main():
         loader = DataLoader(dataset,
                             batch_sampler=batch_sampler,
                             places=device,
-                            feed_list=[i.forward() for i in inputs + labels] \
-                                        if not FLAGS.dynamic else None,
                             num_workers=FLAGS.num_workers,
                             return_list=True,
                             collate_fn=train_collate_fn)
@@ -116,8 +114,6 @@ def main():
         loader = DataLoader(dataset,
                             batch_sampler=batch_sampler,
                             places=device,
-                            feed_list=[i.forward() for i in inputs + labels] \
-                                        if not FLAGS.dynamic else None,
                             num_workers=FLAGS.num_workers,
                             return_list=True,
                             collate_fn=eval_collate_fn)
