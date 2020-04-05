@@ -22,22 +22,15 @@ namespace operators {
 
 void FusionSquaredMatSubOp::InferShape(
     framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE(ctx->HasInput("X"),
-                 "Input(X) of FusionSquaredMatSubOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("Y"),
-                 "Input(Y) of FusionSquaredMatSubOp should not be null.");
-  PADDLE_ENFORCE(
-      ctx->HasOutput("SquaredX"),
-      "Output(SquaredX) of FusionSquaredMatSubOp should not be null.");
-  PADDLE_ENFORCE(
-      ctx->HasOutput("SquaredY"),
-      "Output(SquaredY) of FusionSquaredMatSubOp should not be null.");
-  PADDLE_ENFORCE(
-      ctx->HasOutput("SquaredXY"),
-      "Output(SquaredXY) of FusionSquaredMatSubOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                 "Output(Out) of FusionSquaredMatSubOp should not be null.");
-
+  OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FusionSquaredMatSub");
+  OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "FusionSquaredMatSub");
+  OP_INOUT_CHECK(ctx->HasOutput("SquaredX"), "SquaredX", "Out",
+                 "FusionSquaredMatSub");
+  OP_INOUT_CHECK(ctx->HasOutput("SquaredY"), "SquaredY", "Out",
+                 "FusionSquaredMatSub");
+  OP_INOUT_CHECK(ctx->HasOutput("SquaredXY"), "SquaredXY", "Out",
+                 "FusionSquaredMatSub");
+  OP_INOUT_CHECK(ctx->HasOutput("Out"), "Out", "Out", "FusionSquaredMatSub");
   auto x_dims = ctx->GetInputDim("X");
   auto y_dims = ctx->GetInputDim("Y");
   PADDLE_ENFORCE_EQ(x_dims.size(), y_dims.size(),
