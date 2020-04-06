@@ -83,13 +83,13 @@ class HdfsStore {
 #ifdef PADDLE_WITH_GLOO
 class ParallelConnectContext : public gloo::rendezvous::Context {
  public:
-  ParallelConnectContext(int rank, int size, int base=2) :
-    gloo::rendezvous::Context(rank, size, base) {}
+  ParallelConnectContext(int rank, int size, int base = 2)
+      : gloo::rendezvous::Context(rank, size, base) {}
   virtual ~ParallelConnectContext() {}
   // in gloo::rendezvous::Context wait&get one by one,
   // slowly in case big size, especialy in HdfsStore
-  void connectFullMesh(Store& store,           // NOLINT
-    std::shared_ptr<transport::Device>& dev);  // NOLINT
+  void connectFullMesh(
+      Store& store, std::shared_ptr<transport::Device>& dev);  // NOLINT
 
  protected:
   int thread_num_ = 6;

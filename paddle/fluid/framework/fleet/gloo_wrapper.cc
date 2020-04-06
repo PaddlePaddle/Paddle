@@ -228,7 +228,7 @@ void ParallelConnectContext::connectFullMesh(
             transportContext->getPair(i)->connect(addr);
           }
         },
-      i, connect_threads.size()));
+        i, connect_threads.size()));
   }
   for (uint32_t i = 0; i < connect_threads.size(); ++i) {
     connect_threads[i]->join();
@@ -265,7 +265,7 @@ void GlooWrapper::Init() {
       file_store = std::make_shared<gloo::rendezvous::HdfsStore>(hdfs_path_);
       file_store->SetTimeoutSeconds(init_timeout_.count());
       auto prefix_store =
-        std::make_shared<gloo::rendezvous::PrefixStore>(prefix_, *file_store);
+          std::make_shared<gloo::rendezvous::PrefixStore>(prefix_, *file_store);
       context->connectFullMesh(*prefix_store, dev);
       break;
     }
