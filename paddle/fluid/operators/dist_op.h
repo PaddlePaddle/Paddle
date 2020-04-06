@@ -46,7 +46,8 @@ static void GetBraodcastDims(const framework::DDim& x_dims,
     }
   }
   PADDLE_ENFORCE_EQ(bcast_dims_remainder, 0,
-                    "The input tensor of Op(dist) could not be broadcast");
+                    platform::errors::PreconditionNotMet(
+                        "The input tensor of Op(dist) could not be broadcast"));
 }
 
 static framework::DDim GetNewDims(const framework::DDim& in_dims, int rank) {

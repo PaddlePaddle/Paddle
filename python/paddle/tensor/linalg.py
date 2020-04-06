@@ -167,7 +167,7 @@ def dist(x, y, p=2):
 
     .. math::
 
-    \left \| z \right \|_{p} = (\sum_{i=i}^{m} |z_i|^p)^{1/p}
+        \left \| z \right \|_{p} = (\sum_{i=i}^{m} |z_i|^p)^{1/p}
 
     when p = 0, the 0-norm of z is simply the number of non-zero elements of z.
     when p = inf, the inf-norm of z is the maximum element of z.
@@ -176,7 +176,7 @@ def dist(x, y, p=2):
     Args:
         x (Variable): The input Tensor, its data type is float32 and float64.
         y (Variable): The Right-hand-side input Tensor, its data type is float32 or float64.
-        p (float, optional) – The norm to be computed, its data type is float32 or float64. Defaul: 2.
+        p (float, optional): The norm to be computed, its data type is float32 or float64. Default: 2.
 
     Returns:
         Variable: Tensor that is the p-norm of (x - y).
