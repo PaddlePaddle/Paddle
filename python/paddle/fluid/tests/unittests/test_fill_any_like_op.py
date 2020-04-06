@@ -14,6 +14,8 @@
 
 from __future__ import print_function
 
+import paddle
+import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.compat as cpt
 import unittest
@@ -59,6 +61,23 @@ class TestFillAnyLikeOpValue3(TestFillAnyLikeOp):
         self.value = 1e-100
 
 
+class TestFillAnyLikeOpType(TestFillAnyLikeOp):
+    def setUp(self):
+        self.op_type = "fill_any_like"
+        self.dtype = np.int32
+        self.value = 0.0
+        self.init()
+        self.inputs = {'X': np.random.random((219, 232)).astype(self.dtype)}
+        self.attrs = {
+            'value': self.value,
+            'dtype': int(core.VarDesc.VarType.FP32)
+        }
+        self.outputs = {
+            'Out':
+            self.value * np.ones_like(self.inputs["X"]).astype(np.float32)
+        }
+
+
 class TestFillAnyLikeOpOverflow(TestFillAnyLikeOp):
     def init(self):
         self.value = 1e100
@@ -75,6 +94,103 @@ class TestFillAnyLikeOpOverflow(TestFillAnyLikeOp):
 class TestFillAnyLikeOpFloat16(TestFillAnyLikeOp):
     def init(self):
         self.dtype = np.float16
+
+
+class ApiOnesLikeTest(unittest.TestCase):
+    def test_out(self):
+        with fluid.program_guard(fluid.Program()):
+            data = fluid.data(shape=[10], dtype="float64", name="data")
+            ones = paddle.ones_like(data, device="cpu")
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            result, = exe.run(feed={"data": np.random.rand(10)},
+                              fetch_list=[ones])
+            expected_result = np.ones(10, dtype="float64")
+        self.assertEqual((result == expected_result).all(), True)
+
+        with fluid.program_guard(fluid.Program()):
+            data = fluid.data(shape=[10], dtype="float64", name="data")
+            ones = paddle.ones_like(data, device="cpu", dtype="float32")
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            result, = exe.run(feed={"data": np.random.rand(10)},
+                              fetch_list=[ones])
+            expected_result = np.ones(10, dtype="float32")
+        self.assertEqual((result == expected_result).all(), True)
+
+        with fluid.program_guard(fluid.Program()):
+            data = fluid.data(shape=[10], dtype="float64", name="data")
+            ones = paddle.ones_like(data)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            result, = exe.run(feed={"data": np.random.rand(10)},
+                              fetch_list=[ones])
+            expected_result = np.ones(10, dtype="float32")
+        self.assertEqual((result == expected_result).all(), True)
+
+
+class ApiZerosLikeTest(unittest.TestCase):
+    def test_out(self):
+        with fluid.program_guard(fluid.Program()):
+            data = fluid.data(shape=[10], dtype="float64", name="data")
+            zeros = paddle.zeros_like(data, device="cpu")
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            result, = exe.run(feed={"data": np.random.rand(10)},
+                              fetch_list=[zeros])
+            expected_result = np.zeros(10, dtype="float64")
+        self.assertEqual((result == expected_result).all(), True)
+
+        with fluid.program_guard(fluid.Program()):
+            data = fluid.data(shape=[10], dtype="float64", name="data")
+            zeros = paddle.zeros_like(data, device="cpu", dtype="float32")
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            result, = exe.run(feed={"data": np.random.rand(10)},
+                              fetch_list=[zeros])
+            expected_result = np.zeros(10, dtype="float32")
+        self.assertEqual((result == expected_result).all(), True)
+
+        with fluid.program_guard(fluid.Program()):
+            data = fluid.data(shape=[10], dtype="float64", name="data")
+            zeros = paddle.zeros_like(data)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            result, = exe.run(feed={"data": np.random.rand(10)},
+                              fetch_list=[zeros])
+            expected_result = np.zeros(10, dtype="float32")
+        self.assertEqual((result == expected_result).all(), True)
+
+
+class TestOnesZerosError(unittest.TestCase):
+    def test_errors(self):
+        def test_device_error1():
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                data = fluid.data(name="data", shape=[10], dtype="float32")
+                paddle.ones_like(data, device="opu")
+
+        self.assertRaises(ValueError, test_device_error1)
+
+        def test_device_error2():
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                data = fluid.data(name="data", shape=[10], dtype="float32")
+                paddle.ones_like(data, dtype="float")
+
+        self.assertRaises(ValueError, test_device_error2)
+
+        def test_device_error3():
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                data = fluid.data(name="data", shape=[10], dtype="float32")
+                paddle.zeros_like(data, device="opu")
+
+        self.assertRaises(ValueError, test_device_error3)
+
+        def test_device_error4():
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                data = fluid.data(name="data", shape=[10], dtype="float32")
+                paddle.zeros_like(data, dtype="float")
+
+        self.assertRaises(ValueError, test_device_error4)
 
 
 if __name__ == "__main__":
