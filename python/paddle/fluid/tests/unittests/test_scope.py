@@ -55,7 +55,7 @@ class TestScope(unittest.TestCase):
         scope._remove_from_pool()
         with self.assertRaisesRegex(
                 Exception, "Deleting a nonexistent scope is not allowed*"):
-            # It is not allowed to delete a nonexistent scope。
+            # It is not allowed to delete a nonexistent scope.
             scope._remove_from_pool()
 
 
