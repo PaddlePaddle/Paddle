@@ -351,6 +351,51 @@ struct EnforceNotMet : public std::exception {
 /** EXTENDED TOOL FUNCTIONS WITH CHECKING **/
 
 /*
+ * Summary: This macro is used to get Variable or internal type
+ *   data (such as LoDTensor or SelectedRows) of the Input and
+ *   Output in op, generally used when call scope.FindVar(Input/
+ *   Output("Name")) or ctx.Input<LoDTensor>().
+ *   Firstly this macro check whether the obtained pointer is null,
+ *   and then return data if it is not null.
+ *
+ * Note: This macro is only suitable for specific scenarios and
+ *   does not intended to be widely used. If it cannot meet the
+ *   requirements, please use other PADDLE_ENFORCE** check macro.
+ *
+ * Parameters:
+ *     __PTR: pointer
+ *     __ROLE: (string), Input or Output
+ *     __NAME: (string), Input or Output name
+ *     __OP_TYPE: (string), the op type
+ *  
+ * Return: The data pointed to by the pointer.
+ *
+ * Examples:
+ *    GET_DATA_SAFELY(ctx.Input<LoDTensor>("X"), "Input", "X", "Mul");
+*/
+#define GET_DATA_SAFELY(__PTR, __ROLE, __NAME, __OP_TYPE)                   \
+  (([&]() -> std::add_lvalue_reference<decltype(*(__PTR))>::type {          \
+    auto* ptr = (__PTR);                                                    \
+    if (UNLIKELY(nullptr == ptr)) {                                         \
+      __THROW_ERROR_INTERNAL__(                                             \
+          "%s\n  [Hint: pointer " #__PTR " should not be null.]",           \
+          paddle::platform::errors::NotFound(                               \
+              "Unable to get %s data of %s %s in operator %s. "             \
+              "Possible reasons are:\n"                                     \
+              "  1. The %s is not the %s of operator %s;\n"                 \
+              "  2. The %s has no corresponding variable passed in;\n"      \
+              "  3. The %s corresponding variable is not initialized.",     \
+              paddle::platform::demangle(                                   \
+                  typeid(std::add_lvalue_reference<decltype(*ptr)>::type)   \
+                      .name()),                                             \
+              __ROLE, __NAME, __OP_TYPE, __NAME, __ROLE, __OP_TYPE, __NAME, \
+              __NAME)                                                       \
+              .ToString());                                                 \
+    }                                                                       \
+    return *ptr;                                                            \
+  })())
+
+/*
  * Summary: This macro is used to check whether op has specified
  * Input or Output Variables. Because op's Input and Output
  * checking are written similarly, so abstract this macro.

@@ -32,8 +32,8 @@ from .creation import linspace  #DEFINE_ALIAS
 from .creation import full  #DEFINE_ALIAS
 # from .creation import linspace   #DEFINE_ALIAS
 # from .creation import full_like   #DEFINE_ALIAS
-# from .creation import triu   #DEFINE_ALIAS
-# from .creation import tril   #DEFINE_ALIAS
+from .creation import triu  #DEFINE_ALIAS
+from .creation import tril  #DEFINE_ALIAS
 # from .creation import meshgrid   #DEFINE_ALIAS
 # from .stat import mean   #DEFINE_ALIAS
 # from .stat import reduce_mean   #DEFINE_ALIAS
@@ -54,7 +54,7 @@ from .logic import equal  #DEFINE_ALIAS
 # from .logic import reduce_all   #DEFINE_ALIAS
 # from .logic import reduce_any   #DEFINE_ALIAS
 from .logic import allclose  #DEFINE_ALIAS
-# from .logic import elementwise_equal   #DEFINE_ALIAS
+from .logic import elementwise_equal  #DEFINE_ALIAS
 # from .logic import isnan   #DEFINE_ALIAS
 # from . import Tensor   #DEFINE_ALIAS
 # from . import LoDTensor   #DEFINE_ALIAS
@@ -63,9 +63,9 @@ from .logic import allclose  #DEFINE_ALIAS
 # from .random import uniform   #DEFINE_ALIAS
 # from .random import shuffle   #DEFINE_ALIAS
 # from .random import randn   #DEFINE_ALIAS
-# from .random import randperm   #DEFINE_ALIAS
 # from .random import rand   #DEFINE_ALIAS
 # from .random import randint   #DEFINE_ALIAS
+from .random import randperm
 # from .math import abs   #DEFINE_ALIAS
 # from .math import acos   #DEFINE_ALIAS
 # from .math import asin   #DEFINE_ALIAS
@@ -86,9 +86,9 @@ from .math import atan  #DEFINE_ALIAS
 # from .math import floor   #DEFINE_ALIAS
 # from .math import increment   #DEFINE_ALIAS
 # from .math import log   #DEFINE_ALIAS
-# from .math import mul   #DEFINE_ALIAS
+from .math import mul  #DEFINE_ALIAS
 # from .math import multiplex   #DEFINE_ALIAS
-# from .math import pow   #DEFINE_ALIAS
+from .math import pow  #DEFINE_ALIAS
 # from .math import reciprocal   #DEFINE_ALIAS
 # from .math import reduce_max   #DEFINE_ALIAS
 # from .math import reduce_min   #DEFINE_ALIAS
@@ -102,15 +102,15 @@ from .math import sin  #DEFINE_ALIAS
 from .math import sqrt  #DEFINE_ALIAS
 # from .math import square   #DEFINE_ALIAS
 # from .math import stanh   #DEFINE_ALIAS
-# from .math import sum   #DEFINE_ALIAS
+from .math import sum  #DEFINE_ALIAS
 # from .math import sums   #DEFINE_ALIAS
 from .math import tanh  #DEFINE_ALIAS
-# from .math import elementwise_sum   #DEFINE_ALIAS
+from .math import elementwise_sum  #DEFINE_ALIAS
 # from .math import max   #DEFINE_ALIAS
 # from .math import min   #DEFINE_ALIAS
-# from .math import mm   #DEFINE_ALIAS
-# from .math import div   #DEFINE_ALIAS
-# from .math import add   #DEFINE_ALIAS
+from .math import mm  #DEFINE_ALIAS
+from .math import div  #DEFINE_ALIAS
+from .math import add  #DEFINE_ALIAS
 # from .math import atan   #DEFINE_ALIAS
 # from .math import logsumexp   #DEFINE_ALIAS
 # from .math import inverse   #DEFINE_ALIAS
