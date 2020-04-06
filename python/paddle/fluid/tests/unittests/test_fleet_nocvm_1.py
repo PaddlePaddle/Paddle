@@ -80,6 +80,11 @@ class TestFleet1(unittest.TestCase):
         except:
             print("do not support pslib test, skip")
             return
+        try:
+            fleet._merge_sparse_op(train_program, 0, "unknown")
+            fleet._merge_sparse_op(train_program, 0, "pull_sparse")
+        except:
+            print("catch expected error of unknown type")
 
 
 if __name__ == "__main__":
