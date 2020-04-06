@@ -173,21 +173,20 @@ static void DistGradFunction(const framework::ExecutionContext& context) {
     grad_t.device(place) = grad_t.setZero();
   } else if (p == INFINITY || p == -INFINITY) {
     // p=inf or -inf, Lp-norm = |z_i|, the j-th element of dz tends to 0 if
-    // j!=i, or equals sign(z_i) if j=i.
+    // j!=i, or equals to sign(z_i) * dout if j=i.
     grad_t.device(place) =
         (x_minux_y_abs == out_t.broadcast(out_bcast_dims)).template cast<T>() *
         sign * out_grad_t.broadcast(out_bcast_dims);
   } else {
-    // dz = pow(out, 1-p) * pow(abs(x-y), p-1) * sign(x-y)
-    auto factor = out_t.broadcast(out_bcast_dims).pow(1 - p);
-    grad_t.device(place) = x_minux_y_abs.pow(p - 1) * factor * sign *
-                           out_grad_t.broadcast(out_bcast_dims);
+    // dz = pow(abs(x-y)/out, p-1) * sign(x-y) * dout
+    grad_t.device(place) = (x_minux_y_abs / out->data<T>()[0]).pow(p - 1) *
+                           sign * out_grad_t.broadcast(out_bcast_dims);
   }
 
   Eigen::DSizes<int, Rank * 2> x_reshape_dims;
   Eigen::DSizes<int, Rank * 2> y_reshape_dims;
   Eigen::DSizes<int, Rank> reduce_dims;
-  for (int i = 0; i < x_dims.size(); ++i) {
+  for (int i = 0; i < x_new_dims.size(); ++i) {
     x_reshape_dims[2 * i] = x_bcast_dims[i];
     x_reshape_dims[2 * i + 1] = x_new_dims[i];
     y_reshape_dims[2 * i] = y_bcast_dims[i];

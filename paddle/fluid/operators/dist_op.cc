@@ -36,14 +36,6 @@ class DistOp : public framework::OperatorWithKernel {
     auto out_dims = std::vector<int>(1);
     ctx->SetOutputDim("Out", {1});
   }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
-  }
 };
 
 class DistOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -63,20 +55,9 @@ $$
 \left \| Z \right \|_{p} = (\sum_{i=i}^{m} |z_i|^p)^{1/p}
 $$
 
-1. when p = 0, the 0-norm of z is simply the number of non-zero elements of z.
-$$
-\left \| Z \right \|_{\infty} = (z_{1}^{p} + z_{2}^{p} + ... + z_{n}^{p})^{1/p}
-$$
-
-2. when p = inf, the inf-norm of Z is the maximum element of Z.
-$$
-\left \| Z \right \|_{\infty} = \max_{i}\left | z_i \right |
-$$
-
-3. when p = -inf, the inf-norm of Z is the minimum element of Z.
-$$
-\left \| Z \right \|_{-\infty} = \min_{i}\left | z_i \right |
-$$
+when p = 0, the 0-norm of z is simply the number of non-zero elements of z.
+when p = inf, the inf-norm of Z is the maximum element of Z.
+when p = -inf, the inf-norm of Z is the minimum element of Z.
     )DOC");
   }
 };
@@ -94,14 +75,6 @@ class DistOpGrad : public framework::OperatorWithKernel {
     if (ctx->HasOutput(framework::GradVarName("Y"))) {
       ctx->SetOutputDim(framework::GradVarName("Y"), y_dims);
     }
-  }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
   }
 };
 

@@ -13,7 +13,7 @@
 # limitations under the License.
 from paddle.common_ops_import import *
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..fluid.data_feeder import check_variable_and_dtype, check_type
 
 # TODO: define functions of linear algebra   
 __all__ = [
@@ -164,6 +164,7 @@ def dist(x, y, p=2):
     """
     This OP returns the p-norm of (x - y). The shapes of x and y must be broadcastable.
     where, z = x - y,
+
     .. math::
 
     \left \| z \right \|_{p} = (\sum_{i=i}^{m} |z_i|^p)^{1/p}
@@ -173,12 +174,12 @@ def dist(x, y, p=2):
     when p = -inf, the inf-norm of z is the minimum element of z.
 
     Args:
-        x (Variable): The input Tensor, the data type is float32 and float64.
-        y (Variable): The Right-hand-side input Tensor with the same data type as x.
-        p (float|int, optional) – The norm to be computed. Defaul: 2.
+        x (Variable): The input Tensor, its data type is float32 and float64.
+        y (Variable): The Right-hand-side input Tensor, its data type is float32 or float64.
+        p (float, optional) – The norm to be computed, its data type is float32 or float64. Defaul: 2.
 
     Returns:
-        Variable: Tensor that is the p-norm of (x - y)
+        Variable: Tensor that is the p-norm of (x - y).
 
     Raises:
         TypeError: If the data type of `x` or `y` is not float32 or float64.
@@ -190,18 +191,17 @@ def dist(x, y, p=2):
             import paddle.fluid as fluid
 
             is_use_gpu = False
-            data = fluid.layers.fill_constant(name='x', shape=[2, 2], value=3, dtype='float32')
-            data = fluid.layers.fill_constant(name='x', shape=[2, 2], value=1, dtype='float32')
-            dist = paddle.dist(x, y, 2) # dist = [8]
+            x = fluid.layers.fill_constant(shape=[2, 2], value=3, dtype='float32')
+            y = fluid.layers.fill_constant(shape=[2, 2], value=1, dtype='float32')
+            out = paddle.dist(x, y, 2) # out = [8]
 
-            data = fluid.layers.fill_constant(name='x', shape=[3, 2, 2], value=3, dtype='float32')
-            data = fluid.layers.fill_constant(name='x', shape=[2, 2], value=1, dtype='float32')
-            dist = paddle.dist(x, y, 1)
-
+            place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            result = exe.run(fluid.default_main_program(),
+                          fetch_list=[result])
+            print(result[0])
 
     """
-
-    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'dist')
     check_variable_and_dtype(y, 'dtype', ['float32', 'float64'], 'dist')
     check_type(p, 'p', (float, int), 'dist')
     helper = LayerHelper("dist", **locals())
@@ -209,7 +209,7 @@ def dist(x, y, p=2):
 
     inputs = {"X": [x], "Y": [y]}
     outputs = {'Out': [out]}
-    attrs = {"p": p}
+    attrs = {"p": float(p)}
     helper.append_op(
         type='dist', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
