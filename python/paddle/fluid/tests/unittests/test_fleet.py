@@ -55,7 +55,6 @@ class TestFleet1(unittest.TestCase):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         scope = fluid.Scope()
-        print("hahahaha11111")
         with fluid.program_guard(train_program, startup_program):
             show = fluid.layers.data(name="show", shape=[-1, 1], \
                 dtype="int64", lod_level=1, append_batch_size=False)
@@ -67,7 +66,6 @@ class TestFleet1(unittest.TestCase):
                 dtype="int64", lod_level=1, append_batch_size=False)
             label_cast = fluid.layers.cast(label, dtype='float32')
             cost = fluid.layers.log_loss(fc, label_cast)
-        print("hahahaha22222")
         try:
             adam = fluid.optimizer.Adam(learning_rate=0.000005)
             adam = fleet.distributed_optimizer(
@@ -79,21 +77,18 @@ class TestFleet1(unittest.TestCase):
                 })
             adam.minimize([cost], [scope])
             fleet.run_server()
-            print("hahahaha3333")
         except:
             print("do not support pslib test, skip")
             return
-        #try:
-        if True:
+        try:
             # worker should call these methods instead of server
             # the following is only for test when with_pslib=off
             def test_func():
                 """
                 it is only a test function
                 """
-                print("hah")
                 return True
-            print("hahahah4444")
+            
             fleet._role_maker.is_first_worker = test_func
             fleet._role_maker._barrier_worker = test_func
             fleet.save_model("./model_000")
@@ -101,10 +96,9 @@ class TestFleet1(unittest.TestCase):
             fleet.save_one_table(0, "./model_002", prefix="hahaha")
             fleet.load_model("./model_0003")
             fleet.load_one_table(0, "./model_004")
-        #except:
-        #    print("do not support pslib test, skip")
-        #    return
-        print("hahahaha55555")
+        except:
+            print("do not support pslib test, skip")
+            return
 
 
 if __name__ == "__main__":
