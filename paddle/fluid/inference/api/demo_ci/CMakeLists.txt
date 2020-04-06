@@ -122,7 +122,7 @@ endif()
 if (NOT WIN32)
   set(EXTERNAL_LIB "-lrt -ldl -lpthread")
   set(DEPS ${DEPS}
-      ${MATH_LIB} ${MKLDNN_LIB} ${NGRAPH_LIB}
+      ${MATH_LIB} ${MKLDNN_LIB}
       glog gflags protobuf  xxhash
       ${EXTERNAL_LIB})
 else()
