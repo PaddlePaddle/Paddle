@@ -87,6 +87,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
         self.supported_embedding_grad_types = [
             "lookup_table_grad", "push_sparse", "push_sparse_v2"
         ]
+        self.pull_sparse_ops = ["pull_sparse", "pull_sparse_v2"]
+        self.push_sparse_ops = ["push_sparse", "push_sparse_v2"]
 
     def _find_distributed_lookup_table_inputs(self, program, table_names):
         """
@@ -166,6 +168,93 @@ class DistributedAdam(DistributedOptimizerImplBase):
         for x in tmp_list:
             ret_list.append(x[0])
         return ret_list
+
+    def _merge_sparse_op(self, program, table_name, op_type):
+        local_vars = program.global_block().vars
+        inputs = []
+        input_names = []
+        input_grads = []
+        outputs = []
+        attr = None
+        w = None
+        sparse_op_idx = []
+        cur_index = -1
+        input_id_name = "Ids"
+        input_grad_name = None
+        if op_type in self.pull_sparse_ops:
+            output_name = "Out"
+        elif op_type in self.push_sparse_ops:
+            input_grad_name = "Out@GRAD"
+            output_name = "Out@GRAD"
+        else:
+            print("warning: unsupported merge op ", op_type)
+            return
+        for op in program.global_block().ops:
+            cur_index += 1
+            if op.type == op_type and op.input("W")[0] == table_name:
+                inputs.extend([i for i in op.input(input_id_name)])
+
+                input_names.extend([i for i in op.attr("InputNames")])
+                if input_grad_name is not None:
+                    input_grads.extend([i for i in op.input(input_grad_name)])
+                outputs.extend([i for i in op.output(output_name)])
+                sparse_op_idx.append(cur_index)
+                if attr is None:
+                    attr = op.all_attrs()
+                if w is None:
+                    w = op.input("W")[0]
+        if len(sparse_op_idx) == 0:
+            return
+        max_input_idx = 0
+        min_output_idx = len(program.global_block().ops)
+        cur_index = -1
+        for op in program.global_block().ops:
+            cur_index += 1
+            if op.type == op_type:
+                continue
+            for i in op.input_names:
+                ins = op.input(i)
+                for j in ins:
+                    if j in outputs:
+                        min_output_idx = min(cur_index, min_output_idx)
+            for i in op.output_names:
+                outs = op.output(i)
+                for j in outs:
+                    if j in inputs + input_grads:
+                        max_input_idx = max(cur_index, max_input_idx)
+        if max_input_idx >= min_output_idx:
+            print("warning: not merge pull sparse")
+            return
+
+        op_inputs={
+            input_id_name: [local_vars[i] for i in inputs],
+            'W': local_vars[w]
+        }
+        op_outputs = [local_vars[i] for i in outputs]
+        sparse_op_idx = sparse_op_idx[::-1]
+
+        if input_grad_name is not None:
+            op_inputs[input_grad_name] = [local_vars[i] for i in input_grads]
+            op = program.global_block().ops[sparse_op_idx[0]]
+            for k in op_inputs:
+                if isinstance(op_inputs[k], list):
+                    op.desc.set_input(k, [i.name for i in op_inputs[k]])
+                else:
+                    op.desc.set_input(k, [op_inputs[k].name])
+            op.desc.set_output(output_name, outputs)
+            op._set_attr("InputNames", input_names)
+            for idx in sparse_op_idx[1:]:
+                program.global_block()._remove_op(idx)
+        else:
+            for idx in sparse_op_idx:
+                program.global_block()._remove_op(idx)
+            attr["InputNames"] = input_names
+            program.global_block()._insert_op(
+                index=max_input_idx + 1,
+                type=op_type,
+                inputs=op_inputs,
+                outputs={output_name:op_outputs},
+                attrs=attr)
 
     def _minimize(self,
                   losses,
@@ -358,6 +447,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
                     grads_dict = prog_id_to_sparse_grads[prog_id]
                     worker.add_sparse_table(sparse_table_index, inputs_dict[tn],
                                             outputs_dict[tn], grads_dict[tn])
+                    for i in self.pull_sparse_ops + self.push_sparse_ops:
+                        self._merge_sparse_op(loss.block.program, tn, i)
 
         dense_start_table_id = len(sparse_table_to_index)
         dense_table_index = len(sparse_table_to_index)
