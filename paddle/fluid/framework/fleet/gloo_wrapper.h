@@ -88,8 +88,8 @@ class ParallelConnectContext : public gloo::rendezvous::Context {
   virtual ~ParallelConnectContext() {}
   // in gloo::rendezvous::Context wait&get one by one,
   // slowly in case big size, especialy in HdfsStore
-  void connectFullMesh(
-      Store& store, std::shared_ptr<transport::Device>& dev);  // NOLINT
+  void connectFullMesh(Store& store,                              // NOLINT
+                       std::shared_ptr<transport::Device>& dev);  // NOLINT
 
  protected:
   int thread_num_ = 6;
@@ -101,10 +101,7 @@ class ParallelConnectContext : public gloo::rendezvous::Context {
 namespace paddle {
 namespace framework {
 
-enum GlooStoreType {
-    HDFS,
-    HTTP
-};
+enum GlooStoreType { HDFS, HTTP };
 
 class GlooWrapper {
  public:

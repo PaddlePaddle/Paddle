@@ -66,7 +66,7 @@ std::string erase_spaces(const std::string& str) {
   result.reserve(str.size());
   const char* p = str.c_str();
   while (*p != 0) {
-    if(!isspace(*p)) {
+    if (!isspace(*p)) {
       result.append(p, 1);
     }
     ++p;
