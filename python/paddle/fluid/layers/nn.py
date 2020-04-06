@@ -14360,7 +14360,6 @@ def meshgrid(x, name=None):
             ['float16', 'float32', 'float64', 'int32', 'int64'], 'meshgrid')
     inputs = {'X': x}
 
-    print('input here normal-----------------')
     helper = LayerHelper('meshgrid', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     helper.append_op(type='meshgrid', input=inputs, outputs={'Out': [out]})

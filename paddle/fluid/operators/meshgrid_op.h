@@ -25,6 +25,7 @@
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/errors.h"
 
 #define MAX_RANK_SUPPORTED 6
 
@@ -68,7 +69,8 @@ class MeshgridKernel : public framework::OpKernel<T> {
     switch (rank) {
       REP_MESHGRID_TEMPLATE(MAX_RANK_SUPPORTED)
       default:
-        PADDLE_THROW("Only support tensor nums between 1 and 6.");
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Only support tensor nums between 1 and 6."));
     }
   }
 
@@ -77,7 +79,9 @@ class MeshgridKernel : public framework::OpKernel<T> {
   void MeshgridForward(const framework::ExecutionContext& context) const {
     auto ins = context.MultiInput<framework::Tensor>("X");
     auto outs = context.MultiOutput<framework::Tensor>("Out");
-    PADDLE_ENFORCE_EQ(ins.size() > 1, true, "expect at least 2 input tensors");
+    PADDLE_ENFORCE_EQ(
+        ins.size() > 1, true,
+        platform::errors::InvalidArgument("expect at least 2 input tensors"));
 
     int64_t size = ins.size();
     std::vector<int64_t> shape(size);
@@ -91,10 +95,10 @@ class MeshgridKernel : public framework::OpKernel<T> {
           shape[i] = ins[i]->dims()[0];
           break;
         default:
-          PADDLE_ENFORCE(
-              false,
-              "Expected scalar or 1D tensor in the tensor list but got: ",
-              ins[i]);
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "Expected scalar or 1D tensor in the tensor list but got tensor "
+              "%d: ",
+              i));
       }
     }
 
@@ -136,8 +140,8 @@ class MeshgridGradKernel : public framework::OpKernel<T> {
     switch (n) {
       REP_MESHGRID_GRAD_TEMPLATE(MAX_RANK_SUPPORTED)
       default:
-        PADDLE_ENFORCE(false,
-                       "only support tensor nums being between 1 and 6.");
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "only support tensor nums being between 1 and 6."));
     }
   }
 
@@ -174,7 +178,6 @@ class MeshgridGradKernel : public framework::OpKernel<T> {
       Eigen::DSizes<int, Rank> reduce_dims;
       for (int k = 0; k < n; k++) {
         reduce_dims[k] = reduce_dims_vec[k];
-        VLOG(3) << "reduce_dims: " << reduce_dims[k];
       }
 
       Eigen::DSizes<int, Rank * 2> reshape_dims;

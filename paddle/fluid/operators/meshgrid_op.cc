@@ -29,10 +29,12 @@ class MeshgridOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_GE(ctx->Inputs("X").size(), 1UL,
-                      "Input(X) should not be empty.");
-    PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(), 1UL,
-                      "Output(Out) should not be empty.");
+    PADDLE_ENFORCE_GE(
+        ctx->Inputs("X").size(), 1UL,
+        platform::errors::InvalidArgument("Input(X) should not be empty."));
+    PADDLE_ENFORCE_GE(
+        ctx->Outputs("Out").size(), 1UL,
+        platform::errors::InvalidArgument("Output(Out) should not be empty."));
 
     auto inputs_dims = ctx->GetInputsDim("X");
     const size_t inputs_num = inputs_dims.size();
@@ -63,7 +65,8 @@ class MeshgridOp : public framework::OperatorWithKernel {
       }
     }
     if (flag == 0) {
-      PADDLE_THROW("All Inputs of Meshgrid OP are Empty!");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "All Inputs of Meshgrid OP are Empty!"));
     }
 
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
@@ -108,7 +111,8 @@ class MeshgridGradOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_GT(ctx->Inputs(framework::GradVarName("Out")).size(), 1,
-                      "Number of Inputs(Out@Grad) must be larger than 1");
+                      platform::errors::InvalidArgument(
+                          "Number of Inputs(Out@Grad) must be larger than 1"));
     ctx->SetOutputsDim(framework::GradVarName("X"), ctx->GetInputsDim("X"));
   }
 
