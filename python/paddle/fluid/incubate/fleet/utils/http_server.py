@@ -177,6 +177,6 @@ class KVServer:
         """
         for key in self.size:
             s = self.http_server.get_deleted_size(key)
-            if s != self.size.get(key, 0)
+            if s != self.size.get(key, 0):
                 return False
         return True

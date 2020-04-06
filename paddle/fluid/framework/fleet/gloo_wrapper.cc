@@ -140,10 +140,9 @@ void HdfsStore::wait(const std::vector<std::string>& keys,
           break;
         }
       }
-      PADDLE_ENFORCE_EQ(0, 1,
-                        platform::errors::ExecutionTimeout(
-                            "TIMEOUT self_rank = %d pair_rank = %d",
-                            self_rank_, last_check_rank));
+      PADDLE_ENFORCE_EQ(0, 1, platform::errors::ExecutionTimeout(
+                                  "TIMEOUT self_rank = %d pair_rank = %d",
+                                  self_rank_, last_check_rank));
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(wait_sleep_ms_));
   }
@@ -214,8 +213,8 @@ void ParallelConnectContext::connectFullMesh(
   // Connect every pair
   for (uint32_t i = 0; i < connect_threads.size(); ++i) {
     connect_threads[i].reset(new std::thread(
-        [&store, &transportContext, this] (
-            size_t thread_idx, size_t thread_num) -> void {
+        [&store, &transportContext, this] (size_t thread_idx,
+                                           size_t thread_num) -> void {
       for (int i = thread_idx; i < size; i += thread_num) {
         if (i == rank) {
           continue;
