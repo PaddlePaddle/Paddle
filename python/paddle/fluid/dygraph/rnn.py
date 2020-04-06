@@ -14,6 +14,7 @@
 
 from .layers import Layer
 from paddle.fluid import layers
+import copy
 
 __all__ = [
     'CudnnLSTMCell', 'CudnnGRUCell'
@@ -120,23 +121,41 @@ class CudnnLSTMCell(Layer):
         
         if self._cudnn_compatibale:
 
+            if self._param_attr is not None and self._param_attr.name is not None:
+                weight_ih_param_attr = copy.deepcopy(self._param_attr)
+                weight_hh_param_attr = copy.deepcopy(self._param_attr)
+                weight_ih_param_attr.name += "_weight_ih"
+                weight_hh_param_attr.name += "_weight_hh"
+            else:
+                weight_ih_param_attr = self._param_attr
+                weight_hh_param_attr = self._param_attr
+            
+            if self._bias_attr is not None and self._bias_attr.name is not None:
+                bias_ih_param_attr = copy.deepcopy(self._bias_attr)
+                bias_hh_param_attr = copy.deepcopy(self._bias_attr)
+                bias_ih_param_attr.name += "_bias_ih"
+                bias_hh_param_attr.name += "_bias_hh"
+            else:
+                bias_ih_param_attr = self._bias_attr
+                bias_hh_param_attr = self._bias_attr           
+
             self._weight_ih = self.create_parameter(
-                attr=self._param_attr,
+                attr=weight_ih_param_attr,
                 shape=[self._input_size, 4 * self._hidden_size],
                 dtype=self._dtype)
 
             self._weight_hh = self.create_parameter(
-                attr=self._param_attr,
+                attr=weight_hh_param_attr,
                 shape=[self._hidden_size, 4 * self._hidden_size],
                 dtype=self._dtype)
 
             self._bias_ih = self.create_parameter(
-                attr=self._bias_attr,
+                attr=bias_ih_param_attr,
                 shape=[4 * self._hidden_size],
                 dtype=self._dtype,
                 is_bias=True)
             self._bias_hh = self.create_parameter(
-                attr=self._bias_attr,
+                attr=bias_hh_param_attr,
                 shape=[4 * self._hidden_size],
                 dtype=self._dtype,
                 is_bias=True)
@@ -291,46 +310,82 @@ class CudnnGRUCell(Layer):
 
         if self._cudnn_compatibale:
 
+            if self._param_attr is not None and self._param_attr.name is not None:
+                weight_ih_param_attr = copy.deepcopy(self._param_attr)
+                weight_hh_param_attr = copy.deepcopy(self._param_attr)
+                weight_ih_param_attr.name += "_weight_ih"
+                weight_hh_param_attr.name += "_weight_hh"
+            else:
+                weight_ih_param_attr = self._param_attr
+                weight_hh_param_attr = self._param_attr
+            
+            if self._bias_attr is not None and self._bias_attr.name is not None:
+                bias_ih_param_attr = copy.deepcopy(self._bias_attr)
+                bias_hh_param_attr = copy.deepcopy(self._bias_attr)
+                bias_ih_param_attr.name += "_bias_ih"
+                bias_hh_param_attr.name += "_bias_hh"
+            else:
+                bias_ih_param_attr = self._bias_attr
+                bias_hh_param_attr = self._bias_attr 
+
             self._weight_ih = self.create_parameter(
-                attr=self._param_attr,
+                attr=weight_ih_param_attr,
                 shape=[self._input_size, 3 * self._hidden_size],
                 dtype=self._dtype)
 
             self._weight_hh = self.create_parameter(
-                attr=self._param_attr,
+                attr=weight_hh_param_attr,
                 shape=[self._hidden_size, 3 * self._hidden_size],
                 dtype=self._dtype)
 
             self._bias_ih = self.create_parameter(
-                attr=self._bias_attr,
+                attr=bias_ih_param_attr,
                 shape=[3 * self._hidden_size],
                 dtype=self._dtype,
                 is_bias=True)
             self._bias_hh = self.create_parameter(
-                attr=self._bias_attr,
+                attr=bias_hh_param_attr,
                 shape=[3 * self._hidden_size],
                 dtype=self._dtype,
                 is_bias=True)
 
         else:
 
+            if self._param_attr is not None and self._param_attr.name is not None:
+                gate_weight_param_attr = copy.deepcopy(self._param_attr)
+                candidate_weight_param_attr = copy.deepcopy(self._param_attr)
+                gate_weight_param_attr.name += "_gate_weight"
+                candidate_weight_param_attr.name += "_candidate_weight"
+            else:
+                gate_weight_param_attr = self._param_attr
+                candidate_weight_param_attr = self._param_attr
+            
+            if self._bias_attr is not None and self._bias_attr.name is not None:
+                gate_bias_param_attr = copy.deepcopy(self._bias_attr)
+                candidate_bias_param_attr = copy.deepcopy(self._bias_attr)
+                gate_bias_param_attr.name += "_gate_bias"
+                candidate_bias_param_attr.name += "_candidate_bias"
+            else:
+                gate_bias_param_attr = self._bias_attr
+                candidate_bias_param_attr = self._bias_attr 
+
             self._gate_weight = self.create_parameter(
-                attr=self._param_attr,
+                attr=gate_weight_param_attr,
                 shape=[self._input_size + self._hidden_size, 2 * self._hidden_size],
                 dtype=dtype)
 
             self._candidate_weight = self.create_parameter(
-                attr=self._param_attr,
+                attr=candidate_weight_param_attr,
                 shape=[self._input_size + self._hidden_size, self._hidden_size],
                 dtype=dtype)
 
             self._gate_bias = self.create_parameter(
-                attr=self._bias_attr,
+                attr=gate_bias_param_attr,
                 shape=[2 * self._hidden_size],
                 dtype=dtype,
                 is_bias=True)
             self._candidate_bias = self.create_parameter(
-                attr=self._bias_attr,
+                attr=candidate_bias_param_attr,
                 shape=[self._hidden_size],
                 dtype=dtype,
                 is_bias=True)
