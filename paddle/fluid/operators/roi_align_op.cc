@@ -29,14 +29,19 @@ class ROIAlignOp : public framework::OperatorWithKernel {
                    "Input(ROIs) of ROIAlignOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of ROIAlignOp should not be null.");
+
     auto input_dims = ctx->GetInputDim("X");
     auto rois_dims = ctx->GetInputDim("ROIs");
-
+    if (ctx->HasInput("RoisLod")) {
+      auto rois_lod_dims = ctx->GetInputDim("RoisLod");
+      PADDLE_ENFORCE(rois_lod_dims.size() == 1, "");
+    }
     PADDLE_ENFORCE(input_dims.size() == 4,
                    "The format of input tensor is NCHW.");
     PADDLE_ENFORCE(rois_dims.size() == 2,
                    "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
                    "given as [[x1, y1, x2, y2], ...].");
+
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE(rois_dims[1] == 4,
                      "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
@@ -109,6 +114,10 @@ class ROIAlignOpMaker : public framework::OpProtoAndCheckerMaker {
              "given as [[x1, y1, x2, y2], ...]. "
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates.");
+    AddInput("RoisLod",
+             "(Tensor), "
+             "The lod info of rois.")
+        .AsDispensable();
     AddOutput("Out",
               "(Tensor), "
               "The output of ROIAlignOp is a 4-D tensor with shape "
@@ -163,6 +172,7 @@ class ROIAlignGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetType("roi_align_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("ROIs", this->Input("ROIs"));
+    op->SetInput("RoisLod", this->Input("RoisLod"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
@@ -183,8 +193,10 @@ REGISTER_OPERATOR(roi_align_grad, ops::ROIAlignGradOp,
 REGISTER_OP_CPU_KERNEL(
     roi_align,
     ops::CPUROIAlignOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUROIAlignOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::CPUROIAlignOpKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::CPUROIAlignOpKernel<paddle::platform::CPUDeviceContext, int>);
 REGISTER_OP_CPU_KERNEL(
     roi_align_grad,
     ops::CPUROIAlignGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUROIAlignGradOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::CPUROIAlignGradOpKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::CPUROIAlignGradOpKernel<paddle::platform::CPUDeviceContext, int>);
