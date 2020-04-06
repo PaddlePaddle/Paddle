@@ -190,12 +190,12 @@ double CPUQuantizePass::GetScaleValueForNode(const Node* node,
   return scale_data.second.data<double>()[0];
 }
 
-bool CPUQuantizePass::IsPrevOpQuantized(const Node* node) const {
+bool CPUQuantizePass::IsOpDequantized(const Node* node) const {
   return node->Op()->Type() == "dequantize" ||
          node->Op()->GetAttrIfExists<bool>("use_quantizer");
 }
 
-bool CPUQuantizePass::IsNextOpQuantized(const Node* node) const {
+bool CPUQuantizePass::IsOpQuantized(const Node* node) const {
   return node->Op()->Type() == "quantize" ||
          node->Op()->GetAttrIfExists<bool>("use_quantizer");
 }
@@ -460,7 +460,7 @@ void CPUQuantizePass::QuantizeTranspose(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(next_op, next_op, transpose_pattern);
 
     // skip if prev op and next op is not quantized
-    if (!(IsPrevOpQuantized(prev_op)) && !(IsNextOpQuantized(next_op))) {
+    if (!(IsOpDequantized(prev_op)) && !(IsOpQuantized(next_op))) {
       return;
     }
     GET_IR_NODE_FROM_SUBGRAPH(transpose_in, transpose_in, transpose_pattern);
@@ -508,7 +508,7 @@ void CPUQuantizePass::QuantizeReshape(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(next_op, next_op, reshape_pattern);
 
     // skip if prev op and next op is not quantized
-    if (!(IsPrevOpQuantized(prev_op)) && !(IsNextOpQuantized(next_op))) {
+    if (!(IsOpDequantized(prev_op)) && !(IsOpQuantized(next_op))) {
       return;
     }
 
@@ -555,9 +555,8 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(prev_op_y, prev_op_y, matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(next_op, next_op, matmul_pattern);
 
-    // skip if prev ops are not quantized or next op is quantized
-    if (!IsPrevOpQuantized(prev_op_x) || !IsPrevOpQuantized(prev_op_y) ||
-        IsNextOpQuantized(next_op)) {
+    // skip if prev ops are not quantized
+    if (!IsOpDequantized(prev_op_x) || !IsOpDequantized(prev_op_y)) {
       return;
     }
     GET_IR_NODE_FROM_SUBGRAPH(matmul_in_x, matmul_in_x, matmul_pattern);

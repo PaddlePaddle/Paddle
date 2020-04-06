@@ -537,6 +537,19 @@ ProgramDesc BuildProgramDescMatmul() {
   return prog;
 }
 
+ProgramDesc BuildProgramDescMatmulNotQuantized() {
+  ProgramDesc prog;
+  for (auto& v : variable_names_transpose) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  SetOp(&prog, "dropout", "Dropout", {"a"}, {"b"}, false);
+  SetOp(&prog, "dequantize", "Dequantize", {"c"}, {"d"}, true);
+  SetOp(&prog, "matmul", "Matmul", {"b", "d"}, {"e"}, true, true);
+  SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, false);
+
+  return prog;
+}
+
 void MainTestMatmul(const ProgramDesc& prog, int matmul_count, int quant_count,
                     int dequant_count, int added_nodes_count, float scale) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
@@ -554,14 +567,17 @@ void MainTestMatmul(const ProgramDesc& prog, int matmul_count, int quant_count,
       auto* op = node->Op();
       if (op->Type() == "matmul") {
         matmul_nodes_count++;
+        auto op_name = boost::get<std::string>(op->GetAttr("name"));
+        EXPECT_EQ(boost::get<float>(op->GetAttr("Scale_x")), scale)
+            << "Scale_x for node '" + op_name + "'.";
+        EXPECT_EQ(boost::get<float>(op->GetAttr("Scale_y")), scale)
+            << "Scale_y for node '" + op_name + "'.";
+        EXPECT_EQ(boost::get<float>(op->GetAttr("Scale_out")), scale)
+            << "Scale_out for node '" + op_name + "'.";
       } else if (op->Type() == "quantize") {
         quantize_nodes_count++;
-        quant_scale = boost::get<float>(op->GetAttr("Scale"));
-        std::cout << "Quant scale : " << quant_scale << std::endl;
       } else if (op->Type() == "dequantize") {
         dequantize_nodes_count++;
-        dequant_scale = boost::get<float>(op->GetAttr("Scale"));
-        std::cout << "Dequant scale : " << dequant_scale << std::endl;
       }
     }
   }
@@ -579,6 +595,16 @@ TEST(CpuQuantizePass, matmul) {
   int added_nodes_count = 6;
   MainTestMatmul(BuildProgramDescMatmul(), matmul_count, quant_count,
                  dequant_count, added_nodes_count, 2.0f * 127);
+}
+
+TEST(CpuQuantizePass, matmul_not_quantized) {
+  int matmul_count = 1;
+  int quant_count = 0;
+  int dequant_count = 1;
+  // nothing change
+  int added_nodes_count = 0;
+  MainTestMatmul(BuildProgramDescMatmulNotQuantized(), matmul_count,
+                 quant_count, dequant_count, added_nodes_count, 1.0f);
 }
 }  // namespace
 
