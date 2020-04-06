@@ -36,7 +36,8 @@ _http_server_logger = get_logger(
 
 class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     """
-    kv handler for kv http server.
+    kv handler class for kv http server,
+    it defines the way to get/set kv in server.
     """
     def do_GET(self):
         """

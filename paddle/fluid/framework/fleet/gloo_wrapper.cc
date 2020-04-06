@@ -213,21 +213,22 @@ void ParallelConnectContext::connectFullMesh(
   // Connect every pair
   for (uint32_t i = 0; i < connect_threads.size(); ++i) {
     connect_threads[i].reset(new std::thread(
-        [&store, &transportContext, this] (size_t thread_idx,
-                                           size_t thread_num) -> void {
-      for (int i = thread_idx; i < size; i += thread_num) {
-        if (i == rank) {
-          continue;
-        }
-        // Wait for address of other side of this pair to become available
-        std::string key = std::to_string(i);
-        store.wait({key}, getTimeout());
-        // Connect to other side of this pair
-        auto allAddrs = store.get(key);
-        auto addr = extractAddress(allAddrs, i);
-        transportContext->getPair(i)->connect(addr);
-      }
-    }, i, connect_threads.size()));
+        [&store, &transportContext, this](size_t thread_idx,
+                                          size_t thread_num) -> void {
+          for (int i = thread_idx; i < size; i += thread_num) {
+            if (i == rank) {
+              continue;
+            }
+            // Wait for address of other side of this pair to become available
+            std::string key = std::to_string(i);
+            store.wait({key}, getTimeout());
+            // Connect to other side of this pair
+            auto allAddrs = store.get(key);
+            auto addr = extractAddress(allAddrs, i);
+            transportContext->getPair(i)->connect(addr);
+          }
+        },
+      i, connect_threads.size()));
   }
   for (uint32_t i = 0; i < connect_threads.size(); ++i) {
     connect_threads[i]->join();
