@@ -41,15 +41,14 @@ class TestMeshgridOp(OpTest):
     def test_check_output(self):
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, check_dygraph=True)
+            self.check_output_with_place(place)
         else:
-            self.check_output(check_dygraph=True)
+            self.check_output()
 
     def test_check_grad(self):
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, ['x1'], ['out1'], check_dygraph=True, atol=1e-5)
+            self.check_grad_with_place(place, ['x1'], ['out1'])
         else:
             self.check_grad(['x0'], ['out0'])
             self.check_grad(['x1'], ['out1'])
@@ -80,8 +79,6 @@ class TestMeshgridOp2(TestMeshgridOp):
         self.use_cudnn = True
 
 
-@skip_check_grad_ci(
-    reason="The function 'check_grad' for large inputs is too slow.")
 class TestMeshgridOp3(TestMeshgridOp):
     def get_x_shape(self):
         return [4, 5, 6]
