@@ -989,7 +989,11 @@ All parameter, weight, gradient are variables in Paddle.
              PADDLE_ENFORCE_EQ(self.IsType<framework::ReaderHolder>(), true);
              return self.GetMutable<framework::ReaderHolder>();
            },
-           py::return_value_policy::reference);
+           py::return_value_policy::reference)
+      .def("set_scope", [](Variable &self, Scope &scope) {
+        auto scope_vec = self.GetMutable<std::vector<framework::Scope *>>();
+        scope_vec->emplace_back(&scope);
+      });
 
   BindReader(&m);
 
@@ -1180,6 +1184,8 @@ All parameter, weight, gradient are variables in Paddle.
         []() { return std::string(framework::kEmptyVarName); });
   m.def("grad_var_suffix",
         []() { return std::string(framework::kGradVarSuffix); });
+  m.def("loaded_var_suffix",
+        []() { return std::string(framework::kLoadedVarSuffix); });
   m.def_submodule(
        "var_names",
        "The module will return special predefined variable name in Paddle")
