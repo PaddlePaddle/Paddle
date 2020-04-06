@@ -38,15 +38,20 @@ TRAIN_LABEL_MD5 = 'd53e105ee54ea40749a09fcbcd1e9432'
 
 class MNIST(Dataset):
     """
-    Implement of mnist dataset
+    Implement of MNIST dataset
 
     Args:
         image_path(str): path to image file, can be set None if
+            :attr:`download` is True. Default None
+        label_path(str): path to label file, can be set None if
             :attr:`download` is True. Default None
         mode(str): 'train' or 'test' mode. Default 'train'.
         download(bool): whether auto download mnist dataset if
             :attr:`image_path`/:attr:`label_path` unset. Default
             True
+
+    Returns:
+        Dataset: MNIST Dataset.
 
     Examples:
         

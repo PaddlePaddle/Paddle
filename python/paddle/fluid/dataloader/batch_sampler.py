@@ -27,18 +27,19 @@ class BatchSampler(object):
     which yield mini-batch indices(a list/tuple with length as
     mini-batch size and holds sample indices) iterably.
 
-    Batch sampler used by `fluid.io.DataLoader` should be a subclass
-    of `fluid.io.BatchSampler`, BatchSampler subclasses should
+    Batch sampler used by :code:`fluid.io.DataLoader` should be a subclass
+    of :code:`fluid.io.BatchSampler`, BatchSampler subclasses should
     implement following methods:
 
-    :math:`__iter__`: return mini-batch indices iterably.
-    :math:`__len__`: get mini-batch number in an epoch.
+    :code:`__iter__`: return mini-batch indices iterably.
+
+    :code:`__len__`: get mini-batch number in an epoch.
 
 
     Args:
-        dataset(Dataset): this could be a `fluid.io.Dataset` 
+        dataset(Dataset): this could be a :code:`fluid.io.Dataset` 
                 implement or other python object which implemented
-                `__len__` for BatchSampler to get indices as the
+                :code:`__len__` for BatchSampler to get indices as the
                 range of :attr:`dataset` length. Default None.
         indices (list|tuple): a substitution parameter for
                 :attr:`dataset` either :attr:`dataset` or

@@ -104,15 +104,17 @@ class DataLoader(object):
 
     DataLoader supports single-process and multi-prcess data loading,
     multi-process workers will be used to load data asynchronously if
-    num_workers is set as a positive number.
+    :attr:`num_workers` is set as a positive number.
 
     DataLoader only supports map-style dataset(can get a sample from
     dataset with a given index) currently, for a map-style dataset,
-    please see `fluid.io.Dataset`.
+    please see :code:`fluid.io.Dataset`.
+
+    batch_sampler please se :code:`fluid.io.BatchSampler`
 
     Args:  
         dataset(Dataset): the dataset to load data from, should be an
-            instance of subclass of `fluid.io.Dataset`.
+            instance of subclass of :code:`fluid.io.Dataset`.
         feed_list (list(Variable)|tuple(Variable)): feed variable list.
             The variables should be created by :code:`fluid.data()`.
             :attr:`feed_list` must be set if :attr:`return_list` is
@@ -144,7 +146,7 @@ class DataLoader(object):
             for :attr:`batch_sampler`, see :attr:`batch_size`. Default False
         collate_fn(callable): function to generate mini-batch data by merging
             the sample list, None for only stack each fields of sample in axis
-            0. Default None
+            0(same as :attr::`np.stack(..., axis=0)`). Default None
         num_workers(int): the number of subprocess to load data, 0 for no
             subprocess used and loading data in main process. Default 0
         use_buffer_reader (bool): whether to use bufferred reader. 

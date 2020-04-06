@@ -45,7 +45,13 @@ class Flowers(Dataset):
     Implement of flowers dataset
 
     Args:
-        mode(str): 'train' or 'test' mode. Default 'train'.
+        data_file(str): path to data file, can be set None if
+            :attr:`download` is True. Default None
+        label_file(str): path to label file, can be set None if
+            :attr:`download` is True. Default None
+        setid_file(str): path to subset index file, can be set
+            None if :attr:`download` is True. Default None
+        mode(str): 'train', 'valid' or 'test' mode. Default 'train'.
         download(bool): whether auto download mnist dataset if
             :attr:`image_path`/:attr:`label_path` unset. Default
             True
@@ -59,7 +65,7 @@ class Flowers(Dataset):
             flowers = Flowers(mode='test')
 
             for i in range(len(flowers)):
-                sample = mnist[i]
+                sample = flowers[i]
                 print(sample[0].shape, sample[1])
 
     """

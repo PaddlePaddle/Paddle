@@ -27,12 +27,13 @@ class Dataset(object):
     should be a subclass of `fluid.io.Dataset`. All subclasses should
     implement following methods:
 
-    :math:`__getitem__`: get sample from dataset with a given index. This
-    method is required by reading dataset sample in `fluid.io.DataLoader`.
-    :math:`__len__`: return dataset sample number. This method is required
-    by some implements of `fluid.io.BatchSampler`
+    :code:`__getitem__`: get sample from dataset with a given index. This
+    method is required by reading dataset sample in :code:`fluid.io.DataLoader`.
 
-    see `fluid.io.DataLoader`.
+    :code:`__len__`: return dataset sample number. This method is required
+    by some implements of :code:`fluid.io.BatchSampler`
+
+    see :code:`fluid.io.DataLoader`.
     """
 
     def __getitem__(self, idx):
