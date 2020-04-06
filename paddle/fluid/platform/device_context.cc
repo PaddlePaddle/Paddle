@@ -289,6 +289,13 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
     }
   }
 
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      dynload::cusolverDnCreate(&cusolver_dn_handle_),
+      "Failed to create Cusolver dn handle in DeviceContext");
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      dynload::cusolverDnSetStream(cusolver_dn_handle_, stream_),
+      "Failed to set stream for Cusolver dn handle in DeviceContext");
+
   callback_manager_.reset(new StreamCallbackManager(stream_));
 }
 
@@ -304,6 +311,10 @@ CUDADeviceContext::~CUDADeviceContext() {
   if (cudnn_handle_) {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_),
                                 "Failed to destory Cudnn handle");
+  }
+  if (cusolver_handle_) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cusolverDnDestroy(cusolver_dn_handle_),
+                                "Failed to destory Cusolver dn handle");
   }
 #if defined(PADDLE_WITH_NCCL)
   if (nccl_comm_) {
@@ -361,6 +372,10 @@ cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
 
 CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
   return CudnnWorkspaceHandle(*this, &cudnn_handle_mtx_);
+}
+
+cusolverDnHandle_t CUDADeviceContext::cusolver_dn_handle() const {
+  return cusolver_dn_handle_;
 }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }

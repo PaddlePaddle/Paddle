@@ -141,6 +141,8 @@ class CUDADeviceContext : public DeviceContext {
    *  sequential cudnn function calls. */
   CudnnWorkspaceHandle cudnn_workspace_handle() const;
 
+  cusolverDnHandle_t cusolver_dn_handle() const;
+
   /*! \brief  Return cuda stream in the device context. */
   cudaStream_t stream() const;
 
@@ -179,6 +181,8 @@ class CUDADeviceContext : public DeviceContext {
 
   std::unique_ptr<CublasHandleHolder> cublas_handle_;
   std::unique_ptr<CublasHandleHolder> cublas_tensor_core_handle_;
+
+  cusolverDnHandle_t cusolver_dn_handle_;
 
 #if defined(PADDLE_WITH_NCCL)
   // NCCL communicator (single process version) for NCCL collective operations.
