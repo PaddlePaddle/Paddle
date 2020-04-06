@@ -21,7 +21,8 @@ import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
 class TestFleet1(unittest.TestCase):
     """
-    Test cases for fleet minimize.
+    Test cases for fleet minimize,
+    and some other fleet apu tests.
     """
 
     def setUp(self):
@@ -88,7 +89,7 @@ class TestFleet1(unittest.TestCase):
                 it is only a test function
                 """
                 return True
-            
+
             fleet._role_maker.is_first_worker = test_func
             fleet._role_maker._barrier_worker = test_func
             fleet.save_model("./model_000")
