@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import paddle.fluid.core
 import unittest
+import six
 
 
 class TestScope(unittest.TestCase):
@@ -53,7 +54,7 @@ class TestScope(unittest.TestCase):
         scope = paddle_c.Scope()
         # Delete the scope.
         scope._remove_from_pool()
-        with self.assertRaisesRegex(
+        with self.assertRaisesRegexp(
                 Exception, "Deleting a nonexistent scope is not allowed*"):
             # It is not allowed to delete a nonexistent scope.
             scope._remove_from_pool()
