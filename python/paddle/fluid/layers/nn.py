@@ -6329,7 +6329,7 @@ def roi_pool(input,
     
         x = fluid.data(name='input', shape=[None,1,4,4], dtype=DATATYPE)
         rois = fluid.data(name='roi', shape=[None,4], dtype=DATATYPE)
-        rois_lod = fluid.data(name='rois_lod', shape=[None], dtype=DATATYPE) 
+        rois_lod = fluid.data(name='rois_lod', shape=[None], dtype='int64') 
 
         pool_out = fluid.layers.roi_pool(
                 input=x,
@@ -6405,7 +6405,7 @@ def roi_align(input,
                 name='data', shape=[None, 256, 32, 32], dtype='float32')
             rois = fluid.data(
                 name='rois', shape=[None, 4], dtype='float32')
-            rois_lod = fluid.data(name='rois_lod', shape=[None], dtype=DATATYPE)
+            rois_lod = fluid.data(name='rois_lod', shape=[None], dtype='int64')
             align_out = fluid.layers.roi_align(input=x,
                                                rois=rois,
                                                pooled_height=7,
