@@ -1,16 +1,16 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #pragma once
 #include <vector>
@@ -52,7 +52,7 @@ void IndexSelectInner(const framework::ExecutionContext& context,
   TensorToVector(index, context.device_context(), &index_vec);
   std::vector<T> out_vec(output->numel());
 
-  VLOG(1) << "Index_Select_Debug; outer_nums: " << outer_nums
+  VLOG(3) << "Index_Select_Debug; outer_nums: " << outer_nums
           << "; slice_size: " << slice_size << "; input_width: " << input_width
           << "; output_width: " << output_width
           << "; index_size: " << index_size;
@@ -121,9 +121,6 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
   TensorToVector(out_grad, context.device_context(), &input_vec);
   TensorToVector(index, context.device_context(), &index_vec);
 
-  // const T* p_input = out_grad.data<T>();
-  // const IndexT* p_index = index.data<IndexT>();
-
   auto input_dim = out_grad.dims();
   auto input_dim_size = input_dim.size();
   auto output_dim = x_grad->dims();
@@ -133,7 +130,6 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
   for (auto i = dim + 1; i < input_dim_size; i++) {
     slice_size *= input_dim[i];
   }
-  // const size_t slice_bytes = slice_size * sizeof(T);
 
   auto input_width = slice_size * input_dim[dim];
   auto output_width = slice_size * output_dim[dim];
@@ -144,7 +140,7 @@ void IndexSelectGradInner(const framework::ExecutionContext& context,
   }
 
   auto index_size = index.dims()[0];
-  VLOG(1) << "Index_Select_Grad_Debug; outer_nums: " << outer_nums
+  VLOG(3) << "Index_Select_Grad_Debug; outer_nums: " << outer_nums
           << "; slice_size: " << slice_size << "; input_width: " << input_width
           << "; output_width: " << output_width
           << "; index_size: " << index_size;

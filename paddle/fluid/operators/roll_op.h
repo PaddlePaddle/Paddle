@@ -1,16 +1,16 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #pragma once
 #include <memory>
@@ -44,9 +44,7 @@ inline void shift_along_dim(T* data, const DDim& input_dim, int64_t dim,
     slice_width *= input_dim[i];
   }
 
-  // auto slice_bytes = slice_width * sizeof(T);
-
-  VLOG(1) << "shift_along_dim_debug: input_dim: " << input_dim
+  VLOG(3) << "shift_along_dim_debug: input_dim: " << input_dim
           << "; dim: " << dim << "; shift: " << shift
           << "; outer_loops: " << outer_loops
           << "; slice_width: " << slice_width;
@@ -62,22 +60,16 @@ inline void shift_along_dim(T* data, const DDim& input_dim, int64_t dim,
     for (auto j = 0; j < head_size; j++) {
       head[j] = data[i * input_dim[dim] * slice_width + j];
     }
-    // memcpy(head.data(), data + i * input_dim[dim] * slice_width,
-    //       slice_width * (input_dim[dim] - shift) * sizeof(T));
     for (auto j = input_dim[dim] - shift; j < input_dim[dim]; j++) {
       auto dst_pos = j - input_dim[dim] + shift;
       for (auto k = 0; k < slice_width; k++) {
         data[(i * input_dim[dim] + dst_pos) * slice_width + k] =
             data[(i * input_dim[dim] + j) * slice_width + k];
       }
-      // memcpy(data + (i * input_dim[dim] + dst_pos) * slice_width,
-      //       data + (i * input_dim[dim] + j) * slice_width, slice_bytes);
     }
     for (auto j = 0; j < head_size; j++) {
       data[(i * input_dim[dim] + shift) * slice_width + j] = head[j];
     }
-    // memcpy(data + (i * input_dim[dim] + shift) * slice_width, head.data(),
-    //       slice_width * (input_dim[dim] - shift) * sizeof(T));
   }
 }
 
