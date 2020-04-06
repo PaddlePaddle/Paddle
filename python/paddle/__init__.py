@@ -33,7 +33,6 @@ import paddle.compat
 import paddle.distributed
 batch = batch.batch
 import paddle.sysconfig
-from paddle.tensor import *
 import paddle.nn
 import paddle.tensor
 

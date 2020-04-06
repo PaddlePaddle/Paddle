@@ -12,22 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define functions of linear algebra   
-# __all__ = ['matmul', 
-#            'dot',
-#            'einsum',
-#            'morm',
-#            'transpose',
-#            'dist',
-#            't',
-#            'cross',
-#            'cholesky',
-#            'tensordot']
 from __future__ import print_function
 
 from ..fluid.layer_helper import LayerHelper
 
-__all__ = ['cross']
+# TODO: define functions of linear algebra   
+__all__ = [
+    #            'matmul', 
+    #            'dot',
+    #            'einsum',
+    #            'morm',
+    #            'transpose',
+    #            'dist',
+    #            't',
+    'cross',
+    #            'cholesky',
+    #            'tensordot'
+]
 
 
 def cross(input, other, dim=None):
