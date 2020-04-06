@@ -189,11 +189,11 @@ class DistributedAdam(DistributedOptimizerImplBase):
         else:
             print("warning: unsupported merge op ", op_type)
             return
+
         for op in program.global_block().ops:
             cur_index += 1
             if op.type == op_type and op.input("W")[0] == table_name:
                 inputs.extend([i for i in op.input(input_id_name)])
-
                 input_names.extend([i for i in op.attr("InputNames")])
                 if input_grad_name is not None:
                     input_grads.extend([i for i in op.input(input_grad_name)])
@@ -205,6 +205,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                     w = op.input("W")[0]
         if len(sparse_op_idx) == 0:
             return
+
         max_input_idx = 0
         min_output_idx = len(program.global_block().ops)
         cur_index = -1
@@ -226,7 +227,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
             print("warning: not merge pull sparse")
             return
 
-        op_inputs={
+        op_inputs = {
             input_id_name: [local_vars[i] for i in inputs],
             'W': local_vars[w]
         }
@@ -253,7 +254,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 index=max_input_idx + 1,
                 type=op_type,
                 inputs=op_inputs,
-                outputs={output_name:op_outputs},
+                outputs={output_name: op_outputs},
                 attrs=attr)
 
     def _minimize(self,
