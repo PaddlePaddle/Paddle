@@ -1,3 +1,4 @@
+# -*-coding:utf-8-*-
 #   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +24,7 @@ import paddle.fluid.layers as layers
 import paddle.fluid as fluid
 import random
 import six
+from sys import version_info
 
 
 def create_tdm_travel():
@@ -124,22 +126,29 @@ class TestTDMSamplerOp(OpTest):
                 sampling_res = x_batch[start_offset:end_offset]
                 sampling_res_list = sampling_res.tolist()
                 positive_travel.append(sampling_res_list[0])
+
+                label_sampling_res = label_res[batch_ids][start_offset:
+                                                          end_offset]
+                mask_sampling_res = mask_res[batch_ids][start_offset:end_offset]
+
                 # check unique
                 if sampling_res_list[0] != 0:
                     assert len(set(sampling_res_list)) == len(
                         sampling_res_list
-                    ), "len(set(sampling_res_list)): {}, len(sampling_res_list): {} ".format(
-                        len(set(sampling_res_list)), len(sampling_res_list))
+                    ), "len(set(sampling_res_list)): {}, len(sampling_res_list): {} , sample_res: {}, label_res:{}, mask_res: {}".format(
+                        len(set(sampling_res_list)),
+                        len(sampling_res_list), sampling_res,
+                        label_sampling_res, mask_sampling_res)
                 # check legal
                 layer_node = self.tree_layer[layer_idx]
                 layer_node.append(0)
                 for sample in sampling_res_list:
-                    assert (sample in layer_node
-                            ), "sample: {}, layer_node: {} ".format(sample,
-                                                                    layer_node)
-                label_sampling_res = label_res[batch_ids][start_offset:
-                                                          end_offset]
-                mask_sampling_res = mask_res[batch_ids][start_offset:end_offset]
+                    assert (
+                        sample in layer_node
+                    ), "sample: {}, layer_node: {} , sample_res: {}, label_res: {}, mask_res:{}".format(
+                        sample, layer_node, sampling_res, label_sampling_res,
+                        mask_sampling_res)
+
                 # check label
                 label_flag = 1
                 if sampling_res[0] == 0:
