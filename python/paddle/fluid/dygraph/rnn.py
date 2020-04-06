@@ -22,7 +22,7 @@ __all__ = [
 class CudnnLSTMCell(Layer):
     """
     ****
-    LSTM implementation for dynamic graph.
+    LSTMCell implementation using basic operators.
     There are two LSTMCell version, the default one is compatible with CUDNN LSTM implementation.
     The algorithm can be described as the equations below.
         .. math::
@@ -42,8 +42,8 @@ class CudnnLSTMCell(Layer):
             h_t &= o_t \\odot tanh(c_t)
 
     Args:
-        hidden_size (integer): The hidden size used in the Unit.
-        input_size (integer): The input size used in the Unit.
+        hidden_size (integer): The hidden size used in the Cell.
+        input_size (integer): The input size used in the Cell.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
             weight matrix. Note:
             If it is set to None or one attribute of ParamAttr, lstm_unit will
@@ -131,12 +131,12 @@ class CudnnLSTMCell(Layer):
                 dtype=self._dtype)
 
             self._bias_ih = self.create_parameter(
-                attr=self._param_attr,
+                attr=self._bias_attr,
                 shape=[4 * self._hidden_size],
                 dtype=self._dtype,
                 is_bias=True)
             self._bias_hh = self.create_parameter(
-                attr=self._param_attr,
+                attr=self._bias_attr,
                 shape=[4 * self._hidden_size],
                 dtype=self._dtype,
                 is_bias=True)
@@ -205,7 +205,7 @@ class CudnnLSTMCell(Layer):
 class CudnnGRUCell(Layer):
     """
     ****
-    GRU implementation for dynamic graph.
+    GRU implementation using basic operators.
     There are two GRUCell version, the default one is compatible with CUDNN GRU implementation.
     The algorithm can be described as the equations below.
         .. math::
@@ -220,8 +220,8 @@ class CudnnGRUCell(Layer):
             \\tilde{h_{t}} & = tanh(W_{cx} x_{t} + W_{ch} \\odot(r_t, h_{t-1}) + b_m)
             h_t & = u_t h_{t-1} + (1-u_t) \\tilde{h_{t}}
     Args:
-        hidden_size (integer): The hidden size used in the Unit.
-        input_size (integer): The input size used in the Unit.
+        hidden_size (integer): The hidden size used in the Cell.
+        input_size (integer): The input size used in the Cell.
         param_attr(ParamAttr|None): The parameter attribute for the learnable
             weight matrix. Note:
             If it is set to None or one attribute of ParamAttr, gru_unit will

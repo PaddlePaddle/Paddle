@@ -18,7 +18,7 @@ import unittest
 import numpy
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from rnn import CudnnLSTMCell
+from paddle.fluid.dygraph.rnn import CudnnLSTMCell
 
 import numpy as np
 

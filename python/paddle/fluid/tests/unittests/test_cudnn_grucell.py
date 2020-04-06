@@ -18,7 +18,7 @@ import unittest
 import numpy
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from rnn import CudnnGRUCell
+from paddle.fluid.dygraph.rnn import CudnnGRUCell
 
 import numpy as np
 
