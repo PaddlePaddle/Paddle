@@ -2172,6 +2172,15 @@ class Operator(object):
 
         return attr_map
 
+    def _is_optimize_op(self):
+        op_maker = core.op_proto_and_checker_maker
+        OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
+        op_role = self.desc.attr(op_maker.kOpRoleAttrName())
+        if op_role & int(OPTIMIZE):
+            return True
+        else:
+            return False
+
 
 class Block(object):
     """
@@ -2706,8 +2715,8 @@ class Block(object):
             assert isinstance(p, Parameter)
             v = self.vars.get(p.name, None)
             if v is None:
-                raise ValueError("_copy_param_info_from should be invoked with "
-                                 "same topology")
+                # if the Parameter is pruned, v may be None
+                continue
             assert isinstance(v, Variable)
             new_p = None
             if in_dygraph_mode():
@@ -4056,52 +4065,13 @@ class Program(object):
         directly. This API is in flux and not stable.
 
         Args:
-            targets(list|Variable|Operator): A list of variables or operators
+            targets(list|Variable|Operator): A list of variables, operators, or variable names
                 need to be pruned
 
         Returns:
             Program:  A new, pruned program.
         """
-
-        #NOTE(zhiqiu): we sync the original program first, since its program may diff with
-        # its desc due to modifying desc in c++ space. E.g. save op will add kLookupTablePath in desc.
-        self._sync_with_cpp()
-
-        if not isinstance(targets, list):
-            targets = [targets]
-
-        targets_idx = []
-        for t in targets:
-            if not isinstance(t, Operator):
-                if isinstance(t, Variable):
-                    # After transpiler processing, the op that output this
-                    # variable maybe has been changed, so t.op is not reliable
-                    # and we need to find the current op that generate this
-                    # variable here.
-                    t.op = None
-                    global_block = self.global_block()
-                    for idx, op in enumerate(global_block.ops):
-                        if t.name in op.output_arg_names:
-                            t.op = op
-                            break
-
-                    t = t.op
-                    if t is None:
-                        raise ValueError(
-                            "The target variable must have an "
-                            "associated operator that generates it.")
-                else:
-                    raise ValueError("All targets of prune() can only be "
-                                     "Variable or Operator.")
-
-            targets_idx.append([t.block.idx, t.idx])
-        res = Program()
-        res.desc = core.prune(self.desc, set(), targets_idx)
-        res.blocks = [
-            Block(res, i) for i in six.moves.range(res.desc.num_blocks())
-        ]
-        res._sync_with_cpp()
-        return res
+        return self._prune_with_input([], targets)
 
     def _prune_with_input(self, feeded_var_names, targets):
         """
@@ -4115,7 +4085,7 @@ class Program(object):
         Args:
             feeded_var_names(list|str): A list of variable names from where
                 pruning start. If it is set as [], this API works just like _prune()
-            targets(list|Variable|Operator): A list of variables or operators
+            targets(list|Variable|Operator): A list of variables, operators, or variable names
                 need to be pruned
 
         Returns:
@@ -4140,33 +4110,47 @@ class Program(object):
         for t in targets:
             if not isinstance(t, Operator):
                 if isinstance(t, Variable):
-                    # After transpiler processing, the op that output this
-                    # variable maybe has been changed, so t.op is not reliable
-                    # and we need to find the current op that generate this
-                    # variable here.
-                    t.op = None
-                    global_block = self.global_block()
-                    for idx, op in enumerate(global_block.ops):
-                        if t.name in op.output_arg_names:
-                            t.op = op
-                            break
-
-                    t = t.op
-                    if t is None:
-                        raise ValueError(
-                            "The target variable must have an "
-                            "associated operator that generates it.")
+                    name = t.name
+                elif isinstance(t, six.string_types):
+                    name = str(t)
                 else:
                     raise ValueError("All targets of prune() can only be "
                                      "Variable or Operator.")
-
+                # After transpiler processing, the op that output this
+                # variable maybe has been changed, so t.op is not reliable
+                # and we need to find the current op that generate this
+                # variable here.
+                target_op = None
+                global_block = self.global_block()
+                for idx, op in enumerate(global_block.ops):
+                    if name in op.output_arg_names:
+                        # NOTE(zhiqiu): Find op that generate target name.
+                        # Skip optimize op except for optimize op in targets, 
+                        # since optimize op generates parameters.
+                        if op._is_optimize_op() and op not in targets:
+                            continue
+                        else:
+                            target_op = op
+                            break
+                t = target_op
+                if t is None:
+                    raise ValueError("The target variable must have an "
+                                     "associated operator that generates it.")
             targets_idx.append([t.block.idx, t.idx])
+
         res = Program()
-        res.desc = core.prune(self.desc, set(feeded_var_names), targets_idx)
+        res.desc, pruned_origin_block_id_map = core.prune(self.desc,
+                                                          set(feeded_var_names),
+                                                          targets_idx)
         res.blocks = [
             Block(res, i) for i in six.moves.range(res.desc.num_blocks())
         ]
         res._sync_with_cpp()
+
+        res._copy_param_info_from(self)
+        res._copy_data_info_from(self, pruned_origin_block_id_map)
+        res._copy_dist_param_info_from(self)
+
         return res
 
     def _inference_optimize(self, prune_read_op=True):
