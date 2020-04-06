@@ -86,7 +86,7 @@ class TestMeshgridOp3(TestMeshgridOp):
 
 class TestMeshgridOp3(TestMeshgridOp):
     def get_x_shape(self):
-        return [4, 5, 6, 100]
+        return [4, 6, 100]
 
 
 if __name__ == '__main__':
