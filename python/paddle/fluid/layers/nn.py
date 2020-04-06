@@ -14341,6 +14341,25 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
 
 
 def meshgrid(x, name=None):
+    """
+    Meshgrid Operator.
+    Take: N tensors, each of which can be either scalr or 1-dimensional vector, and create
+    N-dimensional grids.
+    
+    Args:
+    tensors (list of tensor): the input k tensors has (N1,), (N2,),..., (Nk,)
+
+    Retures:
+    k tensors are of size(N1, N2, ..., Nk)
+
+    Examples:
+    x = fluid.data(name='x', shape=[10], dtype='float64')
+    y = fluid.data(name='y', shape=[20], dtype='float64')
+    grid_x, grid_y = fluid.layers.meshgrid(x, y)
+     
+    #the shape of grid_x is (10, 20)
+    #the shape of grid_y is (10, 20)
+    """
     if not isinstance(x, list):
         warnings.warn(
             "The type of input in meshgrid should be list, but received %s." %

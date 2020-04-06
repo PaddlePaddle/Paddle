@@ -89,17 +89,13 @@ Args:
   the output tensors are all of size (N1, N2, ...., Nk).
 
 Example::
->>> x = torch.tensor([1, 2, 3])
->>> y = torch.tensor([4, 5, 6])
->>> grid_x, grid_y = paddle.meshgrid(x, y)
->>> grid_x
-tensor([[1, 1, 1],
-        [2, 2, 2],
-        [3, 3, 3]])
->>> grid_y
-tensor([[4, 5, 6],
-        [4, 5, 6],
-        [4, 5, 6]])
+>>> x = fluid.data(name='x', shape=[10], dtype='float64')
+>>> y = fluid.data(name='y', shape=[20], dtype='float64')
+>>> grid_x, grid_y = fluid.layers.meshgrid([x, y])
+>>> grid_x.shape
+(10,20)
+>>> grid_y.shape
+(10,20)
 )DOC");
   }
 };
