@@ -40,12 +40,18 @@ TEST(TEST_GLOO, store_1) {
   store.EncodeName("1");
   store.TmpPath("1");
   store.ObjectPath("1");
-  std::vector<bool> status(1, False);
+  std::vector<bool> status(1, false);
   store.Check(std::vector<std::string>{"test"}, &status);
 
   auto gw = paddle::framework::GlooWrapper();
-  gw.Init(0, 1, "", "", "", "", "");
-  gw.Init(0, 1, "", "", "", "", "");
+  gw.SetRank(0);
+  gw.SetSize(1);
+  gw.SetPrefix("");
+  gw.SetIface("lo");
+  gw.SetHdfsStore("", "", "");
+  gw.Init();
+  gw.SetHttpStore("", 8099, "");
+  gw.Init();
   gw.Rank();
   gw.Size();
   gw.Barrier();
