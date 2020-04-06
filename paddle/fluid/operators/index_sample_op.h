@@ -114,7 +114,6 @@ void IndexSampleGradInner(const framework::ExecutionContext &context,
                           const LoDTensor &out_grad, const LoDTensor &index,
                           LoDTensor *x_grad) {
   auto index_dims = index.dims();
-  // auto out_grad_dims = out_grad.dims();
   auto x_grad_dims = x_grad->dims();
 
   int batch_size = x_grad_dims[0];
