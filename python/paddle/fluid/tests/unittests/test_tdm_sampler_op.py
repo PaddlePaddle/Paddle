@@ -100,8 +100,11 @@ class TestTDMSamplerOp(OpTest):
         self.out_dtype = 'int32'
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
-        mask_res, label_res, x_res = self.out
+        places = self._get_places()
+        for place in places:
+            outs = self.calc_output(place)
+            self.out = [np.array(out) for out in outs]
+        x_res, label_res, mask_res = self.out
 
         # check dtype
         if self.out_dtype == 'int32':
@@ -164,9 +167,6 @@ class TestTDMSamplerOp(OpTest):
             # check travel legal
             assert self.tree_travel[int(self.x_np[
                 batch_ids])] == positive_travel
-
-    def verify_output(self, outs):
-        self.out = outs
 
 
 class TestCase1(TestTDMSamplerOp):
