@@ -23,6 +23,7 @@ from . import layers
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, _varbase_creator
 from ..param_attr import ParamAttr
+from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from .. import unique_name
 from .layer_object_helper import LayerObjectHelper
@@ -2117,6 +2118,10 @@ class BilinearTensorProduct(layers.Layer):
             is_bias=True)
 
     def forward(self, x, y):
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'],
+                                 'BilinearTensorProduct')
+        check_variable_and_dtype(y, 'y', ['float32', 'float64'],
+                                 'BilinearTensorProduct')
         self._inputs = {"X": x, "Y": y, "Weight": self.weight}
         if self.bias is not None:
             self._inputs["Bias"] = self.bias
