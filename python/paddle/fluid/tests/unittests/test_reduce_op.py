@@ -494,7 +494,6 @@ class TestReduceMeanOpError(unittest.TestCase):
             self.assertRaises(TypeError, fluid.layers.reduce_mean, x2)
 
 
-
 class TestSumOpWithKeepDimAndReduceAll(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
@@ -507,6 +506,7 @@ class TestSumOpWithKeepDimAndReduceAll(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
 
 class API_TestSumOpError(unittest.TestCase):
     def test_errors(self):
