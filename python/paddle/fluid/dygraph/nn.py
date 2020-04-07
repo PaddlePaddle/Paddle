@@ -1258,7 +1258,8 @@ class Dropout(layers.Layer):
         assert isinstance(p, (float, int)), "p argument should be a number"
         assert 0 <= p <= 1, "p argument should between 0 and 1"
         self._dropout_prob = p
-        assert isinstance(seed, int), "seed argument should be a integer"
+        assert seed is None or isinstance(
+            seed, int), "seed argument should be None or a integer"
         self._seed = seed
         assert dropout_implementation in (
             'downgrade_in_infer', 'upscale_in_train'
