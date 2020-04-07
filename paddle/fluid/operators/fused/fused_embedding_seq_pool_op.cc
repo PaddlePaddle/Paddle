@@ -38,12 +38,6 @@ class FusedEmbeddingSeqPoolOp : public framework::OperatorWithKernel {
                           "The dim size of the input tensor 'W' should be 2. "
                           "But received W's size = %d.",
                           table_dims.size()));
-    PADDLE_ENFORCE_GE(
-        ids_dims.size(), 1,
-        platform::errors::InvalidArgument(
-            "The dim size of the input tensor 'Ids' should be greater "
-            "than or equal to 1. But received Ids's size = %d.",
-            ids_dims.size()));
     PADDLE_ENFORCE_EQ(
         ids_dims[ids_dims.size() - 1], 1,
         platform::errors::InvalidArgument(

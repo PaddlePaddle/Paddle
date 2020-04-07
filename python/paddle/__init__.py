@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import os
 from paddle.check_import_scipy import check_import_scipy
 
@@ -33,10 +34,10 @@ import paddle.compat
 import paddle.distributed
 batch = batch.batch
 import paddle.sysconfig
-import paddle.nn
 import paddle.tensor
+import paddle.nn
 
-#TODO: define alias in tensor and framework directory
+# TODO: define alias in tensor and framework directory
 # from .tensor.creation import create_.tensor   #DEFINE_ALIAS
 # from .tensor.creation import create_lod_.tensor   #DEFINE_ALIAS
 # from .tensor.creation import create_random_int_lod.tensor   #DEFINE_ALIAS
@@ -78,7 +79,7 @@ from .tensor.logic import equal  #DEFINE_ALIAS
 # from .tensor.logic import reduce_all   #DEFINE_ALIAS
 # from .tensor.logic import reduce_any   #DEFINE_ALIAS
 from .tensor.logic import allclose  #DEFINE_ALIAS
-# from .tensor.logic import elementwise_equal   #DEFINE_ALIAS
+from .tensor.logic import elementwise_equal  #DEFINE_ALIAS
 # from .tensor.logic import isnan   #DEFINE_ALIAS
 # from .tensor..tensor import Tensor   #DEFINE_ALIAS
 # from .tensor..tensor import LoDTensor   #DEFINE_ALIAS
@@ -87,7 +88,7 @@ from .tensor.logic import allclose  #DEFINE_ALIAS
 # from .tensor.random import uniform   #DEFINE_ALIAS
 # from .tensor.random import shuffle   #DEFINE_ALIAS
 # from .tensor.random import randn   #DEFINE_ALIAS
-# from .tensor.random import randperm   #DEFINE_ALIAS
+from .tensor.random import randperm
 # from .tensor.random import rand   #DEFINE_ALIAS
 # from .tensor.random import randint   #DEFINE_ALIAS
 # from .tensor.math import abs   #DEFINE_ALIAS
@@ -110,9 +111,9 @@ from .tensor.math import atan  #DEFINE_ALIAS
 # from .tensor.math import floor   #DEFINE_ALIAS
 # from .tensor.math import increment   #DEFINE_ALIAS
 # from .tensor.math import log   #DEFINE_ALIAS
-# from .tensor.math import mul   #DEFINE_ALIAS
+from .tensor.math import mul  #DEFINE_ALIAS
 # from .tensor.math import multiplex   #DEFINE_ALIAS
-# from .tensor.math import pow   #DEFINE_ALIAS
+from .tensor.math import pow  #DEFINE_ALIAS
 # from .tensor.math import reciprocal   #DEFINE_ALIAS
 # from .tensor.math import reduce_max   #DEFINE_ALIAS
 # from .tensor.math import reduce_min   #DEFINE_ALIAS
@@ -126,13 +127,13 @@ from .tensor.math import sin  #DEFINE_ALIAS
 from .tensor.math import sqrt  #DEFINE_ALIAS
 # from .tensor.math import square   #DEFINE_ALIAS
 # from .tensor.math import stanh   #DEFINE_ALIAS
-# from .tensor.math import sum   #DEFINE_ALIAS
+from .tensor.math import sum  #DEFINE_ALIAS
 # from .tensor.math import sums   #DEFINE_ALIAS
 from .tensor.math import tanh  #DEFINE_ALIAS
-# from .tensor.math import elementwise_sum   #DEFINE_ALIAS
+from .tensor.math import elementwise_sum  #DEFINE_ALIAS
 # from .tensor.math import max   #DEFINE_ALIAS
 # from .tensor.math import min   #DEFINE_ALIAS
-# from .tensor.math import mm   #DEFINE_ALIAS
+from .tensor.math import mm  #DEFINE_ALIAS
 from .tensor.math import div  #DEFINE_ALIAS
 from .tensor.math import add  #DEFINE_ALIAS
 # from .tensor.math import atan   #DEFINE_ALIAS
@@ -191,6 +192,7 @@ from .tensor.search import argmax  #DEFINE_ALIAS
 # from .tensor.search import topk   #DEFINE_ALIAS
 # from .tensor.search import where   #DEFINE_ALIAS
 # from .tensor.search import index_select   #DEFINE_ALIAS
+from .tensor.search import index_sample  #DEFINE_ALIAS
 # from .tensor.search import nonzero   #DEFINE_ALIAS
 from .tensor.search import sort  #DEFINE_ALIAS
 # from .framework.framework import set_default_dtype   #DEFINE_ALIAS
