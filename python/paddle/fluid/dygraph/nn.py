@@ -20,6 +20,7 @@ from ..layers import utils
 from ..layers import nn
 from .. import dygraph_utils
 from . import layers
+from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, _varbase_creator
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
@@ -1474,6 +1475,9 @@ class LayerNorm(layers.Layer):
                 'begin_norm_axis', self._begin_norm_axis)
             return dygraph_utils._append_activation_in_dygraph(
                 pre_act, act=self._act)
+
+        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                                 'LayerNorm')
 
         inputs = dict()
         inputs['X'] = [input]
