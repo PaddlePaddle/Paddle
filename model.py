@@ -410,7 +410,8 @@ class StaticGraphAdapter(object):
                 and self.model._optimizer._learning_rate_map:
             # HACK workaround learning rate map issue
             lr_var = self.model._optimizer._learning_rate_map[self._orig_prog]
-            self.model._optimizer._learning_rate_map[prog] = lr_var
+            new_lr_var = prog.global_block().vars[lr_var.name]
+            self.model._optimizer._learning_rate_map[prog] = new_lr_var
 
         losses = []
         metrics = []
