@@ -32,7 +32,10 @@ __all__ = [
     'vgg19',
 ]
 
-model_urls = {}
+model_urls = {
+    'vgg16': ('https://paddle-hapi.bj.bcebos.com/models/vgg16.pdparams',
+              'c788f453a3b999063e8da043456281ee')
+}
 
 
 class Classifier(fluid.dygraph.Layer):

@@ -23,7 +23,11 @@ from .download import get_weights_path
 
 __all__ = ['MobileNetV2', 'mobilenet_v2']
 
-model_urls = {}
+model_urls = {
+    'mobilenetv2_1.0':
+    ('https://paddle-hapi.bj.bcebos.com/models/mobilenet_v2_x1.0.pdparams',
+     '8ff74f291f72533f2a7956a4efff9d88')
+}
 
 
 class ConvBNLayer(fluid.dygraph.Layer):
