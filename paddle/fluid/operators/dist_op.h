@@ -171,7 +171,7 @@ static void DistGradFunction(const framework::ExecutionContext& context) {
 
   // 1: Lp-norm(z), z = x-y, compute dz
   if (p == 0) {
-    grad_t.device(place) = grad_t.setZero();
+    grad_t.device(place) = grad_t * static_cast<T>(0);
   } else if (p == INFINITY || p == -INFINITY) {
     // p=inf or -inf, Lp-norm = |z_i|, the j-th element of dz tends to 0 if
     // j!=i, or equals to sign(z_i) * dout if j=i.
@@ -180,8 +180,9 @@ static void DistGradFunction(const framework::ExecutionContext& context) {
         sign * out_grad_t.broadcast(out_bcast_dims);
   } else {
     // dz = pow(abs(x-y)/out, p-1) * sign(x-y) * dout
-    grad_t.device(place) = (x_minux_y_abs / out->data<T>()[0]).pow(p - 1) *
-                           sign * out_grad_t.broadcast(out_bcast_dims);
+    grad_t.device(place) =
+        (x_minux_y_abs / out_t.broadcast(out_bcast_dims)).pow(p - 1) * sign *
+        out_grad_t.broadcast(out_bcast_dims);
   }
 
   Eigen::DSizes<int, Rank * 2> x_reshape_dims;

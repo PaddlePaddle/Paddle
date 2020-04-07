@@ -22,7 +22,7 @@ __all__ = [
     #  'einsum',
     #  'morm',
     #  'transpose',
-'dist',
+    'dist',
     #  't',
     #  'cross',
     #  'cholesky',
@@ -174,7 +174,7 @@ def dist(x, y, p=2):
     when p = -inf, the inf-norm of z is the minimum element of z.
 
     Args:
-        x (Variable): The input Tensor, its data type is float32 and float64.
+        x (Variable): The input Tensor, its data type is float32 or float64.
         y (Variable): The Right-hand-side input Tensor, its data type is float32 or float64.
         p (float, optional): The norm to be computed, its data type is float32 or float64. Default: 2.
 
@@ -183,7 +183,7 @@ def dist(x, y, p=2):
 
     Raises:
         TypeError: If the data type of `x` or `y` is not float32 or float64.
-        TypeError: If the type of `p` is not float or int.
+        TypeError: If the data type of `p` is not float32 or float64.
 
     Examples:
         .. code-block:: python

@@ -53,7 +53,7 @@ class TestDistOp(OpTest):
     def init_case(self):
         self.x_shape = (120)
         self.y_shape = (120)
-        self.p = 0
+        self.p = 0.
 
     def calc_gradient(self):
         x = self.inputs["X"]
@@ -118,7 +118,7 @@ class TestDistOpCase2(TestDistOp):
     def init_case(self):
         self.x_shape = (10, 10)
         self.y_shape = (4, 10, 10)
-        self.p = 3.
+        self.p = 2.
 
 
 class TestDistOpCase3(TestDistOp):
@@ -139,7 +139,7 @@ class TestDistOpCase5(TestDistOp):
     def init_case(self):
         self.x_shape = (4, 1, 4, 8)
         self.y_shape = (2, 2, 1, 4, 4, 8)
-        self.p = -1
+        self.p = 0.5
 
 
 class TestDistAPI(unittest.TestCase):
