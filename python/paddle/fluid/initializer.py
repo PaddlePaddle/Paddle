@@ -156,9 +156,9 @@ class ConstantInitializer(Initializer):
         """Add constant initialization ops for a variable
 
         Args:
-            var: Variable that needs to be initialized.
+            var: Variable that needs to be initialized
             block: The block in which initialization ops
-                   should be added.
+                   should be added
 
         Returns:
             the initialization op
