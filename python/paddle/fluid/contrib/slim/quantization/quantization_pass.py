@@ -245,14 +245,21 @@ class QuantizationTransformPass(object):
                 op_node.op()._set_attr("skip_quant", True)
 
         def _create_new_node(in_node):
-            if in_node.name() in create_var_map.keys():
-                new_node = create_var_map[in_node.name()]
+            key = ''
+            for inp in in_node.inputs:
+                key = key + inp.name()
+            for inp in in_node.outputs:
+                key = key + inp.name()
+            key = key + in_node.name()
+
+            if key in create_var_map.keys():
+                new_node = create_var_map[key]
             elif in_node.is_ctrl_var():
                 new_node = graph.create_control_dep_var()
-                create_var_map[in_node.name()] = new_node
+                create_var_map[key] = new_node
             else:
                 new_node = graph.create_var_node_from_desc(in_node.node.var())
-                create_var_map[in_node.name()] = new_node
+                create_var_map[key] = new_node
             return new_node
 
         def _copy_graph(source_graph, op_node):
@@ -262,8 +269,10 @@ class QuantizationTransformPass(object):
             for inp in op_node.outputs:
                 key = key + inp.name()
             key = key + op_node.name()
+            has_created = False
             if key in create_op_map.keys():
                 new_op_node = create_op_map[key]
+                has_created = True
             else:
                 new_op_node = graph.create_op_node_from_desc(op_node.node.op())
                 create_op_map[key] = new_op_node
@@ -273,6 +282,8 @@ class QuantizationTransformPass(object):
             for in_node in op_node.outputs:
                 new_node = _create_new_node(in_node)
                 graph.link_to(new_op_node, new_node)
+            if has_created:
+                return
             for var_node in op_node.outputs:
                 for next_op_node in var_node.outputs:
                     _copy_graph(source_graph, next_op_node)
