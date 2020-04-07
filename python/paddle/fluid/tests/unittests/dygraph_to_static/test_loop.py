@@ -78,6 +78,36 @@ def while_loop_bool_op(x):
     return i
 
 
+def while_loop_class_var(x):
+    class Foo(object):
+        def __init__(self):
+            self.a = 3
+            self.b = 4
+            self.c = 5
+
+    foo = Foo()
+    i = fluid.dygraph.to_variable(x)
+    while i < 10:
+        foo.b = fluid.layers.zeros(shape=[1], dtype='float32')
+        foo.c = foo.b + foo.a
+        i += 1
+    return foo.c
+
+
+def for_loop_class_var(max_len):
+    class Foo(object):
+        def __init__(self):
+            self.a = 3
+            self.b = 4
+            self.c = 5
+
+    foo = Foo()
+    for i in range(max_len):
+        foo.b = fluid.layers.zeros(shape=[1], dtype='float32')
+        foo.c = foo.b + foo.a
+    return foo.c
+
+
 def var_create_in_for_loop(max_len):
     for i in range(max_len):
         ret = fluid.layers.zeros(shape=[3, 4, 5], dtype='float64')
@@ -90,8 +120,7 @@ class TestNameVisitor(unittest.TestCase):
             while_loop_dyfunc, for_loop_dyfunc, while_loop_dyfunc_with_none
         ]
         self.loop_var_names = [
-            set(["i", "x"]), set(["i", "ret", "max_len"]),
-            set(["i", "x", "flag"])
+            set(["i", "x"]), set(["i", "ret", "max_len"]), set(["i", "x"])
         ]
         self.create_var_names = [set(), set(["ret"]), set()]
 
@@ -137,15 +166,8 @@ class TestTransformWhileLoop(unittest.TestCase):
 
     def test_ast_to_func(self):
         static_numpy = self._run_static()
-        self.assertTrue(
-            np.allclose(
-                np.full(
-                    shape=(1), fill_value=45, dtype=np.int32), static_numpy))
-
-        # Enable next lines after Paddle dygraph supports while x < 10 
-        #
-        # self._run_dygraph()
-        # self.assertTrue(np.allclose(self._run_dygraph(), self._run_static()))
+        dygraph_numpy = self._run_dygraph()
+        self.assertTrue(np.allclose(dygraph_numpy, static_numpy))
 
 
 class TestTransformWhileLoopWithConflicVar(TestTransformWhileLoop):
@@ -161,6 +183,11 @@ class TestTransformWhileLoopWithNone(TestTransformWhileLoop):
 class TestWhileLoopBoolOp(TestTransformWhileLoop):
     def _init_dyfunc(self):
         self.dyfunc = while_loop_bool_op
+
+
+class TestWhileLoopClassVar(TestTransformWhileLoop):
+    def _init_dyfunc(self):
+        self.dyfunc = while_loop_class_var
 
 
 class TestTransformForLoop(unittest.TestCase):
@@ -191,6 +218,11 @@ class TestTransformForLoop(unittest.TestCase):
         static_numpy = self._run_static()
         self._run_dygraph()
         self.assertTrue(np.allclose(self._run_dygraph(), self._run_static()))
+
+
+class TestClassVarInForLoop(TestTransformForLoop):
+    def _init_dyfunc(self):
+        self.dyfunc = for_loop_class_var
 
 
 class TestVarCreateInForLoop(TestTransformForLoop):
