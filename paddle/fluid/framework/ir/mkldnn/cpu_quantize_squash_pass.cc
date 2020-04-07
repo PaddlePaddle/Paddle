@@ -367,13 +367,14 @@ void CPUQuantizeSquashPass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init("cpu_quantize_squash_pass", graph);
 
   std::unordered_map<const Node*, int> nodes_keep_counter;
+
+  DequantScaleSquash(graph);
   FindNodesToKeep(graph, &nodes_keep_counter);
   DequantQuantSquash(graph, &nodes_keep_counter);
   ConvRequantSquash(graph);
   ConvDequantSquash(graph);
   FcDequantSquash(graph);
   MultipleQuantizeSquash(graph);
-  DequantScaleSquash(graph);
   MatmulDequantSquash(graph);
 }
 

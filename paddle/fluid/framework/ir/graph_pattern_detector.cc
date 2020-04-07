@@ -1579,6 +1579,34 @@ PDNode *patterns::MatmulDequant::operator()() {
   return dequant_out;
 }
 
+PDNode *patterns::ReshapeTransposeScale::operator()() {
+  auto reshape_op =
+      pattern->NewNode(reshape_op_repr())->assert_is_op("reshape2");
+  auto reshape_in = pattern->NewNode(reshape_in_repr())
+                        ->AsInput()
+                        ->assert_is_op_input("reshape2", "X");
+  auto reshape_out = pattern->NewNode(reshape_out_repr())
+                         ->AsOutput()
+                         ->assert_is_op_output("reshape2", "Out");
+  auto transpose_op =
+      pattern->NewNode(transpose_op_repr())->assert_is_op("transpose2");
+  auto transpose_out = pattern->NewNode(transpose_out_repr())
+                           ->AsOutput()
+                           ->assert_is_op_output("transpose2", "Out");
+  auto scale_op = pattern->NewNode(scale_op_repr())->assert_is_op("scale");
+  auto scale_out = pattern->NewNode(scale_out_repr())
+                       ->AsOutput()
+                       ->assert_is_op_output("scale", "Out");
+  auto next_op = pattern->NewNode(next_op_repr())->assert_is_op();
+
+  reshape_op->LinksFrom({reshape_in}).LinksTo({reshape_out});
+  transpose_op->LinksFrom({reshape_out}).LinksTo({transpose_out});
+  scale_op->LinksFrom({transpose_out}).LinksTo({scale_out});
+  next_op->LinksFrom({scale_out});
+
+  return next_op;
+}
+
 PDNode *patterns::PriorBox::operator()() {
   auto prior_box_op =
       pattern->NewNode(prior_box_op_repr())->assert_is_op("prior_box");

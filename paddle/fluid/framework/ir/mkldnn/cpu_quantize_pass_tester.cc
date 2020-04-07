@@ -50,7 +50,8 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetAttr("Scale_in", 1.0f);
     op->SetAttr("Scale_out", 1.0f);
     op->SetAttr("Scale_weights", std::vector<float>{1.0f});
-  } else if (type == "pool2d" || type == "transpose2" || type == "reshape2") {
+  } else if (type == "pool2d" || type == "transpose2" || type == "reshape2" ||
+             type == "scale") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
     op->SetAttr("use_quantizer", use_quantizer);
@@ -603,6 +604,63 @@ TEST(CpuQuantizePass, matmul_not_quantized) {
   int added_nodes_count = 0;
   MainTestMatmul(BuildProgramDescMatmulNotQuantized(), matmul_count,
                  quant_count, dequant_count, added_nodes_count, 1.0f);
+}
+
+static const std::initializer_list<std::string> variable_names_scale = {
+    "a", "b", "c", "d", "e", "f"};
+
+ProgramDesc BuildProgramDescScaleRelocate() {
+  ProgramDesc prog;
+  for (auto& v : variable_names_scale) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  SetOp(&prog, "fc", "Fc", {"a"}, {"b"}, false);
+  SetOp(&prog, "reshape2", "Reshape", {"b"}, {"c"}, false);
+  SetOp(&prog, "transpose2", "Transpose", {"c"}, {"d"}, false);
+  SetOp(&prog, "scale", "Scale", {"d"}, {"e"}, false);
+  SetOp(&prog, "matmul", "Matmul", {"e"}, {"f"}, false);
+  return prog;
+}
+
+void ScaleRelocateTest(const ProgramDesc& prog,
+                       const std::vector<std::string> fc_in_out,
+                       const std::vector<std::string> scale_in_out,
+                       const std::vector<std::string> reshape_in_out,
+                       const std::vector<std::string> transpose_in_out,
+                       const std::vector<std::string> matmul_in_out,
+                       int added_nodes_count) {
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
+  int original_nodes_num, current_nodes_num;
+  PreparePass(&graph, prog, variable_names_scale, &original_nodes_num,
+              &current_nodes_num);
+  for (auto* node : graph->Nodes()) {
+    if (node->IsOp()) {
+      auto* op = node->Op();
+      if (op->Type() == "fc") {
+        EXPECT_EQ(op->Input("Input")[0], fc_in_out[0]);
+        EXPECT_EQ(op->Output("Out")[0], fc_in_out[1]);
+      } else if (op->Type() == "scale") {
+        EXPECT_EQ(op->Input("X")[0], scale_in_out[0]);
+        EXPECT_EQ(op->Output("Out")[0], scale_in_out[1]);
+      } else if (op->Type() == "reshape2") {
+        EXPECT_EQ(op->Input("X")[0], reshape_in_out[0]);
+        EXPECT_EQ(op->Output("Out")[0], reshape_in_out[1]);
+      } else if (op->Type() == "transpose2") {
+        EXPECT_EQ(op->Input("X")[0], transpose_in_out[0]);
+        EXPECT_EQ(op->Output("Out")[0], transpose_in_out[1]);
+      } else if (op->Type() == "matmul") {
+        EXPECT_EQ(op->Input("X")[0], matmul_in_out[0]);
+        EXPECT_EQ(op->Output("Out")[0], matmul_in_out[1]);
+      }
+    }
+  }
+  EXPECT_EQ(original_nodes_num + added_nodes_count, current_nodes_num);
+}
+
+TEST(CpuQuantizePass, scale_relocate) {
+  int added_nodes_count = 0;
+  ScaleRelocateTest(BuildProgramDescScaleRelocate(), {"a", "b"}, {"b", "e"},
+                    {"e", "c"}, {"c", "d"}, {"d", "f"}, added_nodes_count);
 }
 }  // namespace
 

@@ -973,6 +973,25 @@ struct MatmulDequant : public PatternBase {
   PATTERN_DECL_NODE(dequant_out);
 };
 
+// Reshape2 + Transpose2 + Scale
+struct ReshapeTransposeScale : public PatternBase {
+  ReshapeTransposeScale(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "reshape_transpose_scale") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(reshape_in);
+  PATTERN_DECL_NODE(reshape_op);
+  PATTERN_DECL_NODE(reshape_out);
+
+  PATTERN_DECL_NODE(transpose_op);
+  PATTERN_DECL_NODE(transpose_out);
+
+  PATTERN_DECL_NODE(scale_op);
+  PATTERN_DECL_NODE(scale_out);
+  PATTERN_DECL_NODE(next_op);
+};
+
 // PriorBox operator
 // operator: prior_box_op
 // inputs: prior_box_input, prior_box_image
