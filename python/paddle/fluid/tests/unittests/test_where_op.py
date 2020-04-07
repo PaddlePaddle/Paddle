@@ -133,8 +133,6 @@ class TestWhereAPI(unittest.TestCase):
             self.test_api(use_cuda=True)
             self.test_api_broadcast(use_cuda=True)
             self.test_grad(use_cuda=True)
-            self.test_grad1(use_cuda=True)
-            self.test_grad2(use_cuda=True)
 
 
 class TestWhereDygraphAPI(unittest.TestCase):
