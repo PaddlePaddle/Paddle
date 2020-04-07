@@ -1875,8 +1875,10 @@ All parameter, weight, gradient are variables in Paddle.
           "reduce_strategy",
           [](const BuildStrategy &self) { return self.reduce_; },
           [](BuildStrategy &self, BuildStrategy::ReduceStrategy strategy) {
-            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
-                              "BuildStrategy is finlaized.");
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
             self.reduce_ = strategy;
           },
           R"DOC((fluid.BuildStrategy.ReduceStrategy, optional): there are two reduce
@@ -1899,8 +1901,10 @@ All parameter, weight, gradient are variables in Paddle.
           [](const BuildStrategy &self) { return self.gradient_scale_; },
           [](BuildStrategy &self,
              BuildStrategy::GradientScaleStrategy strategy) {
-            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
-                              "BuildStrategy is finalized.");
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
             self.gradient_scale_ = strategy;
           },
           R"DOC((fluid.BuildStrategy.GradientScaleStrategy, optional): there are three
@@ -1961,8 +1965,10 @@ All parameter, weight, gradient are variables in Paddle.
           "debug_graphviz_path",
           [](const BuildStrategy &self) { return self.debug_graphviz_path_; },
           [](BuildStrategy &self, const std::string &path) {
-            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
-                              "BuildStrategy is finlaized.");
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
             self.debug_graphviz_path_ = path;
           },
           R"DOC((str, optional): debug_graphviz_path indicates the path that
@@ -1983,8 +1989,10 @@ All parameter, weight, gradient are variables in Paddle.
             return self.enable_sequential_execution_;
           },
           [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
-                              "BuildStrategy is finlaized.");
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
             self.enable_sequential_execution_ = b;
           },
           R"DOC((bool, optional): If set True, the execution order of ops would
@@ -2003,8 +2011,10 @@ All parameter, weight, gradient are variables in Paddle.
             return self.remove_unnecessary_lock_;
           },
           [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
-                              "BuildStrategy is finlaized.");
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
             self.remove_unnecessary_lock_ = b;
           },
           R"DOC((bool, optional): If set True, some locks in GPU ops would be
@@ -2022,7 +2032,8 @@ All parameter, weight, gradient are variables in Paddle.
           [](const BuildStrategy &self) { return self.num_trainers_; },
           [](BuildStrategy &self, int num_trainers) {
 #ifdef WIN32
-            PADDLE_THROW("Windows has NO support to distribute mode.");
+            PADDLE_THROW(platform::errors::Unavailable(
+                "Windows has NO support to distribute mode."));
 #endif
             self.num_trainers_ = num_trainers;
           })
@@ -2065,8 +2076,10 @@ All parameter, weight, gradient are variables in Paddle.
             return self.fuse_elewise_add_act_ops_;
           },
           [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
-                              "BuildStrategy is finlaized.");
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
             self.fuse_elewise_add_act_ops_ = b;
           },
           R"DOC((bool, optional): fuse_elewise_add_act_ops indicate whether
@@ -2084,9 +2097,10 @@ All parameter, weight, gradient are variables in Paddle.
           "fuse_bn_act_ops",
           [](const BuildStrategy &self) { return self.fuse_bn_act_ops_; },
           [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy is finlaized."));
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
             self.fuse_bn_act_ops_ = b;
           },
           R"DOC((bool, optional): fuse_bn_act_ops indicate whether
@@ -2104,9 +2118,10 @@ All parameter, weight, gradient are variables in Paddle.
           "enable_auto_fusion",
           [](const BuildStrategy &self) { return self.enable_auto_fusion_; },
           [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy is finlaized."));
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
             self.enable_auto_fusion_ = b;
           },
           R"DOC((bool, optional): Whether to enable fusing subgraph to a
@@ -2127,8 +2142,10 @@ All parameter, weight, gradient are variables in Paddle.
             return self.fuse_relu_depthwise_conv_;
           },
           [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
-                              "BuildStrategy is finlaized.");
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
             self.fuse_relu_depthwise_conv_ = b;
           },
           R"DOC((bool, optional): fuse_relu_depthwise_conv indicate whether
@@ -2150,8 +2167,10 @@ All parameter, weight, gradient are variables in Paddle.
                              self.fuse_broadcast_ops_ == boost::none;
                     },
                     [](BuildStrategy &self, bool b) {
-                      PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
-                                        "BuildStrategy is finlaized.");
+                      PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                                        platform::errors::PreconditionNotMet(
+                                            "BuildStrategy has been finlaized, "
+                                            "cannot be configured again."));
                       self.fuse_broadcast_ops_ = b;
                     },
                     R"DOC((bool, optional): fuse_broadcast_op indicates whether
@@ -2174,16 +2193,20 @@ All parameter, weight, gradient are variables in Paddle.
                              self.fuse_all_optimizer_ops_ == boost::none;
                     },
                     [](BuildStrategy &self, bool b) {
-                      PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
-                                        "BuildStrategy is finlaized.");
+                      PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                                        platform::errors::PreconditionNotMet(
+                                            "BuildStrategy has been finlaized, "
+                                            "cannot be configured again."));
                       self.fuse_all_optimizer_ops_ = b;
                     })
       .def_property(
           "sync_batch_norm",
           [](const BuildStrategy &self) { return self.sync_batch_norm_; },
           [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
-                              "BuildStrategy is finlaized.");
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
             self.sync_batch_norm_ = b;
           },
           R"DOC((bool, optional): sync_batch_norm indicates whether to use
@@ -2216,9 +2239,9 @@ All parameter, weight, gradient are variables in Paddle.
             } else if (PyBool_Check(py_obj)) {
               self.memory_optimize_ = (py_obj == Py_True);
             } else {
-              PADDLE_THROW(
-                  "BuildStrategy.memory_optimize must be None, False or "
-                  "True");
+              PADDLE_THROW(platform::errors::InvalidArgument(
+                  "BuildStrategy.memory_optimize must be set to None, False or "
+                  "True"));
             }
           },
           R"DOC((bool, optional): memory opitimize aims to save total memory
@@ -2234,7 +2257,8 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, bool b) {
 #ifdef WIN32
             if (b) {
-              PADDLE_THROW("Windows has NO support to distribute mode.");
+              PADDLE_THROW(platform::errors::Unavailable(
+                  "Windows has NO support to distribute mode."));
             }
 #else
             self.is_distribution_ = b;
