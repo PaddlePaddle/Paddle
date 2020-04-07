@@ -20,6 +20,7 @@ from ..layers import utils
 from ..layers import nn
 from .. import dygraph_utils
 from . import layers
+from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, _varbase_creator
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
@@ -1146,6 +1147,9 @@ class BatchNorm(layers.Layer):
                 mean_out, variance_out, *attrs)
             return dygraph_utils._append_activation_in_dygraph(
                 batch_norm_out, act=self._act)
+
+        check_variable_and_dtype(input, 'input',
+                                 ['float16', 'float32', 'float64'], 'BatchNorm')
 
         attrs = {
             "momentum": self._momentum,
