@@ -34,7 +34,7 @@ static void FindAllConditionalBlockAndConditionalBlockGradOp(
   PADDLE_ENFORCE_GE(
       fwd_ops->size(), bwd_ops->size(),
       platform::errors::InvalidArgument(
-          "Size of forward ops must be greater or equal to backward ops"));
+          "Size of forward ops must be greater or equal to backward ops."));
 
   for (size_t i = 1; i < program.Size(); ++i) {
     auto &block = program.Block(i);
@@ -50,8 +50,8 @@ static void FindAllConditionalBlockAndConditionalBlockGradOp(
 
   PADDLE_ENFORCE_GE(fwd_ops->size(), bwd_ops->size(),
                     platform::errors::InvalidArgument(
-                        "There are more conditional_block_grad ops then "
-                        "conditional_block ops in the graph or program"));
+                        "There are more conditional_block_grad ops than "
+                        "conditional_block ops in the graph or program."));
 }
 
 static void SetSkipVarsForConditionalBlockOp(OpVariant *fwd_op,
@@ -108,7 +108,7 @@ static void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOpImpl(
                                                                bwd_op)) {
         PADDLE_ENFORCE_EQ(matched_fwd_op, nullptr,
                           platform::errors::PreconditionNotMet(
-                              "Found multiple matched conditional_block ops"));
+                              "Found multiple matched conditional_block ops."));
         matched_fwd_op = &fwd_op;
       }
     }
@@ -116,7 +116,7 @@ static void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOpImpl(
     PADDLE_ENFORCE_NOT_NULL(
         matched_fwd_op,
         platform::errors::PreconditionNotMet(
-            "Cannot find matched forward conditional_block op"));
+            "Cannot find matched forward conditional_block op."));
 
     SetSkipVarsForConditionalBlockOp(const_cast<OpVariant *>(matched_fwd_op),
                                      &bwd_op);
