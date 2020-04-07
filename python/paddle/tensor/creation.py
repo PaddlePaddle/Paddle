@@ -353,19 +353,28 @@ def full(shape,
                 The data type is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
                 the elements of it should be integers or Tensors with shape [1].
                 If ``shape`` is an Variable, it should be an 1-D Tensor .
-        value(float): The constant value used to initialize the Tensor to be created.
+        fill_value(float16|float32|float64|int32|int64|Variable): The constant value used to initialize 
+            the Tensor to be created. If value is an Variable, it should be an 1-D Tensor.
         out(Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output tensor
             which can be float16, float32, float64, int32, int64, if dytpe is `None`, the data
             type of created tensor is `float32`
-        device(str, optional): This parameter specifies that the Tensor is created 
-            on the GPU or CPU.
+        device(str, optional): Which device to run the operator. The :attr:`device` must be
+            None, 'cpu', 'gpu'. If :attr:`device` is None, it will be choose the device that the user set in 
+            the paddle program. Default value is None.
         stop_gradient(bool, optional): Indicating if we stop gradient from current(out) Variable,
             default value is True.
         name(str, optional): The default value is None.  Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        Variable: Tensor which is created according to shape and dtype.
+
+    Raise:
+        TypeError: The dtype must be one of bool, float16, float32, float64, int32 and int64
+        and the data type of out Tensor must be the same as the dtype. 
     
     Examples:
         .. code-block:: python
@@ -373,16 +382,20 @@ def full(shape,
           import paddle
           import paddle.fluid as fluid
 
-          data1 = paddle.full(shape=[2,1], full_value=0, dtype='int64') # data1=[[0],[0]]
-          data2 = paddle.full(shape=[2,1], full_value=5, dtype='int64', device='gpu') # data2=[[5],[5]]
+          data1 = paddle.full(shape=[2,1], fill_value=0, dtype='int64') # data1=[[0],[0]]
+          data2 = paddle.full(shape=[2,1], fill_value=5, dtype='int64', device='gpu') # data2=[[5],[5]]
 
           # attr shape is a list which contains Variable Tensor.
           positive_2 = fluid.layers.fill_constant([1], "int32", 2)
-          data3 = paddle.full(shape=[1, positive_2], dtype='float32', full_value=1.5) # data3=[1.5, 1.5]
+          data3 = paddle.full(shape=[1, positive_2], dtype='float32', fill_value=1.5) # data3=[1.5, 1.5]
 
           # attr shape is an Variable Tensor.
           shape = fluid.layers.fill_constant([1,2], "int32", 2) # shape=[2,2]
-          data4 = paddle.full(shape=shape, dtype='bool', full_value=True) # data4=[[True,True],[True,True]]
+          data4 = paddle.full(shape=shape, dtype='bool', fill_value=True) # data4=[[True,True],[True,True]]
+          
+          # attr value is an Variable Tensor.
+          val = fluid.layers.fill_constant([1], "float32", 2.0) # val=[2.0]
+          data5 = paddle.full(shape=[2,1], fill_value=val, dtype='float32') #data5=[[2.0],[2.0]]
     """
 
     helper = LayerHelper("full", **locals())
