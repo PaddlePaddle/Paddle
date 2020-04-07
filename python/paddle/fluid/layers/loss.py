@@ -1580,6 +1580,10 @@ def kldiv_loss(x, target, reduction='mean', name=None):
             loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='batchmean')
     """
     helper = LayerHelper('kldiv_loss', **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'kldiv_loss')
+    check_variable_and_dtype(target, 'target', ['float32', 'float64'],
+                             'kldiv_loss')
+    check_type(reduction, 'reduction', str, 'kldiv_loss')
     loss = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='kldiv_loss',
