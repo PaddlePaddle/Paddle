@@ -12,19 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: import all tensor api under this directory, 
-# including tensor creation, manipulation, math, etc.
-# __all__ = [ ]
+# TODO: define alias in tensor and framework directory
 
-from __future__ import print_function
-
-from .manipulation import *
-from .linalg import *
-from .creation import *
-
-__all__ = manipulation.__all__ + linalg.__all__ + creation.__all__
-
-#TODO: define alias in tensor and framework directory
 # from .creation import create_tensor   #DEFINE_ALIAS
 # from .creation import create_lod_tensor   #DEFINE_ALIAS
 # from .creation import create_random_int_lod   #DEFINE_ALIAS
@@ -39,9 +28,9 @@ from .creation import linspace  #DEFINE_ALIAS
 # from .creation import range   #DEFINE_ALIAS
 # from .creation import zeros   #DEFINE_ALIAS
 # from .creation import zeros_like   #DEFINE_ALIAS
-# from .creation import arrange   #DEFINE_ALIAS
+from .creation import arrange   #DEFINE_ALIAS
 # from .creation import eye   #DEFINE_ALIAS
-from .creation import full  #DEFINE_ALIAS
+from .creation import full  # DEFINE_ALIAS
 # from .creation import linspace   #DEFINE_ALIAS
 # from .creation import full_like   #DEFINE_ALIAS
 from .creation import triu  #DEFINE_ALIAS
@@ -138,18 +127,19 @@ from .math import add  #DEFINE_ALIAS
 # from .linalg import dot   #DEFINE_ALIAS
 # from .linalg import einsum   #DEFINE_ALIAS
 # from .linalg import morm   #DEFINE_ALIAS
-# from .linalg import transpose   #DEFINE_ALIAS
+from .linalg import transpose   #DEFINE_ALIAS
 # from .linalg import dist   #DEFINE_ALIAS
 # from .linalg import t   #DEFINE_ALIAS
 # from .linalg import cross   #DEFINE_ALIAS
 # from .linalg import cholesky   #DEFINE_ALIAS
 # from .linalg import dot   #DEFINE_ALIAS
+from .linalg import bmm
 # from .manipulation import cast   #DEFINE_ALIAS
 # from .manipulation import concat   #DEFINE_ALIAS
 # from .manipulation import expand   #DEFINE_ALIAS
 # from .manipulation import expand_as   #DEFINE_ALIAS
 # from .manipulation import flatten   #DEFINE_ALIAS
-# from .manipulation import gather   #DEFINE_ALIAS
+from .manipulation import gather   #DEFINE_ALIAS
 # from .manipulation import gather_nd   #DEFINE_ALIAS
 # from .manipulation import reshape   #DEFINE_ALIAS
 # from .manipulation import reverse   #DEFINE_ALIAS
@@ -158,14 +148,14 @@ from .math import add  #DEFINE_ALIAS
 # from .manipulation import scatter_nd   #DEFINE_ALIAS
 # from .manipulation import shard_index   #DEFINE_ALIAS
 # from .manipulation import slice   #DEFINE_ALIAS
-# from .manipulation import split   #DEFINE_ALIAS
-# from .manipulation import squeeze   #DEFINE_ALIAS
-# from .manipulation import stack   #DEFINE_ALIAS
+from .manipulation import split   #DEFINE_ALIAS
+from .manipulation import squeeze   #DEFINE_ALIAS
+from .manipulation import stack   #DEFINE_ALIAS
 # from .manipulation import strided_slice   #DEFINE_ALIAS
 # from .manipulation import transpose   #DEFINE_ALIAS
 # from .manipulation import unique   #DEFINE_ALIAS
 # from .manipulation import unique_with_counts   #DEFINE_ALIAS
-# from .manipulation import unsqueeze   #DEFINE_ALIAS
+from .manipulation import unsqueeze   #DEFINE_ALIAS
 # from .manipulation import unstack   #DEFINE_ALIAS
 from .manipulation import flip  #DEFINE_ALIAS
 # from .manipulation import unbind   #DEFINE_ALIAS
@@ -179,5 +169,6 @@ from .search import argmax  #DEFINE_ALIAS
 # from .search import topk   #DEFINE_ALIAS
 # from .search import where   #DEFINE_ALIAS
 # from .search import index_select   #DEFINE_ALIAS
+from .search import index_sample  # DEFINE_ALIAS
 # from .search import nonzero   #DEFINE_ALIAS
 from .search import sort  #DEFINE_ALIAS
