@@ -2610,9 +2610,9 @@ class GroupNorm(layers.Layer):
 
     def forward(self, input):
         inputs = {'X': input}
-        if self.bias:
+        if self.bias is not None:
             inputs['Bias'] = self.bias
-        if self.weight:
+        if self.weight is not None:
             inputs['Scale'] = self.weight
 
         # create output
