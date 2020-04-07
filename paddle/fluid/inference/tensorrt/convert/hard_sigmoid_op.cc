@@ -46,5 +46,4 @@ class HardSigmoidOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-USE_OP(HardSigmoid);
-REGISTER_TRT_OP_CONVERTER(HardSigmoid, HardSigmoidOpConverter);
+REGISTER_TRT_OP_CONVERTER(hard_sigmoid, HardSigmoidOpConverter);
