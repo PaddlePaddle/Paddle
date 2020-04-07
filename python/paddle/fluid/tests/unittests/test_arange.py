@@ -42,25 +42,25 @@ class TestArangeOp(OpTest):
         self.check_output()
 
 
-class TestFloatArangeOpCase0(TestRangeOp):
+class TestFloatArangeOpCase0(TestArangeOp):
     def init_config(self):
         self.dtype = np.float32
         self.case = (0, 5, 1)
 
 
-class TestInt32ArangeOpCase0(TestRangeOp):
+class TestInt32ArangeOpCase0(TestArangeOp):
     def init_config(self):
         self.dtype = np.int32
         self.case = (0, 5, 2)
 
 
-class TestInt32ArangeOpCase1(TestRangeOp):
+class TestInt32ArangeOpCase1(TestArangeOp):
     def init_config(self):
         self.dtype = np.int32
         self.case = (10, 1, -2)
 
 
-class TestInt32ArangeOpCase2(TestRangeOp):
+class TestInt32ArangeOpCase2(TestArangeOp):
     def init_config(self):
         self.dtype = np.int32
         self.case = (-1, -10, -2)
