@@ -3030,6 +3030,22 @@ class TestBook(LayerTest):
                 [x, y], start_index=0, length=2)
             return (sum)
 
+    def test_rank_attention(self):
+        with self.static_graph():
+            input = fluid.data(name="input", shape=[None, 2], dtype="float32")
+            rank_offset = fluid.data(
+                name="rank_offset", shape=[None, 7], dtype="int32")
+            out = fluid.contrib.layers.rank_attention(
+                input=input,
+                rank_offset=rank_offset,
+                rank_param_shape=[18, 3],
+                rank_param_attr=fluid.ParamAttr(
+                    learning_rate=1.0,
+                    name="ubm_rank_param.w_0",
+                    initializer=fluid.initializer.Xavier(uniform=False)),
+                max_rank=3)
+            return (out)
+
     def test_roi_pool(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():

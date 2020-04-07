@@ -92,6 +92,7 @@ class AddMMKernel : public framework::OpKernel<T> {
 
     float alpha = context.template Attr<float>("Alpha");
     float beta = context.template Attr<float>("Beta");
+
     auto blas = math::GetBlas<DeviceContext, T>(context);
 
     // calc broadcast dim
@@ -120,7 +121,6 @@ class AddMMGradKernel : public framework::OpKernel<T> {
     auto* y = ctx.Input<framework::LoDTensor>("Y");
     auto* dout = ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
     auto in_dims = ctx.Input<framework::LoDTensor>("Input")->dims();
-
     auto* dinput =
         ctx.Output<framework::LoDTensor>(framework::GradVarName("Input"));
     auto* dx = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
@@ -148,7 +148,6 @@ class AddMMGradKernel : public framework::OpKernel<T> {
     if (dinput) {
       dinput->mutable_data<T>(ctx.GetPlace());
       total_elems = in_dims[0] * in_dims[1];
-
       auto& place =
           *ctx.template device_context<DeviceContext>().eigen_device();
       auto eigen_dout = EigenTensor<T, 2>::From(*dout);
