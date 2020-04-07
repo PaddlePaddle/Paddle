@@ -1086,7 +1086,7 @@ def tdm_sampler(x,
         layer_list_flat = [[1], [2], [3], [4], [5], [6]] # shape(node_nums, 1)
 
         neg_samples_num_list = [0, 0] # negative sample nums = 0
-        layer_node_num_list = [2, 4] two layer (exclude root node)
+        layer_node_num_list = [2, 4] #two layer (exclude root node)
         leaf_node_num = 4
 
         travel_array = np.array(travel_list)
