@@ -64,7 +64,7 @@ from .logic import elementwise_equal  #DEFINE_ALIAS
 # from .random import shuffle   #DEFINE_ALIAS
 from .random import randn  #DEFINE_ALIAS
 # from .random import rand   #DEFINE_ALIAS
-# from .random import randint   #DEFINE_ALIAS
+from .random import randint  #DEFINE_ALIAS
 from .random import randperm
 # from .math import abs   #DEFINE_ALIAS
 # from .math import acos   #DEFINE_ALIAS
@@ -122,7 +122,7 @@ from .math import add  #DEFINE_ALIAS
 # from .attribute import shape   #DEFINE_ALIAS
 # from .io import save   #DEFINE_ALIAS
 # from .io import load   #DEFINE_ALIAS
-# from .linalg import matmul   #DEFINE_ALIAS
+from .linalg import matmul  #DEFINE_ALIAS
 # from .linalg import dot   #DEFINE_ALIAS
 # from .linalg import einsum   #DEFINE_ALIAS
 # from .linalg import morm   #DEFINE_ALIAS
