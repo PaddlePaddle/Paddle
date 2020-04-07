@@ -12592,6 +12592,9 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
             out = fluid.layers.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
     """
     helper = LayerHelper("temporal_shift", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'temporal_shift')
+    check_type(seg_num, 'seg_num', int, 'temporal_shift')
+    check_type(shift_ratio, 'shift_ratio', float, 'temporal_shift')
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
