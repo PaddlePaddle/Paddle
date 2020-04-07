@@ -34,7 +34,9 @@ static void FindAllConditionalBlockAndConditionalBlockGradOp(
   PADDLE_ENFORCE_GE(
       fwd_ops->size(), bwd_ops->size(),
       platform::errors::InvalidArgument(
-          "Size of forward ops must be greater or equal to backward ops."));
+          "Size of forward ops must be greater or equal to backward ops. The "
+          "number of forward ops is %d and the number of backward ops is %d",
+          fwd_ops->size(), bwd_ops->size()));
 
   for (size_t i = 1; i < program.Size(); ++i) {
     auto &block = program.Block(i);
@@ -48,10 +50,13 @@ static void FindAllConditionalBlockAndConditionalBlockGradOp(
     }
   }
 
-  PADDLE_ENFORCE_GE(fwd_ops->size(), bwd_ops->size(),
-                    platform::errors::InvalidArgument(
-                        "There are more conditional_block_grad ops than "
-                        "conditional_block ops in the graph or program."));
+  PADDLE_ENFORCE_GE(
+      fwd_ops->size(), bwd_ops->size(),
+      platform::errors::InvalidArgument(
+          "There are more conditional_block_grad ops than "
+          "conditional_block ops in the graph or program. The number of "
+          "forward ops is %d and the number of backward ops is %d",
+          fwd_ops->size(), bwd_ops->size()));
 }
 
 static void SetSkipVarsForConditionalBlockOp(OpVariant *fwd_op,

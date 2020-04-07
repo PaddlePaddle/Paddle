@@ -49,9 +49,9 @@ class ConditionalOp : public framework::OperatorBase {
         xs.begin(), xs.end(), retv.begin(),
         [&scope](const std::string &var_name) -> const framework::LoDTensor * {
           auto *var = scope.FindVar(var_name);
-          PADDLE_ENFORCE_NE(var, nullptr,
-                            platform::errors::InvalidArgument(
-                                "Cannot find variable %s", var_name));
+          PADDLE_ENFORCE_NOT_NULL(
+              var, platform::errors::InvalidArgument("Cannot find variable %s",
+                                                     var_name));
           return &var->Get<framework::LoDTensor>();
         });
     return retv;

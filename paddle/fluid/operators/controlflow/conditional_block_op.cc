@@ -56,9 +56,9 @@ class ConditionalBlockOp : public ConditionalOp {
 
     if (need_run) {
       auto *scope_var = scope.FindVar(Output(ConditionalOp::kScope));
-      PADDLE_ENFORCE_NE(scope_var, nullptr,
-                        platform::errors::InvalidArgument(
-                            "Scope must be set in conditional_block_op."));
+      PADDLE_ENFORCE_NOT_NULL(
+          scope_var, platform::errors::PreconditionNotMet(
+                         "Scope must be set in conditional_block_op."));
       auto *scopes = scope_var->GetMutable<std::vector<framework::Scope *>>();
       scopes->resize(1);
       scopes->front() = &scope.NewScope();
@@ -118,9 +118,9 @@ class ConditionalBlockGradOp : public ConditionalOp {
       }
 
       auto *scope_var = scope.FindVar(Input(ConditionalOp::kScope));
-      PADDLE_ENFORCE_NE(scope_var, nullptr,
-                        platform::errors::InvalidArgument(
-                            "Scope must be set in conditional block op."));
+      PADDLE_ENFORCE_NOT_NULL(
+          scope_var, platform::errors::PreconditionNotMet(
+                         "Scope must be set in conditional block op."));
       auto &scopes = scope_var->Get<std::vector<framework::Scope *>>();
       PADDLE_ENFORCE_GT(scopes.size(), 0,
                         platform::errors::InvalidArgument(
