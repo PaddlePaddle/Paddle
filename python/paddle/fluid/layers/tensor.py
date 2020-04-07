@@ -682,6 +682,13 @@ def fill_constant_batch_size_like(input,
     Returns:
         Variable: Tensor which will be created according to dtype.
 
+    Raises:
+        TypeError: The `dtype` must be one of bool, float16, float32, float64, int32 and int64
+                   and the data type of out Tensor must be the same as the dtype. 
+        TypeError: The `shape` must be one of list, tuple, Variable.
+        TypeError: The `out` must be None or Variable.
+        TypeError: The `input` must Variable.
+    
     Examples:
 
         .. code-block:: python
@@ -692,6 +699,14 @@ def fill_constant_batch_size_like(input,
                     input=like, shape=[1], value=0, dtype='int64') #like=[[10, 10]] data=[0]
 
     """
+    check_dtype(dtype, 'dtype',
+                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+                'fill_constant_batch_size_like')
+    check_type(shape, 'shape', (Variable, list, tuple),
+               'fill_constant_batch_size_like')
+    check_type(input, 'input', (Variable), 'fill_constant_batch_size_like')
+    if out is not None:
+        check_type(out, 'out', (Variable), 'fill_constant_batch_size_like')
     helper = LayerHelper("fill_constant_batch_size_like", **locals())
     out = helper.create_variable_for_type_inference(dtype=dtype)
     attrs = {
