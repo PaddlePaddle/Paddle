@@ -49,8 +49,10 @@ __all__ = [
     #           'unique',
     #           'unique_with_counts',
     'unsqueeze'
-#           'unstack',
-    'flip']
+    #           'unstack',
+    'flip'
+]
+
 #           'unbind',
 #           'roll']
 
@@ -103,7 +105,7 @@ def flip(input, dims, name=None):
         attrs={"dims": dims})
     return out
 
- 
+
 def stack(x, axis=0):
     """
 
