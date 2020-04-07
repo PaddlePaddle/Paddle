@@ -31,7 +31,6 @@ else:
 from .. import core
 from ..framework import in_dygraph_mode
 from ..multiprocess_utils import CleanupFuncRegistrar, _cleanup_mmap, python_exit_flag, _set_SIGCHLD_handler
-from ._utils import ParentWatchDog
 
 # multi-process worker check indices queue interval, avoid
 # hanging in subprocess data loading
@@ -354,9 +353,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     init_exception = Exception("init_fn failed in worker {}: " \
                                          "{}".format(worker_id, sys.exc_info()))
 
-            parent_watch_dog = ParentWatchDog()
-
-            while parent_watch_dog.is_alive():
+            while True:
                 try:
                     data = indices_queue.get(MP_INDICES_CHECK_INTERVAL)
                 except queue.Empty:

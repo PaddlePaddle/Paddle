@@ -1,4 +1,4 @@
-# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import sys
 import six
 import time
 import unittest
+import multiprocessing
 import numpy as np
 
 import paddle.fluid as fluid
@@ -26,7 +27,7 @@ from paddle.fluid.io import Dataset, BatchSampler, DataLoader
 from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.dygraph.base import to_variable
 
-EPOCH_NUM = 10
+EPOCH_NUM = 5
 BATCH_SIZE = 32
 IMAGE_SIZE = 784
 SAMPLE_NUM = 800
@@ -41,7 +42,7 @@ class RandomDataset(Dataset):
     def __getitem__(self, idx):
         np.random.seed(idx)
         image = np.random.random([IMAGE_SIZE]).astype('float32')
-        label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+        label = np.random.randint(0, self.class_num - 1, (1, )).astype('int64')
         return image, label
 
     def __len__(self):
@@ -263,97 +264,6 @@ class TestDygraphDataLoader(TestStaticDataLoader):
         }
         print("time cost", ret['time'], 'step_list', ret['step'])
         return ret
-
-
-class TestDataLoaderSetXXXException(unittest.TestCase):
-    def test_main(self):
-        place = fluid.cpu_places()[0]
-        with fluid.dygraph.guard(place):
-            dataset = RandomDataset(SAMPLE_NUM, CLASS_NUM)
-            dataloader = DataLoader(dataset, places=place)
-
-            try:
-                dataloader.set_sample_generator()
-                self.assertTrue(False)
-            except:
-                pass
-
-            try:
-                dataloader.set_sample_list_generator()
-                self.assertTrue(False)
-            except:
-                pass
-
-            try:
-                dataloader.set_batch_generator()
-                self.assertTrue(False)
-            except:
-                pass
-
-
-class TestDataLoaderAssert(unittest.TestCase):
-    def test_main(self):
-        place = fluid.cpu_places()[0]
-        with fluid.dygraph.guard(place):
-            dataset = RandomDataset(SAMPLE_NUM, CLASS_NUM)
-            batch_sampler = BatchSampler(dataset=dataset)
-
-            # dataset is not instance of Dataset
-            try:
-                loader = DataLoader(dataset=batch_sampler, places=place)
-                self.assertTrue(False)
-            except AssertionError:
-                pass
-
-            # places is None
-            try:
-                loader = DataLoader(dataset=dataset, places=None)
-                self.assertTrue(False)
-            except AssertionError:
-                pass
-
-            # num_workers < 0
-            try:
-                loader = DataLoader(
-                    dataset=dataset, places=place, num_workers=-1)
-                self.assertTrue(False)
-            except AssertionError:
-                pass
-
-            # timeout < 0
-            try:
-                loader = DataLoader(dataset=dataset, places=place, timeout=-1)
-                self.assertTrue(False)
-            except AssertionError:
-                pass
-
-            # batch_sampler is not instance of BatchSampler
-            try:
-                loader = DataLoader(
-                    dataset=dataset, places=place, batch_sampler=dataset)
-                self.assertTrue(False)
-            except AssertionError:
-                pass
-
-            # set batch_sampler and shuffle/batch_size/drop_last
-            try:
-                loader = DataLoader(
-                    dataset=dataset,
-                    places=place,
-                    batch_sampler=batch_sampler,
-                    shuffle=True,
-                    drop_last=True)
-                self.assertTrue(False)
-            except AssertionError:
-                pass
-
-            # set batch_sampler correctly
-            try:
-                loader = DataLoader(
-                    dataset=dataset, places=place, batch_sampler=batch_sampler)
-                self.assertTrue(True)
-            except AssertionError:
-                self.assertTrue(False)
 
 
 if __name__ == '__main__':
