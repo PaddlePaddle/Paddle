@@ -1,4 +1,4 @@
-# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -119,24 +119,3 @@ class ImagePool(object):
                 return temp
             else:
                 return image
-
-
-if __name__ == '__main__':
-    place = fluid.CUDAPlace(0)
-    #fluid.enable_dygraph(place)
-    dataset = DataA(shuffle=False)
-    a_loader = fluid.io.DataLoader(
-        dataset,
-        feed_list=[
-            fluid.data(
-                name='im', shape=[
-                    None,
-                    2,
-                    2,
-                ], dtype='float32')
-        ],
-        places=place,
-        return_list=False,
-        batch_size=2)
-    for data in a_loader:
-        print(data)
