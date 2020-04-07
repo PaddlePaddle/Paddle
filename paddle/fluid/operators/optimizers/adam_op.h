@@ -406,11 +406,19 @@ class AdamOpKernel : public framework::OpKernel<T> {
     T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
     if (ctx.HasInput("Beta1Tensor")) {
       auto* beta1_tensor = ctx.Input<framework::Tensor>("Beta1Tensor");
+      PADDLE_ENFORCE_EQ(beta1_tensor->numel(), 1,
+                        platform::errors::InvalidArgument(
+                            "Input(Beta1Tensor) size must be 1, but get %d",
+                            beta1_tensor->numel()));
       beta1 = static_cast<T>(GetAttrFromTensor(beta1_tensor));
     }
     T beta2 = static_cast<T>(ctx.Attr<float>("beta2"));
     if (ctx.HasInput("Beta2Tensor")) {
       auto* beta2_tensor = ctx.Input<framework::Tensor>("Beta2Tensor");
+      PADDLE_ENFORCE_EQ(beta2_tensor->numel(), 1,
+                        platform::errors::InvalidArgument(
+                            "Input(Beta2Tensor) size must be 1, but get %d",
+                            beta2_tensor->numel()));
       beta2 = static_cast<T>(GetAttrFromTensor(beta2_tensor));
     }
     VLOG(3) << "beta1_pow.numel() : " << beta1_pow->numel()

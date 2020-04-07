@@ -17,7 +17,7 @@ from __future__ import print_function
 #from .creation import *
 #from .linalg import *
 
-#TODO: define alias in tensor and framework directory
+# TODO: define alias in tensor and framework directory
 # from .creation import create_tensor   #DEFINE_ALIAS
 # from .creation import create_lod_tensor   #DEFINE_ALIAS
 # from .creation import create_random_int_lod   #DEFINE_ALIAS
@@ -34,7 +34,7 @@ from .creation import linspace  #DEFINE_ALIAS
 # from .creation import zeros_like   #DEFINE_ALIAS
 # from .creation import arrange   #DEFINE_ALIAS
 # from .creation import eye   #DEFINE_ALIAS
-from .creation import full  #DEFINE_ALIAS
+from .creation import full  # DEFINE_ALIAS
 # from .creation import linspace   #DEFINE_ALIAS
 # from .creation import full_like   #DEFINE_ALIAS
 from .creation import triu  #DEFINE_ALIAS
@@ -127,7 +127,7 @@ from .math import log1p  #DEFINE_ALIAS
 # from .attribute import shape   #DEFINE_ALIAS
 # from .io import save   #DEFINE_ALIAS
 # from .io import load   #DEFINE_ALIAS
-# from .linalg import matmul   #DEFINE_ALIAS
+from .linalg import matmul  #DEFINE_ALIAS
 # from .linalg import dot   #DEFINE_ALIAS
 # from .linalg import einsum   #DEFINE_ALIAS
 # from .linalg import morm   #DEFINE_ALIAS
@@ -172,5 +172,6 @@ from .search import argmax  #DEFINE_ALIAS
 # from .search import topk   #DEFINE_ALIAS
 # from .search import where   #DEFINE_ALIAS
 # from .search import index_select   #DEFINE_ALIAS
+from .search import index_sample  # DEFINE_ALIAS
 # from .search import nonzero   #DEFINE_ALIAS
 from .search import sort  #DEFINE_ALIAS
