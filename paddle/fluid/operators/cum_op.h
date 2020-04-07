@@ -44,8 +44,8 @@ class CumKernel : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
         axis, x_dims.size(),
         platform::errors::InvalidArgument(
             "axis should be less than the dimensiotn of the input tensor, but "
-            "received axis is:%d, input dim size is:%d",
-            axis, x_dims.size()));
+            "received axis is:%d, input dim size is:%d, input dim is:[%s]",
+            axis, x_dims.size(), x_dims));
     Out.template mutable_data<T>(context.GetPlace());
 
     int pre = 1;
