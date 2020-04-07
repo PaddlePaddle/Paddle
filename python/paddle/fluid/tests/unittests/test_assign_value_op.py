@@ -54,6 +54,19 @@ class TestAssignValueOp3(TestAssignValueOp):
         self.attrs["int64_values"] = [int(v) for v in self.value.flat]
 
 
+class TestAssignValueOp4(TestAssignValueOp):
+    def init_data(self):
+        self.value = numpy.random.random(size=(2, 5)).astype(numpy.float64)
+        self.attrs["fp64_values"] = [float(v) for v in self.value.flat]
+
+
+class TestAssignValueOp5(TestAssignValueOp):
+    def init_data(self):
+        self.value = numpy.random.choice(
+            a=[False, True], size=(2, 5)).astype(numpy.bool)
+        self.attrs["bool_values"] = [bool(v) for v in self.value.flat]
+
+
 class TestAssignApi(unittest.TestCase):
     def setUp(self):
         self.init_dtype()
@@ -87,6 +100,23 @@ class TestAssignApi2(TestAssignApi):
 class TestAssignApi3(TestAssignApi):
     def init_dtype(self):
         self.dtype = "int64"
+
+
+class TestAssignApi4(TestAssignApi):
+    def init_dtype(self):
+        self.dtype = "float64"
+
+
+class TestAssignApi5(TestAssignApi):
+    def setUp(self):
+        self.init_dtype()
+        self.value = numpy.random.choice(
+            a=[False, True], size=(2, 5)).astype(numpy.bool)
+        self.place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+
+    def init_dtype(self):
+        self.dtype = "bool"
 
 
 if __name__ == '__main__':

@@ -48,6 +48,7 @@ Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc) {
       return val;
     }
     case proto::AttrType::FLOATS: {
+      VLOG(0) << "get value from floats";
       std::vector<float> val(attr_desc.floats_size());
       for (int i = 0; i < attr_desc.floats_size(); ++i) {
         val[i] = attr_desc.floats(i);
@@ -68,6 +69,14 @@ Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc) {
       std::vector<int64_t> val(attr_desc.longs_size());
       for (int i = 0; i < attr_desc.longs_size(); ++i) {
         val[i] = attr_desc.longs(i);
+      }
+      return val;
+    }
+    case proto::AttrType::DOUBLES: {
+      VLOG(0) << "get value from doubles";
+      std::vector<double> val(attr_desc.doubles_size());
+      for (int i = 0; i < attr_desc.doubles_size(); ++i) {
+        val[i] = attr_desc.doubles(i);
       }
       return val;
     }

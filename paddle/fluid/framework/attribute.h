@@ -134,6 +134,39 @@ struct ExtractAttribute<std::vector<int64_t>> {
 };
 
 template <>
+struct ExtractAttribute<std::vector<double>> {
+  explicit ExtractAttribute(const std::string& attr_name)
+      : attr_name_(attr_name) {}
+
+  std::vector<double>* operator()(Attribute& attr) const {
+    if (attr.type() == typeid(std::vector<int>)) {  // NOLINT
+      std::vector<int> val = boost::get<std::vector<int>>(attr);
+      std::vector<double> vec(val.begin(), val.end());
+      attr = vec;
+    } else if (attr.type() == typeid(std::vector<float>)) {  // NOLINT
+      std::vector<float> val = boost::get<std::vector<float>>(attr);
+      for (unsigned int i = 0; i < val.size(); i++) {
+        VLOG(0) << "before idx:" << i << ", value:" << val[i];
+      }
+      std::vector<double> vec(val.begin(), val.end());
+      for (unsigned int i = 0; i < vec.size(); i++) {
+        VLOG(0) << "after idx:" << i << ", value:" << vec[i];
+      }
+      attr = vec;
+    }
+    std::vector<double>* attr_value = nullptr;
+    try {
+      attr_value = &boost::get<std::vector<double>>(attr);
+    } catch (boost::bad_get& bad_get) {
+      PADDLE_THROW("Cannot get attribute %s by type double, its type is %s",
+                   attr_name_, paddle::platform::demangle(attr.type().name()));
+    }
+    return attr_value;
+  }
+
+  const std::string& attr_name_;
+};
+template <>
 struct ExtractAttribute<float> {
   explicit ExtractAttribute(const std::string& attr_name)
       : attr_name_(attr_name) {}

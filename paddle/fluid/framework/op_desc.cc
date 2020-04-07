@@ -450,6 +450,12 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
         this->attrs_[name] = std::vector<float>();
         break;
       }
+      case proto::AttrType::DOUBLES: {
+        VLOG(11) << "SetAttr: " << Type() << ", " << name
+                 << " from INTS to DOUBLES";
+        this->attrs_[name] = std::vector<double>();
+        break;
+      }
       case proto::AttrType::STRINGS: {
         VLOG(11) << "SetAttr: " << Type() << ", " << name
                  << " from INTS to STRINGS";
@@ -606,6 +612,9 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
   void operator()(const std::vector<float> &v) const {
     VectorToRepeated(v, attr_->mutable_floats());
   }
+  void operator()(const std::vector<double> &v) const {
+    VectorToRepeated(v, attr_->mutable_doubles());
+  }
   void operator()(const std::vector<std::string> &v) const {
     VectorToRepeated(v, attr_->mutable_strings());
   }
@@ -648,6 +657,7 @@ void OpDesc::Flush() {
     }
 
     this->desc_.mutable_attrs()->Clear();
+    VLOG(0) << "flush the proto message";
     for (auto &attr : attrs_) {
       auto *attr_desc = desc_.add_attrs();
       attr_desc->set_name(attr.first);
