@@ -48,7 +48,7 @@ __all__ = [
     #           'strided_slice',
     #           'unique',
     #           'unique_with_counts',
-    'unsqueeze'
+    'unsqueeze',
     #           'unstack',
     'flip'
 ]
