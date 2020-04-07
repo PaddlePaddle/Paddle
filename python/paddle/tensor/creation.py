@@ -353,8 +353,8 @@ def full(shape,
                 The data type is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
                 the elements of it should be integers or Tensors with shape [1].
                 If ``shape`` is an Variable, it should be an 1-D Tensor .
-        fill_value(float16|float32|float64|int32|int64|Variable): The constant value used to initialize 
-            the Tensor to be created. If value is an Variable, it should be an 1-D Tensor.
+        fill_value(bool|float16|float32|float64|int32|int64|Variable): The constant value
+            used to initialize the Tensor to be created. If value is an Variable, it should be an 1-D Tensor.
         out(Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
@@ -362,7 +362,7 @@ def full(shape,
             which can be float16, float32, float64, int32, int64, if dytpe is `None`, the data
             type of created tensor is `float32`
         device(str, optional): Which device to run the operator. The :attr:`device` must be
-            None, 'cpu', 'gpu'. If :attr:`device` is None, it will be choose the device that the user set in 
+            None, 'cpu', 'gpu'. If :attr:`device` is None, it will choose the device that the user set in 
             the paddle program. Default value is None.
         stop_gradient(bool, optional): Indicating if we stop gradient from current(out) Variable,
             default value is True.
