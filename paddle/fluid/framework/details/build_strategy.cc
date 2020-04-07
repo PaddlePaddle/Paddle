@@ -378,8 +378,8 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Set<bool>(kUseHierarchicalAllReduce,
                       new bool(use_hierarchical_allreduce_));
 #endif
-      LOG(INFO) << "SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
-                << ", num_trainers:" << num_trainers_;
+      VLOG(1) << "SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
+              << ", num_trainers:" << num_trainers_;
     } else if (pass->Type() == "fuse_relu_depthwise_conv_pass") {
       if (!use_cuda) {
         LOG(WARNING) << "fuse_relu_depthwise_conv_pass is only supported on "
