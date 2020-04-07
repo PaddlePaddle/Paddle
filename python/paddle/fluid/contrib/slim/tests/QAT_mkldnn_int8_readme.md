@@ -104,26 +104,26 @@ The code snipped shows how the `Qat2Int8MkldnnPass` can be applied to a model gr
 
 >**I. QAT2 MKL-DNN Accuracy on Intel(R) Xeon(R) Gold 6271**
 
-|     Model    | Fake QAT Top1 Accuracy | INT8 QAT Top1 Accuracy | Top1 Diff | Fake QAT Top5 Accuracy | INT8 QAT Top5 Accuracy | Top5 Diff |
-|:------------:|:----------------------:|:----------------------:|:---------:|:----------------------:|:----------------------:|:---------:|
-| MobileNet-V1 |         70.72%         |         70.78%         |   +0.06%  |         89.47%         |         89.39%         |   -0.08%  |
-| MobileNet-V2 |         72.07%         |         72.17%         |   +0.10%  |         90.65%         |         90.63%         |   -0.02%  |
-|   ResNet101  |         77.86%         |         77.59%         |   -0.27%  |         93.54%         |         93.54%         |   0.00%   |
-|   ResNet50   |         76.62%         |         76.53%         |   -0.09%  |         93.01%         |         92.98%         |   -0.03%  |
-|     VGG16    |         71.74%         |         71.75%         |   +0.01%  |         89.96%         |         89.73%         |   -0.23%  |
-|     VGG19    |         72.30%         |         72.09%         |   -0.21%  |         90.19%         |         90.13%         |   -0.06%  |
+|    Model     | FP32 Top1 Accuracy | INT8 QAT Top1 Accuracy | Top1 Diff | Fake QAT Top5 Accuracy | INT8 QAT Top5 Accuracy | Top5 Diff |
+| :----------: | :----------------: | :--------------------: | :-------: | :--------------------: | :--------------------: | :-------: |
+| MobileNet-V1 |       70.78%       |         70.71%         |  -0.07%   |         89.69%         |         89.41%         |  -0.28%   |
+| MobileNet-V2 |       71.90%       |         72.11%         |  +0.21%   |         90.56%         |         90.62%         |  +0.06%   |
+|  ResNet101   |       77.50%       |         77.64%         |  +0.14%   |         93.58%         |         93.58%         |   0.00%   |
+|   ResNet50   |       76.63%       |         76.47%         |  -0.16%   |         93.10%         |         92.98%         |  -0.12%   |
+|    VGG16     |       72.08%       |         71.73%         |  -0.35%   |         90.63%         |         89.71%         |  -0.92%   |
+|    VGG19     |       72.57%       |         72.12%         |  -0.45%   |         90.84%         |         90.15%         |  -0.69%   |
 
 
 >**II. QAT2 MKL-DNN C-API Performance on Intel(R) Xeon(R) Gold 6271**
 
 |    Model     | FP32 (images/s) | INT8 QAT (images/s) | Ratio (INT8/FP32) |
 | :----------: | :-------------: | :-----------------: | :---------------: |
-| MobileNet-V1 |      73.98      |       227.73        |       3.08        |
-| MobileNet-V2 |      86.59      |       206.74        |       2.39        |
-|  ResNet101   |      7.15       |        26.69        |       3.73        |
-|   ResNet50   |      13.15      |        49.33        |       3.75        |
-|    VGG16     |      3.34       |        10.15        |       3.04        |
-|    VGG19     |      2.83       |        8.67         |       3.07        |
+| MobileNet-V1 |      75.74      |       212.90        |       2.81        |
+| MobileNet-V2 |      89.31      |       186.67        |       2.09        |
+|  ResNet101   |      7.16       |        26.00        |       3.63        |
+|   ResNet50   |      13.17      |        48.67        |       3.70        |
+|    VGG16     |      3.50       |        10.13        |       2.89        |
+|    VGG19     |      2.82       |        8.71         |       3.09        |
 
 Notes:
 
@@ -135,15 +135,15 @@ Notes:
 
 |     Model    |  FP32 Accuracy | QAT INT8 Accuracy | Accuracy Diff |
 |:------------:|:----------------------:|:----------------------:|:---------:|
-|   Ernie      |      80.20%            |        79.96%         |  -0.24%   |
+|   Ernie      |      80.20%            |        79.88%        |  -0.32%  |
 
 
 >**II. Ernie QAT2 MKL-DNN Performance on Intel(R) Xeon(R) Gold 6271**
 
 |     Threads  | FP32 Latency (ms) | QAT INT8 Latency (ms)    | Ratio (FP32/INT8) |
 |:------------:|:----------------------:|:-------------------:|:---------:|
-| 1 thread     |        252.131         |         93.8023    |     2.687x   |
-| 20 threads   |        29.1853         |         17.3765    |     1.680x   |
+| 1 thread     |        255.91        |       93.71    |   2.73   |
+| 20 threads   |        30.13        |    16.87    |   1.79   |
 
 ## 6. How to reproduce the results
 
@@ -221,4 +221,4 @@ To reproduce the performance results, the environment variable `OMP_NUM_THREADS=
    OMP_NUM_THREADS=1 paddle/fluid/inference/tests/api/test_analyzer_qat_image_classification ARGS --enable_fp32=false --with_accuracy_layer=false --int8_model=/PATH/TO/SAVED/QAT/INT8/MODEL --infer_data=$HOME/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=1 --paddle_num_threads=1
    ```
 
-> Notes: Due to a large amount of images in the `int8_full_val.bin` dataset (50 000), the accuracy benchmark which includes comparison of unoptimized and optimized QAT model may last long (even several hours). To accelerate accuracy measuring, it is recommended to set `OMP_NUM_THREADS` to the max number of physical cores available on the server.
+> Notes: Due to a large amount of images in the `int8_full_val.bin` dataset (50 000), the accuracy benchmark which includes comparison of FP32 and INT8 QAT models may last long. To accelerate accuracy measuring, it is recommended to set `OMP_NUM_THREADS` to the maximum number of physical cores available on the server.
