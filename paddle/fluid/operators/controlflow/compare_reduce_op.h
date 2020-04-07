@@ -13,33 +13,31 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <math.h>
+#include <algorithm>
+#include <type_traits>
 #include <vector>
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
+#include "paddle/fluid/platform/transform.h"
 
 namespace paddle {
 namespace operators {
-namespace detail {
-/**
- * Get Reference From Pointer with check. The error message is printf format,
- * and passed by `args`
- */
-template <typename T, typename... ARGS>
-inline T& Ref(T* ptr, ARGS&&... args) {
-  PADDLE_ENFORCE_NOT_NULL(ptr, ::paddle::string::Sprintf(args...));
-  return *ptr;
-}
 
-template <typename T, typename... ARGS>
-inline std::vector<std::reference_wrapper<T>> VectorRef(
-    const std::vector<T*>& vec, ARGS&&... args) {
-  std::vector<std::reference_wrapper<T>> result;
-  result.reserve(vec.size());
-  for (auto* ptr : vec) {
-    result.emplace_back(Ref(ptr, args...));
+template <typename T>
+struct EqualReduceFunctor {
+  using ELEM_TYPE = T;
+  HOSTDEVICE bool operator()(const T& a, const T& b) const {
+    if (std::is_floating_point<T>::value) {
+      // This branch will be optimized while compiling if T is integer. It is
+      // safe to cast a and b to double.
+      return fabs(static_cast<double>(a - b)) < 1e-8;
+    } else {
+      return (a == b);
+    }
   }
-  return result;
-}
+};
 
-}  // namespace detail
 }  // namespace operators
 }  // namespace paddle
