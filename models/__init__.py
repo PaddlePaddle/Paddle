@@ -13,10 +13,16 @@
 #limitations under the License.
 
 from . import resnet
-from .resnet import *
-
+from . import darknet
+from . import yolov3
 from . import tsm
+
+from .resnet import *
+from .darknet import *
+from .yolov3 import *
 from .tsm import *
 
 __all__ = resnet.__all__ \
+        + darknet.__all__ \
+        + yolov3.__all__ \
         + tsm.__all__
