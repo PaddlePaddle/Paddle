@@ -130,11 +130,11 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
     current_op->Op()->SetOutput(
         out_name, std::vector<std::string>({current_op_out->Name()}));
 
-    // If next op in a line is doing inplace 
+    // If next op in a line is doing inplace
     // then we need to update its output as well
-    
+
     // Get inferer of next op
-    // If no inferer then we are done 
+    // If no inferer then we are done
     auto& next_op_infer_inplace =
         OpInfoMap::Instance().Get(next_op->Op()->Type()).infer_inplace_;
     if (next_op_infer_inplace) {
@@ -144,13 +144,14 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
       auto inputs = op->Inputs();
       auto outputs = op->Outputs();
       // Check if in-place happened
-      if(inputs[in_to_outs.begin()->first] == outputs[in_to_outs.begin()->second] ) {
-        VLOG(3) << "MKL-DNN InPlace: Next Op is in-placed , updating its input and output var!";
+      if (inputs[in_to_outs.begin()->first] ==
+          outputs[in_to_outs.begin()->second]) {
+        VLOG(3) << "MKL-DNN InPlace: Next Op is in-placed , updating its input "
+                   "and output var!";
         next_op->Op()->SetOutput(
             out_name, std::vector<std::string>({current_op_out->Name()}));
         next_op_out->RenameVar(current_op_in->Name());
       }
-
     }
     // Rename input of next op
     next_op->Op()->RenameInput(original_name, current_op_out->Name());

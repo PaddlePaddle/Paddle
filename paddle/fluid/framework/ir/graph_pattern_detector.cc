@@ -1852,8 +1852,7 @@ PDNode *patterns::MKLDNNInPlace::operator()() {
                     ->AsOutput();
 
   auto next_op = pattern->NewNode(next_op_repr())->assert_is_op();
-  auto next_output = pattern->NewNode(next_op_out_repr())
-                    ->AsOutput();
+  auto next_output = pattern->NewNode(next_op_out_repr())->AsOutput();
 
   // Check if op is MKL-DNN enabled
   possible_inplace_op->assert_op_attr("use_mkldnn", true);
