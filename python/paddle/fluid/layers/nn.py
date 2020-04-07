@@ -3568,6 +3568,11 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
             x = fluid.layers.spectral_norm(weight=weight, dim=1, power_iters=2)
     """
     helper = LayerHelper('spectral_norm', **locals())
+    check_variable_and_dtype(weight, 'weight', ['float32', 'float64'],
+                             'spectral_norm')
+    check_type(dim, 'dim', int, 'spectral_norm')
+    check_type(power_iters, 'power_iters', int, 'spectral_norm')
+    check_type(eps, 'eps', float, 'spectral_norm')
     dtype = weight.dtype
 
     # create intput and parameters
