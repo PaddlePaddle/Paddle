@@ -17,9 +17,11 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
+import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
 class TestSumOp(OpTest):
@@ -426,6 +428,48 @@ class Test1DReduceWithAxes1(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+class TestReduceWithDtype(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.inputs = {'X': np.random.random((6, 2, 10)).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].sum().astype('float64')}
+        self.attrs = {'reduce_all': True}
+        self.attrs.update({
+            'in_dtype': int(convert_np_dtype_to_dtype_(np.float32)),
+            'out_dtype': int(convert_np_dtype_to_dtype_(np.float64))
+        })
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestReduceWithDtype1(TestReduceWithDtype):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.inputs = {'X': np.random.random((6, 2, 10)).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].sum(axis=1)}
+        self.attrs = {'dim': [1]}
+        self.attrs.update({
+            'in_dtype': int(convert_np_dtype_to_dtype_(np.float32)),
+            'out_dtype': int(convert_np_dtype_to_dtype_(np.float64))
+        })
+
+
+class TestReduceWithDtype2(TestReduceWithDtype):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.inputs = {'X': np.random.random((6, 2, 10)).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].sum(axis=1, keepdims=True)}
+        self.attrs = {'dim': [1], 'keep_dim': True}
+        self.attrs.update({
+            'in_dtype': int(convert_np_dtype_to_dtype_(np.float32)),
+            'out_dtype': int(convert_np_dtype_to_dtype_(np.float64))
+        })
+
+
 class TestReduceSumOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
@@ -450,6 +494,7 @@ class TestReduceMeanOpError(unittest.TestCase):
             self.assertRaises(TypeError, fluid.layers.reduce_mean, x2)
 
 
+
 class TestSumOpWithKeepDimAndReduceAll(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
@@ -462,6 +507,85 @@ class TestSumOpWithKeepDimAndReduceAll(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+class API_TestSumOpError(unittest.TestCase):
+    def test_errors(self):
+        def test_dtype1():
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                data = fluid.data(name="data", shape=[10], dtype="float32")
+                paddle.sum(data, dtype="int32")
+
+        self.assertRaises(ValueError, test_dtype1)
+
+        def test_dtype2():
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                data = fluid.data(name="data", shape=[10], dtype="float32")
+                paddle.sum(data, dtype="float32")
+
+        self.assertRaises(ValueError, test_dtype2)
+
+        def test_dtype3():
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                data = fluid.data(name="data", shape=[10], dtype="int32")
+                paddle.sum(data, dtype="bool")
+
+        self.assertRaises(ValueError, test_dtype3)
+
+        def test_dtype4():
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                data = fluid.data(name="data", shape=[10], dtype="int32")
+                paddle.sum(data, dtype="int32")
+
+        self.assertRaises(ValueError, test_dtype3)
+
+
+class API_TestSumOp(unittest.TestCase):
+    def test_1(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data = fluid.data("data", shape=[10, 10], dtype="float32")
+            result_sum = paddle.sum(input=data, dim=1, dtype="float64")
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            input_data = np.random.rand(10, 10).astype(np.float32)
+            res, = exe.run(feed={"data": input_data}, fetch_list=[result_sum])
+        self.assertEqual(
+            (res == np.sum(input_data.astype(np.float64), axis=1)).all(), True)
+
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data = fluid.data("data", shape=[10, 10], dtype="int32")
+            result_sum = paddle.sum(input=data, dim=1, dtype="int64")
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            input_data = np.random.randint(10, size=(10, 10)).astype(np.int32)
+            res, = exe.run(feed={"data": input_data}, fetch_list=[result_sum])
+        self.assertEqual(
+            (res == np.sum(input_data.astype(np.int64), axis=1)).all(), True)
+
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data = fluid.data("data", shape=[10, 10], dtype="int32")
+            result_sum = paddle.sum(input=data, dim=1)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            input_data = np.random.randint(10, size=(10, 10)).astype(np.int32)
+            res, = exe.run(feed={"data": input_data}, fetch_list=[result_sum])
+        self.assertEqual((res == np.sum(input_data, axis=1)).all(), True)
+
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data = fluid.data("data", shape=[10, 10], dtype="int32")
+            result_sum = paddle.sum(input=data, dim=1)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            input_data = np.random.randint(10, size=(10, 10)).astype(np.int32)
+            res, = exe.run(feed={"data": input_data}, fetch_list=[result_sum])
+        self.assertEqual((res == np.sum(input_data, axis=1)).all(), True)
+
+        with fluid.dygraph.guard():
+            np_x = np.array([10, 10]).astype('float64')
+            x = fluid.dygraph.to_variable(np_x)
+            z = paddle.sum(x, dim=0)
+            np_z = z.numpy()
+            z_expected = np.array(np.sum(np_x, axis=0))
+        self.assertEqual((np_z == z_expected).all(), True)
 
 
 if __name__ == '__main__':
