@@ -208,8 +208,10 @@ class TensorRTEngineOp : public framework::OperatorBase {
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx).stream();
 
-    PADDLE_ENFORCE_EQ(input_names_.empty(), false,
-                      "should pass at least one input");
+    PADDLE_ENFORCE_EQ(
+        input_names_.empty(), false,
+        platform::errors::InvalidArgument(
+            "TRT input is empty. Should pass at least one input."));
 
     std::vector<std::string> output_maps =
         Attr<std::vector<std::string>>("output_name_mapping");
@@ -233,7 +235,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
       runtime_batch = t_shape[0];
       const int bind_index = engine->engine()->getBindingIndex(x.c_str());
       PADDLE_ENFORCE(bind_index < num_bindings,
-                     "The bind index should be less than num_bindings");
+                     platform::errors::InvalidArgument(
+                         "Wrong TRT engine input binding index. Expected The "
+                         "binding index of TRT engine input to be less than "
+                         "the number of inputs and outputs. Received binding "
+                         "index=%d >= total inputs and outputs=%d",
+                         bind_index, num_bindings));
       if (!engine->with_dynamic_shape()) {
         // check if the input shapes are consistent with model.
         if (HasAttr(x + "_shape")) {
@@ -259,7 +266,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
         buffers[bind_index] = static_cast<void *>(t.data<int64_t>());
       } else {
         PADDLE_THROW(platform::errors::Fatal(
-            "The TRT Engine OP only support float and int64_t input."));
+            "Wrong TRT Engine OP input data type. The TRT Engine OP only "
+            "support float and int64_t input. Received %s",
+            framework::DataTypeToString(type)));
       }
     }
 
@@ -285,12 +294,21 @@ class TensorRTEngineOp : public framework::OperatorBase {
 #endif
       }
       auto *fluid_v = scope.FindVar(y);
-      PADDLE_ENFORCE_NOT_NULL(fluid_v, "no output variable called %s", y);
+      PADDLE_ENFORCE_NOT_NULL(
+          fluid_v,
+          platform::errors::InvalidArgument(
+              "Invalid output name of TRT engine. No output variable called %s",
+              y));
       auto *fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
       fluid_t->Resize(framework::make_ddim(ddim));
 
       PADDLE_ENFORCE(bind_index < num_bindings,
-                     "The bind index should be less than num_bindings");
+                     platform::errors::InvalidArgument(
+                         "Wrong TRT engine output binding index. Expected The "
+                         "binding index of TRT engine output to be less than "
+                         "the number of inputs and outputs. Received binding "
+                         "index=%d >= total inputs and outputs=%d",
+                         bind_index, num_bindings));
       buffers[bind_index] = static_cast<void *>(fluid_t->mutable_data<float>(
           boost::get<platform::CUDAPlace>(dev_place)));
 
