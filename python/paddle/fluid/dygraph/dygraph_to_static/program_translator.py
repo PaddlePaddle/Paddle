@@ -20,6 +20,7 @@ import six
 import textwrap
 import threading
 import warnings
+from collections import defaultdict
 
 from paddle.fluid import framework
 from paddle.fluid import core, executor
@@ -28,6 +29,7 @@ from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStat
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import data_layer_not_check
 from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.data_feeder import check_type
 
 __all__ = ['ProgramTranslator', 'convert_function_with_cache']
 
@@ -166,11 +168,11 @@ class ProgramCache(object):
                     idx = self.feed_name_to_idx[feed_layer.name]
                     args[idx] = feed_layer
                 fetch_list = func(*args, **kwargs)
-                self._outputs = fetch_list
+                self._outputs = list(fetch_list)
             else:
                 fetch_list = func(*args, **kwargs)
 
-        return fetch_list
+        return list(fetch_list)
 
     def _add_feed_layers(self, args, kwargs):
         """
@@ -261,14 +263,16 @@ class ProgramTranslator(object):
         else:
             self._exe = exe
         self._program_cache = ProgramCache()
+        self._optimizer_info = None
         self._optimizer = None
-        self._already_minimized = False
+        self._loss_name = None
+        self._optimizer_cache = {}
         # Once main_program is changed, should run startup_program.
         self._need_startup = True
 
     def get_output(self, dygraph_func, *args, **kwargs):
         """
-        Returns the output tensors for dygraph function and its arguments
+        Return the output tensors for dygraph function and its arguments
         """
         if in_dygraph_mode():
             warnings.warn(
@@ -286,7 +290,7 @@ class ProgramTranslator(object):
 
     def get_func(self, dygraph_func):
         """
-        Returns the translated static function from dygraph function
+        Return the translated static function from dygraph function
         """
         if in_dygraph_mode():
             warnings.warn(
@@ -299,7 +303,7 @@ class ProgramTranslator(object):
 
     def get_program(self, dygraph_func, *args, **kwargs):
         """
-        Returns the translated static program and input/output variables from
+        Return the translated static program and input/output variables from
         dygraph function.
         """
         if in_dygraph_mode():
@@ -315,7 +319,7 @@ class ProgramTranslator(object):
 
     def get_code(self, dygraph_func):
         """
-        Returns the translated static function code from dygraph code
+        Return the translated static function code from dygraph code
         """
         # Get AST from dygraph function
         raw_code = inspect.getsource(dygraph_func)
@@ -332,7 +336,7 @@ class ProgramTranslator(object):
 
     def run(self, *args, **kwargs):
         """
-        Executes main_program and returns output Tensors.
+        Execute main_program and returns output Tensors.
         """
         feed_dict, fetch_list = self._prepare(args)
 
@@ -343,18 +347,14 @@ class ProgramTranslator(object):
 
         return outputs
 
-    def set_optimizer(self, optimizer, loss_name):
+    def set_optimizer(self, optimizer, index_of_loss=0):
         """
-        Supports to set or update the optimizer used to minimize loss.
+        Support to set or update the optimizer used to minimize loss.
         """
+        check_type(index_of_loss, "index_of_loss", (int),
+                   "ProgramTranslator.set_optimizer")
         self._check_cache_valid()
-        self._optimizer = optimizer
-
-        if not isinstance(loss_name, six.string_types):
-            raise ValueError(
-                "Type of input loss_name should type(str), but received {}.".
-                format(type(loss_name)))
-        self._loss_name = loss_name
+        self._optimizer_info = (optimizer, index_of_loss)
 
     def save_inference_model(self, dirname, feed=None, fetch=None):
         """
@@ -377,27 +377,26 @@ class ProgramTranslator(object):
 
     def _prepare(self, args):
         """
-        Prepares with feed_dict, fetch_list, optimizer and initialize vars
+        Prepare with feed_dict, fetch_list, optimizer and initialize vars
         by running startup_program.
         """
 
-        # Updates batch_data for feed_dict
+        # Update batch_data for feed_dict
         feed_dict = self._update_batch_data(args)
         fetch_list = self._program_cache.outputs
 
-        # Adds optimizer if needed.
-        if self._optimizer and not self._already_minimized:
-            self._add_optimizer()
+        # Add optimizer if needed.
+        optimize_ops = self._add_optimizer()
 
         if self._need_startup:
             self._exe.run(self.startup_program)
             self._need_startup = False
 
-        return feed_dict, fetch_list
+        return feed_dict, fetch_list + optimize_ops
 
     def _check_cache_valid(self):
         """
-        Checks whether the current program is consistent with `default_main_program`.
+        Check whether the current program is consistent with `default_main_program`.
         In some models and unittest, program will be switched frequently by `program_guard`.
         If does, the cached program and other properties are not available and should be reset.
         """
@@ -408,7 +407,7 @@ class ProgramTranslator(object):
 
     def _update_batch_data(self, args):
         """
-        Updates cached batch data while training program.
+        Update cached batch data while training program.
         """
         feed_name_to_idx = self._program_cache.feed_name_to_idx
         feed_vars = self._program_cache.inputs
@@ -421,27 +420,38 @@ class ProgramTranslator(object):
 
     def _add_optimizer(self):
         """
-        Supports to set or update the optimizer used to minimize loss.
+        Support to set or update the optimizer used to minimize loss.
         """
+        new_optimizer, index_of_loss = self._optimizer_info
+        new_loss_var = self._program_cache.outputs[index_of_loss]
+        check_type(new_loss_var, "loss_var", (framework.Variable),
+                   "ProgramTranslator._add_optimizer")
+
+        cached_key = (new_optimizer, new_loss_var.name)
+        # Avoid to set optimizer repeatedly if the optimizer for current loss_var already existed.
+        if cached_key in self._optimizer_cache:
+            return self._optimizer_cache[cached_key]
+
         main_program = self._program_cache.main_program
         startup_program = self._program_cache.startup_program
         all_vars = main_program.block(0).vars
-        loss_var = all_vars.get(self._loss_name, None)
 
-        if loss_var is None:
+        if all_vars.get(new_loss_var.name, None) is None:
             raise ValueError(
-                "Can't find {} in main_program, please confirm whether the loss input is correct"
-                .format(self._loss_name))
-        # Adds optimizer to minimize loss
+                "Can't find {} in main_program, please confirm whether the loss input is correct."
+                .format(new_loss_var.name))
+        # Add optimizer to minimize loss
         with framework.program_guard(main_program, startup_program):
-            self._optimizer.minimize(loss_var)
+            optimize_ops, _ = new_optimizer.minimize(new_loss_var)
 
-        # Avoids to set optimizer repeatedly.
-        self._already_minimized = True
+        self._optimizer_cache[cached_key] = optimize_ops
+        self._optimizer = new_optimizer
+        self._loss_name = new_loss_var.name
+        return list(optimize_ops)
 
     def get_program_cache(self):
         """
-        Returns the ProgramCache instance.
+        Return the ProgramCache instance.
         """
         self._check_cache_valid()
         return self._program_cache

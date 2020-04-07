@@ -76,11 +76,12 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
             static_net = self.dygraph_class()
             adam = fluid.optimizer.AdamOptimizer(learning_rate=0.001)
             # set optimizer
-            # TODO: Need a better interfaces to set optimizer.
             program_translator = ProgramTranslator()
-            program_translator.set_optimizer(adam, 'avg_loss')
+            program_translator.set_optimizer(adam, index_of_loss=1)
 
             for batch_id in range(self.batch_num):
+                # Support to set optimizer in `for` by using cache.
+                program_translator.set_optimizer(adam, index_of_loss=1)
                 pred, avg_loss = static_net(self.data)
                 loss_data.append(np.array(avg_loss))
 
