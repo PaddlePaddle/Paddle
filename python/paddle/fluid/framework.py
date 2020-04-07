@@ -64,6 +64,8 @@ _dygraph_tracer_ = None
 _dygraph_current_expected_place_ = None
 _current_device = None
 
+global_prog_seed = 0
+
 
 def require_version(min_version, max_version=None):
     """
@@ -3651,7 +3653,8 @@ class Program(object):
         self.desc = core.ProgramDesc()
         self.blocks = [Block(self, 0)]
         self.current_block_idx = 0
-        self._seed = 0
+        global global_prog_seed
+        self._seed = global_prog_seed
         self._current_role = core.op_proto_and_checker_maker.OpRole.Forward
         self.__op_role_var = []
 
@@ -3689,6 +3692,14 @@ class Program(object):
 
         # appending gradients times
         self._appending_grad_times = 0
+
+    def global_seed(self, seed=0):
+        """
+        Set global seed for Program
+        """
+        global global_prog_seed
+        global_prog_seed = seed
+        self._seed = global_prog_seed
 
     @property
     def _op_role(self):
