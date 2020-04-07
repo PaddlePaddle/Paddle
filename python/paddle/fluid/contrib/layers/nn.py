@@ -25,19 +25,13 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import utils
 from ... import unique_name
 from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
-from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
+from paddle.fluid.data_feeder import check_type, check_dtype, convert_dtype
 from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
 
 __all__ = [
-    'fused_elemwise_activation',
-    'sequence_topk_avg_pooling',
-    'var_conv_2d',
-    'match_matrix_tensor',
-    'tree_conv',
-    'fused_embedding_seq_pool',
-    'multiclass_nms2',
-    'search_pyramid_hash',
-    'shuffle_batch',
+    'fused_elemwise_activation', 'sequence_topk_avg_pooling', 'var_conv_2d',
+    'match_matrix_tensor', 'tree_conv', 'fused_embedding_seq_pool',
+    'multiclass_nms2', 'search_pyramid_hash', 'shuffle_batch', 'index_sample'
 ]
 
 
