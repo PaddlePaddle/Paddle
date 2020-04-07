@@ -1660,6 +1660,10 @@ class GRUUnit(layers.Layer):
                 self.activation, 'gate_activation', self.gate_activation)
             return updated_hidden, reset_hidden_pre, gate
 
+        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                                 'GRUUnit')
+        check_variable_and_dtype(hidden, 'hidden', ['float32', 'float64'],
+                                 'GRUUnit')
         inputs = {
             'Input': [input],
             'HiddenPrev': [hidden],
