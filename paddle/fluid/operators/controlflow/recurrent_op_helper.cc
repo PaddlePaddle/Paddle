@@ -175,10 +175,13 @@ static void SetRecurrentOpAndRecurrentGradOpSkipVarAttr(
   auto &in_grads =
       bwd_op.Outputs().at(framework::GradVarName(RecurrentBase::kInputs));
 
-  PADDLE_ENFORCE_EQ(fwd_input.size(), in_grads.size(),
-                    platform::errors::PreconditionNotMet(
-                        "Backward input gradient number does not match forward "
-                        "input number."));
+  PADDLE_ENFORCE_EQ(
+      fwd_input.size(), in_grads.size(),
+      platform::errors::PreconditionNotMet(
+          "Backward input gradient number does not match forward "
+          "input number. The number of forward input number is %d and the "
+          "number of backward input gradient number is %d.",
+          fwd_input.size(), in_grads.size()));
   for (size_t i = 0; i < in_grads.size(); ++i) {
     if (in_grads[i] == framework::kEmptyVarName) {
       continue;
@@ -190,10 +193,13 @@ static void SetRecurrentOpAndRecurrentGradOpSkipVarAttr(
   auto &fwd_param = fwd_op.Inputs().at(RecurrentBase::kParameters);
   auto &param_grads =
       bwd_op.Outputs().at(framework::GradVarName(RecurrentBase::kParameters));
-  PADDLE_ENFORCE_EQ(fwd_param.size(), param_grads.size(),
-                    platform::errors::PreconditionNotMet(
-                        "Backward parameter gradient number does not match "
-                        "forward parameter number."));
+  PADDLE_ENFORCE_EQ(
+      fwd_param.size(), param_grads.size(),
+      platform::errors::PreconditionNotMet(
+          "Backward parameter gradient number does not match "
+          "forward parameter number. The number of forward parameter number is "
+          "%d and the number of backward parameter gradient is %d.",
+          fwd_param.size(), param_grads.size()));
   for (size_t i = 0; i < fwd_param.size(); ++i) {
     if (param_grads[i] == framework::kEmptyVarName) {
       continue;
