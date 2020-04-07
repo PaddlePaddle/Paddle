@@ -312,7 +312,7 @@ CUDADeviceContext::~CUDADeviceContext() {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_),
                                 "Failed to destory Cudnn handle");
   }
-  if (cusolver_handle_) {
+  if (cusolver_dn_handle_) {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cusolverDnDestroy(cusolver_dn_handle_),
                                 "Failed to destory Cusolver dn handle");
   }

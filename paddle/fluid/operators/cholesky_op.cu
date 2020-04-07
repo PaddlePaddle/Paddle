@@ -27,8 +27,7 @@ namespace operators {
        i += blockDim.x * gridDim.x)
 
 template <typename T>
-__global__ void MatrixBandPart(const int num_threads, const int batch_size,
-                               const int m, const int n,
+__global__ void MatrixBandPart(const int num_threads, const int m, const int n,
                                const int num_lower_diags,
                                const int num_upper_diags, const T* input_data,
                                T* output_data) {
@@ -61,25 +60,26 @@ class CholeskyGPUKernel : public framework::OpKernel<T> {
     for (int i = 0; i < dims.size() - 2; i++) {
       batch_count *= dims[i];
     }
-    auto m = dims[dims.size() - 1];
-    auto tensor_size = batch_count * m * m;
+    int m = dims[dims.size() - 1];
+    int tensor_size = batch_count * m * m;
 
     const auto* x_data = x->data<T>();
     auto* out_data = out->mutable_data<T>(context.GetPlace());
 
+    // matrices are assumed to be stored in column-major order in cusolver
     cublasFillMode_t uplo =
-        upper ? CUBLAS_FILL_MODE_UPPER : CUBLAS_FILL_MODE_LOWER;
+        upper ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER;
     // portf is inplace, thus copy the triangular part of the input matrices to
     // the output and set the other triangular part to 0 firstly
     int threads = std::min(1024, dev_ctx.GetMaxThreadsPerBlock());
-    int blocks = (size + threads - 1) / threads;
+    int blocks = (tensor_size + threads - 1) / threads;
     if (upper) {
       MatrixBandPart<<<blocks, threads, 0, dev_ctx.stream()>>>(
-          tensor_size, batch_count * m, m, /* num_lower_diags */ 0,
+          tensor_size, m, m, /* num_lower_diags */ 0,
           /* num_upper_diags */ m, x_data, out_data);
     } else {
       MatrixBandPart<<<blocks, threads, 0, dev_ctx.stream()>>>(
-          tensor_size, batch_count * m, m, /* num_lower_diags */ m,
+          tensor_size, m, m, /* num_lower_diags */ m,
           /* num_upper_diags */ 0, x_data, out_data);
     }
 
@@ -93,18 +93,24 @@ class CholeskyGPUKernel : public framework::OpKernel<T> {
       for (int i = 0; i < batch_count; i++) {
         output_ptrs.emplace_back(out_data + i * m * m);
       }
-
       thrust::device_vector<T*> dev_output_ptrs(output_ptrs.begin(),
                                                 output_ptrs.end());
       PotrfBatched(dev_ctx, uplo, m,
                    thrust::raw_pointer_cast(dev_output_ptrs.data()), m,
-                   info_ptr);
+                   info_ptr, batch_count);
+      // TODO(guosheng): There seems to a bug in cusolver potrfBatched and need
+      // to clear the upper triangle of the output. Remove this workaround once
+      // the bug is fixed.
+      if (!upper) {
+        MatrixBandPart<<<blocks, threads, 0, dev_ctx.stream()>>>(
+            tensor_size, m, m, /* num_lower_diags */ m,
+            /* num_upper_diags */ 0, out_data, out_data);
+      }
     } else {
-#else
-    for (int i = 0; i < batch_count; i++) {
-      Potrf(dev_ctx, uplo, m, out_data + i * m * m, m, info_ptr[i]);
-    }
 #endif
+      for (int i = 0; i < batch_count; i++) {
+        Potrf(dev_ctx, uplo, m, out_data + i * m * m, m, info_ptr + i);
+      }
 
 #if CUDA_VERSION >= 9020
     }
@@ -112,19 +118,20 @@ class CholeskyGPUKernel : public framework::OpKernel<T> {
   }
 
   void Potrf(const platform::CUDADeviceContext& dev_ctx, cublasFillMode_t uplo,
-             int n, T* A, int lda, int* info);
+             int n, T* A, int lda, int* info) const;
 
   void PotrfBatched(const platform::CUDADeviceContext& dev_ctx,
                     cublasFillMode_t uplo, int n, T* Aarray[], int lda,
-                    int* info_array, int batch_size);
+                    int* info_array, int batch_size) const;
 };
 
 #define CALL_POTRF_TYPES(m) m(float, S) m(double, D)
 
 #define POTRF_INSTANCE(T, C)                                                   \
+  template <>                                                                  \
   void CholeskyGPUKernel<T>::Potrf(const platform::CUDADeviceContext& dev_ctx, \
                                    cublasFillMode_t uplo, int n, T* A,         \
-                                   int lda, int* info) {                       \
+                                   int lda, int* info) const {                 \
     auto handle = dev_ctx.cusolver_dn_handle();                                \
     int workspace_size = 0;                                                    \
     PADDLE_ENFORCE_CUDA_SUCCESS(                                               \
@@ -139,14 +146,15 @@ class CholeskyGPUKernel : public framework::OpKernel<T> {
 CALL_POTRF_TYPES(POTRF_INSTANCE);
 
 #if CUDA_VERSION >= 9020
-#define POTRF_BATCH_INSTANCE(T, C)                                       \
-  void CholeskyGPUKernel<T>::PotrfBatched(                               \
-      const platform::CUDADeviceContext& dev_ctx, cublasFillMode_t uplo, \
-      int n, T* Aarray[], int lda, int* info_array, int batch_size) {    \
-    auto handle = dev_ctx.cusolver_dn_handle();                          \
-    PADDLE_ENFORCE_CUDA_SUCCESS(                                         \
-        platform::dynload::cusolverDn##C##potrfBatched(                  \
-            handle, uplo, n, Aarray, lda, info_array, batch_size));      \
+#define POTRF_BATCH_INSTANCE(T, C)                                          \
+  template <>                                                               \
+  void CholeskyGPUKernel<T>::PotrfBatched(                                  \
+      const platform::CUDADeviceContext& dev_ctx, cublasFillMode_t uplo,    \
+      int n, T* Aarray[], int lda, int* info_array, int batch_size) const { \
+    auto handle = dev_ctx.cusolver_dn_handle();                             \
+    PADDLE_ENFORCE_CUDA_SUCCESS(                                            \
+        platform::dynload::cusolverDn##C##potrfBatched(                     \
+            handle, uplo, n, Aarray, lda, info_array, batch_size));         \
   }
 
 CALL_POTRF_TYPES(POTRF_BATCH_INSTANCE);
@@ -156,5 +164,5 @@ CALL_POTRF_TYPES(POTRF_BATCH_INSTANCE);
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_GPU_KERNEL(cholesky, ops::CholeskyGPUKernel<float>,
-                       ops::CholeskyGPUKernel<double>);
+REGISTER_OP_CUDA_KERNEL(cholesky, ops::CholeskyGPUKernel<float>,
+                        ops::CholeskyGPUKernel<double>);
