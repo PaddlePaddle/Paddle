@@ -29,7 +29,7 @@ __all__ = [
     #            'range', 
     'zeros',
     'zeros_like',
-    'arrange',
+    'arange',
     #            'eye',
     'full',
     #            'full_like',

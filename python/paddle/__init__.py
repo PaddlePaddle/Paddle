@@ -36,7 +36,6 @@ batch = batch.batch
 import paddle.tensor
 import paddle.nn
 
-
 # TODO: define alias in tensor and framework directory
 # from .tensor.creation import create_.tensor   #DEFINE_ALIAS
 # from .tensor.creation import create_lod_.tensor   #DEFINE_ALIAS
@@ -52,7 +51,7 @@ from .tensor.creation import ones_like  #DEFINE_ALIAS
 # from .tensor.creation import range   #DEFINE_ALIAS
 from .tensor.creation import zeros  #DEFINE_ALIAS
 from .tensor.creation import zeros_like  #DEFINE_ALIAS
-# from .tensor.creation import arrange   #DEFINE_ALIAS
+# from .tensor.creation import arange   #DEFINE_ALIAS
 # from .tensor.creation import eye   #DEFINE_ALIAS
 from .tensor.creation import full  #DEFINE_ALIAS
 # from .tensor.creation import linspace   #DEFINE_ALIAS
