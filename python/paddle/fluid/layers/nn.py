@@ -2361,6 +2361,12 @@ def adaptive_pool2d(input,
                             pool_size=[3, 3],
                             pool_type='max')
     """
+    check_variable_and_dtype(
+        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'adaptive_pool2d')
+    check_type(pool_type, 'pool_type', str, 'adaptive_pool2d')
+    check_type(pool_size, 'pool_size', (int, list, tuple), 'adaptive_pool2d')
+    check_type(require_index, 'require_index', bool, 'adaptive_pool2d')
     if pool_type not in ["max", "avg"]:
         raise ValueError(
             "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
@@ -2516,6 +2522,12 @@ def adaptive_pool3d(input,
                             pool_size=[3, 3, 3],
                             pool_type='max')
     """
+    check_variable_and_dtype(
+        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'adaptive_pool3d')
+    check_type(pool_type, 'pool_type', str, 'adaptive_pool3d')
+    check_type(pool_size, 'pool_size', (int, list, tuple), 'adaptive_pool3d')
+    check_type(require_index, 'require_index', bool, 'adaptive_pool3d')
     if pool_type not in ["max", "avg"]:
         raise ValueError(
             "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
@@ -3568,6 +3580,11 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
             x = fluid.layers.spectral_norm(weight=weight, dim=1, power_iters=2)
     """
     helper = LayerHelper('spectral_norm', **locals())
+    check_variable_and_dtype(weight, 'weight', ['float32', 'float64'],
+                             'spectral_norm')
+    check_type(dim, 'dim', int, 'spectral_norm')
+    check_type(power_iters, 'power_iters', int, 'spectral_norm')
+    check_type(eps, 'eps', float, 'spectral_norm')
     dtype = weight.dtype
 
     # create intput and parameters
@@ -12237,6 +12254,9 @@ def grid_sampler(x, grid, name=None):
     """
     helper = LayerHelper("grid_sampler", **locals())
 
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'grid_sampler')
+    check_variable_and_dtype(grid, 'grid', ['float32', 'float64'],
+                             'grid_sampler')
     if not isinstance(x, Variable):
         return ValueError("The x should be a Variable")
 
@@ -12592,6 +12612,9 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
             out = fluid.layers.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
     """
     helper = LayerHelper("temporal_shift", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'temporal_shift')
+    check_type(seg_num, 'seg_num', int, 'temporal_shift')
+    check_type(shift_ratio, 'shift_ratio', float, 'temporal_shift')
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
