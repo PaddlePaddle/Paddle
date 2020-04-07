@@ -131,8 +131,7 @@ class IndexSampleGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(IndexSampleGradNoNeedBufferVarInferer,
-                                      "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(IndexSampleGradNoNeedBufferVarInferer, "X");
 }  // namespace operators
 }  // namespace paddle
 
