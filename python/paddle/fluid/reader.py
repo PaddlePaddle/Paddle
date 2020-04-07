@@ -580,6 +580,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
         self._need_check_feed = []
         self._blocking_queue = core.init_lod_tensor_blocking_queue(
             core.Variable(), self._capacity, False)
+        self._reader = None
         self._reader = core.create_py_reader(
             self.queue, self._var_names, self._shapes, self._dtypes,
             self._need_check_feed, self._places, self._use_double_buffer, True)
@@ -832,6 +833,7 @@ class GeneratorLoader(DataLoaderBase):
         ]
         self._queue = core.init_lod_tensor_blocking_queue(
             core.Variable(), self._capacity, self._keep_order)
+        self._reader = None
         self._reader = core.create_py_reader(
             self.queue, self._var_names, self._shapes, self._dtypes,
             self._need_check_feed, self._places, self._use_double_buffer,

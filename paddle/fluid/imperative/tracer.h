@@ -86,9 +86,9 @@ class Tracer {
 
   void SetExpectedPlace(platform::Place place) { expected_place_ = place; }
 
-  bool NoGrad() const { return no_grad_; }
+  bool HasGrad() const { return has_grad_; }
 
-  void SetNoGrad(bool no_grad) { no_grad_ = no_grad; }
+  void SetHasGrad(bool has_grad) { has_grad_ = has_grad; }
 
  private:
   std::unique_ptr<BasicEngine> basic_engine_;
@@ -96,7 +96,7 @@ class Tracer {
   bool enable_program_desc_tracing_{false};
   std::unique_ptr<UniqueNameGenerator> generator_;
   platform::Place expected_place_;
-  bool no_grad_{false};
+  bool has_grad_{true};
 };
 
 // To access static variable current_tracer

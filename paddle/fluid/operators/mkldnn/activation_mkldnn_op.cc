@@ -54,10 +54,6 @@ class MKLDNNActivationGradKernel
     PADDLE_ENFORCE_NE(diff_y->format(), MKLDNNMemoryFormat::undef,
                       "Wrong format set for Input OutGrad tensor");
 
-    PADDLE_ENFORCE_EQ(
-        ctx.Attr<bool>("is_test"), false,
-        "is_test attribute should be set to False in training phase.");
-
     Functor functor;
     functor(ctx);
   }
@@ -89,11 +85,9 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
 
   auto src_format = src_tz.size() == 2 ? MKLDNNMemoryFormat::nc : x->format();
 
-  bool is_test = ctx.Attr<bool>("is_test");
-
   platform::ActivationMKLDNNHandler<T> handler(
-      src_tz, algorithm, alpha, beta, src_format, is_test, dev_ctx,
-      ctx.GetPlace(), ctx.InputName("X"));
+      src_tz, algorithm, alpha, beta, src_format, dev_ctx, ctx.GetPlace(),
+      ctx.InputName("X"));
 
   auto src_memory_p = handler.AcquireSrcMemory(x);
   auto dst_memory_p = handler.AcquireDstMemory(y);

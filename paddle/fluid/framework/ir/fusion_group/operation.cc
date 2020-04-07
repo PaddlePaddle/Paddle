@@ -118,6 +118,16 @@ void OperationMap::InsertUnaryElementwiseOperations() {
   //  out = x^2
   //  dx = dout * 2.0 * x
   insert_handler("square", "${0} * ${0}", {"${2} * 2.0 * ${0}"});
+
+  // scale
+  // out = (bias_after_scale) ? scale * X +  bias : scale(X + bias)
+  // here we use '=' operator to seperate th default value
+  // TODO(wangchaochaohu): Later we need to support Tensor input for scale and
+  // bias.
+  insert_handler("scale",
+                 "${bias_after_scale=true} ? (${scale=1.0} * ${0} + "
+                 "${bias=0.0}) : (${scale=1.0} * (${0} + ${bias=0.0}))",
+                 {});
 }
 
 void OperationMap::InsertBinaryElementwiseOperations() {
@@ -185,6 +195,15 @@ void OperationMap::InsertMultivariateElementwiseOperations() {
   // For example, sum with 4 inputs, the expanded expression is:
   //  ${0} + ${1} + ${2} + ${3}
   insert_handler("sum", "${0}[ + ${?}]", {});
+
+  auto insert_handler_without_input = [&](std::string op_type, std::string expr,
+                                          std::vector<std::string> grad_exprs) {
+    int type = 0;
+    int num_oprands = 0;
+    Insert(type, num_oprands, op_type, expr, grad_exprs, {}, {"Out"});
+  };
+  // fill_constant:
+  insert_handler_without_input("fill_constant", "${str_value}", {});
 }
 
 }  // namespace fusion_group
