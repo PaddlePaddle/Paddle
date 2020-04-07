@@ -102,9 +102,12 @@ class TestTDMSamplerOp(OpTest):
     def test_check_output(self):
         places = self._get_places()
         for place in places:
-            outs = self.calc_output(place)
+            outs, fetch_list = self._calc_output(place)
             self.out = [np.array(out) for out in outs]
-        x_res, label_res, mask_res = self.out
+
+        x_res = self.out[fetch_list.index('Out')]
+        label_res = self.out[fetch_list.index('Labels')]
+        mask_res = self.out[fetch_list.index('Mask')]
 
         # check dtype
         if self.out_dtype == 'int32':
