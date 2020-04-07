@@ -241,6 +241,8 @@ class Conv2D(layers.Layer):
             return dygraph_utils._append_activation_in_dygraph(pre_act,
                                                                self._act)
 
+        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                                 'conv2d')
         pre_bias = self._helper.create_variable_for_type_inference(
             dtype=self._dtype)
 
