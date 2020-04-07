@@ -18,32 +18,6 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-// Reorder the elements from istrides to ostrides, borrowed from TRT convert in
-// tensorflow.
-// https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/tensorrt/convert/convert_nodes.cc#L318
-template <typename T>
-void Reorder2(nvinfer1::DimsHW shape, const T* idata, nvinfer1::DimsHW istrides,
-              T* odata, nvinfer1::DimsHW ostrides) {
-  for (int h = 0; h < shape.h(); ++h) {
-    for (int w = 0; w < shape.w(); ++w) {
-      odata[h * ostrides.h() + w * ostrides.w()] =
-          idata[h * istrides.h() + w * istrides.w()];
-    }
-  }
-}
-// indata c * k
-// Reorder the data layout from CK to KC.
-void ReorderCKtoKC(TensorRTEngine::Weight& iweights,  // NOLINT
-                   TensorRTEngine::Weight* oweights) {
-  int c = iweights.dims[0];
-  int k = iweights.dims[1];
-  oweights->dims.assign({k, c});
-  nvinfer1::DimsHW istrides = {1, k};
-  nvinfer1::DimsHW ostrides = {c, 1};
-  Reorder2({k, c}, static_cast<float const*>(iweights.get().values), istrides,
-           static_cast<float*>(const_cast<void*>(oweights->get().values)),
-           ostrides);
-}
 /*
  * FC converter convert a MUL op in Fluid to a FC layer in TRT.
  */
@@ -64,7 +38,6 @@ class FcOpConverter : public OpConverter {
     }
     // Declare inputs
     auto* X = engine_->GetITensor(op_desc.Input(i_name).front());
-
     // Declare weights
     auto* Y_v = scope.FindVar(op_desc.Input(w_name).front());
     PADDLE_ENFORCE_NOT_NULL(Y_v);
@@ -101,28 +74,44 @@ class FcOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(Y_t->dims().size(), 2UL);  // a matrix
     size_t n_output = Y_t->dims()[1];
 
-    std::unique_ptr<framework::Tensor> tmp(new framework::LoDTensor());
-    tmp->Resize(Y_t->dims());
+    int m = Y_t->dims()[0];
+    int n = Y_t->dims()[1];
 
-    memcpy(tmp->mutable_data<float>(platform::CPUPlace()), weight_data,
-           Y_t->dims()[0] * Y_t->dims()[1] * sizeof(float));
+    auto tranpose_weight = [](const float* src, float* dst, int m, int n) {
+      for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+          dst[j * m + i] = src[i * n + j];
+        }
+      }
+    };
+
+    auto regist_fc = [&](nvinfer1::ITensor* inputs, int n_output,
+                         TensorRTEngine::Weight& weight,
+                         TensorRTEngine::Weight& bias) {
+      auto* fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *inputs,
+                                            n_output, weight.get(), bias.get());
+
+      auto output_name = op_desc.Output("Out").front();
+      if (activation_type == "relu") {
+        nvinfer1::IActivationLayer* relu_layer =
+            TRT_ENGINE_ADD_LAYER(engine_, Activation, *(fc_layer->getOutput(0)),
+                                 nvinfer1::ActivationType::kRELU);
+        RreplenishLayerAndOutput(relu_layer, "fc", {output_name}, test_mode);
+      } else {
+        RreplenishLayerAndOutput(fc_layer, "fc", {output_name}, test_mode);
+      }
+    };
+
+    std::vector<float> weight_data_tmp;
+    weight_data_tmp.reserve(Y_t->numel());
+    memcpy(weight_data_tmp.data(), weight_data, Y_t->numel() * sizeof(float));
+    tranpose_weight(weight_data_tmp.data(), weight_data, m, n);
+
     TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
                                   static_cast<void*>(weight_data),
                                   static_cast<size_t>(Y_t->numel())};
-    TensorRTEngine::Weight tmp_weight(nvinfer1::DataType::kFLOAT,
-                                      static_cast<void*>(tmp->data<float>()),
-                                      static_cast<size_t>(Y_t->numel()));
-    weight.dims.assign({Y_t->dims()[0], Y_t->dims()[1]});
-    tmp_weight.dims = weight.dims;
+    weight.dims.assign({n, m});
 
-    // The data layout of TRT FC layer's weight is different from fluid's FC,
-    // need to reorder the elements.
-    ReorderCKtoKC(weight, &tmp_weight);
-
-    // Currently, the framework can only handle one fluid op -> one TRT layer,
-    // but fc fuses `mul` and `bias` (2 fluid ops), so here is a trick, just
-    // handle `mul`, leave `add` as another layer.
-    // DEBUG
     float* bias_data = nullptr;
     int bias_num = 0;
     if (with_bias) {
@@ -136,6 +125,10 @@ class FcOpConverter : public OpConverter {
                                 static_cast<void*>(bias_data),
                                 static_cast<size_t>(bias_num)};
 
+    if (engine_->with_dynamic_shape()) {
+      regist_fc(X, n_output, weight, bias);
+      return;
+    }
     // in order to handle situations in NLP models(input dims < 3,
     // x_num_col_dims != 1, etc.), reshape input to perform FC correctly.
     auto* reshape_itensor = X;
@@ -192,20 +185,7 @@ class FcOpConverter : public OpConverter {
       reshape_layer->setReshapeDimensions(reshape_dim);
       reshape_itensor = reshape_layer->getOutput(0);
     }
-    auto* fc_layer =
-        TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *reshape_itensor,
-                             n_output, tmp_weight.get(), bias.get());
-
-    engine_->SetWeights(op_desc.Input(w_name).front(), std::move(tmp));
-    auto output_name = op_desc.Output("Out").front();
-    if (activation_type == "relu") {
-      nvinfer1::IActivationLayer* relu_layer =
-          TRT_ENGINE_ADD_LAYER(engine_, Activation, *(fc_layer->getOutput(0)),
-                               nvinfer1::ActivationType::kRELU);
-      RreplenishLayerAndOutput(relu_layer, "fc", {output_name}, test_mode);
-    } else {
-      RreplenishLayerAndOutput(fc_layer, "fc", {output_name}, test_mode);
-    }
+    regist_fc(reshape_itensor, n_output, weight, bias);
   }
 };
 

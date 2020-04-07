@@ -90,8 +90,8 @@ class ResourcePool : public std::enable_shared_from_this<ResourcePool<T>> {
 
  private:
   std::vector<T *> instances_;
-  std::function<T *()> creator_;
-  std::function<void(T *)> deleter_;
+  const std::function<T *()> creator_;
+  const std::function<void(T *)> deleter_;
 
   std::mutex mtx_;
 };

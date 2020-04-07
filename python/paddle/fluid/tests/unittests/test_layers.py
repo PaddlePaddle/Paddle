@@ -259,6 +259,27 @@ class TestLayer(LayerTest):
             dy_ret = conv2d(base.to_variable(images))
             self.assertTrue(conv2d.bias is None)
 
+        with self.static_graph():
+            # the input of Conv2D must be Variable.
+            def test_Variable():
+                images = np.ones([2, 3, 5, 5], dtype='float32')
+                conv2d = nn.Conv2D(
+                    num_channels=3, num_filters=3, filter_size=[2, 2])
+                conv2d_ret1 = conv2d(images)
+
+            self.assertRaises(TypeError, test_Variable)
+
+            # the input dtype of Conv2D must be float16 or float32 or float64
+            # float16 only can be set on GPU place
+            def test_type():
+                images = layers.data(
+                    name='pixel', shape=[3, 5, 5], dtype='int32')
+                conv2d = nn.Conv2D(
+                    num_channels=3, num_filters=3, filter_size=[2, 2])
+                conv2d_ret2 = conv2d(images)
+
+            self.assertRaises(TypeError, test_type)
+
         self.assertTrue(np.allclose(static_ret, dy_ret_value))
         self.assertTrue(np.allclose(static_ret, static_ret2))
 
@@ -2684,6 +2705,28 @@ class TestBook(LayerTest):
             out = layers.batch_norm(data, momentum=momentum)
             return (out)
 
+    def make_inplace_abn(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            data = self._get_data(
+                name='data', shape=[32, 128, 128], dtype="float32")
+            out = layers.inplace_abn(data, act='leaky_relu', act_alpha=0.2)
+            return (out)
+
+    def make_inplace_abn_momentum_variable(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            data = self._get_data(
+                name='data', shape=[32, 128, 128], dtype="float32")
+            momentum = self._get_data(
+                name='momentum',
+                shape=[1],
+                dtype='float32',
+                append_batch_size=False)
+            out = layers.inplace_abn(
+                data, momentum=momentum, act='elu', act_alpha=2.0)
+            return (out)
+
     def make_range(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
@@ -3007,6 +3050,22 @@ class TestBook(LayerTest):
             sum = fluid.contrib.layers.partial_sum(
                 [x, y], start_index=0, length=2)
             return (sum)
+
+    def test_rank_attention(self):
+        with self.static_graph():
+            input = fluid.data(name="input", shape=[None, 2], dtype="float32")
+            rank_offset = fluid.data(
+                name="rank_offset", shape=[None, 7], dtype="int32")
+            out = fluid.contrib.layers.rank_attention(
+                input=input,
+                rank_offset=rank_offset,
+                rank_param_shape=[18, 3],
+                rank_param_attr=fluid.ParamAttr(
+                    learning_rate=1.0,
+                    name="ubm_rank_param.w_0",
+                    initializer=fluid.initializer.Xavier(uniform=False)),
+                max_rank=3)
+            return (out)
 
     def test_roi_pool(self):
         # TODO(minqiyang): dygraph do not support lod now
