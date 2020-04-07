@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: import all neural network related api under this directory, 
+# TODO: import all neural network related api under this directory,
 # including layers, linear, conv, rnn etc.
 __all__ = []
 
@@ -86,10 +86,10 @@ from .layer.activation import LogSoftmax  #DEFINE_ALIAS
 # from .layer.common import Embedding   #DEFINE_ALIAS
 # from .layer.common import Linear   #DEFINE_ALIAS
 # from .layer.common import UpSample   #DEFINE_ALIAS
-# from .functional.conv import conv2d   #DEFINE_ALIAS
-# from .functional.conv import conv2d_transpose   #DEFINE_ALIAS
-# from .functional.conv import conv3d   #DEFINE_ALIAS
-# from .functional.conv import conv3d_transpose   #DEFINE_ALIAS
+from .functional.conv import conv2d  #DEFINE_ALIAS
+from .functional.conv import conv2d_transpose  #DEFINE_ALIAS
+from .functional.conv import conv3d  #DEFINE_ALIAS
+from .functional.conv import conv3d_transpose  #DEFINE_ALIAS
 # from .functional.loss import bpr_loss   #DEFINE_ALIAS
 # from .functional.loss import center_loss   #DEFINE_ALIAS
 # from .functional.loss import cross_entropy   #DEFINE_ALIAS
