@@ -99,9 +99,8 @@ static void InitTensorForVarBase(imperative::VarBase *self,
 
 static void InitVarBaseFromNumpyWithKwargs(imperative::VarBase *self,
                                            const py::kwargs &kwargs) {
-  PADDLE_ENFORCE_EQ(
-      kwargs.contains("value"), true,
-      platform::errors::InvalidArgument("Missing argument: value"));
+  PADDLE_ENFORCE_EQ(kwargs.contains("value"), true,
+                    platform::errors::NotFound("Missing argument: value"));
 
   auto persistable = kwargs.contains("persistable")
                          ? kwargs["persistable"].cast<bool>()
@@ -158,7 +157,8 @@ static T PyObjectCast(PyObject *obj) {
   try {
     return py::cast<T>(py::handle(obj));
   } catch (py::cast_error &) {
-    PADDLE_THROW("Python object is not type of %s", typeid(T).name());
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Python object is not type of %s", typeid(T).name()));
   }
 }
 
@@ -212,8 +212,9 @@ static imperative::NameVarBaseMap ConvertToNameVarBaseMap(
     }
   }
 
-  PADDLE_ENFORCE_EQ(PyErr_Occurred() == nullptr, true,
-                    py::str(py::handle(PyErr_Occurred())));
+  PADDLE_ENFORCE_EQ(
+      PyErr_Occurred(), nullptr,
+      platform::errors::InvalidArgument(py::str(py::handle(PyErr_Occurred()))));
   return result;
 }
 
@@ -503,7 +504,7 @@ void BindImperative(py::module *m_ptr) {
              PADDLE_ENFORCE_EQ(
                  tensor.IsInitialized(), true,
                  platform::errors::InvalidArgument(
-                     "%s is Empty, Please check if it has no data in",
+                     "%s is Empty, Please check if it has no data.",
                      self.Name()));
              return TensorToPyArray(tensor, true);
            },
