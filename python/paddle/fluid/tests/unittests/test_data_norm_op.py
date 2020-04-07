@@ -276,13 +276,13 @@ class TestDataNormOpWithSlotDim(OpTest):
         self.check_grad(['X'], 'Y', no_grad_set=set([]))
 
 
-'''
 class TestDataNormOpWithSyncStats(unittest.TestCase):
     """
     test class for data norm op
     test forward and backward
     """
 
+    @unittest.skip(reason="disable this test before fix randomly CI fail")
     def test_sync_stats(self):
         if not core.is_compiled_with_cuda():
             return
@@ -398,7 +398,7 @@ class TestDataNormOpWithSyncStats(unittest.TestCase):
 
         for f in filelist:
             os.remove(f)
-'''
+
 
 if __name__ == '__main__':
     unittest.main()
