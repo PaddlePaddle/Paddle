@@ -114,18 +114,6 @@ class CleanupFuncRegistrar():
 if not (sys.platform == 'darwin' or sys.platform == 'win32'):
     CleanupFuncRegistrar.register(_cleanup)
 
-# ------------ Python exit flag --------------------
-# flag which record python shutdown status.
-python_exit_flag = False
-
-
-def _set_python_exit_flag():
-    global python_exit_flag
-    python_exit_flag = True
-
-
-atexit.register(_set_python_exit_flag)
-
 # ------------ SIGCHLD handler setting --------------
 _SIGCHLD_handler_set = False
 

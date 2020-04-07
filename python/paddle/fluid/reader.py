@@ -159,7 +159,7 @@ class DataLoader(object):
             as True only when the shared memory space on your machine(e.g.
             space of '/dev/shm' on Linux operating sysytem) is large enough.
             Shared memory will only be enabled in multi-process mode(num_workers
-            > 0). Default False.
+            > 0). Default True.
         timeout(int): the timeout value for getting data form output queue
             of subprocesses. Default 0.
         worker_init_fn(callable): init function which will be called with
@@ -287,7 +287,7 @@ class DataLoader(object):
                  collate_fn=None,
                  num_workers=0,
                  use_buffer_reader=True,
-                 use_shared_memory=False,
+                 use_shared_memory=True,
                  timeout=0,
                  worker_init_fn=None):
         self.return_list = return_list

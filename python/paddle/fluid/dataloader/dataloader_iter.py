@@ -30,7 +30,7 @@ else:
 
 from .. import core
 from ..framework import in_dygraph_mode
-from ..multiprocess_utils import CleanupFuncRegistrar, _cleanup_mmap, python_exit_flag, _set_SIGCHLD_handler
+from ..multiprocess_utils import CleanupFuncRegistrar, _cleanup_mmap, _set_SIGCHLD_handler
 
 # multi-process worker check indices queue interval, avoid
 # hanging in subprocess data loading
@@ -302,9 +302,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._worker_status[worker_id] = False
 
     def _try_shutdown_all(self):
-        if python_exit_flag or python_exit_flag is None:
-            return
-
+        # we do not check python exit status here for distributed launch
+        # will exit python immediately and exit trainer under background
         try:
             # set _workers_done_event should be set before put None
             # to indices_queue, workers wll exit on reading None from
