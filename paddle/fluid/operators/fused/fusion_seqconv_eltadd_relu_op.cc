@@ -23,36 +23,53 @@ namespace operators {
 
 void FusionSeqConvEltAddReluOp::InferShape(
     framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE(ctx->HasInput("X"),
-                 "Input(X) of FusionSeqConvEltAddReluOp should not be null.");
-  PADDLE_ENFORCE(
-      ctx->HasInput("Filter"),
-      "Input(Filter) of FusionSeqConvEltAddReluOp should not be null.");
-  PADDLE_ENFORCE(
-      ctx->HasInput("Bias"),
-      "Input(Bias) of FusionSeqConvEltAddReluOp should not be null.");
-  PADDLE_ENFORCE(
-      ctx->HasOutput("Out"),
-      "Output(Out) of FusionSeqConvEltAddReluOp should not be null.");
-  PADDLE_ENFORCE(
-      ctx->HasOutput("ColMat"),
-      "Output(ColMat) of FusionSeqConvEltAddReluOp should not be null.");
+  OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+                 "fusion_seqconv_eltadd_relu");
+  OP_INOUT_CHECK(ctx->HasInput("Filter"), "Input", "Filter",
+                 "fusion_seqconv_eltadd_relu");
+  OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias",
+                 "fusion_seqconv_eltadd_relu");
+
+  OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
+                 "fusion_seqconv_eltadd_relu");
+  OP_INOUT_CHECK(ctx->HasOutput("ColMat"), "Output", "ColMat",
+                 "fusion_seqconv_eltadd_relu");
 
   auto x_dims = ctx->GetInputDim("X");
   auto w_dims = ctx->GetInputDim("Filter");
   int context_length = ctx->Attrs().Get<int>("contextLength");
-  PADDLE_ENFORCE(
-      ctx->Attrs().Get<int>("contextStride") == 1,
-      "Currently, FusionSeqConvEltAddReluOp only supports contextStride=1.");
-  PADDLE_ENFORCE(x_dims.size() == 2 && w_dims.size() == 2,
-                 "Input(X, Filter) should be 2-D tensor.");
-  PADDLE_ENFORCE(x_dims.size() == 2 && w_dims.size() == 2,
-                 "Input(X, Filter) should be 2-D tensor.");
-  PADDLE_ENFORCE(w_dims[0] == context_length * x_dims[1],
-                 "Filter's height should be context_length * "
-                 "input_hidden_size .");
-  PADDLE_ENFORCE_GT(context_length + ctx->Attrs().Get<int>("contextStart"), 0,
-                    "contextStart size should be smaller than contextLength.");
+  PADDLE_ENFORCE_EQ(ctx->Attrs().Get<int>("contextStride"), 1,
+                    platform::errors::InvalidArgument(
+                        "Currently, FusionSeqConvEltAddReluOp only supports "
+                        "contextStride=1, but received value is: %d.",
+                        ctx->Attrs().Get<int>("contextStride")));
+
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(), 2,
+      platform::errors::InvalidArgument(
+          "Input(X) should be 2-D tensor, but reveiced value is: %d.",
+          x_dims.size()));
+
+  PADDLE_ENFORCE_EQ(
+      w_dims.size(), 2,
+      platform::errors::InvalidArgument(
+          "Filter should be 2-D tensor, but reveiced value is: %d.",
+          w_dims.size()));
+
+  PADDLE_ENFORCE_EQ(w_dims[0], context_length * x_dims[1],
+                    platform::errors::InvalidArgument(
+                        "Filter's height should be equal to context_length * "
+                        "input_hidden_size, but received Filter height is: %d,"
+                        "context_length is: %d, input_hidden_size is: %d.",
+                        w_dims[0], context_length, x_dims[1]));
+
+  PADDLE_ENFORCE_GT(
+      context_length + ctx->Attrs().Get<int>("contextStart"), 0,
+      platform::errors::InvalidArgument(
+          "contextStart size should be smaller than contextLength, "
+          "but received context_length is: %d, contextStart is: "
+          "%d." context_length,
+          ctx->Attrs().Get<int>("contextStart")));
 
   ctx->SetOutputDim("Out", {x_dims[0], w_dims[1]});
   ctx->SetOutputDim("ColMat", {x_dims[0], w_dims[0]});
