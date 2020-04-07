@@ -1256,6 +1256,11 @@ def array_write(x, i, array=None):
     Returns:
         Variable: The input ``array`` after ``x`` is written into.
 
+    Raises:
+        TypeError: If `array` is not a variable.
+        TypeError: If `i` is not a variable.
+        TypeError: If `x` is not a variable.
+    
     Examples:
         .. code-block:: python
 
@@ -1287,6 +1292,10 @@ def array_write(x, i, array=None):
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
 
     """
+    if array is not None:
+        check_type(array, 'array', (Variable), 'array_write')
+    check_type(i, 'i', (Variable), 'array_write')
+    check_type(x, 'x', (Variable), 'array_write')
     if in_dygraph_mode():
         assert isinstance(
             x, Variable
@@ -1635,6 +1644,10 @@ def array_read(array, i):
 
     Returns:
         Variable: The LoDTensor or Tensor that is read at the specified position of ``array``.
+    
+    Raises:
+        TypeError: If `array` is not a variable.
+        TypeError: If `i` is not a variable.
 
     Examples:
         .. code-block:: python
@@ -1671,6 +1684,8 @@ def array_read(array, i):
             #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux, 
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
+    check_type(array, 'array', (Variable), 'array_read')
+    check_type(array, 'i', (Variable), 'array_read')
     if in_dygraph_mode():
         assert isinstance(
             array,
