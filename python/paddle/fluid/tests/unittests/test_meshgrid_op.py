@@ -81,7 +81,17 @@ class TestMeshgridOp2(TestMeshgridOp):
         self.use_cudnn = True
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestMeshgridOp3(TestMeshgridOp):
+    def get_x_shape(self):
+        return [100, 200]
+
+    def init_kernel_type(self):
+        self.use_cudnn = True
+
+
+class TestMeshgridOp4(TestMeshgridOp):
     def get_x_shape(self):
         return [100, 300]
 
