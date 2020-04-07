@@ -33,12 +33,12 @@ class WhereOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         cond_dims, x_dims,
         platform::errors::InvalidArgument(
-            "The size of Inputs(Condition) and Inputs(X) should be same. "
+            "The dims of Inputs(Condition) and Inputs(X) should be same. "
             "But received Condition's shape is [%s], X's shape is [%s]",
             cond_dims, x_dims));
     PADDLE_ENFORCE_EQ(x_dims, y_dims,
                       platform::errors::InvalidArgument(
-                          "The size of Inputs(X) and Inputs(Y) should be same. "
+                          "The dims of Inputs(X) and Inputs(Y) should be same. "
                           "But received X's shape is [%s], Y's shape is [%s]",
                           x_dims, y_dims));
 

@@ -200,11 +200,12 @@ void BasicEngine::Execute() {
               iter != accumulators_.end(), true,
               platform::errors::NotFound("Cannot find gradient of variable %s",
                                          var->Name()));
+
           if (!var->OverridedStopGradient() && iter->second->RefCnt() == 1) {
             continue;
           }
 
-          var = std::make_shared<VariableWrapper>("Gtmp@");
+          var = std::make_shared<VariableWrapper>(var->Name());
           need_accu_var_list_.emplace_back(iter->second.get(), var);
         }
       }

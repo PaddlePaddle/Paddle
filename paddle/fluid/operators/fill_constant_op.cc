@@ -48,16 +48,6 @@ class FillConstantOp : public framework::OperatorWithKernel {
         framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
   }
-
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
-    if (var_name == "ShapeTensor" || var_name == "ShapeTensorList") {
-      return expected_kernel_type;
-    }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
-  }
 };
 
 class FillConstantOpVarTypeInference : public framework::VarTypeInference {
@@ -80,6 +70,11 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int64_t>>("shape",
                                   "(vector<int64_t>) The shape of the output")
         .SetDefault({});
+    AddInput("ValueTensor",
+             "(Tensor, optional) If provided, fill_constant Op will use this "
+             "as value to set the output Tensor, this has a higher priority "
+             "than attr(str_value), the shape of this tensor MUST BE [1].")
+        .AsDispensable();
     AddInput("ShapeTensor",
              "(Tensor<int>), optional). The shape of the output."
              "It has a higher priority than Attr(shape).")
