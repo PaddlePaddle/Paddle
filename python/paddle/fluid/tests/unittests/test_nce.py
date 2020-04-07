@@ -251,6 +251,8 @@ class TestNCE_OpError(unittest.TestCase):
             # the data type of input(label) must be int64.
             self.assertRaises(TypeError, fluid.layers.nce, input4, label4, 5)
 
+
+class TestDygraphNCE_OpError(unittest.TestCase):
     def test_NCE_errors(self):
         with program_guard(Program(), Program()):
             nce = fluid.NCE(20, 5)
@@ -258,14 +260,14 @@ class TestNCE_OpError(unittest.TestCase):
                 np.array([0.0, 3.0, 2.0, 4.0]), [[1, 1, 2]], fluid.CPUPlace())
             label1 = fluid.layers.data(
                 name='label1', shape=[-1, 4], dtype="int64")
-            # the input(input) of nce layer must be Variable.
+            # the input(input) of NCE layer must be Variable.
             self.assertRaises(TypeError, nce, input1, label1)
 
             input2 = fluid.layers.data(
                 name='input2', shape=[-1, 4], dtype="float32")
             label2 = fluid.create_lod_tensor(
                 np.array([0.0, 3.0, 2.0, 4.0]), [[1, 1, 2]], fluid.CPUPlace())
-            # the input(label) of nce layer must be Variable.
+            # the input(label) of NCE layer must be Variable.
             self.assertRaises(TypeError, nce, input2, label2)
 
             input3 = fluid.layers.data(
