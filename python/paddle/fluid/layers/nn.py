@@ -14,14 +14,16 @@
 """
 All layers just related to the neural network.
 """
-
 from __future__ import print_function
 
-import numpy as np
-import warnings
-import six
 import os
 import inspect
+import warnings
+
+import numpy as np
+import six
+
+import paddle
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program
@@ -4944,63 +4946,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
             y = fluid.layers.data(name='y', shape=[3, 2], dtype='float32')
             out = fluid.layers.matmul(x, y, True, True)
     """
-    attrs = {
-        'transpose_X': transpose_x,
-        'transpose_Y': transpose_y,
-        'alpha': float(alpha),
-    }
-
-    if in_dygraph_mode():
-        return core.ops.matmul(x, y, 'transpose_X', transpose_x, 'transpose_Y',
-                               transpose_y, 'alpha', float(alpha))
-
-    def __check_input(x, y):
-        var_names = {'x': x, 'y': y}
-        for name, val in var_names.items():
-            check_variable_and_dtype(
-                val, name, ['float16', 'float32', 'float64'], 'matmul')
-        x_shape = list(x.shape)
-        y_shape = list(y.shape)
-        if len(x_shape) == 1:
-            x_shape = [1] + x_shape
-        if len(y_shape) == 1:
-            y_shape = y_shape + [1]
-
-        # check the inner 2 dimensions
-        if transpose_x:
-            x_shape[-2], x_shape[-1] = x_shape[-1], x_shape[-2]
-        if transpose_y:
-            y_shape[-2], y_shape[-1] = y_shape[-1], y_shape[-2]
-        if x_shape[-1] != y_shape[-2]:
-            assert (x_shape[-1] == -1) or (y_shape[-2] == -1),                         \
-                "After performing an optional transpose, Input X's width should be "   \
-                "equal to Y's width for multiplication "                               \
-                "prerequisites. But received X's shape: %s, Y's shape: %s\n" %         \
-                (x_shape, y_shape)
-
-        if len(y_shape) > 2 and len(x_shape) > 2:
-            for i, dim_x in enumerate(x_shape[:-2]):
-                # don't check neg shape
-                if dim_x < 0 or y_shape[i] < 0:
-                    continue
-                if dim_x != y_shape[i]:
-                    raise ValueError(
-                        "When the matrix is larger than 2 dimensions, the higher "
-                        "dimensional values of the two matrices need to be equal. "
-                        "But received x_shape[%d] != y_shape[%d]. X's shape: %s, "
-                        "Y's shape: %s.\n" % (i, i, x_shape, y_shape))
-
-    __check_input(x, y)
-
-    helper = LayerHelper('matmul', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='matmul',
-        inputs={'X': x,
-                'Y': y},
-        outputs={'Out': out},
-        attrs=attrs)
-    return out
+    return paddle.matmul(x, y, transpose_x, transpose_y, alpha, name)
 
 
 def topk(input, k, name=None):
