@@ -65,7 +65,11 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 python -m paddle.distributed.launch main.py --arch 
 * **output-dir**: 模型文件保存的文件夹，默认值：'output'
 * **num-workers**: dataloader的进程数，默认值：4
 * **resume**: 恢复训练的模型路径，默认值：None
-* **eval-only**: 仅仅进行预测，默认值：False
+* **eval-only**: 是否仅仅进行预测
+* **lr-scheduler**: 学习率衰减策略，默认值：piecewise
+* **milestones**: piecewise学习率衰减策略的边界，默认值：[30, 60, 80]
+* **weight-decay**: 模型权重正则化系数，默认值：1e-4
+* **momentum**: SGD优化器的动量，默认值：0.9
 
 
 ## 模型
