@@ -455,7 +455,7 @@ class TestSumOpWithKeepDimAndReduceAll(OpTest):
         self.op_type = "reduce_sum"
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
         self.attrs = {'reduce_all': True, 'keep_dim': True}
-        self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
+        self.outputs = {'Out': self.inputs['X'].sum(keepdims=True)}
 
     def test_check_output(self):
         self.check_output()
