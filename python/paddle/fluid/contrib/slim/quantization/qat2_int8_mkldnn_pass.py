@@ -37,10 +37,12 @@ class Qat2Int8MkldnnPass(object):
 
     def __init__(self,
                  _quantized_ops,
+                 _scale_from_attr=False,
                  _scope=None,
                  _place=None,
                  _core=None,
                  _debug=False):
+        self._scale_from_attr = _scale_from_attr
         self._scope = _scope
         self._place = _place
         self._core = _core
@@ -52,6 +54,7 @@ class Qat2Int8MkldnnPass(object):
         ]
         self._fake_quantize_types = [
             'fake_quantize_moving_average_abs_max',
+            'fake_quantize_range_abs_max',
             'fake_quantize_dequantize_moving_average_abs_max'
         ]
         self._fake_dequantize_types = ['fake_dequantize_max_abs']
@@ -74,7 +77,13 @@ class Qat2Int8MkldnnPass(object):
         assert isinstance(graph,
                           IrGraph), 'graph must be the instance of IrGraph.'
 
-        graph = self._gather_scales(graph)
+        graph = self._gather_weight_scales_from_fake(graph)
+        if self._scale_from_attr:
+            graph = self._gather_scales_from_attr(graph)
+            graph = self._gather_scales_from_fake(graph)
+        else:
+            graph = self._gather_scales_from_fake(graph)
+            graph = self._gather_scales_from_attr(graph)
         graph = self._remove_fake_ops(graph)
         graph = self._dequantize_weights(graph)
         graph = self._optimize_fp32_graph(graph)
@@ -90,9 +99,6 @@ class Qat2Int8MkldnnPass(object):
         assert isinstance(graph,
                           IrGraph), 'graph must be the instance of IrGraph.'
 
-        graph = self._gather_scales(graph)
-        graph = self._remove_fake_ops(graph)
-        graph = self._dequantize_weights(graph)
         graph = self._optimize_fp32_graph(graph)
         graph = self._cleanup(graph)
         return graph
@@ -108,7 +114,13 @@ class Qat2Int8MkldnnPass(object):
     def _is_fc_quantized(self):
         return 'fc' in self._quantized_ops
 
-    def _gather_scales(self, graph):
+    def _gather_scales_from_fake(self, graph):
+        def _add_scale_for_vars(var_names, use_unsigned_int, lod_tensor):
+            scales = self._var_quant_scales
+            for var_name in var_names:
+                if (var_name not in scales):
+                    scales[var_name] = (use_unsigned_int, lod_tensor)
+
         for op in graph.all_op_nodes():
             if op.name() in self._quantize_types:
                 bit_length = op.op().attr("bit_length")
@@ -117,20 +129,46 @@ class Qat2Int8MkldnnPass(object):
 
                 input_name = op.input("X")[0]
                 scale_name = op.input("InScale")[0]
+                output_name = op.output("Out")[0]
                 # Gather new weights scale after folding batchnorm in convolution
                 scale = np.array(1.0 / self._load_param(
                     self._scope, scale_name)[0]).astype(np.float64)
                 lod_tensor = self._convert_scale2tensor(scale)
                 use_unsigned_int = False
-                self._var_quant_scales[input_name] = (use_unsigned_int,
-                                                      lod_tensor)
-                self._var_quant_scales[scale_name.replace(".scale", "")] = (
-                    use_unsigned_int, lod_tensor)
+                _add_scale_for_vars([input_name, output_name], use_unsigned_int,
+                                    lod_tensor)
 
+        return graph
+
+    def _gather_weight_scales_from_fake(self, graph):
+        for op in graph.all_op_nodes():
             if op.name() in self._fake_dequantize_types:
                 input_name = op.input("X")[0]
-                _max_range = op.op().attr("max_range")
-                self._weight_scales[input_name] = _max_range
+                if op.op().has_attr("max_range"):
+                    _max_range = np.array(op.op().attr("max_range")).astype(
+                        np.float64)
+                    self._weight_scales[input_name] = _max_range
+
+        return graph
+
+    def _gather_scales_from_attr(self, graph):
+        def _get_attr_scale_from_op(op, op_types, op_out_name):
+            if op.name() in op_types and op.op().has_attr("out_threshold"):
+                assert op_out_name in op.op().outputs(
+                ), "Operator {} does not have the output {}.".format(
+                    op.name(), op_out_name)
+                attr_scale = op.op().attr("out_threshold")
+                scale = np.array(1.0 / attr_scale).astype(np.float64)
+                scale_lod_tensor = self._convert_scale2tensor(scale)
+                use_unsigned_int = False
+                out_var_name = op.output(op_out_name)[0]
+                self._var_quant_scales[out_var_name] = (use_unsigned_int,
+                                                        scale_lod_tensor)
+
+        for op in graph.all_op_nodes():
+            _get_attr_scale_from_op(op, ['batch_norm'], 'Y')
+            _get_attr_scale_from_op(op, ['relu'], 'Out')
+
         return graph
 
     def _propagate_scales(self, graph):
