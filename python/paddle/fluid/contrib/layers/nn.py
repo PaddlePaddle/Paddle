@@ -25,7 +25,7 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import utils
 from ... import unique_name
 from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
-from paddle.fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
+from paddle.fluid.data_feeder import check_type, check_dtype, convert_dtype
 from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
 
 __all__ = [
