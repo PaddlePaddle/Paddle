@@ -221,11 +221,11 @@ class TestFleet2(unittest.TestCase):
                 emb1 = fluid.embedding(input=show, size=[1, 1], \
                     is_sparse=True, is_distributed=True, \
                     param_attr=fluid.ParamAttr(name="embedding"))
-       fleet.save_model("./tmodel_000")
-       fleet.save_one_table(0, "./tmodel_001")
-       fleet.save_one_table(0, "./tmodel_002", prefix="thahaha")
-       fleet.load_model("./tmodel_0003")
-       fleet.load_one_table(0, "./tmodel_004")
+        fleet.save_model("./tmodel_000")
+        fleet.save_one_table(0, "./tmodel_001")
+        fleet.save_one_table(0, "./tmodel_002", prefix="thahaha")
+        fleet.load_model("./tmodel_0003")
+        fleet.load_one_table(0, "./tmodel_004")
 
 
 if __name__ == "__main__":
