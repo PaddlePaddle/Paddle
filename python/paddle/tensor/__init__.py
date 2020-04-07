@@ -123,7 +123,7 @@ from .math import add  #DEFINE_ALIAS
 # from .attribute import shape   #DEFINE_ALIAS
 # from .io import save   #DEFINE_ALIAS
 # from .io import load   #DEFINE_ALIAS
-# from .linalg import matmul   #DEFINE_ALIAS
+from .linalg import matmul  #DEFINE_ALIAS
 # from .linalg import dot   #DEFINE_ALIAS
 # from .linalg import einsum   #DEFINE_ALIAS
 # from .linalg import morm   #DEFINE_ALIAS

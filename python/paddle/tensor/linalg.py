@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from paddle.common_ops_import import *
 
 from __future__ import print_function
 
@@ -35,25 +36,33 @@ __all__ = [
 def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     """
     Applies matrix multiplication to two tensors.
+
+
     Currently, the input tensors' rank can be any, but when the rank of any
     inputs is bigger than 3, this two inputs' rank should be equal.
+
     The actual behavior depends on the shapes of :math:`x`, :math:`y` and the
     flag values of :attr:`transpose_x`, :attr:`transpose_y`. Specifically:
+
     - If a transpose flag is specified, the last two dimensions of the tensor
       are transposed. If the tensor is rank-1 of shape :math:`[D]`, then for
       :math:`x` it is treated as :math:`[1, D]` in nontransposed form and as
       :math:`[D, 1]` in transposed form, whereas for :math:`y` it is the
       opposite: It is treated as :math:`[D, 1]` in nontransposed form and as
       :math:`[1, D]` in transposed form.
+
     - After transpose, the two tensors are 2-D or n-D and matrix multiplication
       performs in the following way.
+
       - If both are 2-D, they are multiplied like conventional matrices.
       - If either is n-D, it is treated as a stack of matrices residing in the
         last two dimensions and a batched matrix multiply supporting broadcast
         applies on the two tensors.
+        
     Also note that if the raw tensor :math:`x` or :math:`y` is rank-1 and
     nontransposed, the prepended or appended dimension :math:`1` will be
     removed after matrix multiplication.
+
     Args:
         x (Variable): The input variable which is a Tensor or LoDTensor.
         y (Variable): The input variable which is a Tensor or LoDTensor.
@@ -62,25 +71,35 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
         alpha (float): The scale of output. Default 1.0.
         name(str|None): A name for this layer(optional). If set None, the layer
             will be named automatically.
+
     Returns:
         Variable: The product Tensor (or LoDTensor) variable.
+
     Examples:
         .. code-block:: python
+
             # Examples to clarify shapes of the inputs and output
             # x: [B, ..., M, K], y: [B, ..., K, N]
             # paddle.matmul(x, y)  # out: [B, ..., M, N]
+
             # x: [B, M, K], y: [B, K, N]
             # paddle.matmul(x, y)  # out: [B, M, N]
+
             # x: [B, M, K], y: [K, N]
             # paddle.matmul(x, y)  # out: [B, M, N]
+
             # x: [M, K], y: [K, N]
             # paddle.matmul(x, y)  # out: [M, N]
+
             # x: [B, M, K], y: [K]
             # paddle.matmul(x, y)  # out: [B, M]
+
             # x: [K], y: [K]
             # paddle.matmul(x, y)  # out: [1]
+
             # x: [M], y: [N]
             # paddle.matmul(x, y, True, True)  # out: [M, N]
+            
             import paddle.fluid as fluid
             x = fluid.data(name='x', shape=[2, 3], dtype='float32')
             y = fluid.data(name='y', shape=[3, 2], dtype='float32')
