@@ -346,7 +346,7 @@ def full(shape,
          stop_gradient=True,
          name=None):
     """
-    This function return a Tensor with the `fill_value` which size is same as `shape`
+    This Op return a Tensor with the `fill_value` which size is same as `shape`
     
     Args:
         shape(list|tuple|Variable): Shape of the Tensor to be created.
@@ -354,7 +354,7 @@ def full(shape,
                 the elements of it should be integers or Tensors with shape [1].
                 If ``shape`` is an Variable, it should be an 1-D Tensor .
         fill_value(bool|float16|float32|float64|int32|int64|Variable): The constant value
-            used to initialize the Tensor to be created. If value is an Variable, it must be an 1-D Tensor.
+            used to initialize the Tensor to be created. If fill_value is an Variable, it must be an 1-D Tensor.
         out(Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
@@ -362,7 +362,7 @@ def full(shape,
             which can be float16, float32, float64, int32, int64, if dytpe is `None`, the data
             type of created tensor is `float32`
         device(str, optional): On which device to run this Op. The :attr:`device` must be
-            None, 'cpu', 'gpu'. If :attr:`device` is None, the device that the user set in 
+            None, 'cpu' or 'gpu'. If :attr:`device` is None, the device that the user set in 
             the paddle program will be chosen. Default value is None.
         stop_gradient(bool, optional): Indicating if we stop gradient from current(out) Variable,
             default value is True.
@@ -373,9 +373,10 @@ def full(shape,
         Variable: Tensor which is created according to shape and dtype.
 
     Raise:
-        TypeError: The dtype must be one of bool, float16, float32, float64, int32 and int64
-        and the data type of out Tensor must be the same as the dtype. The out must be a Variable
-        and the shape must be one of Variable, list tuple.
+        TypeError: The `dtype` must be one of bool, float16, float32, float64, int32 and int64
+        and the data type of out Tensor must be the same as the dtype.
+        TypeError: The `out` must be a Variable
+        TypeError: The `shape` must be one of Variable, list tuple.
     
     Examples:
         .. code-block:: python
