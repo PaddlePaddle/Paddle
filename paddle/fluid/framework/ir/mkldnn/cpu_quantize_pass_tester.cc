@@ -557,8 +557,6 @@ void MainTestMatmul(const ProgramDesc& prog, int matmul_count, int quant_count,
   PreparePass(&graph, prog, variable_names_matmul, &original_nodes_num,
               &current_nodes_num);
 
-  float quant_scale = 1.0f;
-  float dequant_scale = 1.0f;
   int quantize_nodes_count = 0;
   int dequantize_nodes_count = 0;
   int matmul_nodes_count = 0;

@@ -553,7 +553,6 @@ void CPUQuantizePass::QuantizeMatmul(Graph* graph) const {
     }
     GET_IR_NODE_FROM_SUBGRAPH(prev_op_x, prev_op_x, matmul_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(prev_op_y, prev_op_y, matmul_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(next_op, next_op, matmul_pattern);
 
     // skip if prev ops are not quantized
     if (!IsOpDequantized(prev_op_x) || !IsOpDequantized(prev_op_y)) {

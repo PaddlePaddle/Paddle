@@ -1364,13 +1364,10 @@ PDNode *patterns::Matmul::operator()() {
                         ->AsOutput()
                         ->assert_is_op_output("matmul", "Out");
 
-  auto next_op = pattern->NewNode(next_op_repr())->assert_is_op();
-
   prev_op_x->LinksTo({matmul_in_x});
   prev_op_y->LinksTo({matmul_in_y});
   matmul_op->LinksFrom({matmul_in_x, matmul_in_y}).LinksTo({matmul_out});
-  next_op->LinksFrom({matmul_out});
-  return next_op;
+  return matmul_out;
 }
 
 PDNode *patterns::ConvResidual::operator()(bool with_residual_data) {
