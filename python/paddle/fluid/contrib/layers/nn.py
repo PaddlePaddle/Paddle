@@ -819,6 +819,7 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
     **Tdm Child**
      According to the input node_id on the given tree, return the corresponding child node_id and 
       whether child is a leaf node by leaf_mask value.
+
     .. code-block:: text
         Given:
             tree[[0], [1, 2], [3, 4], [5, 6]] # A binary tree with seven nodes
@@ -830,6 +831,7 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
                      [0, 0]]
             leaf_mask = [[1, 1],
                          [0, 0]]
+
     Args:
         x(Variable): Variable contained the node_id information, dtype support int32/int64.
         node_nums(int): Number of total nodes.
@@ -844,9 +846,11 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
             4. Child_id(int, shape(child_nums)), all child node's node_id of this node should be given. 
             If the number of child nodes is insufficient, padding 0 until child nums equal to child_nums
         dtype(str): The data type of output child and leaf_mask, support int32/int64.
+
     Returns:
         tuple: A tuple including input node's child(Variable) and leaf_mask(Variable). 
             If child is a leaf node, leaf_mask equal ot 1, otherwise equal to 0.
+
     Examples:
         .. code-block:: python
         import paddle.fluid as fluid
