@@ -273,7 +273,7 @@ class ProgramTranslator(object):
         if in_dygraph_mode():
             warnings.warn(
                 "The ProgramTranslator.get_output doesn't work in dygraph "
-                "mode. We will just return dygraph output. Use the it in "
+                "mode. We will just return dygraph output. Use it in "
                 "static mode if you would like to translate to static graph.")
             return dygraph_func(*args, **kwargs)
 
@@ -291,7 +291,7 @@ class ProgramTranslator(object):
         if in_dygraph_mode():
             warnings.warn(
                 "The ProgramTranslator.get_func doesn't work in dygraph "
-                "mode. We will just return dygraph function. Use the it in "
+                "mode. We will just return dygraph function. Use it in "
                 "static mode if you would like to translate to static graph.")
             return dygraph_func
         static_func = convert_function_with_cache(dygraph_func)
