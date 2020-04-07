@@ -2361,6 +2361,12 @@ def adaptive_pool2d(input,
                             pool_size=[3, 3],
                             pool_type='max')
     """
+    check_variable_and_dtype(
+        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'adaptive_pool2d')
+    check_type(pool_type, 'pool_type', str, 'adaptive_pool2d')
+    check_type(pool_size, 'pool_size', (int, list, tuple), 'adaptive_pool2d')
+    check_type(require_index, 'require_index', bool, 'adaptive_pool2d')
     if pool_type not in ["max", "avg"]:
         raise ValueError(
             "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
@@ -2516,6 +2522,12 @@ def adaptive_pool3d(input,
                             pool_size=[3, 3, 3],
                             pool_type='max')
     """
+    check_variable_and_dtype(
+        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'adaptive_pool3d')
+    check_type(pool_type, 'pool_type', str, 'adaptive_pool3d')
+    check_type(pool_size, 'pool_size', (int, list, tuple), 'adaptive_pool3d')
+    check_type(require_index, 'require_index', bool, 'adaptive_pool3d')
     if pool_type not in ["max", "avg"]:
         raise ValueError(
             "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
