@@ -599,7 +599,8 @@ class GeneralRoleMaker(RoleMakerBase):
                     }
                     # child process for http server
                     self._http_server = Process(
-                        target=self.__start_kv_server, args=(self._http_server_d, size_d))
+                        target=self.__start_kv_server,
+                        args=(self._http_server_d, size_d))
                     self._http_server.daemon = True
                     # set running status to True
                     self._http_server_d["running"] = True
@@ -612,16 +613,14 @@ class GeneralRoleMaker(RoleMakerBase):
                 gloo.set_size(len(worker_endpoints))
                 gloo.set_prefix(self._prefix)
                 gloo.set_iface(self._iface)
-                gloo.set_timeout_seconds(
-                    self._init_timeout_seconds, self._run_timeout_seconds)
+                gloo.set_timeout_seconds(self._init_timeout_seconds,
+                                         self._run_timeout_seconds)
                 if len(self._http_ip_port) != 0:
                     gloo.set_http_store(self._http_ip_port[0],
-                                        int(self._http_ip_port[1]),
-                                        "trainer")
+                                        int(self._http_ip_port[1]), "trainer")
                 else:
                     gloo.set_hdfs_store(self._hdfs_path + "/trainer",
-                                        self._hdfs_name,
-                                        self._hdfs_ugi)
+                                        self._hdfs_name, self._hdfs_ugi)
                 gloo.init()
                 self._node_type_comm = gloo
             elif training_role == "PSERVER":
@@ -642,16 +641,14 @@ class GeneralRoleMaker(RoleMakerBase):
                 gloo.set_size(len(eplist))
                 gloo.set_prefix(self._prefix)
                 gloo.set_iface(self._iface)
-                gloo.set_timeout_seconds(
-                    self._init_timeout_seconds, self._run_timeout_seconds)
+                gloo.set_timeout_seconds(self._init_timeout_seconds,
+                                         self._run_timeout_seconds)
                 if len(self._http_ip_port) != 0:
                     gloo.set_http_store(self._http_ip_port[0],
-                                        int(self._http_ip_port[1]),
-                                        "pserver")
+                                        int(self._http_ip_port[1]), "pserver")
                 else:
                     gloo.set_hdfs_store(self._hdfs_path + "/pserver",
-                                        self._hdfs_name,
-                                        self._hdfs_ugi)
+                                        self._hdfs_name, self._hdfs_ugi)
                 gloo.init()
                 self._node_type_comm = gloo
 
@@ -661,16 +658,14 @@ class GeneralRoleMaker(RoleMakerBase):
             gloo.set_size(len(all_list))
             gloo.set_prefix(self._prefix)
             gloo.set_iface(self._iface)
-            gloo.set_timeout_seconds(
-                self._init_timeout_seconds, self._run_timeout_seconds)
+            gloo.set_timeout_seconds(self._init_timeout_seconds,
+                                     self._run_timeout_seconds)
             if len(self._http_ip_port) != 0:
                 gloo.set_http_store(self._http_ip_port[0],
-                                    int(self._http_ip_port[1]),
-                                    "all")
+                                    int(self._http_ip_port[1]), "all")
             else:
                 gloo.set_hdfs_store(self._hdfs_path + "/all",
-                                    self._hdfs_name,
-                                    self._hdfs_ugi)
+                                    self._hdfs_name, self._hdfs_ugi)
             gloo.init()
             self._all_comm = gloo
             self._trainers_num = trainers_num
