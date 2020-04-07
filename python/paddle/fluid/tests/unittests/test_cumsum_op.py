@@ -17,6 +17,8 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
 
 
 class TestSumOp1(OpTest):
@@ -123,6 +125,14 @@ class TestSumOp8(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+class TestCumsumOpInputType(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program()):
+            # The input dtype must be float32, float64, int32, int64
+            x1 = fluid.layers.data(name='x1', shape=[4, 32], dtype="float16")
+            self.assertRaises(TypeError, fluid.layers.cumsum, x1)
 
 
 if __name__ == '__main__':
