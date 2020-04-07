@@ -1747,6 +1747,9 @@ def array_length(array):
     Returns:
         Variable: 1-D Tensor with shape [1], which is the length of array. Datatype: int64.
 
+    Raises:
+        TypeError: array(input) is not a Variable
+    
     Examples:
         .. code-block:: python
 
@@ -1780,6 +1783,9 @@ def array_length(array):
             #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux, 
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
+
+    check_type(array, 'array', (Variable), 'array_length')
+
     if in_dygraph_mode():
         assert isinstance(
             array,
