@@ -12237,6 +12237,9 @@ def grid_sampler(x, grid, name=None):
     """
     helper = LayerHelper("grid_sampler", **locals())
 
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'grid_sampler')
+    check_variable_and_dtype(grid, 'grid', ['float32', 'float64'],
+                             'grid_sampler')
     if not isinstance(x, Variable):
         return ValueError("The x should be a Variable")
 
