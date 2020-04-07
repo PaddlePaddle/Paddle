@@ -14,7 +14,7 @@
 
 # TODO: import all neural network related api under this directory,
 # including layers, linear, conv, rnn etc.
-__all__ = []
+# __all__ = []
 
 # TODO: define alias in nn directory
 # from .clip import ErrorClipByValue   #DEFINE_ALIAS
@@ -72,11 +72,13 @@ from .layer import loss  #DEFINE_ALIAS
 # from .layer.norm import GroupNorm   #DEFINE_ALIAS
 # from .layer.norm import LayerNorm   #DEFINE_ALIAS
 # from .layer.norm import SpectralNorm   #DEFINE_ALIAS
+from .layer.activation import HSigmoid  #DEFINE_ALIAS
 # from .layer.activation import PReLU   #DEFINE_ALIAS
 # from .layer.activation import ReLU   #DEFINE_ALIAS
 # from .layer.activation import Sigmoid   #DEFINE_ALIAS
 # from .layer.activation import Softmax   #DEFINE_ALIAS
 # from .layer.activation import LogSoftmax   #DEFINE_ALIAS
+from .layer.extension import RowConv  #DEFINE_ALIAS
 # from .layer.rnn import RNNCell   #DEFINE_ALIAS
 # from .layer.rnn import GRUCell   #DEFINE_ALIAS
 # from .layer.rnn import LSTMCell   #DEFINE_ALIAS
@@ -176,7 +178,7 @@ from .functional.conv import conv3d_transpose  #DEFINE_ALIAS
 # from .functional.activation import hard_shrink   #DEFINE_ALIAS
 # from .functional.activation import hard_sigmoid   #DEFINE_ALIAS
 # from .functional.activation import hard_swish   #DEFINE_ALIAS
-# from .functional.activation import hsigmoid   #DEFINE_ALIAS
+from .functional.activation import hsigmoid  #DEFINE_ALIAS
 # from .functional.activation import leaky_relu   #DEFINE_ALIAS
 # from .functional.activation import logsigmoid   #DEFINE_ALIAS
 # from .functional.activation import maxout   #DEFINE_ALIAS
@@ -203,7 +205,7 @@ from .functional.conv import conv3d_transpose  #DEFINE_ALIAS
 # from .functional.extension import multiclass_nms   #DEFINE_ALIAS
 # from .functional.extension import polygon_box_transform   #DEFINE_ALIAS
 # from .functional.extension import random_crop   #DEFINE_ALIAS
-# from .functional.extension import row_conv   #DEFINE_ALIAS
+from .functional.extension import row_conv  #DEFINE_ALIAS
 # from .functional.extension import rpn_target_assign   #DEFINE_ALIAS
 # from .functional.extension import similarity_focus   #DEFINE_ALIAS
 # from .functional.extension import target_assign   #DEFINE_ALIAS

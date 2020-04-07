@@ -108,7 +108,7 @@ from .conv import conv3d_transpose  #DEFINE_ALIAS
 # from .activation import hard_shrink   #DEFINE_ALIAS
 # from .activation import hard_sigmoid   #DEFINE_ALIAS
 # from .activation import hard_swish   #DEFINE_ALIAS
-# from .activation import hsigmoid   #DEFINE_ALIAS
+from .activation import hsigmoid  #DEFINE_ALIAS
 # from .activation import leaky_relu   #DEFINE_ALIAS
 # from .activation import logsigmoid   #DEFINE_ALIAS
 # from .activation import maxout   #DEFINE_ALIAS
@@ -135,7 +135,7 @@ from .conv import conv3d_transpose  #DEFINE_ALIAS
 # from .extension import multiclass_nms   #DEFINE_ALIAS
 # from .extension import polygon_box_transform   #DEFINE_ALIAS
 # from .extension import random_crop   #DEFINE_ALIAS
-# from .extension import row_conv   #DEFINE_ALIAS
+from .extension import row_conv  #DEFINE_ALIAS
 # from .extension import rpn_target_assign   #DEFINE_ALIAS
 # from .extension import similarity_focus   #DEFINE_ALIAS
 # from .extension import target_assign   #DEFINE_ALIAS
