@@ -37,6 +37,7 @@
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
+#include "paddle/fluid/platform/dynload/mklml.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -308,6 +309,12 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   paddle::platform::SetNumThreads(1);
 #ifdef PADDLE_WITH_MKLDNN
   if (config_.use_mkldnn_) MkldnnPostReset();
+#endif
+#if PADDLE_WITH_MKLML
+  // Frees unused memory allocated by the Intel® MKL Memory Allocator to
+  // avoid memory leak. See:
+  // https://software.intel.com/en-us/mkl-developer-reference-c-mkl-free-buffers
+  mkl_free_buffers();
 #endif
   return true;
 }
@@ -648,6 +655,12 @@ bool AnalysisPredictor::ZeroCopyRun() {
   // recover the cpu_math_library_num_threads to 1, in order to avoid thread
   // conflict when integrating it into deployment service.
   paddle::platform::SetNumThreads(1);
+#if PADDLE_WITH_MKLML
+  // Frees unused memory allocated by the Intel® MKL Memory Allocator to
+  // avoid memory leak. See:
+  // https://software.intel.com/en-us/mkl-developer-reference-c-mkl-free-buffers
+  mkl_free_buffers();
+#endif
   return true;
 }
 
