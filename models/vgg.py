@@ -129,7 +129,7 @@ def _vgg(arch, cfg, batch_norm, pretrained, **kwargs):
 
 
 def vgg11(pretrained=False, **kwargs):
-    """VGG 11-layer model from
+    """VGG 11-layer model
     
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
