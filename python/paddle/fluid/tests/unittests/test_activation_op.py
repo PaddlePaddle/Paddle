@@ -520,6 +520,20 @@ class TestBRelu(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
+class TestBReluOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, fluid.layers.brelu, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, fluid.layers.brelu, x_int32)
+            # support the input dtype is float16
+            x_fp16 = fluid.layers.data(
+                name='x_fp16', shape=[12, 10], dtype='float16')
+            fluid.layers.brelu(x_fp16)
+
+
 class TestRelu6(TestActivation):
     def setUp(self):
         self.op_type = "relu6"
