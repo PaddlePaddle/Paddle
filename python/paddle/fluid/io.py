@@ -21,6 +21,7 @@ import six
 import logging
 import pickle
 import contextlib
+import platform
 from functools import reduce
 
 import numpy as np
@@ -277,6 +278,7 @@ def save_vars(executor,
             fluid.io.save_vars(executor=exe, dirname=param_path, main_program=main_prog, vars=None, predicate = name_has_fc)
             # all variables whose names contain "fc " are saved.
     """
+    dirname = cpt.to_text(dirname)
     save_dirname = os.path.normpath(dirname)
     main_program = _get_valid_program(main_program)
 
@@ -307,6 +309,9 @@ def save_vars(executor,
             if filename is None:
                 save_file_path = os.path.join(save_dirname, new_var.name)
                 save_file_path = os.path.normpath(save_file_path)
+                if platform.system() == "Windows":
+                    save_file_path = cpt.to_bytes(
+                        save_file_path, encoding='gbk')
                 save_block.append_op(
                     type='save',
                     inputs={'X': [new_var]},
@@ -316,15 +321,19 @@ def save_vars(executor,
                 save_var_map[new_var.name] = new_var
 
         if filename is not None:
+            filename = cpt.to_text(filename)
             save_var_list = []
+            save_file_path = os.path.join(save_dirname, filename)
+            save_file_path = os.path.normpath(save_file_path)
+            if platform.system() == "Windows":
+                save_file_path = cpt.to_bytes(save_file_path, encoding='gbk')
             for name in sorted(save_var_map.keys()):
                 save_var_list.append(save_var_map[name])
-
             save_block.append_op(
                 type='save_combine',
                 inputs={'X': save_var_list},
                 outputs={},
-                attrs={'file_path': os.path.join(save_dirname, filename)})
+                attrs={'file_path': save_file_path})
 
         #NOTE(zhiqiu): save op will add variable kLookupTablePath in save_program.desc,
         # which leads to diff on save_program and its desc. Call _sync_with_cpp
@@ -699,6 +708,7 @@ def load_vars(executor,
             # And all the variables are supposed to be saved in separate files.
 
     """
+    dirname = cpt.to_text(dirname)
     load_dirname = os.path.normpath(dirname)
 
     if vars is None:
@@ -736,26 +746,33 @@ def load_vars(executor,
                 ))
             new_var = _clone_var_in_block_(load_block, each_var)
             if filename is None:
+                load_file_path = os.path.join(load_dirname, new_var.name)
+                load_file_path = os.path.normpath(load_file_path)
+                if platform.system() == "Windows":
+                    load_file_path = cpt.to_bytes(
+                        load_file_path, encoding='gbk')
                 load_block.append_op(
                     type='load',
                     inputs={},
                     outputs={'Out': [new_var]},
-                    attrs={
-                        'file_path': os.path.join(load_dirname, new_var.name)
-                    })
+                    attrs={'file_path': load_file_path})
             else:
                 load_var_map[new_var.name] = new_var
 
         if filename is not None:
+            filename = cpt.to_text(filename)
             load_var_list = []
             for name in sorted(load_var_map.keys()):
                 load_var_list.append(load_var_map[name])
-
+            load_file_path = os.path.join(load_dirname, filename)
+            load_file_path = os.path.normpath(load_file_path)
+            if platform.system() == "Windows":
+                load_file_path = cpt.to_bytes(load_file_path, encoding='gbk')
             load_block.append_op(
                 type='load_combine',
                 inputs={},
                 outputs={"Out": load_var_list},
-                attrs={'file_path': os.path.join(load_dirname, filename)})
+                attrs={'file_path': load_file_path})
         executor.run(load_prog)
 
         # check var shape

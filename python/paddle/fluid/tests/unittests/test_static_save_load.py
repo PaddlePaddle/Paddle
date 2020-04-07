@@ -25,9 +25,19 @@ from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 from paddle.fluid.executor import global_scope
 import numpy as np
+import contextlib
 import six
 import pickle
 import os
+import platform
+
+
+@contextlib.contextmanager
+def windows_guard():
+    previous = platform.system
+    platform.system = lambda: "Windows"
+    yield
+    platform.system = previous
 
 
 class SimpleLSTMRNN(fluid.Layer):
@@ -1294,6 +1304,22 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
                         main_program.global_block().create_var(
                             name="fake_var_name", persistable=True)
                     ])
+
+            with windows_guard():
+                fluid.io.save_persistables(
+                    exe,
+                    dirname="test_program_3",
+                    main_program=main_program,
+                    filename="model_1")
+                fluid.io.save_persistables(
+                    exe, dirname="test_program_4", main_program=main_program)
+                fluid.io.load_persistables(
+                    exe,
+                    dirname="test_program_3",
+                    main_program=main_program,
+                    filename="model_1")
+                fluid.io.load_persistables(
+                    exe, dirname="test_program_4", main_program=main_program)
 
 
 if __name__ == '__main__':
