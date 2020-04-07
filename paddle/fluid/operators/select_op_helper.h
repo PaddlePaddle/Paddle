@@ -40,10 +40,10 @@ inline int GetBranchNumber(const framework::LoDTensor &mask) {
 #ifdef PADDLE_WITH_CUDA
   framework::TensorCopySync(mask, platform::CPUPlace(), cpu_mask.get());
 #else
-  PADDLE_THROW(
-      "This version of PaddlePaddle does NOT support GPU but got GPU tensor "
-      "Mask in SelectInputOp or SelectOutputOp. Please compile WITH_GPU "
-      "option");
+  PADDLE_THROW(platform::errors::PreconditionNotMet(
+      "This version of PaddlePaddle does NOT support GPU, "
+      "but got GPU tensor 'Mask' in SelectInputOp or SelectOutputOp. "
+      "Please compile PaddlePaddle WITH_GPU first."));
 #endif
   return cpu_mask->data<int>()[0];
 }
