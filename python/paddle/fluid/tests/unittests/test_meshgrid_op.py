@@ -68,9 +68,11 @@ class TestMeshgridOp(OpTest):
         return ins, outs
 
     def get_x_shape(self):
-        return [4, 200]
+        return [100, 200]
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestMeshgridOp2(TestMeshgridOp):
     def get_x_shape(self):
         return [10, 100]
@@ -81,12 +83,7 @@ class TestMeshgridOp2(TestMeshgridOp):
 
 class TestMeshgridOp3(TestMeshgridOp):
     def get_x_shape(self):
-        return [4, 5, 100]
-
-
-class TestMeshgridOp3(TestMeshgridOp):
-    def get_x_shape(self):
-        return [4, 6, 100]
+        return [100, 300]
 
 
 if __name__ == '__main__':
