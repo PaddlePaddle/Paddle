@@ -114,9 +114,9 @@ class Loss(object):
     def forward(self, outputs, labels):
         raise NotImplementedError()
 
-    def __call__(self, outputs, labels):
+    def __call__(self, outputs, labels=None):
         labels = to_list(labels)
-        if in_dygraph_mode():
+        if in_dygraph_mode() and labels:
             labels = [to_variable(l) for l in labels]
         losses = to_list(self.forward(to_list(outputs), labels))
         if self.average:
@@ -853,8 +853,6 @@ class Model(fluid.dygraph.Layer):
             if not isinstance(inputs, (list, dict, Input)):
                 raise TypeError(
                     "'inputs' must be list or dict in static graph mode")
-            if loss_function and not isinstance(labels, (list, Input)):
-                raise TypeError("'labels' must be list in static graph mode")
 
         metrics = metrics or []
         for metric in to_list(metrics):
