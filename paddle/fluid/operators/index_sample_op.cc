@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/index_sample_op.h"
+#include <memory>
 #include <vector>
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -122,7 +123,8 @@ class IndexSampleGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  void Apply(GradOpPtr<T> op) const override {
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("index_sample_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("Index", this->Input("Index"));
