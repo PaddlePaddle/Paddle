@@ -560,9 +560,11 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     Returns:
         Variable: Tensor which is created according to shape and dtype.
 
-    Raise:
-        TypeError: The dtype must be one of bool, float16, float32, float64, int32 and int64
-        and the data type of out Tensor must be the same as the dtype. 
+    Raises:
+        TypeError: The `dtype` must be one of bool, float16, float32, float64, int32 and int64
+                   and the data type of out Tensor must be the same as the dtype. 
+        TypeError: The `shape` must be one of list, tuple, Variable.
+        TypeError: The `out` must be None or Variable.
 
     Examples:
         .. code-block:: python
@@ -585,6 +587,12 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
           val = fluid.layers.fill_constant([1], "float32", 2.0) # val=[2.0]
           data5 = fluid.layers.fill_constant(shape=[2,1], value=val, dtype='float32') #data5=[[2.0],[2.0]]
     """
+    check_dtype(dtype, 'create data type',
+                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+                'fill_constant')
+    check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
+    if out is not None:
+        check_type(out, 'out', (Variable), 'fill_constant')
     inputs = {}
     attrs = {'force_cpu': force_cpu}
     if isinstance(value, Variable):
@@ -620,10 +628,6 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
         return out
 
     helper = LayerHelper("fill_constant", **locals())
-    check_dtype(dtype, 'create data type',
-                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'fill_constant')
-    check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
     inputs = utils._get_shape_tensor_inputs(
         inputs=inputs,
         helper=helper,
