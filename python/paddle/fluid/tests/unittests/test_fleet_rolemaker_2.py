@@ -258,6 +258,11 @@ class TestCloudRoleMaker2(unittest.TestCase):
         os.environ["TRAINING_ROLE"] = "TRAINER"
         tmp = TmpFleet()
         tmp._role_maker = TmpClass()
+        tmp.save_model("./testmodel_000")
+        tmp.save_one_table(0, "./testmodel_001")
+        tmp.save_one_table(0, "./testmodel_002", prefix="hahaha")
+        tmp.load_model("./testmodel_0003")
+        tmp.load_one_table(0, "./testmodel_004")
         tmp.all_reduce_worker([], [])
         tmp.barrier_worker()
         from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
