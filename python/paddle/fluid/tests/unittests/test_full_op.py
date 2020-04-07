@@ -95,8 +95,16 @@ class TestFullOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             #for ci coverage
             x1 = fluid.layers.data(name='x1', shape=[1], dtype="int16")
+            x2 = np.random.randn(1, 2).astype('int32')
             self.assertRaises(
                 ValueError, paddle.full, shape=[1], fill_value=5, dtype='uint4')
+            self.assertRaises(
+                TypeError,
+                paddle.full,
+                shape=[1],
+                fill_value=5,
+                dtype='int32',
+                out=x2)
             self.assertRaises(
                 TypeError,
                 paddle.full,
