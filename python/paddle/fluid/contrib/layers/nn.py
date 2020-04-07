@@ -818,8 +818,10 @@ def index_sample(x, index):
     **IndexSample Layer**
     IndexSample OP returns the element of the specified location of X, 
     and the location is specified by Index. 
+
     .. code-block:: text
-                Given:
+
+    Given:
                 X = [[1, 2, 3, 4, 5],
                      [6, 7, 8, 9, 10]]
                 Index = [[0, 1, 3],
@@ -827,13 +829,16 @@ def index_sample(x, index):
                 Then:
                 Out = [[1, 2, 4],
                        [6, 8, 10]]
+
     Args:
         x (Variable): The source input tensor with 2-D shape. Supported data type is 
             int32, int64, float32, float64.
         index (Variable): The index input tensor with 2-D shape, first dimension should be same with X. 
             Data type is int32 or int64.
+
     Returns:
         output (Variable): The output is a tensor with the same shape as index.
+
     Examples:
         .. code-block:: python
             import paddle.fluid as fluid
