@@ -22,8 +22,8 @@ from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
 @skip_check_grad_ci(reason="DNNL's MatMul doesn't implemend grad kernel.")
 class TestDnnlMatMulOp(OpTest):
     def generate_data(self):
-        self.x = np.random.random((1, 2, 2)).astype("float32")
-        self.y = np.random.random((1, 2, 2)).astype("float32")
+        self.x = np.random.random((25, 2, 2)).astype("float32")
+        self.y = np.random.random((25, 2, 2)).astype("float32")
         self.alpha = 1.0
         self.out = self.alpha * np.matmul(self.x, self.y)
 
@@ -47,17 +47,11 @@ class TestDnnlMatMulOp(OpTest):
     def test_check_output(self):
         self.check_output()
 
-    def test_check_grad_normal(self):
-        pass
-
-    def test_check_grad_no_weight(self):
-        pass
-
 
 class TestDnnlMatMulOpAlpha(TestDnnlMatMulOp):
     def generate_data(self):
-        self.x = np.random.random((1, 2, 3)).astype("float32")
-        self.y = np.random.random((1, 3, 2)).astype("float32")
+        self.x = np.random.random((17, 2, 3)).astype("float32")
+        self.y = np.random.random((17, 3, 2)).astype("float32")
         self.alpha = 2.0
         self.out = self.alpha * np.matmul(self.x, self.y)
 
@@ -68,15 +62,15 @@ class TestDnnlMatMulOp2D(TestDnnlMatMulOp):
         print(tensor)
 
     def generate_data(self):
-        self.x = np.random.random((3, 2)).astype("float32")
-        self.y = np.random.random((2, 3)).astype("float32")
+        self.x = np.random.random((12, 9)).astype("float32")
+        self.y = np.random.random((9, 12)).astype("float32")
         self.out = np.matmul(self.x, self.y)
 
 
 class TestDnnlMatMulOpTransposeX(TestDnnlMatMulOp):
     def generate_data(self):
-        self.x = np.random.random((3, 2)).astype("float32")
-        self.y = np.random.random((3, 2)).astype("float32")
+        self.x = np.random.random((12, 9)).astype("float32")
+        self.y = np.random.random((12, 9)).astype("float32")
         self.out = np.matmul(np.transpose(self.x), self.y)
 
     def set_attributes(self):
@@ -85,8 +79,8 @@ class TestDnnlMatMulOpTransposeX(TestDnnlMatMulOp):
 
 class TestDnnlMatMulOpTransposeY(TestDnnlMatMulOp):
     def generate_data(self):
-        self.x = np.random.random((3, 2)).astype("float32")
-        self.y = np.random.random((3, 2)).astype("float32")
+        self.x = np.random.random((12, 9)).astype("float32")
+        self.y = np.random.random((12, 9)).astype("float32")
         self.out = np.matmul(self.x, np.transpose(self.y))
 
     def set_attributes(self):
@@ -95,8 +89,8 @@ class TestDnnlMatMulOpTransposeY(TestDnnlMatMulOp):
 
 class TestDnnlMatMulOpTransposeY3D(TestDnnlMatMulOp):
     def generate_data(self):
-        self.x = np.random.random((1, 3, 2)).astype("float32")
-        self.y = np.random.random((1, 3, 2)).astype("float32")
+        self.x = np.random.random((17, 3, 2)).astype("float32")
+        self.y = np.random.random((17, 3, 2)).astype("float32")
         self.out = np.matmul(self.x, np.transpose(self.y, (0, 2, 1)))
 
     def set_attributes(self):
@@ -105,22 +99,22 @@ class TestDnnlMatMulOpTransposeY3D(TestDnnlMatMulOp):
 
 class TestDnnlMatMulOpInt8NoScales(TestDnnlMatMulOp):
     def generate_data(self):
-        self.x = np.random.random((3, 2)).astype("int8")
-        self.y = np.random.random((2, 3)).astype("int8")
+        self.x = np.random.random((12, 9)).astype("int8")
+        self.y = np.random.random((9, 12)).astype("int8")
         self.out = np.matmul(self.x, self.y)
 
 
 class TestDnnlMatMulOpInt8(TestDnnlMatMulOp):
     def quantize(self, tensor):
         scale = 127. / np.abs(np.amax(tensor))
-        quantized = (scale * tensor).astype("int8")
+        quantized = np.round(scale * tensor).astype("int8")
         return scale, quantized
 
     def generate_data(self):
-        x_float = np.array([[1., 1.], [0., 1.]]).astype("float32")
+        x_float = np.random.random((12, 9)).astype("float32")
         self.x_scale, self.x = self.quantize(x_float)
 
-        y_float = np.array([[1., 1.], [0., 1.]]).astype("float32")
+        y_float = np.random.random((9, 12)).astype("float32")
         self.y_scale, self.y = self.quantize(y_float)
 
         out_float = np.matmul(x_float, y_float)
@@ -140,10 +134,10 @@ class TestDnnlMatMulOpInt8(TestDnnlMatMulOp):
 
 class TestDnnlMatMulOpInt8ForceFP32(TestDnnlMatMulOpInt8):
     def generate_data(self):
-        x_float = np.array([[5., 4.], [3., 3.5]]).astype("float32")
+        x_float = np.random.random((12, 9)).astype("float32")
         self.x_scale, self.x = self.quantize(x_float)
 
-        y_float = np.array([[4.5, 2.5], [5.5, 3.]]).astype("float32")
+        y_float = np.random.random((9, 12)).astype("float32")
         self.y_scale, self.y = self.quantize(y_float)
 
         out_float = np.matmul(x_float, y_float)
@@ -159,8 +153,8 @@ class TestDnnlMatMulOpInt8ForceFP32(TestDnnlMatMulOpInt8):
 
 class TestDnnlMatMulOpInt8ForceFP32BasicScales(TestDnnlMatMulOp):
     def generate_data(self):
-        self.x = np.random.randint(0, 10, (3, 2)).astype("int8")
-        self.y = np.random.randint(0, 10, (2, 3)).astype("int8")
+        self.x = np.random.randint(0, 3, (12, 9)).astype("int8")
+        self.y = np.random.randint(0, 3, (9, 12)).astype("int8")
         self.out = np.matmul(self.x, self.y).astype("float32")
 
     def set_attributes(self):
