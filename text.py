@@ -8,7 +8,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers.utils as utils
 from paddle.fluid.layers.utils import map_structure, flatten, pack_sequence_as
-from paddle.fluid.dygraph import to_variable, Embedding, Linear, LayerNorm
+from paddle.fluid.dygraph import to_variable, Embedding, Linear, LayerNorm, GRUUnit
 from paddle.fluid.data_feeder import convert_dtype
 
 from paddle.fluid import layers
@@ -19,8 +19,8 @@ __all__ = [
     'RNNCell', 'BasicLSTMCell', 'BasicGRUCell', 'RNN', 'DynamicDecode',
     'BeamSearchDecoder', 'MultiHeadAttention', 'FFN',
     'TransformerEncoderLayer', 'TransformerEncoder', 'TransformerDecoderLayer',
-    'TransformerDecoder', 'TransformerBeamSearchDecoder'
-]
+    'TransformerDecoder', 'TransformerBeamSearchDecoder', 'DynamicGRU', 'BiGRU',
+    'Linear_chain_crf', 'Crf_decoding', 'SequenceTagging']
 
 
 class RNNCell(Layer):
@@ -990,3 +990,299 @@ class TransformerDecoder(Layer):
                     decoder_layer.cross_attn.cal_kv(enc_output, enc_output)))
             for decoder_layer in self.decoder_layers
         ]
+
+
+class DynamicGRU(fluid.dygraph.Layer):
+    def __init__(self,
+                 size,
+                 h_0=None,
+                 param_attr=None,
+                 bias_attr=None,
+                 is_reverse=False,
+                 gate_activation='sigmoid',
+                 candidate_activation='tanh',
+                 origin_mode=False,
+                 init_size=None):
+        super(DynamicGRU, self).__init__()
+
+        self.gru_unit = GRUUnit(
+            size * 3,
+            param_attr=param_attr,
+            bias_attr=bias_attr,
+            activation=candidate_activation,
+            gate_activation=gate_activation,
+            origin_mode=origin_mode)
+
+        self.size = size
+        self.h_0 = h_0
+        self.is_reverse = is_reverse
+
+    def forward(self, inputs):
+        hidden = self.h_0
+        res = []
+
+        for i in range(inputs.shape[1]):
+            if self.is_reverse:
+                i = inputs.shape[1] - 1 - i
+            input_ = inputs[:, i:i + 1, :]
+            input_ = fluid.layers.reshape(
+                input_, [-1, input_.shape[2]], inplace=False)
+            hidden, reset, gate = self.gru_unit(input_, hidden)
+            hidden_ = fluid.layers.reshape(
+                hidden, [-1, 1, hidden.shape[1]], inplace=False)
+            res.append(hidden_)
+        if self.is_reverse:
+            res = res[::-1]
+        res = fluid.layers.concat(res, axis=1)
+        return res
+
+
+class BiGRU(fluid.dygraph.Layer):
+    def __init__(self, input_dim, grnn_hidden_dim, init_bound, h_0=None):
+        super(BiGRU, self).__init__()
+
+        self.pre_gru = Linear(
+            input_dim=input_dim,
+            output_dim=grnn_hidden_dim * 3,
+            param_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Uniform(
+                    low=-init_bound, high=init_bound),
+                regularizer=fluid.regularizer.L2DecayRegularizer(
+                    regularization_coeff=1e-4)))
+
+        self.gru = DynamicGRU(
+            size=grnn_hidden_dim,
+            h_0=h_0,
+            param_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Uniform(
+                    low=-init_bound, high=init_bound),
+                regularizer=fluid.regularizer.L2DecayRegularizer(
+                    regularization_coeff=1e-4)))
+
+        self.pre_gru_r = Linear(
+            input_dim=input_dim,
+            output_dim=grnn_hidden_dim * 3,
+            param_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Uniform(
+                    low=-init_bound, high=init_bound),
+                regularizer=fluid.regularizer.L2DecayRegularizer(
+                    regularization_coeff=1e-4)))
+
+        self.gru_r = DynamicGRU(
+            size=grnn_hidden_dim,
+            is_reverse=False,
+            h_0=h_0,
+            param_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Uniform(
+                    low=-init_bound, high=init_bound),
+                regularizer=fluid.regularizer.L2DecayRegularizer(
+                    regularization_coeff=1e-4)))
+
+    def forward(self, input_feature):
+        res_pre_gru = self.pre_gru(input_feature)
+        res_gru = self.gru(res_pre_gru)
+        res_pre_gru_r = self.pre_gru_r(input_feature)
+        res_gru_r = self.gru_r(res_pre_gru_r)
+        bi_merge = fluid.layers.concat(input=[res_gru, res_gru_r], axis=-1)
+        return bi_merge
+
+
+class Linear_chain_crf(fluid.dygraph.Layer):
+    def __init__(self, param_attr, size=None, is_test=False, dtype='float32'):
+        super(Linear_chain_crf, self).__init__()
+
+        self._param_attr = param_attr
+        self._dtype = dtype
+        self._size = size
+        self._is_test = is_test
+        self._transition = self.create_parameter(
+            attr=self._param_attr,
+            shape=[self._size + 2, self._size],
+            dtype=self._dtype)
+
+    @property
+    def weight(self):
+        return self._transition
+
+    @weight.setter
+    def weight(self, value):
+        self._transition = value
+
+    def forward(self, input, label, length=None):
+
+        alpha = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype)
+        emission_exps = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype)
+        transition_exps = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype)
+        log_likelihood = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype)
+        this_inputs = {
+            "Emission": [input],
+            "Transition": self._transition,
+            "Label": [label]
+        }
+        if length:
+            this_inputs['Length'] = [length]
+        self._helper.append_op(
+            type='linear_chain_crf',
+            inputs=this_inputs,
+            outputs={
+                "Alpha": [alpha],
+                "EmissionExps": [emission_exps],
+                "TransitionExps": transition_exps,
+                "LogLikelihood": log_likelihood
+            },
+            attrs={"is_test": self._is_test, })
+        return log_likelihood
+
+
+class Crf_decoding(fluid.dygraph.Layer):
+    def __init__(self, param_attr, size=None, is_test=False, dtype='float32'):
+        super(Crf_decoding, self).__init__()
+
+        self._dtype = dtype
+        self._size = size
+        self._is_test = is_test
+        self._param_attr = param_attr
+        self._transition = self.create_parameter(
+            attr=self._param_attr,
+            shape=[self._size + 2, self._size],
+            dtype=self._dtype)
+
+    @property
+    def weight(self):
+        return self._transition
+
+    @weight.setter
+    def weight(self, value):
+        self._transition = value
+
+    def forward(self, input, label=None, length=None):
+
+        viterbi_path = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype)
+        this_inputs = {
+            "Emission": [input],
+            "Transition": self._transition,
+            "Label": label
+        }
+        if length:
+            this_inputs['Length'] = [length]
+        self._helper.append_op(
+            type='crf_decoding',
+            inputs=this_inputs,
+            outputs={"ViterbiPath": [viterbi_path]},
+            attrs={"is_test": self._is_test, })
+        return viterbi_path
+
+
+class SequenceTagging(fluid.dygraph.Layer):
+    def __init__(self, 
+             vocab_size,
+             num_labels,
+             batch_size, 
+             word_emb_dim=128,
+             grnn_hidden_dim=128,
+             emb_learning_rate=0.1,
+             crf_learning_rate=0.1,
+             bigru_num=2,
+             init_bound=0.1,
+             length=None):
+        super(SequenceTagging, self).__init__()
+        """
+        define the sequence tagging network structure
+        word: stores the input of the model
+        for_infer: a boolean value, indicating if the model to be created is for training or predicting.
+
+        return:
+            for infer: return the prediction
+            otherwise: return the prediction
+        """
+        self.word_emb_dim = word_emb_dim
+        self.vocab_size = vocab_size
+        self.num_labels = num_labels
+        self.grnn_hidden_dim = grnn_hidden_dim
+        self.emb_lr = emb_learning_rate
+        self.crf_lr = crf_learning_rate
+        self.bigru_num = bigru_num
+        self.batch_size = batch_size
+        self.init_bound = 0.1
+
+        self.word_embedding = Embedding(
+            size=[self.vocab_size, self.word_emb_dim],
+            dtype='float32',
+            param_attr=fluid.ParamAttr(
+                learning_rate=self.emb_lr,
+                name="word_emb",
+                initializer=fluid.initializer.Uniform(
+                    low=-self.init_bound, high=self.init_bound)))
+
+        h_0 = fluid.layers.create_global_var(
+            shape=[self.batch_size, self.grnn_hidden_dim],
+            value=0.0,
+            dtype='float32',
+            persistable=True,
+            force_cpu=True,
+            name='h_0')
+
+        self.bigru_units = []
+        for i in range(self.bigru_num):
+            if i == 0:
+                self.bigru_units.append(
+                    self.add_sublayer(
+                        "bigru_units%d" % i,
+                        BiGRU(
+                            self.grnn_hidden_dim,
+                            self.grnn_hidden_dim,
+                            self.init_bound,
+                            h_0=h_0)))
+            else:
+                self.bigru_units.append(
+                    self.add_sublayer(
+                        "bigru_units%d" % i,
+                        BiGRU(
+                            self.grnn_hidden_dim * 2,
+                            self.grnn_hidden_dim,
+                            self.init_bound,
+                            h_0=h_0)))
+
+        self.fc = Linear(
+            input_dim=self.grnn_hidden_dim * 2,
+            output_dim=self.num_labels,
+            param_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Uniform(
+                    low=-self.init_bound, high=self.init_bound),
+                regularizer=fluid.regularizer.L2DecayRegularizer(
+                    regularization_coeff=1e-4)))
+
+        self.linear_chain_crf = Linear_chain_crf(
+            param_attr=fluid.ParamAttr(
+                name='linear_chain_crfw', learning_rate=self.crf_lr),
+            size=self.num_labels)
+
+        self.crf_decoding = Crf_decoding(
+            param_attr=fluid.ParamAttr(
+                name='crfw', learning_rate=self.crf_lr),
+            size=self.num_labels)
+
+    def forward(self, word, target, lengths):
+        """
+        Configure the network
+        """
+        word_embed = self.word_embedding(word)
+        input_feature = word_embed
+
+        for i in range(self.bigru_num):
+            bigru_output = self.bigru_units[i](input_feature)
+            input_feature = bigru_output
+
+        emission = self.fc(bigru_output)
+
+        crf_cost = self.linear_chain_crf(
+            input=emission, label=target, length=lengths)
+        avg_cost = fluid.layers.mean(x=crf_cost)
+        self.crf_decoding.weight = self.linear_chain_crf.weight
+        crf_decode = self.crf_decoding(input=emission, length=lengths)
+        return crf_decode, avg_cost, lengths
