@@ -8750,7 +8750,6 @@ def pad2d(input,
                          [4., 4., 4., 5., 6., 6.]]]]
 
     Code Examples:
-
         .. code-block:: python
 
             import paddle.fluid as fluid
