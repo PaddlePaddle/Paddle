@@ -17,12 +17,13 @@ limitations under the License. */
 #ifdef PADDLE_WITH_BOX_PS
 #include <afs_filesystem.h>
 #include <boxps_public.h>
-#endif
-#include <glog/logging.h>
+#include <dirent.h>
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#endif
+#include <glog/logging.h>
 #include <algorithm>
 #include <atomic>
 #include <ctime>
@@ -35,14 +36,12 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/data_set.h"
-#include "paddle/fluid/framework/io/shell.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/string/string_helper.h"
-#define MAX_MSG_LEN 256
 #define BUF_SIZE 1024 * 1024
 
 namespace paddle {
@@ -165,9 +164,9 @@ class AfsManager {
     auto split = fs_ugi.find(",");
     std::string user = fs_ugi.substr(0, split);
     std::string pwd = fs_ugi.substr(split + 1);
-    VLOG(0) << "AFSAPI Init: user: " << user << ", pwd: " << pwd;
     _afshandler = new afs::AfsFileSystem(fs_name.c_str(), user.c_str(),
                                          pwd.c_str(), conf_path.c_str());
+    VLOG(0) << "AFSAPI Init: user: " << user << ", pwd: " << pwd;
     int ret = _afshandler->Init(true, true);
     PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
                                   "Called AFSAPI Init Interface Failed."));
@@ -183,14 +182,14 @@ class AfsManager {
       _afshandler = nullptr;
     }
   }
-  static void read_from_afs(const std::string& path, FILE* wfp,
-                            afs::AfsFileSystem* _afshandler) {
+  static void ReadFromAfs(const std::string& path, FILE* wfp,
+                          afs::AfsFileSystem* _afshandler) {
     AfsStreamFile* read_stream = new AfsStreamFile(_afshandler);
     int ret = read_stream->Open(path.c_str());
     PADDLE_ENFORCE_EQ(ret, 0,
                       platform::errors::PreconditionNotMet(
                           "Called AFSAPI Open file %s Failed.", path.c_str()));
-    char* _buff = static_cast<char*>(calloc(BUF_SIZE * 4, sizeof(char)));
+    char* _buff = static_cast<char*>(calloc(BUF_SIZE + 2, sizeof(char)));
     int size = 0;
     while ((size = read_stream->Read(_buff, BUF_SIZE)) > 0) {
       fwrite(_buff, 1, size, wfp);
@@ -200,6 +199,84 @@ class AfsManager {
     delete _buff;
     delete read_stream;
   }
+  int PopenBidirectionalInternal(const char* command,
+                                 FILE*& fp_read,               // NOLINT
+                                 FILE*& fp_write, pid_t& pid,  // NOLINT
+                                 bool read,                    // NOLINT
+                                 bool write) {
+    std::lock_guard<std::mutex> g(g_flock);
+    int fd_read[2];
+    int fd_write[2];
+    if (read) {
+      if (pipe(fd_read) != 0) {
+        LOG(FATAL) << "create read pipe failed";
+        return -1;
+      }
+    }
+    if (write) {
+      if (pipe(fd_write) != 0) {
+        LOG(FATAL) << "create write pipe failed";
+        return -1;
+      }
+    }
+    pid = vfork();
+    if (pid < 0) {
+      LOG(FATAL) << "fork failed";
+      return -1;
+    }
+    if (pid == 0) {
+      if (read) {
+        if (-1 == dup2(fd_read[1], STDOUT_FILENO)) {
+          LOG(FATAL) << "dup2 failed";
+        }
+        close(fd_read[1]);
+        close(fd_read[0]);
+      }
+
+      if (write) {
+        if (-1 == dup2(fd_write[0], STDIN_FILENO)) {
+          LOG(FATAL) << "dup2 failed";
+        }
+        close(fd_write[0]);
+        close(fd_write[1]);
+      }
+
+      struct dirent* item;
+      DIR* dir = opendir("/proc/self/fd");
+      while ((item = readdir(dir)) != NULL) {
+        int fd = atoi(item->d_name);
+        if (fd >= 3) {
+          (void)close(fd);
+        }
+      }
+
+      closedir(dir);
+
+      execl("/bin/sh", "sh", "-c", command, NULL);
+      exit(127);
+    } else {
+      if (read) {
+        close(fd_read[1]);
+        fcntl(fd_read[0], F_SETFD, FD_CLOEXEC);
+        fp_read = fdopen(fd_read[0], "r");
+        if (0 == fp_read) {
+          LOG(FATAL) << "fdopen failed.";
+          return -1;
+        }
+      }
+
+      if (write) {
+        close(fd_write[0]);
+        fcntl(fd_write[1], F_SETFD, FD_CLOEXEC);
+        fp_write = fdopen(fd_write[1], "w");
+        if (0 == fp_write) {
+          LOG(FATAL) << "fdopen failed.";
+          return -1;
+        }
+      }
+      return 0;
+    }
+  }
   std::shared_ptr<FILE> GetFile(const std::string& path,
                                 const std::string& pipe_command) {
     pid_t pid = 0;
@@ -208,17 +285,16 @@ class AfsManager {
 
     // Always use set -eo pipefail. Fail fast and be aware of exit codes.
     std::string cmd = "set -eo pipefail; " + pipe_command;
-    {
-      std::lock_guard<std::mutex> g(g_flock);
-      paddle::framework::popen_bidirectional_internal(cmd.c_str(), rfp, wfp,
-                                                      pid, true, true);
-    }
+    int ret =
+        PopenBidirectionalInternal(cmd.c_str(), rfp, wfp, pid, true, true);
 
+    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
+                                  "Called PopenBidirectionalInternal Failed"));
     std::string filename(path);
     if (strncmp(filename.c_str(), "afs:", 4) == 0) {
       filename = filename.substr(4);
     }
-    std::thread read_thread(&AfsManager::read_from_afs, filename, wfp,
+    std::thread read_thread(&AfsManager::ReadFromAfs, filename, wfp,
                             _afshandler);
     read_thread.detach();
     return {rfp, [pid, cmd](FILE* rfp) {
@@ -231,15 +307,14 @@ class AfsManager {
               fclose(rfp);
               if (wstatus == 0 || wstatus == (128 + SIGPIPE) * 256 ||
                   (wstatus == -1 && errno == ECHILD)) {
-                std::cout << "pclose_bidirectional pid[" << pid << "], status["
-                          << wstatus << "]" << std::endl;
+                VLOG(3) << "pclose_bidirectional pid[" << pid << "], status["
+                        << wstatus << "]";
               } else {
-                std::cout << "pclose_bidirectional pid[" << pid << "]"
-                          << ", ret[" << ret << "] shell open fail"
-                          << std::endl;
+                LOG(WARNING) << "pclose_bidirectional pid[" << pid << "]"
+                             << ", ret[" << ret << "] shell open fail";
               }
               if (wstatus == -1 && errno == ECHILD) {
-                std::cout << "errno is ECHILD" << std::endl;
+                LOG(WARNING) << "errno is ECHILD";
               }
             }};
   }

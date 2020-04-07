@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/io/shell.h"
-#include <dirent.h>
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/timer.h"
 
@@ -344,80 +343,6 @@ std::string shell_get_command_output(const std::string& cmd, int time_out,
   return "";
 #endif
 }
-
-#if !defined(_WIN32) && !defined(__APPLE__)
-void popen_bidirectional_internal(const char* command,
-                                  FILE*& fp_read,               // NOLINT
-                                  FILE*& fp_write, pid_t& pid,  // NOLINT
-                                  bool read,                    // NOLINT
-                                  bool write) {
-  int fd_read[2];
-  int fd_write[2];
-  if (read) {
-    if (pipe(fd_read) != 0) {
-      fprintf(stderr, "create read pipe failed");
-    }
-  }
-  if (write) {
-    if (pipe(fd_write) != 0) {
-      fprintf(stderr, "create write pipe failed");
-    }
-  }
-  pid = vfork();
-  if (pid < 0) {
-    printf("fork failed.");
-  }
-  if (pid == 0) {
-    if (read) {
-      if (-1 == dup2(fd_read[1], STDOUT_FILENO)) {
-        fprintf(stderr, "dup2 failed");
-      }
-      close(fd_read[1]);
-      close(fd_read[0]);
-    }
-
-    if (write) {
-      if (-1 == dup2(fd_write[0], STDIN_FILENO)) {
-        fprintf(stderr, "dup2 failed");
-      }
-      close(fd_write[0]);
-      close(fd_write[1]);
-    }
-
-    struct dirent* item;
-    DIR* dir = opendir("/proc/self/fd");
-    while ((item = readdir(dir)) != NULL) {
-      int fd = atoi(item->d_name);
-      if (fd >= 3) {
-        (void)close(fd);
-      }
-    }
-
-    closedir(dir);
-
-    execl("/bin/sh", "sh", "-c", command, NULL);
-    exit(127);
-  } else {
-    if (read) {
-      close(fd_read[1]);
-      fcntl(fd_read[0], F_SETFD, FD_CLOEXEC);
-      fp_read = fdopen(fd_read[0], "r");
-      if (0 == fp_read) {
-        fprintf(stderr, "fdopen failed.");
-      }
-    }
-
-    if (write) {
-      close(fd_write[0]);
-      fcntl(fd_write[1], F_SETFD, FD_CLOEXEC);
-      fp_write = fdopen(fd_write[1], "w");
-      if (0 == fp_write) {
-        fprintf(stderr, "fdopen failed.");
-      }
-    }
-  }
-}
-#endif
 
 }  // end namespace framework
 }  // end namespace paddle
