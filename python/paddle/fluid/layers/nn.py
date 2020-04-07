@@ -9976,7 +9976,6 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
 
     helper = LayerHelper('gaussian_random', **locals())
     out = helper.create_variable_for_type_inference(dtype)
-    check_type(shape, 'shape', (list, tuple), 'gaussian_random')
 
     c_dtype = convert_np_dtype_to_dtype_(dtype)
     helper.append_op(

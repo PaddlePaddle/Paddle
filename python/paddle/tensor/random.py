@@ -20,8 +20,10 @@
 #            'rand',
 #            'randint']
 
+import numpy as np
+
 from ..fluid import core
-from ..fluid.framework import device_guard, in_dygraph_mode, _varbase_creator
+from ..fluid.framework import device_guard, in_dygraph_mode, _varbase_creator, convert_np_dtype_to_dtype_
 from ..fluid.layers.layer_function_generator import templatedoc
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
@@ -105,7 +107,6 @@ def randperm(n,
     return out
 
 
-@templatedoc()
 def randn(shape,
           out=None,
           dtype=None,
@@ -113,9 +114,7 @@ def randn(shape,
           stop_gradient=True,
           name=None):
     """
-    ${comment}
-
-    This function returns a tensor filled with random numbers from a normal
+    This function returns a tensor filled with random numbers from a normal 
     distribution with mean 0 and variance 1 (also called the standard normal
     distribution).
 
@@ -140,19 +139,25 @@ def randn(shape,
             Default is None.
 
     Returns:
-        ${out_comment}.
+        Random tensor whose data is drawn from a Gaussian distribution, 
+	dtype: flaot32 or float64 as specified.
 
     Return type:
-        ${out_type}.
+        Variable
+
+    Raises:
+        TypeError: If the type of `shape` is not list or tuple.
+        TypeError: If the data type of `dtype` is not float32 or float64.
+        ValueError: If the length of `shape` is not bigger than 0.
 
     Examples:
         .. code-block:: python
 
             # declarative mode
+            import paddle
             import paddle.fluid as fluid
-            import paddle.tensor as tensor
 
-            data = tensor.randn([2, 4])
+            data = paddle.randn([2, 4])
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             res, = exe.run(fluid.default_main_program(), feed={}, fetch_list=[data])
@@ -163,13 +168,13 @@ def randn(shape,
         .. code-block:: python
 
             # imperative mode
-            import paddle.tensor as tensor
+            import paddle
             import paddle.fluid as fluid
             import paddle.fluid.dygraph as dg
 
             place = fluid.CPUPlace()
             with dg.guard(place) as g:
-                x = tensor.randn([2, 4])
+                x = paddle.randn([2, 4])
                 x_np = x.numpy()
                 print(x_np)
                 # [[ 1.5149173  -0.26234224 -0.592486    1.4523455 ]
@@ -186,13 +191,15 @@ def randn(shape,
 
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
+    else:
+        check_variable_and_dtype(out, 'out', [dtype], 'randn')
 
     out.stop_gradient = stop_gradient
 
     dtype = convert_np_dtype_to_dtype_(dtype)
     seed = np.random.randint(0, 100)
 
-    if device is None:
+    with device_guard(device):
         helper.append_op(
             type='gaussian_random',
             outputs={'Out': out},
@@ -204,17 +211,4 @@ def randn(shape,
                 'dtype': dtype,
                 'use_mkldnn': False
             })
-    else:
-        with device_guard(device):
-            helper.append_op(
-                type='gaussian_random',
-                outputs={'Out': out},
-                attrs={
-                    'shape': shape,
-                    'mean': 0.0,
-                    'std': 1.0,
-                    'seed': seed,
-                    'dtype': dtype,
-                    'use_mkldnn': False
-                })
     return out
