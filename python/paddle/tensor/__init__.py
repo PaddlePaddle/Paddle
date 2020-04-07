@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#TODO: define alias in tensor and framework directory
-# from .creation import create_   #DEFINE_ALIAS
-# from .creation import create_lod_   #DEFINE_ALIAS
+# TODO: define alias in tensor and framework directory
+# from .creation import create_tensor   #DEFINE_ALIAS
+# from .creation import create_lod_tensor   #DEFINE_ALIAS
 # from .creation import create_random_int_lod   #DEFINE_ALIAS
 # from .creation import crop_   #DEFINE_ALIAS
 # from .creation import diag   #DEFINE_ALIAS
@@ -167,5 +167,6 @@
 # from .search import topk   #DEFINE_ALIAS
 # from .search import where   #DEFINE_ALIAS
 # from .search import index_select   #DEFINE_ALIAS
+from .search import index_sample  # DEFINE_ALIAS
 # from .search import nonzero   #DEFINE_ALIAS
 # from .search import sort   #DEFINE_ALIAS

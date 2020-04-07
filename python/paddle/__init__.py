@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import os
 from paddle.check_import_scipy import check_import_scipy
 
@@ -33,8 +34,9 @@ import paddle.compat
 import paddle.distributed
 batch = batch.batch
 import paddle.sysconfig
+import paddle.tensor
 
-#TODO: define alias in tensor and framework directory
+# TODO: define alias in tensor and framework directory
 # from .tensor.creation import create_.tensor   #DEFINE_ALIAS
 # from .tensor.creation import create_lod_.tensor   #DEFINE_ALIAS
 # from .tensor.creation import create_random_int_lod.tensor   #DEFINE_ALIAS
@@ -189,6 +191,7 @@ import paddle.sysconfig
 # from .tensor.search import topk   #DEFINE_ALIAS
 # from .tensor.search import where   #DEFINE_ALIAS
 # from .tensor.search import index_select   #DEFINE_ALIAS
+from .tensor.search import index_sample  #DEFINE_ALIAS
 # from .tensor.search import nonzero   #DEFINE_ALIAS
 # from .tensor.search import sort   #DEFINE_ALIAS
 # from .framework.framework import set_default_dtype   #DEFINE_ALIAS
