@@ -276,6 +276,7 @@ class TestDataNormOpWithSlotDim(OpTest):
         self.check_grad(['X'], 'Y', no_grad_set=set([]))
 
 
+'''
 class TestDataNormOpWithSyncStats(unittest.TestCase):
     """
     test class for data norm op
@@ -397,7 +398,7 @@ class TestDataNormOpWithSyncStats(unittest.TestCase):
 
         for f in filelist:
             os.remove(f)
-
+'''
 
 if __name__ == '__main__':
     unittest.main()
