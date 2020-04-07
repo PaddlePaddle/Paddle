@@ -212,7 +212,9 @@ class FakeQuantizeAbsMaxOpMaker : public framework::OpProtoAndCheckerMaker {
         .AddCustomChecker([](const int& bit_length) {
           PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16, true,
                             platform::errors::InvalidArgument(
-                                "'bit_length' should be between 1 and 16."));
+                                "'bit_length' should be between 1 and 16, but "
+                                "the received is %d",
+                                bit_length));
         });
     AddComment(R"DOC(
 FakeQuantize operator
@@ -263,7 +265,9 @@ class FakeChannelWiseQuantizeAbsMaxOpMaker
         .AddCustomChecker([](const int& bit_length) {
           PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16, true,
                             platform::errors::InvalidArgument(
-                                "'bit_length' should be between 1 and 16."));
+                                "'bit_length' should be between 1 and 16, but "
+                                "the received is %d",
+                                bit_length));
         });
     AddComment(R"DOC(
 The scale of FakeChannelWiseQuantize operator is a vector.
@@ -327,7 +331,9 @@ class FakeQuantizeRangeAbsMaxOpMaker
         .AddCustomChecker([](const int& bit_length) {
           PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16, true,
                             platform::errors::InvalidArgument(
-                                "'bit_length' should be between 1 and 16."));
+                                "'bit_length' should be between 1 and 16, but "
+                                "the received is %d",
+                                bit_length));
         });
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
@@ -399,7 +405,9 @@ class FakeQuantOrWithDequantMovingAverageAbsMaxOpMaker
         .AddCustomChecker([](const int& bit_length) {
           PADDLE_ENFORCE_EQ(bit_length >= 1 && bit_length <= 16, true,
                             platform::errors::InvalidArgument(
-                                "'bit_length' should be between 1 and 16."));
+                                "'bit_length' should be between 1 and 16, but "
+                                "the received is %d",
+                                bit_length));
         });
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
