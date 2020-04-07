@@ -1081,7 +1081,7 @@ def tdm_sampler(x,
         .. code-block:: python
         import paddle.fluid as fluid
         import numpy as np
-        x = fluid.data(name="x", shape=[1], dtype="int32", lod_level=1)
+        x = fluid.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
         travel_list = [[1, 3], [1, 4], [2, 5], [2, 6]] # leaf node's travel path, shape(leaf_node_num, layer_num)
         layer_list_flat = [[1], [2], [3], [4], [5], [6]] # shape(node_nums, 1)
 
