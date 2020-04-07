@@ -361,7 +361,7 @@ def full(shape,
         dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output tensor
             which can be float16, float32, float64, int32, int64, if dytpe is `None`, the data
             type of created tensor is `float32`
-        device(str, optional): Which device to run this operator. The :attr:`device` must be
+        device(str, optional): On which device to run this Op. The :attr:`device` must be
             None, 'cpu', 'gpu'. If :attr:`device` is None, the device that the user set in 
             the paddle program will be chosen. Default value is None.
         stop_gradient(bool, optional): Indicating if we stop gradient from current(out) Variable,
