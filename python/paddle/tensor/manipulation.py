@@ -49,14 +49,61 @@ __all__ = [
     #           'unique',
     #           'unique_with_counts',
     'unsqueeze'
-]
-
 #           'unstack',
-#           'flip',
+    'flip']
 #           'unbind',
 #           'roll']
 
 
+def flip(input, dims, name=None):
+    """
+
+    Reverse the order of a n-D tensor along given axis in dims.
+
+    Args:
+        input (Variable): A Tensor(or LoDTensor) with shape :math:`[N_1, N_2,..., N_k]` . The data type of the input Tensor
+            should be float32, float64, int32, int64, bool.
+        dims (list): The axis to flip on.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Variable: Tensor or LoDTensor calculated by flip layer. The data type is same with input.
+
+    Examples:
+        .. code-block:: python
+          import paddle
+          import paddle.fluid as fluid
+          import numpy as np
+          input = fluid.data(name="x", shape=[-1, 2, 2], dtype='float32')
+          output = paddle.flip(input, dims=[0, 1])
+          exe = fluid.Executor(fluid.CPUPlace())
+          exe.run(fluid.default_startup_program())
+          img = np.arange(12).reshape((3,2,2)).astype(np.float32)
+          res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
+          print(res) # [[[10,11][8, 9]],[[6, 7],[4, 5]] [[2, 3],[0, 1]]]
+    """
+    helper = LayerHelper("flip", **locals())
+    check_type(input, 'X', (Variable), 'flip')
+    dtype = helper.input_dtype()
+    check_dtype(dtype, 'X',
+                ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+                'flip')
+    check_type(dims, 'dims', (list, tuple), 'flip')
+    assert len(dims) > 0, 'len(dims) must be greater than 0.'
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype)
+    else:
+        out = helper.create_variable(name=name, dtype=dtype, persistable=False)
+
+    helper.append_op(
+        type="flip",
+        inputs={"X": input},
+        outputs={"Out": out},
+        attrs={"dims": dims})
+    return out
+
+ 
 def stack(x, axis=0):
     """
 
@@ -119,10 +166,6 @@ def stack(x, axis=0):
 
     Returns:
         Variable: The stacked Tensor, has same data type with input Tensors. Output dim is :math:`rank(x[0])+1`.
-
-    Examples:
-        .. code-block:: python
-
             import paddle
             import paddle.fluid as fluid
             
