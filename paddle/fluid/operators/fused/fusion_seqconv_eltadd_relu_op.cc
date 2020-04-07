@@ -68,8 +68,8 @@ void FusionSeqConvEltAddReluOp::InferShape(
       platform::errors::InvalidArgument(
           "contextStart size should be smaller than contextLength, "
           "but received context_length is: %d, contextStart is: "
-          "%d." context_length,
-          ctx->Attrs().Get<int>("contextStart")));
+          "%d.",
+          context_length, ctx->Attrs().Get<int>("contextStart")));
 
   ctx->SetOutputDim("Out", {x_dims[0], w_dims[1]});
   ctx->SetOutputDim("ColMat", {x_dims[0], w_dims[0]});
@@ -147,10 +147,17 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
     auto x_lod = x->lod();
     auto x_dims = x->dims();
     auto w_dims = w->dims();
-    PADDLE_ENFORCE_EQ(b->numel(), w_dims[1],
-                      "bias size should be equal to output feature size.");
-    PADDLE_ENFORCE_EQ(x_lod.size(), 1UL,
-                      "Only support one level sequence now.");
+    PADDLE_ENFORCE_EQ(
+        b->numel(), w_dims[1],
+        platform::errors::InvalidArgument(
+            "bias size should be equal to weights feature size, but received "
+            "bias size is: %d, weights feature size is: %d.",
+            b->numel(), w_dims[1]));
+    PADDLE_ENFORCE_EQ(
+        x_lod.size(), 1UL,
+        platform::errors::InvalidArgument(
+            "Only support one level sequence now, but received value is: %d.",
+            x_lod.size()));
 
     const T* x_data = x->data<T>();
     const T* w_data = w->data<T>();
@@ -200,7 +207,12 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
           copy_size -= src_mat_w_sz;
         }
       } else {
-        PADDLE_ENFORCE_GE(context_length, up_pad + down_pad + 1);
+        PADDLE_ENFORCE_GE(context_length, up_pad + down_pad + 1,
+                          platform::errors::InvalidArgument(
+                              "context length must be bigger or equal than "
+                              "up_pad + down_pad + 1, but received context "
+                              "length is: %d, up_pad is: %d, down_pad is: %d.",
+                              context_length, up_pad, down_pad));
         std::memset(dst_data, 0, seq_len * col_mat_w_sz);
         dst_data = dst_data + up_pad * src_mat_w;
         int zero_sz = up_pad * src_mat_w_sz;
