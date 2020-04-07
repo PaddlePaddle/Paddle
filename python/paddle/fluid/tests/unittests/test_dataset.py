@@ -886,8 +886,6 @@ class TestDataset2(unittest.TestCase):
                 dataset.global_shuffle(fleet)
             except:
                 print("warning: catch expected error")
-            fleet._merge_sparse_op(train_program, 0, "unknown")
-            fleet._merge_sparse_op(train_program, 0, "pull_sparse")
             fleet._opt_info = None
             fleet._fleet_ptr = None
 
