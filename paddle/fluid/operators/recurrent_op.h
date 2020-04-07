@@ -121,7 +121,7 @@ class RecurrentBase : public framework::OperatorBase {
     PADDLE_ENFORCE_EQ(src_vars.size(), dst_vars.size(),
                       platform::errors::InvalidArgument(
                           "Sizes of source vars and destination vars are not "
-                          "equil in LinkTensor"));
+                          "equal in LinkTensor."));
     for (size_t i = 0; i < dst_vars.size(); ++i) {
       VLOG(10) << "Link " << src_vars[i] << " to " << dst_vars[i];
       AccessTensor(src_scope, src_vars[i], dst_scope, dst_vars[i], callback,
@@ -142,7 +142,7 @@ class RecurrentBase : public framework::OperatorBase {
     PADDLE_ENFORCE_EQ(src_vars.size(), dst_vars.size(),
                       platform::errors::InvalidArgument(
                           "Sizes of source vars and destination vars are not "
-                          "equil in LinkTensor"));
+                          "equal in LinkTensor."));
     for (size_t i = 0; i < dst_vars.size(); ++i) {
       VLOG(10) << "Link " << src_vars[i] << " to " << dst_vars[i];
       AccessTensor(src_scope, src_vars[i], dst_scope, dst_vars[i], callback,

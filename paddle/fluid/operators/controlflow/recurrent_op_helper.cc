@@ -75,7 +75,9 @@ static void FindAllOpAndGradOp(const framework::ProgramDesc &program,
   PADDLE_ENFORCE_GE(
       ops.size(), grad_ops.size(),
       platform::errors::InvalidArgument(
-          "There are more grad ops than forward ops in the graph or program"));
+          "There are more grad ops than forward ops in the graph or program, "
+          "the number of ops is %d and the number of grad_ops is %d.",
+          ops.size(), grad_ops.size()));
 
   for (size_t i = 1; i < program.Size(); ++i) {
     auto &block = program.Block(i);
@@ -92,7 +94,9 @@ static void FindAllOpAndGradOp(const framework::ProgramDesc &program,
   PADDLE_ENFORCE_GE(
       ops.size(), grad_ops.size(),
       platform::errors::InvalidArgument(
-          "There are more grad ops than forward ops in the graph or program"));
+          "There are more grad ops than forward ops in the graph or program, "
+          "the number of ops is %d and the number of grad_ops is %d.",
+          ops.size(), grad_ops.size()));
 }
 
 // Returns GradVarName of input var names
@@ -250,13 +254,13 @@ void PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
         PADDLE_ENFORCE_EQ(matched_fwd_op, nullptr,
                           platform::errors::PreconditionNotMet(
                               "Found multiple recurrent forward op matches "
-                              "recurrent grad op"));
+                              "recurrent grad op."));
         matched_fwd_op = &fwd_op;
       }
     }
-    PADDLE_ENFORCE_NOT_NULL(
-        matched_fwd_op,
-        platform::errors::PreconditionNotMet("Cannot find matched forward op"));
+    PADDLE_ENFORCE_NOT_NULL(matched_fwd_op,
+                            platform::errors::PreconditionNotMet(
+                                "Cannot find matched forward op."));
     SetRecurrentOpAndRecurrentGradOpSkipVarAttr(*matched_fwd_op, bwd_op);
     recurrent_ops.erase(*matched_fwd_op);
   }
