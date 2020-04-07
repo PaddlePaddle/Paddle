@@ -12837,6 +12837,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
             #  [7, 5, 2]]     [1, 3, 3]]            [8, 8, 5]], dtype=int32)]
     """
     helper = LayerHelper('py_func', **locals())
+    check_type(x, 'X', (list, tuple, Variable, type(None)), 'py_func')
     if x is None:
         x = []
     elif isinstance(x, Variable):
@@ -12845,7 +12846,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
         x = list(x)
     elif not isinstance(x, (list, tuple, Variable)):
         raise TypeError('Input must be Variable/list(Variable)/tuple(Variable)')
-
+    check_type(out, 'Out', (list, tuple, Variable, type(None)), 'py_func')
     if out is None:
         out_list = []
     elif isinstance(out, Variable):
