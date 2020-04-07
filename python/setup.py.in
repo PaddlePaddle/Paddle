@@ -113,6 +113,7 @@ packages=['paddle',
           'paddle.reader',
           'paddle.distributed',
           'paddle.fluid',
+          'paddle.tensor',
           'paddle.fluid.dygraph',
           'paddle.fluid.dygraph.dygraph_to_static',
           'paddle.fluid.proto',
@@ -147,6 +148,7 @@ packages=['paddle',
           'paddle.fluid.incubate.fleet.collective',
           'paddle.fluid.incubate.fleet.utils',
           'paddle.nn',
+          'paddle.nn.functional',
           'paddle.nn.layer']
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
