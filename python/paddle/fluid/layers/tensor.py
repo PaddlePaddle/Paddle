@@ -134,7 +134,7 @@ def create_global_var(shape,
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
             var = layers.create_global_var(shape=[2,3], value=1.0, dtype='float32',
-                                          persistable=True, force_cpu=True, name='new_var')
+                                           persistable=True, force_cpu=True, name='new_var')
     """
     helper = LayerHelper("global_var", **locals())
     var = helper.create_global_variable(
