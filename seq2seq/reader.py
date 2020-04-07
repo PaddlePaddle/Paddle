@@ -33,6 +33,11 @@ def prepare_train_input(insts, bos_id, eos_id, pad_id):
     return src, src_length, trg[:, :-1], trg_length, trg[:, 1:, np.newaxis]
 
 
+def prepare_infer_input(insts, bos_id, eos_id, pad_id):
+    src, src_length = pad_batch_data(insts, pad_id=pad_id)
+    return src, src_length
+
+
 def pad_batch_data(insts, pad_id):
     """
     Pad the instances to the max sequence length in batch, and generate the

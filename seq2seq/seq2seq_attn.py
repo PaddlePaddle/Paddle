@@ -90,7 +90,10 @@ class DecoderCell(RNNCell):
         for i, lstm_cell in enumerate(self.lstm_cells):
             out, new_lstm_state = lstm_cell(step_input, lstm_states[i])
             step_input = layers.dropout(
-                out, self.dropout_prob) if self.dropout_prob > 0 else out
+                out,
+                self.dropout_prob,
+                dropout_implementation='upscale_in_train'
+            ) if self.dropout_prob > 0 else out
             new_lstm_states.append(new_lstm_state)
         out = self.attention_layer(step_input, encoder_output,
                                    encoder_padding_mask)
@@ -180,7 +183,8 @@ class AttentionModel(Model):
 
 class AttentionInferModel(AttentionModel):
     def __init__(self,
-                 vocab_size,
+                 src_vocab_size,
+                 trg_vocab_size,
                  embed_dim,
                  hidden_size,
                  num_layers,
@@ -192,6 +196,8 @@ class AttentionInferModel(AttentionModel):
         args = dict(locals())
         args.pop("self")
         args.pop("__class__", None)  # py3
+        self.bos_id = args.pop("bos_id")
+        self.eos_id = args.pop("eos_id")
         self.beam_size = args.pop("beam_size")
         self.max_out_len = args.pop("max_out_len")
         super(AttentionInferModel, self).__init__(**args)

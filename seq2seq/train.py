@@ -14,25 +14,20 @@
 
 import logging
 import os
-import six
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import random
 from functools import partial
 
 import numpy as np
-import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import to_variable
 from paddle.fluid.io import DataLoader
-from paddle.fluid.dygraph_grad_clip import GradClipByGlobalNorm
 
-import reader
+from model import Input, set_device
+from callbacks import ProgBarLogger
 from args import parse_args
 from seq2seq_base import BaseModel, CrossEntropyCriterion
 from seq2seq_attn import AttentionModel
-from model import Input, set_device
-from callbacks import ProgBarLogger
 from reader import Seq2SeqDataset, Seq2SeqBatchSampler, SortType, prepare_train_input
 
 
@@ -97,9 +92,10 @@ def do_train(args):
         data_loaders[i] = data_loader
     train_loader, eval_loader = data_loaders
 
-    model = AttentionModel(args.src_vocab_size, args.tar_vocab_size,
-                           args.hidden_size, args.hidden_size, args.num_layers,
-                           args.dropout)
+    model_maker = AttentionModel if args.attention else BaseModel
+    model = model_maker(args.src_vocab_size, args.tar_vocab_size,
+                        args.hidden_size, args.hidden_size, args.num_layers,
+                        args.dropout)
 
     model.prepare(
         fluid.optimizer.Adam(
@@ -110,9 +106,10 @@ def do_train(args):
         labels=labels)
     model.fit(train_data=train_loader,
               eval_data=eval_loader,
-              epochs=1,
+              epochs=args.max_epoch,
               eval_freq=1,
               save_freq=1,
+              save_dir=args.model_path,
               log_freq=1,
               verbose=2)
 

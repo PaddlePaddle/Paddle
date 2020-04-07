@@ -63,7 +63,10 @@ class EncoderCell(RNNCell):
         for i, lstm_cell in enumerate(self.lstm_cells):
             out, new_state = lstm_cell(step_input, states[i])
             step_input = layers.dropout(
-                out, self.dropout_prob) if self.dropout_prob > 0 else out
+                out,
+                self.dropout_prob,
+                dropout_implementation='upscale_in_train'
+            ) if self.dropout_prob > 0 else out
             new_states.append(new_state)
         return step_input, new_states
 
@@ -163,7 +166,8 @@ class BaseModel(Model):
 
 class BaseInferModel(BaseModel):
     def __init__(self,
-                 vocab_size,
+                 src_vocab_size,
+                 trg_vocab_size,
                  embed_dim,
                  hidden_size,
                  num_layers,
@@ -175,6 +179,8 @@ class BaseInferModel(BaseModel):
         args = dict(locals())
         args.pop("self")
         args.pop("__class__", None)  # py3
+        self.bos_id = args.pop("bos_id")
+        self.eos_id = args.pop("eos_id")
         self.beam_size = args.pop("beam_size")
         self.max_out_len = args.pop("max_out_len")
         super(BaseInferModel, self).__init__(**args)
