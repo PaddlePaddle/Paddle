@@ -373,7 +373,7 @@ def full(shape,
         Variable: Tensor which is created according to shape and dtype.
 
     Raises:
-        TypeError: The `dtype` must be one of bool, float16, float32, float64, int32 and int64.
+        TypeError: The `dtype` must be one of None, bool, float16, float32, float64, int32 and int64.
         TypeError: The `out` must be a Variable.
         TypeError: The `shape` must be one of Variable, list tuple.
     
