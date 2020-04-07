@@ -6303,6 +6303,9 @@ def lod_append(x, level):
     if (not isinstance(level, Iterable)) and (not isinstance(level, Variable)):
         raise ValueError("Input(level) must be list, tuple or Variable.")
 
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'lod_append')
+
     helper = LayerHelper("lod_append", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
@@ -6311,6 +6314,13 @@ def lod_append(x, level):
 
     if isinstance(level, Variable):
         inputs['Y'] = level
+        if level.lod_level > 0:
+            check_variable_and_dtype(level, 'level',
+                                     ['float32', 'float64', 'int32', 'int64'],
+                                     'lod_append')
+        else:
+            check_variable_and_dtype(level, 'level', ['int32', 'int64'],
+                                     'lod_append')
     else:
         attrs['target_lod'] = level
     helper.append_op(
