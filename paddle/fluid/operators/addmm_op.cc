@@ -62,6 +62,22 @@ class AddMMOp : public framework::OperatorWithKernel {
             << " ndim_input=" << ndim_input << " ndim_x=" << ndim_x
             << " ndim_y=" << ndim_y;
 
+    PADDLE_ENFORCE_NE(framework::product(input_dims), 0,
+                      platform::errors::PreconditionNotMet(
+                          "The Input variable Input(%s) has not "
+                          "been initialized. You may need to confirm "
+                          "if you put exe.run(startup_program) "
+                          "after optimizer.minimize function.",
+                          ctx->Inputs("Input").front()));
+
+    PADDLE_ENFORCE_NE(framework::product(x_dims), 0,
+                      platform::errors::PreconditionNotMet(
+                          "The Input variable X(%s) has not "
+                          "been initialized. You may need to confirm "
+                          "if you put exe.run(startup_program) "
+                          "after optimizer.minimize function.",
+                          ctx->Inputs("X").front()));
+
     PADDLE_ENFORCE_NE(framework::product(y_dims), 0,
                       platform::errors::PreconditionNotMet(
                           "The Input variable Y(%s) has not "
