@@ -25,6 +25,7 @@ from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from .. import unique_name
 from .layer_object_helper import LayerObjectHelper
+from ..data_feeder import check_variable_and_dtype, check_type
 import numpy as np
 import numbers
 import logging
@@ -2821,6 +2822,8 @@ class TreeConv(layers.Layer):
             is_bias=False)
 
     def forward(self, nodes_vector, edge_set):
+        check_type(nodes_vector, 'nodes_vector', (Variable), 'TreeConv')
+        check_type(edge_set, 'edge_set', (Variable), 'TreeConv')
         if self._name:
             out = self.create_variable(
                 name=self._name, dtype=self._dtype, persistable=False)
