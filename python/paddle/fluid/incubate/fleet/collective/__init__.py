@@ -477,7 +477,7 @@ class CollectiveOptimizer(DistributedOptimizer):
         config.hierarchical_allreduce_inter_nranks = self._strategy.hierarchical_allreduce_inter_nranks
 
         t = dist_transpiler.DistributeTranspiler(config=config)
-        t.transpile(
+        t._transpile(
             trainer_id=trainer_id,
             trainers=worker_endpoints_env,
             startup_program=startup_program,

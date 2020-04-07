@@ -578,7 +578,6 @@ class DistributeTranspiler(object):
                     sync_mode=False,
                     current_endpoint="127.0.0.1:7000")
         """
-
         err_msg = """
 
 API is deprecated since 2.0.0 Please use FleetAPI instead.
@@ -586,6 +585,18 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
 
         """
         print(err_msg, file=sys.stderr)
+
+        return self._transpile(trainer_id, program, pservers, trainers,
+                               sync_mode, startup_program, current_endpoint)
+
+    def _transpile(self,
+                   trainer_id,
+                   program=None,
+                   pservers="127.0.0.1:6174",
+                   trainers=1,
+                   sync_mode=True,
+                   startup_program=None,
+                   current_endpoint="127.0.0.1:6174"):
 
         if program is None:
             program = default_main_program()

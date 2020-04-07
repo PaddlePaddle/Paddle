@@ -803,14 +803,20 @@ class GeneratorLoader(DataLoaderBase):
         self._feed_list = feed_list
         self._exited = False
         self._drop_last = drop_last
-        self._keep_order = keep_data_loader_order()
+        self._use_double_buffer = use_double_buffer
+
+        # (todo: zengjinle/tangwei12) temporary solution for distributed training, need fix it
+        if self._use_double_buffer:
+            self._keep_order = keep_data_loader_order()
+        else:
+            self._keep_order = keep_data_loader_order(False)
+
         if not capacity:
             raise ValueError("Please give value to capacity.")
         self._iterable = iterable
         self._return_list = return_list
         if not self._feed_list:
             raise Exception("Feed list must be given under static mode.")
-        self._use_double_buffer = use_double_buffer
         self._capacity = capacity
         if not self._iterable:
             self._init_non_iterable()

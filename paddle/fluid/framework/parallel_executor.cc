@@ -440,6 +440,21 @@ bool ParallelExecutor::NeedCreateLocalExeScope() {
   return executor && executor->NeedCreateLocalExeScope();
 }
 
+void refresh_create_py_reader_op_attrs(int dev_idx, int dev_cnt,
+                                       ir::Graph *graph) {
+  for (auto &node : graph->Nodes()) {
+    if (node->IsOp() && node->Op() &&
+        node->Op()->Type() == "create_py_reader") {
+      auto *op_desc = node->Op();
+
+      op_desc->SetAttr("device_index", dev_idx);
+      op_desc->SetAttr("device_count", dev_cnt);
+
+      VLOG(10) << "Found op " << op_desc->Type() << " on device " << dev_idx;
+    }
+  }
+}
+
 ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const std::vector<std::string> &bcast_vars,
                                    const std::string &loss_var_name,
@@ -508,6 +523,10 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
       auto *tmp_graph = new ir::Graph(graph->OriginProgram());
       async_graphs_.emplace_back(tmp_graph);
       graphs.push_back(tmp_graph);
+    }
+
+    for (int i = 0; i < static_cast<int>(graphs.size()); i++) {
+      refresh_create_py_reader_op_attrs(i, graphs.size(), graphs[i]);
     }
   }
 

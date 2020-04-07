@@ -234,7 +234,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
   }
 
   void AppendSetReaderDeviceIndexPass() {
-    AppendPass("set_reader_device_index_pass");
+    if (!strategy_.async_mode_) {
+      AppendPass("set_reader_device_index_pass");
+    }
   }
 
   void AppendPrintGraphPass(const std::string &pass_name,

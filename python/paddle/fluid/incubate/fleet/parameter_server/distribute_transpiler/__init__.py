@@ -313,7 +313,7 @@ class DistributedTranspiler(Fleet):
             self._transpile_config.get_server_runtime_config())
 
         if self.is_worker():
-            self._transpiler.transpile(
+            self._transpiler._transpile(
                 trainer_id=fleet.worker_index(),
                 pservers=fleet.server_endpoints(to_string=True),
                 trainers=fleet.worker_num(),
@@ -330,7 +330,7 @@ class DistributedTranspiler(Fleet):
                 self.vars_info = self._transpiler._get_vars_info()
                 self.startup_program = self._transpiler.trainer_startup_program
         else:
-            self._transpiler.transpile(
+            self._transpiler._transpile(
                 trainer_id=fleet.worker_index(),
                 pservers=fleet.server_endpoints(to_string=True),
                 trainers=fleet.worker_num(),
