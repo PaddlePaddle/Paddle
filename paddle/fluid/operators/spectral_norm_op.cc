@@ -28,16 +28,16 @@ class SpectralNormOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Weight"), true,
-        platform::errors::InvalidArgument(
+        platform::errors::NotFound(
             "Input(Weight) of SpectralNormOp should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("U"), true,
-                      platform::errors::InvalidArgument(
+                      platform::errors::NotFound(
                           "Input(U) of SpectralNormOp should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("V"), true,
-                      platform::errors::InvalidArgument(
+                      platform::errors::NotFound(
                           "Input(V) of SpectralNormOp should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::InvalidArgument(
+                      platform::errors::NotFound(
                           "Output(Out) of SpectralNormOp should not be null."));
 
     auto dim_weight = ctx->GetInputDim("Weight");
@@ -222,16 +222,16 @@ class SpectralNormOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Weight"), true,
-        platform::errors::InvalidArgument("Input(Weight) should not be null"));
+        platform::errors::NotFound("Input(Weight) should not be null"));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("U"), true,
-        platform::errors::InvalidArgument("Input(U) should not be null"));
+        platform::errors::NotFound("Input(U) should not be null"));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("V"), true,
-        platform::errors::InvalidArgument("Input(V) should not be null"));
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      platform::errors::InvalidArgument(
-                          "Input(Out@GRAD) should not be null"));
+        platform::errors::NotFound("Input(V) should not be null"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput(framework::GradVarName("Out")), true,
+        platform::errors::NotFound("Input(Out@GRAD) should not be null"));
     auto dim_x = ctx->GetInputDim("Weight");
     if (ctx->HasOutput(framework::GradVarName("Weight"))) {
       ctx->SetOutputDim(framework::GradVarName("Weight"), dim_x);
