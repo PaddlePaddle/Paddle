@@ -1243,7 +1243,7 @@ def append_backward(loss,
             p_g_list6 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights, no_grad_set=set(all_weights))
 
     """
-    check_type(loss, 'loss', (framework.Variable),
+    check_type(loss, 'loss', framework.Variable,
                'fluid.backward.append_backward')
 
     if loss.op is None:
@@ -1255,7 +1255,7 @@ def append_backward(loss,
                       int(core.op_proto_and_checker_maker.OpRole.Loss))
 
     if callbacks is not None:
-        check_type(callbacks, 'callbacks', (list),
+        check_type(callbacks, 'callbacks', list,
                    'fluid.backward.append_backward')
 
     program = loss.block.program
