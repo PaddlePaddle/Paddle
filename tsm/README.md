@@ -73,7 +73,7 @@ python main.py --data=<path/to/dataset> --batch_size=16
 使用如下方式进行多卡训练:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0,1 python main.py --data=<path/to/dataset> --batch_size=8
+CUDA_VISIBLE_DEVICES=0,1 python -m paddle.distributed.launch main.py --data=<path/to/dataset> --batch_size=8
 ```
 
 #### 动态图训练
@@ -90,7 +90,7 @@ python main.py --data=<path/to/dataset> --batch_size=16 -d
 使用如下方式进行多卡训练:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0,1 python main.py --data=<path/to/dataset> --batch_size=8 -d
+CUDA_VISIBLE_DEVICES=0,1 python -m paddle.distributed.launch main.py --data=<path/to/dataset> --batch_size=8 -d
 ```
 
 **注意：** 对于静态图和动态图，多卡训练中`--batch_size`为每卡上的batch_size，即总batch_size为`--batch_size`乘以卡数
