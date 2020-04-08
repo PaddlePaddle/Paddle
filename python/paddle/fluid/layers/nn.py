@@ -11654,6 +11654,8 @@ def clip_by_norm(x, max_norm, name=None):
     """
 
     helper = LayerHelper("clip_by_norm", **locals())
+    check_variable_and_dtype(x, 'X', ['float32'], 'clip_by_norm')
+    check_type(max_norm, 'max_norm', (float), 'clip_by_norm')
 
     if name is None:
         name = unique_name.generate_with_ignorable_key(".".join(
