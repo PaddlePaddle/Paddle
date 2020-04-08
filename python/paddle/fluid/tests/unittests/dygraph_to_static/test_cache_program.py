@@ -80,8 +80,6 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
             program_translator.set_optimizer(adam, index_of_loss=1)
 
             for batch_id in range(self.batch_num):
-                # Support to set optimizer in `for` by using cache.
-                program_translator.set_optimizer(adam, index_of_loss=1)
                 pred, avg_loss = static_net(self.data)
                 loss_data.append(np.array(avg_loss))
 
@@ -110,6 +108,20 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
             np.allclose(dygraph_loss, static_loss),
             msg='dygraph is {}\n static_res is \n{}'.format(dygraph_loss,
                                                             static_loss))
+
+    def test_exception(self):
+        main_program = fluid.Program()
+        loss_data = []
+        with fluid.program_guard(main_program):
+            static_net = self.dygraph_class()
+            adam = fluid.optimizer.AdamOptimizer(learning_rate=0.001)
+            # set optimizer
+            program_translator = ProgramTranslator()
+
+            with self.assertRaisesRegexp(ValueError, "has already been set"):
+                for batch_id in range(self.batch_num):
+                    program_translator.set_optimizer(adam, index_of_loss=1)
+                    static_net(self.data)
 
 
 def simple_func(x):

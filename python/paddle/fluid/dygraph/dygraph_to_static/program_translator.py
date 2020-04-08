@@ -168,11 +168,11 @@ class ProgramCache(object):
                     idx = self.feed_name_to_idx[feed_layer.name]
                     args[idx] = feed_layer
                 fetch_list = func(*args, **kwargs)
-                self._outputs = list(fetch_list)
+                self._outputs = fetch_list
             else:
                 fetch_list = func(*args, **kwargs)
 
-        return list(fetch_list)
+        return fetch_list
 
     def _add_feed_layers(self, args, kwargs):
         """
@@ -266,7 +266,6 @@ class ProgramTranslator(object):
         self._optimizer_info = None
         self._optimizer = None
         self._loss_name = None
-        self._optimizer_cache = {}
         # Once main_program is changed, should run startup_program.
         self._need_startup = True
 
@@ -351,9 +350,13 @@ class ProgramTranslator(object):
         """
         Support to set or update the optimizer used to minimize loss.
         """
-        check_type(index_of_loss, "index_of_loss", (int),
+        check_type(index_of_loss, "index_of_loss", int,
                    "ProgramTranslator.set_optimizer")
         self._check_cache_valid()
+        if self._optimizer and self._loss_name:
+            raise ValueError(
+                "{} for {} has already been set before. Please confirm not to call `set_optimizer` in for loop. ".
+                format(self._optimizer, self._loss_name))
         self._optimizer_info = (optimizer, index_of_loss)
 
     def save_inference_model(self, dirname, feed=None, fetch=None):
@@ -386,13 +389,14 @@ class ProgramTranslator(object):
         fetch_list = self._program_cache.outputs
 
         # Add optimizer if needed.
-        optimize_ops = self._add_optimizer()
+        if self._optimizer_info and self._optimizer is None:
+            self._add_optimizer()
 
         if self._need_startup:
             self._exe.run(self.startup_program)
             self._need_startup = False
 
-        return feed_dict, fetch_list + optimize_ops
+        return feed_dict, fetch_list
 
     def _check_cache_valid(self):
         """
@@ -422,32 +426,29 @@ class ProgramTranslator(object):
         """
         Support to set or update the optimizer used to minimize loss.
         """
-        new_optimizer, index_of_loss = self._optimizer_info
-        new_loss_var = self._program_cache.outputs[index_of_loss]
-        check_type(new_loss_var, "loss_var", (framework.Variable),
+        optimizer, index_of_loss = self._optimizer_info
+        assert index_of_loss < len(
+            self._program_cache.outputs
+        ), "index_of_loss: {} shall not exceed the length of outputs: {}.".format(
+            index_of_loss, len(self._program_cache.outputs))
+        loss_var = self._program_cache.outputs[index_of_loss]
+        check_type(loss_var, "loss_var", framework.Variable,
                    "ProgramTranslator._add_optimizer")
-
-        cached_key = (new_optimizer, new_loss_var.name)
-        # Avoid to set optimizer repeatedly if the optimizer for current loss_var already existed.
-        if cached_key in self._optimizer_cache:
-            return self._optimizer_cache[cached_key]
 
         main_program = self._program_cache.main_program
         startup_program = self._program_cache.startup_program
         all_vars = main_program.block(0).vars
 
-        if all_vars.get(new_loss_var.name, None) is None:
+        if all_vars.get(loss_var.name, None) is None:
             raise ValueError(
-                "Can't find {} in main_program, please confirm whether the loss input is correct."
-                .format(new_loss_var.name))
+                "Can't find {} in main_program, please confirm whether the input loss is correct."
+                .format(loss_var.name))
         # Add optimizer to minimize loss
         with framework.program_guard(main_program, startup_program):
-            optimize_ops, _ = new_optimizer.minimize(new_loss_var)
+            optimizer.minimize(loss_var)
 
-        self._optimizer_cache[cached_key] = optimize_ops
-        self._optimizer = new_optimizer
-        self._loss_name = new_loss_var.name
-        return list(optimize_ops)
+        self._optimizer = optimizer
+        self._loss_name = loss_var.name
 
     def get_program_cache(self):
         """
