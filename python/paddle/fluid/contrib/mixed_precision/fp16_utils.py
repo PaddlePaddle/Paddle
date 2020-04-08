@@ -151,9 +151,12 @@ def find_true_post_op(ops, cur_op, var_name):
         var_name (string): Variable name.
     """
     post_op = []
-    for op in ops:
+    for idx, op in enumerate(ops):
         if op == cur_op:
             break
+
+    for i in range(idx + 1, len(ops)):
+        op = ops[i]
         for in_name in op.input_names:
             for in_var_name in op.input(in_name):
                 if in_var_name == var_name:

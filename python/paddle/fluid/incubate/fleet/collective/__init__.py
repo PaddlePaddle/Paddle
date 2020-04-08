@@ -577,7 +577,7 @@ class CollectiveOptimizer(DistributedOptimizer):
 
         return self._compiled_program
 
-    def raiseOptimizeError(strategy_name, optimize_name):
+    def raiseOptimizeError(self, strategy_name, optimize_name):
         raise ValueError("can not use {0} when you set DistStrategy.{1} "
                          "as True".format(optimize_name, strategy_name))
 
@@ -602,17 +602,12 @@ class CollectiveOptimizer(DistributedOptimizer):
         process, but currently the optimization part is written into Fleet(). A user does not
         need to care about how to startup a pserver node.
         """
-        main_program = loss.block.program
-        if startup_program is None:
-            startup_program = fluid.default_startup_program()
-        fleet.startup_program = startup_program
 
-        self._loss = loss
-
-        self._check_collective_mode(main_program, self._optimizer,
-                                    self._strategy)
-        # only white list optimizer is allowed here
-        if self._forward_recompute and len(self._recompute_checkpoints) > 0:
+        # check optimizer conflicts
+        if self._forward_recompute:
+            if self._recompute_checkpoints == []:
+                raise ValueError("please set strategy.recompute_checkpoints"
+                                 "when set strategy.forward_recompute as True")
             if self._optimizer.__class__.__name__ in [
                     "RecomputeOptimizer", "OptimizerWithMixedPrecision"
             ]:
@@ -633,6 +628,16 @@ class CollectiveOptimizer(DistributedOptimizer):
                 self._optimizer,
                 init_loss_scaling=1.0,
                 use_dynamic_loss_scaling=True)
+
+        main_program = loss.block.program
+        if startup_program is None:
+            startup_program = fluid.default_startup_program()
+        fleet.startup_program = startup_program
+
+        self._loss = loss
+
+        self._check_collective_mode(main_program, self._optimizer,
+                                    self._strategy)
 
         optimize_ops, param_grads = self._optimizer.minimize(
             loss,
