@@ -3456,9 +3456,14 @@ def reorder_lod_tensor_by_rank(x, rank_table):
                            x=data, rank_table=table)
 
     """
+
+    check_type(x, 'x', (Variable), 'reorder_lod_tensor_by_rank')
+    check_type(rank_table, 'rank_table', (Variable),
+               'reorder_lod_tensor_by_rank')
+    if rank_table.type != core.VarDesc.VarType.LOD_RANK_TABLE:
+        raise TypeError("The type of rank_table should be LOD_RANK_TABLE.")
+
     helper = LayerHelper('reorder_lod_tensor_by_rank', **locals())
-    helper.is_instance('x', Variable)
-    helper.is_instance('rank_table', Variable)
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
