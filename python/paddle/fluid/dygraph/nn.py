@@ -1671,10 +1671,6 @@ class GRUUnit(layers.Layer):
         }
         if self.bias is not None:
             inputs['Bias'] = [self.bias]
-        attrs = {
-            'activation': self.activation,
-            'gate_activation': self.gate_activation,
-        }
         gate = self._helper.create_variable_for_type_inference(self._dtype)
         reset_hidden_pre = self._helper.create_variable_for_type_inference(
             self._dtype)
