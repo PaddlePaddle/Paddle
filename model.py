@@ -42,6 +42,14 @@ __all__ = ['Model', 'Loss', 'CrossEntropy', 'Input', 'set_device']
 
 
 def set_device(device):
+    """
+    Args:
+        device (str): specify device type, 'cpu' or 'gpu'.
+        
+    Returns:
+        fluid.CUDAPlace or fluid.CPUPlace: Created GPU or CPU place.
+    """
+
     assert isinstance(device, six.string_types) and device.lower() in ['cpu', 'gpu'], \
     "Expected device in ['cpu', 'gpu'], but got {}".format(device)
 
@@ -114,9 +122,9 @@ class Loss(object):
     def forward(self, outputs, labels):
         raise NotImplementedError()
 
-    def __call__(self, outputs, labels):
+    def __call__(self, outputs, labels=None):
         labels = to_list(labels)
-        if in_dygraph_mode():
+        if in_dygraph_mode() and labels:
             labels = [to_variable(l) for l in labels]
         losses = to_list(self.forward(to_list(outputs), labels))
         if self.average:
@@ -853,8 +861,6 @@ class Model(fluid.dygraph.Layer):
             if not isinstance(inputs, (list, dict, Input)):
                 raise TypeError(
                     "'inputs' must be list or dict in static graph mode")
-            if loss_function and not isinstance(labels, (list, Input)):
-                raise TypeError("'labels' must be list in static graph mode")
 
         metrics = metrics or []
         for metric in to_list(metrics):
@@ -1084,7 +1090,11 @@ class Model(fluid.dygraph.Layer):
 
         return eval_result
 
-    def predict(self, test_data, batch_size=1, num_workers=0, stack_outputs=True):
+    def predict(self,
+                test_data,
+                batch_size=1,
+                num_workers=0,
+                stack_outputs=True):
         """
         FIXME: add more comments and usage
         Args:
