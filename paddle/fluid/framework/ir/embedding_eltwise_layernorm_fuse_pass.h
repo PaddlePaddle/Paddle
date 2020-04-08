@@ -16,6 +16,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -25,35 +26,76 @@ namespace framework {
 namespace ir {
 namespace patterns {
 
-struct EmbeddingEltwiseLayerNormPattern : public PatternBase {
-  EmbeddingEltwiseLayerNormPattern(PDPattern* pattern,
-                                   const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "embedding_eltwise_layernorm") {}
+// detect start pattern.
+//
+//     in_var  emb       in_var   emb
+//       |      |          |       |
+//     lookup_table      lookup_table
+//           |                 |
+//        lkt_var           lkt_var
+//            \                /
+//             elementwise_add
+//                    |
+//               elt_out_var
+//
+struct Embedding2Eltwise1Pattern : public PatternBase {
+  Embedding2Eltwise1Pattern(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "embedding2_eltwise1") {}
 
-  PDNode* operator()();
+  void operator()();
 
   PATTERN_DECL_NODE(lookup_table1_x);
   PATTERN_DECL_NODE(lookup_table2_x);
-  PATTERN_DECL_NODE(lookup_table3_x);
-
   PATTERN_DECL_NODE(lookup_table1_w);
   PATTERN_DECL_NODE(lookup_table2_w);
-  PATTERN_DECL_NODE(lookup_table3_w);
-
   PATTERN_DECL_NODE(lookup_table1);
   PATTERN_DECL_NODE(lookup_table2);
-  PATTERN_DECL_NODE(lookup_table3);
-
   PATTERN_DECL_NODE(lookup_table1_out);
   PATTERN_DECL_NODE(lookup_table2_out);
-  PATTERN_DECL_NODE(lookup_table3_out);
-
-  PATTERN_DECL_NODE(eltwise_add_12);
-  PATTERN_DECL_NODE(eltwise_add_12_out);
-
   PATTERN_DECL_NODE(eltwise_add);
   PATTERN_DECL_NODE(eltwise_add_out);
+};
 
+// detect repeats inner pattern
+//
+//    elt_out_var            in_var   emb
+//         \                   |       |
+//          \                 lookup_table
+//           \                     |
+//            \                 lkt_var
+//             \                   /
+//                elementwise_add
+//                      |
+//                 elt_out_var
+//
+struct Embedding1Eltwise1Pattern : public PatternBase {
+  Embedding1Eltwise1Pattern(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "embedding1_eltwise1") {}
+  void operator()();
+  PATTERN_DECL_NODE(lookup_table1_x);
+  PATTERN_DECL_NODE(lookup_table1_w);
+  PATTERN_DECL_NODE(lookup_table1);
+  PATTERN_DECL_NODE(lookup_table1_out);
+  PATTERN_DECL_NODE(eltwise_add_in);
+  PATTERN_DECL_NODE(eltwise_add);
+  PATTERN_DECL_NODE(eltwise_add_out);
+};
+
+// detect end pattern
+//
+//     elementwise_add
+//            |
+//       elt_out_var
+//  scale     |       bias
+//    \       |        /
+//       layer_norm
+//
+struct SkipLayerNorm : public PatternBase {
+  SkipLayerNorm(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "skip_layernorm") {}
+  void operator()();
+  PATTERN_DECL_NODE(eltwise_add);
+  PATTERN_DECL_NODE(eltwise_add_out);
   PATTERN_DECL_NODE(layer_norm);
   PATTERN_DECL_NODE(layer_norm_bias);
   PATTERN_DECL_NODE(layer_norm_scale);
@@ -79,6 +121,23 @@ struct EmbeddingEltwiseLayerNormPattern : public PatternBase {
 //
 // (word, pos, sent, weights_0, weights_1, weights_2,
 //       scale, baias)   embedding_eltwise_layernorm -> layer_norm_out
+//
+//
+//  in_var  emb_var   in_var   emb_var   in_var   emb_var      in_var   emb_var
+//    |        |        |         |        |         |           |         |
+//   lookup_table      lookup_table       lookup_table   ...    lookup_table
+//        |                 |                  |                     |
+//     lkt_var           lkt_var            lkt_var               lkt_var
+//        \                 /                  |         ...         |
+//          elementwise_add                    |                     |
+//                 \                          /                      |
+//                       elementwise_add                             |
+//                               |                                   |
+//                            elt_var                               /
+//                               \                                 /
+//                                         elementwise_add
+//                                                 |
+//                                            layer_norm
 
 class EmbeddingEltwiseLayerNormFusePass : public FusePassBase {
  public:

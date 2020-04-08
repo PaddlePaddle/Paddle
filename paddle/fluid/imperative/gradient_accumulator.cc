@@ -29,6 +29,39 @@
 namespace paddle {
 namespace imperative {
 
+static void MoveOrCopyVar(framework::Variable* dst, framework::Variable* src,
+                          bool force_copy) {
+  if (!force_copy) {
+    *dst = std::move(*src);
+    return;
+  }
+
+  VLOG(10) << "Copy occurs when accumulating gradients";
+  if (src->IsType<framework::LoDTensor>()) {
+    auto& src_tensor = src->Get<framework::LoDTensor>();
+    if (!dst->IsType<framework::LoDTensor>()) {
+      dst->Clear();
+    }
+    auto* dst_tensor = dst->GetMutable<framework::LoDTensor>();
+    framework::TensorCopy(src_tensor, src_tensor.place(), dst_tensor);
+    dst_tensor->set_lod(src_tensor.lod());
+  } else if (src->IsType<framework::SelectedRows>()) {
+    auto& src_selected_rows = src->Get<framework::SelectedRows>();
+    if (!dst->IsType<framework::SelectedRows>()) {
+      dst->Clear();
+    }
+    auto* dst_selected_rows = dst->GetMutable<framework::SelectedRows>();
+    framework::TensorCopy(src_selected_rows.value(),
+                          src_selected_rows.value().place(),
+                          dst_selected_rows->mutable_value());
+    dst_selected_rows->set_rows(src_selected_rows.rows());
+    dst_selected_rows->set_height(src_selected_rows.height());
+  } else {
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Only support LoDTensor and SelectedRows for gradient accumulation"));
+  }
+}
+
 template <typename T>
 class TensorAddFunctor : public boost::static_visitor<> {
  public:
@@ -141,6 +174,49 @@ void SelectedRowsAddToTensor(const framework::Variable& src,
       framework::DataTypeToString(data_type)));
 }
 
+static void SelectedRowsAddTensor(
+    const framework::Variable& src_selected_rows_var,
+    const framework::Variable& src_tensor_var,
+    framework::Variable* dst_tensor_var) {
+  const auto& src_selected_rows =
+      src_selected_rows_var.Get<framework::SelectedRows>();
+  const auto& src_tensor = src_tensor_var.Get<framework::LoDTensor>();
+  const auto& place = src_tensor.place();
+  auto data_type = src_tensor.type();
+  auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+
+  auto* dst_tensor = dst_tensor_var->GetMutable<framework::LoDTensor>();
+  dst_tensor->Resize(src_tensor.dims());
+  dst_tensor->mutable_data(place, data_type);
+
+#define PADDLE_SELECTED_ROWS_ADD_TENSOR(dev_ctx_type, cpp_type)            \
+  if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) {       \
+    paddle::operators::math::SelectedRowsAddTensor<dev_ctx_type, cpp_type> \
+        functor;                                                           \
+    functor(*(dynamic_cast<dev_ctx_type*>(dev_ctx)), src_selected_rows,    \
+            src_tensor, dst_tensor);                                       \
+    return;                                                                \
+  }
+
+#ifdef PADDLE_WITH_CUDA
+  if (platform::is_gpu_place(place)) {
+    PADDLE_SELECTED_ROWS_ADD_TENSOR(platform::CUDADeviceContext, float);
+    PADDLE_SELECTED_ROWS_ADD_TENSOR(platform::CUDADeviceContext, double);
+  } else {
+#endif
+    PADDLE_SELECTED_ROWS_ADD_TENSOR(platform::CPUDeviceContext, float);
+    PADDLE_SELECTED_ROWS_ADD_TENSOR(platform::CPUDeviceContext, double);
+#ifdef PADDLE_WITH_CUDA
+  }
+#endif
+
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "Not supported data type %s for SelectedRowsAddToTensor",
+      framework::DataTypeToString(data_type)));
+
+#undef PADDLE_SELECTED_ROWS_ADD_TENSOR
+}
+
 // Note(chenweihang): when two selected rows need to be added,
 //   adding one to another is not equal to merging two selected rows
 //   to one then add it to a empty selected rows, the after is correct
@@ -189,7 +265,7 @@ std::shared_ptr<VariableWrapper> SelectedRowsMerge(
 }
 
 void VariableWrapperAdd(std::shared_ptr<VariableWrapper> var,
-                        VariableWrapper* var_) {
+                        VariableWrapper* var_, bool unchange_input) {
   auto& src = var->Var();
   auto* dst = var_->MutableVar();
   if (dst->IsType<framework::LoDTensor>()) {
@@ -204,10 +280,15 @@ void VariableWrapperAdd(std::shared_ptr<VariableWrapper> var,
     }
   } else {
     if (src.IsType<framework::LoDTensor>()) {
-      auto* src_mutable = var->MutableVar();
-      SelectedRowsAddToTensor(*dst, src_mutable);
-      *dst = std::move(*(var->MutableVar()));
-      var_->SetType(framework::proto::VarType::LOD_TENSOR);
+      if (unchange_input) {
+        framework::Variable new_dst;
+        SelectedRowsAddTensor(*dst, src, &new_dst);
+        *dst = std::move(new_dst);
+      } else {
+        auto* src_mutable = var->MutableVar();
+        SelectedRowsAddToTensor(*dst, src_mutable);
+        *dst = std::move(*(var->MutableVar()));
+      }
     } else if (src.IsType<framework::SelectedRows>()) {
       auto temp = SelectedRowsMerge(src, *dst);
       *dst = std::move(*(temp->MutableVar()));
@@ -234,18 +315,23 @@ static platform::Place GetPlaceOfVar(
 }
 
 void EagerGradientAccumulator::Add(std::shared_ptr<VariableWrapper> var,
-                                   size_t trace_id) {
+                                   size_t trace_id, bool unchange_input) {
+  /**
+   * If var has grad node, it indicates that this var would be an input
+   * of a grad op. Therefore, it should not be changed.
+   */
+  if (var->HasGradNode()) {
+    unchange_input = true;
+  }
+
   auto* dst_var = var_->MutableVar();
   platform::Place place = GetPlaceOfVar(var);
   if (!var_->OverridedStopGradient()) {
     VLOG(3) << "Sum Gradient for: " << var_->Name();
     if (cur_cnt_ == 0) {
-      if (var->Var().IsType<framework::SelectedRows>()) {
-        var_->SetType(framework::proto::VarType::SELECTED_ROWS);
-      }
-      *dst_var = std::move(*(var->MutableVar()));
+      MoveOrCopyVar(dst_var, var->MutableVar(), unchange_input);
     } else {
-      VariableWrapperAdd(var, var_);
+      VariableWrapperAdd(var, var_, unchange_input);
     }
   } else {
     if (!var_->Var().IsInitialized() ||
@@ -268,75 +354,91 @@ void EagerGradientAccumulator::Add(std::shared_ptr<VariableWrapper> var,
     }
   }
   ++cur_cnt_;
+
+  if (var_->Var().IsType<framework::LoDTensor>()) {
+    var_->SetType(framework::proto::VarType::LOD_TENSOR);
+  } else if (var_->Var().IsType<framework::SelectedRows>()) {
+    var_->SetType(framework::proto::VarType::SELECTED_ROWS);
+  }
 }
 
 void SortedGradientAccumulator::Add(std::shared_ptr<VariableWrapper> var,
-                                    size_t trace_id) {
+                                    size_t trace_id, bool unchange_input) {
   auto* dst_var = var_->MutableVar();
   platform::Place place = GetPlaceOfVar(var);
   if (!var_->OverridedStopGradient()) {
     if (ref_cnt_ == 1) {
-      if (var->Var().IsType<framework::SelectedRows>()) {
-        var_->SetType(framework::proto::VarType::SELECTED_ROWS);
-        *dst_var = std::move(*(var->MutableVar()));
-      } else {
-        *dst_var = std::move(*(var->MutableVar()));
-      }
+      MoveOrCopyVar(dst_var, var->MutableVar(),
+                    unchange_input || var->HasGradNode());
     } else {
       if (tmp_grad_vars_.empty()) {
         tmp_grad_vars_.reserve(ref_cnt_);
       }
 
-      tmp_grad_vars_.emplace_back(std::move(var), trace_id);
+      tmp_grad_vars_.emplace_back(std::move(var), trace_id, unchange_input);
 
       if (tmp_grad_vars_.size() != ref_cnt_) {
         return;
       }
 
-      std::sort(
-          tmp_grad_vars_.begin(), tmp_grad_vars_.end(),
-          [](const std::pair<std::shared_ptr<VariableWrapper>, size_t>& p1,
-             const std::pair<std::shared_ptr<VariableWrapper>, size_t>& p2) {
-            return p1.second > p2.second;
-          });
+      std::sort(tmp_grad_vars_.begin(), tmp_grad_vars_.end(),
+                [](const SavedVarInfo& info1, const SavedVarInfo& info2) {
+                  return info1.trace_id > info2.trace_id;
+                });
+
+      for (auto& var_info : tmp_grad_vars_) {
+        if (var_info.var->HasGradNode()) {
+          var_info.unchange_input = true;
+        }
+      }
 
 #ifdef PADDLE_WITH_CUDA
       if (paddle::platform::is_gpu_place(place)) {
         bool dst_varbase_is_initialized = false;
         // accumulate selected rows firstly
-        for (size_t i = 0; i < tmp_grad_vars_.size(); ++i) {
-          if (tmp_grad_vars_[i]
-                  .first->Var()
-                  .IsType<framework::SelectedRows>()) {
-            if (!dst_varbase_is_initialized) {
-              dst_varbase_is_initialized = true;
-              var_->SetType(framework::proto::VarType::SELECTED_ROWS);
-              *dst_var = std::move(*(tmp_grad_vars_[i].first->MutableVar()));
-            } else {
-              VariableWrapperAdd(tmp_grad_vars_[i].first, var_);
-            }
+        for (auto& var_info : tmp_grad_vars_) {
+          if (!var_info.var->Var().IsType<framework::SelectedRows>()) {
+            continue;
           }
-        }
-        // accumulate lod tensor
-        for (size_t i = 0; i < tmp_grad_vars_.size(); ++i) {
+
           if (!dst_varbase_is_initialized) {
             dst_varbase_is_initialized = true;
-            *dst_var = std::move(*(tmp_grad_vars_[0].first->MutableVar()));
+            MoveOrCopyVar(dst_var, var_info.var->MutableVar(),
+                          var_info.unchange_input);
+          } else {
+            VariableWrapperAdd(var_info.var, var_, var_info.unchange_input);
           }
-          if (tmp_grad_vars_[i].first->Var().IsType<framework::LoDTensor>()) {
-            VariableWrapperAdd(tmp_grad_vars_[i].first, var_);
+
+          var_info.var = nullptr;
+        }
+
+        for (auto& var_info : tmp_grad_vars_) {
+          if (!var_info.var) {
+            continue;
           }
+
+          PADDLE_ENFORCE_EQ(var_info.var->Var().IsType<framework::LoDTensor>(),
+                            true, platform::errors::PermissionDenied(
+                                      "Gradient var must be LoDTensor"));
+
+          if (!dst_varbase_is_initialized) {
+            dst_varbase_is_initialized = true;
+            MoveOrCopyVar(dst_var, var_info.var->MutableVar(),
+                          var_info.unchange_input);
+          } else {
+            VariableWrapperAdd(var_info.var, var_, var_info.unchange_input);
+          }
+
+          var_info.var = nullptr;
         }
       } else {
 #endif
-        if (tmp_grad_vars_[0].first->Var().IsType<framework::SelectedRows>()) {
-          var_->SetType(framework::proto::VarType::SELECTED_ROWS);
-          *dst_var = std::move(*(tmp_grad_vars_[0].first->MutableVar()));
-        } else {
-          *dst_var = std::move(*(tmp_grad_vars_[0].first->MutableVar()));
-        }
+        MoveOrCopyVar(dst_var, tmp_grad_vars_[0].var->MutableVar(),
+                      tmp_grad_vars_[0].unchange_input);
         for (size_t i = 1; i < tmp_grad_vars_.size(); ++i) {
-          VariableWrapperAdd(tmp_grad_vars_[i].first, var_);
+          VariableWrapperAdd(tmp_grad_vars_[i].var, var_,
+                             tmp_grad_vars_[i].unchange_input);
+          tmp_grad_vars_[i].var = nullptr;
         }
 #ifdef PADDLE_WITH_CUDA
       }
@@ -363,6 +465,12 @@ void SortedGradientAccumulator::Add(std::shared_ptr<VariableWrapper> var,
     }
     // looks like tmp_grad_vars will not have any member but just in case
     tmp_grad_vars_.clear();
+  }
+
+  if (var_->Var().IsType<framework::LoDTensor>()) {
+    var_->SetType(framework::proto::VarType::LOD_TENSOR);
+  } else if (var_->Var().IsType<framework::SelectedRows>()) {
+    var_->SetType(framework::proto::VarType::SELECTED_ROWS);
   }
 }
 

@@ -65,7 +65,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendOpFusePasses();
     AppendPrintGraphPass("graph_viz_pass", "_fused_graph");
 
+    AppendAddReaderDependencyPass();
     AppendMultiDevPass();
+    AppendSetReaderDeviceIndexPass();
     AppendMultiGraphOptPasses();
 
     AppendPassToSetMkldnnAttr("mkldnn_placement_pass");
@@ -202,6 +204,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     VLOG(1) << "CollectiveContext:" << context->String();
   }
 
+  void AppendAddReaderDependencyPass() {
+    AppendPass("add_reader_dependency_pass");
+  }
+
   // Convert graph to run on multi-devices.
   void AppendMultiDevPass() {
     ir::Pass *multi_devices_pass = nullptr;
@@ -225,6 +231,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
     multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",
                                                          &strategy_);
+  }
+
+  void AppendSetReaderDeviceIndexPass() {
+    AppendPass("set_reader_device_index_pass");
   }
 
   void AppendPrintGraphPass(const std::string &pass_name,
@@ -368,8 +378,8 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Set<bool>(kUseHierarchicalAllReduce,
                       new bool(use_hierarchical_allreduce_));
 #endif
-      LOG(INFO) << "SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
-                << ", num_trainers:" << num_trainers_;
+      VLOG(1) << "SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
+              << ", num_trainers:" << num_trainers_;
     } else if (pass->Type() == "fuse_relu_depthwise_conv_pass") {
       if (!use_cuda) {
         LOG(WARNING) << "fuse_relu_depthwise_conv_pass is only supported on "
@@ -397,6 +407,9 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                    "GPU, skipped.";
         continue;
       }
+    } else if (pass->Type() == "set_reader_device_index_pass") {
+      pass->Erase(kPlaces);
+      pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
     }
     VLOG(1) << "Start Apply Pass " << pass->Type();
     graph = pass->Apply(graph);
@@ -433,6 +446,8 @@ USE_PASS(fuse_sgd_op_pass);
 USE_PASS(fuse_momentum_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
+USE_PASS(set_reader_device_index_pass);
+USE_PASS(add_reader_dependency_pass);
 #ifdef PADDLE_WITH_MKLDNN
 USE_PASS(mkldnn_placement_pass);
 #endif

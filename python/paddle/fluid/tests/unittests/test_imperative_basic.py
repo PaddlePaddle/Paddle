@@ -227,6 +227,24 @@ class TestImperative(unittest.TestCase):
             self.assertTrue(np.array_equal(y, tmp4.numpy()))
             self.assertTrue(np.array_equal(x, tmp5.numpy()))
 
+    def test_no_grad_guard(self):
+        data = np.array([[2, 3], [4, 5]]).astype('float32')
+        with fluid.dygraph.guard():
+            l0 = fluid.Linear(2, 2)
+            self.assertTrue(l0.weight._grad_ivar() is None)
+            l1 = fluid.Linear(2, 2)
+            with fluid.dygraph.no_grad():
+                self.assertTrue(l1.weight.stop_gradient is False)
+                tmp = l1.weight * 2
+                self.assertTrue(tmp.stop_gradient)
+            x = fluid.dygraph.to_variable(data)
+            y = l0(x) + tmp
+            o = l1(y)
+            o.backward()
+
+            self.assertTrue(tmp._grad_ivar() is None)
+            self.assertTrue(l0.weight._grad_ivar() is not None)
+
     def test_sum_op(self):
         x = np.ones([2, 2], np.float32)
         with fluid.dygraph.guard():

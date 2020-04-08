@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import dygraph_to_static_graph
+from paddle.fluid.dygraph.jit import dygraph_to_static_func
 
 SEED = 2020
 np.random.seed(SEED)
@@ -97,7 +97,7 @@ class TestSliceWithoutControlFlow(unittest.TestCase):
     def run_static_mode(self):
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
-            tensor_list = dygraph_to_static_graph(self.dygraph_func)(self.input)
+            tensor_list = dygraph_to_static_func(self.dygraph_func)(self.input)
         exe = fluid.Executor(self.place)
         static_res = exe.run(main_program, fetch_list=tensor_list[0])
 
@@ -119,8 +119,7 @@ class TestSliceInIf(TestSliceWithoutControlFlow):
     def run_static_mode(self):
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
-            tensor_array = dygraph_to_static_graph(self.dygraph_func)(
-                self.input)
+            tensor_array = dygraph_to_static_func(self.dygraph_func)(self.input)
             static_out = fluid.layers.array_read(
                 tensor_array,
                 i=fluid.layers.fill_constant(
@@ -150,7 +149,7 @@ class TestSliceInWhileLoop(TestSliceWithoutControlFlow):
     def run_static_mode(self):
         main_program = fluid.Program()
         with fluid.program_guard(main_program):
-            tensor_array = dygraph_to_static_graph(self.dygraph_func)(
+            tensor_array = dygraph_to_static_func(self.dygraph_func)(
                 self.input, self.iter_num)
             static_outs = []
             for i in range(self.iter_num):

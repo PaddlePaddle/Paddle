@@ -64,25 +64,26 @@ class ReduceMeanDoubleGradOpBaseMaker : public imperative::GradOpBaseMakerBase {
  public:
   using imperative::GradOpBaseMakerBase::GradOpBaseMakerBase;
 
-  std::vector<std::shared_ptr<imperative::OpBase>> operator()() const override {
-    std::vector<std::shared_ptr<imperative::OpBase>> ops;
-    auto x_gg = OutputGrad(framework::GradVarName("X"));  // input ddx
+  std::shared_ptr<imperative::GradOpNode> operator()() const override {
     auto out_grads = InputGrad(framework::GradVarName("Out"));
     if (!out_grads.empty()) {
-      auto out_grad_op = CreateOp();
-      imperative::TracedGradOp op(out_grad_op);
-      op.SetType("reduce_mean");
-      op.SetInput("X", x_gg);
-      op.SetAttrMap(Attrs());
-      op.SetOutput("Out", out_grads);
-      ops.emplace_back(out_grad_op);
+      auto x_gg = OutputGrad(framework::GradVarName("X"));  // input ddx
+      auto node = this->NewGradNode();
+      {
+        imperative::TracedGradOp op(node);
+        op.SetType("reduce_mean");
+        op.SetInput("X", x_gg);
+        op.SetAttrMap(Attrs());
+        op.SetOutput("Out", out_grads);
+      }
+      return node;
+    } else {
+      return nullptr;
     }
-
-    return ops;
   }
 };
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ReduceMeanGradNoNeedBufferVarInference,
-                                      "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReduceMeanGradNoNeedBufferVarInference,
+                                    "X");
 }  // namespace operators
 }  // namespace paddle
 

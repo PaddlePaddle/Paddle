@@ -428,6 +428,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetMinInputShape(config_.min_input_shape_);
     argument_.SetMaxInputShape(config_.max_input_shape_);
     argument_.SetOptimInputShape(config_.optim_input_shape_);
+    argument_.SetCloseTrtPluginFp16(config_.disable_trt_plugin_fp16_);
   }
 
   if (config_.lite_engine_enabled()) {
@@ -941,6 +942,8 @@ USE_TRT_CONVERTER(batch_norm);
 USE_TRT_CONVERTER(concat);
 USE_TRT_CONVERTER(dropout);
 USE_TRT_CONVERTER(pad);
+USE_TRT_CONVERTER(hard_sigmoid);
+USE_TRT_CONVERTER(hard_swish);
 USE_TRT_CONVERTER(split);
 USE_TRT_CONVERTER(prelu);
 USE_TRT_CONVERTER(conv2d_transpose);
@@ -951,4 +954,6 @@ USE_TRT_CONVERTER(instance_norm);
 USE_TRT_CONVERTER(layer_norm);
 USE_TRT_CONVERTER(gelu);
 USE_TRT_CONVERTER(multihead_matmul);
+USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
+USE_TRT_CONVERTER(skip_layernorm);
 #endif

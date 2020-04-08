@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import dygraph_to_static_graph
+from paddle.fluid.dygraph.jit import dygraph_to_static_func
 
 
 def add_fn(x):
@@ -58,7 +58,8 @@ def nested_if_else(x_v):
     bias = fluid.layers.fill_constant([feat_size], dtype='float32', value=1)
     if x_v.shape[0] != batch_size:
         batch_size = x_v.shape[0]
-    if fluid.layers.mean(x_v).numpy()[0] < 0:
+    # if tensor.shape is [1], now support to compare with numpy.
+    if fluid.layers.mean(x_v).numpy() < 0:
         y = x_v + bias
         w = fluid.layers.fill_constant([feat_size], dtype='float32', value=10)
         if y.numpy()[0] < 10:
@@ -141,7 +142,7 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
         self.alpha = 10.
         self.constant_vars = {}
 
-    @dygraph_to_static_graph
+    @dygraph_to_static_func
     def forward(self, input):
         hidden_dim = input.shape[-1]
         if hidden_dim != self.hidden_dim:
@@ -181,8 +182,8 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
 
 def if_with_and_or(x_v, label=None):
     batch_size = fluid.layers.shape(x_v)
-    if x_v and (fluid.layers.mean(x_v).numpy()[0] > 0 or
-                label is not None) and batch_size[0] > 1 and True:
+    if x_v is not None and (fluid.layers.mean(x_v).numpy()[0] > 0 or
+                            label is not None) and batch_size[0] > 1 and True:
         x_v = x_v - 1
     else:
         x_v = x_v + 1
@@ -197,16 +198,16 @@ def if_with_and_or_1(x, y=None):
     batch_size = fluid.layers.shape(x)
     if batch_size[0] > 1 and y is not None:
         x = x + 1
-    if y or batch_size[0] > 1:
+    if y is not None or batch_size[0] > 1:
         x = x - 1
     return x
 
 
 def if_with_and_or_2(x, y=None):
     batch_size = fluid.layers.shape(x)
-    if x and batch_size[0] > 1 and y is not None:
+    if x is not None and batch_size[0] > 1 and y is not None:
         x = x + 1
-    if batch_size[0] > 1 or y or x is not None:
+    if batch_size[0] > 1 or y is not None or x is not None:
         x = x - 1
     return x
 
@@ -214,9 +215,10 @@ def if_with_and_or_2(x, y=None):
 def if_with_and_or_3(x, y=None):
     batch_size = fluid.layers.shape(x)
     mean_res = fluid.layers.mean(x)
-    if x and batch_size[0] > 1 and y is not None and mean_res.numpy()[0] > 0:
+    if x is not None and batch_size[0] > 1 and y is not None and mean_res.numpy(
+    )[0] > 0:
         x = x + 1
-    if mean_res.numpy()[0] > 0 and (x and batch_size[0] > 1) and y:
+    if mean_res.numpy()[0] > 0 and (x is not None and batch_size[0] > 1) and y:
         x = x - 1
     return x
 
@@ -224,8 +226,27 @@ def if_with_and_or_3(x, y=None):
 def if_with_and_or_4(x, y=None):
     batch_size = fluid.layers.shape(x)
     mean_res = fluid.layers.mean(x)
-    if (x and batch_size[0] > 1) or (y is not None and mean_res.numpy()[0] > 0):
+    if (x is not None and batch_size[0] > 1) or (y is not None and
+                                                 mean_res.numpy()[0] > 0):
         x = x + 1
-    if (x or batch_size[0] > 1) and (y is not None or mean_res.numpy()[0] > 0):
+    if (x is not None or batch_size[0] > 1) and (y is not None or
+                                                 mean_res.numpy()[0] > 0):
         x = x - 1
+    return x
+
+
+def if_with_class_var(x, y=None):
+    class Foo(object):
+        def __init__(self):
+            self.a = 1
+            self.b = 2
+
+    foo = Foo()
+    batch_size = fluid.layers.shape(x)
+    mean_res = fluid.layers.mean(x)
+
+    if batch_size[0] > foo.a:
+        x = x + foo.b
+    else:
+        x = x - foo.b
     return x

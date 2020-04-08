@@ -1349,6 +1349,27 @@ PDNode *patterns::Reshape::operator()() {
   return reshape_out;
 }
 
+PDNode *patterns::Matmul::operator()() {
+  auto prev_op_x = pattern->NewNode(prev_op_x_repr())->assert_is_op();
+  auto prev_op_y = pattern->NewNode(prev_op_y_repr())->assert_is_op();
+
+  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+  auto matmul_in_x = pattern->NewNode(matmul_in_x_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("matmul", "X");
+  auto matmul_in_y = pattern->NewNode(matmul_in_y_repr())
+                         ->AsInput()
+                         ->assert_is_op_input("matmul", "Y");
+  auto matmul_out = pattern->NewNode(matmul_out_repr())
+                        ->AsOutput()
+                        ->assert_is_op_output("matmul", "Out");
+
+  prev_op_x->LinksTo({matmul_in_x});
+  prev_op_y->LinksTo({matmul_in_y});
+  matmul_op->LinksFrom({matmul_in_x, matmul_in_y}).LinksTo({matmul_out});
+  return matmul_out;
+}
+
 PDNode *patterns::ConvResidual::operator()(bool with_residual_data) {
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
 
@@ -1832,6 +1853,35 @@ PDNode *patterns::MultipleQuantize::operator()() {
   });
 
   return prev_out;
+}
+
+PDNode *patterns::MKLDNNInPlace::operator()() {
+  // TODO(jczaja): Enable more mkl-dnn ops e.g. activation, elementwise_add,
+  // batch_norm....
+  auto possible_inplace_op =
+      pattern->NewNode(inplace_to_be_op_repr())->assert_is_ops({"softmax"});
+
+  // TODO(jczaja): Enable more mkl-dnn ops e.g. activation, elementwise_add,
+  // batch_norm....
+  auto input = pattern->NewNode(inplace_to_be_op_in_repr())
+                   ->assert_is_ops_input({"softmax"})
+                   ->AsInput();
+  // TODO(jczaja): Enable more mkl-dnn ops e.g. activation, elementwise_add,
+  // batch_norm....
+  auto output = pattern->NewNode(inplace_to_be_op_out_repr())
+                    ->assert_is_ops_output({"softmax"})
+                    ->AsIntermediate();
+
+  auto next_op = pattern->NewNode(next_op_repr())->assert_is_op();
+
+  // Check if op is MKL-DNN enabled
+  possible_inplace_op->assert_op_attr("use_mkldnn", true);
+
+  possible_inplace_op->LinksTo({output});
+  possible_inplace_op->LinksFrom({input});
+  next_op->LinksFrom({output});
+
+  return possible_inplace_op;
 }
 
 // a -> transpose_op(1) -> transpose_out_a -> flatten_op(1) -> flatten_out_a
