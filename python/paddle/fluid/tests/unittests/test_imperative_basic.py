@@ -21,6 +21,7 @@ from paddle.fluid import core
 from paddle.fluid import Linear
 from test_imperative_base import new_program_scope
 import paddle.fluid.dygraph_utils as dygraph_utils
+import paddle
 
 
 class MyLayer(fluid.Layer):
@@ -234,6 +235,24 @@ class TestImperative(unittest.TestCase):
             self.assertTrue(l0.weight._grad_ivar() is None)
             l1 = fluid.Linear(2, 2)
             with fluid.dygraph.no_grad():
+                self.assertTrue(l1.weight.stop_gradient is False)
+                tmp = l1.weight * 2
+                self.assertTrue(tmp.stop_gradient)
+            x = fluid.dygraph.to_variable(data)
+            y = l0(x) + tmp
+            o = l1(y)
+            o.backward()
+
+            self.assertTrue(tmp._grad_ivar() is None)
+            self.assertTrue(l0.weight._grad_ivar() is not None)
+
+    def test_paddle_imperative_no_grad_guard(self):
+        data = np.array([[2, 3], [4, 5]]).astype('float32')
+        with fluid.dygraph.guard():
+            l0 = fluid.Linear(2, 2)
+            self.assertTrue(l0.weight._grad_ivar() is None)
+            l1 = fluid.Linear(2, 2)
+            with paddle.imperative.no_grad():
                 self.assertTrue(l1.weight.stop_gradient is False)
                 tmp = l1.weight * 2
                 self.assertTrue(tmp.stop_gradient)
