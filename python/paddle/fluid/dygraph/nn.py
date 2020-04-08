@@ -1148,6 +1148,9 @@ class BatchNorm(layers.Layer):
             return dygraph_utils._append_activation_in_dygraph(
                 batch_norm_out, act=self._act)
 
+        check_variable_and_dtype(input, 'input',
+                                 ['float16', 'float32', 'float64'], 'BatchNorm')
+
         attrs = {
             "momentum": self._momentum,
             "epsilon": self._epsilon,
@@ -2734,9 +2737,9 @@ class GroupNorm(layers.Layer):
 
     def forward(self, input):
         inputs = {'X': input}
-        if self.bias:
+        if self.bias is not None:
             inputs['Bias'] = self.bias
-        if self.weight:
+        if self.weight is not None:
             inputs['Scale'] = self.weight
 
         # create output

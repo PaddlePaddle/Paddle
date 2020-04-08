@@ -1114,7 +1114,12 @@ class TestLayer(LayerTest):
                 dtype='float32',
                 lod_level=1,
                 append_batch_size=False)
-            ret = layers.group_norm(input=X, groups=2)
+            ret = layers.group_norm(
+                input=X,
+                groups=2,
+                param_attr=fluid.initializer.Uniform(
+                    low=-0.5, high=0.5),
+                bias_attr=fluid.initializer.ConstantInitializer(value=1))
             static_ret = self.get_static_graph_result(
                 feed={
                     'X': fluid.create_lod_tensor(
@@ -1130,7 +1135,12 @@ class TestLayer(LayerTest):
                 dtype='float32',
                 lod_level=1,
                 append_batch_size=False)
-            groupNorm = nn.GroupNorm(channels=shape[1], groups=2)
+            groupNorm = nn.GroupNorm(
+                channels=shape[1],
+                groups=2,
+                param_attr=fluid.initializer.Uniform(
+                    low=-0.5, high=0.5),
+                bias_attr=fluid.initializer.ConstantInitializer(value=1))
             ret = groupNorm(X)
             static_ret2 = self.get_static_graph_result(
                 feed={
@@ -1141,7 +1151,12 @@ class TestLayer(LayerTest):
                 with_lod=True)[0]
 
         with self.dynamic_graph():
-            groupNorm = nn.GroupNorm(channels=shape[1], groups=2)
+            groupNorm = nn.GroupNorm(
+                channels=shape[1],
+                groups=2,
+                param_attr=fluid.initializer.Uniform(
+                    low=-0.5, high=0.5),
+                bias_attr=fluid.initializer.ConstantInitializer(value=1))
             dy_ret = groupNorm(base.to_variable(input))
             dy_rlt_value = dy_ret.numpy()
 
@@ -3080,6 +3095,22 @@ class TestBook(LayerTest):
             sum = fluid.contrib.layers.partial_sum(
                 [x, y], start_index=0, length=2)
             return (sum)
+
+    def test_rank_attention(self):
+        with self.static_graph():
+            input = fluid.data(name="input", shape=[None, 2], dtype="float32")
+            rank_offset = fluid.data(
+                name="rank_offset", shape=[None, 7], dtype="int32")
+            out = fluid.contrib.layers.rank_attention(
+                input=input,
+                rank_offset=rank_offset,
+                rank_param_shape=[18, 3],
+                rank_param_attr=fluid.ParamAttr(
+                    learning_rate=1.0,
+                    name="ubm_rank_param.w_0",
+                    initializer=fluid.initializer.Xavier(uniform=False)),
+                max_rank=3)
+            return (out)
 
     def test_roi_pool(self):
         # TODO(minqiyang): dygraph do not support lod now
