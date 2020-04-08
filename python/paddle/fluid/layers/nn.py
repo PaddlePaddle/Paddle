@@ -6699,6 +6699,9 @@ def roi_align(input,
                                                spatial_scale=0.5,
                                                sampling_ratio=-1)
     """
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'roi_align')
+    check_variable_and_dtype(rois, 'rois', ['float32', 'float64'], 'roi_align')
     helper = LayerHelper('roi_align', **locals())
     dtype = helper.input_dtype()
     align_out = helper.create_variable_for_type_inference(dtype)
