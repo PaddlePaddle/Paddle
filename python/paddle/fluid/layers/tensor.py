@@ -98,7 +98,7 @@ def create_parameter(shape,
             import paddle.fluid.layers as layers
             W = layers.create_parameter(shape=[784, 200], dtype='float32')
     """
-    check_type(shape, 'shape', (list), 'create_parameter')
+    check_type(shape, 'shape', (list, tuple), 'create_parameter')
     check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'],
                 'create_parameter')
     check_type(attr, 'attr', (type(None), ParamAttr), 'create_parameter')
@@ -145,7 +145,7 @@ def create_global_var(shape,
             var = layers.create_global_var(shape=[2,3], value=1.0, dtype='float32',
                                           persistable=True, force_cpu=True, name='new_var')
     """
-    check_type(shape, 'shape', (list), 'create_global_var')
+    check_type(shape, 'shape', (list, tuple), 'create_global_var')
     check_dtype(dtype, 'dtype', [
         'bool', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32',
         'int64', 'uint8'
