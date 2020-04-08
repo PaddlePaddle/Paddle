@@ -130,6 +130,7 @@ class IndexSampleGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Index", this->Input("Index"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    return op;
   }
 };
 
