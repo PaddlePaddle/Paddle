@@ -77,11 +77,15 @@ class Conv2DFusionOp : public operators::ConvOp {
             "Input(Input)'s dimension = %u, shape = [%s].",
             in_dims.size(), in_dims));
 
-    PADDLE_ENFORCE_EQ(
-        ctx->Attrs().Get<std::string>("data_format"), "NCHW",
-        platform::errors::PermissionDenied(
-            "Operator 'Conv2DFusion' only supports data format of "
-            "channel first (NCHW) now."));
+    // In some case, attribute data_format is "AnyLayout".
+    std::string
+        data_format = ctx->Attrs().Get<std::string>("data_format"),
+        PADDLE_ENFORCE_NE(
+            data_format, "NHWC",
+            platform::errors::PermissionDenied(
+                "Operator 'Conv2DFusion' only supports data format of "
+                "channel first (NCHW) now. But recieved: data_format = '%s'.",
+                data_format));
 
     std::vector<int64_t> output_shape = ComputeOutputShape(ctx);
     ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
