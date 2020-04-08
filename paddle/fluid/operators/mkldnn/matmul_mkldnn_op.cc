@@ -33,20 +33,15 @@ using Tensor = framework::Tensor;
 
 // Get row matrix shape from a vector shape. If the rank of x_dim > 1, the
 // original x_dim is returned.
-static framework::DDim RowMatrixFromVector(const framework::DDim& x_dim) {
-  if (x_dim.size() > 1) {
-    return x_dim;
-  }
-  return framework::make_ddim({1, x_dim[0]});
+static framework::DDim RowMatrixDimsFromVector(const framework::DDim& x_dim) {
+  return x_dim.size() > 1 ? x_dim : framework::make_ddim({1, x_dim[0]});
 }
 
 // Get column matrix shape from a vector shape. If the ran of y_dim > 1, the
 // original y_dim is returned.
-static framework::DDim ColumnMatrixFromVector(const framework::DDim& y_dim) {
-  if (y_dim.size() > 1) {
-    return y_dim;
-  }
-  return framework::make_ddim({y_dim[0], 1});
+static framework::DDim ColumnMatrixDimsFromVector(
+    const framework::DDim& y_dim) {
+  return y_dim.size() > 1 ? y_dim : framework::make_ddim({y_dim[0], 1});
 }
 
 template <typename XT, typename YT, typename OT>
@@ -87,10 +82,10 @@ class MatMulFactory {
 
   MatMulDims GetMatmulDims(const ExecutionContext& ctx) {
     auto mat_dim_x = math::CreateMatrixDescriptor(
-        RowMatrixFromVector(ctx.Input<Tensor>("X")->dims()), 0,
+        RowMatrixDimsFromVector(ctx.Input<Tensor>("X")->dims()), 0,
         ctx.Attr<bool>("transpose_X"));
     auto mat_dim_y = math::CreateMatrixDescriptor(
-        ColumnMatrixFromVector(ctx.Input<Tensor>("Y")->dims()), 0,
+        ColumnMatrixDimsFromVector(ctx.Input<Tensor>("Y")->dims()), 0,
         ctx.Attr<bool>("transpose_Y"));
 
     const auto x_bs = mat_dim_x.batch_size_;
