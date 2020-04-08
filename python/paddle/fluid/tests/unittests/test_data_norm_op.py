@@ -565,7 +565,8 @@ class TestDataNormOpErrorr(unittest.TestCase):
         with program_guard(Program(), Program()):
             x2 = fluid.layers.data(name='x2', shape=[3, 4], dtype="int32")
             #self.assertRaises(TypeError, fluid.data_norm, x2)
-            fluid.layers.data_norm(input=x2,param_attr={},enable_scale_and_shift=True)
+            fluid.layers.data_norm(
+                input=x2,param_attr={},enable_scale_and_shift=True)
 
 
 if __name__ == '__main__':
