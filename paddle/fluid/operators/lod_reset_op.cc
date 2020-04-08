@@ -30,11 +30,11 @@ class LoDResetOp : public framework::OperatorWithKernel {
     if (!ctx->HasInput("Y")) {
       auto level0 = ctx->Attrs().Get<std::vector<int>>("target_lod");
       PADDLE_ENFORCE_GT(
-          level0.size(), 0,
+          static_cast<int64_t>(level0.size()), 0,
           platform::errors::InvalidArgument(
               "If Input(Y) not provided, the target lod should be "
               "specified by attribute `target_lod`. But the size of "
-              "'target_lod' is 0."));
+              "`target_lod` is 0."));
     } else if (ctx->IsRuntime()) {
       ctx->ShareLoD("Y", "Out");
     }

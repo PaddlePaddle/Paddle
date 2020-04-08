@@ -140,16 +140,24 @@ class TestLodResetOpError(unittest.TestCase):
             def test_Variable():
                 # The input must be Variable.
                 x1 = fluid.create_lod_tensor(
-                    np.array([1, 1, 1, 1, 1, 1]), [3, 3], fluid.CPUPlace())
+                    np.ones([6]), [3, 3], fluid.CPUPlace())
                 y1 = fluid.create_lod_tensor(
-                    np.array([1, 1, 1, 1, 1, 1]), [2, 2, 2], fluid.CPUPlace())
+                    np.ones([6]), [2, 2, 2], fluid.CPUPlace())
                 self.assertRaises(TypeError, fluid.layers.lod_reset, [x1, y1])
 
             def test_type():
                 # dtype must be float32 or float64 or int32 or int64
-                x2 = fluid.layers.data(shape=[4], dtype='uint8', name='x4')
-                y2 = fluid.layers.data(shape=[4], dtype='uint8', name='x5')
+                x2 = fluid.layers.data(shape=[4], dtype='uint8', name='x2')
+                y2 = fluid.layers.data(
+                    shape=[4], dtype='uint8', name='x2', lod_level=2)
                 self.assertRaises(TypeError, fluid.layers.lod_reset, [x2, y2])
+
+            def test_type2():
+                # dtype must be float32 or float64 or int32 or int64
+                x3 = fluid.layers.data(shape=[4], dtype='float32', name='x3')
+                y3 = fluid.layers.data(
+                    shape=[4], dtype='float32', name='x3', lod_level=0)
+                self.assertRaises(TypeError, fluid.layers.lod_reset, [x3, y3])
 
 
 if __name__ == '__main__':
