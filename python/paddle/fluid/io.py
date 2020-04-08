@@ -777,7 +777,7 @@ def load_vars(executor,
             orig_shape = orig_para_shape.get(each_var.name)
             if new_shape != orig_shape:
                 raise RuntimeError(
-                    "Variable's shape not matching. the Program requires a parameter with the shape of ({}), "
+                    "Variable's shape does not match, the Program requires a parameter with the shape of ({}), "
                     "while the loaded parameter (namely [ {} ]) has a shape of  ({}).".
                     format(orig_shape, each_var.name, new_shape))
 
@@ -1539,7 +1539,7 @@ def save(program, model_path):
 
     base_name = os.path.basename(model_path)
     assert base_name != "", \
-        "The input model_path MUST be format of dirname/filename [dirname\\filename in Window], Now filename is empty str."
+        "The input model_path MUST be format of dirname/filename [dirname\\filename in Window], but received model_path is empty string."
 
     dir_name = os.path.dirname(model_path)
     if dir_name and not os.path.exists(dir_name):
