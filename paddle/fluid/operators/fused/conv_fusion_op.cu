@@ -58,28 +58,25 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     bool exhaustive_search =
         FLAGS_cudnn_exhaustive_search || ctx.Attr<bool>("exhaustive_search");
 
-    // const T* input_data = input->data<T>();
     const T* filter_data = filter->data<T>();
     const T* bias_data = bias->data<T>();
-    // T* output_data = output->mutable_data<T>(ctx.GetPlace());
 
     const std::string padding_algorithm =
         ctx.Attr<std::string>("padding_algorithm");
-    const std::string data_format = ctx.Attr<std::string>("data_format");
 
     Tensor transformed_input_channel(input->type());
     Tensor transformed_output(output->type());
-    T* output_data = nullptr;
-
     transformed_input_channel = *input;
     transformed_output = *output;
-    output_data = transformed_output.data<T>();
+    T* output_data = transformed_output.data<T>();
+
     const T* residual_data = residual ? residual->data<T>() : output_data;
+
     // update padding and dilation
     auto in_dims = transformed_input_channel.dims();
     auto filter_dims = filter->dims();
-    framework::DDim in_data_dims;
-    in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+    framework::DDim in_data_dims =
+        framework::slice_ddim(in_dims, 2, in_dims.size());
 
     framework::DDim filter_data_dims =
         framework::slice_ddim(filter_dims, 2, filter_dims.size());
@@ -131,7 +128,10 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
               &transformed_input);
         } break;
         default:
-          PADDLE_THROW("ConvOp only support tensors with 4 or 5 dimensions.");
+          PADDLE_THROW(platform::errors::PermissionDenied(
+              "Operator Conv2DFusion expects Input to be a 4-D or 5-D Tensor. "
+              "But recieved the actual dimension = %d.",
+              rank));
       }
 
     } else {
@@ -255,8 +255,13 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
             handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
             cudnn_output_desc, algo, &workspace_size_in_bytes));
-    PADDLE_ENFORCE_LE(workspace_size_in_bytes, workspace_size_limit,
-                      "workspace_size to be allocated exceeds the limit");
+    PADDLE_ENFORCE_LE(
+        workspace_size_in_bytes, workspace_size_limit,
+        platform::errors::InvalidArgument(
+            "The actual workspace size to be allocated for cuDNN is expected "
+            "to be less than the limit. But recieved: the actual workspace "
+            "size = %d, limit = %d.",
+            workspace_size_in_bytes, workspace_size_limit));
 
     if ((activation == "identity") && (!residual)) {
       // Only the CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM algo is
@@ -311,7 +316,10 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         }
       } else {
         // TODO(qingiqng): do copy when batch size large than 1
-        PADDLE_THROW("Batch size greater than 1 is Unsupported");
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Input with batch size greater than 1 is unsupported. The recieved "
+            "batch size is %d, Input's shape is [%s].",
+            x_dims[0], framework::make_ddim(x_dims)));
       }
     }
   }
