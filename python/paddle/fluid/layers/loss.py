@@ -1575,9 +1575,27 @@ def kldiv_loss(x, target, reduction='mean', name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.data(name='x', shape=[None,4,2,2], dtype='float32')
+            
+            # 'batchmean' reduction, loss shape will be [N]
+            x = fluid.data(name='x', shape=[None,4,2,2], dtype='float32') # shape=[-1, 4, 2, 2]
             target = fluid.layers.data(name='target', shape=[4,2,2], dtype='float32')
-            loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='batchmean')
+            loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='batchmean') # shape=[-1]
+            
+            # 'mean' reduction, loss shape will be [1]
+            x = fluid.data(name='x', shape=[None,4,2,2], dtype='float32') # shape=[-1, 4, 2, 2]
+            target = fluid.layers.data(name='target', shape=[4,2,2], dtype='float32')
+            loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='mean') # shape=[1]
+            
+            # 'sum' reduction, loss shape will be [1]
+            x = fluid.data(name='x', shape=[None,4,2,2], dtype='float32') # shape=[-1, 4, 2, 2]
+            target = fluid.layers.data(name='target', shape=[4,2,2], dtype='float32')
+            loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='sum') # shape=[1]
+            
+            # 'none' reduction, loss shape is same with X shape
+            x = fluid.data(name='x', shape=[None,4,2,2], dtype='float32') # shape=[-1, 4, 2, 2]
+            target = fluid.layers.data(name='target', shape=[4,2,2], dtype='float32')
+            loss = fluid.layers.kldiv_loss(x=x, target=target, reduction='none') # shape=[-1, 4, 2, 2]
+
     """
     helper = LayerHelper('kldiv_loss', **locals())
     loss = helper.create_variable_for_type_inference(dtype=x.dtype)
