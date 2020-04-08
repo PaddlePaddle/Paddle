@@ -32,13 +32,15 @@ class GetTensorFromSelectedRowsOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("X").front() ==
                       framework::proto::VarType::SELECTED_ROWS, true,
                       platform::errors::InvalidArgument(
-                      "The input X's type should be SelectedRows, but the received is %s",
-                      ctx->Inputs("X").front(), ctx->GetInputsVarType("X").front()));
+                      "The input X's type should be SelectedRows, "
+                      "but the received is %s", ctx->Inputs("X").front(),
+                      ctx->GetInputsVarType("X").front()));
     PADDLE_ENFORCE_EQ(ctx->GetOutputsVarType("Out").front() ==
                       framework::proto::VarType::LOD_TENSOR,
                       platform::errors::InvalidArgument(
-                      "The output Out's type should be LoDTensor, but the received is %s",
-                      ctx->Outputs("Out").front(), ctx->GetOutputsVarType("Out").front());
+                      "The output Out's type should be LoDTensor, "
+                      "but the received is %s", ctx->Outputs("Out").front(),
+                      ctx->GetOutputsVarType("Out").front());
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
   }
