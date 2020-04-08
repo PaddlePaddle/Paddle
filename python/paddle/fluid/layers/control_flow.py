@@ -1643,7 +1643,7 @@ def array_read(array, i):
 
     Returns:
         Variable: The LoDTensor or Tensor that is read at the specified position of ``array``.
-    
+
     Examples:
         .. code-block:: python
 
