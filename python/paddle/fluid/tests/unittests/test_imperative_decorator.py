@@ -28,7 +28,6 @@ class TestTracerMode(unittest.TestCase):
 
     @fluid.dygraph.no_grad
     def no_grad_func(self, a):
-        """doc for no_grad_func"""
         self.assertEqual(self.tracer._train_mode, False)
         return a
 
@@ -50,7 +49,7 @@ class TestTracerMode(unittest.TestCase):
             self.tracer._train_mode = self.init_mode
 
             self.assertEqual(self.no_grad_func(1), 1)
-            self.assertEqual(self.no_grad_func.__doc__, "doc for no_grad_func")
+            self.assertEqual(self.no_grad_func.__name__, "no_grad_func")
 
             self.assertEqual(self.tracer._train_mode, self.init_mode)
 
