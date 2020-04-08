@@ -982,7 +982,7 @@ class TestNNReluAPI(unittest.TestCase):
         main_program = Program()
         myrelu = nn.ReLU(inplace)
         with fluid.program_guard(main_program):
-            x = fluid.layers.data(name='x', shape=self.x_shape)
+            x = fluid.data(name='x', shape=self.x_shape)
             x.stop_gradient = False
             y = myrelu(x)
             fluid.backward.append_backward(fluid.layers.mean(y))
@@ -1022,7 +1022,7 @@ class TestNNFunctionalReluAPI(unittest.TestCase):
     def test_check_api(self):
         main_program = Program()
         with fluid.program_guard(main_program):
-            x = fluid.layers.data(name='x', shape=self.x_shape)
+            x = fluid.data(name='x', shape=self.x_shape)
             y = functional.relu(x)
         exe = fluid.Executor(fluid.CPUPlace())
         out = exe.run(main_program, feed={'x': self.x}, fetch_list=[y])

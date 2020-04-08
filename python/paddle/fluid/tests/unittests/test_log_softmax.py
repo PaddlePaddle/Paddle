@@ -15,55 +15,92 @@
 import unittest
 import numpy as np
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.nn as nn
 import paddle.nn.functional as functional
-import gradient_checker
 
-from decorator_helper import prog_scope
+
+def stable_softmax(x):
+    shiftx = (x - np.max(x))
+    exps = np.exp(shiftx)
+    return exps / np.sum(exps)
+
+
+def ref_log_softmax(x, axis=None, dtype=None):
+    x_t = x.copy()
+    if dtype is not None:
+        x_t = x_t.astype(dtype)
+    if axis is None:
+        axis = -1
+    out = np.apply_along_axis(stable_softmax, axis, x_t)
+    return np.log(out)
 
 
 class TestNNLogSoftmaxAPI(unittest.TestCase):
-    @prog_scope()
-    def func(self, place, axis=None):
-        shape = [2, 3, 4, 5]
-        eps = 0.005
+    def setUp(self):
+        self.init_data()
 
-        x = fluid.data('x', shape)
-        x.persistable = True
-        my_log_softmax = nn.LogSoftmax(axis)
-        y = my_log_softmax(x)
+    def init_data(self):
+        self.x_shape = [2, 3, 4, 5]
+        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
 
-        x_arr = np.random.uniform(-1, 1, shape).astype(np.float32)
-        gradient_checker.grad_check([x], y, x_init=x_arr, place=place, eps=eps)
+    def check_api(self, place=fluid.CPUPlace(), axis=None):
+        ref_out = ref_log_softmax(self.x, axis)
 
-    def test_grad(self):
+        main_program = fluid.Program()
+        mylogsoftmax = nn.LogSoftmax(axis)
+        with fluid.program_guard(main_program):
+            x = fluid.data(name='x', shape=self.x_shape)
+            y = mylogsoftmax(x)
+        exe = fluid.Executor(place)
+        out = exe.run(main_program, feed={'x': self.x}, fetch_list=[y])
+        self.assertTrue(np.allclose(out[0], ref_out))
+
+        with fluid.dygraph.guard(place):
+            x = fluid.dygraph.to_variable(self.x)
+            y = mylogsoftmax(x)
+        self.assertTrue(np.allclose(y.numpy(), ref_out))
+
+    def test_check_api(self):
         places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for place in places:
             for axis in [None, 2]:
-                self.func(place, axis)
+                self.check_api(place, axis)
 
 
 class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
-    @prog_scope()
-    def func(self, place, axis=None, dtype=None):
-        shape = [2, 3, 4, 5]
-        eps = 0.005
+    def setUp(self):
+        self.init_data()
 
-        x = fluid.data('x', shape)
-        x.persistable = True
-        y = functional.log_softmax(x, axis, dtype)
+    def init_data(self):
+        self.x_shape = [2, 3, 4, 5]
+        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
 
-        x_arr = np.random.uniform(-1, 1, shape).astype(np.float32)
-        gradient_checker.grad_check([x], y, x_init=x_arr, place=place, eps=eps)
+    def check_api(self, place=fluid.CPUPlace(), axis=None, dtype=None):
+        ref_out = ref_log_softmax(self.x, axis, dtype)
+        main_program = fluid.Program()
+        mylogsoftmax = nn.LogSoftmax(axis)
+        with fluid.program_guard(main_program):
+            x = fluid.data(name='x', shape=self.x_shape)
+            y = functional.log_softmax(x, axis, dtype)
+        exe = fluid.Executor(place)
+        out = exe.run(main_program, feed={'x': self.x}, fetch_list=[y])
+        self.assertTrue(np.allclose(out[0], ref_out))
 
-    def test_grad(self):
+        with fluid.dygraph.guard(place):
+            x = fluid.dygraph.to_variable(self.x)
+            y = functional.log_softmax(x, axis, dtype)
+        self.assertTrue(np.allclose(y.numpy(), ref_out))
+
+    def test_check_api(self):
         places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for place in places:
-            self.func(place, None, np.float64)
+            self.check_api(place, None, None)
+            self.check_api(place, None, np.float64)
 
 
 if __name__ == "__main__":
