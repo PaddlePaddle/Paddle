@@ -504,7 +504,7 @@ void BindImperative(py::module *m_ptr) {
              PADDLE_ENFORCE_EQ(
                  tensor.IsInitialized(), true,
                  platform::errors::InvalidArgument(
-                     "%s is Empty, Please check if it has no data.",
+                     "Tensor of %s is Empty, please check if it has no data.",
                      self.Name()));
              return TensorToPyArray(tensor, true);
            },

@@ -68,8 +68,9 @@ static framework::VariableNameMap CreateVarNameMap(
     if (it == varbase_map.end()) {
       PADDLE_ENFORCE_EQ(
           var.dispensable(), true,
-          "Var: %s not dispensable and there are no such var in inputs",
-          var.name());
+          platform::errors::NotFound(
+              "Var: %s is not dispensable and there are no such var in inputs",
+              var.name()));
       result[var.name()] = {};
     } else {
       auto& var_vector = it->second;
