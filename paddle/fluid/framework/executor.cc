@@ -70,11 +70,6 @@ void ExecutorPrepareContext::PrepareUnusedVars(
     force_disable_gc = true;
   }
 #endif
-  force_disable_gc_ = force_disable_gc;
-  if (GetEagerDeletionThreshold() < 0 || force_disable_gc_) {
-    return;
-  }
-
   // If gc is enabled and block size > 1
   if (prog_.Size() > 1) {
     operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
@@ -84,6 +79,12 @@ void ExecutorPrepareContext::PrepareUnusedVars(
     operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
         prog_, block_id_, ops_);
   }
+
+  force_disable_gc_ = force_disable_gc;
+  if (GetEagerDeletionThreshold() < 0 || force_disable_gc_) {
+    return;
+  }
+
   unused_vars_ = GetUnusedVars(prog_.Block(block_id_), ops_, keep_vars);
 }
 
@@ -431,9 +432,11 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
   return result;
 }
 
-void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
-                                  bool create_local_scope, bool create_vars,
-                                  bool keep_kids) {
+void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
+                                         Scope* scope, int64_t start_op_index,
+                                         int64_t end_op_index,
+                                         bool create_local_scope,
+                                         bool create_vars, bool keep_kids) {
   platform::RecordBlock b(kProgramId);
   PADDLE_ENFORCE_NOT_NULL(scope);
   Scope* local_scope = scope;
@@ -465,7 +468,8 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 #endif
   }
 
-  for (auto& op : ctx->ops_) {
+  for (int64_t i = start_op_index; i < end_op_index; ++i) {
+    auto& op = ctx->ops_[i];
     op->Run(*local_scope, place_);
     if (gc) {
       DeleteUnusedTensors(*local_scope, op.get(), ctx->unused_vars_, gc.get());
@@ -488,6 +492,15 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       scope->DropKids();
     }
   }
+}
+
+void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
+                                  bool create_local_scope, bool create_vars,
+                                  bool keep_kids) {
+  int64_t start_op_index = 0;
+  int64_t end_op_index = ctx->ops_.size();
+  RunPartialPreparedContext(ctx, scope, start_op_index, end_op_index,
+                            create_local_scope, create_vars, keep_kids);
 }
 
 void Executor::RunPreparedContext(

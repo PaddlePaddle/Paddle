@@ -28,6 +28,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_communicator_geo)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_half_async)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_sync)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_checkpoint)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
@@ -43,6 +44,7 @@ endif()
 
 if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_boxps)
+    LIST(REMOVE_ITEM TEST_OPS test_paddlebox_datafeed)
     LIST(REMOVE_ITEM TEST_OPS test_trainer_desc)
     LIST(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
     LIST(REMOVE_ITEM TEST_OPS test_avoid_twice_initialization)
@@ -50,6 +52,7 @@ endif()
 
 if (NOT ${WITH_GPU})
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
+    LIST(REMOVE_ITEM TEST_OPS test_rank_attention_op) # TODO(shenliang03): rank_attention_op support CPU device in future
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_mnist) # TODO(Yancey1989): parallel dygraph support CPU device in future
 elseif(${CUDNN_VERSION} VERSION_LESS 7100)
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
@@ -58,6 +61,7 @@ endif()
 if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_pipeline)
     LIST(REMOVE_ITEM TEST_OPS test_boxps)
+    LIST(REMOVE_ITEM TEST_OPS test_paddlebox_datafeed)
 endif()
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
 list(REMOVE_ITEM TEST_OPS test_lstm_unit_op) # # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
@@ -192,6 +196,8 @@ list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_debug_string)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
+list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
+list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 
 if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
@@ -268,6 +274,10 @@ py_test_modules(test_install_check MODULES test_install_check ENVS
         FLAGS_cudnn_deterministic=1 SERIAL)
 set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
 py_test_modules(test_imperative_debug_string MODULES test_imperative_debug_string ENVS FLAGS_dygraph_debug=1)
+py_test_modules(test_imperative_static_runner_mnist MODULES test_imperative_static_runner_mnist ENVS
+    FLAGS_cudnn_deterministic=1)
+py_test_modules(test_imperative_static_runner_while MODULES test_imperative_static_runner_while ENVS
+    FLAGS_cudnn_deterministic=1)
 if(WITH_DISTRIBUTE)
     # FIXME(typhoonzero): add these tests back
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
@@ -301,6 +311,7 @@ if(WITH_DISTRIBUTE)
         if(WITH_GPU)
             # NOTE. test_launch only work in gpu collective mode
             bash_test_modules(test_launch MODULES test_launch.sh  ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+            py_test_modules(test_fleet_checkpoint MODULES test_fleet_checkpoint)
         endif()
         bash_test_modules(test_launch_ps MODULES test_launch_ps.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
 

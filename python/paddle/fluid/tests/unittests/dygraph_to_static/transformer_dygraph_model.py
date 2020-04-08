@@ -50,7 +50,7 @@ class PrePostProcessLayer(Layer):
         self.functors = []
         for cmd in self.process_cmd:
             if cmd == "a":  # add residual connection
-                self.functors.append(lambda x, y: x + y if y else x)
+                self.functors.append(lambda x, y: x + y if y is not None else x)
             elif cmd == "n":  # add layer normalization
                 self.functors.append(
                     self.add_sublayer(
@@ -118,7 +118,7 @@ class MultiHeadAttention(Layer):
         # scale dot product attention
         product = layers.matmul(
             x=q, y=k, transpose_y=True, alpha=self.d_model**-0.5)
-        if attn_bias:
+        if attn_bias is not None:
             product += attn_bias
         weights = layers.softmax(product)
         if self.dropout_rate:
@@ -608,8 +608,8 @@ class Transformer(Layer):
         } for i in range(self.n_layer)]
 
         for i in range(max_len):
-            trg_pos = layers.zeros_like(
-                trg_word) + i  # TODO: modified for dygraph2static
+            trg_pos = layers.fill_constant(
+                shape=trg_word.shape, dtype="int64", value=i)
             caches = map_structure(merge_batch_beams,
                                    caches)  # TODO: modified for dygraph2static
             logits = self.decoder(trg_word, trg_pos, None, trg_src_attn_bias,
