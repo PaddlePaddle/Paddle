@@ -27,6 +27,7 @@ namespace tensorrt {
 namespace plugin {
 
 #if IS_TRT_VERSION_GE(6000)
+
 template <typename T>
 class EmbEltwiseLayernormPluginDynamic : public DynamicPluginTensorRT {
  public:

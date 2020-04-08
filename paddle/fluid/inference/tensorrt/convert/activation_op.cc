@@ -48,7 +48,7 @@ class ActivationOpConverter : public OpConverter {
     if (op_type_ == "relu6") {
       layer->setAlpha(0.);
       layer->setBeta(6.);
-    }
+    } 
 #endif
 
     auto output_name = op_desc.Output("Out")[0];

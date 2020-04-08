@@ -493,11 +493,13 @@ void PrintOverHead(const OverHead &overhead, const size_t data_width) {
 }
 
 // Print results
-void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
-                   const std::multimap<std::string, EventItem> &child_map,
-                   const OverHead &overhead, const std::string &sorted_domain,
-                   const size_t name_width, const size_t data_width,
-                   bool merge_thread, int print_depth) {
+void PrintProfiler(
+    const std::vector<std::vector<EventItem>> &events_table,
+    const std::multimap<std::string, EventItem> &child_map,
+    std::function<bool(const EventItem &, const EventItem &)> sorted_func,
+    EventSortingKey sorted_by, const OverHead &overhead,
+    const std::string &sorted_domain, const size_t name_width,
+    const size_t data_width, bool merge_thread, int print_depth) {
   if (print_depth == 0) {
     // Output header information
     std::cout << "\n------------------------->"
@@ -556,6 +558,10 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
           table.push_back(it->second);
         }
       }
+
+      if (sorted_by != EventSortingKey::kDefault) {
+        std::sort(table.begin(), table.end(), sorted_func);
+      }
       if (!table.empty()) child_table.push_back(table);
 
       auto name_len = event_item.name.length();
@@ -591,8 +597,9 @@ void PrintProfiler(const std::vector<std::vector<EventItem>> &events_table,
                 << std::setw(data_width) << event_item.ave_time
                 << std::setw(data_width) << event_item.ratio << std::endl;
 
-      PrintProfiler(child_table, child_map, overhead, sorted_domain, name_width,
-                    data_width, merge_thread, print_depth + 1);
+      PrintProfiler(child_table, child_map, sorted_func, sorted_by, overhead,
+                    sorted_domain, name_width, data_width, merge_thread,
+                    print_depth + 1);
     }
   }
 }
@@ -711,8 +718,8 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
                sorted_by, &max_name_width, &overhead, merge_thread);
 
   // Print report
-  PrintProfiler(events_table, child_map, overhead, sorted_domain,
-                max_name_width + 8, 12, merge_thread, 0);
+  PrintProfiler(events_table, child_map, sorted_func, sorted_by, overhead,
+                sorted_domain, max_name_width + 8, 12, merge_thread, 0);
 }
 
 }  // namespace platform

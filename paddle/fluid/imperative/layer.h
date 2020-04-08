@@ -76,7 +76,8 @@ class VarBase {
   explicit VarBase(const std::string& name) : VarBase(true, name) {}
 
   // NOTE(zengjinle): be careful when you use this constructor!!!
-  explicit VarBase(bool has_grad, const std::shared_ptr<VariableWrapper>& var);
+  // Unpack VarBase from VariableWrapper.
+  explicit VarBase(const std::shared_ptr<VariableWrapper>& var);
 
   ~VarBase() {
     VLOG(10) << "Destruct VarBase: " << Name();
@@ -100,7 +101,7 @@ class VarBase {
   const std::shared_ptr<VarBase>& MutableGradVarBase() {
     if (grad_var_ == nullptr) {
       if (auto grad_var_wrapper = var_->GetGradVar()) {
-        grad_var_ = std::make_shared<VarBase>(false, grad_var_wrapper);
+        grad_var_ = std::make_shared<VarBase>(grad_var_wrapper);
       } else {
         grad_var_ = std::make_shared<VarBase>(false, GradVarName());
         var_->SetGradVar(grad_var_->var_);

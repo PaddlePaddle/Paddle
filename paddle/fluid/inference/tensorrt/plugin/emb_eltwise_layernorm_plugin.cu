@@ -85,14 +85,14 @@ void EmbEltwiseLayernormPluginDynamic<T>::serialize(void *buffer) const {}
 
 template <typename T>
 nvinfer1::DimsExprs EmbEltwiseLayernormPluginDynamic<T>::getOutputDimensions(
-    int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
-    nvinfer1::IExprBuilder &expr_builder) {
+  int output_index, const nvinfer1::DimsExprs *inputs, int nb_inputs,
+  nvinfer1::IExprBuilder &expr_builder) {
   PADDLE_ENFORCE_EQ(output_index, 0,
-                    platform::errors::InvalidArgument(
-                        "There is only one output of the EmbEltwiseLayernorm, "
-                        "so the index should be zero,"
-                        "but it's (%d)",
-                        output_index));
+      platform::errors::InvalidArgument(
+          "There is only one output of the EmbEltwiseLayernorm, "
+          "so the index should be zero,"
+          "but it's (%d)",
+          output_index));
   PADDLE_ENFORCE_EQ(
       nb_inputs, 3,
       platform::errors::InvalidArgument(
@@ -109,13 +109,15 @@ nvinfer1::DimsExprs EmbEltwiseLayernormPluginDynamic<T>::getOutputDimensions(
   return ret;
 }
 
+
 template <typename T>
 bool EmbEltwiseLayernormPluginDynamic<T>::supportsFormatCombination(
-    int pos, const nvinfer1::PluginTensorDesc *in_out, int nb_inputs,
-    int nb_outputs) {
+
+  int pos, const nvinfer1::PluginTensorDesc *in_out, int nb_inputs,
+  int nb_outputs) {
   PADDLE_ENFORCE_NOT_NULL(
       in_out, platform::errors::InvalidArgument(
-                  "The input of swish plugin shoule not be nullptr."));
+      "The input of swish plugin shoule not be nullptr."));
 
   PADDLE_ENFORCE_LT(
       pos, nb_inputs + nb_outputs,
@@ -140,6 +142,7 @@ bool EmbEltwiseLayernormPluginDynamic<T>::supportsFormatCombination(
   }
 
   if (pos == 3) {
+
     if (sizeof(T) == sizeof(float)) {
       return desc.type == nvinfer1::DataType::kFLOAT;
     }
@@ -151,21 +154,22 @@ bool EmbEltwiseLayernormPluginDynamic<T>::supportsFormatCombination(
 
 template <typename T>
 nvinfer1::DataType EmbEltwiseLayernormPluginDynamic<T>::getOutputDataType(
-    int index, const nvinfer1::DataType *input_types, int nb_inputs) const {
+  int index, const nvinfer1::DataType *input_types, int nb_inputs) const {
   PADDLE_ENFORCE_EQ(
       index, 0, platform::errors::InvalidArgument(
-                    "The EmbEltwiseLayernorm Plugin only has one input, so the "
-                    "index value should be 0, but get %d.",
-                    index));
+      "The EmbEltwiseLayernorm Plugin only has one input, so the "
+      "index value should be 0, but get %d.",
+      index));
+
   if (sizeof(T) == sizeof(float)) return nvinfer1::DataType::kFLOAT;
   else return nvinfer1::DataType::kHALF;
 }
 
 template <typename T>
 int EmbEltwiseLayernormPluginDynamic<T>::enqueue(
-    const nvinfer1::PluginTensorDesc *input_desc,
-    const nvinfer1::PluginTensorDesc *output_desc, const void *const *inputs,
-    void *const *outputs, void *workspace, cudaStream_t stream) {
+  const nvinfer1::PluginTensorDesc *input_desc,
+  const nvinfer1::PluginTensorDesc *output_desc, const void *const *inputs,
+  void *const *outputs, void *workspace, cudaStream_t stream) {
   auto id_dims = input_desc[0].dims;
   int batch = id_dims.d[0];
   int seq_len = id_dims.d[1];
@@ -199,6 +203,7 @@ int EmbEltwiseLayernormPluginDynamic<T>::enqueue(
   const dim3 grid(seq_len, batch, 1);
   const dim3 block(tpb, 1, 1);
 
+
   if (sizeof(T) == sizeof(float)) {
     PADDLE_ENFORCE_EQ(
         out_type == nvinfer1::DataType::kFLOAT, true,
@@ -213,6 +218,7 @@ int EmbEltwiseLayernormPluginDynamic<T>::enqueue(
   }
   T *output_d = static_cast<T *>(outputs[0]);
   operators::math::EmbEltwiseLayerNormFunctor<T> emb_eltwise_layernorm_func;
+
   emb_eltwise_layernorm_func(batch, seq_len, hidden_size_, in_ptr_gpu_d,
                              scale_gpu_, bias_gpu_, emb_ptr_gpu_d, output_d,
                              eps_, input_num, stream);

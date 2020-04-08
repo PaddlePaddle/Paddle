@@ -83,6 +83,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     nvinfer1::ILayer* layer = nullptr;
 
     if (engine_->with_dynamic_shape()) {
+
       plugin::DynamicPluginTensorRT* plugin = nullptr;
       auto use_fp16 = engine_->WithFp16();
       if (use_fp16) {
@@ -103,6 +104,7 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
                                                                 emb_sizes, bias_size,
                                                                 scale_size, hidden, eps);
       }
+
       layer = engine_->AddPluginV2(input_ids.data(), input_num, plugin);
     } else {
       PADDLE_THROW(platform::errors::Fatal(
