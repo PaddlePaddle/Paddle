@@ -57,13 +57,25 @@ class Pool2dOpConverter : public OpConverter {
         << "convert a fluid pool2d op to tensorrt pool2d layer without bias";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
-    PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
-    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
+    PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1,
+                      platform::errors::InvalidArgument(
+                          "Invalid input X's size of pool2d TRT converter. "
+                          "Expected 1, received %d.",
+                          op_desc.Input("X").size()));
+    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1,
+                      platform::errors::InvalidArgument(
+                          "Invalid output Out's size of pool2d TRT "
+                          "converter. Expected 1, received %d.",
+                          op_desc.Output("Out").size()));
     auto *input1 = engine_->GetITensor(op_desc.Input("X")[0]);
     nvinfer1::Dims input_shape = input1->getDimensions();
     int input_dims = input_shape.nbDims;
 
-    PADDLE_ENFORCE_EQ(input_dims, 3UL);
+    PADDLE_ENFORCE_EQ(input_dims, 3UL, platform::errors::InvalidArgument(
+                                           "pool2d TRT op converter "
+                                           "input dims is invalid. The input "
+                                           "dims size should be 3, but got %d.",
+                                           input_dims));
 
     bool global_pooling = boost::get<bool>(op_desc.GetAttr("global_pooling"));
     std::string pool_type =
@@ -89,7 +101,10 @@ class Pool2dOpConverter : public OpConverter {
       nv_pool_type = nvinfer1::PoolingType::kAVERAGE;
       plugin_pool_type = plugin::PoolPlugin::PoolType::avg;
     } else {
-      PADDLE_THROW("TensorRT unsupported pooling type!");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "TensorRT unsupported pooling type. TensorRT support pooling types: "
+          "'max' and 'avg'. Received %s.",
+          pool_type));
     }
 
     nvinfer1::DimsHW nv_ksize(ksize[0], ksize[1]);
@@ -112,7 +127,10 @@ class Pool2dOpConverter : public OpConverter {
       auto *layer = TRT_ENGINE_ADD_LAYER(
           engine_, Pooling, *const_cast<nvinfer1::ITensor *>(input1),
           nv_pool_type, nv_ksize);
-      PADDLE_ENFORCE_NOT_NULL(layer, "pool layer could not be created.");
+      PADDLE_ENFORCE_NOT_NULL(
+          layer, platform::errors::InvalidArgument(
+                     "Pool layer in pool2d TRT converter should not be null. "
+                     "Please check if it is created correctly."));
       auto output_name = op_desc.Output("Out")[0];
       layer->setName(("pool2d (Output: " + output_name + ")").c_str());
       layer->getOutput(0)->setName(output_name.c_str());
@@ -138,13 +156,18 @@ class Pool2dOpConverter : public OpConverter {
             engine_, Padding, *const_cast<nvinfer1::ITensor *>(input1), pre_pad,
             post_pad);
         PADDLE_ENFORCE_NOT_NULL(
-            pad_layer, "pad layer in poolOp converter could not be created.");
+            pad_layer, platform::errors::InvalidArgument(
+                           "Pad layer in pool2d TRT converter should not be "
+                           "null. Please check if it is created correctly."));
         input1 = pad_layer->getOutput(0);
       }
       auto *pool_layer = TRT_ENGINE_ADD_LAYER(
           engine_, Pooling, *const_cast<nvinfer1::ITensor *>(input1),
           nv_pool_type, nv_ksize);
-      PADDLE_ENFORCE_NOT_NULL(pool_layer, "pool layer could not be created.");
+      PADDLE_ENFORCE_NOT_NULL(
+          pool_layer, platform::errors::InvalidArgument(
+                          "Pool layer in pool2d TRT converter should not be "
+                          "null. Please check if it is created correctly."));
       pool_layer->setStride(nv_strides);
       pool_layer->setPadding(nv_paddings);
       layer = pool_layer;
@@ -159,8 +182,11 @@ class Pool2dOpConverter : public OpConverter {
       plugin::PoolPlugin *plugin =
           new plugin::PoolPlugin(ceil_mode, plugin_pool_type, adaptive, ksize,
                                  strides, paddings, input_shape_v);
-      PADDLE_ENFORCE_NOT_NULL(plugin->getPluginType(),
-                              "The plugin used must not be null");
+      PADDLE_ENFORCE_NOT_NULL(
+          plugin->getPluginType(),
+          platform::errors::InvalidArgument(
+              "The PoolPlugin used in pool2d TRT converter should not be null. "
+              "Please check if it is created correctly."));
       auto *pool_layer = engine_->AddPlugin(&input1, 1, plugin);
       layer = pool_layer;
     }

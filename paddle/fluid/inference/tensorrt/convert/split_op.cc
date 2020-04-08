@@ -67,9 +67,11 @@ class SplitOpConverter : public OpConverter {
       int64_t in_axis_dim = input_dims.d[axis];
       PADDLE_ENFORCE_EQ(
           in_axis_dim % num, 0,
-          "Invalid number to split. Tensor split does not result"
-          " in an equal division of dimensions. Axis dim = %d %% num = %d != 0",
-          in_axis_dim, num);
+          platform::errors::InvalidArgument(
+              "Invalid number to split. Tensor split should result"
+              " in an equal division of dimensions, but received axis dim = %d "
+              "%% num = %d != 0",
+              in_axis_dim, num));
       size_t out_axis_dim = in_axis_dim / num;
       for (int i = 0; i < num; ++i) {
         output_lengths.push_back(out_axis_dim);
