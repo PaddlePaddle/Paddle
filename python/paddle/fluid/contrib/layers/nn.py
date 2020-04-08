@@ -29,9 +29,17 @@ from paddle.fluid.data_feeder import check_type, check_dtype, convert_dtype
 from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
 
 __all__ = [
-    'fused_elemwise_activation', 'sequence_topk_avg_pooling', 'var_conv_2d',
-    'match_matrix_tensor', 'tree_conv', 'fused_embedding_seq_pool',
-    'multiclass_nms2', 'search_pyramid_hash', 'shuffle_batch', 'index_sample'
+    'fused_elemwise_activation',
+    'sequence_topk_avg_pooling',
+    'var_conv_2d',
+    'match_matrix_tensor',
+    'tree_conv',
+    'fused_embedding_seq_pool',
+    'multiclass_nms2',
+    'search_pyramid_hash',
+    'shuffle_batch',
+    'index_sample',
+    'tdm_child',
 ]
 
 
@@ -864,3 +872,88 @@ def index_sample(x, index):
                 'Index': index},
         outputs={'Out': out})
     return out
+
+
+def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
+    """
+    **Tdm Child**
+     According to the input node_id on the given tree, return the corresponding child node_id and 
+      whether child is a leaf node by leaf_mask value.
+
+    .. code-block:: text
+        Given:
+            tree[[0], [1, 2], [3, 4], [5, 6]] # A binary tree with seven nodes
+            x = [[2], [3]]
+            node_nums = 7
+            child_nums = 2
+          we get:
+            child = [[5, 6],
+                     [0, 0]]
+            leaf_mask = [[1, 1],
+                         [0, 0]]
+
+    Args:
+        x(Variable): Variable contained the node_id information, dtype support int32/int64.
+        node_nums(int): Number of total nodes.
+        child_nums(int): Maximum number of child nodes per node.
+        param_attr(ParamAttr): To specify the tdm-tree-info parameter property. Default: None, which means the
+            default weight parameter property is used. See usage for details in: ref: `api_fluid_ParamAttr`, should
+            has shape(node_nums, 3 + child_nums), dtype support int32/int64. 
+            The dimension[1] of tdm-tree-info contains the following: 
+            1. Item_id(int, shape(1)), if node is a leaf node, give its item_id corresponding to node_id, else give 0.
+            2. Layer_id(int, shape(1)), indicates which layer the node is on.
+            3. Parent_id(int, shape(1)), node's parent node.
+            4. Child_id(int, shape(child_nums)), all child node's node_id of this node should be given. 
+            If the number of child nodes is insufficient, padding 0 until child nums equal to child_nums
+        dtype(str): The data type of output child and leaf_mask, support int32/int64.
+
+    Returns:
+        tuple: A tuple including input node's child(Variable) and leaf_mask(Variable). 
+            If child is a leaf node, leaf_mask equal ot 1, otherwise equal to 0.
+
+    Examples:
+        .. code-block:: python
+        import paddle.fluid as fluid
+        import numpy as np
+        x = fluid.data(name="x", shape=[None, 1], dtype="int32", lod_level=1)
+        tree_info = [[0,0,0,1,2],
+                     [0,1,0,3,4],[0,1,0,5,6],
+                     [0,2,1,0,0],[1,2,1,0,0],[2,2,2,0,0],[3,2,2,0,0]]
+        tree_info_np = np.array(tree_info)
+        tree_info_np = np.reshape(tree_info_np, (7,5))
+        node_nums = 7
+        child_nums = 2
+        child, leaf_mask  = fluid.contrib.layers.tdm_child(x, node_nums, child_nums,
+                                param_attr=fluid.ParamAttr(
+                                    initializer=fluid.initializer.NumpyArrayInitializer(
+                                                                            tree_info_np)))
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        xx = np.array([[2],[3]]).reshape((2,1)).astype("int32")
+        child_res, leaf_mask_res = exe.run(feed={"x":xx}, fetch_list=[child, leaf_mask])
+     """
+    helper = LayerHelper("tdm_child", **locals())
+    check_dtype(dtype, 'dtype', ['int32', 'int64'],
+                'fluid.contrib.layers.tdm_child')
+    c_dtype = convert_np_dtype_to_dtype_(dtype)
+    tree_info = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=[node_nums, 3 + child_nums],
+        dtype=dtype,
+        default_initializer=Constant(0))
+    tree_info.stop_gradient = True
+
+    child = helper.create_variable_for_type_inference(dtype=dtype)
+    leaf_mask = helper.create_variable_for_type_inference(dtype=dtype)
+
+    helper.append_op(
+        type='tdm_child',
+        inputs={'X': x,
+                'TreeInfo': tree_info},
+        outputs={'Child': child,
+                 'LeafMask': leaf_mask},
+        attrs={'child_nums': child_nums,
+               'dtype': c_dtype},
+        stop_gradient=True)
+    return (child, leaf_mask)
