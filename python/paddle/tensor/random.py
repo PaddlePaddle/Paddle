@@ -159,20 +159,20 @@ def rand(shape, out=None, dtype=None, device=None, stop_gradient=True):
 
             # example 1:
             # attr shape is a list which doesn't contain tensor Variable.
-            result_1 = paddle.tensor.rand(shape=[3, 4])
+            result_1 = paddle.rand(shape=[3, 4])
 
             # example 2:
             # attr shape is a list which contains tensor Variable.
             dim_1 = fluid.layers.fill_constant([1],"int64",3)
             dim_2 = fluid.layers.fill_constant([1],"int32",5)
-            result_2 = paddle.tensor.rand(shape=[dim_1, dim_2])
+            result_2 = paddle.rand(shape=[dim_1, dim_2])
 
             # example 3:
             # attr shape is a Variable, the data type must be int64 or int32.
             var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
-            result_3 = paddle.tensor.rand(var_shape)
+            result_3 = paddle.rand(var_shape)
             var_shape_int32 = fluid.data(name='var_shape_int32', shape=[2], dtype="int32")
-            result_4 = paddle.tensor.rand(var_shape_int32)
+            result_4 = paddle.rand(var_shape_int32)
 
 
 
