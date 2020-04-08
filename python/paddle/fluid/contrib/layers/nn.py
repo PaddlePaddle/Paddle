@@ -1110,6 +1110,7 @@ def tdm_sampler(x,
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
         xx = np.array([[0],[1]]).reshape((2,1)).astype("int32")
 
         exe.run(feed={"x":xx})
