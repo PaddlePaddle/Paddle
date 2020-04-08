@@ -29,6 +29,7 @@ list(APPEND MIXED_DIST_TEST_OPS test_communicator_half_async)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_sync)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_checkpoint)
+list(APPEND MIXED_DIST_TEST_OPS test_collective_optimizer)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
@@ -295,7 +296,7 @@ if(WITH_DISTRIBUTE)
     py_test_modules(test_communicator_geo MODULES test_communicator_geo ENVS ${dist_ENVS})
     py_test_modules(test_communicator_half_async MODULES test_communicator_half_async ENVS ${dist_ENVS} FLAGS_communicator_send_queue_size=1 FLAGS_communicator_max_merge_var_num=1)
     py_test_modules(test_communicator_sync MODULES test_communicator_sync ENVS ${dist_ENVS} FLAGS_communicator_send_queue_size=1 FLAGS_communicator_max_merge_var_num=1)
-
+    py_test_modules(test_collective_optimizer MODULES test_collective_optimizer)
     if(WITH_DGC)
         # if with dgc, test all dgc tests.
         # NOTE. dist dgc tests is already in DIST_TEST_OPS
