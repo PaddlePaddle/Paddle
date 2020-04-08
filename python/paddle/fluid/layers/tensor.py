@@ -560,11 +560,9 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     Returns:
         Variable: Tensor which is created according to shape and dtype.
 
-    Raises:
-        TypeError: The `dtype` must be one of bool, float16, float32, float64, int32 and int64
-                   and the data type of out Tensor must be the same as the dtype. 
-        TypeError: The `shape` must be one of list, tuple, Variable.
-        TypeError: The `out` must be None or Variable.
+    Raise:
+        TypeError: The dtype must be one of bool, float16, float32, float64, int32 and int64
+        and the data type of out Tensor must be the same as the dtype. 
 
     Examples:
         .. code-block:: python
@@ -621,12 +619,20 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
         out.stop_gradient = True
         return out
 
-    check_dtype(dtype, 'create data type',
+    check_dtype(dtype, 'dtype',
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
                 'fill_constant')
     check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
+    if isinstance(shape, Variable):
+        check_variable_and_dtype(shape, 'shape', ['int32', 'int64'],
+                                 'fill_constant')
     if out is not None:
         check_type(out, 'out', (Variable), 'fill_constant')
+        if convert_dtype(dtype) != convert_dtype(out.dtype):
+            raise TypeError(
+                "In fill constant Op the data type of out must equal the dtype parameter when out is not None"
+            )
+
     helper = LayerHelper("fill_constant", **locals())
     inputs = utils._get_shape_tensor_inputs(
         inputs=inputs,
