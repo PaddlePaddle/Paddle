@@ -153,7 +153,7 @@ class TestLodResetOpError(unittest.TestCase):
                 self.assertRaises(TypeError, fluid.layers.lod_reset, [x2, y2])
 
             def test_type2():
-                # dtype must be float32 or float64 or int32 or int64
+                # dtype must be int32 or int64
                 x3 = fluid.layers.data(shape=[4], dtype='float32', name='x3')
                 y3 = fluid.layers.data(
                     shape=[4], dtype='float32', name='x3', lod_level=0)
