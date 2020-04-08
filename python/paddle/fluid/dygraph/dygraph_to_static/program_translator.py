@@ -427,11 +427,16 @@ class ProgramTranslator(object):
         Support to set or update the optimizer used to minimize loss.
         """
         optimizer, index_of_loss = self._optimizer_info
-        assert index_of_loss < len(
-            self._program_cache.outputs
-        ), "index_of_loss: {} shall not exceed the length of outputs: {}.".format(
-            index_of_loss, len(self._program_cache.outputs))
-        loss_var = self._program_cache.outputs[index_of_loss]
+
+        outputs = self._program_cache.outputs
+        outputs = [outputs] if not isinstance(outputs,
+                                              (list, tuple)) else outputs
+
+        assert abs(index_of_loss) < len(outputs), \
+            "index_of_loss: {} shall not exceed the length of outputs: {}.".format(
+            index_of_loss, len(outputs))
+
+        loss_var = outputs[index_of_loss]
         check_type(loss_var, "loss_var", framework.Variable,
                    "ProgramTranslator._add_optimizer")
 
