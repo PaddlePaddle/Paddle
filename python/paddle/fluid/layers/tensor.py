@@ -16,6 +16,7 @@ from __future__ import print_function
 from six.moves import reduce
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
+from ..initializer import Initializer
 from ..framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator
 from ..framework import Variable
 from ..initializer import Constant
@@ -97,10 +98,18 @@ def create_parameter(shape,
             import paddle.fluid.layers as layers
             W = layers.create_parameter(shape=[784, 200], dtype='float32')
     """
+    check_type(shape, 'shape', (list), 'create_parameter')
+    check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'],
+                'create_parameter')
+    check_type(attr, 'attr', (type(None), ParamAttr), 'create_parameter')
+    check_type(default_initializer, 'default_initializer',
+               (type(None), Initializer), 'create_parameter')
+
     helper = LayerHelper("create_parameter", **locals())
     if attr is None:
         attr = ParamAttr(name=name)
-    return helper.create_parameter(attr, shape, dtype, is_bias,
+    return helper.create_parameter(attr, shape,
+                                   convert_dtype(dtype), is_bias,
                                    default_initializer)
 
 
@@ -136,6 +145,12 @@ def create_global_var(shape,
             var = layers.create_global_var(shape=[2,3], value=1.0, dtype='float32',
                                           persistable=True, force_cpu=True, name='new_var')
     """
+    check_type(shape, 'shape', (list), 'create_global_var')
+    check_dtype(dtype, 'dtype', [
+        'bool', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32',
+        'int64', 'uint8'
+    ], 'create_global_var')
+
     helper = LayerHelper("global_var", **locals())
     var = helper.create_global_variable(
         dtype=dtype,
