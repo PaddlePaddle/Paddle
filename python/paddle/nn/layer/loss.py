@@ -214,20 +214,8 @@ class MSELoss(fluid.dygraph.layers.Layer):
             fluid.data_feeder.check_variable_and_dtype(label, 'label',
                                                        ['float32'], 'MSELoss')
 
-        helper = fluid.layer_helper.LayerHelper('MSELoss')
-        minus_out = helper.create_variable_for_type_inference(input.dtype)
-        helper.append_op(
-            type='elementwise_sub',
-            inputs={'X': [input],
-                    'Y': [label]},
-            outputs={'Out': [minus_out]})
-
-        square_out = helper.create_variable_for_type_inference(input.dtype)
-        helper.append_op(
-            type='square',
-            inputs={'X': [minus_out]},
-            outputs={'Out': [square_out]})
-
+        square_out = fluid.layers.square(
+            fluid.layers.elementwise_sub(input, label))
         if self.reduction == 'none':
             return square_out
 
@@ -235,20 +223,7 @@ class MSELoss(fluid.dygraph.layers.Layer):
         if self.reduction == 'sum':
             reduce_op = 'reduce_sum'
 
-        attrs = {'dim': [0], 'keep_dim': False, 'reduce_all': True}
-
-        if fluid.framework.in_dygraph_mode():
-            inputs = {'X': [square_out]}
-            outs = getattr(fluid.core.ops, reduce_op)(inputs, attrs)
-            return outs['Out'][0]
-
-        out = helper.create_variable_for_type_inference(input.dtype)
-        helper.append_op(
-            type=reduce_op,
-            inputs={'X': square_out},
-            outputs={'Out': out},
-            attrs=attrs)
-        return out
+        return getattr(fluid.layers, reduce_op)(square_out)
 
 
 class L1Loss(fluid.dygraph.Layer):
