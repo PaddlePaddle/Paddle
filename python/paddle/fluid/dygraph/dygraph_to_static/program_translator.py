@@ -148,15 +148,16 @@ class ProgramCache(object):
         Transform dygraph function into static function.
         """
         static_func = self._func_cache.get_or_cache_func(dyfunc)
-        # Reset feed_vars and fetch_list if encounter a independent function.
-        if not self._visited_funcs:
-            self._initialize()
+
         # self._forward_func is entry function of Net or Model.
         # It can be called for multiple times, but layers from these functions
         # call stack will be added into self._main_program only once.
         # After that, cached program will be always returned by default.
         if static_func == self._forward_func:
             self._is_repeated = True
+        # Reset feed_vars and fetch_list if encounter a independent function.
+        elif self._forward_func and not self._visited_funcs:
+            self._initialize()
 
         if self._forward_func is None:
             self._forward_func = static_func
