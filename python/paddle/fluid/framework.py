@@ -52,6 +52,8 @@ __all__ = [
     'load_op_library',
     'require_version',
     'device_guard',
+    'set_flags',
+    'get_flags',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -5107,3 +5109,70 @@ def device_guard(device=None):
     pre_device = switch_device(device)
     yield
     switch_device(pre_device)
+
+
+def set_flags(flags):
+    """
+    This function sets the GFlags value in Paddle.
+
+    Args:
+        flags (dict): A dict contains flags and its value.
+
+    Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                fluid.set_flags({'FLAGS_eager_delete_tensor_gb': 1.0})
+    """
+    if not isinstance(flags, dict):
+        raise TypeError('flags in set_flags should be a dict')
+    for key, value in flags.items():
+        if core.globals().is_public(key):
+            core.globals()[key] = value
+        else:
+            raise ValueError(
+                "Flag %s cannot set its value through this function." % (key))
+
+
+def get_flags(flags):
+    """
+    This function gets the GFlags value in Paddle.
+
+    Args:
+        flags(list|tuple|str): A list/tuple of string or a string which is the flag's name.
+
+    Returns:
+        flag's value in Paddle.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            flags = ['FLAGS_eager_delete_tensor_gb', 'FLAGS_check_nan_inf']
+            res = fluid.get_flags(flags)
+            print(res)
+            # {'FLAGS_eager_delete_tensor_gb': 0.0, 'FLAGS_check_nan_inf': False}
+    """
+    flags_value = {}
+    if isinstance(flags, (list, tuple)):
+        for key in flags:
+            if (core.globals().is_public(key)):
+                value = core.globals()[key]
+                temp = {key: value}
+                flags_value.update(temp)
+            else:
+                raise ValueError(
+                    'Flag %s cannot get its value through this function.' %
+                    (key))
+    elif isinstance(flags, str):
+        if (core.globals().is_public(flags)):
+            value = core.globals()[flags]
+            temp = {flags: value}
+            flags_value.update(temp)
+        else:
+            raise ValueError(
+                'Flag %s cannot get its value through this function.' % (flags))
+    else:
+        raise TypeError('Flags in get_flags should be a list, tuple or string.')
+    return flags_value

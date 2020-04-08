@@ -56,7 +56,7 @@ from .tensor.creation import zeros_like  #DEFINE_ALIAS
 # from .tensor.creation import eye   #DEFINE_ALIAS
 from .tensor.creation import full  #DEFINE_ALIAS
 # from .tensor.creation import linspace   #DEFINE_ALIAS
-# from .tensor.creation import full_like   #DEFINE_ALIAS
+from .tensor.creation import full_like  #DEFINE_ALIAS
 # from .tensor.creation import triu   #DEFINE_ALIAS
 # from .tensor.creation import tril   #DEFINE_ALIAS
 # from .tensor.creation import meshgrid   #DEFINE_ALIAS
