@@ -12482,6 +12482,9 @@ def get_tensor_from_selected_rows(x, name=None):
 
     helper = LayerHelper('get_tensor_from_selected_rows', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    check_variable_and_dtype(
+            input, 'X', ['float16', 'float32', 'float64', 'int32', 'int64'],
+            'get_tensor_from_selected_rows')
     helper.append_op(
         type='get_tensor_from_selected_rows',
         inputs={'X': x},
