@@ -103,17 +103,10 @@ python -u train.py \
 另外，如果在执行训练时若提供了 `save_model`（默认为 trained_models），则每个 epoch 将保存当前训练的到相应目录（会保存分别记录了模型参数和优化器状态的 `epoch_id.pdparams` 和 `epoch_id.pdopt` 两个文件），每隔一定数目的 iteration (通过参数 `print_step` 设置，默认为100)将打印如下的日志到标准输出：
 
 ```txt
-step 500/1 - loss: 7.345725 - normalized loss: 5.969984 - ppl: 1549.557373 - 216ms/step
-step 501/1 - loss: 7.019722 - normalized loss: 5.643982 - ppl: 1118.476196 - 216ms/step
-step 502/1 - loss: 7.271389 - normalized loss: 5.895649 - ppl: 1438.547241 - 216ms/step
-step 503/1 - loss: 7.241495 - normalized loss: 5.865755 - ppl: 1396.179932 - 216ms/step
-step 504/1 - loss: 7.335604 - normalized loss: 5.959863 - ppl: 1533.953613 - 216ms/step
-step 505/1 - loss: 7.388950 - normalized loss: 6.013210 - ppl: 1618.006104 - 216ms/step
-step 506/1 - loss: 7.217984 - normalized loss: 5.842244 - ppl: 1363.737305 - 216ms/step
-step 507/1 - loss: 7.018966 - normalized loss: 5.643226 - ppl: 1117.630615 - 216ms/step
-step 508/1 - loss: 6.923923 - normalized loss: 5.548183 - ppl: 1016.299133 - 216ms/step
-step 509/1 - loss: 7.472060 - normalized loss: 6.096320 - ppl: 1758.225220 - 216ms/step
-step 510/1 - loss: 7.173721 - normalized loss: 5.797981 - ppl: 1304.690063 - 216ms/step
+step 100/1 - loss: 9.165776 - normalized loss: 7.790036 - ppl: 9564.142578 - 247ms/step
+step 200/1 - loss: 8.037900 - normalized loss: 6.662160 - ppl: 3096.104492 - 227ms/step
+step 300/1 - loss: 7.668307 - normalized loss: 6.292567 - ppl: 2139.457031 - 221ms/step
+step 400/1 - loss: 7.598633 - normalized loss: 6.222893 - ppl: 1995.466797 - 218ms/step
 ```
 
 也可以使用 CPU 训练(通过参数 `--use_cuda False` 设置)，训练速度较慢。
