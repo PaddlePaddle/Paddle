@@ -133,14 +133,16 @@ class ConstantInitializer(Initializer):
 
     Args:
         value (float32): constant value to initialize the variable 
+        force_cpu (bool): place for initialization, if set true, initialization will
+            be forced on CPU even if executor is set on CUDA. default false.
 
     Examples:
         .. code-block:: python
 
     	    import paddle.fluid as fluid
-            x = fluid.data(name="data", shape=[8, 32, 32], dtype="float32")
+            x = fluid.data(name="data", shape=[32, 32], dtype="float32")
 	    fc = fluid.layers.fc(input=x, size=10,
-    		param_attr=fluid.initializer.Constant(value=2.0))
+    		param_attr=fluid.initializer.ConstantInitializer(value=2.0))
 
     """
 
@@ -744,15 +746,16 @@ class BilinearInitializer(Initializer):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import math
             factor = 2
             C = 2
             B = 8
             H = W = 32
             w_attr = fluid.param_attr.ParamAttr(
-                learning_rate=0., 
+                learning_rate=0.,
                 regularizer=fluid.regularizer.L2Decay(0.),
                 initializer=fluid.initializer.Bilinear())
-            x = fluid.data(name="data", shape=[B, 3, H, W], 
+            x = fluid.data(name="data", shape=[B, 3, H, W],
                                   dtype="float32")
             conv_up = fluid.layers.conv2d_transpose(
                 input=x,
