@@ -25,7 +25,7 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import utils
 from ... import unique_name
 from paddle.fluid.initializer import Normal, Constant, NumpyArrayInitializer
-from paddle.fluid.data_feeder import check_type, check_dtype, convert_dtype
+from paddle.fluid.data_feeder import check_type_and_dtype, check_type, check_dtype, convert_dtype
 from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
 
 __all__ = [
@@ -860,10 +860,11 @@ def index_sample(x, index):
             output = fluid.contrib.layers.index_sample(x=x, index=index)
     """
     helper = LayerHelper("index_sample", **locals())
-    check_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
-                'paddle.tensor.search.index_sample')
-    check_dtype(index, 'index', ['int32', 'int64'],
-                'paddle.tensor.search.index_sample')
+    check_type_and_dtype(x, 'x', Variable,
+                         ['float32', 'float64', 'int32', 'int64'],
+                         'fluid.contrib.layers.index_sample')
+    check_type_and_dtype(index, 'index', Variable, ['int32', 'int64'],
+                         'fluid.contrib.layers.index_sample')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(
