@@ -52,7 +52,7 @@ def create_tensor(dtype, name=None, persistable=False):
         Variable: The tensor to be created according to dtype.
 
     Raise:
-        TypeError: The dtype must be one of bool, float16, float32, float64, int32 and int64.
+        TypeError: The dtype must be one of bool, float16, float32, float64, int8, int16, int32 and int64.
     
     Examples:
         .. code-block:: python
@@ -60,9 +60,10 @@ def create_tensor(dtype, name=None, persistable=False):
           import paddle.fluid as fluid
           tensor = fluid.layers.create_tensor(dtype='float32')
     """
-    check_dtype(dtype, 'dtype',
-                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'create_tensor')
+    check_dtype(dtype, 'dtype', [
+        'bool', 'float16', 'float32', 'float64', 'int8', 'int32', 'int32',
+        'int64'
+    ], 'create_tensor')
     helper = LayerHelper("create_tensor", **locals())
     return helper.create_variable(
         name=helper.name, dtype=dtype, persistable=persistable)
