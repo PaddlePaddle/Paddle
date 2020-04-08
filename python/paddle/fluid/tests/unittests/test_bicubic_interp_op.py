@@ -19,6 +19,8 @@ import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
 import paddle.fluid as fluid
+import paddle
+from paddle.nn.functional import *
 
 
 def cubic_1(x, a):
@@ -175,6 +177,7 @@ class TestBicubicInterpOp(OpTest):
         self.align_corners = True
 
 
+"""
 class TestBicubicInterpCase1(TestBicubicInterpOp):
     def init_test_case(self):
         self.interp_method = 'bicubic'
@@ -258,6 +261,61 @@ class TestBicubicInterpDataLayout(TestBicubicInterpOp):
         self.out_size = np.array([3, 3]).astype("int32")
         self.align_corners = True
         self.data_layout = "NHWC"
+"""
+
+
+class TestBicubicInterpOpAPI(unittest.TestCase):
+    def test_case(self):
+        x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+
+        dim = fluid.data(name="dim", shape=[1], dtype="int32")
+        shape_tensor = fluid.data(name="shape_tensor", shape=[2], dtype="int32")
+        actual_size = fluid.data(name="actual_size", shape=[2], dtype="int32")
+        scale_tensor = fluid.data(
+            name="scale_tensor", shape=[1], dtype="float32")
+
+        out1 = interpolate(
+            x, out_shape=[12, 12], resample='BICUBIC', align_corners=False)
+        out2 = interpolate(
+            x, out_shape=[12, dim], resample='BICUBIC', align_corners=False)
+        out3 = interpolate(
+            x, out_shape=shape_tensor, resample='BICUBIC', align_corners=False)
+        out4 = interpolate(
+            x,
+            out_shape=[4, 4],
+            actual_shape=actual_size,
+            resample='BICUBIC',
+            align_corners=False)
+        out5 = interpolate(
+            x, scale=scale_tensor, resample='BICUBIC', align_corners=False)
+
+        x_data = np.random.random((2, 3, 6, 6)).astype("float32")
+        dim_data = np.array([12]).astype("int32")
+        shape_data = np.array([12, 12]).astype("int32")
+        actual_size_data = np.array([12, 12]).astype("int32")
+        scale_data = np.array([2.0]).astype("float32")
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        results = exe.run(fluid.default_main_program(),
+                          feed={
+                              "x": x_data,
+                              "dim": dim_data,
+                              "shape_tensor": shape_data,
+                              "actual_size": actual_size_data,
+                              "scale_tensor": scale_data
+                          },
+                          fetch_list=[out1, out2, out3, out4, out5],
+                          return_numpy=True)
+
+        expect_res = bicubic_interp_np(
+            x_data, out_h=12, out_w=12, align_corners=False)
+        for res in results:
+            self.assertTrue(np.allclose(res, expect_res))
 
 
 if __name__ == "__main__":
