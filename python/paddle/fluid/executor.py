@@ -23,12 +23,13 @@ import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
 import six
 from .data_feeder import convert_dtype
-from .framework import Program, default_main_program, Variable, convert_np_dtype_to_dtype_
+from .framework import Program, default_main_program, Variable, Operator, convert_np_dtype_to_dtype_
 from . import core
 from . import compiler
 from .. import compat as cpt
 from .trainer_factory import TrainerFactory
 from .trainer_factory import FetchHandlerMonitor
+import copy
 
 __all__ = ['Executor', 'global_scope', 'scope_guard']
 
@@ -328,12 +329,12 @@ def _fetch_var(name, scope=None, return_numpy=True):
     Returns:
        LodTensor|numpy.ndarray
     """
-    assert isinstance(name, str)
+    assert isinstance(name, six.string_types)
     if scope is None:
         scope = global_scope()
     assert isinstance(scope, core._Scope)
 
-    var = scope.find_var(name)
+    var = scope.find_var(_to_name_str(name))
     assert var is not None, (
         "Cannot find " + name + " in scope. Perhaps you need to make the"
         " variable persistable by using var.persistable = True in your"
@@ -345,14 +346,27 @@ def _fetch_var(name, scope=None, return_numpy=True):
 
 
 def _to_name_str(var):
-    if isinstance(var, Variable):
-        return var.desc.name()
-    elif isinstance(var, str):
-        return var
-    elif isinstance(var, six.string_types):
-        return str(var)
+    def _to_str(var):
+        if isinstance(var, Variable):
+            return var.desc.name()
+        elif isinstance(var, str):
+            return var
+        elif isinstance(var, six.string_types):
+            return str(var)
+        elif isinstance(var, Operator):
+            return var.desc.type()
+        else:
+            raise TypeError(str(var) + " should be Variable, Operator or str")
+
+    # NOTEz(zhiqiu): The item in fetch_list may be tuple returned by Optimizer.minimize(),
+    # see comments in _split_optimize_ops_in_fetch_list for more details.
+    if isinstance(var, tuple):
+        var = var[0]
+    if isinstance(var, list):
+        s = [_to_str(item) for item in var]
+        return ','.join(s)
     else:
-        raise TypeError(str(var) + " should be Variable or str")
+        return _to_str(var)
 
 
 def _get_strong_program_cache_key(program, feed, fetch_list):
@@ -360,9 +374,13 @@ def _get_strong_program_cache_key(program, feed, fetch_list):
 
 
 def _get_program_cache_key(feed, fetch_list):
-    feed_var_names = list(feed.keys())
+    feed_var_names = []
+    if isinstance(feed, dict):
+        feed_var_names = list(feed.keys())
+    elif isinstance(feed, list) or isinstance(feed, tuple):
+        for i, each in enumerate(feed):
+            feed_var_names += list(each.keys())
     fetch_var_names = list(map(_to_name_str, fetch_list))
-
     return str(feed_var_names + fetch_var_names)
 
 
@@ -437,12 +455,14 @@ handler = FetchHandlerExample(var_dict=var_dict)
 class Executor(object):
     """
     An Executor in Python, supports single/multiple-GPU running,
-    and single/multiple-CPU running. When construction the Executor,
-    the device is required.
+    and single/multiple-CPU running.
 
     Args:
-        place(fluid.CPUPlace()|fluid.CUDAPlace(n)): This parameter represents
-            the executor run on which device.
+        place(fluid.CPUPlace()|fluid.CUDAPlace(n)|None): This parameter represents
+            which device the executor runs on. When this parameter is None, PaddlePaddle
+            will set the default device according to its installation version. If Paddle
+            is CPU version, the default device would be set to `CPUPlace()` . If Paddle is
+            GPU version, the default device would be set to `CUDAPlace(0)` . Default is None.
 
     Returns:
         Executor
@@ -455,9 +475,13 @@ class Executor(object):
           import numpy
           import os
 
-          use_cuda = True
-          place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-          exe = fluid.Executor(place)
+          # Set place explicitly.
+          # use_cuda = True
+          # place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+          # exe = fluid.Executor(place)
+
+          # If you don't set place, PaddlePaddle sets the default device.
+          exe = fluid.Executor()
 
           train_program = fluid.Program()
           startup_program = fluid.Program()
@@ -480,14 +504,19 @@ class Executor(object):
 
           # Or, compiled the program and run. See `CompiledProgram`
           # for more detail.
-          # NOTE: If you use CPU to run the program, you need
-          # to specify the CPU_NUM, otherwise, fluid will use
-          # all the number of the logic core as the CPU_NUM,
-          # in that case, the batch size of the input should be
-          # greater than CPU_NUM, if not, the process will be
+          # NOTE: If you use CPU to run the program or Paddle is
+          # CPU version, you need to specify the CPU_NUM, otherwise,
+          # fluid will use all the number of the logic core as
+          # the CPU_NUM, in that case, the batch size of the input
+          # should be greater than CPU_NUM, if not, the process will be
           # failed by an exception.
-          if not use_cuda:
-              os.environ['CPU_NUM'] = str(2)
+
+          # Set place explicitly.
+          # if not use_cuda:
+          #     os.environ['CPU_NUM'] = str(2)
+
+          # If you don't set place and PaddlePaddle is CPU version
+          # os.environ['CPU_NUM'] = str(2)
 
           compiled_prog = compiler.CompiledProgram(
               train_program).with_data_parallel(
@@ -497,16 +526,24 @@ class Executor(object):
                                fetch_list=[loss.name])
     """
 
-    def __init__(self, place):
-        self.place = place
+    def __init__(self, place=None):
+        if place is None:
+            if core.is_compiled_with_cuda():
+                self.place = core.CUDAPlace(0)
+            else:
+                self.place = core.CPUPlace()
+        else:
+            self.place = place
         self.program_caches = dict()
         self.ctx_caches = dict()
         self.scope_caches = dict()
         self.var_caches = dict()
+        self.pruned_program_caches = dict()
         p = core.Place()
         p.set_place(self.place)
         self._default_executor = core.Executor(p)
         self._closed = False
+        self.pruned_program_scope_caches = dict()
 
     def _get_scope_cache(self, program_cache_key):
         return self.scope_caches.get(program_cache_key, None)
@@ -519,6 +556,18 @@ class Executor(object):
 
     def _add_program_cache(self, program_cache_key, program):
         self.program_caches[program_cache_key] = program
+
+    def _get_pruned_program_cache(self, program_cache_key):
+        return self.pruned_program_caches.get(program_cache_key, None)
+
+    def _add_pruned_program_cache(self, program_cache_key, program):
+        self.pruned_program_caches[program_cache_key] = program
+
+    def _get_pruned_program_scope_cache(self, program_cache_key):
+        return self.pruned_program_scope_caches.get(program_cache_key, None)
+
+    def _add_pruned_program_scope_cache(self, program_cache_key, program):
+        self.pruned_program_scope_caches[program_cache_key] = program
 
     def _add_ctx_cache(self, ctx_cache_key, ctx):
         self.ctx_caches[ctx_cache_key] = ctx
@@ -551,13 +600,17 @@ class Executor(object):
         # prepend feed operators
         if not has_feed_operators(global_block, feed, feed_var_name):
             for i, name in enumerate(feed):
-                out = global_block.var(name)
-                global_block._prepend_op(
-                    type='feed',
-                    inputs={'X': [feed_var]},
-                    outputs={'Out': [out]},
-                    attrs={'col': i})
-
+                if global_block.has_var(name):
+                    out = global_block.var(name)
+                    global_block._prepend_op(
+                        type='feed',
+                        inputs={'X': [feed_var]},
+                        outputs={'Out': [out]},
+                        attrs={'col': i})
+                else:
+                    warnings.warn(
+                        "The variable %s is not found in program. It is not declared or is pruned."
+                        % name)
         # append fetch_operators
         if not has_fetch_operators(global_block, fetch_list, fetch_var_name):
             for i, var in enumerate(fetch_list):
@@ -594,6 +647,159 @@ class Executor(object):
             for i in six.moves.range(len(fetch_list))
         ]
         return outs
+
+    def _split_optimize_ops_in_fetch_list(self, fetch_list):
+        """
+        Split optimize_ops from fetch_list, which provided to specify program prunning.
+        Args:
+            fetch_list(list): The original fetch_list.
+            Possible types of fetch_list are:
+                fetch_list = ['loss']
+                fetch_list = [[sgd, sgd], 'loss']
+                fetch_list = [([sgd, sgd], [(param, grad)]), 'loss']
+
+        Returns:
+            optimize_ops(list): The optimize operators splited from fetch_list.
+            fetch_list(list):  The updated fetch_list which does not contain optimize operators.  
+        """
+        _optimize_ops = []
+        _fetch_list = []
+
+        def _get_targets(_optimize_ops, _fetch_list, item):
+            if isinstance(item, Operator):
+                if item._is_optimize_op():
+                    _optimize_ops.append(item)
+                else:
+                    raise TypeError(
+                        "The operator in fetch_list is not an optimize_op")
+            elif isinstance(item, Variable) or isinstance(
+                    item, str) or isinstance(item, six.string_types):
+                _fetch_list.append(item)
+            else:
+                raise TypeError(
+                    "The item in fetch_list should be str, variable or optimize_op, but recieved %s.",
+                    type(item))
+
+        for item in fetch_list:
+            # NOTE(zhiqiu): to support (optimizer_ops, param_and_grads) and optimizer_ops in fetch_list
+            # we should handle tuple and list in fetch_list.
+            # TODO(zhiqiu): find a better way to handle that.
+            if isinstance(item, list):
+                for i in item:
+                    _get_targets(_optimize_ops, _fetch_list, i)
+            elif isinstance(item, tuple):
+                for i in item[0]:
+                    _get_targets(_optimize_ops, _fetch_list, i)
+            else:
+                _get_targets(_optimize_ops, _fetch_list, item)
+
+        return _fetch_list, _optimize_ops
+
+    def _prune_program(self,
+                       program,
+                       feed=None,
+                       fetch_list=None,
+                       optimize_ops=None):
+        """
+        Prune operators and variables which are not needed to generate
+        :code:`fetch_list` and optimize operators. 
+        Prune operators and variables which are needed 
+        to generate variables to be feeded.  
+
+        Notes: This is a very low level API. Users should not use this API
+        directly. 
+
+        Args:
+            program(Program): the origin program
+            feed(list|dict): feed dict or list.
+            fetch_list(list|Variable): A list of variables need to be fetched
+            optimize_ops(list[Operator]): A list of optimizer operators
+
+        Returns:
+            Program:  A new, pruned program.
+        """
+        compiled = isinstance(program, compiler.CompiledProgram)
+        if compiled:
+            if program._program:
+                origin_program = program._program
+            else:
+                warnings.warn(
+                    "The program holds no _program, maybe it is constructed by graph, which can't be pruned yet."
+                )
+                return
+        else:
+            origin_program = program
+
+        feed_names = []
+        if isinstance(feed, dict):
+            feed_names = list(feed.keys())
+        elif isinstance(feed, list) or isinstance(feed, tuple):
+            for i, each in enumerate(feed):
+                feed_names += list(each.keys())
+
+        # if optimize_ops is [], all optimize ops in the program is used.
+        if not optimize_ops:
+            for block in origin_program.blocks:
+                for op in block.ops:
+                    if op._is_optimize_op():
+                        optimize_ops.append(op)
+
+        targets = fetch_list + optimize_ops
+        pruned_program = origin_program._prune_with_input(feed_names, targets)
+
+        if compiled:
+            # for compiled program, update the underlying program, re-generate graph,
+            # and reset the flag so it can be compiled again.
+            program._program = pruned_program
+            program._graph = core.Graph(pruned_program.desc)
+            program._compiled = False
+        else:
+            program = pruned_program
+
+        return program
+
+    def _update_feed(self, program, feed):
+        """
+        Update the feed dict, remove the feed item which is pruned in program.  
+
+        Notes: This is a very low level API. Users should not use this API
+        directly. 
+
+        Args:
+            program(Program): the pruned program.
+            feed(list|dict): feed dict or list.
+
+        Returns:
+            feed:(list|dict)  updated feed.
+        """
+        compiled = isinstance(program, compiler.CompiledProgram)
+        if compiled:
+            if program._program:
+                global_block = program._program.global_block()
+            else:
+                warnings.warn(
+                    "The program holds no _program, maybe it is constructed by graph."
+                )
+        else:
+            global_block = program.global_block()
+
+        if isinstance(feed, dict):
+            for feed_name in list(feed.keys()):
+                if not global_block.has_var(feed_name):
+                    feed.pop(feed_name)
+                    warnings.warn(
+                        "The variable %s is not found in program. It is not declared or is pruned."
+                        % feed_name)
+
+        elif isinstance(feed, list) or isinstance(feed, tuple):
+            for i, each in enumerate(feed):
+                for feed_name in list(each.keys()):
+                    if not global_block.has_var(feed_name):
+                        each.pop(feed_name)
+                        warnings.warn(
+                            "The variable %s is not found in program. It is not declared or is pruned."
+                            % feed_name)
+        return feed
 
     '''
     TODO(typhoonzero): Define "no longer use" meaning? Can user create
@@ -682,7 +888,8 @@ class Executor(object):
             scope=None,
             return_numpy=True,
             use_program_cache=False,
-            return_merged=True):
+            return_merged=True,
+            use_prune=False):
         """
         Run the specified :code:`Program` or :code:`CompiledProgram`. It should be noted that the executor
         will execute all the operators in :code:`Program` or :code:`CompiledProgram` without pruning some
@@ -706,7 +913,7 @@ class Executor(object):
                 so the length of this list should be equal to the number of places.
                 The default is None.
             fetch_list(list): This parameter represents the variables that need to be returned
-                after the model runs. The default is None.
+                after the model runs. The default is None. 
             feed_var_name(str): This parameter represents the name of the input variable of
                 the feed operator. The default is "feed".
             fetch_var_name(str): This parameter represents the name of the output variable of
@@ -732,6 +939,13 @@ class Executor(object):
                 set :code:`return_merged` as False, which denotes that the fetched results will not be merged.
                 The default is True, but it is just for the compatibility, and may use False as default value
                 in the future version.
+            use_prune(bool): This parameter indicates whether the input :code:`Program` will be pruned. 
+                If the parameter is True, the program will be pruned accroding to the given feed and fetch_list,
+                which means the operators and variables in program that generate :code:`feed` and are not 
+                needed to generate :code:`fetch_list` will be pruned. The default is False, which means the 
+                program will not pruned and all the operators and variables will be executed during running.
+                Note that if the tuple returned from :code:`Optimizer.minimize()` is passed to :code:`fetch_list`, 
+                :code:`use_prune` will be overrided to True, and the program will be pruned.
                 
         Returns:
 
@@ -844,6 +1058,7 @@ class Executor(object):
                 scope=scope,
                 return_numpy=return_numpy,
                 use_program_cache=use_program_cache,
+                use_prune=use_prune,
                 return_merged=return_merged)
         except Exception as e:
             if not isinstance(e, core.EOFException):
@@ -853,7 +1068,7 @@ class Executor(object):
 
     def _run_impl(self, program, feed, fetch_list, feed_var_name,
                   fetch_var_name, scope, return_numpy, use_program_cache,
-                  return_merged):
+                  return_merged, use_prune):
         if self._closed:
             raise RuntimeError("Attempted to use a closed Executor")
 
@@ -877,7 +1092,9 @@ class Executor(object):
             scope = global_scope()
 
         if fetch_list is not None:
-            if isinstance(fetch_list, Variable) or isinstance(fetch_list, str):
+            if isinstance(fetch_list, Variable) or isinstance(
+                    fetch_list, str) or isinstance(fetch_list,
+                                                   six.string_types):
                 fetch_list = [fetch_list]
             assert isinstance(fetch_list, tuple) or isinstance(fetch_list, list), \
                 "Currently , The fetch_list type only should be list or tuple, \n"\
@@ -885,6 +1102,38 @@ class Executor(object):
                 "the executor.run(...).".format(type(fetch_list))
         else:
             fetch_list = []
+
+        # use_prune can be overrided by putting optimize_ops in fetch_list
+        _origin_fetch_list = fetch_list
+        _origin_program = program
+        fetch_list, optimize_ops = self._split_optimize_ops_in_fetch_list(
+            fetch_list)
+        if optimize_ops:
+            use_prune = True
+        if use_prune:
+            cache_key = _get_strong_program_cache_key(program, feed,
+                                                      _origin_fetch_list)
+            cached_pruned_program = self._get_pruned_program_cache(cache_key)
+            if cached_pruned_program is None:
+                if isinstance(program, compiler.CompiledProgram):
+                    program_scope_cache = self._get_pruned_program_scope_cache(
+                        str(id(_origin_program)))
+                    # copy the original program, so it can be cached.
+                    program = copy.copy(program)
+                    # share the local scopes for same original CompiledProgram.
+                    program._share_vars_from = program_scope_cache
+                    if self._get_pruned_program_scope_cache(
+                            str(id(_origin_program))) is None:
+                        self._add_pruned_program_scope_cache(
+                            str(id(_origin_program)), program)
+                pruned_program = self._prune_program(program, feed, fetch_list,
+                                                     optimize_ops)
+                self._add_pruned_program_cache(cache_key, pruned_program)
+            else:
+                pruned_program = cached_pruned_program
+
+            feed = self._update_feed(pruned_program, feed)
+            program = pruned_program
 
         compiled = isinstance(program, compiler.CompiledProgram)
 

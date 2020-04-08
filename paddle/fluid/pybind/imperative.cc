@@ -621,6 +621,10 @@ void BindImperative(py::module *m_ptr) {
              return self.MutableGradVar()->Get<framework::LoDTensor>();
            },
            py::return_value_policy::reference)
+      .def("_set_grad_type",
+           [](imperative::VarBase &self, framework::proto::VarType::Type type) {
+             self.MutableGradVarBase()->SetType(type);
+           })
       .def("_grad_ivar",
            [](const imperative::VarBase &self) {
              auto &grad_var = self.GradVarBase();
@@ -695,8 +699,8 @@ void BindImperative(py::module *m_ptr) {
       .def_property("_enable_program_desc_tracing",
                     &imperative::Tracer::IsProgramDescTracingEnabled,
                     &imperative::Tracer::SetEnableProgramDescTracing)
-      .def_property("_train_mode", &imperative::Tracer::NoGrad,
-                    &imperative::Tracer::SetNoGrad)
+      .def_property("_train_mode", &imperative::Tracer::HasGrad,
+                    &imperative::Tracer::SetHasGrad)
       .def_property(
           "_expected_place",
           [](const imperative::Tracer &self) -> py::object {
