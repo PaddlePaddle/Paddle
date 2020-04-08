@@ -687,7 +687,7 @@ def fill_constant_batch_size_like(input,
                    and the data type of out Tensor must be the same as the dtype. 
         TypeError: The `shape` must be one of list, tuple, Variable.
         TypeError: The `out` must be None or Variable.
-        TypeError: The `input` must Variable.
+        TypeError: The `input` must be Variable.
     
     Examples:
 
