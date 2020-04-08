@@ -610,4 +610,4 @@ else:
             print("Mistakes found in sample codes")
             exit(1)
     print("Sample code check is successful!")
-    print(1)
+    print(2)
