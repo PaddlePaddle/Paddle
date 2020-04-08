@@ -299,23 +299,28 @@ class QuantizationTransformPass(object):
             tmp_program = Program()
             with program_guard(tmp_program):
                 with unique_name.guard(var_node.name()):
-                    input = data(
+                    in_node = data(
                         var_node.name() + '_tmp_input',
                         shape=var_node.shape(),
                         dtype='float32')
-                    out = func(input)
+                    out_node = func(in_node)
             tmp_graph = IrGraph(core.Graph(tmp_program.desc), for_test=False)
-            in_node = None
+            in_node = tmp_graph._find_node_by_name(tmp_graph.all_var_nodes(),
+                                                   in_node.name)
+            out_node = tmp_graph._find_node_by_name(tmp_graph.all_var_nodes(),
+                                                    out_node.name)
+
+            #in_node = None
             in_node_params = []
             in_op_node = []
-            out_node = None
+            #out_node = None
             for node in tmp_graph.all_var_nodes():
-                if node.inputs == [] and (not node.persistable()):
-                    in_node = node
-                elif node.inputs == []:
+                #if node.inputs == [] and (not node.persistable()):
+                #    in_node = node
+                if node.inputs == [] and node.persistable():
                     in_node_params.append(node)
-                elif node.outputs == []:
-                    out_node = node
+                #elif node.outputs == []:
+                #    out_node = node
             for node in tmp_graph.all_op_nodes():
                 if node.inputs == []:
                     in_op_node.append(node)
@@ -396,7 +401,7 @@ class QuantizationTransformPass(object):
                             graph, var_node, quant_bits, quant_type)
                         dequant_var_node = self._insert_dequant_op(
                             graph, quant_var_node, scale_var_node, quant_bits)
-                    dequantized_vars[var_node.name()] = dequant_var_node
+                    dequantized_vars[name] = dequant_var_node
                 graph.update_input_link(var_node, dequant_var_node, op)
 
         def _transform_backward(graph, op):
