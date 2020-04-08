@@ -72,7 +72,7 @@ inline FetchResultType ThreadedSSAGraphExecutor::RunImpl(
   std::unordered_set<VarHandleBase *> fetch_dependencies;
   FetchResultType fetch_data;
   if (return_merged) {
-    fetch_data = FeedFetchList(fetch_tensors.size());
+    fetch_data = FetchList(fetch_tensors.size());
   } else {
     fetch_data = FetchUnmergedList(fetch_tensors.size());
   }

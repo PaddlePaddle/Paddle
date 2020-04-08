@@ -36,7 +36,10 @@ struct FetchOpHandle : public OpHandleBase {
 
   void RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) override;
 
-  void WaitAndMergeCPUTensors() const;
+  void WaitAndMergeCPUFetchVars() const;
+
+  // void CheckDims(const framework::DDim &tensor_dims, const framework::DDim
+  // &ele_dims) const;
 
   std::string Name() const override;
 
@@ -54,7 +57,7 @@ struct FetchOpHandle : public OpHandleBase {
   size_t offset_;
   std::vector<Scope *> *local_scopes_;
   std::vector<Scope *> *local_exec_scopes_;
-  std::vector<LoDTensor> tensors_;
+  std::vector<FetchType> tensors_;
   bool return_merged_;
 };
 

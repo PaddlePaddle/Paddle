@@ -39,43 +39,89 @@ void FetchOpHandle::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
   PADDLE_THROW("Nobody should wait FetchOp. Unexpceted Error");
 }
 
-void FetchOpHandle::WaitAndMergeCPUTensors() const {
+void CheckDims(const framework::DDim &tensor_dims,
+               const framework::DDim &ele_dims, const size_t offset) {
+  PADDLE_ENFORCE_EQ(
+      tensor_dims.size(), ele_dims.size(),
+      platform::errors::Fatal("The dimension sizes of fetched Tensors are "
+                              "different from each other on different "
+                              "devices. And the error is caused by the %zu "
+                              "(th) fetched variable. Please set the "
+                              "parameter `return_merged = False` when you "
+                              "call the `Executor.run()` method.",
+                              offset));
+  for (int j = 1; j < tensor_dims.size(); j++) {
+    PADDLE_ENFORCE_EQ(
+        tensor_dims[j], ele_dims[j],
+        platform::errors::Fatal("The dimensions of fetched Tensors are "
+                                "different from each other on different "
+                                "devices. And the error is caused by the "
+                                "%zu (th) fetched variable. Please set the "
+                                "parameter `return_merged = False` when "
+                                "you call the `Executor.run()` method.",
+                                offset));
+  }
+}
+
+void FetchOpHandle::WaitAndMergeCPUFetchVars() const {
   if (return_merged_) {
-    const auto &tensor_dims = tensors_[0].dims();
-    for (size_t i = 1; i < tensors_.size(); i++) {
-      const auto &ele_dims = tensors_[i].dims();
-      PADDLE_ENFORCE_EQ(
-          tensor_dims.size(), ele_dims.size(),
-          platform::errors::Fatal("The dimension sizes of fetched Tensors are "
-                                  "different from each other on different "
-                                  "devices. And the error is caused by the %zu "
-                                  "(th) fetched variable. Please set the "
-                                  "parameter `return_merged = False` when you "
-                                  "call the `Executor.run()` method.",
-                                  offset_));
-      for (int j = 1; j < tensor_dims.size(); j++) {
-        PADDLE_ENFORCE_EQ(
-            tensor_dims[j], ele_dims[j],
-            platform::errors::Fatal("The dimensions of fetched Tensors are "
-                                    "different from each other on different "
-                                    "devices. And the error is caused by the "
-                                    "%zu (th) fetched variable. Please set the "
-                                    "parameter `return_merged = False` when "
-                                    "you call the `Executor.run()` method.",
-                                    offset_));
+    if (data_is_lod_tensor(tensors_[0])) {
+      const auto &tensor_dims = boost::get<LoDTensor>(tensors_[0]).dims();
+      for (size_t i = 1; i < tensors_.size(); i++) {
+        const auto &ele_dims = boost::get<LoDTensor>(tensors_[i]).dims();
+        CheckDims(tensor_dims, ele_dims, offset_);
       }
+      std::vector<const LoDTensor *> tensors_ptr;
+      tensors_ptr.reserve(tensors_.size());
+      for (auto &t : tensors_) {
+        tensors_ptr.emplace_back(&boost::get<LoDTensor>(t));
+      }
+      auto &val = boost::get<FetchList>(*data_);
+      LoDTensor var;
+      var.MergeLoDTensor(tensors_ptr, platform::CPUPlace());
+      val.at(offset_) = std::move(var);
+    } else {
+      auto &array = boost::get<LoDTensorArray>(tensors_[0]);
+      LoDTensorArray tmp_array;
+      tmp_array.reserve(array.size());
+      for (size_t i = 0; i < array.size(); ++i) {
+        const auto &tensor_dims = array[i].dims();
+        std::vector<const LoDTensor *> tensors_ptr;
+        tensors_ptr.reserve(tensors_.size());
+        tensors_ptr.push_back(&array[i]);
+        for (size_t j = 1; j < tensors_.size(); ++j) {
+          auto &element = boost::get<LoDTensorArray>(tensors_[j]);
+          const auto &ele_dims = element[i].dims();
+          CheckDims(tensor_dims, ele_dims, offset_);
+          tensors_ptr.push_back(&element[i]);
+        }
+        tmp_array.emplace_back();
+        tmp_array.back().MergeLoDTensor(tensors_ptr, platform::CPUPlace());
+      }
+      auto &val = boost::get<FetchList>(*data_);
+      val.at(offset_) = std::move(tmp_array);
     }
-    std::vector<const LoDTensor *> tensors_ptr;
-    tensors_ptr.reserve(tensors_.size());
-    for (auto &t : tensors_) {
-      tensors_ptr.emplace_back(&t);
-    }
-    auto &val = boost::get<FeedFetchList>(*data_);
-    val.at(offset_).MergeLoDTensor(tensors_ptr, platform::CPUPlace());
   } else {
     auto &val = boost::get<FetchUnmergedList>(*data_);
     val.at(offset_) = std::move(tensors_);
   }
+}
+
+void TransData(const framework::LoDTensor &src_item,
+               framework::LoDTensor *dst_item) {
+  if (src_item.IsInitialized() && src_item.numel() > 0) {
+    if (platform::is_gpu_place(src_item.place())) {
+#ifdef PADDLE_WITH_CUDA
+      TensorCopy(src_item, platform::CPUPlace(), dst_item);
+#endif
+    } else {
+      dst_item->ShareDataWith(src_item);
+    }
+  } else {
+    dst_item->clear();
+    dst_item->Resize({0});
+  }
+  dst_item->set_lod(src_item.lod());
 }
 
 void FetchOpHandle::RunImpl() {
@@ -83,7 +129,6 @@ void FetchOpHandle::RunImpl() {
   WaitInputVarGenerated(platform::CPUPlace());
 
   tensors_.resize(inputs_.size());
-  platform::CPUPlace cpu;
   auto &scopes = *local_exec_scopes_;
 
   for (size_t i = 0; i < inputs_.size(); ++i) {
@@ -93,23 +138,21 @@ void FetchOpHandle::RunImpl() {
     PADDLE_ENFORCE_NOT_NULL(var, "Cannot find variable %s in execution scope",
                             var_handle->name());
 
-    auto &t = var->Get<framework::LoDTensor>();
-    if (t.IsInitialized() && t.numel() > 0) {
-      if (platform::is_gpu_place(t.place())) {
-#ifdef PADDLE_WITH_CUDA
-        TensorCopy(t, cpu, &tensors_[i]);
-#endif
-      } else {
-        tensors_[i].ShareDataWith(t);
-      }
+    if (var->IsType<LoDTensor>()) {
+      auto &t = var->Get<framework::LoDTensor>();
+      auto &item = boost::get<LoDTensor>(tensors_[i]);
+      TransData(t, &item);
     } else {
-      tensors_[i].clear();
-      tensors_[i].Resize({0});
+      auto &t = var->Get<framework::LoDTensorArray>();
+      LoDTensorArray tmp(t.size());
+      tensors_[i] = tmp;
+      auto &item = boost::get<LoDTensorArray>(tensors_[i]);
+      for (size_t j = 0; j < t.size(); ++j) {
+        TransData(t[j], &item[j]);
+      }
     }
-    tensors_[i].set_lod(t.lod());
   }
-
-  this->WaitAndMergeCPUTensors();
+  this->WaitAndMergeCPUFetchVars();
 }
 
 void FetchOpHandle::WaitInputVarGenerated(const platform::Place &place) {

@@ -49,10 +49,10 @@ class FeedOp : public framework::OperatorBase {
     VLOG(3) << "Feed Var " << feed_var_name << "'s " << col << " column to var "
             << out_name;
 
-    auto &feed_list = feed_var->Get<framework::FeedFetchList>();
+    auto &feed_list = feed_var->Get<framework::FeedList>();
     PADDLE_ENFORCE_LT(static_cast<size_t>(col), feed_list.size());
     auto &feed_item = feed_list.at(static_cast<size_t>(col));
-    auto *out_item = out_var->GetMutable<framework::FeedFetchType>();
+    auto *out_item = out_var->GetMutable<framework::FeedType>();
 
     if (platform::is_same_place(feed_item.place(), place)) {
       out_item->ShareDataWith(feed_item);

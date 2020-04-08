@@ -14,6 +14,7 @@ limitations under the License. */
 #pragma once
 
 #include <map>
+#include <memory>
 #include <random>
 #include <string>
 #include <vector>
@@ -194,9 +195,9 @@ void TestInference(const std::string& dirname,
   }
 
   // 5. Define Tensor to get the outputs: set up maps for fetch targets
-  std::map<std::string, paddle::framework::LoDTensor*> fetch_targets;
+  std::map<std::string, paddle::framework::FetchType*> fetch_targets;
   for (size_t i = 0; i < fetch_target_names.size(); ++i) {
-    fetch_targets[fetch_target_names[i]] = cpu_fetchs[i];
+    *fetch_targets[fetch_target_names[i]] = *cpu_fetchs[i];
   }
 
   // 6. If export Flags_use_mkldnn=True, use mkldnn related ops.

@@ -977,7 +977,7 @@ class Executor(object):
         else:
             self._default_executor.run_prepared_ctx(ctx, scope, False, False,
                                                     False)
-        arr = scope.find_var(fetch_var_name).get_lod_tensor_array()
+        arr = scope.find_var(fetch_var_name).get_fetch_list()
         tensors = arr._move_to_list()
         if return_numpy:
             return as_numpy(tensors)

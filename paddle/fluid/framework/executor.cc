@@ -160,8 +160,10 @@ std::shared_ptr<TrainerBase> Executor::InitForDataset(
   VLOG(3) << "Start to RunFromDataset in executor";
   TrainerDesc trainer_desc;
   bool success = trainer_desc.ParseFromString(trainer_desc_str);
-  PADDLE_ENFORCE_EQ(success, true, "Fail to parse TrainerDesc from string:\n%s",
-                    trainer_desc_str.c_str());
+  PADDLE_ENFORCE_EQ(success, true,
+                    platform::errors::InvalidArgument(
+                        "Fail to parse TrainerDesc from string:\n%s",
+                        trainer_desc_str.c_str()));
   VLOG(3) << "Going to create trainer, trainer class is "
           << trainer_desc.class_name();
   std::shared_ptr<TrainerBase> trainer;
@@ -181,7 +183,8 @@ std::shared_ptr<TrainerBase> Executor::InitForDataset(
 
 void Executor::RunFromDataset(std::shared_ptr<TrainerBase> trainer) {
   PADDLE_ENFORCE_NE(trainer, nullptr,
-                    "Trainer is nullptr, invoke InitForDataset first");
+                    platform::errors::InvalidArgument(
+                        "Trainer is nullptr, invoke InitForDataset first"));
   // training and finalize training
   VLOG(3) << "Trainer starts to run";
   trainer->Run();
@@ -218,29 +221,36 @@ static bool has_feed_operators(
     if (op->Type() == kFeedOpType) {
       feed_count++;
       // The input variable's name of feed_op should be feed_holder_name.
-      PADDLE_ENFORCE_EQ(op->Input("X")[0], feed_holder_name,
-                        "Input to feed op should be '%s'", feed_holder_name);
+      PADDLE_ENFORCE_EQ(
+          op->Input("X")[0], feed_holder_name,
+          platform::errors::InvalidArgument("Input to feed op should be '%s'",
+                                            feed_holder_name));
       std::string feed_target_name = op->Output("Out")[0];
-      PADDLE_ENFORCE(
-          feed_targets.find(feed_target_name) != feed_targets.end(),
-          "Feed operator output name '%s' cannot be found in 'feed_targets'",
-          feed_target_name);
+      PADDLE_ENFORCE_NE(
+          feed_targets.find(feed_target_name), feed_targets.end(),
+          platform::errors::InvalidArgument("Feed operator output name '%s' "
+                                            "cannot be found in 'feed_targets'",
+                                            feed_target_name));
     }
   }
 
   if (feed_count > 0) {
     PADDLE_ENFORCE_EQ(
         feed_count, feed_targets.size(),
-        "The number of feed operators should match 'feed_targets'");
+        platform::errors::InvalidArgument(
+            "The number of feed operators should match 'feed_targets'"));
 
     if (!feed_holder_name.empty()) {
       // When feed operator are present, so should be feed_holder.
       auto var = block.FindVar(feed_holder_name);
-      PADDLE_ENFORCE_NOT_NULL(var, "Block should already have a '%s' variable",
-                              feed_holder_name);
+      PADDLE_ENFORCE_NOT_NULL(
+          var,
+          platform::errors::InvalidArgument(
+              "Block should already have a '%s' variable", feed_holder_name));
       PADDLE_ENFORCE_EQ(var->GetType(), proto::VarType::FEED_MINIBATCH,
-                        "'%s' variable should be 'FEED_MINIBATCH' type",
-                        feed_holder_name);
+                        platform::errors::InvalidArgument(
+                            "'%s' variable should be 'FEED_MINIBATCH' type",
+                            feed_holder_name));
     }
   }
 
@@ -255,36 +265,44 @@ static bool has_feed_operators(
 // Return true if the block has fetch operators and holder of matching info.
 static bool has_fetch_operators(
     const BlockDesc& block,
-    const std::map<std::string, LoDTensor*>& fetch_targets,
+    const std::map<std::string, FetchType*>& fetch_targets,
     const std::string& fetch_holder_name) {
   size_t fetch_count = 0;
   for (auto* op : block.AllOps()) {
     if (op->Type() == kFetchOpType) {
       fetch_count++;
       // The output variable's name of fetch_op should be fetch_holder_name.
-      PADDLE_ENFORCE_EQ(op->Output("Out")[0], fetch_holder_name,
-                        "Output of fetch op should be '%s'", fetch_holder_name);
+      PADDLE_ENFORCE_EQ(
+          op->Output("Out")[0], fetch_holder_name,
+          platform::errors::InvalidArgument("Output of fetch op should be '%s'",
+                                            fetch_holder_name));
       std::string fetch_target_name = op->Input("X")[0];
-      PADDLE_ENFORCE(
-          fetch_targets.find(fetch_target_name) != fetch_targets.end(),
-          "Fetch operator input name '%s' cannot be found in 'fetch_targets'",
-          fetch_target_name);
+      PADDLE_ENFORCE_NE(fetch_targets.find(fetch_target_name),
+                        fetch_targets.end(),
+                        platform::errors::InvalidArgument(
+                            "Fetch operator input name '%s' cannot be found in "
+                            "'fetch_targets'",
+                            fetch_target_name));
     }
   }
 
   if (fetch_count > 0) {
     PADDLE_ENFORCE_EQ(
         fetch_count, fetch_targets.size(),
-        "The number of fetch operators should match 'fetch_targets'");
+        platform::errors::InvalidArgument(
+            "The number of fetch operators should match 'fetch_targets'"));
 
     if (!fetch_holder_name.empty()) {
       // When fetch operator are present, so should be fetch_holder.
       auto var = block.FindVar(fetch_holder_name);
-      PADDLE_ENFORCE_NOT_NULL(var, "Block should already have a '%s' variable",
-                              fetch_holder_name);
-      PADDLE_ENFORCE_EQ(var->GetType(), proto::VarType::FETCH_LIST,
-                        "'%s' variable should be 'FETCH_LIST' type",
-                        fetch_holder_name);
+      PADDLE_ENFORCE_NOT_NULL(
+          var,
+          platform::errors::InvalidArgument(
+              "Block should already have a '%s' variable", fetch_holder_name));
+      PADDLE_ENFORCE_EQ(
+          var->GetType(), proto::VarType::FETCH_LIST,
+          platform::errors::InvalidArgument(
+              "'%s' variable should be 'FETCH_LIST' type", fetch_holder_name));
     }
   }
 
@@ -293,7 +311,7 @@ static bool has_fetch_operators(
 
 void Executor::Run(const ProgramDesc& program, Scope* scope,
                    std::map<std::string, const LoDTensor*>* feed_targets,
-                   std::map<std::string, LoDTensor*>* fetch_targets,
+                   std::map<std::string, FetchType*>* fetch_targets,
                    bool create_local_scope, bool create_vars,
                    const std::string& feed_holder_name,
                    const std::string& fetch_holder_name) {
@@ -390,8 +408,9 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
     bool force_disable_gc) {
   PADDLE_ENFORCE(
       skip_ref_cnt_vars.empty() || skip_ref_cnt_vars.size() == block_ids.size(),
-      "skip_ref_cnt_vars should be either empty or equals to block number %d",
-      block_ids.size());
+      platform::errors::InvalidArgument("skip_ref_cnt_vars should be either "
+                                        "empty or equals to block number %d",
+                                        block_ids.size()));
   std::vector<std::shared_ptr<ExecutorPrepareContext>> result;
   size_t idx = 0;
   for (auto& bid : block_ids) {
@@ -474,17 +493,19 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 void Executor::RunPreparedContext(
     ExecutorPrepareContext* ctx, Scope* scope,
     std::map<std::string, const LoDTensor*>* feed_targets,
-    std::map<std::string, LoDTensor*>* fetch_targets, bool create_local_scope,
+    std::map<std::string, FetchType*>* fetch_targets, bool create_local_scope,
     bool create_vars, const std::string& feed_holder_name,
     const std::string& fetch_holder_name) {
   auto& global_block = ctx->prog_.Block(ctx->block_id_);
 
-  PADDLE_ENFORCE(
-      has_feed_operators(global_block, *feed_targets, feed_holder_name),
-      "Program in ExecutorPrepareContext should has feed_ops.");
-  PADDLE_ENFORCE(
+  PADDLE_ENFORCE_EQ(
+      has_feed_operators(global_block, *feed_targets, feed_holder_name), true,
+      platform::errors::InvalidArgument(
+          "Program in ExecutorPrepareContext should has feed_ops."));
+  PADDLE_ENFORCE_EQ(
       has_fetch_operators(global_block, *fetch_targets, fetch_holder_name),
-      "Program in the prepared context should has fetch_ops.");
+      true, platform::errors::InvalidArgument(
+                "Program in the prepared context should has fetch_ops."));
 
   // map the data of feed_targets to feed_holder
   for (auto* op : global_block.AllOps()) {
