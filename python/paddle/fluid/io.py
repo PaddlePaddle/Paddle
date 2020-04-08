@@ -1543,6 +1543,10 @@ def save(program, model_path):
 
     parameter_list = list(filter(is_parameter, program.list_vars()))
     param_dict = {p.name: get_tensor(p) for p in parameter_list}
+
+    if not os.path.exists(model_path):
+        os.makedirs(model_path)
+
     with open(model_path + ".pdparams", 'wb') as f:
         pickle.dump(param_dict, f, protocol=2)
 
