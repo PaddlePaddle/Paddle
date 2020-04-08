@@ -24,13 +24,13 @@ class KLDivLossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::InvalidArgument(
+                      platform::errors::NotFound(
                           "Input(X) of KLDivLossOp should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("Target"), true,
-                      platform::errors::InvalidArgument(
+                      platform::errors::NotFound(
                           "Input(Target) of KLDivLossOp should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Loss"), true,
-                      platform::errors::InvalidArgument(
+                      platform::errors::NotFound(
                           "Output(Loss) of KLDivLossOp should not be null."));
 
     auto dim_x = ctx->GetInputDim("X");
@@ -137,13 +137,13 @@ class KLDivLossOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("X"), true,
-        platform::errors::InvalidArgument("Input(X) should not be null"));
+        platform::errors::NotFound("Input(X) should not be null"));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Target"), true,
-        platform::errors::InvalidArgument("Input(Target) should not be null"));
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Loss")), true,
-                      platform::errors::InvalidArgument(
-                          "Input(Loss@GRAD) should not be null"));
+        platform::errors::NotFound("Input(Target) should not be null"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput(framework::GradVarName("Loss")), true,
+        platform::errors::NotFound("Input(Loss@GRAD) should not be null"));
     auto dim_x = ctx->GetInputDim("X");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), dim_x);
