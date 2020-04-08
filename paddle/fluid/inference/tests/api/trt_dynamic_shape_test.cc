@@ -90,8 +90,7 @@ void TestDynamic2() {
                                 opt_input_shape);
 
   auto predictor = CreatePaddlePredictor(config);
-  auto input_names = predictor->GetInputNames();
-  int channels = 1;
+  int channels = 3;
   int height = 5;
   int width = 5;
   int input_num = channels * height * width * 1;
@@ -123,6 +122,10 @@ void TestDynamic2() {
                                 std::multiplies<int>());
   out_data.resize(out_num);
   output_t->copy_to_cpu(out_data.data());
+  std::vector<float> result = {0.617728, 1.63504, 2.15771, 0.535556};
+  for (size_t i = 0; i < out_data.size(); i++) {
+    EXPECT_NEAR(result[i], out_data[i], 1e-6);
+  }
 }
 
 TEST(AnalysisPredictor, trt_dynamic) { TestDynamic(true); }

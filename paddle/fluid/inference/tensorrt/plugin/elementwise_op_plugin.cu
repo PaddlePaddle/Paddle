@@ -115,7 +115,8 @@ int ElementWisePlugin::enqueue(int batch_size, const void *const *inputs,
         num, x, y, out, prev_size_, batch_size * midd_size_, post_size_,
         details::Mul<float>());
   } else {
-    PADDLE_THROW("Not implemented.");
+    PADDLE_THROW(platform::errors::Fatal(
+        "The %s type elementwise is not implemented in trt plugin.", type_));
   }
 
   return cudaGetLastError() != cudaSuccess;
@@ -195,7 +196,9 @@ int ElementwisePluginDynamic::enqueue(
 
   for (int i = 0; i < trimed_nb_dims; ++i) {
     PADDLE_ENFORCE_EQ(x_dims.d[i + axis], y_dims.d[i],
-                      "Broadcast dimension mismatch.");
+                      platform::errors::InvalidArgument(
+                          "Broadcast dimension mismatch found in trt "
+                          "elementwise plugin's x and y input."));
     midd_size *= y_dims.d[i];
   }
 
