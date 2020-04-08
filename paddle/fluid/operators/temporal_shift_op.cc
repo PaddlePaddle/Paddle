@@ -27,11 +27,11 @@ class TemporalShiftOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::InvalidArgument(
+                      platform::errors::NotFound(
                           "Input(X) of TemporalShiftOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("Out"), true,
-        platform::errors::InvalidArgument(
+        platform::errors::NotFound(
             "Output(Out) of TemporalShiftOp should not be null."));
 
     auto dim_x = ctx->GetInputDim("X");
