@@ -60,8 +60,8 @@ CPU and the length of LoDTensorArray should be used as control variables.
 class LoDArrayLengthInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("X"));
-    PADDLE_ENFORCE(context->HasOutput("Out"));
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "ArrayLength");
+    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "ArrayLegth");
     context->SetOutputDim("Out", {1});
   }
 };
