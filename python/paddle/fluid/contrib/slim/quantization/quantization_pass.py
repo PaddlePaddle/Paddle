@@ -124,7 +124,10 @@ class QuantizationTransformPass(object):
                  moving_rate=0.9,
                  skip_pattern=['skip_quant'],
                  quantizable_op_type=['conv2d', 'depthwise_conv2d', 'mul'],
-                 quantize_func=None):
+                 weight_quantize_func=None,
+                 act_quantize_func=None,
+                 weight_preprocess_func=None,
+                 act_preprocess_func=None):
         """
         Convert and rewrite the IrGraph according to weight and
         activation quantization type.
@@ -177,7 +180,10 @@ class QuantizationTransformPass(object):
         self._weight_bits = weight_bits
         self._activation_bits = activation_bits
         self._skip_pattern = skip_pattern
-        self._quantize_func = quantize_func
+        self._weight_quantize_func = weight_quantize_func
+        self._act_quantize_func = act_quantize_func
+        self._weight_preprocess_func = weight_preprocess_func
+        self._act_preprocess_func = act_preprocess_func
 
         quant_type = [
             'abs_max', 'channel_wise_abs_max', 'range_abs_max',
@@ -289,6 +295,50 @@ class QuantizationTransformPass(object):
                     _copy_graph(source_graph, next_op_node)
             return
 
+        def _insert_func(graph, func, var_node, op):
+            tmp_program = Program()
+            with program_guard(tmp_program):
+                with unique_name.guard(var_node.name()):
+                    input = data(
+                        var_node.name() + '_tmp_input',
+                        shape=var_node.shape(),
+                        dtype='float32')
+                    out = func(input)
+            tmp_graph = IrGraph(core.Graph(tmp_program.desc), for_test=False)
+            in_node = None
+            in_node_params = []
+            in_op_node = []
+            out_node = None
+            for node in tmp_graph.all_var_nodes():
+                if node.inputs == [] and (not node.persistable()):
+                    in_node = node
+                elif node.inputs == []:
+                    in_node_params.append(node)
+                elif node.outputs == []:
+                    out_node = node
+            for node in tmp_graph.all_op_nodes():
+                if node.inputs == []:
+                    in_op_node.append(node)
+            for node in in_node.outputs:
+                _copy_graph(tmp_graph, node)
+            for node in in_node_params:
+                for op_node in node.outputs:
+                    _copy_graph(tmp_graph, op_node)
+            for node in in_op_node:
+                _copy_graph(tmp_graph, node)
+            target_in_node = graph._find_node_by_name(graph.all_var_nodes(),
+                                                      in_node.name())
+            target_out_node = graph._find_node_by_name(graph.all_var_nodes(),
+                                                       out_node.name())
+            #print(target_in_node.name())
+            outputs = target_in_node.outputs
+            for node in outputs:
+                graph.update_input_link(target_in_node, var_node, node)
+            graph.update_input_link(var_node, target_out_node, op)
+            #dequantized_vars[var_node.name()] = target_out_node
+            graph.safe_remove_nodes(target_in_node)
+            return target_out_node
+
         def _transform_forward(graph, op):
             op.op()._set_attr("quantization_type", "qat_with_weight")
             inputs = op.inputs
@@ -298,51 +348,28 @@ class QuantizationTransformPass(object):
                 if var_node.name() in dequantized_vars:
                     dequant_var_node = dequantized_vars[var_node.name()]
                 else:
-                    if self._quantize_func is not None:
-                        #print(var_node.name())
-                        tmp_program = Program()
-                        with program_guard(tmp_program):
-                            with unique_name.guard(var_node.name()):
-                                input = data(
-                                    var_node.name() + '_tmp_input',
-                                    shape=var_node.shape(),
-                                    dtype='float32')
-                                out = self._quantize_func(input)
-                        tmp_graph = IrGraph(
-                            core.Graph(tmp_program.desc), for_test=False)
-                        in_node = None
-                        in_node_params = []
-                        in_op_node = []
-                        out_node = None
-                        for node in tmp_graph.all_var_nodes():
-                            if node.inputs == [] and (not node.persistable()):
-                                in_node = node
-                            elif node.inputs == []:
-                                in_node_params.append(node)
-                            elif node.outputs == []:
-                                out_node = node
-                        for node in tmp_graph.all_op_nodes():
-                            if node.inputs == []:
-                                in_op_node.append(node)
-                        for node in in_node.outputs:
-                            _copy_graph(tmp_graph, node)
-                        for node in in_node_params:
-                            for op_node in node.outputs:
-                                _copy_graph(tmp_graph, op_node)
-                        for node in in_op_node:
-                            _copy_graph(tmp_graph, node)
-                        target_in_node = graph._find_node_by_name(
-                            graph.all_var_nodes(), in_node.name())
-                        target_out_node = graph._find_node_by_name(
-                            graph.all_var_nodes(), out_node.name())
-                        #print(target_in_node.name())
-                        outputs = target_in_node.outputs
-                        for node in outputs:
-                            graph.update_input_link(target_in_node, var_node,
-                                                    node)
-                        graph.update_input_link(var_node, target_out_node, op)
-                        dequantized_vars[var_node.name()] = target_out_node
-                        graph.safe_remove_nodes(target_in_node)
+                    name = var_node.name()
+                    if var_node.name() in persistable_vars:
+                        is_weight = True
+                    else:
+                        is_weight = False
+
+                    if is_weight and self._weight_preprocess_func is not None:
+                        var_node = _insert_func(
+                            graph, self._weight_preprocess_func, var_node, op)
+                    if not is_weight and self._act_preprocess_func is not None:
+                        var_node = _insert_func(
+                            graph, self._act_preprocess_func, var_node, op)
+
+                    if is_weight and self._weight_quantize_func is not None:
+                        target_out_node = _insert_func(
+                            graph, self._weight_quantize_func, var_node, op)
+                        dequantized_vars[name] = target_out_node
+                        continue
+                    elif not is_weight and self._act_quantize_func is not None:
+                        target_out_node = _insert_func(
+                            graph, self._act_quantize_func, var_node, op)
+                        dequantized_vars[name] = target_out_node
                         continue
 
                     quant_bits = self._weight_bits if var_node.name() in persistable_vars \
