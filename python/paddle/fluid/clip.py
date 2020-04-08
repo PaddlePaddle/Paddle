@@ -24,6 +24,7 @@ from . import framework
 from . import core
 from . import name_scope
 from .dygraph import base as imperative_base
+from .data_feeder import check_variable_and_dtype
 
 __all__ = [
     'set_gradient_clip', 'ErrorClipByValue', 'GradientClipByValue',
@@ -53,6 +54,13 @@ class ErrorClipByValue(BaseErrorClipAttr):
         max (float): The maximum value to clip by.
         min (float, optional): The minimum value to clip by. if not set by user, \
         will be set to ``-max`` by framework.
+ 
+    Raises:
+        TypeError: The `dtype` must be one of bool, float16, float32, float64, int32 and int64
+                   and the data type of out Tensor must be the same as the dtype. 
+        TypeError: The `shape` must be one of list, tuple, Variable.
+        TypeError: The `out` must be None or Variable.
+        TypeError: The `input` must be Variable.
 
     Examples:
         .. code-block:: python
@@ -91,6 +99,9 @@ class ErrorClipByValue(BaseErrorClipAttr):
         return "ByValue, min=%f, max=%f" % (self.min, self.max)
 
     def _append_clip_op(self, block, grad_name):
+        check_variable_and_dtype(input, "X",
+                                 ['float16', 'float32', 'float64', 'int32', 'int64'],
+                                 "clip")
         clip_op_desc = block.desc.append_op()
         clip_op_desc.set_type("clip")
         clip_op_desc.set_input("X", [grad_name])
