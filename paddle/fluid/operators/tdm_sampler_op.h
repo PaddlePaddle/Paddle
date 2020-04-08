@@ -91,16 +91,18 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
     T input_id = input_data[i];
     PADDLE_ENFORCE_LT(
         -1, input_id,
-        "Variable value (input) of OP(fluid.layers.tdm_sampler) "
-        "expected >= 0 and < %ld, but got %ld. Please check input "
-        "value.",
-        travel_dim[0], input_id);
+        platform::errors::InvalidArgument(
+            "Variable value (input) of OP(fluid.layers.tdm_sampler) "
+            "expected >= 0 and < %ld, but got %ld. Please check input "
+            "value.",
+            travel_dim[0], input_id));
     PADDLE_ENFORCE_LT(
         input_id, travel_dim[0],
-        "Variable value (input) of OP(fluid.layers.tdm_sampler) "
-        "expected >= 0 and < %ld, but got %ld. Please check input "
-        "value.",
-        travel_dim[0], input_id);
+        platform::errors::InvalidArgument(
+            "Variable value (input) of OP(fluid.layers.tdm_sampler) "
+            "expected >= 0 and < %ld, but got %ld. Please check input "
+            "value.",
+            travel_dim[0], input_id));
 
     VLOG(3) << "TDM: input id: " << input_id;
     int start_offset = static_cast<int>(input_id * layer_nums);
@@ -118,10 +120,11 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
 
       PADDLE_ENFORCE_LE(
           sample_num, node_nums - 1,
-          "Neg sample nums id of OP(fluid.layers.tdm_sampler) at layer %ld "
-          "expected <= %ld - 1 (positive included), but got %ld. Please "
-          "check neg_samples_num_list.",
-          layer_idx, node_nums, sample_num);
+          platform::errors::InvalidArgument(
+              "Neg sample nums id of OP(fluid.layers.tdm_sampler) at layer %ld "
+              "expected <= %ld - 1 (positive included), but got %ld. Please "
+              "check neg_samples_num_list.",
+              layer_idx, node_nums, sample_num));
 
       int node_id_min = layer_offset_lod[layer_idx];
       int node_id_max = layer_offset_lod[layer_idx + 1];
@@ -151,16 +154,18 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
 
       PADDLE_ENFORCE_LE(
           positive_node_id, node_id_max,
-          "Positive node id of OP(fluid.layers.tdm_sampler) at layer %ld "
-          "expected >= %ld and <= %ld, but got %ld. Please check input "
-          "value.",
-          layer_idx, node_id_min, node_id_max, positive_node_id);
+          platform::errors::InvalidArgument(
+              "Positive node id of OP(fluid.layers.tdm_sampler) at layer %ld "
+              "expected >= %ld and <= %ld, but got %ld. Please check input "
+              "value.",
+              layer_idx, node_id_min, node_id_max, positive_node_id));
       PADDLE_ENFORCE_LE(
           node_id_min, positive_node_id,
-          "Positive node id of OP(fluid.layers.tdm_sampler) at layer %ld "
-          "expected >= %ld and <= %ld, but got %ld. Please check input "
-          "value.",
-          layer_idx, node_id_min, node_id_max, positive_node_id);
+          platform::errors::InvalidArgument(
+              "Positive node id of OP(fluid.layers.tdm_sampler) at layer %ld "
+              "expected >= %ld and <= %ld, but got %ld. Please check input "
+              "value.",
+              layer_idx, node_id_min, node_id_max, positive_node_id));
 
       // If output positive, add itself
       if (output_positive_flag) {
@@ -201,11 +206,12 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
 
         PADDLE_ENFORCE_LE(
             layer_data[layer_offset_lod[layer_idx] + sample_res], node_id_max,
-            "Negative node id of OP(fluid.layers.tdm_sampler) at layer %ld"
-            "expected >= %ld and <= %ld, but got %ld. Please check input "
-            "tdm tree structure and tdm travel info.",
-            layer_idx, node_id_min, node_id_max,
-            layer_data[layer_offset_lod[layer_idx] + sample_res]);
+            platform::errors::InvalidArgument(
+                "Negative node id of OP(fluid.layers.tdm_sampler) at layer %ld"
+                "expected >= %ld and <= %ld, but got %ld. Please check input "
+                "tdm tree structure and tdm travel info.",
+                layer_idx, node_id_min, node_id_max,
+                layer_data[layer_offset_lod[layer_idx] + sample_res]));
 
         offset += 1;
       }  // end layer nce

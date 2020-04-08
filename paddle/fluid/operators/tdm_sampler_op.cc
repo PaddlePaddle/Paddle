@@ -78,9 +78,14 @@ class TDMSamplerOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Inputs(Input) of TdmSampler should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Travel"), true);
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Layer"), true);
+                      platform::errors::InvalidArgument(
+                          "Inputs(Input) of TdmSampler should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Travel"), true,
+                      platform::errors::InvalidArgument(
+                          "Inputs(Travel) of TdmSampler should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Layer"), true,
+                      platform::errors::InvalidArgument(
+                          "Inputs(Layer) of TdmSampler should not be null."));
     auto neg_samples_num_vec =
         ctx->Attrs().Get<std::vector<int>>("neg_samples_num_list");
     auto output_positive_flag = ctx->Attrs().Get<bool>("output_positive");
