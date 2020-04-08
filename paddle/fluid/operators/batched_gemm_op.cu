@@ -114,7 +114,6 @@ class BatchedGEMMGradOpCUDAKernel : public framework::OpKernel<T> {
     auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
     T alpha = 1;
     T beta = 0;
-
     // dx = dout_data * y^T
     blas.BatchedGEMM(CblasNoTrans, CblasTrans, mat_m, mat_k, mat_n, alpha,
                      dout_data, y_data, beta, dx_data, batch_count,

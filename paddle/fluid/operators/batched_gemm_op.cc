@@ -32,24 +32,6 @@ class BatchedGEMMOp : public framework::OperatorWithKernel {
     auto batch_count = ctx->Attrs().Get<int>("BatchCount");
     auto mat_m = ctx->Attrs().Get<int>("Mat_M");
     auto mat_n = ctx->Attrs().Get<int>("Mat_N");
-    // auto mat_k = ctx->Attrs().Get<int>("Mat_K");
-    // X = batch_count * mat_m * mat_k
-    // Y = batch_count * mat_k * mat_n
-    // Out = batch_count * mat_m * mat_n
-    // auto x_dims = ctx->GetInputDim("X");
-    // auto y_dims = ctx->GetInputDim("Y");
-    // int x_numel = framework::product(x_dims);
-    // int y_numel = framework::product(y_dims);
-
-    // PADDLE_ENFORCE_EQ(
-    //     x_numel, batch_count * mat_m * mat_k,
-    //     platform::errors::OutOfRange(
-    //         "X of BatchedGEMM has error dims."));
-
-    // PADDLE_ENFORCE_EQ(
-    //     y_numel, batch_count * mat_k * mat_n,
-    //     platform::errors::OutOfRange(
-    //         "Y of BatchedGEMM has error dims."));
     ctx->SetOutputDim("Out", {batch_count, mat_m, mat_n});
     ctx->ShareLoD("X", /*->*/ "Out");
   }
