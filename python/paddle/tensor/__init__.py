@@ -31,7 +31,7 @@ from .creation import linspace  #DEFINE_ALIAS
 # from .creation import eye   #DEFINE_ALIAS
 from .creation import full  # DEFINE_ALIAS
 # from .creation import linspace   #DEFINE_ALIAS
-# from .creation import full_like   #DEFINE_ALIAS
+from .creation import full_like  #DEFINE_ALIAS
 from .creation import triu  #DEFINE_ALIAS
 from .creation import tril  #DEFINE_ALIAS
 # from .creation import meshgrid   #DEFINE_ALIAS
@@ -64,7 +64,7 @@ from .logic import elementwise_equal  #DEFINE_ALIAS
 # from .random import shuffle   #DEFINE_ALIAS
 # from .random import randn   #DEFINE_ALIAS
 # from .random import rand   #DEFINE_ALIAS
-# from .random import randint   #DEFINE_ALIAS
+from .random import randint  #DEFINE_ALIAS
 from .random import randperm
 # from .math import abs   #DEFINE_ALIAS
 # from .math import acos   #DEFINE_ALIAS
