@@ -1070,7 +1070,7 @@ class BiGRU(fluid.dygraph.Layer):
 
         self.gru_r = DynamicGRU(
             size=grnn_hidden_dim,
-            is_reverse=False,
+            is_reverse=True,
             h_0=h_0,
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Uniform(
