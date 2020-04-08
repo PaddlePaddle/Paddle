@@ -1257,7 +1257,7 @@ def array_write(x, i, array=None):
         Variable: The input ``array`` after ``x`` is written into.
 
     Raises:
-        TypeError: If `array` is not a variable.
+        TypeError: If `array` is not None or a variable.
         TypeError: If `i` is not a variable.
         TypeError: If `x` is not a variable.
     
