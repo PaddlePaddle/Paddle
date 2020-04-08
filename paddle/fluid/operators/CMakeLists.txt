@@ -59,7 +59,7 @@ if(WITH_COVERAGE OR NOT WITH_AVX OR WIN32)
 endif()
 
 register_operators(EXCLUDES py_func_op warpctc_op dgc_op
-	sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
+    sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
 
 if (WITH_GPU)
     # warpctc_op needs cudnn 7 above
@@ -68,12 +68,8 @@ if (WITH_GPU)
     else()
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
     endif()
-    if (NOT WIN32)
-        if (WITH_NCCL)
-            op_library(sync_batch_norm_op)
-            file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(sync_batch_norm);\n")
-        endif()
-    endif()
+    op_library(sync_batch_norm_op)
+    file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(sync_batch_norm);\n")
 else()
     op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
 endif()

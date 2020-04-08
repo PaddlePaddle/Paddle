@@ -20,11 +20,6 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
-#include "paddle/fluid/framework/op_call_stack.h"
-#include "paddle/fluid/framework/op_proto_maker.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/var_type_inference.h"
 
 namespace paddle {
@@ -164,8 +159,7 @@ std::string OperationExpression::GetRHS(std::unordered_set<int>* used,
                               ">. Received %d.",
                               index, op_type_, input_ids_[index]));
         // TODO(wangchaochaohu): Here fp16 convert to float to do comupte, we
-        // need
-        // to add general fp16 compute later.
+        // need to add general fp16 compute later.
         std::string var_name;
         if (rhs_type_ == "float16") {
           half2fp32_statement->append(OptimzeFP16RHS(used, index, input_ids_));
