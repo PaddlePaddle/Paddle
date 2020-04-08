@@ -1158,6 +1158,9 @@ def lod_tensor_to_array(x, table):
           table = fluid.layers.lod_rank_table(x, level=0)
           array = fluid.layers.lod_tensor_to_array(x, table)
     """
+    check_type(table, 'table', (ParamAttr, list), 'lod_tensor_to_array')
+    check_type(x, 'x', (Variable, list), 'lod_tensor_to_array')
+
     helper = LayerHelper("lod_tensor_to_array", **locals())
     array = helper.create_variable(
         name=unique_name.generate("lod_tensor_to_array"),
