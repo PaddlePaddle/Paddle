@@ -13,17 +13,8 @@
 # limitations under the License.
 from __future__ import print_function
 import numpy as np
-import warnings
-import six
-import os
-import inspect
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
-from ..fluid.initializer import Normal, Constant, NumpyArrayInitializer
-from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program
-from ..fluid import dygraph_utils
-from ..fluid.param_attr import ParamAttr
-from ..fluid import unique_name
 from ..fluid import core, layers
 
 # TODO: define searching & indexing functions of a tensor  
@@ -227,12 +218,24 @@ def sort(input, axis=-1, descending=False, out=None, name=None):
 def where(Condition, X, Y):
     """
     Return a tensor of elements selected from either $X$ or $Y$, depending on $Condition$.
+
+    .. math::
+ 
+      Out_i =
+      \\begin{cases}
+      X_i, \quad  \\text{if}  \\ cond_i \\  is \\ True \\\\
+      Y_i, \quad  \\text{if}  \\ cond_i \\  is \\ False \\\\
+      \\end{cases}
+  
+
     Args:
-        Condition(Variable): A bool tensor with rank at least 1, the data type is bool.
-        X(Variable): X is a Tensor Variable.
-        Y(Variable): Y is a Tensor Variable.
+        Condition(Variable): The condition to choose X or Y.
+        X(Variable): X is a Tensor Variable with data type float32, float64, int32, int64.
+        Y(Variable): Y is a Tensor Variable with data type float32, float64, int32, int64.
+
     Returns:
-        out : The tensor. 
+        Variable: A Tensor with the same data dype as X. 
+
     Examples:
         .. code-block:: python
 
@@ -240,14 +243,16 @@ def where(Condition, X, Y):
           import paddle as paddle
           import paddle.fluid as fluid
 
+          x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float32")
+          y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype("float32")
+
           with fluid.dygraph.guard():
-              x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float64")
-              y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype("float64")
               x = fluid.dygraph.to_variable(x_i)
               y = fluid.dygraph.to_variable(y_i)
               out = paddle.where(x>1, x, y)
-              print(out.numpy())
-              #out: [1.0, 1.0, 3.2, 1.2]
+
+          print(out.numpy())
+          #out: [1.0, 1.0, 3.2, 1.2]
     """
     if not in_dygraph_mode():
         check_variable_and_dtype(Condition, 'Condition', ['bool'], 'where')
