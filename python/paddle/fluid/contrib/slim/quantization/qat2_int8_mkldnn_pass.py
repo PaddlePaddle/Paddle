@@ -20,6 +20,7 @@ __all__ = ['Qat2Int8MkldnnPass']
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 
+
 class Qat2Int8MkldnnPass(object):
     """
     Transform a QAT model IrGraph into MKL-DNN supported INT8 IrGraph.
