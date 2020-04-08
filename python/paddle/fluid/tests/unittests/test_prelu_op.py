@@ -16,8 +16,26 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle.fluid as fluid
 import six
 from op_test import OpTest, skip_check_grad_ci
+
+
+class TestPReluAPIError(unittest.TestCase):
+    def test_errors(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            layer = fluid.PRelu(
+                mode='all',
+                param_attr=fluid.ParamAttr(
+                    initializer=fluid.initializer.Constant(1.0)))
+            # the input must be Variable.
+            x0 = fluid.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, layer, x0)
+            # the input dtype must be float32
+            data_t = fluid.data(
+                name="input", shape=[5, 200, 100, 100], dtype="float64")
+            self.assertRaises(TypeError, layer, data_t)
 
 
 class PReluTest(OpTest):
