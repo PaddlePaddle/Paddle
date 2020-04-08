@@ -1256,11 +1256,6 @@ def array_write(x, i, array=None):
     Returns:
         Variable: The input ``array`` after ``x`` is written into.
 
-    Raises:
-        TypeError: If `array` is not None or a variable.
-        TypeError: If `i` is not a variable.
-        TypeError: If `x` is not a variable.
-    
     Examples:
         .. code-block:: python
 
@@ -1292,10 +1287,6 @@ def array_write(x, i, array=None):
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
 
     """
-    if array is not None:
-        check_type(array, 'array', (Variable), 'array_write')
-    check_type(i, 'i', (Variable), 'array_write')
-    check_type(x, 'x', (Variable), 'array_write')
     if in_dygraph_mode():
         assert isinstance(
             x, Variable
@@ -1321,7 +1312,15 @@ def array_write(x, i, array=None):
             array.append(x)
         return array
 
+    check_variable_and_dtype(i, 'i', ['int32', 'int64'], 'array_write')
+    check_type(x, 'x', (Variable), 'array_write')
     helper = LayerHelper('array_write', **locals())
+    if array is not None:
+        if not isinstance(
+                array,
+                Variable) or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+            raise TypeError(
+                "array should be tensor array vairable in array_write Op")
     if array is None:
         array = helper.create_variable(
             name="{0}.out".format(helper.name),
@@ -1645,10 +1644,6 @@ def array_read(array, i):
     Returns:
         Variable: The LoDTensor or Tensor that is read at the specified position of ``array``.
     
-    Raises:
-        TypeError: If `array` is not a variable.
-        TypeError: If `i` is not a variable.
-
     Examples:
         .. code-block:: python
 
@@ -1684,8 +1679,6 @@ def array_read(array, i):
             #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux, 
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
-    check_type(array, 'array', (Variable), 'array_read')
-    check_type(array, 'i', (Variable), 'array_read')
     if in_dygraph_mode():
         assert isinstance(
             array,
@@ -1699,6 +1692,7 @@ def array_read(array, i):
         i = i.numpy()[0]
         return array[i]
 
+    check_variable_and_dtype(i, 'i', ['int32', 'int64'], 'array_read')
     helper = LayerHelper('array_read', **locals())
     if not isinstance(
             array,
