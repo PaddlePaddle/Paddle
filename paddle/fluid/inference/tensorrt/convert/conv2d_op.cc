@@ -26,14 +26,25 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   VLOG(3) << "convert a fluid " << name << " op to tensorrt layer without bias";
 
   framework::OpDesc op_desc(op, nullptr);
-  PADDLE_ENFORCE_EQ(op_desc.Input("Input").size(), 1);
-  PADDLE_ENFORCE_EQ(op_desc.Input("Filter").size(), 1);  // Y is a weight
-  PADDLE_ENFORCE_EQ(op_desc.Output("Output").size(), 1);
+  PADDLE_ENFORCE_EQ(op_desc.Input("Input").size(), 1,
+                    platform::errors::InvalidArgument(
+                        "TRT Conv2d expect 1 input, but got %d input.",
+                        op_desc.Input("Input").size()));
+  PADDLE_ENFORCE_EQ(op_desc.Input("Filter").size(), 1,
+                    platform::errors::InvalidArgument(
+                        "TRT Conv2d expect 1 filter, but got %d filter.",
+                        op_desc.Input("Filter").size()));
+  PADDLE_ENFORCE_EQ(op_desc.Output("Output").size(), 1,
+                    platform::errors::InvalidArgument(
+                        "TRT Conv2d expect 1 output, but got %d output.",
+                        op_desc.Output("Output").size()));
 
-  PADDLE_ENFORCE(engine != nullptr);
   auto* X = engine->GetITensor(op_desc.Input("Input").front());
-  auto* Y_v = scope.FindVar(op_desc.Input("Filter").front());
-  PADDLE_ENFORCE_NOT_NULL(Y_v);
+  std::string filter_var_name = op_desc.Input("Filter").front();
+  auto* Y_v = scope.FindVar(filter_var_name);
+  PADDLE_ENFORCE_NOT_NULL(
+      Y_v, platform::errors::NotFound(
+               "Can not find %s presistale var in scope.", filter_var_name));
   auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
   float* weight_data = nullptr;
   bool enable_int8 = boost::get<bool>(op_desc.HasAttr("enable_int8"));
@@ -53,7 +64,11 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
         engine->GetWeightCPUData(op_desc.Input("Filter").front(), Y_t, false);
   }
 
-  PADDLE_ENFORCE_EQ(Y_t->dims().size(), 4UL);
+  PADDLE_ENFORCE_EQ(Y_t->dims().size(), 4UL,
+                    platform::errors::InvalidArgument(
+                        "The conv2d filter's dims size should be 4, but got %d",
+                        Y_t->dims().size()));
+
   const int n_output = Y_t->dims()[0];
   const int n_input = Y_t->dims()[1];
   const int filter_h = Y_t->dims()[2];
@@ -133,10 +148,11 @@ class Deconv2dOpConverter : public OpConverter {
           return layer;
         },
         [](nvinfer1::IDeconvolutionLayer* layer, nvinfer1::DimsHW& dilations) {
-          PADDLE_ENFORCE(
-              dilations.d[0] == 1 && dilations.d[1] == 1,
-              "Dilations must be (1, 1) for tensorRT, but given (%d, %d)",
-              dilations.d[0], dilations.d[1]);
+          PADDLE_ENFORCE_EQ(
+              dilations.d[0] == 1 && dilations.d[1] == 1, true,
+              platform::errors::InvalidArgument(
+                  "Dilations must be (1, 1) for tensorRT, but given (%d, %d)",
+                  dilations.d[0], dilations.d[1]));
         },
         "conv2d_transpose");
   }
