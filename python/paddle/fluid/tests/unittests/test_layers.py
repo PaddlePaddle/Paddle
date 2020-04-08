@@ -3014,7 +3014,6 @@ class TestBook(LayerTest):
 
     def test_sequence_reverse_op_error(self):
         with self.static_graph():
-            x_data = np.random.random((2, 4)).astype("float32")
 
             def test_variable():
                 # the input type must be Variable
