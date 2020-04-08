@@ -221,7 +221,7 @@ void DownpourWorker::CollectUidInfo(size_t table_idx) {
   auto& feature = features_[table_id];
   auto& feature_uid = feature_uid_[table_id];
   feature_uid.resize(feature.size());
-  Variable* var = thread_scope_->FindVar(uid_var_name_[table_id]);
+  Variable* var = thread_scope_->FindVar(uid_slot_);
   LoDTensor* tensor = var->GetMutable<LoDTensor>();
   int64_t* label_ptr = tensor->data<int64_t>();
 

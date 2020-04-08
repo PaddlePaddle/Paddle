@@ -262,7 +262,6 @@ class DownpourWorker : public HogwildWorker {
   std::vector<std::string> skip_ops_;
   // just save the value in param_ for easy access
   std::map<uint64_t, std::string> label_var_name_;
-  std::map<uint64_t, std::string> uid_var_name_;
   std::map<uint64_t, std::vector<std::string>> dense_value_names_;
   std::map<uint64_t, uint64_t> table_dependency_;
   std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
