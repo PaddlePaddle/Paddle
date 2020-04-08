@@ -57,6 +57,10 @@ def create_tensor(dtype, name=None, persistable=False):
           import paddle.fluid as fluid
           tensor = fluid.layers.create_tensor(dtype='float32')
     """
+    check_type(dtype, 'dtype', (str, numpy.dtype), 'create_tensor')
+    if name is not None:
+        check_type(name, 'name', str, 'create_tensor')
+    check_type(persistable, 'persistable', bool, 'create_tensor')
     helper = LayerHelper("create_tensor", **locals())
     return helper.create_variable(
         name=helper.name, dtype=dtype, persistable=persistable)

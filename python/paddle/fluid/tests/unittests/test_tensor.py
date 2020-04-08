@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
 import unittest
 import numpy
 import numbers
@@ -344,6 +345,27 @@ class TestTensor(unittest.TestCase):
             tensor.set(list_array, place)
             self.assertEqual([2, 200, 300], tensor.shape())
             self.assertTrue(numpy.array_equal(numpy.array(tensor), list_array))
+
+
+class TestCreateTensorOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+
+            def test_dtype_bool():
+                fluid.layers.create_tensor(
+                    dtype=True, name=None, persistable=False)
+
+            def test_name_bool():
+                fluid.layers.create_tensor(
+                    dtype="float32", name=True, persistable=False)
+
+            def test_persistable_str():
+                fluid.layers.create_tensor(
+                    dtype="float32", name=None, persistable="False")
+
+        self.assertRaises(TypeError, test_dtype_bool)
+        self.assertRaises(TypeError, test_name_bool)
+        self.assertRaises(TypeError, test_persistable_str)
 
 
 if __name__ == '__main__':
