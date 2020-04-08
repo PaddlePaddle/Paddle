@@ -75,6 +75,7 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
   for (auto* node : subgraph->SortedNodes()) {
     if (node && node->IsOp() && node->Op()) {
       auto* op = node->Op();
+      AttributeMap attr = *(op->MutableAttrMap());
 
       // Input ids should be set in fixed order, like:
       //  - X, Y in forward operations
@@ -98,6 +99,7 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
           input_ids.push_back(-1);
         }
       }
+
       // Output ids should be set in fixed order, like:
       //  - dx, dy in backward operations
       std::vector<int> output_ids;
@@ -105,10 +107,6 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
           OperationMap::Instance().Get(op->Type()).output_names;
 
       for (auto& name : output_names) {
-        PADDLE_ENFORCE_EQ(
-            op->Output(name).size(), 1U,
-            platform::errors::InvalidArgument(
-                "Output(%s) of operation %s is not set.", name, op->Type()));
         PADDLE_ENFORCE_NE(
             var_ids.find(op->Output(name)[0]), var_ids.end(),
             platform::errors::InvalidArgument(
@@ -118,8 +116,10 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
 
       std::string lhs_type = ExtractDataType(node->outputs);
       std::string rhs_type = ExtractDataType(node->inputs);
-      expressions.emplace_back(OperationExpression(
-          node->Name(), input_ids, output_ids, rhs_type, lhs_type));
+      auto expression = OperationExpression(node->Name(), input_ids, output_ids,
+                                            rhs_type, lhs_type);
+      expression.SetAttr(attr);
+      expressions.push_back(expression);
     }
   }
   return expressions;

@@ -331,7 +331,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             model = MyLayer(size, vocab_size, size)
             optimizer = fluid.optimizer.AdamOptimizer(
                 0.001, parameter_list=model.parameters())
-            grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(0.001)
+            grad_clip = fluid.clip.GradientClipByGlobalNorm(0.001)
 
             indices = fluid.dygraph.to_variable(indices)
             embed = fluid.dygraph.to_variable(embed)
@@ -350,7 +350,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             model = MyLayer2(size, vocab_size, size)
             optimizer = fluid.optimizer.AdamOptimizer(
                 0.001, parameter_list=model.parameters())
-            grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(0.001)
+            grad_clip = fluid.clip.GradientClipByGlobalNorm(0.001)
 
             indices = fluid.dygraph.to_variable(indices)
             emebd = fluid.dygraph.to_variable(embed)

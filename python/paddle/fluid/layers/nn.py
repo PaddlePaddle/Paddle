@@ -14,14 +14,16 @@
 """
 All layers just related to the neural network.
 """
-
 from __future__ import print_function
 
-import numpy as np
-import warnings
-import six
 import os
 import inspect
+import warnings
+
+import numpy as np
+import six
+
+import paddle
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program
@@ -34,6 +36,7 @@ from .. import unique_name
 from functools import reduce
 from .. import core
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+import paddle
 
 __all__ = [
     'fc',
@@ -50,6 +53,7 @@ __all__ = [
     'adaptive_pool2d',
     'adaptive_pool3d',
     'batch_norm',
+    'inplace_abn',
     'instance_norm',
     'data_norm',
     'conv2d_transpose',
@@ -495,6 +499,148 @@ def embedding(input,
             'padding_idx': padding_idx
         })
     return tmp
+
+
+def _pull_sparse(input,
+                 size,
+                 table_id,
+                 accessor_class,
+                 name="embedding",
+                 ctr_label_name="",
+                 padding_id=0,
+                 dtype='float32',
+                 scale_sparse_grad=True):
+    """
+    **Pull Fleet Sparse Layer**
+
+    This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
+    Fleet lookup table. The result of this lookup is the embedding of each ID in the
+    :attr:`input`.
+
+    Args:
+        input(Variable|list of Variable): Input is a Tensor<int64> Variable, which
+            contains the IDs information.
+        size(int): The embedding size parameter, which indicates the size of
+            each embedding vector respectively.
+        table_id(int): the fleet table id of this embedding.
+        accessor_class(str): the pslib accessor of the table, default is DownpourCtrAccessor.
+        ctr_label_name(str): the layer name of click.
+        padding_id(int): the padding id during lookup, default is 0.
+        dtype(str): The dtype refers to the data type of output tensor. Only supports
+            float32 now.
+        scale_sparse_grad(bool): whether to scale sparse gradient with batch size. default
+            is True.
+
+    Returns:
+        Variable|list of Variable: The tensor variable storing the embeddings of the \
+                  supplied inputs.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          emb = fluid.layers.nn._pull_sparse(
+              input=data, size=11, table_id=0, accessor_class="DownpourCtrAccessor")
+    """
+    helper = LayerHelper(name, **locals())
+    inputs = helper.multiple_input()
+    outs = [helper.create_variable_for_type_inference(dtype)]
+    input_names = [i.name for i in inputs]
+    attrs = {
+        'EmbeddingDim': size,
+        'TableId': table_id,
+        'AccessorClass': accessor_class,
+        'CtrLabelName': ctr_label_name,
+        'PaddingId': padding_id,
+        'ScaleSparseGrad': scale_sparse_grad,
+        'InputNames': input_names,
+        # this is only for compatible with embedding op
+        'is_distributed': True
+    }
+    # this is only for compatible with embedding op
+    w, _ = helper.create_or_get_global_variable(
+        name=name, shape=[size], dtype=dtype, is_bias=False, persistable=True)
+    helper.append_op(
+        type='pull_sparse',
+        inputs={'Ids': inputs,
+                'W': w},
+        outputs={'Out': outs},
+        attrs=attrs)
+    if len(outs) == 1:
+        return outs[0]
+    return outs
+
+
+def _pull_sparse_v2(input,
+                    size,
+                    table_id,
+                    accessor_class,
+                    name="embedding",
+                    ctr_label_name="",
+                    padding_id=0,
+                    dtype='float32',
+                    scale_sparse_grad=True):
+    """
+    **Pull Fleet Sparse Layer**
+
+    This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
+    Fleet lookup table. The result of this lookup is the embedding of each ID in the
+    :attr:`input`.
+
+    Args:
+        input(Variable|list of Variable): Input is a Tensor<int64> Variable, which
+            contains the IDs information.
+        size(int): The embedding size parameter, which indicates the size of
+            each embedding vector respectively.
+        table_id(int): the pslib table id of this embedding.
+        accessor_class(str): the fleet accessor of the table, default is DownpourCtrAccessor.
+        ctr_label_name(str): the layer name of click.
+        padding_id(int): the padding id during lookup, default is 0.
+        dtype(str): The dtype refers to the data type of output tensor. Only supports
+            float32 now.
+        scale_sparse_grad(bool): whether to scale sparse gradient with batch size. default
+            is True.
+
+    Returns:
+        Variable|list of Variable: The tensor variable storing the embeddings of the \
+                  supplied inputs.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          data = fluid.layers.data(name='sequence', shape=[1], dtype='int64', lod_level=1)
+          emb = fluid.layers.nn._pull_sparse_v2(
+              input=data, size=11, table_id=0, accessor_class="DownpourCtrAccessor")
+    """
+    helper = LayerHelper(name, **locals())
+    inputs = helper.multiple_input()
+    outs = [helper.create_variable_for_type_inference(dtype)]
+    input_names = [i.name for i in inputs]
+    attrs = {
+        'EmbeddingDim': size,
+        'TableId': table_id,
+        'AccessorClass': accessor_class,
+        'CtrLabelName': ctr_label_name,
+        'PaddingId': padding_id,
+        'ScaleSparseGrad': scale_sparse_grad,
+        'InputNames': input_names,
+        # this is only for compatible with embedding op
+        'is_distributed': True
+    }
+    # this is only for compatible with embedding op
+    w, _ = helper.create_or_get_global_variable(
+        name=name, shape=[size], dtype=dtype, is_bias=False, persistable=True)
+    helper.append_op(
+        type='pull_sparse_v2',
+        inputs={'Ids': inputs,
+                'W': w},
+        outputs={'Out': outs},
+        attrs=attrs)
+    if len(outs) == 1:
+        return outs[0]
+    return outs
 
 
 def _pull_box_sparse(input, size, dtype='float32'):
@@ -2496,9 +2642,9 @@ def batch_norm(input,
 	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
 	     Default: None.
         data_layout (str, optional): Specify the data format of the input, and the data format of the output 
-            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
-            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`.
+             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+             `[batch_size, input_channels, input_height, input_width]`.
         in_place(bool, Default False): Make the input and output of batch norm reuse memory.
         name(str|None): For detailed information, please refer to :ref:`api_guide_Name`. 
             Usually name is no need to set and None by default. 
@@ -2515,7 +2661,6 @@ def batch_norm(input,
             or is_test to true, and the behavior is equivalent.
             In train mode, when setting use_global_stats True, the global mean
             and variance are also used during train period.
-
     Returns:
         A Variable holding Tensor which is the result after applying batch normalization on the input, 
         has same shape and data type with input. 
@@ -2628,8 +2773,8 @@ def batch_norm(input,
         reserve_space = helper.create_variable_for_type_inference(
             dtype=core.VarDesc.VarType.FP16, stop_gradient=True)
 
-    batch_norm_out = input if in_place else helper.create_variable_for_type_inference(
-        dtype)
+    batch_norm_out = input if in_place else \
+            helper.create_variable_for_type_inference(dtype)
 
     inputs = {
         "X": input,
@@ -2665,6 +2810,209 @@ def batch_norm(input,
         type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
 
     return helper.append_activation(batch_norm_out)
+
+
+def inplace_abn(input,
+                act=None,
+                is_test=False,
+                momentum=0.9,
+                epsilon=1e-05,
+                param_attr=None,
+                bias_attr=None,
+                data_layout='NCHW',
+                name=None,
+                moving_mean_name=None,
+                moving_variance_name=None,
+                do_model_average_for_mean_and_var=True,
+                use_global_stats=False,
+                act_alpha=1.0):
+    """
+    **In-place Activation Batch Normalization Layer**
+    
+    This layer calculates batch normalization and activation with in-place memory.
+    For batch normalization calculations, see `fluid.layers.batch_norm`.
+    For in-place activation batch normalization, see `In-Place Activated BatchNorm for 
+    Memory-Optimized Training of DNNs <https://arxiv.org/abs/1712.02616>`_
+
+    `inplace_abn` only support activation type as `None`, `identity`, `leaky_relu`,
+    `elu` currently.
+    `inplace_abn` only support data type as `float32`, `float64` currently.
+
+    Note:
+        if build_strategy.sync_batch_norm=True, the batch_norm in network will use 
+        sync_batch_norm automatically.
+        `is_test = True` can only be used in test program and inference program, `is_test` CANNOT be set to True in train program, if you want to use global status from pre_train model in train program, please set `use_global_stats = True`.
+
+    Args:
+        input(Variable): The rank of input variable can be 2, 3, 4, 5. The data type 
+            is float16 or float32 or float64.
+        act(string, Default None): Activation type, linear|relu|prelu|...
+        is_test (bool, Default False): A flag indicating whether it is in
+            test phrase or not.
+        momentum(float|Variable, Default 0.9): The value used for the moving_mean and
+            moving_var computation. This should be a float number or a Variable with
+            shape [1] and data type as float32. The updated formula is:
+            :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
+            :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
+            Default is 0.9.
+        epsilon(float, Default 1e-05): A value added to the denominator for
+            numerical stability. Default is 1e-5.
+        param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
+             of inplace_abn. If it is set to None or one attribute of ParamAttr, inplace_abn 
+	     will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+	     If the Initializer of the param_attr is not set, the parameter is initialized 
+	     with Xavier. Default: None.
+        bias_attr(ParamAttr|None): The parameter attribute for the bias of inplace_abn.
+             If it is set to None or one attribute of ParamAttr, inplace_abn 
+	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
+	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
+	     Default: None.
+        data_layout (str, optional): Specify the data format of the input, and the data format of the output 
+             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+             `[batch_size, input_channels, input_height, input_width]`.
+        name(str|None): For detailed information, please refer to :ref:`api_guide_Name`. 
+            Usually name is no need to set and None by default. 
+        moving_mean_name(str, Default None): The name of moving_mean which store the global Mean. If it 
+            is set to None, inplace_abn will save global mean with a random name, otherwise, inplace_abn 
+            will save global mean with the string.
+        moving_variance_name(str, Default None): The name of the moving_variance which store the global Variance.
+            If it is set to None, inplace_abn, will save global variance with a random name, otherwise, inplace_abn 
+            will save global variance with the string.
+        do_model_average_for_mean_and_var(bool, Default True): Whether parameter mean and variance should do model
+            average when model average is enabled.
+        use_global_stats(bool, Default False): Whether to use global mean and
+            variance. In inference or test mode, set use_global_stats to true
+            or is_test to true, and the behavior is equivalent.
+            In train mode, when setting use_global_stats True, the global mean
+            and variance are also used during train period.
+        act_alpha(float, Default 1.0): when activation is in ['elu', 'identity', 'leaky_relu'],
+            inplace activative batch normalization will be used, and alpha parameter for activation
+            can be given by this parameter.
+    Returns:
+        A Variable holding Tensor which is the result after applying batch normalization and activation on the input, 
+        has same shape and data type with input. 
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
+            hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
+            hidden2 = fluid.layers.inplace_abn(input=hidden1)
+            hidden3 = fluid.layers.inplace_abn(input=hidden2, act='leaky_relu', act_alpha=0.2)
+
+    """
+    assert act in [None, 'identity', 'leaky_relu', 'elu'], \
+        "inplace_abn only support act as None, 'identity', " \
+        "'leaky_relu', 'elu' currently"
+    assert bias_attr is not False, "bias_attr should not be False in inplace_abn."
+    helper = LayerHelper('inplace_abn', **locals())
+
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'inplace_abn')
+    dtype = helper.input_dtype()
+
+    has_reserve_space = False
+    if data_layout == 'NHWC':
+        flag = os.environ.get('FLAGS_cudnn_batchnorm_spatial_persistent')
+        if flag is not None and flag.lower() in ['true', '1']:
+            has_reserve_space = True
+
+    input_shape = input.shape
+    if data_layout == 'NCHW':
+        channel_num = input_shape[1]
+    else:
+        if data_layout == 'NHWC':
+            channel_num = input_shape[-1]
+        else:
+            raise ValueError("unsupported data layout:" + data_layout)
+
+    param_shape = [channel_num]
+
+    # create parameter
+    scale = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=param_shape,
+        dtype=dtype,
+        default_initializer=Constant(1.0))
+    bias = helper.create_parameter(
+        attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
+
+    mean = helper.create_parameter(
+        attr=ParamAttr(
+            name=moving_mean_name,
+            initializer=Constant(0.0),
+            trainable=False,
+            do_model_average=do_model_average_for_mean_and_var),
+        shape=param_shape,
+        dtype=dtype)
+    mean.stop_gradient = True
+
+    variance = helper.create_parameter(
+        attr=ParamAttr(
+            name=moving_variance_name,
+            initializer=Constant(1.0),
+            trainable=False,
+            do_model_average=do_model_average_for_mean_and_var),
+        shape=param_shape,
+        dtype=dtype)
+    variance.stop_gradient = True
+
+    # create output
+    # mean and mean_out share the same memory
+    mean_out = mean
+    # variance and variance out share the same memory
+    variance_out = variance
+    saved_mean = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
+    saved_variance = helper.create_variable_for_type_inference(
+        dtype=dtype, stop_gradient=True)
+
+    reserve_space = None
+    if has_reserve_space:
+        reserve_space = helper.create_variable_for_type_inference(
+            dtype=core.VarDesc.VarType.FP16, stop_gradient=True)
+
+    batch_norm_out = input
+
+    inputs = {
+        "X": input,
+        "Scale": scale,
+        "Bias": bias,
+        "Mean": mean,
+        "Variance": variance
+    }
+    attrs = {
+        "epsilon": epsilon,
+        "is_test": is_test,
+        "data_layout": data_layout,
+        "use_mkldnn": False,
+        "fuse_with_relu": False,
+        "use_global_stats": use_global_stats,
+        "activation": act,
+        "alpha": act_alpha,
+    }
+    if isinstance(momentum, Variable):
+        inputs['MomemtumTensor'] = momentum
+    else:
+        attrs['momentum'] = momentum
+
+    outputs = {
+        "Y": batch_norm_out,
+        "MeanOut": mean_out,
+        "VarianceOut": variance_out,
+        "SavedMean": saved_mean,
+        "SavedVariance": saved_variance
+    }
+    if reserve_space is not None:
+        outputs["ReserveSpace"] = reserve_space
+
+    helper.append_op(
+        type="inplace_abn", inputs=inputs, outputs=outputs, attrs=attrs)
+
+    return batch_norm_out
 
 
 def instance_norm(input,
@@ -3512,10 +3860,10 @@ def conv2d_transpose(input,
 
     if output_size is None:
         output_size = []
-    elif isinstance(output_size, list) or isinstance(output_size, int):
+    elif isinstance(output_size, (list, tuple, int)):
         output_size = utils.convert_to_list(output_size, 2, 'output_size')
     else:
-        raise ValueError("output_size should be list or int")
+        raise ValueError("output_size should be int, list[int] or tuple[int]")
     groups = 1 if groups is None else groups
     filter_shape = [input_channel, num_filters // groups] + filter_size
 
@@ -3784,7 +4132,7 @@ def conv3d_transpose(input,
         if output_size is None:
             raise ValueError("output_size must be set when filter_size is None")
         if isinstance(output_size, int):
-            output_size = [output_size, output_size]
+            output_size = [output_size, output_size, output_size]
 
         d_in = input.shape[2] if data_format == 'NCDHW' else input.shape[1]
         h_in = input.shape[3] if data_format == 'NCDHW' else input.shape[2]
@@ -3804,6 +4152,13 @@ def conv3d_transpose(input,
     if len(padding) == 6 and utils._is_symmetric_padding(padding, 3):
         padding = [padding[0], padding[2], padding[4]]
 
+    if output_size is None:
+        output_size = []
+    elif isinstance(output_size, (list, tuple, int)):
+        output_size = utils.convert_to_list(output_size, 3, 'output_size')
+    else:
+        raise ValueError("output_size should be int, list[int] or tuple[int]")
+
     groups = 1 if groups is None else groups
     filter_shape = [input_channel, num_filters // groups] + filter_size
     img_filter = helper.create_parameter(
@@ -3821,6 +4176,7 @@ def conv3d_transpose(input,
                 'Filter': [img_filter]},
         outputs={'Output': pre_bias},
         attrs={
+            'output_size': output_size,
             'strides': stride,
             'paddings': padding,
             'padding_algorithm': padding_algorithm,
@@ -4590,63 +4946,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
             y = fluid.layers.data(name='y', shape=[3, 2], dtype='float32')
             out = fluid.layers.matmul(x, y, True, True)
     """
-    attrs = {
-        'transpose_X': transpose_x,
-        'transpose_Y': transpose_y,
-        'alpha': float(alpha),
-    }
-
-    if in_dygraph_mode():
-        return core.ops.matmul(x, y, 'transpose_X', transpose_x, 'transpose_Y',
-                               transpose_y, 'alpha', float(alpha))
-
-    def __check_input(x, y):
-        var_names = {'x': x, 'y': y}
-        for name, val in var_names.items():
-            check_variable_and_dtype(
-                val, name, ['float16', 'float32', 'float64'], 'matmul')
-        x_shape = list(x.shape)
-        y_shape = list(y.shape)
-        if len(x_shape) == 1:
-            x_shape = [1] + x_shape
-        if len(y_shape) == 1:
-            y_shape = y_shape + [1]
-
-        # check the inner 2 dimensions
-        if transpose_x:
-            x_shape[-2], x_shape[-1] = x_shape[-1], x_shape[-2]
-        if transpose_y:
-            y_shape[-2], y_shape[-1] = y_shape[-1], y_shape[-2]
-        if x_shape[-1] != y_shape[-2]:
-            assert (x_shape[-1] == -1) or (y_shape[-2] == -1),                         \
-                "After performing an optional transpose, Input X's width should be "   \
-                "equal to Y's width for multiplication "                               \
-                "prerequisites. But received X's shape: %s, Y's shape: %s\n" %         \
-                (x_shape, y_shape)
-
-        if len(y_shape) > 2 and len(x_shape) > 2:
-            for i, dim_x in enumerate(x_shape[:-2]):
-                # don't check neg shape
-                if dim_x < 0 or y_shape[i] < 0:
-                    continue
-                if dim_x != y_shape[i]:
-                    raise ValueError(
-                        "When the matrix is larger than 2 dimensions, the higher "
-                        "dimensional values of the two matrices need to be equal. "
-                        "But received x_shape[%d] != y_shape[%d]. X's shape: %s, "
-                        "Y's shape: %s.\n" % (i, i, x_shape, y_shape))
-
-    __check_input(x, y)
-
-    helper = LayerHelper('matmul', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='matmul',
-        inputs={'X': x,
-                'Y': y},
-        outputs={'Out': out},
-        attrs=attrs)
-    return out
+    return paddle.matmul(x, y, transpose_x, transpose_y, alpha, name)
 
 
 def topk(input, k, name=None):
@@ -9802,16 +10102,7 @@ def sum(x):
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
 
-    helper = LayerHelper('sum', **locals())
-    out = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype('x'))
-    helper.append_op(
-        type='sum',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'use_mkldnn': False})
-
-    return out
+    return paddle.elementwise_sum(x)
 
 
 @templatedoc()

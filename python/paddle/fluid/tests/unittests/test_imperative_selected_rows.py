@@ -49,7 +49,7 @@ class TestSimpleNet(unittest.TestCase):
                     with fluid.dygraph.guard(place):
                         backward_strategy = fluid.dygraph.BackwardStrategy()
                         backward_strategy.sort_sum_gradient = sort_sum_gradient
-                        # grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(5.0)
+                        # grad_clip = fluid.clip.GradientClipByGlobalNorm(5.0)
 
                         input_word = np.array([[1, 2], [2, 1]]).astype('int64')
                         input = to_variable(input_word)
@@ -83,8 +83,7 @@ class TestSimpleNet(unittest.TestCase):
                 with fluid.dygraph.guard(place):
                     backward_strategy = fluid.dygraph.BackwardStrategy()
                     backward_strategy.sort_sum_gradient = sort_sum_gradient
-                    grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(
-                        5.0)
+                    grad_clip = fluid.clip.GradientClipByGlobalNorm(5.0)
 
                     input_word = np.array([[1, 2], [2, 1]]).astype('int64')
                     input = to_variable(input_word)
