@@ -1154,7 +1154,7 @@ def isfinite(x):
             out = fluid.layers.isfinite(var)
     """
     helper = LayerHelper("isfinite", **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype='bool')
     helper.append_op(type="isfinite", inputs={"X": x}, outputs={"Out": out})
     return out
 
