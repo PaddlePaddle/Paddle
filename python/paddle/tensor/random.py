@@ -25,6 +25,7 @@ from ..fluid.framework import device_guard, in_dygraph_mode, _varbase_creator, V
 from ..fluid.layers.layer_function_generator import templatedoc
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..fluid.layers import uniform_random
 
 __all__ = ['randperm', 'rand']
 
@@ -153,6 +154,7 @@ def rand(shape, out=None, dtype=None, device=None, stop_gradient=True):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
 
             # example 1:
