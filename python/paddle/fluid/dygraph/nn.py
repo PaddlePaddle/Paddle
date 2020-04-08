@@ -928,23 +928,23 @@ class Linear(layers.Layer):
 
     def forward(self, input):
         if in_dygraph_mode():
-            pre_bias = core.ops.mul(input, self.weight, 'x_num_col_dims',
-                                    len(input.shape) - 1, 'y_num_col_dims', 1)
-
+            pre_bias = core.ops.matmul(input, self.weight, 'transpose_X', False,
+                                       'transpose_Y', False, "alpha", 1)
             pre_act = dygraph_utils._append_bias_in_dygraph(
                 pre_bias, self.bias, axis=len(input.shape) - 1)
 
             return dygraph_utils._append_activation_in_dygraph(pre_act,
                                                                self._act)
         attrs = {
-            "x_num_col_dims": len(input.shape) - 1,
-            "y_num_col_dims": 1,
+            "transpose_X": False,
+            "transpose_Y": False,
+            "alpha": 1,
         }
         inputs = {"X": [input], "Y": [self.weight]}
 
         tmp = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
-            type="mul", inputs=inputs, outputs={"Out": tmp}, attrs=attrs)
+            type="matmul", inputs=inputs, outputs={"Out": tmp}, attrs=attrs)
         if self.bias:
             pre_activation = self._helper.create_variable_for_type_inference(
                 dtype=self._dtype)
