@@ -65,7 +65,7 @@ class Optimizer(object):
                  parameter_list=None,
                  regularization=None,
                  name=None):
-        self._parameter_list = None
+        self._parameter_list = parameter_list
         if framework.in_dygraph_mode():
             if not isinstance(learning_rate, float) and \
                     not isinstance(learning_rate, LearningRateDecay):
@@ -76,9 +76,7 @@ class Optimizer(object):
                 self._name = unique_name.generate(name)
             else:
                 self._name = unique_name.generate(self.__class__.__name__)
-            if parameter_list is not None:
-                self._parameter_list = parameter_list
-            else:
+            if self._parameter_list is None:
                 raise AttributeError(
                     "parameter_list argument given to the Optimizer should not be None in dygraph mode."
                 )
@@ -662,6 +660,8 @@ class Optimizer(object):
                 "The loss.shape should be (1L,), but the current loss.shape is {}. " \
                 "Maybe that you should call fluid.layers.mean to process the current loss.".format(
                     loss.shape)
+            parameter_list = parameter_list if parameter_list \
+                else self._parameter_list
             with program_guard(program, startup_program):
                 params_grads = append_backward(loss, parameter_list,
                                                act_no_grad_set, callbacks)
@@ -801,11 +801,12 @@ class Optimizer(object):
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
             no_grad_set (set, optional): Set of ``Variable``  or ``Variable.name`` that don't need
-                to be updated. The default value is None.
-            grad_clip (GradClipBase, optional) : Gradient clipping strategy, static
-                graph mode does not need to use this argument. Currently, this argument
-                only supports gradient clipping in dygraph mode. In the future, this
-                argument my be adjusted. The default value is None.
+                to be updated. The default value is None.   
+            grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
+                some derived class of ``GradientClipBase`` . There are three cliping strategies 
+                ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+                :ref:`api_fluid_clip_GradientClipByValue` ). Default value: None, and there is no 
+                gradient clipping.
 
         Returns:
             tuple: tuple (optimize_ops, params_grads), A list of operators appended
@@ -825,7 +826,8 @@ class Optimizer(object):
                     "'grad_clip' should be an instance of GradientClipBase's derived class"
                 )
             self._grad_clip = grad_clip
-
+        parameter_list = parameter_list if parameter_list \
+            else self._parameter_list
         params_grads = self.backward(
             loss,
             startup_program=startup_program,
