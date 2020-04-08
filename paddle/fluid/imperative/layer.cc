@@ -41,8 +41,9 @@ void ThreadSafeNameSet::Insert(const std::string& name) {
 void ThreadSafeNameSet::Remove(const std::string& name) {
   std::lock_guard<std::mutex> guard(mtx_);
   auto iter = set_.find(name);
-  PADDLE_ENFORCE_EQ(iter != set_.end(), true,
-                    platform::errors::NotFound("Name %s does not exist", name));
+  PADDLE_ENFORCE_EQ(
+      iter != set_.end(), true,
+      platform::errors::NotFound("Variable name %s does not exist", name));
   set_.erase(iter);
 }
 

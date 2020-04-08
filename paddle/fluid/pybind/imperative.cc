@@ -99,8 +99,10 @@ static void InitTensorForVarBase(imperative::VarBase *self,
 
 static void InitVarBaseFromNumpyWithKwargs(imperative::VarBase *self,
                                            const py::kwargs &kwargs) {
-  PADDLE_ENFORCE_EQ(kwargs.contains("value"), true,
-                    platform::errors::NotFound("Missing argument: value"));
+  PADDLE_ENFORCE_EQ(
+      kwargs.contains("value"), true,
+      platform::errors::NotFound(
+          "The kwargs used to create Varbase misses argument: value"));
 
   auto persistable = kwargs.contains("persistable")
                          ? kwargs["persistable"].cast<bool>()
