@@ -166,7 +166,11 @@ class TestRankAttentionOpComplex(OpTest):
             "RankParam": rank_para
         }
         self.attrs = {'MaxRank': self.max_rank}
-        self.outputs = {"Out": np_out}
+        self.outputs = {
+            "Out": np_out,
+            "InputHelp": np_input_help,
+            "InsRank": np_ins_rank
+        }
 
     def test_check_output_gpu(self):
         if core.is_compiled_with_cuda():
@@ -202,7 +206,11 @@ class TestRankAttentionOpCpu(OpTest):
             "RankParam": rank_para
         }
         self.attrs = {'MaxRank': self.max_rank}
-        self.outputs = {"Out": np_out}
+        self.outputs = {
+            "Out": np_out,
+            "InputHelp": np_input_help,
+            "InsRank": np_ins_rank
+        }
 
     def test_check_output_cpu(self):
         try:

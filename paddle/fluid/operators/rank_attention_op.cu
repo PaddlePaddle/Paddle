@@ -33,6 +33,8 @@ class RankAttentionCUDAKernel : public framework::OpKernel<T> {
     auto *rank_offset = ctx.Input<Tensor>("RankOffset");
     auto *param = ctx.Input<Tensor>("RankParam");
     int max_rank = ctx.Attr<int>("MaxRank");
+    auto *input_help = ctx.Output<Tensor>("InputHelp");
+    auto *ins_rank = ctx.Output<Tensor>("InsRank");
     auto *Out = ctx.Output<Tensor>("Out");
 
     // check dims
@@ -65,27 +67,46 @@ class RankAttentionCUDAKernel : public framework::OpKernel<T> {
                                  param_help_size, device_id);
     platform::GpuMemsetAsync(param_help_data, 0, param_help_size, stream);
 
-    T *input_help_data;
-    auto input_help_size = ins_num * block_matrix_row * sizeof(T);
-    platform::RecordedCudaMalloc(reinterpret_cast<void **>(&input_help_data),
-                                 input_help_size, device_id);
-    platform::GpuMemsetAsync(input_help_data, 0, input_help_size, stream);
+    // T *input_help_data;
+    // auto input_help_size = ins_num * block_matrix_row * sizeof(T);
+    // platform::RecordedCudaMalloc(reinterpret_cast<void **>(&input_help_data),
+    //                              input_help_size, device_id);
+    // platform::GpuMemsetAsync(input_help_data, 0, input_help_size, stream);
 
-    T *ins_rank_data;
-    auto ins_rank_size = ins_num * sizeof(T);
-    platform::RecordedCudaMalloc(reinterpret_cast<void **>(&ins_rank_data),
-                                 ins_rank_size, device_id);
-    platform::GpuMemsetAsync(ins_rank_data, -1, ins_rank_size, stream);
+    // T *ins_rank_data;
+    // auto ins_rank_size = ins_num * sizeof(T);
+    // platform::RecordedCudaMalloc(reinterpret_cast<void **>(&ins_rank_data),
+    //                             ins_rank_size, device_id);
+    // platform::GpuMemsetAsync(ins_rank_data, -1, ins_rank_size, stream);
 
+    input_help->mutable_data<T>(ctx.GetPlace());
+    ins_rank->mutable_data<T>(ctx.GetPlace());
     Out->mutable_data<T>(ctx.GetPlace());
 
     // initialize
+    auto input_help_eigen = framework::EigenVector<T>::Flatten(*input_help);
+    auto ins_rank_eigen = framework::EigenVector<T>::Flatten(*ins_rank);
     auto out_eigen = framework::EigenVector<T>::Flatten(*Out);
+
     auto &place = *ctx.template device_context<platform::CUDADeviceContext>()
                        .eigen_device();
+
+    input_help_eigen.device(place) =
+        input_help_eigen.constant(static_cast<T>(0));
+    ins_rank_eigen.device(place) = ins_rank_eigen.constant(static_cast<T>(-1));
     out_eigen.device(place) = out_eigen.constant(static_cast<T>(0));
 
+    // Out->mutable_data<T>(ctx.GetPlace());
+
+    //// initialize
+    // auto out_eigen = framework::EigenVector<T>::Flatten(*Out);
+    // auto &place = *ctx.template device_context<platform::CUDADeviceContext>()
+    //                   .eigen_device();
+    // out_eigen.device(place) = out_eigen.constant(static_cast<T>(0));
+
     // get data ptr
+    T *input_help_data = input_help->data<T>();
+    T *ins_rank_data = ins_rank->data<T>();
     T *out_data = Out->data<T>();
     expand_rank_attention_input(
         ctx.cuda_device_context().stream(), X->data<T>(), ins_num, x_fea_dim,
@@ -112,8 +133,8 @@ class RankAttentionCUDAKernel : public framework::OpKernel<T> {
                      strideA, strideB);
 
     platform::RecordedCudaFree(param_help_data, param_help_size, device_id);
-    platform::RecordedCudaFree(input_help_data, input_help_size, device_id);
-    platform::RecordedCudaFree(ins_rank_data, ins_rank_size, device_id);
+    // platform::RecordedCudaFree(input_help_data, input_help_size, device_id);
+    // platform::RecordedCudaFree(ins_rank_data, ins_rank_size, device_id);
   }
 };
 
@@ -125,6 +146,8 @@ class RankAttentionGradOpCUDAKernel : public framework::OpKernel<T> {
     auto *rank_offset = ctx.Input<Tensor>("RankOffset");
     auto *param = ctx.Input<Tensor>("RankParam");
     auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto *input_help = ctx.Input<Tensor>("InputHelp");
+    auto *ins_rank = ctx.Input<Tensor>("InsRank");
 
     auto *drank_para = ctx.Output<Tensor>(framework::GradVarName("RankParam"));
 
@@ -157,23 +180,23 @@ class RankAttentionGradOpCUDAKernel : public framework::OpKernel<T> {
                                  param_grad_size, device_id);
     platform::GpuMemsetAsync(param_grad_data, 0, param_grad_size, stream);
 
-    T *input_help_data;
-    auto input_help_size = ins_num * block_matrix_row * sizeof(T);
-    platform::RecordedCudaMalloc(reinterpret_cast<void **>(&input_help_data),
-                                 input_help_size, device_id);
-    platform::GpuMemsetAsync(input_help_data, 0, input_help_size, stream);
+    const T *input_help_data = input_help->data<T>();
+    // auto input_help_size = ins_num * block_matrix_row * sizeof(T);
+    // platform::RecordedCudaMalloc(reinterpret_cast<void **>(&input_help_data),
+    //                             input_help_size, device_id);
+    // platform::GpuMemsetAsync(input_help_data, 0, input_help_size, stream);
 
-    T *ins_rank_data;
-    auto ins_rank_size = ins_num * sizeof(T);
-    platform::RecordedCudaMalloc(reinterpret_cast<void **>(&ins_rank_data),
-                                 ins_rank_size, device_id);
-    platform::GpuMemsetAsync(ins_rank_data, -1, ins_rank_size, stream);
+    const T *ins_rank_data = ins_rank->data<T>();
+    // auto ins_rank_size = ins_num * sizeof(T);
+    // platform::RecordedCudaMalloc(reinterpret_cast<void **>(&ins_rank_data),
+    //                             ins_rank_size, device_id);
+    // platform::GpuMemsetAsync(ins_rank_data, -1, ins_rank_size, stream);
 
     // expand input
-    expand_rank_attention_input(
-        ctx.cuda_device_context().stream(), X->data<T>(), ins_num, x_fea_dim,
-        input_help_data, ins_num, block_matrix_row, rank_offset->data<int>(),
-        rank_offset_dims[0], rank_offset_dims[1], ins_rank_data, max_rank);
+    // expand_rank_attention_input(
+    //    ctx.cuda_device_context().stream(), X->data<T>(), ins_num, x_fea_dim,
+    //    input_help_data, ins_num, block_matrix_row, rank_offset->data<int>(),
+    //    rank_offset_dims[0], rank_offset_dims[1], ins_rank_data, max_rank);
 
     auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
     T alpha = 1;
@@ -196,8 +219,8 @@ class RankAttentionGradOpCUDAKernel : public framework::OpKernel<T> {
         para_col, ins_rank_data, ins_num, max_rank, x_fea_dim);
 
     platform::RecordedCudaFree(param_grad_data, param_grad_size, device_id);
-    platform::RecordedCudaFree(input_help_data, input_help_size, device_id);
-    platform::RecordedCudaFree(ins_rank_data, ins_rank_size, device_id);
+    // platform::RecordedCudaFree(input_help_data, input_help_size, device_id);
+    // platform::RecordedCudaFree(ins_rank_data, ins_rank_size, device_id);
   }
 };
 
