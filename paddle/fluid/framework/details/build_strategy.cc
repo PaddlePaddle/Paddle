@@ -65,6 +65,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     AppendOpFusePasses();
     AppendPrintGraphPass("graph_viz_pass", "_fused_graph");
 
+    AppendAddReaderDependencyPass();
     AppendMultiDevPass();
     AppendSetReaderDeviceIndexPass();
     AppendMultiGraphOptPasses();
@@ -201,6 +202,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
                         "trainer_id_ < endpoints_ size");
     }
     VLOG(1) << "CollectiveContext:" << context->String();
+  }
+
+  void AppendAddReaderDependencyPass() {
+    AppendPass("add_reader_dependency_pass");
   }
 
   // Convert graph to run on multi-devices.
@@ -373,8 +378,8 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Set<bool>(kUseHierarchicalAllReduce,
                       new bool(use_hierarchical_allreduce_));
 #endif
-      LOG(INFO) << "SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
-                << ", num_trainers:" << num_trainers_;
+      VLOG(1) << "SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
+              << ", num_trainers:" << num_trainers_;
     } else if (pass->Type() == "fuse_relu_depthwise_conv_pass") {
       if (!use_cuda) {
         LOG(WARNING) << "fuse_relu_depthwise_conv_pass is only supported on "
@@ -442,6 +447,7 @@ USE_PASS(fuse_momentum_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
 USE_PASS(set_reader_device_index_pass);
+USE_PASS(add_reader_dependency_pass);
 #ifdef PADDLE_WITH_MKLDNN
 USE_PASS(mkldnn_placement_pass);
 #endif

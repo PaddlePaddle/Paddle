@@ -91,6 +91,86 @@ class Hogwild(DeviceWorker):
             # just ignore feed op for inference model
             trainer_desc.hogwild_param.skip_ops.extend(["feed"])
 
+        dense_table_set = set()
+        program_id = str(id(self._program))
+        if self._program == None:
+            print("program of current device worker is not configured")
+            exit(-1)
+        opt_info = self._program._fleet_opt
+        # when opt_info is None or empty dict, it should return
+        if not opt_info:
+            return
+
+        program_configs = opt_info["program_configs"]
+        downpour = trainer_desc.downpour_param
+        hogwild = trainer_desc.hogwild_param
+
+        for pid in program_configs:
+            if pid == program_id:
+                pc = downpour.program_config.add()
+                pc.program_id = program_id
+                for i in program_configs[program_id]["push_sparse"]:
+                    pc.push_sparse_table_id.extend([i])
+                for i in program_configs[program_id]["push_dense"]:
+                    pc.push_dense_table_id.extend([i])
+                    dense_table_set.add(i)
+                for i in program_configs[program_id]["pull_sparse"]:
+                    pc.pull_sparse_table_id.extend([i])
+                for i in program_configs[program_id]["pull_dense"]:
+                    pc.pull_dense_table_id.extend([i])
+                    dense_table_set.add(i)
+                break
+
+        trainer_desc.device_worker_name = "HogwildWorker"
+        pull_thread = trainer_desc.pull_dense_param
+        pull_thread.device_num = trainer_desc.thread_num
+        if opt_info.get("program_id_to_worker") is None:
+            raise ValueError("opt_info must have program_id_to_worker")
+        prog_id_to_worker = opt_info["program_id_to_worker"]
+        if prog_id_to_worker.get(program_id) is None:
+            raise ValueError("%s not found in program_id_to_worker" %
+                             program_id)
+        worker = opt_info["program_id_to_worker"][program_id]
+        for i in worker.get_desc().dense_table:
+            if i.table_id in dense_table_set:
+                dense_table = pull_thread.dense_table.add()
+                dense_table.dense_value_name.extend(i.dense_variable_name)
+                dense_table.table_id = \
+                    i.table_id
+        sparse_len = len(worker.get_desc().sparse_table)
+        for i in range(sparse_len):
+            sparse_table = downpour.sparse_table.add()
+            sparse_table.table_id = worker.get_desc().sparse_table[i].table_id
+            sparse_table.sparse_key_name.extend(worker.get_desc().sparse_table[
+                i].slot_key)
+            sparse_table.sparse_value_name.extend(worker.get_desc()
+                                                  .sparse_table[i].slot_value)
+            sparse_table.sparse_grad_name.extend(worker.get_desc().sparse_table[
+                i].slot_gradient)
+            sparse_table.fea_dim = \
+                self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
+                i].accessor.fea_dim
+            # not use emb_dim
+            sparse_table.emb_dim = -1
+            # not use hard code click
+            sparse_table.label_var_name = ""
+        if opt_info["stat_var_names"]:
+            for i in opt_info["stat_var_names"]:
+                hogwild.stat_var_names.extend([i])
+                downpour.stat_var_names.extend([i])
+
+        for i in worker.get_desc().dense_table:
+            if i.table_id in dense_table_set:
+                dense_table = downpour.dense_table.add()
+                dense_table.table_id = i.table_id
+                dense_table.dense_value_name.extend(i.dense_variable_name)
+                dense_table.dense_grad_name.extend(
+                    i.dense_gradient_variable_name)
+        hogwild.skip_ops.extend(worker.get_desc().skip_op)
+        if self._infer:
+            hogwild.skip_ops.extend(
+                ["push_sparse", "push_sparse_v2", "push_dense"])
+
 
 class DownpourSGD(DeviceWorker):
     """

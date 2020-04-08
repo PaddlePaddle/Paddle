@@ -24,6 +24,11 @@ struct SimpleOpTypeSetTeller : public Teller {
 #if IS_TRT_VERSION_GE(5130)
     teller_set.insert("relu6");
 #endif
+#if IS_TRT_VERSION_GE(6000)
+    teller_set.insert("fused_embedding_eltwise_layernorm");
+    teller_set.insert("multihead_matmul");
+    teller_set.insert("skip_layernorm");
+#endif
   }
 
   bool operator()(const std::string& op_type, const framework::OpDesc& desc,
@@ -38,15 +43,19 @@ struct SimpleOpTypeSetTeller : public Teller {
  private:
   // use this set for no calib int8.
   std::unordered_set<std::string> int8_teller_set{
-      {"mul", "conv2d", "pool2d", "relu", "depthwise_conv2d", "softmax",
-       "batch_norm", "elementwise_add", "leaky_relu", "fc"}};
-  std::unordered_set<std::string> teller_set{{
+      "mul",        "conv2d",           "pool2d",
+      "relu",       "depthwise_conv2d", "softmax",
+      "batch_norm", "elementwise_add",  "leaky_relu",
+      "fc"};
+  std::unordered_set<std::string> teller_set{
       "mul",
       "conv2d",
       "pool2d",
       "relu",
       "softmax",
       "sigmoid",
+      "hard_sigmoid",
+      "hard_swish",
       "depthwise_conv2d",
       "batch_norm",
       "concat",
@@ -65,8 +74,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "instance_norm",
       "gelu",
       "layer_norm",
-      "multihead_matmul",
-  }};
+  };
 };
 
 bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,

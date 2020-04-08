@@ -105,12 +105,15 @@ write_version_py(filename='@PADDLE_BINARY_DIR@/python/paddle/version.py')
 
 
 packages=['paddle',
+          'paddle.nn',
+          'paddle.nn.layer',
           'paddle.libs',
           'paddle.utils',
           'paddle.dataset',
           'paddle.reader',
           'paddle.distributed',
           'paddle.fluid',
+          'paddle.tensor',
           'paddle.fluid.dygraph',
           'paddle.fluid.dygraph.dygraph_to_static',
           'paddle.fluid.proto',
@@ -145,7 +148,10 @@ packages=['paddle',
           'paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler',
           'paddle.fluid.incubate.fleet.parameter_server.pslib',
           'paddle.fluid.incubate.fleet.collective',
-          'paddle.fluid.incubate.fleet.utils']
+          'paddle.fluid.incubate.fleet.utils',
+          'paddle.nn',
+          'paddle.nn.functional',
+          'paddle.nn.layer']
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()
@@ -198,6 +204,8 @@ else:
 
 if '${WITH_PSLIB}' == 'ON':
     shutil.copy('${PSLIB_LIB}', libs_path)
+    if os.path.exists('${PSLIB_VERSION_PY}'):
+        shutil.copy('${PSLIB_VERSION_PY}', '${PADDLE_BINARY_DIR}/python/paddle/fluid/incubate/fleet/parameter_server/pslib/')
     package_data['paddle.libs'] += ['libps' + ext_name]
 
 if '${WITH_MKLDNN}' == 'ON':
