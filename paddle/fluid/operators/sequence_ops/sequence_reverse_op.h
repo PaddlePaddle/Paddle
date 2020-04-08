@@ -27,12 +27,21 @@ class SequenceReverseOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must exist");
-    PADDLE_ENFORCE(ctx->HasOutput("Y"), "Output(Y) must exist");
+    PADDLE_ENFORCE(
+        ctx->HasInput("X"),
+        platform::errors::InvalidArgument(
+             "Input(X) of SequenceReverse must exist"));
+    PADDLE_ENFORCE(
+        ctx->HasOutput("Y"),
+        platform::errors::InvalidArgument(
+             "Output(Y) of SequenceReverse must exist"));
 
     auto x_dim = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_GE(x_dim.size(), 2,
-                      "Rank of Input(X) must be not less than 2.");
+    PADDLE_ENFORCE_GE(
+        x_dim.size(), 2,
+        platform::errors::InvalidArgument(
+            "Rank of Input(X) SequenceReverse must be not less than 2. "
+            "The Input(X) tensor's rank is(%d)", x_dim.size()));
 
     ctx->SetOutputDim("Y", x_dim);
     ctx->ShareLoD("X", "Y");
@@ -107,11 +116,16 @@ class SequenceReverseOpKernel : public framework::OpKernel<T> {
     auto &x = *ctx.Input<LoDTensor>("X");
     auto *y = ctx.Output<LoDTensor>("Y");
 
-    PADDLE_ENFORCE_EQ(x.lod().empty(), false,
-                      "Input(X) Tensor of SequenceReverseOp does not contain "
-                      "LoD information.");
+    PADDLE_ENFORCE_EQ(
+        x.lod().empty(), false,
+        platform::errors::InvalidArgument(
+            "Input(X) Tensor of SequenceReverseOp does not contain "
+            "LoD information."));
+
     PADDLE_ENFORCE_EQ(x.lod().size(), 1,
-                      "SequenceReverse Op only support one level lod.");
+        platform::errors::InvalidArgument(
+            "SequenceReverse Op only support one level lod."
+            "Input(X) lod is(%d)", x.lod().size()));
 
     const size_t *lod;
     size_t lod_count = x.lod()[0].size();
@@ -132,7 +146,8 @@ class SequenceReverseOpKernel : public framework::OpKernel<T> {
     auto *y_data = y->mutable_data<T>(ctx.GetPlace());
 
     PADDLE_ENFORCE_NE(x_data, y_data,
-                      "SequenceReverse Op does not support in-place operation");
+         platform::errors::InvalidArgument(
+             "SequenceReverse Op does not support in-place operation"));
 
     if (platform::is_cpu_place(ctx.GetPlace())) {
       for (size_t idx = 0; idx < lod_count - 1; idx++) {
