@@ -74,11 +74,10 @@ class AverageAccumulatesOp : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "Input (old_num_accumulates) of average_accumulates op "
              "should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("in_num_updates"), true,
-        platform::errors::InvalidArgument(
-            "Input (num_updates) of average_accumulates op "
-            "should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("in_num_updates"), true,
+                      platform::errors::InvalidArgument(
+                          "Input (num_updates) of average_accumulates op "
+                          "should not be null."));
 
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("out_sum_1"), true,
@@ -92,11 +91,10 @@ class AverageAccumulatesOp : public framework::OperatorWithKernel {
         ctx->HasOutput("out_sum_3"), true,
         platform::errors::InvalidArgument(
             "Output (sum_3) of average_accumulates op should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("out_num_accumulates"), true,
-        platform::errors::InvalidArgument(
-            "Output (num_accumulates) of average_accumulates op should "
-            "not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("out_num_accumulates"), true,
+                      platform::errors::InvalidArgument(
+                          "Output (num_accumulates) of average_accumulates op should "
+                          "not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("out_old_num_accumulates"), true,
         platform::errors::InvalidArgument(
