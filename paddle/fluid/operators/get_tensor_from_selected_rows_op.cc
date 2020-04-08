@@ -25,22 +25,24 @@ class GetTensorFromSelectedRowsOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
                       platform::errors::InvalidArgument(
-                      "GetTensorFromSelectedRowsOp must have input X."));
+                          "GetTensorFromSelectedRowsOp must have input X."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
                       platform::errors::InvalidArgument(
-                      "GetTensorFromSelectedRowsOp must have output Out."));
+                          "GetTensorFromSelectedRowsOp must have output Out."));
     PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("X").front() ==
-                      framework::proto::VarType::SELECTED_ROWS, true,
-                      platform::errors::InvalidArgument(
-                      "The input X's type should be SelectedRows, "
-                      "but the received is %s", ctx->Inputs("X").front(),
-                      ctx->GetInputsVarType("X").front()));
+                          framework::proto::VarType::SELECTED_ROWS,
+                      true, platform::errors::InvalidArgument(
+                                "The input X's type should be SelectedRows, "
+                                "but the received is %s",
+                                ctx->Inputs("X").front(),
+                                ctx->GetInputsVarType("X").front()));
     PADDLE_ENFORCE_EQ(ctx->GetOutputsVarType("Out").front() ==
-                      framework::proto::VarType::LOD_TENSOR,
-                      platform::errors::InvalidArgument(
-                      "The output Out's type should be LoDTensor, "
-                      "but the received is %s", ctx->Outputs("Out").front(),
-                      ctx->GetOutputsVarType("Out").front());
+                          framework::proto::VarType::LOD_TENSOR,
+                      true, platform::errors::InvalidArgument(
+                                "The output Out's type should be LoDTensor, "
+                                "but the received is %s",
+                                ctx->Outputs("Out").front(),
+                                ctx->GetOutputsVarType("Out").front());
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
   }
