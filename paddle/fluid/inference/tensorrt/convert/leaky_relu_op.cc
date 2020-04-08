@@ -28,11 +28,19 @@ class LeakyReluOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     int input_num = op_desc.Input("X").size();
-    PADDLE_ENFORCE(input_num == 1);
+    PADDLE_ENFORCE_EQ(input_num, 1,
+                      platform::errors::InvalidArgument(
+                          "Invalid number of TRT leaky_relu op converter "
+                          "inputs. Expected 1, but received %d",
+                          input_num));
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     // Get output
     size_t output_num = op_desc.Output("Out").size();
-    PADDLE_ENFORCE(output_num == 1);
+    PADDLE_ENFORCE_EQ(output_num, 1,
+                      platform::errors::InvalidArgument(
+                          "Invalid number of TRT leaky_relu op converter "
+                          "outputs. Expected 1, but received %d",
+                          output_num));
     // Get attrs
     float alpha = boost::get<float>(op_desc.GetAttr("alpha"));
     nvinfer1::ILayer* output_layer = nullptr;
@@ -66,11 +74,17 @@ class LeakyReluOpConverter : public OpConverter {
     auto* scale_layer = TRT_ENGINE_ADD_LAYER(
         engine_, Scale, *input, nvinfer1::ScaleMode::kUNIFORM, shift.get(),
         scale.get(), power.get());
-    PADDLE_ENFORCE(nullptr != scale_layer);
+    PADDLE_ENFORCE_NE(nullptr, scale_layer,
+                      platform::errors::InvalidArgument(
+                          "Invalid scale layer in leaky_relu TRT op converter. "
+                          "The scale layer should not be null."));
     // y_relu = (x > 0) : x : 0
     auto* relu_layer = TRT_ENGINE_ADD_LAYER(engine_, Activation, *input,
                                             nvinfer1::ActivationType::kRELU);
-    PADDLE_ENFORCE(nullptr != relu_layer);
+    PADDLE_ENFORCE_NE(nullptr, relu_layer,
+                      platform::errors::InvalidArgument(
+                          "Invalid relu layer in leaky_relu TRT op converter. "
+                          "The relu layer should not be null."));
     //
     TensorRTEngine::Weight sub_scale{nvinfer1::DataType::kFLOAT, &alpha_data[1],
                                      1};
@@ -78,16 +92,26 @@ class LeakyReluOpConverter : public OpConverter {
         TRT_ENGINE_ADD_LAYER(engine_, Scale, *(relu_layer->getOutput(0)),
                              nvinfer1::ScaleMode::kUNIFORM, shift.get(),
                              sub_scale.get(), power.get());
-    PADDLE_ENFORCE(nullptr != scale_relu_layer);
+    PADDLE_ENFORCE_NE(
+        nullptr, scale_relu_layer,
+        platform::errors::InvalidArgument(
+            "Invalid scale_relu layer in leaky_relu TRT op converter. The "
+            "scale_relu layer should not be null."));
     output_layer =
         TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *(scale_layer->getOutput(0)),
                              *(scale_relu_layer->getOutput(0)),
                              nvinfer1::ElementWiseOperation::kSUM);
-    PADDLE_ENFORCE(nullptr != output_layer);
+    PADDLE_ENFORCE_NE(nullptr, output_layer,
+                      platform::errors::InvalidArgument(
+                          "Invalid output layer in leaky_relu TRT op "
+                          "converter. The output layer should not be null."));
     // keep alpha tensor to avoid release it's memory
     std::string alpha_name = op_desc.Output("Out")[0] + "_alpha";
-    PADDLE_ENFORCE(engine_->weight_map.find(alpha_name) ==
-                   engine_->weight_map.end());
+    PADDLE_ENFORCE_EQ(
+        engine_->weight_map.find(alpha_name), engine_->weight_map.end(),
+        platform::errors::InvalidArgument(
+            "The name of parameter alpha in leaky_relu TRT op converter is not "
+            "found in the weight map. Please check if it is already set."));
     engine_->SetWeights(alpha_name, std::move(alpha_tensor));
 #endif
     auto output_name = op_desc.Output("Out")[0];
