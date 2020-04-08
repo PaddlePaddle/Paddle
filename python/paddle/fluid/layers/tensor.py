@@ -587,12 +587,6 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
           val = fluid.layers.fill_constant([1], "float32", 2.0) # val=[2.0]
           data5 = fluid.layers.fill_constant(shape=[2,1], value=val, dtype='float32') #data5=[[2.0],[2.0]]
     """
-    check_dtype(dtype, 'create data type',
-                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-                'fill_constant')
-    check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
-    if out is not None:
-        check_type(out, 'out', (Variable), 'fill_constant')
     inputs = {}
     attrs = {'force_cpu': force_cpu}
     if isinstance(value, Variable):
@@ -627,6 +621,12 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
         out.stop_gradient = True
         return out
 
+    check_dtype(dtype, 'create data type',
+                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+                'fill_constant')
+    check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
+    if out is not None:
+        check_type(out, 'out', (Variable), 'fill_constant')
     helper = LayerHelper("fill_constant", **locals())
     inputs = utils._get_shape_tensor_inputs(
         inputs=inputs,
