@@ -47,7 +47,9 @@ static void GetBraodcastDims(const framework::DDim& x_dims,
   }
   PADDLE_ENFORCE_EQ(bcast_dims_remainder, 0,
                     platform::errors::PreconditionNotMet(
-                        "The input tensor of Op(dist) could not be broadcast"));
+                        "The input tensor of Op(dist) could not be broadcast, "
+                        "X's shape is [%s], Y's shape is [%s].",
+                        x_dims, y_dims));
 }
 
 static framework::DDim GetNewDims(const framework::DDim& in_dims, int rank) {
@@ -154,10 +156,6 @@ static void DistGradFunction(const framework::ExecutionContext& context) {
 
   auto& place =
       *context.template device_context<DeviceContext>().eigen_device();
-  x_grad->mutable_data<T>(context.GetPlace());
-  y_grad->mutable_data<T>(context.GetPlace());
-  auto x_grad_t = EigenTensor<T, Rank>::From(*x_grad, x_new_dims);
-  auto y_grad_t = EigenTensor<T, Rank>::From(*y_grad, y_new_dims);
   auto out_grad_t = EigenTensor<T, Rank>::From(*out_grad, out_new_dims);
   framework::Tensor grad;
   grad.mutable_data<T>(new_dims, context.GetPlace());
@@ -198,12 +196,20 @@ static void DistGradFunction(const framework::ExecutionContext& context) {
 
   // 2: if x or y is broadcasted in forward function,
   // the grad need to be sum along the broadcasted dimensions
-  x_grad_t.device(place) = grad_t.reshape(x_reshape_dims)
-                               .sum(reduce_dims)
-                               .reshape(x_grad_t.dimensions());
-  y_grad_t.device(place) = -grad_t.reshape(y_reshape_dims)
-                                .sum(reduce_dims)
-                                .reshape(y_grad_t.dimensions());
+  if (x_grad) {
+    x_grad->mutable_data<T>(context.GetPlace());
+    auto x_grad_t = EigenTensor<T, Rank>::From(*x_grad, x_new_dims);
+    x_grad_t.device(place) = grad_t.reshape(x_reshape_dims)
+                                 .sum(reduce_dims)
+                                 .reshape(x_grad_t.dimensions());
+  }
+  if (y_grad) {
+    y_grad->mutable_data<T>(context.GetPlace());
+    auto y_grad_t = EigenTensor<T, Rank>::From(*y_grad, y_new_dims);
+    y_grad_t.device(place) = -grad_t.reshape(y_reshape_dims)
+                                  .sum(reduce_dims)
+                                  .reshape(y_grad_t.dimensions());
+  }
 }
 
 template <typename DeviceContext, typename T>
@@ -216,7 +222,8 @@ class DistKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_LE(rank, 6,
                       platform::errors::Unimplemented(
                           "Op(dist) only support tensors with no more than 6 "
-                          "dimensions."));
+                          "dimensions, but X's rank is %d, Y's rank is %d.",
+                          x_rank, y_rank));
     switch (rank) {
       case 1:
         DistFunction<DeviceContext, T, 1>(context);
@@ -250,7 +257,8 @@ class DistGradKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_LE(rank, 6,
                       platform::errors::Unimplemented(
                           "Op(dist) only support tensors with no more than 6 "
-                          "dimensions."));
+                          "dimensions, but X's rank is %d, Y's rank is %d.",
+                          x_rank, y_rank));
     switch (rank) {
       case 1:
         DistGradFunction<DeviceContext, T, 1>(context);

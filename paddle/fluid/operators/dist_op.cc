@@ -24,15 +24,9 @@ class DistOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::NotFound(
-                          "The Input(X) of Op(dist) should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Y"), true,
-                      platform::errors::NotFound(
-                          "The Input(Y) of Op(dist) should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::NotFound(
-                          "The Output(Out) of Op(dist) should not be null."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Dist");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "Dist");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Dist");
     auto out_dims = std::vector<int>(1);
     ctx->SetOutputDim("Out", {1});
   }
@@ -54,8 +48,7 @@ where, Z = X - Y
 $$
 \left \| Z \right \|_{p} = (\sum_{i=i}^{m} |z_i|^p)^{1/p}
 $$
-
-when p = 0, the 0-norm of z is simply the number of non-zero elements of z.
+when p = 0, the 0-norm of Z is simply the number of non-zero elements of z.
 when p = inf, the inf-norm of Z is the maximum element of Z.
 when p = -inf, the inf-norm of Z is the minimum element of Z.
     )DOC");

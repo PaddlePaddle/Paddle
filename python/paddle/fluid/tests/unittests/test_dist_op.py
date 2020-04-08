@@ -37,8 +37,6 @@ class TestDistOp(OpTest):
         self.op_type = 'dist'
         self.attrs = {}
         self.init_case()
-
-        np.random.seed(0)
         self.inputs = {
             "X": np.random.random(self.x_shape).astype("float64"),
             "Y": np.random.random(self.y_shape).astype("float64")
@@ -139,7 +137,7 @@ class TestDistOpCase5(TestDistOp):
     def init_case(self):
         self.x_shape = (4, 1, 4, 8)
         self.y_shape = (2, 2, 1, 4, 4, 8)
-        self.p = 0.5
+        self.p = 1.5
 
 
 class TestDistAPI(unittest.TestCase):
