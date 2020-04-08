@@ -6398,7 +6398,7 @@ def pad(x, paddings, pad_value=0., name=None):
 
             # x is a rank 2 tensor variable
             import paddle.fluid as fluid
-            x = fluid.data(name='data', shape=[2, 2], dtype='float32')
+            x = fluid.data(name='data', shape=[300, 300], dtype='float32')
             out = fluid.layers.pad(x=x, paddings=[0, 1, 1, 2], pad_value=0.)
     """
     helper = LayerHelper('pad', input=x, **locals())
@@ -8753,7 +8753,7 @@ def pad2d(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            data = fluid.data(name='data', shape=[1, 1, 2, 3], dtype='float32')
+            data = fluid.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
             result = fluid.layers.pad2d(input=data, paddings=[0, 1, 2, 3], mode='reflect')
     """
 
