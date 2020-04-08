@@ -2990,6 +2990,41 @@ class TestBook(LayerTest):
                 input=seqs, offset=offset, length=length)
             return (out)
 
+    def test_sequence_concat(self): 
+        with self.static_graph(): 
+            seqs_x = layers.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
+            seqs_y = layers.data(name='y', shape=[10, 5], dtype='float32', lod_level=1)
+            out = layers.sequence_concat(input=[seqs_x, seqs_y], name="sequence_concat")
+            return (out)
+
+    def test_sequence_concat_op_error(self): 
+        with self.static_graph(): 
+
+            def test_type_list(): 
+                # the input type must be list
+                x_data = fluid.layers.data(
+                  name='x', shape=[4], dtype='float32')
+                fluid.layers.sequence_concat(x=x_data)
+            self.assertRaises(TypeError, test_type_list)
+
+            def test_variable(): 
+                # the input element type must be Variable              
+                x1_data = fluid.layers.data(
+                  name='x1', shape=[3, 5], dtype='float32')
+                import numpy as np
+                y1_data = np.array([[3, 5]]).astype('float32')
+                fluid.layers.sequence_concat(x=[x1_data, y1_data])
+            self.assertRaises(TypeError, test_variable)
+
+            def test_dtype(): 
+                # dtype must be 'float32', 'float64', 'int64'
+                x2_data = fluid.layers.data(
+                  name='x2', shape=[3, 5], dtype='int32')
+                y2_data = fluid.layers.data(
+                  name='y2', shape=[3, 5], dtype='int32')
+                fluid.layers.sequence_concat(x=[x2_data, y2_data])
+            self.assertRaises(TypeError, test_dtype)
+
     def test_filter_by_instag(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
