@@ -4336,7 +4336,7 @@ class Program(object):
         if not isinstance(seed, int):
             raise ValueError(
                 "Program.random_seed's input seed must be an integer, but received %s."
-                % type(see))
+                % type(seed))
         self._seed = seed
 
     def __repr__(self):
