@@ -617,7 +617,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
         CHECK(fea_idx < fea_labels.size());
         memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
                 sizeof(float) * emb_dim);
-        *(uint64_t*)((*push_values)[fea_idx].data()) = fea_uid[fea_idx];
+        *(uint64_t*)((*push_values)[fea_idx].data() + 1) = fea_uid[fea_idx];
         (*push_values)[fea_idx][show_index + 2] = 1.0f;
         (*push_values)[fea_idx][click_index + 2] = static_cast<float>(fea_labels[fea_idx]);
       } else if (use_cvm || no_cvm) {
