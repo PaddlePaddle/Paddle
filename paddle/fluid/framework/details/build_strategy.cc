@@ -198,8 +198,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     PADDLE_ENFORCE_GE(
         strategy_.trainer_id_, 0,
         platform::errors::InvalidArgument(
-            "The trainer_id_ of strategy_ must be greater than or equal to 0. "
-            "But received strategy_.trainer_id_ = %d.",
+            "The trainer_id_ of strategy_ must be greater than or equal to 0, "
+            "but received strategy_.trainer_id_ = %d.",
             strategy_.trainer_id_));
 
     if (strategy_.trainer_id_ > 0 && strategy_.trainers_endpoints_.size() > 0) {
@@ -208,8 +208,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
           strategy_.trainers_endpoints_.size(),
           platform::errors::InvalidArgument(
               "The trainer_id_ of strategy_ must be less than the "
-              "size of vector strategy_.trainers_endpoints_. "
-              "But received strategy_.trainer_id_ = %d, "
+              "size of vector strategy_.trainers_endpoints_, "
+              "but received strategy_.trainer_id_ = %d, "
               "the size of strategy_.trainers_endpoints_ is %d.",
               static_cast<size_t>(strategy_.trainer_id_),
               strategy_.trainers_endpoints_.size()));
