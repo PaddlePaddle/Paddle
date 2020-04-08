@@ -44,7 +44,6 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
     auto* input = ctx.Input<Tensor>("Input");
     auto* filter = ctx.Input<Tensor>("Filter");
     auto* bias = ctx.Input<Tensor>("Bias");
-    PADDLE_ENFORCE_NOT_NULL(bias, "The bias should not be null.");
     auto* residual = ctx.Input<Tensor>("ResidualData");
     auto* output = ctx.Output<Tensor>("Output");
     output->mutable_data<T>(ctx.GetPlace());
