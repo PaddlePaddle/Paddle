@@ -23,7 +23,6 @@ from . import layers
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, _varbase_creator
 from ..param_attr import ParamAttr
-from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from .. import unique_name
 from .layer_object_helper import LayerObjectHelper
