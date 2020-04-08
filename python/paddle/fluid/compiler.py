@@ -142,7 +142,7 @@ class CompiledProgram(object):
             self._graph = core.Graph(program_or_graph.desc)
             self._program = program_or_graph
         else:
-            raise ValueError(
+            raise TypeError(
                 "The type of program_to_graph parameter is wrong, expected Graph or Program, but received %s"
                 % type(program_or_graph))
 

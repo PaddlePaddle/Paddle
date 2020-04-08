@@ -175,6 +175,8 @@ std::shared_ptr<Graph> Graph::Clone() {
   cloned_graph->num_node_created_ = 0;
   std::unordered_map<ir::Node *, ir::Node *> origin_to_cloned;
   for (auto *n : this->node_set_) {
+    PADDLE_ENFORCE_NOT_NULL(n, platform::errors::InvalidArgument(
+                                   "The node to be clone is nullptr."));
     ir::Node *cloned_node = nullptr;
     if (n->IsCtrlVar()) {
       cloned_node = cloned_graph->CreateControlDepVar();
@@ -185,12 +187,11 @@ std::shared_ptr<Graph> Graph::Clone() {
     } else if (n->IsOp()) {
       cloned_node = cloned_graph->CreateOpNode(n->Op());
     }
-    if (cloned_node) {
-      origin_to_cloned[n] = cloned_node;
-    } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "The type of node to be clone is not supported!"));
-    }
+    PADDLE_ENFORCE_NOT_NULL(
+        cloned_node,
+        platform::errors::InvalidArgument(
+            "Failed to clone new node from original node in graph."));
+    origin_to_cloned[n] = cloned_node;
   }
   for (auto *n : this->node_set_) {
     for (auto it = n->inputs.begin(); it != n->inputs.end(); it++) {
