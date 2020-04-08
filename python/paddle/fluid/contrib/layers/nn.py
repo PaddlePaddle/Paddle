@@ -860,10 +860,10 @@ def index_sample(x, index):
             output = fluid.contrib.layers.index_sample(x=x, index=index)
     """
     helper = LayerHelper("index_sample", **locals())
-    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
-                             'paddle.tensor.search.index_sample')
-    check_variable_and_dtype(index, 'index', ['int32', 'int64'],
-                             'paddle.tensor.search.index_sample')
+    check_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                'paddle.tensor.search.index_sample')
+    check_dtype(index, 'index', ['int32', 'int64'],
+                'paddle.tensor.search.index_sample')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(
