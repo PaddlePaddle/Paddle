@@ -314,8 +314,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._worker_status[worker_id] = False
 
     def _try_shutdown_all(self):
-        # we do not check python exit status here for distributed launch
-        # will exit python immediately and exit trainer under background
         try:
             # set _workers_done_event should be set before put None
             # to indices_queue, workers wll exit on reading None from

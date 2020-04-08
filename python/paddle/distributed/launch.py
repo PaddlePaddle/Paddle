@@ -169,7 +169,9 @@ POD_IP (current node ip address, not needed for local training)
 def terminate_procs(procs):
     for p in procs:
         if p.poll() is None:
-            p.terminate()
+            # subprocess need to release resource(e.g. shared memory)
+            # use join to wait subprocess releasing
+            p.join()
 
 
 def start_procs(args):
