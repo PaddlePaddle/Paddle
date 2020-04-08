@@ -455,12 +455,14 @@ handler = FetchHandlerExample(var_dict=var_dict)
 class Executor(object):
     """
     An Executor in Python, supports single/multiple-GPU running,
-    and single/multiple-CPU running. When construction the Executor,
-    the device is required.
+    and single/multiple-CPU running.
 
     Args:
-        place(fluid.CPUPlace()|fluid.CUDAPlace(n)): This parameter represents
-            the executor run on which device.
+        place(fluid.CPUPlace()|fluid.CUDAPlace(n)|None): This parameter represents
+            which device the executor runs on. When this parameter is None, PaddlePaddle
+            will set the default device according to its installation version. If Paddle
+            is CPU version, the default device would be set to `CPUPlace()` . If Paddle is
+            GPU version, the default device would be set to `CUDAPlace(0)` . Default is None.
 
     Returns:
         Executor
@@ -473,9 +475,13 @@ class Executor(object):
           import numpy
           import os
 
-          use_cuda = True
-          place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-          exe = fluid.Executor(place)
+          # Set place explicitly.
+          # use_cuda = True
+          # place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+          # exe = fluid.Executor(place)
+
+          # If you don't set place, PaddlePaddle sets the default device.
+          exe = fluid.Executor()
 
           train_program = fluid.Program()
           startup_program = fluid.Program()
@@ -498,14 +504,19 @@ class Executor(object):
 
           # Or, compiled the program and run. See `CompiledProgram`
           # for more detail.
-          # NOTE: If you use CPU to run the program, you need
-          # to specify the CPU_NUM, otherwise, fluid will use
-          # all the number of the logic core as the CPU_NUM,
-          # in that case, the batch size of the input should be
-          # greater than CPU_NUM, if not, the process will be
+          # NOTE: If you use CPU to run the program or Paddle is
+          # CPU version, you need to specify the CPU_NUM, otherwise,
+          # fluid will use all the number of the logic core as
+          # the CPU_NUM, in that case, the batch size of the input
+          # should be greater than CPU_NUM, if not, the process will be
           # failed by an exception.
-          if not use_cuda:
-              os.environ['CPU_NUM'] = str(2)
+
+          # Set place explicitly.
+          # if not use_cuda:
+          #     os.environ['CPU_NUM'] = str(2)
+
+          # If you don't set place and PaddlePaddle is CPU version
+          # os.environ['CPU_NUM'] = str(2)
 
           compiled_prog = compiler.CompiledProgram(
               train_program).with_data_parallel(
@@ -515,8 +526,14 @@ class Executor(object):
                                fetch_list=[loss.name])
     """
 
-    def __init__(self, place):
-        self.place = place
+    def __init__(self, place=None):
+        if place is None:
+            if core.is_compiled_with_cuda():
+                self.place = core.CUDAPlace(0)
+            else:
+                self.place = core.CPUPlace()
+        else:
+            self.place = place
         self.program_caches = dict()
         self.ctx_caches = dict()
         self.scope_caches = dict()
