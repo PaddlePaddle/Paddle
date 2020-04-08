@@ -20,6 +20,7 @@ from collections import Counter
 
 import paddle.fluid as fluid
 
+from paddle.fluid.dygraph.jit import dygraph_to_static_output
 from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
 from paddle.fluid.dygraph.dygraph_to_static import convert_function_with_cache
 
@@ -123,6 +124,38 @@ class TestConvertWithCache(unittest.TestCase):
         # Get transformed function from cache.
         cached_func = convert_function_with_cache(simple_func)
         self.assertTrue(id(static_func), id(cached_func))
+
+
+@dygraph_to_static_output
+def sum_even_util_limit(max_len, limit):
+    ret_sum = fluid.dygraph.to_variable(np.zeros((1)).astype('int32'))
+    for i in range(max_len):
+        if i % 2 > 0:
+            continue
+        elif i > limit:
+            break
+
+        ret_sum += i
+    return ret_sum
+
+
+@dygraph_to_static_output
+def sum_under_while(limit):
+    i = fluid.dygraph.to_variable(np.zeros((1)).astype('int32'))
+    ret_sum = fluid.dygraph.to_variable(np.zeros((1)).astype('int32'))
+    while i <= limit:
+        ret_sum += i
+        i += 1
+    return ret_sum
+
+
+class TestToOutputWithCache(unittest.TestCase):
+    def test_output(self):
+        ret = sum_even_util_limit(80, 10)
+        self.assertEqual(ret[0], 30)
+
+        ret = sum_under_while(100)
+        self.assertEqual(ret[0], 5050)
 
 
 if __name__ == '__main__':
