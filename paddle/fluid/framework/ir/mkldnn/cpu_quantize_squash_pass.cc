@@ -126,38 +126,47 @@ void CPUQuantizeSquashPass::DequantQuantSquash(
                   found_dequant_quant_count);
 }
 
-void CPUQuantizeSquashPass::ConvRequantSquash(Graph* graph) const {
+// op+requant squash if op has Scale_out attr
+// conv2d and fc
+void CPUQuantizeSquashPass::OpRequantSquash(Graph* graph) const {
   GraphPatternDetector gpd;
-  patterns::ConvRequant conv_requant_pattern{gpd.mutable_pattern(),
-                                             "conv_requant"};
-  conv_requant_pattern();
+  patterns::OpRequant op_requant_pattern{gpd.mutable_pattern(), "op_requant"};
+  op_requant_pattern();
 
   int found_requant_squash_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    VLOG(4) << "squash conv-requantize ops pair";
+    VLOG(4) << "squash op-requantize ops pair";
 
-    GET_IR_NODE_FROM_SUBGRAPH(conv_op, conv_op, conv_requant_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(conv_out, conv_out, conv_requant_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(requant_op, requant_op, conv_requant_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(requant_out, requant_out, conv_requant_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(any_op, any_op, op_requant_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(any_out, any_out, op_requant_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(requant_op, requant_op, op_requant_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(requant_out, requant_out, op_requant_pattern);
 
-    // if conv2d has one output squash
-    if (conv_out->outputs.size() == 1) {
+    if (any_out->outputs.size() == 1) {
+      std::string any_op_output_name;
+      for (auto name : any_op->Op()->OutputNames())
+        for (auto output_name : any_op->Op()->Output(name))
+          if (output_name == any_out->Name()) any_op_output_name = name;
+
+      PADDLE_ENFORCE_NE(
+          any_op_output_name.empty(), true,
+          platform::errors::NotFound("Operator before requantize operator "
+                                     "should has requantize input as output"));
+
       float requant_scale_out =
           boost::get<float>(requant_op->Op()->GetAttr("Scale_out"));
-      conv_op->Op()->SetAttr("Scale_out", requant_scale_out);
-      conv_op->Op()->SetOutput("Output",
-                               std::vector<std::string>({requant_out->Name()}));
-      IR_NODE_LINK_TO(conv_op, requant_out);
-      GraphSafeRemoveNodes(graph, {conv_out, requant_op});
-
+      any_op->Op()->SetAttr("Scale_out", requant_scale_out);
+      any_op->Op()->SetOutput(any_op_output_name,
+                              std::vector<std::string>({requant_out->Name()}));
+      IR_NODE_LINK_TO(any_op, requant_out);
+      GraphSafeRemoveNodes(graph, {any_out, requant_op});
       found_requant_squash_count++;
     }
   };
   gpd(graph, handler);
   AddStatis(found_requant_squash_count);
-  PrettyLogDetail("---    squashed %d requantize with convs",
+  PrettyLogDetail("---    squashed %d requantize ops",
                   found_requant_squash_count);
 }
 
@@ -369,7 +378,7 @@ void CPUQuantizeSquashPass::ApplyImpl(ir::Graph* graph) const {
   std::unordered_map<const Node*, int> nodes_keep_counter;
   FindNodesToKeep(graph, &nodes_keep_counter);
   DequantQuantSquash(graph, &nodes_keep_counter);
-  ConvRequantSquash(graph);
+  OpRequantSquash(graph);
   ConvDequantSquash(graph);
   FcDequantSquash(graph);
   MultipleQuantizeSquash(graph);
