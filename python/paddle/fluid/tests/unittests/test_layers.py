@@ -2990,6 +2990,32 @@ class TestBook(LayerTest):
                 input=seqs, offset=offset, length=length)
             return (out)
 
+    def test_sequence_reverse(self):
+        with self.static_graph():
+            seqs = layers.data(
+                name='x', shape=[10, 5], dtype='float32', lod_level=1)
+            out = layers.sequence_reverse(x=seqs, name="sequence_reverse")
+            return (out)
+
+    def test_sequence_reverse_op_error(self):
+        with self.static_graph():
+            x_data = np.random.random((2, 4)).astype("float32")
+
+            def test_variable():
+                # the input type must be Variable
+                x_data = np.random.random((2, 4)).astype("float32")
+                fluid.layers.sequence_reverse(x=x_data)
+
+            self.assertRaises(TypeError, test_variable)
+
+            def test_type():
+                # dtype must be 'float32', 'float64', 'int8', 'int32', 'int64'
+                x2_data = fluid.layers.data(
+                    name='x2', shape=[4], dtype='float16')
+                fluid.layers.sequence_reverse(x=x2_data)
+
+            self.assertRaises(TypeError, test_type)
+
     def test_filter_by_instag(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
