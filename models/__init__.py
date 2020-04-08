@@ -13,13 +13,22 @@
 #limitations under the License.
 
 from . import resnet
+from . import vgg
+from . import mobilenetv1
+from . import mobilenetv2
 from . import darknet
 from . import yolov3
 
 from .resnet import *
+from .mobilenetv1 import *
+from .mobilenetv2 import *
+from .vgg import *
 from .darknet import *
 from .yolov3 import *
 
 __all__ = resnet.__all__ \
+        + vgg.__all__ \
+        + mobilenetv1.__all__ \
+        + mobilenetv2.__all__ \
         + darknet.__all__ \
         + yolov3.__all__
