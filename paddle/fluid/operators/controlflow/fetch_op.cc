@@ -49,7 +49,7 @@ class FetchOp : public framework::OperatorBase {
                                          "in scope for operator 'Fetch'.",
                                          out_name));
 
-    auto col = static_cast<size_t>(Attr<int>("col"));
+    int col = Attr<int>("col");
     PADDLE_ENFORCE_GE(
         col, 0, platform::errors::InvalidArgument(
                     "Expected the column index (the attribute 'col' of "
@@ -63,7 +63,7 @@ class FetchOp : public framework::OperatorBase {
     auto *fetch_list = out_var->GetMutable<framework::FeedFetchList>();
     auto &src_item = fetch_var->Get<framework::FeedFetchType>();
 
-    if (col >= fetch_list->size()) {
+    if (static_cast<size_t>(col) >= fetch_list->size()) {
       fetch_list->resize(col + 1);
     }
     auto &dst_item = fetch_list->at(col);
