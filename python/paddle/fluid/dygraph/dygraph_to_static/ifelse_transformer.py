@@ -85,6 +85,7 @@ class IfElseTransformer(gast.NodeTransformer):
             attribute = node.func
             if attribute.attr == 'numpy':
                 node = attribute.value
+        self.generic_visit(node)
         return node
 
     def visit_IfExp(self, node):
@@ -292,12 +293,12 @@ class NodeTestTransformer(gast.NodeTransformer):
         return self.visit(self.ast_root)
 
     def visit_Call(self, node):
-        # self.generic_visit(node)
         # Remove `numpy()` statement, like `Tensor.numpy()[i]` -> `Tensor[i]`
         if isinstance(node.func, gast.Attribute):
             attribute = node.func
             if attribute.attr == 'numpy':
                 node = attribute.value
+        self.generic_visit(node)
         return node
 
     def visit_UnaryOp(self, node):
