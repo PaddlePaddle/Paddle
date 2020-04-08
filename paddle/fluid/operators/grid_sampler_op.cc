@@ -29,14 +29,14 @@ class GridSampleOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::InvalidArgument(
+                      platform::errors::NotFound(
                           "Input(X) of GridSampleOp should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("Grid"), true,
-                      platform::errors::InvalidArgument(
+                      platform::errors::NotFound(
                           "Input(Grid) of GridSampleOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("Output"), true,
-        platform::errors::InvalidArgument(
+        platform::errors::NotFound(
             "Output(Output) of GridSampleOp should not be null."));
 
     auto x_dims = ctx->GetInputDim("X");
