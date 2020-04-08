@@ -968,7 +968,7 @@ def clamp(input, min=None, max=None, output=None, name=None):
             import numpy as np
 
             in1 = np.array([[1.2,3.5],
-                            [4.5,6.4]])
+                            [4.5,6.4]]).astype('float32')
             with fluid.dygraph.guard():
                 x1 = fluid.dygraph.to_variable(in1)
                 out1 = paddle.tensor.clamp(x1, min=3.5, max=5.0)
