@@ -22,7 +22,6 @@ from functools import partial
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import to_variable
 from paddle.fluid.io import DataLoader
 
 from utils.configure import PDConfig
@@ -31,32 +30,33 @@ from utils.check import check_gpu, check_version
 from model import Input, set_device
 from callbacks import ProgBarLogger
 from reader import prepare_train_input, Seq2SeqDataset, Seq2SeqBatchSampler
-from transformer import Transformer, CrossEntropyCriterion, NoamDecay
+from transformer import Transformer, CrossEntropyCriterion
 
 
-class LoggerCallback(ProgBarLogger):
+class TrainCallback(ProgBarLogger):
     def __init__(self, log_freq=1, verbose=2, loss_normalizer=0.):
-        super(LoggerCallback, self).__init__(log_freq, verbose)
+        super(TrainCallback, self).__init__(log_freq, verbose)
         # TODO: wrap these override function to simplify
         self.loss_normalizer = loss_normalizer
 
     def on_train_begin(self, logs=None):
-        super(LoggerCallback, self).on_train_begin(logs)
+        super(TrainCallback, self).on_train_begin(logs)
         self.train_metrics += ["normalized loss", "ppl"]
 
     def on_train_batch_end(self, step, logs=None):
         logs["normalized loss"] = logs["loss"][0] - self.loss_normalizer
         logs["ppl"] = np.exp(min(logs["loss"][0], 100))
-        super(LoggerCallback, self).on_train_batch_end(step, logs)
+        super(TrainCallback, self).on_train_batch_end(step, logs)
 
     def on_eval_begin(self, logs=None):
-        super(LoggerCallback, self).on_eval_begin(logs)
-        self.eval_metrics += ["normalized loss", "ppl"]
+        super(TrainCallback, self).on_eval_begin(logs)
+        self.eval_metrics = list(
+            self.eval_metrics) + ["normalized loss", "ppl"]
 
     def on_eval_batch_end(self, step, logs=None):
         logs["normalized loss"] = logs["loss"][0] - self.loss_normalizer
         logs["ppl"] = np.exp(min(logs["loss"][0], 100))
-        super(LoggerCallback, self).on_eval_batch_end(step, logs)
+        super(TrainCallback, self).on_eval_batch_end(step, logs)
 
 
 def do_train(args):
@@ -127,8 +127,6 @@ def do_train(args):
             dataset=dataset,
             batch_sampler=batch_sampler,
             places=device,
-            feed_list=None if fluid.in_dygraph_mode() else
-            [x.forward() for x in inputs + labels],
             collate_fn=partial(
                 prepare_train_input,
                 src_pad_idx=args.eos_idx,
@@ -149,8 +147,10 @@ def do_train(args):
 
     transformer.prepare(
         fluid.optimizer.Adam(
-            learning_rate=fluid.layers.noam_decay(args.d_model,
-                                                  args.warmup_steps),
+            learning_rate=fluid.layers.noam_decay(
+                args.d_model,
+                args.warmup_steps,
+                learning_rate=args.learning_rate),
             beta1=args.beta1,
             beta2=args.beta2,
             epsilon=float(args.eps),
@@ -161,13 +161,10 @@ def do_train(args):
 
     ## init from some checkpoint, to resume the previous training
     if args.init_from_checkpoint:
-        transformer.load(
-            os.path.join(args.init_from_checkpoint, "transformer"))
+        transformer.load(args.init_from_checkpoint)
     ## init from some pretrain models, to better solve the current task
     if args.init_from_pretrain_model:
-        transformer.load(
-            os.path.join(args.init_from_pretrain_model, "transformer"),
-            reset_optimizer=True)
+        transformer.load(args.init_from_pretrain_model, reset_optimizer=True)
 
     # the best cross-entropy value with label smoothing
     loss_normalizer = -(
@@ -178,12 +175,13 @@ def do_train(args):
     # model train
     transformer.fit(train_data=train_loader,
                     eval_data=eval_loader,
-                    epochs=1,
+                    epochs=args.epoch,
                     eval_freq=1,
                     save_freq=1,
+                    save_dir=args.save_model,
                     verbose=2,
                     callbacks=[
-                        LoggerCallback(
+                        TrainCallback(
                             log_freq=args.print_step,
                             loss_normalizer=loss_normalizer)
                     ])

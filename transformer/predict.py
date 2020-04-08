@@ -91,8 +91,6 @@ def do_predict(args):
         dataset=dataset,
         batch_sampler=batch_sampler,
         places=device,
-        feed_list=None
-        if fluid.in_dygraph_mode() else [x.forward() for x in inputs],
         collate_fn=partial(
             prepare_infer_input, src_pad_idx=args.eos_idx, n_head=args.n_head),
         num_workers=0,
