@@ -934,6 +934,21 @@ void FleetWrapper::SaveModel(const std::string& path, const int mode) {
 #endif
 }
 
+void FleetWrapper::SaveOneTableWithUid(const uint64_t table_id, const std::string& path, const int mode) {
+#ifdef PADDLE_WITH_PSLIB
+    auto ret = pslib_ptr_->_worker_ptr->save_with_uid(table_id, path, std::to_string(mode));
+    ret.wait();
+    int32_t feasign_cnt = ret.get();
+    if (feasign_cnt == -1) {
+        LOG(ERROR) << "save one table with uid failed";
+    }
+    sleep(sleep_seconds_before_fail_exit_);
+    exit(-1);
+#else
+    VLOG(0) << "FleetWrapper::SaveOneTableWithUid does nothing when no pslib";
+#endif
+}
+
 void FleetWrapper::PrintTableStat(const uint64_t table_id) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->print_table_stat(table_id);

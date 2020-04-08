@@ -345,6 +345,12 @@ class PSLib(Fleet):
         self._role_maker._barrier_worker()
         return feasign_num
 
+    def save_one_table_with_uid(self, table_id, mode=0):
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.save_with_uid(table_id, mode)
+        self._role_maker._barrier_worker()
+
     def shrink_sparse_table(self):
         """
         shrink cvm of all sparse embedding in pserver, the decay rate

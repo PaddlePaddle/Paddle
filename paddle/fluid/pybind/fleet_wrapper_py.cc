@@ -54,6 +54,7 @@ void BindFleetWrapper(py::module* m) {
       .def("init_worker", &framework::FleetWrapper::InitWorker)
       .def("init_model", &framework::FleetWrapper::PushDenseParamSync)
       .def("save_model", &framework::FleetWrapper::SaveModel)
+      .def("save_one_table_with_uid", &framework::FleetWrapper::SaveOneTableWithUid)
       .def("get_cache_threshold", &framework::FleetWrapper::GetCacheThreshold)
       .def("cache_shuffle", &framework::FleetWrapper::CacheShuffle)
       .def("save_cache", &framework::FleetWrapper::SaveCache)
