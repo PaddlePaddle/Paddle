@@ -148,6 +148,7 @@ class DeviceWorker {
   FetchConfig fetch_config_;
   bool use_cvm_;
   bool no_cvm_;
+  std::string uid_slot_;
 };
 
 class CPUWorkerBase : public DeviceWorker {
@@ -220,6 +221,7 @@ class DownpourWorker : public HogwildWorker {
   void FillSparseValue(size_t table_id);
   void PushGradients();
   void CollectLabelInfo(size_t table_id);
+  void CollectUidInfo(size_t table_id);
   void AdjustInsWeight();
   void CopySparseTable();
   void CopyDenseTable();
@@ -246,6 +248,7 @@ class DownpourWorker : public HogwildWorker {
   bool need_to_push_sparse_;
   // feasign stats
   std::map<uint64_t, std::vector<float>> feature_labels_;
+  std::map<uint64_t, std::vector<uint64_t>> feature_uid_;
   std::map<uint64_t, std::vector<std::string>> sparse_grad_names_;
   // feasign embedding gradient
   std::map<uint64_t, std::vector<std::vector<float>>> feature_grads_;
@@ -259,6 +262,7 @@ class DownpourWorker : public HogwildWorker {
   std::vector<std::string> skip_ops_;
   // just save the value in param_ for easy access
   std::map<uint64_t, std::string> label_var_name_;
+  std::map<uint64_t, std::string> uid_var_name_;
   std::map<uint64_t, std::vector<std::string>> dense_value_names_;
   std::map<uint64_t, uint64_t> table_dependency_;
   std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;

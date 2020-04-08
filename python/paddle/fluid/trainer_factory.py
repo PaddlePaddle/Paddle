@@ -80,6 +80,8 @@ class TrainerFactory(object):
                     trainer._set_use_cvm(opt_info["use_cvm"])
                 if opt_info.get("no_cvm") is not None:
                     trainer._set_no_cvm(opt_info["no_cvm"])
+                if opt_info.get("uid_slot") is not None:
+                    trainer._set_uid_slot(opt_info["uid_slot"])
                 if opt_info.get("scale_datanorm") is not None:
                     trainer._set_scale_datanorm(opt_info["scale_datanorm"])
                 if opt_info.get("adjust_ins_weight") is not None:

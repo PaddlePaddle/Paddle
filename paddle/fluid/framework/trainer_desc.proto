@@ -49,6 +49,7 @@ message TrainerDesc {
   optional bool no_cvm = 21 [ default = false ];
   optional bool thread_barrier = 22;
   repeated string loss_names = 23;
+  optional string uid_slot = 24 [ default = "" ];
 
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;

@@ -79,6 +79,9 @@ class TrainerDesc(object):
     def _set_no_cvm(self, no_cvm=False):
         self.proto_desc.no_cvm = no_cvm
 
+    def _set_uid_slot(self, uid_slot=""):
+        self.proto_desc.uid_slot = uid_slot
+
     def _set_scale_datanorm(self, scale_datanorm=-1):
         self.proto_desc.scale_datanorm = scale_datanorm
 

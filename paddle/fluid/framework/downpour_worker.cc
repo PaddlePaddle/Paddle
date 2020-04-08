@@ -78,6 +78,7 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   use_cvm_ = desc.use_cvm();
   // for sparse value accessor, embedding only
   no_cvm_ = desc.no_cvm();
+  uid_slot_ = desc.uid_slot();
   scale_datanorm_ = desc.scale_datanorm();
   dump_slot_ = desc.dump_slot();
   dump_fields_.resize(desc.dump_fields_size());
@@ -195,6 +196,64 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
           continue;
         }
         feature_label[global_index++] =
+            static_cast<float>(label_ptr[lod_idx - 1]);
+      }
+    }
+  }
+  CHECK(global_index == feature.size())
+      << "expect fea info size:" << feature.size() << " real:" << global_index;
+}
+
+void DownpourWorker::CollectUidInfo(size_t table_idx) {
+  if (uid_slot_ == "") {
+    return;
+  }
+  uint64_t table_id = static_cast<uint64_t>(
+      param_.program_config(0).pull_sparse_table_id(table_idx));
+
+  TableParameter table;
+  for (auto i : param_.sparse_table()) {
+    if (i.table_id() == table_id) {
+      table = i;
+      break;
+    }
+  }
+  auto& feature = features_[table_id];
+  auto& feature_uid = feature_uid_[table_id];
+  feature_uid.resize(feature.size());
+  Variable* var = thread_scope_->FindVar(uid_var_name_[table_id]);
+  LoDTensor* tensor = var->GetMutable<LoDTensor>();
+  int64_t* label_ptr = tensor->data<int64_t>();
+
+  size_t global_index = 0;
+  for (size_t i = 0; i < sparse_key_names_[table_id].size(); ++i) {
+    VLOG(3) << "sparse_key_names_[" << i
+            << "]: " << sparse_key_names_[table_id][i];
+    Variable* fea_var = thread_scope_->FindVar(sparse_key_names_[table_id][i]);
+    if (fea_var == nullptr) {
+      continue;
+    }
+    LoDTensor* tensor = fea_var->GetMutable<LoDTensor>();
+    CHECK(tensor != nullptr) << "tensor of var "
+                             << sparse_key_names_[table_id][i] << " is null";
+
+    // skip slots which do not have embedding
+    Variable* emb_var =
+        thread_scope_->FindVar(sparse_value_names_[table_id][i]);
+    if (emb_var == nullptr) {
+      continue;
+    }
+
+    int64_t* ids = tensor->data<int64_t>();
+    size_t fea_idx = 0;
+    // tensor->lod()[0].size() == batch_size + 1
+    for (auto lod_idx = 1u; lod_idx < tensor->lod()[0].size(); ++lod_idx) {
+      for (; fea_idx < tensor->lod()[0][lod_idx]; ++fea_idx) {
+        // should be skipped feasign defined in protobuf
+        if (ids[fea_idx] == 0u) {
+          continue;
+        }
+        feature_uid[global_index++] =
             static_cast<float>(label_ptr[lod_idx - 1]);
       }
     }
@@ -541,6 +600,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
       timeline.Start();
       CollectLabelInfo(i);
       timeline.Pause();
+      CollectUidInfo(i);
       collect_label_time += timeline.ElapsedSec();
       total_time += timeline.ElapsedSec();
       timeline.Start();
@@ -609,12 +669,16 @@ void DownpourWorker::TrainFilesWithProfiler() {
             break;
           }
         }
+        std::vector<uint64_t> fea_uid;
+        if (uid_slot_ != "") {
+          fea_uid = feature_uid_[tid];
+        }
         timeline.Start();
         fleet_ptr_->PushSparseVarsWithLabelAsync(
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
             &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
-            dump_slot_, &sparse_push_keys_[tid], no_cvm_);
+            dump_slot_, &sparse_push_keys_[tid], no_cvm_, uid_slot_, fea_uid);
         timeline.Pause();
         push_sparse_time += timeline.ElapsedSec();
         total_time += timeline.ElapsedSec();
@@ -787,6 +851,7 @@ void DownpourWorker::TrainFiles() {
           *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
           &feature_values_[tid], table.fea_dim(), sparse_value_names_[tid]);
       CollectLabelInfo(i);
+      CollectUidInfo(i);
       FillSparseValue(i);
       auto nid_iter = std::find(sparse_value_names_[tid].begin(),
                                 sparse_value_names_[tid].end(),
@@ -840,11 +905,15 @@ void DownpourWorker::TrainFiles() {
             break;
           }
         }
+        std::vector<uint64_t> fea_uid;
+        if (uid_slot_ != "") {
+            fea_uid = feature_uid_[tid];
+        }
         fleet_ptr_->PushSparseVarsWithLabelAsync(
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
             &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
-            dump_slot_, &sparse_push_keys_[tid], no_cvm_);
+            dump_slot_, &sparse_push_keys_[tid], no_cvm_, uid_slot_, fea_uid);
       }
     }
 
