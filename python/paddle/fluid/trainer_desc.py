@@ -35,15 +35,21 @@ class TrainerDesc(object):
         cur_path = path.dirname(__file__)
         sys.path.append(cur_path)
         sys.path.append(cur_path + "/proto")
-        from proto import trainer_desc_pb2
-        self.proto_desc = trainer_desc_pb2.TrainerDesc()
-        import multiprocessing as mp
-        # set default thread num == cpu count
-        self.proto_desc.thread_num = mp.cpu_count()
-        self._fleet_desc = None
-        self._device_worker = None
-        self._program = None
-        self._infer = False
+        try:
+            from proto import trainer_desc_pb2
+            self.proto_desc = trainer_desc_pb2.TrainerDesc()
+            import multiprocessing as mp
+            # set default thread num == cpu count
+            self.proto_desc.thread_num = mp.cpu_count()
+            self._fleet_desc = None
+            self._device_worker = None
+            self._program = None
+            self._infer = False
+        except ImportError as e:
+            print("cur_path:", cur_path)
+            print("sys.path:", sys.path)
+        except Exception as e:
+            self.assertTrue(False)
 
     def _set_fetch_var_and_info(self, fetch_vars, fetch_info, print_period):
         for i, v in enumerate(fetch_vars):
