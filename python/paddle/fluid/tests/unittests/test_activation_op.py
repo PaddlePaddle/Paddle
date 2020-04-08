@@ -450,6 +450,20 @@ class TestLeakyRelu(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
+class TestLeakyReluOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, fluid.layers.leaky_relu, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, fluid.layers.leaky_relu, x_int32)
+            # support the input dtype is float32
+            x_fp16 = fluid.layers.data(
+                name='x_fp16', shape=[12, 10], dtype='float32')
+            fluid.layers.leaky_relu(x_fp16)
+
+
 def gelu(x, approximate):
     if approximate:
         y_ref = 0.5 * x * (1.0 + np.tanh(

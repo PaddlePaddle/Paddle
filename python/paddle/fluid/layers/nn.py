@@ -9217,6 +9217,9 @@ def leaky_relu(x, alpha=0.02, name=None):
     if in_dygraph_mode():
         return core.ops.leaky_relu(x, 'alpha', alpha)
 
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'leaky_relu')
+
     inputs = {'X': [x]}
     attrs = {'alpha': alpha}
     helper = LayerHelper('leaky_relu', **locals())
