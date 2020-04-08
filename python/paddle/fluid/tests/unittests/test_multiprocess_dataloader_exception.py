@@ -146,6 +146,8 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                     num_workers=1,
                     places=place,
                     use_shared_memory=use_shared_memory)
+                assert loader.num_workers > 0, \
+                    "go to AssertionError and pass in Mac and Windows"
                 loader = iter(loader)
                 indices_queue = multiprocessing.Queue()
                 indices_queue.put([0, 1])

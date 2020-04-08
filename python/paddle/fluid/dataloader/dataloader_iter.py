@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import six
 import sys
 import time
@@ -52,6 +53,17 @@ def _default_collate_fn(batch):
             else:
                 slots[i].append(item)
     return [np.stack(slot, axis=0) for slot in slots]
+
+
+class ParentWatchDog(object):
+    def __init__(self):
+        self._parent_pid = os.getppid()
+        self._parent_alive = True
+
+    def is_alive(self):
+        if self._parent_alive:
+            self._parent_alive = os.getppid() == self._parent_pid
+        return self._parent_alive
 
 
 class _DataLoaderIterBase(object):
@@ -352,7 +364,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     init_exception = Exception("init_fn failed in worker {}: " \
                                          "{}".format(worker_id, sys.exc_info()))
 
-            while True:
+            parent_watch_dog = ParentWatchDog()
+
+            while parent_watch_dog.is_alive():
                 try:
                     data = indices_queue.get(MP_INDICES_CHECK_INTERVAL)
                 except queue.Empty:
