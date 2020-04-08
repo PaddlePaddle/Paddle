@@ -30,6 +30,7 @@ import math
 import six
 import numpy
 from functools import reduce
+from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
 __all__ = [
     'prior_box',
@@ -825,6 +826,10 @@ def box_coder(prior_box,
                                     box_normalized=False,
                                     axis=1)
     """
+    check_variable_and_dtype(prior_box, 'prior_box', ['float32', 'float64'],
+                             'box_coder')
+    check_variable_and_dtype(target_box, 'target_box', ['float32', 'float64'],
+                             'box_coder')
     helper = LayerHelper("box_coder", **locals())
 
     if name is None:

@@ -131,8 +131,6 @@ template <typename DeviceContext, typename T>
 class BoxCoderCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(context.GetPlace()),
-                   "This kernel only runs on GPU device.");
     auto* prior_box = context.Input<framework::Tensor>("PriorBox");
     auto* prior_box_var = context.Input<framework::Tensor>("PriorBoxVar");
     auto* target_box = context.Input<framework::LoDTensor>("TargetBox");
@@ -143,20 +141,26 @@ class BoxCoderCUDAKernel : public framework::OpKernel<T> {
     const T* prior_box_var_data = nullptr;
     auto prior_box_var_size = 0;
     if (prior_box_var) {
-      PADDLE_ENFORCE(variance.empty(),
-                     "Input 'PriorBoxVar' and attribute 'variance' should not"
-                     "be used at the same time.");
+      PADDLE_ENFORCE_EQ(variance.empty(), true,
+                        platform::errors::InvalidArgument(
+                            "Input 'PriorBoxVar' "
+                            "and attribute 'variance' should not"
+                            "be used at the same time."));
       prior_box_var_data = prior_box_var->data<T>();
       prior_box_var_size = prior_box_var->dims().size();
     }
     if (!(variance.empty())) {
-      PADDLE_ENFORCE(static_cast<int>(variance.size()) == 4,
-                     "Size of attribute 'variance' should be 4");
+      PADDLE_ENFORCE_EQ(static_cast<int>(variance.size()) == 4, true,
+                        platform::errors::InvalidArgument(
+                            "Size of attribute "
+                            "'variance' in BoxCoder should be 4"));
     }
 
     if (target_box->lod().size()) {
       PADDLE_ENFORCE_EQ(target_box->lod().size(), 1,
-                        "Only support 1 level of LoD.");
+                        platform::errors::InvalidArgument(
+                            "Input 'TargetBox' "
+                            "of BoxCoder only supports 1 level of LoD."));
     }
     const int var_size = static_cast<int>(variance.size());
 

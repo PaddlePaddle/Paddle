@@ -21,25 +21,39 @@ class BoxCoderOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("PriorBox"),
-                   "Input(PriorBox) of BoxCoderOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("TargetBox"),
-                   "Input(TargetBox) of BoxCoderOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("OutputBox"),
-                   "Output(OutputBox) of BoxCoderOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("PriorBox"), true,
+                      platform::errors::NotFound("Input(PriorBox) of BoxCoderOp"
+                                                 " is not found."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("TargetBox"), true,
+        platform::errors::NotFound("Input(TargetBox) of BoxCoderOp"
+                                   " is not found."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("OutputBox"), true,
+        platform::errors::NotFound("Output(OutputBox) of BoxCoderOp"
+                                   " is not found."));
 
     auto prior_box_dims = ctx->GetInputDim("PriorBox");
     auto target_box_dims = ctx->GetInputDim("TargetBox");
 
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(prior_box_dims.size(), 2,
-                        "The rank of Input PriorBox must be 2");
+                        platform::errors::InvalidArgument(
+                            "The rank of Input "
+                            "PriorBox must be 2. But received rank = %d",
+                            prior_box_dims.size()));
       PADDLE_ENFORCE_EQ(prior_box_dims[1], 4,
-                        "The shape of PriorBox is [N, 4]");
+                        platform::errors::InvalidArgument(
+                            "The second dimension of "
+                            "PriorBox must be 4. But received dimension = %d",
+                            prior_box_dims[1]));
       if (ctx->HasInput("PriorBoxVar")) {
         auto prior_box_var_dims = ctx->GetInputDim("PriorBoxVar");
         PADDLE_ENFORCE(prior_box_var_dims.size() == 2,
-                       "Input(PriorBoxVar) of BoxCoderOp should be 2.");
+                       platform::errors::InvalidArgument(
+                           "The rank of Input(PriorBoxVar) "
+                           "in BoxCoderOp should be 2. But received rank = %d",
+                           prior_box_var_dims.size()));
         PADDLE_ENFORCE_EQ(
             prior_box_dims, prior_box_var_dims,
             "The dimension of Input(PriorBoxVar) should be equal to"
