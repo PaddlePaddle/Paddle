@@ -310,7 +310,7 @@ def rand(shape, out=None, dtype=None, device=None, stop_gradient=True):
         Variable: A Tensor of the specified shape filled with random numbers from a uniform distribution on the interval [0, 1).
 
     Raises:
-        TypeError: The shape type should be list or tupple or variable.
+        TypeError: The shape type should be list or tupple or Variable.
 
     Examples:
         .. code-block:: python
