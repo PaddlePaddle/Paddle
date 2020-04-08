@@ -177,7 +177,6 @@ class TestBicubicInterpOp(OpTest):
         self.align_corners = True
 
 
-"""
 class TestBicubicInterpCase1(TestBicubicInterpOp):
     def init_test_case(self):
         self.interp_method = 'bicubic'
@@ -261,7 +260,6 @@ class TestBicubicInterpDataLayout(TestBicubicInterpOp):
         self.out_size = np.array([3, 3]).astype("int32")
         self.align_corners = True
         self.data_layout = "NHWC"
-"""
 
 
 class TestBicubicInterpOpAPI(unittest.TestCase):
