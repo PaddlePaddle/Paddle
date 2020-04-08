@@ -1747,9 +1747,6 @@ def array_length(array):
     Returns:
         Variable: 1-D Tensor with shape [1], which is the length of array. Datatype: int64.
 
-    Raises:
-        TypeError: array(input) is not a Variable
-    
     Examples:
         .. code-block:: python
 
@@ -1784,13 +1781,17 @@ def array_length(array):
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
 
-    check_type(array, 'array', (Variable), 'array_length')
-
     if in_dygraph_mode():
         assert isinstance(
             array,
             list), "The 'array' in array_write must be a list in dygraph mode"
         return len(array)
+
+    if not isinstance(
+            array,
+            Variable) or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        raise TypeError(
+            "array should be tensor array vairable in array_length Op")
 
     helper = LayerHelper('array_length', **locals())
     tmp = helper.create_variable_for_type_inference(dtype='int64')
