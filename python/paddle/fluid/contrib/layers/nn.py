@@ -1298,3 +1298,53 @@ def rank_attention(input,
         attrs={"MaxRank": max_rank,
                "MaxSize": max_size})
     return output
+
+
+def batched_gemm(x, y, batch_count, mat_m, mat_n, mat_k):
+    """
+    **Batched GEMM layer**
+    This Op can calculate BatchedGEMM between x and y.
+    Notice: It currently supports GPU device.
+    This Op exists in contrib, which means that it is not shown to the public.
+    Args:
+        x: Tensor with data type float32, float64.
+        y: Tensor with data type float32, float64.
+        batch_count: The batch size of x or y.
+        mat_m: rows of x.
+        mat_n: columns of y.
+        mat_k: columns of x or rows of y.
+    Returns:
+        Variable: A Tensor with the same data type as x's.
+    Examples:
+        .. code-block:: python
+           import paddle.fluid as fluid
+           
+           x = fluid.data(name="x", shape=[16, 2, 3], dtype="float32")
+           y = fluid.data(name="y", shape=[16, 3, 5], dtype="float32")
+           out = fluid.contrib.layers.batched_gemm(x=x,
+                                                   y=y,
+                                                   batch_count=16,
+                                                   mat_m=2,
+                                                   mat_n=5,
+                                                   mat_k=3)
+    """
+    helper = LayerHelper('batched_gemm', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+
+    output = helper.create_variable_for_type_inference(dtype)
+
+    helper.append_op(
+        type="batched_gemm",
+        inputs={
+            "X": x,
+            "Y": y,
+        },
+        outputs={"Out": output},
+        attrs={
+            "BatchCount": batch_count,
+            "Mat_M": mat_m,
+            "Mat_N": mat_n,
+            "Mat_K": mat_k
+        })
+
+    return output
