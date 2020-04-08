@@ -14,9 +14,6 @@
 
 # TODO: define loss functions of neural network  
 import paddle.fluid as fluid
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.param_attr import ParamAttr
-from paddle.fluid.initializer import NumpyArrayInitializer
 __all__ = [
     #'NCELoss',
     #    'CrossEntropyLoss',
