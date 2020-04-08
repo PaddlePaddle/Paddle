@@ -20,6 +20,7 @@ from ..layers import utils
 from ..layers import nn
 from .. import dygraph_utils
 from . import layers
+from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, _varbase_creator
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
@@ -32,7 +33,7 @@ import logging
 __all__ = [
     'Conv2D', 'Conv3D', 'Pool2D', 'Linear', 'BatchNorm', 'Embedding', 'GRUUnit',
     'LayerNorm', 'NCE', 'PRelu', 'BilinearTensorProduct', 'Conv2DTranspose',
-    'Conv3DTranspose', 'GroupNorm', 'SpectralNorm', 'TreeConv'
+    'Conv3DTranspose', 'GroupNorm', 'SpectralNorm', 'TreeConv', 'InstanceNorm'
 ]
 
 
@@ -1508,6 +1509,129 @@ class LayerNorm(layers.Layer):
             })
 
         return self._helper.append_activation(layer_norm_out, act=self._act)
+
+
+class InstanceNorm(layers.Layer):
+    """
+    This interface is used to construct a callable object of the ``InstanceNorm`` class.
+    For more details, refer to code examples.
+    It implements the function of the Instance Normalization Layer and can be applied to mini-batch input data.
+    Refer to `Instance Normalization: The Missing Ingredient for Fast Stylization <https://arxiv.org/pdf/1607.08022.pdf>`_
+
+    The formula is as follows:
+
+    ..  math::
+
+        \\mu_{\\beta} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW} x_i \\qquad &//\\
+        \\ mean\ of\ one\  feature\ map\ in\ mini-batch \\\\
+        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW}(x_i - \\
+        \\mu_{\\beta})^2 \\qquad &//\ variance\ of\ one\ feature\ map\ in\ mini-batch \\\\
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+
+    Note:
+        `H` means height of feature map, `W` means width of feature map.
+
+    Parameters:
+        num_channels(int): Indicate the number of channels of the input ``Tensor``.
+        epsilon(float, optional): The small value added to the variance to prevent
+            division by zero. Default: 1e-05.
+        param_attr(ParamAttr, optional): The parameter attribute for the learnable
+            gain :math:`g`. If :attr:`scale` is False, :attr:`param_attr` is
+            omitted. If :attr:`scale` is True and :attr:`param_attr` is None,
+            a default :code:`ParamAttr` would be added as scale. The
+            :attr:`param_attr` is initialized as 1 if it is added. Default: None.
+        bias_attr(ParamAttr, optional): The parameter attribute for the learnable
+            bias :math:`b`. If :attr:`shift` is False, :attr:`bias_attr` is
+            omitted. If :attr:`shift` is True and :attr:`param_attr` is None,
+            a default :code:`ParamAttr` would be added as bias. The
+            :attr:`bias_attr` is initialized as 0 if it is added. Default: None.
+        act(str, optional): Activation to be applied to the output of layer normalization.
+                  Default: None.
+        dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32".
+
+    Returns:
+        None
+
+    Examples:
+
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          from paddle.fluid.dygraph.base import to_variable
+          import numpy
+
+          x = numpy.random.random((2, 3, 32, 32)).astype('float32')
+          with fluid.dygraph.guard():
+              x = to_variable(x)
+              instance_norm = fluid.InstanceNorm(3)
+              ret = instance_norm(x)
+
+    """
+
+    def __init__(self,
+                 num_channels,
+                 epsilon=1e-05,
+                 param_attr=None,
+                 bias_attr=None,
+                 act=None,
+                 dtype='float32'):
+
+        check_type(num_channels, 'num_channels', numbers.Integral,
+                   'InstanceNorm')
+        # assert isinstance(num_channels, numbers.Integral), "The type of '%s' in %s must be %s, but received %s." % ('num_channels', 'InstanceNorm', numbers.Integral, type(num_channels))
+
+        super(InstanceNorm, self).__init__()
+
+        self._epsilon = epsilon
+        self._param_attr = param_attr
+        self._bias_attr = bias_attr
+        self._act = act
+        self._dtype = dtype
+        param_shape = [num_channels]
+
+        self.weight = self.create_parameter(
+            attr=self._param_attr,
+            shape=param_shape,
+            dtype=self._dtype,
+            default_initializer=Constant(1.0))
+
+        self.bias = self.create_parameter(
+            attr=self._bias_attr,
+            shape=param_shape,
+            dtype=self._dtype,
+            is_bias=True,
+            default_initializer=Constant(0.0))
+
+    def forward(self, input):
+        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                                 'InstanceNorm')
+
+        inputs = dict()
+        inputs['X'] = [input]
+        inputs['Bias'] = [self.bias]
+        inputs['Scale'] = [self.weight]
+
+        # create output
+        mean_out = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype, stop_gradient=True)
+        variance_out = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype, stop_gradient=True)
+        instance_norm_out = self._helper.create_variable_for_type_inference(
+            self._dtype)
+
+        self._helper.append_op(
+            type="instance_norm",
+            inputs=inputs,
+            outputs={
+                "Y": instance_norm_out,
+                "SavedMean": mean_out,
+                "SavedVariance": variance_out
+            },
+            attrs={"epsilon": self._epsilon})
+
+        return self._helper.append_activation(instance_norm_out, act=self._act)
 
 
 class GRUUnit(layers.Layer):

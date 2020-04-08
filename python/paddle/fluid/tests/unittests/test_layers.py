@@ -1148,6 +1148,57 @@ class TestLayer(LayerTest):
         self.assertTrue(np.allclose(static_ret, dy_rlt_value))
         self.assertTrue(np.allclose(static_ret, static_ret2))
 
+    def test_instance_norm(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+
+        shape = (2, 4, 3, 3)
+
+        input = np.random.random(shape).astype('float32')
+
+        with self.static_graph():
+            X = fluid.layers.data(
+                name='X',
+                shape=shape,
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
+            ret = layers.instance_norm(input=X)
+            static_ret = self.get_static_graph_result(
+                feed={
+                    'X': fluid.create_lod_tensor(
+                        data=input, recursive_seq_lens=[[1, 1]], place=place)
+                },
+                fetch_list=[ret],
+                with_lod=True)[0]
+
+        with self.static_graph():
+            X = fluid.layers.data(
+                name='X',
+                shape=shape,
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
+            instanceNorm = nn.InstanceNorm(shape[1])
+            ret = instanceNorm(X)
+            static_ret2 = self.get_static_graph_result(
+                feed={
+                    'X': fluid.create_lod_tensor(
+                        data=input, recursive_seq_lens=[[1, 1]], place=place)
+                },
+                fetch_list=[ret],
+                with_lod=True)[0]
+
+        with self.dynamic_graph():
+            instanceNorm = nn.InstanceNorm(shape[1])
+            dy_ret = instanceNorm(base.to_variable(input))
+            dy_rlt_value = dy_ret.numpy()
+
+        self.assertTrue(np.allclose(static_ret, dy_rlt_value))
+        self.assertTrue(np.allclose(static_ret, static_ret2))
+
     def test_spectral_norm(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
