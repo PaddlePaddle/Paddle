@@ -5765,6 +5765,10 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
         helper.set_variable_initializer(
             counter, initializer=Constant(
                 value=begin - 1, force_cpu=True))
+        check_variable_and_dtype(
+            input, 'X',
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            'increment')
         helper.main_program.global_block()._prepend_op(
             type='increment',
             inputs={'X': [counter]},
