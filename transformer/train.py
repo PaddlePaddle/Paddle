@@ -34,6 +34,7 @@ from transformer import Transformer, CrossEntropyCriterion
 
 class TrainCallback(ProgBarLogger):
     def __init__(self, args, verbose=2):
+        # TODO(guosheng): save according to step
         super(TrainCallback, self).__init__(args.print_step, verbose)
         # the best cross-entropy value with label smoothing
         loss_normalizer = -(
@@ -141,7 +142,6 @@ def do_train(args):
                     eval_freq=1,
                     save_freq=1,
                     save_dir=args.save_model,
-                    verbose=2,
                     callbacks=[TrainCallback(args)])
 
 

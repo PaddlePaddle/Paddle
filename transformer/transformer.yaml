@@ -1,7 +1,7 @@
 # used for continuous evaluation
 enable_ce: False
 
-eager_run: False
+eager_run: True
 
 # The frequency to save trained models when training.
 save_step: 10000

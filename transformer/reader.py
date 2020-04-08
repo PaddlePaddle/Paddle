@@ -112,12 +112,15 @@ def prepare_train_input(insts, bos_idx, eos_idx, src_pad_idx, trg_pad_idx,
     return data_inputs
 
 
-def prepare_infer_input(insts, src_pad_idx, n_head):
+def prepare_infer_input(insts, bos_idx, eos_idx, src_pad_idx, n_head):
     """
     Put all padded data needed by beam search decoder into a list.
     """
     src_word, src_pos, src_slf_attn_bias, src_max_len = pad_batch_data(
-        [inst[0] for inst in insts], src_pad_idx, n_head, is_target=False)
+        [inst[0] + [eos_idx] for inst in insts],
+        src_pad_idx,
+        n_head,
+        is_target=False)
     trg_src_attn_bias = np.tile(src_slf_attn_bias[:, :, ::src_max_len, :],
                                 [1, 1, 1, 1]).astype("float32")
     src_word = src_word.reshape(-1, src_max_len)
@@ -487,5 +490,11 @@ class Seq2SeqBatchSampler(BatchSampler):
                 yield batch_indices
 
     def __len__(self):
-        # TODO(guosheng): fix the uncertain length
-        return 0
+        if not self._use_token_batch:
+            batch_number = (
+                len(self._dataset) + self._batch_size * self._nranks - 1) // (
+                    self._batch_size * self._nranks)
+        else:
+            # TODO(guosheng): fix the uncertain length
+            batch_number = 1
+        return batch_number

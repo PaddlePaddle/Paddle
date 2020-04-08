@@ -34,8 +34,8 @@
 
     克隆代码库到本地
     ```shell
-    git clone https://github.com/PaddlePaddle/models.git
-    cd models/dygraph/transformer
+    git clone https://github.com/PaddlePaddle/hapi
+    cd hapi/transformer
     ```
 
 3. 环境依赖
@@ -62,7 +62,7 @@
 
 ### 单机训练
 
-### 单机单卡
+#### 单机单卡
 
 以提供的英德翻译数据为例，可以执行以下命令进行模型训练：
 
@@ -100,28 +100,48 @@ python -u train.py \
   --prepostprocess_dropout 0.3
 ```
 
-另外，如果在执行训练时若提供了 `save_model`（默认为 trained_models），则每隔一定 iteration 后（通过参数 `save_step` 设置，默认为10000）将保存当前训练的到相应目录（会保存分别记录了模型参数和优化器状态的 `transformer.pdparams` 和 `transformer.pdopt` 两个文件），每隔一定数目的 iteration (通过参数 `print_step` 设置，默认为100)将打印如下的日志到标准输出：
+另外，如果在执行训练时若提供了 `save_model`（默认为 trained_models），则每个 epoch 将保存当前训练的到相应目录（会保存分别记录了模型参数和优化器状态的 `epoch_id.pdparams` 和 `epoch_id.pdopt` 两个文件），每隔一定数目的 iteration (通过参数 `print_step` 设置，默认为100)将打印如下的日志到标准输出：
 
 ```txt
-[2019-08-02 15:30:51,656 INFO train.py:262] step_idx: 150100, epoch: 32, batch: 1364, avg loss: 2.880427, normalized loss: 1.504687, ppl: 17.821888, speed: 3.34 step/s
-[2019-08-02 15:31:19,824 INFO train.py:262] step_idx: 150200, epoch: 32, batch: 1464, avg loss: 2.955965, normalized loss: 1.580225, ppl: 19.220257, speed: 3.55 step/s
-[2019-08-02 15:31:48,151 INFO train.py:262] step_idx: 150300, epoch: 32, batch: 1564, avg loss: 2.951180, normalized loss: 1.575439, ppl: 19.128502, speed: 3.53 step/s
-[2019-08-02 15:32:16,401 INFO train.py:262] step_idx: 150400, epoch: 32, batch: 1664, avg loss: 3.027281, normalized loss: 1.651540, ppl: 20.641024, speed: 3.54 step/s
-[2019-08-02 15:32:44,764 INFO train.py:262] step_idx: 150500, epoch: 32, batch: 1764, avg loss: 3.069125, normalized loss: 1.693385, ppl: 21.523066, speed: 3.53 step/s
-[2019-08-02 15:33:13,199 INFO train.py:262] step_idx: 150600, epoch: 32, batch: 1864, avg loss: 2.869379, normalized loss: 1.493639, ppl: 17.626074, speed: 3.52 step/s
-[2019-08-02 15:33:41,601 INFO train.py:262] step_idx: 150700, epoch: 32, batch: 1964, avg loss: 2.980905, normalized loss: 1.605164, ppl: 19.705633, speed: 3.52 step/s
-[2019-08-02 15:34:10,079 INFO train.py:262] step_idx: 150800, epoch: 32, batch: 2064, avg loss: 3.047716, normalized loss: 1.671976, ppl: 21.067181, speed: 3.51 step/s
-[2019-08-02 15:34:38,598 INFO train.py:262] step_idx: 150900, epoch: 32, batch: 2164, avg loss: 2.956475, normalized loss: 1.580735, ppl: 19.230072, speed: 3.51 step/s
+step 500/1 - loss: 7.345725 - normalized loss: 5.969984 - ppl: 1549.557373 - 216ms/step
+step 501/1 - loss: 7.019722 - normalized loss: 5.643982 - ppl: 1118.476196 - 216ms/step
+step 502/1 - loss: 7.271389 - normalized loss: 5.895649 - ppl: 1438.547241 - 216ms/step
+step 503/1 - loss: 7.241495 - normalized loss: 5.865755 - ppl: 1396.179932 - 216ms/step
+step 504/1 - loss: 7.335604 - normalized loss: 5.959863 - ppl: 1533.953613 - 216ms/step
+step 505/1 - loss: 7.388950 - normalized loss: 6.013210 - ppl: 1618.006104 - 216ms/step
+step 506/1 - loss: 7.217984 - normalized loss: 5.842244 - ppl: 1363.737305 - 216ms/step
+step 507/1 - loss: 7.018966 - normalized loss: 5.643226 - ppl: 1117.630615 - 216ms/step
+step 508/1 - loss: 6.923923 - normalized loss: 5.548183 - ppl: 1016.299133 - 216ms/step
+step 509/1 - loss: 7.472060 - normalized loss: 6.096320 - ppl: 1758.225220 - 216ms/step
+step 510/1 - loss: 7.173721 - normalized loss: 5.797981 - ppl: 1304.690063 - 216ms/step
 ```
 
 也可以使用 CPU 训练(通过参数 `--use_cuda False` 设置)，训练速度较慢。
 
 #### 单机多卡
 
-Paddle动态图支持多进程多卡进行模型训练，启动训练的方式如下：
+支持多进程多卡进行模型训练，启动训练的方式如下：
 
 ```sh
-python -m paddle.distributed.launch --started_port 8999 --selected_gpus=0,1,2,3,4,5,6,7 --log_dir ./mylog train.py \
+export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
+python -m paddle.distributed.launch --started_port 8999 --selected_gpus=0,1,2,3,4,5,6,7 train.py \
+  --epoch 30 \
+  --src_vocab_fpath gen_data/wmt16_ende_data_bpe/vocab_all.bpe.32000 \
+  --trg_vocab_fpath gen_data/wmt16_ende_data_bpe/vocab_all.bpe.32000 \
+  --special_token '<s>' '<e>' '<unk>' \
+  --training_file gen_data/wmt16_ende_data_bpe/train.tok.clean.bpe.32000.en-de \
+  --validation_file gen_data/wmt16_ende_data_bpe/newstest2014.tok.bpe.32000.en-de \
+  --batch_size 4096 \
+  --print_step 100
+```
+
+#### 静态图训练
+
+默认使用动态图模式进行训练，可以通过设置 `eager_run` 参数为False来以静态图模式进行训练，如下：
+
+```sh
+export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
+python -m paddle.distributed.launch --started_port 8999 --selected_gpus=0,1,2,3,4,5,6,7 train.py \
   --epoch 30 \
   --src_vocab_fpath gen_data/wmt16_ende_data_bpe/vocab_all.bpe.32000 \
   --trg_vocab_fpath gen_data/wmt16_ende_data_bpe/vocab_all.bpe.32000 \
@@ -130,24 +150,9 @@ python -m paddle.distributed.launch --started_port 8999 --selected_gpus=0,1,2,3,
   --validation_file gen_data/wmt16_ende_data_bpe/newstest2014.tok.bpe.32000.en-de \
   --batch_size 4096 \
   --print_step 100 \
-  --use_cuda True \
-  --save_step 10000
+  --eager_run False
 ```
 
-此时，程序会将每个进程的输出log导入到`./mylog`路径下，只有第一个工作进程会保存模型。
-
-```
-.
-├── mylog
-│   ├── workerlog.0
-│   ├── workerlog.1
-│   ├── workerlog.2
-│   ├── workerlog.3
-│   ├── workerlog.4
-│   ├── workerlog.5
-│   ├── workerlog.6
-│   └── workerlog.7
-```
 
 ### 模型推断
 
@@ -163,13 +168,13 @@ python -u predict.py \
   --special_token '<s>' '<e>' '<unk>' \
   --predict_file gen_data/wmt16_ende_data_bpe/newstest2014.tok.bpe.32000.en-de \
   --batch_size 32 \
-  --init_from_params trained_params/step_100000 \
+  --init_from_params base_model_dygraph/step_100000/transformer \
   --beam_size 5 \
   --max_out_len 255 \
   --output_file predict.txt
 ```
 
- 由 `predict_file` 指定的文件中文本的翻译结果会输出到 `output_file` 指定的文件。执行预测时需要设置 `init_from_params` 来给出模型所在目录，更多参数的使用可以在 `transformer.yaml` 文件中查阅注释说明并进行更改设置。注意若在执行预测时设置了模型超参数，应与模型训练时的设置一致，如若训练时使用 big model 的参数设置，则预测时对应类似如下命令：
+ 由 `predict_file` 指定的文件中文本的翻译结果会输出到 `output_file` 指定的文件。执行预测时需要设置 `init_from_params` 来给出模型文件路径（不包含扩展名），更多参数的使用可以在 `transformer.yaml` 文件中查阅注释说明并进行更改设置。注意若在执行预测时设置了模型超参数，应与模型训练时的设置一致，如若训练时使用 big model 的参数设置，则预测时对应类似如下命令：
 
 ```sh
 # setting visible devices for prediction
@@ -181,7 +186,7 @@ python -u predict.py \
   --special_token '<s>' '<e>' '<unk>' \
   --predict_file gen_data/wmt16_ende_data_bpe/newstest2014.tok.bpe.32000.en-de \
   --batch_size 32 \
-  --init_from_params trained_params/step_100000 \
+  --init_from_params base_model_dygraph/step_100000/transformer \
   --beam_size 5 \
   --max_out_len 255 \
   --output_file predict.txt \
@@ -191,6 +196,24 @@ python -u predict.py \
   --prepostprocess_dropout 0.3
 ```
 
+和训练类似，预测时同样可以以静态图模式进行，如下：
+
+```sh
+# setting visible devices for prediction
+export CUDA_VISIBLE_DEVICES=0
+
+python -u predict.py \
+  --src_vocab_fpath gen_data/wmt16_ende_data_bpe/vocab_all.bpe.32000 \
+  --trg_vocab_fpath gen_data/wmt16_ende_data_bpe/vocab_all.bpe.32000 \
+  --special_token '<s>' '<e>' '<unk>' \
+  --predict_file gen_data/wmt16_ende_data_bpe/newstest2014.tok.bpe.32000.en-de \
+  --batch_size 32 \
+  --init_from_params base_model_dygraph/step_100000/transformer \
+  --beam_size 5 \
+  --max_out_len 255 \
+  --output_file predict.txt \
+  --eager_run False  
+```
 
 ### 模型评估
 
