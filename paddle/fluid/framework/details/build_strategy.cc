@@ -293,26 +293,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 #endif
   }
 
-  void AppendPassToUseNgraph(const std::string &pass_name) {
-#ifdef PADDLE_WITH_NGRAPH
-    if (FLAGS_use_ngraph) {
-      if (strategy_.reduce_ != BuildStrategy::ReduceStrategy::kAllReduce) {
-        LOG(WARNING) << "Currently ngraph_subgraph_pass works under AllReduce,"
-                        "please set FLAGS_use_ngraph=false.";
-      } else {
-        AppendPass(pass_name);
-      }
-    }
-#else
-    PADDLE_ENFORCE_NE(FLAGS_use_ngraph, true,
-                      platform::errors::PreconditionNotMet(
-                          "FLAGS_use_ngraph has been set to True, but "
-                          "PaddlePaddle is compiled without NGRAPH. "
-                          "Please compile PaddlePaddle with NGRAPH first."));
-
-#endif
-  }
-
  private:
   BuildStrategy strategy_;
 };
