@@ -86,8 +86,8 @@ void FusedEmbeddingFCLSTMOp::InferShape(
   PADDLE_ENFORCE_EQ(wh_dims[0], frame_size,
                     platform::errors::InvalidArgument(
                         "The first dimension of Input(WeightH) should equal to "
-                        "frame size, but received value is:%d.",
-                        wh_dims[0]));
+                        "frame size:%d, but received value is:%d.",
+                        frame_size, wh_dims[0]));
   PADDLE_ENFORCE_EQ(wh_dims[1], 4 * frame_size,
                     platform::errors::InvalidArgument(
                         "The second dimension of Input(WeightH) should equal "
