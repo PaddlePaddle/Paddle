@@ -209,12 +209,18 @@ class TestDygraphIfElseNet(unittest.TestCase):
         self.assertTrue((self._run_dygraph() == self._run_static()).all())
 
 
+# Test to call function ahead caller.
+def relu(x):
+    return fluid.layers.relu(x)
+
+
 def call_external_func(x, label=None):
-    if fluid.layers.mean(x).numpy()[0] > 5:
+    if fluid.layers.mean(x) < 0:
         x_v = x - 1
     else:
         x_v = add_fn(x)
 
+    x_v = relu(x_v)
     if label is not None:
         loss = loss_fn(x_v, label)
         return loss
@@ -230,15 +236,21 @@ class TestAst2FuncWithExternalFunc(TestDygraphIfElse):
 class NetWithExternalFunc(fluid.dygraph.Layer):
     @dygraph_to_static_func
     def forward(self, x, label=None):
-        if fluid.layers.mean(x).numpy()[0] > 5:
+        if fluid.layers.mean(x).numpy < 0:
             x_v = x - 1
         else:
             x_v = add_fn(x)
 
+        x_v = softmax(x_v)
         if label is not None:
             loss = loss_fn(x_v, label)
             return loss
         return x_v
+
+
+# Test to call function behind caller.
+def softmax(x):
+    return fluid.layers.softmax(x)
 
 
 class TestNetWithExternalFunc(TestDygraphIfElseNet):
