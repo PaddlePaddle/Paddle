@@ -9179,6 +9179,8 @@ def brelu(x, t_min=0.0, t_max=24.0, name=None):
                 #[[ 1.  6.]
                 #[ 1. 10.]] 
     """
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'brelu')
+
     helper = LayerHelper('brelu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
