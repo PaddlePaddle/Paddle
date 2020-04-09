@@ -6189,9 +6189,16 @@ def lod_reset(x, y=None, target_lod=None):
             y = fluid.layers.data(name='y', shape=[10, 20], lod_level=2)
             out = fluid.layers.lod_reset(x=x, y=y)
     """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'lod_reset')
     helper = LayerHelper("lod_reset", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     if y is not None:
+        if y.lod_level > 0:
+            check_variable_and_dtype(
+                y, 'y', ['float32', 'float64', 'int32', 'int64'], 'lod_reset')
+        else:
+            check_variable_and_dtype(y, 'y', ['int32', 'int64'], 'lod_reset')
         helper.append_op(
             type="lod_reset", inputs={'X': x,
                                       'Y': y}, outputs={'Out': out})
