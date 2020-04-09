@@ -3341,7 +3341,8 @@ def distribute_fpn_proposals(fpn_rois,
                 refer_level=4,
                 refer_scale=224)
     """
-
+    check_variable_and_dtype(fpn_rois, 'fpn_rois', ['float32', 'float64'],
+                             'distribute_fpn_proposals')
     helper = LayerHelper('distribute_fpn_proposals', **locals())
     dtype = helper.input_dtype('fpn_rois')
     num_lvl = max_level - min_level + 1
