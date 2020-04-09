@@ -37,16 +37,6 @@ class FillConstantOp : public framework::OperatorWithKernel {
 
       return;
     }
-    if (!ctx->IsRuntime() && !ctx->HasInputs("ShapeTensorList") &&
-        !ctx->HasInput("ShapeTensor")) {
-      for (size_t i = 0; i < shape.size(); i++) {
-        PADDLE_ENFORCE_GE(shape[i], 0L,
-                          platform::errors::InvalidArgument(
-                              "In fill constant Op ,the shap dim index %d must "
-                              "to be greater equal than 0, but received %d",
-                              i, shape[i]));
-      }
-    }
     ctx->SetOutputDim("Out", framework::make_ddim(shape));
   }
 
