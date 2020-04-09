@@ -56,6 +56,10 @@ def select_output(input, outputs, mask):
         Variable: The outputs variables
     """
     helper = LayerHelper('select_output', **locals())
+    check_type(input, 'input', (Variable), 'select_output')
+    check_variable_and_dtype(mask, 'mask', ['int32'], 'select_output')
+    check_type(outputs, 'outputs', (list, tuple), 'select_output')
+
     helper.append_op(
         type='select_output',
         inputs={'X': input,
@@ -80,14 +84,12 @@ def select_input(inputs, mask):
         Variable: The selected input variable
     """
     helper = LayerHelper('select_input', **locals())
-    if isinstance(inputs, list) or isinstance(inputs, tuple):
-        input_dtype = inputs[0].dtype
-        input_shape = inputs[0].shape
-        input_type = inputs[0].type
-    else:
-        input_dtype = inputs.dtype
-        input_shape = inputs.shape
-        input_type = inputs.type
+    check_type(inputs, 'inputs', (list, tuple), 'select_input')
+    check_variable_and_dtype(mask, 'mask', ['int32'], 'select_input')
+
+    input_dtype = inputs[0].dtype
+    input_shape = inputs[0].shape
+    input_type = inputs[0].type
 
     out = helper.create_variable(
         dtype=input_dtype, shape=input_shape, type=input_type)
@@ -1780,11 +1782,18 @@ def array_length(array):
             #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux, 
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
+
     if in_dygraph_mode():
         assert isinstance(
             array,
             list), "The 'array' in array_write must be a list in dygraph mode"
         return len(array)
+
+    if not isinstance(
+            array,
+            Variable) or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        raise TypeError(
+            "array should be tensor array vairable in array_length Op")
 
     helper = LayerHelper('array_length', **locals())
     tmp = helper.create_variable_for_type_inference(dtype='int64')
