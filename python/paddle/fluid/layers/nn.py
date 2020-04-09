@@ -6624,7 +6624,8 @@ def roi_pool(input,
     
         input_data = np.array([i for i in range(1,17)]).reshape(1,1,4,4).astype(DATATYPE)
         roi_data =fluid.create_lod_tensor(np.array([[1., 1., 2., 2.], [1.5, 1.5, 3., 3.]]).astype(DATATYPE),[[2]], place)
-    
+        rois_lod_data = np.array([2])
+
         x = fluid.data(name='input', shape=[None,1,4,4], dtype=DATATYPE)
         rois = fluid.data(name='roi', shape=[None,4], dtype=DATATYPE)
         rois_lod = fluid.data(name='rois_lod', shape=[None], dtype='int64') 
@@ -6638,7 +6639,7 @@ def roi_pool(input,
                 rois_lod=rois_lod)
     
         exe = fluid.Executor(place)
-        out, = exe.run(feed={'input':input_data ,'roi':roi_data}, fetch_list=[pool_out.name])
+        out, = exe.run(feed={'input':input_data ,'roi':roi_data, 'rois_lod': rois_lod_data}, fetch_list=[pool_out.name])
         print(out)   #array([[[[11.]]], [[[16.]]]], dtype=float32)
         print(np.array(out).shape)  # (2, 1, 1, 1)
     """
