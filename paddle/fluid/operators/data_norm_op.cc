@@ -87,13 +87,13 @@ class DataNormOp : public framework::OperatorWithKernel {
       auto scale_dim = ctx->GetInputDim("scale_w");
       auto bias_dim = ctx->GetInputDim("bias");
 
-      PADDLE_ENFORCE_EQ(scale_dim.size(), 1UL,
-                        platform::errors::InvalidArgument(
-                            "the dimension"
-                            "of scale must equal to 1."
-                            "But received: the shape of scale is [%s], "
-                            "the dimensionof scale is [%d]",
-                            scale_dim, scale_dim.size()));
+      PADDLE_ENFORCE_EQ(
+          scale_dim.size(), 1UL,
+          platform::errors::InvalidArgument("the dimensionof scale"
+                                            "must equal to 1. But received: "
+                                            "the shape of scale is [%s], "
+                                            "the dimensionof scale is [%d]",
+                                            scale_dim, scale_dim.size()));
       PADDLE_ENFORCE_EQ(
           bias_dim.size(), 1UL,
           platform::errors::InvalidArgument("the dimension of bias"
