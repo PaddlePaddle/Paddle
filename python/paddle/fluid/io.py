@@ -1539,7 +1539,7 @@ def save(program, model_path):
 
     base_name = os.path.basename(model_path)
     assert base_name != "", \
-        "The input model_path MUST be format of dirname/filename [dirname\\filename in Window], but received model_path is empty string."
+        "The input model_path MUST be format of dirname/filename [dirname\\filename in Windows system], but received model_path is empty string."
 
     dir_name = os.path.dirname(model_path)
     if dir_name and not os.path.exists(dir_name):
