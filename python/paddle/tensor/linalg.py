@@ -18,7 +18,7 @@ __all__ = [
     'matmul',
     #  'dot',
     #  'einsum',
-    #  'morm',
+    'norm',
     #  'transpose',
     #  'dist',
     #  't',
@@ -156,3 +156,153 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
         outputs={'Out': out},
         attrs=attrs)
     return out
+
+
+def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
+    """
+    Returns the matrix norm (Frobenius) or vector norm (the 1-norm, the Euclidean
+    or 2-norm, and in general the p-norm for p > 0) of a given tensor.
+
+    Args:
+        input (Variable): The input tensor could be N-D tensor, and the input data
+            type could be float32 or float64.
+        p (int|string, optional): Order of the norm. Supported values are `fro`, `1`, `2`,
+            and any positive real number yielding the corresponding p-norm.
+        axis (int|list, optional): The axis on which to apply norm operation. If axis is int
+            or list with only one element, the vector norm is computed over the axis.
+            If axis is a list with two elements, the matrix norm is computed over the axis.
+            If `axis < 0`, the dimension to norm operation is rank(input) + axis.
+        keepdim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result tensor will have fewer dimension
+            than the :attr:`input` unless :attr:`keepdim` is true, default
+            value is False.
+        name (str, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Variable: Tensor, results of norm operation on the specified axis of input tensor,
+        it's data type is the same as input's Tensor.
+ 
+    Raises:
+        TypeError, if out data type is different with the input data type.
+        ValueError, If `p` or `axis` is invalid.
+    """
+
+    def frobenius_norm(input, dim=None, keepdim=False, out=None):
+        """
+        The frobenius norm OP is to calculate the frobenius norm of certain two dimensions of Tensor `input`.
+        Args:
+          input (Variable): Tensor, data type float32, float64.
+          dim (list, optional): None for last two dimensions.
+          keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
+          out(Variable): The tensor variable storing the output.
+        """
+        if dim is not None and not (isinstance(dim, list) and len(dim) == 2):
+            raise ValueError(
+                "The dim of frobenius norm op should be None or two elements list!"
+            )
+        attrs = {
+            'dim': dim if dim != None else [-2, -1],
+            'keep_dim': keepdim,
+            'reduce_all': False
+        }
+        check_type_and_dtype(input, 'input', Variable, ['float32', 'float64'],
+                             'frobenius_norm')
+
+        helper = LayerHelper('frobenius_norm', **locals())
+        if out is None:
+            out = helper.create_variable_for_type_inference(
+                dtype=helper.input_dtype())
+        else:
+            check_type(out, 'out', (Variable), 'frobenius_norm')
+            if convert_dtype(dtype) != convert_dtype(out.dtype):
+                raise TypeError(
+                    "In frobenius_norm Op the data type of out must equal the dtype parameter when out is not None"
+                )
+        helper.append_op(
+            type='frobenius_norm',
+            inputs={'X': input},
+            outputs={'Out': out},
+            attrs=attrs)
+        return out
+
+    def vector_norm(input, porder=None, axis=None, keepdim=False, out=None):
+        """
+        Calculate the p-order vector norm for certain  dimension of Tensor `input`.
+        Args:
+          input (Variable): Tensor, data type float32, float64.
+          axis (int, optional): None for last dimension.
+          porder (int, optional): None for porder=2.
+          keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
+          out(Variable): The tensor variable storing the output.
+        """
+        if porder is not None and isinstance(porder, int):
+            raise ValueError(
+                "The p-oreder of pnorm op (vector norm) should be None or int!")
+        if axis is not None and not isinstance(porder, int):
+            raise ValueError(
+                "The axis of pnorm op (vector norm) should be None or int!")
+        attrs = {
+            'axis': axis if axis is not None else -1,
+            'porder': porder if porder is not None else 2,
+            'keepdim': keepdim,
+            'epsilon': 1e-12,
+        }
+        check_type_and_dtype(input, 'input', Variable, ['float32', 'float64'],
+                             'p_norm')
+
+        helper = LayerHelper('p_norm', **locals())
+        if out is not None:
+            out = helper.create_variable_for_type_inference(
+                dtype=helper.input_dtype())
+        else:
+            check_type(out, 'out', (Variable), 'p_norm')
+            if convert_dtype(dtype) != convert_dtype(out.dtype):
+                raise TypeError(
+                    "In p_norm Op the data type of out must equal the dtype parameter when out is not None"
+                )
+
+        helper.append_op(
+            type='p_norm',
+            inputs={'X': input},
+            outputs={'Out': out},
+            attrs=attrs)
+        return out
+
+    if axis is None and p is not None:
+        if isinstance(p, str):
+            if p == "fro":
+                return frobenius_norm(
+                    input, axis=axis, keepdim=keepdim, out=out)
+            else:
+                raise ValueError(
+                    "only valid string values are 'fro', found {}".format(p))
+        if not isinstance(p, str):
+            if isinstance(p, int):
+                return vector_norm(input, axis=axis, porder=p, keedim=keepdim)
+            else:
+                raise ValueError("only valid p type is string or int, found {}".
+                                 format(type(p)))
+
+    if isinstance(axis, list) and len(axis) == 1:
+        axis = axis[0]
+
+    #calculate vector norm, where axis is int or list with only one integer
+    if isinstance(axis, int):
+        if isinstance(p, int):
+            return vector_norm(input, axis=axis, porder=p, keedim=keepdim)
+        else:
+            raise ValueError(
+                "unspport p for p-order vector norm. except integer, found {}".
+                format(axis))
+    #calculate matrix norm, where axis is list with two integers
+    elif isinstance(axis, list) and len(list) == 2:
+        if p == "fro":
+            return frobenius_norm(input, axis=axis, keepdim=keepdim, out=out)
+        else:
+            raise ValueError(
+                "unspport p for matrix norm, expcept 'fro', found {}".format(p))
+    else:
+        raise ValueError(
+            "except axis type int or list (length of list <=2), found {}".
+            formar(axis))
