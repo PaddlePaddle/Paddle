@@ -106,6 +106,33 @@ class TestLayer(LayerTest):
             ret = custom(x, do_linear2=True)
             self.assertTrue(np.array_equal(ret.numpy().shape, [3, 1]))
 
+    def test_dropout(self):
+        inp = np.ones([3, 32, 32], dtype='float32')
+        with self.static_graph():
+            t = layers.data(
+                name='data',
+                shape=[3, 32, 32],
+                dtype='float32',
+                append_batch_size=False)
+            dropout = nn.Dropout(p=0.35, seed=1, is_test=False)
+            ret = dropout(t)
+            ret2 = fluid.layers.dropout(
+                t, dropout_prob=0.35, seed=1, is_test=False)
+            static_ret, static_ret2 = self.get_static_graph_result(
+                feed={'data': inp}, fetch_list=[ret, ret2])
+        with self.dynamic_graph():
+            t = base.to_variable(inp)
+            dropout = nn.Dropout(p=0.35, seed=1, is_test=False)
+            dy_ret = dropout(t)
+            dy_ret2 = fluid.layers.dropout(
+                t, dropout_prob=0.35, seed=1, is_test=False)
+            dy_ret_value = dy_ret.numpy()
+            dy_ret2_value = dy_ret2.numpy()
+
+        self.assertTrue(np.array_equal(static_ret, static_ret2))
+        self.assertTrue(np.array_equal(dy_ret_value, dy_ret2_value))
+        self.assertTrue(np.array_equal(static_ret, dy_ret_value))
+
     def test_linear(self):
         inp = np.ones([3, 32, 32], dtype='float32')
         with self.static_graph():
@@ -1114,7 +1141,12 @@ class TestLayer(LayerTest):
                 dtype='float32',
                 lod_level=1,
                 append_batch_size=False)
-            ret = layers.group_norm(input=X, groups=2)
+            ret = layers.group_norm(
+                input=X,
+                groups=2,
+                param_attr=fluid.initializer.Uniform(
+                    low=-0.5, high=0.5),
+                bias_attr=fluid.initializer.ConstantInitializer(value=1))
             static_ret = self.get_static_graph_result(
                 feed={
                     'X': fluid.create_lod_tensor(
@@ -1130,7 +1162,12 @@ class TestLayer(LayerTest):
                 dtype='float32',
                 lod_level=1,
                 append_batch_size=False)
-            groupNorm = nn.GroupNorm(channels=shape[1], groups=2)
+            groupNorm = nn.GroupNorm(
+                channels=shape[1],
+                groups=2,
+                param_attr=fluid.initializer.Uniform(
+                    low=-0.5, high=0.5),
+                bias_attr=fluid.initializer.ConstantInitializer(value=1))
             ret = groupNorm(X)
             static_ret2 = self.get_static_graph_result(
                 feed={
@@ -1141,7 +1178,12 @@ class TestLayer(LayerTest):
                 with_lod=True)[0]
 
         with self.dynamic_graph():
-            groupNorm = nn.GroupNorm(channels=shape[1], groups=2)
+            groupNorm = nn.GroupNorm(
+                channels=shape[1],
+                groups=2,
+                param_attr=fluid.initializer.Uniform(
+                    low=-0.5, high=0.5),
+                bias_attr=fluid.initializer.ConstantInitializer(value=1))
             dy_ret = groupNorm(base.to_variable(input))
             dy_rlt_value = dy_ret.numpy()
 
@@ -2684,6 +2726,28 @@ class TestBook(LayerTest):
             out = layers.batch_norm(data, momentum=momentum)
             return (out)
 
+    def make_inplace_abn(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            data = self._get_data(
+                name='data', shape=[32, 128, 128], dtype="float32")
+            out = layers.inplace_abn(data, act='leaky_relu', act_alpha=0.2)
+            return (out)
+
+    def make_inplace_abn_momentum_variable(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            data = self._get_data(
+                name='data', shape=[32, 128, 128], dtype="float32")
+            momentum = self._get_data(
+                name='momentum',
+                shape=[1],
+                dtype='float32',
+                append_batch_size=False)
+            out = layers.inplace_abn(
+                data, momentum=momentum, act='elu', act_alpha=2.0)
+            return (out)
+
     def make_range(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
@@ -3007,6 +3071,22 @@ class TestBook(LayerTest):
             sum = fluid.contrib.layers.partial_sum(
                 [x, y], start_index=0, length=2)
             return (sum)
+
+    def test_rank_attention(self):
+        with self.static_graph():
+            input = fluid.data(name="input", shape=[None, 2], dtype="float32")
+            rank_offset = fluid.data(
+                name="rank_offset", shape=[None, 7], dtype="int32")
+            out = fluid.contrib.layers.rank_attention(
+                input=input,
+                rank_offset=rank_offset,
+                rank_param_shape=[18, 3],
+                rank_param_attr=fluid.ParamAttr(
+                    learning_rate=1.0,
+                    name="ubm_rank_param.w_0",
+                    initializer=fluid.initializer.Xavier(uniform=False)),
+                max_rank=3)
+            return (out)
 
     def test_roi_pool(self):
         # TODO(minqiyang): dygraph do not support lod now

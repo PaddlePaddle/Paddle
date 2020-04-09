@@ -25,6 +25,8 @@ namespace imperative {
 
 class VarBase;
 
+class PartialGradTask;
+
 class PartialGradEngine : public Engine {
  public:
   PartialGradEngine(const std::vector<std::shared_ptr<VarBase>> &input_targets,
@@ -32,8 +34,10 @@ class PartialGradEngine : public Engine {
                     const std::vector<std::shared_ptr<VarBase>> &output_grads,
                     const std::vector<std::shared_ptr<VarBase>> &no_grad_vars,
                     const platform::Place &place,
-                    const detail::BackwardStrategy &strategy,
-                    bool create_graph);
+                    const detail::BackwardStrategy &strategy, bool create_graph,
+                    bool retain_graph, bool allow_unused, bool only_inputs);
+
+  ~PartialGradEngine();
 
   void Execute() override;
 
@@ -43,14 +47,8 @@ class PartialGradEngine : public Engine {
   void Clear();
 
  private:
-  std::vector<std::shared_ptr<VarBase>> input_targets_;
-  std::vector<std::shared_ptr<VarBase>> output_targets_;
-  std::vector<std::shared_ptr<VarBase>> output_grads_;
-  std::vector<std::shared_ptr<VarBase>> no_grad_vars_;
-  platform::Place place_;
-  detail::BackwardStrategy strategy_;
-  bool create_graph_;
-
+  // Pimpl for fast compilation and stable ABI
+  PartialGradTask *task_{nullptr};
   std::vector<std::shared_ptr<VarBase>> results_;
 };
 

@@ -835,6 +835,22 @@ struct Reshape : public PatternBase {
   PATTERN_DECL_NODE(next_op);
 };
 
+// Matmul op
+// Forward pass for matmul.
+// matmul_out is a result of the operator.
+struct Matmul : public PatternBase {
+  Matmul(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "reshape2") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(prev_op_x);
+  PATTERN_DECL_NODE(prev_op_y);
+  PATTERN_DECL_NODE(matmul_in_x);
+  PATTERN_DECL_NODE(matmul_in_y);
+  PATTERN_DECL_NODE(matmul_op);
+  PATTERN_DECL_NODE(matmul_out);
+};
+
 // Concat op
 // Forward pass for concat.
 // concat_out is a result of the operator.
@@ -941,6 +957,20 @@ struct DequantScale : public PatternBase {
 
   PATTERN_DECL_NODE(scale_op);
   PATTERN_DECL_NODE(scale_out);
+};
+
+// Matmul + Dequantize
+struct MatmulDequant : public PatternBase {
+  MatmulDequant(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "matmul_dequant") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(matmul_op);
+  PATTERN_DECL_NODE(matmul_out);
+
+  PATTERN_DECL_NODE(dequant_op);
+  PATTERN_DECL_NODE(dequant_out);
 };
 
 // PriorBox operator
@@ -1090,6 +1120,20 @@ struct MultipleQuantize : public PatternBase {
   PDNode* operator()();
 
   PATTERN_DECL_NODE(prev_out);
+};
+
+// Pattern used for enforcing inplace computation for in-place computation
+// supporting DNNL ops. softmax, batch_norm and layer_norm
+struct MKLDNNInPlace : public PatternBase {
+  MKLDNNInPlace(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "mkldnn_inplace") {}
+  PDNode* operator()();
+
+  // MKL-DNN's in-place ops: BatchNorm, Softmax, Layer Norm
+  PATTERN_DECL_NODE(inplace_to_be_op);
+  PATTERN_DECL_NODE(inplace_to_be_op_in);
+  PATTERN_DECL_NODE(inplace_to_be_op_out);
+  PATTERN_DECL_NODE(next_op);
 };
 
 struct TransposeFlattenConcat : public PatternBase {

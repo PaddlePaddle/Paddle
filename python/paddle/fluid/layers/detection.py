@@ -30,6 +30,7 @@ import math
 import six
 import numpy
 from functools import reduce
+from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
 __all__ = [
     'prior_box',
@@ -993,7 +994,7 @@ def yolov3_loss(x,
         "GTBox": gt_box,
         "GTLabel": gt_label,
     }
-    if gt_score:
+    if gt_score is not None:
         inputs["GTScore"] = gt_score
 
     attrs = {
@@ -2865,6 +2866,10 @@ def box_clip(input, im_info, name=None):
             out = fluid.layers.box_clip(
                 input=boxes, im_info=im_info)
     """
+
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'box_clip')
+    check_variable_and_dtype(im_info, 'im_info', ['float32', 'float64'],
+                             'box_clip')
 
     helper = LayerHelper("box_clip", **locals())
     output = helper.create_variable_for_type_inference(dtype=input.dtype)
