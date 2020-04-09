@@ -160,6 +160,40 @@ class TestTAPI(unittest.TestCase):
             expected_result = np.transpose(data_np)
         self.assertEqual((result == expected_result).all(), True)
 
+        with fluid.program_guard(fluid.Program()):
+            data = fluid.data(shape=[1, 5], dtype="float64", name="data")
+            data_t = paddle.t(data)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            data_np = np.random.random([1, 5]).astype("float64")
+            result, = exe.run(feed={"data": data_np}, fetch_list=[data_t])
+            expected_result = np.transpose(data_np)
+        self.assertEqual((result == expected_result).all(), True)
+
+        with fluid.dygraph.guard():
+            np_x = np.random.random([10]).astype("float64")
+            data = fluid.dygraph.to_variable(np_x)
+            z = paddle.t(data)
+            np_z = z.numpy()
+            z_expected = np.array(np.transpose(np_x))
+        self.assertEqual((np_z == z_expected).all(), True)
+
+        with fluid.dygraph.guard():
+            np_x = np.random.random([10, 5]).astype("float64")
+            data = fluid.dygraph.to_variable(np_x)
+            z = paddle.t(data)
+            np_z = z.numpy()
+            z_expected = np.array(np.transpose(np_x))
+        self.assertEqual((np_z == z_expected).all(), True)
+
+        with fluid.dygraph.guard():
+            np_x = np.random.random([1, 5]).astype("float64")
+            data = fluid.dygraph.to_variable(np_x)
+            z = paddle.t(data)
+            np_z = z.numpy()
+            z_expected = np.array(np.transpose(np_x))
+        self.assertEqual((np_z == z_expected).all(), True)
+
     def test_errors(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data(name='x', shape=[10, 5, 3], dtype='float64')

@@ -143,18 +143,20 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
 
 def t(input, name=None):
     """
-    Expects input to be <= 2-D tensor and transposes dimensions 0 and 1.
-    0-D and 1-D tensors are returned as it is and 2-D tensor can be seen as 
-    a short-hand function for transpose(input, 0, 1).
+    Transpose <=2-D tensor. 
+    0-D and 1-D tensors are returned as it is and 2-D tensor is equal to 
+    the fluid.layers.transpose function which perm dimensions set 0 and 1.
+    
     Args:
         input (Variable): The input Tensor. It is a N-D (N<=2) Tensor of data types float32, float64, int32.
         name(str, optional): The default value is None.  Normally there is no need for 
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
     Returns:
         Variable: A transposed n-D Tensor, with data type being float32, float64, int32, int64.
+    
     For Example:
         .. code-block:: text
-        # Example 1 (1-D tensor)
+        # Example 1 (0-D tensor)
          x = tensor([0.79])
          paddle.t(x) = tensor([0.79])
          # Example 2 (1-D tensor)
@@ -165,9 +167,10 @@ def t(input, name=None):
          x = tensor([0.79, 0.84, 0.32],
                     [0.64, 0.14, 0.57])
          paddle.t(x) = tensor([0.79, 0.64],
-                                     [0.84, 0.14],
-                                     [0.32, 0.57])
-    Examples:
+                              [0.84, 0.14],
+                              [0.32, 0.57])
+    
+     Examples:
         .. code-block:: python
             import paddle
             import paddle.fluid as fluid
@@ -186,8 +189,6 @@ def t(input, name=None):
         if len(input.shape) == 1:
             return input
         # 2-D tensor
-        if input.shape[0] == 1 or input.shape[1] == 1:
-            return input
         perm = [1, 0]
         out, _ = core.ops.transpose2(input, 'axis', perm)
         return out
@@ -200,8 +201,6 @@ def t(input, name=None):
     out = helper.create_variable_for_type_inference(input.dtype)
     input_shape = helper.create_variable_for_type_inference(input.dtype)
     if len(input.shape) == 1:
-        out = input
-    elif input.shape[0] == 1 or input.shape[1] == 1:
         out = input
     else:
         helper.append_op(

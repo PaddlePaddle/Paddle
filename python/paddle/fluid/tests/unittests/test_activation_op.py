@@ -662,7 +662,7 @@ class TestLog1p(TestActivation):
         self.op_type = "log1p"
         self.init_dtype()
 
-        x = np.random.uniform(-0.9, 0, [11, 17]).astype(self.dtype)
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.log1p(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
@@ -675,7 +675,7 @@ class TestLog1p(TestActivation):
 
     def test_api(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input_x = np.random.uniform(-0.9, 0, [11, 17]).astype("float64")
+            input_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
             data_x = fluid.layers.data(
                 name="data_x",
                 shape=[11, 17],
@@ -700,7 +700,7 @@ class TestLog1p(TestActivation):
 
         # dygraph
         with fluid.dygraph.guard():
-            np_x = np.random.uniform(-0.9, 0, [11, 17]).astype("float64")
+            np_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
             data_x = fluid.dygraph.to_variable(np_x)
             z = paddle.log1p(data_x)
             np_z = z.numpy()
