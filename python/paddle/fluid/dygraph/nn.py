@@ -1583,7 +1583,6 @@ class InstanceNorm(layers.Layer):
 
         check_type(num_channels, 'num_channels', numbers.Integral,
                    'InstanceNorm')
-        # assert isinstance(num_channels, numbers.Integral), "The type of '%s' in %s must be %s, but received %s." % ('num_channels', 'InstanceNorm', numbers.Integral, type(num_channels))
 
         super(InstanceNorm, self).__init__()
 

@@ -19,6 +19,7 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid.op import Operator
 from op_test import OpTest
+from paddle.fluid import Program, program_guard
 
 
 def _reference_instance_norm_naive(x, scale, bias, epsilon, mean, var):
@@ -198,6 +199,24 @@ class TestInstanceNormOpTrainingCase2(TestInstanceNormOpTraining):
         self.shape = [20, 50, 4, 5]
         self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
         self.fetch_list = ['y', 'saved_mean', 'saved_variance', 'x@GRAD']
+
+
+class TestDygraphInstanceNormAPIError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # num_channels of InstanceNorm must be int.
+            self.assertRaises(TypeError, fluid.dygraph.InstanceNorm, 10.5)
+
+            instance_norm = fluid.dygraph.InstanceNorm(3)
+            # the input of InstanceNorm must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, instance_norm, x1)
+
+            # the input dtype of InstanceNorm must be float32 or float64
+            # float16 only can be set on GPU place
+            x2 = fluid.layers.data(name='x2', shape=[3, 3, 5, 6], dtype="int32")
+            self.assertRaises(TypeError, instance_norm, x2)
 
 
 if __name__ == '__main__':
