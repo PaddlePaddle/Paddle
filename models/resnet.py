@@ -164,10 +164,20 @@ class ResNet(Model):
         Block (BasicBlock|BottleneckBlock): block module of model.
         depth (int): layers of resnet, default: 50.
         num_classes (int): output dim of last fc layer, default: 1000.
+        with_pool (bool): use pool or not. Default: False.
+        classifier_activation (str): activation for the last fc layer. Default: 'softmax'.
     """
 
-    def __init__(self, Block, depth=50, num_classes=1000):
+    def __init__(self,
+                 Block,
+                 depth=50,
+                 num_classes=-1,
+                 with_pool=False,
+                 classifier_activation='softmax'):
         super(ResNet, self).__init__()
+
+        self.num_classes = num_classes
+        self.with_pool = with_pool
 
         layer_config = {
             18: [2, 2, 2, 2],
@@ -212,31 +222,37 @@ class ResNet(Model):
                                       Sequential(*blocks))
             self.layers.append(layer)
 
-        self.global_pool = Pool2D(
-            pool_size=7, pool_type='avg', global_pooling=True)
+        if with_pool:
+            self.global_pool = Pool2D(
+                pool_size=7, pool_type='avg', global_pooling=True)
 
-        stdv = 1.0 / math.sqrt(out_channels[-1] * Block.expansion * 1.0)
-        self.fc_input_dim = out_channels[-1] * Block.expansion * 1 * 1
-        self.fc = Linear(
-            self.fc_input_dim,
-            num_classes,
-            act='softmax',
-            param_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)))
+        if num_classes > 0:
+            stdv = 1.0 / math.sqrt(out_channels[-1] * Block.expansion * 1.0)
+            self.fc_input_dim = out_channels[-1] * Block.expansion * 1 * 1
+            self.fc = Linear(
+                self.fc_input_dim,
+                num_classes,
+                act=classifier_activation,
+                param_attr=fluid.param_attr.ParamAttr(
+                    initializer=fluid.initializer.Uniform(-stdv, stdv)))
 
     def forward(self, inputs):
         x = self.conv(inputs)
         x = self.pool(x)
         for layer in self.layers:
             x = layer(x)
-        x = self.global_pool(x)
-        x = fluid.layers.reshape(x, shape=[-1, self.fc_input_dim])
-        x = self.fc(x)
+
+        if self.with_pool:
+            x = self.global_pool(x)
+
+        if self.num_classes > -1:
+            x = fluid.layers.reshape(x, shape=[-1, self.fc_input_dim])
+            x = self.fc(x)
         return x
 
 
 def _resnet(arch, Block, depth, pretrained):
-    model = ResNet(Block, depth)
+    model = ResNet(Block, depth, num_classes=1000, with_pool=True)
     if pretrained:
         assert arch in model_urls, "{} model do not have a pretrained model now, you should set pretrained=False".format(
             arch)
