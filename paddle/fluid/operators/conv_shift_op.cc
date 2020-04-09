@@ -36,42 +36,43 @@ class ConvShiftOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
     PADDLE_ENFORCE_EQ(
-      x_dims.size(), 2,
-      platform::errors::InvalidArgument(
-        "Input(X)'s dimensions of ConvShiftOp should be 2."
-        "But received X's shape = [%s] and the dimension is [%s].", x_dims,
-        x_dims.size()));
+        x_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "Input(X)'s dimensions of ConvShiftOp should be 2."
+            "But received X's shape = [%s] and the dimension is [%s].",
+            x_dims, x_dims.size()));
     PADDLE_ENFORCE_EQ(
-      y_dims.size(), 2,
-      platform::errors::InvalidArgument(
-        "Input(Y)'s dimensions of ConvShiftOp should be 2.",
-        "But received Y's shape = [%s] and the dimension is [%s].", y_dims,
-        y_dims.size()));
+        y_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "Input(Y)'s dimensions of ConvShiftOp should be 2.",
+            "But received Y's shape = [%s] and the dimension is [%s].", y_dims,
+            y_dims.size()));
     if (ctx->IsRuntime() || (x_dims[0] > 0 && y_dims[0] > 0))
       PADDLE_ENFORCE_EQ(
-        x_dims[0], y_dims[0],
-        platform::errors::InvalidArgument(
-          "The first dimension of Input(X) and Input(Y) of ConvShiftOp ",
-          "should be equal.",
-          "But received X's shape = [%s], Y's shape = [%s],",
-          "and the first dimensions are [%s] and [%s] respectively.",
-          x_dims, y_dims, x_dims[0], y_dims[0]));
+          x_dims[0], y_dims[0],
+          platform::errors::InvalidArgument(
+              "The first dimension of Input(X) and Input(Y) of ConvShiftOp ",
+              "should be equal.",
+              "But received X's shape = [%s], Y's shape = [%s],",
+              "and the first dimensions are [%s] and [%s] respectively.",
+              x_dims, y_dims, x_dims[0], y_dims[0]));
     if (ctx->IsRuntime() || y_dims[1] > 0)
       PADDLE_ENFORCE_EQ(
-        y_dims[1] % 2, 1,
-        platform::errors::InvalidArgument(
-          "The second dimension of Input(Y) of ConvShiftOp should be odd."
-          "But received Y's shape = [%s] and the second dimension is [%s].",
-          y_dims, y_dims[1]));
+          y_dims[1] % 2, 1,
+          platform::errors::InvalidArgument(
+              "The second dimension of Input(Y) of ConvShiftOp should be odd."
+              "But received Y's shape = [%s] and the second dimension is [%s].",
+              y_dims, y_dims[1]));
     if (ctx->IsRuntime() || (x_dims[1] > 0 && y_dims[1] > 0))
       PADDLE_ENFORCE_LE(
-        y_dims[1], x_dims[1],
-        platform::errors::InvalidArgument(
-          "The second dimension of Input(Y) of ConvShiftOp should be less than or "
-          "equal to the 2nd dimension of Input(X)."
-          "But received X's shape = [%s], Y's shape = [%s],",
-          "and the second dimensions are [%s] and [%s] respectively.",
-          x_dims, y_dims, x_dims[1], y_dims[1]));
+          y_dims[1], x_dims[1],
+          platform::errors::InvalidArgument(
+              "The second dimension of Input(Y) of ConvShiftOp should be less "
+              "than or "
+              "equal to the 2nd dimension of Input(X)."
+              "But received X's shape = [%s], Y's shape = [%s],",
+              "and the second dimensions are [%s] and [%s] respectively.",
+              x_dims, y_dims, x_dims[1], y_dims[1]));
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
   }
