@@ -47,13 +47,14 @@ inline framework::DDim GetShape(const framework::ExecutionContext &ctx) {
     std::vector<int> vec_shape;
     for (size_t i = 0; i < shape_tensor_list.size(); ++i) {
       auto tensor = shape_tensor_list[i];
-      PADDLE_ENFORCE_EQ(
-          tensor->dims(), framework::make_ddim({1}),
-          "ShapeError: If the element type of 'shape' in FillConstantOp is "
-          "Tensor, "
-          "the element's shape must be [1]. But received the element's shape "
-          "is [%s]",
-          tensor->dims());
+      PADDLE_ENFORCE_EQ(tensor->dims(), framework::make_ddim({1}),
+                        platform::errors::InvalidArgument(
+                            "ShapeError: If the element type of 'shape' in "
+                            "FillConstantOp is Tensor, "
+                            "the element's shape must be [1]. But received the "
+                            "element's shape "
+                            "is [%s]",
+                            tensor->dims()));
       if (platform::is_gpu_place(tensor->place())) {
         framework::Tensor temp;
         TensorCopySync(*tensor, platform::CPUPlace(), &temp);
@@ -125,8 +126,8 @@ class FillConstantKernel : public framework::OpKernel<T> {
       tensor->Resize(shape);
     } else {
       PADDLE_THROW(
-          "fill constant op's output only"
-          "supports SelectedRows and LoDTensor");
+          "In fill constant Op, the output only supports SelectedRows and "
+          "LoDTensor.");
     }
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
