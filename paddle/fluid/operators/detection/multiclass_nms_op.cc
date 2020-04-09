@@ -26,12 +26,17 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("BBoxes"),
-                   "Input(BBoxes) of MultiClassNMS should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Scores"),
-                   "Input(Scores) of MultiClassNMS should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of MultiClassNMS should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("BBoxes"), true,
+        platform::errors::NotFound(
+            "Input(BBoxes) of MultiClassNMS should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Scores"), true,
+        platform::errors::NotFound(
+            "Input(Scores) of MultiClassNMS should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::NotFound(
+                          "Output(Out) of MultiClassNMS should not be null."));
 
     auto box_dims = ctx->GetInputDim("BBoxes");
     auto score_dims = ctx->GetInputDim("Scores");
@@ -41,7 +46,10 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE(score_size == 2 || score_size == 3,
                      "The rank of Input(Scores) must be 2 or 3");
       PADDLE_ENFORCE_EQ(box_dims.size(), 3,
-                        "The rank of Input(BBoxes) must be 3");
+                        platform::errors::InvalidArgument(
+                            "The rank of Input(BBoxes) must be 3"
+                            "But receive box_dims size(%s)",
+                            box_dims.size()));
       if (score_size == 3) {
         PADDLE_ENFORCE(box_dims[2] == 4 || box_dims[2] == 8 ||
                            box_dims[2] == 16 || box_dims[2] == 24 ||
@@ -55,16 +63,25 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
                        "16 points: [xi, yi] i= 1,2,...,16");
         PADDLE_ENFORCE_EQ(
             box_dims[1], score_dims[2],
-            "The 2nd dimension of Input(BBoxes) must be equal to "
-            "last dimension of Input(Scores), which represents the "
-            "predicted bboxes.");
+            platform::errors::InvalidArgument(
+                "The 2nd dimension of Input(BBoxes) must be equal to "
+                "last dimension of Input(Scores), which represents the "
+                "predicted bboxes."
+                "But received box_dims[1](%s) != socre_dims[2](%s)",
+                box_dims[1], score_dims[2]));
       } else {
-        PADDLE_ENFORCE(box_dims[2] == 4,
-                       "The last dimension of Input(BBoxes) must be 4");
+        PADDLE_ENFORCE_EQ(box_dims[2], 4,
+                          platform::errors::InvalidArgument(
+                              "The last dimension of Input(BBoxes) must be 4"
+                              "But received box_dims[2](%s).",
+                              box_dims[2]));
         PADDLE_ENFORCE_EQ(box_dims[1], score_dims[1],
                           "The 2nd dimension of Input(BBoxes)"
                           "must be equal to the 2nd dimension"
-                          " of Input(Scores)");
+                          " of Input(Scores)"
+                          "But received box_dims[1](%s) != "
+                          "score_dims[1](%s)",
+                          box_dims[1], score_dims[1]);
       }
     }
     // Here the box_dims[0] is not the real dimension of output.

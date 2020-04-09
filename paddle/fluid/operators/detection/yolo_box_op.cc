@@ -21,14 +21,18 @@ class YoloBoxOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of YoloBoxOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("ImgSize"),
-                   "Input(ImgSize) of YoloBoxOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Boxes"),
-                   "Output(Boxes) of YoloBoxOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Scores"),
-                   "Output(Scores) of YoloBoxOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::NotFound(
+                          "Input(X) of YoloBoxOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("ImgSize"), true,
+                      platform::errors::NotFound(
+                          "Input(ImgSize) of YoloBoxOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Boxes"), true,
+                      platform::errors::NotFound(
+                          "Output(Boxes) of YoloBoxOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Scores"), true,
+                      platform::errors::NotFound(
+                          "Output(Scores) of YoloBoxOp should not be null."));
 
     auto dim_x = ctx->GetInputDim("X");
     auto dim_imgsize = ctx->GetInputDim("ImgSize");
@@ -36,26 +40,49 @@ class YoloBoxOp : public framework::OperatorWithKernel {
     int anchor_num = anchors.size() / 2;
     auto class_num = ctx->Attrs().Get<int>("class_num");
 
-    PADDLE_ENFORCE_EQ(dim_x.size(), 4, "Input(X) should be a 4-D tensor.");
+    PADDLE_ENFORCE_EQ(dim_x.size(), 4, platform::errors::InvalidArgument(
+                                           "Input(X) should be a 4-D tensor."
+                                           "But received X dimension(%s)",
+                                           dim_x.size()));
     PADDLE_ENFORCE_EQ(
         dim_x[1], anchor_num * (5 + class_num),
-        "Input(X) dim[1] should be equal to (anchor_mask_number * (5 "
-        "+ class_num)).");
+        platform::errors::InvalidArgument(
+            "Input(X) dim[1] should be equal to (anchor_mask_number * (5 "
+            "+ class_num))."
+            "But received dim[1](%s) != (anchor_mask_number * "
+            "(5+class_num)(%s).",
+            dim_x[1], anchor_num * (5 + class_num)));
     PADDLE_ENFORCE_EQ(dim_imgsize.size(), 2,
-                      "Input(ImgSize) should be a 2-D tensor.");
+                      platform::errors::InvalidArgument(
+                          "Input(ImgSize) should be a 2-D tensor."
+                          "But received Imgsize size(%s)",
+                          dim_imgsize.size()));
     if ((dim_imgsize[0] > 0 && dim_x[0] > 0) || ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(
           dim_imgsize[0], dim_x[0],
           platform::errors::InvalidArgument(
               "Input(ImgSize) dim[0] and Input(X) dim[0] should be same."));
     }
-    PADDLE_ENFORCE_EQ(dim_imgsize[1], 2, "Input(ImgSize) dim[1] should be 2.");
+    PADDLE_ENFORCE_EQ(
+        dim_imgsize[1], 2,
+        platform::errors::InvalidArgument("Input(ImgSize) dim[1] should be 2."
+                                          "But received imgsize dim[1](%s).",
+                                          dim_imgsize[1]));
     PADDLE_ENFORCE_GT(anchors.size(), 0,
-                      "Attr(anchors) length should be greater than 0.");
+                      platform::errors::InvalidArgument(
+                          "Attr(anchors) length should be greater than 0."
+                          "But received anchors length(%s).",
+                          anchors.size()));
     PADDLE_ENFORCE_EQ(anchors.size() % 2, 0,
-                      "Attr(anchors) length should be even integer.");
+                      platform::errors::InvalidArgument(
+                          "Attr(anchors) length should be even integer."
+                          "But received anchors length (%s)",
+                          anchors.size()));
     PADDLE_ENFORCE_GT(class_num, 0,
-                      "Attr(class_num) should be an integer greater than 0.");
+                      platform::errors::InvalidArgument(
+                          "Attr(class_num) should be an integer greater than 0."
+                          "But received class_num (%s)",
+                          class_num));
 
     int box_num = dim_x[2] * dim_x[3] * anchor_num;
     std::vector<int64_t> dim_boxes({dim_x[0], box_num, 4});
