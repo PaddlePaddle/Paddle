@@ -557,14 +557,16 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   }
   // whether accessor has uid (such as DownpourCtrDoubleUidAccessor)
   if (uid_slot != "") {
-    slot_offset = 2;  
+    slot_offset = 3;
   }
+  //VLOG(0) << "uid_slot " << uid_slot << " dump_slot " << dump_slot << " slot_offset " << slot_offset << " offset " << offset << " emb_dim " << emb_dim;
 
   CHECK_GE(grad_dim, 0);
 
   sparse_push_keys->clear();
   sparse_push_keys->reserve(fea_keys.size() + 1);
   push_values->resize(fea_keys.size() + 1);
+  //VLOG(0) << "resize " << emb_dim + offset + slot_offset;
   for (auto& t : *push_values) {
     t.resize(emb_dim + offset + slot_offset);
   }
@@ -620,6 +622,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
         *(uint64_t*)((*push_values)[fea_idx].data() + 1) = fea_uid[fea_idx];
         (*push_values)[fea_idx][show_index + 2] = 1.0f;
         (*push_values)[fea_idx][click_index + 2] = static_cast<float>(fea_labels[fea_idx]);
+      //  VLOG(0) << "*(uint64_t*)((*push_values)[fea_idx].data() + 1) " << *(uint64_t*)((*push_values)[fea_idx].data() + 1);
       } else if (use_cvm || no_cvm) {
         memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
                sizeof(float) * emb_dim);
