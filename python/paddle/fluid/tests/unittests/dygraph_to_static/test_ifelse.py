@@ -236,7 +236,7 @@ class TestAst2FuncWithExternalFunc(TestDygraphIfElse):
 class NetWithExternalFunc(fluid.dygraph.Layer):
     @dygraph_to_static_func
     def forward(self, x, label=None):
-        if fluid.layers.mean(x).numpy < 0:
+        if fluid.layers.mean(x) < 0:
             x_v = x - 1
         else:
             x_v = add_fn(x)
