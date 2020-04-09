@@ -538,4 +538,5 @@ def to_variable(value, name=None, zero_copy=None):
         return value
     else:
         raise TypeError(
-            "to_variable only accepts 'ndarray' and 'Variable' as value's input")
+            "The type of input value is invalid, expected type is 'ndarray' or 'Variable', but received %s"
+            % type(value))
