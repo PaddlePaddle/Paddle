@@ -354,7 +354,7 @@ def _to_name_str(var):
         elif isinstance(var, six.string_types):
             return str(var)
         elif isinstance(var, Operator):
-            return var.desc.type()
+            return str(id(var))
         else:
             raise TypeError(str(var) + " should be Variable, Operator or str")
 
