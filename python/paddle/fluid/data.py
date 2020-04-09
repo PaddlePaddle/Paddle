@@ -15,8 +15,9 @@
 import numpy as np
 import six
 
-from . import core
-from .layer_helper import LayerHelper
+from paddle.fluid import core
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.fluid.data_feeder import check_dtype, check_type
 
 __all__ = ['data']
 
@@ -99,6 +100,10 @@ def data(name, shape, dtype='float32', lod_level=0):
 
     """
     helper = LayerHelper('data', **locals())
+
+    check_type(name, 'name', (six.binary_type, six.text_type), 'data')
+    check_type(shape, 'shape', (list, tuple), 'data')
+
     shape = list(shape)
     for i in six.moves.range(len(shape)):
         if shape[i] is None:

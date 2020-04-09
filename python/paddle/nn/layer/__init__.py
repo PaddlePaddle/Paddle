@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define activation functions of neural network  
+# TODO: define activation functions of neural network
 
-from . import loss, activation
-__all__ = [loss, activation]
+from . import activation
+from . import loss
+from . import conv
+
+from .activation import *
+from .loss import *
+from .conv import *
