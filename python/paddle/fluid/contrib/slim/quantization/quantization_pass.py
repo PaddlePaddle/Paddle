@@ -261,6 +261,7 @@ class QuantizationTransformPass(object):
             if key in create_var_map.keys():
                 new_node = create_var_map[key]
             elif in_node.is_ctrl_var():
+                print(in_node.name())
                 new_node = graph.create_control_dep_var()
                 create_var_map[key] = new_node
             else:
@@ -310,17 +311,11 @@ class QuantizationTransformPass(object):
             out_node = tmp_graph._find_node_by_name(tmp_graph.all_var_nodes(),
                                                     out_node.name)
 
-            #in_node = None
             in_node_params = []
             in_op_node = []
-            #out_node = None
             for node in tmp_graph.all_var_nodes():
-                #if node.inputs == [] and (not node.persistable()):
-                #    in_node = node
                 if node.inputs == [] and node.persistable():
                     in_node_params.append(node)
-                #elif node.outputs == []:
-                #    out_node = node
             for node in tmp_graph.all_op_nodes():
                 if node.inputs == []:
                     in_op_node.append(node)
@@ -335,12 +330,10 @@ class QuantizationTransformPass(object):
                                                       in_node.name())
             target_out_node = graph._find_node_by_name(graph.all_var_nodes(),
                                                        out_node.name())
-            #print(target_in_node.name())
             outputs = target_in_node.outputs
             for node in outputs:
                 graph.update_input_link(target_in_node, var_node, node)
             graph.update_input_link(var_node, target_out_node, op)
-            #dequantized_vars[var_node.name()] = target_out_node
             graph.safe_remove_nodes(target_in_node)
             return target_out_node
 
@@ -432,7 +425,6 @@ class QuantizationTransformPass(object):
             if op.name() in self._quantizable_grad_ops:
                 _transform_backward(graph, op)
         graph.resolve_hazard()
-        print(len(graph.all_nodes()))
         return graph
 
     def _create_global_step(self, graph):
