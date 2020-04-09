@@ -607,7 +607,7 @@ TEST(CpuQuantizePass, matmul_not_quantized) {
 }
 
 static const std::initializer_list<std::string> variable_names_scale = {
-    "a", "b", "c", "d", "e", "f"};
+    "a", "b", "c", "d", "e", "f", "g"};
 
 ProgramDesc BuildProgramDescScaleRelocate() {
   ProgramDesc prog;
@@ -618,7 +618,7 @@ ProgramDesc BuildProgramDescScaleRelocate() {
   SetOp(&prog, "reshape2", "Reshape", {"b"}, {"c"}, false);
   SetOp(&prog, "transpose2", "Transpose", {"c"}, {"d"}, false);
   SetOp(&prog, "scale", "Scale", {"d"}, {"e"}, false);
-  SetOp(&prog, "matmul", "Matmul", {"e"}, {"f"}, false);
+  SetOp(&prog, "matmul", "Matmul", {"e", "f"}, {"g"}, false);
   return prog;
 }
 
@@ -650,7 +650,8 @@ void ScaleRelocateTest(const ProgramDesc& prog,
         EXPECT_EQ(op->Output("Out")[0], transpose_in_out[1]);
       } else if (op->Type() == "matmul") {
         EXPECT_EQ(op->Input("X")[0], matmul_in_out[0]);
-        EXPECT_EQ(op->Output("Out")[0], matmul_in_out[1]);
+        EXPECT_EQ(op->Input("Y")[0], matmul_in_out[1]);
+        EXPECT_EQ(op->Output("Out")[0], matmul_in_out[2]);
       }
     }
   }
@@ -660,7 +661,7 @@ void ScaleRelocateTest(const ProgramDesc& prog,
 TEST(CpuQuantizePass, scale_relocate) {
   int added_nodes_count = 0;
   ScaleRelocateTest(BuildProgramDescScaleRelocate(), {"a", "b"}, {"b", "e"},
-                    {"e", "c"}, {"c", "d"}, {"d", "f"}, added_nodes_count);
+                    {"e", "c"}, {"c", "d"}, {"d", "f", "g"}, added_nodes_count);
 }
 }  // namespace
 

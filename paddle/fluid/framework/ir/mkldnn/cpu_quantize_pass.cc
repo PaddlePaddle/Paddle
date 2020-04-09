@@ -227,6 +227,7 @@ void CPUQuantizePass::RelocateScaleOp(Graph* graph) const {
 
     UnlinkNodes(transpose_out, scale_op);
     UnlinkNodes(reshape_in, reshape_op);
+    UnlinkNodes(scale_out, next_op);
     next_op->Op()->SetInput(next_op_input_name,
                             std::vector<std::string>({transpose_out->Name()}));
     IR_NODE_LINK_TO(transpose_out, next_op);
@@ -241,7 +242,8 @@ void CPUQuantizePass::RelocateScaleOp(Graph* graph) const {
   };
   gpd(graph, handler);
   AddStatis(found_scale_replacement_count);
-  PrettyLogDetail("---    relocate %d scale", found_scale_replacement_count);
+  PrettyLogDetail("---    relocated %d scale ops",
+                  found_scale_replacement_count);
 }
 
 void CPUQuantizePass::QuantizeConv(Graph* graph,
