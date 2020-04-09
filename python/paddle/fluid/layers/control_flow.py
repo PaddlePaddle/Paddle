@@ -2792,7 +2792,7 @@ class DynamicRNN(object):
                 rnn_output = drnn()
         """
         self._assert_in_rnn_block_("step_input")
-        check_type(x, 'x', (Variable), 'step_input()')
+        check_type(x, 'x', Variable, 'step_input()')
         parent_block = self._parent_block_()
         if self.lod_rank_table is None:
             self.lod_rank_table = parent_block.create_var(
@@ -2959,7 +2959,7 @@ class DynamicRNN(object):
                 rnn_output = drnn()
         """
         self._assert_in_rnn_block_("static_input")
-        check_type(x, 'x', (Variable), 'static_input()')
+        check_type(x, 'x', Variable, 'static_input()')
         if self.lod_rank_table is None:
             raise RuntimeError(
                 "static_input() must be called after step_input().")
@@ -3125,9 +3125,9 @@ class DynamicRNN(object):
         self._assert_in_rnn_block_('memory')
         self._init_zero_idx_()
         if shape is not None:
-            check_type(shape, 'shape', (Variable), 'memory()')
+            check_type(shape, 'shape', Variable, 'memory()')
         if init is not None:
-            check_type(init, 'init', (Variable), 'memory()')
+            check_type(init, 'init', Variable, 'memory()')
             parent_block = self._parent_block_()
             init_tensor = init
             if need_reorder == True:
@@ -3208,8 +3208,8 @@ class DynamicRNN(object):
             ValueError: When :code:`update_memory()` is called before :code:`step_input()` .
         """
         self._assert_in_rnn_block_('update_memory')
-        check_type(ex_mem, 'ex_mem', (Variable), 'update_memory()')
-        check_type(new_mem, 'new_mem', (Variable), 'update_memory()')
+        check_type(ex_mem, 'ex_mem', Variable, 'update_memory()')
+        check_type(new_mem, 'new_mem', Variable, 'update_memory()')
 
         mem_array = self.mem_dict.get(ex_mem.name, None)
         if mem_array is None:
