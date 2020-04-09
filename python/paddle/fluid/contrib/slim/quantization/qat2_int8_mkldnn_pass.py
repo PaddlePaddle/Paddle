@@ -186,33 +186,21 @@ class Qat2Int8MkldnnPass(object):
         have an unassigend output scale will have a force_fp32_output attr
         set to True.
         '''
+
+        def _set_scale(op, op_types, input_names, output_name):
+            scales = self._var_quant_scales
+            should_set = op.name() in op_types \
+                and op.output(output_name)[0] not in scales \
+                and all(op.input(input_name)[0] in scales for input_name in input_names)
+            if should_set:
+                output_var_name = op.output(output_name)[0]
+                input_var_name = op.input(input_names[0])[0]
+                scales[output_var_name] = scales[input_var_name]
+
         for op in graph.all_op_nodes():
-            if op.name() in self._fc_ops:
-                input_name = op.input("Input")[0]
-                output_name = op.output("Out")[0]
-                if input_name in self._var_quant_scales and \
-                    output_name not in self._var_quant_scales:
-                    # use input scale as a "dummy" scale
-                    self._var_quant_scales[
-                        output_name] = self._var_quant_scales[input_name]
-            elif op.name() in self._conv_ops:
-                input_name = op.input("Input")[0]
-                output_name = op.output("Output")[0]
-                if input_name in self._var_quant_scales and \
-                    output_name not in self._var_quant_scales:
-                    # use input scale as a "dummy" scale
-                    self._var_quant_scales[
-                        output_name] = self._var_quant_scales[input_name]
-            elif op.name() in self._matmul_ops:
-                input_x_name = op.input("X")[0]
-                input_y_name = op.input("Y")[0]
-                output_name = op.output("Out")[0]
-                if input_x_name in self._var_quant_scales and \
-                    input_y_name in self._var_quant_scales and \
-                    output_name not in self._var_quant_scales:
-                    # use input scale as a "dummy" scale
-                    self._var_quant_scales[
-                        output_name] = self._var_quant_scales[input_x_name]
+            _set_scale(op, self._conv_ops, ["Input"], "Output")
+            _set_scale(op, self._fc_ops, ["Input"], "Out")
+            _set_scale(op, self._matmul_ops, ["X", "Y"], "Out")
 
         return graph
 
