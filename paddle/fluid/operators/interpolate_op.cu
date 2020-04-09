@@ -507,31 +507,6 @@ __global__ void KeTrilinearInterpBw(
 }
 
 template <typename T>
-__device__ __forceinline__ static T Kecubic_convolution1(T x, T A) {
-  return ((A + 2) * x - (A + 3)) * x * x + 1;
-}
-
-template <typename T>
-__device__ __forceinline__ static T Kecubic_convolution2(T x, T A) {
-  return ((A * x - 5 * A) * x + 8 * A) * x - 4 * A;
-}
-
-template <typename T>
-__device__ __forceinline__ static void Keget_cubic_upsampling_coefficients(
-    T coeffs[4], T t) {
-  T A = -0.75;
-
-  T x1 = t;
-  coeffs[0] = Kecubic_convolution2<T>(x1 + 1.0, A);
-  coeffs[1] = Kecubic_convolution1<T>(x1, A);
-
-  // opposite coefficients
-  T x2 = 1.0 - t;
-  coeffs[2] = Kecubic_convolution1<T>(x2, A);
-  coeffs[3] = Kecubic_convolution2<T>(x2 + 1.0, A);
-}
-
-template <typename T>
 __device__ __forceinline__ static T Kecubic_interp(const T x0, const T x1,
                                                    const T x2, const T x3,
                                                    T t) {
@@ -539,10 +514,10 @@ __device__ __forceinline__ static T Kecubic_interp(const T x0, const T x1,
   T a = -0.75;
   T x_1 = t;
   T x_2 = 1.0 - t;
-  coeffs[0] = Kecubic_convolution2<T>(x_1 + 1.0, a);
-  coeffs[1] = Kecubic_convolution1<T>(x_1, a);
-  coeffs[2] = Kecubic_convolution1<T>(x_2, a);
-  coeffs[3] = Kecubic_convolution2<T>(x_2 + 1.0, a);
+  coeffs[0] = cubic_convolution2<T>(x_1 + 1.0, a);
+  coeffs[1] = cubic_convolution1<T>(x_1, a);
+  coeffs[2] = cubic_convolution1<T>(x_2, a);
+  coeffs[3] = cubic_convolution2<T>(x_2 + 1.0, a);
   return x0 * coeffs[0] + x1 * coeffs[1] + x2 * coeffs[2] + x3 * coeffs[3];
 }
 
@@ -703,8 +678,8 @@ __global__ void KeBicubicInterpBw(
     T x_coeffs[4];
     T y_coeffs[4];
 
-    Keget_cubic_upsampling_coefficients(x_coeffs, x_t);
-    Keget_cubic_upsampling_coefficients(y_coeffs, y_t);
+    get_cubic_upsample_coefficients(x_coeffs, x_t);
+    get_cubic_upsample_coefficients(y_coeffs, y_t);
 
     const T* out_pos = &out[out_id_h * output_w + out_id_w];
     T* in_pos;

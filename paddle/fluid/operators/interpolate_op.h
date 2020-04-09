@@ -15,6 +15,7 @@
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
 namespace operators {
@@ -344,17 +345,17 @@ static void TrilinearInterpolation(
 }
 
 template <typename T>
-static inline T cubic_convolution1(T x, T A) {
+HOSTDEVICE inline T cubic_convolution1(T x, T A) {
   return ((A + 2) * x - (A + 3)) * x * x + 1;
 }
 
 template <typename T>
-static inline T cubic_convolution2(T x, T A) {
+HOSTDEVICE inline T cubic_convolution2(T x, T A) {
   return ((A * x - 5 * A) * x + 8 * A) * x - 4 * A;
 }
 
 template <typename T>
-static inline void get_cubic_upsample_coefficients(T coeffs[4], T t) {
+HOSTDEVICE inline void get_cubic_upsample_coefficients(T coeffs[4], T t) {
   T A = -0.75;
 
   T x1 = t;
