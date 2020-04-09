@@ -9644,7 +9644,7 @@ def expand(x, expand_times, name=None):
                 for item in expand_times
             ]
 
-        return core.ops.expand(x, 'expand_times', expand_times)
+            return core.ops.expand(x, 'expand_times', expand_times)
 
     inputs = {"X": [x]}
     attrs = {}
@@ -10189,8 +10189,8 @@ def slice(input, axes, starts, ends):
                 for item in ends
             ]
 
-        return core.ops.slice(input, 'axes', axes, 'starts', starts, 'ends',
-                              ends, 'infer_flags', infer_flags)
+            return core.ops.slice(input, 'axes', axes, 'starts', starts, 'ends',
+                                  ends, 'infer_flags', infer_flags)
 
     if not isinstance(starts, (list, tuple, Variable)):
         raise ValueError(
