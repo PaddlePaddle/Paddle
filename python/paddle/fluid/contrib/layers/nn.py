@@ -1294,5 +1294,4 @@ def rank_attention(input,
                  "InputHelp": input_help,
                  "InsRank": ins_rank},
         attrs={"MaxRank": max_rank})
-
     return output

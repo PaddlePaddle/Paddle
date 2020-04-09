@@ -153,7 +153,8 @@ class RankAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(
-    RankAttentionGradOpNoNeedBufferVarsInference, "RankParam");
+    RankAttentionGradOpNoNeedBufferVarsInference, "X", "RankOffset",
+    "RankParam");
 
 }  // namespace operators
 }  // namespace paddle
