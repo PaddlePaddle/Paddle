@@ -58,6 +58,8 @@
 # from .layer.loss import MSELoss   #DEFINE_ALIAS
 from .layer.loss import L1Loss  #DEFINE_ALIAS
 from .layer import loss  #DEFINE_ALIAS
+from .layer import conv  #DEFINE_ALIAS
+from .layer.conv import Conv2D, Conv2DTranspose, Conv3D, Conv3DTranspose  #DEFINE_ALIAS
 # from .layer.loss import NLLLoss   #DEFINE_ALIAS
 # from .layer.loss import BCELoss   #DEFINE_ALIAS
 # from .layer.learning_rate import CosineDecay   #DEFINE_ALIAS

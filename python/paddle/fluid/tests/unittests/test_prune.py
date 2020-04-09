@@ -94,8 +94,8 @@ class TestPrune(unittest.TestCase):
         try:
             pruned_program = program._prune(targets=None)
         except ValueError as e:
-            self.assertEqual(
-                "All targets of prune() can only be Variable or Operator.",
+            self.assertIn(
+                "All targets of Program._prune_with_input() can only be Variable or Operator",
                 cpt.get_exception_message(e))
 
 

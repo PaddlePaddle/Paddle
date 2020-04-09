@@ -47,11 +47,11 @@ class RowConv(layers.Layer):
         dtype (str, optional): Data type, it can be "float32". Default: "float32".
 
     Attributes:
-        weight (Parameter): the learnable weights of this layer.
+        weight (Parameter): shape [future_context_size + 1, D], the learnable 
+            weight (convolution kernel) of this layer.
 
     Returns:
-        the output(Out) is a LodTensor, which supports variable time-length input sequences.
-        The underlying tensor in this LodTensor is a matrix with shape T x N, i.e., the same shape as X.
+        None
 
     Examples:
         .. code-block:: python

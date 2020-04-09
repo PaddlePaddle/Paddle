@@ -17,6 +17,7 @@ from __future__ import print_function
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
 import paddle.compat as cpt
 import unittest
 import numpy as np
@@ -94,6 +95,60 @@ class TestFillAnyLikeOpOverflow(TestFillAnyLikeOp):
 class TestFillAnyLikeOpFloat16(TestFillAnyLikeOp):
     def init(self):
         self.dtype = np.float16
+
+
+class TestFillAnyLikeOp_attr_out(unittest.TestCase):
+    """ Test fill_any_like op(whose API is full_like) for attr out. """
+
+    def test_attr_tensor_API(self):
+        startup_program = fluid.Program()
+        train_program = fluid.Program()
+        with fluid.program_guard(train_program, startup_program):
+            fill_value = 2.0
+            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            output = paddle.full_like(input, fill_value)
+
+            place = fluid.CPUPlace()
+            if fluid.core.is_compiled_with_cuda():
+                place = fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+            exe.run(startup_program)
+
+            img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
+
+            res = exe.run(train_program,
+                          feed={'input': img},
+                          fetch_list=[output])
+
+            out_np = np.array(res[0])
+            self.assertTrue(
+                not (out_np - np.full_like(img, fill_value)).any(),
+                msg="full_like output is wrong, out = " + str(out_np))
+
+
+class TestFillAnyLikeOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            #for ci coverage
+
+            input_data = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            output = paddle.full_like(input_data, 2.0)
+
+            def test_input_dtype():
+                paddle.full_like
+
+            self.assertRaises(
+                ValueError,
+                paddle.full_like,
+                input=input_data,
+                fill_value=2,
+                dtype='uint4')
+            self.assertRaises(
+                TypeError,
+                paddle.full_like,
+                input=input_data,
+                fill_value=2,
+                dtype='int16')
 
 
 class ApiOnesLikeTest(unittest.TestCase):

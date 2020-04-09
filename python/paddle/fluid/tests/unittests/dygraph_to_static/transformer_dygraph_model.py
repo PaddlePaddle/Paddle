@@ -608,8 +608,8 @@ class Transformer(Layer):
         } for i in range(self.n_layer)]
 
         for i in range(max_len):
-            trg_pos = layers.zeros_like(
-                trg_word) + i  # TODO: modified for dygraph2static
+            trg_pos = layers.fill_constant(
+                shape=trg_word.shape, dtype="int64", value=i)
             caches = map_structure(merge_batch_beams,
                                    caches)  # TODO: modified for dygraph2static
             logits = self.decoder(trg_word, trg_pos, None, trg_src_attn_bias,
