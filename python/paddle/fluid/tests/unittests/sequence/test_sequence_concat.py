@@ -22,6 +22,7 @@ from op_test import OpTest
 
 from paddle import fluid
 
+
 class TestSequenceConcat(OpTest):
     def setLoD(self):
         self.lod1 = [7, 3]
@@ -78,29 +79,29 @@ class TestSequenceConcatCase5(TestSequenceConcat):
 
 
 class TestSequenceConcatOpError(unittest.TestCase):
-    def test_errors(self): 
-        def test_type_list(): 
+    def test_errors(self):
+        def test_type_list():
             # the input type must be list
-            x_data = fluid.layers.data(
-                name='x', shape=[4], dtype='float32')
+            x_data = fluid.layers.data(name='x', shape=[4], dtype='float32')
             fluid.layers.sequence_concat(x=x_data)
+
         self.assertRaises(TypeError, test_type_list)
 
-        def test_variable(): 
+        def test_variable():
             # the input element type must be Variable
             x1_data = fluid.layers.data(
                 name='x1', shape=[3, 5], dtype='float32')
             y1_data = np.array([[3, 5]]).astype('float32')
             fluid.layers.sequence_concat(x=[x1_data, y1_data])
+
         self.assertRaises(TypeError, test_variable)
 
-        def test_dtype(): 
+        def test_dtype():
             # dtype must be 'float32', 'float64', 'int64'
-            x2_data = fluid.layers.data(
-                name='x2', shape=[3, 5], dtype='int32')
-            y2_data = fluid.layers.data(
-                name='y2', shape=[3, 5], dtype='int32')
+            x2_data = fluid.layers.data(name='x2', shape=[3, 5], dtype='int32')
+            y2_data = fluid.layers.data(name='y2', shape=[3, 5], dtype='int32')
             fluid.layers.sequence_concat(x=[x2_data, y2_data])
+
         self.assertRaises(TypeError, test_dtype)
 
 
