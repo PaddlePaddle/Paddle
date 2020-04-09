@@ -17,6 +17,7 @@ from __future__ import print_function
 from .layer_function_generator import templatedoc
 from ..framework import Variable, in_dygraph_mode
 from ..layer_helper import LayerHelper
+from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
 
 __all__ = [
     'sequence_conv',
@@ -1336,6 +1337,11 @@ def sequence_reverse(x, name=None):
     """
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
+
+    check_variable_and_dtype(x, 'x',
+                             ['float32', 'float64', 'int8', 'int32', 'int64'],
+                             'fluid.layers.sequence_reverse')
+
     helper = LayerHelper("sequence_reverse", **locals())
     if name is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
