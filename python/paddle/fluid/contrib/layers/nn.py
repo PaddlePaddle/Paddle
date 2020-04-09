@@ -1218,20 +1218,13 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
     check_dtype(dtype, 'dtype', ['int32', 'int64'],
                 'fluid.contrib.layers.tdm_child')
     c_dtype = convert_np_dtype_to_dtype_(dtype)
-    tree_info = helper.create_parameter(
-        attr=helper.param_attr,
-        shape=[node_nums, 3 + child_nums],
-        dtype=dtype,
-        default_initializer=Constant(0))
-    tree_info.stop_gradient = True
 
     child = helper.create_variable_for_type_inference(dtype=dtype)
     leaf_mask = helper.create_variable_for_type_inference(dtype=dtype)
 
     helper.append_op(
         type='tdm_child',
-        inputs={'X': x,
-                'TreeInfo': tree_info},
+        inputs={'X': x},
         outputs={'Child': child,
                  'LeafMask': leaf_mask},
         attrs={'child_nums': child_nums,
