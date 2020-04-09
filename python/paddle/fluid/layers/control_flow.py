@@ -1724,9 +1724,9 @@ def shrink_memory(x, i, table):
         usage.
     """
     helper = LayerHelper('shrink_memory', **locals())
-    check_type(x, 'x', (Variable), 'shrink_memory')
-    check_type(i, 'i', (Variable), 'shrink_memory')
-    check_type(table, 'table', (Variable), 'shrink_memory')
+    check_type(x, 'x', Variable, 'shrink_memory')
+    check_type(i, 'i', Variable, 'shrink_memory')
+    check_type(table, 'table', Variable, 'shrink_memory')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='shrink_rnn_memory',
