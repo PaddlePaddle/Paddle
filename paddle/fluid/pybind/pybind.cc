@@ -94,9 +94,6 @@ limitations under the License. */
 #include "pybind11/stl.h"
 
 DECLARE_bool(use_mkldnn);
-#ifdef PADDLE_WITH_NGRAPH
-DECLARE_bool(use_ngraph);
-#endif
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -114,14 +111,6 @@ bool IsCompiledWithCUDA() {
 
 bool IsCompiledWithMKLDNN() {
 #ifndef PADDLE_WITH_MKLDNN
-  return false;
-#else
-  return true;
-#endif
-}
-
-bool IsCompiledWithNGRAPH() {
-#ifndef PADDLE_WITH_NGRAPH
   return false;
 #else
   return true;
@@ -1495,7 +1484,6 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_devices",
         [](bool init_p2p) { framework::InitDevices(init_p2p); });
 
-  m.def("is_compiled_with_ngraph", IsCompiledWithNGRAPH);
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);

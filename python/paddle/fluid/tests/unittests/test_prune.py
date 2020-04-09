@@ -94,8 +94,8 @@ class TestPrune(unittest.TestCase):
         try:
             pruned_program = program._prune(targets=None)
         except ValueError as e:
-            self.assertEqual(
-                "All targets of prune() can only be Variable or Operator.",
+            self.assertIn(
+                "All targets of Program._prune_with_input() can only be Variable or Operator",
                 cpt.get_exception_message(e))
 
 
@@ -323,7 +323,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
 
     def test_prune_with_cache_program(self):
         '''
-        When use_prune=True and use_program_cache=True, Executor should cache the pruned program.
+        When use_prune=True, Executor should cache the pruned program.
         If in next run, the program, feed, fetch are not changed, Executor use the cached pruned program,
         and needn't to call  _prune_program() to prune the program.
         In this test, we hack the Executor._prune_program with a mock function which do nothing but increase
@@ -350,16 +350,68 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                                       feed={'x': x_np,
                                             'label': label_np},
                                       fetch_list=[loss1.name],
-                                      use_prune=True,
-                                      use_program_cache=True)
+                                      use_prune=True)
                         if i == 0:
                             self.assertEqual(exe.prune_called_times, 1)
                         else:
                             self.assertEqual(exe.prune_called_times, 1)
 
+    def test_prune_with_cache_program2(self):
+        '''
+        When use_prune=True, Executor should cache the pruned program.
+        If the only difference in fetch_list is  optimize_ops during multiple runs, 
+        the cache_keys should be different and get different pruned program.
+        '''
+        with _mock_guard(mock):
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.prune_called_times = 0
+            program = framework.Program()
+            startup_program = framework.Program()
+            scope = fluid.Scope()
+            with fluid.scope_guard(scope):
+                with fluid.program_guard(program, startup_program):
+                    (x1, x2, y1, y2, label, loss1, loss2, w1_param_attrs,
+                     w2_param_attrs) = self.net2()
+                    adam_optimizer1 = fluid.optimizer.AdamOptimizer(
+                        learning_rate=0.5)
+                    train1 = adam_optimizer1.minimize(loss1)
+                    adam_optimizer2 = fluid.optimizer.AdamOptimizer(
+                        learning_rate=0.5)
+                    train2 = adam_optimizer2.minimize(loss2)
+                    exe.run(startup_program)
+                    x_np = np.random.random(size=(10, 2)).astype('float32')
+                    label_np = np.random.randint(
+                        1, size=(10, 1)).astype('int64')
+
+                    for i in range(10):
+                        if i % 2:
+                            res = exe.run(program,
+                                          feed={
+                                              'x1': x_np,
+                                              'x2': x_np,
+                                              'label': label_np
+                                          },
+                                          fetch_list=[loss1, loss2, train1],
+                                          use_prune=True)
+                        else:
+                            res = exe.run(program,
+                                          feed={
+                                              'x1': x_np,
+                                              'x2': x_np,
+                                              'label': label_np
+                                          },
+                                          fetch_list=[loss1, loss2, train2],
+                                          use_prune=True)
+                        if i == 0:
+                            self.assertEqual(exe.prune_called_times, 1)
+                        elif i == 1:
+                            self.assertEqual(exe.prune_called_times, 2)
+                        else:
+                            self.assertEqual(exe.prune_called_times, 2)
+
     def test_prune_with_cache_compiled_program(self):
         '''
-        When use_prune=True and use_program_cache=True, Executor should cache the pruned program.
+        When use_prune=True, Executor should cache the pruned program.
         If in next run, the program, feed, fetch are not changed, Executor use the cached pruned program,
         and needn't to call  _prune_program() to prune the program.
         In this test, we hack the Executor._prune_program with a mock function which do nothing but increase
@@ -389,8 +441,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                                       feed={'x': x_np,
                                             'label': label_np},
                                       fetch_list=[loss1.name],
-                                      use_prune=True,
-                                      use_program_cache=True)
+                                      use_prune=True)
                         if i == 0:
                             self.assertEqual(exe.prune_called_times, 1)
                         else:
