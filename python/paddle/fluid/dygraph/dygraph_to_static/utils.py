@@ -356,6 +356,8 @@ class RenameTransformer(gast.NodeTransformer):
 def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     """
     Transform modified AST of decorated function into python callable object.
+    TODO: If only decorate one of inner function instead of decorating the main
+    function, the other inner functions are invisible for the decorated function.
     """
     source = ast_to_source_code(ast_root)
     if six.PY2:
