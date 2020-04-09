@@ -150,9 +150,11 @@ class BCELoss(fluid.dygraph.Layer):
             # declarative mode
             import paddle.fluid as fluid
             import numpy as np
-            input = fluid.data(name="input", shape=[3, 1])
-            label = fluid.data(name="label", shape=[3, 1])
-            output = fluid.layers.bce_loss(input,label)
+            import paddle
+            input = fluid.data(name="input", shape=[3, 1], dtype='float32')
+            label = fluid.data(name="label", shape=[3, 1], dtype='float32')
+            bce_loss = paddle.nn.loss.BCELoss()
+            output = bce_loss(input, label)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
@@ -171,7 +173,7 @@ class BCELoss(fluid.dygraph.Layer):
             with dg.guard(place) as g:
                 input = dg.to_variable(input_data)
                 label = dg.to_variable(label_data)
-                output = fluid.layers.bce_loss(input, label)
+                output = bce_loss(input, label)
                 print(output.numpy())  # [0.65537095]
     """
 
