@@ -521,7 +521,15 @@ class DynamicDecode(Layer):
                 (step_outputs, next_states, next_inputs,
                  next_finished) = self.decoder.step(step_idx_tensor, inputs,
                                                     states, **kwargs)
-                next_finished = layers.logical_or(next_finished, finished)
+                if not self.decoder.tracks_own_finished:
+                    # BeamSearchDecoder would track it own finished, since
+                    # beams would be reordered and the finished status of each
+                    # entry might change. Otherwise, perform logical OR which
+                    # would not change the already finished.
+                    next_finished = layers.logical_or(next_finished, finished)
+                    # To confirm states.finished/finished be consistent with
+                    # next_finished.
+                    layers.assign(next_finished, finished)
                 next_sequence_lengths = layers.elementwise_add(
                     sequence_lengths,
                     layers.cast(

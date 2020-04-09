@@ -17,12 +17,10 @@ import os
 import six
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from functools import partial
 
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import to_variable
 from paddle.fluid.io import DataLoader
 
 from utils.configure import PDConfig
@@ -30,33 +28,39 @@ from utils.check import check_gpu, check_version
 
 from model import Input, set_device
 from callbacks import ProgBarLogger
-from reader import prepare_train_input, Seq2SeqDataset, Seq2SeqBatchSampler
-from transformer import Transformer, CrossEntropyCriterion, NoamDecay
+from reader import create_data_loader
+from transformer import Transformer, CrossEntropyCriterion
 
 
-class LoggerCallback(ProgBarLogger):
-    def __init__(self, log_freq=1, verbose=2, loss_normalizer=0.):
-        super(LoggerCallback, self).__init__(log_freq, verbose)
-        # TODO: wrap these override function to simplify
+class TrainCallback(ProgBarLogger):
+    def __init__(self, args, verbose=2):
+        # TODO(guosheng): save according to step
+        super(TrainCallback, self).__init__(args.print_step, verbose)
+        # the best cross-entropy value with label smoothing
+        loss_normalizer = -(
+            (1. - args.label_smooth_eps) * np.log(
+                (1. - args.label_smooth_eps)) + args.label_smooth_eps *
+            np.log(args.label_smooth_eps / (args.trg_vocab_size - 1) + 1e-20))
         self.loss_normalizer = loss_normalizer
 
     def on_train_begin(self, logs=None):
-        super(LoggerCallback, self).on_train_begin(logs)
+        super(TrainCallback, self).on_train_begin(logs)
         self.train_metrics += ["normalized loss", "ppl"]
 
     def on_train_batch_end(self, step, logs=None):
         logs["normalized loss"] = logs["loss"][0] - self.loss_normalizer
         logs["ppl"] = np.exp(min(logs["loss"][0], 100))
-        super(LoggerCallback, self).on_train_batch_end(step, logs)
+        super(TrainCallback, self).on_train_batch_end(step, logs)
 
     def on_eval_begin(self, logs=None):
-        super(LoggerCallback, self).on_eval_begin(logs)
-        self.eval_metrics += ["normalized loss", "ppl"]
+        super(TrainCallback, self).on_eval_begin(logs)
+        self.eval_metrics = list(
+            self.eval_metrics) + ["normalized loss", "ppl"]
 
     def on_eval_batch_end(self, step, logs=None):
         logs["normalized loss"] = logs["loss"][0] - self.loss_normalizer
         logs["ppl"] = np.exp(min(logs["loss"][0], 100))
-        super(LoggerCallback, self).on_eval_batch_end(step, logs)
+        super(TrainCallback, self).on_eval_batch_end(step, logs)
 
 
 def do_train(args):
@@ -100,44 +104,7 @@ def do_train(args):
     ]
 
     # def dataloader
-    data_loaders = [None, None]
-    data_files = [args.training_file, args.validation_file
-                  ] if args.validation_file else [args.training_file]
-    for i, data_file in enumerate(data_files):
-        dataset = Seq2SeqDataset(
-            fpattern=data_file,
-            src_vocab_fpath=args.src_vocab_fpath,
-            trg_vocab_fpath=args.trg_vocab_fpath,
-            token_delimiter=args.token_delimiter,
-            start_mark=args.special_token[0],
-            end_mark=args.special_token[1],
-            unk_mark=args.special_token[2])
-        args.src_vocab_size, args.trg_vocab_size, args.bos_idx, args.eos_idx, \
-            args.unk_idx = dataset.get_vocab_summary()
-        batch_sampler = Seq2SeqBatchSampler(
-            dataset=dataset,
-            use_token_batch=args.use_token_batch,
-            batch_size=args.batch_size,
-            pool_size=args.pool_size,
-            sort_type=args.sort_type,
-            shuffle=args.shuffle,
-            shuffle_batch=args.shuffle_batch,
-            max_length=args.max_length)
-        data_loader = DataLoader(
-            dataset=dataset,
-            batch_sampler=batch_sampler,
-            places=device,
-            feed_list=None if fluid.in_dygraph_mode() else
-            [x.forward() for x in inputs + labels],
-            collate_fn=partial(
-                prepare_train_input,
-                src_pad_idx=args.eos_idx,
-                trg_pad_idx=args.eos_idx,
-                n_head=args.n_head),
-            num_workers=0,  # TODO: use multi-process
-            return_list=True)
-        data_loaders[i] = data_loader
-    train_loader, eval_loader = data_loaders
+    train_loader, eval_loader = create_data_loader(args, device)
 
     # define model
     transformer = Transformer(
@@ -149,8 +116,10 @@ def do_train(args):
 
     transformer.prepare(
         fluid.optimizer.Adam(
-            learning_rate=fluid.layers.noam_decay(args.d_model,
-                                                  args.warmup_steps),
+            learning_rate=fluid.layers.noam_decay(
+                args.d_model,
+                args.warmup_steps,
+                learning_rate=args.learning_rate),
             beta1=args.beta1,
             beta2=args.beta2,
             epsilon=float(args.eps),
@@ -161,32 +130,19 @@ def do_train(args):
 
     ## init from some checkpoint, to resume the previous training
     if args.init_from_checkpoint:
-        transformer.load(
-            os.path.join(args.init_from_checkpoint, "transformer"))
+        transformer.load(args.init_from_checkpoint)
     ## init from some pretrain models, to better solve the current task
     if args.init_from_pretrain_model:
-        transformer.load(
-            os.path.join(args.init_from_pretrain_model, "transformer"),
-            reset_optimizer=True)
-
-    # the best cross-entropy value with label smoothing
-    loss_normalizer = -(
-        (1. - args.label_smooth_eps) * np.log(
-            (1. - args.label_smooth_eps)) + args.label_smooth_eps *
-        np.log(args.label_smooth_eps / (args.trg_vocab_size - 1) + 1e-20))
+        transformer.load(args.init_from_pretrain_model, reset_optimizer=True)
 
     # model train
     transformer.fit(train_data=train_loader,
                     eval_data=eval_loader,
-                    epochs=1,
+                    epochs=args.epoch,
                     eval_freq=1,
                     save_freq=1,
-                    verbose=2,
-                    callbacks=[
-                        LoggerCallback(
-                            log_freq=args.print_step,
-                            loss_normalizer=loss_normalizer)
-                    ])
+                    save_dir=args.save_model,
+                    callbacks=[TrainCallback(args)])
 
 
 if __name__ == "__main__":

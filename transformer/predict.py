@@ -77,11 +77,12 @@ def do_predict(args):
         token_delimiter=args.token_delimiter,
         start_mark=args.special_token[0],
         end_mark=args.special_token[1],
-        unk_mark=args.special_token[2])
+        unk_mark=args.special_token[2],
+        byte_data=True)
     args.src_vocab_size, args.trg_vocab_size, args.bos_idx, args.eos_idx, \
         args.unk_idx = dataset.get_vocab_summary()
     trg_idx2word = Seq2SeqDataset.load_dict(
-        dict_path=args.trg_vocab_fpath, reverse=True)
+        dict_path=args.trg_vocab_fpath, reverse=True, byte_data=True)
     batch_sampler = Seq2SeqBatchSampler(
         dataset=dataset,
         use_token_batch=False,
@@ -91,10 +92,12 @@ def do_predict(args):
         dataset=dataset,
         batch_sampler=batch_sampler,
         places=device,
-        feed_list=None
-        if fluid.in_dygraph_mode() else [x.forward() for x in inputs],
         collate_fn=partial(
-            prepare_infer_input, src_pad_idx=args.eos_idx, n_head=args.n_head),
+            prepare_infer_input,
+            bos_idx=args.bos_idx,
+            eos_idx=args.eos_idx,
+            src_pad_idx=args.eos_idx,
+            n_head=args.n_head),
         num_workers=0,
         return_list=True)
 
@@ -124,7 +127,7 @@ def do_predict(args):
     # load the trained model
     assert args.init_from_params, (
         "Please set init_from_params to load the infer model.")
-    transformer.load(os.path.join(args.init_from_params, "transformer"))
+    transformer.load(args.init_from_params)
 
     # TODO: use model.predict when support variant length
     f = open(args.output_file, "wb")
