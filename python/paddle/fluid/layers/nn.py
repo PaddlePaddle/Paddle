@@ -6624,7 +6624,7 @@ def roi_pool(input,
     
         input_data = np.array([i for i in range(1,17)]).reshape(1,1,4,4).astype(DATATYPE)
         roi_data =fluid.create_lod_tensor(np.array([[1., 1., 2., 2.], [1.5, 1.5, 3., 3.]]).astype(DATATYPE),[[2]], place)
-        rois_lod_data = np.array([2])
+        rois_lod_data = np.array([0, 2])
 
         x = fluid.data(name='input', shape=[None,1,4,4], dtype=DATATYPE)
         rois = fluid.data(name='roi', shape=[None,4], dtype=DATATYPE)
