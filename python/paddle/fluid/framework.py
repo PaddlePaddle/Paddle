@@ -52,6 +52,8 @@ __all__ = [
     'load_op_library',
     'require_version',
     'device_guard',
+    'set_flags',
+    'get_flags',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -3836,8 +3838,15 @@ class Program(object):
                 prog_string_with_detail = prog.to_string(throw_on_error=True, with_details=True)
                 print("program string with detail: {}".format(prog_string_with_detail))
         """
-        assert isinstance(throw_on_error, bool) and isinstance(with_details,
-                                                               bool)
+        assert isinstance(
+            throw_on_error, bool
+        ), "The type of throw_on_error parameter is wrong, expected bool, but received {}.".format(
+            type(throw_on_error))
+        assert isinstance(
+            with_details, bool
+        ), "The type of with_details parameter is wrong, expected bool, but received {}.".format(
+            type(with_details))
+
         if with_details:
             res_str = ""
             for block in self.blocks:
@@ -4103,8 +4112,9 @@ class Program(object):
 
         for var in feeded_var_names:
             if not isinstance(var, six.string_types):
-                raise ValueError("All feeded_var_names of prune() can only be "
-                                 "str.")
+                raise ValueError(
+                    "All feeded_var_names of Program._prune_with_input() can only be "
+                    "str, but received %s." % type(var))
 
         targets_idx = []
         for t in targets:
@@ -4114,8 +4124,9 @@ class Program(object):
                 elif isinstance(t, six.string_types):
                     name = str(t)
                 else:
-                    raise ValueError("All targets of prune() can only be "
-                                     "Variable or Operator.")
+                    raise ValueError(
+                        "All targets of Program._prune_with_input() can only be "
+                        "Variable or Operator, but received %s." % type(t))
                 # After transpiler processing, the op that output this
                 # variable maybe has been changed, so t.op is not reliable
                 # and we need to find the current op that generate this
@@ -4325,7 +4336,9 @@ class Program(object):
     @random_seed.setter
     def random_seed(self, seed):
         if not isinstance(seed, int):
-            raise ValueError("Seed must be a integer.")
+            raise ValueError(
+                "Program.random_seed's input seed must be an integer, but received %s."
+                % type(seed))
         self._seed = seed
 
     def __repr__(self):
@@ -4458,8 +4471,9 @@ class Program(object):
             None
         """
         if not isinstance(other, Program):
-            raise TypeError("_copy_param_info_from should be invoked with "
-                            "Program")
+            raise TypeError(
+                "Function Program._copy_param_info_from() needs to pass in a source Program, but received %s"
+                % type(other))
 
         self.global_block()._copy_param_info_from(other.global_block())
 
@@ -4474,8 +4488,9 @@ class Program(object):
             None
         """
         if not isinstance(other, Program):
-            raise TypeError("_copy_dist_param_info_from should be invoked with "
-                            "Program")
+            raise TypeError(
+                "Function Program._copy_param_info_from() needs to pass in a source Program, but received %s"
+                % type(other))
         self._is_distributed = other._is_distributed
         self._is_chief = other._is_chief
         self._parameters_on_pservers = other._parameters_on_pservers
@@ -4501,8 +4516,9 @@ class Program(object):
             None
         """
         if not isinstance(other, Program):
-            raise TypeError("_copy_data_info_from should be invoked with "
-                            "Program")
+            raise TypeError(
+                "Function Program._copy_param_info_from() needs to pass in a source Program, but received %s"
+                % type(other))
 
         if not pruned_origin_block_id_map:
             pruned_origin_block_id_map = {
@@ -5107,3 +5123,70 @@ def device_guard(device=None):
     pre_device = switch_device(device)
     yield
     switch_device(pre_device)
+
+
+def set_flags(flags):
+    """
+    This function sets the GFlags value in Paddle.
+
+    Args:
+        flags (dict): A dict contains flags and its value.
+
+    Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                fluid.set_flags({'FLAGS_eager_delete_tensor_gb': 1.0})
+    """
+    if not isinstance(flags, dict):
+        raise TypeError('flags in set_flags should be a dict')
+    for key, value in flags.items():
+        if core.globals().is_public(key):
+            core.globals()[key] = value
+        else:
+            raise ValueError(
+                "Flag %s cannot set its value through this function." % (key))
+
+
+def get_flags(flags):
+    """
+    This function gets the GFlags value in Paddle.
+
+    Args:
+        flags(list|tuple|str): A list/tuple of string or a string which is the flag's name.
+
+    Returns:
+        flag's value in Paddle.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            flags = ['FLAGS_eager_delete_tensor_gb', 'FLAGS_check_nan_inf']
+            res = fluid.get_flags(flags)
+            print(res)
+            # {'FLAGS_eager_delete_tensor_gb': 0.0, 'FLAGS_check_nan_inf': False}
+    """
+    flags_value = {}
+    if isinstance(flags, (list, tuple)):
+        for key in flags:
+            if (core.globals().is_public(key)):
+                value = core.globals()[key]
+                temp = {key: value}
+                flags_value.update(temp)
+            else:
+                raise ValueError(
+                    'Flag %s cannot get its value through this function.' %
+                    (key))
+    elif isinstance(flags, str):
+        if (core.globals().is_public(flags)):
+            value = core.globals()[flags]
+            temp = {flags: value}
+            flags_value.update(temp)
+        else:
+            raise ValueError(
+                'Flag %s cannot get its value through this function.' % (flags))
+    else:
+        raise TypeError('Flags in get_flags should be a list, tuple or string.')
+    return flags_value
