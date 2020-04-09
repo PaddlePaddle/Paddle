@@ -261,7 +261,6 @@ class QuantizationTransformPass(object):
             if key in create_var_map.keys():
                 new_node = create_var_map[key]
             elif in_node.is_ctrl_var():
-                print(in_node.name())
                 new_node = graph.create_control_dep_var()
                 create_var_map[key] = new_node
             else:
