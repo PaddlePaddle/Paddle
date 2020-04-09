@@ -53,6 +53,9 @@ void TDMChildInner(const framework::ExecutionContext &context,
   // TreeInfo: node_id : item_id; layer_id; ancestor_id; child_id
   for (int input_ids = 0; input_ids < input_ids_num; ++input_ids) {
     std::vector<int64_t> tree_info_data = tree_info->at(input_data[input_ids]);
+    VLOG(1) << "TDM_Child node: " << input_data[input_ids]
+            << " info feasign: " << tree_info_data[0]
+            << " info child: " << tree_info_data[3] << " " << tree_info_data[4];
     bool has_child =
         (input_data[input_ids] == 0 || tree_info_data[3] == 0) ? false : true;
 
@@ -61,7 +64,7 @@ void TDMChildInner(const framework::ExecutionContext &context,
         OutT child_id = static_cast<OutT>(tree_info_data[3 + child_ids]);
         child_vec.push_back(child_id);
         OutT child_is_item =
-            static_cast<OutT>(tree_info_data[child_id] == 0 ? 0 : 1);
+            static_cast<OutT>((tree_info->at(child_id))[0] == 0 ? 0 : 1);
         item_mask_vec.push_back(child_is_item);
       }
     } else {
