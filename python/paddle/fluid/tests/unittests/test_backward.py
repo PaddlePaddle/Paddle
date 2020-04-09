@@ -241,6 +241,26 @@ class TestSimpleNet(TestBackward):
         self._check_all(self.net)
 
 
+class TestGradientsError(unittest.TestCase):
+    def test_error(self):
+        x = fluid.data(name='x', shape=[None, 2, 8, 8], dtype='float32')
+        x.stop_gradient = False
+        conv = fluid.layers.conv2d(x, 4, 1, bias_attr=False)
+        y = fluid.layers.relu(conv)
+
+        with self.assertRaises(TypeError):
+            x_grad = fluid.gradients(y.name, x)
+
+        with self.assertRaises(TypeError):
+            x_grad = fluid.gradients(y, x.name)
+
+        with self.assertRaises(TypeError):
+            x_grad = fluid.gradients([y], [x], target_gradients=x.name)
+
+        with self.assertRaises(TypeError):
+            x_grad = fluid.gradients([y], x, no_grad_set=conv)
+
+
 class TestSimpleNetWithErrorParamList(TestBackward):
     def test_parameter_list_type_error(self):
         self.global_block_idx = 0
