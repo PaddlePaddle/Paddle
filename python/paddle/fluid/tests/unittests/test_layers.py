@@ -286,6 +286,27 @@ class TestLayer(LayerTest):
             dy_ret = conv2d(base.to_variable(images))
             self.assertTrue(conv2d.bias is None)
 
+        with self.static_graph():
+            # the input of Conv2D must be Variable.
+            def test_Variable():
+                images = np.ones([2, 3, 5, 5], dtype='float32')
+                conv2d = nn.Conv2D(
+                    num_channels=3, num_filters=3, filter_size=[2, 2])
+                conv2d_ret1 = conv2d(images)
+
+            self.assertRaises(TypeError, test_Variable)
+
+            # the input dtype of Conv2D must be float16 or float32 or float64
+            # float16 only can be set on GPU place
+            def test_type():
+                images = layers.data(
+                    name='pixel', shape=[3, 5, 5], dtype='int32')
+                conv2d = nn.Conv2D(
+                    num_channels=3, num_filters=3, filter_size=[2, 2])
+                conv2d_ret2 = conv2d(images)
+
+            self.assertRaises(TypeError, test_type)
+
         self.assertTrue(np.allclose(static_ret, dy_ret_value))
         self.assertTrue(np.allclose(static_ret, static_ret2))
 
