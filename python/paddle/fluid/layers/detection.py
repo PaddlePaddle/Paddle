@@ -3139,6 +3139,10 @@ def multiclass_nms(bboxes,
                                               keep_top_k=200,
                                               normalized=False)
     """
+    check_variable_and_dtype(bboxes, 'bboxes', ['float32', 'float64'],
+                             'multiclass_nms')
+    check_variable_and_dtype(scores, 'scores', ['float32', 'float64'],
+                             'multiclass_nms')
     helper = LayerHelper('multiclass_nms', **locals())
 
     output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
