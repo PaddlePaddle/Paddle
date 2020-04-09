@@ -17,6 +17,7 @@ from __future__ import print_function
 from .layer_function_generator import templatedoc
 from ..framework import Variable, in_dygraph_mode
 from ..layer_helper import LayerHelper
+from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
 
 __all__ = [
     'sequence_conv',
@@ -405,6 +406,13 @@ def sequence_concat(input, name=None):
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper('sequence_concat', **locals())
+
+    check_type(input, 'input', list, 'fluid.layers.sequence_concat')
+    if isinstance(input, list):
+        for i, input_x in enumerate(input):
+            check_type(input_x, 'input[' + str(i) + ']', Variable, 'fluid.layers.sequence_concat')
+            check_dtype(input_x.dtype, 'input[' + str(i) + ']', ['int64', 'float32', 'float64'], 'fluid.layers.sequence_concat')
+
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     helper.append_op(
         type='sequence_concat', inputs={'X': input}, outputs={'Out': [out]})
