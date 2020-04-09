@@ -43,7 +43,7 @@ class FillConstantOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_GE(shape[i], 0L,
                           platform::errors::InvalidArgument(
                               "In fill constant Op ,the shap dim index %d must "
-                              "to be greater equal than 0, but recevied %d",
+                              "to be greater equal than 0, but received %d",
                               i, shape[i]));
       }
     }
