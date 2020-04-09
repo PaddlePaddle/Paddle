@@ -12,10 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+from ..fluid.framework import Variable
+from ..fluid.initializer import Constant
+from ..fluid.layers import core
+from ..fluid.layer_helper import LayerHelper
+from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
+from ..fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator, device_guard, OpProtoHolder
+from ..fluid.layers import fill_constant
 from paddle.common_ops_import import *
 
 # TODO: define functions to get create a tensor  
-
 __all__ = [
     'create_tensor',
     #            'create_lod_tensor', 
@@ -33,11 +40,62 @@ __all__ = [
     #            'arrange',
     'eye',
     'full',
-    #            'full_like',
+    'full_like',
     'triu',
     'tril',
-    #            'meshgrid'
+    #            'meshgrid',
 ]
+
+
+def full_like(input,
+              fill_value,
+              out=None,
+              dtype=None,
+              device=None,
+              stop_gradient=True,
+              name=None):
+    """
+    **full_like**
+    This function creates a tensor filled with `fill_value` which has identical shape and dtype 
+    with `input`.
+    Args:
+        input(Variable): The input tensor which specifies shape and dtype.
+        fill_value: The value to fill the tensor with. Data type can be bool, float32, float64, int32, int64. Default value is 0.
+        out(Variable): The output tensor.
+    Returns:
+        out(Variable): The tensor variable storing the output.
+    Examples:
+        .. code-block:: python
+          import paddle
+          import paddle.fluid as fluid
+          import numpy as np
+
+          input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+          output = paddle.full_like(input, 2.0)
+          exe = fluid.Executor(fluid.CPUPlace())
+          exe.run(fluid.default_startup_program())
+          img=np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
+          res = exe.run(fluid.default_main_program(), feed={'input':img}, fetch_list=[output])
+          print(res) # [array([[2., 2., 2.], [2., 2., 2.]], dtype=float32)]
+    """
+    helper = LayerHelper("full_like", **locals())
+
+    if dtype is None:
+        dtype = 'float32'
+
+    check_dtype(dtype, 'dtype',
+                ['bool', 'float16', 'float32', 'int32', 'int64'], 'full_like')
+
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+    helper.append_op(
+        type='fill_any_like',
+        inputs={'X': [input]},
+        attrs={'value': fill_value},
+        outputs={'Out': [out]})
+    out.stop_gradient = stop_gradient
+
+    return out
 
 
 def linspace(start, stop, num, dtype, out=None, device=None, name=None):
@@ -406,26 +464,36 @@ def full(shape,
          stop_gradient=True,
          name=None):
     """
-    This function return a Tensor with the `fill_value` which size is same as `shape`
+    This Op return a Tensor with the `fill_value` which size is same as `shape`
     
     Args:
         shape(list|tuple|Variable): Shape of the Tensor to be created.
                 The data type is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
                 the elements of it should be integers or Tensors with shape [1].
                 If ``shape`` is an Variable, it should be an 1-D Tensor .
-        value(float): The constant value used to initialize the Tensor to be created.
+        fill_value(bool|float16|float32|float64|int32|int64|Variable): The constant value
+            used to initialize the Tensor to be created. If fill_value is an Variable, it must be an 1-D Tensor.
         out(Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output tensor
             which can be float16, float32, float64, int32, int64, if dytpe is `None`, the data
             type of created tensor is `float32`
-        device(str, optional): This parameter specifies that the Tensor is created 
-            on the GPU or CPU.
+        device(str, optional): On which device to run this Op. The :attr:`device` must be
+            None, 'cpu' or 'gpu'. If :attr:`device` is None, the device that the user set in 
+            the paddle program will be chosen. Default value is None.
         stop_gradient(bool, optional): Indicating if we stop gradient from current(out) Variable,
             default value is True.
         name(str, optional): The default value is None.  Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        Variable: Tensor which is created according to shape and dtype.
+
+    Raises:
+        TypeError: The `dtype` must be one of None, bool, float16, float32, float64, int32 and int64.
+        TypeError: The `out` must be a Variable.
+        TypeError: The `shape` must be one of Variable, list tuple.
     
     Examples:
         .. code-block:: python
@@ -433,16 +501,20 @@ def full(shape,
           import paddle
           import paddle.fluid as fluid
 
-          data1 = paddle.full(shape=[2,1], full_value=0, dtype='int64') # data1=[[0],[0]]
-          data2 = paddle.full(shape=[2,1], full_value=5, dtype='int64', device='gpu') # data2=[[5],[5]]
+          data1 = paddle.full(shape=[2,1], fill_value=0, dtype='int64') # data1=[[0],[0]]
+          data2 = paddle.full(shape=[2,1], fill_value=5, dtype='int64', device='gpu') # data2=[[5],[5]]
 
           # attr shape is a list which contains Variable Tensor.
           positive_2 = fluid.layers.fill_constant([1], "int32", 2)
-          data3 = paddle.full(shape=[1, positive_2], dtype='float32', full_value=1.5) # data3=[1.5, 1.5]
+          data3 = paddle.full(shape=[1, positive_2], dtype='float32', fill_value=1.5) # data3=[1.5, 1.5]
 
           # attr shape is an Variable Tensor.
           shape = fluid.layers.fill_constant([1,2], "int32", 2) # shape=[2,2]
-          data4 = paddle.full(shape=shape, dtype='bool', full_value=True) # data4=[[True,True],[True,True]]
+          data4 = paddle.full(shape=shape, dtype='bool', fill_value=True) # data4=[[True,True],[True,True]]
+          
+          # attr value is an Variable Tensor.
+          val = fluid.layers.fill_constant([1], "float32", 2.0) # val=[2.0]
+          data5 = paddle.full(shape=[2,1], fill_value=val, dtype='float32') #data5=[[2.0],[2.0]]
     """
 
     helper = LayerHelper("full", **locals())
@@ -454,6 +526,8 @@ def full(shape,
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
                 'full')
     check_type(shape, 'shape', (Variable, list, tuple), 'full')
+    if out is not None:
+        check_type(shape, 'out', (Variable), 'full')
 
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
