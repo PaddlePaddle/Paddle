@@ -1076,7 +1076,7 @@ def log1p(x, out=None, name=None):
             import paddle.fluid as fluid
             import numpy as np
             # Graph Organizing
-            x = fluid.data(name="x", shape=[1], dtype="float32")
+            x = fluid.data(name="x", shape=[2,1], dtype="float32")
             res = paddle.log1p(x)
             # Create an executor using CPU as an example
             exe = fluid.Executor(fluid.CPUPlace())
