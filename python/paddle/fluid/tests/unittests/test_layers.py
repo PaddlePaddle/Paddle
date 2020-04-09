@@ -155,6 +155,31 @@ class TestLayer(LayerTest):
 
         self.assertTrue(np.array_equal(static_ret, dy_ret_value))
 
+        with self.static_graph():
+
+            # the input of Linear must be Variable.
+            def test_Variable():
+                inp = np.ones([3, 32, 32], dtype='float32')
+                linear = nn.Linear(
+                    32,
+                    4,
+                    bias_attr=fluid.initializer.ConstantInitializer(value=1))
+                linear_ret1 = linear(inp)
+
+            self.assertRaises(TypeError, test_Variable)
+
+            # the input dtype of Linear must be float16 or float32 or float64
+            # float16 only can be set on GPU place
+            def test_type():
+                inp = np.ones([3, 32, 32], dtype='int32')
+                linear = nn.Linear(
+                    32,
+                    4,
+                    bias_attr=fluid.initializer.ConstantInitializer(value=1))
+                linear_ret2 = linear(inp)
+
+            self.assertRaises(TypeError, test_type)
+
     def test_layer_norm(self):
         inp = np.ones([3, 32, 32], dtype='float32')
         with self.static_graph():

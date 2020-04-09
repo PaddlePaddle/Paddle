@@ -939,6 +939,10 @@ class Linear(layers.Layer):
 
             return dygraph_utils._append_activation_in_dygraph(pre_act,
                                                                self._act)
+
+        check_variable_and_dtype(input, 'input',
+                                 ['float16', 'float32', 'float64'], "Linear")
+
         attrs = {
             "x_num_col_dims": len(input.shape) - 1,
             "y_num_col_dims": 1,
