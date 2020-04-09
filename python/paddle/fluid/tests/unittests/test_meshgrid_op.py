@@ -30,28 +30,16 @@ class TestMeshgridOp(OpTest):
         self.outputs = {
             'Out': [('out%d' % i, outs[i]) for i in range(len(outs))]
         }
-        self.use_cudnn = False
 
     def get_dtype(self):
         return "float64"
 
-    def init_kernel_type(self):
-        pass
-
     def test_check_output(self):
-        if self.use_cudnn:
-            place = core.CUDAPlace(0)
-            self.check_output_with_place(place)
-        else:
-            self.check_output()
+        self.check_output()
 
     def test_check_grad(self):
-        if self.use_cudnn:
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(place, ['x1'], ['out1'])
-        else:
-            self.check_grad(['x0'], ['out0'])
-            self.check_grad(['x1'], ['out1'])
+        self.check_grad(['x0'], ['out0'])
+        self.check_grad(['x1'], ['out1'])
 
     def init_test_data(self):
         self.shape = self.get_x_shape()
@@ -71,27 +59,7 @@ class TestMeshgridOp(OpTest):
         return [100, 200]
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
 class TestMeshgridOp2(TestMeshgridOp):
-    def get_x_shape(self):
-        return [10, 100]
-
-    def init_kernel_type(self):
-        self.use_cudnn = True
-
-
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
-class TestMeshgridOp3(TestMeshgridOp):
-    def get_x_shape(self):
-        return [100, 200]
-
-    def init_kernel_type(self):
-        self.use_cudnn = True
-
-
-class TestMeshgridOp4(TestMeshgridOp):
     def get_x_shape(self):
         return [100, 300]
 
