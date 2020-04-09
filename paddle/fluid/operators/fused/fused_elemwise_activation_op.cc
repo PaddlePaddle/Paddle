@@ -195,10 +195,9 @@ class FusedElemwiseActivationMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<std::string>>("functor_list",
                                       "The functors that should be fused.")
         .AddCustomChecker([&](const std::vector<std::string> &functor_list) {
-          PADDLE_ENFORCE(
-              IsSupportedCompound(functor_list)
-                  platform::errors::InvalidArgument(
-                      "the input functors should support compounding."));
+          PADDLE_ENFORCE(IsSupportedCompound(functor_list),
+                         platform::errors::InvalidArgument(
+                             "the input functors should support compounding."));
         });
 
     AddComment(R"DOC(
