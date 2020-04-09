@@ -996,16 +996,17 @@ def clamp(input, min=None, max=None, output=None, name=None):
 
     inputs = {'X': input}
     attrs = {'min': sys.float_info.min, 'max': sys.float_info.max}
+
     if isinstance(min, Variable):
         min.stop_gradient = True
         inputs['Min'] = min
-    else:
+    elif min is not None:
         attrs['min'] = min
 
     if isinstance(max, Variable):
         max.stop_gradient = True
         inputs['Max'] = max
-    else:
+    elif max is not None:
         attrs['max'] = max
 
     helper = LayerHelper('clamp', **locals())

@@ -31,16 +31,36 @@ class TestClampAPI(unittest.TestCase):
         ) else fluid.CPUPlace()
         exe = fluid.Executor(place)
 
-        out = tensor.clamp(images, min=min, max=max)
-        clamp_out = exe.run(fluid.default_main_program(),
-                            feed={
-                                "image": data,
-                                "min": np.array([0.2]).astype('float32'),
-                                "max": np.array([0.8]).astype('float32')
-                            },
-                            fetch_list=[out])
+        out_1 = tensor.clamp(images, min=min, max=max)
+        out_2 = tensor.clamp(images, min=0.2, max=0.9)
+        out_3 = tensor.clamp(images, min=0.3)
+        out_4 = tensor.clamp(images, max=0.7)
+        out_5 = tensor.clamp(images, min=min)
+        out_6 = tensor.clamp(images, max=max)
 
-        self.assertTrue(np.allclose(clamp_out, np.clip(data, 0.2, 0.8)))
+        res1, res2, res3, res4, res5, res6 = exe.run(
+            fluid.default_main_program(),
+            feed={
+                "image": data,
+                "min": np.array([0.2]).astype('float32'),
+                "max": np.array([0.8]).astype('float32')
+            },
+            fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6])
+
+        self.assertTrue(np.allclose(res1, data.clip(0.2, 0.8)))
+        self.assertTrue(np.allclose(res2, data.clip(0.2, 0.9)))
+        self.assertTrue(np.allclose(res3, data.clip(min=0.3)))
+        self.assertTrue(np.allclose(res4, data.clip(max=0.7)))
+        self.assertTrue(np.allclose(res5, data.clip(min=0.2)))
+        self.assertTrue(np.allclose(res6, data.clip(max=0.8)))
+
+
+class TestClampError(unittest.TestCase):
+    def test_errors(self):
+        x1 = fluid.layers.data(name='x1', shape=[1], dtype="int16")
+        x2 = fluid.layers.data(name='x2', shape=[1], dtype="int8")
+        self.assertRaises(TypeError, tensor.clamp, x=x1, min=0.2, max=0.8)
+        self.assertRaises(TypeError, tensor.clamp, x=x2, min=0.2, max=0.8)
 
 
 if __name__ == '__main__':

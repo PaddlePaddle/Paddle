@@ -85,7 +85,10 @@ class ClipKernel : public framework::OpKernel<T> {
       min = min_data[0];
     }
     min = static_cast<T>(min);
-    PADDLE_ENFORCE_LT(min, max, "max should be greater than min.");
+    PADDLE_ENFORCE_LT(min, max, platform::errors::InvalidArgument(
+                                    "max should be greater than min. "
+                                    "But received min = %f, max = %f",
+                                    min, max));
 
     auto* x_var = context.InputVar("X");
     if (x_var->IsType<framework::LoDTensor>()) {
@@ -100,8 +103,9 @@ class ClipKernel : public framework::OpKernel<T> {
     } else if (x_var->IsType<framework::SelectedRows>()) {
       auto* x = context.Input<framework::SelectedRows>("X");
       auto* out = context.Output<framework::SelectedRows>("Out");
-      PADDLE_ENFORCE_NE(x, out,
-                        "Inplace clip is not allowed when x is SelectedRows");
+      PADDLE_ENFORCE_NE(x, out, platform::errors::InvalidArgument(
+                                    "Inplace clip is not allowed "
+                                    "when x is SelectedRows"));
       math::scatter::MergeAdd<DeviceContext, T> merge_func;
       merge_func(context.template device_context<DeviceContext>(), *x, out);
       auto* out_tensor = out->mutable_value();
