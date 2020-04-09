@@ -3402,6 +3402,12 @@ def box_decoder_and_assign(prior_box,
                 pb, pbv, loc, scores, 4.135)
 
     """
+    check_variable_and_dtype(prior_box, 'prior_box', ['float32', 'float64'],
+                             'box_decoder_and_assign')
+    check_variable_and_dtype(target_box, 'target_box', ['float32', 'float64'],
+                             'box_decoder_and_assign')
+    check_variable_and_dtype(box_score, 'box_score', ['float32', 'float64'],
+                             'box_decoder_and_assign')
     helper = LayerHelper("box_decoder_and_assign", **locals())
 
     decoded_box = helper.create_variable_for_type_inference(
