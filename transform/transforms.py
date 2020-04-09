@@ -20,6 +20,24 @@ else:
     Sequence = collections.abc.Sequence
     Iterable = collections.abc.Iterable
 
+__all__ = [
+    "Compose",
+    "Resize",
+    "RandomResizedCrop",
+    "CenterCropResize",
+    "CenterCrop",
+    "RandomHorizontalFlip",
+    "RandomVerticalFlip",
+    "Permute",
+    "Normalize",
+    "GaussianNoise",
+    "BrightnessTransform",
+    "SaturationTransform",
+    "ContrastTransform",
+    "HueTransform",
+    "ColorJitter",
+]
+
 
 class Compose(object):
     """Composes several transforms together.
