@@ -327,6 +327,38 @@ void CPUQuantizeSquashPass::DequantScaleSquash(Graph* graph) const {
                   found_dequant_scale_squash_count);
 }
 
+// squash dequant with dequant
+void CPUQuantizeSquashPass::MatmulDequantSquash(Graph* graph) const {
+  GraphPatternDetector gpd;
+  patterns::MatmulDequant matmul_dequant_pattern{gpd.mutable_pattern(),
+                                                 "matmul_dequant"};
+  matmul_dequant_pattern();
+
+  int found_matmul_dequant_squash_count = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
+    VLOG(4) << "squash matmul-dequant ops pair";
+
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_op, matmul_op, matmul_dequant_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(matmul_out, matmul_out, matmul_dequant_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(dequant_op, dequant_op, matmul_dequant_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(dequant_out, dequant_out, matmul_dequant_pattern);
+
+    if (matmul_out->outputs.size() == 1) {
+      matmul_op->Op()->SetAttr("force_fp32_output", true);
+      matmul_op->Op()->SetOutput(
+          "Out", std::vector<std::string>({dequant_out->Name()}));
+      IR_NODE_LINK_TO(matmul_op, dequant_out);
+      GraphSafeRemoveNodes(graph, {matmul_out, dequant_op});
+      found_matmul_dequant_squash_count++;
+    }
+  };
+  gpd(graph, handler);
+  AddStatis(found_matmul_dequant_squash_count);
+  PrettyLogDetail("---    squashed %d dequant with matmul",
+                  found_matmul_dequant_squash_count);
+}
+
 void CPUQuantizeSquashPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph,
@@ -342,6 +374,7 @@ void CPUQuantizeSquashPass::ApplyImpl(ir::Graph* graph) const {
   FcDequantSquash(graph);
   MultipleQuantizeSquash(graph);
   DequantScaleSquash(graph);
+  MatmulDequantSquash(graph);
 }
 
 }  // namespace ir

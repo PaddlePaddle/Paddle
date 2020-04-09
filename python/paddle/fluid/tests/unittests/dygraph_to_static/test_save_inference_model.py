@@ -39,7 +39,7 @@ class SimpleFcLayer(fluid.dygraph.Layer):
         x = fluid.dygraph.to_variable(x)
         y = self._linear(x)
         z = self._linear(y)
-        out = fluid.layers.mean(z, name='mean')
+        out = fluid.layers.mean(z)
         return out
 
 
@@ -53,7 +53,7 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
         program_translator = ProgramTranslator.get_instance()
         program_cache = ProgramTranslator().get_program_cache
         adam = fluid.optimizer.SGD(learning_rate=0.001)
-        program_translator.set_optimizer(adam, 'mean')
+        program_translator.set_optimizer(adam, index_of_loss=0)
 
         for i in range(5):
             out = layer(x)

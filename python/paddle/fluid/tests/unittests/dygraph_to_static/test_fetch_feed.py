@@ -58,7 +58,7 @@ class Linear(fluid.dygraph.Layer):
     def forward(self, x):
         inputs = fluid.dygraph.to_variable(x)
         pre = self.fc(inputs)
-        loss = fluid.layers.mean(pre, name='avg_loss')
+        loss = fluid.layers.mean(pre)
         return pre, loss
 
 
