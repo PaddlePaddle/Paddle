@@ -369,13 +369,12 @@ class QuantizationTransformPass(object):
                         dequantized_vars[name] = target_out_node
                         continue
 
-                    quant_bits = self._weight_bits if var_node.name() in persistable_vars \
+                    quant_bits = self._weight_bits if is_weight \
                         else self._activation_bits
-                    quant_type = self._weight_quantize_type if var_node.name() \
-                        in persistable_vars else self._activation_quantize_type
+                    quant_type = self._weight_quantize_type if is_weight \
+                             else self._activation_quantize_type
                     if quant_type == 'channel_wise_abs_max':
-                        assert var_node.name(
-                        ) in persistable_vars, "'channel_wise_abs_max' can only be applied on weights."
+                        assert is_weight, "'channel_wise_abs_max' can only be applied on weights."
                         if op.name() in self._conv_ops:
                             quant_var_node, scale_var_node = self._insert_channel_quant_op(
                                 graph, var_node, quant_bits)
