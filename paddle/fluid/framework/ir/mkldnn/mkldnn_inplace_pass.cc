@@ -88,11 +88,7 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
           for (auto& it : inputs) {
             for (auto& var_name : it.second) {
               if (var_name == in_place_input) {
-
-                switch(n->id()) {
-                  int nextid =  next_op->id();
-                  int previd =  prev_op->id();
-                  case nextid:
+                  if (n->id() == next_op->id()) {
                     // If next op is already having inplace var
                     // among its inputs then do not perform inplacing
                     if (count_specific_vars(inputs, var_name) > 0) {
@@ -101,8 +97,7 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
                                  "input to next op in same chain";
                       return;
                     }
-                  break;
-                  case previd:
+                  } else if (n->id() == prev_op->id()) {
                     // Ok if op that is having current op input as its own
                     // input is directly before current op, and prev op
                     // is also in-place then we can in-placed current op
@@ -116,8 +111,8 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
                              "input to more than one operator of diffrent branches";
                       return;
                     }
-                  
-                  default: // Neither prev_op or next_op
+                  } else {
+                   // Neither prev_op or next_op
                    // If some no in pattern node is having our current input var among its 
                    // inputs,  it is usually cycle, unless current op is already inplaced
                    if (current_op_in->Name() == current_op_out->Name()) {
@@ -130,7 +125,6 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
                              "input to more than one operator of diffrent branches";
                       return;
                    }
-                  break;
                 }
               }
             }
