@@ -140,9 +140,9 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
         self.batch_size = 1 if os.environ.get('DATASET') == 'full' else 50
         self.sample_iterations = 50 if os.environ.get(
-            'DATASET') == 'full' else 1
+            'DATASET') == 'full' else 2
         self.infer_iterations = 50000 if os.environ.get(
-            'DATASET') == 'full' else 1
+            'DATASET') == 'full' else 2
 
         self.timestamp = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
         self.int8_model = os.path.join(os.getcwd(),
@@ -287,11 +287,12 @@ class TestPostTrainingQuantization(unittest.TestCase):
         (int8_throughput, int8_latency, int8_acc1) = self.run_program(
             self.int8_model, batch_size, infer_iterations)
 
+        print("---Post training quantization of {} method---".format(algo))
         print(
-            "FP32 {0}: batch_size {1}, throughput {2} images/second, latency {3} second, accuracy {4}".
+            "FP32 {0}: batch_size {1}, throughput {2} images/second, latency {3} second, accuracy {4}.".
             format(model, batch_size, fp32_throughput, fp32_latency, fp32_acc1))
         print(
-            "INT8 {0}: batch_size {1}, throughput {2} images/second, latency {3} second, accuracy {4}".
+            "INT8 {0}: batch_size {1}, throughput {2} images/second, latency {3} second, accuracy {4}.\n".
             format(model, batch_size, int8_throughput, int8_latency, int8_acc1))
         sys.stdout.flush()
 
@@ -308,7 +309,10 @@ class TestPostTrainingKLForMobilenetv1(TestPostTrainingQuantization):
         ]
         data_md5s = ['13892b0716d26443a8cdea15b3c6438b']
         quantizable_op_type = [
-            "conv2d", "depthwise_conv2d", "mul", "pool2d", "elementwise_add"
+            "conv2d",
+            "depthwise_conv2d",
+            "mul",
+            "pool2d",
         ]
         is_full_quantize = False
         is_use_cache_file = False
@@ -326,10 +330,12 @@ class TestPostTrainingAbsMaxForMobilenetv1(TestPostTrainingQuantization):
         ]
         data_md5s = ['13892b0716d26443a8cdea15b3c6438b']
         quantizable_op_type = [
-            "conv2d", "depthwise_conv2d", "mul", "pool2d", "elementwise_add"
+            "conv2d",
+            "mul",
         ]
         is_full_quantize = False
         is_use_cache_file = False
+        # The accuracy diff of post-traing quantization (abs_max) maybe bigger
         diff_threshold = 0.05
         self.run_test(model, algo, data_urls, data_md5s, quantizable_op_type,
                       is_full_quantize, is_use_cache_file, diff_threshold)

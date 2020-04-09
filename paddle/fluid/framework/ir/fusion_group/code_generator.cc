@@ -36,7 +36,7 @@ std::string ExtractDataType(const std::vector<Node*>& nodes) {
       } else if (dtype == proto::VarType::FP64) {
         dtype_str = "double";
       } else if (dtype == proto::VarType::FP16) {
-        dtype_str = "float16";
+        dtype_str = "__half";
       }
       break;
     }
@@ -77,6 +77,7 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
       auto* op = node->Op();
       AttributeMap attr = *(op->MutableAttrMap());
 
+      // Input ids should be set in fixed order, like:
       //  - X, Y in forward operations
       //  - X, Y, Out, out@GRAD in backward operations
       std::vector<int> input_ids;
@@ -98,6 +99,7 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
           input_ids.push_back(-1);
         }
       }
+
       // Output ids should be set in fixed order, like:
       //  - dx, dy in backward operations
       std::vector<int> output_ids;
@@ -105,10 +107,6 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
           OperationMap::Instance().Get(op->Type()).output_names;
 
       for (auto& name : output_names) {
-        PADDLE_ENFORCE_EQ(
-            op->Output(name).size(), 1U,
-            platform::errors::InvalidArgument(
-                "Output(%s) of operation %s is not set.", name, op->Type()));
         PADDLE_ENFORCE_NE(
             var_ids.find(op->Output(name)[0]), var_ids.end(),
             platform::errors::InvalidArgument(
@@ -149,13 +147,13 @@ std::string CodeGenerator::Generate(
   }
   std::string predefined_cuda_functions = "";
   if (all_dtype.find("float") != all_dtype.end() &&
-      all_dtype.find("float16") == all_dtype.end()) {
+      all_dtype.find("__half") == all_dtype.end()) {
     predefined_cuda_functions += predefined_cuda_functions_fp32;
   }
   if (all_dtype.find("double") != all_dtype.end()) {
     predefined_cuda_functions += predefined_cuda_functions_fp64;
   }
-  if (all_dtype.find("float16") != all_dtype.end()) {
+  if (all_dtype.find("__half") != all_dtype.end()) {
     predefined_cuda_functions += predefined_cuda_functions_fp16;
   }
   return predefined_cuda_functions + code_templates_[0].Format(template_var);

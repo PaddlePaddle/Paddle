@@ -14,14 +14,16 @@
 """
 All layers just related to the neural network.
 """
-
 from __future__ import print_function
 
-import numpy as np
-import warnings
-import six
 import os
 import inspect
+import warnings
+
+import numpy as np
+import six
+
+import paddle
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program
@@ -34,6 +36,7 @@ from .. import unique_name
 from functools import reduce
 from .. import core
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+import paddle
 
 __all__ = [
     'fc',
@@ -3857,10 +3860,10 @@ def conv2d_transpose(input,
 
     if output_size is None:
         output_size = []
-    elif isinstance(output_size, list) or isinstance(output_size, int):
+    elif isinstance(output_size, (list, tuple, int)):
         output_size = utils.convert_to_list(output_size, 2, 'output_size')
     else:
-        raise ValueError("output_size should be list or int")
+        raise ValueError("output_size should be int, list[int] or tuple[int]")
     groups = 1 if groups is None else groups
     filter_shape = [input_channel, num_filters // groups] + filter_size
 
@@ -4129,7 +4132,7 @@ def conv3d_transpose(input,
         if output_size is None:
             raise ValueError("output_size must be set when filter_size is None")
         if isinstance(output_size, int):
-            output_size = [output_size, output_size]
+            output_size = [output_size, output_size, output_size]
 
         d_in = input.shape[2] if data_format == 'NCDHW' else input.shape[1]
         h_in = input.shape[3] if data_format == 'NCDHW' else input.shape[2]
@@ -4149,6 +4152,13 @@ def conv3d_transpose(input,
     if len(padding) == 6 and utils._is_symmetric_padding(padding, 3):
         padding = [padding[0], padding[2], padding[4]]
 
+    if output_size is None:
+        output_size = []
+    elif isinstance(output_size, (list, tuple, int)):
+        output_size = utils.convert_to_list(output_size, 3, 'output_size')
+    else:
+        raise ValueError("output_size should be int, list[int] or tuple[int]")
+
     groups = 1 if groups is None else groups
     filter_shape = [input_channel, num_filters // groups] + filter_size
     img_filter = helper.create_parameter(
@@ -4166,6 +4176,7 @@ def conv3d_transpose(input,
                 'Filter': [img_filter]},
         outputs={'Output': pre_bias},
         attrs={
+            'output_size': output_size,
             'strides': stride,
             'paddings': padding,
             'padding_algorithm': padding_algorithm,
@@ -4935,63 +4946,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
             y = fluid.layers.data(name='y', shape=[3, 2], dtype='float32')
             out = fluid.layers.matmul(x, y, True, True)
     """
-    attrs = {
-        'transpose_X': transpose_x,
-        'transpose_Y': transpose_y,
-        'alpha': float(alpha),
-    }
-
-    if in_dygraph_mode():
-        return core.ops.matmul(x, y, 'transpose_X', transpose_x, 'transpose_Y',
-                               transpose_y, 'alpha', float(alpha))
-
-    def __check_input(x, y):
-        var_names = {'x': x, 'y': y}
-        for name, val in var_names.items():
-            check_variable_and_dtype(
-                val, name, ['float16', 'float32', 'float64'], 'matmul')
-        x_shape = list(x.shape)
-        y_shape = list(y.shape)
-        if len(x_shape) == 1:
-            x_shape = [1] + x_shape
-        if len(y_shape) == 1:
-            y_shape = y_shape + [1]
-
-        # check the inner 2 dimensions
-        if transpose_x:
-            x_shape[-2], x_shape[-1] = x_shape[-1], x_shape[-2]
-        if transpose_y:
-            y_shape[-2], y_shape[-1] = y_shape[-1], y_shape[-2]
-        if x_shape[-1] != y_shape[-2]:
-            assert (x_shape[-1] == -1) or (y_shape[-2] == -1),                         \
-                "After performing an optional transpose, Input X's width should be "   \
-                "equal to Y's width for multiplication "                               \
-                "prerequisites. But received X's shape: %s, Y's shape: %s\n" %         \
-                (x_shape, y_shape)
-
-        if len(y_shape) > 2 and len(x_shape) > 2:
-            for i, dim_x in enumerate(x_shape[:-2]):
-                # don't check neg shape
-                if dim_x < 0 or y_shape[i] < 0:
-                    continue
-                if dim_x != y_shape[i]:
-                    raise ValueError(
-                        "When the matrix is larger than 2 dimensions, the higher "
-                        "dimensional values of the two matrices need to be equal. "
-                        "But received x_shape[%d] != y_shape[%d]. X's shape: %s, "
-                        "Y's shape: %s.\n" % (i, i, x_shape, y_shape))
-
-    __check_input(x, y)
-
-    helper = LayerHelper('matmul', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='matmul',
-        inputs={'X': x,
-                'Y': y},
-        outputs={'Out': out},
-        attrs=attrs)
-    return out
+    return paddle.matmul(x, y, transpose_x, transpose_y, alpha, name)
 
 
 def topk(input, k, name=None):
@@ -6227,9 +6182,16 @@ def lod_reset(x, y=None, target_lod=None):
             y = fluid.layers.data(name='y', shape=[10, 20], lod_level=2)
             out = fluid.layers.lod_reset(x=x, y=y)
     """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'lod_reset')
     helper = LayerHelper("lod_reset", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     if y is not None:
+        if y.lod_level > 0:
+            check_variable_and_dtype(
+                y, 'y', ['float32', 'float64', 'int32', 'int64'], 'lod_reset')
+        else:
+            check_variable_and_dtype(y, 'y', ['int32', 'int64'], 'lod_reset')
         helper.append_op(
             type="lod_reset", inputs={'X': x,
                                       'Y': y}, outputs={'Out': out})
@@ -10136,16 +10098,7 @@ def sum(x):
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
 
-    helper = LayerHelper('sum', **locals())
-    out = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype('x'))
-    helper.append_op(
-        type='sum',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'use_mkldnn': False})
-
-    return out
+    return paddle.elementwise_sum(x)
 
 
 @templatedoc()

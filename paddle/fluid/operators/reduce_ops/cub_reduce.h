@@ -65,7 +65,8 @@ __global__ void ReduceKernel2D(const Tx* x, Ty* y, ReduceOp reducer,
   int idx_y = threadIdx.x;
   Ty reduce_var = init;
   for (int idx_y = threadIdx.x; idx_y < reduce_num; idx_y += BlockDim)
-    reduce_var = reducer(reduce_var, transformer(x[idx_x + idx_y]));
+    reduce_var =
+        reducer(reduce_var, static_cast<Ty>(transformer(x[idx_x + idx_y])));
   __syncthreads();
 
   reduce_var =
@@ -112,7 +113,8 @@ __global__ void ReduceKernel(const Tx* x, Ty* y, ReduceOp reducer,
 
     int idx_x = 0;
     for (int k = 0; k < Rank; ++k) idx_x += (sub_index[k] * x_strides[k]);
-    reduce_var = static_cast<Ty>(reducer(reduce_var, transformer(x[idx_x])));
+    reduce_var = static_cast<Ty>(
+        reducer(reduce_var, static_cast<Ty>(transformer(x[idx_x]))));
   }
   __syncthreads();
 
@@ -340,6 +342,36 @@ void TensorReduce(const framework::Tensor& x, framework::Tensor* y,
   }
 #undef CUB_BLOCK_DIM_CASE
 }
+
+template <typename Tx, typename ReduceOp, typename TransformOp>
+struct TensorReduceFunctor {
+  const framework::Tensor& x;
+  framework::Tensor* y;
+  std::vector<int> origin_reduce_dims;
+  const double& init;
+  const ReduceOp& reducer;
+  const TransformOp& transformer;
+  cudaStream_t stream;
+  TensorReduceFunctor(const framework::Tensor& x, framework::Tensor* y,
+                      std::vector<int> origin_reduce_dims, const double& init,
+                      const ReduceOp& reducer, const TransformOp& transformer,
+                      cudaStream_t stream)
+      : x(x),
+        y(y),
+        origin_reduce_dims(origin_reduce_dims),
+        init(init),
+        reducer(reducer),
+        transformer(transformer),
+        stream(stream) {}
+
+  template <typename Ty>
+
+  void apply() const {
+    const Ty& init_cast = static_cast<Ty>(init);
+    TensorReduce<Tx, Ty, ReduceOp, TransformOp>(
+        x, y, origin_reduce_dims, init_cast, reducer, transformer, stream);
+  }
+};
 
 }  // namespace operators
 }  // namespace paddle

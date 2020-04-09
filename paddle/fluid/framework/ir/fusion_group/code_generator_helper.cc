@@ -20,11 +20,6 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
-#include "paddle/fluid/framework/op_call_stack.h"
-#include "paddle/fluid/framework/op_proto_maker.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/var_type_inference.h"
 
 namespace paddle {
@@ -117,22 +112,7 @@ static std::string RefineTemplateWithAttr(const std::string& op_type,
   return ret;
 }
 
-// In order to avoid multiple __half2float function calls, we do this
-// optimization
-static std::string OptimzeFP16RHS(std::unordered_set<int>* used,
-                                  const int index,
-                                  const std::vector<int>& input_ids) {
-  std::stringstream ret;
-  if (used->find(input_ids[index]) == used->end()) {
-    ret << "float half2fp32_" + TmpName(input_ids[index]) + " = __half2float(" +
-               TmpName(input_ids[index]) + ");";
-  }
-
-  return ret.str();
-}
-
 std::string OperationExpression::GetRHS(std::unordered_set<int>* used,
-                                        std::string* half2fp32_statement,
                                         size_t exprs_index) const {
   auto rhs = OperationMap::Instance().Get(op_type_).exprs[exprs_index];
   auto num_operands = OperationMap::Instance().Get(op_type_).num_operands;
@@ -141,16 +121,22 @@ std::string OperationExpression::GetRHS(std::unordered_set<int>* used,
     size_t input_size = input_ids_.size();
     rhs = ExpandMultivariateTemplate(rhs, input_size);
   }
-  for (size_t i = 0; i < rhs.size(); i++) {
-    size_t pos = i;
+
+  size_t pos = 0;
+  while (pos < rhs.size()) {
     if (rhs[pos] == '$' && rhs[pos + 1] == '{') {
-      int length = 0;
-      while (rhs[pos + 2 + length] != '}') {
-        length++;
+      size_t length = 0;
+      int bracket_number = 1;
+      for (length = 0; (pos + 2 + length) < rhs.size(); length++) {
+        char ch = rhs[pos + 2 + length];
+        if (ch == '}') bracket_number--;
+        if (ch == '{') bracket_number++;
+        if (bracket_number == 0) break;
       }
       std::string index_str = rhs.substr(pos + 2, length);
       std::string refine_str =
           RefineTemplateWithAttr(op_type_, index_str, attr_);
+      std::string var_name;
       if (index_str == refine_str) {
         int index = StringTo<int>(index_str);
         PADDLE_ENFORCE_LT(index, input_ids_.size(),
@@ -164,22 +150,32 @@ std::string OperationExpression::GetRHS(std::unordered_set<int>* used,
                               ">. Received %d.",
                               index, op_type_, input_ids_[index]));
         // TODO(wangchaochaohu): Here fp16 convert to float to do comupte, we
-        // need
-        // to add general fp16 compute later.
-        std::string var_name;
-        if (rhs_type_ == "float16") {
-          half2fp32_statement->append(OptimzeFP16RHS(used, index, input_ids_));
-          var_name = "half2fp32_" + TmpName(input_ids_[index]);
-        } else {
-          var_name = TmpName(input_ids_[index]);
-        }
+        // need to add general fp16 compute later.
+        var_name = TmpName(input_ids_[index]);
         rhs.replace(pos, length + 3, var_name);
         used->insert(input_ids_[index]);
       } else {
-        std::string var_name = refine_str;
+        var_name = refine_str;
         rhs.replace(pos, length + 3, var_name);
       }
+      pos = pos + var_name.length();
     }
+    pos++;
+  }
+  pos = 0;
+  while (pos < rhs.size()) {
+    if (rhs[pos] == '%' && rhs[pos + 1] == '{') {
+      int length = 0;
+      while (rhs[pos + 2 + length] != '}') {
+        length++;
+      }
+      std::string number_str = rhs.substr(pos + 2, length);
+      if (rhs_type_ == "__half")
+        number_str = "__float2half(" + number_str + ")";
+      rhs.replace(pos, length + 3, number_str);
+      pos = pos + number_str.length();
+    }
+    pos++;
   }
   return rhs;
 }
@@ -198,28 +194,24 @@ bool OperationExpression::IsSupport() const {
 // unique for the node which belong the group
 std::string OperationExpression::GetExpression(
     std::unordered_set<int>* used) const {
-  std::string half2fp32_statement;
   std::stringstream ret;
   if (IsSupport()) {
     for (size_t i = 0; i < output_ids_.size(); ++i) {
       std::string cast_str = "";
-      if ((lhs_type_ == rhs_type_ && rhs_type_ != "float16") ||
-          (lhs_type_ != rhs_type_ && rhs_type_ == "float16")) {
-        ret << GetLHS(i) << " = " << GetRHS(used, &half2fp32_statement, i)
-            << ";";
+      if (lhs_type_ == rhs_type_) {
+        ret << GetLHS(i) << " = " << GetRHS(used, i) << ";";
       } else {
-        if ((lhs_type_ == rhs_type_ && rhs_type_ == "float16") ||
-            lhs_type_ == "float16") {
+        if (lhs_type_ == "__half")
           cast_str = "__float2half";
-        } else {
+        else if (rhs_type_ == "__half")
+          cast_str = "__half2float";
+        else
           cast_str = "static_cast<" + lhs_type_ + ">";
-        }
-        ret << GetLHS(i) << " = " << cast_str << "("
-            << GetRHS(used, &half2fp32_statement, i) << ");";
+        ret << GetLHS(i) << " = " << cast_str << "(" << GetRHS(used, i) << ");";
       }
     }
   }
-  return half2fp32_statement + ret.str();
+  return ret.str();
 }
 
 }  // namespace fusion_group

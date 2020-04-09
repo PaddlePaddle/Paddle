@@ -420,7 +420,7 @@ class DataParallel(layers.Layer):
         grad_vars = []
         for param in self._layers.parameters():
             # NOTE(zcd): The grad_ivar maybe no generated.
-            if param.trainable and param._grad_ivar():
+            if param.trainable and (param._grad_ivar() is not None):
                 g_var = param._grad_ivar()
                 grad_vars.append(g_var)
                 assert g_var not in grad_var_set
