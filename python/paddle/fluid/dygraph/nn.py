@@ -1478,6 +1478,9 @@ class LayerNorm(layers.Layer):
             return dygraph_utils._append_activation_in_dygraph(
                 pre_act, act=self._act)
 
+        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                                 'LayerNorm')
+
         inputs = dict()
         inputs['X'] = [input]
         if self._scale:
