@@ -206,8 +206,10 @@ def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
             'keep_dim': keepdim,
             'reduce_all': False
         }
-        check_type_and_dtype(input, 'input', Variable, ['float32', 'float64'],
-                             'frobenius_norm')
+        if len(attrs['dim']) == len(input.shape):
+            attrs['reduce_all'] = True
+        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                                 'frobenius_norm')
 
         helper = LayerHelper('frobenius_norm', **locals())
         if out is None:
@@ -236,7 +238,7 @@ def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
           keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
           out(Variable): The tensor variable storing the output.
         """
-        if porder is not None and isinstance(porder, int):
+        if porder is not None and not isinstance(porder, int):
             raise ValueError(
                 "The p-oreder of pnorm op (vector norm) should be None or int!")
         if axis is not None and not isinstance(porder, int):
@@ -248,11 +250,11 @@ def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
             'keepdim': keepdim,
             'epsilon': 1e-12,
         }
-        check_type_and_dtype(input, 'input', Variable, ['float32', 'float64'],
-                             'p_norm')
+        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                                 'p_norm')
 
         helper = LayerHelper('p_norm', **locals())
-        if out is not None:
+        if out is None:
             out = helper.create_variable_for_type_inference(
                 dtype=helper.input_dtype())
         else:
@@ -272,14 +274,13 @@ def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
     if axis is None and p is not None:
         if isinstance(p, str):
             if p == "fro":
-                return frobenius_norm(
-                    input, axis=axis, keepdim=keepdim, out=out)
+                return frobenius_norm(input, dim=axis, keepdim=keepdim, out=out)
             else:
                 raise ValueError(
                     "only valid string values are 'fro', found {}".format(p))
         if not isinstance(p, str):
             if isinstance(p, int):
-                return vector_norm(input, axis=axis, porder=p, keedim=keepdim)
+                return vector_norm(input, axis=axis, porder=p, keepdim=keepdim)
             else:
                 raise ValueError("only valid p type is string or int, found {}".
                                  format(type(p)))
@@ -290,15 +291,15 @@ def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
     #calculate vector norm, where axis is int or list with only one integer
     if isinstance(axis, int):
         if isinstance(p, int):
-            return vector_norm(input, axis=axis, porder=p, keedim=keepdim)
+            return vector_norm(input, axis=axis, porder=p, keepdim=keepdim)
         else:
             raise ValueError(
                 "unspport p for p-order vector norm. except integer, found {}".
-                format(axis))
+                format(p))
     #calculate matrix norm, where axis is list with two integers
-    elif isinstance(axis, list) and len(list) == 2:
+    elif isinstance(axis, list) and len(axis) == 2:
         if p == "fro":
-            return frobenius_norm(input, axis=axis, keepdim=keepdim, out=out)
+            return frobenius_norm(input, dim=axis, keepdim=keepdim, out=out)
         else:
             raise ValueError(
                 "unspport p for matrix norm, expcept 'fro', found {}".format(p))
