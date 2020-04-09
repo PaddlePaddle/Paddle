@@ -131,7 +131,7 @@ def convert_pascalvoc_local2bin(args):
     target_size = 8 + image_nums * 3 * args.resize_h * args.resize_h * 4 + image_nums * 8 + object_nums_sum * (
         8 + 4 * 4 + 8)
     if (os.path.getsize(output_file_path) == target_size):
-        print("Success! \nThe output binary file can be found at: ",
+        print("Success! \nThe local data output binary file can be found at: ",
               output_file_path)
     else:
         print("Conversion failed!")

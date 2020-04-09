@@ -93,6 +93,13 @@ function(inference_analysis_api_qat_test_run TARGET_NAME test_binary fp32_model_
              --iterations=2)
 endfunction()
 
+function(preprocess_data2bin_test_run target py_script_source data_dir output_file)
+	py_test(${target} SRCS ${CMAKE_CURRENT_SOURCE_DIR}/${py_script_source}
+	        ARGS --data_dir=${data_dir}
+		     --output_file=${output_file}
+		     --local)
+endfunction()
+
 if(NOT APPLE AND WITH_MKLML)
     # RNN1
     set(RNN1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/rnn1")
@@ -286,8 +293,6 @@ if(WITH_MKLDNN)
   # download dataset if necessary
   download_int8_data(${INT8_DATA_DIR} "pascalvoc_val_head_300.tar.gz")
 
-  # download small demo set of pascalvoc for testing local userdata preprocessing
-  download_int8_data(${INT8_DATA_DIR} "pascalvoc_small.tar.gz")
 
   # build test binary to be used in subsequent tests
   inference_analysis_api_test_build(${INT8_OBJ_DETECT_TEST_APP} ${INT8_OBJ_DETECT_TEST_APP_SRC})
@@ -320,6 +325,19 @@ if(WITH_MKLDNN)
   set(MKLDNN_QUANTIZER_CONFIG_TEST_APP_SRC "mkldnn_quantizer_config_tester.cc")
   inference_analysis_api_test_build(${MKLDNN_QUANTIZER_CONFIG_TEST_APP} ${MKLDNN_QUANTIZER_CONFIG_TEST_APP_SRC})
   inference_analysis_test_run(test_mkldnn_quantizer_config COMMAND ${MKLDNN_QUANTIZER_CONFIG_TEST_APP})
+
+  # preprocess data2bin imagenet
+    download_int8_data(${INT8_DATA_DIR} "imagenet_small.tar.gz")
+    set(DATA_DIR "${INT8_DATA_DIR}/imagenet_small")
+    set(OUTPUT_FILE "imagenet_small.bin")
+    preprocess_data2bin_test_run(preprocess_local_imagenet "full_ILSVRC2012_val_preprocess.py" ${DATA_DIR} ${OUTPUT_FILE})
+    
+  # preprocess data2bin pascalvoc
+  download_int8_data(${INT8_DATA_DIR} "pascalvoc_small.tar.gz")
+  set(DATA_DIR "${INT8_DATA_DIR}/pascalvoc_small")
+  set(OUTPUT_FILE "pascalvoc_small.bin")
+  preprocess_data2bin_test_run(preprocess_local_pascalvoc "full_pascalvoc_test_preprocess.py" ${DATA_DIR} ${OUTPUT_FILE})
+
 endif()
 
 # bert, max_len=20, embedding_dim=128
