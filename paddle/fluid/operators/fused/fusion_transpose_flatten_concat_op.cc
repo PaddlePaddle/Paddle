@@ -31,8 +31,8 @@ class TransposeFlattenConcatFusionOp : public framework::OperatorWithKernel {
         ctx->Inputs("X").size(), 1UL,
         platform::errors::InvalidArgument(
             "Inputs(X) of TransposeFlattenConcat op should not be empty."));
-    PADDLE_ENFORCE(
-        ctx->HasOutput("Out"),
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("Out"), true,
         platform::errors::InvalidArgument(
             "Inputs(X) of TransposeFlattenConcat op should not be empty."));
 
