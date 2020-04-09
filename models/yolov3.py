@@ -138,7 +138,7 @@ class YOLOv3(Model):
                                 act='leaky_relu'))
                 self.route_blocks.append(route)
 
-    def forward(self, img_info, inputs):
+    def forward(self, img_id, img_shape, inputs):
         outputs = []
         boxes = []
         scores = []
@@ -163,8 +163,6 @@ class YOLOv3(Model):
                 for m in anchor_mask:
                     mask_anchors.append(self.anchors[2 * m])
                     mask_anchors.append(self.anchors[2 * m + 1])
-                img_shape = fluid.layers.slice(img_info, axes=[1], starts=[1], ends=[3])
-                img_id = fluid.layers.slice(img_info, axes=[1], starts=[0], ends=[1])
                 b, s = fluid.layers.yolo_box(
                     x=block_out,
                     img_size=img_shape,
@@ -181,7 +179,7 @@ class YOLOv3(Model):
         if self.model_mode == 'train':
             return outputs
 
-        preds = [img_id[0, :],
+        preds = [img_id,
                  fluid.layers.multiclass_nms(
                     bboxes=fluid.layers.concat(boxes, axis=1),
                     scores=fluid.layers.concat(scores, axis=2),

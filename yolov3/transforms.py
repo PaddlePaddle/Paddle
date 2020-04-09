@@ -145,7 +145,7 @@ class ColorDistort(object):
         img += delta
         return img
 
-    def __call__(self, im_info, im, gt_bbox, gt_class, gt_score):
+    def __call__(self, im_id, im_shape, im, gt_bbox, gt_class, gt_score):
         if self.random_apply:
             distortions = np.random.permutation([
                 self.apply_brightness, self.apply_contrast,
@@ -153,7 +153,7 @@ class ColorDistort(object):
             ])
             for func in distortions:
                 im = func(im)
-            return [im_info, im, gt_bbox, gt_class, gt_score]
+            return [im_id, im_shape, im, gt_bbox, gt_class, gt_score]
 
         im = self.apply_brightness(im)
 
@@ -165,7 +165,7 @@ class ColorDistort(object):
             im = self.apply_saturation(im)
             im = self.apply_hue(im)
             im = self.apply_contrast(im)
-        return [im_info, im, gt_bbox, gt_class, gt_score]
+        return [im_id, im_shape, im, gt_bbox, gt_class, gt_score]
 
 
 class RandomExpand(object):
@@ -183,16 +183,16 @@ class RandomExpand(object):
         self.prob = prob
         self.fill_value = fill_value
 
-    def __call__(self, im_info, im, gt_bbox, gt_class, gt_score):
+    def __call__(self, im_id, im_shape, im, gt_bbox, gt_class, gt_score):
         if np.random.uniform(0., 1.) < self.prob:
-            return [im_info, im, gt_bbox, gt_class, gt_score]
+            return [im_id, im_shape, im, gt_bbox, gt_class, gt_score]
 
         height, width, _ = im.shape
         expand_ratio = np.random.uniform(1., self.ratio)
         h = int(height * expand_ratio)
         w = int(width * expand_ratio)
         if not h > height or not w > width:
-            return [im_info, im, gt_bbox, gt_class, gt_score]
+            return [im_id, im_shape, im, gt_bbox, gt_class, gt_score]
         y = np.random.randint(0, h - height)
         x = np.random.randint(0, w - width)
         canvas = np.ones((h, w, 3), dtype=np.uint8)
@@ -201,7 +201,7 @@ class RandomExpand(object):
 
         gt_bbox += np.array([x, y, x, y], dtype=np.float32)
 
-        return [im_info, canvas, gt_bbox, gt_class, gt_score]
+        return [im_id, im_shape, canvas, gt_bbox, gt_class, gt_score]
 
 
 class RandomCrop():
@@ -232,9 +232,9 @@ class RandomCrop():
         self.allow_no_crop = allow_no_crop
         self.cover_all_box = cover_all_box
 
-    def __call__(self, im_info, im, gt_bbox, gt_class, gt_score):
+    def __call__(self, im_id, im_shape, im, gt_bbox, gt_class, gt_score):
         if len(gt_bbox) == 0:
-            return [im_info, im, gt_bbox, gt_class, gt_score]
+            return [im_id, im_shape, im, gt_bbox, gt_class, gt_score]
 
         # NOTE Original method attempts to generate one candidate for each
         # threshold then randomly sample one from the resulting list.
@@ -251,7 +251,7 @@ class RandomCrop():
 
         for thresh in thresholds:
             if thresh == 'no_crop':
-                return [im_info, im, gt_bbox, gt_class, gt_score]
+                return [im_id, im_shape, im, gt_bbox, gt_class, gt_score]
 
             h, w, _ = im.shape
             found = False
@@ -286,9 +286,9 @@ class RandomCrop():
                 gt_bbox = np.take(cropped_box, valid_ids, axis=0)
                 gt_class = np.take(gt_class, valid_ids, axis=0)
                 gt_score = np.take(gt_score, valid_ids, axis=0)
-                return [im_info, im, gt_bbox, gt_class, gt_score]
+                return [im_id, im_shape, im, gt_bbox, gt_class, gt_score]
 
-        return [im_info, im, gt_bbox, gt_class, gt_score]
+        return [im_id, im_shape, im, gt_bbox, gt_class, gt_score]
 
     def _iou_matrix(self, a, b):
         tl_i = np.maximum(a[:, np.newaxis, :2], b[:, :2])
@@ -334,7 +334,7 @@ class RandomFlip():
                 isinstance(self.is_normalized, bool)):
             raise TypeError("{}: input type is invalid.".format(self))
 
-    def __call__(self, im_info, im, gt_bbox, gt_class, gt_score):
+    def __call__(self, im_id, im_shape, im, gt_bbox, gt_class, gt_score):
         """Filp the image and bounding box.
         Operators:
             1. Flip the image numpy.
@@ -363,20 +363,20 @@ class RandomFlip():
                     m = "{}: invalid box, x2 should be greater than x1".format(
                         self)
                     raise ValueError(m)
-        return [im_info, im, gt_bbox, gt_class, gt_score]
+        return [im_id, im_shape, im, gt_bbox, gt_class, gt_score]
 
 
 class NormalizeBox(object):
     """Transform the bounding box's coornidates to [0,1]."""
 
-    def __call__(self, im_info, im, gt_bbox, gt_class, gt_score):
+    def __call__(self, im_id, im_shape, im, gt_bbox, gt_class, gt_score):
         height, width, _ = im.shape
         for i in range(gt_bbox.shape[0]):
             gt_bbox[i][0] = gt_bbox[i][0] / width
             gt_bbox[i][1] = gt_bbox[i][1] / height
             gt_bbox[i][2] = gt_bbox[i][2] / width
             gt_bbox[i][3] = gt_bbox[i][3] / height
-        return [im_info, im, gt_bbox, gt_class, gt_score]
+        return [im_id, im_shape, im, gt_bbox, gt_class, gt_score]
 
 
 class PadBox(object):
@@ -388,7 +388,7 @@ class PadBox(object):
         """
         self.num_max_boxes = num_max_boxes
 
-    def __call__(self, im_info, im, gt_bbox, gt_class, gt_score):
+    def __call__(self, im_id, im_shape, im, gt_bbox, gt_class, gt_score):
         gt_num = min(self.num_max_boxes, len(gt_bbox))
         num_max = self.num_max_boxes
 
@@ -406,7 +406,7 @@ class PadBox(object):
         if gt_num > 0:
             pad_score[:gt_num] = gt_score[:gt_num, 0]
         gt_score = pad_score
-        return [im_info, im, gt_bbox, gt_class, gt_score]
+        return [im_id, im_shape, im, gt_bbox, gt_class, gt_score]
 
 
 class BboxXYXY2XYWH(object):
@@ -414,10 +414,10 @@ class BboxXYXY2XYWH(object):
     Convert bbox XYXY format to XYWH format.
     """
 
-    def __call__(self, im_info, im, gt_bbox, gt_class, gt_score):
+    def __call__(self, im_id, im_shape, im, gt_bbox, gt_class, gt_score):
         gt_bbox[:, 2:4] = gt_bbox[:, 2:4] - gt_bbox[:, :2]
         gt_bbox[:, :2] = gt_bbox[:, :2] + gt_bbox[:, 2:4] / 2.
-        return [im_info, im, gt_bbox, gt_class, gt_score]
+        return [im_id, im_shape, im, gt_bbox, gt_class, gt_score]
 
 
 class RandomShape(object):
@@ -450,13 +450,13 @@ class RandomShape(object):
         method = np.random.choice(self.interps) if self.random_inter \
             else cv2.INTER_NEAREST
         for i in range(len(samples)):
-            im = samples[i][1]
+            im = samples[i][2]
             h, w = im.shape[:2]
             scale_x = float(shape) / w
             scale_y = float(shape) / h
             im = cv2.resize(
                 im, None, None, fx=scale_x, fy=scale_y, interpolation=method)
-            samples[i][1] = im
+            samples[i][2] = im
         return samples
 
 
@@ -492,7 +492,7 @@ class NormalizeImage(object):
             3. (optional) permute channel
         """
         for i in range(len(samples)):
-            im = samples[i][1]
+            im = samples[i][2]
             im = im.astype(np.float32, copy=False)
             mean = np.array(self.mean)[np.newaxis, np.newaxis, :]
             std = np.array(self.std)[np.newaxis, np.newaxis, :]
@@ -502,7 +502,7 @@ class NormalizeImage(object):
             im /= std
             if self.channel_first:
                 im = im.transpose((2, 0, 1))
-            samples[i][1] = im
+            samples[i][2] = im
         return samples
 
 
@@ -595,16 +595,15 @@ class ResizeImage(object):
                 format(type(target_size)))
         self.target_size = target_size
 
-    def __call__(self, im_info, im, gt_bbox, gt_class, gt_score):
+    def __call__(self, im_id, im_shape, im, gt_bbox, gt_class, gt_score):
         """ Resize the image numpy.
         """
         if not isinstance(im, np.ndarray):
             raise TypeError("{}: image type is not numpy.".format(self))
         if len(im.shape) != 3:
             raise ImageError('{}: image is not 3-dimensional.'.format(self))
-        im_shape = im.shape
-        im_scale_x = float(self.target_size) / float(im_shape[1])
-        im_scale_y = float(self.target_size) / float(im_shape[0])
+        im_scale_x = float(self.target_size) / float(im.shape[1])
+        im_scale_y = float(self.target_size) / float(im.shape[0])
         resize_w = self.target_size 
         resize_h = self.target_size 
 
@@ -616,5 +615,5 @@ class ResizeImage(object):
             fy=im_scale_y,
             interpolation=self.interp)
 
-        return [im_info, im, gt_bbox, gt_class, gt_score]
+        return [im_id, im_shape, im, gt_bbox, gt_class, gt_score]
 

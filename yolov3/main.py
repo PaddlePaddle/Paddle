@@ -63,7 +63,8 @@ def main():
     device = set_device(FLAGS.device)
     fluid.enable_dygraph(device) if FLAGS.dynamic else None
     
-    inputs = [Input([None, 3], 'int32', name='img_info'),
+    inputs = [Input([None, 1], 'int64', name='img_id'),
+              Input([None, 2], 'int32', name='img_shape'),
               Input([None, 3, None, None], 'float32', name='image')]
     labels = [Input([None, NUM_MAX_BOXES, 4], 'float32', name='gt_bbox'),
 	      Input([None, NUM_MAX_BOXES], 'int32', name='gt_label'),

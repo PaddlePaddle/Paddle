@@ -186,30 +186,31 @@ class COCODataset(Dataset):
             data = np.frombuffer(f.read(), dtype='uint8')
             im = cv2.imdecode(data, 1)
             im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
-        im_info = np.array([roidb['im_id'][0], roidb['h'], roidb['w']], dtype='int32')
+        im_id = roidb['im_id']
+        im_shape = np.array([roidb['h'], roidb['w']], dtype='int32')
         gt_bbox = roidb['gt_bbox']
         gt_class = roidb['gt_class']
         gt_score = roidb['gt_score']
-        return im_info, im, gt_bbox, gt_class, gt_score
+        return im_id, im_shape, im, gt_bbox, gt_class, gt_score
 
     def __getitem__(self, idx):
-        im_info, im, gt_bbox, gt_class, gt_score = self._getitem_by_index(idx)
+        im_id, im_shape, im, gt_bbox, gt_class, gt_score = self._getitem_by_index(idx)
 
         if self._mixup:
             mixup_idx = idx + np.random.randint(1, self.__len__())
             mixup_idx %= self.__len__()
-            _, mixup_im, mixup_bbox, mixup_class, _ = \
+            _, _, mixup_im, mixup_bbox, mixup_class, _ = \
                             self._getitem_by_index(mixup_idx)
             
-            im, gt_bbox, gt_class, gt_score = \
+            im_shape, im, gt_bbox, gt_class, gt_score = \
                     self._mixup_image(im, gt_bbox, gt_class, mixup_im,
                                       mixup_bbox, mixup_class)
 
         if self._transform:
-            im_info, im, gt_bbox, gt_class, gt_score = \
-                    self._transform(im_info, im, gt_bbox, gt_class, gt_score)
+            im_id, im_shape, im, gt_bbox, gt_class, gt_score = \
+                self._transform(im_id, im_shape, im, gt_bbox, gt_class, gt_score)
 
-        return [im_info, im, gt_bbox, gt_class, gt_score]
+        return [im_id, im_shape, im, gt_bbox, gt_class, gt_score]
 
     def _mixup_image(self, img1, bbox1, class1, img2, bbox2, class2):
         factor = np.random.beta(self._alpha, self._beta)
@@ -234,7 +235,9 @@ class COCODataset(Dataset):
         score2 = np.ones_like(class2, dtype="float32") * (1.0 - factor)
         gt_score = np.concatenate((score1, score2), axis=0)
 
-        return img, gt_bbox, gt_class, gt_score
+        im_shape = np.array([h, w], dtype='int32')
+
+        return im_shape, img, gt_bbox, gt_class, gt_score
     
     @property
     def mixup(self):
