@@ -17,7 +17,7 @@ import os.path as osp
 import sys
 import tarfile
 
-from download import _download
+from models.download import _download
 
 import logging
 logger = logging.getLogger(__name__)
