@@ -26,15 +26,15 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   VLOG(3) << "convert a fluid " << name << " op to tensorrt layer without bias";
 
   framework::OpDesc op_desc(op, nullptr);
-  PADDLE_ENFORCE_EQ(op_desc.Input("Input").size(), 1,
+  PADDLE_ENFORCE_EQ(op_desc.Input("Input").size(), 1UL,
                     platform::errors::InvalidArgument(
                         "TRT Conv2d expect 1 input, but got %d input.",
                         op_desc.Input("Input").size()));
-  PADDLE_ENFORCE_EQ(op_desc.Input("Filter").size(), 1,
+  PADDLE_ENFORCE_EQ(op_desc.Input("Filter").size(), 1UL,
                     platform::errors::InvalidArgument(
                         "TRT Conv2d expect 1 filter, but got %d filter.",
                         op_desc.Input("Filter").size()));
-  PADDLE_ENFORCE_EQ(op_desc.Output("Output").size(), 1,
+  PADDLE_ENFORCE_EQ(op_desc.Output("Output").size(), 1UL,
                     platform::errors::InvalidArgument(
                         "TRT Conv2d expect 1 output, but got %d output.",
                         op_desc.Output("Output").size()));
@@ -148,11 +148,14 @@ class Deconv2dOpConverter : public OpConverter {
           return layer;
         },
         [](nvinfer1::IDeconvolutionLayer* layer, nvinfer1::DimsHW& dilations) {
-          PADDLE_ENFORCE_EQ(
-              dilations.d[0] == 1 && dilations.d[1] == 1, true,
-              platform::errors::InvalidArgument(
-                  "Dilations must be (1, 1) for tensorRT, but given (%d, %d)",
-                  dilations.d[0], dilations.d[1]));
+          // In trt Deconv, dilation should be 1, ohter values are not
+          // supported.
+          bool condition = (dilations.d[0] == 1 && dilations.d[1] == 1);
+          PADDLE_ENFORCE_EQ(condition, true,
+                            platform::errors::InvalidArgument(
+                                "In Deconv, Dilations must be (1, 1) for "
+                                "tensorRT, but given (%d, %d)",
+                                dilations.d[0], dilations.d[1]));
         },
         "conv2d_transpose");
   }

@@ -56,11 +56,11 @@ class Pool2dOpConverter : public OpConverter {
     VLOG(4)
         << "convert a fluid pool2d op to tensorrt pool2d layer without bias";
     framework::OpDesc op_desc(op, nullptr);
-    PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1,
+    PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1UL,
                       platform::errors::InvalidArgument(
                           "TRT Pool2d expect 1 input, but got %d input.",
                           op_desc.Input("X").size()));
-    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1,
+    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1UL,
                       platform::errors::InvalidArgument(
                           "TRT Pool2d expect 1 Output, but got %d output.",
                           op_desc.Output("Out").size()));
