@@ -477,6 +477,7 @@ def get_filenames():
                     filename = filename + '%s/' % module.split('.')[i]
                 filename = filename + module_py
             else:
+                filename = ''
                 print("\n----Exception in get api filename----\n")
                 print("\n" + api + ' module is ' + module + "\n")
             if filename not in filenames:
@@ -499,7 +500,7 @@ def get_filenames():
             method = method + name
             if method not in methods:
                 methods.append(method)
-    #os.remove(API_spec)
+    os.remove(API_spec)
     return filenames
 
 
@@ -618,11 +619,17 @@ else:
         print(
             "3. run 'python tools/print_signatures.py paddle > paddle/fluid/API.spec'."
         )
+        for temp in result:
+            if not temp:
+                print("")
+                print("In addition, mistakes found in sample codes.")
+                print("Please check sample codes.")
         print("----------------------------------------------------")
         exit(1)
     else:
         for temp in result:
             if not temp:
-                print("Mistakes found in sample codes")
+                print("Mistakes found in sample codes.")
+                print("Please check sample codes.")
                 exit(1)
     print("Sample code check is successful!")
