@@ -106,6 +106,7 @@ class DataFeed {
   // This function will do nothing at default
   virtual void SetParseInsId(bool parse_ins_id) {}
   virtual void SetParseContent(bool parse_content) {}
+  virtual void SetKeepPaddingZeros(bool keep) { keep_padding_zeros_ = keep; }
   virtual void SetFileListMutex(std::mutex* mutex) {
     mutex_for_pick_file_ = mutex;
   }
@@ -175,6 +176,7 @@ class DataFeed {
   std::vector<std::string> ins_id_vec_;
   std::vector<std::string> ins_content_vec_;
   platform::Place place_;
+  bool keep_padding_zeros_ = false;
 };
 
 // PrivateQueueDataFeed is the base virtual class for ohther DataFeeds.

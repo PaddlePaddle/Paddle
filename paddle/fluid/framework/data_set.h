@@ -62,9 +62,12 @@ class Dataset {
   virtual void SetDataFeedDesc(const std::string& data_feed_desc_str) = 0;
   // set channel num
   virtual void SetChannelNum(int channel_num) = 0;
-  // set parse ins id
+  // set parse ins id, id is a string
   virtual void SetParseInsId(bool parse_ins_id) = 0;
+  // set parse ins content, content is a string
   virtual void SetParseContent(bool parse_content) = 0;
+  // keep padding zeros, it is useful when reshape
+  virtual void SetKeepPaddingZeros(bool keep) = 0;
   // set merge by ins id
   virtual void SetMergeByInsId(int merge_size) = 0;
   virtual void SetGenerateUniqueFeasign(bool gen_uni_feasigns) = 0;
@@ -161,6 +164,7 @@ class DatasetImpl : public Dataset {
   virtual void SetChannelNum(int channel_num);
   virtual void SetParseInsId(bool parse_ins_id);
   virtual void SetParseContent(bool parse_content);
+  virtual void SetKeepPaddingZeros(bool keep);
   virtual void SetMergeByInsId(int merge_size);
   virtual void SetGenerateUniqueFeasign(bool gen_uni_feasigns);
   virtual void SetFeaEval(bool fea_eval, int record_candidate_size);
@@ -239,6 +243,7 @@ class DatasetImpl : public Dataset {
   bool parse_ins_id_;
   bool parse_content_;
   size_t merge_size_;
+  bool keep_padding_zeros_ = false;
   bool slots_shuffle_fea_eval_ = false;
   bool gen_uni_feasigns_ = false;
   int preload_thread_num_;

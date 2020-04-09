@@ -127,6 +127,11 @@ void DatasetImpl<T>::SetParseContent(bool parse_content) {
 }
 
 template <typename T>
+void SetKeepPaddingZeros(bool keep) {
+  keep_padding_zeros_ = keep;
+}
+
+template <typename T>
 void DatasetImpl<T>::SetMergeByInsId(int merge_size) {
   merge_by_insid_ = true;
   parse_ins_id_ = true;

@@ -203,8 +203,9 @@ int PrivateQueueDataFeed<T>::Next() {
 #ifdef _LINUX
   CheckStart();
   int index = 0;
-  std::vector<T> ins_vec;
+  thread_local std::vector<T> ins_vec;
   ins_vec.reserve(default_batch_size_);
+  ins_vec.clear();
   while (index < default_batch_size_) {
     T instance;
     if (!queue_->Get(instance)) {
@@ -610,7 +611,8 @@ bool MultiSlotDataFeed::ParseOneInstanceFromPipe(Record* instance) {
             float feasign = strtof(endptr, &endptr);
             // if float feasign is equal to zero, ignore it
             // except when slot is dense
-            if (fabs(feasign) < 1e-6 && !use_slots_is_dense_[i]) {
+            if (fabs(feasign) < 1e-6 && !use_slots_is_dense_[i]
+                && !keep_padding_zeros_) {
               continue;
             }
             FeatureKey f;
@@ -622,7 +624,8 @@ bool MultiSlotDataFeed::ParseOneInstanceFromPipe(Record* instance) {
             uint64_t feasign = (uint64_t)strtoull(endptr, &endptr, 10);
             // if uint64 feasign is equal to zero, ignore it
             // except when slot is dense
-            if (feasign == 0 && !use_slots_is_dense_[i]) {
+            if (feasign == 0 && !use_slots_is_dense_[i]
+                && !keep_padding_zeros_) {
               continue;
             }
             FeatureKey f;
@@ -889,7 +892,8 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
             float feasign = strtof(endptr, &endptr);
             // if float feasign is equal to zero, ignore it
             // except when slot is dense
-            if (fabs(feasign) < 1e-6 && !use_slots_is_dense_[i]) {
+            if (fabs(feasign) < 1e-6 && !use_slots_is_dense_[i]
+                && !keep_padding_zeros_) {
               continue;
             }
             FeatureKey f;
@@ -901,7 +905,8 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstanceFromPipe(Record* instance) {
             uint64_t feasign = (uint64_t)strtoull(endptr, &endptr, 10);
             // if uint64 feasign is equal to zero, ignore it
             // except when slot is dense
-            if (feasign == 0 && !use_slots_is_dense_[i]) {
+            if (feasign == 0 && !use_slots_is_dense_[i]
+                && keep_padding_zeros_) {
               continue;
             }
             FeatureKey f;

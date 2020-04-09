@@ -310,6 +310,7 @@ class InMemoryDataset(DatasetBase):
         self.parse_content = False
         self.merge_by_lineid = False
         self.fleet_send_sleep_seconds = None
+        self.set_keep_padding_zeros = False
 
     def _prepare_to_run(self):
         """
@@ -324,6 +325,7 @@ class InMemoryDataset(DatasetBase):
         self.dataset.set_queue_num(self.queue_num)
         self.dataset.set_parse_ins_id(self.parse_ins_id)
         self.dataset.set_parse_content(self.parse_content)
+        self.dataset.set_keep_padding_zeros(self.set_keep_padding_zeros)
         self.dataset.set_data_feed_desc(self.desc())
         self.dataset.create_channel()
         self.dataset.create_readers()
@@ -423,6 +425,12 @@ class InMemoryDataset(DatasetBase):
 
         """
         self.fleet_send_sleep_seconds = fleet_send_sleep_seconds
+
+    def set_keep_padding_zeros(self, keep):
+        """
+
+        """
+        self.set_keep_padding_zeros = keep
 
     def set_merge_by_lineid(self, merge_size=2):
         """
@@ -690,6 +698,7 @@ class QueueDataset(DatasetBase):
         self.proto_desc.name = "MultiSlotDataFeed"
         self.parse_ins_id = False
         self.parse_content = False
+        self.set_keep_padding_zeros = True
 
     def _prepare_to_run(self):
         """
@@ -705,6 +714,7 @@ class QueueDataset(DatasetBase):
         self.dataset.set_data_feed_desc(self.desc())
         self.dataset.set_parse_ins_id(self.parse_ins_id)
         self.dataset.set_parse_content(self.parse_content)
+        self.dataset.set_keep_padding_zeros(self.set_keep_padding_zeros)
         self.dataset.create_readers()
 
     def local_shuffle(self):
@@ -761,6 +771,8 @@ class QueueDataset(DatasetBase):
     def set_parse_content(self, parse_content):
         self.parse_content = parse_content
 
+    def set_keep_padding_zeros(self, keep):
+        self.set_keep_padding_zeros = keep
 
 
 class FileInstantDataset(DatasetBase):
