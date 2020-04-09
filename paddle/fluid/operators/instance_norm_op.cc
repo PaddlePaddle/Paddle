@@ -24,26 +24,43 @@ namespace operators {
 
 void InstanceNormOp::InferShape(framework::InferShapeContext *ctx) const {
   PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                    "Input(X) of Instance Norm Op should not be null.");
-  PADDLE_ENFORCE_EQ(ctx->HasInput("Scale"), true,
-                    "Input(Scale) of Instance Norm Op should not be null.");
+                    platform::errors::InvalidArgument(
+                        "Input(X) of Instance Norm Op should not be null."));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput("Scale"), true,
+      platform::errors::InvalidArgument(
+          "Input(Scale) of Instance Norm Op should not be null."));
   PADDLE_ENFORCE_EQ(ctx->HasInput("Bias"), true,
-                    "Input(Bias) of Instance Norm Op should not be null.");
+                    platform::errors::InvalidArgument(
+                        "Input(Bias) of Instance Norm Op should not be null."));
   PADDLE_ENFORCE_EQ(ctx->HasOutput("Y"), true,
-                    "Output(Y) of Instance Norm Op should not be null.");
+                    platform::errors::InvalidArgument(
+                        "Output(Y) of Instance Norm Op should not be null."));
 
   PADDLE_ENFORCE_EQ(
       ctx->HasOutput("SavedMean"), true,
-      "Output(SavedMean) of Instance Norm Op should not be null.");
+      platform::errors::InvalidArgument(
+          "Output(SavedMean) of Instance Norm Op should not be null."));
   PADDLE_ENFORCE_EQ(
       ctx->HasOutput("SavedVariance"), true,
-      "Output(SavedVariance) of Instance Norm Op should not be null.");
+      platform::errors::InvalidArgument(
+          "Output(SavedVariance) of Instance Norm Op should not be null."));
 
   const auto x_dims = ctx->GetInputDim("X");
-  PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                    "the dimension of input X must greater than or equal to 2");
-  PADDLE_ENFORCE_LE(x_dims.size(), 5,
-                    "the dimension of input X must smaller than or equal to 5");
+  PADDLE_ENFORCE_GE(
+      x_dims.size(), 2,
+      platform::errors::InvalidArgument(
+          "ShapeError: the dimension of input X must "
+          "greater than or equal to 2. But received: the shape of input "
+          "X = [%s], the dimension of input X =[%d]",
+          x_dims, x_dims.size()));
+  PADDLE_ENFORCE_LE(
+      x_dims.size(), 5,
+      platform::errors::InvalidArgument(
+          "ShapeError: the dimension of input X must "
+          "smaller than or equal to 5, But received: the shape of input "
+          "X = [%s], the dimension of input X = [%d]",
+          x_dims, x_dims.size()));
   auto N = x_dims[0];
   auto C = x_dims[1];
   auto NxC = N * C;
@@ -51,15 +68,34 @@ void InstanceNormOp::InferShape(framework::InferShapeContext *ctx) const {
   auto scale_dim = ctx->GetInputDim("Scale");
   auto bias_dim = ctx->GetInputDim("Bias");
 
-  PADDLE_ENFORCE_EQ(scale_dim.size(), 1UL);
-  PADDLE_ENFORCE_EQ(bias_dim.size(), 1UL);
+  PADDLE_ENFORCE_EQ(
+      scale_dim.size(), 1UL,
+      platform::errors::InvalidArgument(
+          "ShapeError: the dimension of scale must equal to 1."
+          "But received: the shape of scale is [%s], the dimension "
+          "of scale is [%d]",
+          scale_dim, scale_dim.size()));
+  PADDLE_ENFORCE_EQ(bias_dim.size(), 1UL,
+                    platform::errors::InvalidArgument(
+                        "ShapeError: the dimension of bias must equal to 1."
+                        "But received: the shape of bias is [%s],the dimension "
+                        "of bias is [%d]",
+                        bias_dim, bias_dim.size()));
 
   bool check = !((!ctx->IsRuntime()) && (framework::product(scale_dim) <= 0 ||
                                          framework::product(bias_dim) <= 0));
 
   if (check) {
-    PADDLE_ENFORCE_EQ(scale_dim[0], C);
-    PADDLE_ENFORCE_EQ(bias_dim[0], C);
+    PADDLE_ENFORCE_EQ(scale_dim[0], C,
+                      platform::errors::InvalidArgument(
+                          "ShapeError: the shape of scale must equal to [%d]"
+                          "But received: the shape of scale is [%d]",
+                          C, scale_dim[0]));
+    PADDLE_ENFORCE_EQ(bias_dim[0], C,
+                      platform::errors::InvalidArgument(
+                          "ShapeError: the shape of bias must equal to [%d]"
+                          "But received: the shape of bias is [%d]",
+                          C, bias_dim[0]));
   }
 
   ctx->SetOutputDim("Y", x_dims);
@@ -78,10 +114,12 @@ framework::OpKernelType InstanceNormOp::GetExpectedKernelType(
   if (input_data_type == framework::proto::VarType::FP64) {
     in_param_type = framework::proto::VarType::FP64;
   }
-  PADDLE_ENFORCE_EQ(in_param_type, ctx.Input<Tensor>("Scale")->type(),
-                    "Scale input should be of float type");
-  PADDLE_ENFORCE_EQ(in_param_type, ctx.Input<Tensor>("Bias")->type(),
-                    "Bias input should be of float type");
+  PADDLE_ENFORCE_EQ(
+      in_param_type, ctx.Input<Tensor>("Scale")->type(),
+      platform::errors::InvalidArgument("Scale input should be of float type"));
+  PADDLE_ENFORCE_EQ(
+      in_param_type, ctx.Input<Tensor>("Bias")->type(),
+      platform::errors::InvalidArgument("Bias input should be of float type"));
 
   return framework::OpKernelType(input_data_type, ctx.GetPlace());
 }
@@ -91,7 +129,8 @@ void InstanceNormOpMaker::Make() {
       .SetDefault(1e-5)
       .AddCustomChecker([](const float &epsilon) {
         PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f, true,
-                          "'epsilon' should be between 0.0 and 0.001.");
+                          platform::errors::InvalidArgument(
+                              "'epsilon' should be between 0.0 and 0.001."));
       });
   AddInput("X", "The input tensor");
   AddInput("Scale",
@@ -193,24 +232,33 @@ class InstanceNormKernel<platform::CPUDeviceContext, T>
 };
 
 void InstanceNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
-  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) should not be null");
-  PADDLE_ENFORCE_EQ(ctx->HasInput("Scale"), true,
-                    "Input(scale) should not be null");
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput("X"), true,
+      platform::errors::InvalidArgument("Input(X) should not be null"));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput("Scale"), true,
+      platform::errors::InvalidArgument("Input(scale) should not be null"));
 
-  PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Y")), true,
-                    "Input(Y@GRAD) should not be null");
-  PADDLE_ENFORCE_EQ(ctx->HasInput("SavedMean"), true,
-                    "Input(SavedMean) should not be null");
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput(framework::GradVarName("Y")), true,
+      platform::errors::InvalidArgument("Input(Y@GRAD) should not be null"));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput("SavedMean"), true,
+      platform::errors::InvalidArgument("Input(SavedMean) should not be null"));
   PADDLE_ENFORCE_EQ(ctx->HasInput("SavedVariance"), true,
-                    "Input(SavedVariance) should not be null");
+                    platform::errors::InvalidArgument(
+                        "Input(SavedVariance) should not be null"));
 
   // check output
-  PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
-                    "Output(x@GRAD) should not be null");
+  PADDLE_ENFORCE_EQ(
+      ctx->HasOutput(framework::GradVarName("X")), true,
+      platform::errors::InvalidArgument("Output(x@GRAD) should not be null"));
   if (ctx->HasOutput(framework::GradVarName("Scale"))) {
-    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("Bias")), true,
-                      "Output(Scale@GRAD) and Output(Bias@GRAD) should not be "
-                      "null at the same time");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput(framework::GradVarName("Bias")), true,
+        platform::errors::InvalidArgument(
+            "Output(Scale@GRAD) and Output(Bias@GRAD) should not be "
+            "null at the same time"));
   }
   const auto x_dims = ctx->GetInputDim("X");
   const int C = x_dims[1];
@@ -333,21 +381,29 @@ class InstanceNormGradKernel<platform::CPUDeviceContext, T>
 
 void InstanceNormDoubleGradOp::InferShape(
     framework::InferShapeContext *ctx) const {
-  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) should not be null");
-  PADDLE_ENFORCE_EQ(ctx->HasInput("Scale"), true,
-                    "Input(Scale) should not be null.");
-  PADDLE_ENFORCE_EQ(ctx->HasInput("SavedMean"), true,
-                    "Input(SavedMean) should not be null");
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput("X"), true,
+      platform::errors::InvalidArgument("Input(X) should not be null"));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput("Scale"), true,
+      platform::errors::InvalidArgument("Input(Scale) should not be null."));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput("SavedMean"), true,
+      platform::errors::InvalidArgument("Input(SavedMean) should not be null"));
   PADDLE_ENFORCE_EQ(ctx->HasInput("SavedVariance"), true,
-                    "Input(SavedVariance) should not be null");
-  PADDLE_ENFORCE_EQ(ctx->HasInput("DDX"), true,
-                    "Input(DDX) should not be null.");
-  PADDLE_ENFORCE_EQ(ctx->HasInput("DY"), true,
-                    "Input(Y@GRAD) should not be null");
+                    platform::errors::InvalidArgument(
+                        "Input(SavedVariance) should not be null"));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput("DDX"), true,
+      platform::errors::InvalidArgument("Input(DDX) should not be null."));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput("DY"), true,
+      platform::errors::InvalidArgument("Input(Y@GRAD) should not be null"));
 
   // check output
-  PADDLE_ENFORCE_EQ(ctx->HasOutput("DX"), true,
-                    "Output(DX) should not be null");
+  PADDLE_ENFORCE_EQ(
+      ctx->HasOutput("DX"), true,
+      platform::errors::InvalidArgument("Output(DX) should not be null"));
 
   const auto x_dims = ctx->GetInputDim("X");
   const int C = x_dims[1];
