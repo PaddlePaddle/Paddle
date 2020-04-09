@@ -241,7 +241,7 @@ class CompiledProgram(object):
               compiled_train_prog = fluid.CompiledProgram(
                   fluid.default_main_program()).with_data_parallel(
                           loss_name=loss.name, places=parallel_places)
-              # NOTE：if not set share_vars_from=compiled_train_prog,
+              # NOTE: if not set share_vars_from=compiled_train_prog,
               # the parameters used in test process are different with 
               # the parameters used by train process
               compiled_test_prog = fluid.CompiledProgram(
