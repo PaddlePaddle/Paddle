@@ -104,7 +104,7 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(
         ctx->HasOutput("Out"),
         platform::errors::InvalidArgument(
-            "Output(Out) of FusedElemwiseActivationOp op should not be null.");
+            "Output(Out) of FusedElemwiseActivationOp op should not be null."));
 
     auto x_dim = ctx->GetInputDim("X");
     auto y_dim = ctx->GetInputDim("Y");
