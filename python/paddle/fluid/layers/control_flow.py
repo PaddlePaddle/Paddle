@@ -1786,6 +1786,7 @@ def array_length(array):
             list), "The 'array' in array_write must be a list in dygraph mode"
         return len(array)
 
+    check_type(array, 'array', Variable, 'array_length')
     helper = LayerHelper('array_length', **locals())
     tmp = helper.create_variable_for_type_inference(dtype='int64')
     tmp.stop_gradient = True

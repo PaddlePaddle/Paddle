@@ -18,6 +18,7 @@ import unittest
 import paddle.fluid.layers as layers
 from paddle.fluid.executor import Executor
 import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
 import numpy
 
 
@@ -31,6 +32,18 @@ class TestLoDArrayLength(unittest.TestCase):
         exe = Executor(cpu)
         result = exe.run(fetch_list=[arr_len])[0]
         self.assertEqual(11, result[0])
+
+
+class TestLoDArrayLengthOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            input_data = numpy.random.random((2, 4)).astype("float32")
+
+            def test_Variable():
+                # the input type must be Variable
+                layers.array_length(input_data)
+
+            self.assertRaises(TypeError, test_Variable)
 
 
 if __name__ == '__main__':
