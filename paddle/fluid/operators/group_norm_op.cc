@@ -190,18 +190,21 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     const auto *var = ctx.InputVar(framework::GradVarName("Y"));
-    if (var == nullptr) {
-      PADDLE_THROW(platform::errors::InvalidArgument("can't find Y@GRAD"));
-    }
+
+    PADDLE_ENFORCE_EQ(
+        true, var != nullptr,
+        platform::errors::InvalidArgument(
+            "Input(Y@GRAD) of GroupNormGradOp should not be null"));
     const Tensor *t = nullptr;
     if (var->IsType<Tensor>()) {
       t = &var->Get<Tensor>();
     } else if (var->IsType<LoDTensor>()) {
       t = &var->Get<LoDTensor>();
     }
-    if (t == nullptr) {
-      PADDLE_THROW(platform::errors::InvalidArgument("can't find Y@GRAD"));
-    }
+    PADDLE_ENFORCE_EQ(
+        true, t != nullptr,
+        platform::errors::InvalidArgument(
+            "Input(Y@GRAD) Tensor of GroupNormGradOp should not be null"));
     return framework::OpKernelType(t->type(), ctx.GetPlace());
   }
 };
