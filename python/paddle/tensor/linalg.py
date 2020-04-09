@@ -98,6 +98,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
             # x: [M], y: [N]
             # paddle.matmul(x, y, True, True)  # out: [M, N]
             
+            import paddle
             import paddle.fluid as fluid
             x = fluid.data(name='x', shape=[2, 3], dtype='float32')
             y = fluid.data(name='y', shape=[3, 2], dtype='float32')
@@ -186,10 +187,6 @@ def bmm(x, y, name=None):
         y = fluid.data(name='y', shape=[10, 4, 5], dtype='float32')
         out = paddle.bmm(x, y)
     """
-    if in_dygraph_mode():
-        inputs = {'X': [x], 'Y': [y]}
-        outs = core.ops.bmm(inputs)
-        return outs['Out'][0]
 
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
