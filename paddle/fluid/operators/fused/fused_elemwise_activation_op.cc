@@ -66,7 +66,7 @@ static bool IsSupportedCompound(const std::vector<std::string> &functors) {
       functors.size(), 2UL,
       platform::errors::InvalidArgument(
           "Invalid functor list size %d, which should be equal to %d.",
-          functor_list.size(), 2));
+          functors.size(), 2));
 
   static std::unordered_set<std::string> unary_fun = {"scale", "relu", "tanh",
                                                       "sigmoid"};
