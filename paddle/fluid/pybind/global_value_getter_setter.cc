@@ -27,18 +27,64 @@
 #include "paddle/fluid/platform/macros.h"
 #include "pybind11/stl.h"
 
-DECLARE_double(eager_delete_tensor_gb);
+// data processing
 DECLARE_bool(use_mkldnn);
+// debug
+DECLARE_bool(check_nan_inf);
+DECLARE_bool(cpu_deterministic);
+DECLARE_bool(enable_rpc_profiler);
+DECLARE_int32(multiple_of_cupti_buffer_size);
+DECLARE_bool(reader_queue_speed_test_mode);
+// device management
+DECLARE_int32(paddle_num_threads);
+// executor
+DECLARE_bool(enable_parallel_graph);
+DECLARE_string(pe_profile_fname);
+DECLARE_string(print_sub_graph_dir);
 DECLARE_bool(use_ngraph);
-DECLARE_bool(use_system_allocator);
+// memory management
+DECLARE_string(allocator_strategy);
+DECLARE_double(eager_delete_tensor_gb);
+DECLARE_double(fraction_of_cpu_memory_to_use);
 DECLARE_bool(free_idle_chunk);
 DECLARE_bool(free_when_no_cache_hit);
+DECLARE_int32(fuse_parameter_groups_size);
+DECLARE_double(fuse_parameter_memory_size);
+DECLARE_bool(init_allocated_mem);
+DECLARE_uint64(initial_cpu_memory_in_mb);
+DECLARE_double(memory_fraction_of_eager_deletion);
+DECLARE_bool(use_pinned_memory);
+DECLARE_bool(use_system_allocator);
+// others
+DECLARE_bool(benchmark);
+DECLARE_int32(inner_op_parallelism);
+DECLARE_string(tracer_profile_fname);
 #ifdef PADDLE_WITH_CUDA
-DECLARE_uint64(gpu_memory_limit_mb);
+// cudnn
+DECLARE_uint64(conv_workspace_size_limit);
+DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 DECLARE_bool(cudnn_deterministic);
+DECLARE_bool(cudnn_exhaustive_search);
+// data processing
+DECLARE_bool(enable_cublas_tensor_op_math);
+// device management
+DECLARE_string(selected_gpus);
+// memory management
+DECLARE_bool(eager_delete_scope);
+DECLARE_bool(fast_eager_deletion_mode);
+DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
+DECLARE_double(fraction_of_gpu_memory_to_use);
+DECLARE_uint64(gpu_memory_limit_mb);
+DECLARE_uint64(initial_gpu_memory_in_mb);
+DECLARE_uint64(reallocate_gpu_memory_in_mb);
+// others
+DECLARE_bool(sync_nccl_allreduce);
 #endif
-DECLARE_string(allocator_strategy);
-DECLARE_bool(enable_parallel_graph);
+#ifdef PADDLE_WITH_DISTRIBUTE
+DECLARE_int32(rpc_send_thread_num);
+DECLARE_int32(rpc_get_thread_num);
+DECLARE_int32(rpc_prefetch_thread_num);
+#endif
 
 namespace paddle {
 namespace pybind {
@@ -290,13 +336,32 @@ static void RegisterGlobalVarGetterSetter() {
 
   REGISTER_PUBLIC_GLOBAL_VAR(
       FLAGS_eager_delete_tensor_gb, FLAGS_enable_parallel_graph,
-      FLAGS_allocator_strategy, FLAGS_use_system_allocator);
+      FLAGS_allocator_strategy, FLAGS_use_system_allocator, FLAGS_check_nan_inf,
+      FLAGS_cpu_deterministic, FLAGS_enable_rpc_profiler,
+      FLAGS_multiple_of_cupti_buffer_size, FLAGS_reader_queue_speed_test_mode,
+      FLAGS_pe_profile_fname, FLAGS_print_sub_graph_dir,
+      FLAGS_fraction_of_cpu_memory_to_use, FLAGS_fuse_parameter_groups_size,
+      FLAGS_fuse_parameter_memory_size, FLAGS_init_allocated_mem,
+      FLAGS_initial_cpu_memory_in_mb, FLAGS_memory_fraction_of_eager_deletion,
+      FLAGS_use_pinned_memory, FLAGS_benchmark, FLAGS_inner_op_parallelism,
+      FLAGS_tracer_profile_fname, FLAGS_paddle_num_threads);
 
 #ifdef PADDLE_WITH_CUDA
-  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_gpu_memory_limit_mb,
-                             FLAGS_cudnn_deterministic);
+  REGISTER_PUBLIC_GLOBAL_VAR(
+      FLAGS_gpu_memory_limit_mb, FLAGS_cudnn_deterministic,
+      FLAGS_conv_workspace_size_limit, FLAGS_cudnn_batchnorm_spatial_persistent,
+      FLAGS_cudnn_exhaustive_search, FLAGS_eager_delete_scope,
+      FLAGS_fast_eager_deletion_mode,
+      FLAGS_fraction_of_cuda_pinned_memory_to_use,
+      FLAGS_fraction_of_gpu_memory_to_use, FLAGS_initial_gpu_memory_in_mb,
+      FLAGS_reallocate_gpu_memory_in_mb, FLAGS_enable_cublas_tensor_op_math,
+      FLAGS_selected_gpus, FLAGS_sync_nccl_allreduce);
+#endif
+#ifdef PADDLE_WITH_DITRIBUTE
+  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_rpc_send_thread_num,
+                             FLAGS_rpc_get_thread_num,
+                             FLAGS_rpc_prefetch_thread_num);
 #endif
 }
-
 }  // namespace pybind
 }  // namespace paddle

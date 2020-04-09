@@ -993,7 +993,7 @@ def yolov3_loss(x,
         "GTBox": gt_box,
         "GTLabel": gt_label,
     }
-    if gt_score:
+    if gt_score is not None:
         inputs["GTScore"] = gt_score
 
     attrs = {

@@ -22,8 +22,8 @@ import paddle
 from paddle.fluid.framework import IrGraph
 from paddle.fluid.contrib.slim.quantization import QuantizationTransformPass
 from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass
-from paddle.fluid.contrib.slim.quantization import ScaleForTrainingPass
-from paddle.fluid.contrib.slim.quantization import ScaleForInferencePass
+from paddle.fluid.contrib.slim.quantization import OutScaleForTrainingPass
+from paddle.fluid.contrib.slim.quantization import OutScaleForInferencePass
 from paddle.fluid.contrib.slim.quantization import AddQuantDequantPass
 from paddle.fluid import core
 
@@ -112,7 +112,7 @@ class TestQuantizationScalePass(unittest.TestCase):
         add_quant_dequant_pass.apply(main_graph)
         add_quant_dequant_pass.apply(test_graph)
 
-        scale_training_pass = ScaleForTrainingPass(scope=scope, place=place)
+        scale_training_pass = OutScaleForTrainingPass(scope=scope, place=place)
         scale_training_pass.apply(main_graph)
 
         dev_name = '_gpu' if use_cuda else '_cpu'
@@ -131,6 +131,7 @@ class TestQuantizationScalePass(unittest.TestCase):
         build_strategy = fluid.BuildStrategy()
         build_strategy.memory_optimize = False
         build_strategy.enable_inplace = False
+        build_strategy.fuse_all_reduce_ops = False
         binary = fluid.CompiledProgram(main_graph.graph).with_data_parallel(
             loss_name=loss.name, build_strategy=build_strategy)
         iters = 5
@@ -150,7 +151,7 @@ class TestQuantizationScalePass(unittest.TestCase):
                 if not for_ci:
                     print('{}: {}'.format('loss' + dev_name, loss_v))
 
-        scale_inference_pass = ScaleForInferencePass(scope=scope)
+        scale_inference_pass = OutScaleForInferencePass(scope=scope)
         scale_inference_pass.apply(test_graph)
 
         # Freeze graph for inference, but the weight of fc/conv is still float type.

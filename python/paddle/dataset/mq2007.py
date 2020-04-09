@@ -27,7 +27,6 @@ from __future__ import print_function
 
 import os
 import functools
-import rarfile
 from .common import download
 import numpy as np
 
@@ -40,6 +39,8 @@ def __initialize_meta_info__():
     """
   download and extract the MQ2007 dataset
   """
+    import rarfile
+
     fn = fetch()
     rar = rarfile.RarFile(fn)
     dirpath = os.path.dirname(fn)
