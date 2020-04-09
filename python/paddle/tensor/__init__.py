@@ -166,7 +166,7 @@ from .search import argmax  #DEFINE_ALIAS
 # from .search import has_nan   #DEFINE_ALIAS
 # from .search import masked_select   #DEFINE_ALIAS
 # from .search import topk   #DEFINE_ALIAS
-# from .search import where   #DEFINE_ALIAS
+from .search import where  #DEFINE_ALIAS
 # from .search import index_select   #DEFINE_ALIAS
 from .search import index_sample  # DEFINE_ALIAS
 # from .search import nonzero   #DEFINE_ALIAS

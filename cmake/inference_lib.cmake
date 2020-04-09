@@ -117,13 +117,6 @@ function(copy_part_of_thrid_party TARGET DST)
                 DSTS ${dst_dir} ${dst_dir}/lib)
     endif ()
 
-    if (WITH_NGRAPH)
-        set(dst_dir "${DST}/third_party/install/ngraph")
-        copy(${TARGET}
-                SRCS ${NGRAPH_INC_DIR} ${NGRAPH_LIB_DIR}
-                DSTS ${dst_dir} ${dst_dir})
-    endif ()
-
     if (LITE_BINARY_DIR)
         set(dst_dir "${DST}/third_party/install/lite")
         copy(${TARGET}
