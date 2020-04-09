@@ -64,14 +64,16 @@ void FusedEmbeddingFCLSTMOp::InferShape(
   if (ctx->HasInput("H0")) {
     PADDLE_ENFORCE_EQ(ctx->HasInput("C0"), true,
                       platform::errors::InvalidArgument(
-                          "Input(Cell) and Input(Hidden) of LSTM should not "
-                          "be null at the same time."));
+                          "Input(Cell) and Input(Hidden) of LSTM should exist "
+                          "at the same time."));
     auto h_dims = ctx->GetInputDim("H0");
     auto c_dims = ctx->GetInputDim("C0");
-    PADDLE_ENFORCE_EQ(h_dims, c_dims,
-                      platform::errors::InvalidArgument(
-                          "The dimension of Input(H0) and Input(C0) "
-                          "should be the same"));
+    PADDLE_ENFORCE_EQ(
+        h_dims, c_dims,
+        platform::errors::InvalidArgument(
+            "The dimension of Input(H0) and Input(C0) "
+            "should be the same, but received H0 dim is:[%s], C0 dim is[%s]",
+            h_dims, c_dims));
   }
 
   auto wh_dims = ctx->GetInputDim("WeightH");
@@ -85,12 +87,12 @@ void FusedEmbeddingFCLSTMOp::InferShape(
                     platform::errors::InvalidArgument(
                         "The first dimension of Input(WeightH) should equal to "
                         "frame size, but received value is:%d.",
-                        frame_size));
+                        wh_dims[0]));
   PADDLE_ENFORCE_EQ(wh_dims[1], 4 * frame_size,
                     platform::errors::InvalidArgument(
                         "The second dimension of Input(WeightH) should equal "
-                        "to 4 * frame size, but received value is:%d.",
-                        frame_size));
+                        "to 4 * %d, but received value is:%d.",
+                        frame_size, wh_dims[1]));
 
   auto b_dims = ctx->GetInputDim("Bias");
   PADDLE_ENFORCE_EQ(
@@ -107,8 +109,9 @@ void FusedEmbeddingFCLSTMOp::InferShape(
       platform::errors::InvalidArgument(
           "The second dimension of Input(Bias) should be "
           "7 * %d if enable peepholes connection or"
-          "4 * %d if disable peepholes",
-          frame_size, frame_size));
+          "4 * %d if disable peepholes, bias dim is:%d, use_peepholes:%d",
+          frame_size, frame_size, b_dims[1],
+          ctx->Attrs().Get<bool>("use_peepholes")));
 
   framework::DDim out_dims({x_dims[0], frame_size});
   ctx->SetOutputDim("Hidden", out_dims);
