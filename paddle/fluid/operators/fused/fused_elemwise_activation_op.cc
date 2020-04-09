@@ -79,8 +79,8 @@ static bool IsSupportedCompound(const std::vector<std::string> &functors) {
   } else if (binary_fun.count(functors[1])) {
     unary_fun_str = functors[0];
   } else {
-    PADDLE_THROW("%s and %s are not included in fused_list.", functors[0],
-                 functors[1]);
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s and %s are not included in fused_list.", functors[0], functors[1]));
   }
   PADDLE_ENFORCE_EQ(unary_fun.count(unary_fun_str), 1,
                     platform::errors::InvalidArgument(
