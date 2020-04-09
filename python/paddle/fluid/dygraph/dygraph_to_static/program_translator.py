@@ -20,6 +20,7 @@ import six
 import textwrap
 import threading
 import warnings
+from collections import defaultdict
 
 from paddle.fluid import framework
 from paddle.fluid import core, executor
@@ -28,6 +29,7 @@ from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStat
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import data_layer_not_check
 from paddle.fluid.framework import in_dygraph_mode
+from paddle.fluid.data_feeder import check_type
 
 __all__ = ['ProgramTranslator', 'convert_function_with_cache']
 
@@ -272,8 +274,9 @@ class ProgramTranslator(object):
         else:
             self._exe = exe
         self._program_cache = ProgramCache()
+        self._optimizer_info = None
         self._optimizer = None
-        self._already_minimized = False
+        self._loss_name = None
         # Once main_program is changed, should run startup_program.
         self._need_startup = True
 
@@ -284,7 +287,7 @@ class ProgramTranslator(object):
         if in_dygraph_mode():
             warnings.warn(
                 "The ProgramTranslator.get_output doesn't work in dygraph "
-                "mode. We will just return dygraph output. Use the it in "
+                "mode. We will just return dygraph output. Use it in "
                 "static mode if you would like to translate to static graph.")
             return dygraph_func(*args, **kwargs)
 
@@ -302,7 +305,7 @@ class ProgramTranslator(object):
         if in_dygraph_mode():
             warnings.warn(
                 "The ProgramTranslator.get_func doesn't work in dygraph "
-                "mode. We will just return dygraph function. Use the it in "
+                "mode. We will just return dygraph function. Use it in "
                 "static mode if you would like to translate to static graph.")
             return dygraph_func
         static_func = convert_function_with_cache(dygraph_func)
@@ -354,18 +357,18 @@ class ProgramTranslator(object):
 
         return outputs
 
-    def set_optimizer(self, optimizer, loss_name):
+    def set_optimizer(self, optimizer, index_of_loss=0):
         """
         Support to set or update the optimizer used to minimize loss.
         """
+        check_type(index_of_loss, "index_of_loss", int,
+                   "ProgramTranslator.set_optimizer")
         self._check_cache_valid()
-        self._optimizer = optimizer
-
-        if not isinstance(loss_name, six.string_types):
+        if self._optimizer and self._loss_name:
             raise ValueError(
-                "Type of input loss_name should type(str), but received {}.".
-                format(type(loss_name)))
-        self._loss_name = loss_name
+                "{} for {} has already been set before. Please confirm not to call `set_optimizer` in for loop. ".
+                format(self._optimizer, self._loss_name))
+        self._optimizer_info = (optimizer, index_of_loss)
 
     def save_inference_model(self, dirname, feed=None, fetch=None):
         """
@@ -397,7 +400,7 @@ class ProgramTranslator(object):
         fetch_list = self._program_cache.outputs
 
         # Add optimizer if needed.
-        if self._optimizer and not self._already_minimized:
+        if self._optimizer_info and self._optimizer is None:
             self._add_optimizer()
 
         if self._need_startup:
@@ -434,21 +437,34 @@ class ProgramTranslator(object):
         """
         Support to set or update the optimizer used to minimize loss.
         """
+        optimizer, index_of_loss = self._optimizer_info
+
+        outputs = self._program_cache.outputs
+        outputs = [outputs] if not isinstance(outputs,
+                                              (list, tuple)) else outputs
+
+        assert abs(index_of_loss) < len(outputs), \
+            "index_of_loss: {} shall not exceed the length of outputs: {}.".format(
+            index_of_loss, len(outputs))
+
+        loss_var = outputs[index_of_loss]
+        check_type(loss_var, "loss_var", framework.Variable,
+                   "ProgramTranslator._add_optimizer")
+
         main_program = self._program_cache.main_program
         startup_program = self._program_cache.startup_program
         all_vars = main_program.block(0).vars
-        loss_var = all_vars.get(self._loss_name, None)
 
-        if loss_var is None:
+        if all_vars.get(loss_var.name, None) is None:
             raise ValueError(
-                "Can't find {} in main_program, please confirm whether the loss input is correct"
-                .format(self._loss_name))
+                "Can't find {} in main_program, please confirm whether the input loss is correct."
+                .format(loss_var.name))
         # Add optimizer to minimize loss
         with framework.program_guard(main_program, startup_program):
-            self._optimizer.minimize(loss_var)
+            optimizer.minimize(loss_var)
 
-        # Avoid to set optimizer repeatedly.
-        self._already_minimized = True
+        self._optimizer = optimizer
+        self._loss_name = loss_var.name
 
     def get_program_cache(self):
         """

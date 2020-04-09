@@ -2173,7 +2173,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
 
 
 def _error_message(what, arg_name, op_name, right_value, error_value):
-    error_message = "{what} of '{arg_name}' in Op({op_name}) must be " \
+    error_message = "{what} of '{arg_name}' in {op_name} must be " \
         "{right_value}, but received: {error_value}.".format(
         what=what,
         arg_name=arg_name,
@@ -2309,7 +2309,7 @@ class Switch(object):
         OP :ref:`api_fluid_layers_case` is easier to use and is called with less code but does the same thing as ``Switch`` .
 
     Member Functions:
-        case(cond): The case branch of Switch whose parameter cond is a scalar Variable of bool type. Only if the cond of the current case branch is True and the cond of the previous case branch is False, the statement after the case branch will be executed, and the statement after the case branch will not be executed.
+        case(condition): The case branch of Switch whose parameter cond is a scalar Variable of bool type. Only if the cond of the current case branch is True and the cond of the previous case branch is False, the statement after the case branch will be executed, and the statement after the case branch will not be executed.
         
         default(): The default branch of Switch. When cond of all case branches is False, the statement after default branch is executed.
 
@@ -2371,6 +2371,10 @@ class Switch(object):
     def case(self, condition):
         if not self.inside_scope:
             raise ValueError("case should be called inside with")
+
+        check_variable_and_dtype(
+            condition, 'condition', ['bool'],
+            'the member function case of fluid.layers.Switch')
 
         if len(self.pre_not_conditions) == 0:
             cond_block = ConditionalBlock([condition], is_scalar_condition=True)
