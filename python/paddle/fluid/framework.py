@@ -3838,7 +3838,7 @@ class Program(object):
                 prog_string = prog.to_string(throw_on_error=True, with_details=False)
                 prog_string_with_details = prog.to_string(throw_on_error=False, with_details=True)
                 print("program string without detail: {}".format(prog_string))
-                print("program string with detail: {}".format(prog_string_with_detail))
+                print("program string with detail: {}".format(prog_string_with_details))
         """
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
