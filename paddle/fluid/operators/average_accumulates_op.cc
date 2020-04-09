@@ -73,7 +73,7 @@ class AverageAccumulatesOp : public framework::OperatorWithKernel {
         ctx->HasInput("in_old_num_accumulates"), true,
         platform::errors::InvalidArgument(
             "Input (old_num_accumulates) of average_accumulates op "
-             "should not be null."));
+            "should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("in_num_updates"), true,
                       platform::errors::InvalidArgument(
                           "Input (num_updates) of average_accumulates op "
@@ -96,14 +96,14 @@ class AverageAccumulatesOp : public framework::OperatorWithKernel {
                           "Output (num_accumulates) of average_accumulates op should "
                           "not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("out_old_num_accumulates"), true,
+        ctx->HasOutput("out_num_accumulates"), true,
         platform::errors::InvalidArgument(
-            "Output (old_num_accumulates) of average_accumulates op "
-            "should not be null."));
+            "Output (num_accumulates) of average_accumulates op should "
+            "not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("out_num_updates"), true,
         platform::errors::InvalidArgument(
-            "Output (num_updates) of average_accumulates op "
+            "Output (old_num_accumulates) of average_accumulates op "
             "should not be null."));
 
     auto in_dim = ctx->GetInputDim("param");
