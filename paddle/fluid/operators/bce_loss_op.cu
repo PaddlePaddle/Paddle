@@ -11,24 +11,18 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <algorithm>
 #include "cub/cub.cuh"
 #include "paddle/fluid/operators/bce_loss_op.h"
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/gpu_launch_config.h"
 #include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-
-static constexpr int kNumCUDAThreads = 512;
-static constexpr int kNumMaxinumNumBlocks = 4096;
-
-static inline int NumBlocks(const int N) {
-  return std::min((N + kNumCUDAThreads - 1) / kNumCUDAThreads,
-                  kNumMaxinumNumBlocks);
-}
 
 #define CUDA_1D_KERNEL_LOOP(i, n)                              \
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
@@ -78,6 +72,8 @@ class BCELossCUDAKernel : public framework::OpKernel<T> {
     auto x_data = x->data<T>();
     auto out_data = out->mutable_data<T>(ctx.GetPlace());
     int x_numel = x->numel();
+    platform::GpuLaunchConfig config =
+        platform::getGpuLaunchConfig(x_numel, ctx);
 
     Tensor x_cpu;
     framework::TensorCopy(*x, platform::CPUPlace(), &x_cpu);
@@ -91,11 +87,10 @@ class BCELossCUDAKernel : public framework::OpKernel<T> {
                         "Illegal input, input must be less than or equal to 1");
     }
 
-    int blocks = NumBlocks(x_numel);
-    int threads = kNumCUDAThreads;
     auto& dev_ctx = ctx.cuda_device_context();
 
-    GPUBCELossForward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
+    GPUBCELossForward<
+        T><<<config.blocks, config.threads, 0, dev_ctx.stream()>>>(
         x_data, labels->data<T>(), out_data, x_numel);
   }
 };
@@ -111,11 +106,12 @@ class BCELossGradCUDAKernel : public framework::OpKernel<T> {
     auto dx_data = dx->mutable_data<T>(ctx.GetPlace());
 
     int x_numel = x->numel();
-    int blocks = NumBlocks(x_numel);
-    int threads = kNumCUDAThreads;
+    platform::GpuLaunchConfig config =
+        platform::getGpuLaunchConfig(x_numel, ctx);
     auto& dev_ctx = ctx.cuda_device_context();
 
-    GPUBCELossBackward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
+    GPUBCELossBackward<
+        T><<<config.blocks, config.threads, 0, dev_ctx.stream()>>>(
         x->data<T>(), labels->data<T>(), dout->data<T>(), dx_data, x_numel);
   }
 };

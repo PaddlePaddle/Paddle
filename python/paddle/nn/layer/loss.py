@@ -176,6 +176,11 @@ class BCELoss(fluid.dygraph.Layer):
     """
 
     def __init__(self, weight=None, reduction='mean'):
+        if reduction not in ['sum', 'mean', 'none']:
+            raise ValueError(
+                "The value of 'reduction' in bce_loss should be 'sum', 'mean' or 'none', but "
+                "received %s, which is not allowed." % reduction)
+
         super(BCELoss, self).__init__()
         self.weight = weight
         self.reduction = reduction
@@ -187,11 +192,6 @@ class BCELoss(fluid.dygraph.Layer):
             input, 'input', ['float32', 'float64'], 'bce_loss')
         fluid.data_feeder.check_variable_and_dtype(
             label, 'label', ['float32', 'float64'], 'bce_loss')
-
-        if self.reduction not in ['sum', 'mean', 'none']:
-            raise ValueError(
-                "The value of 'reduction' in bce_loss should be 'sum', 'mean' or 'none', but "
-                "received %s, which is not allowed." % self.reduction)
 
         out = self._helper.create_variable_for_type_inference(dtype=input.dtype)
         self._helper.append_op(
