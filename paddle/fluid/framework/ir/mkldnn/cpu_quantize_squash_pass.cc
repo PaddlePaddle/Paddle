@@ -139,15 +139,15 @@ void CPUQuantizeSquashPass::OpRequantSquash(Graph* graph) const {
     VLOG(4) << "squash op-requantize ops pair";
 
     GET_IR_NODE_FROM_SUBGRAPH(any_op, any_op, op_requant_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(any_out, any_out, op_requant_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(requant_in, requant_in, op_requant_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(requant_op, requant_op, op_requant_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(requant_out, requant_out, op_requant_pattern);
 
-    if (any_out->outputs.size() == 1) {
+    if (requant_in->outputs.size() == 1) {
       std::string any_op_output_name;
       for (auto name : any_op->Op()->OutputNames())
         for (auto output_name : any_op->Op()->Output(name))
-          if (output_name == any_out->Name()) any_op_output_name = name;
+          if (output_name == requant_in->Name()) any_op_output_name = name;
 
       PADDLE_ENFORCE_NE(
           any_op_output_name.empty(), true,
@@ -160,7 +160,7 @@ void CPUQuantizeSquashPass::OpRequantSquash(Graph* graph) const {
       any_op->Op()->SetOutput(any_op_output_name,
                               std::vector<std::string>({requant_out->Name()}));
       IR_NODE_LINK_TO(any_op, requant_out);
-      GraphSafeRemoveNodes(graph, {any_out, requant_op});
+      GraphSafeRemoveNodes(graph, {requant_in, requant_op});
       found_requant_squash_count++;
     }
   };

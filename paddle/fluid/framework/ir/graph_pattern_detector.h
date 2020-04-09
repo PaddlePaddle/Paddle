@@ -908,8 +908,7 @@ struct OpRequant : public PatternBase {
   PDNode* operator()();
 
   PATTERN_DECL_NODE(any_op);
-  PATTERN_DECL_NODE(any_out);
-
+  PATTERN_DECL_NODE(requant_in);
   PATTERN_DECL_NODE(requant_op);
   PATTERN_DECL_NODE(requant_out);
 };

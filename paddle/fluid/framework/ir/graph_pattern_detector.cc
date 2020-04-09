@@ -1496,16 +1496,16 @@ PDNode *patterns::OpRequant::operator()() {
                     ->assert_more([&](Node *node) {
                       return node->Op()->HasAttr("Scale_out") ? true : false;
                     });
-  auto any_out = pattern->NewNode(any_out_repr())
-                     ->assert_is_op_input("requantize", "Input");
+  auto requant_in = pattern->NewNode(requant_in_repr())
+                        ->assert_is_op_input("requantize", "Input");
   auto requant_op =
       pattern->NewNode(requant_op_repr())->assert_is_op("requantize");
   auto requant_out = pattern->NewNode(requant_out_repr())
                          ->AsOutput()
                          ->assert_is_op_output("requantize", "Output");
 
-  any_op->LinksTo({any_out});
-  requant_op->LinksFrom({any_out}).LinksTo({requant_out});
+  any_op->LinksTo({requant_in});
+  requant_op->LinksFrom({requant_in}).LinksTo({requant_out});
   return requant_out;
 }
 
