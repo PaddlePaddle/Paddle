@@ -243,6 +243,9 @@ class Conv2D(layers.Layer):
             'use_cudnn': self._use_cudnn,
             'use_mkldnn': False,
         }
+
+        check_variable_and_dtype(input, 'input',
+                                 ['float16', 'float32', 'float64'], 'Conv2D')
         pre_bias = self._helper.create_variable_for_type_inference(
             dtype=self._dtype)
 
