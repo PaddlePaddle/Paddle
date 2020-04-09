@@ -106,6 +106,33 @@ class TestLayer(LayerTest):
             ret = custom(x, do_linear2=True)
             self.assertTrue(np.array_equal(ret.numpy().shape, [3, 1]))
 
+    def test_dropout(self):
+        inp = np.ones([3, 32, 32], dtype='float32')
+        with self.static_graph():
+            t = layers.data(
+                name='data',
+                shape=[3, 32, 32],
+                dtype='float32',
+                append_batch_size=False)
+            dropout = nn.Dropout(p=0.35, seed=1, is_test=False)
+            ret = dropout(t)
+            ret2 = fluid.layers.dropout(
+                t, dropout_prob=0.35, seed=1, is_test=False)
+            static_ret, static_ret2 = self.get_static_graph_result(
+                feed={'data': inp}, fetch_list=[ret, ret2])
+        with self.dynamic_graph():
+            t = base.to_variable(inp)
+            dropout = nn.Dropout(p=0.35, seed=1, is_test=False)
+            dy_ret = dropout(t)
+            dy_ret2 = fluid.layers.dropout(
+                t, dropout_prob=0.35, seed=1, is_test=False)
+            dy_ret_value = dy_ret.numpy()
+            dy_ret2_value = dy_ret2.numpy()
+
+        self.assertTrue(np.array_equal(static_ret, static_ret2))
+        self.assertTrue(np.array_equal(dy_ret_value, dy_ret2_value))
+        self.assertTrue(np.array_equal(static_ret, dy_ret_value))
+
     def test_linear(self):
         inp = np.ones([3, 32, 32], dtype='float32')
         with self.static_graph():
@@ -1114,7 +1141,12 @@ class TestLayer(LayerTest):
                 dtype='float32',
                 lod_level=1,
                 append_batch_size=False)
-            ret = layers.group_norm(input=X, groups=2)
+            ret = layers.group_norm(
+                input=X,
+                groups=2,
+                param_attr=fluid.initializer.Uniform(
+                    low=-0.5, high=0.5),
+                bias_attr=fluid.initializer.ConstantInitializer(value=1))
             static_ret = self.get_static_graph_result(
                 feed={
                     'X': fluid.create_lod_tensor(
@@ -1130,7 +1162,12 @@ class TestLayer(LayerTest):
                 dtype='float32',
                 lod_level=1,
                 append_batch_size=False)
-            groupNorm = nn.GroupNorm(channels=shape[1], groups=2)
+            groupNorm = nn.GroupNorm(
+                channels=shape[1],
+                groups=2,
+                param_attr=fluid.initializer.Uniform(
+                    low=-0.5, high=0.5),
+                bias_attr=fluid.initializer.ConstantInitializer(value=1))
             ret = groupNorm(X)
             static_ret2 = self.get_static_graph_result(
                 feed={
@@ -1141,7 +1178,12 @@ class TestLayer(LayerTest):
                 with_lod=True)[0]
 
         with self.dynamic_graph():
-            groupNorm = nn.GroupNorm(channels=shape[1], groups=2)
+            groupNorm = nn.GroupNorm(
+                channels=shape[1],
+                groups=2,
+                param_attr=fluid.initializer.Uniform(
+                    low=-0.5, high=0.5),
+                bias_attr=fluid.initializer.ConstantInitializer(value=1))
             dy_ret = groupNorm(base.to_variable(input))
             dy_rlt_value = dy_ret.numpy()
 
