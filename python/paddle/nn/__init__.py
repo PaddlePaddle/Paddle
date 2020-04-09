@@ -54,7 +54,7 @@
 # from .layer.conv import TreeConv   #DEFINE_ALIAS
 # from .layer.conv import Conv1D   #DEFINE_ALIAS
 # from .layer.loss import NCELoss   #DEFINE_ALIAS
-# from .layer.loss import CrossEntropyLoss   #DEFINE_ALIAS
+from .layer.loss import CrossEntropyLoss  #DEFINE_ALIAS
 # from .layer.loss import MSELoss   #DEFINE_ALIAS
 from .layer.loss import L1Loss  #DEFINE_ALIAS
 from .layer import loss  #DEFINE_ALIAS
