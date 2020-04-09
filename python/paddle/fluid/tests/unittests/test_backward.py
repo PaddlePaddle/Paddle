@@ -303,7 +303,9 @@ class TestAppendBackwardWithError(unittest.TestCase):
         return avg_loss, param_names
 
     def setUp(self):
-        self.avg_loss, self.param_names = self.build_net()
+        main_program = fluid.Program()
+        with fluid.program_guard(main_program):
+            self.avg_loss, self.param_names = self.build_net()
 
     def test_loss_type_error(self):
         with self.assertRaises(TypeError):
