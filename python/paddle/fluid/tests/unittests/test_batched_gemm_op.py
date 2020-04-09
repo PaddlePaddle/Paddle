@@ -105,7 +105,7 @@ class TestBatchedGemmOp2(OpTest):
 
     def test_check_grad_cpu(self):
         try:
-            self.check_grad_with_place(core.CPUPlace(), ["RankParam"], "Out")
+            self.check_grad_with_place(core.CPUPlace(), ["X", "Y"], "Out")
         except:
             print("do not support cpu test, skip")
 
