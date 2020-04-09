@@ -90,7 +90,9 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
               if (var_name == in_place_input) {
 
                 switch(n->id()) {
-                  case next_op->id():
+                  auto nextid =  next_op->id();
+                  auto previd =  prev_op->id();
+                  case nextid:
                     // If next op is already having inplace var
                     // among its inputs then do not perform inplacing
                     if (count_specific_vars(inputs, var_name) > 0) {
@@ -100,7 +102,7 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
                       return;
                     }
                   break;
-                  case prev_op->id():
+                  case previd:
                     // Ok if op that is having current op input as its own
                     // input is directly before current op, and prev op
                     // is also in-place then we can in-placed current op
