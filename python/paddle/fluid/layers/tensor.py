@@ -162,6 +162,11 @@ def cast(x, dtype):
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output:
             bool, float15, float32, float64, int8, int32, int64, uint8.
 
+    Raises:
+        TypeError: The `x` must be Variable and the data type must be one of
+                   bool, float16, float32, float64, int8, int32 and int64.
+        TypeError: The `dtype` must be one of str, np.dtype and core.VarDesc.VarType.
+
     Returns:
         Variable: A Tensor with the same shape as input's.
 
@@ -192,11 +197,16 @@ def cast(x, dtype):
             # [[ 1 -2]
             #  [ 0  4]] int32
     """
-    helper = LayerHelper('cast', **locals())
     check_variable_and_dtype(
         x, 'x',
-        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
+        ['bool', 'float16', 'float32', 'float64', 'int8', 'int32', 'int64'],
         'cast')
+    check_type(dtype, 'dtype', (str, np.dtype, core.VarDesc.VarType), 'cast')
+    check_dtype(
+        dtype, 'dtype',
+        ['bool', 'float16', 'float32', 'float64', 'int8', 'int32', 'int64'],
+        'cast')
+    helper = LayerHelper('cast', **locals())
     out = helper.create_variable_for_type_inference(dtype=dtype)
     helper.append_op(
         type='cast',
@@ -729,6 +739,11 @@ def argmin(x, axis=0):
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
             as axis+R. Default is 0.
 
+    Raises:
+        TypeError: The `x` must be Variable and the data type must be one of float32,
+                   float64, int8, int16, int32, int64.
+        TypeError: The `axis` must be None or Variable with int type.
+
     Returns:
         Variable: A Tensor with data type int64.
 
@@ -764,6 +779,11 @@ def argmin(x, axis=0):
                 # [[0 0 2]
                 #  [1 0 2]]
     """
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'int8', 'int16', 'int32', 'int64'],
+        'argmin')
+    if axis != 0:
+        check_dtype(axis, 'axis', ['int64'], 'argmin')
     helper = LayerHelper("arg_min", **locals())
     out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
     helper.append_op(
@@ -788,6 +808,11 @@ def argmax(x, axis=0):
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
             as axis+R. Default is 0.
+
+    Raises:
+        TypeError: The `x` must be Variable and the data type must be one of float32,
+                   float64, int8, int16, int32, int64.
+        TypeError: The `axis` must be None or Variable with int type.
 
     Returns:
         Variable: A Tensor with data type int64.
@@ -824,6 +849,11 @@ def argmax(x, axis=0):
                 # [[2 3 1]
                 #  [0 3 1]]
     """
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'int8', 'int16', 'int32', 'int64'],
+        'argmax')
+    if axis != 0:
+        check_dtype(axis, 'axis', ['int64'], 'argmax')
     helper = LayerHelper("arg_max", **locals())
     out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
     helper.append_op(
@@ -853,6 +883,13 @@ def argsort(input, axis=-1, descending=False, name=None):
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
+
+    Raises:
+        TypeError: The `input` must be Variable and the data type must be one of
+                   float32, float64.
+        TypeError: The `axis` must be None or Variable with int type.
+        TypeError: The `descending` must be None or bool type.
+        TypeError: The `name` must be None or str type.
 
     Returns:
         tuple: A tuple of sorted data Variable(with the same shape and data
@@ -905,6 +942,12 @@ def argsort(input, axis=-1, descending=False, name=None):
                 #   [4. 7. 4. 6.]
                 #   [5. 7. 7. 9.]]]
     """
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'argsort')
+    if axis != -1:
+        check_dtype(axis, 'axis', ['int64'], 'argsort')
+    check_dtype(descending, 'descending', ['bool'], 'argsort')
+    if name is not None:
+        check_type(name, 'name', (str), 'argsort')
     helper = LayerHelper("argsort", **locals())
     out = helper.create_variable_for_type_inference(
         dtype=input.dtype, stop_gradient=True)
@@ -1311,6 +1354,10 @@ def diag(diagonal):
         diagonal(Variable|numpy.ndarray): The input tensor should be 1D tensor, the input shape is :math:`[ N]` , \
             specifying diagonal values by this input tensor. The input data type should be float32, float64, int32, int64.
 
+    Raises:
+        TypeError: The `diagonal` must be Variable or numpy.ndarray, and the data type must be one of
+                   float32, float64, int32, int64.
+
     Returns:
         Variable, the output data type is the same as input data type.: The tensor variable storing the square matrix, \
             the diagonal values specified by input :attr:`diagonal`. the output shape is :math:`[N, N]` with two dims.
@@ -1329,7 +1376,9 @@ def diag(diagonal):
           # diagonal.shape=(3,) data.shape=(3, 3)
 
     """
-
+    check_type(diagonal, 'diagonal', (Variable, numpy.ndarray), 'diag')
+    check_dtype(diagonal, 'diagonal', ['float32', 'float64', 'int32', 'int64'],
+                'diag')
     helper = LayerHelper("diag", **locals())
 
     if not isinstance(diagonal, Variable):

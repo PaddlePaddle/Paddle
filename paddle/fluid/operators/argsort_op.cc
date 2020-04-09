@@ -23,25 +23,23 @@ class ArgsortOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of ArgsortOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of ArgsortOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Indices"),
-                   "Output(Indices) of ArgsortOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "argsort")
+    OP_INOUT_CHECK(ctx->HasInput("Out"), "Output", "Out", "argsort")
+    OP_INOUT_CHECK(ctx->HasInput("Indices"), "Output", "Indices", "argsort")
 
     auto in_dims = ctx->GetInputDim("X");
     int axis = ctx->Attrs().Get<int>("axis");
 
     auto num_dims = in_dims.size();
-    PADDLE_ENFORCE(axis < num_dims,
-                   "Attr(axis) %d of ArgsortOp is out of bounds for Input(X)'s "
-                   "rank %d.",
-                   axis, num_dims);
-    PADDLE_ENFORCE(axis >= -num_dims,
-                   "Attr(axis) %d of ArgsortOp must be not less than "
-                   "-rank(Input(X)) (%d).",
-                   axis, num_dims);
+    PADDLE_ENFORCE_GE(axis, -num_dims,
+                      platform::errors::InvalidArgument(
+                          "'axis'(%d) must be greater than or equal to"
+                          " -num_dims(%d)",
+                          axis, -num_dims));
+    PADDLE_ENFORCE_LE(
+        axis, num_dims - 1,
+        platform::errors::InvalidArgument(
+            "'axis'(%d) must be less than num_dims(%d)", axis, num_dims - 1));
 
     ctx->ShareDim("X", "Out");
     ctx->ShareDim("X", "Indices");

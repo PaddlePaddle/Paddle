@@ -351,5 +351,49 @@ class TestSortOnGPU(TestSortOnCPU):
             self.place = core.CPUPlace()
 
 
+class TestArgsortErrorOnCPU(unittest.TestCase):
+    def init_place(self):
+        self.place = core.CPUPlace()
+
+    def test_error(self):
+        self.init_place()
+        in1 = np.array([[[5, 8, 9, 5], [0, 0, 1, 7], [6, 9, 2, 4]],
+                        [[5, 2, 4, 2], [4, 7, 7, 9],
+                         [1, 7, 0, 6]]]).astype(np.float32)
+        with fluid.program_guard(fluid.Program()):
+
+            def test_input_type():
+                x = [1]
+                output = fluid.layers.argsort(input=x)
+
+            self.assertRaise(TypeError, test_input_type)
+
+            def test_axis_type():
+                x = fluid.dygraph.to_variable(in1)
+                output = fluid.layers.argsort(input=x, axis='axis')
+
+            self.assertRaise(TypeError, test_axis_type)
+
+            def test_descending_type():
+                x = fluid.dygraph.to_variable(in1)
+                output = fluid.layers.argsort(input=x, descending='descending')
+
+            self.assertRaise(TypeError, test_descending_type)
+
+            def test_name_type():
+                x = fluid.dygraph.to_variable(in1)
+                output = fluid.layers.argsort(input=x, name=[1, 2])
+
+            self.assertRaise(TypeError, test_name_type)
+
+
+class TestArgsortErrorOnGPU(TestArgsortErrorOnCPU):
+    def init_place(self):
+        if core.is_compiled_with_cuda():
+            self.place = core.CUDAPlace(0)
+        else:
+            self.place = core.CPUPlace()
+
+
 if __name__ == "__main__":
     unittest.main()

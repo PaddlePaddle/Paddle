@@ -285,5 +285,36 @@ class APT_ArgMaxTest(unittest.TestCase):
         self.assertRaises(TypeError, test_dtype2)
 
 
+class TestArgMinMaxOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            in1 = np.array([[[5, 8, 9, 5], [0, 0, 1, 7], [6, 9, 2, 4]],
+                            [[5, 2, 4, 2], [4, 7, 7, 9], [1, 7, 0, 6]]])
+
+            def test_argmax_x_type():
+                x1 = [1, 2, 3]
+                output = fluid.layers.argmax(x=x1)
+
+            self.assertRaise(TypeError, test_argmax_x_type)
+
+            def test_argmin_x_type():
+                x2 = [1, 2, 3]
+                output = fluid.layers.argmin(x=x2)
+
+            self.assertRaise(TypeError, test_argmin_x_type)
+
+            def test_argmax_axis_type():
+                x3 = fluid.dygraph.to_variable(in1)
+                output = fluid.layers.argmax(x=x3, axis=[1, 2])
+
+            self.assertRaise(TypeError, test_argmax_axis_type)
+
+            def test_argmin_axis_type():
+                x4 = fluid.dygraph.to_variable(in1)
+                output = fluid.layers.argmin(x=x4, axis=[1, 2])
+
+            self.assertRaise(TypeError, test_argmin_axis_type)
+
+
 if __name__ == '__main__':
     unittest.main()
