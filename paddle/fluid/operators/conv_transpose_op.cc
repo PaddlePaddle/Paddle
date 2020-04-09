@@ -30,11 +30,16 @@ using DataLayout = framework::DataLayout;
 
 void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
-                    "Input(Input) of ConvTransposeOp should not be null.");
-  PADDLE_ENFORCE_EQ(ctx->HasInput("Filter"), true,
-                    "Input(Filter) of ConvTransposeOp should not be null.");
-  PADDLE_ENFORCE_EQ(ctx->HasOutput("Output"), true,
-                    "Output(Output) of ConvTransposeOp should not be null.");
+                    platform::errors::InvalidArgument(
+                        "Input(Input) of ConvTransposeOp should not be null."));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput("Filter"), true,
+      platform::errors::InvalidArgument(
+          "Input(Filter) of ConvTransposeOp should not be null."));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasOutput("Output"), true,
+      platform::errors::InvalidArgument(
+          "Output(Output) of ConvTransposeOp should not be null."));
 
   auto in_dims = ctx->GetInputDim("Input");
   auto filter_dims = ctx->GetInputDim("Filter");
@@ -52,43 +57,55 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
       this->IsMKLDNNType() ? DataLayout::kNCHW
                            : framework::StringToDataLayout(data_layout_str);
 
-  PADDLE_ENFORCE_EQ(in_dims.size() == 4 || in_dims.size() == 5, true,
-                    "ShapeError: input of Op(conv_transpose) should be 4-D or "
-                    "5-D Tensor. But received: %u-D Tensor, "
-                    "the shape of input is [%s]",
-                    in_dims.size(), in_dims);
+  PADDLE_ENFORCE_EQ(
+      in_dims.size() == 4 || in_dims.size() == 5, true,
+      platform::errors::InvalidArgument(
+          "ShapeError: input of Op(conv_transpose) should be 4-D or "
+          "5-D Tensor. But received: %u-D Tensor, "
+          "the shape of input is [%s]",
+          in_dims.size(), in_dims));
   PADDLE_ENFORCE_EQ(
       in_dims.size(), filter_dims.size(),
-      "ShapeError: the input's dimension size and filter's dimension size of "
-      "Op (conv_transpose) should be equal. But received: the shape of input "
-      "is [%s], the dimension size of input is [%d], the shape of filter is "
-      "[%s],  the dimension size of filter is [%d]. ",
-      in_dims, in_dims.size(), filter_dims, filter_dims.size());
+      platform::errors::InvalidArgument(
+          "ShapeError: the input's dimension size and filter's dimension size "
+          "of "
+          "Op (conv_transpose) should be equal. But received: the shape of "
+          "input "
+          "is [%s], the dimension size of input is [%d], the shape of filter "
+          "is "
+          "[%s],  the dimension size of filter is [%d]. ",
+          in_dims, in_dims.size(), filter_dims, filter_dims.size()));
   int in_sub_stride_size = in_dims.size() - strides.size();
   PADDLE_ENFORCE_EQ(
       in_dims.size() - strides.size(), 2U,
-      "ShapeError: the input's dimension size minus Attr(stride)'s size must "
-      "be euqal to 2 for Op(conv_transpose). But received: [%d], the "
-      "input's dimension size is [%d], the shape of input "
-      "is [%s], the Attr(stride)'s size is [%d].",
-      in_sub_stride_size, in_dims.size(), in_dims, strides.size());
+      platform::errors::InvalidArgument(
+          "ShapeError: the input's dimension size minus Attr(stride)'s size "
+          "must "
+          "be euqal to 2 for Op(conv_transpose). But received: [%d], the "
+          "input's dimension size is [%d], the shape of input "
+          "is [%s], the Attr(stride)'s size is [%d].",
+          in_sub_stride_size, in_dims.size(), in_dims, strides.size()));
   if (output_size.size())
     PADDLE_ENFORCE_EQ(
         output_size.size(), strides.size(),
-        "The Attr(output_size) and Attr(stride) of Op(conv_transpose) "
-        "should be the same.");
+        platform::errors::InvalidArgument(
+            "The Attr(output_size) and Attr(stride) of Op(conv_transpose) "
+            "should be the same."));
 
   const int64_t C =
       (data_layout != DataLayout::kNHWC ? in_dims[1]
                                         : in_dims[in_dims.size() - 1]);
   PADDLE_ENFORCE_EQ(
       C, filter_dims[0],
-      "ShapeError: The number of input channels should be equal to filter "
-      "channels for Op(conv_transpose). But received: the input's channels is "
-      "[%d], the shape of input is [%s], the filter's channels is [%d], the "
-      "shape of filter is [%s]. The data_format is %s."
-      "The error may come from wrong data_format setting.",
-      C, in_dims, filter_dims[0], filter_dims, data_layout_str);
+      platform::errors::InvalidArgument(
+          "ShapeError: The number of input channels should be equal to filter "
+          "channels for Op(conv_transpose). But received: the input's channels "
+          "is "
+          "[%d], the shape of input is [%s], the filter's channels is [%d], "
+          "the "
+          "shape of filter is [%s]. The data_format is %s."
+          "The error may come from wrong data_format setting.",
+          C, in_dims, filter_dims[0], filter_dims, data_layout_str));
 
   framework::DDim in_data_dims;
   if (data_layout != DataLayout::kNHWC) {
