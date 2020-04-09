@@ -77,8 +77,13 @@ class ParamAttr(object):
                  regularizer=None,
                  trainable=True,
                  do_model_average=True):
+        check_type(name, "name", (str), "ParamAttr")
+        check_type(learning_rate, "learning_rate", (float), "ParamAttr")
+        check_type(trainable, "trainable", (bool), "ParamAttr")
+        check_type(do_model_average, "do_model_average", (bool), "ParamAttr")
+
         self.name = name
-        if isinstance(self.name, six.string_types) and self.name == "":
+        if self.name == "":
             raise ValueError("name of ParamAttr can not be empty str")
 
         self.initializer = initializer
