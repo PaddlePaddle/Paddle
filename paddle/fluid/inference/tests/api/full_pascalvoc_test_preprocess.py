@@ -268,8 +268,7 @@ def main_pascalvoc_preprocess(args):
         description="Convert the full pascalvoc val set or local data to binary file.",
         usage=None,
         add_help=True)
-    parser.add_argument(
-        '--choice', choices=['local', 'VOC_test_2007'], required=True)
+    parser.add_argument('--local', action="store_true")
     parser.add_argument(
         "--data_dir",
         default="./third_party/inference_demo/int8v2/pascalvoc_small",
@@ -313,9 +312,9 @@ def main_pascalvoc_preprocess(args):
         default=AP_VERSION,
         help="Image preprocess with ap_version")
     args = parser.parse_args()
-    if args.choice == 'local':
+    if args.local:
         convert_pascalvoc_local2bin(args)
-    elif args.choice == 'VOC_test_2007':
+    else:
         run_convert()
 
 
