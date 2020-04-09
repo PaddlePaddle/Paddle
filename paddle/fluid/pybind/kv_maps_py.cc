@@ -39,7 +39,7 @@ void BindKvMaps(py::module* m) {
         framework::KV_MAPS::InitInstance(filename);
         return framework::KV_MAPS::GetInstance();
       }))
-      .def("insert", &framework::KV_MAPS::InitImpl);
+      .def("insert", &framework::KV_MAPS::InsertImpl);
 }
 }  // namespace pybind
 }  // namespace paddle

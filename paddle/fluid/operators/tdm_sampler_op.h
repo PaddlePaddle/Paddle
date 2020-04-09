@@ -91,7 +91,10 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
     T input_id = input_data[i];
 
     VLOG(1) << "TDM: input id: " << input_id;
-    std::vector<int64_t> travel_data = travel_info->at(input_id);
+    std::vector<int64_t> travel_data(layer_nums, 0);
+    if (travel_info->find(input_id) != travel_info->end())
+      travel_data = travel_info->at(input_id);
+    
     // nce sample, layer by layer
     int offset = 0;
     for (size_t layer_idx = 0; layer_idx < layer_nums; ++layer_idx) {
