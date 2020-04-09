@@ -70,7 +70,7 @@ class BatchSampler(object):
                 print(batch_indices)
 
             # init with dataset
-            bs = BatchSampler(dataset=MNIST(mode='test')),
+            bs = BatchSampler(dataset=MNIST(mode='test'),
                               shuffle=False,
                               batch_size=16,
                               drop_last=False)

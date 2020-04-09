@@ -175,7 +175,7 @@ class DataLoader(object):
 
             import numpy as np
             import paddle.fluid as fluid
-            from paddle.fluid.io import Dataset, MnistDataset, BatchSampler, DataLoader
+            from paddle.fluid.io import Dataset, BatchSampler, DataLoader
 
             BATCH_NUM = 20
             BATCH_SIZE = 16
