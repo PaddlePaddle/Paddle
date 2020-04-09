@@ -22,22 +22,24 @@ class InverseOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Input"), true,
-        platform::errors::NotFound("Input of inverse_op is not set."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Output"), true,
-        platform::errors::NotFound("Output of inverse_op is not set."));
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "Inverse");
+    OP_INOUT_CHECK(ctx->HasOutput("Output"), "Output", "Output", "Inverse");
 
     auto input_dims = ctx->GetInputDim("Input");
     int64_t input_rank = input_dims.size();
     PADDLE_ENFORCE_GE(
         input_rank, 2,
         platform::errors::InvalidArgument(
-            "Expected the rank of Input >= 2. Recived %d.", input_rank));
-    PADDLE_ENFORCE_EQ(input_dims[input_rank - 1], input_dims[input_rank - 2],
-                      platform::errors::InvalidArgument(
-                          "The last two dimensions are expected to be equal."));
+            "The dimension of Input(Input) is expected to be no less than 2. "
+            "But recived: Input(Input)'s dimension = %d, shape = [%s].",
+            input_rank, input_dims));
+    PADDLE_ENFORCE_EQ(
+        input_dims[input_rank - 2], input_dims[input_rank - 1],
+        platform::errors::InvalidArgument(
+            "The last two dimensions are expected to be equal. But recived: %d "
+            "and %d; Input(Input)'s shape = [%s].",
+            input_dims[input_rank - 2], input_dims[input_rank - 1],
+            input_dims));
 
     ctx->SetOutputDim("Output", input_dims);
     ctx->ShareLoD("Input", /*->*/ "Output");
@@ -65,9 +67,6 @@ Takes the inverse of the square matrix.
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(inverse, ops::InverseOp, ops::InverseOpMaker);
-
-#ifdef PADDLE_WITH_MKLML
 REGISTER_OP_CPU_KERNEL(
     inverse, ops::InverseKernel<paddle::platform::CPUDeviceContext, float>,
     ops::InverseKernel<paddle::platform::CPUDeviceContext, double>);
-#endif

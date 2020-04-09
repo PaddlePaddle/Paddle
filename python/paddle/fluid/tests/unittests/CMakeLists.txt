@@ -99,10 +99,6 @@ if(WITH_GPU OR NOT WITH_MKLML)
   LIST(REMOVE_ITEM TEST_OPS test_matmul_op_with_head)
 endif()
 
-if(WITH_GPU AND NOT WITH_MKLML)
-  LIST(REMOVE_ITEM TEST_OPS test_inverse_op)
-endif()
-
 function(py_test_modules TARGET_NAME)
   if(WITH_TESTING)
     set(options SERIAL)
