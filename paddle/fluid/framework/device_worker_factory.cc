@@ -61,6 +61,7 @@ std::shared_ptr<DeviceWorker> DeviceWorkerFactory::CreateDeviceWorker(
 
 REGISTER_DEVICE_WORKER_CLASS(HogwildWorker);
 REGISTER_DEVICE_WORKER_CLASS(DownpourWorker);
+REGISTER_DEVICE_WORKER_CLASS(HeterCpuWorker);
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 REGISTER_DEVICE_WORKER_CLASS(SectionWorker);
 #endif

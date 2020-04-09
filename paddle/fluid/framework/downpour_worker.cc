@@ -17,8 +17,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/string/string_helper.h"
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
-
+#endif
 #if defined _WIN32 || defined __APPLE__
 #else
 #define _LINUX
@@ -129,13 +130,13 @@ void DownpourWorker::SetNeedDump(bool need_dump_field) {
   need_dump_field_ = need_dump_field;
 }
 
+#ifdef PADDLE_WITH_CUDA
 void DownpourWorker::CreateEvent() {
-  #ifdef PADDLE_WITH_CUDA
   auto dev_id = boost::get<platform::CUDAPlace>(place_).device;
   platform::CUDADeviceGuard guard(dev_id);
   PADDLE_ENFORCE(cudaEventCreateWithFlags(&event_, cudaEventDisableTiming));
-  #endif
 }
+#endif
 
 void DownpourWorker::CreatePinVar() {
   #ifdef PADDLE_WITH_CUDA
@@ -575,6 +576,7 @@ void DownpourWorker::CreateThreadParam(const ProgramDesc& program) {
   #endif
 }
 
+#ifdef PADDLE_WITH_CUDA
 template <typename T>
 void DownpourWorker::MemCpy(LoDTensor *thread_tensor, LoDTensor *root_tensor,
                             const paddle::platform::Place& thread_place, 
@@ -596,6 +598,7 @@ void DownpourWorker::MemCpy(LoDTensor *thread_tensor, LoDTensor *root_tensor,
         root_ptr, sizeof(T) * root_tensor->numel(), stream);
   }
 }
+#endif
 
 void DownpourWorker::CopyDenseVars() {
   if (thread_id_ != 0) {
@@ -633,8 +636,10 @@ void DownpourWorker::CopyDenseVars() {
 }
 
 void DownpourWorker::TrainFilesWithProfiler() {
+  #ifdef PADDLE_WITH_CUDA
   auto dev_id = boost::get<platform::CUDAPlace>(place_).device;
   platform::SetDeviceId(dev_id);
+  #endif
   VLOG(3) << "Begin to train files with profiler";
   platform::SetNumThreads(1);
   device_reader_->Start();
@@ -944,8 +949,10 @@ void DownpourWorker::TrainFilesWithProfiler() {
 }
 
 void DownpourWorker::TrainFiles() {
+  #ifdef PADDLE_WITH_CUDA
   auto dev_id = boost::get<platform::CUDAPlace>(place_).device;
   platform::SetDeviceId(dev_id);
+  #endif
   VLOG(3) << "Begin to train files";
   platform::SetNumThreads(1);
   device_reader_->Start();

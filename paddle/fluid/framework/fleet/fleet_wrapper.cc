@@ -200,15 +200,15 @@ void FleetWrapper::HeterPullSparseVars(
   auto status = pslib_ptr_->_worker_ptr->heter_pull_sparse(workerid,
       pull_result_ptr.data(), table_id, fea_keys.data(), fea_keys.size(), task->taskid_);
   pull_sparse_status.push_back(std::move(status));
-  for (auto& t : pull_sparse_status) {
-    t.wait();
-    auto status = t.get();
-    if (status != 0) {
-      LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
-      sleep(sleep_seconds_before_fail_exit_);
-      exit(-1);
-    }
-  }
+  //for (auto& t : pull_sparse_status) {
+  //  t.wait();
+  //  auto status = t.get();
+  //  if (status != 0) {
+  //    LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
+  //    sleep(sleep_seconds_before_fail_exit_);
+  //    exit(-1);
+  //  }
+  //}
 #endif
 }
 
@@ -271,18 +271,11 @@ void FleetWrapper::PullSparseVarsSync(
 #endif
 }
 
-#ifdef PADDLE_WITH_CUDA
 void FleetWrapper::PullDenseVarsAsync(
     const Scope& scope, const uint64_t tid,
     const std::vector<std::string>& var_names,
     std::vector<::std::future<int32_t>>* pull_dense_status,
     bool in_cpu) {
-#else
-void FleetWrapper::PullDenseVarsAsync(
-    const Scope& scope, const uint64_t tid,
-    const std::vector<std::string>& var_names,
-    std::vector<::std::future<int32_t>>* pull_dense_status) {
-#endif
 #ifdef PADDLE_WITH_PSLIB
   auto& regions = _regions[tid];
   regions.clear();
@@ -391,9 +384,6 @@ void FleetWrapper::PushDenseVarsAsync(
     float scale_datanorm, int batch_size) {
 #endif
 #ifdef PADDLE_WITH_PSLIB
-  if (!platform::is_cpu_place(place)) {
-    //platform::DeviceContextPool::Instance().Get(place)->Wait();
-  }
   std::vector<paddle::ps::Region> regions;
   for (size_t i = 0; i < var_names.size(); ++i) {
     auto& t = var_names[i];
@@ -471,7 +461,6 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   int grad_dim = emb_dim;
   int show_index = 0;
   int click_index = 1;
-  bool in_cpu = true;
   if (use_cvm) {
     offset = 0;
     grad_dim = emb_dim - 2;
@@ -494,8 +483,8 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     t.resize(emb_dim + offset + slot_offset);
   }
   uint64_t fea_idx = 0u;
+  #ifdef PADDLE_WITH_CUDA
   if (!platform::is_cpu_place(place)) {
-    in_cpu = false;
     cudaEventSynchronize(event);
     
     Variable* g_var = scope.FindVar(sparse_grad_names[0]);
@@ -505,15 +494,14 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     Variable *pin_var = scope.FindVar(sparse_grad_names[0] + "pin");
     LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();
     float *pin_g = pin_tensor->mutable_data<float>(g_tensor->dims(), platform::CUDAPinnedPlace());
-    #ifdef PADDLE_WITH_CUDA
     memory::Copy(
         platform::CUDAPinnedPlace(),
         pin_g,
         boost::get<platform::CUDAPlace>(place),
         g, sizeof(float) * g_tensor->numel(), stream);
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, stream));
-    #endif
   }
+  #endif
   for (size_t i = 0;
        i < sparse_key_names.size() && i < sparse_grad_names.size(); ++i) {
     Variable* var = scope.FindVar(sparse_key_names[i]);
@@ -541,7 +529,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       exit(-1);
     }
     float* g = g_tensor->data<float>();
-    if (!in_cpu) {
+    #ifdef PADDLE_WITH_CUDA
       
       Variable *pin_var = scope.FindVar(sparse_grad_names[i] + "pin");
       LoDTensor* pin_tensor = pin_var->GetMutable<LoDTensor>();
@@ -557,16 +545,14 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
         Variable *next_pin_var = scope.FindVar(sparse_grad_names[i + 1] + "pin");
         LoDTensor* next_pin_tensor = next_pin_var->GetMutable<LoDTensor>();
         float * next_pin_g = next_pin_tensor->mutable_data<float>(next_g_tensor->dims(), platform::CUDAPinnedPlace());
-        #ifdef PADDLE_WITH_CUDA
         memory::Copy(
             platform::CUDAPinnedPlace(),
             next_pin_g,
             boost::get<platform::CUDAPlace>(place),
             next_g, sizeof(float) * next_g_tensor->numel(), stream);
         PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event, stream));
-        #endif
       }
-    }
+    #endif
 
     if (scale_sparse_gradient_with_batch_size_ && grad_dim > 0) {
       int dim = emb_dim + offset;
@@ -646,10 +632,11 @@ void FleetWrapper::HeterPushSparseVars(
     const std::vector<std::string>& sparse_key_names,
     const std::vector<std::string>& sparse_grad_names, const int emb_dim,
     std::vector<::std::future<int32_t>>* push_sparse_status,
-    const int batch_size, const bool use_cvm, const bool dump_slot,
+    const bool use_cvm, const bool dump_slot,
     const bool no_cvm) {
   
   auto& scope = *(task->scope_);
+  int batch_size = task->cur_batch_;
   int offset = 2;
   int slot_offset = 0;
   int grad_dim = emb_dim;

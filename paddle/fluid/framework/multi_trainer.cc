@@ -53,7 +53,6 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
     workers_[i]->Initialize(trainer_desc);
     workers_[i]->SetDeviceIndex(i);
     workers_[i]->SetDataFeed(readers[i]);
-    workers_[i]->SetWokerNum(thread_num_);
   }
 
   // set debug here
@@ -69,6 +68,7 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
     workers_[i]->SetRootScope(root_scope_);
     workers_[i]->CreateDeviceResource(main_program);  // Program
     workers_[i]->BindingDataFeedMemory();
+    workers_[i]->CacheProgram(main_program);
   }
 }
 

@@ -138,7 +138,7 @@ void PullDenseWorker::PullDense(bool force_update) {
                                      &pull_dense_status_, false);
       #else
       fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid, dense_value_names_[tid],
-                                     &pull_dense_status_);
+                                     &pull_dense_status_, true);
       #endif
       ResetThreadVersion(tid);
     }
