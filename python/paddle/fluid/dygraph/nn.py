@@ -651,12 +651,11 @@ class Conv3DTranspose(layers.Layer):
                         ] + self._filter_size
         self.weight = self.create_parameter(
             dtype=self._dtype, shape=filter_shape, attr=self._param_attr)
-        if self._bias_attr:
-            self.bias = self.create_parameter(
-                attr=self._bias_attr,
-                shape=[self._num_filters],
-                dtype=self._dtype,
-                is_bias=True)
+        self.bias = self.create_parameter(
+            attr=self._bias_attr,
+            shape=[self._num_filters],
+            dtype=self._dtype,
+            is_bias=True)
 
     def forward(self, input):
         pre_bias = self._helper.create_variable_for_type_inference(
@@ -1478,6 +1477,9 @@ class LayerNorm(layers.Layer):
                 'begin_norm_axis', self._begin_norm_axis)
             return dygraph_utils._append_activation_in_dygraph(
                 pre_act, act=self._act)
+
+        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                                 'LayerNorm')
 
         inputs = dict()
         inputs['X'] = [input]
