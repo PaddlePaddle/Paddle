@@ -621,6 +621,10 @@ void BindImperative(py::module *m_ptr) {
              return self.MutableGradVar()->Get<framework::LoDTensor>();
            },
            py::return_value_policy::reference)
+      .def("_set_grad_type",
+           [](imperative::VarBase &self, framework::proto::VarType::Type type) {
+             self.MutableGradVarBase()->SetType(type);
+           })
       .def("_grad_ivar",
            [](const imperative::VarBase &self) {
              auto &grad_var = self.GradVarBase();

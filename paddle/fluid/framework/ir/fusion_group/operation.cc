@@ -91,17 +91,18 @@ void OperationMap::InsertUnaryElementwiseOperations() {
   // relu:
   //  out = f(x) = x > 0 ? x : 0
   //  dx = dout * (out > 0 ? 1 : 0)
-  insert_handler("relu", "${0} > 0 ? ${0} : 0", {"${1} > 0 ? ${2} : 0"});
+  insert_handler("relu", "${0} > %{0} ? ${0} : %{0.0}",
+                 {"${1} > %{0.0} ? ${2} : %{0.0}"});
   // sigmoid:
   //  out = f(x) = 1.0 / (1.0 + exp(-x))
   //  dx = dout * out * (1 - out)
-  insert_handler("sigmoid", "1.0 / (1.0 + Exp(- ${0}))",
-                 {"${2} * ${1} * (1.0 - ${1})"});
+  insert_handler("sigmoid", "%{1.0} / (%{1.0} + Exp(- ${0}))",
+                 {"${2} * ${1} * (%{1.0} - ${1})"});
   // tanh:
   //  out = f(x) = 2.0 / (1.0 + exp(-2.0 * x)) - 1.0;
   //  dx = dout * (1 - out * out)
-  insert_handler("tanh", "2.0 / (1.0 + Exp(-2.0 * ${0})) - 1.0",
-                 {"${2} * (1.0 - ${1} * ${1})"});
+  insert_handler("tanh", "%{2.0} / (%{1.0} + Exp(-%{2.0} * ${0})) - %{1.0}",
+                 {"${2} * (%{1.0} - ${1} * ${1})"});
 
   // cast:
   // out = static_cast<T>(x)
@@ -112,22 +113,23 @@ void OperationMap::InsertUnaryElementwiseOperations() {
   // sqrt:
   //  out = x^(1/2)
   //  dx = dout * 0.5 / out
-  insert_handler("sqrt", "Sqrt(${0})", {"${2} * 0.5 / ${1}"});
+  insert_handler("sqrt", "Sqrt(${0})", {"${2} * %{0.5} / ${1}"});
 
   // square:
   //  out = x^2
   //  dx = dout * 2.0 * x
-  insert_handler("square", "${0} * ${0}", {"${2} * 2.0 * ${0}"});
+  insert_handler("square", "${0} * ${0}", {"${2} * %{2.0} * ${0}"});
 
   // scale
   // out = (bias_after_scale) ? scale * X +  bias : scale(X + bias)
   // here we use '=' operator to seperate th default value
   // TODO(wangchaochaohu): Later we need to support Tensor input for scale and
   // bias.
-  insert_handler("scale",
-                 "${bias_after_scale=true} ? (${scale=1.0} * ${0} + "
-                 "${bias=0.0}) : (${scale=1.0} * (${0} + ${bias=0.0}))",
-                 {});
+  insert_handler(
+      "scale",
+      "${bias_after_scale=true} ? (${scale=%{1.0}} * ${0} + "
+      "${bias=%{0.0}}) : (${scale=%{1.0}} * (${0} + ${bias=%{0.0}}))",
+      {});
 }
 
 void OperationMap::InsertBinaryElementwiseOperations() {
