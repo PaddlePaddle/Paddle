@@ -555,7 +555,7 @@ class TestLayer(LayerTest):
 
             self.assertRaises(TypeError, test_Variable)
 
-            # the input dtype of Conv2DTranspos must be float16 or float32 or float64
+            # the input dtype of Conv2DTranspose must be float16 or float32 or float64
             # float16 only can be set on GPU place
             def test_type():
                 images = layers.data(

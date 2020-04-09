@@ -2330,8 +2330,9 @@ class Conv2DTranspose(layers.Layer):
             return dygraph_utils._append_activation_in_dygraph(
                 pre_act, act=self._act)
 
-        check_variable_and_dtype(
-            input, 'input', ['float16', 'float32', 'float64'], self._op_type)
+        check_variable_and_dtype(input, 'input',
+                                 ['float16', 'float32', 'float64'],
+                                 "Conv2DTranspose")
 
         inputs = {'Input': [input], 'Filter': [self.weight]}
         attrs = {
