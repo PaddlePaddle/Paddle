@@ -341,6 +341,7 @@ class Qat2Int8MkldnnPass(object):
                                      'conv_elementwise_add_mkldnn_fuse_pass')
             graph = self._apply_pass(graph, 'conv_relu_mkldnn_fuse_pass')
             graph = self._apply_pass(graph, 'conv_relu6_mkldnn_fuse_pass')
+            graph = self._apply_pass(graph, 'scale_matmul_fuse_pass')
         if self._is_fc_quantized():
             graph = self._apply_pass(graph, 'fc_fuse_pass',
                                      ['use_gpu', 'use_fc_padding'],
