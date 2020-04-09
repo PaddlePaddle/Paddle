@@ -83,7 +83,7 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
         if ((n->id() != current_op->id())) {
           auto* op = n->Op();
           auto inputs = op->Inputs();
-          auto outputs = op->Inputs();
+          auto outputs = op->Outputs();
           auto in_place_input = current_op_in->Name();
           for (auto& it : inputs) {
             for (auto& var_name : it.second) {
@@ -132,13 +132,11 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
         }
       }
     }
-
     auto original_name = current_op_out->Name();
     current_op_out->RenameVar(current_op_in->Name());
 
     // Get mapping of input to output
     auto in_to_outs = infer_inplace(false);  // strictly no CUDA for MKL-DNN
-    // TODO(jczaja): Support more complex situations
     auto out_name = in_to_outs.begin()->second;
     current_op->Op()->SetOutput(
         out_name, std::vector<std::string>({current_op_out->Name()}));
@@ -166,8 +164,16 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
         next_op_out->RenameVar(current_op_in->Name());
       }
     }
-    // Rename input of next op
-    next_op->Op()->RenameInput(original_name, current_op_out->Name());
+
+    // If this op was alrady inplaced in previous pass placements
+    // then we need to update input of next op
+    // but original name to be changed is gone, so we need to guess
+    if (current_op_in->Name() != current_op_out->Name()) {
+      next_op->Op()->RenameInput(original_name, current_op_out->Name());
+    } else {
+      // TODO(jczaja): Improve this for more complex situations 
+      next_op->Op()->SetInput("X",std::vector<std::string>({current_op_out->Name()}));
+    }
 
     found_inplace_count++;
     VLOG(3) << "MKL-DNN InPlace applied!";
