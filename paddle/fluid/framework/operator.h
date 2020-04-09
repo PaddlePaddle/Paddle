@@ -192,6 +192,11 @@ class OperatorBase {
                                  const platform::Place& place,
                                  const RuntimeContext& ctx) const {}
 
+  virtual platform::Place GetExecutionPlace(
+      const platform::Place& place) const {
+    return place;
+  }
+
  protected:
   std::string type_;
   // NOTE: in case of OpGrad, inputs_ contains:
@@ -478,6 +483,11 @@ class OperatorWithKernel : public OperatorBase {
   virtual OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const OpKernelType& expected_kernel_type) const;
+
+  virtual platform::Place GetExecutionPlace(
+      const platform::Place& platform) const {
+    return kernel_type_->place_;
+  }
 
  private:
   void ParseInputDataType(const ExecutionContext& ctx, const std::string& name,
