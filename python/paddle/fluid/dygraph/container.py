@@ -240,10 +240,12 @@ class LayerList(Layer):
         Examples:
             .. code-block:: python
                 import paddle.fluid as fluid
-                linears = fluid.dygraph.LayerList([fluid.dygraph.Linear(10, 10) for i in range(10)])
-                another = fluid.dygraph.Linear(10, 10)
-                linears.append(another)
-                print(len(linears))  # 11
+
+                with fluid.dygraph.guard():
+                    linears = fluid.dygraph.LayerList([fluid.dygraph.Linear(10, 10) for i in range(10)])
+                    another = fluid.dygraph.Linear(10, 10)
+                    linears.append(another)
+                    print(len(linears))  # 11
         """
         self.add_sublayer(str(len(self)), sublayer)
         return self
@@ -259,10 +261,12 @@ class LayerList(Layer):
         Examples:
             .. code-block:: python
                 import paddle.fluid as fluid
-                linears = fluid.dygraph.LayerList([fluid.dygraph.Linear(10, 10) for i in range(10)])
-                another = fluid.dygraph.Linear(10, 10)
-                linears.insert(3, another)
-                print(linears[3] is another)  # True
+
+                with fluid.dygraph.guard():
+                    linears = fluid.dygraph.LayerList([fluid.dygraph.Linear(10, 10) for i in range(10)])
+                    another = fluid.dygraph.Linear(10, 10)
+                    linears.insert(3, another)
+                    print(linears[3] is another)  # True
         """
         assert isinstance(index, int) and \
                0 <= index < len(self._sub_layers), \
@@ -281,11 +285,13 @@ class LayerList(Layer):
         Examples:
             .. code-block:: python
                 import paddle.fluid as fluid
-                linears = fluid.dygraph.LayerList([fluid.dygraph.Linear(10, 10) for i in range(10)])
-                another_list = fluid.dygraph.LayerList([fluid.dygraph.Linear(10, 10) for i in range(5)])
-                linears.extend(another_list)
-                print(len(linears))  # 15
-                print(another_list[0] is linears[10])  # True
+
+                with fluid.dygraph.guard():
+                    linears = fluid.dygraph.LayerList([fluid.dygraph.Linear(10, 10) for i in range(10)])
+                    another_list = fluid.dygraph.LayerList([fluid.dygraph.Linear(10, 10) for i in range(5)])
+                    linears.extend(another_list)
+                    print(len(linears))  # 15
+                    print(another_list[0] is linears[10])  # True
         """
         offset = len(self)
         for i, sublayer in enumerate(sublayers):
