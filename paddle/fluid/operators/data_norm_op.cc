@@ -111,14 +111,12 @@ class DataNormOp : public framework::OperatorWithKernel {
       if (check) {
         PADDLE_ENFORCE_EQ(scale_dim[0], C,
                           platform::errors::InvalidArgument(
-                              "the shape"
-                              "of scale must equal to [%d]"
+                              "the shape of scale must equal to [%d]"
                               "But received: the shape of scale is [%d]",
                               C, scale_dim[0]));
         PADDLE_ENFORCE_EQ(bias_dim[0], C,
                           platform::errors::InvalidArgument(
-                              "the shape "
-                              "of bias must equal to [%d]"
+                              "the shape of bias must equal to [%d]"
                               "But received: the shape of bias is [%d]",
                               C, bias_dim[0]));
       }
@@ -155,10 +153,12 @@ class DataNormOp : public framework::OperatorWithKernel {
     if (enable_scale_and_shift) {
       PADDLE_ENFORCE_EQ(dn_param_type,
                         OperatorWithKernel::IndicateVarDataType(ctx, "scale_w"),
-                        "scale_w input should be of float type");
+                        platform::errors::InvalidArgument(
+                            "scale_w input should be of float type"));
       PADDLE_ENFORCE_EQ(dn_param_type,
                         OperatorWithKernel::IndicateVarDataType(ctx, "bias"),
-                        "bias input should be of float type");
+                        platform::errors::InvalidArgument(
+                            "bias input should be of float type"));
     }
     // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
     framework::LibraryType library = framework::LibraryType::kPlain;
