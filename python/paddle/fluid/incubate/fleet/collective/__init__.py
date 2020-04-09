@@ -347,7 +347,8 @@ class DistributedStrategy(fluid.BuildStrategy):
         self.nccl_comm_num = 1
         self.forward_recompute = False  # use RecomputeOptimizer
         self.recompute_checkpoints = []
-        self.mixed_precision = False  # use mixed precision optimizer
+        self.use_amp = False  # use mixed precision optimizer
+        self.amp_loss_scaling = 2**15
 
         self.exec_strategy = fluid.ExecutionStrategy()
 
@@ -400,7 +401,8 @@ class CollectiveOptimizer(DistributedOptimizer):
             raise ValueError("DistStrategy.recompute_checkpoints should"
                              "be a List")
         self._recompute_checkpoints = strategy.recompute_checkpoints
-        self._mixed_precision = strategy.mixed_precision
+        self._use_amp = strategy.use_amp
+        self._amp_loss_scaling = strategy.amp_loss_scaling
         self.print_config = False
 
     def backward(self,
@@ -618,7 +620,7 @@ class CollectiveOptimizer(DistributedOptimizer):
                 fluid.optimizer.RecomputeOptimizer(self._optimizer)
             self._optimizer._set_checkpoints(self._recompute_checkpoints)
 
-        if self._mixed_precision:
+        if self._use_amp:
             if self._optimizer.__class__.__name__ in [
                     "OptimizerWithMixedPrecision", "DGCMomentumOptimizer"
             ]:
@@ -626,7 +628,7 @@ class CollectiveOptimizer(DistributedOptimizer):
                                         self._optimizer.__class__.__name__)
             self._optimizer = fluid.contrib.mixed_precision.decorate(
                 self._optimizer,
-                init_loss_scaling=1.0,
+                init_loss_scaling=self._amp_loss_scaling,
                 use_dynamic_loss_scaling=True)
 
         main_program = loss.block.program

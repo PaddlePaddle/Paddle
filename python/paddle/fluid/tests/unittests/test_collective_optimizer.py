@@ -56,12 +56,12 @@ class CollectiveOptimizerTest(unittest.TestCase):
         dist_optimizer = CollectiveOptimizer(optimizer, strategy=dist_strategy)
         self.assertRaises(ValueError, dist_optimizer.minimize, None)
 
-    def test_mix_precision_strategy(self):
+    def test_amp_strategy(self):
         optimizer = fluid.optimizer.AdamOptimizer()
         optimizer = fluid.contrib.mixed_precision.decorate(
             optimizer, init_loss_scaling=1.0, use_dynamic_loss_scaling=True)
         dist_strategy = DistributedStrategy()
-        dist_strategy.mixed_precision = True
+        dist_strategy.use_amp = True
         dist_optimizer = CollectiveOptimizer(optimizer, strategy=dist_strategy)
         self.assertRaises(ValueError, dist_optimizer.minimize, None)
 
