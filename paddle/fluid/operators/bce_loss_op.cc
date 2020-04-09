@@ -27,26 +27,33 @@ class BCELossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) should be not null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Label"), true,
-                      "Input(Label) should be not null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) should be not null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"), true,
+        platform::errors::InvalidArgument("Input(X) should be not null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Label"), true,
+        platform::errors::InvalidArgument("Input(Label) should be not null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("Out"), true,
+        platform::errors::InvalidArgument("Output(Out) should be not null."));
 
     auto x_dims = ctx->GetInputDim("X");
     auto label_dims = ctx->GetInputDim("Label");
-    PADDLE_ENFORCE_EQ(x_dims.size(), label_dims.size(),
-                      "Input(X) and Input(Label) shall have the same shape.");
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(), label_dims.size(),
+        platform::errors::InvalidArgument(
+            "Input(X) and Input(Label) shall have the same shape."));
     bool contain_unknown_dim = framework::contain_unknown_dim(x_dims) ||
                                framework::contain_unknown_dim(label_dims);
     bool check = ctx->IsRuntime() || !contain_unknown_dim;
     if (check) {
       PADDLE_ENFORCE_EQ(
           x_dims.size(), label_dims.size(),
-          "ShapeError: Input(X) and Input(Label) shall have the same shape "
-          "But received: the shape of Input(X) is [%s], the shape of "
-          "Input(Label) is [%s].",
-          x_dims, label_dims);
+          platform::errors::InvalidArgument(
+              "ShapeError: Input(X) and Input(Label) shall have the same shape "
+              "But received: the shape of Input(X) is [%s], the shape of "
+              "Input(Label) is [%s].",
+              x_dims, label_dims));
     }
 
     ctx->ShareDim("X", "Out");
@@ -67,13 +74,18 @@ class BCELossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) should be not null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Label"), true,
-                      "Input(Label) should be not null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"), true,
+        platform::errors::InvalidArgument("Input(X) should be not null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Label"), true,
+        platform::errors::InvalidArgument("Input(Label) should be not null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      "Input(Out@GRAD) shoudl be not null.");
+                      platform::errors::InvalidArgument(
+                          "Input(Out@GRAD) shoudl be not null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
-                      "Output(X@GRAD) should be not null.");
+                      platform::errors::InvalidArgument(
+                          "Output(X@GRAD) should be not null."));
 
     auto x_dims = ctx->GetInputDim("X");
     auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));
@@ -81,12 +93,14 @@ class BCELossGradOp : public framework::OperatorWithKernel {
                                framework::contain_unknown_dim(dout_dims);
     bool check = ctx->IsRuntime() || !contain_unknown_dim;
     if (check) {
-      PADDLE_ENFORCE_EQ(
-          x_dims, dout_dims,
-          "ShapeError:The Input(X) and Input(Out@Grad) should have the same "
-          "shape, But received: the shape of Input(X) is [%s], the shape of "
-          "Input(Out@GRAD) is [%s].",
-          x_dims, dout_dims);
+      PADDLE_ENFORCE_EQ(x_dims, dout_dims,
+                        platform::errors::InvalidArgument(
+                            "ShapeError:The Input(X) and Input(Out@Grad) "
+                            "should have the same "
+                            "shape, But received: the shape of Input(X) is "
+                            "[%s], the shape of "
+                            "Input(Out@GRAD) is [%s].",
+                            x_dims, dout_dims));
     }
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     ctx->ShareLoD("X", framework::GradVarName("X"));
