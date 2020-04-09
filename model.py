@@ -42,6 +42,14 @@ __all__ = ['Model', 'Loss', 'CrossEntropy', 'Input', 'set_device']
 
 
 def set_device(device):
+    """
+    Args:
+        device (str): specify device type, 'cpu' or 'gpu'.
+        
+    Returns:
+        fluid.CUDAPlace or fluid.CPUPlace: Created GPU or CPU place.
+    """
+
     assert isinstance(device, six.string_types) and device.lower() in ['cpu', 'gpu'], \
     "Expected device in ['cpu', 'gpu'], but got {}".format(device)
 
@@ -114,9 +122,9 @@ class Loss(object):
     def forward(self, outputs, labels):
         raise NotImplementedError()
 
-    def __call__(self, outputs, labels):
+    def __call__(self, outputs, labels=None):
         labels = to_list(labels)
-        if in_dygraph_mode():
+        if in_dygraph_mode() and labels:
             labels = [to_variable(l) for l in labels]
         losses = to_list(self.forward(to_list(outputs), labels))
         if self.average:
@@ -410,7 +418,8 @@ class StaticGraphAdapter(object):
                 and self.model._optimizer._learning_rate_map:
             # HACK workaround learning rate map issue
             lr_var = self.model._optimizer._learning_rate_map[self._orig_prog]
-            self.model._optimizer._learning_rate_map[prog] = lr_var
+            new_lr_var = prog.global_block().vars[lr_var.name]
+            self.model._optimizer._learning_rate_map[prog] = new_lr_var
 
         losses = []
         metrics = []
@@ -852,8 +861,6 @@ class Model(fluid.dygraph.Layer):
             if not isinstance(inputs, (list, dict, Input)):
                 raise TypeError(
                     "'inputs' must be list or dict in static graph mode")
-            if loss_function and not isinstance(labels, (list, Input)):
-                raise TypeError("'labels' must be list in static graph mode")
 
         metrics = metrics or []
         for metric in to_list(metrics):
@@ -1083,7 +1090,11 @@ class Model(fluid.dygraph.Layer):
 
         return eval_result
 
-    def predict(self, test_data, batch_size=1, num_workers=0):
+    def predict(self,
+                test_data,
+                batch_size=1,
+                num_workers=0,
+                stack_outputs=True):
         """
         FIXME: add more comments and usage
         Args:
@@ -1096,6 +1107,12 @@ class Model(fluid.dygraph.Layer):
             num_workers (int): the number of subprocess to load data, 0 for no subprocess 
                 used and loading data in main process. When train_data and eval_data are
                 both the instance of Dataloader, this parameter will be ignored.
+            stack_output (bool): whether stack output field like a batch, as for an output
+                filed of a sample is in shape [X, Y], test_data contains N samples, predict
+                output field will be in shape [N, X, Y] if stack_output is True, and will
+                be a length N list in shape [[X, Y], [X, Y], ....[X, Y]] if stack_outputs
+                is False. stack_outputs as False is used for LoDTensor output situation,
+                it is recommended set as True if outputs contains no LoDTensor. Default False
         """
 
         if fluid.in_dygraph_mode():
@@ -1122,19 +1139,16 @@ class Model(fluid.dygraph.Layer):
         if not isinstance(test_loader, Iterable):
             loader = test_loader()
 
-        outputs = None
+        outputs = []
         for data in tqdm.tqdm(loader):
-            if not fluid.in_dygraph_mode():
-                data = data[0]
+            data = flatten(data)
+            outputs.append(self.test(data[:len(self._inputs)]))
 
-            outs = self.test(*data)
-
-            if outputs is None:
-                outputs = outs
-            else:
-                outputs = [
-                    np.vstack([x, outs[i]]) for i, x in enumerate(outputs)
-                ]
+        # NOTE: for lod tensor output, we should not stack outputs
+        # for stacking may loss its detail info
+        outputs = list(zip(*outputs))
+        if stack_outputs:
+            outputs = [np.stack(outs, axis=0) for outs in outputs]
 
         self._test_dataloader = None
         if test_loader is not None and self._adapter._nranks > 1 \
