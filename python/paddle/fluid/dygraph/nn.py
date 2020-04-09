@@ -1016,11 +1016,13 @@ class InstanceNorm(layers.Layer):
           import numpy as np
           import paddle
 
-          x = np.random.random((10, 3, 32, 32)).astype('float32')
+          # x's shape is [1, 3, 1, 2] 
+          x = np.array([[[[1.0, 8.0]], [[10.0, 5.0]], [[4.0, 6.0]]]]).astype('float32')
           with fluid.dygraph.guard():
               x = to_variable(x)
               instanceNorm = paddle.nn.InstanceNorm(3)
               ret = instanceNorm(x)
+              # ret's shape is [1, 3, 1, 2]; value is [-1 1 0.999999 -0.999999 -0.999995 0.999995] 
               print(ret)
 
     """
@@ -1057,6 +1059,9 @@ class InstanceNorm(layers.Layer):
             out, _, _ = core.ops.instance_norm(input, self.scale, self.bias,
                                                'epsilon', self._epsilon)
             return out
+
+        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                                 "InstanceNorm")
 
         attrs = {"epsilon": self._epsilon}
 

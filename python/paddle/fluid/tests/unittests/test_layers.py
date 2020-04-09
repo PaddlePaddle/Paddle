@@ -1229,6 +1229,22 @@ class TestLayer(LayerTest):
         self.assertTrue(np.allclose(static_ret, dy_rlt_value2))
         self.assertTrue(np.allclose(static_ret, static_ret2))
 
+        with self.static_graph():
+            # the input of InstanceNorm must be Variable.
+            def test_Variable():
+                instanceNorm = paddle.nn.InstanceNorm(num_channels=shape[1])
+                ret1 = instanceNorm(input)
+
+            self.assertRaises(TypeError, test_Variable)
+
+            # the input dtype of InstanceNorm must be float32 or float64
+            def test_type():
+                input = np.random.random(shape).astype('int32')
+                instanceNorm = paddle.nn.InstanceNorm(num_channels=shape[1])
+                ret2 = instanceNorm(input)
+
+            self.assertRaises(TypeError, test_type)
+
     def test_spectral_norm(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
