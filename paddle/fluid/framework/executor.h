@@ -115,6 +115,12 @@ class Executor {
 
   void CreateVariables(const ProgramDesc& pdesc, Scope* scope, int block_id);
 
+  void RunPartialPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
+                                 int64_t start_op_index, int64_t end_op_index,
+                                 bool create_local_scope = true,
+                                 bool create_vars = true,
+                                 bool keep_kids = false);
+
   void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                           bool create_local_scope = true,
                           bool create_vars = true, bool keep_kids = false);

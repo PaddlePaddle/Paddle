@@ -32,6 +32,7 @@ class ReduceSumKernel : public framework::OpKernel<T> {
     bool reduce_all = context.Attr<bool>("reduce_all");
     auto* input = context.Input<Tensor>("X");
     auto* output = context.Output<Tensor>("Out");
+    auto out_dtype = context.Attr<int>("out_dtype");
 
     auto dims = context.Attr<std::vector<int>>("dim");
     bool keep_dim = context.Attr<bool>("keep_dim");
@@ -52,9 +53,17 @@ class ReduceSumKernel : public framework::OpKernel<T> {
     }
 
     auto stream = context.cuda_device_context().stream();
-    TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
-        *input, output, reduce_dims, static_cast<T>(0), cub::Sum(),
-        IdentityFunctor<T>(), stream);
+    if (out_dtype >= 0) {
+      framework::VisitDataTypeSmall(
+          static_cast<framework::proto::VarType::Type>(out_dtype),
+          TensorReduceFunctor<T, cub::Sum, IdentityFunctor<T>>(
+              *input, output, reduce_dims, static_cast<double>(0.0), cub::Sum(),
+              IdentityFunctor<T>(), stream));
+    } else {
+      TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
+          *input, output, reduce_dims, static_cast<T>(0), cub::Sum(),
+          IdentityFunctor<T>(), stream);
+    }
   }
 };
 

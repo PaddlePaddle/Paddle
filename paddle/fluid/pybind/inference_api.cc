@@ -412,14 +412,22 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("workspace_size") = 1 << 20, py::arg("max_batch_size") = 1,
            py::arg("min_subgraph_size") = 3,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
-           py::arg("use_static") = false, py::arg("use_calib_mode") = true,
+           py::arg("use_static") = false, py::arg("use_calib_mode") = true)
+      .def("set_trt_dynamic_shape_info",
+           &AnalysisConfig::SetTRTDynamicShapeInfo,
            py::arg("min_input_shape") =
                std::map<std::string, std::vector<int>>({}),
            py::arg("max_input_shape") =
                std::map<std::string, std::vector<int>>({}),
            py::arg("optim_input_shape") =
-               std::map<std::string, std::vector<int>>({}))
+               std::map<std::string, std::vector<int>>({}),
+           py::arg("disable_trt_plugin_fp16") = false)
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
+      .def("enable_lite_engine", &AnalysisConfig::EnableLiteEngine,
+           py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
+           py::arg("passes_filter") = std::vector<std::string>(),
+           py::arg("ops_filter") = std::vector<std::string>())
+      .def("lite_engine_enabled", &AnalysisConfig::lite_engine_enabled)
       .def("switch_ir_debug", &AnalysisConfig::SwitchIrDebug,
            py::arg("x") = true)
       .def("enable_mkldnn", &AnalysisConfig::EnableMKLDNN)
