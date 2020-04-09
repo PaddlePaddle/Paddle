@@ -527,6 +527,20 @@ def arange(start, end, step, dtype):
     elif convert_dtype(end.dtype) != dtype:
         end = cast(x=end, dtype=dtype)
 
+    if not isinstance(step, Variable):
+        step = fill_constant([1], dtype, step)
+    elif convert_dtype(step.dtype) != dtype:
+        step = cast(x=step, dtype=dtype)
+
+    out = helper.create_variable_for_type_inference(dtype=start.dtype)
+
+    helper.append_op(
+        type='range',
+        inputs={'Start': start,
+                'End': end,
+                'Step': step},
+        outputs={'Out': [out]})
+    out.stop_gradient = True
     return out
 
 
