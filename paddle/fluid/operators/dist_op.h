@@ -94,7 +94,7 @@ static void DistFunction(const framework::ExecutionContext& context) {
   // p=0 means number of non-zero elements of (x-y)
   // p=inf means the maximum of |x-y|
   // p=-inf means the minimum of |x-y|
-  // p=1,...N, Lp-norm = pow(sum(pow(|x-y|, p)), 1/p)
+  // otherwise, Lp-norm = pow(sum(pow(|x-y|, p)), 1/p)
   if (p == 0) {
     out_t.device(place) =
         (x_t.broadcast(x_bcast_dims) != y_t.broadcast(y_bcast_dims))

@@ -27,7 +27,6 @@ class DistOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Dist");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "Dist");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Dist");
-    auto out_dims = std::vector<int>(1);
     ctx->SetOutputDim("Out", {1});
   }
 };
@@ -43,14 +42,28 @@ class DistOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("p", "the norm to be computed.").SetDefault(2.0f);
     AddComment(R"DOC(
 Dist Operator.
-Given two tensors X and Y, compute Lp-norm of (X-Y).
-where, Z = X - Y
+Given two tensors X and Y, compute Lp-norm of (X-Y). It is not a norm in a strict sense,
+only as a measure of distance. The shapes of X and Y must be broadcastable. Where, Z = X - Y,
+
+When p = 0, defining $0^0 = 0$, the zero-norm of Z is simply the number of non-zero elements of z.
 $$
-\left \| Z \right \|_{p} = (\sum_{i=i}^{m} |z_i|^p)^{1/p}
+||Z||_{0} = \lim_{p \rightarrow 0} \sum_{i=1}^{m} |z_i|^p
 $$
-when p = 0, the 0-norm of Z is simply the number of non-zero elements of z.
-when p = inf, the inf-norm of Z is the maximum element of Z.
-when p = -inf, the inf-norm of Z is the minimum element of Z.
+
+When p = inf, the inf-norm of Z is the maximum element of Z.
+$$
+||Z||_\infty=\max_i |z_i|
+$$
+
+When p = -inf, the negative-inf-norm of Z is the minimum element of Z.
+$$
+||Z||_{-\infty}=\min_i |z_i|
+$$
+
+Otherwise, the p-norm of Z follows the formula,
+$$
+||Z||_{p} = (\sum_{i=i}^{m} |z_i|^p)^{1/p}
+$$
     )DOC");
   }
 };

@@ -163,20 +163,34 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
 
 def dist(x, y, p=2):
     """
-    This OP returns the p-norm of (x - y). The shapes of x and y must be broadcastable.
-    where, z = x - y,
+    This OP returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure
+    of distance. The shapes of x and y must be broadcastable.
+
+    Where, z = x - y,
+
+    When p = 0, defining $0^0=0$, the zero-norm of z is simply the number of non-zero elements of z.
+
+    .. math::
+
+        ||z||_{0}=\lim_{p \\rightarrow 0}\sum_{i=1}^{m}|z_i|^{p}
+
+    When p = inf, the inf-norm of z is the maximum element of z.
+
+    .. math::
+
+        ||z||_\infty=\max_i |z_i|
+
+    When p = -inf, the negative-inf-norm of z is the minimum element of z.
+
+    .. math::
+
+        ||z||_{-\infty}=\min_i |z_i|
+
+    Otherwise, the p-norm of z follows the formula,
 
     .. math::
 
         ||z||_{p}=(\sum_{i=1}^{m}|z_i|^p)^{\\frac{1}{p}}
-
-
-
-    when p = 0, the 0-norm of z is simply the number of non-zero elements of z.
-
-    when p = inf, the inf-norm of z is the maximum element of z.
-
-    when p = -inf, the inf-norm of z is the minimum element of z.
 
     Args:
         x (Variable): 1-D to 6-D Tensor, its data type is float32 or float64.
@@ -191,12 +205,22 @@ def dist(x, y, p=2):
 
             import paddle
             import paddle.fluid as fluid
+            import numpy as np
 
             with fluid.dygraph.guard():
-                x = fluid.layers.fill_constant(shape=[2, 2], value=3, dtype='float32')
-                y = fluid.layers.fill_constant(shape=[2, 2], value=1, dtype='float32')
+                x = fluid.dygraph.to_variable(np.array([[3, 3],[3, 3]]).astype(np.float32))
+                y = fluid.dygraph.to_variable(np.array([[3, 3],[3, 1]]).astype(np.float32))
+                out = paddle.dist(x, y, 0)
+                print(out.numpy()) # out = [1.]
+
                 out = paddle.dist(x, y, 2)
-                print(out.numpy()) # out = [4.]
+                print(out.numpy()) # out = [2.]
+
+                out = paddle.dist(x, y, float("inf"))
+                print(out.numpy()) # out = [2.]
+
+                out = paddle.dist(x, y, float("-inf"))
+                print(out.numpy()) # out = [0.]
     """
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'dist')
     check_variable_and_dtype(y, 'dtype', ['float32', 'float64'], 'dist')
