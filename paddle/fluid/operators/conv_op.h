@@ -20,7 +20,6 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/depthwise_conv.h"
 #include "paddle/fluid/operators/math/im2col.h"
@@ -674,9 +673,8 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
     Tensor* ddY = ctx.Output<Tensor>("DDOutput");
     Tensor* dW = ctx.Output<Tensor>("DFilter");
     Tensor* dX = ctx.Output<Tensor>("DInput");
-    Tensor W = detail::Ref(ctx.Input<Tensor>("Filter"),
-                           "Cannot find input Filter(%s) in scope)",
-                           ctx.InputNames("Filter")[0]);
+    Tensor W = GET_DATA_SAFELY(ctx.Input<Tensor>("Filter"), "Input", "Filter",
+                               "GemmConvDoubleGrad");
     if (!ddY && !dW && !dX) return;
 
     const int groups = ctx.Attr<int>("groups");

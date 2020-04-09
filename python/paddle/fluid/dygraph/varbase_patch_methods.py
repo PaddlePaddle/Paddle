@@ -204,73 +204,20 @@ def monkey_patch_varbase():
                 return 'name %s, shape: %s, not inited' % (self.name,
                                                            self.shape)
 
-    def __getitem__(self, item):
-        if not isinstance(item, tuple):
-            item = [item]
+    def __nonzero__(self):
+        numel = np.prod(self.shape)
+        assert numel == 1, "When Variable is used as the condition of if/while , Variable can only contain one element."
+        tensor = self.value().get_tensor()
+        assert tensor._is_initialized(), "tensor not initialized"
+        return bool(np.all(tensor.__array__() > 0))
 
-        decrease_axis = []
-        slice_axis = []
-        slice_start = []
-        slice_end = []
-        reverse_axis = []
+    def __bool__(self):
+        return self.__nonzero__()
 
-        for dim, slice_item in enumerate(item):
-            if isinstance(slice_item, slice):
-                start = slice_item.start
-                end = slice_item.stop
-                step = slice_item.step if slice_item.step else 1
-
-                assert (step == 1 or step == -1)
-
-                if step == -1:
-                    reverse_axis.append(dim)
-                    assert (start is None and end is None)
-
-                if start is None and end is None:
-                    continue
-
-                if start is None:
-                    start = 0
-
-                if end is None:
-                    end = 10000000
-
-                slice_axis.append(dim)
-                slice_start.append(start)
-                slice_end.append(end)
-            else:
-                # int
-                decrease_axis.append(dim)
-                slice_axis.append(dim)
-                slice_start.append(slice_item)
-                slice_end.append(slice_item + 1
-                                 if slice_item != -1 else 10000000)
-
-        out = self
-        if len(slice_axis) > 0:
-            # append slice_op here
-            inputs = {'Input': [out]}
-            attrs = {
-                'axes': slice_axis,
-                'starts': slice_start,
-                'ends': slice_end,
-                'decrease_axis': decrease_axis
-            }
-            outs = core.ops.slice(inputs, attrs)
-            out = outs['Out'][0]
-
-        if len(reverse_axis) > 0:
-            inputs = {'X': [out]}
-            attrs = {'axis': reverse_axis}
-            outs = core.ops.reverse(inputs, attrs)
-            out = outs['Out'][0]
-
-        return out
-
-    for method_name, method in (("set_value", set_value), ("block", block),
-                                ("backward", backward), ("gradient", gradient),
-                                ("__str__", __str__), ("to_string", to_string),
-                                ("__getitem__", __getitem__)):
+    for method_name, method in (
+        ("__bool__", __bool__), ("__nonzero__", __nonzero__),
+        ("set_value", set_value), ("block", block), ("backward", backward),
+        ("gradient", gradient), ("__str__", __str__), ("to_string", to_string)):
         setattr(core.VarBase, method_name, method)
 
     # patch math methods for varbase

@@ -254,7 +254,7 @@ class TestDataNormOp(OpTest):
         """
         test check backward, check grad
         """
-        self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
+        self.check_grad(['X'], 'Y', no_grad_set=set([]))
 
 
 class TestDataNormOpWithEnableScaleAndShift(OpTest):
@@ -434,7 +434,7 @@ class TestDataNormOpWithSlotDim(OpTest):
         """
         test check backward, check grad
         """
-        self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
+        self.check_grad(['X'], 'Y', no_grad_set=set([]))
 
 
 class TestDataNormOpWithSyncStats(unittest.TestCase):

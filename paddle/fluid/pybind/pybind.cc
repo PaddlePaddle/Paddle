@@ -51,7 +51,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/py_func_op.h"
-#include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
@@ -94,13 +93,7 @@ limitations under the License. */
 
 #include "pybind11/stl.h"
 
-DEFINE_bool(reader_queue_speed_test_mode, false,
-            "If set true, the queue.pop will only get data from queue but not "
-            "remove the data from queue for speed testing");
 DECLARE_bool(use_mkldnn);
-#ifdef PADDLE_WITH_NGRAPH
-DECLARE_bool(use_ngraph);
-#endif
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -118,14 +111,6 @@ bool IsCompiledWithCUDA() {
 
 bool IsCompiledWithMKLDNN() {
 #ifndef PADDLE_WITH_MKLDNN
-  return false;
-#else
-  return true;
-#endif
-}
-
-bool IsCompiledWithNGRAPH() {
-#ifndef PADDLE_WITH_NGRAPH
   return false;
 #else
   return true;
@@ -993,38 +978,13 @@ All parameter, weight, gradient are variables in Paddle.
              PADDLE_ENFORCE_EQ(self.IsType<framework::ReaderHolder>(), true);
              return self.GetMutable<framework::ReaderHolder>();
            },
-           py::return_value_policy::reference);
+           py::return_value_policy::reference)
+      .def("set_scope", [](Variable &self, Scope &scope) {
+        auto scope_vec = self.GetMutable<std::vector<framework::Scope *>>();
+        scope_vec->emplace_back(&scope);
+      });
 
   BindReader(&m);
-
-  using LoDTensorBlockingQueue =
-      ::paddle::operators::reader::LoDTensorBlockingQueue;
-  using LoDTensorBlockingQueueHolder =
-      ::paddle::operators::reader::LoDTensorBlockingQueueHolder;
-
-  py::class_<LoDTensorBlockingQueue, std::shared_ptr<LoDTensorBlockingQueue>>(
-      m, "LoDTensorBlockingQueue", "")
-      .def("push",
-           [](LoDTensorBlockingQueue &self,
-              const std::vector<framework::LoDTensor> &lod_tensor_vec) {
-             pybind11::gil_scoped_release release;
-             return self.Push(lod_tensor_vec);
-           })
-      .def("size", &LoDTensorBlockingQueue::Size)
-      .def("capacity", &LoDTensorBlockingQueue::Cap)
-      .def("close", &LoDTensorBlockingQueue::Close)
-      .def("kill", &LoDTensorBlockingQueue::Kill)
-      .def("is_closed", &LoDTensorBlockingQueue::IsClosed);
-
-  m.def("init_lod_tensor_blocking_queue",
-        [](Variable &var,
-           size_t capacity) -> std::shared_ptr<LoDTensorBlockingQueue> {
-          VLOG(1) << "init_lod_tensor_blocking_queue";
-          auto *holder = var.GetMutable<LoDTensorBlockingQueueHolder>();
-          holder->InitOnce(capacity, FLAGS_reader_queue_speed_test_mode);
-          return holder->GetQueue();
-        },
-        py::return_value_policy::copy);
 
   py::class_<Scope>(m, "_Scope", R"DOC(
     Scope is an association of a name to Variable. All variables belong to Scope.
@@ -1187,8 +1147,10 @@ All parameter, weight, gradient are variables in Paddle.
       prog_with_targets.MutableBlock(t[0])->Op(t[1])->SetIsTarget(true);
     }
     proto::ProgramDesc pruned_desc;
-    Prune(*prog_with_targets.Proto(), feeded_var_names, &pruned_desc);
-    return new ProgramDesc(pruned_desc);
+    auto pruned_origin_block_id_map =
+        Prune(*prog_with_targets.Proto(), feeded_var_names, &pruned_desc);
+    return std::make_tuple(ProgramDesc(pruned_desc),
+                           pruned_origin_block_id_map);
   });
   m.def("prune_backward",
         [](const framework::ProgramDesc &program) {
@@ -1211,6 +1173,8 @@ All parameter, weight, gradient are variables in Paddle.
         []() { return std::string(framework::kEmptyVarName); });
   m.def("grad_var_suffix",
         []() { return std::string(framework::kGradVarSuffix); });
+  m.def("loaded_var_suffix",
+        []() { return std::string(framework::kLoadedVarSuffix); });
   m.def_submodule(
        "var_names",
        "The module will return special predefined variable name in Paddle")
@@ -1520,13 +1484,14 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_devices",
         [](bool init_p2p) { framework::InitDevices(init_p2p); });
 
-  m.def("is_compiled_with_ngraph", IsCompiledWithNGRAPH);
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
-  m.def("run_cmd", [](const std::string &cmd) -> const std::string {
-    return paddle::framework::shell_get_command_output(cmd);
+  m.def("run_cmd", [](const std::string &cmd, int time_out = -1,
+                      int sleep_inter = -1) -> const std::string {
+    return paddle::framework::shell_get_command_output(cmd, time_out,
+                                                       sleep_inter);
   });
 #ifdef PADDLE_WITH_CUDA
   m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {

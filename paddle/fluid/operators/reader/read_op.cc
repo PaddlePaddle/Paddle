@@ -15,7 +15,6 @@
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -96,8 +95,8 @@ class ReadOp : public framework::OperatorBase {
                const platform::Place& dev_place) const override {
     VLOG(3) << "read op in";
     framework::ReaderHolder* reader =
-        detail::Ref(scope.FindVar(Input("Reader")),
-                    "Cannot find reader variable %s", Input("Reader"))
+        GET_DATA_SAFELY(scope.FindVar(Input("Reader")), "Input", "Reader",
+                        "Read")
             .GetMutable<framework::ReaderHolder>();
     std::vector<std::string> out_arg_names = Outputs("Out");
     std::vector<framework::LoDTensor> ins;
@@ -156,6 +155,10 @@ class ReadOpMaker : public framework::OpProtoAndCheckerMaker {
         " and it is set by ParallelExecutor instance, not users.")
         .SetDefault(true);
     AddAttr<bool>("infer_out", "").SetDefault(true);
+    AddAttr<bool>("drop_last",
+                  "Whether to drop last batches whose number is less than "
+                  "actual used device number.")
+        .SetDefault(true);
     AddComment(R"DOC(
       Read Operator
 

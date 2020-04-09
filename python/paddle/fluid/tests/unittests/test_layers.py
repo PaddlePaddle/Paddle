@@ -876,7 +876,8 @@ class TestLayer(LayerTest):
                 emb_rlt = emb(words[i])
                 embs3.append(emb_rlt)
 
-            embs3 = layers.concat(input=embs3, axis=1)
+            embs3 = layers.concat(
+                input=embs3, axis=fluid.dygraph.to_variable(np.array([1])))
             nce = nn.NCE(num_total_classes=dict_size,
                          dim=embs3.shape[1],
                          num_neg_samples=2,
@@ -903,7 +904,9 @@ class TestLayer(LayerTest):
             for i in range(window_size):
                 words.append(base.to_variable(inp_word[i]))
             sample_weights = layers.fill_constant(
-                shape=[5, 1], dtype='float32', value=1)
+                shape=fluid.dygraph.to_variable(np.array([5, 1])),
+                dtype='float32',
+                value=1)
             emb = nn.Embedding(
                 size=[dict_size, 32], param_attr='emb.w', is_sparse=False)
 
@@ -954,6 +957,37 @@ class TestLayer(LayerTest):
                 np.array_equal(nce1.weight.numpy(), nce2.weight.numpy()))
             self.assertTrue(
                 np.array_equal(nce1.bias.numpy(), nce2.bias.numpy()))
+
+    def test_one_hot(self):
+        with self.dynamic_graph():
+            label = fluid.dygraph.to_variable(np.array([[1], [1], [3], [0]]))
+            one_hot_label1 = fluid.layers.one_hot(input=label, depth=4)
+            one_hot_label2 = fluid.layers.one_hot(
+                input=label, depth=fluid.dygraph.to_variable(np.array([4])))
+            self.assertTrue(
+                np.array_equal(one_hot_label1.numpy(), one_hot_label2.numpy()))
+
+    def test_split(self):
+        with self.dynamic_graph():
+            input = fluid.dygraph.to_variable(np.random.random((3, 8, 5)))
+            x0, x1 = fluid.layers.split(input, num_or_sections=2, dim=1)
+            x00, x11 = fluid.layers.split(
+                input,
+                num_or_sections=2,
+                dim=fluid.dygraph.to_variable(np.array([1])))
+            self.assertTrue(np.array_equal(x0.numpy(), x00.numpy()))
+            self.assertTrue(np.array_equal(x1.numpy(), x11.numpy()))
+
+    def test_topk(self):
+        with self.dynamic_graph():
+            input = fluid.dygraph.to_variable(np.random.random((13, 11)))
+            top5_values1, top5_indices1 = layers.topk(input, k=5)
+            top5_values2, top5_indices2 = layers.topk(
+                input, k=fluid.dygraph.to_variable(np.array([5])))
+            self.assertTrue(
+                np.array_equal(top5_values1.numpy(), top5_values2.numpy()))
+            self.assertTrue(
+                np.array_equal(top5_indices1.numpy(), top5_indices2.numpy()))
 
     def test_conv3d(self):
         with self.static_graph():
@@ -1080,7 +1114,12 @@ class TestLayer(LayerTest):
                 dtype='float32',
                 lod_level=1,
                 append_batch_size=False)
-            ret = layers.group_norm(input=X, groups=2)
+            ret = layers.group_norm(
+                input=X,
+                groups=2,
+                param_attr=fluid.initializer.Uniform(
+                    low=-0.5, high=0.5),
+                bias_attr=fluid.initializer.ConstantInitializer(value=1))
             static_ret = self.get_static_graph_result(
                 feed={
                     'X': fluid.create_lod_tensor(
@@ -1096,7 +1135,12 @@ class TestLayer(LayerTest):
                 dtype='float32',
                 lod_level=1,
                 append_batch_size=False)
-            groupNorm = nn.GroupNorm(channels=shape[1], groups=2)
+            groupNorm = nn.GroupNorm(
+                channels=shape[1],
+                groups=2,
+                param_attr=fluid.initializer.Uniform(
+                    low=-0.5, high=0.5),
+                bias_attr=fluid.initializer.ConstantInitializer(value=1))
             ret = groupNorm(X)
             static_ret2 = self.get_static_graph_result(
                 feed={
@@ -1107,7 +1151,12 @@ class TestLayer(LayerTest):
                 with_lod=True)[0]
 
         with self.dynamic_graph():
-            groupNorm = nn.GroupNorm(channels=shape[1], groups=2)
+            groupNorm = nn.GroupNorm(
+                channels=shape[1],
+                groups=2,
+                param_attr=fluid.initializer.Uniform(
+                    low=-0.5, high=0.5),
+                bias_attr=fluid.initializer.ConstantInitializer(value=1))
             dy_ret = groupNorm(base.to_variable(input))
             dy_rlt_value = dy_ret.numpy()
 
@@ -2650,6 +2699,28 @@ class TestBook(LayerTest):
             out = layers.batch_norm(data, momentum=momentum)
             return (out)
 
+    def make_inplace_abn(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            data = self._get_data(
+                name='data', shape=[32, 128, 128], dtype="float32")
+            out = layers.inplace_abn(data, act='leaky_relu', act_alpha=0.2)
+            return (out)
+
+    def make_inplace_abn_momentum_variable(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            data = self._get_data(
+                name='data', shape=[32, 128, 128], dtype="float32")
+            momentum = self._get_data(
+                name='momentum',
+                shape=[1],
+                dtype='float32',
+                append_batch_size=False)
+            out = layers.inplace_abn(
+                data, momentum=momentum, act='elu', act_alpha=2.0)
+            return (out)
+
     def make_range(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
@@ -2973,6 +3044,22 @@ class TestBook(LayerTest):
             sum = fluid.contrib.layers.partial_sum(
                 [x, y], start_index=0, length=2)
             return (sum)
+
+    def test_rank_attention(self):
+        with self.static_graph():
+            input = fluid.data(name="input", shape=[None, 2], dtype="float32")
+            rank_offset = fluid.data(
+                name="rank_offset", shape=[None, 7], dtype="int32")
+            out = fluid.contrib.layers.rank_attention(
+                input=input,
+                rank_offset=rank_offset,
+                rank_param_shape=[18, 3],
+                rank_param_attr=fluid.ParamAttr(
+                    learning_rate=1.0,
+                    name="ubm_rank_param.w_0",
+                    initializer=fluid.initializer.Xavier(uniform=False)),
+                max_rank=3)
+            return (out)
 
     def test_roi_pool(self):
         # TODO(minqiyang): dygraph do not support lod now

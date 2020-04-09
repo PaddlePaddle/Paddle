@@ -117,6 +117,10 @@ class DecoratedReader : public ReaderBase,
 
   ~DecoratedReader();
 
+  const std::shared_ptr<ReaderBase>& UnderlyingReader() const {
+    return reader_;
+  }
+
  protected:
   void ShutdownImpl() override {
     VLOG(1) << "ShutdownImpl";
@@ -189,6 +193,8 @@ class ReaderHolder {
   const std::vector<bool>& NeedCheckFeed() const {
     return reader_->NeedCheckFeed();
   }
+
+  void Clear() { reader_.reset(); }
 
   operator const std::shared_ptr<ReaderBase>&() const { return this->reader_; }
 

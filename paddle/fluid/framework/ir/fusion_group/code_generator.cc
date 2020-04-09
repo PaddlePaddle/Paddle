@@ -25,15 +25,21 @@ namespace ir {
 namespace fusion_group {
 
 std::string ExtractDataType(const std::vector<Node*>& nodes) {
-  std::string dtype_str = "float";
-  auto data_type = nodes.back()->Var()->GetDataType();
-
-  if (data_type == proto::VarType::FP32) {
-    dtype_str = "float";
-  } else if (data_type == proto::VarType::FP64) {
-    dtype_str = "double";
-  } else if (data_type == proto::VarType::FP16) {
-    dtype_str = "float16";
+  std::string dtype_str = "";
+  for (const auto* n : nodes) {
+    if (n && n->IsVar() && n->Var()) {
+      // The data type of all inputs/outputs must be the same, which are
+      //  checked when detecting the subgraph.
+      auto dtype = n->Var()->GetDataType();
+      if (dtype == proto::VarType::FP32) {
+        dtype_str = "float";
+      } else if (dtype == proto::VarType::FP64) {
+        dtype_str = "double";
+      } else if (dtype == proto::VarType::FP16) {
+        dtype_str = "__half";
+      }
+      break;
+    }
   }
 
   return dtype_str;
@@ -69,6 +75,7 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
   for (auto* node : subgraph->SortedNodes()) {
     if (node && node->IsOp() && node->Op()) {
       auto* op = node->Op();
+      AttributeMap attr = *(op->MutableAttrMap());
 
       // Input ids should be set in fixed order, like:
       //  - X, Y in forward operations
@@ -80,7 +87,6 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
       for (auto& name : input_names) {
         // Some input vars are not used in grad ops, such as
         // "elementwise_add_grad", where "X", "Y" and "Out" are not used.
-
         if ((HasInput(node, name) && op->Input(name).size() >= 1U)) {
           for (size_t i = 0; i < op->Input(name).size(); i++) {
             PADDLE_ENFORCE_NE(
@@ -93,6 +99,7 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
           input_ids.push_back(-1);
         }
       }
+
       // Output ids should be set in fixed order, like:
       //  - dx, dy in backward operations
       std::vector<int> output_ids;
@@ -100,10 +107,6 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
           OperationMap::Instance().Get(op->Type()).output_names;
 
       for (auto& name : output_names) {
-        PADDLE_ENFORCE_EQ(
-            op->Output(name).size(), 1U,
-            platform::errors::InvalidArgument(
-                "Output(%s) of operation %s is not set.", name, op->Type()));
         PADDLE_ENFORCE_NE(
             var_ids.find(op->Output(name)[0]), var_ids.end(),
             platform::errors::InvalidArgument(
@@ -113,8 +116,10 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
 
       std::string lhs_type = ExtractDataType(node->outputs);
       std::string rhs_type = ExtractDataType(node->inputs);
-      expressions.emplace_back(OperationExpression(
-          node->Name(), input_ids, output_ids, rhs_type, lhs_type));
+      auto expression = OperationExpression(node->Name(), input_ids, output_ids,
+                                            rhs_type, lhs_type);
+      expression.SetAttr(attr);
+      expressions.push_back(expression);
     }
   }
   return expressions;
@@ -142,13 +147,13 @@ std::string CodeGenerator::Generate(
   }
   std::string predefined_cuda_functions = "";
   if (all_dtype.find("float") != all_dtype.end() &&
-      all_dtype.find("float16") == all_dtype.end()) {
+      all_dtype.find("__half") == all_dtype.end()) {
     predefined_cuda_functions += predefined_cuda_functions_fp32;
   }
   if (all_dtype.find("double") != all_dtype.end()) {
     predefined_cuda_functions += predefined_cuda_functions_fp64;
   }
-  if (all_dtype.find("float16") != all_dtype.end()) {
+  if (all_dtype.find("__half") != all_dtype.end()) {
     predefined_cuda_functions += predefined_cuda_functions_fp16;
   }
   return predefined_cuda_functions + code_templates_[0].Format(template_var);

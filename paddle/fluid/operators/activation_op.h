@@ -26,7 +26,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -156,8 +155,10 @@ class ActivationKernel
     ExtractActivationTensor(context, &X, &Out);
     Out->mutable_data<T>(context.GetPlace());
 
-    auto x = framework::EigenVector<T>::Flatten(detail::Ref(X));
-    auto out = framework::EigenVector<T>::Flatten(detail::Ref(Out));
+    auto x = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(X, "Input", "X", "Activation"));
+    auto out = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(Out, "Output", "Out", "Activation"));
     auto* place =
         context.template device_context<DeviceContext>().eigen_device();
     Functor functor;
@@ -182,10 +183,14 @@ class ActivationGradKernel
     ExtractActivationGradTensor<Functor::FwdDeps()>(context, &X, &Out, &dOut,
                                                     &dX);
     dX->mutable_data<T>(context.GetPlace());
-    auto dout = framework::EigenVector<T>::Flatten(detail::Ref(dOut));
-    auto out = framework::EigenVector<T>::Flatten(detail::Ref(Out));
-    auto dx = framework::EigenVector<T>::Flatten(detail::Ref(dX));
-    auto x = framework::EigenVector<T>::Flatten(detail::Ref(X));
+    auto dout = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(dOut, "Input", "Out@GRAD", "ActivationGrad"));
+    auto out = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(Out, "Input", "Out", "ActivationGrad"));
+    auto dx = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(dX, "Input", "X@GRAD", "ActivationGrad"));
+    auto x = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(X, "Input", "X", "ActivationGrad"));
     auto* place =
         context.template device_context<DeviceContext>().eigen_device();
     Functor functor;
@@ -302,90 +307,6 @@ struct ReluGradFunctor : public BaseActivationFunctor<T> {
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
-};
-
-// gelu(x) = 0.5 * x *  (1 + erf(x / sqrt(2)))
-template <typename T>
-struct GeluFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-// Because the execute or device context can not be deliver here, it keep the
-// marco for NVCC.
-#if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
-    !defined(__OSX__) && !defined(PADDLE_WITH_CUDA)
-    auto x_data = x.data();
-    auto out_data = out.data();
-    int n = std::min(x.size(), out.size());
-
-    std::memset(out_data, 0, n * sizeof(T));
-    math::CBlas<T>::AXPY(n, static_cast<T>(M_SQRT1_2), x_data, 1, out_data, 1);
-    math::CBlas<T>::VMERF(n, out_data, out_data, VML_LA);
-    for (int i = 0; i < n; i++) {
-      out_data[i] += static_cast<T>(1);
-    }
-    math::CBlas<T>::VMUL(n, x_data, out_data, out_data);
-    for (int i = 0; i < n; i++) {
-      out_data[i] *= static_cast<T>(0.5);
-    }
-#else
-    auto temp = (x * static_cast<T>(M_SQRT1_2)).erf();
-    out.device(d) = x * static_cast<T>(0.5) * (static_cast<T>(1) + temp);
-#endif
-  }
-};
-
-// gelu_grad(x) = dout * (0.5 * (1 + erf(x / sqrt(2))) + 0.5 * 2 / sqrt(pi) /
-// sqrt(2) * x * exp (-0.5 * x^2))
-template <typename T>
-struct GeluGradFunctor : BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out, typename dOut,
-            typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-#if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
-    !defined(__OSX__) && !defined(PADDLE_WITH_CUDA)
-    auto x_data = x.data();
-    auto dx_data = dx.data();
-    auto dout_data = dout.data();
-    int n = std::min(x.size(), dx.size());
-
-    auto first = static_cast<T*>(std::malloc(n * sizeof(T)));
-    std::memset(first, 0, n * sizeof(T));
-    auto second = static_cast<T*>(std::malloc(n * sizeof(T)));
-    std::memset(second, 0, n * sizeof(T));
-
-    // first = (0.5 * (1 + erf(x / sqrt(2))))
-    math::CBlas<T>::AXPY(n, static_cast<T>(M_SQRT1_2), x_data, 1, first, 1);
-    math::CBlas<T>::VMERF(n, first, first, VML_LA);
-    for (int i = 0; i < n; i++) {
-      first[i] += static_cast<T>(1);
-    }
-    math::CBlas<T>::SCAL(n, static_cast<T>(0.5), first, 1);
-
-    // second = (0.5 * 2/sqrt(pi) * 1/sqrt(2) * x * exp(-0.5 * x^2))
-    math::CBlas<T>::VSQUARE(n, x_data, second);
-    math::CBlas<T>::SCAL(n, -static_cast<T>(0.5), second, 1);
-    math::CBlas<T>::VEXP(n, second, second);
-    math::CBlas<T>::VMUL(n, x_data, second, second);
-    math::CBlas<T>::SCAL(n, static_cast<T>(0.5 * M_2_SQRTPI * M_SQRT1_2),
-                         second, 1);
-
-    // dx = dout * (first + second);
-    math::CBlas<T>::VADD(n, first, second, first);
-    math::CBlas<T>::VMUL(n, dout_data, first, dx_data);
-
-    std::free(first);
-    std::free(second);
-#else
-    auto first = static_cast<T>(0.5) *
-                 (static_cast<T>(1) + ((x * static_cast<T>(M_SQRT1_2)).erf()));
-
-    auto second = static_cast<T>(0.5 * M_2_SQRTPI * M_SQRT1_2) * x *
-                  (-static_cast<T>(0.5) * x.square()).exp();
-    dx.device(d) = dout * (first + second);
-#endif
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
 
 // tanh(x) = (exp(x) - exp(-x)) / (exp(x) + exp(-x))
@@ -1369,10 +1290,13 @@ struct ReluGradGradFunctor : public BaseActivationFunctor<T> {
                   framework::Tensor* ddOut, framework::Tensor* dOut,
                   framework::Tensor* dX) const {
     auto* d = dev.eigen_device();
-    auto ddx = framework::EigenVector<T>::Flatten(detail::Ref(ddX));
-    auto out = framework::EigenVector<T>::Flatten(detail::Ref(Out));
+    auto ddx = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(ddX, "Input", "DDX", "ReluGradGrad"));
+    auto out = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(Out, "Output", "Out", "ReluGradGrad"));
     if (ddOut) {
-      auto ddout = framework::EigenVector<T>::Flatten(detail::Ref(ddOut));
+      auto ddout = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "ReluGradGrad"));
       ddout.device(*d) = ddx * (out > static_cast<T>(0)).template cast<T>();
     }
   }
@@ -1392,9 +1316,12 @@ struct LeakyReluGradGradFunctor : public BaseActivationFunctor<T> {
                   framework::Tensor* dX) const {
     if (ddOut) {
       auto* d = dev.eigen_device();
-      auto ddx = framework::EigenVector<T>::Flatten(detail::Ref(ddX));
-      auto out = framework::EigenVector<T>::Flatten(detail::Ref(Out));
-      auto ddout = framework::EigenVector<T>::Flatten(detail::Ref(ddOut));
+      auto ddx = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddX, "Input", "DDX", "LeakyReluGradGrad"));
+      auto out = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(Out, "Output", "Out", "LeakyReluGradGrad"));
+      auto ddout = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddOut, "Output", "DOut", "LeakyReluGradGrad"));
       ddout.device(*d) = ddx *
                          ((out > static_cast<T>(0)).template cast<T>() +
                           static_cast<T>(alpha) *
@@ -1416,18 +1343,23 @@ struct ELUGradGradFunctor : public BaseActivationFunctor<T> {
                   const framework::Tensor* ddX, framework::Tensor* ddOut,
                   const framework::Tensor* dOut, framework::Tensor* dX) const {
     auto* d = dev.eigen_device();
-    auto ddx = framework::EigenVector<T>::Flatten(detail::Ref(ddX));
-    auto x = framework::EigenVector<T>::Flatten(detail::Ref(X));
+    auto ddx = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(ddX, "Input", "DDX", "ELUGradGrad"));
+    auto x = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(X, "Input", "X", "ELUGradGrad"));
 
     if (dX) {
-      auto dx = framework::EigenVector<T>::Flatten(detail::Ref(dX));
-      auto dout = framework::EigenVector<T>::Flatten(detail::Ref(dOut));
+      auto dx = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dX, "Output", "DX", "ELUGradGrad"));
+      auto dout = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dOut, "Output", "DOut", "ELUGradGrad"));
       dx.device(*d) = ddx * dout * static_cast<T>(alpha) * x.exp() *
                       (x < static_cast<T>(0)).template cast<T>();
     }
 
     if (ddOut) {
-      auto ddout = framework::EigenVector<T>::Flatten(detail::Ref(ddOut));
+      auto ddout = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "ELUGradGrad"));
       ddout.device(*d) = ddx *
                          ((x > static_cast<T>(0)).template cast<T>() +
                           static_cast<T>(alpha) * x.exp() *
@@ -1445,17 +1377,22 @@ struct SqrtGradGradFunctor : public BaseActivationFunctor<T> {
                   const framework::Tensor* ddX, framework::Tensor* ddOut,
                   framework::Tensor* dOut, const framework::Tensor* dX) const {
     auto* d = dev.eigen_device();
-    auto ddx = framework::EigenVector<T>::Flatten(detail::Ref(ddX));
-    auto out = framework::EigenVector<T>::Flatten(detail::Ref(Out));
+    auto ddx = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(ddX, "Input", "DDX", "SqrtGradGrad"));
+    auto out = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(Out, "Output", "Out", "SqrtGradGrad"));
     // sqrt GradGrad: ddy = 0.5 * ddx / y, dy = -1 * dx * ddx
     // calculate dy first, so ddy can inplace ddx
     if (dOut) {
-      auto dx = framework::EigenVector<T>::Flatten(detail::Ref(dX));
-      auto dout = framework::EigenVector<T>::Flatten(detail::Ref(dOut));
+      auto dx = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dX, "Output", "DX", "SqrtGradGrad"));
+      auto dout = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dOut, "Output", "DOut", "SqrtGradGrad"));
       dout.device(*d) = dx * ddx * static_cast<T>(-1) / out;
     }
     if (ddOut) {
-      auto ddout = framework::EigenVector<T>::Flatten(detail::Ref(ddOut));
+      auto ddout = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "SqrtGradGrad"));
       ddout.device(*d) = ddx * static_cast<T>(0.5) / out;
     }
   }
@@ -1469,17 +1406,22 @@ struct SquareGradGradFunctor : public BaseActivationFunctor<T> {
                   const framework::Tensor* ddX, framework::Tensor* ddOut,
                   const framework::Tensor* dOut, framework::Tensor* dX) const {
     auto* d = dev.eigen_device();
-    auto ddx = framework::EigenVector<T>::Flatten(detail::Ref(ddX));
-    auto x = framework::EigenVector<T>::Flatten(detail::Ref(X));
+    auto ddx = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(ddX, "Input", "DDX", "SquareGradGrad"));
+    auto x = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(X, "Input", "X", "SquareGradGrad"));
     // square GradGrad: ddy=2x*ddx, dx=2dy*ddx
     // calculate dx first, so ddy can inplace ddx
     if (dX) {
-      auto dx = framework::EigenVector<T>::Flatten(detail::Ref(dX));
-      auto dout = framework::EigenVector<T>::Flatten(detail::Ref(dOut));
+      auto dx = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dX, "Output", "DX", "SquareGradGrad"));
+      auto dout = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(dOut, "Output", "DOut", "SquareGradGrad"));
       dx.device(*d) = ddx * static_cast<T>(2) * dout;
     }
     if (ddOut) {
-      auto ddout = framework::EigenVector<T>::Flatten(detail::Ref(ddOut));
+      auto ddout = framework::EigenVector<T>::Flatten(
+          GET_DATA_SAFELY(ddOut, "Output", "DDOut", "SquareGradGrad"));
       ddout.device(*d) = ddx * static_cast<T>(2) * x;
     }
   }
@@ -1641,8 +1583,10 @@ class PowKernel : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
     ExtractActivationTensor(context, &X, &Out);
     Out->mutable_data<T>(context.GetPlace());
 
-    auto x = framework::EigenVector<T>::Flatten(detail::Ref(X));
-    auto out = framework::EigenVector<T>::Flatten(detail::Ref(Out));
+    auto x = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(X, "Input", "X", "Pow"));
+    auto out = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(Out, "Output", "Out", "Pow"));
     auto* place =
         context.template device_context<DeviceContext>().eigen_device();
     Functor functor;
@@ -1686,10 +1630,14 @@ class PowGradKernel
     ExtractActivationGradTensor<Functor::FwdDeps()>(context, &X, &Out, &dOut,
                                                     &dX);
     dX->mutable_data<T>(context.GetPlace());
-    auto dout = framework::EigenVector<T>::Flatten(detail::Ref(dOut));
-    auto out = framework::EigenVector<T>::Flatten(detail::Ref(Out));
-    auto dx = framework::EigenVector<T>::Flatten(detail::Ref(dX));
-    auto x = framework::EigenVector<T>::Flatten(detail::Ref(X));
+    auto dout = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(dOut, "Input", "Out@GRAD", "PowGrad"));
+    auto out = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(Out, "Input", "Out", "PowGrad"));
+    auto dx = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(dX, "Output", "X@GRAD", "PowGrad"));
+    auto x = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(X, "Input", "X", "PowGrad"));
     auto* place =
         context.template device_context<DeviceContext>().eigen_device();
     Functor functor;
@@ -1727,7 +1675,6 @@ class PowGradKernel
 #define FOR_EACH_ACTIVATION_OP(__macro)                                       \
   __macro(sigmoid, Sigmoid, SigmoidFunctor, SigmoidGradFunctor);              \
   __macro(logsigmoid, LogSigmoid, LogSigmoidFunctor, LogSigmoidGradFunctor);  \
-  __macro(gelu, Gelu, GeluFunctor, GeluGradFunctor);                          \
   __macro(tanh, Tanh, TanhFunctor, TanhGradFunctor);                          \
   __macro(atan, Atan, AtanFunctor, AtanGradFunctor);                          \
   __macro(softshrink, SoftShrink, SoftShrinkFunctor, SoftShrinkGradFunctor);  \

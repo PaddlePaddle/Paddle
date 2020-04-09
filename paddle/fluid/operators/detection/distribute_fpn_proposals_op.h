@@ -20,7 +20,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/math_function.h"
 

@@ -20,6 +20,7 @@ import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid import Linear
 from test_imperative_base import new_program_scope
+import paddle.fluid.dygraph_utils as dygraph_utils
 
 
 class MyLayer(fluid.Layer):
@@ -225,6 +226,24 @@ class TestImperative(unittest.TestCase):
             self.assertTrue(np.array_equal(x, tmp3.numpy()))
             self.assertTrue(np.array_equal(y, tmp4.numpy()))
             self.assertTrue(np.array_equal(x, tmp5.numpy()))
+
+    def test_no_grad_guard(self):
+        data = np.array([[2, 3], [4, 5]]).astype('float32')
+        with fluid.dygraph.guard():
+            l0 = fluid.Linear(2, 2)
+            self.assertTrue(l0.weight._grad_ivar() is None)
+            l1 = fluid.Linear(2, 2)
+            with fluid.dygraph.no_grad():
+                self.assertTrue(l1.weight.stop_gradient is False)
+                tmp = l1.weight * 2
+                self.assertTrue(tmp.stop_gradient)
+            x = fluid.dygraph.to_variable(data)
+            y = l0(x) + tmp
+            o = l1(y)
+            o.backward()
+
+            self.assertTrue(tmp._grad_ivar() is None)
+            self.assertTrue(l0.weight._grad_ivar() is not None)
 
     def test_sum_op(self):
         x = np.ones([2, 2], np.float32)
@@ -534,6 +553,49 @@ class TestImperative(unittest.TestCase):
         self.assertRaises(TypeError, my_layer.__setattr__, 'l1', 'str')
         my_layer.l1 = None
         self.assertEqual(len(my_layer.sublayers()), 0)
+
+
+class TestDygraphUtils(unittest.TestCase):
+    def test_append_activation_in_dygraph_exception(self):
+        with new_program_scope():
+            np_inp = np.random.random(size=(10, 20, 30)).astype(np.float32)
+            a = fluid.layers.data("a", [10, 20])
+            func = dygraph_utils._append_activation_in_dygraph
+            self.assertRaises(AssertionError, func, a, act="sigmoid")
+
+    def test_append_activation_in_dygraph1(self):
+        a_np = np.random.random(size=(10, 20, 30)).astype(np.float32)
+        func = dygraph_utils._append_activation_in_dygraph
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            res1 = func(a, act="hard_sigmoid")
+            res2 = fluid.layers.hard_sigmoid(a)
+            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+
+    def test_append_activation_in_dygraph2(self):
+        a_np = np.random.random(size=(10, 20, 30)).astype(np.float32)
+        func = dygraph_utils._append_activation_in_dygraph
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            res1 = func(a, act="sigmoid", use_mkldnn=True, use_cudnn=True)
+            res2 = fluid.layers.sigmoid(a)
+            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+
+    def test_append_bias_in_dygraph_exception(self):
+        with new_program_scope():
+            np_inp = np.random.random(size=(10, 20, 30)).astype(np.float32)
+            a = fluid.layers.data("a", [10, 20])
+            func = dygraph_utils._append_bias_in_dygraph
+            self.assertRaises(AssertionError, func, a)
+
+    def test_append_bias_in_dygraph(self):
+        a_np = np.random.random(size=(10, 20, 30)).astype(np.float32)
+        func = dygraph_utils._append_bias_in_dygraph
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            res1 = func(a, bias=a)
+            res2 = a + a
+            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
 
 
 if __name__ == '__main__':

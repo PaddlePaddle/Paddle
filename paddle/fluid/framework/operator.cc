@@ -177,7 +177,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       RunImpl(scope, place);
     }
 
-    VLOG(3) << place << " " << DebugStringEx(&scope);
+    VLOG(3) << GetExecutionPlace(place) << " " << DebugStringEx(&scope);
   } catch (platform::EnforceNotMet& exception) {
     framework::InsertCallStackInfo(Type(), Attrs(), &exception);
     throw std::move(exception);
@@ -905,16 +905,6 @@ void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
   this->InferShape(&infer_shape_ctx);
 }
 
-std::vector<KernelConfig>* OperatorWithKernel::GetKernelConfig(
-    const OpKernelType& key) const {
-  auto config_iter = kernel_configs_map_.find(key);
-  std::vector<KernelConfig>* kernel_configs = nullptr;
-  if (config_iter != kernel_configs_map_.end()) {
-    kernel_configs = &(config_iter->second);
-  }
-  return kernel_configs;
-}
-
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
@@ -924,11 +914,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (!all_kernels_must_compute_runtime_shape_ &&
       HasAttr(kAllKernelsMustComputeRuntimeShape))
     all_kernels_must_compute_runtime_shape_ = true;
+  const Scope* cur_scope = &scope;
   if (!enable_cache_runtime_context_) {
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
+    pre_scope_ = cur_scope;
   } else {
-    const Scope* cur_scope = &scope;
     if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
       std::lock_guard<std::mutex> lock(cache_update_mutex_);
       if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
@@ -950,16 +941,16 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     ChooseKernel(*runtime_ctx, scope, place);
   }
 
-  std::vector<KernelConfig>* kernel_configs = GetKernelConfig(*kernel_type_);
-
   // do data transformScope &transfer_scope;
   std::vector<std::string> transfered_inplace_vars;
   Scope* transfer_scope = nullptr;
   {
     platform::RecordEvent record_event("prepare_data",
                                        platform::EventRole::kInnerOp);
-    transfer_scope = PrepareData(scope, *kernel_type_, &transfered_inplace_vars,
-                                 runtime_ctx);
+    if (need_prepare_data_) {
+      transfer_scope = PrepareData(scope, *kernel_type_,
+                                   &transfered_inplace_vars, runtime_ctx);
+    }
   }
   // exec scope is the scope that kernel actually executed on.
   const Scope& exec_scope =
@@ -985,8 +976,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   {
     platform::RecordEvent record_event("compute",
                                        platform::EventRole::kInnerOp);
-    (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
-                                     kernel_configs));
+    (*kernel_func_)(
+        ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
   }
 
   if (!transfered_inplace_vars.empty()) {
@@ -1055,7 +1046,7 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
   OpKernelMap& kernels = kernels_iter->second;
 
   auto expected_kernel_key = this->GetExpectedKernelType(
-      ExecutionContext(*this, scope, *dev_ctx, ctx, nullptr));
+      ExecutionContext(*this, scope, *dev_ctx, ctx));
   if (HasAttr("op_device")) {
     if (Attr<std::string>("op_device") == "cpu") {
       expected_kernel_key.place_ = platform::CPUPlace();
@@ -1251,6 +1242,15 @@ Scope* OperatorWithKernel::PrepareData(
       TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in, &out);
       SetTensorToVariable(*var, out, trans_var);
     }
+  }
+  // If pre_scope = &scope, it means that scope is cached and the op is not in
+  // while block. If new_scope = nullptr, it means that for each input of this
+  // Op, there is no need to do PrepareData. So PrepareData could be skipped at
+  // the rest iterations to save the elapsed time.
+  // We do not support skipping PrepareData in while block, because the Op's
+  // input may be changed by subsequent Ops, which may cause an error.
+  if (pre_scope_ == &scope && new_scope == nullptr) {
+    need_prepare_data_ = false;
   }
 
   return new_scope;
