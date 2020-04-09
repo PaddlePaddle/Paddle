@@ -21,7 +21,7 @@ __all__ = [
     #           'dot',
     #           'einsum',
     #           'morm',
-    'transpose',
+    #           'transpose',
     #           'dist',
     #           't',
     #           'cross',
@@ -159,97 +159,6 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
                 'Y': y},
         outputs={'Out': out},
         attrs=attrs)
-    return out
-
-
-def transpose(x, perm, name=None):
-    """
-    Permute the data dimensions of `input` according to `perm`.
-
-    The `i`-th dimension  of the returned tensor will correspond to the
-    perm[i]-th dimension of `input`.
-
-    Args:
-        x (Variable): The input Tensor. It is a N-D Tensor of data types float32, float64, int32.
-        perm (list): Permute the input according to the data of perm.
-        name (str): The name of this layer. It is optional.
-
-    Returns:
-        Variable: A transposed n-D Tensor, with data type being float32, float64, int32, int64.
-
-    For Example:
-
-        .. code-block:: text
-
-         x = [[[ 1  2  3  4] [ 5  6  7  8] [ 9 10 11 12]]
-             [[13 14 15 16] [17 18 19 20] [21 22 23 24]]]
-         shape(x) =  [2,3,4]
-
-         # Example 1
-         perm0 = [1,0,2]
-         y_perm0 = [[[ 1  2  3  4] [13 14 15 16]]
-                   [[ 5  6  7  8]  [17 18 19 20]]
-                   [[ 9 10 11 12]  [21 22 23 24]]]
-         shape(y_perm0) = [3,2,4]
-
-         # Example 2
-         perm1 = [2,1,0]
-         y_perm1 = [[[ 1 13] [ 5 17] [ 9 21]]
-                   [[ 2 14] [ 6 18] [10 22]]
-                   [[ 3 15]  [ 7 19]  [11 23]]
-                   [[ 4 16]  [ 8 20]  [12 24]]]
-         shape(y_perm1) = [4,3,2]
-
-    Examples:
-
-        .. code-block:: python
-
-            # use append_batch_size=False to avoid prepending extra
-            # batch size in shape
-            
-            import paddle
-            import paddle.fluid as fluid
-            
-            x = fluid.data(name='x', shape=[2, 3, 4],
-                            dtype='float32', append_batch_size=False)
-            x_transposed = paddle.transpose(x, perm=[1, 0, 2])
-            print x_transposed.shape
-            #(3L, 2L, 4L)
-
-    """
-    if in_dygraph_mode():
-        attrs = {'axis': perm}
-        inputs = {'X': [x]}
-        outs = core.ops.transpose2(inputs, attrs)
-        return outs['Out'][0]
-
-    check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        'transpose')
-    check_type(perm, 'perm', list, 'transpose')
-
-    if len(perm) != len(x.shape):
-        raise ValueError(
-            "Input(perm) is the permutation of dimensions of Input(x), "
-            "its length should be equal to dimensions of Input(x), "
-            "but received dimension of Input(x) is %s, "
-            "the length of Input(perm) is %s." % (len(x.shape), len(perm)))
-    for idx, dim in enumerate(perm):
-        if dim >= len(x.shape):
-            raise ValueError(
-                "Each element in Input(perm) should be less than Input(x)'s dimension, "
-                "but %d-th element in Input(perm) is %d which exceeds Input(x)'s "
-                "dimension %d." % (idx, perm[idx], len(x.shape)))
-
-    helper = LayerHelper('transpose', **locals())
-    out = helper.create_variable_for_type_inference(x.dtype)
-    x_shape = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(
-        type='transpose2',
-        inputs={'X': [x]},
-        outputs={'Out': [out],
-                 'XShape': [x_shape]},
-        attrs={'axis': perm})
     return out
 
 

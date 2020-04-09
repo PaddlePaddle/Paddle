@@ -127,7 +127,7 @@ from .linalg import matmul  #DEFINE_ALIAS
 # from .linalg import dot   #DEFINE_ALIAS
 # from .linalg import einsum   #DEFINE_ALIAS
 # from .linalg import morm   #DEFINE_ALIAS
-from .linalg import transpose  #DEFINE_ALIAS
+# from .linalg import transpose  #DEFINE_ALIAS
 # from .linalg import dist   #DEFINE_ALIAS
 # from .linalg import t   #DEFINE_ALIAS
 # from .linalg import cross   #DEFINE_ALIAS
@@ -139,7 +139,7 @@ from .linalg import bmm
 # from .manipulation import expand   #DEFINE_ALIAS
 # from .manipulation import expand_as   #DEFINE_ALIAS
 # from .manipulation import flatten   #DEFINE_ALIAS
-from .manipulation import gather  #DEFINE_ALIAS
+# from .manipulation import gather  #DEFINE_ALIAS
 # from .manipulation import gather_nd   #DEFINE_ALIAS
 # from .manipulation import reshape   #DEFINE_ALIAS
 # from .manipulation import reverse   #DEFINE_ALIAS
@@ -148,14 +148,14 @@ from .manipulation import gather  #DEFINE_ALIAS
 # from .manipulation import scatter_nd   #DEFINE_ALIAS
 # from .manipulation import shard_index   #DEFINE_ALIAS
 # from .manipulation import slice   #DEFINE_ALIAS
-from .manipulation import split  #DEFINE_ALIAS
-from .manipulation import squeeze  #DEFINE_ALIAS
-from .manipulation import stack  #DEFINE_ALIAS
+# from .manipulation import split  #DEFINE_ALIAS
+# from .manipulation import squeeze  #DEFINE_ALIAS
+# from .manipulation import stack  #DEFINE_ALIAS
 # from .manipulation import strided_slice   #DEFINE_ALIAS
 # from .manipulation import transpose   #DEFINE_ALIAS
 # from .manipulation import unique   #DEFINE_ALIAS
 # from .manipulation import unique_with_counts   #DEFINE_ALIAS
-from .manipulation import unsqueeze  #DEFINE_ALIAS
+# from .manipulation import unsqueeze  #DEFINE_ALIAS
 # from .manipulation import unstack   #DEFINE_ALIAS
 from .manipulation import flip  #DEFINE_ALIAS
 # from .manipulation import unbind   #DEFINE_ALIAS

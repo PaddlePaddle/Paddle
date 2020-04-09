@@ -52,7 +52,7 @@ from .tensor.creation import ones_like  #DEFINE_ALIAS
 # from .tensor.creation import range   #DEFINE_ALIAS
 from .tensor.creation import zeros  #DEFINE_ALIAS
 from .tensor.creation import zeros_like  #DEFINE_ALIAS
-# from .tensor.creation import arange   #DEFINE_ALIAS
+from .tensor.creation import arange  #DEFINE_ALIAS
 # from .tensor.creation import eye   #DEFINE_ALIAS
 from .tensor.creation import full  #DEFINE_ALIAS
 # from .tensor.creation import linspace   #DEFINE_ALIAS
@@ -148,6 +148,7 @@ from .tensor.math import add  #DEFINE_ALIAS
 # from .tensor.io import save   #DEFINE_ALIAS
 # from .tensor.io import load   #DEFINE_ALIAS
 from .tensor.linalg import matmul  #DEFINE_ALIAS
+from .tensor.linalg import bmm  #DEFINE_ALIAS
 # from .tensor.linalg import dot   #DEFINE_ALIAS
 # from .tensor.linalg import einsum   #DEFINE_ALIAS
 # from .tensor.linalg import morm   #DEFINE_ALIAS
