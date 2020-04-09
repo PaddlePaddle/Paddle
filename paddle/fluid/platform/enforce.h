@@ -81,6 +81,19 @@ namespace platform {
 #define LIKELY(condition) (condition)
 #endif
 
+#if defined _WIN32 && defined PADDLE_ON_INFERENCE && defined PADDLE_NO_PYTHON
+#define HANDLE_THE_ERROR try {
+#define END_HANDLE_THE_ERROR            \
+  }                                     \
+  catch (const std::exception& e) {     \
+    std::cout << e.what() << std::endl; \
+    throw;                              \
+  }
+#else
+#define HANDLE_THE_ERROR
+#define END_HANDLE_THE_ERROR
+#endif
+
 #ifdef __GNUC__
 inline std::string demangle(std::string name) {
   int status = -4;  // some arbitrary value to eliminate the compiler warning
@@ -222,8 +235,10 @@ inline void throw_on_error(bool stat, const std::string& msg) {
 // Note: This Macro can only be used within enforce.h
 #define __THROW_ERROR_INTERNAL__(...)                                \
   do {                                                               \
+    HANDLE_THE_ERROR                                                 \
     throw ::paddle::platform::EnforceNotMet(                         \
         ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
+    END_HANDLE_THE_ERROR                                             \
   } while (0)
 
 /** ENFORCE EXCEPTION AND MACROS **/
@@ -250,8 +265,10 @@ struct EnforceNotMet : public std::exception {
 
 #define PADDLE_THROW(...)                                                   \
   do {                                                                      \
+    HANDLE_THE_ERROR                                                        \
     throw ::paddle::platform::EnforceNotMet(                                \
         ::paddle::platform::ErrorSummary(__VA_ARGS__), __FILE__, __LINE__); \
+    END_HANDLE_THE_ERROR                                                    \
   } while (0)
 
 #if defined(__CUDA_ARCH__)
@@ -278,8 +295,10 @@ struct EnforceNotMet : public std::exception {
                 __cond__,                                                   \
                 ::paddle::platform::ErrorSummary(__VA_ARGS__).ToString())); \
       } catch (...) {                                                       \
+        HANDLE_THE_ERROR                                                    \
         throw ::paddle::platform::EnforceNotMet(std::current_exception(),   \
                                                 __FILE__, __LINE__);        \
+        END_HANDLE_THE_ERROR                                                \
       }                                                                     \
     }                                                                       \
   } while (0)
@@ -429,15 +448,19 @@ struct EOFException : public std::exception {
 
 #define PADDLE_THROW_EOF()                                                     \
   do {                                                                         \
+    HANDLE_THE_ERROR                                                           \
     throw ::paddle::platform::EOFException("There is no next data.", __FILE__, \
                                            __LINE__);                          \
+    END_HANDLE_THE_ERROR                                                       \
   } while (0)
 
 #define PADDLE_THROW_BAD_ALLOC(...)                                         \
   do {                                                                      \
+    HANDLE_THE_ERROR                                                        \
     throw ::paddle::memory::allocation::BadAlloc(                           \
         ::paddle::platform::ErrorSummary(__VA_ARGS__).ToString(), __FILE__, \
         __LINE__);                                                          \
+    END_HANDLE_THE_ERROR                                                    \
   } while (0)
 
 /** CUDA PADDLE ENFORCE FUNCTIONS AND MACROS **/
@@ -593,8 +616,10 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
                 __cond__,                                                   \
                 ::paddle::platform::ErrorSummary(__VA_ARGS__).ToString())); \
       } catch (...) {                                                       \
+        HANDLE_THE_ERROR                                                    \
         throw ::paddle::platform::EnforceNotMet(std::current_exception(),   \
                                                 __FILE__, __LINE__);        \
+        END_HANDLE_THE_ERROR                                                \
       }                                                                     \
     }                                                                       \
   } while (0)
