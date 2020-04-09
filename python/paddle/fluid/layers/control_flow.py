@@ -2323,8 +2323,7 @@ class Switch(object):
     Case and default functions can only be used inside the scope of Switch, as shown below:
 
     .. code-block:: python
-        
-        '''
+
         with fluid.layers.Switch() as switch:
             with switch.case(cond1):
                 i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=1)
@@ -2332,7 +2331,6 @@ class Switch(object):
                 i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=2)
             with switch.default():
                 i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
-        '''
 
     Args:
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
@@ -3363,8 +3361,7 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
                     branch_fns=[(0, fn_1), (4, fn_2), (7, fn_3)])
 
                 exe = fluid.Executor(fluid.CPUPlace())
-                res_1, res_2, res_3 = exe.run(main_program,
-                                              fetch_list=[out_1, out_2, out_3])
+                res_1, res_2, res_3 = exe.run(main_program, fetch_list=[out_1, out_2, out_3])
                 print(res_1)  # [[1. 1.]]
                 print(res_2)  # [[2 2] [2 2]]
                 print(res_3)  # [3 3 3]
