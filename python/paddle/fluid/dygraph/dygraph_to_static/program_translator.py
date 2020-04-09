@@ -101,13 +101,13 @@ class ProgramCache(object):
         self._main_program = framework.default_main_program()
         self._startup_program = framework.default_startup_program()
         self._func_cache = FunctionCache()
-        self._feed_name_to_idx = {}
         self._visited_funcs = []
         self._initialize()
 
     def _initialize(self):
         self._inputs = []
         self._outputs = []
+        self._feed_name_to_idx = {}
         # Stores the entry function of Net or Model.
         self._forward_func = None
         self._is_repeated = False
@@ -133,7 +133,7 @@ class ProgramCache(object):
         if self._is_repeated:
             return self.outputs
 
-        # 3. Builds program only once and return the output Variables.
+        # 3. Builds program only once and returns the output Variables.
         outputs = self._get_or_build_program(static_func, args, kwargs)
 
         if static_func == self._forward_func:
@@ -148,7 +148,6 @@ class ProgramCache(object):
         Transforms dygraph function into static function.
         """
         static_func = self._func_cache.get_or_cache_func(dyfunc)
-
         # self._forward_func is entry function of Net or Model.
         # It can be called for multiple times, but layers from these functions
         # call stack will be added into self._main_program only once.
@@ -334,11 +333,11 @@ class ProgramTranslator(object):
         code = textwrap.dedent(raw_code)
         root = gast.parse(code)
 
-        # Transforms AST
+        # Transform AST
         dygraph_to_static = DygraphToStaticAst()
         root_wrapper = dygraph_to_static.get_static_ast(root)
 
-        # Gets source_code
+        # Get source_code
         source_code = ast_to_source_code(root_wrapper.node)
         return source_code
 
