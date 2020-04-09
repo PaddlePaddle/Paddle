@@ -360,10 +360,27 @@ class StaticGraphAdapter(object):
             metric_list, metric_splits = flatten_list(endpoints['metric'])
             fetch_list = endpoints['loss'] + metric_list
             num_loss = len(endpoints['loss'])
+
+        # if fetch Variable is same as input Variable, do not fetch
+        # from program, get it from input directly
+        pruned_fetch_list = []
+        pruned_fetch_idx_name_map = [""] * len(fetch_list)
+        for i, fetch_var in enumerate(fetch_list):
+            if fetch_var.name in feed.keys():
+                pruned_fetch_idx_name_map[i] = fetch_var.name
+            else:
+                pruned_fetch_list.append(fetch_var)
+
         rets = self._executor.run(compiled_prog,
                                   feed=feed,
-                                  fetch_list=fetch_list,
+                                  fetch_list=pruned_fetch_list,
                                   return_numpy=False)
+
+        # restore pruned fetch_list Variable from feeds
+        for i, name in enumerate(pruned_fetch_idx_name_map):
+            if len(name) > 0:
+                rets.insert(i, feed[name])
+
         # LoDTensor cannot be fetch as numpy directly
         rets = [np.array(v) for v in rets]
         if self.mode == 'test':
