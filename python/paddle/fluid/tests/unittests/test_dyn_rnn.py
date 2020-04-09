@@ -299,5 +299,20 @@ class TestDynamicRNN(unittest.TestCase):
         self.train_data = train_data_orig
 
 
+class TestDynamicRNNErrors(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            init = fluid.layers.zeros(shape=[1], dtype='float32')
+            shape = 'shape'
+
+            # The type of Input(shape) in API(memory) must be list or tuple
+            def input_shape_type_of_memory():
+                drnn = fluid.layers.DynamicRNN()
+                with drnn.block():
+                    res = drnn.memory(init, shape)
+
+            self.assertRaises(TypeError, input_shape_type_of_memory)
+
+
 if __name__ == '__main__':
     unittest.main()

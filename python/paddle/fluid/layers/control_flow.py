@@ -871,11 +871,7 @@ class While(object):
     def __init__(self, cond, is_test=False, name=None):
         self.helper = LayerHelper("while", name=name)
         self.status = While.BEFORE_WHILE_BLOCK
-        if not isinstance(cond, Variable):
-            raise TypeError("condition should be a variable")
-        assert isinstance(cond, Variable)
-        if cond.dtype != core.VarDesc.VarType.BOOL:
-            raise TypeError("condition should be a boolean variable")
+        check_variable_and_dtype(cond, 'cond', ['bool'], 'While')
         if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
             raise TypeError(
                 "condition expected shape as [], but given shape as {0}.".
@@ -983,21 +979,17 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                 print(res) # [array([10])]
     """
     helper = LayerHelper('while_loop', **locals())
-
+    check_type(loop_vars, 'loop_vars', (list, tuple), 'while_loop')
     if not callable(cond):
         raise TypeError("cond in while_loop should be callable")
     if not callable(body):
         raise TypeError("body in while_loop should be callable")
-    if not isinstance(loop_vars, (list, tuple)):
-        raise TypeError("loop_vars in while_loop should be a list or tuple")
     if len(loop_vars) == 0:
         raise ValueError("loop_vars in while_loop should not be empty")
 
     pre_cond = cond(*loop_vars)
-    if not isinstance(pre_cond, Variable):
-        raise TypeError("cond in while_loop should return a variable")
-    if pre_cond.dtype != core.VarDesc.VarType.BOOL:
-        raise TypeError("cond in while_loop should return a boolean variable")
+    check_variable_and_dtype(pre_cond, 'var of cond returned', ['bool'],
+                             'while_loop')
     if reduce(lambda a, b: a * b, pre_cond.shape, 1) != 1:
         raise TypeError(
             "the shape of the variable returned by cond should be [],"
@@ -2800,9 +2792,7 @@ class DynamicRNN(object):
                 rnn_output = drnn()
         """
         self._assert_in_rnn_block_("step_input")
-        if not isinstance(x, Variable):
-            raise TypeError(
-                "step_input() can only take a Variable as its input.")
+        check_type(x, 'x', (Variable), 'step_input()')
         parent_block = self._parent_block_()
         if self.lod_rank_table is None:
             self.lod_rank_table = parent_block.create_var(
@@ -2969,9 +2959,7 @@ class DynamicRNN(object):
                 rnn_output = drnn()
         """
         self._assert_in_rnn_block_("static_input")
-        if not isinstance(x, Variable):
-            raise TypeError(
-                "static_input() can only take a Variable as its input")
+        check_type(x, 'x', (Variable), 'static_input()')
         if self.lod_rank_table is None:
             raise RuntimeError(
                 "static_input() must be called after step_input().")
@@ -3136,10 +3124,10 @@ class DynamicRNN(object):
         """
         self._assert_in_rnn_block_('memory')
         self._init_zero_idx_()
+        if shape is not None:
+            check_type(shape, 'shape', (Variable), 'memory()')
         if init is not None:
-            if not isinstance(init, Variable):
-                raise TypeError(
-                    "The input arg `init` of memory() must be a Variable")
+            check_type(init, 'init', (Variable), 'memory()')
             parent_block = self._parent_block_()
             init_tensor = init
             if need_reorder == True:
@@ -3220,12 +3208,8 @@ class DynamicRNN(object):
             ValueError: When :code:`update_memory()` is called before :code:`step_input()` .
         """
         self._assert_in_rnn_block_('update_memory')
-        if not isinstance(ex_mem, Variable):
-            raise TypeError("The input arg `ex_mem` of update_memory() must "
-                            "be a Variable")
-        if not isinstance(new_mem, Variable):
-            raise TypeError("The input arg `new_mem` of update_memory() must "
-                            "be a Variable")
+        check_type(ex_mem, 'ex_mem', (Variable), 'update_memory()')
+        check_type(new_mem, 'new_mem', (Variable), 'update_memory()')
 
         mem_array = self.mem_dict.get(ex_mem.name, None)
         if mem_array is None:

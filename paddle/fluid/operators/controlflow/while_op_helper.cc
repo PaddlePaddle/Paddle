@@ -83,7 +83,11 @@ static void ModifyWhileOpAndWhileGradOpAttr(const OpVariant &fwd_op,
   auto &in_grads = bwd_op.Outputs().at(framework::GradVarName(kX));
   PADDLE_ENFORCE_EQ(
       fwd_input.size(), in_grads.size(),
-      "Backward input gradient number does not match forward input number.");
+      platform::errors::PreconditionNotMet(
+          "Backward output gradient number does not match forward input number."
+          "The number of forward input number is %d and the number of backward "
+          "output geadient number is %d",
+          fwd_input.size(), in_grads.size()));
 
   std::unordered_set<std::string> backward_skip_vars;
   for (size_t i = 0; i < in_grads.size(); ++i) {
@@ -104,7 +108,13 @@ static void ModifyWhileOpAndWhileGradOpAttr(const OpVariant &fwd_op,
 static void FindAllWhileAndWhileGradOp(const framework::ProgramDesc &program,
                                        std::vector<OpVariant> *while_ops,
                                        std::vector<OpVariant> *while_grad_ops) {
-  PADDLE_ENFORCE_GE(while_ops->size(), while_grad_ops->size());
+  PADDLE_ENFORCE_GE(
+      while_ops->size(), while_grad_ops->size(),
+      platform::errors::PreconditionNotMet(
+          "There are more while_grad_ops than forward while_ops in the graph "
+          "or program, the number of while_ops is %d and the number of "
+          "while_grad_ops is %d.",
+          while_ops->size(), while_grad_ops->size()));
   for (size_t i = 1; i < program.Size(); ++i) {
     auto &block = program.Block(i);
     for (size_t j = 0; j < block.OpSize(); ++j) {
@@ -117,8 +127,13 @@ static void FindAllWhileAndWhileGradOp(const framework::ProgramDesc &program,
     }
   }
 
-  PADDLE_ENFORCE_GE(while_ops->size(), while_grad_ops->size(),
-                    "There are extra while_grad ops in the graph or program");
+  PADDLE_ENFORCE_GE(
+      while_ops->size(), while_grad_ops->size(),
+      platform::errors::InvalidArgument(
+          "There are more while_grad_ops than forward while_ops in the graph "
+          "or program, the number of while_ops is %d and the number of "
+          "while_grad_ops is %d.",
+          while_ops->size(), while_grad_ops->size()));
 }
 
 static void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOpImpl(
@@ -140,13 +155,16 @@ static void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOpImpl(
     const OpVariant *matched_fwd_op = nullptr;
     for (auto &fwd_op : while_op_set) {
       if (IsMatchedWhileOpAndWhileGradOp(fwd_op, bwd_op)) {
-        PADDLE_ENFORCE(matched_fwd_op == nullptr,
-                       "Found multiple matched while ops");
+        PADDLE_ENFORCE_EQ(matched_fwd_op, nullptr,
+                          platform::errors::PreconditionNotMet(
+                              "Found multiple while forward ops match while "
+                              "grad ops"));
         matched_fwd_op = &fwd_op;
       }
     }
     PADDLE_ENFORCE_NOT_NULL(matched_fwd_op,
-                            "Cannot find matched forward while op.");
+                            platform::errors::PreconditionNotMet(
+                                "Cannot find matched forward while op."));
     ModifyWhileOpAndWhileGradOpAttr(*matched_fwd_op, bwd_op);
     while_op_set.erase(*matched_fwd_op);
   }
