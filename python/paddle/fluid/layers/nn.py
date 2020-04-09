@@ -2841,6 +2841,7 @@ def data_norm(input,
         sync_stats(bool, Default False): When running with multiple GPU cards, using allreduce to sync the
             summary messages.
         summary_decay_rate(float, Default 0.9999999): The decay rate when updating summary.
+        enable_scale_and_shift(bool, Default False): do scale&shift after normalization.
 
     Returns:
         Variable: A tensor variable which is the result after applying data normalization on the input.
