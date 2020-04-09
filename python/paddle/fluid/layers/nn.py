@@ -6267,13 +6267,8 @@ def lod_append(x, level):
 
     if isinstance(level, Variable):
         inputs['Y'] = level
-        if level.lod_level > 0:
-            check_variable_and_dtype(level, 'level',
-                                     ['float32', 'float64', 'int32', 'int64'],
-                                     'lod_append')
-        else:
-            check_variable_and_dtype(level, 'level', ['int32', 'int64'],
-                                     'lod_append')
+        if level.lod_level == 0:
+            check_variable_and_dtype(level, 'level', ['int32'], 'lod_append')
     else:
         attrs['target_lod'] = level
     helper.append_op(

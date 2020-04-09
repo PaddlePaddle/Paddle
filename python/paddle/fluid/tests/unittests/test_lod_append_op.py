@@ -29,7 +29,7 @@ class TestLoDAppendAPI(unittest.TestCase):
         main_program = Program()
         with fluid.program_guard(main_program):
             x = fluid.layers.data(name='x', shape=[6], dtype='float32')
-            result = fluid.layers.lod_append(x, [2, 2, 2])
+            result = fluid.layers.lod_append(x, [0, 2, 6])
 
             x_i = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0]).astype("float32")
 
@@ -51,7 +51,7 @@ class TestWhereOpError(unittest.TestCase):
             def test_Variable():
                 # The input(x) must be Variable.
                 x1 = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float64")
-                level1 = [1, 1, 1, 1]
+                level1 = [0, 2, 4]
                 fluid.layers.lod_append(x1, level1)
 
             self.assertRaises(TypeError, test_Variable)
@@ -65,9 +65,9 @@ class TestWhereOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_type)
 
             def test_type2():
-                x2 = fluid.layers.data(name='x2', shape=[4], dtype='float32')
-                level2 = fluid.layers.data(
-                    name='level2', shape=[4], dtype='float32', lod_level=0)
-                fluid.layers.lod_append(x2, level2)
+                x3 = fluid.layers.data(name='x3', shape=[4], dtype='float32')
+                level3 = fluid.layers.data(
+                    name='level3', shape=[4], dtype='float32', lod_level=0)
+                fluid.layers.lod_append(x3, level3)
 
             self.assertRaises(TypeError, test_type2)
