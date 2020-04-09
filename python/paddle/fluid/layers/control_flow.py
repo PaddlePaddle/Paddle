@@ -1312,7 +1312,7 @@ def array_write(x, i, array=None):
             array.append(x)
         return array
 
-    check_variable_and_dtype(i, 'i', ['int32', 'int64'], 'array_write')
+    check_variable_and_dtype(i, 'i', ['int64'], 'array_write')
     check_type(x, 'x', (Variable), 'array_write')
     helper = LayerHelper('array_write', **locals())
     if array is not None:
@@ -1692,7 +1692,7 @@ def array_read(array, i):
         i = i.numpy()[0]
         return array[i]
 
-    check_variable_and_dtype(i, 'i', ['int32', 'int64'], 'array_read')
+    check_variable_and_dtype(i, 'i', ['int64'], 'array_read')
     helper = LayerHelper('array_read', **locals())
     if not isinstance(
             array,
