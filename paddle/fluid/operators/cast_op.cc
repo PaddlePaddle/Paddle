@@ -59,8 +59,8 @@ class CastOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *context) const override {
-    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "cast")
-    OP_INOUT_CHECK(context->HasInput("Out"), "Output", "Out", "cast")
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "cast");
+    OP_INOUT_CHECK(context->HasInput("Out"), "Output", "Out", "cast");
     context->SetOutputDim("Out", context->GetInputDim("X"));
     context->ShareLoD("X", "Out");
   }

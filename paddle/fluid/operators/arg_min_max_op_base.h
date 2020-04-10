@@ -136,8 +136,8 @@ class ArgMinMaxOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "arg_min_max")
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "arg_min_max")
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "arg_min_max");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "arg_min_max");
     const auto& x_dims = ctx->GetInputDim("X");
     int64_t axis = ctx->Attrs().Get<int64_t>("axis");
     bool keepdims = ctx->Attrs().Get<bool>("keepdims");
