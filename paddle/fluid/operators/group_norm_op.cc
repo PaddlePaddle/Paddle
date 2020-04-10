@@ -30,19 +30,12 @@ class GroupNormOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(true, ctx->HasInput("X"),
-                      platform::errors::InvalidArgument(
-                          "Input(X) of GroupNormOp should not be null."));
-    PADDLE_ENFORCE_EQ(true, ctx->HasOutput("Y"),
-                      platform::errors::InvalidArgument(
-                          "Output(Y) of GroupNormOp should not be null."));
-    PADDLE_ENFORCE_EQ(true, ctx->HasOutput("Mean"),
-                      platform::errors::InvalidArgument(
-                          "Output(Mean) of GroupNormOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        true, ctx->HasOutput("Variance"),
-        platform::errors::InvalidArgument(
-            "Output(Variance) of GroupNormOp should not be null."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "GroupNorm");
+    OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "GroupNorm");
+    OP_INOUT_CHECK(ctx->HasOutput("Mean"), "Output", "Mean", "GroupNorm");
+    OP_INOUT_CHECK(ctx->HasOutput("Variance"), "Output", "Variance",
+                   "GroupNorm");
+
     auto x_dim = ctx->GetInputDim("X");
     const std::string data_layout_str =
         ctx->Attrs().Get<std::string>("data_layout");
@@ -55,8 +48,7 @@ class GroupNormOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_LE(
         groups, channel_num,
         platform::errors::InvalidArgument(
-            "ValueError: the Attr(groups) of Op(group_norm) must be less than "
-            "or "
+            "the Attr(groups) of Op(group_norm) must be less than or "
             "equal to the number of channels. "
             "But received: groups is [%s], channels is [%s], the "
             "Attr(data_layout) "
@@ -65,7 +57,7 @@ class GroupNormOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(
         groups, 1,
         platform::errors::InvalidArgument(
-            "ValueError: the Attr(groups) of Op(group_norm) must be "
+            "the Attr(groups) of Op(group_norm) must be "
             "greater than or equal to 1. But received: groups is [%s].",
             groups));
 
@@ -73,19 +65,16 @@ class GroupNormOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           ctx->GetInputDim("Scale").size(), 1UL,
           platform::errors::InvalidArgument(
-              "ShapeError: the Input(Scale) of Op(group_norm) should be 1-D "
-              "Tensor. "
+              "the Input(Scale) of Op(group_norm) should be 1-D Tensor. "
               "But received: %u-D Tensor, the shape of Input(Scale) is [%s].",
               ctx->GetInputDim("Scale").size(), ctx->GetInputDim("Scale")));
       PADDLE_ENFORCE_EQ(
           ctx->GetInputDim("Scale")[0], channel_num,
           platform::errors::InvalidArgument(
-              "ShapeError: the Input(Scale)'s first dimension size of "
-              "Op(group_norm) must be equal to the number of channels. "
-              "But received: the Input(Scale)'s first dimension size is [%s], "
-              "the "
-              "channels is [%s], the Attr(data_layout) is [%s]. The error may "
-              "come "
+              "the Input(Scale)'s first dimension size of Op(group_norm) must "
+              "be equal to the number of channels. But received: the "
+              "Input(Scale)'s first dimension size is [%s], the channels is "
+              "[%s], the Attr(data_layout) is [%s]. The error may come "
               "from wrong data_layout setting.",
               ctx->GetInputDim("Scale")[0], channel_num, data_layout_str));
     }
@@ -93,20 +82,17 @@ class GroupNormOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           ctx->GetInputDim("Bias").size(), 1UL,
           platform::errors::InvalidArgument(
-              "ShapeError: the Input(Bias) of Op(group_norm) should be 1-D "
-              "Tensor. "
+              "the Input(Bias) of Op(group_norm) should be 1-D Tensor. "
               "But received: %u-D Tensor, the shape of Input(Bias) is [%s].",
               ctx->GetInputDim("Bias").size(), ctx->GetInputDim("Bias")));
       PADDLE_ENFORCE_EQ(
           ctx->GetInputDim("Bias")[0], channel_num,
           platform::errors::InvalidArgument(
-              "ShapeError: the Input(Bias)'s first dimension size of "
+              "the Input(Bias)'s first dimension size of "
               "Op(group_norm) must be equal to the number of channels. "
               "But received: the Input(Bias)'s first dimension size is [%s], "
-              "the "
-              "channels is [%s], the Attr(data_layout) is [%s]. The error may "
-              "come "
-              "from wrong data_layout setting.",
+              "the channels is [%s], the Attr(data_layout) is [%s]. The "
+              "error may come from wrong data_layout setting.",
               ctx->GetInputDim("Bias")[0], channel_num, data_layout_str));
     }
 
@@ -191,20 +177,18 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     const auto *var = ctx.InputVar(framework::GradVarName("Y"));
 
-    PADDLE_ENFORCE_EQ(
-        true, var != nullptr,
-        platform::errors::InvalidArgument(
-            "Input(Y@GRAD) of GroupNormGradOp should not be null"));
+    PADDLE_ENFORCE_NOT_NULL(
+        var, platform::errors::InvalidArgument(
+                 "Input(Y@GRAD) of GroupNormGradOp should not be null"));
     const Tensor *t = nullptr;
     if (var->IsType<Tensor>()) {
       t = &var->Get<Tensor>();
     } else if (var->IsType<LoDTensor>()) {
       t = &var->Get<LoDTensor>();
     }
-    PADDLE_ENFORCE_EQ(
-        true, t != nullptr,
-        platform::errors::InvalidArgument(
-            "Input(Y@GRAD) Tensor of GroupNormGradOp should not be null"));
+    PADDLE_ENFORCE_NOT_NULL(
+        t, platform::errors::InvalidArgument(
+               "Input(Y@GRAD) Tensor of GroupNormGradOp should not be null"));
     return framework::OpKernelType(t->type(), ctx.GetPlace());
   }
 };
