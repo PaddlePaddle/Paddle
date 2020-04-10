@@ -1377,8 +1377,13 @@ def diag(diagonal):
           # diagonal.shape=(3,) data.shape=(3, 3)
 
     """
-    check_dtype(diagonal, 'diagonal', ['float32', 'float64', 'int32', 'int64'],
-                'diag')
+    if not isinstance(diagonal, Variable):
+        check_dtype(diagonal, 'diagonal',
+                    ['float32', 'float64', 'int32', 'int64'], 'diag')
+    else:
+        check_variable_and_dtype(diagonal, 'diagonal',
+                                 ['float32', 'float64', 'int32', 'int64'],
+                                 'diag')
     helper = LayerHelper("diag", **locals())
 
     if not isinstance(diagonal, Variable):
