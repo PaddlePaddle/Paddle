@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from paddle.common_ops_import import *
+from ..fluid.layer_helper import LayerHelper
+from ..fluid.data_feeder import check_variable_and_dtype, check_type
+from ..fluid.framework import in_dygraph_mode
 
 # TODO: define functions of linear algebra   
 __all__ = [
@@ -20,7 +23,7 @@ __all__ = [
     #  'einsum',
     #  'morm',
     #  'transpose',
-    #  'dist',
+    'dist',
     #  't',
     #  'cross',
     #  'cholesky',
@@ -155,4 +158,79 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
                 'Y': y},
         outputs={'Out': out},
         attrs=attrs)
+    return out
+
+
+def dist(x, y, p=2):
+    """
+    This OP returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure
+    of distance. The shapes of x and y must be broadcastable.
+
+    Where, z = x - y,
+
+    When p = 0, defining $0^0=0$, the zero-norm of z is simply the number of non-zero elements of z.
+
+    .. math::
+
+        ||z||_{0}=\lim_{p \\rightarrow 0}\sum_{i=1}^{m}|z_i|^{p}
+
+    When p = inf, the inf-norm of z is the maximum element of z.
+
+    .. math::
+
+        ||z||_\infty=\max_i |z_i|
+
+    When p = -inf, the negative-inf-norm of z is the minimum element of z.
+
+    .. math::
+
+        ||z||_{-\infty}=\min_i |z_i|
+
+    Otherwise, the p-norm of z follows the formula,
+
+    .. math::
+
+        ||z||_{p}=(\sum_{i=1}^{m}|z_i|^p)^{\\frac{1}{p}}
+
+    Args:
+        x (Variable): 1-D to 6-D Tensor, its data type is float32 or float64.
+        y (Variable): 1-D to 6-D Tensor, its data type is float32 or float64.
+        p (float, optional): The norm to be computed, its data type is float32 or float64. Default: 2.
+
+    Returns:
+        Variable: Tensor that is the p-norm of (x - y).
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(np.array([[3, 3],[3, 3]]).astype(np.float32))
+                y = fluid.dygraph.to_variable(np.array([[3, 3],[3, 1]]).astype(np.float32))
+                out = paddle.dist(x, y, 0)
+                print(out.numpy()) # out = [1.]
+
+                out = paddle.dist(x, y, 2)
+                print(out.numpy()) # out = [2.]
+
+                out = paddle.dist(x, y, float("inf"))
+                print(out.numpy()) # out = [2.]
+
+                out = paddle.dist(x, y, float("-inf"))
+                print(out.numpy()) # out = [0.]
+    """
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'dist')
+    check_variable_and_dtype(y, 'dtype', ['float32', 'float64'], 'dist')
+    check_type(p, 'p', (float, int), 'dist')
+    helper = LayerHelper("dist", **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+
+    inputs = {"X": [x], "Y": [y]}
+    outputs = {'Out': [out]}
+    attrs = {"p": float(p)}
+    helper.append_op(
+        type='dist', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out

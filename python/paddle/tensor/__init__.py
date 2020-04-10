@@ -127,7 +127,7 @@ from .linalg import matmul  #DEFINE_ALIAS
 # from .linalg import einsum   #DEFINE_ALIAS
 # from .linalg import morm   #DEFINE_ALIAS
 # from .linalg import transpose   #DEFINE_ALIAS
-# from .linalg import dist   #DEFINE_ALIAS
+from .linalg import dist  #DEFINE_ALIAS
 # from .linalg import t   #DEFINE_ALIAS
 # from .linalg import cross   #DEFINE_ALIAS
 # from .linalg import cholesky   #DEFINE_ALIAS
