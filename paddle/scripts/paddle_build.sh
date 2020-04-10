@@ -279,7 +279,6 @@ function check_style() {
     mkdir -p $GOPATH/src/github.com/PaddlePaddle/
     ln -sf ${PADDLE_ROOT} $GOPATH/src/github.com/PaddlePaddle/Paddle
 
-    export PATH=/usr/bin:$PATH
     pre-commit install
     clang-format --version
 
@@ -485,7 +484,6 @@ function generate_upstream_develop_api_spec() {
     fetch_upstream_develop_if_not_exist
     cur_branch=`git branch | grep \* | cut -d ' ' -f2`
     git checkout -b develop_base_pr upstream/$BRANCH
-    check_style
     cmake_gen $1
     build $2
 
@@ -1138,6 +1136,7 @@ function main() {
         build ${parallel_number}
         ;;
       build_and_check)
+        check_style
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number} 
