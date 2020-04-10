@@ -348,10 +348,10 @@ DECLARE_INPLACE_OP_INFERER(ElementwiseGradOpInplace,
                             framework::GradVarName("X")});
 DECLARE_INPLACE_OP_INFERER(ElementwiseDoubleGradOpInplace, {"DDX", "DDOut"});
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ElementwiseGradNoBufVarsInference, "X",
-                                      "Y");
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ElementwiseDoubleGradNoBufVarsInference,
-                                      "Y", "DOut");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ElementwiseGradNoBufVarsInference, "X",
+                                    "Y");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ElementwiseDoubleGradNoBufVarsInference,
+                                    "Y", "DOut");
 
 }  // namespace operators
 }  // namespace paddle

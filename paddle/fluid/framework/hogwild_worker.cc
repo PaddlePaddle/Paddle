@@ -37,6 +37,10 @@ void HogwildWorker::Initialize(const TrainerDesc &desc) {
     dump_fields_[i] = desc.dump_fields(i);
   }
 
+  for (int i = 0; i < param_.stat_var_names_size(); ++i) {
+    stat_var_name_map_[param_.stat_var_names(i)] = 1;
+  }
+
   need_dump_param_ = false;
   dump_param_.resize(desc.dump_param_size());
   for (int i = 0; i < desc.dump_param_size(); ++i) {

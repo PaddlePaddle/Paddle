@@ -646,8 +646,7 @@ class Pad2dOpGradMaker : public framework::SingleGradOpMaker<T> {
 };
 
 // TODO(zjl): Paddings can also be skipped!
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(Pad2dOpGradNoNeedBufferVarsInference,
-                                      "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(Pad2dOpGradNoNeedBufferVarsInference, "X");
 
 }  // namespace operators
 }  // namespace paddle

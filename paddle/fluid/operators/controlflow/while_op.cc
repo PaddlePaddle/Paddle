@@ -19,7 +19,6 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 
 namespace paddle {
 namespace operators {
@@ -198,23 +197,18 @@ class WhileGradOp : public framework::OperatorBase {
           continue;
         }
 
-        auto &og_outside =
-            detail::Ref(scope.FindVar(outside_og_name),
-                        "Cannot find Outside Gradient %s", outside_og_name);
-        auto &og_inside =
-            detail::Ref(cur_scope.Var(inside_og_name),
-                        "Cannot find inside gradient %s", inside_og_name);
+        auto &og_outside = *scope.FindVar(outside_og_name);
+        auto &og_inside = *cur_scope.Var(inside_og_name);
         if (og_outside.IsType<framework::LoDTensor>()) {
           auto &outside_tensor = og_outside.Get<framework::LoDTensor>();
-          auto &inside_tensor =
-              detail::Ref(og_inside.GetMutable<framework::LoDTensor>());
+          auto &inside_tensor = *og_inside.GetMutable<framework::LoDTensor>();
           inside_tensor.set_lod(outside_tensor.lod());
           inside_tensor.ShareDataWith(outside_tensor);
         } else if (og_outside.IsType<framework::LoDTensorArray>()) {
           auto outside_array =
               og_outside.GetMutable<framework::LoDTensorArray>();
           auto &inside_array =
-              detail::Ref(og_inside.GetMutable<framework::LoDTensorArray>());
+              *og_inside.GetMutable<framework::LoDTensorArray>();
           inside_array.clear();
           inside_array.resize(outside_array->size());
           VLOG(8) << outside_og_name << " size = " << outside_array->size();

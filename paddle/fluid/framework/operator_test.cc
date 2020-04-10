@@ -525,7 +525,7 @@ TEST(ExecutionContextAttrAndInOut, new_api) {
 
   paddle::framework::RuntimeContext ctx({}, {});
   paddle::framework::ExecutionContext exe_context(*(op.get()), scope, *dev_ctx,
-                                                  ctx, nullptr);
+                                                  ctx);
 
   ASSERT_EQ(exe_context.InputSize("input"), 1u);
   ASSERT_EQ(exe_context.OutputSize("output"), 1u);
