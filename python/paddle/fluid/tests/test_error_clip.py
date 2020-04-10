@@ -37,6 +37,22 @@ with fluid.program_guard(main_program=prog):
     avg_cost = fluid.layers.mean(cost)
 
 prog_clip = prog.clone()
+# check clip error message enhance
+# The input type must be Variable.
+self.assertRaises(TypeError, fluid.clip, 1, 'all')
+#The input dtype must be int32, int64, float16, float32, float64
+x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+self.assertRaises(TypeError, fluid.clip, x_int32, 'all')
+x_int64 = fluid.data(name='x_int64', shape=[12, 10], dtype='int64')
+self.assertRaises(TypeError, fluid.clip, x_int64, 'all')
+x_float16 = fluid.data(name='x_float16', shape=[12, 10], dtype='float16')
+self.assertRaises(TypeError, fluid.clip, x_float16, 'all')
+x_float32 = fluid.data(name='x_float32', shape=[12, 10], dtype='float32')
+self.assertRaises(TypeError, fluid.clip, x_float32, 'all')
+x_float64 = fluid.data(name='x_float64', shape=[12, 10], dtype='float64')
+self.assertRaises(TypeError, fluid.clip, x_float64, 'all')
+
+
 prog_clip.block(0).var(hidden1.name)._set_error_clip(
     fluid.clip.ErrorClipByValue(
         max=CLIP_MAX, min=CLIP_MIN))
