@@ -32,8 +32,9 @@ class ConvInceptionFusionOp : public framework::OperatorWithKernel {
     // 4 filters
     auto w_dims = ctx->GetInputsDim("Filter");
 
-    PADDLE_ENFORCE(in_dims.size(), 4, platform::errors::InvalidArgument(
-                                          "Conv intput should be 4-D tensor."));
+    PADDLE_ENFORCE_EQ(
+        in_dims.size(), 4,
+        platform::errors::InvalidArgument("Conv intput should be 4-D tensor."));
     PADDLE_ENFORCE_EQ(w_dims.size(), 4, platform::errors::InvalidArgument(
                                             "There should be 4 filters."));
     PADDLE_ENFORCE_EQ(w_dims[0][1], in_dims[1],
