@@ -41,9 +41,12 @@ class BCELossOpKernel : public framework::OpKernel<T> {
     for (int i = 0; i < x_numel; ++i) {
       PADDLE_ENFORCE_GE(
           x_data[i], static_cast<T>(0),
-          "Illegal input, input must be greater than  or equal to 0");
-      PADDLE_ENFORCE_LT(x_data[i], static_cast<T>(1),
-                        "Illegal input, input must be less than or equal to 1");
+          platform::errors::InvalidArgument(
+              "Illegal input, input must be greater than  or equal to 0"));
+      PADDLE_ENFORCE_LT(
+          x_data[i], static_cast<T>(1),
+          platform::errors::InvalidArgument(
+              "Illegal input, input must be less than or equal to 1"));
       out_data[i] =
           (label_data[i] - static_cast<T>(1)) *
               std::max(real_log(static_cast<T>(1) - x_data[i]), (T)(-100)) -
