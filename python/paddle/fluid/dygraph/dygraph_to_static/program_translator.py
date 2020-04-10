@@ -158,7 +158,7 @@ class ProgramCache(object):
                 self._inputs = []
                 self._forward_func = static_func
                 warnings.warn(
-                    "Ops and vars from {} will be added into previous main_program, "
+                    "Ops and vars from `{}` will be added into previous main_program, "
                     "please use fluid.program_guard if you want to build a new program.".
                     format(dyfunc.__name__))
 
