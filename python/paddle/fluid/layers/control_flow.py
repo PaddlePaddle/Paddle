@@ -110,9 +110,9 @@ def split_lod_tensor(input, mask, level=0):
     data into two parts.
 
     Args:
-        input(tuple|list|None): The input tensor that contains complete
+        input(Variable|tuple|list|None): The input tensor that contains complete
                                 lod information needed to construct the output.
-        mask(list): A bool column vector which masks the input.
+        mask(Variable|list): A bool column vector which masks the input.
         level(int): The specific lod level to split.
 
     Returns:
@@ -135,6 +135,10 @@ def split_lod_tensor(input, mask, level=0):
                 input=x, mask=y, level=level)
 
     """
+    check_type(input, 'input', (Variable, list, tuple, type(None)),
+               'fluid.layers.split_lod_tensor')
+    check_type(mask, 'mask', (Variable, list), 'fluid.layers.split_lod_tensor')
+    check_type(level, 'level', int, 'fluid.layers.split_lod_tensor')
     helper = LayerHelper('split_lod_tensor', **locals())
     out_true = helper.create_variable_for_type_inference(dtype=input.dtype)
     out_false = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -407,6 +411,7 @@ class StaticRNN(object):
     AFTER_RNN_BLOCK = 2
 
     def __init__(self, name=None):
+        check_type(name, "name", (str, type(None)), "fluid.layers.StaticRNN")
         self.helper = LayerHelper("static_rnn", name=name)
         self.memories = {}  # memory map, from pre_mem.name --> MemoryLink
         self.inputs = []  # input variable list in current block
@@ -511,6 +516,12 @@ class StaticRNN(object):
 
         """
         self._assert_in_rnn_block_('memory')
+        check_type(init, "init", (Variable, type(None)),
+                   "fluid.layers.StaticRNN.memory")
+        check_type(shape, "shape", (list, tuple, type(None)),
+                   "fluid.layers.StaticRNN.memory")
+        check_type(batch_ref, "batch_ref", (Variable, type(None)),
+                   "fluid.layers.StaticRNN.memory")
         if init is None:
             if shape is None or batch_ref is None:
                 raise ValueError(
@@ -587,8 +598,7 @@ class StaticRNN(object):
 
         """
         self._assert_in_rnn_block_('step_input')
-        if not isinstance(x, Variable):
-            raise TypeError("step input takes a Variable")
+        check_type(x, "x", Variable, "fluid.layers.StaticRNN.step_input")
         if self.seq_len is None:
             self.seq_len = x.shape[0]
         elif x.shape[0] != -1 and self.seq_len != x.shape[0]:
@@ -641,8 +651,7 @@ class StaticRNN(object):
 
         """
         self._assert_in_rnn_block_('step_output')
-        if not isinstance(o, Variable):
-            raise TypeError("step output takes a Variable")
+        check_type(o, "o", Variable, "fluid.layers.StaticRNN.step_output")
 
         tmp_o = self.helper.create_variable_for_type_inference(dtype=o.dtype)
         self.helper.append_op(
@@ -715,8 +724,8 @@ class StaticRNN(object):
             None
 
         """
-        if not isinstance(mem, Variable) or not isinstance(var, Variable):
-            raise TypeError("update memory should take variables")
+        check_type(mem, "mem", Variable, "fluid.layers.StaticRNN.update_memory")
+        check_type(var, "var", Variable, "fluid.layers.StaticRNN.update_memory")
         self.memories[mem.name].mem = var
 
     def _parent_block(self):
@@ -2125,6 +2134,8 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
                 return false_fn()
         return None
 
+    check_type(pred, "pred", Variable, "fluid.layers.cond")
+    check_type(name, "name", (str, type(None)), "fluid.layers.cond")
     helper = LayerHelper('cond', **locals())
     true_output = None
     false_output = None
@@ -2536,8 +2547,8 @@ class IfElse(object):
     IN_IF_ELSE_FALSE_BLOCKS = 2
 
     def __init__(self, cond, name=None):
-        if not isinstance(cond, Variable):
-            raise TypeError("cond must be a Variable")
+        check_type(cond, "cond", Variable, "fluid.layers.IfElse")
+        check_type(name, "name", (str, type(None)), "fluid.layers.IfElse")
         self.helper = LayerHelper('ifelse', name=name)
         self.cond = cond
         self.input_table = {}
@@ -2596,8 +2607,8 @@ class IfElse(object):
                                       self.IN_IF_ELSE_TRUE_BLOCKS else 0]
         parent_block = self._parent_block()
         for each_out in outs:
-            if not isinstance(each_out, Variable):
-                raise TypeError("Each output should be a variable")
+            check_type(each_out, "each output", Variable,
+                       "fluid.layers.IfElse.output")
             # create outside tensor
             outside_out = parent_block.create_var(
                 name=unique_name.generate_with_ignorable_key("_".join(

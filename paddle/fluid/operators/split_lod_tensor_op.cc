@@ -171,18 +171,15 @@ class SplitLoDTensorInferShape : public framework::InferShapeBase {
             "the second dim size of cond should be 1. "
             "But now the cond's shape is [",
             *mask_dim.Get(), "].\n"));
-    if (context->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(
-          mask_dim[1], 1,
-          platform::errors::InvalidArgument(
-              "If you are using IfElse OP:"
-              "\n\nie = fluid.layers.IfElse(cond=cond)\nwith "
-              "ie.true_block():\n    out_1 = ie.input(x)\n\n"
-              "Please ensure that the cond should be a 2-D tensor "
-              "and the second dim size of cond should be 1. "
-              "But now the cond's shape is [",
-              *mask_dim.Get(), "].\n"));
-    }
+    PADDLE_ENFORCE_EQ(mask_dim[1], 1,
+                      platform::errors::InvalidArgument(
+                          "If you are using IfElse OP:"
+                          "\n\nie = fluid.layers.IfElse(cond=cond)\nwith "
+                          "ie.true_block():\n    out_1 = ie.input(x)\n\n"
+                          "Please ensure that the cond should be a 2-D tensor "
+                          "and the second dim size of cond should be 1. "
+                          "But now the cond's shape is [",
+                          *mask_dim.Get(), "].\n"));
 
     context->SetOutputDim("OutTrue", context->GetInputDim("X"));
     context->SetOutputDim("OutFalse", context->GetInputDim("X"));
