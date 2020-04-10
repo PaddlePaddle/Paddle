@@ -78,7 +78,7 @@ class ParamAttr(object):
                  regularizer=None,
                  trainable=True,
                  do_model_average=True):
-        check_type(name, "name", (str), "ParamAttr")
+        check_type(name, "name", (str, type(None)), "ParamAttr")
         check_type(learning_rate, "learning_rate", (float), "ParamAttr")
         check_type(trainable, "trainable", (bool), "ParamAttr")
         check_type(do_model_average, "do_model_average", (bool), "ParamAttr")
