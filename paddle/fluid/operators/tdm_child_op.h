@@ -150,5 +150,14 @@ class TDMChildKernel : public framework::OpKernel<T> {
     }
   }
 };
+
+template <typename DeviceContext, typename T>
+class TDMChildGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &context) const override {
+    // empty, do nothing
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle

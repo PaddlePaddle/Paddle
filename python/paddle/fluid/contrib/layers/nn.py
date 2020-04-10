@@ -1228,6 +1228,5 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
         outputs={'Child': child,
                  'LeafMask': leaf_mask},
         attrs={'child_nums': child_nums,
-               'dtype': c_dtype},
-        stop_gradient=True)
+               'dtype': c_dtype})
     return (child, leaf_mask)

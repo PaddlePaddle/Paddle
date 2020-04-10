@@ -99,17 +99,56 @@ class TDMChildOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
+
+class TDMChildGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Child"));
+    return framework::OpKernelType(data_type, ctx.device_context());
+  }
+};
+
+template <typename T>
+class TDMChildGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("tdm_child_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Child"), this->OutputGrad("Child"));
+    op->SetOutput(framework::GradVarName("LeafMask"),
+                  this->InputGrad("LeafMask"));
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(TDMChildGradNoNeedBufferVarInferer, "X");
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(
-    tdm_child, ops::TDMChildOp, ops::TDMChildOpMaker,
-    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(tdm_child, ops::TDMChildOp, ops::TDMChildOpMaker,
+                  ops::TDMChildGradMaker<paddle::framework::OpDesc>,
+                  ops::TDMChildGradMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     tdm_child, ops::TDMChildKernel<paddle::platform::CPUPlace, float>,
     ops::TDMChildKernel<paddle::platform::CPUPlace, double>,
     ops::TDMChildKernel<paddle::platform::CPUPlace, int>,
     ops::TDMChildKernel<paddle::platform::CPUPlace, int64_t>);
+REGISTER_OP_CPU_KERNEL(
+    tdm_child_grad, ops::TDMChildGradKernel<paddle::platform::CPUPlace, float>,
+    ops::TDMChildGradKernel<paddle::platform::CPUPlace, double>,
+    ops::TDMChildGradKernel<paddle::platform::CPUPlace, int>,
+    ops::TDMChildGradKernel<paddle::platform::CPUPlace, int64_t>);
