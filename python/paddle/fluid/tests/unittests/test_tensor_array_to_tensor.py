@@ -20,7 +20,25 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
+from paddle.fluid import Program, program_guard
 
+class TestTensorArrayToTensorError(unittest.TestCase):
+    """Tensor_array_to_tensor error message enhance"""
+    def test_errors(self):
+        with program_guard(Program()):
+             # The input type must be Variable.
+             self.assertRaises(TypeError, fluid.layers.tensor_array_to_tensor, 1, 'all')
+             # The input dtype must be int32, int64, float16, float32, float64
+             x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+	     self.assertRaises(TypeError, fluid.layers.tensor_array_to_tensor, x_int32, 'all')
+             x_int64 = fluid.data(name='x_int64', shape=[12, 10], dtype='int64')
+             self.assertRaises(TypeError, fluid.layers.tensor_array_to_tensor, x_int64, 'all')
+             x_float16 = fluid.data(name='x_float16', shape=[12, 10], dtype='float16')
+             self.assertRaises(TypeError, fluid.layers.tensor_array_to_tensor, x_float16, 'all')
+             x_float32 = fluid.data(name='x_float32', shape=[12, 10], dtype='float32')
+             self.assertRaises(TypeError, fluid.layers.tensor_array_to_tensor, x_float32, 'all')
+             x_float64 = fluid.data(name='x_float64', shape=[12, 10], dtype='float64')
+             self.assertRaises(TypeError, fluid.layers.tensor_array_to_tensor, x_float64, 'all')
 
 class TestLoDTensorArrayConcat(unittest.TestCase):
     """Test case for concat mode of tensor_array_to_tensor."""
