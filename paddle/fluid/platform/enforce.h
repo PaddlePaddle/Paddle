@@ -394,8 +394,8 @@ struct EnforceNotMet : public std::exception {
 */
 #define GET_DATA_SAFELY(__PTR, __ROLE, __NAME, __OP_TYPE)                   \
   (([&]() -> std::add_lvalue_reference<decltype(*(__PTR))>::type {          \
-    auto* ptr = (__PTR);                                                    \
-    if (UNLIKELY(nullptr == ptr)) {                                         \
+    auto* __ptr = (__PTR);                                                  \
+    if (UNLIKELY(nullptr == __ptr)) {                                       \
       __THROW_ERROR_INTERNAL__(                                             \
           "%s\n  [Hint: pointer " #__PTR " should not be null.]",           \
           paddle::platform::errors::NotFound(                               \
@@ -405,13 +405,13 @@ struct EnforceNotMet : public std::exception {
               "  2. The %s has no corresponding variable passed in;\n"      \
               "  3. The %s corresponding variable is not initialized.",     \
               paddle::platform::demangle(                                   \
-                  typeid(std::add_lvalue_reference<decltype(*ptr)>::type)   \
+                  typeid(std::add_lvalue_reference<decltype(*__ptr)>::type) \
                       .name()),                                             \
               __ROLE, __NAME, __OP_TYPE, __NAME, __ROLE, __OP_TYPE, __NAME, \
               __NAME)                                                       \
               .ToString());                                                 \
     }                                                                       \
-    return *ptr;                                                            \
+    return *__ptr;                                                          \
   })())
 
 /*
