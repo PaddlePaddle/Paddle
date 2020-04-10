@@ -1367,7 +1367,6 @@ class AddQuantDequantPass(object):
         "squeeze", "elementwise_sub", "mul", "matmul", "relu", "relu6",
         "leaky_relu", "tanh", "swish"
     ]
-    _activation_type = []
 
     def __init__(self,
                  scope=None,
