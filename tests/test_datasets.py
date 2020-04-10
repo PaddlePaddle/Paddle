@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# when test, you should add hapi root path to the PYTHONPATH,
+# export PYTHONPATH=PATH_TO_HAPI:$PYTHONPATH
 import unittest
-import sys
-sys.path.append('..')
 
 from datasets.folder import DatasetFolder
 

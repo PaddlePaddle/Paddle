@@ -255,7 +255,7 @@ class MobileNetV1(Model):
         if self.with_pool:
             y = self.pool2d_avg(y)
 
-        if self.num_classes > -1:
+        if self.num_classes > 0:
             y = fluid.layers.reshape(y, shape=[-1, 1024])
             y = self.out(y)
         return y
