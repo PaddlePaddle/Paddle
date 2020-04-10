@@ -2371,6 +2371,10 @@ class BilinearTensorProduct(layers.Layer):
             is_bias=True)
 
     def forward(self, x, y):
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'],
+                                 'BilinearTensorProduct')
+        check_variable_and_dtype(y, 'y', ['float32', 'float64'],
+                                 'BilinearTensorProduct')
         self._inputs = {"X": x, "Y": y, "Weight": self.weight}
         if self.bias is not None:
             self._inputs["Bias"] = self.bias
