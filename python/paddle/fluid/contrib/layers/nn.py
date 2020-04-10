@@ -419,6 +419,9 @@ def tree_conv(nodes_vector,
           # also output tensor could be pooling(the pooling in paper called global pooling)
           pooled = fluid.layers.reduce_max(out_vector, dim=2) # global pooling
     """
+    check_type(nodes_vector, 'nodes_vector', (Variable), 'tree_conv')
+    check_type(edge_set, 'edge_set', (Variable), 'tree_conv')
+
     helper = LayerHelper("tree_conv", **locals())
     dtype = helper.input_dtype('nodes_vector')
     feature_size = nodes_vector.shape[2]

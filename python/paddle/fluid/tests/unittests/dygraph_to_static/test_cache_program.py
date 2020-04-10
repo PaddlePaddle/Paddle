@@ -50,7 +50,7 @@ class TestCacheProgram(unittest.TestCase):
                 ])
                 if batch_id > 0:
                     self.assertTrue(
-                        np.allclose(prev_out[0], cur_out[0]),
+                        np.allclose(prev_out[0].numpy(), cur_out[0].numpy()),
                         msg='Output in previous batch is {}\n Output in current batch is \n{}'
                         .format(prev_out, cur_out))
                     self.assertEqual(prev_ops, cur_ops)
@@ -81,7 +81,7 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
 
             for batch_id in range(self.batch_num):
                 pred, avg_loss = static_net(self.data)
-                loss_data.append(np.array(avg_loss))
+                loss_data.append(np.array(avg_loss.numpy()))
 
         return loss_data
 

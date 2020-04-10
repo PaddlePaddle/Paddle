@@ -27,7 +27,11 @@ namespace operators {
 // selected branch number.
 inline int GetBranchNumber(const framework::LoDTensor &mask) {
   PADDLE_ENFORCE_EQ(mask.numel(), 1,
-                    "Mask in SelectOutputOp must have numel 1.");
+                    platform::errors::InvalidArgument(
+                        "The numel of Input(Mask) in SelectInputOp or "
+                        "SelectOutputOp must be 1. "
+                        "But received %d, and it's shape is [%s].",
+                        mask.numel(), mask.dims()));
   if (platform::is_cpu_place(mask.place())) {
     return mask.data<int>()[0];
   }
@@ -36,9 +40,10 @@ inline int GetBranchNumber(const framework::LoDTensor &mask) {
 #ifdef PADDLE_WITH_CUDA
   framework::TensorCopySync(mask, platform::CPUPlace(), cpu_mask.get());
 #else
-  PADDLE_THROW(
-      "This version of PaddlePaddle doen NOT support GPU but got GPU tensor "
-      "Mask in SelectOutputOp. Please compile WITH_GPU option");
+  PADDLE_THROW(platform::errors::PreconditionNotMet(
+      "This version of PaddlePaddle does NOT support GPU, "
+      "but got GPU tensor 'Mask' in SelectInputOp or SelectOutputOp. "
+      "Please compile PaddlePaddle WITH_GPU first."));
 #endif
   return cpu_mask->data<int>()[0];
 }
