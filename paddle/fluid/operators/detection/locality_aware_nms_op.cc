@@ -48,7 +48,6 @@ class LocalityAwareNMSOp : public framework::OperatorWithKernel {
           platform::errors::InvalidArgument(
               "The rank of Input(BBoxes) must be 3. But received %d.",
               box_dims.size()));
-
       PADDLE_ENFORCE_EQ(
           box_dims[2] == 4 || box_dims[2] == 8 || box_dims[2] == 16 ||
               box_dims[2] == 24 || box_dims[2] == 32,
