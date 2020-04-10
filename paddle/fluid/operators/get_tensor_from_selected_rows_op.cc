@@ -42,7 +42,7 @@ class GetTensorFromSelectedRowsOp : public framework::OperatorWithKernel {
                                 "The output Out's type should be LoDTensor, "
                                 "but the received is %s",
                                 ctx->Outputs("Out").front(),
-                                ctx->GetOutputsVarType("Out").front());
+                                ctx->GetOutputsVarType("Out").front()));
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
   }
