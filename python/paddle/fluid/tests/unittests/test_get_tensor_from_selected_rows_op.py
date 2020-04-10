@@ -18,7 +18,36 @@ import unittest
 import paddle.fluid.core as core
 import numpy as np
 from paddle.fluid.op import Operator
+from paddle.fluid import Program, program_guard
 
+class TestGetTensorFromSelectedRowsError(unittest.TestCase):
+    """get_tensor_from_selected_rows error message enhance"""
+    def test_errors(self):
+        with program_guard(Program()):
+             # The input type must be Variable.
+             self.assertRaises(TypeError, fluid.layers.get_tensor_from_selected_rows, 1, 'all')
+             # The input dtype must be int32, int64, float16, float32, float64
+             b = fluid.default_main_program().global_block()
+             x_int32 = b.create_var(name="X", dtype="int32", persistable=True,
+                             type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
+	     self.assertRaises(TypeError, fluid.layers.get_tensor_from_selected_rows,
+                      x_int32, 'all')
+             x_int64 = b.create_var(name="X", dtype="int64", persistable=True,
+                             type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
+             self.assertRaises(TypeError, fluid.layers.get_tensor_from_selected_rows,
+                      x_int64, 'all')
+             x_float16 = b.create_var(name="X", dtype="float16", persistable=True,
+                             type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
+             self.assertRaises(TypeError, fluid.layers.get_tensor_from_selected_rows,
+                      x_float16, 'all')
+             x_float32 = b.create_var(name="X", dtype="float32", persistable=True,
+                             type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
+             self.assertRaises(TypeError, fluid.layers.get_tensor_from_selected_rows,
+                      x_float32, 'all')
+             x_float64 = b.create_var(name="X", dtype="float64", persistable=True,
+                             type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
+             self.assertRaises(TypeError, fluid.layers.get_tensor_from_selected_rows,
+                      x_float64, 'all')
 
 class TestGetTensorFromSelectedRows(unittest.TestCase):
     def get_places(self):
