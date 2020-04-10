@@ -27,45 +27,16 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-static framework::Tensor FoldInitDims(const framework::Tensor &input) {
-  auto output = input;
-  auto in_dims = input.dims();
-  if (in_dims.size() == 3) {
-    output.Resize({in_dims[0] * in_dims[1], in_dims[2]});
-  }
-  return output;
-}
-
-template <typename DeviceContext, typename T>
-static framework::Tensor FoldHeadAndLastDims(const DeviceContext &context,
-                                             const framework::Tensor &input) {
-  auto in_dims = input.dims();
-  if (in_dims.size() != 3) {
-    return input;
-  }
-  framework::Tensor output;
-  output.Resize({in_dims[1], in_dims[0], in_dims[2]});
-  output.mutable_data<T>(context.GetPlace());
-  std::vector<int> axis = {1, 0, 2};
-  math::Transpose<DeviceContext, T, 3> trans;
-  trans(context, input, &output, axis);
-  output.Resize({in_dims[1], in_dims[0] * in_dims[2]});
-
-  return output;
-}
-
 static framework::DDim RowMatrixFromVector(const framework::DDim &x_dim) {
   if (x_dim.size() > 1) {
     return x_dim;
   }
-  return framework::make_ddim({1, x_dim[0]});
 }
 
 static framework::DDim ColumnMatrixFromVector(const framework::DDim &y_dim) {
   if (y_dim.size() > 1) {
     return y_dim;
   }
-  return framework::make_ddim({y_dim[0], 1});
 }
 
 static void ReshapeTensorIntoMatrixSequence(
@@ -76,11 +47,8 @@ static void ReshapeTensorIntoMatrixSequence(
   if (descriptor.trans_) {
     std::swap(w, h);
   }
-  if (descriptor.batch_size_) {
-    x->Resize({descriptor.batch_size_, h, w});
-  } else {
-    x->Resize({h, w});
-  }
+
+  x->Resize({descriptor.batch_size_, h, w});
 }
 
 static void ReshapeXYOutIntoMatrixSequence(framework::Tensor *x,
@@ -92,12 +60,8 @@ static void ReshapeXYOutIntoMatrixSequence(framework::Tensor *x,
   auto mat_dim_x = math::CreateMatrixDescriptor(x_dim, 0, false);
   auto mat_dim_y = math::CreateMatrixDescriptor(y_dim, 0, false);
 
-  if (mat_dim_x.batch_size_ == 0 && mat_dim_y.batch_size_ == 0) {
-    out->Resize({mat_dim_x.height_, mat_dim_y.width_});
-  } else {
-    out->Resize({std::max(mat_dim_x.batch_size_, mat_dim_y.batch_size_),
-                 mat_dim_x.height_, mat_dim_y.width_});
-  }
+  out->Resize({std::max(mat_dim_x.batch_size_, mat_dim_y.batch_size_),
+               mat_dim_x.height_, mat_dim_y.width_});
 
   ReshapeTensorIntoMatrixSequence(x, mat_dim_x);
   ReshapeTensorIntoMatrixSequence(y, mat_dim_y);
@@ -137,36 +101,14 @@ class BmmGradKernel : public framework::OpKernel<T> {
     auto mat_dim_b = math::CreateMatrixDescriptor(b.dims(), 0, trans_b);
     int head_number = 1;
 
-    if (head_number <= 1 && a.dims().size() == 3 && b.dims().size() <= 2) {
-      // the transpose_X must be false, if is true, the transpose cost much time
-      if (!trans_a) {
-        mat_dim_a.height_ *= mat_dim_a.batch_size_;
-        mat_dim_a.batch_size_ = 0;
-      }
-    }
-
     blas.MatMul(a, mat_dim_a, b, mat_dim_b, T(1), out, T(0));
   }
   void CalcInputGrad(const framework::ExecutionContext &context,
                      const framework::Tensor &a, bool trans_a,
-                     bool is_fold_init_dims_a, const framework::Tensor &b,
-                     bool trans_b, bool is_fold_init_dims_b,
+                     const framework::Tensor &b, bool trans_b,
                      framework::Tensor *out) const {
     if (out == nullptr) return;
-    bool need_combine = (a.dims().size() == 3 || b.dims().size() == 3) &&
-                        out->dims().size() == 2;
-    if (!need_combine) {
-      MatMul(context, a, trans_a, b, trans_b, out);
-    } else {
-      auto &ctx = context.template device_context<DeviceContext>();
-      MatMul(context, is_fold_init_dims_a
-                          ? FoldInitDims(a)
-                          : FoldHeadAndLastDims<DeviceContext, T>(ctx, a),
-             trans_a, is_fold_init_dims_b
-                          ? FoldInitDims(b)
-                          : FoldHeadAndLastDims<DeviceContext, T>(ctx, b),
-             trans_b, out);
-    }
+    MatMul(context, a, trans_a, b, trans_b, out);
   }
   void Compute(const framework::ExecutionContext &context) const override {
     auto x = *context.Input<framework::Tensor>("X");
@@ -193,8 +135,8 @@ class BmmGradKernel : public framework::OpKernel<T> {
       }
     }
 
-    CalcInputGrad(context, dout, false, false, y, true, false, dx);
-    CalcInputGrad(context, x, true, true, dout, false, true, dy);
+    CalcInputGrad(context, dout, false, y, true, dx);
+    CalcInputGrad(context, x, true, dout, false, dy);
 
     if (dx) {
       if (dx_dims != x.dims()) {

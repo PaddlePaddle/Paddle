@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 import paddle.fluid as fluid
 import paddle.tensor as tensor
 from paddle.fluid import Program, program_guard
@@ -64,6 +65,23 @@ class TestBmmOpError(unittest.TestCase):
             input4_Y = fluid.layers.data(
                 name='input4_Y', shape=[10, 4, 5], dtype="float32")
             self.assertRaises(TypeError, tensor.bmm, input4_X, input4_Y)
+
+
+class API_TestBmm(unittest.TestCase):
+    def test_out(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data1 = fluid.data('data1', shape=[10, 3, 4], dtype='float64')
+            data2 = fluid.data('data2', shape=[10, 4, 5], dtype='float64')
+            result_bmm = paddle.bmm(data1, data2)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            input1 = np.random.random([10, 3, 4]).astype('float64')
+            input2 = np.random.random([10, 4, 5]).astype('float64')
+            result, = exe.run(feed={"data1": input1,
+                                    "data2": input2},
+                              fetch_list=[result_bmm])
+            expected_result = np.matmul(input1, input2)
+        self.assertEqual((result == expected_result).all(), True)
 
 
 if __name__ == "__main__":

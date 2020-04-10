@@ -193,32 +193,6 @@ def bmm(x, y, name=None):
         for name, val in var_names.items():
             check_variable_and_dtype(val, name, Variable,
                                      ['float16', 'float32', 'float64'], 'bmm')
-        x_shape = list(x.shape)
-        y_shape = list(y.shape)
-        if len(x_shape) != 3 or len(y_shape) != 3:
-            raise ValueError("Both of the two matrix should be 3 dimensions,"
-                             "But received X shape: %s, Y shape: %s." %
-                             (len(x_shape), len(y_shape)))
-
-        # check the inner 2 dimensions
-        if x_shape[-1] != y_shape[-2]:
-            raise ValueError(
-                (x_shape[-1] == -1) or (y_shape[-2] == -1),
-                "After performing an optional transpose, Input X's width should be "
-                "equal to Y's width for multiplication prerequisites."
-                "But received X's shape: %s, Y's shape: %s\n" %
-                (x_shape, y_shape))
-
-        for i, dim_x in enumerate(x_shape[:-2]):
-            # don't check neg shape
-            if dim_x < 0 or y_shape[i] < 0:
-                continue
-            if dim_x != y_shape[i]:
-                raise ValueError(
-                    "When the matrix is larger than 2 dimensions, the higher "
-                    "dimensional values of the two matrices need to be equal. "
-                    "But received x_shape[%d] != y_shape[%d]. X's shape: %s, "
-                    "Y's shape: %s.\n" % (i, i, x_shape, y_shape))
 
     __check_input(x, y)
 
