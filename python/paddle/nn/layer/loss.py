@@ -133,8 +133,8 @@ class BCELoss(fluid.dygraph.Layer):
     Parameters:
         input (Variable): Input tensor, the data type is float32,
             float64. Input must in (0, 1).
-        label (Variable): Label tensor, the data type is float32,
-            float64.
+        label (Variable): Label tensor, has the same shape with input, 
+            the data type is float32, float64.
         weight (Variable, optional): Weight tensor, a manual rescaling weight given
             to each class. It has the same dimensions as class number and the data type
             is float32, float64, int32, int64. Default is ``'None'``.

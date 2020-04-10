@@ -43,7 +43,7 @@ class BCELossOpKernel : public framework::OpKernel<T> {
           x_data[i], static_cast<T>(0),
           platform::errors::InvalidArgument(
               "Illegal input, input must be greater than  or equal to 0"));
-      PADDLE_ENFORCE_LT(
+      PADDLE_ENFORCE_LE(
           x_data[i], static_cast<T>(1),
           platform::errors::InvalidArgument(
               "Illegal input, input must be less than or equal to 1"));

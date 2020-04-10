@@ -152,7 +152,7 @@ class BCELossGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Label", this->Input("Label"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    op->SetAttrMap(this->Attrs());
+    //    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -177,4 +177,4 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_CPU_KERNEL(
     bce_loss_grad,
     ops::BCELossGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::BCELossOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::BCELossGradOpKernel<paddle::platform::CPUDeviceContext, double>);

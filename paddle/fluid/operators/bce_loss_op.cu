@@ -55,7 +55,7 @@ __global__ void GPUBCELossBackward(const T* x_data, const T* label_data,
     T one = static_cast<T>(1.);
     T eps = static_cast<T>(1e-12);
 
-    T term1 = max((one - x * x), eps);
+    T term1 = max((one - x) * x, eps);
 
     dx_data[i] = dout * (x - label) / term1;
   }
@@ -84,7 +84,7 @@ class BCELossCUDAKernel : public framework::OpKernel<T> {
           x_cpu_data[i], static_cast<T>(0),
           platform::errors::InvalidArgument(
               "Illegal input, input must be greater than  or equal to 0"));
-      PADDLE_ENFORCE_LT(
+      PADDLE_ENFORCE_LE(
           x_cpu_data[i], static_cast<T>(1),
           platform::errors::InvalidArgument(
               "Illegal input, input must be less than or equal to 1"));
