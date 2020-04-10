@@ -170,7 +170,11 @@ class CPUROIAlignOpKernel : public framework::OpKernel<T> {
       rois_batch_size = rois_lod_t->numel();
       PADDLE_ENFORCE_EQ(
           rois_batch_size - 1, batch_size,
-          "The rois_batch_size and imgs batch_size must be the same.");
+          platform::errors::InvalidArgument(
+              "The rois_batch_size and imgs "
+              "batch_size must be the same. But received rois_batch_size = %d, "
+              "batch_size = %d",
+              rois_batch_size, batch_size));
       auto* rois_lod = rois_lod_t->data<int64_t>();
       for (int n = 0; n < rois_batch_size - 1; ++n) {
         for (int i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
@@ -183,10 +187,14 @@ class CPUROIAlignOpKernel : public framework::OpKernel<T> {
           lod.empty(), false,
           "Input(ROIs) Tensor of ROIAlignOp does not contain LoD information.");
       auto rois_lod = lod.back();
-      rois_batch_size = rois_lod.size() - 1;
+      int rois_batch_size = rois_lod.size() - 1;
       PADDLE_ENFORCE_EQ(
           rois_batch_size, batch_size,
-          "The rois_batch_size and imgs batch_size must be the same.");
+          platform::errors::InvalidArgument(
+              "The rois_batch_size and imgs "
+              "batch_size must be the same. But received rois_batch_size = %d, "
+              "batch_size = %d",
+              rois_batch_size, batch_size));
       int rois_num_with_lod = rois_lod[rois_batch_size];
       PADDLE_ENFORCE_EQ(rois_num, rois_num_with_lod,
                         "The rois_num from input and lod must be the same.");
