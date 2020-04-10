@@ -265,7 +265,7 @@ FetchResultType ParallelSSAGraphExecutor::Run(
               &(boost::get<LoDTensorArray>(fetch_list[fetch_idx])));
         }
       }
-      if (lodtensor_ptrs.size() == 0) {
+      if (lodtensor_ptrs.size() != 0) {
         LoDTensor var;
         var.MergeLoDTensor(lodtensor_ptrs, platform::CPUPlace());
         ret.emplace_back(var);
