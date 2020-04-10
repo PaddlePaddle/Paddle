@@ -4298,7 +4298,7 @@ class Program(object):
                 x_var = fluid.layers.data(name="X", shape=[3,3], dtype="float32", append_batch_size=False)
                 print(random_seed)
                 ## 0
-                ## the defaulr random seed is 0
+                ## the default random seed is 0
 
                 # Here we need to set random seed before we use fluid.layers.dropout
                 prog.random_seed = 1
