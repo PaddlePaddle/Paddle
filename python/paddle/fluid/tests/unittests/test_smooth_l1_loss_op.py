@@ -64,7 +64,7 @@ class TestSmoothL1LossOp1(OpTest):
 class TestSmoothL1LossOp2(OpTest):
     def setUp(self):
         self.op_type = "smooth_l1_loss"
-        dims = (5, 10)
+        dims = (5, 20)
         self.inputs = {
             'X': np.random.random(dims).astype("float32"),
             'Y': np.random.random(dims).astype("float32"),
@@ -88,7 +88,7 @@ class TestSmoothL1LossOp2(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.03)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(

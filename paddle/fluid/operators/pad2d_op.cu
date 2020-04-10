@@ -314,7 +314,7 @@ class Pad2dCUDAKernel : public framework::OpKernel<T> {
     GetPaddings(pads, context);
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
-    T value = context.Attr<T>("pad_value");
+    T value = static_cast<T>(context.Attr<float>("pad_value"));
 
     auto* x = context.Input<Tensor>("X");
     auto in_dims = x->dims();
@@ -461,8 +461,12 @@ class Pad2dGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(pad2d, ops::Pad2dCUDAKernel<float>,
+namespace plat = paddle::platform;
+
+REGISTER_OP_CUDA_KERNEL(pad2d, ops::Pad2dCUDAKernel<plat::float16>,
+                        ops::Pad2dCUDAKernel<float>,
                         ops::Pad2dCUDAKernel<double>, ops::Pad2dCUDAKernel<int>,
                         ops::Pad2dCUDAKernel<int64_t>);
-REGISTER_OP_CUDA_KERNEL(pad2d_grad, ops::Pad2dGradCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(pad2d_grad, ops::Pad2dGradCUDAKernel<plat::float16>,
+                        ops::Pad2dGradCUDAKernel<float>,
                         ops::Pad2dGradCUDAKernel<double>);

@@ -63,7 +63,7 @@ class CTCAlignOpMaker : public framework::OpProtoAndCheckerMaker {
               "sequence in Output.")
         .AsDispensable();
     AddAttr<int>("blank",
-                 "(int, default: 0), the blank label setted in Connectionist "
+                 "(int, default: 0), the blank label set in Connectionist "
                  "Temporal Classification (CTC) op.")
         .SetDefault(0);
     AddAttr<bool>("merge_repeated",

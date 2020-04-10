@@ -4,22 +4,31 @@ set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0 FLAGS_fast_eager_deletion_mode=1 FL
 set(dist_ENVS http_proxy="" https_proxy="")
 
 file(GLOB DIST_TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_dist_*.py")
+if(NOT WITH_NCCL)
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_dgc_nccl")
+endif()
 string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_mnist)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_se_resnext)
+list(APPEND DIST_TEST_OPS test_listen_and_serv_op)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_op)
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_momentum_op)
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_simple_dist_transpiler)
-list(APPEND MIXED_DIST_TEST_OPS test_listen_and_serv_op)
 list(APPEND MIXED_DIST_TEST_OPS test_nce_remote_table_op)
 list(APPEND MIXED_DIST_TEST_OPS test_recv_save_op)
 list(APPEND MIXED_DIST_TEST_OPS test_transpiler_ops)
 list(APPEND MIXED_DIST_TEST_OPS test_lookup_remote_table_op)
 list(APPEND MIXED_DIST_TEST_OPS test_launch)
 list(APPEND MIXED_DIST_TEST_OPS test_launch_ps)
+list(APPEND MIXED_DIST_TEST_OPS test_communicator_async)
+list(APPEND MIXED_DIST_TEST_OPS test_communicator_geo)
+list(APPEND MIXED_DIST_TEST_OPS test_communicator_half_async)
+list(APPEND MIXED_DIST_TEST_OPS test_communicator_sync)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_checkpoint)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
@@ -35,6 +44,7 @@ endif()
 
 if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_boxps)
+    LIST(REMOVE_ITEM TEST_OPS test_paddlebox_datafeed)
     LIST(REMOVE_ITEM TEST_OPS test_trainer_desc)
     LIST(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
     LIST(REMOVE_ITEM TEST_OPS test_avoid_twice_initialization)
@@ -42,6 +52,7 @@ endif()
 
 if (NOT ${WITH_GPU})
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
+    LIST(REMOVE_ITEM TEST_OPS test_rank_attention_op) # TODO(shenliang03): rank_attention_op support CPU device in future
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_mnist) # TODO(Yancey1989): parallel dygraph support CPU device in future
 elseif(${CUDNN_VERSION} VERSION_LESS 7100)
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
@@ -49,6 +60,8 @@ endif()
 
 if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_pipeline)
+    LIST(REMOVE_ITEM TEST_OPS test_boxps)
+    LIST(REMOVE_ITEM TEST_OPS test_paddlebox_datafeed)
 endif()
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
 list(REMOVE_ITEM TEST_OPS test_lstm_unit_op) # # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
@@ -159,7 +172,6 @@ list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
 list(REMOVE_ITEM TEST_OPS test_data_norm_op)
-list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf_auto_growth)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_fetch_feed)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer_auto_growth)
@@ -184,10 +196,22 @@ list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_debug_string)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
+list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
+list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 
 if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
   list(REMOVE_ITEM TEST_OPS test_dataset_dataloader)
+  list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_base)
+  list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
+  list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_process)
+  list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_fds_clear)
+  list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exit_func)
+  list(REMOVE_ITEM TEST_OPS test_imperative_signal_handler)
+endif()
+
+if(NOT WITH_GPU OR WIN32 OR APPLE)
+  list(REMOVE_ITEM TEST_OPS test_build_strategy_fusion_group_pass)
 endif()
 
 # Some ops need to check results when gc is enabled
@@ -197,11 +221,9 @@ set(TEST_OPS_WITH_GC
   test_concat_op
   test_elementwise_add_op
   test_elementwise_sub_op
-  test_fill_constant_batch_size_like_op
   test_fill_zeros_like2_op
   test_gather_op
   test_gather_nd_op
-  test_gaussian_random_batch_size_like_op
   test_linear_chain_crf_op
   test_lod_reset_op
   test_lookup_table_op
@@ -219,8 +241,7 @@ set(TEST_OPS_WITH_GC
   test_sequence_slice_op
   test_slice_op
   test_space_to_depth_op
-  test_squared_l2_distance_op
-  test_uniform_random_batch_size_like_op)
+  test_squared_l2_distance_op)
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
@@ -253,6 +274,10 @@ py_test_modules(test_install_check MODULES test_install_check ENVS
         FLAGS_cudnn_deterministic=1 SERIAL)
 set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
 py_test_modules(test_imperative_debug_string MODULES test_imperative_debug_string ENVS FLAGS_dygraph_debug=1)
+py_test_modules(test_imperative_static_runner_mnist MODULES test_imperative_static_runner_mnist ENVS
+    FLAGS_cudnn_deterministic=1)
+py_test_modules(test_imperative_static_runner_while MODULES test_imperative_static_runner_while ENVS
+    FLAGS_cudnn_deterministic=1)
 if(WITH_DISTRIBUTE)
     # FIXME(typhoonzero): add these tests back
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
@@ -266,6 +291,11 @@ if(WITH_DISTRIBUTE)
     py_test_modules(test_nce_remote_table_op MODULES test_nce_remote_table_op ENVS ${dist_ENVS})
     py_test_modules(test_recv_save_op MODULES test_recv_save_op ENVS ${dist_ENVS})
     py_test_modules(test_transpiler_ops MODULES test_transpiler_ops ENVS ${dist_ENVS})
+    py_test_modules(test_communicator_async MODULES test_communicator_async ENVS ${dist_ENVS})
+    py_test_modules(test_communicator_geo MODULES test_communicator_geo ENVS ${dist_ENVS})
+    py_test_modules(test_communicator_half_async MODULES test_communicator_half_async ENVS ${dist_ENVS} FLAGS_communicator_send_queue_size=1 FLAGS_communicator_max_merge_var_num=1)
+    py_test_modules(test_communicator_sync MODULES test_communicator_sync ENVS ${dist_ENVS} FLAGS_communicator_send_queue_size=1 FLAGS_communicator_max_merge_var_num=1)
+
     if(WITH_DGC)
         # if with dgc, test all dgc tests.
         # NOTE. dist dgc tests is already in DIST_TEST_OPS
@@ -278,16 +308,15 @@ if(WITH_DISTRIBUTE)
         list(REMOVE_ITEM DIST_TEST_OPS "test_dist_se_resnext_dgc")
     endif()
     if(NOT APPLE)
-        bash_test_modules(test_listen_and_serv_op MODULES test_listen_and_serv.sh)
         if(WITH_GPU)
             # NOTE. test_launch only work in gpu collective mode
-            bash_test_modules(test_launch MODULES test_launch.sh)
+            bash_test_modules(test_launch MODULES test_launch.sh  ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+            py_test_modules(test_fleet_checkpoint MODULES test_fleet_checkpoint)
         endif()
-        bash_test_modules(test_launch_ps MODULES test_launch_ps.sh)
+        bash_test_modules(test_launch_ps MODULES test_launch_ps.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
 
         set(dist_ut_port 1000)
         foreach(TEST_OP ${DIST_TEST_OPS})
-            message(STATUS "set dist_ut_port=${dist_ut_port} on ${TEST_OP}")
             bash_test_modules(${TEST_OP} MODULES dist_test.sh SERIAL LABELS "RUN_TYPE=EXCLUSIVE" ENVS "PADDLE_DIST_UT_PORT=${dist_ut_port}")
             MATH(EXPR dist_ut_port "${dist_ut_port}+50")
         endforeach(TEST_OP)
@@ -295,7 +324,6 @@ if(WITH_DISTRIBUTE)
 endif()
 
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
-py_test_modules(test_parallel_executor_crf_auto_growth MODULES test_parallel_executor_crf_auto_growth ENVS FLAGS_allocator_strategy=auto_growth)
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer)
 py_test_modules(test_parallel_executor_transformer_auto_growth MODULES test_parallel_executor_transformer_auto_growth ENVS FLAGS_allocator_strategy=auto_growth)
 py_test_modules(test_layers MODULES test_layers ENVS FLAGS_cudnn_deterministic=1)
@@ -317,25 +345,37 @@ set_tests_properties(test_parallel_executor_seresnext_with_reduce_cpu PROPERTIES
 set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu PROPERTIES TIMEOUT 750)
 
 add_subdirectory(sequence)
-
-if (WITH_NGRAPH)
-    add_subdirectory(ngraph)
-endif()
+add_subdirectory(dygraph_to_static)
 
 if (WITH_MKLDNN)
     add_subdirectory(mkldnn)
 endif()
+
+add_subdirectory(ir)
 
 if (WITH_TESTING)
     set_property(TEST test_parallel_executor_mnist PROPERTY ENVIRONMENT GLOG_vmodule=all_reduce_deps_pass=10)
 endif()
 
 set_tests_properties(test_parallel_executor_test_while_train test_parallel_executor_mnist
-        test_parallel_executor_seresnext_base_gpu test_parallel_executor_seresnext_with_reduce_gpu
-        test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
-        test_parallel_executor_crf test_sync_batch_norm_op
         test_parallel_executor_feed_persistable_var
-        test_parallel_executor_crf_auto_growth test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
+        test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
         test_data_norm_op test_imperative_using_non_zero_gpu test_fuse_bn_act_pass
-        test_optimizer_in_control_flow
+        test_optimizer_in_control_flow test_dataloader_keep_order
+        test_dataloader_unkeep_order
+        test_parallel_executor_inference_feed_partial_data
+        test_parallel_ssa_graph_inference_feed_partial_data
+        test_fetch_unmerged
         test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
+
+set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op test_inplace_abn_op
+        test_parallel_executor_seresnext_base_gpu
+        test_parallel_executor_seresnext_with_reduce_gpu
+        test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
+        PROPERTIES LABELS "RUN_TYPE=DIST" RUN_SERIAL TRUE)
+
+if(NOT WIN32 AND NOT APPLE)
+    set_tests_properties(test_imperative_data_loader_base PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+    set_tests_properties(test_imperative_data_loader_exception PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+    set_tests_properties(test_imperative_data_loader_fds_clear PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" RUN_SERIAL TRUE)
+endif()

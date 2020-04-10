@@ -70,6 +70,7 @@ class HdfsStore {
   std::string path_;
   int wait_sleep_ms_;
   std::chrono::seconds wait_timeout_;
+  int retry_times_;
 };
 
 }  // namespace rendezvous
@@ -107,9 +108,10 @@ class GlooWrapper {
   }
 
   template <typename T>
-  void AllReduce(std::vector<T>& sendbuf, std::vector<T>& recvbuf,  // NOLINT
-                 const std::string& mode = "sum") {
+  std::vector<T> AllReduce(std::vector<T>& sendbuf,            // NOLINT
+                           const std::string& mode = "sum") {  // NOLINT
     CHECK_EQ(is_initialized_, true);
+    std::vector<T> recvbuf(sendbuf.size(), T());
     CHECK_EQ(sendbuf.size() == recvbuf.size(), true);
 #ifdef PADDLE_WITH_GLOO
     gloo::AllreduceOptions opts(context_);
@@ -133,6 +135,7 @@ class GlooWrapper {
     }
     gloo::allreduce(opts);
 #endif
+    return recvbuf;
   }
 
   template <typename T>

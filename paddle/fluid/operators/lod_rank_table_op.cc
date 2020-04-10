@@ -58,7 +58,7 @@ output operators.
 class LoDRankTableInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("X"), "LoDRankTable must has input X");
+    PADDLE_ENFORCE(context->HasInput("X"), "LoDRankTable must have input X");
   }
 };
 

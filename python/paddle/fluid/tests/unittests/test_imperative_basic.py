@@ -20,6 +20,7 @@ import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid import Linear
 from test_imperative_base import new_program_scope
+import paddle.fluid.dygraph_utils as dygraph_utils
 
 
 class MyLayer(fluid.Layer):
@@ -37,6 +38,7 @@ class MyLayer(fluid.Layer):
 class MLP(fluid.Layer):
     def __init__(self, input_size):
         super(MLP, self).__init__()
+        self._linear1 = None
         self._linear1 = Linear(
             input_size,
             3,
@@ -71,6 +73,7 @@ class SimpleRNNCell(fluid.Layer):
         i2h_param_shape = [self.step_input_size, self.hidden_size]
         h2h_param_shape = [self.hidden_size, self.hidden_size]
         h2o_param_shape = [self.output_size, self.hidden_size]
+        self._i2h_w = None
         self._i2h_w = self.create_parameter(
             attr=self.param_attr,
             shape=i2h_param_shape,
@@ -175,6 +178,31 @@ class SimpleRNN(fluid.Layer):
 
 
 class TestImperative(unittest.TestCase):
+    def test_functional_dygraph_context(self):
+        self.assertFalse(fluid.dygraph.enabled())
+        fluid.enable_dygraph()
+        self.assertTrue(fluid.dygraph.enabled())
+        np_inp = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)
+        var_inp = fluid.dygraph.base.to_variable(np_inp)
+        mlp = MLP(input_size=2)
+        out = mlp(var_inp)
+        dy_out1 = out.numpy()
+        out.backward()
+        dy_grad1 = mlp._linear1.weight.gradient()
+        fluid.disable_dygraph()
+        self.assertFalse(fluid.dygraph.enabled())
+        with fluid.dygraph.guard():
+            self.assertTrue(fluid.dygraph.enabled())
+            var_inp = fluid.dygraph.base.to_variable(np_inp)
+            mlp = MLP(input_size=2)
+            out = mlp(var_inp)
+            dy_out2 = out.numpy()
+            out.backward()
+            dy_grad2 = mlp._linear1.weight.gradient()
+        self.assertFalse(fluid.dygraph.enabled())
+        self.assertTrue(np.array_equal(dy_out1, dy_out2))
+        self.assertTrue(np.array_equal(dy_grad1, dy_grad2))
+
     def test_isinstance(self):
         var = fluid.layers.data(shape=[1], name='x', dtype='float32')
         self.assertTrue(isinstance(var, fluid.Variable))
@@ -198,6 +226,24 @@ class TestImperative(unittest.TestCase):
             self.assertTrue(np.array_equal(x, tmp3.numpy()))
             self.assertTrue(np.array_equal(y, tmp4.numpy()))
             self.assertTrue(np.array_equal(x, tmp5.numpy()))
+
+    def test_no_grad_guard(self):
+        data = np.array([[2, 3], [4, 5]]).astype('float32')
+        with fluid.dygraph.guard():
+            l0 = fluid.Linear(2, 2)
+            self.assertTrue(l0.weight._grad_ivar() is None)
+            l1 = fluid.Linear(2, 2)
+            with fluid.dygraph.no_grad():
+                self.assertTrue(l1.weight.stop_gradient is False)
+                tmp = l1.weight * 2
+                self.assertTrue(tmp.stop_gradient)
+            x = fluid.dygraph.to_variable(data)
+            y = l0(x) + tmp
+            o = l1(y)
+            o.backward()
+
+            self.assertTrue(tmp._grad_ivar() is None)
+            self.assertTrue(l0.weight._grad_ivar() is not None)
 
     def test_sum_op(self):
         x = np.ones([2, 2], np.float32)
@@ -494,6 +540,62 @@ class TestImperative(unittest.TestCase):
         self.assertFalse(hasattr(layer, "whatever"))
         self.assertTrue(hasattr(layer, "test_attr"))
         self.assertEqual(layer.test_attr, 1)
+
+        my_layer = MyLayer()
+        my_layer.w1 = my_layer.create_parameter([3, 3])
+        my_layer.add_parameter('w2', None)
+        self.assertEqual(len(my_layer.parameters()), 1)
+        self.assertRaises(TypeError, my_layer.__setattr__, 'w1', 'str')
+        my_layer.w1 = None
+        self.assertEqual(len(my_layer.parameters()), 0)
+        my_layer.l1 = fluid.dygraph.Linear(3, 3)
+        self.assertEqual(len(my_layer.sublayers()), 1)
+        self.assertRaises(TypeError, my_layer.__setattr__, 'l1', 'str')
+        my_layer.l1 = None
+        self.assertEqual(len(my_layer.sublayers()), 0)
+
+
+class TestDygraphUtils(unittest.TestCase):
+    def test_append_activation_in_dygraph_exception(self):
+        with new_program_scope():
+            np_inp = np.random.random(size=(10, 20, 30)).astype(np.float32)
+            a = fluid.layers.data("a", [10, 20])
+            func = dygraph_utils._append_activation_in_dygraph
+            self.assertRaises(AssertionError, func, a, act="sigmoid")
+
+    def test_append_activation_in_dygraph1(self):
+        a_np = np.random.random(size=(10, 20, 30)).astype(np.float32)
+        func = dygraph_utils._append_activation_in_dygraph
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            res1 = func(a, act="hard_sigmoid")
+            res2 = fluid.layers.hard_sigmoid(a)
+            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+
+    def test_append_activation_in_dygraph2(self):
+        a_np = np.random.random(size=(10, 20, 30)).astype(np.float32)
+        func = dygraph_utils._append_activation_in_dygraph
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            res1 = func(a, act="sigmoid", use_mkldnn=True, use_cudnn=True)
+            res2 = fluid.layers.sigmoid(a)
+            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
+
+    def test_append_bias_in_dygraph_exception(self):
+        with new_program_scope():
+            np_inp = np.random.random(size=(10, 20, 30)).astype(np.float32)
+            a = fluid.layers.data("a", [10, 20])
+            func = dygraph_utils._append_bias_in_dygraph
+            self.assertRaises(AssertionError, func, a)
+
+    def test_append_bias_in_dygraph(self):
+        a_np = np.random.random(size=(10, 20, 30)).astype(np.float32)
+        func = dygraph_utils._append_bias_in_dygraph
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            res1 = func(a, bias=a)
+            res2 = a + a
+            self.assertTrue(np.array_equal(res1.numpy(), res2.numpy()))
 
 
 if __name__ == '__main__':

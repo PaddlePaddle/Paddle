@@ -286,7 +286,6 @@ class SeResNeXt(fluid.dygraph.Layer):
         for bottleneck_block in self.bottleneck_block_list:
             y = bottleneck_block(y)
         y = self.pool2d_avg(y)
-        y = fluid.layers.dropout(y, dropout_prob=0.2)
         y = fluid.layers.reshape(y, shape=[-1, self.pool2d_avg_output])
         y = self.out(y)
         return y
@@ -316,8 +315,6 @@ class TestImperativeResneXt(unittest.TestCase):
             optimizer = optimizer_setting(
                 train_parameters, parameter_list=se_resnext.parameters())
             np.random.seed(seed)
-            import random
-            random.seed = seed
 
             batch_py_reader = fluid.io.PyReader(capacity=1)
             batch_py_reader.decorate_sample_list_generator(
@@ -354,12 +351,13 @@ class TestImperativeResneXt(unittest.TestCase):
                                 dy_param_init_value[param.name] = param.numpy()
                     avg_loss.backward()
 
-                    #dy_grad_value = {}
-                    #for param in se_resnext.parameters():
-                    #    if param.trainable:
-                    #        np_array = np.array(param._grad_ivar().value()
-                    #                            .get_tensor())
-                    #        dy_grad_value[param.name + core.grad_var_suffix()] = np_array
+                    dy_grad_value = {}
+                    for param in se_resnext.parameters():
+                        if param.trainable:
+                            np_array = np.array(param._grad_ivar().value()
+                                                .get_tensor())
+                            dy_grad_value[param.name + core.grad_var_suffix(
+                            )] = np_array
 
                     optimizer.minimize(avg_loss)
                     se_resnext.clear_gradients()
@@ -379,8 +377,6 @@ class TestImperativeResneXt(unittest.TestCase):
             optimizer = optimizer_setting(train_parameters)
 
             np.random.seed(seed)
-            import random
-            random.seed = seed
             train_reader = paddle.batch(
                 paddle.dataset.flowers.train(use_xmap=False),
                 batch_size=batch_size,
@@ -446,6 +442,7 @@ class TestImperativeResneXt(unittest.TestCase):
                                    len(static_grad_name_list) + grad_start_pos):
                         static_grad_value[static_grad_name_list[
                             i - grad_start_pos]] = out[i]
+
         self.assertTrue(np.allclose(static_out, dy_out))
 
         self.assertEqual(len(dy_param_init_value), len(static_param_init_value))
@@ -454,12 +451,13 @@ class TestImperativeResneXt(unittest.TestCase):
             self.assertTrue(np.allclose(value, dy_param_init_value[key]))
             self.assertTrue(np.isfinite(value.all()))
             self.assertFalse(np.isnan(value.any()))
-        # FIXME(Yancey1989): np.array(_ivar.value().get_tensor()) leads to memory lake
-        #self.assertEqual(len(dy_grad_value), len(static_grad_value))
-        #for key, value in six.iteritems(static_grad_value):
-        #    self.assertTrue(np.allclose(value, dy_grad_value[key]))
-        #    self.assertTrue(np.isfinite(value.all()))
-        #    self.assertFalse(np.isnan(value.any()))
+
+        self.assertEqual(len(dy_grad_value), len(static_grad_value))
+
+        for key, value in six.iteritems(static_grad_value):
+            self.assertTrue(np.allclose(value, dy_grad_value[key]))
+            self.assertTrue(np.isfinite(value.all()))
+            self.assertFalse(np.isnan(value.any()))
 
         self.assertEqual(len(dy_param_value), len(static_param_value))
         for key, value in six.iteritems(static_param_value):

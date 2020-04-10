@@ -49,10 +49,11 @@ static inline framework::DDim ComputeAndCheckShape(
           // check all shape in run time
           PADDLE_ENFORCE_EQ(
               inputs_dims[0][j], inputs_dims[i][j],
-              "ShapeError: Dimension %d in inputs' shapes must be equal. "
-              "But recevied input[0]'s shape = "
-              "[%s], input[%d]'s shape = [%s].",
-              j, inputs_dims[0], i, inputs_dims[i]);
+              platform::errors::InvalidArgument(
+                  "The shape of input[%d] must be equal to input[0]. "
+                  "But received input[0]'s shape = "
+                  "[%s], input[%d]'s shape = [%s].",
+                  i, inputs_dims[0], i, inputs_dims[i]));
         }
       }
     }
@@ -76,9 +77,11 @@ template <typename DeviceContext, typename T>
 class ConcatKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto ins = ctx.MultiInput<framework::Tensor>("X");
-    framework::Tensor* out = ctx.Output<framework::Tensor>("Out");
-    PADDLE_ENFORCE_EQ(ins[0] != nullptr, true, "The input should not be null.");
+    auto ins = ctx.MultiInput<framework::LoDTensor>("X");
+    framework::LoDTensor* out = ctx.Output<framework::LoDTensor>("Out");
+    PADDLE_ENFORCE_NOT_NULL(
+        ins[0], platform::errors::NotFound(
+                    " The first input of concat should not be null."));
     auto axis = ctx.Attr<int>("axis");
     bool need_resize_out_dims = false;
     if (ctx.HasInput("AxisTensor")) {
@@ -101,6 +104,32 @@ class ConcatKernel : public framework::OpKernel<T> {
     }
     auto place = ctx.GetPlace();
     out->mutable_data<T>(place);
+
+    // If axis is 0, the lod of the output is not the same as inputs.
+    if (axis == 0 && ins[0]->lod().size() > 0) {
+      size_t lod_size_0 = ins[0]->lod().size();
+      size_t lod_size = lod_size_0;
+      for (size_t i = 1; i < ins.size(); ++i) {
+        if (ins[i]->lod().size() > 0) {
+          PADDLE_ENFORCE_EQ(
+              ins[i]->lod().size(), lod_size_0,
+              platform::errors::Unimplemented(
+                  "The lod level of all input LoDTensors should be same. "
+                  "Maybe different lod level of input LoDTensors can concat,"
+                  " it is not supported currently."));
+        } else {
+          lod_size = 0;
+          break;
+        }
+      }
+      if (lod_size) {
+        auto* out_lod = out->mutable_lod();
+        for (size_t i = 1; i < ins.size(); ++i) {
+          auto in_lod = ConvertToLengthBasedLoD(ins[i]->lod());
+          AppendLoD(out_lod, in_lod);
+        }
+      }
+    }
 
     // Sometimes direct copies will be faster, this maybe need deeply analysis.
     if (axis == 0 && ins.size() < 10) {
@@ -152,7 +181,9 @@ class ConcatGradKernel : public framework::OpKernel<T> {
         }
       }
     }
-    PADDLE_ENFORCE_EQ(ins[0] != nullptr, true, "The input should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(
+        ins[0], platform::errors::NotFound(
+                    "The first input of concat should not be null."));
 
     auto axis = ctx.Attr<int>("axis");
     if (ctx.HasInput("AxisTensor")) {

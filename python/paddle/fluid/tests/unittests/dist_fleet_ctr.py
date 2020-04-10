@@ -39,7 +39,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
     For test CTR model, using Fleet api
     """
 
-    def net(self, batch_size=4, lr=0.01):
+    def net(self, args, batch_size=4, lr=0.01):
         """
         network definition
 
@@ -71,6 +71,13 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             append_batch_size=False)
 
         datas = [dnn_data, lr_data, label]
+
+        if args.reader == "pyreader":
+            self.reader = fluid.io.PyReader(
+                feed_list=datas,
+                capacity=64,
+                iterable=False,
+                use_double_buffer=False)
 
         # build dnn model
         dnn_layer_dims = [128, 128, 64, 32, 1]
@@ -110,8 +117,10 @@ class TestDistCTR2x2(FleetDistRunnerBase):
 
         predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
         acc = fluid.layers.accuracy(input=predict, label=label)
+
         auc_var, batch_auc_var, auc_states = fluid.layers.auc(input=predict,
                                                               label=label)
+
         cost = fluid.layers.cross_entropy(input=predict, label=label)
         avg_cost = fluid.layers.mean(x=cost)
 
@@ -220,33 +229,17 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                 fetch_list=[self.avg_cost],
                 fetch_info=["cost"],
                 print_period=2,
-                debug=False)
+                debug=int(os.getenv("Debug", "0")))
             pass_time = time.time() - pass_start
 
-        res_dict = dict()
-        res_dict['loss'] = self.avg_cost
+        if os.getenv("SAVE_MODEL") == "1":
+            model_dir = tempfile.mkdtemp()
+            fleet.save_inference_model(exe, model_dir,
+                                       [feed.name for feed in self.feeds],
+                                       self.avg_cost)
+            self.check_model_right(model_dir)
+            shutil.rmtree(model_dir)
 
-        class FH(fluid.executor.FetchHandler):
-            def handle(self, res_dict):
-                for key in res_dict:
-                    v = res_dict[key]
-                    print("{}: \n {}\n".format(key, v))
-
-        for epoch_id in range(1):
-            pass_start = time.time()
-            dataset.set_filelist(filelist)
-            exe.train_from_dataset(
-                program=fleet.main_program,
-                dataset=dataset,
-                fetch_handler=FH(var_dict=res_dict, period_secs=2),
-                debug=False)
-            pass_time = time.time() - pass_start
-
-        model_dir = tempfile.mkdtemp()
-        fleet.save_inference_model(
-            exe, model_dir, [feed.name for feed in self.feeds], self.avg_cost)
-        self.check_model_right(model_dir)
-        shutil.rmtree(model_dir)
         fleet.stop_worker()
 
 

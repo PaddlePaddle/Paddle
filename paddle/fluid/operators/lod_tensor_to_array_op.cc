@@ -16,7 +16,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/port.h"
@@ -95,13 +94,15 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
-    auto &x = detail::Ref(scope.FindVar(Input("X")), "Cannot find input %s",
-                          Input("X"))
+    auto &x = GET_DATA_SAFELY(scope.FindVar(Input("X")), "Input", "X",
+                              "LoDTensorToArray")
                   .Get<framework::LoDTensor>();
-    auto &rank_table = detail::Ref(scope.FindVar(Input("RankTable")))
+    auto &rank_table = GET_DATA_SAFELY(scope.FindVar(Input("RankTable")),
+                                       "Input", "RankTable", "LoDTensorToArray")
                            .Get<framework::LoDRankTable>();
-    auto &out = *detail::Ref(scope.FindVar(Output("Out")))
-                     .GetMutable<framework::LoDTensorArray>();
+    auto &out = *(GET_DATA_SAFELY(scope.FindVar(Output("Out")), "Output", "Out",
+                                  "LoDTensorToArray")
+                      .GetMutable<framework::LoDTensorArray>());
     auto &items = rank_table.items();
     auto max_seq_len = items[0].length;
     auto rank_level = rank_table.level();
@@ -232,14 +233,12 @@ class LoDTensorToArrayGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("array_to_lod_tensor");
     grad_op->SetInput("X", this->OutputGrad("Out"));
     grad_op->SetInput("RankTable", this->Input("RankTable"));
     grad_op->SetOutput("Out", this->InputGrad("X"));
     grad_op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(grad_op);
   }
 };
 

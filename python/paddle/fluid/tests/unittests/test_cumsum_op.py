@@ -27,10 +27,10 @@ class TestSumOp1(OpTest):
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=2)}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_dygraph=False)
+        self.check_grad(['X'], 'Out')
 
 
 class TestSumOp2(OpTest):
@@ -45,10 +45,10 @@ class TestSumOp2(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_dygraph=False)
+        self.check_grad(['X'], 'Out')
 
 
 class TestSumOp3(OpTest):
@@ -59,10 +59,10 @@ class TestSumOp3(OpTest):
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=1)}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_dygraph=False)
+        self.check_grad(['X'], 'Out')
 
 
 class TestSumOp4(OpTest):
@@ -73,10 +73,10 @@ class TestSumOp4(OpTest):
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=0)}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_dygraph=False)
+        self.check_grad(['X'], 'Out')
 
 
 class TestSumOp5(OpTest):
@@ -86,10 +86,10 @@ class TestSumOp5(OpTest):
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=1)}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_dygraph=False)
+        self.check_grad(['X'], 'Out')
 
 
 class TestSumOp7(OpTest):
@@ -99,10 +99,10 @@ class TestSumOp7(OpTest):
         self.outputs = {'Out': self.inputs['X'].cumsum(axis=0)}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_dygraph=False)
+        self.check_grad(['X'], 'Out')
 
 
 class TestSumOp8(OpTest):
@@ -119,10 +119,10 @@ class TestSumOp8(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_dygraph=False)
+        self.check_grad(['X'], 'Out')
 
 
 if __name__ == '__main__':

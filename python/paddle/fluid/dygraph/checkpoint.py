@@ -18,6 +18,7 @@ import os
 import collections
 from ..framework import Variable, default_main_program, in_dygraph_mode, dygraph_only, Parameter, ParamBase
 import pickle
+import six
 from . import learning_rate_scheduler
 import warnings
 from .. import core
@@ -62,7 +63,7 @@ def save_dygraph(state_dict, model_path):
     '''
 
     base_name = os.path.basename(model_path)
-    assert base_name != "", "model_path MUST be format of dirname/filename [dirname\\filename in Window], Now filename is empty str"
+    assert base_name != "", "The input model_path MUST be format of dirname/filename [dirname\\filename in Windows system], but received filename is empty string."
 
     suffix = ".pdparams"
     assert len(state_dict) > 0, "state_dict is empty, no need to save"
@@ -82,8 +83,13 @@ def save_dygraph(state_dict, model_path):
         name_table[k] = v.name
     model_dict["StructuredToParameterName@@"] = name_table
 
-    with open(model_path + suffix, 'wb') as f:
-        pickle.dump(model_dict, f)
+    file_name = model_path + suffix
+    dir_name = os.path.dirname(file_name)
+    if dir_name and not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+
+    with open(file_name, 'wb') as f:
+        pickle.dump(model_dict, f, protocol=2)
 
 
 @dygraph_only
@@ -113,26 +119,34 @@ def load_dygraph(model_path, keep_name_table=False):
                 adam = fluid.optimizer.Adam( learning_rate = fluid.layers.noam_decay( 100, 10000),
                                              parameter_list = emb.parameters() )
                 state_dict = adam.state_dict()
-                fluid.save_dygraph( state_dict, "padle_dy")
+                fluid.save_dygraph( state_dict, "paddle_dy")
 
                 para_state_dict, opti_state_dict = fluid.load_dygraph( "paddle_dy")
 
     '''
 
-    params_file_path = model_path + ".pdparams"
+    model_prefix = model_path
+    if model_prefix.endswith(".pdparams"):
+        model_prefix = model_prefix[:-9]
+    elif model_prefix.endswith(".pdopt"):
+        model_prefix = model_prefix[:-6]
+
+    params_file_path = model_prefix + ".pdparams"
     if not os.path.exists(params_file_path):
         raise RuntimeError("Parameter file [ {} ] not exists".format(
             params_file_path))
 
     with open(params_file_path, 'rb') as f:
-        para_dict = pickle.load(f)
+        para_dict = pickle.load(f) if six.PY2 else pickle.load(
+            f, encoding='latin1')
 
     if not keep_name_table and "StructuredToParameterName@@" in para_dict:
         del para_dict["StructuredToParameterName@@"]
     opti_dict = None
-    opti_file_path = model_path + ".pdopt"
+    opti_file_path = model_prefix + ".pdopt"
     if os.path.exists(opti_file_path):
         with open(opti_file_path, 'rb') as f:
-            opti_dict = pickle.load(f)
+            opti_dict = pickle.load(f) if six.PY2 else pickle.load(
+                f, encoding='latin1')
 
     return para_dict, opti_dict

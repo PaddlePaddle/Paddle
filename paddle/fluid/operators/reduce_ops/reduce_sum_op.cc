@@ -28,19 +28,41 @@ class ReduceSumOpGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("reduce_sum_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetAttrMap(this->Attrs());
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    return op;
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const {
+    int in_dtype = ctx.Attr<int>("in_dtype");
+    if (in_dtype >= 0) {
+      return framework::OpKernelType(
+          static_cast<framework::proto::VarType::Type>(in_dtype),
+          ctx.GetPlace());
+    }
+    return framework::OpKernelType(
+        framework::OperatorWithKernel::IndicateVarDataType(
+            ctx, framework::GradVarName("Out")),
+        ctx.GetPlace());
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ReduceSumGradNoNeedBufferVarInference,
-                                      "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReduceSumGradNoNeedBufferVarInference, "X");
+class ReduceSumVarTypeInference : public paddle::framework::VarTypeInference {
+ public:
+  void operator()(paddle::framework::InferVarTypeContext* ctx) const override {
+    auto data_type = static_cast<paddle::framework::proto::VarType::Type>(
+        boost::get<int>(ctx->GetAttr("out_dtype")));
+    if (data_type >= 0) {
+      auto& out_var_name = ctx->Output("Out").front();
+      ctx->SetDataType(out_var_name, data_type);
+    }
+  }
+};
 
 }  // namespace operators
 }  // namespace paddle
@@ -52,6 +74,7 @@ class ReduceSumOpMaker : public ops::ReduceOpMaker {
 };
 
 REGISTER_OPERATOR(reduce_sum, ops::ReduceOp, ReduceSumOpMaker,
+                  ops::ReduceSumVarTypeInference,
                   ops::ReduceSumOpGradMaker<paddle::framework::OpDesc>,
                   ops::ReduceSumOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(reduce_sum_grad, ops::ReduceGradOp,

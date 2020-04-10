@@ -51,6 +51,9 @@ __all__ = [
     'Variable',
     'load_op_library',
     'require_version',
+    'device_guard',
+    'set_flags',
+    'get_flags',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -61,6 +64,7 @@ CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
 _dygraph_tracer_ = None
 _dygraph_current_expected_place_ = None
+_current_device = None
 
 
 def require_version(min_version, max_version=None):
@@ -173,7 +177,9 @@ def require_version(min_version, max_version=None):
 def in_dygraph_mode():
     """
     This function checks whether the program runs in dynamic graph mode or not.
-    You can turn on dynamic graph mode with :ref:`api_fluid_dygraph_guard` api.
+    You can enter dynamic graph mode with :ref:`api_fluid_dygraph_guard` api,
+    or enable and disable dynamic graph mode with :ref:`api_fluid_dygraph_enable`
+    and :ref:`api_fluid_dygraph_disable` api .
 
     Returns:
         bool: Whether the program is running in dynamic graph mode.
@@ -182,11 +188,11 @@ def in_dygraph_mode():
         .. code-block:: python
 
             import paddle.fluid as fluid
-            if fluid.in_dygraph_mode():
-                print('running in dygraph mode')
-            else:
-                print('not running in dygraph mode')
 
+            fluid.enable_dygraph()  # Now we are in dygragh mode
+            print(fluid.in_dygraph_mode())  # True
+            fluid.disable_dygraph()
+            print(fluid.in_dygraph_mode())  # False
     """
     return _dygraph_tracer_ is not None
 
@@ -458,7 +464,7 @@ def name_scope(prefix=None):
     if in_dygraph_mode():
         yield
     else:
-        assert prefix, "namescope prefix cannot be empty."
+        assert prefix, "namescope prefix can not be empty."
         global _name_scope
         _name_scope = _name_scope.child(prefix)
         yield
@@ -816,7 +822,7 @@ class Variable(object):
     There are many kinds of variables. Each kind of them has its own attributes
     and usages. Please refer to the `framework.proto <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/framework/framework.proto>`_ for details.
 
-    Most of a Variable's member variables can be setted to be None. It mean
+    Most of a Variable's member variables can be set to be None. It mean
     it is not available or will be specified later.
 
     Examples:
@@ -949,7 +955,7 @@ class Variable(object):
     def detach(self):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Returns a new Variable, detached from the current graph.
 
@@ -979,7 +985,7 @@ class Variable(object):
     def numpy(self):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Returns a numpy array shows the value of current :ref:`api_guide_Variable_en`
 
@@ -1011,7 +1017,7 @@ class Variable(object):
     def set_value(self, value):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Set a new value for this Variable.
 
@@ -1042,7 +1048,7 @@ class Variable(object):
     def backward(self, backward_strategy=None):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Run backward of current Graph which starts from current Variable
 
@@ -1080,7 +1086,7 @@ class Variable(object):
     def gradient(self):
         """
         **Notes**:
-            **This API is ONLY avaliable in Dygraph mode**
+            **This API is ONLY available in Dygraph mode**
 
         Get the Gradient of Current Variable
 
@@ -1128,7 +1134,7 @@ class Variable(object):
     def clear_gradient(self):
         """
         **Notes**:
-            **1. This API is ONLY avaliable in Dygraph mode**
+            **1. This API is ONLY available in Dygraph mode**
 
             **2. Use it only Variable has gradient, normally we use this for Parameters since other temporal Variable will be deleted by Python's GC**
 
@@ -1237,7 +1243,7 @@ class Variable(object):
                 out = fluid.layers.concat(input=[out1, out2, c], axis=1)
                 out.backward()
 
-                assert (linear.weight.gradient() == 0).all()
+                assert linear.weight.gradient() is None
                 assert (out1.gradient() == 0).all()
         """
         if in_dygraph_mode():
@@ -1495,7 +1501,7 @@ class Variable(object):
         if length < 0:
             raise ValueError("length should not be negative")
         if step == 0:
-            raise ValueError("slice step cannot be zero")
+            raise ValueError("slice step can not be zero")
 
         # Find lower and upper bounds for start and stop.
         lower = -1 if step < 0 else 0
@@ -1694,7 +1700,8 @@ class OpProtoHolder(object):
             core.op_proto_and_checker_maker.kOpRoleAttrName(),
             core.op_proto_and_checker_maker.kOpRoleVarAttrName(),
             core.op_proto_and_checker_maker.kOpNameScopeAttrName(),
-            core.op_proto_and_checker_maker.kOpCreationCallstackAttrName()
+            core.op_proto_and_checker_maker.kOpCreationCallstackAttrName(),
+            core.op_proto_and_checker_maker.kOpDeviceAttrName()
         }
 
 
@@ -1801,6 +1808,24 @@ class Operator(object):
 
             namescope_var_name = op_maker.kOpNameScopeAttrName()
             op_attrs[namescope_var_name] = _full_name_scope()
+
+            # set device for op with kernels, give warning for op without kernels
+            # when force_cpu and device_guard are used at the same time, a warning will be given.
+            # TODO(zhangting2020): when force_cpu is removed, clear warning below.
+            if _current_device is not None:
+                if self._has_kernel(type):
+                    op_device = op_maker.kOpDeviceAttrName()
+                    op_attrs[op_device] = _current_device
+                else:
+                    warnings.warn("The Op(%s) is not support to set device." %
+                                  type)
+                if 'force_cpu' in op_attrs:
+                    if (type is 'less_than' and op_attrs['force_cpu'] != None
+                        ) or op_attrs['force_cpu'] != False:
+                        warnings.warn(
+                            "The Attr(force_cpu) of Op(%s) will be deprecated in the future, "
+                            "please use 'device_guard' instead. 'device_guard' has higher priority when they are "
+                            "used at the same time." % type)
 
             def find_name(var_list, name):
                 for var_name in var_list:
@@ -2149,6 +2174,15 @@ class Operator(object):
 
         return attr_map
 
+    def _is_optimize_op(self):
+        op_maker = core.op_proto_and_checker_maker
+        OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
+        op_role = self.desc.attr(op_maker.kOpRoleAttrName())
+        if op_role & int(OPTIMIZE):
+            return True
+        else:
+            return False
+
 
 class Block(object):
     """
@@ -2386,7 +2420,6 @@ class Block(object):
             trainable = v.trainable
             optimize_attr = v.optimize_attr
             regularizer = v.regularizer
-            gradient_clip_attr = v.gradient_clip_attr
             error_clip = v.error_clip
         elif type(v) == Variable:
             var_type = "Variable"
@@ -2409,7 +2442,6 @@ class Block(object):
                     trainable=trainable,
                     optimize_attr=optimize_attr,
                     regularizer=regularizer,
-                    gradient_clip_attr=gradient_clip_attr,
                     error_clip=error_clip)
             else:
                 var = Parameter(
@@ -2422,7 +2454,6 @@ class Block(object):
                     trainable=trainable,
                     optimize_attr=optimize_attr,
                     regularizer=regularizer,
-                    gradient_clip_attr=gradient_clip_attr,
                     error_clip=error_clip)
         elif var_type == "Variable":
             var = Variable(
@@ -2686,8 +2717,8 @@ class Block(object):
             assert isinstance(p, Parameter)
             v = self.vars.get(p.name, None)
             if v is None:
-                raise ValueError("_copy_param_info_from should be invoked with "
-                                 "same topology")
+                # if the Parameter is pruned, v may be None
+                continue
             assert isinstance(v, Variable)
             new_p = None
             if in_dygraph_mode():
@@ -2700,7 +2731,6 @@ class Block(object):
                     trainable=p.trainable,
                     optimize_attr=p.optimize_attr,
                     regularizer=p.regularizer,
-                    gradient_clip_attr=p.gradient_clip_attr,
                     error_clip=p.error_clip,
                     name=v.name)
             else:
@@ -2714,7 +2744,6 @@ class Block(object):
                     trainable=p.trainable,
                     optimize_attr=p.optimize_attr,
                     regularizer=p.regularizer,
-                    gradient_clip_attr=p.gradient_clip_attr,
                     error_clip=p.error_clip,
                     name=v.name)
             self.vars[new_p.name] = new_p
@@ -2965,7 +2994,7 @@ class IrVarNode(IrNode):
             shape(list): shape to be set.
         """
         assert self.node.var() is not None, \
-            "The node variable description cannot be None."
+            "The node variable description can not be None."
         self.node.var().set_shape(shape)
 
     def persistable(self):
@@ -2976,7 +3005,7 @@ class IrVarNode(IrNode):
             bool: indicate whether the variable is persistable.
         """
         assert self.node.var() is not None, \
-            "The node variable description cannot be None."
+            "The node variable description can not be None."
         return self.node.var().persistable()
 
     def type(self):
@@ -2987,7 +3016,7 @@ class IrVarNode(IrNode):
             core.VarDesc.VarType: the variable type.
         """
         assert self.node.var() is not None, \
-            "The node variable description cannot be None."
+            "The node variable description can not be None."
         return self.node.var().type()
 
     def dtype(self):
@@ -2998,7 +3027,7 @@ class IrVarNode(IrNode):
             core.VarDesc.VarType: the variable data type.
         """
         assert self.node.var() is not None, \
-            "The node variable description cannot be None."
+            "The node variable description can not be None."
         return self.node.var().dtype()
 
     def shape(self):
@@ -3009,7 +3038,7 @@ class IrVarNode(IrNode):
             list: the variable shape.
         """
         assert self.node.var() is not None, \
-            "The node variable description cannot be None."
+            "The node variable description can not be None."
         return self.node.var().shape()
 
     @property
@@ -3059,7 +3088,7 @@ class IrOpNode(IrNode):
             new_input_name(str): the new input name.
         """
         assert self.node.op() is not None, \
-            "The node operator description cannot be None."
+            "The node operator description can not be None."
         self.node.op()._rename_input(old_input_name, new_input_name)
 
     def rename_output(self, old_output_name, new_output_name):
@@ -3071,7 +3100,7 @@ class IrOpNode(IrNode):
             new_output_name(str): the new output name.
         """
         assert self.node.op() is not None, \
-            "The node operator description cannot be None."
+            "The node operator description can not be None."
         print("op: {}, old: {}, new: {}\n".format(self.node.op().type(
         ), old_output_name, new_output_name))
         self.node.op()._rename_output(old_output_name, new_output_name)
@@ -3087,7 +3116,7 @@ class IrOpNode(IrNode):
             list(str): the argument name list.
         """
         assert self.node.op() is not None, \
-            "The node operator description cannot be None."
+            "The node operator description can not be None."
         return self.node.op().input(name)
 
     def output(self, name):
@@ -3101,7 +3130,7 @@ class IrOpNode(IrNode):
             list(str): the argument name list.
         """
         assert self.node.op() is not None, \
-            "The node operator description cannot be None."
+            "The node operator description can not be None."
         return self.node.op().output(name)
 
     def set_type(self, new_type):
@@ -3112,7 +3141,7 @@ class IrOpNode(IrNode):
             new_type(str): new operator type to be set.
         """
         assert self.node.op() is not None, \
-            "The node operator description cannot be None."
+            "The node operator description can not be None."
         return self.node.op().set_type(new_type)
 
     def set_attr(self, name, val):
@@ -3130,7 +3159,7 @@ class IrOpNode(IrNode):
         Update the value of the op desc's attribute by attribute's name.
         """
         assert self.node.op() is not None, \
-            "The node operator description cannot be None."
+            "The node operator description can not be None."
         desc = self.node.op()
         if isinstance(val, Block):
             desc.set_block_attr(name, val.desc)
@@ -3151,7 +3180,7 @@ class IrOpNode(IrNode):
             list(str): input arguments' names of this op node.
         """
         assert self.node.op() is not None, \
-            "The node operator description cannot be None."
+            "The node operator description can not be None."
         return self.node.op().input_arg_names()
 
     def output_arg_names(self):
@@ -3162,7 +3191,7 @@ class IrOpNode(IrNode):
             list(str): output arguments' names of this op node.
         """
         assert self.node.op() is not None, \
-            "The node operator description cannot be None."
+            "The node operator description can not be None."
         return self.node.op().output_arg_names()
 
     @property
@@ -3318,7 +3347,7 @@ class IrGraph(object):
             op_type(str): the type of the operator node.
             attrs(dict): the attributes of the operator node.
             inputs(dict): the inputs of the operator node.
-            outputs(dict): the outpus of the operator node.
+            outputs(dict): the outputs of the operator node.
 
         Returns:
             IrOpNode: the created operator node.
@@ -3459,7 +3488,7 @@ class IrGraph(object):
         """
         Perform the topology sort operation on the graph.
 
-        Notes: the `graph` cannot contain a circle.
+        Notes: the `graph` can not contain a circle.
 
         Returns:
             list(IrNode): nodes in topology order.
@@ -3804,13 +3833,22 @@ class Program(object):
                 import paddle.fluid as fluid
 
                 prog = fluid.default_main_program()
+                x = fluid.layers.data(name="X", shape=[2,3], dtype="float32", append_batch_size=False)
+                pred = fluid.layers.fc(x, size=3)
                 prog_string = prog.to_string(throw_on_error=True, with_details=False)
-                print("program string without detial: {}".format(prog_string))
-                prog_string_with_detail = prog.to_string(throw_on_error=True, with_details=True)
-                print("program string with detial: {}".format(prog_string_with_detail))
+                prog_string_with_details = prog.to_string(throw_on_error=False, with_details=True)
+                print("program string without detail: {}".format(prog_string))
+                print("program string with detail: {}".format(prog_string_with_details))
         """
-        assert isinstance(throw_on_error, bool) and isinstance(with_details,
-                                                               bool)
+        assert isinstance(
+            throw_on_error, bool
+        ), "The type of throw_on_error parameter is wrong, expected bool, but received {}.".format(
+            type(throw_on_error))
+        assert isinstance(
+            with_details, bool
+        ), "The type of with_details parameter is wrong, expected bool, but received {}.".format(
+            type(with_details))
+
         if with_details:
             res_str = ""
             for block in self.blocks:
@@ -3846,34 +3884,38 @@ class Program(object):
             **3. This API has no effect in Dygraph Mode**
 
         Create a new Program with forward content of original one when ``for_test=True``.
-        Create a new Program as the same as original one when ``for_test=False``
-
+        Create a new Program as same as the original one when ``for_test=False``.
 
         Some operators, e.g., :ref:`api_fluid_layers_batch_norm` , behave differently between
         training and testing. They have an attribute, :code:`is_test`, to
         control this behaviour. This method will change the :code:`is_test`
         attribute of them to :code:`True` when :code:`for_test=True`.
 
-        * Set for_test to False when we want to clone the program for training.
-        * Set for_test to True when we want to clone the program for testing.
+        * Set for_test to False when you want to clone the program for training.
+        * Set for_test to True when you want to clone the program for testing.
           We will prune the backward and optimize part of the program when you
           use :code:`clone` after :code:`Opimizer.minimize`, but we still
           recommend you to use :code:`clone` before using :code:`Opimizer.minimize`.
 
         For Example:
-            .. code-block:: python
+          ::
 
-                test_program = fluid.default_main_program().clone(for_test=True)
-                # Here we use clone before Momentum
-                optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
-                optimizer.minimize()
+            import paddle.fluid as fluid
+            img = fluid.layers.data(name='image', shape=[784])
+            pred = fluid.layers.fc(input=img, size=10, act='relu')
+            loss = fluid.layers.mean(pred)
+            # Here we use clone before Momentum
+            test_program = fluid.default_main_program().clone(for_test=True)
+            optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
+            optimizer.minimize(loss)
 
         Args:
 
-            for_test (bool): True if change the :code:`is_test` attribute of operators to :code:`True`.
+            for_test (bool): True if change the :code:`is_test` attribute of operators to :code:`True`
+                and prune the backward and optimize part of the program. The default value is :code:`False` .
 
         Returns:
-            Program: A new Program with forward content of original one when ``for_test=True``.  A new Program as the same as original one when ``for_test=False``
+            Program: A new Program with forward content of original one when ``for_test=True``.  A new Program as same as the original one when ``for_test=False``
 
 
         Examples:
@@ -3887,7 +3929,6 @@ class Program(object):
 
                 import paddle.fluid as fluid
                 import six
-
 
                 def print_prog(prog):
                     for name, value in sorted(six.iteritems(prog.block(0).vars)):
@@ -3932,7 +3973,7 @@ class Program(object):
                                                       input=fluid.layers.fc(hidden, size=10, act='softmax'),
                                         label=fluid.layers.data(name='label', shape=[1], dtype='int64'))
                             avg_loss = fluid.layers.mean(loss)
-                            test_program = train_program.clone(for_test=False)
+                            test_program = train_program.clone(for_test=True)
                     print_prog(test_program)
 
                     # Due to parameter sharing usage for train and test, so we need to use startup program of train
@@ -3965,7 +4006,8 @@ class Program(object):
                             for key, value in sorted(six.iteritems(op.all_attrs())):
                                 if key not in ['op_callstack', 'op_role_var']:
                                     print(" [ attrs: {}:   {} ]".format(key, value))
-                    def network(is_test):
+                    
+                    def network():
                         img = fluid.layers.data(name='image', shape=[784])
                         hidden = fluid.layers.fc(input=img, size=200, act='relu')
                         hidden = fluid.layers.dropout(hidden, dropout_prob=0.5)
@@ -3975,34 +4017,38 @@ class Program(object):
                         avg_loss = fluid.layers.mean(loss)
                         return avg_loss
 
-
                     train_program_2 = fluid.Program()
                     startup_program_2 = fluid.Program()
                     test_program_2 = fluid.Program()
                     with fluid.program_guard(train_program_2, startup_program_2):
                         with fluid.unique_name.guard():
-                             sgd = fluid.optimizer.SGD(learning_rate=1e-3)
-                             sgd.minimize(avg_loss)
+                            avg_loss = network()
+                            sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+                            sgd.minimize(avg_loss)
                     # the test startup program is not used.
-                    with fluid.program_guard(test_program_2, fluid.Program()):
+                    with fluid.program_guard(test_program_2, startup_program_2):
                         with fluid.unique_name.guard():
-                            loss = network(is_test=True)
-                    print(test_program_2)
+                            avg_loss = network()
+                    print_prog(test_program_2)
 
         The two code snippets above will generate and print same programs.
         """
+
+        #NOTE(zhiqiu): we sync the original program first, since its program may diff with
+        # its desc due to modifying desc in c++ space. E.g. save op will add kLookupTablePath in desc.
+        self._sync_with_cpp()
+
+        pruned_origin_block_id_map = None
         if for_test:
-            if self._appending_grad_times > 0:
-                forward_prog = Program()
-                forward_prog.desc = core.prune_backward(self.desc)
-                forward_prog.blocks = [
-                    Block(forward_prog, i)
-                    for i in six.moves.range(forward_prog.desc.num_blocks())
-                ]
-                forward_prog._sync_with_cpp()
-                p = forward_prog._inference_optimize(prune_read_op=False)
-            else:
-                p = self._inference_optimize(prune_read_op=False)
+            forward_prog = Program()
+            forward_prog.desc, pruned_origin_block_id_map = core.prune_backward(
+                self.desc)
+            forward_prog.blocks = [
+                Block(forward_prog, i)
+                for i in six.moves.range(forward_prog.desc.num_blocks())
+            ]
+            forward_prog._sync_with_cpp()
+            p = forward_prog._inference_optimize(prune_read_op=False)
         else:
             p = Program()
             p.current_block_idx = self.current_block_idx
@@ -4016,10 +4062,12 @@ class Program(object):
             p.__op_role_var = self.__op_role_var
             p._appending_grad_times = self._appending_grad_times
 
+            #NOTE(zhiqiu): we sync the cloned program, to update its program by
+            # its desc.
             p._sync_with_cpp()
 
         p._copy_param_info_from(self)
-        p._copy_data_info_from(self)
+        p._copy_data_info_from(self, pruned_origin_block_id_map)
         p._copy_dist_param_info_from(self)
         return p
 
@@ -4032,48 +4080,13 @@ class Program(object):
         directly. This API is in flux and not stable.
 
         Args:
-            targets(list|Variable|Operator): A list of variables or operators
+            targets(list|Variable|Operator): A list of variables, operators, or variable names
                 need to be pruned
 
         Returns:
             Program:  A new, pruned program.
         """
-
-        if not isinstance(targets, list):
-            targets = [targets]
-
-        targets_idx = []
-        for t in targets:
-            if not isinstance(t, Operator):
-                if isinstance(t, Variable):
-                    # After transpiler processing, the op that output this
-                    # variable maybe has been changed, so t.op is not reliable
-                    # and we need to find the current op that generate this
-                    # variable here.
-                    t.op = None
-                    global_block = self.global_block()
-                    for idx, op in enumerate(global_block.ops):
-                        if t.name in op.output_arg_names:
-                            t.op = op
-                            break
-
-                    t = t.op
-                    if t is None:
-                        raise ValueError(
-                            "The target variable must have an "
-                            "associated operator that generates it.")
-                else:
-                    raise ValueError("All targets of prune() can only be "
-                                     "Variable or Operator.")
-
-            targets_idx.append([t.block.idx, t.idx])
-        res = Program()
-        res.desc = core.prune(self.desc, set(), targets_idx)
-        res.blocks = [
-            Block(res, i) for i in six.moves.range(res.desc.num_blocks())
-        ]
-        res._sync_with_cpp()
-        return res
+        return self._prune_with_input([], targets)
 
     def _prune_with_input(self, feeded_var_names, targets):
         """
@@ -4087,12 +4100,16 @@ class Program(object):
         Args:
             feeded_var_names(list|str): A list of variable names from where
                 pruning start. If it is set as [], this API works just like _prune()
-            targets(list|Variable|Operator): A list of variables or operators
+            targets(list|Variable|Operator): A list of variables, operators, or variable names
                 need to be pruned
 
         Returns:
             Program:  A new, pruned program.
         """
+
+        #NOTE(zhiqiu): we sync the original program first, since its program may diff with
+        # its desc due to modifying desc in c++ space. E.g. save op will add kLookupTablePath in desc.
+        self._sync_with_cpp()
 
         if not isinstance(feeded_var_names, list):
             feeded_var_names = [feeded_var_names]
@@ -4101,40 +4118,56 @@ class Program(object):
 
         for var in feeded_var_names:
             if not isinstance(var, six.string_types):
-                raise ValueError("All feeded_var_names of prune() can only be "
-                                 "str.")
+                raise ValueError(
+                    "All feeded_var_names of Program._prune_with_input() can only be "
+                    "str, but received %s." % type(var))
 
         targets_idx = []
         for t in targets:
             if not isinstance(t, Operator):
                 if isinstance(t, Variable):
-                    # After transpiler processing, the op that output this
-                    # variable maybe has been changed, so t.op is not reliable
-                    # and we need to find the current op that generate this
-                    # variable here.
-                    t.op = None
-                    global_block = self.global_block()
-                    for idx, op in enumerate(global_block.ops):
-                        if t.name in op.output_arg_names:
-                            t.op = op
-                            break
-
-                    t = t.op
-                    if t is None:
-                        raise ValueError(
-                            "The target variable must have an "
-                            "associated operator that generates it.")
+                    name = t.name
+                elif isinstance(t, six.string_types):
+                    name = str(t)
                 else:
-                    raise ValueError("All targets of prune() can only be "
-                                     "Variable or Operator.")
-
+                    raise ValueError(
+                        "All targets of Program._prune_with_input() can only be "
+                        "Variable or Operator, but received %s." % type(t))
+                # After transpiler processing, the op that output this
+                # variable maybe has been changed, so t.op is not reliable
+                # and we need to find the current op that generate this
+                # variable here.
+                target_op = None
+                global_block = self.global_block()
+                for idx, op in enumerate(global_block.ops):
+                    if name in op.output_arg_names:
+                        # NOTE(zhiqiu): Find op that generate target name.
+                        # Skip optimize op except for optimize op in targets, 
+                        # since optimize op generates parameters.
+                        if op._is_optimize_op() and op not in targets:
+                            continue
+                        else:
+                            target_op = op
+                            break
+                t = target_op
+                if t is None:
+                    raise ValueError("The target variable must have an "
+                                     "associated operator that generates it.")
             targets_idx.append([t.block.idx, t.idx])
+
         res = Program()
-        res.desc = core.prune(self.desc, set(feeded_var_names), targets_idx)
+        res.desc, pruned_origin_block_id_map = core.prune(self.desc,
+                                                          set(feeded_var_names),
+                                                          targets_idx)
         res.blocks = [
             Block(res, i) for i in six.moves.range(res.desc.num_blocks())
         ]
         res._sync_with_cpp()
+
+        res._copy_param_info_from(self)
+        res._copy_data_info_from(self, pruned_origin_block_id_map)
+        res._copy_dist_param_info_from(self)
+
         return res
 
     def _inference_optimize(self, prune_read_op=True):
@@ -4272,13 +4305,17 @@ class Program(object):
                 prog = fluid.default_main_program()
                 random_seed = prog.random_seed
                 x_var = fluid.layers.data(name="X", shape=[3,3], dtype="float32", append_batch_size=False)
+                print(random_seed)
+                ## 0
+                ## the default random seed is 0
 
                 # Here we need to set random seed before we use fluid.layers.dropout
-                print(random_seed)
                 prog.random_seed = 1
                 z_var = fluid.layers.dropout(x_var, 0.7)
 
                 print(prog.random_seed)
+                ## 1
+                ## the random seed is change to 1
         """
         return self._seed
 
@@ -4309,7 +4346,9 @@ class Program(object):
     @random_seed.setter
     def random_seed(self, seed):
         if not isinstance(seed, int):
-            raise ValueError("Seed must be a integer.")
+            raise ValueError(
+                "Program.random_seed's input seed must be an integer, but received %s."
+                % type(seed))
         self._seed = seed
 
     def __repr__(self):
@@ -4442,12 +4481,10 @@ class Program(object):
             None
         """
         if not isinstance(other, Program):
-            raise TypeError("_copy_param_info_from should be invoked with "
-                            "Program")
+            raise TypeError(
+                "Function Program._copy_param_info_from() needs to pass in a source Program, but received %s"
+                % type(other))
 
-        if len(self.blocks) != len(other.blocks):
-            raise ValueError("_copy_param_info_from should be invoked with two "
-                             "program, with represent the same topology")
         self.global_block()._copy_param_info_from(other.global_block())
 
     def _copy_dist_param_info_from(self, other):
@@ -4461,8 +4498,9 @@ class Program(object):
             None
         """
         if not isinstance(other, Program):
-            raise TypeError("_copy_dist_param_info_from should be invoked with "
-                            "Program")
+            raise TypeError(
+                "Function Program._copy_param_info_from() needs to pass in a source Program, but received %s"
+                % type(other))
         self._is_distributed = other._is_distributed
         self._is_chief = other._is_chief
         self._parameters_on_pservers = other._parameters_on_pservers
@@ -4470,7 +4508,7 @@ class Program(object):
         self._ps_endpoint = other._ps_endpoint
         self._distributed_lookup_table = other._distributed_lookup_table
 
-    def _copy_data_info_from(self, other):
+    def _copy_data_info_from(self, other, pruned_origin_block_id_map=None):
         """
         Copy the information of data variables from other program.
 
@@ -4479,30 +4517,37 @@ class Program(object):
 
         Args:
             other(Program): Other program
+            pruned_origin_block_id_map(dict{int:int}): A dict which maps the block id in program
+            self to the block id in program other. For example, {0:0, 1:1, 2:3} means block 0 in self is 
+            cloned from block 0 in other, etc. Default is None, which means default mapped, 
+            {0:0, 1:1,..., n:n}.
 
         Returns:
             None
         """
         if not isinstance(other, Program):
-            raise TypeError("_copy_data_info_from should be invoked with "
-                            "Program")
+            raise TypeError(
+                "Function Program._copy_param_info_from() needs to pass in a source Program, but received %s"
+                % type(other))
 
-        if len(self.blocks) != len(other.blocks):
-            raise ValueError("_copy_data_info_from should be invoked with two "
-                             "program, with represent the same topology")
+        if not pruned_origin_block_id_map:
+            pruned_origin_block_id_map = {
+                i: i
+                for i in six.moves.range(self.desc.num_blocks())
+            }
 
         # NOTE(zhiqiu): All vars in cloned program exist in original program.
         # The reverse is not true, due to backward pruning.
-        for i, block in enumerate(other.blocks):
+        for i, block in enumerate(self.blocks):
+            other_block = other.blocks[pruned_origin_block_id_map[i]]
             for var in list(block.vars.values()):
-                if not self.blocks[i].has_var(var.name):
-                    continue
-                if var.is_data:
-                    self.blocks[i].var(var.name).is_data = True
-                if var.desc.need_check_feed():
-                    self.blocks[i].var(var.name).desc.set_need_check_feed(True)
-                if var.stop_gradient:
-                    self.blocks[i].var(var.name).stop_gradient = True
+                other_var = other_block.var(var.name)
+                if other_var.is_data:
+                    var.is_data = True
+                if other_var.desc.need_check_feed():
+                    var.desc.set_need_check_feed(True)
+                if other_var.stop_gradient:
+                    var.stop_gradient = True
 
     @dygraph_not_support
     def list_vars(self):
@@ -4606,8 +4651,6 @@ class Parameter(Variable):
             Default: {'learning_rate': 1.0}
         regularizer(WeightDecayRegularizer): The Regularizer which will
             be applied on the parameter. Default: None
-        gradient_clip_attr(BaseGradientClipAttr): The gradint clip strategy
-            which will be applied on the parameter. Default: None
         do_model_average(bool): True if the model average strategy will
             be applied on this parameter.
     """
@@ -4647,8 +4690,6 @@ class Parameter(Variable):
 
         self.regularizer = kwargs.get('regularizer', None)
 
-        self.gradient_clip_attr = kwargs.get('gradient_clip_attr', None)
-
         self.do_model_average = kwargs.get('do_model_average', None)
 
         self.is_distributed = False
@@ -4683,7 +4724,7 @@ class Parameter(Variable):
         if with_details:
             res_str = Variable.to_string(self, throw_on_error, True)
             additional_attr = ("trainable", "optimize_attr", "regularizer",
-                               "gradient_clip_attr", "do_model_average")
+                               "do_model_average")
             for attr_name in additional_attr:
                 res_str += "%s: %s\n" % (attr_name,
                                          cpt.to_text(getattr(self, attr_name)))
@@ -4712,8 +4753,6 @@ class ParamBase(core.VarBase):
             Default: {'learning_rate': 1.0}
         regularizer(WeightDecayRegularizer): The Regularizer which will
             be applied on the ParamBase. Default: None
-        gradient_clip_attr(BaseGradientClipAttr): The gradint clip strategy
-            which will be applied on the ParamBase. Default: None
         do_model_average(bool): True if the model average strategy will
             be applied on this ParamBase.
     """
@@ -4751,8 +4790,6 @@ class ParamBase(core.VarBase):
         self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
 
         self.regularizer = kwargs.get('regularizer', None)
-
-        self.gradient_clip_attr = kwargs.get('gradient_clip_attr', None)
 
         self.do_model_average = kwargs.get('do_model_average', None)
 
@@ -4960,12 +4997,12 @@ def program_guard(main_program, startup_program=None):
              data = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
     
     """
-    if not isinstance(main_program, Program):
-        raise TypeError("main_program should be Program")
+    from .data_feeder import check_type
+    check_type(main_program, 'main_program', Program, 'fluid.program_guard')
     main_program = switch_main_program(main_program)
     if startup_program is not None:
-        if not isinstance(startup_program, Program):
-            raise TypeError("startup_program should be Program")
+        check_type(startup_program, 'startup_program', Program,
+                   'fluid.program_guard')
         startup_program = switch_startup_program(startup_program)
     yield
     switch_main_program(main_program)
@@ -5022,7 +5059,7 @@ def load_op_library(lib_filename):
     Load a dynamic library, including custom operators and kernels.
     When library is loaded, ops and kernels registered in the library
     will be available in PaddlePaddle main process.
-    Please note, the type of custom operators cann't have the same type
+    Please note, the type of custom operators can't have the same type
     with the existing operators in the framework.
 
     Args:
@@ -5037,3 +5074,129 @@ def load_op_library(lib_filename):
     """
     core.load_op_library(lib_filename)
     OpProtoHolder.instance().update_op_proto()
+
+
+def switch_device(device):
+    global _current_device
+    pre_device = _current_device
+    _current_device = device
+    return pre_device
+
+
+@signature_safe_contextmanager
+def device_guard(device=None):
+    """
+    **Notes**:
+        **The API only supports static mode.**
+
+    A context manager that specifies the device on which the OP will be placed.
+
+    Args:
+        device(str|None): Specify the device to use in the context. It should be 'cpu' or 'gpu',
+            When it is set to 'cpu' or 'gpu', all OPs created in the context will be
+            placed on CPUPlace or CUDAPlace. When 'gpu' is set and the program runs on
+            single-card, the device index will be the same as the device on which the
+            executor runs. Default: None, OPs in this context will be automatically
+            assigned devices.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            support_gpu = fluid.is_compiled_with_cuda()
+            place = fluid.CPUPlace()
+            if support_gpu:
+                place = fluid.CUDAPlace(0)
+
+            # if GPU is supported, the three OPs below will be automatically assigned to CUDAPlace(0)
+            data1 = fluid.layers.fill_constant(shape=[1, 3, 8, 8], value=0.5, dtype='float32')
+            data2 = fluid.layers.fill_constant(shape=[1, 3, 5, 5], value=0.5, dtype='float32')
+            shape = fluid.layers.shape(data2)
+
+            with fluid.device_guard("cpu"):
+                # Ops created here will be placed on CPUPlace
+                shape = fluid.layers.slice(shape, axes=[0], starts=[0], ends=[4])
+            with fluid.device_guard('gpu'):
+                # if GPU is supported, OPs created here will be placed on CUDAPlace(0), otherwise on CPUPlace
+                out = fluid.layers.crop_tensor(data1, shape=shape)
+
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            result = exe.run(fetch_list=[out])
+    """
+
+    if device not in ['cpu', 'gpu', '', None]:
+        raise ValueError(
+            "The Attr(device) should be 'cpu' or 'gpu', and it can also be empty string or None "
+            "when there is no need to specify device. But received %s" % device)
+    pre_device = switch_device(device)
+    yield
+    switch_device(pre_device)
+
+
+def set_flags(flags):
+    """
+    This function sets the GFlags value in Paddle.
+
+    Args:
+        flags (dict): A dict contains flags and its value.
+
+    Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                fluid.set_flags({'FLAGS_eager_delete_tensor_gb': 1.0})
+    """
+    if not isinstance(flags, dict):
+        raise TypeError('flags in set_flags should be a dict')
+    for key, value in flags.items():
+        if core.globals().is_public(key):
+            core.globals()[key] = value
+        else:
+            raise ValueError(
+                "Flag %s cannot set its value through this function." % (key))
+
+
+def get_flags(flags):
+    """
+    This function gets the GFlags value in Paddle.
+
+    Args:
+        flags(list|tuple|str): A list/tuple of string or a string which is the flag's name.
+
+    Returns:
+        flag's value in Paddle.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            flags = ['FLAGS_eager_delete_tensor_gb', 'FLAGS_check_nan_inf']
+            res = fluid.get_flags(flags)
+            print(res)
+            # {'FLAGS_eager_delete_tensor_gb': 0.0, 'FLAGS_check_nan_inf': False}
+    """
+    flags_value = {}
+    if isinstance(flags, (list, tuple)):
+        for key in flags:
+            if (core.globals().is_public(key)):
+                value = core.globals()[key]
+                temp = {key: value}
+                flags_value.update(temp)
+            else:
+                raise ValueError(
+                    'Flag %s cannot get its value through this function.' %
+                    (key))
+    elif isinstance(flags, str):
+        if (core.globals().is_public(flags)):
+            value = core.globals()[flags]
+            temp = {flags: value}
+            flags_value.update(temp)
+        else:
+            raise ValueError(
+                'Flag %s cannot get its value through this function.' % (flags))
+    else:
+        raise TypeError('Flags in get_flags should be a list, tuple or string.')
+    return flags_value

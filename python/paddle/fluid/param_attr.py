@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import six
+import warnings
 
 from .initializer import Initializer, Xavier, Constant
 from .regularizer import WeightDecayRegularizer
@@ -30,6 +31,12 @@ class ParamAttr(object):
     Create a object to represent the attribute of parameter. The attributes are:
     name, initializer, learning rate, regularizer, trainable, gradient clip,
     and model average.
+    
+    Note:
+        ``gradient_clip`` of ``ParamAttr`` HAS BEEN DEPRECATED since 2.0. 
+        It is recommended to use ``minimize(loss, grad_clip=clip)`` to clip gradient. 
+        There are three clipping strategies: :ref:`api_fluid_clip_GradientClipByGlobalNorm` , 
+        :ref:`api_fluid_clip_GradientClipByNorm` , :ref:`api_fluid_clip_GradientClipByValue` .
 
     Parameters:
         name (str, optional): The parameter's name. Default None, meaning that the name
@@ -40,11 +47,12 @@ class ParamAttr(object):
         learning_rate (float): The parameter's learning rate. The learning rate when
                 optimize is the global learning rates times the parameter's learning rate times
                 the factor of learning rate scheduler. Default 1.0.
-        regularizer (WeightDecayRegularizer, optional): Regularization factor. Default None, meaning
-                there is no regularization.
+        regularizer (WeightDecayRegularizer, optional): Regularization strategy. There are two method: 
+                :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If 
+                regularizer is also set in ``optimizer`` (such as :ref:`api_fluid_optimizer_SGDOptimizer` ), 
+                that regularizer setting in optimizer will be ignored. Default None, meaning there is 
+                no regularization.
         trainable (bool): Whether this parameter is trainable. Default True.
-        gradient_clip (BaseGradientClipAttr, optional): The method to clip this parameter's
-                gradient. Default None, meaning that there is no gradient clip.
         do_model_average (bool): Whether this parameter should do model average
                 when model average is enabled. Default False.
 
@@ -68,7 +76,6 @@ class ParamAttr(object):
                  learning_rate=1.0,
                  regularizer=None,
                  trainable=True,
-                 gradient_clip=None,
                  do_model_average=True):
         self.name = name
         if isinstance(self.name, six.string_types) and self.name == "":
@@ -78,7 +85,6 @@ class ParamAttr(object):
         self.learning_rate = learning_rate
         self.regularizer = regularizer
         self.trainable = trainable
-        self.gradient_clip = gradient_clip
         self.do_model_average = do_model_average
 
     def _set_default_initializer(self, initializer):
@@ -176,7 +182,6 @@ class ParamAttr(object):
             },
             'regularizer': self.regularizer,
             'trainable': self.trainable,
-            'gradient_clip_attr': self.gradient_clip,
             'do_model_average': self.do_model_average
         }
         if with_initializer:
@@ -192,11 +197,17 @@ class WeightNormParamAttr(ParamAttr):
     paper: `Weight Normalization: A Simple Reparameterization to Accelerate
     Training of Deep Neural Networks
     <https://arxiv.org/pdf/1602.07868.pdf>`_.
+      
+    Note:
+        ``gradient_clip`` of ``WeightNormParamAttr`` HAS BEEN DEPRECATED since 2.0. 
+        It is recommended to use ``minimize(loss, grad_clip=clip)`` to clip gradient. 
+        There are three clipping strategies: :ref:`api_fluid_clip_GradientClipByGlobalNorm` , 
+        :ref:`api_fluid_clip_GradientClipByNorm` , :ref:`api_fluid_clip_GradientClipByValue` .
 
     Args:
         dim(int): Dimension over which to compute the norm. Dim is a non-negative
             number which is less than the rank of weight Tensor. For Example, dim can
-            be choosed from 0, 1, 2, 3 for convolution whose weight shape is [cout, cin, kh, kw]
+            be chosen from 0, 1, 2, 3 for convolution whose weight shape is [cout, cin, kh, kw]
             and rank is 4. Default None, meaning that all elements will be normalized.
         name(str, optional): The parameter's name. Default None, meaning that the name would
             be created automatically. Please refer to :ref:`api_guide_Name` for more details.
@@ -207,13 +218,11 @@ class WeightNormParamAttr(ParamAttr):
         learning_rate(float32): The parameter's learning rate when
             optimizer is :math:`global\_lr * parameter\_lr * scheduler\_factor`.
             Default 1.0.
-        regularizer(WeightDecayRegularizer): Regularization factor, such as
-            ``regularizer = fluid.regularizer.L2DecayRegularizer(regularization_coeff=0.1)``.
-            Default None, meaning that there is no regularization.
+        regularizer (WeightDecayRegularizer, optional): Regularization strategy. There are two method: 
+            :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If regularizer 
+            is also set in ``optimizer`` (such as :ref:`api_fluid_optimizer_SGDOptimizer` ), that regularizer 
+            setting in optimizer will be ignored. Default None, meaning there is no regularization.
         trainable(bool, optional): Whether this parameter is trainable. Default True.
-        gradient_clip: The method to clip this parameter's gradient, such as
-            ``gradient_clip = fluid.clip.GradientClipByNorm(clip_norm=2.0))`` .
-            Default None, meaning that there is no gradient clip.
         do_model_average(bool, optional): Whether this parameter should do model average.
             Default False.
 
@@ -231,7 +240,6 @@ class WeightNormParamAttr(ParamAttr):
                                           learning_rate=1.0,
                                           regularizer=fluid.regularizer.L2DecayRegularizer(regularization_coeff=0.1),
                                           trainable=True,
-                                          gradient_clip=fluid.clip.GradientClipByNorm(clip_norm=2.0),
                                           do_model_average=False))
 
     """
@@ -248,7 +256,6 @@ class WeightNormParamAttr(ParamAttr):
                  learning_rate=1.0,
                  regularizer=None,
                  trainable=True,
-                 gradient_clip=None,
                  do_model_average=False):
         super(WeightNormParamAttr, self).__init__(
             name=name,
@@ -256,6 +263,5 @@ class WeightNormParamAttr(ParamAttr):
             learning_rate=learning_rate,
             regularizer=regularizer,
             trainable=trainable,
-            gradient_clip=gradient_clip,
             do_model_average=do_model_average)
         self.dim = dim

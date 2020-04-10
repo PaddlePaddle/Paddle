@@ -24,8 +24,8 @@ class TestPadOp(OpTest):
         self.initTestCase()
         self.op_type = "pad_constant_like"
         self.inputs = {
-            'X': np.random.random(self.x_shape).astype("float32"),
-            'Y': np.random.random(self.y_shape).astype("float32")
+            'X': np.random.random(self.x_shape).astype("float64"),
+            'Y': np.random.random(self.y_shape).astype("float64")
         }
         self.attrs = {}
         self.attrs['pad_value'] = self.pad_value

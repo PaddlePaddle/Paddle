@@ -32,7 +32,7 @@ if(WIN32)
     set(CMAKE_SUPPRESS_REGENERATION ON)
     set(CMAKE_STATIC_LIBRARY_PREFIX lib)
     add_definitions("/DGOOGLE_GLOG_DLL_DECL=")
-    
+
     if (MSVC_STATIC_CRT)
         message(STATUS "Use static C runtime time, refer to https://docs.microsoft.com/en-us/cpp/c-runtime-library/crt-library-features?view=vs-2019")
         set(CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} /bigobj /MTd")
@@ -42,6 +42,8 @@ if(WIN32)
     endif()
     
     add_compile_options(/wd4068 /wd4129 /wd4244 /wd4267 /wd4297 /wd4530 /wd4577 /wd4819 /wd4838)
+    add_compile_options(/MP)
+    message(STATUS "Using parallel compiling (/MP)")
     set(PADDLE_LINK_FLAGS "/IGNORE:4006 /IGNORE:4098 /IGNORE:4217 /IGNORE:4221")
     set(CMAKE_STATIC_LINKER_FLAGS  "${CMAKE_STATIC_LINKER_FLAGS} ${PADDLE_LINK_FLAGS}")
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${PADDLE_LINK_FLAGS}")
@@ -70,7 +72,6 @@ option(ON_INFER         "Turn on inference optimization and inference-lib genera
 ################################ Internal Configurations #######################################
 option(WITH_AMD_GPU     "Compile PaddlePaddle with AMD GPU"             OFF)
 option(WITH_NV_JETSON     "Compile PaddlePaddle with NV JETSON"             OFF)
-option(WITH_NGRAPH      "Compile PaddlePaddle with nGraph support."     OFF)
 option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler and gperftools"        OFF)
 option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
 OPTION(WITH_LIBXSMM     "Compile with libxsmm"                          OFF)
@@ -87,6 +88,7 @@ option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VER
 option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ${WITH_DISTRIBUTE})
 option(SANITIZER_TYPE "Choose the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined" OFF)
 option(WITH_LITE   "Compile Paddle Fluid with Lite Engine" OFF)
+option(WITH_NCCL   "Compile PaddlePaddle with NCCL support"             ON)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -119,6 +121,27 @@ if(WIN32)
         set(WITH_DISTRIBUTE OFF CACHE STRING
             "Disable DISTRIBUTE when compiling for Windows" FORCE)
     endif()
+    if(WITH_NCCL)
+        MESSAGE(WARNING
+            "Disable NCCL when compiling for Windows. Force WITH_NCCL=OFF.")
+        set(WITH_NCCL OFF CACHE STRING
+            "Disable NCCL when compiling for Windows" FORCE)
+    endif()
+endif()
+
+if (NOT WITH_GPU AND WITH_NCCL)
+    MESSAGE(WARNING
+        "Disable NCCL when compiling without GPU. Force WITH_NCCL=OFF.")
+    set(WITH_NCCL OFF CACHE STRING
+        "Disable NCCL when compiling without GPU" FORCE)
+endif()
+
+if(WITH_NCCL)
+     add_definitions("-DPADDLE_WITH_NCCL")
+else()
+     if(WITH_GPU)
+         MESSAGE(WARNING "If the environment is multi-card, the WITH_NCCL option needs to be turned on, otherwise only a single card can be used.")
+     endif()
 endif()
 
 if(WITH_BRPC_RDMA)
@@ -149,7 +172,6 @@ if(NOT WIN32)
     include(cupti)
 endif()
 
-include(anakin_subgraph)
 include(flags)              # set paddle compile flags
 include(cudnn)              # set cudnn libraries, must before configure
 

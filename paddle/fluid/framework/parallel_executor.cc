@@ -32,8 +32,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
-DECLARE_bool(use_ngraph);
-
 DECLARE_double(eager_delete_tensor_gb);
 
 #ifdef WITH_GPERFTOOLS
@@ -55,8 +53,9 @@ static bool gProfileStarted = false;
 
 class ParallelExecutorPrivate {
  public:
-  explicit ParallelExecutorPrivate(const std::vector<platform::Place> &places)
-      : places_(places) {
+  ParallelExecutorPrivate(const std::vector<platform::Place> &places,
+                          Scope *global_scope)
+      : places_(places), global_scope_(global_scope) {
     if (!FLAGS_pe_profile_fname.empty()) {
       std::call_once(gProfileOnce, [] {
 #ifdef WITH_GPERFTOOLS
@@ -82,23 +81,36 @@ class ParallelExecutorPrivate {
     }
   }
 
+  void InitReaderDeviceCount(ir::Graph *graph) const {
+    auto pass =
+        ir::PassRegistry::Instance().Get("init_reader_device_count_pass");
+    pass->SetNotOwned<const Scope>(details::kGlobalScope, global_scope_);
+    pass->SetNotOwned<const std::vector<platform::Place>>(details::kPlaces,
+                                                          &places_);
+    pass->Apply(graph);
+  }
+
+  void SetHasFeed(size_t dev_idx, bool has_feed = true);
+
+  bool AllowPartialFeed() const;
+
   ir::Graph *ApplyMemoryOptimizePass(ir::Graph *graph);
 
   inline bool HasGarbageCollectors() const { return !gcs_.empty(); }
 
   /**
-   * NOTE(zengjinle): the feeded variables of users should not be reused,
-   * because users may feed them into another network. Changing the feeded
+   * NOTE(zengjinle): the fed variables of users should not be reused,
+   * because users may feed them into another network. Changing the fed
    * variables that users can visit may cause calculation wrong, which is
    * a very subtle bug when traning networks. However, these variables
    * can be garbage collected.
    *
    * ParallelExecutor provides 2 methods to feed variables:
    *
-   *  - FeedTensorsIntoLocalScopes: this method would share memory of feeded
+   *  - FeedTensorsIntoLocalScopes: this method would share memory of fed
    *                                variables, so we have to skip these.
    *
-   *  - FeedAndSplitTensorIntoLocalScopes: this method would copy data of feeded
+   *  - FeedAndSplitTensorIntoLocalScopes: this method would copy data of fed
    *                                       variables, so we do not need to skip
    *                                       them.
    */
@@ -109,7 +121,7 @@ class ParallelExecutorPrivate {
     }
   }
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
   void InitNCCLCtxs(framework::Scope *scope, const BuildStrategy &bst) {
     VLOG(1) << "nccl comm num:" << bst.nccl_comm_num_ << ", nranks:" << nranks_
             << ", num_trainers:" << bst.num_trainers_
@@ -247,7 +259,7 @@ class ParallelExecutorPrivate {
 
   std::unordered_map<std::string, bool> is_persistable_;
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
   platform::NCCLCommunicator *nccl_ctxs_{nullptr};
 #endif
   bool own_local_scope_;
@@ -257,16 +269,21 @@ class ParallelExecutorPrivate {
 
   ir::MemOptVarInfoMapList mem_opt_var_infos_;
   ir::GarbageCollectorMap gcs_;
+
+  details::ParallelSSAGraphExecutor *inference_executor_{nullptr};
 };
 
-ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
-  if (FLAGS_use_ngraph) {
-    LOG_FIRST_N(WARNING, 1)
-        << "FLAGS_use_ngraph=True, memory optimization strategy is "
-           "disabled in ParallelExecutor";
-    return graph;
+void ParallelExecutorPrivate::SetHasFeed(size_t dev_idx, bool has_feed) {
+  if (inference_executor_) {
+    inference_executor_->SetHasFeed(dev_idx, has_feed);
   }
+}
 
+bool ParallelExecutorPrivate::AllowPartialFeed() const {
+  return inference_executor_ && inference_executor_->SupportPartialFeed();
+}
+
+ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
   /**
    * NOTE(zengjinle): If BuildStrategy.memory_optimize = None in Python,
    * set BuildStrategy.memory_optimize according to whether gc is enabled.
@@ -304,8 +321,8 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     VLOG(10) << "Start to apply buffer_shared_inplace_pass";
     graph = inplace_pass->Apply(graph);
     VLOG(10) << "buffer_shared_inplace_pass Applied";
-    LOG_FIRST_N(INFO, 1) << "Inplace strategy is enabled, when "
-                            "build_strategy.enable_inplace = True";
+    VLOG(1) << "Inplace strategy is enabled, when "
+               "build_strategy.enable_inplace = True";
   }
 
   if (build_strategy_.memory_optimize_.get()) {
@@ -372,12 +389,27 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     eager_deletion_pass->SetNotOwned(ir::kAllPlaces, &places_);
     graph = eager_deletion_pass->Apply(graph);
     VLOG(10) << "EagerDeletionPass Applied";
-    LOG_FIRST_N(INFO, 1) << "Garbage collection strategy is enabled, when "
-                         << "FLAGS_eager_delete_tensor_gb = "
-                         << FLAGS_eager_delete_tensor_gb;
+    VLOG(1) << "Garbage collection strategy is enabled, when "
+            << "FLAGS_eager_delete_tensor_gb = "
+            << FLAGS_eager_delete_tensor_gb;
   }
   return graph;
 }
+
+class ResetHasFeedGuard {
+ public:
+  explicit ResetHasFeedGuard(ParallelExecutorPrivate *pe_member)
+      : pe_member_(pe_member) {}
+
+  ~ResetHasFeedGuard() {
+    for (size_t i = 0; i < pe_member_->places_.size(); ++i) {
+      pe_member_->SetHasFeed(i, false);
+    }
+  }
+
+ private:
+  ParallelExecutorPrivate *pe_member_;
+};
 
 size_t ParallelExecutor::DeviceCount() const { return member_->places_.size(); }
 
@@ -407,8 +439,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const ExecutionStrategy &exec_strategy,
                                    const BuildStrategy &build_strategy,
                                    ir::Graph *graph)
-    : member_(new ParallelExecutorPrivate(places)) {
-  member_->global_scope_ = scope;
+    : member_(new ParallelExecutorPrivate(places, scope)) {
+  member_->InitReaderDeviceCount(graph);
   member_->use_cuda_ = exec_strategy.use_cuda_;
   member_->build_strategy_ = build_strategy;
   member_->use_all_reduce_ = member_->build_strategy_.reduce_ ==
@@ -427,7 +459,17 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
 #endif
 
-  LOG(INFO) << string::Sprintf(
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_NCCL)
+  PADDLE_ENFORCE_EQ(
+      places.size(), 1,
+      platform::errors::PermissionDenied(
+          "Your machine has multiple cards, "
+          "but the WITH_NCCL option is not turned on during compilation, "
+          "and you cannot use multi-card training or prediction. "
+          "Please recompile and turn on the WITH_NCCL option."));
+#endif
+
+  VLOG(1) << string::Sprintf(
       "The Program will be executed on %s using ParallelExecutor, %lu "
       "cards are used, so %lu programs are executed in parallel.",
       (member_->use_cuda_ ? "CUDA" : "CPU"), places.size(), places.size());
@@ -473,7 +515,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
 
   if (member_->use_cuda_ && member_->nranks_ > 1) {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
     member_->InitOrGetNCCLCommunicator(scope, &member_->build_strategy_);
 
     // Initialize device context's nccl comm, will be used by normal
@@ -516,7 +558,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   // Step 2. Convert main_program to SSA form and dependency graph. Also, insert
   // ncclOp
   std::vector<ir::Graph *> async_graphs(places.size());
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
   if (member_->build_strategy_.async_mode_) {
     VLOG(3) << "use local async mode";
     graph = member_->build_strategy_.Apply(
@@ -596,28 +638,59 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 #ifdef PADDLE_WITH_CUDA
     // TODO(Yancey1989): Remove passing in the main_program when
     // allreduce_seq_pass doesn't need it as the attr.
+    bool is_inference = details::IsDataParallelInferenceGraph(*graph);
+    bool has_drop_last_read_op = details::HasDropLastReadOp(*graph);
+
     auto *pg_exe = new details::ParallelSSAGraphExecutor(
         exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
         member_->places_, graph);
     final_graphs = pg_exe->Graphs();
     member_->executor_.reset(pg_exe);
+
+    if (is_inference && member_->places_.size() > 1) {
+      member_->inference_executor_ = pg_exe;
+      if (!has_drop_last_read_op) {
+        VLOG(5) << "Enable partial feed support in inference phase";
+        pg_exe->EnablePartialFeedSupport();
+      }
+    }
 #else
     PADDLE_THROW(
         "Paddle should be compiled with CUDA for ParallelGraph Execution.");
 #endif
   } else {
-    if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
-      VLOG(3) << "use ThreadedSSAGraphExecutor";
-      member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
+    bool has_drop_last_read_op = details::HasDropLastReadOp(*graph);
+    auto possible_inference_graphs =
+        details::TrySeparateToMultipleSingleDeviceGraphs(graph);
+    if (!possible_inference_graphs.empty()) {
+      VLOG(5) << "Use ParallelSSAGraphExecutor in inference phase";
+      auto *pg_exe = new details::ParallelSSAGraphExecutor(
           exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
-          member_->places_, graph));
+          member_->places_, std::move(possible_inference_graphs));
+      if (!has_drop_last_read_op) {
+        VLOG(5) << "Enable partial feed support in inference phase";
+        pg_exe->EnablePartialFeedSupport();
+      }
+      final_graphs = pg_exe->Graphs();
+      member_->executor_.reset(pg_exe);
+      member_->inference_executor_ = pg_exe;
     } else {
-      VLOG(3) << "use FastThreadedSSAGraphExecutor";
-      member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
-          exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
-          member_->places_, graph));
+      LOG_IF(WARNING, details::HasKeepLastReadOp(*graph))
+          << "drop_last=False for DataLoader is not supported in training "
+             "network. It is automatically turned to drop_last=True.";
+      if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
+        VLOG(3) << "use ThreadedSSAGraphExecutor";
+        member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
+            exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
+            member_->places_, graph));
+      } else {
+        VLOG(3) << "use FastThreadedSSAGraphExecutor";
+        member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
+            exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
+            member_->places_, graph));
+      }
+      final_graphs.emplace_back(graph);
     }
-    final_graphs.emplace_back(graph);
   }
 
   VLOG(3) << "use ScopeBufferedSSAGraphExecutor";
@@ -652,7 +725,7 @@ void ParallelExecutor::BCastParamsToDevices(
     }
     auto &dims = main_tensor.dims();
     if (paddle::platform::is_gpu_place(main_tensor.place())) {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
       std::vector<void *> buffers;
       buffers.reserve(member_->places_.size());
       size_t numel = main_tensor.numel();
@@ -713,9 +786,10 @@ void ParallelExecutor::BCastParamsToDevices(
   }
 }
 
-FeedFetchList ParallelExecutor::Run(
-    const std::vector<std::string> &fetch_tensors) {
+FetchResultType ParallelExecutor::Run(
+    const std::vector<std::string> &fetch_tensors, bool return_merged) {
   VLOG(3) << "enter ParallelExecutor Run";
+  platform::RecordEvent parallel_executor_event("ParallelExecutor::Run");
 #ifdef WITH_GPERFTOOLS
   if (gProfileStarted) {
     ProfilerFlush();
@@ -724,20 +798,43 @@ FeedFetchList ParallelExecutor::Run(
 
   platform::RecordBlock b(0);
 
+  ResetHasFeedGuard reset_has_feed_guard(member_);
+
   ir::SkipMemOptVarsGuard guard(&(member_->mem_opt_var_infos_), fetch_tensors,
                                 member_->HasGarbageCollectors());
 
   VLOG(3) << "ParallelExecutor begin to run member_->executor_->Run";
-  auto fetch_data = member_->executor_->Run(fetch_tensors);
+  auto fetch_data = member_->executor_->Run(fetch_tensors, return_merged);
   return fetch_data;
 }
 
 void ParallelExecutor::FeedTensorsIntoLocalScopes(
     const std::vector<std::unordered_map<std::string, LoDTensor>> &tensors) {
-  PADDLE_ENFORCE_EQ(member_->local_scopes_.size(), tensors.size());
+  if (!member_->AllowPartialFeed()) {
+    PADDLE_ENFORCE_EQ(tensors.size(), member_->local_scopes_.size(),
+                      platform::errors::Unimplemented(
+                          "The feed data number %d does not match the device "
+                          "number %d. If you are using DataLoader to feed "
+                          "data, this may be because you set drop_last=False "
+                          "in training network. Currently, drop_last=False for "
+                          "DataLoader is not supported for training network. "
+                          "Please set drop_last=True when defining DataLoader.",
+                          tensors.size(), member_->local_scopes_.size()));
+  } else {
+    PADDLE_ENFORCE_GE(member_->local_scopes_.size(), tensors.size(),
+                      platform::errors::InvalidArgument(
+                          "The feed tensor number exceeds the device number"));
+  }
 
+  size_t feed_num = 0;
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &map = tensors[i];
+    if (map.empty()) {
+      continue;
+    }
+
+    member_->SetHasFeed(i);
+    ++feed_num;
     for (auto &pair : map) {
       bool is_persistable = member_->IsPersistable(pair.first);
       if (!is_persistable) {
@@ -752,11 +849,28 @@ void ParallelExecutor::FeedTensorsIntoLocalScopes(
       trg->set_lod(pair.second.lod());
     }
   }
+
+  if (!member_->AllowPartialFeed()) {
+    PADDLE_ENFORCE_EQ(feed_num, member_->local_scopes_.size(),
+                      platform::errors::Unimplemented(
+                          "The feed data number %d does not match the device "
+                          "number %d. If you are using DataLoader to feed "
+                          "data, this may be because you set drop_last=False "
+                          "in training network. Currently, drop_last=False for "
+                          "DataLoader is not supported for training network. "
+                          "Please set drop_last=True when defining DataLoader.",
+                          feed_num, member_->local_scopes_.size()));
+  }
 }
 
 void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
     const std::unordered_map<std::string, LoDTensor> &tensors) {
   size_t num_places = member_->places_.size();
+  bool allow_partial_feed = member_->AllowPartialFeed();
+
+  size_t persistable_feed_len = -1UL;
+  size_t non_persistable_feed_len = -1UL;
+
   for (auto &pair : tensors) {
     bool is_persistable = member_->IsPersistable(pair.first);
     VLOG(3) << "Split " << (is_persistable ? "persistable" : "no persistable")
@@ -764,7 +878,8 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
             << ", place: " << pair.second.place();
     auto lod_tensors = pair.second.SplitLoDTensor(member_->places_);
     bool is_cpu_place = platform::is_cpu_place(member_->places_.front());
-    if (!is_persistable && num_places != lod_tensors.size()) {
+    if (!is_persistable && num_places != lod_tensors.size() &&
+        !allow_partial_feed) {
       auto error_info = string::Sprintf(
           "The number(%d) of samples[%s] of current batch is less than the "
           "count(%d) of devices(%s), currently, it is not allowed. ",
@@ -790,7 +905,7 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
           framework::TensorCopy(pair.second, member_->places_.at(i), &tmp);
         }
       }
-      if (lod_tensors.size() != num_places) {
+      if (lod_tensors.size() != num_places && !allow_partial_feed) {
         auto error_info = string::Sprintf(
             "The number(%d) of samples[%s] of the current batch does not match "
             "the count(%d) of devices(%s). Because that %s is a persistable "
@@ -804,7 +919,31 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
       }
     }
 
-    for (size_t j = 0; j < num_places; ++j) {
+    if (allow_partial_feed) {
+      if (is_persistable) {
+        if (persistable_feed_len == -1UL) {
+          persistable_feed_len = lod_tensors.size();
+        } else {
+          PADDLE_ENFORCE_EQ(
+              persistable_feed_len, lod_tensors.size(),
+              platform::errors::InvalidArgument(
+                  "The feeded number of different persistable variables "
+                  "should be the same"));
+        }
+      } else {
+        if (non_persistable_feed_len == -1UL) {
+          non_persistable_feed_len = lod_tensors.size();
+        } else {
+          PADDLE_ENFORCE_EQ(
+              non_persistable_feed_len, lod_tensors.size(),
+              platform::errors::InvalidArgument(
+                  "The feeded number of different non-persistable variables "
+                  "should be the same"));
+        }
+      }
+    }
+
+    for (size_t j = 0; j < lod_tensors.size(); ++j) {
       auto *feed_scope = is_persistable ? member_->local_scopes_[j]
                                         : member_->local_exec_scopes_[j];
       auto *feed_var = feed_scope->Var(pair.first);
@@ -812,6 +951,22 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
       auto t = feed_var->GetMutable<LoDTensor>();
       t->ShareDataWith(lod_tensors[j]);
       t->set_lod(lod_tensors[j].lod());
+    }
+  }
+
+  if (allow_partial_feed && persistable_feed_len != -1UL &&
+      non_persistable_feed_len != -1UL) {
+    VLOG(10) << "Persistable len " << persistable_feed_len;
+    VLOG(10) << "Non persistable len " << non_persistable_feed_len;
+    PADDLE_ENFORCE_GE(persistable_feed_len, non_persistable_feed_len,
+                      platform::errors::InvalidArgument(
+                          "The feeded number of persistable variables should "
+                          "not be less than non-persistable variables"));
+  }
+
+  if (non_persistable_feed_len != -1UL) {
+    for (size_t i = 0; i < non_persistable_feed_len; ++i) {
+      member_->SetHasFeed(i);
     }
   }
 }
@@ -864,6 +1019,10 @@ bool ParallelExecutor::EnableParallelGraphExecution(
   return enable_parallel_graph;
 }
 
+const ir::Graph &ParallelExecutor::Graph() const {
+  return member_->executor_->Graph();
+}
+
 }  // namespace framework
 }  // namespace paddle
 
@@ -871,3 +1030,4 @@ USE_PASS(reference_count_pass);
 USE_PASS(eager_deletion_pass);
 USE_PASS(buffer_shared_inplace_pass);
 USE_PASS(buffer_shared_cross_op_memory_reuse_pass);
+USE_PASS(init_reader_device_count_pass);

@@ -27,7 +27,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_pass.h"
 
 DECLARE_bool(use_mkldnn);
-DECLARE_bool(use_ngraph);
 
 namespace paddle {
 namespace framework {
@@ -60,12 +59,12 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
                         "sequential_execution_pass");
     AppendPassWithCheck(strategy_.sync_batch_norm_, "sync_batch_norm_pass");
 
-    AppendPassToUseNgraph("ngraph_subgraph_pass");
-
     AppendOpFusePasses();
     AppendPrintGraphPass("graph_viz_pass", "_fused_graph");
 
+    AppendAddReaderDependencyPass();
     AppendMultiDevPass();
+    AppendSetReaderDeviceIndexPass();
     AppendMultiGraphOptPasses();
 
     AppendPassToSetMkldnnAttr("mkldnn_placement_pass");
@@ -165,9 +164,15 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
   void AppendOpFusePasses() {
     AppendPassWithCheck(strategy_.fuse_relu_depthwise_conv_,
                         "fuse_relu_depthwise_conv_pass");
+    AppendPassWithCheck(strategy_.fuse_bn_act_ops_, "fuse_bn_act_pass");
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__)
+    AppendPassWithCheck(strategy_.enable_auto_fusion_, "fusion_group_pass");
+#else
+    LOG(WARNING) << "fusion_group is not enabled for Windows/MacOS now, and "
+                    "only effective when running with CUDA GPU.";
+#endif
     AppendPassWithCheck(strategy_.fuse_elewise_add_act_ops_,
                         "fuse_elewise_add_act_pass");
-    AppendPassWithCheck(strategy_.fuse_bn_act_ops_, "fuse_bn_act_pass");
     // for single card training, fuse_all_reduce_ops is unnecessary.
     // coalesce_grad_tensor_pass should be before of MultiDevPass.
     AppendPassWithCheck(strategy_.fuse_all_reduce_ops_,
@@ -187,13 +192,30 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     CollectiveContext *context = CollectiveContext::GetInstance();
     context->endpoints_ = strategy_.trainers_endpoints_;
     context->trainer_id_ = strategy_.trainer_id_;
-    PADDLE_ENFORCE_GE(strategy_.trainer_id_, 0, "trainer_id_ >= 0");
+    PADDLE_ENFORCE_GE(
+        strategy_.trainer_id_, 0,
+        platform::errors::InvalidArgument(
+            "The trainer_id_ of strategy_ must be greater than or equal to 0, "
+            "but received strategy_.trainer_id_ = %d.",
+            strategy_.trainer_id_));
+
     if (strategy_.trainer_id_ > 0 && strategy_.trainers_endpoints_.size() > 0) {
-      PADDLE_ENFORCE_LT(static_cast<size_t>(strategy_.trainer_id_),
-                        strategy_.trainers_endpoints_.size(),
-                        "trainer_id_ < endpoints_ size");
+      PADDLE_ENFORCE_LT(
+          static_cast<size_t>(strategy_.trainer_id_),
+          strategy_.trainers_endpoints_.size(),
+          platform::errors::InvalidArgument(
+              "The trainer_id_ of strategy_ must be less than the "
+              "size of vector strategy_.trainers_endpoints_, "
+              "but received strategy_.trainer_id_ = %d, "
+              "the size of strategy_.trainers_endpoints_ is %d.",
+              static_cast<size_t>(strategy_.trainer_id_),
+              strategy_.trainers_endpoints_.size()));
     }
     VLOG(1) << "CollectiveContext:" << context->String();
+  }
+
+  void AppendAddReaderDependencyPass() {
+    AppendPass("add_reader_dependency_pass");
   }
 
   // Convert graph to run on multi-devices.
@@ -219,6 +241,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     }
     multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy",
                                                          &strategy_);
+  }
+
+  void AppendSetReaderDeviceIndexPass() {
+    AppendPass("set_reader_device_index_pass");
   }
 
   void AppendPrintGraphPass(const std::string &pass_name,
@@ -256,25 +282,11 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
              "FLAGS_use_mkldnn=false.";
     }
 #else
-    PADDLE_ENFORCE(!FLAGS_use_mkldnn,
-                   "Please compile with MKLDNN first to use MKLDNN");
-#endif
-  }
-
-  void AppendPassToUseNgraph(const std::string &pass_name) {
-#ifdef PADDLE_WITH_NGRAPH
-    if (FLAGS_use_ngraph) {
-      if (strategy_.reduce_ != BuildStrategy::ReduceStrategy::kAllReduce) {
-        LOG(WARNING) << "Currently ngraph_subgraph_pass works under AllReduce,"
-                        "please set FLAGS_use_ngraph=false.";
-      } else {
-        AppendPass(pass_name);
-      }
-    }
-#else
-    PADDLE_ENFORCE_NE(FLAGS_use_ngraph, true,
+    PADDLE_ENFORCE_NE(FLAGS_use_mkldnn, true,
                       platform::errors::PreconditionNotMet(
-                          "Please compile with NGRAPH first to use NGRAPH"));
+                          "FLAGS_use_mkldnn has been set to True, but "
+                          "PaddlePaddle is compiled without MKLDNN. "
+                          "Please compile PaddlePaddle with MKLDNN first."));
 #endif
   }
 
@@ -303,7 +315,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                                 const std::string &loss_var_name,
                                 const std::vector<Scope *> &local_scopes,
                                 const size_t &nranks,
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
                                 const bool use_cuda,
                                 platform::NCCLCommunicator *nccl_ctxs) const {
 #else
@@ -326,7 +338,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kNRanks);
       pass->Set<size_t>(kNRanks, new size_t(nranks));
 
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
       platform::NCCLCommunicator *nctx = use_cuda ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
       pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
@@ -339,7 +351,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kLocalScopes);
       pass->SetNotOwned<const std::vector<Scope *>>(kLocalScopes,
                                                     &local_scopes);
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
       platform::NCCLCommunicator *nctx = use_cuda ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
       pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
@@ -354,7 +366,7 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       LOG(INFO) << "set enable_sequential_execution:"
                 << enable_sequential_execution_;
     } else if (pass->Type() == "all_reduce_deps_pass") {
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#if defined(PADDLE_WITH_NCCL)
       platform::NCCLCommunicator *nctx = use_cuda ? nccl_ctxs : nullptr;
       pass->Erase(kNCCLCtxs);
       pass->SetNotOwned<platform::NCCLCommunicator>(kNCCLCtxs, nctx);
@@ -362,12 +374,18 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Set<bool>(kUseHierarchicalAllReduce,
                       new bool(use_hierarchical_allreduce_));
 #endif
-      LOG(INFO) << "SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
-                << ", num_trainers:" << num_trainers_;
+      VLOG(1) << "SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
+              << ", num_trainers:" << num_trainers_;
     } else if (pass->Type() == "fuse_relu_depthwise_conv_pass") {
       if (!use_cuda) {
         LOG(WARNING) << "fuse_relu_depthwise_conv_pass is only supported on "
                         "GPU, skipped.";
+        continue;
+      }
+    } else if (pass->Type() == "fusion_group_pass") {
+      pass->Set<bool>("use_gpu", new bool(use_cuda));
+      if (!use_cuda) {
+        LOG(WARNING) << "fusion_group_pass is only supported on GPU, skipped.";
         continue;
       }
     } else if (pass->Type() == "fuse_bn_act_pass") {
@@ -385,6 +403,9 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
                    "GPU, skipped.";
         continue;
       }
+    } else if (pass->Type() == "set_reader_device_index_pass") {
+      pass->Erase(kPlaces);
+      pass->SetNotOwned<const std::vector<platform::Place>>(kPlaces, &places);
     }
     VLOG(1) << "Start Apply Pass " << pass->Type();
     graph = pass->Apply(graph);
@@ -421,9 +442,11 @@ USE_PASS(fuse_sgd_op_pass);
 USE_PASS(fuse_momentum_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
+USE_PASS(set_reader_device_index_pass);
+USE_PASS(add_reader_dependency_pass);
 #ifdef PADDLE_WITH_MKLDNN
 USE_PASS(mkldnn_placement_pass);
 #endif
-#ifdef PADDLE_WITH_NGRAPH
-USE_PASS(ngraph_subgraph_pass);
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__)
+USE_PASS(fusion_group_pass);
 #endif

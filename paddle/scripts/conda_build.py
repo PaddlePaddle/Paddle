@@ -47,7 +47,6 @@ requirements:
     - graphviz
     - protobuf
     - py-cpuinfo==5.0.0
-    - funcsigs
     - matplotlib
 """
 
@@ -83,6 +82,7 @@ about:
 pip install /package/objgraph-3.4.1.tar.gz
 pip install /package/prettytable-0.7.tar.gz
 pip install /package/rarfile-3.0.tar.gz --no-deps
+pip install /package/funcsigs-1.0.2.tar.gz
 """
 
         self.blt_const = r""" 

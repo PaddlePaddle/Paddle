@@ -340,7 +340,7 @@ class IndicateLoDTensorDataTypeTestProtoMaker : public OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("LoDTensor", "Input of Tensor type Variable.");
-    AddComment("This Op is only for IndicateVarDataType inferface test.");
+    AddComment("This Op is only for IndicateVarDataType interface test.");
   }
 };
 
@@ -362,7 +362,7 @@ class IndicateSelectedRowsDataTypeTestProtoMaker
  public:
   void Make() {
     AddInput("SelectedRows", "Input of SelectedRows type Variable.");
-    AddComment("This Op is only for IndicateVarDataType inferface test.");
+    AddComment("This Op is only for IndicateVarDataType interface test.");
   }
 };
 
@@ -382,7 +382,7 @@ class IndicateOtherDataTypeTestProtoMaker : public OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("Other", "Input of Other type Variable");
-    AddComment("This Op is only for IndicateVarDataType inferface test.");
+    AddComment("This Op is only for IndicateVarDataType interface test.");
   }
 };
 
@@ -525,7 +525,7 @@ TEST(ExecutionContextAttrAndInOut, new_api) {
 
   paddle::framework::RuntimeContext ctx({}, {});
   paddle::framework::ExecutionContext exe_context(*(op.get()), scope, *dev_ctx,
-                                                  ctx, nullptr);
+                                                  ctx);
 
   ASSERT_EQ(exe_context.InputSize("input"), 1u);
   ASSERT_EQ(exe_context.OutputSize("output"), 1u);
@@ -572,7 +572,7 @@ class GetSetLoDLevelTestMaker : public OpProtoAndCheckerMaker {
   void Make() {
     AddInput("X", "(LoDTensor) Input Variable.");
     AddOutput("Out", "(LoDTensor) Output Variable.");
-    AddComment("This Op is only for Get/SetLoDLevel inferface test.");
+    AddComment("This Op is only for Get/SetLoDLevel interface test.");
   }
 };
 

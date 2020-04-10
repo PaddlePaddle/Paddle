@@ -24,22 +24,37 @@ class LoDResetOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of LoDResetOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of LoDResetOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "LoDReset");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "LoDReset");
 
     if (!ctx->HasInput("Y")) {
       auto level0 = ctx->Attrs().Get<std::vector<int>>("target_lod");
-      PADDLE_ENFORCE_GT(level0.size(), 0,
-                        "If Input(Y) not provided, the target lod should be "
-                        "specified by attribute `target_lod`.");
+      PADDLE_ENFORCE_GT(
+          static_cast<int64_t>(level0.size()), 0,
+          platform::errors::InvalidArgument(
+              "If Input(Y) not provided, the target lod should be "
+              "specified by attribute `target_lod`. But the size of "
+              "`target_lod` is 0."));
     } else if (ctx->IsRuntime()) {
       ctx->ShareLoD("Y", "Out");
     }
     auto append = ctx->Attrs().Get<bool>("append");
     if (append) {
       ctx->ShareLoD("X", /*->*/ "Out");
+    }
+
+    if (ctx->HasInput("Y")) {
+      if (!ctx->IsRuntime()) {
+        ctx->SetLoDLevel("Out", std::max(ctx->GetLoDLevel("Y"), 1));
+      }
+    } else if (append) {
+      if (!ctx->IsRuntime()) {
+        ctx->SetLoDLevel("Out", std::max(ctx->GetLoDLevel("X") + 1, 1));
+      }
+    } else {
+      if (!ctx->IsRuntime()) {
+        ctx->SetLoDLevel("Out", 1);
+      }
     }
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
   }
@@ -167,10 +182,9 @@ class LoDResetGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of LoDResetGradOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@Grad) of LoDResetGradOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "LoDResetGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Output",
+                   framework::GradVarName("Out"), "LoDResetGrad");
 
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
@@ -194,14 +208,12 @@ class LoDResetGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
+  void Apply(GradOpPtr<T> op) const override {
     op->SetType("lod_reset_grad");
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetInput("X", this->Input("X"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
-    return op;
   }
 };
 
@@ -210,8 +222,7 @@ DECLARE_INPLACE_OP_INFERER(LoDResetGradInplaceInferer,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(LoDResetGradNoNeedBufferVarInference,
-                                      "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(LoDResetGradNoNeedBufferVarInference, "X");
 
 }  // namespace operators
 }  // namespace paddle

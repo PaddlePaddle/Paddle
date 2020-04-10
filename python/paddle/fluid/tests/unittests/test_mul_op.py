@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid.core as core
 from op_test import OpTest
 import paddle.fluid as fluid
@@ -28,8 +29,8 @@ class TestMulOp(OpTest):
         self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {
-            'X': np.random.random((2, 5)).astype(self.dtype),
-            'Y': np.random.random((5, 3)).astype(self.dtype)
+            'X': np.random.random((20, 5)).astype(self.dtype),
+            'Y': np.random.random((5, 21)).astype(self.dtype)
         }
         self.outputs = {'Out': np.dot(self.inputs['X'], self.inputs['Y'])}
 
@@ -72,15 +73,15 @@ class TestMulOp2(OpTest):
         self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {
-            'X': np.random.random((3, 4, 4, 3)).astype(self.dtype),
-            'Y': np.random.random((2, 6, 1, 2, 3)).astype(self.dtype)
+            'X': np.random.random((3, 4, 2, 9)).astype(self.dtype),
+            'Y': np.random.random((3, 6, 1, 2, 3)).astype(self.dtype)
         }
         self.attrs = {
             'x_num_col_dims': 2,
             'y_num_col_dims': 2,
         }
-        result = np.dot(self.inputs['X'].reshape(3 * 4, 4 * 3),
-                        self.inputs['Y'].reshape(2 * 6, 1 * 2 * 3))
+        result = np.dot(self.inputs['X'].reshape(3 * 4, 2 * 9),
+                        self.inputs['Y'].reshape(3 * 6, 1 * 2 * 3))
         result = result.reshape(3, 4, 1, 2, 3)
         self.outputs = {'Out': result}
 
@@ -172,6 +173,36 @@ class TestFP16MulOp2(TestMulOp2):
                 'Out',
                 max_relative_error=0.9,
                 no_grad_set=set('Y'))
+
+
+class TestMulOpAttr(unittest.TestCase):
+    def test_out(self):
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data(name="x", shape=[2, 3], dtype="float32")
+            y = fluid.data(name='y', shape=[3, 2], dtype='float32')
+
+            res = fluid.data(name="output", shape=[2, 2], dtype="float32")
+            y_1 = paddle.mul(x, y, out=res)
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            data1 = np.array([[1, 2, 3], [4, 5, 6]], dtype='float32')
+            data2 = np.array([[1, 2], [1, 2], [1, 2]], dtype='float32')
+            np_res, np_y_1 = exe.run(feed={'x': data1,
+                                           'y': data2},
+                                     fetch_list=[res, y_1])
+
+            self.assertEqual((np_res == np_y_1).all(), True)
+
+    def test_name(self):
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data(name="x", shape=[2, 3], dtype="float32")
+            y = fluid.data(name='y', shape=[3, 2], dtype='float32')
+
+            res = fluid.data(name="output", shape=[2, 2], dtype="float32")
+            y_1 = paddle.mul(x, y, name='mul_res')
+            y_2 = paddle.mul(x, y, out=res, name='mul_res')
+            self.assertEqual(('mul_res' in y_1.name), True)
 
 
 if __name__ == "__main__":

@@ -179,15 +179,15 @@ class MergeLoDTensorInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE(context->HasInput("X"),
-                   "MergeLoDTensorOp must has input X.");
+                   "MergeLoDTensorOp must have input X.");
     PADDLE_ENFORCE(context->HasInput("Mask"),
-                   "MergeLoDTensorOp must has input Mask.");
+                   "MergeLoDTensorOp must have input Mask.");
     PADDLE_ENFORCE(context->HasInput("InTrue"),
-                   "MergeLoDTensorOp must has input InTrue.");
+                   "MergeLoDTensorOp must have input InTrue.");
     PADDLE_ENFORCE(context->HasInput("InFalse"),
-                   "MergeLoDTensorOp must has input InFalse.");
+                   "MergeLoDTensorOp must have input InFalse.");
     PADDLE_ENFORCE(context->HasOutput("Out"),
-                   "MergeLoDTensorOp must has output Out");
+                   "MergeLoDTensorOp must have output Out");
 
     auto mask_dim = context->GetInputDim("Mask");
     PADDLE_ENFORCE_EQ(mask_dim.size(), 2,
@@ -219,15 +219,13 @@ class MergeLoDTensorGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *grad_op = new T();
+  void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("split_lod_tensor");
     grad_op->SetInput("X", this->OutputGrad("Out"));
     grad_op->SetInput("Mask", this->Input("Mask"));
     grad_op->SetOutput("OutTrue", this->InputGrad("InTrue"));
     grad_op->SetOutput("OutFalse", this->InputGrad("InFalse"));
     grad_op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<T>(grad_op);
   }
 };
 

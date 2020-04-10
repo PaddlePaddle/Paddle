@@ -38,7 +38,7 @@ class PadConstantLikeKernel : public framework::OpKernel<T> {
       return;
     }
 
-    T pad_value = context.Attr<T>("pad_value");
+    T pad_value = static_cast<T>(context.Attr<float>("pad_value"));
     out->mutable_data<T>(context.GetPlace());
 
     int rank = context.Input<framework::Tensor>("X")->dims().size();

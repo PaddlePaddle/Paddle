@@ -129,87 +129,19 @@ void DownpourWorker::SetNeedDump(bool need_dump_field) {
   need_dump_field_ = need_dump_field;
 }
 
-template <typename T>
-std::string PrintLodTensorType(LoDTensor* tensor, int64_t start, int64_t end) {
-  auto count = tensor->numel();
-  if (start < 0 || end > count) {
-    VLOG(3) << "access violation";
-    return "access violation";
-  }
+void DownpourWorker::DumpParam(const int batch_id) {
   std::ostringstream os;
-  for (int64_t i = start; i < end; i++) {
-    os << ":" << tensor->data<T>()[i];
-  }
-  return os.str();
-}
-
-std::string PrintLodTensorIntType(LoDTensor* tensor, int64_t start,
-                                  int64_t end) {
-  auto count = tensor->numel();
-  if (start < 0 || end > count) {
-    VLOG(3) << "access violation";
-    return "access violation";
-  }
-  std::ostringstream os;
-  for (int64_t i = start; i < end; i++) {
-    os << ":" << static_cast<uint64_t>(tensor->data<int64_t>()[i]);
-  }
-  return os.str();
-}
-
-std::string PrintLodTensor(LoDTensor* tensor, int64_t start, int64_t end) {
-  std::string out_val;
-  if (tensor->type() == proto::VarType::FP32) {
-    out_val = PrintLodTensorType<float>(tensor, start, end);
-  } else if (tensor->type() == proto::VarType::INT64) {
-    out_val = PrintLodTensorIntType(tensor, start, end);
-  } else if (tensor->type() == proto::VarType::FP64) {
-    out_val = PrintLodTensorType<double>(tensor, start, end);
-  } else {
-    out_val = "unsupported type";
-  }
-  return out_val;
-}
-
-std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index) {
-  auto& dims = tensor->dims();
-  if (tensor->lod().size() != 0) {
-    auto& lod = tensor->lod()[0];
-    return {lod[index] * dims[1], lod[index + 1] * dims[1]};
-  } else {
-    return {index * dims[1], (index + 1) * dims[1]};
-  }
-}
-
-bool CheckValidOutput(LoDTensor* tensor, size_t batch_size) {
-  auto& dims = tensor->dims();
-  if (dims.size() != 2) return false;
-  if (tensor->lod().size() != 0) {
-    auto& lod = tensor->lod()[0];
-    if (lod.size() != batch_size + 1) {
-      return false;
-    }
-  } else {
-    if (dims[0] != static_cast<int>(batch_size)) {
-      return false;
-    }
-  }
-  return true;
-}
-
-void DownpourWorker::DumpParam() {
-  std::string os;
   for (auto& param : dump_param_) {
-    os.clear();
-    os = param;
+    os.str("");
     Variable* var = thread_scope_->FindVar(param);
     if (var == nullptr) {
       continue;
     }
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     int64_t len = tensor->numel();
-    os += PrintLodTensor(tensor, 0, len);
-    writer_ << os;
+    os << "(" << batch_id << "," << param << ")"
+       << PrintLodTensor(tensor, 0, len);
+    writer_ << os.str();
   }
 }
 
@@ -577,13 +509,6 @@ void DownpourWorker::TrainFilesWithProfiler() {
     timeline.Start();
     if (copy_table_config_.need_copy()) {
       VLOG(3) << "copy_sparse_tables_.size " << copy_sparse_tables_.size();
-      if (copy_table_config_.sparse_copy_by_feasign()) {
-        for (size_t i = 0; i < copy_sparse_tables_.size(); ++i) {
-          uint64_t tid = copy_sparse_tables_[i].first;
-          feasign_set_[tid].insert(sparse_push_keys_[tid].begin(),
-                                   sparse_push_keys_[tid].end());
-        }
-      }
       if (batch_cnt % copy_table_config_.batch_num() == 0) {
         CopySparseTable();
         CopyDenseTable();
@@ -695,6 +620,18 @@ void DownpourWorker::TrainFilesWithProfiler() {
         total_time += timeline.ElapsedSec();
       }
     }
+
+#ifdef PADDLE_WITH_PSLIB
+    if (copy_table_config_.need_copy()) {
+      if (copy_table_config_.sparse_copy_by_feasign()) {
+        for (size_t i = 0; i < copy_sparse_tables_.size(); ++i) {
+          uint64_t tid = copy_sparse_tables_[i].first;
+          feasign_set_[tid].insert(sparse_push_keys_[tid].begin(),
+                                   sparse_push_keys_[tid].end());
+        }
+      }
+    }
+#endif
 
     if (need_to_push_dense_) {
       timeline.Start();
@@ -828,13 +765,6 @@ void DownpourWorker::TrainFiles() {
   int cur_batch;
   while ((cur_batch = device_reader_->Next()) > 0) {
     if (copy_table_config_.need_copy()) {
-      if (copy_table_config_.sparse_copy_by_feasign()) {
-        for (size_t i = 0; i < copy_sparse_tables_.size(); ++i) {
-          uint64_t tid = copy_sparse_tables_[i].first;
-          feasign_set_[tid].insert(sparse_push_keys_[tid].begin(),
-                                   sparse_push_keys_[tid].end());
-        }
-      }
       if (batch_cnt % copy_table_config_.batch_num() == 0) {
         CopySparseTable();
         CopyDenseTable();
@@ -917,6 +847,18 @@ void DownpourWorker::TrainFiles() {
             dump_slot_, &sparse_push_keys_[tid], no_cvm_);
       }
     }
+
+#ifdef PADDLE_WITH_PSLIB
+    if (copy_table_config_.need_copy()) {
+      if (copy_table_config_.sparse_copy_by_feasign()) {
+        for (size_t i = 0; i < copy_sparse_tables_.size(); ++i) {
+          uint64_t tid = copy_sparse_tables_[i].first;
+          feasign_set_[tid].insert(sparse_push_keys_[tid].begin(),
+                                   sparse_push_keys_[tid].end());
+        }
+      }
+    }
+#endif
 
     if (need_to_push_dense_) {
       for (int i = 0; i < param_.program_config(0).push_dense_table_id_size();
@@ -1010,7 +952,7 @@ void DownpourWorker::TrainFiles() {
         writer_ << ars[i];
       }
       if (need_dump_param_ && thread_id_ == 0) {
-        DumpParam();
+        DumpParam(batch_cnt);
       }
     }
 

@@ -109,9 +109,7 @@ class CompiledProgram(object):
         .. code-block:: python
 
           import paddle.fluid as fluid
-          import paddle.fluid.compiler as compiler
           import numpy
-          import os
 
           place = fluid.CUDAPlace(0) # fluid.CPUPlace()
           exe = fluid.Executor(place)
@@ -121,9 +119,8 @@ class CompiledProgram(object):
           loss = fluid.layers.mean(hidden)
           fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
-          fluid.default_startup_program().random_seed=1
           exe.run(fluid.default_startup_program())
-          compiled_prog = compiler.CompiledProgram(
+          compiled_prog = fluid.CompiledProgram(
                    fluid.default_main_program())
 
           x = numpy.random.random(size=(10, 1)).astype('float32')
@@ -215,12 +212,12 @@ class CompiledProgram(object):
             .. code-block:: python
 
               import paddle.fluid as fluid
-              import paddle.fluid.compiler as compiler
               import numpy
               import os
 
               use_cuda = True
               place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+              parallel_places = [fluid.CUDAPlace(0), fluid.CUDAPlace(1)] if use_cuda else [fluid.CPUPlace()] * 2
 
               # NOTE: If you use CPU to run the program, you need
               # to specify the CPU_NUM, otherwise, fluid will use
@@ -236,18 +233,30 @@ class CompiledProgram(object):
               data = fluid.data(name='X', shape=[None, 1], dtype='float32')
               hidden = fluid.layers.fc(input=data, size=10)
               loss = fluid.layers.mean(hidden)
+
+              test_program = fluid.default_main_program().clone(for_test=True)
               fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
-              fluid.default_startup_program().random_seed=1
               exe.run(fluid.default_startup_program())
-              compiled_prog = compiler.CompiledProgram(
-                       fluid.default_main_program()).with_data_parallel(
-                                loss_name=loss.name)
+              compiled_train_prog = fluid.CompiledProgram(
+                  fluid.default_main_program()).with_data_parallel(
+                          loss_name=loss.name, places=parallel_places)
+              # NOTE: if not set share_vars_from=compiled_train_prog,
+              # the parameters used in test process are different with 
+              # the parameters used by train process
+              compiled_test_prog = fluid.CompiledProgram(
+                  test_program).with_data_parallel(
+                          share_vars_from=compiled_train_prog,
+                          places=parallel_places)
 
-              x = numpy.random.random(size=(10, 1)).astype('float32')
-              loss_data, = exe.run(compiled_prog,
-                                   feed={"X": x},
-                                   fetch_list=[loss.name])
+              train_data = numpy.random.random(size=(10, 1)).astype('float32')
+              loss_data, = exe.run(compiled_train_prog,
+                                feed={"X": train_data},
+                                fetch_list=[loss.name])
+              test_data = numpy.random.random(size=(10, 1)).astype('float32')
+              loss_data, = exe.run(compiled_test_prog,
+                                feed={"X": test_data},
+                                fetch_list=[loss.name])
         """
         assert not self._is_data_parallel, "Already compiled with parallel."
         assert not self._is_inference, "Cannot compile both data parallel and inference"
@@ -355,6 +364,16 @@ class CompiledProgram(object):
 
         if self._build_strategy.sync_batch_norm:
             self._build_strategy.enable_sequential_execution = True
+
+        if self._program is not None and self._program._enable_dgc:
+            assert use_cuda, "DGC only used under cuda"
+            assert self._build_strategy.num_trainers * len(
+                places) > 1, "DGC is not useful for single card training"
+            assert self._build_strategy.reduce_strategy == BuildStrategy.ReduceStrategy.AllReduce, "DGC \
+                only used for AllReduce BuildStrategy"
+
+            # DGC doesn't support fuse for now, close fuse.
+            self._build_strategy.fuse_all_reduce_ops = False
 
         self._persistable_vars = []
         for node in self._graph.nodes():
