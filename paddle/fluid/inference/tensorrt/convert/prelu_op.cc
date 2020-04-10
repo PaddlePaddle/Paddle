@@ -30,8 +30,8 @@ class PReluOpConverter : public OpConverter {
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
-    int input_num = op_desc.Input("X").size();
-    PADDLE_ENFORCE_EQ(input_num, 1,
+    size_t input_num = op_desc.Input("X").size();
+    PADDLE_ENFORCE_EQ(input_num, 1UL,
                       platform::errors::InvalidArgument(
                           "Invalid input X's size of prelu TRT converter. "
                           "Expected 1, received %d.",
@@ -39,7 +39,7 @@ class PReluOpConverter : public OpConverter {
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     // Get output
     size_t output_num = op_desc.Output("Out").size();
-    PADDLE_ENFORCE_EQ(output_num, 1,
+    PADDLE_ENFORCE_EQ(output_num, 1UL,
                       platform::errors::InvalidArgument(
                           "Invalid output Out's size of prelu TRT converter. "
                           "Expected 1, received %d.",

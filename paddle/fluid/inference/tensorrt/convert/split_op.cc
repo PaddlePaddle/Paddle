@@ -29,11 +29,11 @@ class SplitOpConverter : public OpConverter {
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     auto input_dims = input->getDimensions();
-    int input_num = op_desc.Input("X").size();
+    size_t input_num = op_desc.Input("X").size();
     size_t output_num = op_desc.Output("Out").size();
 
     // Get Attrs
-    PADDLE_ENFORCE_EQ(input_num, 1,
+    PADDLE_ENFORCE_EQ(input_num, 1UL,
                       platform::errors::InvalidArgument(
                           "Invalid input X's size of split TRT converter. "
                           "Expected 1, received %d.",
