@@ -24,6 +24,7 @@ from .. import compat as cpt
 from . import unique_name
 from . import log_helper
 import paddle.fluid
+from .data_feeder import check_type
 __all__ = [
     'append_backward',
     'gradients',
@@ -1709,5 +1710,14 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
             z = fluid.gradients([y], x)
             print(z)
     """
+    check_type(targets, 'targets', (framework.Variable, list),
+               'fluid.backward.gradients')
+    check_type(inputs, 'inputs', (framework.Variable, list),
+               'fluid.backward.gradients')
+    check_type(target_gradients, 'target_gradients', (
+        framework.Variable, list, type(None)), 'fluid.backward.gradients')
+    check_type(no_grad_set, 'no_grad_set', (set, type(None)),
+               'fluid.backward.gradients')
+
     outs = calc_gradient(targets, inputs, target_gradients, no_grad_set)
     return _as_list(outs)
