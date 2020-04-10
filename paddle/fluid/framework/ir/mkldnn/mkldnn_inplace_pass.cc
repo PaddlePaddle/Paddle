@@ -140,7 +140,6 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
       }
     }
 
-
     // If this op was alrady inplaced in previous pass placements
     // then we need to update input of next op
     // but original name to be changed is gone, so we need to remember it
