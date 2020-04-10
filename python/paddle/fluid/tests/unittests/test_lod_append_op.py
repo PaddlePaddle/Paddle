@@ -33,15 +33,16 @@ class TestLoDAppendAPI(unittest.TestCase):
 
             x_i = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0]).astype("float32")
 
-            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            out = exe.run(fluid.default_main_program(),
-                          feed={'x': x_i},
-                          fetch_list=[result])
-
-    def test_fw_bw(self):
-        if core.is_compiled_with_cuda():
-            self.test_api(use_cuda=True)
+            for use_cuda in [False, True]:
+                if use_cuda and not fluid.core.is_compiled_with_cuda():
+                    return
+                place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+                exe = fluid.Executor(place)
+                [out] = exe.run(fluid.default_main_program(),
+                                feed={'x': x_i},
+                                fetch_list=[result],
+                                return_numpy=False)
+                self.assertEqual(out.recursive_sequence_lengths(), [[2, 4]])
 
 
 class TestWhereOpError(unittest.TestCase):
@@ -71,3 +72,7 @@ class TestWhereOpError(unittest.TestCase):
                 fluid.layers.lod_append(x3, level3)
 
             self.assertRaises(TypeError, test_type2)
+
+
+if __name__ == "__main__":
+    unittest.main()
