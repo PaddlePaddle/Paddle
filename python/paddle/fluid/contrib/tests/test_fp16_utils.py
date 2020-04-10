@@ -18,7 +18,7 @@ from paddle.fluid import core
 from paddle.fluid.contrib.mixed_precision import fp16_utils
 
 
-class MAPTest(unittest.TestCase):
+class AMPTest(unittest.TestCase):
     def test_find_op_index(self):
         block = fluid.default_main_program().global_block()
         op_desc = core.OpDesc()

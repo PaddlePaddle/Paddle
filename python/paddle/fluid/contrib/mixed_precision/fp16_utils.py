@@ -321,15 +321,12 @@ def update_role_var_grad(main_prog, params_grads):
                                  "used by a non-optimize op, however, it"
                                  "is used by {1}".format(op, post_ops[0]))
             new_op_desc = block.desc.append_op()
-            print("append op")
             new_op_desc.copy_from(op.desc)
 
-            print("copy op")
             op_idx = find_op_index(block.desc, op.desc)
             if op_idx == -1:
                 raise ValueError("The op {0} is not in program".format(op))
             block.desc._remove_op(op_idx, op_idx + 1)
-            print("remove op_idx: ", op_idx)
         block._sync_with_cpp()
 
 
