@@ -71,6 +71,8 @@ class TestWhereAPI(unittest.TestCase):
             result = tensor.where(x > 1, X=x, Y=y)
 
             for use_cuda in [False, True]:
+                if use_cuda and not fluid.core.is_compiled_with_cuda():
+                    return
                 place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
                 exe = fluid.Executor(place)
                 out = exe.run(fluid.default_main_program(),
@@ -99,6 +101,8 @@ class TestWhereAPI(unittest.TestCase):
                 append_backward(y_mean)
 
                 for use_cuda in [False, True]:
+                    if use_cuda and not fluid.core.is_compiled_with_cuda():
+                        return
                     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
                     exe = fluid.Executor(place)
                     out = exe.run(
@@ -125,6 +129,8 @@ class TestWhereAPI(unittest.TestCase):
             result = tensor.where(x > 1, X=x, Y=y)
 
             for use_cuda in [False, True]:
+                if use_cuda and not fluid.core.is_compiled_with_cuda():
+                    return
                 place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
                 exe = fluid.Executor(place)
                 out = exe.run(fluid.default_main_program(),

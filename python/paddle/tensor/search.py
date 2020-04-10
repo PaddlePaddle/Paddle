@@ -240,8 +240,8 @@ def where(Condition, X, Y):
         .. code-block:: python
 
           import numpy as np
-          import paddle as paddle
           import paddle.fluid as fluid
+          import paddle.tensor as paddle
 
           x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float32")
           y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype("float32")
