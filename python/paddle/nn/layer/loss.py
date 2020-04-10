@@ -26,7 +26,8 @@ __all__ = [
 
 class CrossEntropyLoss(fluid.dygraph.Layer):
     """
-    This operator implements the cross entropy loss function.
+    This operator implements the cross entropy loss function. This OP combines `softmax`,
+    `cross_entropy`, and `reduce_sum`/`reduce_mean` together.
 
     It is useful when training a classification problem with `C` classes.
     If provided, the optional argument `weight` should be a 1D Variable assigning
@@ -69,21 +70,21 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
             import paddle.fluid as fluid
             import numpy as np
 
-            input = fluid.layers.data(name='input', shape=[3,5], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[3,1], dtype='int64')
-            weight = fluid.layers.data(name='weight', shape=[5], dtype='float32')
+            input = fluid.layers.data(name='input', shape=[5, 100], dtype='float32')
+            label = fluid.layers.data(name='label', shape=[5, 1], dtype='int64')
+            weight = fluid.layers.data(name='weight', shape=[100], dtype='float32')
             ce_loss = paddle.nn.loss.CrossEntropyLoss(weight=weight, reduction='mean')
             output = ce_loss(input,label)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
-            input_data = np.random.random([3,5]).astype("float32")
-            label_data = np.array([[1], [3], [4]]).astype("int64")
-            weight_data = np.random.random([5]).astype("float32")
+            input_data = np.random.random([5, 100]).astype("float32")
+            label_data = np.array([[1], [9], [40], [50], [90]]).astype("int64")
+            weight_data = np.random.random([100]).astype("float32")
             output = exe.run(fluid.default_main_program(),
-                    feed={"input":input_data, "label":label_data,"weight":weight_data},
-                    fetch_list=[output],
-                    return_numpy=True)
+                        feed={"input": input_data, "label": label_data,"weight": weight_data},
+                        fetch_list=[output],
+                        return_numpy=True)
             print(output)
 
             # imperative mode
@@ -93,7 +94,7 @@ class CrossEntropyLoss(fluid.dygraph.Layer):
                 label = dg.to_variable(label_data)
                 weight = dg.to_variable(weight_data)
                 ce_loss = paddle.nn.loss.CrossEntropyLoss(weight=weight, reduction='mean')
-                output = ce_loss(input,label)
+                output = ce_loss(input, label)
                 print(output.numpy())
     """
 
