@@ -5602,8 +5602,11 @@ def smooth_l1(x, y, inside_weight=None, outside_weight=None, sigma=None):
             #      [0.20541131]], dtype=float32)]
 
     """
+    check_variable_and_dtype(x, 'X', ['float32', 'float64'], 'smooth_l1_loss')
+    check_variable_and_dtype(y, 'Y', ['float32', 'float64'], 'smooth_l1_loss')
 
     helper = LayerHelper('smooth_l1_loss', **locals())
+
     diff = helper.create_variable_for_type_inference(dtype=x.dtype)
     loss = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -8307,6 +8310,9 @@ def mean_iou(input, label, num_classes):
                                                           num_classes)
     """
     helper = LayerHelper('mean_iou', **locals())
+    check_variable_and_dtype(input, 'Predictions', ['int32', 'int64'],
+                             'mean_iou')
+    check_variable_and_dtype(label, 'Labels', ['int32', 'int64'], 'mean_iou')
     dtype = helper.input_dtype()
     out_mean_iou = helper.create_variable_for_type_inference(dtype='float32')
     out_wrong = helper.create_variable_for_type_inference(dtype='int32')

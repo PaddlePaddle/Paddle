@@ -23,8 +23,12 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"), true,
+        platform::errors::NotFound("Input(X) of SmoothL1LossOp is not found."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Y"), true,
+        platform::errors::NotFound("Input(Y) of SmoothL1LossOp is not found."));
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
@@ -34,14 +38,20 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
       check = false;
     }
     if (check) {
-      PADDLE_ENFORCE_EQ(x_dims, y_dims);
+      PADDLE_ENFORCE_EQ(x_dims, y_dims,
+                        platform::errors::InvalidArgument(
+                            "Input(X) ans Input(Y) of SmoothL1LossOp should "
+                            "have the same size"));
     }
     PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                      "The tensor rank of Input(X) should not be less than 2.");
+                      platform::errors::InvalidArgument(
+                          "The tensor rank of Input(X) of SmoothL1LossOp "
+                          "should not be less than 2."));
     if (ctx->HasInput("InsideWeight")) {
-      PADDLE_ENFORCE(ctx->HasInput("OutsideWeight"),
-                     "If weights are provided, must specify both "
-                     "inside and outside weights.");
+      PADDLE_ENFORCE_EQ(ctx->HasInput("OutsideWeight"), true,
+                        platform::errors::InvalidArgument(
+                            "If weights are provided, must specify both "
+                            "inside and outside weights."));
       auto dims = ctx->GetInputDim("InsideWeight");
       bool check = true;
       if ((!ctx->IsRuntime()) &&
@@ -49,7 +59,10 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
         check = false;
       }
       if (check) {
-        PADDLE_ENFORCE_EQ(dims, x_dims);
+        PADDLE_ENFORCE_EQ(x_dims, dims,
+                          platform::errors::InvalidArgument(
+                              "Input(X) ans Input(InsideWeight) of "
+                              "SmoothL1LossOp should have the same size"));
       }
 
       dims = ctx->GetInputDim("OutsideWeight");
@@ -59,7 +72,10 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
         check = false;
       }
       if (check) {
-        PADDLE_ENFORCE_EQ(dims, x_dims);
+        PADDLE_ENFORCE_EQ(x_dims, dims,
+                          platform::errors::InvalidArgument(
+                              "Input(X) ans Input(OutsideWeight) of "
+                              "SmoothL1LossOp should have the same size"));
       }
     }
 
@@ -134,13 +150,17 @@ class SmoothL1LossGradOp : public framework::OperatorWithKernel {
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
     PADDLE_ENFORCE_GE(out_dims.size(), 2,
-                      "The tensor rank of Input(Out@Grad) should be 2.");
+                      platform::errors::InvalidArgument(
+                          "The tensor rank of Input(Out@Grad) should be 2."));
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(out_dims[0], in_dims[0],
-                        "The 1st dimension of Input(Out@Grad) must be "
-                        "same as input.");
+                        platform::errors::InvalidArgument(
+                            "The 1st dimension of Input(Out@Grad) must be "
+                            "same as input in SmoothL1LossGradOp."));
       PADDLE_ENFORCE_EQ(out_dims[1], 1,
-                        "The 2nd dimension of Input(Out@Grad) must be 1.");
+                        platform::errors::InvalidArgument(
+                            "The 2nd dimension of Input(Out@Grad) must be 1 in "
+                            "SmoothL1LossGradOp."));
     }
 
     auto x_grad_name = framework::GradVarName("X");
