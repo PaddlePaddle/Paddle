@@ -94,6 +94,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
             # x: [M], y: [N]
             # paddle.matmul(x, y, True, True)  # out: [M, N]
 
+            import paddle
             import paddle.fluid as fluid
             x = fluid.data(name='x', shape=[2, 3], dtype='float32')
             y = fluid.data(name='y', shape=[3, 2], dtype='float32')
