@@ -30,6 +30,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
@@ -79,6 +80,23 @@ class FleetWrapper {
   void SetPullLocalThreadNum(int thread_num) {
     pull_local_thread_num_ = thread_num;
   }
+
+  void HeterPullSparseVars(int workerid, std::shared_ptr<HeterTask> task, const uint64_t table_id,
+                          const std::vector<std::string>& var_names,
+                          int fea_dim,
+                          const std::vector<std::string>& var_emb_names);
+
+  void HeterPushSparseVars(
+      std::shared_ptr<HeterTask> task, const uint64_t table_id,
+      const std::vector<std::string>& sparse_key_names,
+      const std::vector<std::string>& sparse_grad_names, const int emb_dim,
+      std::vector<::std::future<int32_t>>* push_sparse_status,
+      const bool use_cvm, const bool dump_slot,
+      const bool no_cvm);
+  
+  typedef std::function<void (int, int)> HeterCallBackFunc;
+  
+  int RegisterHeterCallback(HeterCallBackFunc handler);
 
   // Pull sparse variables from server in sync mode
   // Param<in>: scope, table_id, var_names, fea_keys, fea_dim, var_emb_names
