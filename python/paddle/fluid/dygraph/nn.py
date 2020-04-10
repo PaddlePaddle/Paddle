@@ -26,6 +26,7 @@ from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from .. import unique_name
 from .layer_object_helper import LayerObjectHelper
+from ..data_feeder import check_variable_and_dtype, check_type
 import numpy as np
 import numbers
 import logging
@@ -2019,6 +2020,10 @@ class NCE(layers.Layer):
         self._inputs['Weight'] = self.weight
 
     def forward(self, input, label, sample_weight=None):
+        check_variable_and_dtype(input, "input", ['float32', 'float64'], "NCE")
+        check_variable_and_dtype(label, "label", ['int64'], "NCE")
+        check_type(sample_weight, 'sample_weight', (Variable, type(None)),
+                   'NCE')
         assert isinstance(input, Variable)
         assert isinstance(label, Variable)
 
