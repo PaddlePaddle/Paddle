@@ -14,9 +14,9 @@
 
 from __future__ import print_function
 
+import paddle
 import unittest
 import numpy as np
-import paddle
 from op_test import OpTest
 
 
