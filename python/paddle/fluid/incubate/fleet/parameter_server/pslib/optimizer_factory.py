@@ -418,8 +418,13 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["dump_fields_path"] = strategy.get("dump_fields_path", "")
         opt_info["dump_param"] = strategy.get("dump_param", [])
         if server._server.downpour_server_param.downpour_table_param[
-                0].accessor.accessor_class == "DownpourCtrAccessor":
+                0].accessor.accessor_class in [
+                    "DownpourCtrAccessor", "DownpourCtrDoubleAccessor"
+                ]:
             opt_info["dump_slot"] = True
+        elif server._server.downpour_server_param.downpour_table_param[
+                0].accessor.accessor_class == "DownpourSparseValueAccessor":
+            opt_info["no_cvm"] = True
         opt_info["adjust_ins_weight"] = strategy.get("adjust_ins_weight", {})
         opt_info["copy_table"] = strategy.get("copy_table", {})
         opt_info["loss_names"] = strategy.get("loss_names", [])
