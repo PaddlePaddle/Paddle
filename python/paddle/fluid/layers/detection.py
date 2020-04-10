@@ -2181,10 +2181,7 @@ def multi_box_head(inputs,
             aspect_ratio = aspect_ratios[i]
             if not _is_list_or_tuple_(aspect_ratio):
                 aspect_ratio = [aspect_ratio]
-        step = [
-            step_w[i] if step_w is not None else 0.0, step_h[i]
-            if step_w is not None else 0.0
-        ]
+        step = [step_w[i] if step_w else 0.0, step_h[i] if step_w else 0.0]
 
         box, var = prior_box(input, image, min_size, max_size, aspect_ratio,
                              variance, flip, clip, step, offset, None,
