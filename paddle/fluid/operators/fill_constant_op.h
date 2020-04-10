@@ -51,8 +51,8 @@ inline framework::DDim GetShape(const framework::ExecutionContext &ctx) {
           tensor->dims(), framework::make_ddim({1}),
           platform::errors::InvalidArgument(
               "If the element type of 'shape'(tensor_list type) in "
-              "FillConstantOp is Tensor the element's shape must be [1]. But "
-              "received the element's shape is [%s]",
+              "FillConstantOp is Tensor, the shape of this Tensor element must "
+              "be [1]. But received the Tensor element's shape is [%s]",
               tensor->dims()));
       if (platform::is_gpu_place(tensor->place())) {
         framework::Tensor temp;
