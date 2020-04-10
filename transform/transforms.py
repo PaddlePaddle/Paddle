@@ -297,7 +297,9 @@ class Permute(object):
     """
 
     def __init__(self, mode="CHW"):
-        assert mode in ["CHW"], "unsupported mode: {}".format(mode)
+        assert mode in [
+            "CHW"
+        ], "Only support 'CHW' mode, but received mode: {}".format(mode)
         self.mode = mode
 
     def __call__(self, img):
