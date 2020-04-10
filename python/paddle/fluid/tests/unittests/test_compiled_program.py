@@ -15,11 +15,75 @@
 from __future__ import print_function
 
 import unittest
+import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid import core
+from test_imperative_base import new_program_scope
+from simple_nets import simple_fc_net
 
 
 class TestCompiledProgram(unittest.TestCase):
+    def setUp(self):
+        self.seed = 100
+        self.img = np.random.random(size=(16, 784)).astype('float32')
+        self.label = np.random.randint(
+            low=0, high=10, size=[16, 1], dtype=np.int64)
+        with new_program_scope():
+            fluid.default_startup_program().random_seed = self.seed
+            fluid.default_main_program().random_seed = self.seed
+            place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+            ) else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            loss = simple_fc_net()
+            exe.run(fluid.default_startup_program())
+
+            loss_data, = exe.run(fluid.default_main_program(),
+                                 feed={"image": self.img,
+                                       "label": self.label},
+                                 fetch_list=[loss.name])
+            self.loss = loss_data[0]
+
+    def test_compiled_program_base(self):
+        with new_program_scope():
+            fluid.default_startup_program().random_seed = self.seed
+            fluid.default_main_program().random_seed = self.seed
+            place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+            ) else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            loss = simple_fc_net()
+            exe.run(fluid.default_startup_program())
+            compiled_prog = fluid.CompiledProgram(fluid.default_main_program())
+
+            loss_data, = exe.run(compiled_prog,
+                                 feed={"image": self.img,
+                                       "label": self.label},
+                                 fetch_list=[loss.name])
+            self.assertTrue(np.array_equal(loss_data[0], self.loss))
+
+    def test_compiled_program_with_data_parallel(self):
+        with new_program_scope():
+            fluid.default_startup_program().random_seed = self.seed
+            fluid.default_main_program().random_seed = self.seed
+            place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+            ) else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            loss = simple_fc_net()
+            exe.run(fluid.default_startup_program())
+            compiled_prog = fluid.CompiledProgram(fluid.default_main_program(
+            )).with_data_parallel(
+                loss_name=loss.name, places=[place])
+
+            loss_data, = exe.run(compiled_prog,
+                                 feed={"image": self.img,
+                                       "label": self.label},
+                                 fetch_list=[loss.name])
+            self.assertTrue(np.array_equal(loss_data[0], self.loss))
+
+
+class TestCompiledProgramError(unittest.TestCase):
     def test_program_or_graph_error(self):
         self.assertRaises(TypeError, fluid.CompiledProgram, "program")
 

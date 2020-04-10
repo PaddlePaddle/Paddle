@@ -250,7 +250,7 @@ class CompiledProgram(object):
                                    feed={"X": x},
                                    fetch_list=[loss.name])
         """
-        assert not self._is_data_parallel, "Already compiled with parallel, cannot be recompile."
+        assert not self._is_data_parallel, "Already compiled with parallel, cannot be recompiled."
         assert not self._is_inference, "Cannot compile with both data parallel and inference."
         self._is_data_parallel = True
         # FIXME(zcd): Currently, the build_strategy can be set during creating
@@ -281,7 +281,7 @@ class CompiledProgram(object):
             self
         """
         assert not self._is_data_parallel, "Cannot compile with both data parallel and inference"
-        assert not self._is_inference, "Already compiled with inference, cannot be recompile."
+        assert not self._is_inference, "Already compiled with inference, cannot be recompiled."
 
         assert any([
             isinstance(config, InferNativeConfig),

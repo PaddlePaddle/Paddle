@@ -176,7 +176,7 @@ std::shared_ptr<Graph> Graph::Clone() {
   std::unordered_map<ir::Node *, ir::Node *> origin_to_cloned;
   for (auto *n : this->node_set_) {
     PADDLE_ENFORCE_NOT_NULL(n, platform::errors::InvalidArgument(
-                                   "The node to be clone is nullptr."));
+                                   "The node to be cloned is nullptr."));
     ir::Node *cloned_node = nullptr;
     if (n->IsCtrlVar()) {
       cloned_node = cloned_graph->CreateControlDepVar();
