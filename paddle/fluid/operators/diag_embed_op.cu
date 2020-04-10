@@ -108,10 +108,12 @@ class DiagEmbedCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace platform = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     diag_embed,
     ops::DiagEmbedCUDAKernel<paddle::platform::CUDADeviceContext, int>,
     ops::DiagEmbedCUDAKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::DiagEmbedCUDAKernel<paddle::platform::CUDADeviceContext, float16>,
     ops::DiagEmbedCUDAKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::DiagEmbedCUDAKernel<paddle::platform::CUDADeviceContext,
+                             platform::float16>,
     ops::DiagEmbedCUDAKernel<paddle::platform::CUDADeviceContext, double>);
