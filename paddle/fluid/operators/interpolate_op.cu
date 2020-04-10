@@ -803,8 +803,8 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
         input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
         out_chw, c, ratio_h, ratio_w, align_corners, align_mode, data_layout);
   } else if ("bicubic" == interp_method) {
-    KeBicubicInterpFw<T><<<config.blocks, config.threads, 0,
-                           ctx.cuda_device_context().stream()>>>(
+    KeBicubicInterpFw<
+        T><<<config.blocks, 512, 0, ctx.cuda_device_context().stream()>>>(
         input_data, in_h, in_w, n, in_chw, output_data, out_h, out_w, n,
         out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
   }
@@ -1012,8 +1012,8 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
         n, out_chw, c, ratio_h, ratio_w, align_corners, align_mode,
         data_layout);
   } else if ("bicubic" == interp_method) {
-    KeBicubicInterpBw<T><<<config.blocks, config.threads, 0,
-                           ctx.cuda_device_context().stream()>>>(
+    KeBicubicInterpBw<
+        T><<<config.blocks, 512, 0, ctx.cuda_device_context().stream()>>>(
         input_grad_data, in_h, in_w, n, in_chw, output_grad_data, out_h, out_w,
         n, out_chw, c, ratio_h, ratio_w, align_corners, data_layout);
   }
