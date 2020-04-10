@@ -75,6 +75,11 @@ class CPUQuantizeSquashPass : public FusePassBase {
   */
   void DequantScaleSquash(Graph* graph) const;
 
+  /*
+   *  Squash dequantize if it is after matmul
+   */
+  void MatmulDequantSquash(Graph* graph) const;
+
   const std::string name_scope_{"squash"};
 };
 

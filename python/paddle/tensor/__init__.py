@@ -31,7 +31,7 @@ from .creation import linspace  #DEFINE_ALIAS
 # from .creation import eye   #DEFINE_ALIAS
 from .creation import full  # DEFINE_ALIAS
 # from .creation import linspace   #DEFINE_ALIAS
-# from .creation import full_like   #DEFINE_ALIAS
+from .creation import full_like  #DEFINE_ALIAS
 from .creation import triu  #DEFINE_ALIAS
 from .creation import tril  #DEFINE_ALIAS
 # from .creation import meshgrid   #DEFINE_ALIAS
@@ -64,7 +64,7 @@ from .logic import elementwise_equal  #DEFINE_ALIAS
 # from .random import shuffle   #DEFINE_ALIAS
 # from .random import randn   #DEFINE_ALIAS
 # from .random import rand   #DEFINE_ALIAS
-# from .random import randint   #DEFINE_ALIAS
+from .random import randint  #DEFINE_ALIAS
 from .random import randperm
 # from .math import abs   #DEFINE_ALIAS
 # from .math import acos   #DEFINE_ALIAS
@@ -117,17 +117,17 @@ from .math import add  #DEFINE_ALIAS
 # from .math import log1p   #DEFINE_ALIAS
 # from .math import erf   #DEFINE_ALIAS
 # from .math import addcmul   #DEFINE_ALIAS
-# from .math import addmm   #DEFINE_ALIAS
+from .math import addmm  #DEFINE_ALIAS
 # from .attribute import rank   #DEFINE_ALIAS
 # from .attribute import shape   #DEFINE_ALIAS
 # from .io import save   #DEFINE_ALIAS
 # from .io import load   #DEFINE_ALIAS
-# from .linalg import matmul   #DEFINE_ALIAS
+from .linalg import matmul  #DEFINE_ALIAS
 # from .linalg import dot   #DEFINE_ALIAS
 # from .linalg import einsum   #DEFINE_ALIAS
 # from .linalg import morm   #DEFINE_ALIAS
 # from .linalg import transpose   #DEFINE_ALIAS
-# from .linalg import dist   #DEFINE_ALIAS
+from .linalg import dist  #DEFINE_ALIAS
 # from .linalg import t   #DEFINE_ALIAS
 # from .linalg import cross   #DEFINE_ALIAS
 # from .linalg import cholesky   #DEFINE_ALIAS
@@ -165,7 +165,7 @@ from .search import argmax  #DEFINE_ALIAS
 # from .search import has_nan   #DEFINE_ALIAS
 # from .search import masked_select   #DEFINE_ALIAS
 # from .search import topk   #DEFINE_ALIAS
-# from .search import where   #DEFINE_ALIAS
+from .search import where  #DEFINE_ALIAS
 # from .search import index_select   #DEFINE_ALIAS
 from .search import index_sample  # DEFINE_ALIAS
 # from .search import nonzero   #DEFINE_ALIAS

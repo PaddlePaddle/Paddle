@@ -171,16 +171,6 @@ void PD_SwitchIrDebug(PD_AnalysisConfig* config, bool x) {
   config->config.SwitchIrDebug(x);
 }
 
-void PD_EnableNgraph(PD_AnalysisConfig* config) {
-  PADDLE_ENFORCE_NOT_NULL(config);
-  config->config.EnableNgraph();
-}
-
-bool PD_NgraphEnabled(const PD_AnalysisConfig* config) {
-  PADDLE_ENFORCE_NOT_NULL(config);
-  return config->config.ngraph_enabled();
-}
-
 void PD_EnableMKLDNN(PD_AnalysisConfig* config) {
   PADDLE_ENFORCE_NOT_NULL(config);
   config->config.EnableMKLDNN();

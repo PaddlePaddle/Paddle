@@ -99,6 +99,22 @@ class FillConstantKernel : public framework::OpKernel<T> {
         value = static_cast<T>(tmp_value);
       }
     }
+    if (ctx.HasInput("ValueTensor")) {
+      auto *value_tensor = ctx.Input<framework::Tensor>("ValueTensor");
+      PADDLE_ENFORCE_EQ(
+          value_tensor->numel(), 1,
+          platform::errors::InvalidArgument(
+              "When use Tensor as value to set Tensor value in fill_cosntant, "
+              "value input(ValueTensor) size must be 1, but get %d",
+              value_tensor->numel()));
+      const T *tensor_data = value_tensor->data<T>();
+      framework::Tensor cpu_tensor;
+      if (platform::is_gpu_place(value_tensor->place())) {
+        TensorCopySync(*value_tensor, platform::CPUPlace(), &cpu_tensor);
+        tensor_data = cpu_tensor.data<T>();
+      }
+      value = tensor_data[0];
+    }
     auto shape = GetShape(ctx);
 
     if (out_var->IsType<framework::LoDTensor>()) {

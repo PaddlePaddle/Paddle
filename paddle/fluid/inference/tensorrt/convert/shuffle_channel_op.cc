@@ -29,7 +29,12 @@ class ShuffleChannelOpConverter : public OpConverter {
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     auto input_dims = input->getDimensions();
-    PADDLE_ENFORCE(input_dims.nbDims == 3);
+    PADDLE_ENFORCE_EQ(
+        input_dims.nbDims, 3,
+        platform::errors::InvalidArgument("ShuffleChannel TRT op converter "
+                                          "input dims is invalid. The input "
+                                          "dims size should be 3, but got %d.",
+                                          input_dims.nbDims));
     int c = input_dims.d[0];
     int h = input_dims.d[1];
     int w = input_dims.d[2];
