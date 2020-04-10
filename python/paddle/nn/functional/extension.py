@@ -62,9 +62,11 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
 
     Examples:
         .. code-block:: python
+
             import paddle.nn.functional as F
             import paddle.fluid.dygraph as dg
             import numpy as np
+            
             diag_embed = np.random.randn(2, 3).astype('float32')
             with dg.guard():
                 data1 = F.diag_embed(diag_embed)
