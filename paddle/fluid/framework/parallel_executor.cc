@@ -156,7 +156,7 @@ class ParallelExecutorPrivate {
       } else {
         nccl_id = new ncclUniqueId();
         PADDLE_ENFORCE_EQ(
-            platform::dynload::ncclGetUniqueId(nccl_id), true,
+            platform::dynload::ncclGetUniqueId(nccl_id), ncclSuccess,
             platform::errors::PreconditionNotMet("Get NCCL unique ID failed."));
         VLOG(10) << "can't find nccl_id_var:" << var_name
                  << ", nccl_id:" << nccl_id;
