@@ -19,6 +19,7 @@ import warnings
 
 from .initializer import Initializer, Xavier, Constant
 from .regularizer import WeightDecayRegularizer
+from data_feeder import check_type
 
 __all__ = [
     'ParamAttr',
