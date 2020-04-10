@@ -26,22 +26,36 @@ class SequenceUnpadOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of SequenceUnpadOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Length"), true,
-                      "Input(Length) of SequenceUnpadOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of SequenceUnpadOp should not be null.");
+                      platform::errors::InvalidArgument(
+                          "Input(X) of SequenceUnpadOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Length"), true,
+        platform::errors::InvalidArgument(
+            "Input(Length) of SequenceUnpadOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("Out"), true,
+        platform::errors::InvalidArgument(
+            "Output(Out) of SequenceUnpadOp should not be null."));
 
     auto x_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_GE(x_dims.size(), 2,
-                      "The rank of Input(X) can't be less than 2.");
+    PADDLE_ENFORCE_GE(
+        x_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "The rank of Input(X) can't be less than 2. But received (%d)",
+            x_dims.size()));
 
     auto len_dims = ctx->GetInputDim("Length");
-    PADDLE_ENFORCE_EQ(len_dims.size(), 1,
-                      "The shape of Input(Length) should be [batch_size].");
     PADDLE_ENFORCE_EQ(
-        len_dims[0], x_dims[0],
-        "Input(X) and Input(Length) should have the same first dimension.");
+        len_dims.size(), 1,
+        platform::errors::InvalidArgument("The shape of Input(Length) should "
+                                          "be [batch_size]. But received (%d)",
+                                          len_dims.size()));
+    PADDLE_ENFORCE_EQ(len_dims[0], x_dims[0],
+                      platform::errors::InvalidArgument(
+                          "Input(X) and Input(Length) should have the same "
+                          "first dimension. But the first dimension of "
+                          "Input(X) and Input(Length) is (%d) != (%d)",
+                          len_dims[0], x_dims[0]));
 
     int64_t out_dim_0 = -1;
     if (ctx->IsRuntime()) {
@@ -115,11 +129,14 @@ class SequenceUnpadGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of SequenceUnpadGradOp should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"), true,
+        platform::errors::InvalidArgument(
+            "Input(X) of SequenceUnpadGradOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput(framework::GradVarName("Out")), true,
-        "Input(Out@GRAD) of SequenceUnpadGradOp should not be null.");
+        platform::errors::InvalidArgument(
+            "Input(Out@GRAD) of SequenceUnpadGradOp should not be null."));
 
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));

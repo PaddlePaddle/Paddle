@@ -9921,6 +9921,9 @@ def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
     """
 
     helper = LayerHelper('gaussian_random', **locals())
+    check_type(shape, 'shape', (list, tuple), 'fluid.layers.gaussian_random')
+    check_dtype(dtype, 'dtype', ['float32', 'float64'],
+                'fluid.layers.gaussian_random')
     out = helper.create_variable_for_type_inference(dtype)
     c_dtype = convert_np_dtype_to_dtype_(dtype)
     helper.append_op(
@@ -10014,6 +10017,12 @@ def gaussian_random_batch_size_like(input,
     """
 
     helper = LayerHelper('gaussian_random_batch_size_like', **locals())
+    check_type(input, 'input', (Variable),
+               'fluid.layers.gaussian_random_batch_size_like')
+    check_type(shape, 'shape', (list, tuple),
+               'fluid.layers.gaussian_random_batch_size_like')
+    check_dtype(dtype, 'dtype', ['float16', 'float32', 'int'],
+                'fluid.layers.gaussian_random_batch_size_like')
     out = helper.create_variable_for_type_inference(dtype)
     c_dtype = convert_np_dtype_to_dtype_(dtype)
     helper.append_op(

@@ -72,5 +72,25 @@ class TestGaussianRandomOp(unittest.TestCase):
         pass
 
 
+class TestGaussianRandomOpError(unittest.TestCase):
+    def test_errors(self):
+        def test_type_int():
+            x = fluid.layers.gaussian_random(5, std=2., seed=10)
+
+        self.assertRaises(TypeError, test_type_int)
+
+        def test_type_np():
+            x1 = numpy.array((2, 4)).astype("int32")
+            out = fluid.layers.gaussian_random(shape=x1, std=2., seed=10)
+
+        self.assertRaises(TypeError, test_type_np)
+
+        def test_dtype():
+            x = fluid.layers.gaussian_random(
+                (2, 3), std=2., seed=10, dtype='float16')
+
+        self.assertRaises(TypeError, test_dtype)
+
+
 if __name__ == "__main__":
     unittest.main()
