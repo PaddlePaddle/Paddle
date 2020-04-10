@@ -16,6 +16,8 @@
 
 from . import loss
 from . import conv
+from . import norm
 
 from .loss import *
 from .conv import *
+from .norm import *
