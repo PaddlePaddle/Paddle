@@ -52,7 +52,6 @@ self.assertRaises(TypeError, fluid.clip, x_float32, 'all')
 x_float64 = fluid.data(name='x_float64', shape=[12, 10], dtype='float64')
 self.assertRaises(TypeError, fluid.clip, x_float64, 'all')
 
-
 prog_clip.block(0).var(hidden1.name)._set_error_clip(
     fluid.clip.ErrorClipByValue(
         max=CLIP_MAX, min=CLIP_MIN))
