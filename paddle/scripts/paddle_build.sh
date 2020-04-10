@@ -485,6 +485,7 @@ function generate_upstream_develop_api_spec() {
     fetch_upstream_develop_if_not_exist
     cur_branch=`git branch | grep \* | cut -d ' ' -f2`
     git checkout -b develop_base_pr upstream/$BRANCH
+    check_style
     cmake_gen $1
     build $2
 
@@ -1138,7 +1139,6 @@ function main() {
         ;;
       build_and_check)
         generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
-        check_style
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number} 
         check_sequence_op_unittest
