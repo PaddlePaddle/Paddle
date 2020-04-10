@@ -25,8 +25,10 @@ from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
 from paddle.fluid.incubate.fleet.base.role_maker import UserDefinedRoleMaker
 from paddle.fluid.contrib.mixed_precision.decorator import OptimizerWithMixedPrecision
 from . import mode
+from mode import *
 
-__all__ = ['Fleet', 'DistributedOptimizer'] + mode.__all__
+__all__ = ['Fleet', 'DistributedOptimizer']
+__all__ += mode.__all__
 
 
 class Fleet(object):
