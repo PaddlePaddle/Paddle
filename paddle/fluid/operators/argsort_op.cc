@@ -24,8 +24,8 @@ class ArgsortOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "argsort");
-    OP_INOUT_CHECK(ctx->HasInput("Out"), "Output", "Out", "argsort");
-    OP_INOUT_CHECK(ctx->HasInput("Indices"), "Output", "Indices", "argsort");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "argsort");
+    OP_INOUT_CHECK(ctx->HasOutput("Indices"), "Output", "Indices", "argsort");
 
     auto in_dims = ctx->GetInputDim("X");
     int axis = ctx->Attrs().Get<int>("axis");

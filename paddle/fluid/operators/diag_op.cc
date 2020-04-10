@@ -23,7 +23,7 @@ class DiagOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Diagonal"), "Input", "Diagonal", "diag");
-    OP_INOUT_CHECK(ctx->HasInput("Out"), "Output", "Out", "diag");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "diag");
 
     auto s_dims = ctx->GetInputDim("Diagonal");
 
