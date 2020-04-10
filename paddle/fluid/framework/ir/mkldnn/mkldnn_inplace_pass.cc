@@ -30,6 +30,7 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::InvalidArgument(
                               "Pointer to graph argument should not be NULL."));
+  std::unordered_map<std::string, std::string> original_output_names;
   GraphPatternDetector gpd;
   patterns::MKLDNNInPlace mkldnn_inplace{gpd.mutable_pattern(),
                                          "mkldnn_inplace"};
@@ -138,7 +139,16 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
         }
       }
     }
-    auto original_name = current_op_out->Name();
+
+
+    // If this op was alrady inplaced in previous pass placements
+    // then we need to update input of next op
+    // but original name to be changed is gone, so we need to remember it
+    // on first time given op is to be inplaced
+    if (current_op_in->Name() != current_op_out->Name()) {
+      original_output_names[current_op->Name()] = current_op_out->Name();
+    }
+    auto original_name = original_output_names[current_op->Name()];
     current_op_out->RenameVar(current_op_in->Name());
 
     // Get mapping of input to output
@@ -171,16 +181,7 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
       }
     }
 
-    // If this op was alrady inplaced in previous pass placements
-    // then we need to update input of next op
-    // but original name to be changed is gone, so we need to guess
-    if (current_op_in->Name() != current_op_out->Name()) {
-      next_op->Op()->RenameInput(original_name, current_op_out->Name());
-    } else {
-      // TODO(jczaja): Improve this for more complex situations
-      next_op->Op()->SetInput(
-          "X", std::vector<std::string>({current_op_out->Name()}));
-    }
+    next_op->Op()->RenameInput(original_name, current_op_out->Name());
 
     found_inplace_count++;
     VLOG(3) << "MKL-DNN InPlace applied!";
