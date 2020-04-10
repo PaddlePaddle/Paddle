@@ -30,8 +30,8 @@ class MyLayer(fluid.Layer):
         return x
 
 
-class TestImperativeContainerParameterList(unittest.TestCase):
-    def test_paramter_list(self):
+class TestImperativeContainer(unittest.TestCase):
+    def test_layer_list(self):
         data_np = np.random.uniform(-1, 1, [5, 1]).astype('float32')
         with fluid.dygraph.guard():
             x = fluid.dygraph.to_variable(data_np)
@@ -60,6 +60,20 @@ class TestImperativeContainerParameterList(unittest.TestCase):
             res6 = model2(x)
             self.assertListEqual(res6.shape, [5, 2**(0 + 1)])
             res6.backward()
+
+            model3 = MyLayer(layerlist[:-2])
+            model3.layerlist.append(fluid.dygraph.Linear(3, 1))
+            model3.layerlist.insert(size - 2,
+                                    fluid.dygraph.Linear(2**(size - 2), 3))
+            res7 = model3(x)
+            self.assertListEqual(res7.shape, [5, 1])
+            to_be_extended = [
+                fluid.dygraph.Linear(3**i, 3**(i + 1)) for i in range(3)
+            ]
+            model3.layerlist.extend(to_be_extended)
+            res8 = model3(x)
+            self.assertListEqual(res8.shape, [5, 3**3])
+            res8.backward()
 
 
 if __name__ == '__main__':

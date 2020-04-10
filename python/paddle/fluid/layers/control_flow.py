@@ -1314,7 +1314,15 @@ def array_write(x, i, array=None):
             array.append(x)
         return array
 
+    check_variable_and_dtype(i, 'i', ['int64'], 'array_write')
+    check_type(x, 'x', (Variable), 'array_write')
     helper = LayerHelper('array_write', **locals())
+    if array is not None:
+        if not isinstance(
+                array,
+                Variable) or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+            raise TypeError(
+                "array should be tensor array vairable in array_write Op")
     if array is None:
         array = helper.create_variable(
             name="{0}.out".format(helper.name),
@@ -1686,6 +1694,7 @@ def array_read(array, i):
         i = i.numpy()[0]
         return array[i]
 
+    check_variable_and_dtype(i, 'i', ['int64'], 'array_read')
     helper = LayerHelper('array_read', **locals())
     if not isinstance(
             array,
@@ -3467,9 +3476,14 @@ def reorder_lod_tensor_by_rank(x, rank_table):
                            x=data, rank_table=table)
 
     """
+
+    check_type(x, 'x', (Variable), 'reorder_lod_tensor_by_rank')
+    check_type(rank_table, 'rank_table', (Variable),
+               'reorder_lod_tensor_by_rank')
+    if rank_table.type != core.VarDesc.VarType.LOD_RANK_TABLE:
+        raise TypeError("The type of rank_table should be LOD_RANK_TABLE.")
+
     helper = LayerHelper('reorder_lod_tensor_by_rank', **locals())
-    helper.is_instance('x', Variable)
-    helper.is_instance('rank_table', Variable)
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
