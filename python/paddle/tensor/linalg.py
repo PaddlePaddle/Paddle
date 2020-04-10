@@ -98,7 +98,6 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
             # x: [M], y: [N]
             # paddle.matmul(x, y, True, True)  # out: [M, N]
             
-            import paddle
             import paddle.fluid as fluid
             x = fluid.data(name='x', shape=[2, 3], dtype='float32')
             y = fluid.data(name='y', shape=[3, 2], dtype='float32')
@@ -187,14 +186,6 @@ def bmm(x, y, name=None):
         y = fluid.data(name='y', shape=[10, 4, 5], dtype='float32')
         out = paddle.bmm(x, y)
     """
-
-    def __check_input(x, y):
-        var_names = {'x': x, 'y': y}
-        for name, val in var_names.items():
-            check_variable_and_dtype(val, name, Variable,
-                                     ['float16', 'float32', 'float64'], 'bmm')
-
-    __check_input(x, y)
 
     helper = LayerHelper('bmm', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)

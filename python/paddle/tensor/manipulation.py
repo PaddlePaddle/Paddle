@@ -14,45 +14,39 @@
 
 from __future__ import print_function
 
-import numpy as np
-import warnings
-import six
-import os
-import inspect
+from ..fluid.layers import core
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.param_attr import ParamAttr
 from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, convert_np_dtype_to_dtype_
-from ..fluid import core
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
-from ..fluid.layers import utils
 
 # TODO: define functions to manipulate a tensor  
 __all__ = [
-    #           'cast',
-    #           'concat',
-    #           'expand',
-    #           'expand_as',
-    #           'flatten',
-    #           'gather',
-    #           'gather_nd',
-    #           'reshape',
-    #           'reverse',
-    #           'scatter',
-    #           'scatter_nd_add',
-    #           'scatter_nd',
-    #           'shard_index',
-    #           'slice',
-    #           'split',
-    #           'squeeze',
-    #           'stack',
-    #           'strided_slice',
-    #           'unique',
-    #           'unique_with_counts',
-    #           'unsqueeze',
-    #           'unstack',
-    'flip'
-    #           'unbind',
-    #           'roll'
+    #            'cast',
+    #            'concat',
+    #            'expand',
+    #            'expand_as',
+    #            'flatten',
+    #            'gather',
+    #            'gather_nd',
+    #            'reshape',
+    #            'reverse',
+    #            'scatter',
+    #            'scatter_nd_add',
+    #            'scatter_nd',
+    #            'shard_index',
+    #            'slice',
+    #            'split',
+    #            'squeeze',
+    #            'stack',
+    #            'strided_slice',
+    #            'transpose',
+    #            'unique',
+    #            'unique_with_counts',
+    #            'unsqueeze',
+    #            'unstack',
+    'flip',
+    #            'unbind',
+    #            'roll'
 ]
 
 
@@ -73,6 +67,7 @@ def flip(input, dims, name=None):
 
     Examples:
         .. code-block:: python
+
           import paddle
           import paddle.fluid as fluid
           import numpy as np

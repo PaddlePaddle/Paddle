@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import paddle
+import paddle.fluid as fluid
 import unittest
 import numpy as np
 from op_test import OpTest
