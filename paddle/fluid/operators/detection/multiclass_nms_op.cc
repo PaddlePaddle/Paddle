@@ -76,12 +76,13 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
                               "But received box_dims[2](%s).",
                               box_dims[2]));
         PADDLE_ENFORCE_EQ(box_dims[1], score_dims[1],
-                          "The 2nd dimension of Input(BBoxes)"
-                          "must be equal to the 2nd dimension"
-                          " of Input(Scores)"
-                          "But received box_dims[1](%s) != "
-                          "score_dims[1](%s)",
-                          box_dims[1], score_dims[1]);
+                          platform::errors::InvalidArgument(
+                              "The 2nd dimension of Input(BBoxes)"
+                              "must be equal to the 2nd dimension"
+                              " of Input(Scores)"
+                              "But received box_dims[1](%s) != "
+                              "score_dims[1](%s)",
+                              box_dims[1], score_dims[1]));
       }
     }
     // Here the box_dims[0] is not the real dimension of output.
