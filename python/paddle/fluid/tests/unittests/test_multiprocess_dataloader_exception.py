@@ -50,19 +50,19 @@ class TestDataLoaderSetXXXException(unittest.TestCase):
             dataloader = DataLoader(dataset, places=place)
 
             try:
-                dataloader.set_sample_generator()
+                dataloader.set_sample_generator(dataset)
                 self.assertTrue(False)
             except:
                 pass
 
             try:
-                dataloader.set_sample_list_generator()
+                dataloader.set_sample_list_generator(dataset)
                 self.assertTrue(False)
             except:
                 pass
 
             try:
-                dataloader.set_batch_generator()
+                dataloader.set_batch_generator(dataset)
                 self.assertTrue(False)
             except:
                 pass
@@ -72,8 +72,8 @@ class TestDataLoaderAssert(unittest.TestCase):
     def test_main(self):
         place = fluid.cpu_places()[0]
         with fluid.dygraph.guard(place):
-            dataset = RandomDataset(800)
-            batch_sampler = BatchSampler(dataset=dataset)
+            dataset = RandomDataset(100)
+            batch_sampler = BatchSampler(dataset=dataset, batch_size=4)
 
             # dataset is not instance of Dataset
             try:
@@ -132,6 +132,40 @@ class TestDataLoaderAssert(unittest.TestCase):
             except AssertionError:
                 self.assertTrue(False)
 
+            # test init_fn
+            def _init_fn(worker_id):
+                pass
+
+            try:
+                loader = DataLoader(
+                    dataset=dataset,
+                    places=place,
+                    batch_sampler=batch_sampler,
+                    num_workers=1,
+                    worker_init_fn=_init_fn)
+                for d in loader():
+                    print(d)
+                self.assertTrue(True)
+            except:
+                self.assertTrue(False)
+
+            # test collate_fn
+            def _collate_fn(sample_list):
+                return [np.stack(s, axis=0) for s in list(zip(*sample_list))]
+
+            try:
+                loader = DataLoader(
+                    dataset=dataset,
+                    places=place,
+                    batch_sampler=batch_sampler,
+                    num_workers=1,
+                    worker_init_fn=_init_fn)
+                for d in loader():
+                    print(d)
+                self.assertTrue(True)
+            except:
+                self.assertTrue(False)
+
 
 # CI Converage cannot record stub in subprocess,
 # HACK a _worker_loop in main process call here
@@ -149,9 +183,10 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                 assert loader.num_workers > 0, \
                     "go to AssertionError and pass in Mac and Windows"
                 loader = iter(loader)
+                print("loader length", len(loader))
                 indices_queue = multiprocessing.Queue()
-                indices_queue.put([0, 1])
-                indices_queue.put([2, 3])
+                for i in range(10):
+                    indices_queue.put([i, i + 10])
                 indices_queue.put(None)
                 loader._worker_loop(loader._dataset, indices_queue,
                                     loader._data_queue,
@@ -159,7 +194,10 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                 self.assertTrue(False)
         except AssertionError:
             pass
-        except:
+        except Exception as e:
+            print("Exception", e)
+            import sys
+            sys.stdout.flush()
             self.assertTrue(False)
 
     def test_main(self):

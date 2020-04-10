@@ -112,20 +112,6 @@ class _DataLoaderIterBase(object):
     def next(self):
         return self.__next__()
 
-    # following method is a remind for users initialize DataLoader
-    # with __init__ but call set_xxx(...) wrongly
-    def set_sample_generator(*args, **kwargs):
-        raise Exception("DataLoader is initialize, can be used as an " \
-                        "iterater, should not call set_sample_generator")
-
-    def set_sample_list_generator(*args, **kwargs):
-        raise Exception("DataLoader is initialize, can be used as an " \
-                        "iterater, should not call set_sample_list_generator")
-
-    def set_batch_generator(*args, **kwargs):
-        raise Exception("DataLoader is initialize, can be used as an " \
-                        "iterater, should not call set_batch_generator")
-
 
 class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
     """

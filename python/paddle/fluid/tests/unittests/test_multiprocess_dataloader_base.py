@@ -28,7 +28,7 @@ from paddle.fluid.dygraph.nn import Linear
 from paddle.fluid.dygraph.base import to_variable
 
 EPOCH_NUM = 5
-BATCH_SIZE = 32
+BATCH_SIZE = 16
 IMAGE_SIZE = 784
 SAMPLE_NUM = 800
 CLASS_NUM = 10
@@ -121,23 +121,19 @@ class SimpleFCNet(fluid.dygraph.Layer):
 
 
 class TestStaticDataLoader(unittest.TestCase):
-    def run_main(self, num_workers, use_buffer_reader, places,
-                 with_data_parallel, use_shared_memory):
+    def run_main(self, num_workers, places, with_data_parallel):
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             startup_prog, main_prog, image, label, loss = simple_fc_net_static()
 
-            ps = places if use_buffer_reader else fluid.cpu_places(len(places))
             dataset = RandomDataset(SAMPLE_NUM, CLASS_NUM)
             dataloader = DataLoader(
                 dataset,
                 feed_list=[image, label],
-                places=ps,
+                places=places,
                 num_workers=num_workers,
                 batch_size=BATCH_SIZE,
-                shuffle=use_buffer_reader,
-                drop_last=True,
-                use_shared_memory=use_shared_memory)
+                drop_last=True)
             assert len(dataloader) == int(SAMPLE_NUM / BATCH_SIZE)
 
             exe = fluid.Executor(place=places[0])
@@ -161,8 +157,8 @@ class TestStaticDataLoader(unittest.TestCase):
                         label = item['label']
                         assert image.shape() == [BATCH_SIZE, IMAGE_SIZE]
                         assert label.shape() == [BATCH_SIZE, 1]
-                        assert image._place()._equals(ps[i])
-                        assert label._place()._equals(ps[i])
+                        assert image._place()._equals(places[i])
+                        assert label._place()._equals(places[i])
                     L, = exe.run(program=prog,
                                  feed=d,
                                  fetch_list=[loss],
@@ -199,29 +195,22 @@ class TestStaticDataLoader(unittest.TestCase):
         for with_data_parallel in [False] if self.__class__.__name__ \
                 == "TestDygraphDataLoader" else [True, False]:
             for p in self.prepare_places(with_data_parallel):
-                for use_buffer_reader in [False, True]:
-                    for use_shared_memory in [False, True]:
-                        results = []
-                        for num_workers in [0, 4]:
-                            print(self.__class__.__name__, p, use_buffer_reader,
-                                  num_workers, use_shared_memory)
-                            ret = self.run_main(
-                                num_workers=num_workers,
-                                use_buffer_reader=use_buffer_reader,
-                                places=p,
-                                with_data_parallel=with_data_parallel,
-                                use_shared_memory=use_shared_memory)
-                            results.append(ret)
-                        if not use_buffer_reader:
-                            diff = np.max(
-                                np.abs(results[0]['loss'] - results[1]['loss'])
-                                / np.abs(results[0]['loss']))
-                            self.assertLess(diff, 1e-2)
+                results = []
+                for num_workers in [0, 2]:
+                    print(self.__class__.__name__, p, num_workers)
+                    ret = self.run_main(
+                        num_workers=num_workers,
+                        places=p,
+                        with_data_parallel=with_data_parallel)
+                    results.append(ret)
+                diff = np.max(
+                    np.abs(results[0]['loss'] - results[1]['loss']) /
+                    np.abs(results[0]['loss']))
+                self.assertLess(diff, 1e-2)
 
 
 class TestDygraphDataLoader(TestStaticDataLoader):
-    def run_main(self, num_workers, use_buffer_reader, places,
-                 with_data_parallel, use_shared_memory):
+    def run_main(self, num_workers, places, with_data_parallel):
         fluid.default_startup_program().random_seed = 1
         fluid.default_main_program().random_seed = 1
         with fluid.dygraph.guard(places[0]):
@@ -231,12 +220,10 @@ class TestDygraphDataLoader(TestStaticDataLoader):
             dataset = RandomDataset(SAMPLE_NUM, CLASS_NUM)
             dataloader = DataLoader(
                 dataset,
-                places=places[0],
+                places=places,
                 num_workers=num_workers,
                 batch_size=BATCH_SIZE,
-                shuffle=use_buffer_reader,
-                drop_last=True,
-                use_shared_memory=use_shared_memory)
+                drop_last=True)
             assert len(dataloader) == int(SAMPLE_NUM / BATCH_SIZE)
 
             step_list = []
