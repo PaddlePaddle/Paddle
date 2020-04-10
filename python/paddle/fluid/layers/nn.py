@@ -14,14 +14,16 @@
 """
 All layers just related to the neural network.
 """
-
 from __future__ import print_function
 
-import numpy as np
-import warnings
-import six
 import os
 import inspect
+import warnings
+
+import numpy as np
+import six
+
+import paddle
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from ..framework import Variable, OpProtoHolder, in_dygraph_mode, dygraph_only, _dygraph_tracer, default_main_program
@@ -2359,6 +2361,12 @@ def adaptive_pool2d(input,
                             pool_size=[3, 3],
                             pool_type='max')
     """
+    check_variable_and_dtype(
+        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'adaptive_pool2d')
+    check_type(pool_type, 'pool_type', str, 'adaptive_pool2d')
+    check_type(pool_size, 'pool_size', (int, list, tuple), 'adaptive_pool2d')
+    check_type(require_index, 'require_index', bool, 'adaptive_pool2d')
     if pool_type not in ["max", "avg"]:
         raise ValueError(
             "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
@@ -2514,6 +2522,12 @@ def adaptive_pool3d(input,
                             pool_size=[3, 3, 3],
                             pool_type='max')
     """
+    check_variable_and_dtype(
+        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'adaptive_pool3d')
+    check_type(pool_type, 'pool_type', str, 'adaptive_pool3d')
+    check_type(pool_size, 'pool_size', (int, list, tuple), 'adaptive_pool3d')
+    check_type(require_index, 'require_index', bool, 'adaptive_pool3d')
     if pool_type not in ["max", "avg"]:
         raise ValueError(
             "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
@@ -3566,6 +3580,11 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
             x = fluid.layers.spectral_norm(weight=weight, dim=1, power_iters=2)
     """
     helper = LayerHelper('spectral_norm', **locals())
+    check_variable_and_dtype(weight, 'weight', ['float32', 'float64'],
+                             'spectral_norm')
+    check_type(dim, 'dim', int, 'spectral_norm')
+    check_type(power_iters, 'power_iters', int, 'spectral_norm')
+    check_type(eps, 'eps', float, 'spectral_norm')
     dtype = weight.dtype
 
     # create intput and parameters
@@ -4944,63 +4963,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
             y = fluid.layers.data(name='y', shape=[3, 2], dtype='float32')
             out = fluid.layers.matmul(x, y, True, True)
     """
-    attrs = {
-        'transpose_X': transpose_x,
-        'transpose_Y': transpose_y,
-        'alpha': float(alpha),
-    }
-
-    if in_dygraph_mode():
-        return core.ops.matmul(x, y, 'transpose_X', transpose_x, 'transpose_Y',
-                               transpose_y, 'alpha', float(alpha))
-
-    def __check_input(x, y):
-        var_names = {'x': x, 'y': y}
-        for name, val in var_names.items():
-            check_variable_and_dtype(
-                val, name, ['float16', 'float32', 'float64'], 'matmul')
-        x_shape = list(x.shape)
-        y_shape = list(y.shape)
-        if len(x_shape) == 1:
-            x_shape = [1] + x_shape
-        if len(y_shape) == 1:
-            y_shape = y_shape + [1]
-
-        # check the inner 2 dimensions
-        if transpose_x:
-            x_shape[-2], x_shape[-1] = x_shape[-1], x_shape[-2]
-        if transpose_y:
-            y_shape[-2], y_shape[-1] = y_shape[-1], y_shape[-2]
-        if x_shape[-1] != y_shape[-2]:
-            assert (x_shape[-1] == -1) or (y_shape[-2] == -1),                         \
-                "After performing an optional transpose, Input X's width should be "   \
-                "equal to Y's width for multiplication "                               \
-                "prerequisites. But received X's shape: %s, Y's shape: %s\n" %         \
-                (x_shape, y_shape)
-
-        if len(y_shape) > 2 and len(x_shape) > 2:
-            for i, dim_x in enumerate(x_shape[:-2]):
-                # don't check neg shape
-                if dim_x < 0 or y_shape[i] < 0:
-                    continue
-                if dim_x != y_shape[i]:
-                    raise ValueError(
-                        "When the matrix is larger than 2 dimensions, the higher "
-                        "dimensional values of the two matrices need to be equal. "
-                        "But received x_shape[%d] != y_shape[%d]. X's shape: %s, "
-                        "Y's shape: %s.\n" % (i, i, x_shape, y_shape))
-
-    __check_input(x, y)
-
-    helper = LayerHelper('matmul', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='matmul',
-        inputs={'X': x,
-                'Y': y},
-        outputs={'Out': out},
-        attrs=attrs)
-    return out
+    return paddle.matmul(x, y, transpose_x, transpose_y, alpha, name)
 
 
 def topk(input, k, name=None):
@@ -6243,9 +6206,16 @@ def lod_reset(x, y=None, target_lod=None):
             y = fluid.layers.data(name='y', shape=[10, 20], lod_level=2)
             out = fluid.layers.lod_reset(x=x, y=y)
     """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'lod_reset')
     helper = LayerHelper("lod_reset", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     if y is not None:
+        if y.lod_level > 0:
+            check_variable_and_dtype(
+                y, 'y', ['float32', 'float64', 'int32', 'int64'], 'lod_reset')
+        else:
+            check_variable_and_dtype(y, 'y', ['int32', 'int64'], 'lod_reset')
         helper.append_op(
             type="lod_reset", inputs={'X': x,
                                       'Y': y}, outputs={'Out': out})
@@ -9226,6 +9196,8 @@ def brelu(x, t_min=0.0, t_max=24.0, name=None):
                 #[[ 1.  6.]
                 #[ 1. 10.]] 
     """
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'brelu')
+
     helper = LayerHelper('brelu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -12291,6 +12263,9 @@ def grid_sampler(x, grid, name=None):
     """
     helper = LayerHelper("grid_sampler", **locals())
 
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'grid_sampler')
+    check_variable_and_dtype(grid, 'grid', ['float32', 'float64'],
+                             'grid_sampler')
     if not isinstance(x, Variable):
         return ValueError("The x should be a Variable")
 
@@ -12646,6 +12621,9 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
             out = fluid.layers.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
     """
     helper = LayerHelper("temporal_shift", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'temporal_shift')
+    check_type(seg_num, 'seg_num', int, 'temporal_shift')
+    check_type(shift_ratio, 'shift_ratio', float, 'temporal_shift')
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
