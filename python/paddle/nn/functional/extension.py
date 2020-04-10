@@ -68,6 +68,7 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
             import numpy as np
             
             diag_embed = np.random.randn(2, 3).astype('float32')
+            
             with dg.guard():
                 data1 = F.diag_embed(diag_embed)
                 data2 = F.diag_embed(diag_embed, offset=1, dim1=0, dim2=2)
