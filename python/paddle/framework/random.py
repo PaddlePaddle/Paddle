@@ -13,7 +13,6 @@
 # limitations under the License.
 
 # TODO: define random api
-
 import paddle.fluid as fluid
 
 __all__ = ['manual_seed']
