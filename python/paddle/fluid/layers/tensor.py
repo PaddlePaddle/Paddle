@@ -160,7 +160,7 @@ def cast(x, dtype):
         x(Variable): An input N-D Tensor with data type bool, float16,
             float32, float64, int32, int64, uint8.
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output:
-            bool, float15, float32, float64, int8, int32, int64, uint8.
+            bool, float16, float32, float64, int8, int32, int64, uint8.
 
     Raises:
         TypeError: The `x` must be Variable and the data type must be one of
@@ -199,12 +199,12 @@ def cast(x, dtype):
     """
     check_variable_and_dtype(
         x, 'x',
-        ['bool', 'float16', 'float32', 'float64', 'int8', 'int32', 'int64'],
+        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
         'cast')
-    check_dtype(
-        dtype, 'dtype',
-        ['bool', 'float16', 'float32', 'float64', 'int8', 'int32', 'int64'],
-        'cast')
+    check_dtype(dtype, 'dtype', [
+        'bool', 'float16', 'float32', 'float64', 'int8', 'int32', 'int64',
+        'uint8'
+    ], 'cast')
     helper = LayerHelper('cast', **locals())
     out = helper.create_variable_for_type_inference(dtype=dtype)
     helper.append_op(
