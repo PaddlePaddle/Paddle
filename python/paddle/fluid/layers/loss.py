@@ -923,6 +923,8 @@ def hsigmoid(input,
                 value=0.05), bias_attr=fluid.initializer.Constant(value=.0))
             # out = [[0.62792355], [0.62792355], [0.62792355], [0.62792355]]
     """
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'hsigmoid')
+    check_variable_and_dtype(label, 'label', ['int64'], 'hsigmoid')
 
     helper = LayerHelper('hierarchical_sigmoid', **locals())
     dtype = helper.input_dtype()
