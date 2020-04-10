@@ -17,6 +17,7 @@ from __future__ import print_function
 from .layer_function_generator import templatedoc
 from ..framework import Variable, in_dygraph_mode
 from ..layer_helper import LayerHelper
+from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
 
 __all__ = [
     'sequence_conv',
@@ -460,6 +461,10 @@ def sequence_first_step(input):
              x = fluid.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
              x_first_step = fluid.layers.sequence_first_step(input=x)
     """
+    check_variable_and_dtype(input, 'input',
+                             ['float32', 'float64', 'float32', 'int64'],
+                             'sequence_first_step')
+    check_type(y, 'y', Variable, 'sequence_expand_as')
     return sequence_pool(input=input, pool_type="first")
 
 
@@ -770,7 +775,7 @@ def sequence_expand_as(x, y, name=None):
 
     Args:
         x (Variable): The input variable which is a Tensor or LoDTensor, with the \
-            dims ``[M, K]``. The data type should be float32, float64, int8, int32 \
+            dims ``[M, K]``. The data type should be float32, float64, int32 \
             or int64.
         y (Variable): The input variable which is a LoDTensor with 1-level lod.
         name (str, optional): For detailed information, please refer \
@@ -827,6 +832,10 @@ def sequence_expand_as(x, y, name=None):
     """
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
+    check_variable_and_dtype(x, 'x',
+                             ['float32', 'float64', 'float32', 'int64'],
+                             'sequence_expand_as')
+    check_type(y, 'y', Variable, 'sequence_expand_as')
     helper = LayerHelper('sequence_expand_as', input=x, **locals())
     dtype = helper.input_dtype()
     tmp = helper.create_variable_for_type_inference(dtype)
