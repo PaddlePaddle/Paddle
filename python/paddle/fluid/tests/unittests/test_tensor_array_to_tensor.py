@@ -39,6 +39,7 @@ class TestTensorArrayToTensorError(unittest.TestCase):
              self.assertRaises(TypeError, fluid.layers.tensor_array_to_tensor, x_float32, 'all')
              x_float64 = fluid.data(name='x_float64', shape=[12, 10], dtype='float64')
              self.assertRaises(TypeError, fluid.layers.tensor_array_to_tensor, x_float64, 'all')
+	     fluid.layers.tensor_array_to_tensor(x_float32, 'all')
 
 class TestLoDTensorArrayConcat(unittest.TestCase):
     """Test case for concat mode of tensor_array_to_tensor."""
