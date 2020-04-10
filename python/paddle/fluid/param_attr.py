@@ -19,7 +19,7 @@ import warnings
 
 from .initializer import Initializer, Xavier, Constant
 from .regularizer import WeightDecayRegularizer
-from paddle.fluid.data_feeder import check_dtype
+from paddle.fluid.data_feeder import check_type
 
 __all__ = [
     'ParamAttr',
