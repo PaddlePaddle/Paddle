@@ -58,7 +58,7 @@ class Linear(fluid.dygraph.Layer):
     def forward(self, x):
         inputs = fluid.dygraph.to_variable(x)
         pre = self.fc(inputs)
-        loss = fluid.layers.mean(pre, name='avg_loss')
+        loss = fluid.layers.mean(pre)
         return pre, loss
 
 
@@ -82,7 +82,7 @@ class TestPool2D(unittest.TestCase):
         with fluid.program_guard(main_prog, startup_prog):
             dy_layer = self.dygraph_class()
             out = dy_layer(x=self.data)
-            return out[0]
+            return out[0].numpy()
 
     def test_static_output(self):
         dygraph_res = self.run_dygraph_mode()

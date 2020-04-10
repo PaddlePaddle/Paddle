@@ -80,16 +80,6 @@ if (NOT WIN32)
   endif()
 endif(NOT WIN32)
 
-if (NOT WIN32)
-    set(NGRAPH_PATH "${PADDLE_LIB_THIRD_PARTY_PATH}ngraph")
-    if(EXISTS ${NGRAPH_PATH})
-        include(GNUInstallDirs)
-        include_directories("${NGRAPH_PATH}/include")
-        link_directories("${NGRAPH_PATH}/${CMAKE_INSTALL_LIBDIR}")
-        set(NGRAPH_LIB ${NGRAPH_PATH}/${CMAKE_INSTALL_LIBDIR}/libngraph${CMAKE_SHARED_LIBRARY_SUFFIX})
-    endif()
-endif()
-
 if(WITH_MKL)
   set(MATH_LIB_PATH "${PADDLE_LIB_THIRD_PARTY_PATH}mklml")
   include_directories("${MATH_LIB_PATH}/include")
@@ -132,7 +122,7 @@ endif()
 if (NOT WIN32)
   set(EXTERNAL_LIB "-lrt -ldl -lpthread")
   set(DEPS ${DEPS}
-      ${MATH_LIB} ${MKLDNN_LIB} ${NGRAPH_LIB}
+      ${MATH_LIB} ${MKLDNN_LIB}
       glog gflags protobuf  xxhash
       ${EXTERNAL_LIB})
 else()

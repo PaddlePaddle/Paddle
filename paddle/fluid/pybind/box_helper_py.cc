@@ -81,6 +81,8 @@ void BindBoxWrapper(py::module* m) {
            py::call_guard<py::gil_scoped_release>())
       .def("flip_pass_flag", &framework::BoxWrapper::FlipPassFlag,
            py::call_guard<py::gil_scoped_release>())
+      .def("init_afs_api", &framework::BoxWrapper::InitAfsAPI,
+           py::call_guard<py::gil_scoped_release>())
       .def("finalize", &framework::BoxWrapper::Finalize,
            py::call_guard<py::gil_scoped_release>());
 }  // end BoxWrapper

@@ -146,7 +146,10 @@ packages=['paddle',
           'paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler',
           'paddle.fluid.incubate.fleet.parameter_server.pslib',
           'paddle.fluid.incubate.fleet.collective',
-          'paddle.fluid.incubate.fleet.utils']
+          'paddle.fluid.incubate.fleet.utils',
+          'paddle.nn',
+          'paddle.nn.functional',
+          'paddle.nn.layer']
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()
@@ -222,24 +225,6 @@ if '${WITH_MKLDNN}' == 'ON':
     else:
         package_data['paddle.libs']+=['mkldnn.dll']
 
-if '${WITH_NGRAPH}' == 'ON':
-    # only change rpath in Release mode,
-    # since in Debug mode, nGraph lib may be too large to be changed?
-    if '${CMAKE_BUILD_TYPE}' == 'Release':
-        if os.name != 'nt':
-            if "@APPLE@" == "1":
-                command = "install_name_tool -id \"@loader_path/\" ${NGRAPH_SHARED_LIB}"
-            else:
-                command = "patchelf --set-rpath '$ORIGIN/' ${NGRAPH_SHARED_LIB}"
-            if os.system(command) != 0:
-                raise Exception("patch ${NGRAPH_SHARED_LIB_NAME} failed, command: %s" % command)
-    shutil.copy('${NGRAPH_SHARED_LIB}', libs_path)
-    shutil.copy('${NGRAPH_CPU_LIB}', libs_path)
-    shutil.copy('${NGRAPH_TBB_LIB}', libs_path)
-    package_data['paddle.libs']+=['${NGRAPH_SHARED_LIB_NAME}',
-                                  '${NGRAPH_CPU_LIB_NAME}',
-                                  '${NGRAPH_TBB_LIB_NAME}']
-
 # copy libfuild_framework.so to libs
 if os.name != 'nt' and sys.platform != 'darwin':
     paddle_framework_lib='${FLUID_FRAMEWORK_SHARED_LIB}'
@@ -298,7 +283,7 @@ headers = (
     list(find_files('*', '${BOOST_INCLUDE_DIR}/boost')) + # boost
     list(find_files('*', '${XXHASH_INSTALL_DIR}/include')) + # xxhash
     list(find_files('*', '${PROTOBUF_INCLUDE_DIR}')) + # protobuf
-    list(find_files('*', '${DLPACK_INCLUDE_DIR}')) + # dlpack 
+    list(find_files('*', '${DLPACK_INCLUDE_DIR}')) + # dlpack
     list(find_files('*.h', '${THREADPOOL_INCLUDE_DIR}'))) # threadpool
 
 if '${WITH_MKLDNN}' == 'ON':
@@ -312,31 +297,31 @@ class InstallCommand(InstallCommandBase):
                                             'include')
         self.install_lib = self.install_platlib
         return ret
-  
+
 
 class InstallHeaders(Command):
     """Override how headers are copied.
     """
     description = 'install C/C++ header files'
-  
+
     user_options = [('install-dir=', 'd',
                      'directory to install header files to'),
                     ('force', 'f',
                      'force installation (overwrite existing files)'),
                    ]
-  
+
     boolean_options = ['force']
-  
+
     def initialize_options(self):
         self.install_dir = None
         self.force = 0
         self.outfiles = []
-  
+
     def finalize_options(self):
         self.set_undefined_options('install',
                                    ('install_headers', 'install_dir'),
                                    ('force', 'force'))
-  
+
     def mkdir_and_copy_file(self, header):
         if 'pb.h' in header:
             install_dir = re.sub('${PADDLE_BINARY_DIR}/', '', header)
@@ -359,7 +344,7 @@ class InstallHeaders(Command):
         if not os.path.exists(install_dir):
             self.mkpath(install_dir)
         return self.copy_file(header, install_dir)
-  
+
     def run(self):
         if os.name == 'nt' or sys.platform == 'darwin':
             return
@@ -370,10 +355,10 @@ class InstallHeaders(Command):
         for header in hdrs:
             (out, _) = self.mkdir_and_copy_file(header)
             self.outfiles.append(out)
-  
+
     def get_inputs(self):
         return self.distribution.headers or []
-  
+
     def get_outputs(self):
         return self.outfiles
 
@@ -412,7 +397,7 @@ with redirect_stdout():
     )
 
 # As there are a lot of files in purelib which causes many logs,
-# we don't print them on the screen, and you can open `setup.py.log` 
+# we don't print them on the screen, and you can open `setup.py.log`
 # for the full logs.
 if os.path.exists('${SETUP_LOG_FILE}'):
     os.system('grep -v "purelib" ${SETUP_LOG_FILE}')

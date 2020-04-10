@@ -24,6 +24,10 @@ namespace ir {
 class SyncBatchNormPass : public Pass {
  protected:
   void ApplyImpl(ir::Graph *graph) const override {
+#if defined(_WIN32)
+    VLOG(3) << "Not use synchronize batch norm on windows";
+    return;
+#endif
     VLOG(3) << "Use synchronize batch norm";
     for (const Node *n : graph->Nodes()) {
       if (n->IsOp() && n->Op()) {

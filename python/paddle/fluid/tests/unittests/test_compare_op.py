@@ -17,6 +17,8 @@ from __future__ import print_function
 import op_test
 import unittest
 import numpy
+import numpy as np
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
@@ -56,6 +58,27 @@ class TestCompareOpError(unittest.TestCase):
             y = fluid.create_lod_tensor(
                 numpy.array([[-1]]), [[1]], fluid.CPUPlace())
             self.assertRaises(TypeError, fluid.layers.greater_equal, x, y)
+
+
+class API_TestElementwise_Equal(unittest.TestCase):
+    def test_api(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            label = fluid.layers.assign(np.array([3, 3], dtype="int32"))
+            limit = fluid.layers.assign(np.array([3, 2], dtype="int32"))
+            out = paddle.elementwise_equal(x=label, y=limit)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            res, = exe.run(fetch_list=[out])
+        self.assertEqual((res == np.array([True, False])).all(), True)
+
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            label = fluid.layers.assign(np.array([3, 3], dtype="int32"))
+            limit = fluid.layers.assign(np.array([3, 3], dtype="int32"))
+            out = paddle.elementwise_equal(x=label, y=limit)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            res, = exe.run(fetch_list=[out])
+        self.assertEqual((res == np.array([True, True])).all(), True)
 
 
 if __name__ == '__main__':

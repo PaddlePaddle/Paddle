@@ -162,7 +162,6 @@ class CpuPassStrategy : public PassStrategy {
   explicit CpuPassStrategy(const CpuPassStrategy &other)
       : PassStrategy(other.AllPasses()) {
     use_gpu_ = other.use_gpu_;
-    use_ngraph_ = other.use_ngraph_;
     use_mkldnn_ = other.use_mkldnn_;
     use_mkldnn_quantizer_ = other.use_mkldnn_quantizer_;
   }
