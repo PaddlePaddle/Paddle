@@ -95,18 +95,14 @@ class ProgramCache(object):
     """
 
     def __init__(self):
+        self._inputs = []
+        self._outputs = []
         # Always set program to default_main_program. Because once `__call__` is called,
         # it means layers(or Ops) are added into default_main_program switched by outer
         # `with` statement.
         self._main_program = framework.default_main_program()
         self._startup_program = framework.default_startup_program()
         self._func_cache = FunctionCache()
-        self._visited_funcs = []
-        self._initialize()
-
-    def _initialize(self):
-        self._inputs = []
-        self._outputs = []
         self._feed_name_to_idx = {}
         # Stores the entry function of Net or Model.
         self._forward_func = None
@@ -124,7 +120,6 @@ class ProgramCache(object):
         # Transforms dygraph function into static function and caches it.
         static_func = self._transform_or_cache_layers(dyfunc)
 
-        self._visited_funcs.append(static_func)
         # 1. Adds `fluid.data` layers for input if needed
         if not self._inputs:
             self._add_feed_layers(args, kwargs)
@@ -139,8 +134,6 @@ class ProgramCache(object):
         if static_func == self._forward_func:
             self._in_build_process = False
 
-        self._visited_funcs.pop()
-
         return outputs
 
     def _transform_or_cache_layers(self, dyfunc):
@@ -148,18 +141,26 @@ class ProgramCache(object):
         Transforms dygraph function into static function.
         """
         static_func = self._func_cache.get_or_cache_func(dyfunc)
-        # self._forward_func is entry function of Net or Model.
-        # It can be called for multiple times, but layers from these functions
-        # call stack will be added into self._main_program only once.
-        # After that, cached program will be always returned by default.
-        if static_func == self._forward_func:
-            self._is_repeated = True
-        # Resets feed_vars and fetch_list if encounter a independent function.
-        elif self._forward_func and not self._visited_funcs:
-            self._initialize()
 
         if self._forward_func is None:
             self._forward_func = static_func
+        else:
+            # self._forward_func is entry function of Net or Model.
+            # It can be called for multiple times, but layers from these functions
+            # call stack will be added into self._main_program only once.
+            # After that, cached program will be always returned by default.
+            if static_func == self._forward_func:
+                self._is_repeated = True
+            # If a independent function is received after the build process
+            # has finished, feed layers should be reset.
+            # TODO(Aurelius84): Switch main_program without specifying program_guard.
+            elif not self._in_build_process:
+                self._inputs = []
+                self._forward_func = static_func
+                warnings.warn(
+                    "Ops and vars from {} will be added into previous main_program, "
+                    "please use fluid.program_guard if you want to build a new program.".
+                    format(dyfunc.__name__))
 
         return static_func
 
@@ -187,8 +188,7 @@ class ProgramCache(object):
         Adds `fluid.data` if the input `numpy.ndarray` is converted into `Variable`
         by `to_variable()`, it makes program to be executed dynamically.
         """
-        if not self._feed_name_to_idx:
-            self._feed_name_to_idx = self._get_name_to_idx(self._forward_func)
+        self._feed_name_to_idx = self._get_name_to_idx(self._forward_func)
         with framework.program_guard(self._main_program, self._startup_program):
             for feed_name, idx in self.feed_name_to_idx.items():
                 batch_data = args[idx]
