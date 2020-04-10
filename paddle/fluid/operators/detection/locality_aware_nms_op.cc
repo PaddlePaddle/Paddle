@@ -38,9 +38,11 @@ class LocalityAwareNMSOp : public framework::OperatorWithKernel {
     auto score_size = score_dims.size();
 
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(score_size, 3,
-                        "The rank of Input(Scores) must be 3. But received %d.",
-                        score_size);
+      PADDLE_ENFORCE_EQ(
+          score_size, 3,
+          platform::errors::InvalidArgument(
+              "The rank of Input(Scores) must be 3. But received %d.",
+              score_size));
       PADDLE_ENFORCE_EQ(
           box_dims.size(), 3,
           platform::errors::InvalidArgument(
