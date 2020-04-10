@@ -17,6 +17,8 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import six
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 from op_test import OpTest, skip_check_grad_ci
 
 
@@ -78,6 +80,20 @@ if six.PY2:
 
         def init_attr(self):
             self.attrs = {'mode': "element"}
+
+
+class TestPReluOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, fluid.layers.prelu, 1, 'all')
+            # The input dtype must be float16, float32, float64.
+            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, fluid.layers.prelu, x_int32, 'all')
+            # support the input dtype is float32
+            x_fp16 = fluid.layers.data(
+                name='x_fp16', shape=[12, 10], dtype='float32')
+            fluid.layers.prelu(x_fp16, 'all')
 
 
 if __name__ == "__main__":
