@@ -332,6 +332,7 @@ class TestLocalityAwareNMSError(unittest.TestCase):
             name='scores_int', shape=[None, 1, 81], dtype='int32')
         boxes_tmp = [1, 2]
         scores_tmp = [1, 2]
+
         # type of boxes and scores must be variable
         self.assertRaises(TypeError, fluid.layers.locality_aware_nms, boxes_tmp,
                           scores, 0.5, 400, 200)
