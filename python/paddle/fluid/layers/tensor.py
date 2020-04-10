@@ -57,6 +57,10 @@ def create_tensor(dtype, name=None, persistable=False):
           import paddle.fluid as fluid
           tensor = fluid.layers.create_tensor(dtype='float32')
     """
+    check_dtype(dtype, 'dtype', [
+        'bool', 'float16', 'float32', 'float64', 'int8', 'int32', 'int32',
+        'int64'
+    ], 'create_tensor')
     helper = LayerHelper("create_tensor", **locals())
     return helper.create_variable(
         name=helper.name, dtype=dtype, persistable=persistable)
@@ -550,8 +554,9 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
                 If ``shape`` is an Variable, it should be an 1-D Tensor .
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output tensor which can
             be float16, float32, float64, int32, int64.
-        value(float): The constant value used to initialize the Tensor to be created.
-        force_cpu(True): data should be on CPU if it's true, default value is False.
+        value(float16|float32|float64|int32|int64|Variable): The constant value used to initialize 
+            the Tensor to be created. If value is an Variable, it should be an 1-D Tensor.
+        force_cpu(bool): data should be on CPU if it's true, default value is False.
         out(Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
@@ -579,13 +584,21 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
           # attr shape is an Variable Tensor.
           shape = fluid.layers.fill_constant([1,2], "int32", 2) # shape=[2,2]
           data4 = fluid.layers.fill_constant(shape=shape, dtype='bool', value=True) # data4=[[True,True],[True,True]]
+          
+          # attr value is an Variable Tensor.
+          val = fluid.layers.fill_constant([1], "float32", 2.0) # val=[2.0]
+          data5 = fluid.layers.fill_constant(shape=[2,1], value=val, dtype='float32') #data5=[[2.0],[2.0]]
     """
-    attrs = {'value': float(value), 'force_cpu': force_cpu}
-
-    if convert_dtype(dtype) in ['int64', 'int32']:
-        attrs['str_value'] = str(int(value))
+    inputs = {}
+    attrs = {'force_cpu': force_cpu}
+    if isinstance(value, Variable):
+        inputs['ValueTensor'] = value
     else:
-        attrs['str_value'] = str(float(value))
+        attrs['value'] = float(value)
+        if convert_dtype(dtype) in ['int64', 'int32']:
+            attrs['str_value'] = str(int(value))
+        else:
+            attrs['str_value'] = str(float(value))
 
     if in_dygraph_mode():
         if isinstance(shape, (list, tuple)):
@@ -596,6 +609,13 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
             shape = list(shape.numpy().astype(int))
         if out is None:
             out = _varbase_creator(dtype=dtype)
+
+        if isinstance(value, Variable):
+            if convert_dtype(dtype) in ['int64', 'int32']:
+                attrs['str_value'] = str(int(value.numpy()))
+            else:
+                attrs['str_value'] = str(float(value.numpy()))
+
         core.ops.fill_constant(out, 'value',
                                float(value), 'force_cpu', force_cpu, 'dtype',
                                out.dtype, 'str_value', attrs['str_value'],
@@ -608,55 +628,12 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
                 'fill_constant')
     check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
-    inputs = {}
-    attrs = {'value': float(value), 'force_cpu': force_cpu}
-
-    if convert_dtype(dtype) in ['int64', 'int32']:
-        attrs['str_value'] = str(int(value))
-    else:
-        attrs['str_value'] = str(float(value))
-
-    def _get_attr_shape(list_shape):
-        attr_shape = []
-        for idx, dim in enumerate(list_shape):
-            if isinstance(dim, Variable):
-                attr_shape.append(-1)
-            else:
-                attr_shape.append(dim)
-        return attr_shape
-
-    def _get_shape_tensor(list_shape):
-        new_shape_tensor = []
-        for idx, dim in enumerate(list_shape):
-            if isinstance(dim, Variable):
-                dim.stop_gradient = True
-                check_dtype(
-                    dim.dtype, 'shape[' + str(idx) + ']', ['int32', 'int64'],
-                    'fill_constant',
-                    '(When type of shape in fill_constant is list or tuple.)')
-                if convert_dtype(dim.dtype) == 'int64':
-                    dim = cast(x=dim, dtype='int32')
-                new_shape_tensor.append(dim)
-            else:
-                temp_out = helper.create_variable_for_type_inference('int32')
-                fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
-                new_shape_tensor.append(temp_out)
-        return new_shape_tensor
-
-    if isinstance(shape, Variable):
-        shape.stop_gradient = True
-        check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'fill_constant',
-                    '(When type of shape in fill_constant is Variable.)')
-        if (convert_dtype(shape.dtype) == 'int64'):
-            shape = cast(shape, 'int32')
-        inputs["ShapeTensor"] = shape
-    elif isinstance(shape, (list, tuple)):
-        assert len(shape) > 0, (
-            "The size of 'shape' in fill_constant can't be zero, "
-            "but received %s." % len(shape))
-        attrs["shape"] = _get_attr_shape(shape)
-        if utils._contain_var(shape):
-            inputs['ShapeTensorList'] = _get_shape_tensor(shape)
+    inputs = utils._get_shape_tensor_inputs(
+        inputs=inputs,
+        helper=helper,
+        attrs=attrs,
+        shape=shape,
+        op_type='fill_constant')
 
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -1181,7 +1158,7 @@ def isfinite(x):
             out = fluid.layers.isfinite(var)
     """
     helper = LayerHelper("isfinite", **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    out = helper.create_variable_for_type_inference(dtype='bool')
     helper.append_op(type="isfinite", inputs={"X": x}, outputs={"Out": out})
     return out
 

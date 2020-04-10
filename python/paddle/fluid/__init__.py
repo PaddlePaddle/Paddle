@@ -183,9 +183,6 @@ def __bootstrap__():
     if core.is_compiled_with_mkldnn():
         read_env_flags.append('use_mkldnn')
 
-    if core.is_compiled_with_ngraph():
-        read_env_flags.append('use_ngraph')
-
     if core.is_compiled_with_dist():
         #env for rpc
         read_env_flags.append('rpc_deadline')
@@ -214,8 +211,7 @@ def __bootstrap__():
             'cudnn_batchnorm_spatial_persistent', 'gpu_allocator_retry_time',
             'local_exe_sub_scope_limit', 'gpu_memory_limit_mb'
         ]
-    core.init_gflags([sys.argv[0]] +
-                     ["--tryfromenv=" + ",".join(read_env_flags)])
+    core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])
     # don't init_p2p when in unittest to save time.
     core.init_devices(not in_test)
