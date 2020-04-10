@@ -1011,7 +1011,7 @@ class TestNNSigmoidAPI(unittest.TestCase):
         self.init_data()
 
     def init_data(self):
-        self.x_shape = [10, 12]
+        self.x_shape = [10, 15]
         self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
         self.y = self.ref_forward(self.x)
 
@@ -1054,7 +1054,7 @@ class TestNNFunctionalSigmoidAPI(unittest.TestCase):
         self.init_data()
 
     def init_data(self):
-        self.x_shape = [10, 12]
+        self.x_shape = [10, 15]
         self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
         self.y = self.ref_forward(self.x)
 
