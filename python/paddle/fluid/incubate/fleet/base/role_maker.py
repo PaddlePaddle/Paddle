@@ -664,8 +664,8 @@ class GeneralRoleMaker(RoleMakerBase):
                 gloo.set_http_store(self._http_ip_port[0],
                                     int(self._http_ip_port[1]), "all")
             else:
-                gloo.set_hdfs_store(self._hdfs_path + "/all",
-                                    self._hdfs_name, self._hdfs_ugi)
+                gloo.set_hdfs_store(self._hdfs_path + "/all", self._hdfs_name,
+                                    self._hdfs_ugi)
             gloo.init()
             self._all_comm = gloo
             self._trainers_num = trainers_num
@@ -937,7 +937,8 @@ class GeneralRoleMaker(RoleMakerBase):
         http_server = KVServer(int(self._http_ip_port[1]), size_d)
         http_server.start()
         wait_seconds = 5
-        while http_server_d.get("running", False) and not http_server.shoud_stop():
+        while http_server_d.get("running",
+                                False) and not http_server.shoud_stop():
             time.sleep(wait_seconds)
         http_server.stop()
 
