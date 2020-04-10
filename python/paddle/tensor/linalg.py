@@ -13,10 +13,6 @@
 # limitations under the License.
 from paddle.common_ops_import import *
 
-from __future__ import print_function
-
-from ..fluid.layer_helper import LayerHelper
-
 # TODO: define functions of linear algebra   
 __all__ = [
     'matmul',
@@ -206,10 +202,17 @@ def cross(input, other, dim=None):
             out = paddle.cross(x, y, dim=2)
     """
     helper = LayerHelper("cross", **locals())
+    if in_dygraph_mode():
+        if dim:
+            return core.ops.cross(input, other, 'dim', dim)
+        else:
+            return core.ops.cross(input, other)
+
     out = helper.create_variable_for_type_inference(input.dtype)
     attrs = dict()
     if dim:
         attrs['dim'] = dim
+
     helper.append_op(
         type='cross',
         inputs={'X': input,

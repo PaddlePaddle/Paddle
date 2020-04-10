@@ -26,12 +26,6 @@ from ..fluid.param_attr import ParamAttr
 from ..fluid import unique_name
 from ..fluid import core, layers
 
-from __future__ import print_function
-
-from ..fluid.layer_helper import LayerHelper
-from ..fluid.layers import cast, where, slice
-from paddle.common_ops_import import *
-
 # TODO: define searching & indexing functions of a tensor  
 __all__ = [
     'argmax',
@@ -183,7 +177,17 @@ def index_select(input, index, dim=0):
             out = paddle.index_select(x, index, dim=1)
     """
     helper = LayerHelper("index_select", **locals())
+    if in_dygraph_mode():
+        return core.ops.index_select(input, index, 'dim', dim)
+
+    check_variable_and_dtype(input, 'x',
+                             ['float32', 'float64', 'int32', 'int64'],
+                             'paddle.tensor.search.index_sample')
+    check_variable_and_dtype(index, 'index', ['int32', 'int64'],
+                             'paddle.tensor.search.index_sample')
+
     out = helper.create_variable_for_type_inference(input.dtype)
+
     helper.append_op(
         type='index_select',
         inputs={'X': input,
@@ -238,22 +242,22 @@ def nonzero(input, as_tuple=False):
             x = fluid.data(name="data", shape=[None, 32, 32], dtype="float32")
             out = paddle.nonzero(x)
     """
-    cast_inputs = cast(input, 'bool')
-    outs = where(cast_inputs)
-    if as_tuple:
-        list_out = []
-        shape = input.shape
-        rank = len(shape)
-        if rank == 1:
-            list_out.append(outs)
-        else:
-            for i in range(rank):
-                list_out.append(
-                    slice(
-                        outs, axes=[rank - 1], starts=[i], ends=[i + 1]))
-        return tuple(list_out)
-    else:
+    list_out = []
+    shape = input.shape
+    rank = len(shape)
+
+    cast_inputs = layers.cast(input, 'bool')
+    outs = layers.where(cast_inputs)
+    if not as_tuple:
         return outs
+    elif rank == 1:
+        return tuple([outs])
+    else:
+        for i in range(rank):
+            list_out.append(
+                layers.slice(
+                    outs, axes=[rank - 1], starts=[i], ends=[i + 1]))
+        return tuple(list_out)
 
 
 def sort(input, axis=-1, descending=False, out=None, name=None):

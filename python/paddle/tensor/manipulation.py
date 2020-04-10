@@ -146,13 +146,25 @@ def roll(input, shifts, dims=None):
             out = paddle.roll(x, shifts=[1], dims=[0])
     """
     helper = LayerHelper("roll", **locals())
-    out = helper.create_variable_for_type_inference(input.dtype)
-
     origin_shape = input.shape
     if type(shifts) == int:
         shifts = [shifts]
     if type(dims) == int:
         dims = [dims]
+
+    if dims:
+        check_type(dims, 'dims', (list, tuple), 'roll')
+    check_type(shifts, 'shifts', (list, tuple), 'roll')
+
+    if in_dygraph_mode():
+        if dims is None:
+            input = core.ops.reshape(input, 'shape', [-1, 1])
+            dims = [0]
+        out = core.ops.roll(input, 'dims', dims, 'shifts', shifts)
+        return core.ops.reshape(out, 'shape', origin_shape)
+
+    out = helper.create_variable_for_type_inference(input.dtype)
+
     if dims is None:
         input = reshape(input, shape=[-1, 1])
         dims = [0]
