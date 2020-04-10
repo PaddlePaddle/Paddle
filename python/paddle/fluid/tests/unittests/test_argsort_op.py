@@ -357,9 +357,6 @@ class TestArgsortErrorOnCPU(unittest.TestCase):
 
     def test_error(self):
         self.init_place()
-        in1 = np.array([[[5, 8, 9, 5], [0, 0, 1, 7], [6, 9, 2, 4]],
-                        [[5, 2, 4, 2], [4, 7, 7, 9],
-                         [1, 7, 0, 6]]]).astype(np.float32)
         with fluid.program_guard(fluid.Program()):
 
             def test_input_type():
@@ -369,22 +366,10 @@ class TestArgsortErrorOnCPU(unittest.TestCase):
             self.assertRaises(TypeError, test_input_type)
 
             def test_axis_type():
-                x = fluid.dygraph.to_variable(in1)
-                output = fluid.layers.argsort(input=x, axis='axis')
+                x = fluid.layers.data(name='x', shape=[10, 10], dtype='float32')
+                output = fluid.layers.argsort(input=x, axis=1.0)
 
             self.assertRaises(TypeError, test_axis_type)
-
-            def test_descending_type():
-                x = fluid.dygraph.to_variable(in1)
-                output = fluid.layers.argsort(input=x, descending='descending')
-
-            self.assertRaises(TypeError, test_descending_type)
-
-            def test_name_type():
-                x = fluid.dygraph.to_variable(in1)
-                output = fluid.layers.argsort(input=x, name=[1, 2])
-
-            self.assertRaises(TypeError, test_name_type)
 
 
 class TestArgsortErrorOnGPU(TestArgsortErrorOnCPU):

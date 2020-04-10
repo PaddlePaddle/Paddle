@@ -201,7 +201,6 @@ def cast(x, dtype):
         x, 'x',
         ['bool', 'float16', 'float32', 'float64', 'int8', 'int32', 'int64'],
         'cast')
-    check_type(dtype, 'dtype', (str, np.dtype, core.VarDesc.VarType), 'cast')
     check_dtype(
         dtype, 'dtype',
         ['bool', 'float16', 'float32', 'float64', 'int8', 'int32', 'int64'],
@@ -741,7 +740,7 @@ def argmin(x, axis=0):
 
     Raises:
         TypeError: The `x` must be Variable and the data type must be one of float32,
-                   float64, int8, int16, int32, int64.
+                   float64, uint8, int16, int32, int64.
         TypeError: The `axis` must be None or Variable with int type.
 
     Returns:
@@ -780,10 +779,10 @@ def argmin(x, axis=0):
                 #  [1 0 2]]
     """
     check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int8', 'int16', 'int32', 'int64'],
+        x, 'x', ['float32', 'float64', 'uint8', 'int16', 'int32', 'int64'],
         'argmin')
     if axis != 0:
-        check_dtype(axis, 'axis', ['int64'], 'argmin')
+        check_dtype(str(numpy.array([axis]).dtype), 'axis', ['int64'], 'argmin')
     helper = LayerHelper("arg_min", **locals())
     out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
     helper.append_op(
@@ -811,7 +810,7 @@ def argmax(x, axis=0):
 
     Raises:
         TypeError: The `x` must be Variable and the data type must be one of float32,
-                   float64, int8, int16, int32, int64.
+                   float64, uint8, int16, int32, int64.
         TypeError: The `axis` must be None or Variable with int type.
 
     Returns:
@@ -850,10 +849,10 @@ def argmax(x, axis=0):
                 #  [0 3 1]]
     """
     check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int8', 'int16', 'int32', 'int64'],
+        x, 'x', ['float32', 'float64', 'uint8', 'int16', 'int32', 'int64'],
         'argmax')
     if axis != 0:
-        check_dtype(axis, 'axis', ['int64'], 'argmax')
+        check_dtype(str(numpy.array([axis]).dtype), 'axis', ['int64'], 'argmax')
     helper = LayerHelper("arg_max", **locals())
     out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
     helper.append_op(
@@ -886,7 +885,7 @@ def argsort(input, axis=-1, descending=False, name=None):
 
     Raises:
         TypeError: The `input` must be Variable and the data type must be one of
-                   float32, float64.
+                   float32, float64, int16, int32, int64, uint8.
         TypeError: The `axis` must be None or Variable with int type.
         TypeError: The `descending` must be None or bool type.
         TypeError: The `name` must be None or str type.
@@ -942,12 +941,14 @@ def argsort(input, axis=-1, descending=False, name=None):
                 #   [4. 7. 4. 6.]
                 #   [5. 7. 7. 9.]]]
     """
-    check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'argsort')
+    check_variable_and_dtype(
+        input, 'input',
+        ['float32', 'float64', 'int16', 'int32', 'int64', 'uint8'], 'argsort')
     if axis != -1:
-        check_dtype(axis, 'axis', ['int64'], 'argsort')
-    check_dtype(descending, 'descending', ['bool'], 'argsort')
-    if name is not None:
-        check_type(name, 'name', (str), 'argsort')
+        check_dtype(
+            str(numpy.array([axis]).dtype), 'axis', ['int64'], 'argsort')
+    check_dtype(
+        str(numpy.array([descending]).dtype), 'descending', ['bool'], 'argsort')
     helper = LayerHelper("argsort", **locals())
     out = helper.create_variable_for_type_inference(
         dtype=input.dtype, stop_gradient=True)
@@ -1376,7 +1377,6 @@ def diag(diagonal):
           # diagonal.shape=(3,) data.shape=(3, 3)
 
     """
-    check_type(diagonal, 'diagonal', (Variable, numpy.ndarray), 'diag')
     check_dtype(diagonal, 'diagonal', ['float32', 'float64', 'int32', 'int64'],
                 'diag')
     helper = LayerHelper("diag", **locals())

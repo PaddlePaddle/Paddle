@@ -78,24 +78,8 @@ class TestCastOpError(unittest.TestCase):
                 np.array([[-1]]), [[1]], fluid.CPUPlace())
             self.assertRaises(TypeError, fluid.layers.cast, x1, 'int32')
             # The input dtype of cast_op must be bool, float16, float32, float64, int32, int64, uint8.
-            x2 = fluid.layers.data(name='x2', shape=[4], dtype='int8')
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype='int16')
             self.assertRaises(TypeError, fluid.layers.cast, x2, 'int32')
-            x3 = fluid.layers.data(name='x3', shape=[4], dtype='int16')
-            self.assertRaises(TypeError, fluid.layers.cast, x3, 'int32')
-
-
-class TestCastOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            # The input type of cast_op must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace())
-            self.assertRaises(TypeError, fluid.layers.cast, x1, 'int32')
-            # The input dtype of cast_op must be bool, float16, float32, float64, int32, int64, uint8.
-            x2 = fluid.layers.data(name='x2', shape=[4], dtype='int8')
-            self.assertRaises(TypeError, fluid.layers.cast, x2, 'int32')
-            x3 = fluid.layers.data(name='x3', shape=[4], dtype='int16')
-            self.assertRaises(TypeError, fluid.layers.cast, x3, 'int32')
 
             def test_dtype_type():
                 x4 = fluid.layers.data(name='x3', shape=[4], dtype='int32')

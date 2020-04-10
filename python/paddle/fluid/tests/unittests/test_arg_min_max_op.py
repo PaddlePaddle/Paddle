@@ -289,8 +289,6 @@ class APT_ArgMaxTest(unittest.TestCase):
 class TestArgMinMaxOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            in1 = np.array([[[5, 8, 9, 5], [0, 0, 1, 7], [6, 9, 2, 4]],
-                            [[5, 2, 4, 2], [4, 7, 7, 9], [1, 7, 0, 6]]])
 
             def test_argmax_x_type():
                 x1 = [1, 2, 3]
@@ -305,14 +303,16 @@ class TestArgMinMaxOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_argmin_x_type)
 
             def test_argmax_axis_type():
-                x3 = fluid.dygraph.to_variable(in1)
-                output = fluid.layers.argmax(x=x3, axis=[1, 2])
+                x3 = fluid.layers.data(
+                    name="x3", shape=[10, 10], dtype="float32")
+                output = fluid.layers.argmax(x=x3, axis=1.0)
 
             self.assertRaises(TypeError, test_argmax_axis_type)
 
             def test_argmin_axis_type():
-                x4 = fluid.dygraph.to_variable(in1)
-                output = fluid.layers.argmin(x=x4, axis=[1, 2])
+                x4 = fluid.layers.data(
+                    name="x4", shape=[10, 10], dtype="float32")
+                output = fluid.layers.argmin(x=x4, axis=1.0)
 
             self.assertRaises(TypeError, test_argmin_axis_type)
 
