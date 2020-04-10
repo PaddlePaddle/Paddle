@@ -32,8 +32,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
-DECLARE_bool(use_ngraph);
-
 DECLARE_double(eager_delete_tensor_gb);
 
 #ifdef WITH_GPERFTOOLS
@@ -286,13 +284,6 @@ bool ParallelExecutorPrivate::AllowPartialFeed() const {
 }
 
 ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
-  if (FLAGS_use_ngraph) {
-    LOG_FIRST_N(WARNING, 1)
-        << "FLAGS_use_ngraph=True, memory optimization strategy is "
-           "disabled in ParallelExecutor";
-    return graph;
-  }
-
   /**
    * NOTE(zengjinle): If BuildStrategy.memory_optimize = None in Python,
    * set BuildStrategy.memory_optimize according to whether gc is enabled.

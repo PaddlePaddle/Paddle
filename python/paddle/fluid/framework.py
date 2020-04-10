@@ -3838,8 +3838,15 @@ class Program(object):
                 prog_string_with_detail = prog.to_string(throw_on_error=True, with_details=True)
                 print("program string with detail: {}".format(prog_string_with_detail))
         """
-        assert isinstance(throw_on_error, bool) and isinstance(with_details,
-                                                               bool)
+        assert isinstance(
+            throw_on_error, bool
+        ), "The type of throw_on_error parameter is wrong, expected bool, but received {}.".format(
+            type(throw_on_error))
+        assert isinstance(
+            with_details, bool
+        ), "The type of with_details parameter is wrong, expected bool, but received {}.".format(
+            type(with_details))
+
         if with_details:
             res_str = ""
             for block in self.blocks:
@@ -4105,8 +4112,9 @@ class Program(object):
 
         for var in feeded_var_names:
             if not isinstance(var, six.string_types):
-                raise ValueError("All feeded_var_names of prune() can only be "
-                                 "str.")
+                raise ValueError(
+                    "All feeded_var_names of Program._prune_with_input() can only be "
+                    "str, but received %s." % type(var))
 
         targets_idx = []
         for t in targets:
@@ -4116,8 +4124,9 @@ class Program(object):
                 elif isinstance(t, six.string_types):
                     name = str(t)
                 else:
-                    raise ValueError("All targets of prune() can only be "
-                                     "Variable or Operator.")
+                    raise ValueError(
+                        "All targets of Program._prune_with_input() can only be "
+                        "Variable or Operator, but received %s." % type(t))
                 # After transpiler processing, the op that output this
                 # variable maybe has been changed, so t.op is not reliable
                 # and we need to find the current op that generate this
@@ -4327,7 +4336,9 @@ class Program(object):
     @random_seed.setter
     def random_seed(self, seed):
         if not isinstance(seed, int):
-            raise ValueError("Seed must be a integer.")
+            raise ValueError(
+                "Program.random_seed's input seed must be an integer, but received %s."
+                % type(seed))
         self._seed = seed
 
     def __repr__(self):
@@ -4460,8 +4471,9 @@ class Program(object):
             None
         """
         if not isinstance(other, Program):
-            raise TypeError("_copy_param_info_from should be invoked with "
-                            "Program")
+            raise TypeError(
+                "Function Program._copy_param_info_from() needs to pass in a source Program, but received %s"
+                % type(other))
 
         self.global_block()._copy_param_info_from(other.global_block())
 
@@ -4476,8 +4488,9 @@ class Program(object):
             None
         """
         if not isinstance(other, Program):
-            raise TypeError("_copy_dist_param_info_from should be invoked with "
-                            "Program")
+            raise TypeError(
+                "Function Program._copy_param_info_from() needs to pass in a source Program, but received %s"
+                % type(other))
         self._is_distributed = other._is_distributed
         self._is_chief = other._is_chief
         self._parameters_on_pservers = other._parameters_on_pservers
@@ -4503,8 +4516,9 @@ class Program(object):
             None
         """
         if not isinstance(other, Program):
-            raise TypeError("_copy_data_info_from should be invoked with "
-                            "Program")
+            raise TypeError(
+                "Function Program._copy_param_info_from() needs to pass in a source Program, but received %s"
+                % type(other))
 
         if not pruned_origin_block_id_map:
             pruned_origin_block_id_map = {
@@ -4973,12 +4987,12 @@ def program_guard(main_program, startup_program=None):
              data = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
     
     """
-    if not isinstance(main_program, Program):
-        raise TypeError("main_program should be Program")
+    from .data_feeder import check_type
+    check_type(main_program, 'main_program', Program, 'fluid.program_guard')
     main_program = switch_main_program(main_program)
     if startup_program is not None:
-        if not isinstance(startup_program, Program):
-            raise TypeError("startup_program should be Program")
+        check_type(startup_program, 'startup_program', Program,
+                   'fluid.program_guard')
         startup_program = switch_startup_program(startup_program)
     yield
     switch_main_program(main_program)
