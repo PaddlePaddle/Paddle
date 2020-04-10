@@ -964,7 +964,7 @@ def clamp(input, min=None, max=None, output=None, name=None):
         .. code-block:: python
 
             import paddle
-            import paddle as fluid
+            import paddle.fluid as fluid
             import numpy as np
 
             in1 = np.array([[1.2,3.5],
