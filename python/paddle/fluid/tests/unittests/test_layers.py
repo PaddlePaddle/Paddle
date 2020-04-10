@@ -3464,6 +3464,28 @@ class TestBook(LayerTest):
                 x=input, label=label, fg_num=fg_num, gamma=2., alpha=0.25)
             return (out)
 
+    def test_addmm(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            input = layers.data(
+                name='input_data',
+                shape=[3, 3],
+                append_batch_size=False,
+                dtype='float32')
+            x = layers.data(
+                name='x',
+                shape=[3, 2],
+                append_batch_size=False,
+                dtype='float32')
+            y = layers.data(
+                name='y',
+                shape=[2, 3],
+                append_batch_size=False,
+                dtype='float32')
+
+            out = paddle.addmm(input=input, x=x, y=y)
+            return (out)
+
     def test_retinanet_detection_output(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
