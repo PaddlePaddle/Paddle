@@ -57,7 +57,7 @@ from .tensor.creation import zeros_like  #DEFINE_ALIAS
 # from .tensor.creation import eye   #DEFINE_ALIAS
 from .tensor.creation import full  #DEFINE_ALIAS
 # from .tensor.creation import linspace   #DEFINE_ALIAS
-# from .tensor.creation import full_like   #DEFINE_ALIAS
+from .tensor.creation import full_like  #DEFINE_ALIAS
 # from .tensor.creation import triu   #DEFINE_ALIAS
 # from .tensor.creation import tril   #DEFINE_ALIAS
 # from .tensor.creation import meshgrid   #DEFINE_ALIAS
@@ -91,7 +91,7 @@ from .tensor.logic import elementwise_equal  #DEFINE_ALIAS
 # from .tensor.random import randn   #DEFINE_ALIAS
 from .tensor.random import randperm
 # from .tensor.random import rand   #DEFINE_ALIAS
-# from .tensor.random import randint   #DEFINE_ALIAS
+from .tensor.random import randint  #DEFINE_ALIAS
 # from .tensor.math import abs   #DEFINE_ALIAS
 # from .tensor.math import acos   #DEFINE_ALIAS
 # from .tensor.math import asin   #DEFINE_ALIAS
