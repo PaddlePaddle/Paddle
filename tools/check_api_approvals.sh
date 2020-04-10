@@ -104,7 +104,7 @@ for API_FILE in ${API_FILES[*]}; do
           check_approval 1 6836917 47554610
       elif [ "${API_FILE}" == "python/requirements.txt" ];then
           echo_line="You must have one RD (kolinwei (Recommend), JepsonWong or luotao1) approval for python/requirements.txt, which manages the third-party python package.\n"
-          check_approval 1 6836917 16509038 22165420
+          check_approval 1 22165420 16509038 6836917
       elif [ "${API_FILE}" == "paddle/fluid/operators/distributed/send_recv.proto.in" ];then
           echo_line="You must have one RD (gongweibao or seiriosPlus) approval for the paddle/fluid/operators/distributed/send_recv.proto.in, which manages the environment variables.\n"
           check_approval 1 10721757 5442383
