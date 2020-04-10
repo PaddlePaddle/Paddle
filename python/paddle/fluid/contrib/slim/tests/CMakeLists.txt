@@ -231,7 +231,7 @@ if(LINUX AND WITH_MKLDNN)
 	
 	### QATv2 for NLP
 
-	set(QAT2_NLP_QUANTIZED_OPS "fc,reshape2,transpose2")
+	set(QAT2_NLP_QUANTIZED_OPS "fc,reshape2,transpose2,matmul")
 
 	set(NLP_DATA_ARCHIVE "Ernie_dataset.tar.gz")
 	set(NLP_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie_dataset")

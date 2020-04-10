@@ -24,6 +24,7 @@ from collections import defaultdict
 
 from paddle.fluid import framework
 from paddle.fluid import core, executor
+from paddle.fluid.dygraph import guard, to_variable
 from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import convert_to_static
 from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import DygraphToStaticAst
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
@@ -285,6 +286,8 @@ class ProgramTranslator(object):
                                                                 *args, **kwargs)
         if not program_cache.in_build_process:
             outputs = self.run(*args, **kwargs)
+            with guard():
+                outputs = [to_variable(x) for x in outputs]
         return outputs
 
     def get_func(self, dygraph_func):
