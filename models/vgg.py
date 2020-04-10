@@ -23,12 +23,8 @@ from .download import get_weights_path
 __all__ = [
     'VGG',
     'vgg11',
-    'vgg11_bn',
     'vgg13',
-    'vgg13_bn',
     'vgg16',
-    'vgg16_bn',
-    'vgg19_bn',
     'vgg19',
 ]
 
@@ -39,11 +35,11 @@ model_urls = {
 
 
 class Classifier(fluid.dygraph.Layer):
-    def __init__(self, num_classes):
+    def __init__(self, num_classes, classifier_activation='softmax'):
         super(Classifier, self).__init__()
         self.linear1 = Linear(512 * 7 * 7, 4096)
         self.linear2 = Linear(4096, 4096)
-        self.linear3 = Linear(4096, num_classes, act='softmax')
+        self.linear3 = Linear(4096, num_classes, act=classifier_activation)
 
     def forward(self, x):
         x = self.linear1(x)
@@ -62,20 +58,30 @@ class VGG(Model):
 
     Args:
         features (fluid.dygraph.Layer): vgg features create by function make_layers.
-        num_classes (int): output dim of last fc layer. Default: 1000.
+        num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
+                            will not be defined. Default: 1000.
+        classifier_activation (str): activation for the last fc layer. Default: 'softmax'.
     """
 
-    def __init__(self, features, num_classes=1000):
+    def __init__(self,
+                 features,
+                 num_classes=1000,
+                 classifier_activation='softmax'):
         super(VGG, self).__init__()
         self.features = features
-        classifier = Classifier(num_classes)
-        self.classifier = self.add_sublayer("classifier",
-                                            Sequential(classifier))
+        self.num_classes = num_classes
+
+        if num_classes > 0:
+            classifier = Classifier(num_classes, classifier_activation)
+            self.classifier = self.add_sublayer("classifier",
+                                                Sequential(classifier))
 
     def forward(self, x):
         x = self.features(x)
-        x = fluid.layers.flatten(x, 1)
-        x = self.classifier(x)
+
+        if self.num_classes > 0:
+            x = fluid.layers.flatten(x, 1)
+            x = self.classifier(x)
         return x
 
 
@@ -114,7 +120,10 @@ cfgs = {
 
 
 def _vgg(arch, cfg, batch_norm, pretrained, **kwargs):
-    model = VGG(make_layers(cfgs[cfg], batch_norm=batch_norm), **kwargs)
+    model = VGG(make_layers(
+        cfgs[cfg], batch_norm=batch_norm),
+                num_classes=1000,
+                **kwargs)
 
     if pretrained:
         assert arch in model_urls, "{} model do not have a pretrained model now, you should set pretrained=False".format(
@@ -128,73 +137,53 @@ def _vgg(arch, cfg, batch_norm, pretrained, **kwargs):
     return model
 
 
-def vgg11(pretrained=False, **kwargs):
+def vgg11(pretrained=False, batch_norm=False):
     """VGG 11-layer model
     
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
+        batch_norm (bool): If True, returns a model with batch_norm layer. Default: False.
     """
-    return _vgg('vgg11', 'A', False, pretrained, **kwargs)
+    model_name = 'vgg11'
+    if batch_norm:
+        model_name += ('_bn')
+    return _vgg(model_name, 'A', batch_norm, pretrained)
 
 
-def vgg11_bn(pretrained=False, **kwargs):
-    """VGG 11-layer model with batch normalization
-    
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    return _vgg('vgg11_bn', 'A', True, pretrained, **kwargs)
-
-
-def vgg13(pretrained=False, **kwargs):
+def vgg13(pretrained=False, batch_norm=False):
     """VGG 13-layer model
     
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
+        batch_norm (bool): If True, returns a model with batch_norm layer. Default: False.
     """
-    return _vgg('vgg13', 'B', False, pretrained, **kwargs)
+    model_name = 'vgg13'
+    if batch_norm:
+        model_name += ('_bn')
+    return _vgg(model_name, 'B', batch_norm, pretrained)
 
 
-def vgg13_bn(pretrained=False, **kwargs):
-    """VGG 13-layer model with batch normalization
-    
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    return _vgg('vgg13_bn', 'B', True, pretrained, **kwargs)
-
-
-def vgg16(pretrained=False, **kwargs):
+def vgg16(pretrained=False, batch_norm=False):
     """VGG 16-layer model 
     
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
+        batch_norm (bool): If True, returns a model with batch_norm layer. Default: False.
     """
-    return _vgg('vgg16', 'D', False, pretrained, **kwargs)
+    model_name = 'vgg16'
+    if batch_norm:
+        model_name += ('_bn')
+    return _vgg(model_name, 'D', batch_norm, pretrained)
 
 
-def vgg16_bn(pretrained=False, **kwargs):
-    """VGG 16-layer with batch normalization
-    
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    return _vgg('vgg16_bn', 'D', True, pretrained, **kwargs)
-
-
-def vgg19(pretrained=False, **kwargs):
+def vgg19(pretrained=False, batch_norm=False):
     """VGG 19-layer model 
     
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
+        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
+        batch_norm (bool): If True, returns a model with batch_norm layer. Default: False.
     """
-    return _vgg('vgg19', 'E', False, pretrained, **kwargs)
-
-
-def vgg19_bn(pretrained=False, **kwargs):
-    """VGG 19-layer model with batch normalization
-    
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    return _vgg('vgg19_bn', 'E', True, pretrained, **kwargs)
+    model_name = 'vgg19'
+    if batch_norm:
+        model_name += ('_bn')
+    return _vgg(model_name, 'E', batch_norm, pretrained)

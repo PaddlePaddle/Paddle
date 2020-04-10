@@ -15,12 +15,12 @@
 from __future__ import division
 from __future__ import print_function
 
+# when test, you should add hapi root path to the PYTHONPATH,
+# export PYTHONPATH=PATH_TO_HAPI:$PYTHONPATH
+
 import unittest
 
 import os
-
-import sys
-sys.path.append('../')
 
 import numpy as np
 import contextlib

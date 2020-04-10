@@ -111,13 +111,22 @@ class MobileNetV1(Model):
 
     Args:
         scale (float): scale of channels in each layer. Default: 1.0.
-        class_dim (int): output dim of last fc layer. Default: 1000.
+        num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
+                            will not be defined. Default: 1000.
+        with_pool (bool): use pool before the last fc layer or not. Default: True.
+        classifier_activation (str): activation for the last fc layer. Default: 'softmax'.
     """
 
-    def __init__(self, scale=1.0, class_dim=1000):
+    def __init__(self,
+                 scale=1.0,
+                 num_classes=1000,
+                 with_pool=True,
+                 classifier_activation='softmax'):
         super(MobileNetV1, self).__init__()
         self.scale = scale
         self.dwsl = []
+        self.num_classes = num_classes
+        self.with_pool = with_pool
 
         self.conv1 = ConvBNLayer(
             num_channels=3,
@@ -227,28 +236,34 @@ class MobileNetV1(Model):
             name="conv6")
         self.dwsl.append(dws6)
 
-        self.pool2d_avg = Pool2D(pool_type='avg', global_pooling=True)
+        if with_pool:
+            self.pool2d_avg = Pool2D(pool_type='avg', global_pooling=True)
 
-        self.out = Linear(
-            int(1024 * scale),
-            class_dim,
-            act='softmax',
-            param_attr=ParamAttr(
-                initializer=MSRA(), name=self.full_name() + "fc7_weights"),
-            bias_attr=ParamAttr(name="fc7_offset"))
+        if num_classes > -1:
+            self.out = Linear(
+                int(1024 * scale),
+                num_classes,
+                act=classifier_activation,
+                param_attr=ParamAttr(
+                    initializer=MSRA(), name=self.full_name() + "fc7_weights"),
+                bias_attr=ParamAttr(name="fc7_offset"))
 
     def forward(self, inputs):
         y = self.conv1(inputs)
         for dws in self.dwsl:
             y = dws(y)
-        y = self.pool2d_avg(y)
-        y = fluid.layers.reshape(y, shape=[-1, 1024])
-        y = self.out(y)
+
+        if self.with_pool:
+            y = self.pool2d_avg(y)
+
+        if self.num_classes > 0:
+            y = fluid.layers.reshape(y, shape=[-1, 1024])
+            y = self.out(y)
         return y
 
 
 def _mobilenet(arch, pretrained=False, **kwargs):
-    model = MobileNetV1(**kwargs)
+    model = MobileNetV1(num_classes=1000, with_pool=True, **kwargs)
     if pretrained:
         assert arch in model_urls, "{} model do not have a pretrained model now, you should set pretrained=False".format(
             arch)
@@ -262,5 +277,11 @@ def _mobilenet(arch, pretrained=False, **kwargs):
 
 
 def mobilenet_v1(pretrained=False, scale=1.0):
+    """MobileNetV1
+    
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
+        scale: (float): scale of channels in each layer. Default: 1.0.
+    """
     model = _mobilenet('mobilenetv1_' + str(scale), pretrained, scale=scale)
     return model

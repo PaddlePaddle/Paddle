@@ -76,10 +76,10 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 python -m paddle.distributed.launch main.py --arch 
 
 | 模型 | top1 acc | top5 acc |
 | --- | --- | --- |
-| [ResNet50](https://paddle-hapi.bj.bcebos.com/models/resnet50.pdparams) | 76.28 | 93.04 |
-| [vgg16](https://paddle-hapi.bj.bcebos.com/models/vgg16.pdparams) | 71.84 | 90.71 | 
-| [mobilenet_v1](https://paddle-hapi.bj.bcebos.com/models/mobilenet_v1_x1.0.pdparams) | 71.25 | 89.92 | 
-| [mobilenet_v2](https://paddle-hapi.bj.bcebos.com/models/mobilenet_v2_x1.0.pdparams) | 72.27 | 90.66 | 
+| [ResNet50](https://paddle-hapi.bj.bcebos.com/models/resnet50.pdparams) | 76.27 | 93.03 |
+| [vgg16](https://paddle-hapi.bj.bcebos.com/models/vgg16.pdparams) | 71.92 | 90.65 | 
+| [mobilenet_v1](https://paddle-hapi.bj.bcebos.com/models/mobilenet_v1_x1.0.pdparams) | 71.16 | 89.89 | 
+| [mobilenet_v2](https://paddle-hapi.bj.bcebos.com/models/mobilenet_v2_x1.0.pdparams) | 72.30 | 90.74 | 
 
 上述模型的复现参数请参考scripts下的脚本。
 
