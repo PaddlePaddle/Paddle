@@ -184,7 +184,7 @@ class DataLoader(object):
             IMAGE_SIZE = 784
             CLASS_NUM = 10
 
-            USE_GPU = True # whether use GPU to run model
+            USE_GPU = False # whether use GPU to run model
 
             # define a random dataset
             class RandomDataset(Dataset):

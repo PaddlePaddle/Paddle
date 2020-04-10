@@ -36,6 +36,9 @@ class Dataset(object):
     see :code:`fluid.io.DataLoader`.
     """
 
+    def __init__(self):
+        pass
+
     def __getitem__(self, idx):
         raise NotImplementedError("'{}' not implement in class "\
                 "{}".format('__getitem__', self.__class__.__name__))
