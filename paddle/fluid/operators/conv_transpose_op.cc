@@ -51,14 +51,14 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
 
   PADDLE_ENFORCE_EQ(in_dims.size() == 4 || in_dims.size() == 5, true,
                     platform::errors::InvalidArgument(
-                        "input of Op(conv_transpose) should be 4-D or "
+                        "Input of Op(conv_transpose) should be 4-D or "
                         "5-D Tensor. But received: %u-D Tensor, "
                         "the shape of input is [%s]",
                         in_dims.size(), in_dims));
   PADDLE_ENFORCE_EQ(
       in_dims.size(), filter_dims.size(),
       platform::errors::InvalidArgument(
-          "the input's dimension size and filter's dimension size of "
+          "The input's dimension size and filter's dimension size of "
           "Op (conv_transpose) should be equal. But received: the shape of "
           "input is [%s], the dimension size of input is [%d], the shape "
           "of filter is [%s],  the dimension size of filter is [%d]. ",
@@ -67,7 +67,7 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(
       in_dims.size() - strides.size(), 2U,
       platform::errors::InvalidArgument(
-          "the input's dimension size minus Attr(stride)'s size must "
+          "The input's dimension size minus Attr(stride)'s size must "
           "be euqal to 2 for Op(conv_transpose). But received: [%d], the "
           "input's dimension size is [%d], the shape of input "
           "is [%s], the Attr(stride)'s size is [%d].",
