@@ -8201,6 +8201,8 @@ def relu(x, name=None):
     if in_dygraph_mode():
         return core.ops.relu(x)
 
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'relu')
+
     inputs = {'X': [x]}
     helper = LayerHelper('relu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
