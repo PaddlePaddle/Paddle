@@ -121,7 +121,7 @@ def log_softmax(input, axis=None, dtype=None, name=None):
         .. code-block:: python
 
           import paddle.fluid as fluid
-          import paddle.nn.functional as functional
+          import paddle.nn.functional as F
           import numpy as np
 
           data = np.array([[[-2.0, 3.0, -4.0, 5.0],
@@ -132,7 +132,7 @@ def log_softmax(input, axis=None, dtype=None, name=None):
                             [6.0, 7.0, 8.0, 9.0]]]).astype('float32')
           with fluid.dygraph.guard():
               data = fluid.dygraph.to_variable(data)
-              res = functional.log_softmax(data, -1)
+              res = F.log_softmax(data, -1)
               # [[[ -7.1278396   -2.1278396   -9.127839    -0.12783948]
               #   [ -2.1270514   -9.127051    -0.12705144 -11.127051  ]
               #   [-16.313261   -17.313261    -1.3132617   -0.31326184]]

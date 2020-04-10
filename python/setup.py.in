@@ -106,7 +106,6 @@ write_version_py(filename='@PADDLE_BINARY_DIR@/python/paddle/version.py')
 
 packages=['paddle',
           'paddle.nn',
-          'paddle.nn.functional',
           'paddle.nn.layer',
           'paddle.libs',
           'paddle.utils',

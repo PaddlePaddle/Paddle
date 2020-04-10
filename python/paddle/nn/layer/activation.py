@@ -102,7 +102,7 @@ class LogSoftmax(layers.Layer):
           my_log_softnmax = nn.LogSoftmax()
           with fluid.dygraph.guard():
               data = fluid.dygraph.to_variable(data)
-              res = functional.log_softmax(data)
+              res = my_log_softnmax(data)
               # [[[ -7.1278396   -2.1278396   -9.127839    -0.12783948]
               #   [ -2.1270514   -9.127051    -0.12705144 -11.127051  ]
               #   [-16.313261   -17.313261    -1.3132617   -0.31326184]]

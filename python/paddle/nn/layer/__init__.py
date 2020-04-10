@@ -14,10 +14,8 @@
 
 # TODO: define activation functions of neural network
 
-from . import activation
 from . import loss
 from . import conv
 
-from .activation import *
 from .loss import *
 from .conv import *

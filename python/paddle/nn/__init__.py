@@ -75,11 +75,10 @@ from .layer.conv import Conv2D, Conv2DTranspose, Conv3D, Conv3DTranspose  #DEFIN
 # from .layer.norm import LayerNorm   #DEFINE_ALIAS
 # from .layer.norm import SpectralNorm   #DEFINE_ALIAS
 # from .layer.activation import PReLU   #DEFINE_ALIAS
-from .layer import activation
-from .layer.activation import ReLU  #DEFINE_ALIAS
+# from .layer.activation import ReLU   #DEFINE_ALIAS
 # from .layer.activation import Sigmoid   #DEFINE_ALIAS
 # from .layer.activation import Softmax   #DEFINE_ALIAS
-from .layer.activation import LogSoftmax  #DEFINE_ALIAS
+# from .layer.activation import LogSoftmax   #DEFINE_ALIAS
 # from .layer.rnn import RNNCell   #DEFINE_ALIAS
 # from .layer.rnn import GRUCell   #DEFINE_ALIAS
 # from .layer.rnn import LSTMCell   #DEFINE_ALIAS
