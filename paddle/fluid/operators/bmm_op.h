@@ -66,10 +66,8 @@ class BmmKernel : public framework::OpKernel<T> {
 
     auto blas = math::GetBlas<DeviceContext, T>(context);
 
-    auto mat_dim_a =
-        math::CreateMatrixDescriptor(RowMatrixFromVector(x.dims()), 0, false);
-    auto mat_dim_b = math::CreateMatrixDescriptor(
-        ColumnMatrixFromVector(y.dims()), 0, false);
+    auto mat_dim_a = math::CreateMatrixDescriptor(x.dims(), 0, false);
+    auto mat_dim_b = math::CreateMatrixDescriptor(y.dims(), 0, false);
 
     // auto scale = static_cast<T>(context.Attr<float>("alpha"));
     blas.MatMul(x, mat_dim_a, y, mat_dim_b, T(1), out, T(0));
@@ -87,7 +85,6 @@ class BmmGradKernel : public framework::OpKernel<T> {
     auto blas = math::GetBlas<DeviceContext, T>(context);
     auto mat_dim_a = math::CreateMatrixDescriptor(a.dims(), 0, trans_a);
     auto mat_dim_b = math::CreateMatrixDescriptor(b.dims(), 0, trans_b);
-    int head_number = 1;
 
     blas.MatMul(a, mat_dim_a, b, mat_dim_b, T(1), out, T(0));
   }
