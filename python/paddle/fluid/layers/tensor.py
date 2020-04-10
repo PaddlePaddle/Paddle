@@ -1379,7 +1379,7 @@ def diag(diagonal):
     """
     check_type(diagonal, 'diagonal', (Variable, numpy.ndarray), 'diag')
     if isinstance(diagonal, numpy.ndarray):
-        dtype = convert_np_dtype_to_dtype_(daigonal.dtype)
+        dtype = convert_np_dtype_to_dtype_(diagonal.dtype)
         check_dtype(dtype, 'diagonal',
                     ['float32', 'float64', 'int32', 'int64'], 'diag')
     elif isinstance(diagonal, Variable):
