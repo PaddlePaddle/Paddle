@@ -127,8 +127,9 @@ class TDMChildGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetType("tdm_child_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Child"), this->OutputGrad("Child"));
-    op->SetOutput(framework::GradVarName("LeafMask"),
-                  this->InputGrad("LeafMask"));
+    op->SetInput(framework::GradVarName("LeafMask"),
+                 this->InputGrad("LeafMask"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   }
 };
 
