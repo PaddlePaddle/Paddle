@@ -370,8 +370,17 @@ void InMemoryDataFeed<T>::LoadIntoMemory() {
   while (this->PickOneFile(&filename)) {
     VLOG(3) << "PickOneFile, filename=" << filename
             << ", thread_id=" << thread_id_;
-    int err_no = 0;
-    this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
+#ifdef PADDLE_WITH_BOX_PS
+    if (BoxWrapper::GetInstance()->UseAfsApi()) {
+      this->fp_ = BoxWrapper::GetInstance()->afs_manager->GetFile(
+          filename, this->pipe_command_);
+    } else {
+#endif
+      int err_no = 0;
+      this->fp_ = fs_open_read(filename, &err_no, this->pipe_command_);
+#ifdef PADDLE_WITH_BOX_PS
+    }
+#endif
     CHECK(this->fp_ != nullptr);
     __fsetlocking(&*(this->fp_), FSETLOCKING_BYCALLER);
     paddle::framework::ChannelWriter<T> writer(input_channel_);

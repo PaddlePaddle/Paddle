@@ -37,13 +37,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
-#ifdef PADDLE_WITH_NGRAPH
-#include "paddle/fluid/operators/ngraph/ngraph_engine.h"
-#endif
-
 DECLARE_bool(benchmark);
 DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
-DEFINE_bool(use_ngraph, false, "Use NGRAPH to run");
 
 namespace paddle {
 namespace framework {
@@ -59,17 +54,6 @@ ExecutorPrepareContext::ExecutorPrepareContext(
 
 void ExecutorPrepareContext::PrepareUnusedVars(
     const std::vector<std::string>& keep_vars, bool force_disable_gc) {
-#ifdef PADDLE_WITH_NGRAPH
-  if (FLAGS_use_ngraph) {
-    // FIXME(zjl): There is difference when ngraph and gc are both enabled
-    // in unittests. I do not know why it happens. Maybe ngraph engine
-    // would cache some variables?
-    LOG_FIRST_N(WARNING, 1)
-        << "FLAGS_use_ngraph=True, garbage collection strategy is "
-           "disabled in Executor";
-    force_disable_gc = true;
-  }
-#endif
   // If gc is enabled and block size > 1
   if (prog_.Size() > 1) {
     operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
@@ -393,12 +377,6 @@ std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
   for (auto& op_desc : block.AllOps()) {
     ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
-#ifdef PADDLE_WITH_NGRAPH
-  if (FLAGS_use_ngraph && ctx->block_id_ == 0) {
-    paddle::operators::NgraphEngine::FuseNgraphOps(
-        ctx->prog_.Block(ctx->block_id_), &ctx->ops_);
-  }
-#endif
   ctx->PrepareUnusedVars(skip_ref_cnt_vars, force_disable_gc);
   return ctx;
 }
