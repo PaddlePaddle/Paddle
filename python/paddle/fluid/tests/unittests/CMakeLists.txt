@@ -52,6 +52,7 @@ endif()
 
 if (NOT ${WITH_GPU})
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
+    LIST(REMOVE_ITEM TEST_OPS test_rank_attention_op) # TODO(shenliang03): rank_attention_op support CPU device in future
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_mnist) # TODO(Yancey1989): parallel dygraph support CPU device in future
 elseif(${CUDNN_VERSION} VERSION_LESS 7100)
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
@@ -345,10 +346,6 @@ set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu P
 
 add_subdirectory(sequence)
 add_subdirectory(dygraph_to_static)
-
-if (WITH_NGRAPH)
-    add_subdirectory(ngraph)
-endif()
 
 if (WITH_MKLDNN)
     add_subdirectory(mkldnn)
