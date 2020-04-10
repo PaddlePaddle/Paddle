@@ -97,13 +97,14 @@ class ClipByNormOp : public framework::OperatorWithKernel {
                           "Input(X) of ClipByNormOp should not be null. Please "
                           "check if it is created correctly."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                   platform::errors::InvalidArgument(
-                   "Output(Out) of ClipByNormOp should not be null. "
-                   "Please check if it is created correctly.");
+                      platform::errors::InvalidArgument(
+                          "Output(Out) of ClipByNormOp should not be null. "
+                          "Please check if it is created correctly."));
     auto max_norm = ctx->Attrs().Get<float>("max_norm");
     PADDLE_ENFORCE_GT(max_norm, 0, platform::errors::InvalidArgument(
-                      "max_norm should be greater than 0. "
-                      "Received max_norm is %f.", max_norm));
+                                       "max_norm should be greater than 0. "
+                                       "Received max_norm is %f.",
+                                       max_norm));
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
