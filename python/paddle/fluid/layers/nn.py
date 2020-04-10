@@ -9132,6 +9132,8 @@ def prelu(x, mode, param_attr=None, name=None):
                      x,mode,param_attr=ParamAttr(name='alpha'))
 
     """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'prelu')
+
     helper = LayerHelper('prelu', **locals())
     if mode not in ['all', 'channel', 'element']:
         raise ValueError('mode should be one of all, channel, element.')
