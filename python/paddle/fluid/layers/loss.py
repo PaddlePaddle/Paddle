@@ -1427,11 +1427,7 @@ def sigmoid_cross_entropy_with_logits(x,
 
     helper = LayerHelper("sigmoid_cross_entropy_with_logits", **locals())
 
-    if name is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        out = helper.create_variable(
-            name=name, dtype=x.dtype, persistable=False)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(
         type="sigmoid_cross_entropy_with_logits",
