@@ -24,26 +24,26 @@ namespace operators {
 
 void InstanceNormOp::InferShape(framework::InferShapeContext *ctx) const {
   PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                    platform::errors::InvalidArgument(
+                    platform::errors::NotFound(
                         "Input(X) of Instance Norm Op should not be null."));
   PADDLE_ENFORCE_EQ(
       ctx->HasInput("Scale"), true,
-      platform::errors::InvalidArgument(
+      platform::errors::NotFound(
           "Input(Scale) of Instance Norm Op should not be null."));
   PADDLE_ENFORCE_EQ(ctx->HasInput("Bias"), true,
-                    platform::errors::InvalidArgument(
+                    platform::errors::NotFound(
                         "Input(Bias) of Instance Norm Op should not be null."));
   PADDLE_ENFORCE_EQ(ctx->HasOutput("Y"), true,
-                    platform::errors::InvalidArgument(
+                    platform::errors::NotFound(
                         "Output(Y) of Instance Norm Op should not be null."));
 
   PADDLE_ENFORCE_EQ(
       ctx->HasOutput("SavedMean"), true,
-      platform::errors::InvalidArgument(
+      platform::errors::NotFound(
           "Output(SavedMean) of Instance Norm Op should not be null."));
   PADDLE_ENFORCE_EQ(
       ctx->HasOutput("SavedVariance"), true,
-      platform::errors::InvalidArgument(
+      platform::errors::NotFound(
           "Output(SavedVariance) of Instance Norm Op should not be null."));
 
   const auto x_dims = ctx->GetInputDim("X");
@@ -232,31 +232,30 @@ class InstanceNormKernel<platform::CPUDeviceContext, T>
 };
 
 void InstanceNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
-  PADDLE_ENFORCE_EQ(
-      ctx->HasInput("X"), true,
-      platform::errors::InvalidArgument("Input(X) should not be null"));
+  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                    platform::errors::NotFound("Input(X) should not be null"));
   PADDLE_ENFORCE_EQ(
       ctx->HasInput("Scale"), true,
-      platform::errors::InvalidArgument("Input(scale) should not be null"));
+      platform::errors::NotFound("Input(scale) should not be null"));
 
   PADDLE_ENFORCE_EQ(
       ctx->HasInput(framework::GradVarName("Y")), true,
-      platform::errors::InvalidArgument("Input(Y@GRAD) should not be null"));
+      platform::errors::NotFound("Input(Y@GRAD) should not be null"));
   PADDLE_ENFORCE_EQ(
       ctx->HasInput("SavedMean"), true,
-      platform::errors::InvalidArgument("Input(SavedMean) should not be null"));
-  PADDLE_ENFORCE_EQ(ctx->HasInput("SavedVariance"), true,
-                    platform::errors::InvalidArgument(
-                        "Input(SavedVariance) should not be null"));
+      platform::errors::NotFound("Input(SavedMean) should not be null"));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput("SavedVariance"), true,
+      platform::errors::NotFound("Input(SavedVariance) should not be null"));
 
   // check output
   PADDLE_ENFORCE_EQ(
       ctx->HasOutput(framework::GradVarName("X")), true,
-      platform::errors::InvalidArgument("Output(x@GRAD) should not be null"));
+      platform::errors::NotFound("Output(x@GRAD) should not be null"));
   if (ctx->HasOutput(framework::GradVarName("Scale"))) {
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput(framework::GradVarName("Bias")), true,
-        platform::errors::InvalidArgument(
+        platform::errors::NotFound(
             "Output(Scale@GRAD) and Output(Bias@GRAD) should not be "
             "null at the same time"));
   }
@@ -381,29 +380,28 @@ class InstanceNormGradKernel<platform::CPUDeviceContext, T>
 
 void InstanceNormDoubleGradOp::InferShape(
     framework::InferShapeContext *ctx) const {
-  PADDLE_ENFORCE_EQ(
-      ctx->HasInput("X"), true,
-      platform::errors::InvalidArgument("Input(X) should not be null"));
+  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                    platform::errors::NotFound("Input(X) should not be null"));
   PADDLE_ENFORCE_EQ(
       ctx->HasInput("Scale"), true,
-      platform::errors::InvalidArgument("Input(Scale) should not be null."));
+      platform::errors::NotFound("Input(Scale) should not be null."));
   PADDLE_ENFORCE_EQ(
       ctx->HasInput("SavedMean"), true,
-      platform::errors::InvalidArgument("Input(SavedMean) should not be null"));
-  PADDLE_ENFORCE_EQ(ctx->HasInput("SavedVariance"), true,
-                    platform::errors::InvalidArgument(
-                        "Input(SavedVariance) should not be null"));
+      platform::errors::NotFound("Input(SavedMean) should not be null"));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput("SavedVariance"), true,
+      platform::errors::NotFound("Input(SavedVariance) should not be null"));
   PADDLE_ENFORCE_EQ(
       ctx->HasInput("DDX"), true,
-      platform::errors::InvalidArgument("Input(DDX) should not be null."));
+      platform::errors::NotFound("Input(DDX) should not be null."));
   PADDLE_ENFORCE_EQ(
       ctx->HasInput("DY"), true,
-      platform::errors::InvalidArgument("Input(Y@GRAD) should not be null"));
+      platform::errors::NotFound("Input(Y@GRAD) should not be null"));
 
   // check output
   PADDLE_ENFORCE_EQ(
       ctx->HasOutput("DX"), true,
-      platform::errors::InvalidArgument("Output(DX) should not be null"));
+      platform::errors::NotFound("Output(DX) should not be null"));
 
   const auto x_dims = ctx->GetInputDim("X");
   const int C = x_dims[1];

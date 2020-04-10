@@ -26,9 +26,8 @@ class DropoutOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::InvalidArgument("Input(X) must not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::NotFound("Input(X) must not be null."));
 
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", x_dims);
@@ -123,12 +122,11 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "GradOp is only callable when is_test is false"));
 
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Mask"), true,
-        platform::errors::InvalidArgument("Mask must not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Mask"), true,
+                      platform::errors::NotFound("Mask must not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasInput(framework::GradVarName("Out")), true,
-        platform::errors::InvalidArgument("Input(Out@GRAD) must not be null."));
+        platform::errors::NotFound("Input(Out@GRAD) must not be null."));
 
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 

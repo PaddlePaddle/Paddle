@@ -26,40 +26,40 @@ namespace operators {
 
 void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                    platform::errors::InvalidArgument(
+                    platform::errors::NotFound(
                         "Input(X) of BatchNormOp should not be null."));
   PADDLE_ENFORCE_EQ(ctx->HasInput("Scale"), true,
-                    platform::errors::InvalidArgument(
+                    platform::errors::NotFound(
                         "Input(Scale) of BatchNormOp should not be null."));
   PADDLE_ENFORCE_EQ(ctx->HasInput("Bias"), true,
-                    platform::errors::InvalidArgument(
+                    platform::errors::NotFound(
                         "Input(Bias) of BatchNormOp should not be null."));
   PADDLE_ENFORCE_EQ(ctx->HasInput("Mean"), true,
-                    platform::errors::InvalidArgument(
+                    platform::errors::NotFound(
                         "Input(Mean) of BatchNormOp should not be null."));
   PADDLE_ENFORCE_EQ(ctx->HasInput("Variance"), true,
-                    platform::errors::InvalidArgument(
+                    platform::errors::NotFound(
                         "Input(Variance) of BatchNormOp should not be null."));
   PADDLE_ENFORCE_EQ(ctx->HasOutput("Y"), true,
-                    platform::errors::InvalidArgument(
+                    platform::errors::NotFound(
                         "Output(Y) of BatchNormOp should not be null."));
   bool is_test = ctx->Attrs().Get<bool>("is_test");
   if (!is_test) {
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("MeanOut"), true,
-        platform::errors::InvalidArgument(
+        platform::errors::NotFound(
             "Output(MeanOut) of BatchNormOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("VarianceOut"), true,
-        platform::errors::InvalidArgument(
+        platform::errors::NotFound(
             "Output(VarianceOut) of BatchNormOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("SavedMean"), true,
-        platform::errors::InvalidArgument(
+        platform::errors::NotFound(
             "Output(SavedMean) of BatchNormOp should not be null."));
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("SavedVariance"), true,
-        platform::errors::InvalidArgument(
+        platform::errors::NotFound(
             "Output(SavedVariance) of BatchNormOp should not be null."));
   }
 
@@ -459,16 +459,16 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
   // check input
   PADDLE_ENFORCE_EQ(
       ctx->HasInput("Scale"), true,
-      platform::errors::InvalidArgument("Input(scale) should not be null."));
+      platform::errors::NotFound("Input(scale) should not be null."));
   PADDLE_ENFORCE_EQ(
       ctx->HasInput(framework::GradVarName("Y")), true,
-      platform::errors::InvalidArgument("Input(Y@GRAD) should not be null."));
-  PADDLE_ENFORCE_EQ(ctx->HasInput("SavedMean"), true,
-                    platform::errors::InvalidArgument(
-                        "Input(SavedMean) should not be null."));
-  PADDLE_ENFORCE_EQ(ctx->HasInput("SavedVariance"), true,
-                    platform::errors::InvalidArgument(
-                        "Input(SavedVariance) should not be null"));
+      platform::errors::NotFound("Input(Y@GRAD) should not be null."));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput("SavedMean"), true,
+      platform::errors::NotFound("Input(SavedMean) should not be null."));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput("SavedVariance"), true,
+      platform::errors::NotFound("Input(SavedVariance) should not be null"));
 
   // check output
   PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")), "");
@@ -477,7 +477,7 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
   const bool has_bias_grad = ctx->HasOutput(framework::GradVarName("Bias"));
 
   PADDLE_ENFORCE_EQ((has_scale_grad == has_bias_grad), true,
-                    platform::errors::InvalidArgument(
+                    platform::errors::NotFound(
                         "Output(Scale@GRAD) and Output(Bias@GRAD) must be null "
                         "or not be null at same time. But now, "
                         "has Scale@Grad=[%d], has Bias@GRAD=[%d]",
@@ -497,7 +497,7 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
   // so only infer shape in run time here.
   if (ctx->IsRuntime()) {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X") || ctx->HasInput("Y"), true,
-                      platform::errors::InvalidArgument(
+                      platform::errors::NotFound(
                           "Input(X) and Input(Y) should not be all null."));
     auto input_name = "Y";
     if (ctx->HasInput("X")) input_name = "X";

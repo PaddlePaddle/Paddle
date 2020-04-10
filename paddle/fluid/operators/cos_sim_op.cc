@@ -26,16 +26,21 @@ class CosSimOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     // notnull check
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of CosSimOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"),
-                   "Input(Y) of CosSimOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of CosSimOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("XNorm"),
-                   "Output(XNorm) of CosSimOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("YNorm"),
-                   "Output(YNorm) of CosSimOp should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"), true,
+        platform::errors::NotFound("Input(X) of CosSimOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Y"), true,
+        platform::errors::NotFound("Input(Y) of CosSimOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::NotFound(
+                          "Output(Out) of CosSimOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("XNorm"), true,
+                      platform::errors::NotFound(
+                          "Output(XNorm) of CosSimOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("YNorm"), true,
+                      platform::errors::NotFound(
+                          "Output(YNorm) of CosSimOp should not be null."));
 
     // shape check
     auto x_dims = ctx->GetInputDim("X");
@@ -129,13 +134,22 @@ class CosSimOpGrad : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     // notnull check
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) must not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("XNorm"), "Input(XNorm) must not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("YNorm"), "Input(YNorm) must not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Out"), "Input(Out) must not be null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) must not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::NotFound("Input(X) must not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Y"), true,
+                      platform::errors::NotFound("Input(Y) must not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("XNorm"), true,
+        platform::errors::NotFound("Input(XNorm) must not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("YNorm"), true,
+        platform::errors::NotFound("Input(YNorm) must not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Out"), true,
+        platform::errors::NotFound("Input(Out) must not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput(framework::GradVarName("Out")), true,
+        platform::errors::NotFound("Input(Out@GRAD) must not be null."));
 
     // shape check
     auto x_dims = ctx->GetInputDim("X");
