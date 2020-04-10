@@ -838,6 +838,10 @@ class Pool2D(layers.Layer):
                      'use_mkldnn', False, 'exclusive', self._exclusive)
             return core.ops.pool2d(input, *attrs)
 
+        check_variable_and_dtype(
+            input, 'input', ['int8', 'uint8', 'float16', 'float32', 'float64'],
+            'Pool2D')
+
         attrs = {
             "pooling_type": self._pool_type,
             "ksize": self._pool_size,
