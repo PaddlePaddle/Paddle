@@ -48,7 +48,7 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
                     platform::errors::InvalidArgument(
                         "The first dimension of Input(WeightX) "
                         "should equal to second dimension of input x, but "
-                        "received WeightX dimsneion is:%d, x dimension is:%d",
+                        "received WeightX dimension is:%d, x dimension is:%d",
                         wx_dims[0], x_dims[1]));
 
   int frame_size = wx_dims[1] / 3;
@@ -77,7 +77,7 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
     PADDLE_ENFORCE_EQ(h0_dims[1], frame_size,
                       platform::errors::InvalidArgument(
                           "The width of H0 must be equal to frame_size, but "
-                          "receiced H0 is:%d, frame size is:%d",
+                          "receiced the width of H0 is:%d, frame size is:%d",
                           h0_dims[1], frame_size));
   }
   if (ctx->HasInput("Bias")) {
