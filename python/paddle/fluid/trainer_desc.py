@@ -46,8 +46,8 @@ class TrainerDesc(object):
             self._program = None
             self._infer = False
         except ImportError as e:
-            print("cur_path:", cur_path)
-            print("sys.path:", sys.path)
+            print("cur_path :", cur_path)
+            print("sys.path :", sys.path)
         except Exception as e:
             self.assertTrue(False)
 
