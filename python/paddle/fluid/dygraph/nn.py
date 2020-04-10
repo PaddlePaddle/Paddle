@@ -25,6 +25,7 @@ from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from .. import unique_name
 from .layer_object_helper import LayerObjectHelper
+from ..data_feeder import check_variable_and_dtype
 import numpy as np
 import numbers
 import logging
@@ -2727,6 +2728,8 @@ class SpectralNorm(layers.Layer):
         self.weight_v.stop_gradient = True
 
     def forward(self, weight):
+        check_variable_and_dtype(weight, "weight", ['float32', 'float64'],
+                                 'SpectralNorm')
         inputs = {'Weight': weight, 'U': self.weight_u, 'V': self.weight_v}
         out = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
