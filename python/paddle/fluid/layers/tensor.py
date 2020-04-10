@@ -1378,10 +1378,11 @@ def diag(diagonal):
 
     """
     check_type(diagonal, 'diagonal', (Variable, numpy.ndarray), 'diag')
-    if not isinstance(diagonal, Variable):
-        check_dtype(diagonal, 'diagonal',
+    if isinstance(diagonal, numpy.ndarray):
+        dtype = convert_np_dtype_to_dtype_(daigonal.dtype)
+        check_dtype(dtype, 'diagonal',
                     ['float32', 'float64', 'int32', 'int64'], 'diag')
-    else:
+    elif isinstance(diagonal, Variable):
         check_dtype(diagonal.dtype, 'diagonal',
                     ['float32', 'float64', 'int32', 'int64'], 'diag')
     helper = LayerHelper("diag", **locals())
