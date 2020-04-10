@@ -24,14 +24,17 @@ import numpy as np
 
 np.random.seed = 123
 
+
 def sigmoid(x):
     return 1. / (1. + np.exp(-x))
+
 
 def tanh(x):
     return 2. * sigmoid(2. * x) - 1.
 
+
 def cudnn_step(step_input_np, pre_hidden_np, weight_ih, bias_ih, weight_hh,
-                      bias_hh):
+               bias_hh):
     igates = np.matmul(step_input_np, weight_ih)
     igates += bias_ih
     hgates = np.matmul(pre_hidden_np, weight_hh)
@@ -54,7 +57,9 @@ def cudnn_step(step_input_np, pre_hidden_np, weight_ih, bias_ih, weight_hh,
 
     return new_hidden
 
-def non_cudnn_step(step_in, pre_hidden, gate_w, gate_b, candidate_w, candidate_b):
+
+def non_cudnn_step(step_in, pre_hidden, gate_w, gate_b, candidate_w,
+                   candidate_b):
     concat_1 = np.concatenate([step_in, pre_hidden], 1)
 
     gate_input = np.matmul(concat_1, gate_w)
@@ -88,7 +93,7 @@ class TestCudnnGRU(unittest.TestCase):
             place = core.CPUPlace()
 
         with fluid.dygraph.guard(place):
-            
+
             cudnn_gru = CudnnGRUCell(self.hidden_size, self.input_size)
 
             param_list = cudnn_gru.state_dict()
@@ -124,15 +129,16 @@ class TestCudnnGRU(unittest.TestCase):
                 self.batch_size, self.input_size)).astype('float64')
             pre_hidden_np = np.random.uniform(-0.1, 0.1, (
                 self.batch_size, self.hidden_size)).astype('float64')
-            
+
             step_input_var = fluid.dygraph.to_variable(step_input_np)
             pre_hidden_var = fluid.dygraph.to_variable(pre_hidden_np)
             api_out = cudnn_gru(step_input_var, pre_hidden_var)
 
-        np_out = cudnn_step(step_input_np, pre_hidden_np, weight_ih, bias_ih, weight_hh,
-                      bias_hh)
+        np_out = cudnn_step(step_input_np, pre_hidden_np, weight_ih, bias_ih,
+                            weight_hh, bias_hh)
 
         self.assertTrue(np.allclose(api_out.numpy(), np_out, rtol=1e-5, atol=0))
+
 
 class TestNonCudnnGRU(unittest.TestCase):
     def setUp(self):
@@ -148,8 +154,9 @@ class TestNonCudnnGRU(unittest.TestCase):
             place = core.CPUPlace()
 
         with fluid.dygraph.guard(place):
-            
-            non_cudnn_gru = CudnnGRUCell(self.hidden_size, self.input_size, cudnn_compatibale=False)
+
+            non_cudnn_gru = CudnnGRUCell(
+                self.hidden_size, self.input_size, cudnn_compatibale=False)
 
             param_list = non_cudnn_gru.state_dict()
 
@@ -184,17 +191,16 @@ class TestNonCudnnGRU(unittest.TestCase):
                 self.batch_size, self.input_size)).astype('float64')
             pre_hidden_np = np.random.uniform(-0.1, 0.1, (
                 self.batch_size, self.hidden_size)).astype('float64')
-            
+
             step_input_var = fluid.dygraph.to_variable(step_input_np)
             pre_hidden_var = fluid.dygraph.to_variable(pre_hidden_np)
             api_out = non_cudnn_gru(step_input_var, pre_hidden_var)
 
-        np_out = non_cudnn_step(step_input_np, pre_hidden_np, gate_w, gate_b, candidate_w,
-                      candidate_b)
+        np_out = non_cudnn_step(step_input_np, pre_hidden_np, gate_w, gate_b,
+                                candidate_w, candidate_b)
 
         self.assertTrue(np.allclose(api_out.numpy(), np_out, rtol=1e-5, atol=0))
 
-        
 
 if __name__ == '__main__':
     unittest.main()

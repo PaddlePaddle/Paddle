@@ -16,13 +16,11 @@ from .layers import Layer
 from paddle.fluid import layers
 import copy
 
-__all__ = [
-    'CudnnLSTMCell', 'CudnnGRUCell'
-]
+__all__ = ['CudnnLSTMCell', 'CudnnGRUCell']
+
 
 class CudnnLSTMCell(Layer):
     """
-    ****
     LSTMCell implementation using basic operators.
     There are two LSTMCell version, the default one is compatible with CUDNN LSTM implementation.
     The algorithm can be described as the equations below.
@@ -118,7 +116,7 @@ class CudnnLSTMCell(Layer):
         self._gate_activation = gate_activation or layers.sigmoid
         self._activation = activation or layers.tanh
         self._cudnn_compatibale = cudnn_compatibale
-        
+
         if self._cudnn_compatibale:
 
             if self._param_attr is not None and self._param_attr.name is not None:
@@ -129,7 +127,7 @@ class CudnnLSTMCell(Layer):
             else:
                 weight_ih_param_attr = self._param_attr
                 weight_hh_param_attr = self._param_attr
-            
+
             if self._bias_attr is not None and self._bias_attr.name is not None:
                 bias_ih_param_attr = copy.deepcopy(self._bias_attr)
                 bias_hh_param_attr = copy.deepcopy(self._bias_attr)
@@ -137,7 +135,7 @@ class CudnnLSTMCell(Layer):
                 bias_hh_param_attr.name += "_bias_hh"
             else:
                 bias_ih_param_attr = self._bias_attr
-                bias_hh_param_attr = self._bias_attr           
+                bias_hh_param_attr = self._bias_attr
 
             self._weight_ih = self.create_parameter(
                 attr=weight_ih_param_attr,
@@ -159,7 +157,7 @@ class CudnnLSTMCell(Layer):
                 shape=[4 * self._hidden_size],
                 dtype=self._dtype,
                 is_bias=True)
-        
+
         else:
 
             self._forget_bias = layers.fill_constant(
@@ -168,7 +166,9 @@ class CudnnLSTMCell(Layer):
 
             self._weight = self.create_parameter(
                 attr=self._param_attr,
-                shape=[self._input_size + self._hidden_size, 4 * self._hidden_size],
+                shape=[
+                    self._input_size + self._hidden_size, 4 * self._hidden_size
+                ],
                 dtype=dtype)
 
             self._bias = self.create_parameter(
@@ -180,7 +180,7 @@ class CudnnLSTMCell(Layer):
     def forward(self, input, pre_hidden, pre_cell):
 
         if self._cudnn_compatibale:
-            
+
             igates = layers.matmul(input, y=self._weight_ih)
             igates = layers.elementwise_add(igates, self._bias_ih)
             hgates = layers.matmul(pre_hidden, self._weight_hh)
@@ -189,16 +189,20 @@ class CudnnLSTMCell(Layer):
             chunked_igates = layers.split(igates, num_or_sections=4, dim=1)
             chunked_hgates = layers.split(hgates, num_or_sections=4, dim=1)
 
-            ingate = layers.elementwise_add(chunked_igates[0], chunked_hgates[0])
+            ingate = layers.elementwise_add(chunked_igates[0],
+                                            chunked_hgates[0])
             ingate = self._gate_activation(ingate)
 
-            forgetgate = layers.elementwise_add(chunked_igates[1], chunked_hgates[1])
+            forgetgate = layers.elementwise_add(chunked_igates[1],
+                                                chunked_hgates[1])
             forgetgate = self._gate_activation(forgetgate)
 
-            cellgate = layers.elementwise_add(chunked_igates[2], chunked_hgates[2])
+            cellgate = layers.elementwise_add(chunked_igates[2],
+                                              chunked_hgates[2])
             cellgate = self._activation(cellgate)
 
-            outgate = layers.elementwise_add(chunked_igates[3], chunked_hgates[3])
+            outgate = layers.elementwise_add(chunked_igates[3],
+                                             chunked_hgates[3])
             outgate = self._gate_activation(outgate)
 
             new_cell = (forgetgate * pre_cell) + (ingate * cellgate)
@@ -214,7 +218,8 @@ class CudnnLSTMCell(Layer):
             new_cell = layers.elementwise_add(
                 layers.elementwise_mul(
                     pre_cell,
-                    self._gate_activation(layers.elementwise_add(f, self._forget_bias))),
+                    self._gate_activation(
+                        layers.elementwise_add(f, self._forget_bias))),
                 layers.elementwise_mul(layers.sigmoid(i), layers.tanh(j)))
             new_hidden = self._activation(new_cell) * self._gate_activation(o)
 
@@ -223,7 +228,6 @@ class CudnnLSTMCell(Layer):
 
 class CudnnGRUCell(Layer):
     """
-    ****
     GRU implementation using basic operators.
     There are two GRUCell version, the default one is compatible with CUDNN GRU implementation.
     The algorithm can be described as the equations below.
@@ -318,7 +322,7 @@ class CudnnGRUCell(Layer):
             else:
                 weight_ih_param_attr = self._param_attr
                 weight_hh_param_attr = self._param_attr
-            
+
             if self._bias_attr is not None and self._bias_attr.name is not None:
                 bias_ih_param_attr = copy.deepcopy(self._bias_attr)
                 bias_hh_param_attr = copy.deepcopy(self._bias_attr)
@@ -326,7 +330,7 @@ class CudnnGRUCell(Layer):
                 bias_hh_param_attr.name += "_bias_hh"
             else:
                 bias_ih_param_attr = self._bias_attr
-                bias_hh_param_attr = self._bias_attr 
+                bias_hh_param_attr = self._bias_attr
 
             self._weight_ih = self.create_parameter(
                 attr=weight_ih_param_attr,
@@ -359,7 +363,7 @@ class CudnnGRUCell(Layer):
             else:
                 gate_weight_param_attr = self._param_attr
                 candidate_weight_param_attr = self._param_attr
-            
+
             if self._bias_attr is not None and self._bias_attr.name is not None:
                 gate_bias_param_attr = copy.deepcopy(self._bias_attr)
                 candidate_bias_param_attr = copy.deepcopy(self._bias_attr)
@@ -367,16 +371,20 @@ class CudnnGRUCell(Layer):
                 candidate_bias_param_attr.name += "_candidate_bias"
             else:
                 gate_bias_param_attr = self._bias_attr
-                candidate_bias_param_attr = self._bias_attr 
+                candidate_bias_param_attr = self._bias_attr
 
             self._gate_weight = self.create_parameter(
                 attr=gate_weight_param_attr,
-                shape=[self._input_size + self._hidden_size, 2 * self._hidden_size],
+                shape=[
+                    self._input_size + self._hidden_size, 2 * self._hidden_size
+                ],
                 dtype=dtype)
 
             self._candidate_weight = self.create_parameter(
                 attr=candidate_weight_param_attr,
-                shape=[self._input_size + self._hidden_size, self._hidden_size],
+                shape=[
+                    self._input_size + self._hidden_size, self._hidden_size
+                ],
                 dtype=dtype)
 
             self._gate_bias = self.create_parameter(
@@ -402,10 +410,12 @@ class CudnnGRUCell(Layer):
             chunked_igates = layers.split(igates, num_or_sections=3, dim=1)
             chunked_hgates = layers.split(hgates, num_or_sections=3, dim=1)
 
-            reset_gate = layers.elementwise_add(chunked_igates[0], chunked_hgates[0])
+            reset_gate = layers.elementwise_add(chunked_igates[0],
+                                                chunked_hgates[0])
             reset_gate = self._gate_activation(reset_gate)
 
-            input_gate = layers.elementwise_add(chunked_igates[1], chunked_hgates[1])
+            input_gate = layers.elementwise_add(chunked_igates[1],
+                                                chunked_hgates[1])
             input_gate = self._gate_activation(input_gate)
 
             _temp = reset_gate * chunked_hgates[2]
@@ -415,10 +425,11 @@ class CudnnGRUCell(Layer):
             new_hidden = (pre_hidden - new_gate) * input_gate + new_gate
 
         else:
-        
+
             concat_input_hidden = layers.concat([input, pre_hidden], 1)
 
-            gate_input = layers.matmul(x=concat_input_hidden, y=self._gate_weight)
+            gate_input = layers.matmul(
+                x=concat_input_hidden, y=self._gate_weight)
 
             gate_input = layers.elementwise_add(gate_input, self._gate_bias)
             gate_input = self._gate_activation(gate_input)
@@ -434,4 +445,3 @@ class CudnnGRUCell(Layer):
             new_hidden = u * pre_hidden + (1 - u) * c
 
         return new_hidden
-

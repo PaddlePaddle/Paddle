@@ -24,11 +24,14 @@ import numpy as np
 
 np.random.seed = 123
 
+
 def sigmoid(x):
     return 1. / (1. + np.exp(-x))
 
+
 def tanh(x):
     return 2. * sigmoid(2. * x) - 1.
+
 
 def cudnn_step(step_in, pre_hidden, pre_cell, gate_w, gate_b, forget_bias=1.0):
     concat_1 = np.concatenate([step_in, pre_hidden], 1)
@@ -42,9 +45,10 @@ def cudnn_step(step_in, pre_hidden, pre_cell, gate_w, gate_b, forget_bias=1.0):
 
     return new_hidden, new_cell
 
-def non_cudnn_step(step_input_np, pre_hidden_np, pre_cell_np, weight_ih, bias_ih, weight_hh,
-                      bias_hh):
-    
+
+def non_cudnn_step(step_input_np, pre_hidden_np, pre_cell_np, weight_ih,
+                   bias_ih, weight_hh, bias_hh):
+
     igates = np.matmul(step_input_np, weight_ih)
     igates = igates + bias_ih
     hgates = np.matmul(pre_hidden_np, weight_hh)
@@ -84,7 +88,7 @@ class TestCudnnLSTM(unittest.TestCase):
             place = core.CPUPlace()
 
         with fluid.dygraph.guard(place):
-            
+
             cudnn_lstm = CudnnLSTMCell(self.hidden_size, self.input_size)
 
             param_list = cudnn_lstm.state_dict()
@@ -115,7 +119,7 @@ class TestCudnnLSTM(unittest.TestCase):
             bias_hh = np.random.uniform(
                 -0.1, 0.1, size=bias_hh.shape).astype('float64')
             param_list[bias_hh_name].set_value(bias_hh)
-            
+
             step_input_np = np.random.uniform(-0.1, 0.1, (
                 self.batch_size, self.input_size)).astype('float64')
             pre_hidden_np = np.random.uniform(-0.1, 0.1, (
@@ -131,11 +135,17 @@ class TestCudnnLSTM(unittest.TestCase):
             api_hidden_out = api_out[0]
             api_cell_out = api_out[1]
 
-            np_hidden_out, np_cell_out = non_cudnn_step(step_input_np, pre_hidden_np, pre_cell_np,
-                                            weight_ih, bias_ih, weight_hh, bias_hh)
+            np_hidden_out, np_cell_out = non_cudnn_step(
+                step_input_np, pre_hidden_np, pre_cell_np, weight_ih, bias_ih,
+                weight_hh, bias_hh)
 
-            self.assertTrue(np.allclose(api_hidden_out.numpy(), np_hidden_out, rtol=1e-5, atol=0))
-            self.assertTrue(np.allclose(api_cell_out.numpy(), np_cell_out, rtol=1e-5, atol=0))
+            self.assertTrue(
+                np.allclose(
+                    api_hidden_out.numpy(), np_hidden_out, rtol=1e-5, atol=0))
+            self.assertTrue(
+                np.allclose(
+                    api_cell_out.numpy(), np_cell_out, rtol=1e-5, atol=0))
+
 
 class TestNonCudnnLSTM(unittest.TestCase):
     def setUp(self):
@@ -150,8 +160,9 @@ class TestNonCudnnLSTM(unittest.TestCase):
             place = core.CPUPlace()
 
         with fluid.dygraph.guard(place):
-            
-            cudnn_lstm = CudnnLSTMCell(self.hidden_size, self.input_size, cudnn_compatibale=False)
+
+            cudnn_lstm = CudnnLSTMCell(
+                self.hidden_size, self.input_size, cudnn_compatibale=False)
 
             param_list = cudnn_lstm.state_dict()
 
@@ -169,7 +180,7 @@ class TestNonCudnnLSTM(unittest.TestCase):
             gate_b = np.random.uniform(
                 -0.1, 0.1, size=gate_b.shape).astype('float64')
             param_list[gate_b_name].set_value(gate_b)
-            
+
             step_input_np = np.random.uniform(-0.1, 0.1, (
                 self.batch_size, self.input_size)).astype('float64')
             pre_hidden_np = np.random.uniform(-0.1, 0.1, (
@@ -185,15 +196,16 @@ class TestNonCudnnLSTM(unittest.TestCase):
             api_hidden_out = api_out[0]
             api_cell_out = api_out[1]
 
-            np_hidden_out, np_cell_out = cudnn_step(step_input_np, pre_hidden_np,
-                                            pre_cell_np, gate_w, gate_b)
+            np_hidden_out, np_cell_out = cudnn_step(
+                step_input_np, pre_hidden_np, pre_cell_np, gate_w, gate_b)
 
-            self.assertTrue(np.allclose(api_hidden_out.numpy(), np_hidden_out, rtol=1e-5, atol=0))
-            self.assertTrue(np.allclose(api_cell_out.numpy(), np_cell_out, rtol=1e-5, atol=0))
-
+            self.assertTrue(
+                np.allclose(
+                    api_hidden_out.numpy(), np_hidden_out, rtol=1e-5, atol=0))
+            self.assertTrue(
+                np.allclose(
+                    api_cell_out.numpy(), np_cell_out, rtol=1e-5, atol=0))
 
 
 if __name__ == '__main__':
     unittest.main()
- 
-
