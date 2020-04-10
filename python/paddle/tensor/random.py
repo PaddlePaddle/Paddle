@@ -221,7 +221,7 @@ def randn(shape,
         stop_gradient(bool, optional): Indicating if we stop gradient from current(out) 
             Variable. Default is True.
         name(str, optional): Normally there is no need for user to set this property.
-            For more information, please refer to :refer:`api_guide_Name` .
+            For more information, please refer to :ref:`api_guide_Name` .
             Default is None.
 
     Returns:
