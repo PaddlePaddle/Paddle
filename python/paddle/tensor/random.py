@@ -277,6 +277,7 @@ def randperm(n,
             type='randperm', inputs=inputs, outputs=outputs, attrs=attrs)
     return out
 
+
 def rand(shape, out=None, dtype=None, device=None, stop_gradient=True):
     """
     This OP initializes a variable with random values sampled from a
@@ -334,17 +335,12 @@ def rand(shape, out=None, dtype=None, device=None, stop_gradient=True):
             result_3 = paddle.rand(var_shape)
             var_shape_int32 = fluid.data(name='var_shape_int32', shape=[2], dtype="int32")
             result_4 = paddle.rand(var_shape_int32)
-
-
-
     """
 
     if dtype is None:
         dtype = 'float32'
 
-    check_dtype(dtype, 'create data type',
-                ['float32', 'float64'],
-                'rand')
+    check_dtype(dtype, 'create data type', ['float32', 'float64'], 'rand')
     check_type(shape, 'shape', (Variable, list, tuple), 'rand')
     if device not in [None, 'cpu', 'gpu']:
         raise ValueError("The input device should in [None, 'cpu', 'gpu'].")
@@ -358,4 +354,3 @@ def rand(shape, out=None, dtype=None, device=None, stop_gradient=True):
     with device_guard(device):
         out = uniform_random(shape, dtype, min=0., max=1.0)
     return out
-

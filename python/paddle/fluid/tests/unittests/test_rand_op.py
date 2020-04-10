@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from __future__ import print_function
 
 import unittest
@@ -22,6 +21,7 @@ import paddle.fluid.core as core
 from paddle import tensor
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
+
 
 class TestRandOpError(unittest.TestCase):
     def test_errors(self):
@@ -37,8 +37,8 @@ class TestRandOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_Variable)
 
             def test_dtype():
-                dim_1 = fluid.layers.fill_constant([1],"int64",3)
-                dim_2 = fluid.layers.fill_constant([1],"int32",5)
+                dim_1 = fluid.layers.fill_constant([1], "int64", 3)
+                dim_2 = fluid.layers.fill_constant([1], "int32", 5)
                 tensor.rand(shape=[dim_1, dim_2], dtype='int32')
 
             self.assertRaises(TypeError, test_dtype)
