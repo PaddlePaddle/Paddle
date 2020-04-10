@@ -1576,6 +1576,7 @@ class Embedding(layers.Layer):
                 'is_distributed', self._is_distributed, 'remote_prefetch',
                 self._remote_prefetch, 'padding_idx', self._padding_idx)
 
+        check_variable_and_dtype(input, 'input', ['int64'], 'Embedding')
         attrs = {
             'is_sparse': self._is_sparse,
             'is_distributed': self._is_distributed,
