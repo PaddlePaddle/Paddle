@@ -111,15 +111,16 @@ class MobileNetV1(Model):
 
     Args:
         scale (float): scale of channels in each layer. Default: 1.0.
-        num_classes (int): output dim of last fc layer. Default: -1.
-        with_pool (bool): use pool or not. Default: False.
+        num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
+                            will not be defined. Default: 1000.
+        with_pool (bool): use pool before the last fc layer or not. Default: True.
         classifier_activation (str): activation for the last fc layer. Default: 'softmax'.
     """
 
     def __init__(self,
                  scale=1.0,
-                 num_classes=-1,
-                 with_pool=False,
+                 num_classes=1000,
+                 with_pool=True,
                  classifier_activation='softmax'):
         super(MobileNetV1, self).__init__()
         self.scale = scale

@@ -289,7 +289,8 @@ class Normalize(object):
 class Permute(object):
     """Change input data to a target mode.
     For example, most transforms use HWC mode image,
-    while the Neural Network might use CHW mode input tensor
+    while the Neural Network might use CHW mode input tensor.
+    Input image should be HWC mode and an instance of numpy.ndarray. 
 
     Args:
         mode: Output mode of input. Use "CHW" mode by default.

@@ -58,13 +58,14 @@ class VGG(Model):
 
     Args:
         features (fluid.dygraph.Layer): vgg features create by function make_layers.
-        num_classes (int): output dim of last fc layer. Default: -1.
+        num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
+                            will not be defined. Default: 1000.
         classifier_activation (str): activation for the last fc layer. Default: 'softmax'.
     """
 
     def __init__(self,
                  features,
-                 num_classes=-1,
+                 num_classes=1000,
                  classifier_activation='softmax'):
         super(VGG, self).__init__()
         self.features = features
