@@ -48,35 +48,35 @@ class AnalysisPredictor;
 struct MkldnnQuantizerConfig;
 
 ///
-/// \brief configuration manager for `AnalysisPredictor`.
+/// \brief configuration manager for AnalysisPredictor.
 /// \since 1.7.0
 ///
-/// `AnalysisConfig` manages configurations of `AnalysisPredictor`.
+/// AnalysisConfig manages configurations of AnalysisPredictor.
 /// During inference procedure, there are many parameters(model/params path,
 /// place of inference, etc.)
 /// to be specified, and various optimizations(subgraph fusion, memory
 /// optimazation, TensorRT engine, etc.)
 /// to be done. Users can manage these settings by creating and modifying an
-/// `AnalysisConfig`,
-/// and loading it into `AnalysisPredictor`.
+/// AnalysisConfig,
+/// and loading it into AnalysisPredictor.
 ///
 struct AnalysisConfig {
   AnalysisConfig() = default;
   ///
-  /// \brief Construct a new `AnalysisConfig` from another
-  /// `AnalysisConfig`.
+  /// \brief Construct a new AnalysisConfig from another
+  /// AnalysisConfig.
   ///
-  /// \param[in] other another `AnalysisConfig`
+  /// \param[in] other another AnalysisConfig
   ///
   explicit AnalysisConfig(const AnalysisConfig& other);
   ///
-  /// \brief Construct a new `AnalysisConfig` from a no-combined model.
+  /// \brief Construct a new AnalysisConfig from a no-combined model.
   ///
   /// \param[in] model_dir model directory of the no-combined model.
   ///
   explicit AnalysisConfig(const std::string& model_dir);
   ///
-  /// \brief Construct a new `AnalysisConfig` from a combined model.
+  /// \brief Construct a new AnalysisConfig from a combined model.
   ///
   /// \param[in] prog_file model file path of the combined model.
   /// \param[in] params_file params file path of the combined model.
@@ -129,220 +129,362 @@ struct AnalysisConfig {
   void SetOptimCacheDir(const std::string& opt_cache_dir) {
     opt_cache_dir_ = opt_cache_dir;
   }
-  /** Get the model directory path.
-   */
+  ///
+  /// \brief Get the model directory path.
+  ///
+  /// \return const std::string& The model directory path.
+  ///
   const std::string& model_dir() const { return model_dir_; }
-  /** Get the program file path.
-   */
+  ///
+  /// \brief Get the program file path.
+  ///
+  /// \return const std::string& The program file path.
+  ///
   const std::string& prog_file() const { return prog_file_; }
-  /** Get the composed parameters file.
-   */
+  ///
+  /// \brief Get the combined parameters file.
+  ///
+  /// \return const std::string& The combined parameters file.
+  ///
   const std::string& params_file() const { return params_file_; }
 
   // Padding related.
-  /** Turn off Padding.
- */
+
+  ///
+  /// \brief Turn off FC Padding.
+  ///
+  ///
   void DisableFCPadding();
-  /** A bool state telling whether padding is turned on.
-   */
+  ///
+  /// \brief A boolean state telling whether fc padding is used.
+  ///
+  /// \return bool Whether fc padding is used.
+  ///
   bool use_fc_padding() const { return use_fc_padding_; }
 
   // GPU related.
 
-  /**
-   * \brief Turn on GPU.
-   * @param memory_pool_init_size_mb initial size of the GPU memory pool in MB.
-   * @param device_id the GPU card to use (default is 0).
-   */
+  ///
+  /// \brief Turn on GPU.
+  ///
+  /// \param memory_pool_init_size_mb initial size of the GPU memory pool in MB.
+  /// \param device_id device_id the GPU card to use (default is 0).
+  ///
   void EnableUseGpu(uint64_t memory_pool_init_size_mb, int device_id = 0);
-  /** Turn off the GPU.
-   */
+  ///
+  /// \brief Turn off GPU.
+  ///
+  ///
   void DisableGpu();
-  /** A bool state telling whether the GPU is turned on.
-   */
+  ///
+  /// \brief A boolean state telling whether the GPU is turned on.
+  ///
+  /// \return bool Whether the GPU is turned on.
+  ///
   bool use_gpu() const { return use_gpu_; }
-  /** Get the GPU device id.
-   */
+  ///
+  /// \brief Get the GPU device id.
+  ///
+  /// \return int The GPU device id.
+  ///
   int gpu_device_id() const { return device_id_; }
-  /** Get the initial size in MB of the GPU memory pool.
-   */
+  ///
+  /// \brief Get the initial size in MB of the GPU memory pool.
+  ///
+  /// \return int The initial size in MB of the GPU memory pool.
+  ///
   int memory_pool_init_size_mb() const { return memory_pool_init_size_mb_; }
-  /** Get the proportion of the initial memory pool size compared to the device.
-   */
+  ///
+  /// \brief Get the proportion of the initial memory pool size compared to the
+  /// device.
+  ///
+  /// \return float The proportion of the initial memory pool size.
+  ///
   float fraction_of_gpu_memory_for_pool() const;
 
-  /** Turn on CUDNN
-   */
+  // CUDNN related.
+  ///
+  /// \brief Turn on CUDNN.
+  ///
+  ///
   void EnableCUDNN();
-  /** A boolean state telling whether to use cuDNN.
-   */
+  ///
+  /// \brief A boolean state telling whether to use CUDNN.
+  ///
+  /// \return bool Whether to use CUDNN.
+  ///
   bool cudnn_enabled() const { return use_cudnn_; }
 
-  /** \brief Control whether to perform IR graph optimization.
-   *
-   * If turned off, the AnalysisConfig will act just like a NativeConfig.
-   */
+  ///
+  /// \brief Control whether to perform IR graph optimization.
+  /// If turned off, the AnalysisConfig will act just like a NativeConfig.
+  ///
+  /// \param x Whether the ir graph optimization is actived.
+  ///
   void SwitchIrOptim(int x = true) { enable_ir_optim_ = x; }
-  /** A boolean state tell whether the ir graph optimization is actived.
-   */
+  ///
+  /// \brief A boolean state telling whether the ir graph optimization is
+  /// actived.
+  ///
+  /// \return bool Whether to use ir graph optimization.
+  ///
   bool ir_optim() const { return enable_ir_optim_; }
 
-  /** \brief INTERNAL Determine whether to use the feed and fetch operators.
-   * Just for internal development, not stable yet.
-   * When ZeroCopyTensor is used, this should turned off.
-   */
+  ///
+  /// \brief INTERNAL Determine whether to use the feed and fetch operators.
+  /// Just for internal development, not stable yet.
+  /// When ZeroCopyTensor is used, this should be turned off.
+  ///
+  /// \param x Whether to use the feed and fetch operators.
+  ///
   void SwitchUseFeedFetchOps(int x = true) { use_feed_fetch_ops_ = x; }
-  /** A boolean state telling whether to use the feed and fetch operators.
-   */
+  ///
+  /// \brief A boolean state telling whether to use the feed and fetch
+  /// operators.
+  ///
+  /// \return bool Whether to use the feed and fetch operators.
+  ///
   bool use_feed_fetch_ops_enabled() const { return use_feed_fetch_ops_; }
 
-  /** \brief Control whether to specify the inputs' names.
-   *
-   * The PaddleTensor type has a `name` member, assign it with the corresponding
-   * variable name. This is used only when the input PaddleTensors passed to the
-   * `PaddlePredictor.Run(...)` cannot follow the order in the training phase.
-   */
+  ///
+  /// \brief Control whether to specify the inputs' names.
+  /// The ZeroCopyTensor type has a name member, assign it with the
+  /// corresponding
+  /// variable name. This is used only when the input ZeroCopyTensors passed to
+  /// the
+  /// AnalysisPredictor.ZeroCopyRun() cannot follow the order in the training
+  /// phase.
+  ///
+  /// \param x Whether to specify the inputs' names.
+  ///
   void SwitchSpecifyInputNames(bool x = true) { specify_input_name_ = x; }
-
-  /** A boolean state tell whether the input PaddleTensor names specified should
-   * be used to reorder the inputs in `PaddlePredictor.Run(...)`.
-   */
+  ///
+  /// \brief A boolean state tell whether the input ZeroCopyTensor names
+  /// specified should
+  /// be used to reorder the inputs in AnalysisPredictor.ZeroCopyRun().
+  ///
+  /// \return bool Whether to specify the inputs' names.
+  ///
   bool specify_input_name() const { return specify_input_name_; }
 
-  /**
-   * \brief Turn on the TensorRT engine.
-   *
-   * The TensorRT engine will accelerate some subgraphes in the original Fluid
-   * computation graph. In some models such as TensorRT50, GoogleNet and so on,
-   * it gains significant performance acceleration.
-   *
-   * @param workspace_size the memory size(in byte) used for TensorRT workspace.
-   * @param max_batch_size the maximum batch size of this prediction task,
-   * better set as small as possible, or performance loss.
-   * @param min_subgrpah_size the minimum TensorRT subgraph size needed, if a
-   * subgraph is less than this, it will not transfer to TensorRT engine.
-   */
-  void EnableTensorRtEngine(
-      int workspace_size = 1 << 20, int max_batch_size = 1,
-      int min_subgraph_size = 3, Precision precision = Precision::kFloat32,
-      bool use_static = false, bool use_calib_mode = true,
-      std::map<std::string, std::vector<int>> min_input_shape = {},
-      std::map<std::string, std::vector<int>> max_input_shape = {},
-      std::map<std::string, std::vector<int>> optim_input_shape = {});
-  /** A boolean state telling whether the TensorRT engine is used.
-   */
+  ///
+  /// \brief Turn on the TensorRT engine.
+  /// The TensorRT engine will accelerate some subgraphes in the original Fluid
+  /// computation graph. In some models such as resnet50, GoogleNet and so on,
+  /// it gains significant performance acceleration.
+  ///
+  /// \param workspace_size The memory size(in byte) used for TensorRT
+  /// workspace.
+  /// \param max_batch_size The maximum batch size of this prediction task,
+  /// better set as small as possible for less performance loss.
+  /// \param min_subgrpah_size The minimum TensorRT subgraph size needed, if a
+  /// subgraph is smaller than this, it will not be transferred to TensorRT
+  /// engine.
+  /// \param precision The precision used in TensorRT.
+  /// \param use_static Serialize optimization information to disk for reusing.
+  /// \param use_calib_mode Use TRT int8 calibration(post training
+  /// quantization).
+  ///
+  ///
+  void EnableTensorRtEngine(int workspace_size = 1 << 20,
+                            int max_batch_size = 1, int min_subgraph_size = 3,
+                            Precision precision = Precision::kFloat32,
+                            bool use_static = false,
+                            bool use_calib_mode = true);
+  ///
+  /// \brief A boolean state telling whether the TensorRT engine is used.
+  ///
+  /// \return bool Whether the TensorRT engine is used.
+  ///
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
-  /**
-   *  \brief Turn on the usage of Lite sub-graph engine.
-   */
+  ///
+  /// \brief Set min, max, opt shape for TensorRT Dynamic shape mode.
+  /// \param min_input_shape The min input shape of the subgraph input.
+  /// \param max_input_shape The max input shape of the subgraph input.
+  /// \param opt_input_shape The opt input shape of the subgraph input.
+  /// \param disable_trt_plugin_fp16 Setting this parameter to true means that
+  /// TRT plugin will not run fp16.
+  ///
+  void SetTRTDynamicShapeInfo(
+      std::map<std::string, std::vector<int>> min_input_shape,
+      std::map<std::string, std::vector<int>> max_input_shape,
+      std::map<std::string, std::vector<int>> optim_input_shape,
+      bool disable_trt_plugin_fp16 = false);
+  ///
+  /// \brief Turn on the usage of Lite sub-graph engine.
+  ///
+  /// \param precision_mode Precion used in Lite sub-graph engine.
+  /// \param passes_filter Set the passes used in Lite sub-graph engine.
+  /// \param ops_filter Operators not supported by Lite.
+  ///
   void EnableLiteEngine(
       AnalysisConfig::Precision precision_mode = Precision::kFloat32,
       const std::vector<std::string>& passes_filter = {},
       const std::vector<std::string>& ops_filter = {});
 
-  /** A boolean state indicating whether the Lite sub-graph engine is used.
-  */
+  ///
+  /// \brief A boolean state indicating whether the Lite sub-graph engine is
+  /// used.
+  ///
+  /// \return bool whether the Lite sub-graph engine is used.
+  ///
   bool lite_engine_enabled() const { return use_lite_; }
 
-  /** \brief Control whether to debug IR graph analysis phase.
-   *
-   * This will generate DOT files for visualizing the computation graph after
-   * each analysis pass applied.
-   */
+  ///
+  /// \brief Control whether to debug IR graph analysis phase.
+  /// This will generate DOT files for visualizing the computation graph after
+  /// each analysis pass applied.
+  ///
+  /// \param x whether to debug IR graph analysis phase.
+  ///
   void SwitchIrDebug(int x = true);
 
-  /** Turn on NGRAPH.
-   */
-  void EnableNgraph();
-  /** A boolean state telling whether to use the NGRAPH.
-   */
-  bool ngraph_enabled() const { return use_ngraph_; }
-
-  /** Turn on MKLDNN.
-   */
+  ///
+  /// \brief Turn on MKLDNN.
+  ///
+  ///
   void EnableMKLDNN();
-  /** set the cache capacity of different input shapes for MKLDNN.
-   *  Default 0 means don't cache any shape.
-   */
+  ///
+  /// \brief Set the cache capacity of different input shapes for MKLDNN.
+  /// Default value 0 means not caching any shape.
+  ///
+  /// \param capacity The cache capacity.
+  ///
   void SetMkldnnCacheCapacity(int capacity);
-  /** A boolean state telling whether to use the MKLDNN.
-   */
+  ///
+  /// \brief A boolean state telling whether to use the MKLDNN.
+  ///
+  /// \return bool Whether to use the MKLDNN.
+  ///
   bool mkldnn_enabled() const { return use_mkldnn_; }
 
-  /** Set and get the number of cpu math library threads.
-   */
+  ///
+  /// \brief Set the number of cpu math library threads.
+  ///
+  /// \param cpu_math_library_num_threads The number of cpu math library
+  /// threads.
+  ///
   void SetCpuMathLibraryNumThreads(int cpu_math_library_num_threads);
-  /** An int state telling how many threads are used in the CPU math library.
-   */
+  ///
+  /// \brief An int state telling how many threads are used in the CPU math
+  /// library.
+  ///
+  /// \return int The number of threads used in the CPU math library.
+  ///
   int cpu_math_library_num_threads() const {
     return cpu_math_library_num_threads_;
   }
 
-  /** Transform the AnalysisConfig to NativeConfig.
-   */
+  ///
+  /// \brief Transform the AnalysisConfig to NativeConfig.
+  ///
+  /// \return NativeConfig The NativeConfig transformed.
+  ///
   NativeConfig ToNativeConfig() const;
-  /** Specify the operator type list to use MKLDNN acceleration.
-   * @param op_list the operator type list.
-   */
+  ///
+  /// \brief Specify the operator type list to use MKLDNN acceleration.
+  ///
+  /// \param op_list The operator type list.
+  ///
   void SetMKLDNNOp(std::unordered_set<std::string> op_list) {
     mkldnn_enabled_op_types_ = op_list;
   }
 
-  /** Turn on quantization.
-   */
+  ///
+  /// \brief Turn on MKLDNN quantization.
+  ///
+  ///
   void EnableMkldnnQuantizer();
 
-  /** A boolean state telling whether the quantization is enabled.
-  */
+  ///
+  /// \brief A boolean state telling whether the MKLDNN quantization is enabled.
+  ///
+  /// \return bool Whether the MKLDNN quantization is enabled.
+  ///
   bool mkldnn_quantizer_enabled() const { return use_mkldnn_quantizer_; }
 
+  ///
+  /// \brief Get MKLDNN quantizer config.
+  ///
+  /// \return MkldnnQuantizerConfig* MKLDNN quantizer config.
+  ///
   MkldnnQuantizerConfig* mkldnn_quantizer_config() const;
 
-  /** Specify the memory buffer of program and parameter
-   * @param prog_buffer the memory buffer of program.
-   * @param prog_buffer_size the size of the data.
-   * @param params_buffer the memory buffer of the composed parameters file.
-   * @param params_buffer_size the size of the commposed parameters data.
-   */
+  ///
+  /// \brief Specify the memory buffer of program and parameter.
+  /// Used when model and params are loaded directly from memory.
+  ///
+  /// \param prog_buffer The memory buffer of program.
+  /// \param prog_buffer_size The size of the model data.
+  /// \param params_buffer The memory buffer of the combined parameters file.
+  /// \param params_buffer_size The size of the combined parameters data.
+  ///
   void SetModelBuffer(const char* prog_buffer, size_t prog_buffer_size,
                       const char* params_buffer, size_t params_buffer_size);
-  /** A boolean state telling whether the model is set from the CPU memory.
-   */
+  ///
+  /// \brief A boolean state telling whether the model is set from the CPU
+  /// memory.
+  ///
+  /// \return bool Whether model and params are loaded directly from memory.
+  ///
   bool model_from_memory() const { return model_from_memory_; }
 
-  /** Turn on memory optimize
-   * NOTE still in development, will release latter.
-   */
+  ///
+  /// \brief Turn on memory optimize
+  /// NOTE still in development.
+  ///
   void EnableMemoryOptim();
-  /** Tell whether the memory optimization is activated. */
+  ///
+  /// \brief A boolean state telling whether the memory optimization is
+  /// activated.
+  ///
+  /// \return bool Whether the memory optimization is activated.
+  ///
   bool enable_memory_optim() const;
 
-  /** \brief Turn on profiling report.
-   *
-   * If not turned on, no profiling report will be generateed.
-   */
+  ///
+  /// \brief Turn on profiling report.
+  /// If not turned on, no profiling report will be generated.
+  ///
   void EnableProfile();
-  /** A boolean state telling whether the profiler is activated.
-   */
+  ///
+  /// \brief A boolean state telling whether the profiler is activated.
+  ///
+  /// \return bool Whether the profiler is activated.
+  ///
   bool profile_enabled() const { return with_profile_; }
 
-  /** \brief Disable GLOG information output for security.
-   *
-   * If called, no LOG(INFO) logs will be generated.
-   */
+  ///
+  /// \brief Mute all logs in Paddle inference.
+  ///
   void DisableGlogInfo();
-  /** A boolean state telling whether the GLOG info is disabled.
-   */
+  ///
+  /// \brief A boolean state telling whether logs in Paddle inference are muted.
+  ///
+  /// \return bool Whether logs in Paddle inference are muted.
+  ///
   bool glog_info_disabled() const { return !with_glog_info_; }
 
+  ///
+  /// \brief Set the AnalysisConfig to be invalid.
+  /// This is to ensure that an AnalysisConfig can only be used in one
+  /// AnalysisPredictor.
+  ///
   void SetInValid() const { is_valid_ = false; }
+  ///
+  /// \brief A boolean state telling whether the AnalysisConfig is valid.
+  ///
+  /// \return bool Whether the AnalysisConfig is valid.
+  ///
   bool is_valid() const { return is_valid_; }
 
   friend class ::paddle::AnalysisPredictor;
 
-  /** NOTE just for developer, not an official API, easily to be broken.
-   * Get a pass builder for customize the passes in IR analysis phase.
-   */
+  ///
+  /// \brief Get a pass builder for customize the passes in IR analysis phase.
+  /// NOTE: Just for developer, not an official API, easy to be broken.
+  ///
+  ///
   PassStrategy* pass_builder() const;
   void PartiallyRelease();
 
@@ -372,25 +514,28 @@ struct AnalysisConfig {
   bool use_tensorrt_{false};
   // For workspace_size, refer it from here:
   // https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide/index.html#troubleshooting
-  int tensorrt_workspace_size_;
+  int tensorrt_workspace_size_{1 << 30};
   // While TensorRT allows an engine optimized for a given max batch size
   // to run at any smaller size, the performance for those smaller
   // sizes may not be as well-optimized. Therefore, Max batch is best
   // equivalent to the runtime batch size.
-  int tensorrt_max_batchsize_;
+  int tensorrt_max_batchsize_{1};
   //  We transform the Ops that can be converted into TRT layer in the model,
   //  and aggregate these Ops into subgraphs for TRT execution.
   //  We set this variable to control the minimum number of nodes in the
   //  subgraph, 3 as default value.
   int tensorrt_min_subgraph_size_{3};
-  Precision tensorrt_precision_mode_;
-  bool trt_use_static_engine_;
-  bool trt_use_calib_mode_;
+  Precision tensorrt_precision_mode_{Precision::kFloat32};
+  bool trt_use_static_engine_{false};
+  bool trt_use_calib_mode_{true};
+  std::map<std::string, std::vector<int>> min_input_shape_{};
+  std::map<std::string, std::vector<int>> max_input_shape_{};
+  std::map<std::string, std::vector<int>> optim_input_shape_{};
+  bool disable_trt_plugin_fp16_{false};
 
   // memory reuse related.
   bool enable_memory_optim_{false};
 
-  bool use_ngraph_{false};
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
 
@@ -412,9 +557,6 @@ struct AnalysisConfig {
   std::string serialized_info_cache_;
 
   mutable std::unique_ptr<PassStrategy> pass_builder_;
-  std::map<std::string, std::vector<int>> min_input_shape_;
-  std::map<std::string, std::vector<int>> max_input_shape_;
-  std::map<std::string, std::vector<int>> optim_input_shape_;
 
   bool use_lite_{false};
   std::vector<std::string> lite_passes_filter_;

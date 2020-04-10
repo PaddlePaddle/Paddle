@@ -21,6 +21,7 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 from functools import reduce
 from op_test import _set_use_system_allocator
+from paddle.fluid import Program, program_guard
 
 np.random.random(123)
 
@@ -211,6 +212,20 @@ class TestLayerNormAPI(unittest.TestCase):
             epsilon=1e-05,
             param_attr="scale",
             bias_attr="shift")
+
+
+class TestDygraphLayerNormAPIError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            layer_norm = fluid.LayerNorm([32, 32])
+            # the input of LayerNorm must be Variable.
+            x1 = np.random.random((3, 32, 32)).astype('float32')
+            self.assertRaises(TypeError, layer_norm, x1)
+
+            # the input dtype of LayerNorm must be float32 or float64
+            # float16 only can be set on GPU place
+            x2 = fluid.layers.data(name='x2', shape=[3, 32, 32], dtype="int32")
+            self.assertRaises(TypeError, layer_norm, x2)
 
 
 if __name__ == '__main__':
