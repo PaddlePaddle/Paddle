@@ -68,22 +68,7 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
             diag_embed = np.random.randn(2, 3).astype('float32')
             with dg.guard():
                 data1 = F.diag_embed(diag_embed)
-                #[[[ 0.5000,  0.0000,  0.0000],
-                # [ 0.0000, 0.4110,  0.0000],
-                # [ 0.0000,  0.0000, -0.3940]],
-                #[[ -0.5238,  0.0000,  0.0000],
-                # [ 0.0000, -1.4096,  0.0000],
-                # [ 0.0000,  0.0000, 0.7865]]]
-
                 data2 = F.diag_embed(diag_embed, offset=1, dim1=0, dim2=2)
-                #[[[ 0.0000,  0.5000,  0.0000,  0.0000],
-                # [ 0.0000,  -0.5238,  0.0000,  0.0000]],
-                #[[ 0.0000,  0.0000, 0.4110,  0.0000],
-                # [ 0.0000,  0.0000, -1.4096,  0.0000]],
-                #[[ 0.0000,  0.0000,  0.0000, -0.3940],
-                # [ 0.0000,  0.0000,  0.0000, 0.7865]],
-                #[ 0.0000,  0.0000,  0.0000,  0.0000],
-                # [ 0.0000,  0.0000,  0.0000,  0.0000]]]
     """
     inputs = {'Input': [input]}
     attrs = {'offset': offset, 'dim1': dim1, 'dim2': dim2}
@@ -117,7 +102,8 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
                "dim1 and dim2 cannot be the same dimension." \
                 "But received dim1 = %d, dim2 = %d\n"%(dim1, dim2))
 
-    __check_input(input, offset, dim1, dim2)
+    if not in_dygraph_mode():
+        __check_input(input, offset, dim1, dim2)
     helper = LayerHelper("diag_embed", **locals())
 
     out = helper.create_variable_for_type_inference(dtype=input.dtype)

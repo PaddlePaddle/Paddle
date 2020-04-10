@@ -37,13 +37,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
-#ifdef PADDLE_WITH_NGRAPH
-#include "paddle/fluid/operators/ngraph/ngraph_engine.h"
-#endif
-
 DECLARE_bool(benchmark);
 DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
-DEFINE_bool(use_ngraph, false, "Use NGRAPH to run");
 
 namespace paddle {
 namespace framework {
@@ -59,22 +54,6 @@ ExecutorPrepareContext::ExecutorPrepareContext(
 
 void ExecutorPrepareContext::PrepareUnusedVars(
     const std::vector<std::string>& keep_vars, bool force_disable_gc) {
-#ifdef PADDLE_WITH_NGRAPH
-  if (FLAGS_use_ngraph) {
-    // FIXME(zjl): There is difference when ngraph and gc are both enabled
-    // in unittests. I do not know why it happens. Maybe ngraph engine
-    // would cache some variables?
-    LOG_FIRST_N(WARNING, 1)
-        << "FLAGS_use_ngraph=True, garbage collection strategy is "
-           "disabled in Executor";
-    force_disable_gc = true;
-  }
-#endif
-  force_disable_gc_ = force_disable_gc;
-  if (GetEagerDeletionThreshold() < 0 || force_disable_gc_) {
-    return;
-  }
-
   // If gc is enabled and block size > 1
   if (prog_.Size() > 1) {
     operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
@@ -84,6 +63,12 @@ void ExecutorPrepareContext::PrepareUnusedVars(
     operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
         prog_, block_id_, ops_);
   }
+
+  force_disable_gc_ = force_disable_gc;
+  if (GetEagerDeletionThreshold() < 0 || force_disable_gc_) {
+    return;
+  }
+
   unused_vars_ = GetUnusedVars(prog_.Block(block_id_), ops_, keep_vars);
 }
 
@@ -374,12 +359,6 @@ std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
   for (auto& op_desc : block.AllOps()) {
     ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
-#ifdef PADDLE_WITH_NGRAPH
-  if (FLAGS_use_ngraph && ctx->block_id_ == 0) {
-    paddle::operators::NgraphEngine::FuseNgraphOps(
-        ctx->prog_.Block(ctx->block_id_), &ctx->ops_);
-  }
-#endif
   ctx->PrepareUnusedVars(skip_ref_cnt_vars, force_disable_gc);
   return ctx;
 }
@@ -412,9 +391,11 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
   return result;
 }
 
-void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
-                                  bool create_local_scope, bool create_vars,
-                                  bool keep_kids) {
+void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
+                                         Scope* scope, int64_t start_op_index,
+                                         int64_t end_op_index,
+                                         bool create_local_scope,
+                                         bool create_vars, bool keep_kids) {
   platform::RecordBlock b(kProgramId);
   PADDLE_ENFORCE_NOT_NULL(scope);
   Scope* local_scope = scope;
@@ -446,7 +427,8 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 #endif
   }
 
-  for (auto& op : ctx->ops_) {
+  for (int64_t i = start_op_index; i < end_op_index; ++i) {
+    auto& op = ctx->ops_[i];
     op->Run(*local_scope, place_);
     if (gc) {
       DeleteUnusedTensors(*local_scope, op.get(), ctx->unused_vars_, gc.get());
@@ -469,6 +451,15 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       scope->DropKids();
     }
   }
+}
+
+void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
+                                  bool create_local_scope, bool create_vars,
+                                  bool keep_kids) {
+  int64_t start_op_index = 0;
+  int64_t end_op_index = ctx->ops_.size();
+  RunPartialPreparedContext(ctx, scope, start_op_index, end_op_index,
+                            create_local_scope, create_vars, keep_kids);
 }
 
 void Executor::RunPreparedContext(

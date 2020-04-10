@@ -17,6 +17,7 @@
 __all__ = ['diag_embed', ]
 
 # TODO: define alias in functional directory
+from . import conv
 from .conv import conv2d  #DEFINE_ALIAS
 from .conv import conv2d_transpose  #DEFINE_ALIAS
 from .conv import conv3d  #DEFINE_ALIAS

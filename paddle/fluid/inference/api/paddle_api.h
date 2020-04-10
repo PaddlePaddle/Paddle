@@ -32,8 +32,7 @@
  */
 namespace paddle {
 
-/** paddle data type.
- */
+/// \brief Paddle data type.
 enum PaddleDType {
   FLOAT32,
   INT64,
@@ -42,79 +41,98 @@ enum PaddleDType {
   // TODO(Superjomn) support more data types if needed.
 };
 
-/**
- * \brief Memory manager for `PaddleTensor`.
- *
- * The PaddleBuf holds a buffer for data input or output. The memory can be
- * allocated by user or by PaddleBuf itself, but in any case, the PaddleBuf
- * should be reused for better performance.
- *
- * For user allocated memory, the following API can be used:
- * - PaddleBuf(void* data, size_t length) to set an external memory by
- * specifying the memory address and length.
- * - Reset(void* data, size_t length) to reset the PaddleBuf with an external
- *memory.
- * ATTENTION, for user allocated memory, deallocation should be done by users
- *externally after the program finished. The PaddleBuf won't do any allocation
- *or deallocation.
- *
- * To have the PaddleBuf allocate and manage the memory:
- * - PaddleBuf(size_t length) will allocate a memory of size `length`.
- * - Resize(size_t length) resize the memory to no less than `length`, ATTENTION
- *  if the allocated memory is larger than `length`, nothing will done.
- *
- * Usage:
- *
- * Let PaddleBuf manage the memory internally.
- * \code{cpp}
- * const int num_elements = 128;
- * PaddleBuf buf(num_elements * sizeof(float));
- * \endcode
- *
- * Or
- * \code{cpp}
- * PaddleBuf buf;
- * buf.Resize(num_elements * sizeof(float));
- * \endcode
- * Works the exactly the same.
- *
- * One can also make the `PaddleBuf` use the external memory.
- * \code{cpp}
- * PaddleBuf buf;
- * void* external_memory = new float[num_elements];
- * buf.Reset(external_memory, num_elements*sizeof(float));
- * ...
- * delete[] external_memory; // manage the memory lifetime outside.
- * \endcode
- */
+/// \brief Memory manager for PaddleTensor.
+///
+/// The PaddleBuf holds a buffer for data input or output. The memory can be
+/// allocated by user or by PaddleBuf itself, but in any case, the PaddleBuf
+/// should be reused for better performance.
+///
+/// For user allocated memory, the following API can be used:
+/// - PaddleBuf(void* data, size_t length) to set an external memory by
+/// specifying the memory address and length.
+/// - Reset(void* data, size_t length) to reset the PaddleBuf with an external
+/// memory.
+/// ATTENTION, for user allocated memory, deallocation should be done by users
+/// externally after the program finished. The PaddleBuf won't do any allocation
+/// or deallocation.
+///
+/// To have the PaddleBuf allocate and manage the memory:
+/// - PaddleBuf(size_t length) will allocate a memory of size `length`.
+/// - Resize(size_t length) resize the memory to no less than `length`,
+/// ATTENTION
+///  if the allocated memory is larger than `length`, nothing will done.
+///
+/// Usage:
+///
+/// Let PaddleBuf manage the memory internally.
+/// \code{cpp}
+/// const int num_elements = 128;
+/// PaddleBuf buf(num_elements/// sizeof(float));
+/// \endcode
+///
+/// Or
+/// \code{cpp}
+/// PaddleBuf buf;
+/// buf.Resize(num_elements/// sizeof(float));
+/// \endcode
+/// Works the exactly the same.
+///
+/// One can also make the `PaddleBuf` use the external memory.
+/// \code{cpp}
+/// PaddleBuf buf;
+/// void* external_memory = new float[num_elements];
+/// buf.Reset(external_memory, num_elements*sizeof(float));
+/// ...
+/// delete[] external_memory; // manage the memory lifetime outside.
+/// \endcode
+///
 class PaddleBuf {
  public:
-  /** PaddleBuf allocate memory internally, and manage it.
-   */
+  ///
+  /// \brief PaddleBuf allocate memory internally, and manage it.
+  ///
+  /// \param[in] length The length of data.
+  ///
   explicit PaddleBuf(size_t length)
       : data_(new char[length]), length_(length), memory_owned_(true) {}
-  /** Set external memory, the PaddleBuf won't manage it.
-   */
+  ///
+  /// \brief Set external memory, the PaddleBuf won't manage it.
+  ///
+  /// \param[in] data The start address of the external memory.
+  /// \param[in] length The length of data.
+  ///
   PaddleBuf(void* data, size_t length)
       : data_(data), length_(length), memory_owned_{false} {}
-  /** Copy only available when memory is managed externally.
-   */
-  explicit PaddleBuf(const PaddleBuf&);
-
-  /** Resize the memory.
-   */
+  ///
+  /// \brief Copy only available when memory is managed externally.
+  ///
+  /// \param[in] other another `PaddleBuf`
+  ///
+  explicit PaddleBuf(const PaddleBuf& other);
+  ///
+  /// \brief Resize the memory.
+  ///
+  /// \param[in] length The length of data.
+  ///
   void Resize(size_t length);
-  /** Reset to external memory, with address and length set.
-   */
+  ///
+  /// \brief Reset to external memory, with address and length set.
+  ///
+  /// \param[in] data The start address of the external memory.
+  /// \param[in] length The length of data.
+  ///
   void Reset(void* data, size_t length);
-  /** Tell whether the buffer is empty.
-   */
+  ///
+  /// \brief Tell whether the buffer is empty.
+  ///
   bool empty() const { return length_ == 0; }
-  /** Get the data's memory address.
-   */
+  ///
+  /// \brief Get the data's memory address.
+  ///
   void* data() const { return data_; }
-  /** Get the memory length.
-   */
+  ///
+  /// \brief Get the memory length.
+  ///
   size_t length() const { return length_; }
 
   ~PaddleBuf() { Free(); }
@@ -125,20 +143,21 @@ class PaddleBuf {
 
  private:
   void Free();
-  void* data_{nullptr};  // pointer to the data memory.
-  size_t length_{0};     // number of memory bytes.
+  void* data_{nullptr};  ///< pointer to the data memory.
+  size_t length_{0};     ///< number of memory bytes.
   bool memory_owned_{true};
 };
 
-/** Basic input and output data structure for PaddlePredictor.
- */
+///
+/// \brief Basic input and output data structure for PaddlePredictor.
+///
 struct PaddleTensor {
   PaddleTensor() = default;
-  std::string name;  // variable name.
+  std::string name;  ///<  variable name.
   std::vector<int> shape;
-  PaddleBuf data;  // blob of data.
+  PaddleBuf data;  ///<  blob of data.
   PaddleDType dtype;
-  std::vector<std::vector<size_t>> lod;  // Tensor+LoD equals LoDTensor
+  std::vector<std::vector<size_t>> lod;  ///<  Tensor+LoD equals LoDTensor
 };
 
 enum class PaddlePlace { kUNK = -1, kCPU, kGPU };
@@ -313,25 +332,30 @@ class PaddlePredictor {
   };
 };
 
+///
+/// \brief configuration manager for `NativePredictor`.
+///
+/// `AnalysisConfig` manages configurations of `NativePredictor`.
+/// During inference procedure, there are many parameters(model/params path,
+/// place of inference, etc.)
+///
 struct NativeConfig : public PaddlePredictor::Config {
-  // GPU related fields.
+  /// GPU related fields.
   bool use_gpu{false};
   int device{0};
   float fraction_of_gpu_memory{
-      -1.f}; /*!< Change to a float in (0,1] if needed. */
+      -1.f};  ///< Change to a float in (0,1] if needed.
 
-  // Specify the exact path of program and parameter files.
   std::string prog_file;
-  std::string param_file;
+  std::string
+      param_file;  ///< Specify the exact path of program and parameter files.
 
-  /** Specify the variable's name of each input if input tensors don't follow
-   * the
-   * `feeds` and `fetches` of the phase `save_inference_model`.
-   */
-  bool specify_input_name{false};
+  bool specify_input_name{false};  ///< Specify the variable's name of each
+                                   ///< input if input tensors don't follow the
+                                   ///< `feeds` and `fetches` of the phase
+                                   ///< `save_inference_model`.
 
-  /** Set and get the number of cpu math library threads.
-   */
+  /// Set and get the number of cpu math library threads.
   void SetCpuMathLibraryNumThreads(int cpu_math_library_num_threads) {
     cpu_math_library_num_threads_ = cpu_math_library_num_threads;
   }
@@ -340,39 +364,37 @@ struct NativeConfig : public PaddlePredictor::Config {
   }
 
  protected:
-  // number of cpu math library (such as MKL, OpenBlas) threads for each
-  // instance.
-  int cpu_math_library_num_threads_{1};
+  int cpu_math_library_num_threads_{1};  ///< number of cpu math library (such
+                                         ///< as MKL, OpenBlas) threads for each
+                                         ///< instance.
 };
 
-/*! \fn std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT&
- * config);
- *
- * \brief A factory to help create different predictors.
- *
- * Usage:
- *
- * \code{.cpp}
- * NativeConfig config;
- * ... // change the configs.
- * auto native_predictor = CreatePaddlePredictor(config);
- * \endcode
- *
- * FOR EXTENSION DEVELOPER:
- * Different predictors are designated by config type. Similar configs can be
- * merged, but there shouldn't be a huge config containing different fields for
- * more than one kind of predictors.
- */
+///
+/// \brief A factory to help create different predictors.
+///
+/// Usage:
+///
+/// \code{.cpp}
+/// NativeConfig config;
+/// ... // change the configs.
+/// auto native_predictor = CreatePaddlePredictor(config);
+/// \endcode
+///
+/// FOR EXTENSION DEVELOPER:
+/// Different predictors are designated by config type. Similar configs can be
+/// merged, but there shouldn't be a huge config containing different fields for
+/// more than one kind of predictors.
+////
 template <typename ConfigT>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
 
-/** NOTE The following APIs are too trivial, we will discard it in the following
- * versions.
- */
+/// NOTE The following APIs are too trivial, we will discard it in the following
+/// versions.
+///
 enum class PaddleEngineKind {
-  kNative = 0,        /*!< Use the native Fluid facility. */
-  kAutoMixedTensorRT, /*!< Automatically mix Fluid with TensorRT. */
-  kAnalysis,          /*!< More optimization. */
+  kNative = 0,         ///< Use the native Fluid facility.
+  kAutoMixedTensorRT,  ///< Automatically mix Fluid with TensorRT.
+  kAnalysis,           ///< More optimization.
 };
 
 template <typename ConfigT, PaddleEngineKind engine>

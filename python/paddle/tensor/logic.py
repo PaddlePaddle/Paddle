@@ -33,7 +33,7 @@ __all__ = [
     #            'reduce_all',
     #            'reduce_any',
     'allclose',
-    #            'elementwise_equal',
+    'elementwise_equal',
     #            'isnan'
 ]
 
@@ -185,4 +185,41 @@ def allclose(input, other, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     helper.append_op(
         type='allclose', inputs=inputs, outputs=outputs, attrs=attrs)
 
+    return out
+
+
+def elementwise_equal(x, y, name=None):
+    """
+    This layer returns the truth value of :math:`x == y` elementwise.
+
+    Args:
+        x(Variable): Tensor, data type is float32, float64, int32, int64.
+        y(Variable): Tensor, data type is float32, float64, int32, int64.
+        name(str, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Variable: output Tensor, it's shape is the same as the input's Tensor,
+        and the data type is bool. The result of this op is stop_gradient. 
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          import paddle.fluid as fluid
+          import numpy as np
+          label = fluid.layers.assign(np.array([3, 3], dtype="int32"))
+          limit = fluid.layers.assign(np.array([3, 2], dtype="int32"))
+          out1 = paddle.elementwise_equal(x=label, y=limit) #out1=[True, False]
+    """
+    helper = LayerHelper("elementwise_equal", **locals())
+    out = helper.create_variable_for_type_inference(dtype='bool')
+    out.stop_gradient = True
+
+    helper.append_op(
+        type='equal',
+        inputs={'X': [x],
+                'Y': [y]},
+        outputs={'Out': [out]},
+        attrs={'force_cpu': False})
     return out

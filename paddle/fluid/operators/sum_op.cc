@@ -18,7 +18,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/var_type_inference.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"

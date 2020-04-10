@@ -14,7 +14,11 @@
 
 # TODO: import all neural network related api under this directory,
 # including layers, linear, conv, rnn etc.
-__all__ = ['diag_embed', ]
+
+from .layer import norm
+
+__all__ = ['diag_embed']
+__all__ += norm.__all__
 
 # TODO: define alias in nn directory
 # from .clip import ErrorClipByValue   #DEFINE_ALIAS
@@ -58,6 +62,8 @@ __all__ = ['diag_embed', ]
 # from .layer.loss import MSELoss   #DEFINE_ALIAS
 from .layer.loss import L1Loss  #DEFINE_ALIAS
 from .layer import loss  #DEFINE_ALIAS
+from .layer import conv  #DEFINE_ALIAS
+from .layer.conv import Conv2D, Conv2DTranspose, Conv3D, Conv3DTranspose  #DEFINE_ALIAS
 # from .layer.loss import NLLLoss   #DEFINE_ALIAS
 # from .layer.loss import BCELoss   #DEFINE_ALIAS
 # from .layer.learning_rate import CosineDecay   #DEFINE_ALIAS
@@ -71,6 +77,7 @@ from .layer import loss  #DEFINE_ALIAS
 # from .layer.norm import BatchNorm   #DEFINE_ALIAS
 # from .layer.norm import GroupNorm   #DEFINE_ALIAS
 # from .layer.norm import LayerNorm   #DEFINE_ALIAS
+from .layer.norm import InstanceNorm  #DEFINE_ALIAS
 # from .layer.norm import SpectralNorm   #DEFINE_ALIAS
 # from .layer.activation import PReLU   #DEFINE_ALIAS
 # from .layer.activation import ReLU   #DEFINE_ALIAS

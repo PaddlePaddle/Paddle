@@ -94,9 +94,6 @@ limitations under the License. */
 #include "pybind11/stl.h"
 
 DECLARE_bool(use_mkldnn);
-#ifdef PADDLE_WITH_NGRAPH
-DECLARE_bool(use_ngraph);
-#endif
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -114,14 +111,6 @@ bool IsCompiledWithCUDA() {
 
 bool IsCompiledWithMKLDNN() {
 #ifndef PADDLE_WITH_MKLDNN
-  return false;
-#else
-  return true;
-#endif
-}
-
-bool IsCompiledWithNGRAPH() {
-#ifndef PADDLE_WITH_NGRAPH
   return false;
 #else
   return true;
@@ -989,7 +978,11 @@ All parameter, weight, gradient are variables in Paddle.
              PADDLE_ENFORCE_EQ(self.IsType<framework::ReaderHolder>(), true);
              return self.GetMutable<framework::ReaderHolder>();
            },
-           py::return_value_policy::reference);
+           py::return_value_policy::reference)
+      .def("set_scope", [](Variable &self, Scope &scope) {
+        auto scope_vec = self.GetMutable<std::vector<framework::Scope *>>();
+        scope_vec->emplace_back(&scope);
+      });
 
   BindReader(&m);
 
@@ -1180,6 +1173,8 @@ All parameter, weight, gradient are variables in Paddle.
         []() { return std::string(framework::kEmptyVarName); });
   m.def("grad_var_suffix",
         []() { return std::string(framework::kGradVarSuffix); });
+  m.def("loaded_var_suffix",
+        []() { return std::string(framework::kLoadedVarSuffix); });
   m.def_submodule(
        "var_names",
        "The module will return special predefined variable name in Paddle")
@@ -1489,16 +1484,17 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_devices",
         [](bool init_p2p) { framework::InitDevices(init_p2p); });
 
-  m.def("is_compiled_with_ngraph", IsCompiledWithNGRAPH);
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("is_compiled_with_brpc", IsCompiledWithBrpc);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
-  m.def("run_cmd", [](const std::string &cmd, int time_out = -1,
-                      int sleep_inter = -1) -> const std::string {
-    return paddle::framework::shell_get_command_output(cmd, time_out,
-                                                       sleep_inter);
-  });
+  m.def("run_cmd",
+        [](const std::string &cmd, int time_out = -1,
+           int sleep_inter = -1) -> const std::string {
+          return paddle::framework::shell_get_command_output(cmd, time_out,
+                                                             sleep_inter);
+        },
+        py::arg("cmd"), py::arg("time_out") = -1, py::arg("sleep_inter") = -1);
 #ifdef PADDLE_WITH_CUDA
   m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
     // Only GPUs with Compute Capability >= 53 support float16
@@ -1869,8 +1865,10 @@ All parameter, weight, gradient are variables in Paddle.
           "reduce_strategy",
           [](const BuildStrategy &self) { return self.reduce_; },
           [](BuildStrategy &self, BuildStrategy::ReduceStrategy strategy) {
-            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
-                              "BuildStrategy is finlaized.");
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
             self.reduce_ = strategy;
           },
           R"DOC((fluid.BuildStrategy.ReduceStrategy, optional): there are two reduce
@@ -1893,8 +1891,10 @@ All parameter, weight, gradient are variables in Paddle.
           [](const BuildStrategy &self) { return self.gradient_scale_; },
           [](BuildStrategy &self,
              BuildStrategy::GradientScaleStrategy strategy) {
-            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
-                              "BuildStrategy is finalized.");
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
             self.gradient_scale_ = strategy;
           },
           R"DOC((fluid.BuildStrategy.GradientScaleStrategy, optional): there are three
@@ -1955,8 +1955,10 @@ All parameter, weight, gradient are variables in Paddle.
           "debug_graphviz_path",
           [](const BuildStrategy &self) { return self.debug_graphviz_path_; },
           [](BuildStrategy &self, const std::string &path) {
-            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
-                              "BuildStrategy is finlaized.");
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
             self.debug_graphviz_path_ = path;
           },
           R"DOC((str, optional): debug_graphviz_path indicates the path that
@@ -1977,8 +1979,10 @@ All parameter, weight, gradient are variables in Paddle.
             return self.enable_sequential_execution_;
           },
           [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
-                              "BuildStrategy is finlaized.");
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
             self.enable_sequential_execution_ = b;
           },
           R"DOC((bool, optional): If set True, the execution order of ops would
@@ -1997,8 +2001,10 @@ All parameter, weight, gradient are variables in Paddle.
             return self.remove_unnecessary_lock_;
           },
           [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
-                              "BuildStrategy is finlaized.");
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
             self.remove_unnecessary_lock_ = b;
           },
           R"DOC((bool, optional): If set True, some locks in GPU ops would be
@@ -2016,7 +2022,8 @@ All parameter, weight, gradient are variables in Paddle.
           [](const BuildStrategy &self) { return self.num_trainers_; },
           [](BuildStrategy &self, int num_trainers) {
 #ifdef WIN32
-            PADDLE_THROW("Windows has NO support to distribute mode.");
+            PADDLE_THROW(platform::errors::Unavailable(
+                "Windows has NO support to distribute mode."));
 #endif
             self.num_trainers_ = num_trainers;
           })
@@ -2059,8 +2066,10 @@ All parameter, weight, gradient are variables in Paddle.
             return self.fuse_elewise_add_act_ops_;
           },
           [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
-                              "BuildStrategy is finlaized.");
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
             self.fuse_elewise_add_act_ops_ = b;
           },
           R"DOC((bool, optional): fuse_elewise_add_act_ops indicate whether
@@ -2078,9 +2087,10 @@ All parameter, weight, gradient are variables in Paddle.
           "fuse_bn_act_ops",
           [](const BuildStrategy &self) { return self.fuse_bn_act_ops_; },
           [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy is finlaized."));
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
             self.fuse_bn_act_ops_ = b;
           },
           R"DOC((bool, optional): fuse_bn_act_ops indicate whether
@@ -2098,9 +2108,10 @@ All parameter, weight, gradient are variables in Paddle.
           "enable_auto_fusion",
           [](const BuildStrategy &self) { return self.enable_auto_fusion_; },
           [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
                               platform::errors::PreconditionNotMet(
-                                  "BuildStrategy is finlaized."));
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
             self.enable_auto_fusion_ = b;
           },
           R"DOC((bool, optional): Whether to enable fusing subgraph to a
@@ -2121,8 +2132,10 @@ All parameter, weight, gradient are variables in Paddle.
             return self.fuse_relu_depthwise_conv_;
           },
           [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
-                              "BuildStrategy is finlaized.");
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
             self.fuse_relu_depthwise_conv_ = b;
           },
           R"DOC((bool, optional): fuse_relu_depthwise_conv indicate whether
@@ -2144,8 +2157,10 @@ All parameter, weight, gradient are variables in Paddle.
                              self.fuse_broadcast_ops_ == boost::none;
                     },
                     [](BuildStrategy &self, bool b) {
-                      PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
-                                        "BuildStrategy is finlaized.");
+                      PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                                        platform::errors::PreconditionNotMet(
+                                            "BuildStrategy has been finlaized, "
+                                            "cannot be configured again."));
                       self.fuse_broadcast_ops_ = b;
                     },
                     R"DOC((bool, optional): fuse_broadcast_op indicates whether
@@ -2168,16 +2183,20 @@ All parameter, weight, gradient are variables in Paddle.
                              self.fuse_all_optimizer_ops_ == boost::none;
                     },
                     [](BuildStrategy &self, bool b) {
-                      PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
-                                        "BuildStrategy is finlaized.");
+                      PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                                        platform::errors::PreconditionNotMet(
+                                            "BuildStrategy has been finlaized, "
+                                            "cannot be configured again."));
                       self.fuse_all_optimizer_ops_ = b;
                     })
       .def_property(
           "sync_batch_norm",
           [](const BuildStrategy &self) { return self.sync_batch_norm_; },
           [](BuildStrategy &self, bool b) {
-            PADDLE_ENFORCE_EQ(!self.IsFinalized(), true,
-                              "BuildStrategy is finlaized.");
+            PADDLE_ENFORCE_NE(self.IsFinalized(), true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
             self.sync_batch_norm_ = b;
           },
           R"DOC((bool, optional): sync_batch_norm indicates whether to use
@@ -2210,9 +2229,9 @@ All parameter, weight, gradient are variables in Paddle.
             } else if (PyBool_Check(py_obj)) {
               self.memory_optimize_ = (py_obj == Py_True);
             } else {
-              PADDLE_THROW(
-                  "BuildStrategy.memory_optimize must be None, False or "
-                  "True");
+              PADDLE_THROW(platform::errors::InvalidArgument(
+                  "BuildStrategy.memory_optimize must be set to None, False or "
+                  "True"));
             }
           },
           R"DOC((bool, optional): memory opitimize aims to save total memory
@@ -2228,7 +2247,8 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, bool b) {
 #ifdef WIN32
             if (b) {
-              PADDLE_THROW("Windows has NO support to distribute mode.");
+              PADDLE_THROW(platform::errors::Unavailable(
+                  "Windows has NO support to distribute mode."));
             }
 #else
             self.is_distribution_ = b;
