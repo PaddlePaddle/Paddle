@@ -195,9 +195,6 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
         except AssertionError:
             pass
         except Exception as e:
-            print("Exception", e)
-            import sys
-            sys.stdout.flush()
             self.assertTrue(False)
 
     def test_main(self):

@@ -110,7 +110,7 @@ class DataLoader(object):
     dataset with a given index) currently, for a map-style dataset,
     please see :code:`fluid.io.Dataset`.
 
-    batch_sampler please se :code:`fluid.io.BatchSampler`
+    batch_sampler please see :code:`fluid.io.BatchSampler`
 
     Args:  
         dataset(Dataset): the dataset to load data from, should be an
