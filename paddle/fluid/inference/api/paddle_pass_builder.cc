@@ -77,12 +77,14 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "quant_conv2d_dequant_fuse_pass",            //
       "delete_quant_dequant_op_pass",              //
       // "fc_fuse_pass",                                 //
-      "simplify_with_basic_ops_pass",  //
-      "multihead_matmul_fuse_pass",    //
-      "conv_bn_fuse_pass",             //
-      "fc_fuse_pass",                  //
-      "tensorrt_subgraph_pass",        //
-      "conv_bn_fuse_pass",             //
+      "simplify_with_basic_ops_pass",           //
+      "embedding_eltwise_layernorm_fuse_pass",  //
+      "multihead_matmul_fuse_pass_v2",          //
+      "skip_layernorm_fuse_pass",               //
+      "conv_bn_fuse_pass",                      //
+      "fc_fuse_pass",                           //
+      "tensorrt_subgraph_pass",                 //
+      "conv_bn_fuse_pass",                      //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
       "conv_elementwise_add_act_fuse_pass",   //
@@ -141,10 +143,6 @@ void GpuPassStrategy::EnableMkldnnQuantizer() {
   LOG(ERROR) << "GPU not support MKL-DNN quantization";
 }
 
-void GpuPassStrategy::EnableNgraph() {
-  LOG(ERROR) << "GPU not support Ngraph yet";
-}
-
 CpuPassStrategy::CpuPassStrategy() : PassStrategy({}) {
   // NOTE the large fusions should be located in the front, so that they will
   // not be damaged by smaller ones.
@@ -198,7 +196,9 @@ void CpuPassStrategy::EnableMKLDNN() {
              "conv_relu6_mkldnn_fuse_pass",       //
              "conv_swish_mkldnn_fuse_pass",       //
              // Disabled due to topology-dependent speed-up
-             // "fc_mkldnn_pass"
+             // "fc_mkldnn_pass",
+             "mkldnn_inplace_pass",  // This pass should be activated after
+                                     // fuses
          })) {
       passes_.push_back(pass);
     }
@@ -220,14 +220,4 @@ void CpuPassStrategy::EnableMkldnnQuantizer() {
 #endif
 }
 
-void CpuPassStrategy::EnableNgraph() {
-#ifdef PADDLE_WITH_NGRAPH
-  if (!use_ngraph_) {
-    passes_.insert(passes_.begin(), "ngraph_subgraph_pass");
-  }
-  use_ngraph_ = true;
-#else
-  use_ngraph_ = false;
-#endif
-}
 }  // namespace paddle

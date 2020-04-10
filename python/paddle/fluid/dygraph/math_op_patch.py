@@ -15,9 +15,12 @@
 from __future__ import print_function
 
 from .. import core
-from ..framework import Variable, convert_np_dtype_to_dtype_
+from ..framework import Variable, convert_np_dtype_to_dtype_, _varbase_creator
 from ..layers.layer_function_generator import OpProtoHolder
 from . import to_variable, no_grad
+
+import numpy as np
+import six
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,
@@ -39,17 +42,11 @@ def monkey_patch_math_varbase():
 
     @no_grad
     def create_tensor(value, dtype, shape):
-        value = float(value)
-        inputs = {}
-        attrs = {
-            'dtype': dtype,
-            'shape': shape,
-            'value': value,
-            'force_cpu': False
-        }
-        outs = core.ops.fill_constant(inputs, attrs)
-        outs['Out'][0].stop_gradient = True
-        return outs['Out'][0]
+        out = _varbase_creator(dtype=dtype)
+        out = core.ops.fill_constant(out, 'dtype', dtype, 'shape', shape,
+                                     'value', value, 'force_cpu', False)
+        out.stop_gradient = True
+        return out
 
     def create_scalar(value, dtype):
         return create_tensor(value, dtype, shape=[1])
@@ -99,22 +96,51 @@ def monkey_patch_math_varbase():
                     print("new var's dtype is: {}, numpy dtype is {}".format(new_variable.dtype, new_variable.numpy().dtype))
 
         """
-        inputs = {'X': [self]}
-        attrs = {
-            "in_dtype": self.dtype,
-            "out_dtype": convert_np_dtype_to_dtype_(dtype)
-        }
-        outs = core.ops.cast(inputs, attrs)
-        return outs['Out'][0]
+        return core.ops.cast(self, 'in_dtype', self.dtype, 'out_dtype',
+                             convert_np_dtype_to_dtype_(dtype))
 
     def _scalar_elementwise_op_(var, scale, bias):
-        inputs = {'X': [var]}
-        attrs = {"scale": scale, "bias": bias}
-        outs = core.ops.scale(inputs, attrs)
-        return outs['Out'][0]
+        return core.ops.scale(var, 'scale', scale, 'bias', bias)
 
     def _neg_(var):
         return _scalar_elementwise_op_(var, -1.0, 0.0)
+
+    def _float_(var):
+        numel = np.prod(var.shape)
+        assert numel == 1, "only one element variable can be converted to float."
+        tensor = var.value().get_tensor()
+        assert tensor._is_initialized(), "variable's tensor is not initialized"
+        return float(var.numpy().flatten()[0])
+
+    def _long_(var):
+        numel = np.prod(var.shape)
+        assert numel == 1, "only one element variable can be converted to long."
+        tensor = var.value().get_tensor()
+        assert tensor._is_initialized(), "variable's tensor is not initialized"
+        if six.PY2:
+            return long(var.numpy().flatten()[0])
+        else:
+            return int(var.numpy().flatten()[0])
+
+    def _int_(var):
+        numel = np.prod(var.shape)
+        assert numel == 1, "only one element variable can be converted to int."
+        tensor = var.value().get_tensor()
+        assert tensor._is_initialized(), "variable's tensor is not initialized"
+        return int(var.numpy().flatten()[0])
+
+    def _len_(var):
+        return var.shape[0]
+
+    def _index_(var):
+        numel = np.prod(var.shape)
+        assert numel == 1, "only one element variable can be converted to python index."
+        tensor = var.value().get_tensor()
+        assert tensor._is_initialized(), "variable's tensor is not initialized"
+        if six.PY2:
+            return long(var.numpy().flatten()[0])
+        else:
+            return int(var.numpy().flatten()[0])
 
     def _scalar_elementwise_add_(var, value):
         return _scalar_elementwise_op_(var, 1.0, value)
@@ -168,11 +194,8 @@ def monkey_patch_math_varbase():
                 other_var = tmp
 
             axis = -1
-            op = getattr(core.ops, op_type)
-            inputs = {'X': [self], 'Y': [other_var]}
-            attrs = {'axis': axis}
-            outs = op(inputs, attrs)
-            return outs['Out'][0]
+            math_op = getattr(core.ops, op_type)
+            return math_op(self, other_var, 'axis', axis)
 
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
 
@@ -220,4 +243,9 @@ def monkey_patch_math_varbase():
 
     # b = -a
     core.VarBase.__neg__ = _neg_
+    core.VarBase.__float__ = _float_
+    core.VarBase.__long__ = _long_
+    core.VarBase.__int__ = _int_
+    core.VarBase.__len__ = _len_
+    core.VarBase.__index__ = _index_
     core.VarBase.astype = astype

@@ -228,9 +228,11 @@ BlockDesc::BlockDesc(const BlockDesc &other, proto::BlockDesc *desc,
 }
 
 void BlockDesc::SetForwardBlockID(int32_t forward_block_id) {
-  PADDLE_ENFORCE(!desc_->has_forward_block_idx(),
-                 "Parent block ID has been set to %d. Cannot set to %d",
-                 desc_->forward_block_idx(), forward_block_id);
+  PADDLE_ENFORCE_EQ(
+      desc_->has_forward_block_idx(), false,
+      platform::errors::PreconditionNotMet(
+          "Block %d's parent block ID has been set to %d, cannot be set to %d.",
+          desc_->idx(), desc_->forward_block_idx(), forward_block_id));
   desc_->set_forward_block_idx(forward_block_id);
 }
 

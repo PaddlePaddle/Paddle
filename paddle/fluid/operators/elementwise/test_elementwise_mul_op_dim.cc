@@ -58,8 +58,7 @@ void MainTest(const TestData& test_data) {
 
   RuntimeContext runtime_ctx =
       RuntimeContext(op->Inputs(), op->Outputs(), scope);
-  ExecutionContext ctx =
-      ExecutionContext(*op, scope, *dev_ctx, runtime_ctx, nullptr);
+  ExecutionContext ctx = ExecutionContext(*op, scope, *dev_ctx, runtime_ctx);
   bool result = ElementwiseMulOp::AreDimsAndFormatCorrect(
       ctx, 16, MKLDNNMemoryFormat::nChw16c);
   if (test_data.supposed_to_fail)

@@ -27,7 +27,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_pass.h"
 
 DECLARE_bool(use_mkldnn);
-DECLARE_bool(use_ngraph);
 
 namespace paddle {
 namespace framework {
@@ -60,11 +59,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
                         "sequential_execution_pass");
     AppendPassWithCheck(strategy_.sync_batch_norm_, "sync_batch_norm_pass");
 
-    AppendPassToUseNgraph("ngraph_subgraph_pass");
-
     AppendOpFusePasses();
     AppendPrintGraphPass("graph_viz_pass", "_fused_graph");
 
+    AppendAddReaderDependencyPass();
     AppendMultiDevPass();
     AppendSetReaderDeviceIndexPass();
     AppendMultiGraphOptPasses();
@@ -203,6 +201,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     VLOG(1) << "CollectiveContext:" << context->String();
   }
 
+  void AppendAddReaderDependencyPass() {
+    AppendPass("add_reader_dependency_pass");
+  }
+
   // Convert graph to run on multi-devices.
   void AppendMultiDevPass() {
     ir::Pass *multi_devices_pass = nullptr;
@@ -269,23 +271,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 #else
     PADDLE_ENFORCE(!FLAGS_use_mkldnn,
                    "Please compile with MKLDNN first to use MKLDNN");
-#endif
-  }
-
-  void AppendPassToUseNgraph(const std::string &pass_name) {
-#ifdef PADDLE_WITH_NGRAPH
-    if (FLAGS_use_ngraph) {
-      if (strategy_.reduce_ != BuildStrategy::ReduceStrategy::kAllReduce) {
-        LOG(WARNING) << "Currently ngraph_subgraph_pass works under AllReduce,"
-                        "please set FLAGS_use_ngraph=false.";
-      } else {
-        AppendPass(pass_name);
-      }
-    }
-#else
-    PADDLE_ENFORCE_NE(FLAGS_use_ngraph, true,
-                      platform::errors::PreconditionNotMet(
-                          "Please compile with NGRAPH first to use NGRAPH"));
 #endif
   }
 
@@ -373,8 +358,8 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Set<bool>(kUseHierarchicalAllReduce,
                       new bool(use_hierarchical_allreduce_));
 #endif
-      LOG(INFO) << "SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
-                << ", num_trainers:" << num_trainers_;
+      VLOG(1) << "SeqOnlyAllReduceOps:" << SeqOnlyAllReduceOps(*this)
+              << ", num_trainers:" << num_trainers_;
     } else if (pass->Type() == "fuse_relu_depthwise_conv_pass") {
       if (!use_cuda) {
         LOG(WARNING) << "fuse_relu_depthwise_conv_pass is only supported on "
@@ -442,11 +427,9 @@ USE_PASS(fuse_momentum_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
 USE_PASS(set_reader_device_index_pass);
+USE_PASS(add_reader_dependency_pass);
 #ifdef PADDLE_WITH_MKLDNN
 USE_PASS(mkldnn_placement_pass);
-#endif
-#ifdef PADDLE_WITH_NGRAPH
-USE_PASS(ngraph_subgraph_pass);
 #endif
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__)
 USE_PASS(fusion_group_pass);
