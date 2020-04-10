@@ -48,6 +48,7 @@ class TestGetTensorFromSelectedRowsError(unittest.TestCase):
                              type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
              self.assertRaises(TypeError, fluid.layers.get_tensor_from_selected_rows,
                       x_float64, 'all')
+	     fluid.layers.get_tensor_from_selected_rows(x_float32, 'all')
 
 class TestGetTensorFromSelectedRows(unittest.TestCase):
     def get_places(self):
