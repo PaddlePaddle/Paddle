@@ -42,6 +42,8 @@ __all__ = [
     'index_sample'
 ]
 
+from paddle.common_ops_import import *
+
 
 def argmax(input, axis=None, dtype=None, out=None, keepdims=False, name=None):
     """
