@@ -95,12 +95,18 @@ class ProgramCache(object):
     """
 
     def __init__(self):
+        # Always set program to default_main_program. Because once `__call__` is called,
+        # it means layers(or Ops) are added into default_main_program switched by outer
+        # `with` statement.
+        self._main_program = framework.default_main_program()
+        self._startup_program = framework.default_startup_program()
+        self._func_cache = FunctionCache()
+        self._visited_funcs = []
+        self._initialize()
 
-        self._main_program = framework.Program()
-        self._startup_program = framework.Program()
+    def _initialize(self):
         self._inputs = []
         self._outputs = []
-        self._func_cache = FunctionCache()
         self._feed_name_to_idx = {}
         # Stores the entry function of Net or Model.
         self._forward_func = None
@@ -116,10 +122,9 @@ class ProgramCache(object):
         of program as fetch_list.
         """
         # Transforms dygraph function into static function and caches it.
-        static_func = self._func_cache.get_or_cache_func(dyfunc)
+        static_func = self._transform_or_cache_layers(dyfunc)
 
-        self._verify_or_reset_cache(static_func)
-
+        self._visited_funcs.append(static_func)
         # 1. Adds `fluid.data` layers for input if needed
         if not self._inputs:
             self._add_feed_layers(args, kwargs)
@@ -131,32 +136,32 @@ class ProgramCache(object):
         # 3. Builds program only once and returns the output Variables.
         outputs = self._get_or_build_program(static_func, args, kwargs)
 
-        self._in_build_process = static_func != self._forward_func
+        if static_func == self._forward_func:
+            self._in_build_process = False
+
+        self._visited_funcs.pop()
 
         return outputs
 
-    def _verify_or_reset_cache(self, static_func):
+    def _transform_or_cache_layers(self, dyfunc):
         """
-        Determines whether the current static_func is part of cached program.
-        If not, builds a new program.
+        Transforms dygraph function into static function.
         """
+        static_func = self._func_cache.get_or_cache_func(dyfunc)
+        # self._forward_func is entry function of Net or Model.
+        # It can be called for multiple times, but layers from these functions
+        # call stack will be added into self._main_program only once.
+        # After that, cached program will be always returned by default.
+        if static_func == self._forward_func:
+            self._is_repeated = True
+        # Resets feed_vars and fetch_list if encounter a independent function.
+        elif self._forward_func and not self._visited_funcs:
+            self._initialize()
+
         if self._forward_func is None:
             self._forward_func = static_func
-        else:
-            # self._forward_func is entry function of Net or Model.
-            # It can be called for multiple times, but layers from these functions
-            # call stack will be added into self._main_program only once.
-            # After that, cached program will be always returned by default.
-            if static_func == self._forward_func:
-                self._is_repeated = True
 
-            # If a independent function is received after the build process
-            # has finished, program should be reset.
-            elif not self._in_build_process:
-                self._inputs = []
-                self._forward_func = static_func
-                self._main_program = framework.Program()
-                self._startup_program = framework.Program()
+        return static_func
 
     def _get_or_build_program(self, func, args, kwargs):
         """
@@ -182,7 +187,8 @@ class ProgramCache(object):
         Adds `fluid.data` if the input `numpy.ndarray` is converted into `Variable`
         by `to_variable()`, it makes program to be executed dynamically.
         """
-        self._feed_name_to_idx = self._get_name_to_idx(self._forward_func)
+        if not self._feed_name_to_idx:
+            self._feed_name_to_idx = self._get_name_to_idx(self._forward_func)
         with framework.program_guard(self._main_program, self._startup_program):
             for feed_name, idx in self.feed_name_to_idx.items():
                 batch_data = args[idx]
@@ -268,8 +274,8 @@ class ProgramTranslator(object):
         self._optimizer_info = None
         self._optimizer = None
         self._loss_name = None
-        # Once program is changed, should run startup_program.
-        self._prev_startup = None
+        # Once main_program is changed, should run startup_program.
+        self._need_startup = True
 
     def get_output(self, dygraph_func, *args, **kwargs):
         """
@@ -341,7 +347,8 @@ class ProgramTranslator(object):
         """
         feed_dict, fetch_list = self._prepare(args)
 
-        outputs = self._exe.run(self.main_program,
+        main_program = self._program_cache.main_program
+        outputs = self._exe.run(main_program,
                                 feed=feed_dict,
                                 fetch_list=fetch_list)
 
@@ -353,7 +360,7 @@ class ProgramTranslator(object):
         """
         check_type(index_of_loss, "index_of_loss", int,
                    "ProgramTranslator.set_optimizer")
-
+        self._check_cache_valid()
         if self._optimizer and self._loss_name:
             raise ValueError(
                 "{} for {} has already been set before. Please confirm not to call `set_optimizer` in for loop. ".
@@ -393,12 +400,22 @@ class ProgramTranslator(object):
         if self._optimizer_info and self._optimizer is None:
             self._add_optimizer()
 
-        # Once program is changed, should run startup_program.
-        if self.startup_program != self._prev_startup:
+        if self._need_startup:
             self._exe.run(self.startup_program)
-            self._prev_startup = self.startup_program
+            self._need_startup = False
 
         return feed_dict, fetch_list
+
+    def _check_cache_valid(self):
+        """
+        Checks whether the current program is consistent with `default_main_program`.
+        In some models and unittest, program will be switched frequently by `program_guard`.
+        If does, the cached program and other properties are not available and should be reset.
+        """
+        if self._program_cache.main_program:
+            if self._program_cache.main_program != framework.default_main_program(
+            ):
+                ProgramTranslator.reset()
 
     def _update_batch_data(self, args):
         """
@@ -450,6 +467,7 @@ class ProgramTranslator(object):
         """
         Returns the ProgramCache instance.
         """
+        self._check_cache_valid()
         return self._program_cache
 
     @property
