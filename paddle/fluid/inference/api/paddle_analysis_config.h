@@ -340,18 +340,6 @@ struct AnalysisConfig {
   void SwitchIrDebug(int x = true);
 
   ///
-  /// \brief Turn on NGRAPH.
-  ///
-  ///
-  void EnableNgraph();
-  ///
-  /// \brief A boolean state telling whether to use the NGRAPH.
-  ///
-  /// \return bool Whether to use the NGRAPH.
-  ///
-  bool ngraph_enabled() const { return use_ngraph_; }
-
-  ///
   /// \brief Turn on MKLDNN.
   ///
   ///
@@ -526,20 +514,20 @@ struct AnalysisConfig {
   bool use_tensorrt_{false};
   // For workspace_size, refer it from here:
   // https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide/index.html#troubleshooting
-  int tensorrt_workspace_size_;
+  int tensorrt_workspace_size_{1 << 30};
   // While TensorRT allows an engine optimized for a given max batch size
   // to run at any smaller size, the performance for those smaller
   // sizes may not be as well-optimized. Therefore, Max batch is best
   // equivalent to the runtime batch size.
-  int tensorrt_max_batchsize_;
+  int tensorrt_max_batchsize_{1};
   //  We transform the Ops that can be converted into TRT layer in the model,
   //  and aggregate these Ops into subgraphs for TRT execution.
   //  We set this variable to control the minimum number of nodes in the
   //  subgraph, 3 as default value.
   int tensorrt_min_subgraph_size_{3};
-  Precision tensorrt_precision_mode_;
-  bool trt_use_static_engine_;
-  bool trt_use_calib_mode_;
+  Precision tensorrt_precision_mode_{Precision::kFloat32};
+  bool trt_use_static_engine_{false};
+  bool trt_use_calib_mode_{true};
   std::map<std::string, std::vector<int>> min_input_shape_{};
   std::map<std::string, std::vector<int>> max_input_shape_{};
   std::map<std::string, std::vector<int>> optim_input_shape_{};
@@ -548,7 +536,6 @@ struct AnalysisConfig {
   // memory reuse related.
   bool enable_memory_optim_{false};
 
-  bool use_ngraph_{false};
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
 

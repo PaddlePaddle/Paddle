@@ -19,6 +19,7 @@ import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest
 from scipy.special import expit, erf
+import paddle
 import paddle.fluid as fluid
 import paddle.nn as nn
 import paddle.nn.functional as functional
@@ -68,6 +69,36 @@ class TestActivation(OpTest):
         pass
 
 
+class TestParameter(object):
+    def test_out(self):
+        with fluid.program_guard(fluid.Program()):
+            data = fluid.layers.data(name="X", shape=[1])
+            out = eval("paddle.%s(data, out=data)" % self.op_type)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            result = exe.run(feed={"X": np.array([0.1])},
+                             fetch_list=[data, out])
+            self.assertEqual(result[0], result[1])
+
+    def test_out_name(self):
+        with fluid.program_guard(fluid.Program()):
+            data = fluid.layers.data(name="X", shape=[1])
+            out = eval("paddle.%s(data, name='Y', out=data)" % self.op_type)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            result = exe.run(feed={"X": np.array([0.1])},
+                             fetch_list=[data, out])
+            self.assertEqual(result[0], result[1])
+
+    def test_dygraph(self):
+        with fluid.dygraph.guard():
+            np_x = np.array([0.1])
+            x = fluid.dygraph.to_variable(np_x)
+            z = eval("paddle.%s(x).numpy()" % self.op_type)
+            z_expected = eval("np.%s(np_x)" % self.op_type)
+            self.assertEqual(z, z_expected)
+
+
 class TestSigmoid(TestActivation):
     def setUp(self):
         self.op_type = "sigmoid"
@@ -105,7 +136,7 @@ class TestLogSigmoid(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
 
-class TestTanh(TestActivation):
+class TestTanh(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "tanh"
         self.init_dtype()
@@ -127,7 +158,7 @@ class TestTanh(TestActivation):
         self.dtype = np.float32
 
 
-class TestAtan(TestActivation):
+class TestAtan(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "atan"
         self.init_dtype()
@@ -142,6 +173,14 @@ class TestAtan(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+    def test_dygraph(self):
+        with fluid.dygraph.guard():
+            np_x = np.array([0.1])
+            x = fluid.dygraph.to_variable(np_x)
+            z = paddle.atan(x).numpy()
+            z_expected = np.arctan(np_x)
+            self.assertEqual(z, z_expected)
 
 
 class TestTanhShrink(TestActivation):
@@ -202,7 +241,7 @@ class TestSoftShrink(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestSqrt(TestActivation):
+class TestSqrt(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "sqrt"
         self.init_dtype()
@@ -326,7 +365,7 @@ class TestAcos(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
-class TestSin(TestActivation):
+class TestSin(TestActivation, TestParameter):
     def setUp(self):
         self.op_type = "sin"
         self.init_dtype()
@@ -394,6 +433,20 @@ class TestRelu(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
+class TestReluOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, fluid.layers.sqrt, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, fluid.layers.relu, x_int32)
+            # support the input dtype is float16
+            x_fp16 = fluid.layers.data(
+                name='x_fp16', shape=[12, 10], dtype='float16')
+            fluid.layers.relu(x_fp16)
+
+
 class TestLeakyRelu(TestActivation):
     def setUp(self):
         self.op_type = "leaky_relu"
@@ -411,6 +464,20 @@ class TestLeakyRelu(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+
+class TestLeakyReluOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, fluid.layers.leaky_relu, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, fluid.layers.leaky_relu, x_int32)
+            # support the input dtype is float32
+            x_fp16 = fluid.layers.data(
+                name='x_fp16', shape=[12, 10], dtype='float32')
+            fluid.layers.leaky_relu(x_fp16)
 
 
 def gelu(x, approximate):
@@ -481,6 +548,20 @@ class TestBRelu(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+
+class TestBReluOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, fluid.layers.brelu, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, fluid.layers.brelu, x_int32)
+            # support the input dtype is float16
+            x_fp16 = fluid.layers.data(
+                name='x_fp16', shape=[12, 10], dtype='float16')
+            fluid.layers.brelu(x_fp16)
 
 
 class TestRelu6(TestActivation):
@@ -680,24 +761,38 @@ class TestPow_factor_tensor(TestActivation):
         self.check_grad(['X'], 'Out')
 
     def test_api(self):
+        import paddle
         import paddle.fluid as fluid
 
         input = np.random.uniform(1, 2, [11, 17]).astype("float32")
         x = fluid.layers.data(
             name="x", shape=[11, 17], append_batch_size=False, dtype="float32")
+        res = fluid.layers.data(
+            name="res",
+            shape=[11, 17],
+            append_batch_size=False,
+            dtype="float32")
 
         factor_1 = 2.0
         factor_2 = fluid.layers.fill_constant([1], "float32", 3.0)
         out_1 = fluid.layers.pow(x, factor=factor_1)
         out_2 = fluid.layers.pow(x, factor=factor_2)
+        out_3 = paddle.pow(x, factor_1, out=res)
+        out_4 = paddle.pow(x, factor_1, name='pow_res')
+        out_5 = paddle.pow(x, factor_1, out=res, name='pow_res')
+        out_6 = paddle.pow(x, factor_2)
+        self.assertEqual(('pow_res' in out_4.name), True)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
-        res_1, res_2 = exe.run(fluid.default_main_program(),
-                               feed={"x": input},
-                               fetch_list=[out_1, out_2])
+        res_1, res_2, res_3, res, res_6 = exe.run(
+            fluid.default_main_program(),
+            feed={"x": input},
+            fetch_list=[out_1, out_2, out_3, res, out_6])
 
         assert np.array_equal(res_1, np.power(input, 2))
         assert np.array_equal(res_2, np.power(input, 3))
+        assert np.array_equal(res_3, res)
+        assert np.array_equal(res_6, np.power(input, 3))
 
 
 class TestSTanh(TestActivation):
