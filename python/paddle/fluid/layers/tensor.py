@@ -99,6 +99,11 @@ def create_parameter(shape,
             W = layers.create_parameter(shape=[784, 200], dtype='float32')
     """
     check_type(shape, 'shape', (list, tuple), 'create_parameter')
+    for item in shape:
+        check_type(item, 'item of shape',
+                   (int, numpy.uint8, numpy.int8, numpy.int16, numpy.int32,
+                    numpy.int64), 'create_parameter')
+
     check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'],
                 'create_parameter')
     check_type(attr, 'attr', (type(None), ParamAttr), 'create_parameter')
@@ -146,6 +151,11 @@ def create_global_var(shape,
                                           persistable=True, force_cpu=True, name='new_var')
     """
     check_type(shape, 'shape', (list, tuple), 'create_global_var')
+    for item in shape:
+        check_type(item, 'item of shape',
+                   (int, numpy.uint8, numpy.int8, numpy.int16, numpy.int32,
+                    numpy.int64), 'create_parameter')
+
     check_dtype(dtype, 'dtype', [
         'bool', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32',
         'int64', 'uint8'
