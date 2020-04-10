@@ -25,6 +25,7 @@ from paddle.fluid.layers.control_flow import lod_tensor_to_array
 from paddle.fluid.layers.control_flow import array_to_lod_tensor
 from paddle.fluid.layers.control_flow import shrink_memory
 from fake_reader import fake_imdb_reader
+from paddle.fluid.framework import Program, program_guard
 
 
 class TestDynamicRNN(unittest.TestCase):

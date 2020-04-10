@@ -3125,7 +3125,7 @@ class DynamicRNN(object):
         self._assert_in_rnn_block_('memory')
         self._init_zero_idx_()
         if shape is not None:
-            check_type(shape, 'shape', Variable, 'memory()')
+            check_type(shape, 'shape', (list, tuple), 'memory()')
         if init is not None:
             check_type(init, 'init', Variable, 'memory()')
             parent_block = self._parent_block_()
