@@ -1377,6 +1377,7 @@ def diag(diagonal):
           # diagonal.shape=(3,) data.shape=(3, 3)
 
     """
+
     if not isinstance(diagonal, Variable):
         check_dtype(diagonal, 'diagonal',
                     ['float32', 'float64', 'int32', 'int64'], 'diag')
