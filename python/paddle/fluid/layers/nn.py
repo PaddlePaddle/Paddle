@@ -6396,7 +6396,6 @@ def pad(x, paddings, pad_value=0., name=None):
             pad_value = 0
 
         Return:
-
             out = [[0, 1, 2, 0, 0]
                    [0, 3, 4, 0, 0]
                    [0, 0, 0, 0, 0]]
@@ -6421,12 +6420,10 @@ def pad(x, paddings, pad_value=0., name=None):
     Examples:
         .. code-block:: python
 
-            # x is a rank 2 tensor variable with shape [100, 224].
-            # out will be a tensor of shape [101, 227] 
+            # x is a rank 2 tensor variable
             import paddle.fluid as fluid
-            x = fluid.data(name='data', shape=[100, 224], dtype='float32')
-            out = fluid.layers.pad(
-                x=x, paddings=[0, 1, 1, 2], pad_value=0.)
+            x = fluid.data(name='data', shape=[300, 300], dtype='float32')
+            out = fluid.layers.pad(x=x, paddings=[0, 1, 1, 2], pad_value=0.)
     """
     helper = LayerHelper('pad', input=x, **locals())
     dtype = helper.input_dtype()
@@ -6464,29 +6461,34 @@ def pad_constant_like(x, y, pad_value=0., name=None):
                    [27, 28, 29]],
                   [[30, 31, 32],
                    [33, 34, 35]]]]
+
             X.shape = (2, 3, 2, 3)
 
             Y = [[[[35, 36, 37]],
                   [[38, 39, 40]],
                   [[41, 42, 43]]]]
+
             Y.shape = (1, 3, 1, 3)
-		And
-            pad_value = -1,
+
+        And
+            pad_value = 0.
 
         Return:
             Out = [[[[35, 36, 37],
-                     [-1, -1, -1]],
+                     [ 0,  0,  0]],
                     [[38, 39, 40],
-                     [-1, -1, -1]],
+                     [ 0,  0,  0]],
                     [[41, 42, 43],
-                     [-1, -1, -1]]],
-                  [[[-1, -1, -1],
-                    [-1, -1, -1]],
-                   [[-1, -1, -1],
-                    [-1, -1, -1]],
-                   [[-1, -1, -1],
-                    [-1, -1, -1]]]]
-            Out.shape = (2, 3, 2, 3)
+                     [ 0,  0,  0]]],
+                   [[[ 0,  0,  0], 
+                     [ 0,  0,  0]],
+                    [[ 0,  0,  0], 
+                     [ 0,  0,  0]],
+                    [[ 0,  0,  0], 
+                     [ 0,  0,  0]]]]
+
+            Out.shape = [2, 3, 2, 3]
+
 
     Args:
         x (Variable): Tensor, its shape specifies the shape of output.
@@ -8743,47 +8745,37 @@ def pad2d(input,
     Examples:
         .. code-block:: text
 
-	      Given that X is a channel of image from input:
+            Input = [[[[1., 2., 3.],
+                       [4., 5., 6.]]]]
 
-	      X = [[1, 2, 3],
-		   [4, 5, 6]]
+            Case 0:
+                paddings = [0, 1, 2, 3],
+                mode = 'constant'
+                pad_value = 0
+                Out = [[[[0., 0., 1., 2., 3., 0., 0., 0.],
+                         [0., 0., 4., 5., 6., 0., 0., 0.],
+                         [0., 0., 0., 0., 0., 0., 0., 0.]]]]
 
-	      Case 0:
+            Case 1:
+                paddings = [0, 1, 2, 1],
+                mode = 'reflect'
+                Out = [[[[3., 2., 1., 2., 3., 2.],
+                         [6., 5., 4., 5., 6., 5.],
+                         [3., 2., 1., 2., 3., 2.]]]]
 
-		paddings = [0, 1, 2, 3],
-		mode = 'constant'
-		pad_value = 0
-
-		Out = [[0, 0, 1, 2, 3, 0, 0, 0]
-		       [0, 0, 4, 5, 6, 0, 0, 0]
-		       [0, 0, 0, 0, 0, 0, 0, 0]]
-
-	      Case 1:
-
-		paddings = [0, 1, 2, 1],
-		mode = 'reflect'
-
-		Out = [[3, 2, 1, 2, 3, 2]
-		       [6, 5, 4, 5, 6, 5]
-		       [3, 2, 1, 2, 3, 2]]
-
-	      Case 2:
-
-		paddings = [0, 1, 2, 1],
-		mode = 'edge'
-
-		Out = [[1, 1, 1, 2, 3, 3]
-		       [4, 4, 4, 5, 6, 6]
-		       [4, 4, 4, 5, 6, 6]]
+            Case 2:
+                paddings = [0, 1, 2, 1],
+                mode = 'edge'
+                Out = [[[[1., 1., 1., 2., 3., 3.],
+                         [4., 4., 4., 5., 6., 6.],
+                         [4., 4., 4., 5., 6., 6.]]]]
 
     Code Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          data = fluid.data(name='data', shape=[None, 3, 32, 32],
-                                   dtype='float32')
-          result = fluid.layers.pad2d(input=data, paddings=[1, 2, 3, 4],
-                                      mode='reflect')
+            import paddle.fluid as fluid
+            data = fluid.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
+            result = fluid.layers.pad2d(input=data, paddings=[0, 1, 2, 3], mode='reflect')
     """
 
     if in_dygraph_mode():
@@ -9140,6 +9132,8 @@ def prelu(x, mode, param_attr=None, name=None):
                      x,mode,param_attr=ParamAttr(name='alpha'))
 
     """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'prelu')
+
     helper = LayerHelper('prelu', **locals())
     if mode not in ['all', 'channel', 'element']:
         raise ValueError('mode should be one of all, channel, element.')
