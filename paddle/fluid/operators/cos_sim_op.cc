@@ -164,8 +164,8 @@ class CosSimOpGrad : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "All dimensions except the 1st of Input(X) and Input(Y) "
             "must be equal."));
-    PADDLE_ENFORCE(
-        x_dims[0] == y_dims[0] || y_dims[0] == 1,
+    PADDLE_ENFORCE_EQ(
+        x_dims[0] == y_dims[0] || y_dims[0] == 1, true,
         platform::errors::InvalidArgument(
             "The 1st dimension of Input(Y) must be equal to Input(X) or"
             " just 1 (which will be broadcasted to match Input(X))."
