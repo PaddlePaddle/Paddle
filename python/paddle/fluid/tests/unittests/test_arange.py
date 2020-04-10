@@ -66,5 +66,16 @@ class TestInt32ArangeOpCase2(TestArangeOp):
         self.case = (-1, -10, -2)
 
 
+class TestArangeAPI(unittest.TestCase):
+    def test_out(self):
+        with fluid.program_guard(fluid.Program()):
+            data = paddle.arange(0, 5, 1, 'int32')
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            result, = exe.run(fetch_list=[data])
+            expected_data = np.arange(0, 5, 1).astype(np.int32)
+        self.assertEqual((result == expected_data).all(), True)
+
+
 if __name__ == "__main__":
     unittest.main()
