@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,7 +25,10 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void ScaleMatmulFusePass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE(graph);
+  PADDLE_ENFORCE_NOT_NULL(graph,
+                          platform::errors::InvalidArgument(
+                              "Pointer to graph argument should not be NULL."));
+
   FusePassBase::Init("scale_matmul_fuse_pass", graph);
   GraphPatternDetector gpd;
   patterns::ScaleMatmul scale_matmul_pattern{gpd.mutable_pattern(),
@@ -58,7 +61,7 @@ void ScaleMatmulFusePass::ApplyImpl(ir::Graph* graph) const {
       PADDLE_ENFORCE_NE(
           matmul_op_input_name.empty(), true,
           platform::errors::NotFound("Operator after scale operator "
-                                     "should has scale output as input"));
+                                     "should have scale output as input"));
       matmul_op->Op()->SetAttr("alpha", matmul_alpha * scale_scale);
       matmul_op->Op()->SetInput(matmul_op_input_name,
                                 std::vector<std::string>({scale_in->Name()}));

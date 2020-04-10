@@ -1,4 +1,4 @@
-// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ ProgramDesc BuildProgramDesc(float scale, float bias, float alpha) {
   ProgramDesc prog;
 
   for (auto& v : std::vector<std::string>({"a", "b", "c", "d"})) {
-    auto* var = prog.MutableBlock(0)->Var(v);
+    prog.MutableBlock(0)->Var(v);
   }
 
   SetOp(&prog, "scale", "Scale", {"a"}, {"b"}, scale, bias);
@@ -74,7 +74,6 @@ void MainTest(const ProgramDesc& prog, int removed_nodes_count,
         EXPECT_EQ(op->Input("X")[0], matmul_in_out[0]);
         EXPECT_EQ(op->Input("Y")[0], matmul_in_out[1]);
         EXPECT_EQ(op->Output("Out")[0], matmul_in_out[2]);
-        auto alpha = op->GetAttrIfExists<float>("alpha");
         EXPECT_EQ(op->GetAttrIfExists<float>("alpha"), alpha);
       }
     }
