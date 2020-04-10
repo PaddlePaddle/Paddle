@@ -27,18 +27,6 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-static framework::DDim RowMatrixFromVector(const framework::DDim &x_dim) {
-  if (x_dim.size() > 1) {
-    return x_dim;
-  }
-}
-
-static framework::DDim ColumnMatrixFromVector(const framework::DDim &y_dim) {
-  if (y_dim.size() > 1) {
-    return y_dim;
-  }
-}
-
 static void ReshapeTensorIntoMatrixSequence(
     framework::Tensor *x, const math::MatDescriptor &descriptor) {
   int64_t h, w;
@@ -55,8 +43,8 @@ static void ReshapeXYOutIntoMatrixSequence(framework::Tensor *x,
                                            framework::Tensor *y,
                                            framework::Tensor *out, bool trans_x,
                                            bool trans_y) {
-  auto x_dim = RowMatrixFromVector(x->dims());
-  auto y_dim = ColumnMatrixFromVector(y->dims());
+  auto x_dim = x->dims();
+  auto y_dim = y->dims();
   auto mat_dim_x = math::CreateMatrixDescriptor(x_dim, 0, false);
   auto mat_dim_y = math::CreateMatrixDescriptor(y_dim, 0, false);
 
