@@ -79,6 +79,8 @@ class InferShapeContext {
   virtual std::vector<InferShapeVarPtr> GetOutputVarPtrs(
       const std::string &name) = 0;
 
+  void CheckInputsAndOutputs(const std::string &type) const;
+
  protected:
   virtual std::vector<DDim> GetRepeatedDims(const std::string &name) const = 0;
   virtual void SetRepeatedDims(const std::string &name,

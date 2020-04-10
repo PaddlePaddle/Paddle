@@ -32,9 +32,7 @@ class MulOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Mul");
-    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "Mul");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Mul");
+    ctx->CheckInputsAndOutputs("mul");
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");

@@ -42,5 +42,40 @@ void InferShapeContext::SetReaderDims(const std::string &name,
   return this->SetRepeatedDims(arg_names[0], dims);
 }
 
+void InferShapeContext::CheckInputsAndOutputs(const std::string &type) const {
+  // 1. Get OpProto
+  auto &proto = OpInfoMap::Instance().Get(type).Proto();
+  // 2. Check inputs
+  for (auto &in : proto.inputs()) {
+    if (!in.dispensable()) {
+      bool in_exist = false;
+      if (!in.duplicable()) {
+        in_exist = this->HasInput(in.name());
+      } else {
+        in_exist = this->HasInputs(in.name());
+      }
+      PADDLE_ENFORCE_EQ(
+          in_exist, true,
+          platform::errors::NotFound("No Input(%s) found for %s operator.",
+                                     in.name(), type));
+    }
+  }
+  // 3. Check outputs
+  for (auto &out : proto.outputs()) {
+    if (!out.dispensable()) {
+      bool out_exist = false;
+      if (!out.duplicable()) {
+        out_exist = this->HasOutput(out.name());
+      } else {
+        out_exist = this->HasOutputs(out.name());
+      }
+      PADDLE_ENFORCE_EQ(
+          out_exist, true,
+          platform::errors::NotFound("No Output(%s) found for %s operator.",
+                                     out.name(), type));
+    }
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle
