@@ -1203,6 +1203,17 @@ def array_to_lod_tensor(x, table):
           array = fluid.layers.lod_tensor_to_array(x, table)
           lod_tensor = fluid.layers.array_to_lod_tensor(array, table)
     """
+    check_type(x, 'x', (Variable, list), 'array_to_lod_tensor')
+    if isinstance(x, (list)):
+        for i, input_x in enumerate(x):
+            check_type(input_x, 'input[' + str(i) + ']', Variable,
+                       'array_to_lod_tensor')
+    check_type(table, 'table', (Variable, list), 'array_to_lod_tensor')
+    if isinstance(table, (list)):
+        for i, table_x in enumerate(table):
+            check_type(table_x, 'table[' + str(i) + ']', Variable,
+                       'array_to_lod_tensor')
+
     helper = LayerHelper("array_to_lod_tensor", **locals())
     tmp = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
