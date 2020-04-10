@@ -6428,6 +6428,9 @@ def pad(x, paddings, pad_value=0., name=None):
             out = fluid.layers.pad(
                 x=x, paddings=[0, 1, 1, 2], pad_value=0.)
     """
+    check_variable_and_dtype(
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], "pad")
+
     helper = LayerHelper('pad', input=x, **locals())
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
@@ -6514,6 +6517,10 @@ def pad_constant_like(x, y, pad_value=0., name=None):
             out = fluid.layers.pad_constant_like(x=x, y=y, pad_value=0.)
             # out is a rank 4 tensor variable, and out.shape = [2, 3 ,2 , 3]
     """
+    check_type(x, 'x', (Variable), 'pad_constant_like')
+    check_variable_and_dtype(y, 'y', ['float32', 'float64', 'int32', 'int64'],
+                             "pad_constant_like")
+
     helper = LayerHelper('pad_constant_like', input=x, **locals())
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
@@ -8783,6 +8790,9 @@ def pad2d(input,
           result = fluid.layers.pad2d(input=data, paddings=[1, 2, 3, 4],
                                       mode='reflect')
     """
+    check_variable_and_dtype(
+        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        "pad2d")
 
     if in_dygraph_mode():
         _paddings = paddings.numpy().tolist() if isinstance(

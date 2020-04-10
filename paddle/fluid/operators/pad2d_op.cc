@@ -466,14 +466,14 @@ class Pad2dOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of Pad2dOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of Pad2dOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Pad2d");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Pad2d");
 
     auto x_dim = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(x_dim.size(), 4,
-                      "The size of input(X)'s dimension should be equal to 4.");
+    PADDLE_ENFORCE_EQ(
+        x_dim.size(), 4,
+        platform::errors::InvalidArgument(
+            "The size of Input(X)'s dimension should be equal to 4."));
 
     std::vector<int64_t> out_dims(x_dim.size());
     auto data_format = ctx->Attrs().Get<std::string>("data_format");
@@ -482,10 +482,13 @@ class Pad2dOp : public framework::OperatorWithKernel {
       auto paddings_dim = ctx->GetInputDim("Paddings");
       PADDLE_ENFORCE_EQ(
           paddings_dim.size(), 1,
-          "Size of Input(Paddings)'s dimension should be equal to 1.");
+          platform::errors::InvalidArgument(
+              "Size of Input(Paddings)'s dimension should be equal to 1."));
       if (ctx->IsRuntime()) {
-        PADDLE_ENFORCE_EQ(paddings_dim[0], 4,
-                          "Shape of Input(Paddings) should be equal to [4].");
+        PADDLE_ENFORCE_EQ(
+            paddings_dim[0], 4,
+            platform::errors::InvalidArgument(
+                "Shape of Input(Paddings) should be equal to [4]."));
       }
       out_dims[1] = x_dim[1];
       out_dims[2] = x_dim[2];
@@ -493,7 +496,8 @@ class Pad2dOp : public framework::OperatorWithKernel {
     } else {
       auto paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
       PADDLE_ENFORCE_EQ(paddings.size(), 4,
-                        "Size of paddings should be equal to 4.");
+                        platform::errors::InvalidArgument(
+                            "Size of paddings should be equal to 4."));
       if (data_format == "NCHW") {
         out_dims[1] = x_dim[1];  // channel
         out_dims[2] = ((!ctx->IsRuntime()) && (x_dim[2] < 0))
@@ -608,9 +612,10 @@ class Pad2dOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Pad2d@Grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "Pad2d@Grad");
+
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
