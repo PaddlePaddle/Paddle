@@ -49,9 +49,8 @@ class GroupNormOp : public framework::OperatorWithKernel {
         groups, channel_num,
         platform::errors::InvalidArgument(
             "the Attr(groups) of Op(group_norm) must be less than or "
-            "equal to the number of channels. "
-            "But received: groups is [%s], channels is [%s], the "
-            "Attr(data_layout) "
+            "equal to the number of channels. But received: groups "
+            "is [%s], channels is [%s], the Attr(data_layout) "
             "is [%s]. The error may come from wrong data_layout setting.",
             groups, channel_num, data_layout_str));
     PADDLE_ENFORCE_GE(
