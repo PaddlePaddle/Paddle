@@ -45,7 +45,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           static_cast<bool>(fin), true,
           platform::errors::Unavailable(
-              "LoadCombine operator fail to open file %s, please check "
+              "LoadCombine operator fails to open file %s, please check "
               "whether the model file is complete or damaged.",
               filename));
       LoadParamsFromBuffer(ctx, place, &fin, load_as_fp16, out_var_names);
@@ -53,7 +53,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_NE(
           filename.empty(), true,
           platform::errors::Unavailable(
-              "LoadCombine operator fail to open file %s, please check "
+              "LoadCombine operator fails to open file %s, please check "
               "whether the model file is complete or damaged.",
               filename));
       std::stringstream fin(filename, std::ios::in | std::ios::binary);

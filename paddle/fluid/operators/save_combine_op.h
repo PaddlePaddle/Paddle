@@ -42,7 +42,7 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
     bool is_present = FileExists(filename);
     if (is_present && !overwrite) {
       PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "%s exists!, cannot save_combine to it when overwrite is set to "
+          "%s exists! Cannot save_combine to it when overwrite is set to "
           "false.",
           filename, overwrite));
     }
