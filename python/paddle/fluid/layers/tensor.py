@@ -162,11 +162,6 @@ def cast(x, dtype):
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output:
             bool, float16, float32, float64, int8, int32, int64, uint8.
 
-    Raises:
-        TypeError: The `x` must be Variable and the data type must be one of
-                   bool, float16, float32, float64, int8, int32 and int64.
-        TypeError: The `dtype` must be one of str, np.dtype and core.VarDesc.VarType.
-
     Returns:
         Variable: A Tensor with the same shape as input's.
 
@@ -738,11 +733,6 @@ def argmin(x, axis=0):
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
             as axis+R. Default is 0.
 
-    Raises:
-        TypeError: The `x` must be Variable and the data type must be one of float32,
-                   float64, uint8, int16, int32, int64.
-        TypeError: The `axis` must be None or Variable with int type.
-
     Returns:
         Variable: A Tensor with data type int64.
 
@@ -807,11 +797,6 @@ def argmax(x, axis=0):
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
             as axis+R. Default is 0.
-
-    Raises:
-        TypeError: The `x` must be Variable and the data type must be one of float32,
-                   float64, uint8, int16, int32, int64.
-        TypeError: The `axis` must be None or Variable with int type.
 
     Returns:
         Variable: A Tensor with data type int64.
@@ -882,13 +867,6 @@ def argsort(input, axis=-1, descending=False, name=None):
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
-
-    Raises:
-        TypeError: The `input` must be Variable and the data type must be one of
-                   float32, float64, int16, int32, int64, uint8.
-        TypeError: The `axis` must be None or Variable with int type.
-        TypeError: The `descending` must be None or bool type.
-        TypeError: The `name` must be None or str type.
 
     Returns:
         tuple: A tuple of sorted data Variable(with the same shape and data
@@ -1354,10 +1332,6 @@ def diag(diagonal):
     Args:
         diagonal(Variable|numpy.ndarray): The input tensor should be 1D tensor, the input shape is :math:`[ N]` , \
             specifying diagonal values by this input tensor. The input data type should be float32, float64, int32, int64.
-
-    Raises:
-        TypeError: The `diagonal` must be Variable or numpy.ndarray, and the data type must be one of
-                   float32, float64, int32, int64.
 
     Returns:
         Variable, the output data type is the same as input data type.: The tensor variable storing the square matrix, \
