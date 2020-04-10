@@ -35,4 +35,4 @@ please follow these steps in order to pass the CI:
 if error:
     print('API Difference is: ')
     for each_diff in diffs:
-    print(each_diff)
+        print(each_diff)
