@@ -2324,6 +2324,7 @@ class Switch(object):
 
     .. code-block:: python
 
+        '''
         with fluid.layers.Switch() as switch:
             with switch.case(cond1):
                 i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=1)
@@ -2331,6 +2332,7 @@ class Switch(object):
                 i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=2)
             with switch.default():
                 i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+        '''
 
     Args:
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
