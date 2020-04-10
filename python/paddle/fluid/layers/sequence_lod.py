@@ -1292,10 +1292,7 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
 
     """
     helper = LayerHelper('sequence_mask', **locals())
-    if name is None:
-        out = helper.create_variable_for_type_inference(dtype=dtype)
-    else:
-        out = helper.create_variable_for_type_inference(dtype=dtype, name=name)
+    out = helper.create_variable_for_type_inference(dtype=dtype)
 
     inputs = {'X': [x]}
     attrs = {'out_dtype': out.dtype}
@@ -1360,16 +1357,10 @@ def sequence_reverse(x, name=None):
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
     helper = LayerHelper("sequence_reverse", **locals())
-
     check_variable_and_dtype(x, 'x',
                              ['float32', 'float64', 'int8', 'int32', 'int64'],
                              'fluid.layers.sequence_reverse')
-
-    if name is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        out = helper.create_variable(
-            name=name, dtype=x.dtype, persistable=False)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(
         type="sequence_reverse",
