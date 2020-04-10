@@ -38,13 +38,13 @@ class EnqueueOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
-    const std::string& queue_name = Input("blocking_queue");
+    const std::string& queue_name = Input("queue_name");
     auto* queue_holder_var = scope.FindVar(queue_name);
     PADDLE_ENFORCE_NOT_NULL(
         queue_holder_var,
         "No LoDTensorBlockingQueueHolder variable with name %s found",
         queue_name);
-    const std::string& var_name = Input("lod_tensor");
+    const std::string& var_name = Input("var_name");
     auto* in_var = scope.FindVar(var_name);
     auto* in_tensor = in_var->GetMutable<LoDTensor>();
     PADDLE_ENFORCE_NOT_NULL(in_tensor, "No variable with name %s found",
@@ -61,11 +61,11 @@ class EnqueueOp : public framework::OperatorBase {
 class EnqueueOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("blocking_queue",
+    AddInput("queue_name",
              "Name of the `LoDTensorBlockingQueueHolder` variable");
-    AddInput("lod_tensor", "Name of the `lod_tensor` to enqueue");
+    AddInput("var_name", "Name of the `lod_tensor` to enqueue");
     AddComment(R"DOC(
-			Enqueue.
+			Enqueue operator.
       )DOC");
   }
 };

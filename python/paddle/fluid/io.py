@@ -1138,6 +1138,9 @@ def save_inference_model(dirname,
         # clear device of Op
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
         op._set_attr(device_attr_name, "")
+        device_attr_index_name = core.op_proto_and_checker_maker.kOpDeviceIndexAttrName(
+        )
+        op._set_attr(device_attr_index_name, "")
         if op.type == 'auc':
             warnings.warn(
                 "please ensure that you have set the auc states to zeros before saving inference model"
