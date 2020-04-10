@@ -165,85 +165,107 @@ class MineHardExamplesOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("ClsLoss"),
-                   "Input(ClsLoss) of MineHardExamplesOp should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasInput("MatchIndices"),
-        "Input(MatchIndices) of MineHardExamplesOp should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasInput("MatchDist"),
-        "Input(MatchDist) of MineHardExamplesOp should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("NegIndices"),
-        "Output(NegIndices) of MineHardExamplesOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("UpdatedMatchIndices"),
-                   "Output(UpdatedMatchIndices) of MineHardExamplesOp should "
-                   "not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("ClsLoss"), true,
+        platform::errors::NotFound(
+            "Input(ClsLoss) of MineHardExamplesOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("MatchIndices"), true,
+        platform::errors::NotFound(
+            "Input(MatchIndices) of MineHardExamplesOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("MatchDist"), true,
+        platform::errors::NotFound(
+            "Input(MatchDist) of MineHardExamplesOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("NegIndices"), true,
+        platform::errors::NotFound(
+            "Output(NegIndices) of MineHardExamplesOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("UpdatedMatchIndices"), true,
+        platform::errors::NotFound(
+            "Output(UpdatedMatchIndices) of MineHardExamplesOp should "
+            "not be null."));
 
     auto cls_loss_dims = ctx->GetInputDim("ClsLoss");
     auto idx_dims = ctx->GetInputDim("MatchIndices");
     auto dis_dims = ctx->GetInputDim("MatchDist");
 
-    PADDLE_ENFORCE_EQ(cls_loss_dims.size(), 2UL,
-                      "The shape of ClsLoss is [N, Np].");
+    PADDLE_ENFORCE_EQ(
+        cls_loss_dims.size(), 2UL,
+        platform::errors::InvalidArgument("The shape of ClsLoss is [N, Np]."));
     PADDLE_ENFORCE_EQ(idx_dims.size(), 2UL,
-                      "The shape of MatchIndices is [N, Np].");
+                      platform::errors::InvalidArgument(
+                          "The shape of MatchIndices is [N, Np]."));
     PADDLE_ENFORCE_EQ(dis_dims.size(), 2UL,
-                      "The shape of MatchDist is [N, Np].");
+                      platform::errors::InvalidArgument(
+                          "The shape of MatchDist is [N, Np]."));
 
     if (ctx->HasInput("LocLoss")) {
       auto loc_loss_dims = ctx->GetInputDim("LocLoss");
       PADDLE_ENFORCE_EQ(loc_loss_dims.size(), 2UL,
-                        "The shape of LocLoss is [N, Np].");
+                        platform::errors::InvalidArgument(
+                            "The shape of LocLoss is [N, Np]."));
       if (ctx->IsRuntime()) {
         PADDLE_ENFORCE_EQ(
             cls_loss_dims[0], loc_loss_dims[0],
-            "Batch size of ClsLoss and LocLoss must be the same.");
+            platform::errors::InvalidArgument(
+                "Batch size of ClsLoss and LocLoss must be the same."));
         PADDLE_ENFORCE_EQ(
             cls_loss_dims[1], loc_loss_dims[1],
-            "Prior box number of ClsLoss and LocLoss must be the same.");
+            platform::errors::InvalidArgument(
+                "Prior box number of ClsLoss and LocLoss must be the same."));
       }
     }
 
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(
           cls_loss_dims[0], idx_dims[0],
-          "Batch size of ClsLoss and MatchIndices must be the same.");
+          platform::errors::InvalidArgument(
+              "Batch size of ClsLoss and MatchIndices must be the same."));
       PADDLE_ENFORCE_EQ(
           cls_loss_dims[1], idx_dims[1],
-          "Prior box number of ClsLoss and MatchIndices must be the same.");
+          platform::errors::InvalidArgument("Prior box number of ClsLoss and "
+                                            "MatchIndices must be the same."));
 
       PADDLE_ENFORCE_EQ(
           cls_loss_dims[0], dis_dims[0],
-          "Batch size of ClsLoss and MatchDist must be the same.");
+          platform::errors::InvalidArgument(
+              "Batch size of ClsLoss and MatchDist must be the same."));
       PADDLE_ENFORCE_EQ(
           cls_loss_dims[1], idx_dims[1],
-          "Prior box number of ClsLoss and MatchDist must be the same.");
+          platform::errors::InvalidArgument(
+              "Prior box number of ClsLoss and MatchDist must be the same."));
     }
 
     auto mining_type =
         GetMiningType(ctx->Attrs().Get<std::string>("mining_type"));
 
     PADDLE_ENFORCE_NE(mining_type, MiningType::kNone,
-                      "mining_type must be hard_example or max_negative");
+                      platform::errors::InvalidArgument(
+                          "mining_type must be hard_example or max_negative"));
 
     if (mining_type == MiningType::kMaxNegative) {
       auto neg_pos_ratio = ctx->Attrs().Get<float>("neg_pos_ratio");
       auto neg_dist_threshold = ctx->Attrs().Get<float>("neg_dist_threshold");
       PADDLE_ENFORCE_GT(
           neg_pos_ratio, 0.0f,
-          "neg_pos_ratio must greater than zero in max_negative mode");
+          platform::errors::InvalidArgument(
+              "neg_pos_ratio must greater than zero in max_negative mode"));
       PADDLE_ENFORCE_LT(
           neg_dist_threshold, 1.0f,
-          "neg_dist_threshold must less than one in max_negative mode");
+          platform::errors::InvalidArgument(
+              "neg_dist_threshold must less than one in max_negative mode"));
       PADDLE_ENFORCE_GT(
           neg_dist_threshold, 0.0f,
-          "neg_dist_threshold must greater than zero in max_negative mode");
+          platform::errors::InvalidArgument("neg_dist_threshold must greater "
+                                            "than zero in max_negative mode"));
     } else if (mining_type == MiningType::kHardExample) {
       auto sample_size = ctx->Attrs().Get<int>("sample_size");
       PADDLE_ENFORCE_GT(
           sample_size, 0,
-          "sample_size must greater than zero in hard_example mode");
+          platform::errors::InvalidArgument(
+              "sample_size must greater than zero in hard_example mode"));
     }
 
     ctx->SetOutputDim("UpdatedMatchIndices", idx_dims);

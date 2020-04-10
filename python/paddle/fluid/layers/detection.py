@@ -2413,6 +2413,17 @@ def roi_perspective_transform(input,
             rois = fluid.data(name='rois', shape=[None, 8], lod_level=1, dtype='float32')
             out, mask, transform_matrix = fluid.layers.roi_perspective_transform(x, rois, 7, 7, 1.0)
     """
+    check_variable_and_dtype(input, 'input', ['float32'],
+                             'roi_perspective_transform')
+    check_variable_and_dtype(rois, 'rois', ['float32'],
+                             'roi_perspective_transform')
+    check_type(transformed_height, 'transformed_height', int,
+               'roi_perspective_transform')
+    check_type(transformed_width, 'transformed_width', int,
+               'roi_perspective_transform')
+    check_type(spatial_scale, 'spatial_scale', float,
+               'roi_perspective_transform')
+
     helper = LayerHelper('roi_perspective_transform', **locals())
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
@@ -3208,10 +3219,10 @@ def locality_aware_nms(bboxes,
         nms_top_k (int): Maximum number of detections to be kept according to
                          the confidences after the filtering detections based
                          on score_threshold.
-        nms_threshold (float): The threshold to be used in NMS. Default: 0.3
-        nms_eta (float): The threshold to be used in NMS. Default: 1.0
         keep_top_k (int): Number of total bboxes to be kept per image after NMS
                           step. -1 means keeping all bboxes after NMS step.
+        nms_threshold (float): The threshold to be used in NMS. Default: 0.3
+        nms_eta (float): The threshold to be used in NMS. Default: 1.0
         normalized (bool): Whether detections are normalized. Default: True
         name(str): Name of the locality aware nms op, please refer to :ref:`api_guide_Name` .
                           Default: None.
@@ -3246,6 +3257,18 @@ def locality_aware_nms(bboxes,
                                               keep_top_k=200,
                                               normalized=False)
     """
+    check_variable_and_dtype(bboxes, 'bboxes', ['float32', 'float64'],
+                             'locality_aware_nms')
+    check_variable_and_dtype(scores, 'scores', ['float32', 'float64'],
+                             'locality_aware_nms')
+    check_type(background_label, 'background_label', int, 'locality_aware_nms')
+    check_type(score_threshold, 'score_threshold', float, 'locality_aware_nms')
+    check_type(nms_top_k, 'nms_top_k', int, 'locality_aware_nms')
+    check_type(nms_eta, 'nms_eta', float, 'locality_aware_nms')
+    check_type(nms_threshold, 'nms_threshold', float, 'locality_aware_nms')
+    check_type(keep_top_k, 'keep_top_k', int, 'locality_aware_nms')
+    check_type(normalized, 'normalized', bool, 'locality_aware_nms')
+
     shape = scores.shape
     assert len(shape) == 3, "dim size of scores must be 3"
     assert shape[
