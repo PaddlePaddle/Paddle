@@ -50,7 +50,7 @@ class TestDiagError(unittest.TestCase):
                 x = [1, 2, 3]
                 output = fluid.layers.diag(diag=x)
 
-            self.assertRaise(TypeError, test_diag_type)
+            self.assertRaises(TypeError, test_diag_type)
 
 
 if __name__ == "__main__":

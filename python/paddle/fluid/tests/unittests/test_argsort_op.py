@@ -366,25 +366,25 @@ class TestArgsortErrorOnCPU(unittest.TestCase):
                 x = [1]
                 output = fluid.layers.argsort(input=x)
 
-            self.assertRaise(TypeError, test_input_type)
+            self.assertRaises(TypeError, test_input_type)
 
             def test_axis_type():
                 x = fluid.dygraph.to_variable(in1)
                 output = fluid.layers.argsort(input=x, axis='axis')
 
-            self.assertRaise(TypeError, test_axis_type)
+            self.assertRaises(TypeError, test_axis_type)
 
             def test_descending_type():
                 x = fluid.dygraph.to_variable(in1)
                 output = fluid.layers.argsort(input=x, descending='descending')
 
-            self.assertRaise(TypeError, test_descending_type)
+            self.assertRaises(TypeError, test_descending_type)
 
             def test_name_type():
                 x = fluid.dygraph.to_variable(in1)
                 output = fluid.layers.argsort(input=x, name=[1, 2])
 
-            self.assertRaise(TypeError, test_name_type)
+            self.assertRaises(TypeError, test_name_type)
 
 
 class TestArgsortErrorOnGPU(TestArgsortErrorOnCPU):

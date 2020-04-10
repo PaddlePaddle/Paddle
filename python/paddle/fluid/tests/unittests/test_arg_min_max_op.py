@@ -295,25 +295,25 @@ class TestArgMinMaxOpError(unittest.TestCase):
                 x1 = [1, 2, 3]
                 output = fluid.layers.argmax(x=x1)
 
-            self.assertRaise(TypeError, test_argmax_x_type)
+            self.assertRaises(TypeError, test_argmax_x_type)
 
             def test_argmin_x_type():
                 x2 = [1, 2, 3]
                 output = fluid.layers.argmin(x=x2)
 
-            self.assertRaise(TypeError, test_argmin_x_type)
+            self.assertRaises(TypeError, test_argmin_x_type)
 
             def test_argmax_axis_type():
                 x3 = fluid.dygraph.to_variable(in1)
                 output = fluid.layers.argmax(x=x3, axis=[1, 2])
 
-            self.assertRaise(TypeError, test_argmax_axis_type)
+            self.assertRaises(TypeError, test_argmax_axis_type)
 
             def test_argmin_axis_type():
                 x4 = fluid.dygraph.to_variable(in1)
                 output = fluid.layers.argmin(x=x4, axis=[1, 2])
 
-            self.assertRaise(TypeError, test_argmin_axis_type)
+            self.assertRaises(TypeError, test_argmin_axis_type)
 
 
 if __name__ == '__main__':
