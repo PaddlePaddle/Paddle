@@ -328,15 +328,15 @@ if(WITH_MKLDNN)
 
   # preprocess data2bin imagenet
     download_int8_data(${INT8_DATA_DIR} "imagenet_small.tar.gz")
-    set(DATA_DIR "${INT8_DATA_DIR}/imagenet_small")
-    set(OUTPUT_FILE "imagenet_small.bin")
-    preprocess_data2bin_test_run(preprocess_local_imagenet "full_ILSVRC2012_val_preprocess.py" ${DATA_DIR} ${OUTPUT_FILE})
+    set(IMAGENET_SMALL_DATA_DIR "${INT8_DATA_DIR}/imagenet_small")
+    set(IMAGENET_SMALL_OUTPUT_FILE "imagenet_small.bin")
+    preprocess_data2bin_test_run(preprocess_local_imagenet "full_ILSVRC2012_val_preprocess.py" ${IMAGENET_SMALL_DATA_DIR} ${IMAGENET_SMALL_OUTPUT_FILE})
     
   # preprocess data2bin pascalvoc
   download_int8_data(${INT8_DATA_DIR} "pascalvoc_small.tar.gz")
-  set(DATA_DIR "${INT8_DATA_DIR}/pascalvoc_small")
-  set(OUTPUT_FILE "pascalvoc_small.bin")
-  preprocess_data2bin_test_run(preprocess_local_pascalvoc "full_pascalvoc_test_preprocess.py" ${DATA_DIR} ${OUTPUT_FILE})
+  set(PASCALVOC_SMALL_DATA_DIR "${INT8_DATA_DIR}/pascalvoc_small")
+  set(PASCALVOC_SMALL_OUTPUT_FILE "pascalvoc_small.bin")
+  preprocess_data2bin_test_run(preprocess_local_pascalvoc "full_pascalvoc_test_preprocess.py" ${PASCALVOC_SMALL_DATA_DIR} ${PASCALVOC_SMALL_OUTPUT_FILE})
 
 endif()
 
