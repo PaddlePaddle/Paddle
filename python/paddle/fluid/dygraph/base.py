@@ -13,6 +13,7 @@
 # limitations under the License.
 from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
 import contextlib
+import functools
 import sys
 import numpy as np
 from paddle.fluid import core
@@ -195,6 +196,7 @@ def no_grad(func=None):
         return _switch_tracer_mode_guard_(is_train=False)
     else:
 
+        @functools.wraps(func)
         def __impl__(*args, **kwargs):
             with _switch_tracer_mode_guard_(is_train=False):
                 return func(*args, **kwargs)
