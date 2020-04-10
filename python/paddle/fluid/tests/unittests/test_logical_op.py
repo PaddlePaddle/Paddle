@@ -44,12 +44,17 @@ def create_test_class(op_type, callback, binary_op=True):
             with program_guard(Program(), Program()):
                 x = fluid.layers.data(name='x', shape=[2], dtype='bool')
                 y = fluid.layers.data(name='y', shape=[2], dtype='bool')
-                op = eval("fluid.layers.%s" % self.op_type)
-                self.assertRaises(TypeError, op, x=x, y=y, out=1)
                 a = fluid.layers.data(name='a', shape=[2], dtype='int32')
-                self.assertRaises(TypeError, op, x=x, y=a)
-                b = fluid.layers.data(name='b', shape=[2], dtype='int32')
-                self.assertRaises(TypeError, op, x=b, y=y)
+                op = eval("fluid.layers.%s" % self.op_type)
+                if self.op_type != "logical_not":
+                    self.assertRaises(TypeError, op, x=x, y=y, out=1)
+                    self.assertRaises(TypeError, op, x=x, y=a)
+                    self.assertRaises(TypeError, op, x=a, y=y)
+                    self.assertRaises(TypeError, op, x=x, y=y, out=a)
+                else:
+                    self.assertRaises(TypeError, op, x=x, out=1)
+                    self.assertRaises(TypeError, op, x=x, out=a)
+                    self.assertRaises(TypeError, op, x=a)
 
     Cls.__name__ = op_type
     globals()[op_type] = Cls
