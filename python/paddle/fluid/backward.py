@@ -1715,8 +1715,6 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
                'fluid.backward.gradients')
     check_type(target_gradients, 'target_gradients', (
         framework.Variable, list, type(None)), 'fluid.backward.gradients')
-    check_type(no_grad_set, 'no_grad_set', (set, type(None)),
-               'fluid.backward.gradients')
 
     outs = calc_gradient(targets, inputs, target_gradients, no_grad_set)
     return _as_list(outs)
