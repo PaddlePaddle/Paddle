@@ -68,7 +68,7 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
             import numpy as np
             
             diag_embed = np.random.randn(2, 3).astype('float32')
-            
+
             with dg.guard():
                 data1 = F.diag_embed(diag_embed)
                 data2 = F.diag_embed(diag_embed, offset=1, dim1=0, dim2=2)
@@ -81,7 +81,8 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
 
     def __check_input(input, offset, dim1, dim2):
         check_dtype(input.dtype, 'Input',
-                    ['int32', 'int64', 'float32', 'float64'], 'diag_embed')
+                    ['int32', 'int64', 'float16', 'float32', 'float64'],
+                    'diag_embed')
 
         input_shape = list(input.shape)
         assert (len(input_shape) >= 1,                     \
