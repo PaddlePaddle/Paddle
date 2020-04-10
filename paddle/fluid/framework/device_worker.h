@@ -131,6 +131,9 @@ class DeviceWorker {
   virtual void SetDataFeed(DataFeed* data_feed);
   virtual void SetNeedDump(bool need_dump_field) {}
   virtual void SetChannelWriter(ChannelObject<std::string>* queue) {}
+  virtual void SetWorkerNum(int num) {};
+  virtual void CacheProgram(const ProgramDesc &main_program) {};
+  virtual void Schedule(int taskid) {};
   virtual void SetPlace(const paddle::platform::Place& place) {
     place_ = place;
   }
@@ -292,6 +295,309 @@ class DownpourWorkerOpt : public DownpourWorker {
   std::string async_wait_name_;
   int async_index_ = -1;
   uint64_t async_tid_ = 0;
+};
+
+enum HeterTaskState {
+  PULL_SPARSE,
+  OP_RUN,
+  XPU,
+  PUSH_GRAD,
+  DONE
+};
+
+class HeterTask {
+public:
+  void Update() {
+    if (state_ == PULL_SPARSE) {
+      state_ = OP_RUN;
+    }
+    else if (state_ == OP_RUN) {
+      //state_ = XPU;
+      //state_ = PUSH_GRAD;
+      state_ = PUSH_GRAD;
+    }
+    else if (state_ == XPU) {
+      state_ = PUSH_GRAD;
+    }
+    else if (state_ == PUSH_GRAD) {
+      state_ = DONE;
+    }
+  }
+  void Show() {
+    std::cout << "features size " << features_.size() << std::endl;
+    for (size_t i = 0; i < features_.size(); ++i) {
+      std::cout << "features[" << i << "] size " << features_[i].size() << std::endl;
+    }
+  }
+  void PackTask(Scope* scope, int taskid, DataFeed* reader, int cur_batch, const ProgramDesc& program);
+
+  Scope* scope_{nullptr};
+  int taskid_;
+  int cur_batch_;
+  HeterTaskState state_;
+  // cache
+  std::map<uint64_t, std::vector<uint64_t>> features_;
+  std::map<uint64_t, std::vector<float>> feature_labels_;
+  std::map<uint64_t, std::vector<std::vector<float>>> feature_values_;
+  std::map<uint64_t, std::vector<std::vector<float>>> feature_grads_;
+  std::map<uint64_t, std::vector<uint64_t>> sparse_push_keys_;
+  double total_time;
+  double read_time;
+  double pack_time;
+  double pull_sparse_local_time;
+};
+
+template <class T>
+class HeterObjectPool {
+public:
+  std::shared_ptr<T> Get() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (pool_.empty()) {
+      return std::make_shared<T>();
+    }
+    else {
+      auto ret =  pool_.back();
+      pool_.pop_back();
+      return ret;
+    }
+  }
+  void Push(std::shared_ptr<T> data) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    pool_.push_back(std::move(data));
+  }
+  int Size() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return pool_.size();
+  }
+private:
+  std::vector<std::shared_ptr<T>> pool_;
+  std::mutex mutex_;
+};
+
+
+template <class K, class T>
+struct HeterNode {
+  K key;
+  T value;
+  HeterNode *prev;
+  HeterNode *next;
+};
+
+template <class K, class T>
+class HeterList {
+public:
+  HeterList() 
+    : head_(new HeterNode<K, T>)
+    , tail_(new HeterNode<K, T>) {
+    head_->prev = NULL;
+    head_->next = tail_;
+    tail_->prev = head_;
+    tail_->next = NULL;
+    size = 0;
+    cap_ = 1e9;
+  }
+  
+  ~HeterList() {
+    delete head_;
+    delete tail_;
+  }
+  
+  void SetCap(int num) {
+    cap_ = num;
+  }
+
+  bool TryPut(K& key, T& value) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    cond_.wait(lock, [this] { return size < cap_; });
+    if (task_map_.find(key) != task_map_.end()) {
+      //std::cout << "try put key=" << key << " false" << std::endl;
+      return false;
+    }
+    else {
+      HeterNode<K, T>* node = new HeterNode<K, T>;
+      node->key = key;
+      node->value = value;
+      map_[node->key] = node;
+      attach(node);
+      //std::cout << "try put key=" << key << " true" << std::endl;
+      return true;
+    }
+  }
+
+  bool Put(K& key, T& value) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    cond_.wait(lock, [this] { return size < cap_; });
+    HeterNode<K, T>* node = new HeterNode<K, T>;
+    //std::cout << "put key=" << key << " true" << std::endl;
+    node->key = key;
+    node->value = value;
+    map_[node->key] = node;
+    attach(node);
+    return true;
+  }
+  
+  T TryGet(const K &key) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto iter = map_.find(key);
+    if (iter != map_.end()) {
+      //std::cout << "try get key=" << key << " true" << std::endl;
+      HeterNode<K, T>* node = iter->second;
+      detach(node);
+      cond_.notify_one();
+      T ret = std::move(node->value);
+      map_.erase(key);
+      delete node;
+      return ret;
+    }
+    task_map_.insert(key);
+    //std::cout << "try get key=" << key << " false" << std::endl;
+    return nullptr;
+  }
+  
+  T Get(const K &key) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto iter = map_.find(key);
+    if (iter != map_.end()) {
+      //std::cout << "get key=" << key << " true" << std::endl;
+      HeterNode<K, T>* node = iter->second;
+      detach(node);
+      cond_.notify_one();
+      T ret = std::move(node->value);
+      map_.erase(key);
+      delete node;
+      return ret;
+    }
+    //std::cout << "get key=" << key << " false" << std::endl;
+    return nullptr;
+  }
+  
+  T Get() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    HeterNode<K, T>* node = head_->next;
+    if (node == tail_) {
+      //std::cout << "get2 false" << std::endl;
+      return nullptr;
+    }
+    else {
+      detach(node);
+      cond_.notify_one();
+      T ret = std::move(node->value);
+      map_.erase(node->key);
+      //std::cout << "get2 key=" << node->key << " true" << std::endl;
+      delete node;
+      return ret;
+    }
+  }
+
+  bool Empty() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return head_->next == tail_;
+  }
+
+  int Size() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return size;
+  }
+
+private:
+    void detach(HeterNode<K, T> *node) {
+      node->prev->next = node->next;
+      node->next->prev = node->prev;
+      size--;
+    }
+
+    void attach(HeterNode<K, T> *node) {
+      node->prev = head_;
+      node->next = head_->next;
+      head_->next->prev = node;
+      head_->next = node;
+      size++;
+    }
+
+private:
+    HeterNode<K, T> *head_;
+    HeterNode<K, T> *tail_;
+    std::unordered_map<K, HeterNode<K, T>*> map_;
+    std::unordered_set<K> task_map_;
+    std::mutex mutex_;
+    std::condition_variable cond_;
+    int cap_;
+    int size;
+};
+
+class HeterCpuWorker : public HogwildWorker {
+ public:
+  HeterCpuWorker() {}
+  virtual ~HeterCpuWorker() {}
+  virtual void Initialize(const TrainerDesc& desc);
+  virtual void TrainFiles();
+  virtual void TrainFilesWithProfiler();
+  virtual void SetNeedDump(bool need_dump_field);
+  virtual void SetChannelWriter(ChannelObject<std::string>* queue);
+  virtual void SetWorkerNum(int num) { worker_num_ = num; }
+  virtual void CreateThreadParam(const ProgramDesc &main_program);
+  virtual void Schedule(int taskid);
+  virtual void JumpContext(std::shared_ptr<HeterTask> task);
+  virtual void CacheProgram(const ProgramDesc &main_program) {
+    new(&program_) ProgramDesc(main_program);
+  }
+
+ protected:
+  std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
+  std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
+  void FillSparseValue(std::shared_ptr<HeterTask> task, size_t table_id);
+  void PushGradients();
+  void CollectLabelInfo(std::shared_ptr<HeterTask> task, size_t table_id);
+  void AdjustInsWeight(std::shared_ptr<HeterTask> task);
+  void DumpParam();
+  void CopySparseTable();
+  void CopyDenseTable();
+  void CopyDenseVars();
+
+ private:
+  int worker_num_;
+  ProgramDesc program_;
+  HeterObjectPool<HeterTask> object_pool_;
+  HeterList<int, std::shared_ptr<HeterTask>> run_queue_;
+  HeterList<int, std::shared_ptr<HeterTask>> wait_queue_;
+  bool need_dump_param_;
+  std::vector<std::string> dump_param_;
+  bool need_to_push_dense_;
+  bool need_dump_field_;
+  bool dump_slot_;
+  bool need_to_push_sparse_;
+  std::vector<std::string> dump_fields_;
+  ChannelWriter<std::string> writer_;
+  DownpourWorkerParameter param_;
+  float scale_datanorm_;
+  // just save the value in param_ for easy access
+  std::map<uint64_t, std::string> label_var_name_;
+  std::map<uint64_t, std::vector<std::string>> sparse_key_names_;
+  std::map<uint64_t, std::vector<std::string>> sparse_value_names_;
+  std::map<uint64_t, std::vector<std::string>> sparse_grad_names_;
+  std::map<uint64_t, std::vector<std::string>> dense_value_names_;
+  std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
+  platform::Place root_place_;
+  // actually pushed feasign of each table
+  std::map<uint64_t, std::vector<uint64_t>> sparse_push_keys_;
+
+  // skipped ops
+  std::vector<std::string> skip_ops_;
+
+  std::vector<::std::future<int32_t>> push_sparse_status_;
+  std::vector<::std::future<int32_t>> push_dense_status_;
+
+  // adjust ins weight
+  AdjustInsWeightConfig adjust_ins_weight_config_;
+  std::vector<float> nid_show_;
+  // check nan and inf during training
+  std::vector<std::string> check_nan_var_names_;
+  // copy table
+  CopyTableConfig copy_table_config_;
+  std::map<uint64_t, uint64_t> table_dependency_;
+  std::vector<std::pair<uint64_t, uint64_t>> copy_sparse_tables_;
+  std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
+  std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
 };
 
 #if defined(PADDLE_WITH_NCCL)
