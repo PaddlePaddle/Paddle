@@ -79,7 +79,7 @@ class TestArangeAPI(unittest.TestCase):
         self.assertEqual((result == expected_data).all(), True)
 
         with fluid.program_guard(fluid.Program()):
-            data = paddle.arange(0, 5.0, 1, 'int32')
+            data = paddle.arange(0.0, 5.0, 1.0, 'int32')
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result, = exe.run(fetch_list=[data])
