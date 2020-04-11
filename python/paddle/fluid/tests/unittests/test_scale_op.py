@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 
@@ -121,6 +122,20 @@ class TestScaleOpSelectedRows(unittest.TestCase):
             places.append(core.CUDAPlace(0))
         for place in places:
             self.check_with_place(place, 'in', 'in')
+
+
+class TestScaleRaiseError(unittest.TestCase):
+    def test_errors(self):
+        def test_type():
+            fluid.layers.scale([10])
+
+        self.assertRaises(TypeError, test_type)
+
+        def test_dtype():
+            data = fluid.data(shape=[10], dtype="float16", name="input")
+            fluid.layers.scale(data)
+
+        self.assertRaises(TypeError, test_dtype)
 
 
 # Add FP16 test

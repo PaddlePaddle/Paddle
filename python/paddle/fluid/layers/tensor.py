@@ -460,9 +460,20 @@ def sums(input, out=None):
             sum1 = fluid.layers.sums(input=[x0, x1, x2], out=x3)
     """
     helper = LayerHelper('sum', **locals())
+    check_type(input, 'input', (tuple, list), 'sums')
+    if len(input) > 0:
+        for i in range(0, len(input)):
+            check_variable_and_dtype(input[i], "input[%d]"%(i), \
+               ['float32', 'float64', 'int32', 'int64'], 'sums')
+    else:
+        raise ValueError("The size of inputs must be larger 0, but now is 0.")
     if out is None:
         out = helper.create_variable_for_type_inference(
             dtype=helper.input_dtype())
+    else:
+        check_variable_and_dtype(
+            out, "out", ['float32', 'float64', 'int32', 'int64'], 'sums')
+
     helper.append_op(
         type='sum',
         inputs={'X': input},
