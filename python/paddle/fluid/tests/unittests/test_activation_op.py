@@ -700,6 +700,15 @@ class TestLog(TestActivation):
             return
         self.check_grad(['X'], 'Out')
 
+    def test_error(self):
+        in1 = fluid.layers.data(
+            name="in1", shape=[11, 17], append_batch_size=False, dtype="int32")
+        in2 = fluid.layers.data(
+            name="in2", shape=[11, 17], append_batch_size=False, dtype="int64")
+
+        self.assertRaises(TypeError, fluid.layers.log, in1)
+        self.assertRaises(TypeError, fluid.layers.log, in2)
+
 
 class TestSquare(TestActivation):
     def setUp(self):
@@ -790,6 +799,35 @@ class TestPow_factor_tensor(TestActivation):
         assert np.array_equal(res_2, np.power(input, 3))
         assert np.array_equal(res_3, res)
         assert np.array_equal(res_6, np.power(input, 3))
+
+    def test_error(self):
+        in1 = fluid.layers.data(
+            name="in1", shape=[11, 17], append_batch_size=False, dtype="int32")
+        in2 = fluid.layers.data(
+            name="in2", shape=[11, 17], append_batch_size=False, dtype="int64")
+        in3 = fluid.layers.data(
+            name="in3",
+            shape=[11, 17],
+            append_batch_size=False,
+            dtype="float32")
+
+        factor_1 = 2
+        factor_2 = 2.0
+        factor_3 = fluid.layers.fill_constant([1], "float64", 3.0)
+        factor_4 = fluid.layers.fill_constant([1], "float32", 3.0)
+
+        self.assertRaises(TypeError, fluid.layers.pow, x=in1, factor=factor_2)
+        self.assertRaises(TypeError, fluid.layers.pow, x=in1, factor=factor_4)
+        self.assertRaises(TypeError, fluid.layers.pow, x=in1, factor=factor_1)
+        self.assertRaises(TypeError, fluid.layers.pow, x=in1, factor=factor_3)
+
+        self.assertRaises(TypeError, fluid.layers.pow, x=in2, factor=factor_2)
+        self.assertRaises(TypeError, fluid.layers.pow, x=in2, factor=factor_4)
+        self.assertRaises(TypeError, fluid.layers.pow, x=in2, factor=factor_1)
+        self.assertRaises(TypeError, fluid.layers.pow, x=in2, factor=factor_3)
+
+        self.assertRaises(TypeError, fluid.layers.pow, x=in3, factor=factor_1)
+        self.assertRaises(TypeError, fluid.layers.pow, x=in3, factor=factor_3)
 
 
 class TestSTanh(TestActivation):
@@ -916,6 +954,42 @@ class TestSwish(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.008)
+
+
+#------------------ Test Error Activation----------------------
+def create_test_error_class(op_type):
+    class TestOpErrors(unittest.TestCase):
+        def test_errors(self):
+            with program_guard(Program(), Program()):
+                op = getattr(fluid.layers, op_type)
+                # The input dtype of op_type must be float32, float64.
+                in1 = fluid.layers.data(
+                    name='input2', shape=[12, 10], dtype="int32")
+                in2 = fluid.layers.data(
+                    name='input3', shape=[12, 10], dtype="int64")
+                self.assertRaises(TypeError, op, in1)
+                self.assertRaises(TypeError, op, in2)
+
+    cls_name = "{0}_{1}".format(op_type, "test_errors")
+    TestOpErrors.__name__ = cls_name
+    globals()[cls_name] = TestOpErrors
+
+
+create_test_error_class('abs')
+create_test_error_class('acos')
+create_test_error_class('asin')
+create_test_error_class('atan')
+create_test_error_class('ceil')
+create_test_error_class('cos')
+create_test_error_class('exp')
+create_test_error_class('floor')
+create_test_error_class('reciprocal')
+create_test_error_class('round')
+create_test_error_class('rsqrt')
+create_test_error_class('sin')
+create_test_error_class('sqrt')
+create_test_error_class('square')
+create_test_error_class('tanh')
 
 
 #------------------ Test Cudnn Activation----------------------
