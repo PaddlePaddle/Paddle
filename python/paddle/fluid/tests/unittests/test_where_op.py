@@ -68,7 +68,7 @@ class TestWhereAPI(unittest.TestCase):
             x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float32")
             y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype("float32")
             cond_i = np.array([False, False, True, True]).astype("bool")
-            result = tensor.where(x > 1, X=x, Y=y)
+            result = tensor.where(x > 1, x=x, y=y)
 
             for use_cuda in [False, True]:
                 if use_cuda and not fluid.core.is_compiled_with_cuda():
@@ -94,7 +94,7 @@ class TestWhereAPI(unittest.TestCase):
                 x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float32")
                 y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype("float32")
                 cond_i = np.array([False, False, True, True]).astype("bool")
-                result = tensor.where(x > 1, X=x, Y=y)
+                result = tensor.where(x > 1, x=x, y=y)
                 x_mean = layers.mean(x)
                 append_backward(x_mean)
                 y_mean = layers.mean(y)
@@ -126,7 +126,7 @@ class TestWhereAPI(unittest.TestCase):
                             [1.0, 1.0, 1.0, 1.0]]).astype("float32")
             cond_i = np.array([[False, False, True, True],
                                [False, False, True, True]]).astype("bool")
-            result = tensor.where(x > 1, X=x, Y=y)
+            result = tensor.where(x > 1, x=x, y=y)
 
             for use_cuda in [False, True]:
                 if use_cuda and not fluid.core.is_compiled_with_cuda():

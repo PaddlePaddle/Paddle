@@ -215,26 +215,30 @@ def sort(input, axis=-1, descending=False, out=None, name=None):
     return out, ids
 
 
-def where(Condition, X, Y):
+def where(condition, x, y, name=None):
     """
-    Return a tensor of elements selected from either $X$ or $Y$, depending on $Condition$.
+    Return a tensor of elements selected from either $x$ or $y$, depending on $condition$.
 
     .. math::
  
-      Out_i =
+      out_i =
       \\begin{cases}
-      X_i, \quad  \\text{if}  \\ cond_i \\  is \\ True \\\\
-      Y_i, \quad  \\text{if}  \\ cond_i \\  is \\ False \\\\
+      x_i, \quad  \\text{if}  \\ condition_i \\  is \\ True \\\\
+      y_i, \quad  \\text{if}  \\ condition_i \\  is \\ False \\\\
       \\end{cases}
   
 
     Args:
-        Condition(Variable): The condition to choose X or Y.
-        X(Variable): X is a Tensor Variable with data type float32, float64, int32, int64.
-        Y(Variable): Y is a Tensor Variable with data type float32, float64, int32, int64.
+        condition(Variable): The condition to choose x or y.
+        x(Variable): x is a Tensor Variable with data type float32, float64, int32, int64.
+        y(Variable): y is a Tensor Variable with data type float32, float64, int32, int64.
+
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: A Tensor with the same data dype as X. 
+        Variable: A Tensor with the same data dype as x. 
 
     Examples:
         .. code-block:: python
@@ -255,17 +259,17 @@ def where(Condition, X, Y):
           #out: [1.0, 1.0, 3.2, 1.2]
     """
     if not in_dygraph_mode():
-        check_variable_and_dtype(Condition, 'Condition', ['bool'], 'where')
+        check_variable_and_dtype(condition, 'condition', ['bool'], 'where')
         check_variable_and_dtype(
-            X, 'X', ['float32', 'float64', 'int32', 'int64'], 'where')
+            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'where')
         check_variable_and_dtype(
-            Y, 'Y', ['float32', 'float64', 'int32', 'int64'], 'where')
+            y, 'y', ['float32', 'float64', 'int32', 'int64'], 'where')
 
-    X_shape = list(X.shape)
-    Y_shape = list(Y.shape)
-    if X_shape == Y_shape:
+    x_shape = list(x.shape)
+    y_shape = list(y.shape)
+    if x_shape == y_shape:
         if in_dygraph_mode():
-            return core.ops.where(Condition, X, Y)
+            return core.ops.where(condition, x, y)
         else:
             helper = LayerHelper("where", **locals())
             dtype = helper.input_dtype()
@@ -273,16 +277,16 @@ def where(Condition, X, Y):
 
             helper.append_op(
                 type='where',
-                inputs={'Condition': Condition,
-                        'X': X,
-                        'Y': Y},
+                inputs={'Condition': condition,
+                        'X': x,
+                        'Y': y},
                 outputs={'Out': [out]})
             return out
     else:
-        cond_int = layers.cast(Condition, X.dtype)
-        cond_not_int = layers.cast(layers.logical_not(Condition), X.dtype)
-        out1 = layers.elementwise_mul(X, cond_int)
-        out2 = layers.elementwise_mul(Y, cond_not_int)
+        cond_int = layers.cast(condition, x.dtype)
+        cond_not_int = layers.cast(layers.logical_not(condition), x.dtype)
+        out1 = layers.elementwise_mul(x, cond_int)
+        out2 = layers.elementwise_mul(y, cond_not_int)
         out = layers.elementwise_add(out1, out2)
         return out
 
