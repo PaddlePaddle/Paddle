@@ -28,7 +28,10 @@ class TestROIPoolOp(OpTest):
         self.make_rois()
         self.calc_roi_pool()
 
-        self.inputs = {'X': self.x, 'ROIs': (self.rois[:, 1:5], self.rois_lod)}
+        self.inputs = {
+            'X': self.x,
+            'ROIs': (self.rois[:, 1:5], self.rois_lod),
+        }
 
         self.attrs = {
             'spatial_scale': self.spatial_scale,
@@ -136,6 +139,34 @@ class TestROIPoolOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+class TestROIPoolInLodOp(TestROIPoolOp):
+    def set_data(self):
+        self.init_test_case()
+        self.make_rois()
+        self.calc_roi_pool()
+
+        seq_len = self.rois_lod[0]
+        cur_len = 0
+        lod = [cur_len]
+        for l in seq_len:
+            cur_len += l
+            lod.append(cur_len)
+
+        self.inputs = {
+            'X': self.x,
+            'ROIs': (self.rois[:, 1:5], self.rois_lod),
+            'RoisLod': np.asarray(lod).astype('int64')
+        }
+
+        self.attrs = {
+            'spatial_scale': self.spatial_scale,
+            'pooled_height': self.pooled_height,
+            'pooled_width': self.pooled_width
+        }
+
+        self.outputs = {'Out': self.outs, 'Argmax': self.argmaxes}
 
 
 if __name__ == '__main__':

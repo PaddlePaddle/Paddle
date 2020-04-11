@@ -1490,20 +1490,22 @@ PDNode *patterns::ConvConcatReLU::operator()() {
   return relu_out;
 }
 
-PDNode *patterns::ConvRequant::operator()() {
-  // Create Operators
-  auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
+PDNode *patterns::OpRequant::operator()() {
+  auto any_op = pattern->NewNode(any_op_repr())
+                    ->assert_is_op()
+                    ->assert_more([&](Node *node) {
+                      return node->Op()->HasAttr("Scale_out") ? true : false;
+                    });
+  auto requant_in = pattern->NewNode(requant_in_repr())
+                        ->assert_is_op_input("requantize", "Input");
   auto requant_op =
       pattern->NewNode(requant_op_repr())->assert_is_op("requantize");
-  auto conv_out = pattern->NewNode(conv_out_repr())
-                      ->assert_is_op_output("conv2d", "Output");
   auto requant_out = pattern->NewNode(requant_out_repr())
                          ->AsOutput()
                          ->assert_is_op_output("requantize", "Output");
 
-  conv_op->LinksTo({conv_out});
-  requant_op->LinksFrom({conv_out}).LinksTo({requant_out});
-
+  any_op->LinksTo({requant_in});
+  requant_op->LinksFrom({requant_in}).LinksTo({requant_out});
   return requant_out;
 }
 

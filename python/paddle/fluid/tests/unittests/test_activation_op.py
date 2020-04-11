@@ -21,6 +21,8 @@ from op_test import OpTest
 from scipy.special import expit, erf
 import paddle
 import paddle.fluid as fluid
+import paddle.nn as nn
+import paddle.nn.functional as functional
 from paddle.fluid import compiler, Program, program_guard
 
 
@@ -759,9 +761,6 @@ class TestPow_factor_tensor(TestActivation):
         self.check_grad(['X'], 'Out')
 
     def test_api(self):
-        import paddle
-        import paddle.fluid as fluid
-
         input = np.random.uniform(1, 2, [11, 17]).astype("float32")
         x = fluid.layers.data(
             name="x", shape=[11, 17], append_batch_size=False, dtype="float32")
@@ -1002,6 +1001,75 @@ create_test_act_fp16_class(TestThresholdedRelu)
 create_test_act_fp16_class(TestHardSigmoid)
 create_test_act_fp16_class(TestSwish)
 create_test_act_fp16_class(TestHardSwish)
+
+
+class TestNNReluAPI(unittest.TestCase):
+    def setUp(self):
+        self.init_data()
+
+    def init_data(self):
+        self.x_shape = [10, 12]
+        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
+        self.y = self.ref_forward(self.x)
+
+    def ref_forward(self, x):
+        return np.maximum(x, 0)
+
+    def ref_backward(self, y, dy):
+        y_t = y.copy()
+        y_t[y_t > 0] = 1
+        return y_t * dy
+
+    def check_api(self, place=fluid.CPUPlace(), inplace=False):
+        main_program = Program()
+        myrelu = nn.ReLU(inplace)
+        with fluid.program_guard(main_program):
+            x = fluid.data(name='x', shape=self.x_shape)
+            x.stop_gradient = False
+            y = myrelu(x)
+            fluid.backward.append_backward(fluid.layers.mean(y))
+        exe = fluid.Executor(place)
+        out = exe.run(main_program,
+                      feed={'x': self.x},
+                      fetch_list=[y, y.grad_name, x.grad_name])
+        self.assertTrue(np.allclose(out[0], self.y))
+        self.assertTrue(np.allclose(out[2], self.ref_backward(self.y, out[1])))
+
+        with fluid.dygraph.guard(place):
+            x = fluid.dygraph.to_variable(self.x)
+            y = myrelu(x)
+        self.assertTrue(np.allclose(y.numpy(), self.y))
+
+    def test_check_api(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for place in places:
+            for inplace in [True, False]:
+                self.check_api(place, inplace)
+
+
+class TestNNFunctionalReluAPI(unittest.TestCase):
+    def setUp(self):
+        self.init_data()
+
+    def init_data(self):
+        self.x_shape = [10, 12]
+        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
+        self.y = self.ref_forward(self.x)
+
+    def ref_forward(self, x):
+        return np.maximum(x, 0)
+
+    def test_check_api(self):
+        main_program = Program()
+        with fluid.program_guard(main_program):
+            x = fluid.data(name='x', shape=self.x_shape)
+            y = functional.relu(x)
+        exe = fluid.Executor(fluid.CPUPlace())
+        out = exe.run(main_program, feed={'x': self.x}, fetch_list=[y])
+        self.assertTrue(np.allclose(out[0], self.y))
+
 
 if __name__ == "__main__":
     unittest.main()

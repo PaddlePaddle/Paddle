@@ -2779,6 +2779,8 @@ def generate_proposals(scores,
         dtype=bbox_deltas.dtype)
     rpn_roi_probs = helper.create_variable_for_type_inference(
         dtype=scores.dtype)
+    rpn_rois_lod = helper.create_variable_for_type_inference(dtype='int32')
+
     helper.append_op(
         type="generate_proposals",
         inputs={
@@ -2795,12 +2797,16 @@ def generate_proposals(scores,
             'min_size': min_size,
             'eta': eta
         },
-        outputs={'RpnRois': rpn_rois,
-                 'RpnRoiProbs': rpn_roi_probs})
+        outputs={
+            'RpnRois': rpn_rois,
+            'RpnRoiProbs': rpn_roi_probs,
+            'RpnRoisLod': rpn_rois_lod
+        })
     rpn_rois.stop_gradient = True
     rpn_roi_probs.stop_gradient = True
+    rpn_rois_lod.stop_gradient = True
 
-    return rpn_rois, rpn_roi_probs
+    return rpn_rois, rpn_roi_probs, rpn_rois_lod
 
 
 def box_clip(input, im_info, name=None):

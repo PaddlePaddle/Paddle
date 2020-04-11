@@ -936,9 +936,8 @@ class Linear(layers.Layer):
 
     def forward(self, input):
         if in_dygraph_mode():
-            pre_bias = core.ops.mul(input, self.weight, 'x_num_col_dims',
-                                    len(input.shape) - 1, 'y_num_col_dims', 1)
-
+            pre_bias = core.ops.matmul(input, self.weight, 'transpose_X', False,
+                                       'transpose_Y', False, "alpha", 1)
             pre_act = dygraph_utils._append_bias_in_dygraph(
                 pre_bias, self.bias, axis=len(input.shape) - 1)
 
@@ -949,14 +948,15 @@ class Linear(layers.Layer):
                                  ['float16', 'float32', 'float64'], "Linear")
 
         attrs = {
-            "x_num_col_dims": len(input.shape) - 1,
-            "y_num_col_dims": 1,
+            "transpose_X": False,
+            "transpose_Y": False,
+            "alpha": 1,
         }
         inputs = {"X": [input], "Y": [self.weight]}
 
         tmp = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
-            type="mul", inputs=inputs, outputs={"Out": tmp}, attrs=attrs)
+            type="matmul", inputs=inputs, outputs={"Out": tmp}, attrs=attrs)
         if self.bias:
             pre_activation = self._helper.create_variable_for_type_inference(
                 dtype=self._dtype)
@@ -1576,6 +1576,7 @@ class Embedding(layers.Layer):
                 'is_distributed', self._is_distributed, 'remote_prefetch',
                 self._remote_prefetch, 'padding_idx', self._padding_idx)
 
+        check_variable_and_dtype(input, 'input', ['int64'], 'Embedding')
         attrs = {
             'is_sparse': self._is_sparse,
             'is_distributed': self._is_distributed,
@@ -1910,6 +1911,10 @@ class GRUUnit(layers.Layer):
                 self.activation, 'gate_activation', self.gate_activation)
             return updated_hidden, reset_hidden_pre, gate
 
+        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                                 'GRUUnit')
+        check_variable_and_dtype(hidden, 'hidden', ['float32', 'float64'],
+                                 'GRUUnit')
         inputs = {
             'Input': [input],
             'HiddenPrev': [hidden],
@@ -1917,10 +1922,6 @@ class GRUUnit(layers.Layer):
         }
         if self.bias is not None:
             inputs['Bias'] = [self.bias]
-        attrs = {
-            'activation': self.activation,
-            'gate_activation': self.gate_activation,
-        }
         gate = self._helper.create_variable_for_type_inference(self._dtype)
         reset_hidden_pre = self._helper.create_variable_for_type_inference(
             self._dtype)
@@ -2273,6 +2274,7 @@ class PRelu(layers.Layer):
             default_initializer=Constant(1.0))
 
     def forward(self, input):
+        check_variable_and_dtype(input, 'input', ['float32'], 'PRelu')
         out = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
             type="prelu",
@@ -2371,6 +2373,10 @@ class BilinearTensorProduct(layers.Layer):
             is_bias=True)
 
     def forward(self, x, y):
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'],
+                                 'BilinearTensorProduct')
+        check_variable_and_dtype(y, 'y', ['float32', 'float64'],
+                                 'BilinearTensorProduct')
         self._inputs = {"X": x, "Y": y, "Weight": self.weight}
         if self.bias is not None:
             self._inputs["Bias"] = self.bias
