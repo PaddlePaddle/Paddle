@@ -147,18 +147,13 @@ class SplitLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
 class SplitLoDTensorInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE_EQ(context->HasInput("X"), true,
-                      platform::errors::InvalidArgument(
-                          "SplitLoDTensorOp must have input X."));
-    PADDLE_ENFORCE_EQ(context->HasInput("Mask"), true,
-                      platform::errors::InvalidArgument(
-                          "SplitLoDTensorOp must have input Mask."));
-    PADDLE_ENFORCE_EQ(context->HasOutput("OutTrue"), true,
-                      platform::errors::InvalidArgument(
-                          "SplitLoDTensorOp must have output OutTrue."));
-    PADDLE_ENFORCE_EQ(context->HasOutput("OutFalse"), true,
-                      platform::errors::InvalidArgument(
-                          "SplitLoDTensorOp must have output OutFalse."));
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "SplitLoDTensor");
+    OP_INOUT_CHECK(context->HasInput("Mask"), "Input", "Mask",
+                   "SplitLoDTensor");
+    OP_INOUT_CHECK(context->HasOutput("OutTrue"), "Output", "OutTrue",
+                   "SplitLoDTensor");
+    OP_INOUT_CHECK(context->HasOutput("OutFalse"), "Output", "OutFalse",
+                   "SplitLoDTensor");
 
     auto mask_dim = context->GetInputDim("Mask");
     PADDLE_ENFORCE_EQ(

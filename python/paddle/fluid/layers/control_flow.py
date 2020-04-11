@@ -2134,7 +2134,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
                 return false_fn()
         return None
 
-    check_type(pred, "pred", Variable, "fluid.layers.cond")
+    check_variable_and_dtype(pred, "pred", ['bool'], "fluid.layers.cond")
     check_type(name, "name", (str, type(None)), "fluid.layers.cond")
     helper = LayerHelper('cond', **locals())
     true_output = None

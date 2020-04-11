@@ -400,8 +400,8 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
   for (auto& bid : block_ids) {
     PADDLE_ENFORCE_LT(static_cast<size_t>(bid), program.Size(),
                       platform::errors::InvalidArgument(
-                          "Input block id = %d, but it should be less than "
-                          "program.size() which is %d",
+                          "Input block id = %zu, but it should be less than "
+                          "program.size() which is %zu",
                           static_cast<size_t>(bid), program.Size()));
     auto* ctx = new ExecutorPrepareContext(program, bid);
     auto& block = program.Block(bid);
