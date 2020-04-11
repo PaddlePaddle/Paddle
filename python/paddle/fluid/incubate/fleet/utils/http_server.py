@@ -40,6 +40,7 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     kv handler class for kv http server,
     it defines the way to get/set kv in server.
     """
+
     def do_GET(self):
         """
         get method for kv handler, get value according to key.
@@ -63,7 +64,7 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(value)
         _http_server_logger.info(log_str)
-    
+
     def do_PUT(self):
         """
         put method for kv handler, set value according to key.
@@ -126,6 +127,7 @@ class KVHTTPServer(BaseHTTPServer.HTTPServer, object):
     """
     it is a http server storing kv pairs.
     """
+
     def __init__(self, port, handler):
         """Init."""
         super(KVHTTPServer, self).__init__(('', port), handler)
@@ -148,6 +150,7 @@ class KVServer:
     """
     it is a server storing kv pairs, has a http server inside.
     """
+
     def __init__(self, port, size={}):
         """Init."""
         self.http_server = KVHTTPServer(port, KVHandler, size)
