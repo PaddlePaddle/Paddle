@@ -30,7 +30,7 @@ class DiagOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         s_dims.size(), 1UL,
         platform::errors::InvalidArgument(
-            "The dimension of 'diagonal' must be 1, but now it is %s.",
+            "The dimension of 'diagonal' must be 1, but now it is %d.",
             s_dims.size()));
 
     ctx->SetOutputDim("Out", {s_dims[0], s_dims[0]});

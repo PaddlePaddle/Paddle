@@ -34,12 +34,12 @@ class ArgsortOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(axis, -num_dims,
                       platform::errors::InvalidArgument(
                           "'axis'(%d) must be greater than or equal to"
-                          " -num_dims(%d)",
+                          " -num_dims(%d).",
                           axis, -num_dims));
-    PADDLE_ENFORCE_LE(
-        axis, num_dims - 1,
+    PADDLE_ENFORCE_LT(
+        axis, num_dims,
         platform::errors::InvalidArgument(
-            "'axis'(%d) must be less than num_dims(%d)", axis, num_dims - 1));
+            "'axis'(%d) must be less than num_dims(%d).", axis, num_dims));
 
     ctx->ShareDim("X", "Out");
     ctx->ShareDim("X", "Indices");

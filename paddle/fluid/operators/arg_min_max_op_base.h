@@ -145,12 +145,12 @@ class ArgMinMaxOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(axis, -x_dims.size(),
                       platform::errors::InvalidArgument(
                           "'axis'(%d) must be greater than or equal to"
-                          " -Rank(X)(%d)",
+                          " -Rank(X)(%d).",
                           axis, -x_dims.size()));
-    PADDLE_ENFORCE_LE(axis, x_dims.size() - 1,
-                      platform::errors::InvalidArgument(
-                          "'axis'(%d) must be less than Rank(X)(%d)", axis,
-                          x_dims.size() - 1));
+    PADDLE_ENFORCE_LT(
+        axis, x_dims.size(),
+        platform::errors::InvalidArgument(
+            "'axis'(%d) must be less than Rank(X)(%d).", axis, x_dims.size()));
 
     auto x_rank = x_dims.size();
     if (axis < 0) axis += x_rank;
