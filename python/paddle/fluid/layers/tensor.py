@@ -627,7 +627,8 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
         check_variable_and_dtype(shape, 'shape', ['int32', 'int64'],
                                  'fill_constant')
     if out is not None:
-        check_variable_and_dtype(out, 'out', dtype, 'fill_constant')
+        check_variable_and_dtype(out, 'out', [convert_dtype(dtype)],
+                                 'fill_constant')
 
     helper = LayerHelper("fill_constant", **locals())
     inputs = utils._get_shape_tensor_inputs(
