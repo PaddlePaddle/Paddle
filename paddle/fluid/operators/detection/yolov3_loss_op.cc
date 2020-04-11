@@ -23,27 +23,14 @@ class Yolov3LossOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::NotFound(
-                          "Input(X) of Yolov3LossOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("GTBox"), true,
-                      platform::errors::NotFound(
-                          "Input(GTBox) of Yolov3LossOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("GTLabel"), true,
-        platform::errors::NotFound(
-            "Input(GTLabel) of Yolov3LossOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Loss"), true,
-                      platform::errors::NotFound(
-                          "Output(Loss) of Yolov3LossOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("ObjectnessMask"), true,
-        platform::errors::NotFound(
-            "Output(ObjectnessMask) of Yolov3LossOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("GTMatchMask"), true,
-        platform::errors::NotFound(
-            "Output(GTMatchMask) of Yolov3LossOp should not be null."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Yolov3LossOp");
+    OP_INOUT_CHECK(ctx->HasInput("GTBox"), "Input", "GTBox", "Yolov3LossOp");
+    OP_INOUT_CHECK(ctx->HasInput("GTLabel"), "GTLabel", "X", "Yolov3LossOp");
+    OP_INOUT_CHECK(ctx->HasInput("Loss"), "Input", "Loss", "Yolov3LossOp");
+    OP_INOUT_CHECK(ctx->HasInput("ObjectnessMask"), "Input", "ObjectnessMask",
+                   "Yolov3LossOp");
+    OP_INOUT_CHECK(ctx->HasInput("GTMatchMask"), "Input", "GTMatchMask",
+                   "Yolov3LossOp");
 
     auto dim_x = ctx->GetInputDim("X");
     auto dim_gtbox = ctx->GetInputDim("GTBox");

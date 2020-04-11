@@ -21,18 +21,10 @@ class YoloBoxOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::NotFound(
-                          "Input(X) of YoloBoxOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("ImgSize"), true,
-                      platform::errors::NotFound(
-                          "Input(ImgSize) of YoloBoxOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Boxes"), true,
-                      platform::errors::NotFound(
-                          "Output(Boxes) of YoloBoxOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Scores"), true,
-                      platform::errors::NotFound(
-                          "Output(Scores) of YoloBoxOp should not be null."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "YoloBoxOp");
+    OP_INOUT_CHECK(ctx->HasInput("ImgSize"), "Input", "ImgSize", "YoloBoxOp");
+    OP_INOUT_CHECK(ctx->HasInput("Boxes"), "Input", "Boxes", "YoloBoxOp");
+    OP_INOUT_CHECK(ctx->HasInput("Scores"), "Input", "Scores", "YoloBoxOp");
 
     auto dim_x = ctx->GetInputDim("X");
     auto dim_imgsize = ctx->GetInputDim("ImgSize");

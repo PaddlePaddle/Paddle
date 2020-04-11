@@ -26,17 +26,9 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("BBoxes"), true,
-        platform::errors::NotFound(
-            "Input(BBoxes) of MultiClassNMS should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Scores"), true,
-        platform::errors::NotFound(
-            "Input(Scores) of MultiClassNMS should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::NotFound(
-                          "Output(Out) of MultiClassNMS should not be null."));
+    OP_INOUT_CHECK(ctx->HasInput("BBoxes"), "Input", "BBoxes", "MultiClassNMS");
+    OP_INOUT_CHECK(ctx->HasInput("Scores"), "Input", "Scores", "MultiClassNMS");
+    OP_INOUT_CHECK(ctx->HasInput("Out"), "Output", "Out", "MultiClassNMS");
 
     auto box_dims = ctx->GetInputDim("BBoxes");
     auto score_dims = ctx->GetInputDim("Scores");
