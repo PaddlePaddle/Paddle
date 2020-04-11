@@ -64,6 +64,9 @@ constexpr char kZeroVarSuffix[] = "@ZERO";
 /// Variables with this suffix are the new Gradient.
 constexpr char kNewGradSuffix[] = "@NEWGRAD@";
 
+/// Variables with this suffix are the loaded from pre-train model.
+constexpr char kLoadedVarSuffix[] = "@LOADED";
+
 /// RuntimeContext is used to relate input/output names of Operator with
 /// the corresponding variables in name scope.
 /// If an Op has attribute kEnableCacheRuntimeContext, it means that in a same
@@ -188,6 +191,11 @@ class OperatorBase {
   virtual void RuntimeInferShape(const Scope& scope,
                                  const platform::Place& place,
                                  const RuntimeContext& ctx) const {}
+
+  virtual platform::Place GetExecutionPlace(
+      const platform::Place& place) const {
+    return place;
+  }
 
  protected:
   std::string type_;
@@ -475,6 +483,11 @@ class OperatorWithKernel : public OperatorBase {
   virtual OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const OpKernelType& expected_kernel_type) const;
+
+  virtual platform::Place GetExecutionPlace(
+      const platform::Place& platform) const {
+    return kernel_type_->place_;
+  }
 
  private:
   void ParseInputDataType(const ExecutionContext& ctx, const std::string& name,

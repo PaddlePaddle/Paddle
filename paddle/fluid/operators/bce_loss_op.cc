@@ -28,7 +28,7 @@ class BCELossOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "BCELoss");
-    OP_INOUT_CHECK(ctx->HasInput("Lable"), "Input", "Label", "BCELoss");
+    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "BCELoss");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "BCELoss");
 
     auto x_dims = ctx->GetInputDim("X");
@@ -72,7 +72,7 @@ class BCELossGradOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "BCELossGrad");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
                    framework::GradVarName("Out"), "BCELossGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Input",
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
                    framework::GradVarName("X"), "BCELossGrad");
 
     auto x_dims = ctx->GetInputDim("X");
