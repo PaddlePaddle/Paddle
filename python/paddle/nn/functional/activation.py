@@ -16,6 +16,7 @@ import warnings
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
 from ...fluid import core
+from ...fluid.data_feeder import check_variable_and_dtype
 
 # TODO: define activation functions of neural network  
 __all__ = [
@@ -116,6 +117,7 @@ def sigmoid(input, name=None):
           import paddle.fluid as fluid
           import paddle.nn.functional as functional
           import numpy as np
+          # In the static graph mode
           input = fluid.data(name="input", shape=[None, 4])
           output = functional.sigmoid(input)
           place = fluid.CPUPlace()
@@ -125,7 +127,17 @@ def sigmoid(input, name=None):
           output_data = exe.run(feed={"input": input_data},
                                 fetch_list=[output])
           print(output_data) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
+          # In the dynamic graph mode
+          with fluid.dygraph.guard():
+              input = fluid.dygraph.to_variable(input_data)
+              output = functional.sigmoid(input)
+              print(output) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
     """
+
+    check_variable_and_dtype(input, 'X', ['float16', 'float32', 'float64'],
+                             'sigmoid')
+    if in_dygraph_mode():
+        return core.ops.sigmoid(input)
 
     helper = LayerHelper("sigmoid", **locals())
     outputs = helper.create_variable_for_type_inference(input.dtype)
