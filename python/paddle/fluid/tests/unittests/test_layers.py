@@ -3432,12 +3432,12 @@ class TestBook(LayerTest):
                 name='gt_labels',
                 shape=[10, 1],
                 append_batch_size=False,
-                dtype='float32')
+                dtype='int32')
             is_crowd = layers.data(
                 name='is_crowd',
                 shape=[1],
                 append_batch_size=False,
-                dtype='float32')
+                dtype='int32')
             im_info = layers.data(
                 name='im_info',
                 shape=[1, 3],
