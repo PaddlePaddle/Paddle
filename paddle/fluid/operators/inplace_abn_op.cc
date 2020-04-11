@@ -101,16 +101,16 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
     }
 
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "inplace_abn_grad");
-    const auto x_dims = ctx->GetInputDim("Y");
+    const auto y_dims = ctx->GetInputDim("Y");
     const DataLayout data_layout = framework::StringToDataLayout(
         ctx->Attrs().Get<std::string>("data_layout"));
 
     const int C =
         ((this->IsMKLDNNType() == true) || (data_layout == DataLayout::kNCHW)
-             ? x_dims[1]
-             : x_dims[x_dims.size() - 1]);
+             ? y_dims[1]
+             : y_dims[y_dims.size() - 1]);
 
-    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+    ctx->SetOutputDim(framework::GradVarName("X"), y_dims);
     // has_scale_grad == has_bias_grad, judge has_scale_grad is enough
     if (has_scale_grad) {
       ctx->SetOutputDim(framework::GradVarName("Scale"), {C});
