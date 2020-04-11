@@ -71,11 +71,11 @@ class TestInt32ArangeOpCase2(TestArangeOp):
 class TestArangeAPI(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program()):
-            data = paddle.arange(0, 5, 1, 'int32')
+            data = paddle.arange(0, 5, 1, 'flaot32')
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             result, = exe.run(fetch_list=[data])
-            expected_data = np.arange(0, 5, 1).astype(np.int32)
+            expected_data = np.arange(0, 5, 1).astype(np.float32)
         self.assertEqual((result == expected_data).all(), True)
 
 
