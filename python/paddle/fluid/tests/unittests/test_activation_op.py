@@ -812,22 +812,16 @@ class TestPow_factor_tensor(TestActivation):
             dtype="float32")
 
         factor_1 = 2
-        factor_2 = 2.0
-        factor_3 = fluid.layers.fill_constant([1], "float64", 3.0)
-        factor_4 = fluid.layers.fill_constant([1], "float32", 3.0)
+        factor_2 = fluid.layers.fill_constant([1], "float64", 3.0)
 
-        self.assertRaises(TypeError, fluid.layers.pow, x=in1, factor=factor_2)
-        self.assertRaises(TypeError, fluid.layers.pow, x=in1, factor=factor_4)
         self.assertRaises(TypeError, fluid.layers.pow, x=in1, factor=factor_1)
-        self.assertRaises(TypeError, fluid.layers.pow, x=in1, factor=factor_3)
+        self.assertRaises(TypeError, fluid.layers.pow, x=in1, factor=factor_2)
 
-        self.assertRaises(TypeError, fluid.layers.pow, x=in2, factor=factor_2)
-        self.assertRaises(TypeError, fluid.layers.pow, x=in2, factor=factor_4)
         self.assertRaises(TypeError, fluid.layers.pow, x=in2, factor=factor_1)
-        self.assertRaises(TypeError, fluid.layers.pow, x=in2, factor=factor_3)
+        self.assertRaises(TypeError, fluid.layers.pow, x=in2, factor=factor_2)
 
         self.assertRaises(TypeError, fluid.layers.pow, x=in3, factor=factor_1)
-        self.assertRaises(TypeError, fluid.layers.pow, x=in3, factor=factor_3)
+        self.assertRaises(TypeError, fluid.layers.pow, x=in3, factor=factor_2)
 
 
 class TestSTanh(TestActivation):
