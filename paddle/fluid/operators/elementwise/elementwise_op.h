@@ -42,28 +42,29 @@ class ElementwiseOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "ElementwiseOp");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ElementwiseOp");
 
-    PADDLE_ENFORCE_EQ(
-        ctx->GetInputsVarType("Y").front(),
-        framework::proto::VarType::LOD_TENSOR,
-        "The input var's type should be LoDTensor, but the received is %s [%s]",
-        ctx->GetInputsVarType("Y").front(), ctx->Inputs("Y").front());
+    PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("Y").front(),
+                      framework::proto::VarType::LOD_TENSOR,
+                      "The input var's type should be LoDTensor, but the "
+                      "received is %s [%s].",
+                      ctx->GetInputsVarType("Y").front(),
+                      ctx->Inputs("Y").front());
 
     if (ctx->GetInputsVarType("X").front() ==
         framework::proto::VarType::SELECTED_ROWS) {
       PADDLE_ENFORCE_EQ(
           ctx->GetInputDim("Y").size(), 1u,
           platform::errors::InvalidArgument(
-          "For elementwise_op, if X is Sparse(VarType.SELECTED_ROWS"
-          "), Y must be scalar, the size of Y should be 1. "
-          "But reveived the size of Y = %s",
-          ctx->GetInputDim("Y").size());
+              "For elementwise_op, if X is Sparse(VarType.SELECTED_ROWS"
+              "), Y must be scalar, the size of Y should be 1. "
+              "But reveived the size of Y = %s.",
+              ctx->GetInputDim("Y").size()));
       PADDLE_ENFORCE_EQ(
           ctx->GetInputDim("Y")[0], 1,
           platform::errors::InvalidArgument(
-          "For elementwise_op, if X is Sparse(VarType.SELECTED_ROWS"
-          "), Y must be scalar, the first dimension of Y should be 1. "
-          "But reveived the first dimension of Y = %s",
-          ctx->GetInputDim("Y")[0]);
+              "For elementwise_op, if X is Sparse(VarType.SELECTED_ROWS"
+              "), Y must be scalar, the first dimension of Y should be 1. "
+              "But reveived the first dimension of Y = %s.",
+              ctx->GetInputDim("Y")[0]));
     } else if (ctx->GetInputsVarType("X").front() !=
                framework::proto::VarType::LOD_TENSOR) {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -309,11 +310,11 @@ class ElementwiseOpDoubleGradWithoutDXDY
       const framework::ExecutionContext &ctx) const override {
     framework::proto::VarType::Type input_data_type;
     if (ctx.HasInput("DDX") == false) {
-      OP_INOUT_CHECK(ctx->HasInput("DDY"), "Input", "DDY",
+      OP_INOUT_CHECK(ctx.HasInput("DDY"), "Input", "DDY",
                      "ElementwiseOpDoubleGradWithoutDXDY");
       input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DDY");
     } else if (ctx.HasInput("DDY") == false) {
-      OP_INOUT_CHECK(ctx->HasInput("DDX"), "Input", "DDX",
+      OP_INOUT_CHECK(ctx.HasInput("DDX"), "Input", "DDX",
                      "ElementwiseOpDoubleGradWithoutDXDY");
       input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DDX");
     } else {
