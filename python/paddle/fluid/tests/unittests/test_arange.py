@@ -78,6 +78,14 @@ class TestArangeAPI(unittest.TestCase):
             expected_data = np.arange(0, 5, 1).astype(np.float32)
         self.assertEqual((result == expected_data).all(), True)
 
+        with fluid.program_guard(fluid.Program()):
+            data = paddle.arange(0, 5.0, 1, 'int32')
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            result, = exe.run(fetch_list=[data])
+            expected_data = np.arange(0, 5, 1).astype(np.int32)
+        self.assertEqual((result == expected_data).all(), True)
+
 
 if __name__ == "__main__":
     unittest.main()
