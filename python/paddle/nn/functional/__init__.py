@@ -14,7 +14,7 @@
 
 # TODO: import all neural network related api under this directory,
 # including layers, linear, conv, rnn etc.
-# __all__ = []
+# __all__ = [ ]
 
 # TODO: define alias in functional directory
 from . import conv
