@@ -264,6 +264,7 @@ class TestFillConstantOp2_ValueTensor(OpTest):
 # Test python API
 class TestFillConstantAPI(unittest.TestCase):
     def test_api(self):
+
         positive_2_int32 = fluid.layers.fill_constant([1], "int32", 2)
         positive_2_int64 = fluid.layers.fill_constant([1], "int64", 2)
 
