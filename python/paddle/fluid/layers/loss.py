@@ -1508,8 +1508,8 @@ def huber_loss(input, label, delta):
 
 
     Args:
-        input (Variable): Predicted data, 2D-Tensor with the shape of [batch_size, 1]. The data type should be float32 or float64.
-        label (Variable): Ground truth label, 2D-Tensor with the shape of [batch_size, 1]. The data type should be float32 or float64.
+        input (Variable): Predicted data, 2D-Tensor with the shape of [batch_size, 1]. The data type should be float32.
+        label (Variable): Ground truth label, 2D-Tensor with the shape of [batch_size, 1]. The data type should be float32.
         delta (float): The threshold for Huber loss, which is used to control the balance between the linear error and square error. The data type should be float32.
 
     Returns:
@@ -1538,6 +1538,10 @@ def huber_loss(input, label, delta):
         print(HuberLoss)  #[[1.5], [0.5], [0.5], [0. ]], dtype=float32
     """
     helper = LayerHelper('huber_loss', **locals())
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'huber_loss')
+    check_variable_and_dtype(label, 'label', ['float32', 'float64'],
+                             'huber_loss')
     residual = helper.create_variable_for_type_inference(
         dtype=helper.input_dtype())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())

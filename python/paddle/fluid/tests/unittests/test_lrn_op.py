@@ -145,5 +145,15 @@ class TestLRNAPI(unittest.TestCase):
         self.assertRaises(ValueError, _input_dim_size)
 
 
+class TestLRNOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # the input must be float32
+            in_w = fluid.layers.data(
+                name="in_w", shape=[3, 112, 112], dtype="float64")
+            self.assertRaises(TypeError, fluid.layers.lrn, in_w, 5, 1.0, 0.0001,
+                              0.75, None, 'NCHW')
+
+
 if __name__ == "__main__":
     unittest.main()
