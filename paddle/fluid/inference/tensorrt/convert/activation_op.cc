@@ -49,10 +49,9 @@ class ActivationOpConverter : public OpConverter {
       layer->setAlpha(0.);
       layer->setBeta(6.);
     }
-    g
 #endif
 
-        auto output_name = op_desc.Output("Out")[0];
+    auto output_name = op_desc.Output("Out")[0];
 
     RreplenishLayerAndOutput(layer, op_type_, {output_name}, test_mode);
     if (op_desc.HasAttr("out_scale")) {

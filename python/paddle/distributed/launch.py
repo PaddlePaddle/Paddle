@@ -154,10 +154,12 @@ def get_cluster_from_args(args, selected_gpus):
         if free_ports is not None:
             free_ports = list(free_ports)
     else:
+        started_port = 6070
+        if args.started_port is not None:
+            started_port = args.started_port
+
         free_ports = [
-            x
-            for x in range(args.started_port, args.started_port + len(
-                selected_gpus))
+            x for x in range(started_port, started_port + len(selected_gpus))
         ]
 
     return get_cluster(node_ips, node_ip, free_ports, selected_gpus)

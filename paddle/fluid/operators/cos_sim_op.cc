@@ -26,21 +26,11 @@ class CosSimOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     // notnull check
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::NotFound("Input(X) of CosSimOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Y"), true,
-        platform::errors::NotFound("Input(Y) of CosSimOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::NotFound(
-                          "Output(Out) of CosSimOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("XNorm"), true,
-                      platform::errors::NotFound(
-                          "Output(XNorm) of CosSimOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("YNorm"), true,
-                      platform::errors::NotFound(
-                          "Output(YNorm) of CosSimOp should not be null."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CosSim");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "CosSim");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "CosSim");
+    OP_INOUT_CHECK(ctx->HasOutput("XNorm"), "Output", "XNorm", "CosSim");
+    OP_INOUT_CHECK(ctx->HasOutput("YNorm"), "Output", "YNorm", "CosSim");
 
     // shape check
     auto x_dims = ctx->GetInputDim("X");
@@ -75,10 +65,9 @@ class CosSimOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           x_dims[0] == y_dims[0] || y_dims[0] == 1, true,
           platform::errors::InvalidArgument(
-              "The 1st dimension of Input(Y) must be equal to Input(X) or"
-              " just 1 (which will be broadcasted to match Input(X))."
-              "But received: the 1st dimension of Input(Y) is [%d].",
-              y_dims[0]));
+              "The 1st dimension of Input(Y) %d must be equal to Input(X) %d or"
+              " just 1 (which will be broadcasted to match Input(X)).",
+              y_dims[0], x_dims[0]));
     }
 
     // resize tensor
@@ -134,22 +123,13 @@ class CosSimOpGrad : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     // notnull check
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::NotFound("Input(X) must not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Y"), true,
-                      platform::errors::NotFound("Input(Y) must not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("XNorm"), true,
-        platform::errors::NotFound("Input(XNorm) must not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("YNorm"), true,
-        platform::errors::NotFound("Input(YNorm) must not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Out"), true,
-        platform::errors::NotFound("Input(Out) must not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput(framework::GradVarName("Out")), true,
-        platform::errors::NotFound("Input(Out@GRAD) must not be null."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CosSimGrad");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "CosSimGrad");
+    OP_INOUT_CHECK(ctx->HasInput("XNorm"), "Input", "XNorm", "CosSimGrad");
+    OP_INOUT_CHECK(ctx->HasInput("YNorm"), "Input", "YNorm", "CosSimGrad");
+    OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "CosSimGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "CosSimGrad");
 
     // shape check
     auto x_dims = ctx->GetInputDim("X");
@@ -176,38 +156,37 @@ class CosSimOpGrad : public framework::OperatorWithKernel {
         framework::slice_ddim(x_dims, 1, x_dims.size()),
         framework::slice_ddim(y_dims, 1, y_dims.size()),
         platform::errors::InvalidArgument(
-            "All dimensions except the 1st of Input(X) and Input(Y) "
-            "must be equal."));
+            "All dimensions except the 1st of Input(X) [%s] and Input(Y) [%s] "
+            "must be equal.",
+            x_dims, y_dims));
     PADDLE_ENFORCE_EQ(
-        x_dims[0] == y_dims[0] || y_dims[0] == 1, true,
+        true, x_dims[0] == y_dims[0] || y_dims[0] == 1,
         platform::errors::InvalidArgument(
-            "The 1st dimension of Input(Y) must be equal to Input(X) or"
-            " just 1 (which will be broadcasted to match Input(X))."
-            "But received: the 1st dimension of Input(Y) is [%d]",
-            y_dims[0]));
+            "The 1st dimension of Input(Y) %d must be equal to Input(X) %d or"
+            " just 1 (which will be broadcasted to match Input(X)).",
+            y_dims[0], x_dims[0]));
     auto target_xnorm_dims = framework::make_ddim({x_dims[0], 1});
     auto target_ynorm_dims = framework::make_ddim({y_dims[0], 1});
     PADDLE_ENFORCE_EQ(
         xnorm_dims, target_xnorm_dims,
         platform::errors::InvalidArgument(
-            "Shape of Input(XNorm) must be [X.Dim(0)([%d]), 1].",
-            "But shape of Input(XNorm) is [%s].", x_dims[0], xnorm_dims));
-    PADDLE_ENFORCE_EQ(ynorm_dims, target_ynorm_dims,
-                      platform::errors::InvalidArgument(
-                          "Shape of Input(YNorm) must be [Y.Dim(0)([%d]), 1]."
-                          "But shape of Input(YNorm) is [%s].",
-                          y_dims[0], ynorm_dims));
-    PADDLE_ENFORCE_EQ(out_dims, target_xnorm_dims,
-                      platform::errors::InvalidArgument(
-                          "Shape of Input(Out) must be [X.Dim(0)([%d]), 1]."
-                          "But shape of Input(Out) is [%s].",
-                          x_dims[0], out_dims));
+            "Shape of Input(XNorm) [%s] must be (X.Dim(0), 1) - [%s]",
+            xnorm_dims, target_xnorm_dims));
+    PADDLE_ENFORCE_EQ(
+        ynorm_dims, target_ynorm_dims,
+        platform::errors::InvalidArgument(
+            "Shape of Input(YNorm) [%s] must be (Y.Dim(0), 1) - [%s]",
+            ynorm_dims, target_ynorm_dims));
+    PADDLE_ENFORCE_EQ(
+        out_dims, target_xnorm_dims,
+        platform::errors::InvalidArgument(
+            "Shape of Input(Out) [%s] must be (X.Dim(0), 1) - [%s]", out_dims,
+            target_xnorm_dims));
     PADDLE_ENFORCE_EQ(
         out_grad_dims, target_xnorm_dims,
         platform::errors::InvalidArgument(
-            "Shape of Input(Out@Grad) must be [X.Dim(0)([%d]), 1]."
-            "But shape of Input(Out@Grad) is [%s].",
-            x_dims[0], out_grad_dims));
+            "Shape of Input(Out@Grad) [%s] must be (X.Dim(0), 1) - [%s]",
+            out_grad_dims, target_xnorm_dims));
 
     // resize tensor
     auto x_grad_name = framework::GradVarName("X");
