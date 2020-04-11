@@ -13818,6 +13818,18 @@ def deformable_roi_pooling(input,
                                                 position_sensitive=False)
     """
 
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'deformable_roi_pooling')
+    check_variable_and_dtype(rois, 'rois', ['float32', 'float64'],
+                             'deformable_roi_pooling')
+    check_variable_and_dtype(trans, 'trans', ['float32', 'float64'],
+                             'deformable_roi_pooling')
+    check_type(group_size, 'group_size', (list, tuple),
+               'deformable_roi_pooling')
+    if part_size is not None:
+        check_type(part_size, 'part_size', (list, tuple),
+                   'deformable_roi_pooling')
+
     input_channels = input.shape[1]
     if position_sensitive == False:
         output_channels = input_channels

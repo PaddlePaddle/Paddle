@@ -26,9 +26,10 @@ from . import tensor
 from . import nn
 from . import ops
 from ... import compat as cpt
+from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
 import math
 import six
-import numpy
+import numpy as np
 from functools import reduce
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
@@ -239,6 +240,23 @@ def retinanet_target_assign(bbox_pred,
                 anchor_var, gt_boxes, gt_labels, is_crowd, im_info, 10)
 
     """
+
+    check_variable_and_dtype(bbox_pred, 'bbox_pred', ['float32', 'float64'],
+                             'retinanet_target_assign')
+    check_variable_and_dtype(cls_logits, 'cls_logits', ['float32', 'float64'],
+                             'retinanet_target_assign')
+    check_variable_and_dtype(anchor_box, 'anchor_box', ['float32', 'float64'],
+                             'retinanet_target_assign')
+    check_variable_and_dtype(anchor_var, 'anchor_var', ['float32', 'float64'],
+                             'retinanet_target_assign')
+    check_variable_and_dtype(gt_boxes, 'gt_boxes', ['float32', 'float64'],
+                             'retinanet_target_assign')
+    check_variable_and_dtype(gt_labels, 'gt_labels', ['int32'],
+                             'retinanet_target_assign')
+    check_variable_and_dtype(is_crowd, 'is_crowd', ['int32'],
+                             'retinanet_target_assign')
+    check_variable_and_dtype(im_info, 'im_info', ['float32', 'float64'],
+                             'retinanet_target_assign')
 
     helper = LayerHelper('retinanet_target_assign', **locals())
     # Assign target label to anchors
@@ -499,6 +517,11 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2, alpha=0.25):
                                                    gamma=2.,
                                                    alpha=0.25)
     """
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'],
+                             'sigmoid_focal_loss')
+    check_variable_and_dtype(label, 'label', ['int32'], 'sigmoid_focal_loss')
+    check_variable_and_dtype(fg_num, 'fg_num', ['int32'], 'sigmoid_focal_loss')
 
     helper = LayerHelper("sigmoid_focal_loss", **locals())
 
@@ -2977,6 +3000,24 @@ def retinanet_detection_output(bboxes,
                                           nms_threshold=0.45,
                                           nms_eta=1.)
     """
+
+    check_type(bboxes, 'bboxes', (list), 'retinanet_detection_output')
+    for i, bbox in enumerate(bboxes):
+        check_variable_and_dtype(bbox, 'bbox{}'.format(i),
+                                 ['float32', 'float64'],
+                                 'retinanet_detection_output')
+    check_type(scores, 'scores', (list), 'retinanet_detection_output')
+    for i, score in enumerate(scores):
+        check_variable_and_dtype(score, 'score{}'.format(i),
+                                 ['float32', 'float64'],
+                                 'retinanet_detection_output')
+    check_type(anchors, 'anchors', (list), 'retinanet_detection_output')
+    for i, anchor in enumerate(anchors):
+        check_variable_and_dtype(anchor, 'anchor{}'.format(i),
+                                 ['float32', 'float64'],
+                                 'retinanet_detection_output')
+    check_variable_and_dtype(im_info, 'im_info', ['float32', 'float64'],
+                             'retinanet_detection_output')
 
     helper = LayerHelper('retinanet_detection_output', **locals())
     output = helper.create_variable_for_type_inference(
