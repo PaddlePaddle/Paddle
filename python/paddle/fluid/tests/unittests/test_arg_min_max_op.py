@@ -302,20 +302,6 @@ class TestArgMinMaxOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_argmin_x_type)
 
-            def test_argmax_axis_type():
-                x3 = fluid.layers.data(
-                    name="x3", shape=[10, 10], dtype="float32")
-                output = fluid.layers.argmax(x=x3, axis=1.0)
-
-            self.assertRaises(TypeError, test_argmax_axis_type)
-
-            def test_argmin_axis_type():
-                x4 = fluid.layers.data(
-                    name="x4", shape=[10, 10], dtype="float32")
-                output = fluid.layers.argmin(x=x4, axis=1.0)
-
-            self.assertRaises(TypeError, test_argmin_axis_type)
-
 
 if __name__ == '__main__':
     unittest.main()

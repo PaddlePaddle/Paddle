@@ -772,8 +772,6 @@ def argmin(x, axis=0):
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'uint8', 'int16', 'int32', 'int64'],
         'argmin')
-    if axis != 0:
-        check_dtype(str(numpy.array([axis]).dtype), 'axis', ['int64'], 'argmin')
     helper = LayerHelper("arg_min", **locals())
     out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
     helper.append_op(
@@ -837,8 +835,6 @@ def argmax(x, axis=0):
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'uint8', 'int16', 'int32', 'int64'],
         'argmax')
-    if axis != 0:
-        check_dtype(str(numpy.array([axis]).dtype), 'axis', ['int64'], 'argmax')
     helper = LayerHelper("arg_max", **locals())
     out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
     helper.append_op(
@@ -923,11 +919,6 @@ def argsort(input, axis=-1, descending=False, name=None):
     check_variable_and_dtype(
         input, 'input',
         ['float32', 'float64', 'int16', 'int32', 'int64', 'uint8'], 'argsort')
-    if axis != -1:
-        check_dtype(
-            str(numpy.array([axis]).dtype), 'axis', ['int64'], 'argsort')
-    check_dtype(
-        str(numpy.array([descending]).dtype), 'descending', ['bool'], 'argsort')
     helper = LayerHelper("argsort", **locals())
     out = helper.create_variable_for_type_inference(
         dtype=input.dtype, stop_gradient=True)
@@ -1125,6 +1116,7 @@ def has_inf(x):
           res = fluid.layers.has_inf(data)
 
     """
+    # check_type(x, 'x', (Variable), 'has_inf')
     helper = LayerHelper("isinf", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type="isinf", inputs={"X": x}, outputs={"Out": out})
@@ -1149,6 +1141,7 @@ def has_nan(x):
           res = fluid.layers.has_nan(data)
 
     """
+    # check_type(x, 'x', (Variable), 'has_nan')
     helper = LayerHelper("isnan", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type="isnan", inputs={"X": x}, outputs={"Out": out})

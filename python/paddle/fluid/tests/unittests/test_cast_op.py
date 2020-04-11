@@ -82,7 +82,7 @@ class TestCastOpError(unittest.TestCase):
             self.assertRaises(TypeError, fluid.layers.cast, x2, 'int32')
 
             def test_dtype_type():
-                x4 = fluid.layers.data(name='x3', shape=[4], dtype='int32')
+                x4 = fluid.layers.data(name='x4', shape=[4], dtype='int32')
                 output = fluid.layers.cast(x=x4, dtype='int16')
 
             self.assertRaises(TypeError, test_dtype_type)

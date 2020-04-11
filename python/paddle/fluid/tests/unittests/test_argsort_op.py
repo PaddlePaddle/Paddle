@@ -365,12 +365,6 @@ class TestArgsortErrorOnCPU(unittest.TestCase):
 
             self.assertRaises(TypeError, test_input_type)
 
-            def test_axis_type():
-                x = fluid.layers.data(name='x', shape=[10, 10], dtype='float32')
-                output = fluid.layers.argsort(input=x, axis=1.0)
-
-            self.assertRaises(TypeError, test_axis_type)
-
 
 class TestArgsortErrorOnGPU(TestArgsortErrorOnCPU):
     def init_place(self):
