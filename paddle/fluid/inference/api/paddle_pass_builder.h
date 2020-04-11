@@ -128,9 +128,6 @@ class PassStrategy : public PaddlePassBuilder {
   /// still be some CPU kernels running in GPU mode.
   virtual void EnableMKLDNN() {}
 
-  /// \brief Enable NGRAPH optimization.
-  virtual void EnableNgraph() {}
-
   /// \brief Enable MKLDNN quantize optimization.
   virtual void EnableMkldnnQuantizer() {}
 
@@ -143,7 +140,6 @@ class PassStrategy : public PaddlePassBuilder {
 
  protected:
   /// \cond Protected
-  bool use_ngraph_{false};
   bool use_gpu_{false};
   bool use_mkldnn_{false};
   /// \endcond
@@ -171,9 +167,6 @@ class CpuPassStrategy : public PassStrategy {
   /// \brief Enable the use of cuDNN kernel.
   void EnableCUDNN() override;
 
-  /// \brief Enable NGRAPH optimization.
-  void EnableNgraph() override;
-
   /// \brief Enable the use of MKLDNN.
   void EnableMKLDNN() override;
 
@@ -182,7 +175,6 @@ class CpuPassStrategy : public PassStrategy {
 
  protected:
   /// \cond Protected
-  bool use_ngraph_{false};
   bool use_mkldnn_quantizer_{false};
   /// \endcond
 };
@@ -205,9 +197,6 @@ class GpuPassStrategy : public PassStrategy {
 
   /// \brief Enable the use of cuDNN kernel.
   void EnableCUDNN() override;
-
-  /// \brief Not supported in GPU mode yet.
-  void EnableNgraph() override;
 
   /// \brief Not supported in GPU mode yet.
   void EnableMKLDNN() override;
