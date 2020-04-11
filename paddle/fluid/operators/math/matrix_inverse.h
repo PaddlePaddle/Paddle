@@ -14,25 +14,21 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/matrix_inverse.h"
+#include <string>
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
+namespace math {
 
 template <typename DeviceContext, typename T>
-class InverseKernel : public framework::OpKernel<T> {
+class MatrixInverseFunctor {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* input = context.Input<framework::Tensor>("Input");
-    auto* output = context.Output<framework::Tensor>("Output");
-    output->mutable_data<T>(context.GetPlace());
-
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-    math::MatrixInverseFunctor<DeviceContext, T> mat_inv;
-    mat_inv(dev_ctx, *input, output);
-  }
+  void operator()(const DeviceContext& context, const framework::Tensor& A,
+                  framework::Tensor* A_inv);
 };
 
+}  // namespace math
 }  // namespace operators
 }  // namespace paddle

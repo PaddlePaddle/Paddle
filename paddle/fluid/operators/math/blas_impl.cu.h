@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <vector>
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/gpu_info.h"
@@ -388,29 +387,6 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
 #if CUDA_VERSION >= 9010
   }
 #endif  // CUDA_VERSION >= 9010
-}
-
-template <>
-template <typename T>
-void Blas<platform::CUDADeviceContext>::MatInv(const framework::Tensor &A,
-                                               framework::Tensor *A_inv) const {
-  const auto &mat_dims = A.dims();
-  const int rank = mat_dims.size();
-  int N = mat_dims[rank - 1];
-  int batch_size = rank > 2 ? A.numel() / (N * N) : 1;
-
-  std::vector<T *> mat_ptrs(batch_size);
-  std::vector<T *> inv_ptrs(batch_size);
-  std::vector<int> info(batch_size);
-  for (int i = 0; i < batch_size; ++i) {
-    mat_ptrs[i] = const_cast<T *>(A.data<T>()) + i * N * N;
-    inv_ptrs[i] = A_inv->data<T>() + i * N * N;
-  }
-
-  context_.CublasCall([&](cublasHandle_t handle) {
-    CUBlas<T>::MATINV_BATCH(handle, N, mat_ptrs.data(), N, inv_ptrs.data(), N,
-                            info.data(), batch_size);
-  });
 }
 
 }  // namespace math

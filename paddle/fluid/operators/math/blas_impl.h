@@ -936,39 +936,6 @@ void Blas<platform::CPUDeviceContext>::GETRI(int n, T *a,
 }
 #endif
 
-template <>
-template <typename T>
-void Blas<platform::CPUDeviceContext>::MatInv(const framework::Tensor &A,
-                                              framework::Tensor *A_inv) const {
-#ifdef PADDLE_WITH_MKLML
-  const auto &mat_dims = A.dims();
-  const int rank = mat_dims.size();
-  int N = mat_dims[rank - 1];
-  int batch_size = rank > 2 ? A.numel() / (N * N) : 1;
-
-  framework::Tensor ipiv;
-  int *ipiv_ptr = ipiv.mutable_data<int>({N}, platform::CPUPlace());
-
-  T *A_inv_ptr = A_inv->mutable_data<T>(platform::CPUPlace());
-  if (A.data<T>() != A_inv_ptr) {
-    framework::TensorCopy(A, platform::CPUPlace(), A_inv);
-  }
-
-  for (int i = 0; i < batch_size; ++i) {
-    T *mat_ptr = A_inv_ptr + i * N * N;
-
-    // Compute the LU Factorization of a general m-by-n matrix: A = P*L*U
-    GETRF(N, N, mat_ptr, ipiv_ptr);
-
-    // Computes the inverse of an LU-factored general matrix.
-    GETRI(N, mat_ptr, ipiv_ptr);
-  }
-#else
-  PADDLE_THROW(platform::errors::Unimplemented(
-      "The matrix's inverse is not implemented for CPU without MKLML."));
-#endif
-}
-
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

@@ -33,13 +33,15 @@ class InverseOp : public framework::OperatorWithKernel {
             "The dimension of Input(Input) is expected to be no less than 2. "
             "But recived: Input(Input)'s dimension = %d, shape = [%s].",
             input_rank, input_dims));
-    PADDLE_ENFORCE_EQ(
-        input_dims[input_rank - 2], input_dims[input_rank - 1],
-        platform::errors::InvalidArgument(
-            "The last two dimensions are expected to be equal. But recived: %d "
-            "and %d; Input(Input)'s shape = [%s].",
-            input_dims[input_rank - 2], input_dims[input_rank - 1],
-            input_dims));
+    if (input_dims[input_rank - 2] > 0 && input_dims[input_rank - 1] > 0) {
+      PADDLE_ENFORCE_EQ(input_dims[input_rank - 2], input_dims[input_rank - 1],
+                        platform::errors::InvalidArgument(
+                            "The last two dimensions are expected to be equal. "
+                            "But recived: %d and %d; "
+                            "Input(Input)'s shape = [%s].",
+                            input_dims[input_rank - 2],
+                            input_dims[input_rank - 1], input_dims));
+    }
 
     ctx->SetOutputDim("Output", input_dims);
     ctx->ShareLoD("Input", /*->*/ "Output");

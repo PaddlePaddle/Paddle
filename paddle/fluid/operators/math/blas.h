@@ -226,9 +226,6 @@ class Blas {
   void GETRI(int n, T* a, const int* ipiv) const;
 #endif
 
-  template <typename T>
-  void MatInv(const framework::Tensor& A, framework::Tensor* A_inv) const;
-
  private:
   const DeviceContext& context_;
 };
@@ -373,11 +370,6 @@ class BlasT : private Blas<DeviceContext> {
     Base()->template GETRI<T>(args...);
   }
 #endif
-
-  template <typename... ARGS>
-  void MatInv(ARGS... args) const {
-    Base()->template MatInv<T>(args...);
-  }
 
  private:
   const Blas<DeviceContext>* Base() const {
