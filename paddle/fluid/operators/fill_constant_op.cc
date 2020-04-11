@@ -28,7 +28,7 @@ class FillConstantOp : public framework::OperatorWithKernel {
     auto& shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
     if (!ctx->HasInput("ShapeTensor") && !ctx->HasInputs("ShapeTensorList")) {
       for (size_t i = 0; i < shape.size(); ++i) {
-        PADDLE_ENFORCE_GT(
+        PADDLE_ENFORCE_GE(
             shape[i], 0,
             platform::errors::InvalidArgument(
                 "Each value of attribute 'shape' is expected to be greater "
