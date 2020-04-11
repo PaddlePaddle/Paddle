@@ -394,6 +394,7 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     Transform modified AST of decorated function into python callable object.
     """
     source = ast_to_source_code(ast_root)
+    print(source)
     if six.PY2:
         source = source.encode('utf-8')
         f = tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False)

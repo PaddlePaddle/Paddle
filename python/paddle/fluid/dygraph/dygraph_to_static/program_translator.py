@@ -156,11 +156,8 @@ class ProgramCache(object):
             # TODO(Aurelius84): Switch main_program without specifying program_guard.
             elif not self._in_build_process:
                 self._inputs = []
+                self._is_repeated = False
                 self._forward_func = static_func
-                warnings.warn(
-                    "Ops and vars from `{}` will be added into previous main_program, "
-                    "please use fluid.program_guard if you want to build a new program.".
-                    format(dyfunc.__name__))
 
         return static_func
 
