@@ -235,7 +235,7 @@ class TestMergeLodTensorOpError(unittest.TestCase):
             level = 0
 
             def test_Variable():
-                out = fluid.layers.merge_lod_tensor(
+                out = layers.merge_lod_tensor(
                     in_true=x_true,
                     in_false=x_false,
                     mask=y,
@@ -245,8 +245,8 @@ class TestMergeLodTensorOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_Variable)
 
             def test_dtype():
-                x2 = fluid.layers.data(name='x2', shape=[1], dtype='int32')
-                out = fluid.layers.merge_lod_tensor(
+                x2 = layers.data(name='x2', shape=[1], dtype='int32')
+                out = layers.merge_lod_tensor(
                     in_true=x_true, in_false=x_false, mask=y, x=x2, level=level)
 
             self.assertRaises(TypeError, test_dtype)

@@ -206,6 +206,9 @@ def Print(input,
           first_n=-1,
           message=None,
           summarize=20,
+          summarize=20,
+          message=None,
+          summarize=20,
           print_tensor_name=True,
           print_tensor_type=True,
           print_tensor_shape=True,
@@ -3530,7 +3533,3 @@ def is_empty(x, cond=None):
         raise TypeError("cond takes a variable")
     elif cond.dtype != 'bool':
         raise TypeError("The data type of cond must be bool")
-
-    helper.append_op(
-        type='is_empty', inputs={'X': [x]}, outputs={'Out': [cond]})
-    return cond

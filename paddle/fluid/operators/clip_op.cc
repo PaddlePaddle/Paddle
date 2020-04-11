@@ -67,8 +67,8 @@ class ClipOpGrad : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "clip_grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input", "Out",
-                   "clip_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   "Out@GRAD", "clip_grad");
     auto x_dims = ctx->GetInputDim("X");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), x_dims);

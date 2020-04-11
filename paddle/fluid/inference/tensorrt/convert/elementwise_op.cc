@@ -133,7 +133,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
     auto op_pair = ops.find(op_type_);
-    PADDLE_ENFORCE_EQ(op_pair != ops.end(), true,
+    PADDLE_ENFORCE_NE(op_pair, ops.end(),
                       platform::errors::InvalidArgument(
                           "Elementwise op's type is not supported. Please "
                           "check if the op_type is correct."));
