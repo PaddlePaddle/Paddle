@@ -43,43 +43,49 @@ class TestInverseOpBatched(TestInverseOp):
         self.matrix_shape = [4, 32, 32]
 
 
-#class TestInverseAPI(unittest.TestCase):
-#    def test_static(self):
-#        input = fluid.data(name="input", shape=[4, 4], dtype="float64")
-#        result = tensor.inverse(input=input)
-#
-#        input_np = np.random.random([4, 4]).astype("float64")
-#        for use_cuda in [False, True]:
-#            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-#            exe = fluid.Executor(place)
-#            result_np = exe.run(fluid.default_main_program(),
-#                                feed={"input": input_np},
-#                                fetch_list=[result])
-#            assert np.array_equal(result_np[0], np.linalg.inv(input_np))
-#
-#    def test_dygraph(self):
-#        with fluid.dygraph.guard():
-#            input_np = np.random.random([4, 4]).astype("float64")
-#            input = fluid.dygraph.to_variable(input_np)
-#            result = tensor.inverse(input)
-#            assert np.array_equal(result.numpy(), np.linalg.inv(input_np))
-#
-#
-#class TestInverseAPIError(unittest.TestCase):
-#    def test_errors(self):
-#        input_np = np.random.random([4, 4]).astype("float64")
-#        self.assertRaises(TypeError, tensor.inverse(input_np))
-#
-#        for dtype in ["bool", "int32", "int64", "float16"]:
-#            input = fluid.data(name='input', shape=[4, 4], dtype=dtype)
-#            self.assertRaises(TypeError, tensor.inverse(input))
-#
-#        input = fluid.data(name='input', shape=[4, 4], dtype="float32")
-#        out = fluid.data(name='input', shape=[4, 4], dtype="float64")
-#        self.assertRaises(TypeError, tensor.inverse(input, out))
-#
-#        input = fluid.data(name='input', shape=[4], dtype="float32")
-#        self.assertRaises(ValueError, tensor.inverse(input))
+class TestInverseAPI(unittest.TestCase):
+    def test_static(self):
+        input = fluid.data(name="input", shape=[4, 4], dtype="float64")
+        result = tensor.inverse(input=input)
+
+        input_np = np.random.random([4, 4]).astype("float64")
+        use_cuda_list = [False]
+        if core.is_compiled_with_cuda():
+            use_cuda_list.append(True)
+        for use_cuda in use_cuda_list:
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            result_np = exe.run(fluid.default_main_program(),
+                                feed={"input": input_np},
+                                fetch_list=[result])
+            self.assertTrue(np.allclose(result_np[0], np.linalg.inv(input_np)))
+
+    def test_dygraph(self):
+        with fluid.dygraph.guard():
+            input_np = np.array([[2, 0], [0, 2]]).astype("float64")
+            input = fluid.dygraph.to_variable(input_np)
+            result = tensor.inverse(input)
+            self.assertTrue(
+                np.allclose(result.numpy(), np.linalg.inv(input_np)))
+
+
+class TestInverseAPIError(unittest.TestCase):
+    def test_errors(self):
+        input_np = np.random.random([4, 4]).astype("float64")
+
+        self.assertRaises(TypeError, tensor.inverse, input_np)
+
+        for dtype in ["bool", "int32", "int64", "float16"]:
+            input = fluid.data(name='input_' + dtype, shape=[4, 4], dtype=dtype)
+            self.assertRaises(TypeError, tensor.inverse, input)
+
+        input = fluid.data(name='input_1', shape=[4, 4], dtype="float32")
+        out = fluid.data(name='output', shape=[4, 4], dtype="float64")
+        self.assertRaises(TypeError, tensor.inverse, input, out)
+
+        input = fluid.data(name='input_2', shape=[4], dtype="float32")
+        self.assertRaises(ValueError, tensor.inverse, input)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -958,13 +958,26 @@ def inverse(input, out=None, name=None):
         .. code-block:: python
 
             import numpy as np
-            import paddle
+            import paddle.tensor as tensor
             import paddle.fluid as fluid
 
+            mat_np = np.array([[2, 0], [0, 2]]).astype("float32")
+
+            # example for static graph
+            input = fluid.data("input", shape=[2, 2], dtype="float32")
+            out = tensor.inverse(input)
+        
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            results = exe.run(feed={"input": mat_np },
+                              fetch_list=[out.name])
+            print(results[0]) # [[0.5, 0], [0, 0.5]]
+
+            # example for dynamic graph
             with fluid.dygraph.guard():
-                mat_np = np.array([[2, 0], [0, 2]]).astype("float32")
                 mat = fluid.dygraph.to_variable(mat_np)
-                inv = paddle.inverse(mat) # [[0.5, 0], [0, 0.5]]
+                inv = tensor.inverse(mat)
+                print(inv) # [[0.5, 0], [0, 0.5]]
     """
     if in_dygraph_mode():
         return core.ops.inverse(input)
@@ -976,7 +989,7 @@ def inverse(input, out=None, name=None):
             raise ValueError(
                 "The input of inverse is expected to be a Tensor whose number "
                 "of dimensions is no less than 2. But reviced: %d, "
-                "input's shape: %s." % (len(input.shape), input_shape))
+                "input's shape: %s." % (len(input.shape), input.shape))
 
         if out is not None:
             check_variable_and_dtype(out, 'out', input.dtype, 'inverse')
@@ -987,7 +1000,7 @@ def inverse(input, out=None, name=None):
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
-        type='inverse', inputs={'Input': [input] }, outputs={'Out': [out]})
+        type='inverse', inputs={'Input': [input] }, outputs={'Output': [out]})
     return out
 
 
