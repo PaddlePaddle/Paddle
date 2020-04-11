@@ -30,6 +30,7 @@ import math
 import six
 import numpy
 from functools import reduce
+from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
 __all__ = [
     'prior_box',
@@ -691,11 +692,7 @@ def iou_similarity(x, y, box_normalized=True, name=None):
             #             [0.       ]] with shape: [2, 1]
     """
     helper = LayerHelper("iou_similarity", **locals())
-    if name is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        out = helper.create_variable(
-            name=name, dtype=x.dtype, persistable=False)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(
         type="iou_similarity",
@@ -827,12 +824,8 @@ def box_coder(prior_box,
     """
     helper = LayerHelper("box_coder", **locals())
 
-    if name is None:
-        output_box = helper.create_variable_for_type_inference(
-            dtype=prior_box.dtype)
-    else:
-        output_box = helper.create_variable(
-            name=name, dtype=prior_box.dtype, persistable=False)
+    output_box = helper.create_variable_for_type_inference(
+        dtype=prior_box.dtype)
 
     inputs = {"PriorBox": prior_box, "TargetBox": target_box}
     attrs = {
@@ -876,11 +869,7 @@ def polygon_box_transform(input, name=None):
             out = fluid.layers.polygon_box_transform(input)
     """
     helper = LayerHelper("polygon_box_transform", **locals())
-    if name is None:
-        output = helper.create_variable_for_type_inference(dtype=input.dtype)
-    else:
-        output = helper.create_variable(
-            name=name, dtype=prior_box.input, persistable=False)
+    output = helper.create_variable_for_type_inference(dtype=input.dtype)
 
     helper.append_op(
         type="polygon_box_transform",
@@ -979,11 +968,7 @@ def yolov3_loss(x,
         raise TypeError(
             "Attr use_label_smooth of yolov3_loss must be a bool value")
 
-    if name is None:
-        loss = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        loss = helper.create_variable(
-            name=name, dtype=x.dtype, persistable=False)
+    loss = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     objectness_mask = helper.create_variable_for_type_inference(dtype='int32')
     gt_match_mask = helper.create_variable_for_type_inference(dtype='int32')
@@ -993,7 +978,7 @@ def yolov3_loss(x,
         "GTBox": gt_box,
         "GTLabel": gt_label,
     }
-    if gt_score:
+    if gt_score is not None:
         inputs["GTScore"] = gt_score
 
     attrs = {
@@ -2794,6 +2779,8 @@ def generate_proposals(scores,
         dtype=bbox_deltas.dtype)
     rpn_roi_probs = helper.create_variable_for_type_inference(
         dtype=scores.dtype)
+    rpn_rois_lod = helper.create_variable_for_type_inference(dtype='int32')
+
     helper.append_op(
         type="generate_proposals",
         inputs={
@@ -2810,12 +2797,16 @@ def generate_proposals(scores,
             'min_size': min_size,
             'eta': eta
         },
-        outputs={'RpnRois': rpn_rois,
-                 'RpnRoiProbs': rpn_roi_probs})
+        outputs={
+            'RpnRois': rpn_rois,
+            'RpnRoiProbs': rpn_roi_probs,
+            'RpnRoisLod': rpn_rois_lod
+        })
     rpn_rois.stop_gradient = True
     rpn_roi_probs.stop_gradient = True
+    rpn_rois_lod.stop_gradient = True
 
-    return rpn_rois, rpn_roi_probs
+    return rpn_rois, rpn_roi_probs, rpn_rois_lod
 
 
 def box_clip(input, im_info, name=None):
@@ -2865,6 +2856,10 @@ def box_clip(input, im_info, name=None):
             out = fluid.layers.box_clip(
                 input=boxes, im_info=im_info)
     """
+
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'box_clip')
+    check_variable_and_dtype(im_info, 'im_info', ['float32', 'float64'],
+                             'box_clip')
 
     helper = LayerHelper("box_clip", **locals())
     output = helper.create_variable_for_type_inference(dtype=input.dtype)

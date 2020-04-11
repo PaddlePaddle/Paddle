@@ -887,6 +887,12 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
             self.assertTrue(opti_state_dict == None)
 
+            para_state_dict, opti_state_dict = fluid.load_dygraph(
+                os.path.join('saved_dy', 'emb_dy.pdparams'))
+
+            para_state_dict, opti_state_dict = fluid.load_dygraph(
+                os.path.join('saved_dy', 'emb_dy.pdopt'))
+
 
 if __name__ == '__main__':
     unittest.main()

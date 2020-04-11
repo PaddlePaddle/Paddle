@@ -94,6 +94,7 @@ def _sample_rois(rpn_rois, gt_classes, is_crowd, gt_boxes, im_info,
         hs = boxes[:, 3] - boxes[:, 1] + 1
         keep = np.where((ws > 0) & (hs > 0))[0]
         boxes = boxes[keep]
+        max_overlaps = max_overlaps[keep]
         fg_inds = np.where(max_overlaps >= fg_thresh)[0]
         bg_inds = np.where((max_overlaps < bg_thresh_hi) & (max_overlaps >=
                                                             bg_thresh_lo))[0]
