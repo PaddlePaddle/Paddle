@@ -59,14 +59,14 @@ class GeoSgdTranspiler(DistributeTranspiler):
         assert (self.config.min_block_size >= 8192)
         assert (self.config.split_method.__bases__[0] == PSDispatcher)
 
-    def transpile(self,
-                  trainer_id,
-                  program=None,
-                  pservers="127.0.0.1:6174",
-                  trainers=1,
-                  sync_mode=False,
-                  startup_program=None,
-                  current_endpoint="127.0.0.1:6174"):
+    def _transpile(self,
+                   trainer_id,
+                   program=None,
+                   pservers="127.0.0.1:6174",
+                   trainers=1,
+                   sync_mode=False,
+                   startup_program=None,
+                   current_endpoint="127.0.0.1:6174"):
         if program is None:
             program = default_main_program()
         if startup_program is None:
