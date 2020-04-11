@@ -99,6 +99,39 @@ class TestLinspaceOpError(unittest.TestCase):
 
             self.assertRaises(ValueError, test_device_value)
 
+            def test_start_type():
+                fluid.layers.linspace([0], 10, 1, dtype="float32")
+
+            self.assertRaises(TypeError, test_start_type)
+
+            def test_end_dtype():
+                fluid.layers.linspace(0, [10], 1, dtype="float32")
+
+            self.assertRaises(TypeError, test_end_dtype)
+
+            def test_step_dtype():
+                fluid.layers.linspace(0, 10, [0], dtype="float32")
+
+            self.assertRaises(TypeError, test_step_dtype)
+
+            def test_start_dtype():
+                start = fluid.data(shape=[1], type="int32", name="start")
+                fluid.layers.linspace(start, 10, 1, dtype="float32")
+
+            self.assertRaises(TypeError, test_start_dtype)
+
+            def test_end_dtype():
+                end = fluid.data(shape=[1], type="int32", name="end")
+                fluid.layers.linspace(0, end, 1, dtype="float32")
+
+            self.assertRaises(TypeError, test_end_dtype)
+
+            def test_step_dtype():
+                step = fluid.data(shape=[1], type="int32", name="step")
+                fluid.layers.linspace(0, 10, step, dtype="float32")
+
+            self.assertRaises(TypeError, test_step_dtype)
+
 
 if __name__ == "__main__":
     unittest.main()

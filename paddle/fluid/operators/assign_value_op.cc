@@ -28,8 +28,9 @@ class AssignValueOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of AssignValueOp should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Out"), true,
+        platform::errors::NotFound("Input(Out) of assign_op is not found."));
     auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
     ctx->SetOutputDim("Out", framework::make_ddim(shape));
   }

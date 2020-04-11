@@ -447,6 +447,30 @@ class ApiOnesZerosError(unittest.TestCase):
 
         self.assertRaises(ValueError, test_error2)
 
+        def test_error3():
+            with fluid.program_guard(fluid.Program()):
+                ones = fluid.layers.ones(shape=10, dtype="int64")
+
+        self.assertRaises(TypeError, test_error3)
+
+        def test_error4():
+            with fluid.program_guard(fluid.Program()):
+                ones = fluid.layers.ones(shape=[10], dtype="int8")
+
+        self.assertRaises(TypeError, test_error4)
+
+        def test_error5():
+            with fluid.program_guard(fluid.Program()):
+                ones = fluid.layers.zeros(shape=10, dtype="int64")
+
+        self.assertRaises(TypeError, test_error5)
+
+        def test_error6():
+            with fluid.program_guard(fluid.Program()):
+                ones = fluid.layers.zeros(shape=[10], dtype="int8")
+
+        self.assertRaises(TypeError, test_error6)
+
 
 if __name__ == "__main__":
     unittest.main()
