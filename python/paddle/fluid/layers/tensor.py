@@ -200,6 +200,7 @@ def cast(x, dtype):
         'bool', 'float16', 'float32', 'float64', 'int8', 'int32', 'int64',
         'uint8'
     ], 'cast')
+
     helper = LayerHelper('cast', **locals())
     out = helper.create_variable_for_type_inference(dtype=dtype)
     helper.append_op(
