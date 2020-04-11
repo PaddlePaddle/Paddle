@@ -639,12 +639,6 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
 
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
-    else:
-        check_dtype(
-            dtype, 'create data type',
-            convert_dtype(out.dtype), 'fill_constant',
-            '(The create data type in fill_constant must be the same with out data type.)'
-        )
     attrs['dtype'] = out.dtype
     helper.append_op(
         type='fill_constant',
