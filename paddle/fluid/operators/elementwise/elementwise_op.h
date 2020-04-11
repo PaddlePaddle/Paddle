@@ -38,16 +38,13 @@ class ElementwiseOp : public framework::OperatorWithKernel {
   using Tensor = framework::Tensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of elementwise op should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Y"), true,
-                      "Input(Y) of elementwise op should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of elementwise op should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ElementwiseOp");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "ElementwiseOp");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ElementwiseOp");
 
-    PADDLE_ENFORCE(
-        ctx->GetInputsVarType("Y").front() ==
-            framework::proto::VarType::LOD_TENSOR,
+    PADDLE_ENFORCE_EQ(
+        ctx->GetInputsVarType("Y").front(),
+        framework::proto::VarType::LOD_TENSOR,
         "The input var's type should be LoDTensor, but the received is %s [%s]",
         ctx->GetInputsVarType("Y").front(), ctx->Inputs("Y").front());
 
@@ -55,18 +52,24 @@ class ElementwiseOp : public framework::OperatorWithKernel {
         framework::proto::VarType::SELECTED_ROWS) {
       PADDLE_ENFORCE_EQ(
           ctx->GetInputDim("Y").size(), 1u,
-          "ShapeError: For elementwise_op, if X is Sparse(VarType.SELECTED_ROWS"
-          "), Y must be scalar. But reveived the dimension of Y = %s",
+          platform::errors::InvalidArgument(
+          "For elementwise_op, if X is Sparse(VarType.SELECTED_ROWS"
+          "), Y must be scalar, the size of Y should be 1. "
+          "But reveived the size of Y = %s",
           ctx->GetInputDim("Y").size());
       PADDLE_ENFORCE_EQ(
           ctx->GetInputDim("Y")[0], 1,
-          "ShapeError: For elementwise_op, if X is Sparse(VarType.SELECTED_ROWS"
-          "), Y must be scalar. But reveived the first dimension of Y = %s",
+          platform::errors::InvalidArgument(
+          "For elementwise_op, if X is Sparse(VarType.SELECTED_ROWS"
+          "), Y must be scalar, the first dimension of Y should be 1. "
+          "But reveived the first dimension of Y = %s",
           ctx->GetInputDim("Y")[0]);
     } else if (ctx->GetInputsVarType("X").front() !=
                framework::proto::VarType::LOD_TENSOR) {
-      PADDLE_THROW("X's type[%s] is not supported by elementwise_op.",
-                   ctx->GetInputsVarType("X").front());
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Input X's type[%s] is not supported by elementwise_op. Please set "
+          "its type to LOD_TENSOR.",
+          ctx->GetInputsVarType("X").front()));
     }
 
     if (ctx->GetInputDim("X") == ctx->GetInputDim("Y")) {
@@ -212,9 +215,9 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     auto out_grad_name = framework::GradVarName("Out");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Y"), true, "Input(Y) should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput(out_grad_name), true,
-                      "Input(Out@GRAD) should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "ElementwiseOpGrad");
+    OP_INOUT_CHECK(ctx->HasInput(out_grad_name), "Input", out_grad_name,
+                   "ElementwiseOpGrad");
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
     if (ctx->HasOutput(x_grad_name)) {
@@ -306,12 +309,12 @@ class ElementwiseOpDoubleGradWithoutDXDY
       const framework::ExecutionContext &ctx) const override {
     framework::proto::VarType::Type input_data_type;
     if (ctx.HasInput("DDX") == false) {
-      PADDLE_ENFORCE_EQ(ctx.HasInput("DDY"), true,
-                        "Input(DDY) should not be null");
+      OP_INOUT_CHECK(ctx->HasInput("DDY"), "Input", "DDY",
+                     "ElementwiseOpDoubleGradWithoutDXDY");
       input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DDY");
     } else if (ctx.HasInput("DDY") == false) {
-      PADDLE_ENFORCE_EQ(ctx.HasInput("DDX"), true,
-                        "Input(DDX) should not be null");
+      OP_INOUT_CHECK(ctx->HasInput("DDX"), "Input", "DDX",
+                     "ElementwiseOpDoubleGradWithoutDXDY");
       input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DDX");
     } else {
       input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DDX");
