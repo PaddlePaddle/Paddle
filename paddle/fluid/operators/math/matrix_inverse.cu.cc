@@ -34,8 +34,6 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
     for (int i = 0; i < batch_size; ++i) {
       cpu_ptrs[i] = const_cast<T*>(A.data<T>()) + i * N * N;
       cpu_ptrs[i + batch_size] = A_inv->data<T>() + i * N * N;
-      LOG(INFO) << "A_i: " << cpu_ptrs[i]
-                << ", A_inv_i: " << cpu_ptrs[i + batch_size];
     }
 
     memory::allocation::AllocationPtr tmp_gpu_ptrs_data =

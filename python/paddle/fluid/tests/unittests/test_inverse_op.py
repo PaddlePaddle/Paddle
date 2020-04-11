@@ -14,6 +14,9 @@
 
 import unittest
 import numpy as np
+import paddle.fluid as fluid
+import paddle.fluid.core as core
+import paddle.tensor as tensor
 from op_test import OpTest
 
 
@@ -32,13 +35,50 @@ class TestInverseOp(OpTest):
         self.outputs = {'Output': inverse}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output_with_place(place, check_dygraph=False)
 
 
-class TestInverseOpBatched(TestInverseOp):
-    def config(self):
-        self.matrix_shape = [4, 4, 4]
+#class TestInverseOpBatched(TestInverseOp):
+#    def config(self):
+#        self.matrix_shape = [4, 4, 4]
 
+#class TestInverseAPI(unittest.TestCase):
+#    def test_static(self):
+#        input = fluid.data(name="input", shape=[4, 4], dtype="float64")
+#        result = tensor.inverse(input=input)
+#
+#        input_np = np.random.random([4, 4]).astype("float64")
+#        for use_cuda in [False, True]:
+#            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+#            exe = fluid.Executor(place)
+#            result_np = exe.run(fluid.default_main_program(),
+#                                feed={"input": input_np},
+#                                fetch_list=[result])
+#            assert np.array_equal(result_np[0], np.linalg.inv(input_np))
+#
+#    def test_dygraph(self):
+#        with fluid.dygraph.guard():
+#            input_np = np.random.random([4, 4]).astype("float64")
+#            input = fluid.dygraph.to_variable(input_np)
+#            result = tensor.inverse(input)
+#            assert np.array_equal(result.numpy(), np.linalg.inv(input_np))
+#
+#
+#class TestInverseAPIError(unittest.TestCase):
+#    def test_errors(self):
+#        input_np = np.random.random([4, 4]).astype("float64")
+#        self.assertRaises(TypeError, tensor.inverse(input_np))
+#
+#        for dtype in ["bool", "int32", "int64", "float16"]:
+#            input = fluid.data(name='input', shape=[4, 4], dtype=dtype)
+#            self.assertRaises(TypeError, tensor.inverse(input))
+#
+#        input = fluid.data(name='input', shape=[4, 4], dtype="float32")
+#        out = fluid.data(name='input', shape=[4, 4], dtype="float64")
+#        self.assertRaises(TypeError, tensor.inverse(input, out))
+#
+#        input = fluid.data(name='input', shape=[4], dtype="float32")
+#        self.assertRaises(ValueError, tensor.inverse(input))
 
 if __name__ == "__main__":
     unittest.main()

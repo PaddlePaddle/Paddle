@@ -71,7 +71,7 @@ __all__ = [
            'add',
 #            'atan',
 #            'logsumexp',
-#            'inverse',
+            'inverse',
 #            'log1p',
 #            'erf',
 #            'addcmul',
@@ -929,4 +929,61 @@ def mm(input, mat2, out=None, name=None):
     helper.append_op(
         type='matmul', inputs={'X': input,
                                'Y': mat2}, outputs={'Out': out})
+    return out
+
+
+def inverse(input, out=None, name=None):
+    """
+    Takes the inverse of the square matrix. The input can be A square matrix
+    (2-D Tensor) or batches of square matrixs.
+
+    Args:
+        input (Variable): The input Variable which holds a Tensor. The last two
+            dimensions should be equal. When the number of dimensions is
+            greater than 2, it is treated as batches of square matrix. The data
+            type can be float32 and float64.
+        out (Variable, optional): Optional output which can be any created 
+            Variable that meets the requirements to store the result of operation.
+            If out is None, a new Varibale will be create to store the result.
+        name (str, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information,
+            please refer to :ref:`api_guide_Name`
+
+    Returns:
+        Variable: A Tensor holds the inverse of input.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+            import paddle.fluid as fluid
+
+            with fluid.dygraph.guard():
+                mat_np = np.array([[2, 0], [0, 2]]).astype("float32")
+                mat = fluid.dygraph.to_variable(mat_np)
+                inv = paddle.inverse(mat) # [[0.5, 0], [0, 0.5]]
+    """
+    if in_dygraph_mode():
+        return core.ops.inverse(input)
+
+    def _check_input(input):
+        check_variable_and_dtype(input, 'input',
+                                 ['float32', 'float64'], 'inverse')
+        if len(input.shape) < 2:
+            raise ValueError(
+                "The input of inverse is expected to be a Tensor whose number "
+                "of dimensions is no less than 2. But reviced: %d, "
+                "input's shape: %s." % (len(input.shape), input_shape))
+
+        if out is not None:
+            check_variable_and_dtype(out, 'out', input.dtype, 'inverse')
+
+    _check_input(input)
+
+    helper = LayerHelper('inverse', **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    helper.append_op(
+        type='inverse', inputs={'Input': [input] }, outputs={'Out': [out]})
     return out
