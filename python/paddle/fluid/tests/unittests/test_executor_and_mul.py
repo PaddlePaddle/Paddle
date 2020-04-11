@@ -31,10 +31,9 @@ class TestExecutor(unittest.TestCase):
             dtype='float32',
             append_batch_size=False)
         out = mul(x=a, y=b)
-        place = core.CPUPlace()
         a_np = numpy.random.random((100, 784)).astype('float32')
         b_np = numpy.random.random((784, 100)).astype('float32')
-        exe = Executor(place)
+        exe = Executor()
         outs = exe.run(feed={'a': a_np, 'b': b_np}, fetch_list=[out])
         out = outs[0]
         self.assertEqual((100, 100), out.shape)

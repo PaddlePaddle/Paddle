@@ -19,3 +19,4 @@ decorator
 prettytable
 objgraph
 astor
+pathlib
