@@ -22,25 +22,26 @@ from op_test import OpTest
 
 class TestInverseOp(OpTest):
     def config(self):
-        self.matrix_shape = [4, 4]
+        self.matrix_shape = [100, 100]
 
     def setUp(self):
         self.op_type = "inverse"
         self.config()
 
-        mat = np.random.random(self.matrix_shape).astype("float32")
+        mat = np.random.random(self.matrix_shape).astype("float64")
         inverse = np.linalg.inv(mat)
 
         self.inputs = {'Input': mat}
         self.outputs = {'Output': inverse}
 
     def test_check_output(self):
-        self.check_output_with_place(place, check_dygraph=False)
+        self.check_output()
 
 
-#class TestInverseOpBatched(TestInverseOp):
-#    def config(self):
-#        self.matrix_shape = [4, 4, 4]
+class TestInverseOpBatched(TestInverseOp):
+    def config(self):
+        self.matrix_shape = [4, 32, 32]
+
 
 #class TestInverseAPI(unittest.TestCase):
 #    def test_static(self):

@@ -69,6 +69,18 @@ struct CUBlas<float> {
   }
 
   template <typename... ARGS>
+  static void GETRF_BATCH(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cublasSgetrfBatched(args...));
+  }
+
+  template <typename... ARGS>
+  static void GETRI_BATCH(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cublasSgetriBatched(args...));
+  }
+
+  template <typename... ARGS>
   static void MATINV_BATCH(ARGS... args) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cublasSmatinvBatched(args...));
@@ -139,6 +151,18 @@ struct CUBlas<double> {
 #else
     PADDLE_THROW("DgemmStridedBatched is not supported on cuda <= 7.5");
 #endif
+  }
+
+  template <typename... ARGS>
+  static void GETRF_BATCH(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cublasDgetrfBatched(args...));
+  }
+
+  template <typename... ARGS>
+  static void GETRI_BATCH(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cublasDgetriBatched(args...));
   }
 
   template <typename... ARGS>

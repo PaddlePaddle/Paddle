@@ -50,10 +50,28 @@ class MatrixInverseFunctor<platform::CUDADeviceContext, T> {
         memory::Alloc(context, batch_size * sizeof(int));
     int* gpu_info_ptr = reinterpret_cast<int*>(tmp_gpu_info_data->ptr());
 
-    context.CublasCall([&](cublasHandle_t handle) {
-      CUBlas<T>::MATINV_BATCH(handle, N, gpu_mat_ptrs, N, gpu_inv_ptrs, N,
-                              gpu_info_ptr, batch_size);
-    });
+    // This functions in cuBLAS is intended to be used for matrices of small
+    // sizes where the launch overhead is a significant factor.
+    // TODO(Xreki): call function in cusolver for large matrices.
+    if (N <= 32) {
+      // cublas<S/D>matinvBatched is a short cut of cublas<S/D>getrfBatched
+      // plus cublas<S/D>getriBatched.
+      // However it only works if N is less than 32. If not, we need to
+      // go through cublas<S/D>getrfBatched and cublas<S/D>getriBatched.
+      context.CublasCall([&](cublasHandle_t handle) {
+        CUBlas<T>::MATINV_BATCH(handle, N, gpu_mat_ptrs, N, gpu_inv_ptrs, N,
+                                gpu_info_ptr, batch_size);
+      });
+    } else {
+      context.CublasCall([&](cublasHandle_t handle) {
+        CUBlas<T>::GETRF_BATCH(handle, N, gpu_mat_ptrs, N, nullptr,
+                               gpu_info_ptr, batch_size);
+      });
+      context.CublasCall([&](cublasHandle_t handle) {
+        CUBlas<T>::GETRI_BATCH(handle, N, gpu_mat_ptrs, N, nullptr,
+                               gpu_inv_ptrs, N, gpu_info_ptr, batch_size);
+      });
+    }
   }
 };
 
