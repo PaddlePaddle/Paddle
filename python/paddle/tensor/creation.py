@@ -678,27 +678,34 @@ def meshgrid(x, name=None):
     k tensors are of size(N1, N2, ..., Nk)
 
     Examples:
-    x = fluid.data(name='x', shape=[10], dtype='float64')
-    y = fluid.data(name='y', shape=[20], dtype='float64')
-    grid_x, grid_y = fluid.layers.meshgrid(x, y)
+
+    import paddle
+    import paddle.fluid as fluid
+
+    x = fluid.data(name='x', shape=[100], dtype='int32')
+    y = fluid.data(name='y', shape=[200], dtype='int32')
+
+    grid_x, grid_y = paddle.tensor..meshgrid(x, y)
      
-    #the shape of grid_x is (10, 20)
-    #the shape of grid_y is (10, 20)
+    #the shape of grid_x is (100, 200)
+    #the shape of grid_y is (100, 200)
     """
 
-    if not isinstance(x, list):
-        warnings.warn(
-            "The type of input in meshgrid should be list, but received %s." %
-            (type(x)))
-        input = [x]
-    for id, x_ in enumerate(x):
-        check_type_and_dtype(
-            x_, 'input[' + str(id) + ']', Variable,
-            ['float16', 'float32', 'float64', 'int32', 'int64'], 'meshgrid')
-    inputs = {'X': x}
-
     helper = LayerHelper('meshgrid', **locals())
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    helper.append_op(type='meshgrid', input=inputs, outputs={'Out': [out]})
+
+    if not isinstance(x, list):
+        raise TypeError("The type of input in meshgrid should be list.")
+
+    for id, x_ in enumerate(x):
+        check_dtype(x_.dtype, 'create data type',
+                    ['float16', 'float32', 'float64', 'int32', 'int64'],
+                    'meshgrid')
+
+    num = len(x)
+    out = [
+        helper.create_variable_for_type_inference(dtype=x[i].dtype)
+        for i in range(num)
+    ]
+    helper.append_op(type='meshgrid', inputs={'X': x}, outputs={'Out': out})
 
     return out

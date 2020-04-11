@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from op_test import OpTest, skip_check_grad_ci
 import paddle.fluid as fluid
+import paddle
 from paddle.fluid import compiler, Program, program_guard, core
 
 
@@ -62,6 +63,41 @@ class TestMeshgridOp(OpTest):
 class TestMeshgridOp2(TestMeshgridOp):
     def get_x_shape(self):
         return [100, 300]
+
+
+class TestMeshgridOp3(unittest.TestCase):
+    def test_api(self):
+        x = fluid.data(shape=[100], dtype='int32', name='x')
+        y = fluid.data(shape=[200], dtype='int32', name='y')
+
+        input_1 = np.random.random([100, ]).astype('int32')
+        input_2 = np.random.random([200, ]).astype('int32')
+
+        out_1 = np.reshape(input_1, [100, 1])
+        out_1 = np.broadcast_to(out_1, [100, 200])
+        out_2 = np.reshape(input_2, [1, 200])
+        out_2 = np.broadcast_to(out_2, [100, 200])
+
+        exe = fluid.Executor(place=fluid.CPUPlace())
+        grid_x, grid_y = paddle.tensor.meshgrid([x, y])
+        res_1, res_2 = exe.run(fluid.default_main_program(),
+                               feed={'x': input_1,
+                                     'y': input_2},
+                               fetch_list=[grid_x, grid_y])
+
+        assert np.array_equal(res_1, out_1)
+        assert np.array_equal(res_2, out_2)
+
+
+class TestMeshgridOp4(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+
+            def test_input_type():
+                x = fluid.data(shape=[200], dtype='float32', name='x2')
+                paddle.tensor.meshgrid(x)
+
+        self.assertRaises(TypeError, test_input_type)
 
 
 if __name__ == '__main__':
