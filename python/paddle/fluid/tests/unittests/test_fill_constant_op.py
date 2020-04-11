@@ -264,13 +264,14 @@ class TestFillConstantOp2_ValueTensor(OpTest):
 # Test python API
 class TestFillConstantAPI(unittest.TestCase):
     def test_api(self):
+        positive_2_int32 = fluid.layers.fill_constant([1], "int32", 2)
         positive_2_int64 = fluid.layers.fill_constant([1], "int64", 2)
 
         shape_tensor_int32 = fluid.data(
             name="shape_tensor_int32", shape=[2], dtype="int32")
 
         shape_tensor_int64 = fluid.data(
-            name="shape_tensor_int32", shape=[2], dtype="int32")
+            name="shape_tensor_int64", shape=[2], dtype="int64")
 
         out_1 = fluid.layers.fill_constant(
             shape=[1, 2], dtype="float32", value=1.1)
@@ -279,10 +280,10 @@ class TestFillConstantAPI(unittest.TestCase):
             shape=[1, positive_2_int64], dtype="float32", value=1.1)
 
         out_3 = fluid.layers.fill_constant(
-            shape=[1, positive_2_int64], dtype="float32", value=1.1)
+            shape=[1, positive_2_int32], dtype="float32", value=1.1)
 
         out_4 = fluid.layers.fill_constant(
-            shape=shape_tensor_int64, dtype="float32", value=1.1)
+            shape=shape_tensor_int32, dtype="float32", value=1.1)
 
         out_5 = fluid.layers.fill_constant(
             shape=shape_tensor_int64, dtype="float32", value=1.1)
