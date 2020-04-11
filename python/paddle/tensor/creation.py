@@ -685,7 +685,7 @@ def meshgrid(x, name=None):
     x = fluid.data(name='x', shape=[100], dtype='int32')
     y = fluid.data(name='y', shape=[200], dtype='int32')
 
-    grid_x, grid_y = paddle.tensor..meshgrid(x, y)
+    grid_x, grid_y = paddle.tensor.meshgrid([x, y])
      
     #the shape of grid_x is (100, 200)
     #the shape of grid_y is (100, 200)
