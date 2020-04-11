@@ -69,12 +69,14 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
     auto outputs = current_op->Op()->Outputs();
     auto in_to_outs = infer_inplace(false);  // strictly no CUDA for MKL-DNN
     VLOG(3) << "MKL-DNN InplaceInferer op(" << current_op->id() << ") "
-     << in_to_outs.begin()->first << ": " << inputs[in_to_outs.begin()->first][0] 
-     << " " << in_to_outs.begin()->second << ": "<< outputs[in_to_outs.begin()->second][0];
+            << in_to_outs.begin()->first << ": "
+            << inputs[in_to_outs.begin()->first][0] << " "
+            << in_to_outs.begin()->second << ": "
+            << outputs[in_to_outs.begin()->second][0];
     // If InferInplace pattern does not contain input node then skip
     auto inplace_input_vec = inputs[in_to_outs.begin()->first];
     if (std::find(inplace_input_vec.begin(), inplace_input_vec.end(),
-          current_op_in->Name()) == inplace_input_vec.end()) {
+                  current_op_in->Name()) == inplace_input_vec.end()) {
       VLOG(3) << "MKL-DNN in-place pass SKIP pattern ";
       return;
     }
@@ -159,11 +161,13 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
     // but original name to be changed is gone, so we need to remember it
     // on first time given op is to be inplaced
     if (current_op_in->Name() != current_op_out->Name()) {
-      original_output_names[current_op->Name() + current_op_in->Name()] = current_op_out->Name();
+      original_output_names[current_op->Name() + current_op_in->Name()] =
+          current_op_out->Name();
     } else {
-      VLOG(3) << "MKL-DNN Inplace: Current op already inplaced! "; 
+      VLOG(3) << "MKL-DNN Inplace: Current op already inplaced! ";
     }
-    auto original_name = original_output_names[current_op->Name()+ current_op_in->Name()];
+    auto original_name =
+        original_output_names[current_op->Name() + current_op_in->Name()];
     current_op_out->RenameVar(current_op_in->Name());
 
     // Get mapping of input to output
