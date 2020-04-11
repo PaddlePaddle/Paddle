@@ -1507,7 +1507,16 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 
   m.def("set_feed_variable", framework::SetFeedVariable);
-  m.def("get_fetch_variable", framework::GetFetchVariable);
+  m.def("get_fetch_variable",
+        [](const Scope &scope, const std::string &var_name,
+           size_t index) -> py::object {
+          auto &var = framework::GetFetchVariable(scope, var_name, index);
+          if (data_is_lod_tensor(var)) {
+            return py::cast(boost::get<LoDTensor>(var));
+          } else {
+            return py::cast(boost::get<LoDTensorArray>(var));
+          }
+        });
   m.def("get_variable_tensor", framework::GetVariableTensor);
 
   m.def("_is_program_version_supported", IsProgramVersionSupported);
@@ -1586,7 +1595,17 @@ All parameter, weight, gradient are variables in Paddle.
              return res;
            },
            py::return_value_policy::take_ownership);
-
+  /*
+    py::class_<FetchType>(m, "FetchType", R"DOC( FetchType is a
+          boost::variant<LoDTensor, LoDTensorArray>)DOC")
+        .def("get_var",
+             [](FetchType &self) -> py::object {
+               if (data_is_lod_tensor(self)) {
+                 return py::cast(boost::get<LoDTensor>(self));
+               }
+               return py::cast(boost::get<LoDTensorArray>(self));
+             });
+  */
   py::class_<FetchList>(m, "FetchList", R"DOC( FetchList is a
         vector of boost::variant<LoDTensor, LoDTensorArray>.
         )DOC")
@@ -1609,10 +1628,19 @@ All parameter, weight, gradient are variables in Paddle.
              self.clear();
              return res;
            },
-           py::return_value_policy::take_ownership);
+           py::return_value_policy::take_ownership)
+
+      .def("append",
+           [](FetchList &self, const LoDTensor &t) {
+             self.emplace_back();
+             auto &lod_tensor = boost::get<LoDTensor>(self.back());
+             lod_tensor.ShareDataWith(t);
+             lod_tensor.set_lod(t.lod());
+           },
+           py::arg("tensor"));
 
   py::class_<FetchUnmergedList>(m, "FetchUnmergedList", R"DOC(
-        LoDTensor2DArray is 2-D array of LoDTensor.
+        FetchUnmergedList is 2-D array of FetchType(boost::variant(LoDTensor, LoDTensorArray)).
         )DOC")
       .def("_move_to_list",
            [](FetchUnmergedList &self) -> py::list {
