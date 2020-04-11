@@ -75,14 +75,16 @@ class TestFleet1(unittest.TestCase):
             adam1 = fluid.optimizer.Adam(learning_rate=0.000005)
             adam1 = fleet.distributed_optimizer(adam1, strategy=strategy)
             adam1.minimize([cost], [scope])
-            
+
             strategy["embedding"]["embed_sparse_optimizer"] = "adagrad"
             adam2 = fluid.optimizer.Adam(learning_rate=0.000005)
             adam2 = fleet.distributed_optimizer(adam2, strategy=strategy)
+            adam2.minimize([cost], [scope])
 
             strategy["embedding"]["embed_sparse_optimizer"] = "adam"
             adam3 = fluid.optimizer.Adam(learning_rate=0.000005)
             adam3 = fleet.distributed_optimizer(adam3, strategy=strategy)
+            adam3.minimize([cost], [scope])
         except:
             print("do not support pslib test, skip")
             return
