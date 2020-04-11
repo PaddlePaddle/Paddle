@@ -624,16 +624,10 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
                 'fill_constant')
     check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
     if isinstance(shape, Variable):
-        check_variable_and_dtype(shape, 'shape', ['int32'], 'fill_constant')
+        check_variable_and_dtype(shape, 'shape', ['int32', 'int64'],
+                                 'fill_constant')
     if out is not None:
-        check_variable_and_dtype(
-            out, 'out',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-            'fill_constant')
-        if convert_dtype(dtype) != convert_dtype(out.dtype):
-            raise TypeError(
-                "In fill constant Op the data type of out must equal the dtype parameter when out is not None"
-            )
+        check_variable_and_dtype(out, 'out', dtype, 'fill_constant')
 
     helper = LayerHelper("fill_constant", **locals())
     inputs = utils._get_shape_tensor_inputs(
