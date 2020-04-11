@@ -163,7 +163,7 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
     Args:
         in_true(tuple|list|None): The True branch to be merged.
         in_false(tuple|list|None): The False branch to be merged.
-        x(tuple|list|None): The input tensor that contains complete
+        x(Variable): The input tensor that contains complete
                             lod information needed to construct the output.
         mask(list): A bool column vector which masks the input.
         level(int): The specific lod level to merge.
@@ -188,6 +188,8 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
                 in_true=out_true, in_false=out_false, mask=y, x=x, level=level)
     """
     helper = LayerHelper('merge_lod_tensor', **locals())
+    check_variable_and_dtype(x, 'X', ['float16', 'float32', 'float64'],
+                             'merge_lod_tensor')
     out = helper.create_variable_for_type_inference(dtype=in_true.dtype)
     helper.append_op(
         type='merge_lod_tensor',
