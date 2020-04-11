@@ -62,7 +62,9 @@ class TestFleet1(unittest.TestCase):
             emb = fluid.layers.embedding(input=show, size=[1, 1], \
                 is_sparse=True, is_distributed=True, \
                 param_attr=fluid.ParamAttr(name="embedding"))
-            fc = fluid.layers.fc(input=emb, size=1, act=None)
+            bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
+            bow = fluid.layers.data_norm(input=bow, epsilon=1e-4, name="norm")
+            fc = fluid.layers.fc(input=bow, size=1, act=None)
             label = fluid.layers.data(name="click", shape=[-1, 1], \
                 dtype="int64", lod_level=1, append_batch_size=False)
             label_cast = fluid.layers.cast(label, dtype='float32')
