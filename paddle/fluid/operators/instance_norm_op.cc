@@ -23,28 +23,14 @@ namespace paddle {
 namespace operators {
 
 void InstanceNormOp::InferShape(framework::InferShapeContext *ctx) const {
-  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                    platform::errors::NotFound(
-                        "Input(X) of Instance Norm Op should not be null."));
-  PADDLE_ENFORCE_EQ(
-      ctx->HasInput("Scale"), true,
-      platform::errors::NotFound(
-          "Input(Scale) of Instance Norm Op should not be null."));
-  PADDLE_ENFORCE_EQ(ctx->HasInput("Bias"), true,
-                    platform::errors::NotFound(
-                        "Input(Bias) of Instance Norm Op should not be null."));
-  PADDLE_ENFORCE_EQ(ctx->HasOutput("Y"), true,
-                    platform::errors::NotFound(
-                        "Output(Y) of Instance Norm Op should not be null."));
-
-  PADDLE_ENFORCE_EQ(
-      ctx->HasOutput("SavedMean"), true,
-      platform::errors::NotFound(
-          "Output(SavedMean) of Instance Norm Op should not be null."));
-  PADDLE_ENFORCE_EQ(
-      ctx->HasOutput("SavedVariance"), true,
-      platform::errors::NotFound(
-          "Output(SavedVariance) of Instance Norm Op should not be null."));
+  OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "InstanceNorm");
+  OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale", "InstanceNorm");
+  OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias", "InstanceNorm");
+  OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "InstanceNorm");
+  OP_INOUT_CHECK(ctx->HasOutput("SavedMean"), "Output", "SavedMean",
+                 "InstanceNorm");
+  OP_INOUT_CHECK(ctx->HasOutput("SavedVariance"), "Output", "SavedVariance",
+                 "InstanceNorm");
 
   const auto x_dims = ctx->GetInputDim("X");
   PADDLE_ENFORCE_GE(
@@ -232,32 +218,21 @@ class InstanceNormKernel<platform::CPUDeviceContext, T>
 };
 
 void InstanceNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
-  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                    platform::errors::NotFound("Input(X) should not be null"));
-  PADDLE_ENFORCE_EQ(
-      ctx->HasInput("Scale"), true,
-      platform::errors::NotFound("Input(scale) should not be null"));
-
-  PADDLE_ENFORCE_EQ(
-      ctx->HasInput(framework::GradVarName("Y")), true,
-      platform::errors::NotFound("Input(Y@GRAD) should not be null"));
-  PADDLE_ENFORCE_EQ(
-      ctx->HasInput("SavedMean"), true,
-      platform::errors::NotFound("Input(SavedMean) should not be null"));
-  PADDLE_ENFORCE_EQ(
-      ctx->HasInput("SavedVariance"), true,
-      platform::errors::NotFound("Input(SavedVariance) should not be null"));
+  OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "InstanceNormGrad");
+  OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale", "InstanceNormGrad");
+  OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")), "Input",
+                 framework::GradVarName("Y"), "InstanceNormGrad");
+  OP_INOUT_CHECK(ctx->HasInput("SavedMean"), "Input", "SavedMean",
+                 "InstanceNormGrad");
+  OP_INOUT_CHECK(ctx->HasInput("SavedVariance"), "Input", "SavedVariance",
+                 "InstanceNormGrad");
 
   // check output
-  PADDLE_ENFORCE_EQ(
-      ctx->HasOutput(framework::GradVarName("X")), true,
-      platform::errors::NotFound("Output(x@GRAD) should not be null"));
+  OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+                 framework::GradVarName("X"), "InstanceNormGrad");
   if (ctx->HasOutput(framework::GradVarName("Scale"))) {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput(framework::GradVarName("Bias")), true,
-        platform::errors::NotFound(
-            "Output(Scale@GRAD) and Output(Bias@GRAD) should not be "
-            "null at the same time"));
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Bias")), "Output",
+                   framework::GradVarName("Bias"), "InstanceNormGrad");
   }
   const auto x_dims = ctx->GetInputDim("X");
   const int C = x_dims[1];
@@ -380,28 +355,20 @@ class InstanceNormGradKernel<platform::CPUDeviceContext, T>
 
 void InstanceNormDoubleGradOp::InferShape(
     framework::InferShapeContext *ctx) const {
-  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                    platform::errors::NotFound("Input(X) should not be null"));
-  PADDLE_ENFORCE_EQ(
-      ctx->HasInput("Scale"), true,
-      platform::errors::NotFound("Input(Scale) should not be null."));
-  PADDLE_ENFORCE_EQ(
-      ctx->HasInput("SavedMean"), true,
-      platform::errors::NotFound("Input(SavedMean) should not be null"));
-  PADDLE_ENFORCE_EQ(
-      ctx->HasInput("SavedVariance"), true,
-      platform::errors::NotFound("Input(SavedVariance) should not be null"));
-  PADDLE_ENFORCE_EQ(
-      ctx->HasInput("DDX"), true,
-      platform::errors::NotFound("Input(DDX) should not be null."));
-  PADDLE_ENFORCE_EQ(
-      ctx->HasInput("DY"), true,
-      platform::errors::NotFound("Input(Y@GRAD) should not be null"));
+  OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "InstanceNormDoubleGrad");
+  OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale",
+                 "InstanceNormDoubleGrad");
+  OP_INOUT_CHECK(ctx->HasInput("SavedMean"), "Input", "SavedMean",
+                 "InstanceNormDoubleGrad");
+  OP_INOUT_CHECK(ctx->HasInput("SavedVariance"), "Input", "SavedVariance",
+                 "InstanceNormDoubleGrad");
+  OP_INOUT_CHECK(ctx->HasInput("DDX"), "Input", "DDX",
+                 "InstanceNormDoubleGrad");
+  OP_INOUT_CHECK(ctx->HasInput("DY"), "Input", "DY", "InstanceNormDoubleGrad");
 
   // check output
-  PADDLE_ENFORCE_EQ(
-      ctx->HasOutput("DX"), true,
-      platform::errors::NotFound("Output(DX) should not be null"));
+  OP_INOUT_CHECK(ctx->HasOutput("DX"), "Output", "DX",
+                 "InstanceNormDoubleGrad");
 
   const auto x_dims = ctx->GetInputDim("X");
   const int C = x_dims[1];

@@ -25,42 +25,22 @@ namespace paddle {
 namespace operators {
 
 void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
-  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                    platform::errors::NotFound(
-                        "Input(X) of BatchNormOp should not be null."));
-  PADDLE_ENFORCE_EQ(ctx->HasInput("Scale"), true,
-                    platform::errors::NotFound(
-                        "Input(Scale) of BatchNormOp should not be null."));
-  PADDLE_ENFORCE_EQ(ctx->HasInput("Bias"), true,
-                    platform::errors::NotFound(
-                        "Input(Bias) of BatchNormOp should not be null."));
-  PADDLE_ENFORCE_EQ(ctx->HasInput("Mean"), true,
-                    platform::errors::NotFound(
-                        "Input(Mean) of BatchNormOp should not be null."));
-  PADDLE_ENFORCE_EQ(ctx->HasInput("Variance"), true,
-                    platform::errors::NotFound(
-                        "Input(Variance) of BatchNormOp should not be null."));
-  PADDLE_ENFORCE_EQ(ctx->HasOutput("Y"), true,
-                    platform::errors::NotFound(
-                        "Output(Y) of BatchNormOp should not be null."));
+  OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "BatchNorm");
+  OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale", "BatchNorm");
+  OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias", "BatchNorm");
+  OP_INOUT_CHECK(ctx->HasInput("Mean"), "Input", "Mean", "BatchNorm");
+  OP_INOUT_CHECK(ctx->HasInput("Variance"), "Input", "Variance", "BatchNorm");
+  OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "BatchNorm");
+
   bool is_test = ctx->Attrs().Get<bool>("is_test");
   if (!is_test) {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("MeanOut"), true,
-        platform::errors::NotFound(
-            "Output(MeanOut) of BatchNormOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("VarianceOut"), true,
-        platform::errors::NotFound(
-            "Output(VarianceOut) of BatchNormOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("SavedMean"), true,
-        platform::errors::NotFound(
-            "Output(SavedMean) of BatchNormOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("SavedVariance"), true,
-        platform::errors::NotFound(
-            "Output(SavedVariance) of BatchNormOp should not be null."));
+    OP_INOUT_CHECK(ctx->HasOutput("MeanOut"), "Output", "MeanOut", "BatchNorm");
+    OP_INOUT_CHECK(ctx->HasOutput("VarianceOut"), "Output", "VarianceOut",
+                   "BatchNorm");
+    OP_INOUT_CHECK(ctx->HasOutput("SavedMean"), "Output", "SavedMean",
+                   "BatchNorm");
+    OP_INOUT_CHECK(ctx->HasOutput("SavedVariance"), "Output", "SavedVariance",
+                   "BatchNorm");
   }
 
   // make sure Mean/MeanOut and Variance/VarianceOut share memory in Python
@@ -457,21 +437,17 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
 
 void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
   // check input
-  PADDLE_ENFORCE_EQ(
-      ctx->HasInput("Scale"), true,
-      platform::errors::NotFound("Input(scale) should not be null."));
-  PADDLE_ENFORCE_EQ(
-      ctx->HasInput(framework::GradVarName("Y")), true,
-      platform::errors::NotFound("Input(Y@GRAD) should not be null."));
-  PADDLE_ENFORCE_EQ(
-      ctx->HasInput("SavedMean"), true,
-      platform::errors::NotFound("Input(SavedMean) should not be null."));
-  PADDLE_ENFORCE_EQ(
-      ctx->HasInput("SavedVariance"), true,
-      platform::errors::NotFound("Input(SavedVariance) should not be null"));
+  OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale", "BatchNormGrad");
+  OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")), "Input",
+                 framework::GradVarName("Y"), "BatchNormGrad");
+  OP_INOUT_CHECK(ctx->HasInput("SavedMean"), "Input", "SavedMean",
+                 "BatchNormGrad");
+  OP_INOUT_CHECK(ctx->HasInput("SavedVariance"), "Input", "SavedVariance",
+                 "BatchNormGrad");
 
   // check output
-  PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")), "");
+  OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+                 framework::GradVarName("X"), "BatchNormGrad");
 
   const bool has_scale_grad = ctx->HasOutput(framework::GradVarName("Scale"));
   const bool has_bias_grad = ctx->HasOutput(framework::GradVarName("Bias"));
