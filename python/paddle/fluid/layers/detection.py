@@ -232,7 +232,7 @@ def retinanet_target_assign(bbox_pred,
                             dtype='float32')
           is_crowd = fluid.data(name='is_crowd', shape=[1],
                             dtype='float32')
-          im_info = fluid.data(name='im_infoss', shape=[1, 3],
+          im_info = fluid.data(name='im_info', shape=[1, 3],
                             dtype='float32')
           score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num = \\
                 fluid.layers.retinanet_target_assign(bbox_pred, cls_logits, anchor_box,
@@ -434,7 +434,7 @@ def rpn_target_assign(bbox_pred,
     return predicted_cls_logits, predicted_bbox_pred, target_label, target_bbox, bbox_inside_weight
 
 
-def sigmoid_focal_loss(x, label, fg_num, gamma=2, alpha=0.25):
+def sigmoid_focal_loss(x, label, fg_num, gamma=2., alpha=0.25):
     """
     **Sigmoid Focal Loss Operator.**
 
@@ -2967,15 +2967,15 @@ def retinanet_detection_output(bboxes,
            im_info = fluid.data(
                name="im_info", shape=[1, 3], dtype='float32')
            nmsed_outs = fluid.layers.retinanet_detection_output(
-                                          bboxes=[bboxes_low, bboxes_high],
-                                          scores=[scores_low, scores_high],
-                                          anchors=[anchors_low, anchors_high],
-                                          im_info=im_info,
-                                          score_threshold=0.05,
-                                          nms_top_k=1000,
-                                          keep_top_k=100,
-                                          nms_threshold=0.45,
-                                          nms_eta=1.)
+               bboxes=[bboxes_low, bboxes_high],
+               scores=[scores_low, scores_high],
+               anchors=[anchors_low, anchors_high],
+               im_info=im_info,
+               score_threshold=0.05,
+               nms_top_k=1000,
+               keep_top_k=100,
+               nms_threshold=0.45,
+               nms_eta=1.)
     """
 
     helper = LayerHelper('retinanet_detection_output', **locals())
