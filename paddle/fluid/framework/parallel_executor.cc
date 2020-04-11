@@ -234,14 +234,16 @@ class ParallelExecutorPrivate {
     }
 
     if (bst->use_hierarchical_allreduce_) {
-      PADDLE_ENFORCE_GT(bst->num_trainers_, 1,
-                        platform::errors::PreconditionNotMet(
-                            "num_trainers is %llu, which is less than 1",
-                            bst->num_trainers_));
-      PADDLE_ENFORCE_GT(bst->hierarchical_allreduce_inter_nranks_, 1,
-                        platform::errors::PreconditionNotMet(
-                            "inter_nranks is %d, which is less than 1",
-                            bst->hierarchical_allreduce_inter_nranks_));
+      PADDLE_ENFORCE_GT(
+          bst->num_trainers_, 1,
+          platform::errors::PreconditionNotMet(
+              "The num_trainers should be greater than 1, but received %llu.",
+              bst->num_trainers_));
+      PADDLE_ENFORCE_GT(
+          bst->hierarchical_allreduce_inter_nranks_, 1,
+          platform::errors::PreconditionNotMet(
+              "The inter_nranks should be greater than 1, but received %d.",
+              bst->hierarchical_allreduce_inter_nranks_));
       PADDLE_ENFORCE_EQ(
           bst->num_trainers_ % bst->hierarchical_allreduce_inter_nranks_, 0,
           platform::errors::PreconditionNotMet(

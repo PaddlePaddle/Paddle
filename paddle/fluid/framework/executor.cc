@@ -223,7 +223,9 @@ static bool has_feed_operators(
     PADDLE_ENFORCE_EQ(
         feed_count, feed_targets.size(),
         platform::errors::PreconditionNotMet(
-            "The number of feed operators should match 'feed_targets'"));
+            "The number of feed operators should match 'feed_targets', but "
+            "received feed_count: %zu, required feed_targets.size(): %zu.",
+            feed_count, feed_targets.size()));
 
     if (!feed_holder_name.empty()) {
       // When feed operator are present, so should be feed_holder.
@@ -275,7 +277,9 @@ static bool has_fetch_operators(
     PADDLE_ENFORCE_EQ(
         fetch_count, fetch_targets.size(),
         platform::errors::PreconditionNotMet(
-            "The number of fetch operators should match 'fetch_targets'"));
+            "The number of fetch operators should match 'fetch_targets', but "
+            "received fetch_count: %zu, required fetch_targets.size(): %zu.",
+            fetch_count, fetch_targets.size()));
 
     if (!fetch_holder_name.empty()) {
       // When fetch operator are present, so should be fetch_holder.
