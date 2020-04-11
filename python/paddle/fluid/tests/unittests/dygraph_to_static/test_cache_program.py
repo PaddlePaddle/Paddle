@@ -165,10 +165,10 @@ def sum_under_while(limit):
 class TestToOutputWithCache(unittest.TestCase):
     def test_output(self):
         ret = sum_even_util_limit(80, 10)
-        self.assertEqual(ret[0], 30)
+        self.assertEqual(ret[0].numpy(), 30)
 
         ret = sum_under_while(100)
-        self.assertEqual(ret[0], 5050)
+        self.assertEqual(ret[0].numpy(), 5050)
 
 
 if __name__ == '__main__':

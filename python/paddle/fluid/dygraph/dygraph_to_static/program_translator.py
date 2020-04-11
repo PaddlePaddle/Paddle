@@ -272,8 +272,8 @@ class ProgramTranslator(object):
         self._optimizer_info = None
         self._optimizer = None
         self._loss_name = None
-        # Once main_program is changed, should run startup_program.
-        self._need_startup = True
+        # Once startup_program is changed, should run startup_program.
+        self._prev_startup = None
 
     def get_output(self, dygraph_func, *args, **kwargs):
         """
@@ -400,11 +400,22 @@ class ProgramTranslator(object):
         if self._optimizer_info and self._optimizer is None:
             self._add_optimizer()
 
-        if self._need_startup:
+        if self._need_startup():
             self._exe.run(self.startup_program)
-            self._need_startup = False
+            self._prev_startup = self.startup_program
 
         return feed_dict, fetch_list
+
+    def _need_startup(self):
+        """
+        Determines whether needy to run startup_program.
+        """
+        if self.startup_program != self._prev_startup:
+            check_type(self.startup_program, "startup_program",
+                       framework.Program, "_need_startup")
+            return len(self.startup_program.global_block().ops) > 0
+
+        return False
 
     def _check_cache_valid(self):
         """
