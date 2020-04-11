@@ -484,30 +484,21 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
             "in gradient op kernel of batch_norm_mkldnn_op now."));
   }
 
-  // batch_norm_grad with inplace takes Y as input, without inplace
-  // takes X as input. HasInput will throw exception in compile time,
-  // so only infer shape in run time here.
-  if (ctx->IsRuntime()) {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X") || ctx->HasInput("Y"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(X) and Input(Y) should not be all null."));
-    auto input_name = "Y";
-    if (ctx->HasInput("X")) input_name = "X";
-    const auto x_dims = ctx->GetInputDim(input_name);
-    const DataLayout data_layout = framework::StringToDataLayout(
-        ctx->Attrs().Get<std::string>("data_layout"));
+  OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "batch_norm_grad");
+  const auto x_dims = ctx->GetInputDim("X");
+  const DataLayout data_layout = framework::StringToDataLayout(
+      ctx->Attrs().Get<std::string>("data_layout"));
 
-    const int C =
-        ((this->IsMKLDNNType() == true) || (data_layout == DataLayout::kNCHW)
-             ? x_dims[1]
-             : x_dims[x_dims.size() - 1]);
+  const int C =
+      ((this->IsMKLDNNType() == true) || (data_layout == DataLayout::kNCHW)
+           ? x_dims[1]
+           : x_dims[x_dims.size() - 1]);
 
-    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
-    // has_scale_grad == has_bias_grad, judge has_scale_grad is enough
-    if (has_scale_grad) {
-      ctx->SetOutputDim(framework::GradVarName("Scale"), {C});
-      ctx->SetOutputDim(framework::GradVarName("Bias"), {C});
-    }
+  ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+  // has_scale_grad == has_bias_grad, judge has_scale_grad is enough
+  if (has_scale_grad) {
+    ctx->SetOutputDim(framework::GradVarName("Scale"), {C});
+    ctx->SetOutputDim(framework::GradVarName("Bias"), {C});
   }
 }
 

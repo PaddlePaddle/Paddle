@@ -62,6 +62,62 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
  public:
   using paddle::operators::BatchNormGradOp::BatchNormGradOp;
 
+  void InferShape(framework::InferShapeContext* ctx) const {
+    // check input
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Scale"), true,
+        platform::errors::InvalidArgument("Input(scale) should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput(framework::GradVarName("Y")), true,
+        platform::errors::InvalidArgument("Input(Y@GRAD) should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("SavedMean"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(SavedMean) should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("SavedVariance"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(SavedVariance) should not be null"));
+
+    // check output
+    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")), "");
+
+    const bool has_scale_grad = ctx->HasOutput(framework::GradVarName("Scale"));
+    const bool has_bias_grad = ctx->HasOutput(framework::GradVarName("Bias"));
+
+    PADDLE_ENFORCE_EQ(
+        (has_scale_grad == has_bias_grad), true,
+        platform::errors::InvalidArgument(
+            "Output(Scale@GRAD) and Output(Bias@GRAD) must be null "
+            "or not be null at same time. But now, "
+            "has Scale@Grad=[%d], has Bias@GRAD=[%d]",
+            has_scale_grad, has_bias_grad));
+
+    const bool use_global_stats = ctx->Attrs().Get<bool>("use_global_stats");
+    if (use_global_stats) {
+      PADDLE_ENFORCE_EQ(
+          !ctx->Attrs().Get<bool>("use_mkldnn"), true,
+          platform::errors::InvalidArgument(
+              "Using global stats during training is not supported "
+              "in gradient op kernel of batch_norm_mkldnn_op now."));
+    }
+
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "inplace_abn_grad");
+    const auto x_dims = ctx->GetInputDim("Y");
+    const DataLayout data_layout = framework::StringToDataLayout(
+        ctx->Attrs().Get<std::string>("data_layout"));
+
+    const int C =
+        ((this->IsMKLDNNType() == true) || (data_layout == DataLayout::kNCHW)
+             ? x_dims[1]
+             : x_dims[x_dims.size() - 1]);
+
+    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+    // has_scale_grad == has_bias_grad, judge has_scale_grad is enough
+    if (has_scale_grad) {
+      ctx->SetOutputDim(framework::GradVarName("Scale"), {C});
+      ctx->SetOutputDim(framework::GradVarName("Bias"), {C});
+    }
+  }
+
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
