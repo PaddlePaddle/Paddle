@@ -30,7 +30,7 @@ class AssignValueOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Out"), true,
-        platform::errors::NotFound("Input(Out) of assign_op is not found."));
+        platform::errors::NotFound("Output(Out) of assign_op is not found."));
     auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
     ctx->SetOutputDim("Out", framework::make_ddim(shape));
   }

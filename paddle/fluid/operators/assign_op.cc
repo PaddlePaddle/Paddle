@@ -77,7 +77,7 @@ class AssignKernel {
     }
     PADDLE_ENFORCE_EQ(
         ctx.HasOutput("Out"), true,
-        platform::errors::NotFound("Input(Out) of assign_op is not found."));
+        platform::errors::NotFound("Output(Out) of assign_op is not found."));
     auto *out = ctx.OutputVar("Out");
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(ctx.GetPlace());

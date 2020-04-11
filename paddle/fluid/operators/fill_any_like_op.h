@@ -40,7 +40,7 @@ class FillAnyLikeKernel : public framework::OpKernel<T> {
 
     auto common_type_value = static_cast<CommonType>(value);
 
-    PADDLE_ENFORCE_GE(
+    PADDLE_ENFORCE_EQ(
         (common_type_value >=
          static_cast<CommonType>(std::numeric_limits<T>::lowest())) &&
             (common_type_value <=
