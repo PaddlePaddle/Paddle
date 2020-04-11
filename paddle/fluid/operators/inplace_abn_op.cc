@@ -100,7 +100,7 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
               "in gradient op kernel of batch_norm_mkldnn_op now."));
     }
 
-    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "inplace_abn_grad");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "InplaceABNGrad");
     const auto y_dims = ctx->GetInputDim("Y");
     const DataLayout data_layout = framework::StringToDataLayout(
         ctx->Attrs().Get<std::string>("data_layout"));

@@ -484,7 +484,7 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
             "in gradient op kernel of batch_norm_mkldnn_op now."));
   }
 
-  OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "batch_norm_grad");
+  OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "BatchNormGrad");
   const auto x_dims = ctx->GetInputDim("X");
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
