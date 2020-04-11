@@ -45,7 +45,7 @@ struct FrobeniusNormGradFunctor {
   void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
                   const Dim& dim, int size) {
     dx->device(place) = y->broadcast(dim);
-    dx->device(place) = *dx + dx->constant(1e-10f);
+    dx->device(place) = *dx + dx->constant(1e-12f);
     dx->device(place) = (*x / *dx) * (dy->broadcast(dim));
   }
 };

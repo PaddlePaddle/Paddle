@@ -40,7 +40,7 @@ __device__ __forceinline__ double inline_pow(double base, double exponent) {
 template <typename T, int BlockDim>
 __global__ void Pnorm(const T* x, const int pre,
                       const int axis_n,  // dim in axis
-                      const int post, int porder, T* out_norm) {
+                      const int post, float porder, T* out_norm) {
   typedef cub::BlockReduce<T, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage temp_storage;
   int num = pre * post;
@@ -74,7 +74,7 @@ class PnormCUDAKernel : public framework::OpKernel<T> {
 
     auto xdim = in_x->dims();
     auto ndim = out_norm->dims();
-    int porder = ctx.Attr<int>("porder");
+    float porder = ctx.Attr<float>("porder");
     int axis = ctx.Attr<int>("axis");
     if (axis < 0) axis = xdim.size() + axis;
     int pre, n, post;
@@ -93,8 +93,9 @@ class PnormCUDAKernel : public framework::OpKernel<T> {
 
 template <typename T, int BlockDim>
 __global__ void PnormGradient(const T* x, const T* x_norm, const T* y_grad,
-                              const int porder, const int pre, const int axis_n,
-                              const int post, const T eps, T* x_grad) {
+                              const float porder, const int pre,
+                              const int axis_n, const int post, const T eps,
+                              T* x_grad) {
   typedef cub::BlockReduce<T, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage temp_storage_sum;
   // dx = (x/pnorm_broadcast).pow(p-1) * norm_dy.broadcast * sign(x)
@@ -127,8 +128,8 @@ __global__ void PnormGradient(const T* x, const T* x_norm, const T* y_grad,
       int index = base + j * post;
       const T x_ij = inline_abs(x[index]);
       const T dy_ij = y_grad[index];
-      x_grad[index] = inline_pow(x_ij, porder - 1) /
-                      (inline_pow(pnorm_i, porder - 1) + eps) * yout_i *
+      x_grad[index] = inline_pow(x_ij, porder - 1.0f) /
+                      (inline_pow(pnorm_i, porder - 1.0f) + eps) * yout_i *
                       inline_sign(x[index]);
     }
   }
@@ -149,7 +150,7 @@ class PnormGradCUDAKernel : public framework::OpKernel<T> {
     const T* norm_dy = in_norm_dy->data<T>();
 
     auto xdim = in_x->dims();
-    int porder = ctx.Attr<int>("porder");
+    float porder = ctx.Attr<float>("porder");
     T eps = static_cast<T>(ctx.Attr<float>("epsilon"));
     int axis = ctx.Attr<int>("axis");
     if (axis < 0) axis = xdim.size() + axis;

@@ -41,7 +41,7 @@ class PnormKernel : public framework::OpKernel<T> {
     out_norm->mutable_data<T>(ctx.GetPlace());
 
     auto xdim = in_x->dims();
-    int porder = ctx.Attr<int>("porder");
+    float porder = ctx.Attr<float>("porder");
     int axis = ctx.Attr<int>("axis");
     if (axis < 0) axis = xdim.size() + axis;
     int pre, n, post;
@@ -78,7 +78,7 @@ class PnormGradKernel : public framework::OpKernel<T> {
 
     T eps = static_cast<T>(ctx.Attr<float>("epsilon"));
     auto xdim = in_x->dims();
-    int porder = ctx.Attr<int>("porder");
+    float porder = ctx.Attr<float>("porder");
 
     int axis = ctx.Attr<int>("axis");
     if (axis < 0) axis = xdim.size() + axis;
@@ -102,9 +102,9 @@ class PnormGradKernel : public framework::OpKernel<T> {
     Eigen::DSizes<int, 1> rdim(1);
     Eigen::DSizes<int, 3> bcast(1, n, 1);
 
-    dx.device(*place) = (x.abs()).pow(porder - 1);
+    dx.device(*place) = (x.abs()).pow(porder - 1.0f);
     dx.device(*place) =
-        dx / ((norm.broadcast(bcast)).pow(porder - 1) + x.constant(eps));
+        dx / ((norm.broadcast(bcast)).pow(porder - 1.0f) + x.constant(eps));
     dx.device(*place) = dx * norm_dy.broadcast(bcast) * x.sign();
   }
 };

@@ -24,17 +24,18 @@ class PnormOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "(Tensor) A tensor of rank >= axis.");
+    AddAttr<float>("porder",
+                   "The porder is the p order vector norm to calculate.")
+        .SetDefault(2.0f);
     AddAttr<int>("axis",
                  "The axis on which to apply normalization. If axis < 0, "
                  "the dimension to pnorm is rank(X) + axis. -1 is "
-                 "the last dimension.");
-    AddAttr<int>("porder",
-                 "The porder is the p order vector norm to calculate.")
-        .SetDefault(2);
+                 "the last dimension.")
+        .SetDefault(-1);
     AddAttr<float>("epsilon",
                    "(float, default 1e-10) The epsilon value is used "
                    "to avoid division by zero.")
-        .SetDefault(1.0e-10f);
+        .SetDefault(1.0e-12f);
     AddAttr<bool>(
         "keepdim",
         "(bool, default false) Whether to keep the dimensions as the input")
@@ -62,13 +63,26 @@ class PnormOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "p_norm");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "p_norm");
+    auto porder = ctx->Attrs().Get<float>("porder");
+    PADDLE_ENFORCE_NE(porder, 0,
+                      platform::errors::InvalidArgument(
+                          "The input porder of p_norm is not support for "
+                          "porder == 0, INFINITY, -INFINITY now."));
+    PADDLE_ENFORCE_NE(porder, INFINITY,
+                      platform::errors::InvalidArgument(
+                          "The input porder of p_norm is not support for "
+                          "porder == 0, INFINITY, -INFINITY now."));
+    PADDLE_ENFORCE_NE(porder, -INFINITY,
+                      platform::errors::InvalidArgument(
+                          "The input porder of p_norm is not support for "
+                          "porder == 0, INFINITY, -INFINITY now."));
     auto xdim = ctx->GetInputDim("X");
     int axis = ctx->Attrs().Get<int>("axis");
     bool keepdim = ctx->Attrs().Get<bool>("keepdim");
     if (axis < 0) axis = xdim.size() + axis;
     std::vector<int> reduce_dims;
     for (int i = 0; i < xdim.size(); ++i) {
-      if (i != axis) reduce_dims.push_back(xdim[i]);
+      if (i != axis) reduce_dims.emplace_back(xdim[i]);
     }
     xdim[axis] = 1;
     if (keepdim) {
@@ -89,7 +103,6 @@ class PnormOpGrad : public framework::OperatorWithKernel {
                    "Out@GRAD", "p_norm");
     OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
                    "X@GRAD", "p_norm");
-
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };

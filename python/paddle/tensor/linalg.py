@@ -169,7 +169,7 @@ def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
     Args:
         input (Variable): The input tensor could be N-D tensor, and the input data
             type could be float32 or float64.
-        p (int|string, optional): Order of the norm. Supported values are `fro`, `1`, `2`,
+        p (float|string, optional): Order of the norm. Supported values are `fro`, `1`, `2`,
             and any positive real number yielding the corresponding p-norm.
         axis (int|list, optional): The axis on which to apply norm operation. If axis is int
             or list with only one element, the vector norm is computed over the axis.
@@ -179,6 +179,8 @@ def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
             output Tensor. The result tensor will have fewer dimension
             than the :attr:`input` unless :attr:`keepdim` is true, default
             value is False.
+        out (Variable, optional): The output tensor, default value is None. It's data type
+            must be the same as the input Tensor.
         name (str, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
@@ -211,7 +213,7 @@ def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
           input (Variable): Tensor, data type float32, float64.
           dim (list, optional): None for last two dimensions.
           keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
-          out(Variable): The tensor variable storing the output.
+          out (Variable, optional): The tensor variable storing the output.
         """
         if dim is not None and not (isinstance(dim, list) and len(dim) == 2):
             raise ValueError(
@@ -233,6 +235,11 @@ def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
                 dtype=helper.input_dtype())
         else:
             check_type(out, 'out', (Variable), 'frobenius_norm')
+            check_dtype(
+                out.dtype, out.name,
+                convert_dtype(input.dtype), 'frobenius_norm',
+                '(The out data type in frobenius_norm must be the same with input data type.)'
+            )
 
         helper.append_op(
             type='frobenius_norm',
@@ -251,20 +258,18 @@ def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
         Calculate the p-order vector norm for certain  dimension of Tensor `input`.
         Args:
           input (Variable): Tensor, data type float32, float64.
+          porder (float, optional): None for porder=2.0.
           axis (int, optional): None for last dimension.
-          porder (int, optional): None for porder=2.
           keepdim (bool, optional): Whether keep the dimensions as the `input`, Default False.
-          out(Variable): The tensor variable storing the output.
+          out (Variable, optional): The tensor variable storing the output.
         """
-        if porder is not None and not isinstance(porder, int):
-            raise ValueError(
-                "The p-oreder of pnorm op (vector norm) should be None or int!")
-        if axis is not None and not isinstance(porder, int):
-            raise ValueError(
-                "The axis of pnorm op (vector norm) should be None or int!")
+        if porder is not None:
+            check_type(porder, 'porder', (float, int), 'p_norm')
+        if axis is not None:
+            check_type(axis, 'axis', (int), 'p_norm')
         attrs = {
             'axis': axis if axis is not None else -1,
-            'porder': porder if porder is not None else 2,
+            'porder': float(porder) if porder is not None else 2.0,
             'keepdim': keepdim,
             'epsilon': 1e-12,
         }
@@ -277,6 +282,11 @@ def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
                 dtype=helper.input_dtype())
         else:
             check_type(out, 'out', (Variable), 'p_norm')
+            check_dtype(
+                out.dtype, out.name,
+                convert_dtype(input.dtype), 'p_norm',
+                '(The out data type in p_norm must be the same with input data type.)'
+            )
 
         helper.append_op(
             type='p_norm',
@@ -293,30 +303,24 @@ def norm(input, p='fro', axis=None, keepdim=False, out=None, name=None):
             else:
                 raise ValueError(
                     "only valid string values are 'fro', found {}".format(p))
-        if not isinstance(p, str):
-            if isinstance(p, int):
-                return vector_norm(
-                    input,
-                    axis=axis,
-                    porder=p,
-                    keepdim=keepdim,
-                    out=out,
-                    name=name)
-            else:
-                raise ValueError("only valid p type is string or int, found {}".
-                                 format(type(p)))
+        elif isinstance(p, (int, float)):
+            return vector_norm(
+                input, porder=p, axis=axis, keepdim=keepdim, out=out, name=name)
+        else:
+            raise ValueError("only valid p type is string or float, found {}".
+                             format(type(p)))
 
     if isinstance(axis, list) and len(axis) == 1:
         axis = axis[0]
 
     #calculate vector norm, where axis is int or list with only one integer
     if isinstance(axis, int):
-        if isinstance(p, int):
+        if isinstance(p, (int, float)):
             return vector_norm(
                 input, axis=axis, porder=p, keepdim=keepdim, out=out, name=name)
         else:
             raise ValueError(
-                "unspport p for p-order vector norm. except integer, found {}".
+                "unspport p for p-order vector norm. except float, found {}".
                 format(p))
     #calculate matrix norm, where axis is list with two integers
     elif isinstance(axis, list) and len(axis) == 2:
