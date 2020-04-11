@@ -685,6 +685,7 @@ def meshgrid(x, name=None):
     #the shape of grid_x is (10, 20)
     #the shape of grid_y is (10, 20)
     """
+
     if not isinstance(x, list):
         warnings.warn(
             "The type of input in meshgrid should be list, but received %s." %
@@ -699,4 +700,5 @@ def meshgrid(x, name=None):
     helper = LayerHelper('meshgrid', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     helper.append_op(type='meshgrid', input=inputs, outputs={'Out': [out]})
+
     return out
