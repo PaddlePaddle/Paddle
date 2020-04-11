@@ -57,6 +57,10 @@ def create_tensor(dtype, name=None, persistable=False):
           import paddle.fluid as fluid
           tensor = fluid.layers.create_tensor(dtype='float32')
     """
+    check_dtype(dtype, 'dtype', [
+        'bool', 'float16', 'float32', 'float64', 'int8', 'int32', 'int32',
+        'int64'
+    ], 'create_tensor')
     helper = LayerHelper("create_tensor", **locals())
     return helper.create_variable(
         name=helper.name, dtype=dtype, persistable=persistable)
@@ -134,7 +138,7 @@ def create_global_var(shape,
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
             var = layers.create_global_var(shape=[2,3], value=1.0, dtype='float32',
-                                          persistable=True, force_cpu=True, name='new_var')
+                                           persistable=True, force_cpu=True, name='new_var')
     """
     helper = LayerHelper("global_var", **locals())
     var = helper.create_global_variable(
