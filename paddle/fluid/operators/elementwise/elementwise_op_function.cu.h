@@ -32,9 +32,10 @@ limitations under the License. */
 #define __h2div h2div
 #endif
 
-#define DIV_ERROR_INFO                                             \
-  platform::errors::InvalidArgument(
-  "Integer division by zero encountered in divide. Please check.\n")
+#define DIV_ERROR_INFO                                   \
+  platform::errors::InvalidArgument(                     \
+      "Integer division by zero encountered in divide. " \
+      "Please check.\n")
 namespace paddle {
 namespace operators {
 
