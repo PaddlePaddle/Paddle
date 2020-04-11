@@ -718,6 +718,38 @@ void FleetWrapper::SaveModel(const std::string& path, const int mode) {
 #endif
 }
 
+void FleetWrapper::SaveModelOneTable(const uint64_t table_id,
+                                     const std::string& path, const int mode) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret =
+      pslib_ptr_->_worker_ptr->save(table_id, path, std::to_string(mode));
+  ret.wait();
+  if (ret.get() != 0) {
+    LOG(ERROR) << "save model of table id: " << table_id
+               << ", to path: " << path << " failed";
+  }
+#else
+  VLOG(0) << "FleetWrapper::SaveModelOneTable does nothing when no pslib";
+#endif
+}
+
+void FleetWrapper::SaveModelOneTablePrefix(const uint64_t table_id,
+                                           const std::string& path,
+                                           const int mode,
+                                           const std::string& prefix) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->save(table_id, path, std::to_string(mode),
+                                           prefix);
+  ret.wait();
+  if (ret.get() != 0) {
+    LOG(ERROR) << "save model (with prefix) of table id: " << table_id
+               << ", to path: " << path << " failed";
+  }
+#else
+  VLOG(0) << "FleetWrapper::SaveModelOneTablePrefix does nothing when no pslib";
+#endif
+}
+
 void FleetWrapper::PrintTableStat(const uint64_t table_id) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->print_table_stat(table_id);
