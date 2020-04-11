@@ -258,12 +258,14 @@ def bmm(x, y, name=None):
     Examples: 
         import paddle
         import paddle.fluid as fluid
-        x = fluid.data(name='x', shape=[10, 3, 4], dtype='float32')
-        y = fluid.data(name='y', shape=[10, 4, 5], dtype='float32')
+        x = fluid.layers.data(name='x', shape=[10, 3, 4], dtype='float32')
+        y = fluid.layers.data(name='y', shape=[10, 4, 5], dtype='float32')
         out = paddle.bmm(x, y)
     """
 
     helper = LayerHelper('bmm', **locals())
+    if in_dygraph_mode():
+        return core.ops.bmm(x, y)
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type='bmm', inputs={'X': x, 'Y': y}, outputs={'Out': out})
     return out

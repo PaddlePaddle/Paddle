@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -42,8 +42,10 @@ class TestBmmOp(OpTest):
 class API_TestBmm(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data1 = fluid.data('data1', shape=[10, 3, 4], dtype='float64')
-            data2 = fluid.data('data2', shape=[10, 4, 5], dtype='float64')
+            data1 = fluid.layers.data(
+                'data1', shape=[10, 3, 4], dtype='float64')
+            data2 = fluid.layers.data(
+                'data2', shape=[10, 4, 5], dtype='float64')
             result_bmm = paddle.bmm(data1, data2)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -54,6 +56,19 @@ class API_TestBmm(unittest.TestCase):
                               fetch_list=[result_bmm])
             expected_result = np.matmul(input1, input2)
         self.assertEqual((result == expected_result).all(), True)
+
+
+class API_TestDygraphBmm(unittest.TestCase):
+    def test_out(self):
+        input1 = np.random.random([10, 3, 4]).astype('float64')
+        input2 = np.random.random([10, 4, 5]).astype('float64')
+        with fluid.dygraph.guard():
+            x = fluid.dygraph.to_variable(input1)
+            y = fluid.dygraph.to_variable(input2)
+            out = paddle.bmm(x, y)
+            out_np = out.numpy()
+        expected_result = np.matmul(input1, input2)
+        self.assertEqual((out_np == expected_result).all(), True)
 
 
 if __name__ == "__main__":
