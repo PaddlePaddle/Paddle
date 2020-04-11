@@ -41,9 +41,9 @@ class ElementwisePowKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     using Tensor = framework::LoDTensor;
     auto* x = ctx.Input<Tensor>("X");
-    PADDLE_ENFORCE(x != nullptr,
-                   "Cannot get input Variable X, variable name = %s",
-                   ctx.InputName("X"));
+    PADDLE_ENFORCE_EQ(x != nullptr, true, platform::errors::InvalidArgument(
+                   "Cannot get input Variable X, Variable name = %s",
+                   ctx.InputName("X")));
     auto* y = ctx.Input<Tensor>("Y");
     auto* z = ctx.Output<Tensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
