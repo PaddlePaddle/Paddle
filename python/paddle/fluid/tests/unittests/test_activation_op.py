@@ -969,20 +969,17 @@ def create_test_error_class(op_type):
     globals()[cls_name] = TestOpErrors
 
 
-create_test_error_class('abs')
 create_test_error_class('acos')
 create_test_error_class('asin')
 create_test_error_class('atan')
 create_test_error_class('ceil')
 create_test_error_class('cos')
-create_test_error_class('exp')
 create_test_error_class('floor')
 create_test_error_class('reciprocal')
 create_test_error_class('round')
 create_test_error_class('rsqrt')
 create_test_error_class('sin')
 create_test_error_class('sqrt')
-create_test_error_class('square')
 create_test_error_class('tanh')
 
 
