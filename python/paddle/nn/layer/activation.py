@@ -75,7 +75,10 @@ class Sigmoid(layers.Layer):
         output = \frac{1}{1 + e^{-input}}
 
     Parameters:
-        None
+        inplace (bool, optional): If inplace is True, the input and output
+            are the same variable. Otherwise, the input and output
+            are different variables. Default False. Note that if x is
+            more than one OPs' input, inplace must be False.
     
     Returns:
         None
@@ -97,11 +100,12 @@ class Sigmoid(layers.Layer):
           print(output_data) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
     """
 
-    def __init__(self):
+    def __init__(self, inplace=False):
         super(Sigmoid, self).__init__()
+        self._inplace = inplace
 
     def forward(self, input):
-        return functional.sigmoid(input)
+        return functional.sigmoid(input, self._inplace)
 
 
 class LogSoftmax(layers.Layer):

@@ -1086,9 +1086,9 @@ class TestNNSigmoidAPI(unittest.TestCase):
     def ref_backward(self, y, dy):
         return dy * y * (1 - y)
 
-    def check_api(self, place=fluid.CPUPlace()):
+    def check_api(self, place=fluid.CPUPlace(), inplace=False):
         main_program = Program()
-        mysigmoid = nn.Sigmoid()
+        mysigmoid = nn.Sigmoid(inplace)
         with fluid.program_guard(main_program):
             x = fluid.data(name='x', shape=self.x_shape)
             x.stop_gradient = False
@@ -1111,7 +1111,8 @@ class TestNNSigmoidAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for place in places:
-            self.check_api(place)
+            for inplace in [True, False]:
+                self.check_api(place, inplace)
 
 
 class TestNNFunctionalSigmoidAPI(unittest.TestCase):

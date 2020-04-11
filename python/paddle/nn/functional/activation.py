@@ -95,7 +95,7 @@ def relu(input, inplace=False, name=None):
     return outs
 
 
-def sigmoid(input, name=None):
+def sigmoid(input, inplace=False, name=None):
     """
     Sigmoid Activation.
 
@@ -105,6 +105,9 @@ def sigmoid(input, name=None):
     
     Parameters:
         input (Variable): The input variable. A multi-dimension Tensor with type float16, float32, or float64.
+        inplace (bool, optional): If inplace is True, the input and output are the same variable.
+            Otherwise, the input and output of are different variables. Default: False. Note that if x is
+            more than one OPs' input, inplace must be False.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
     
@@ -134,11 +137,15 @@ def sigmoid(input, name=None):
               print(output) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
     """
 
-    check_variable_and_dtype(input, 'X', ['float16', 'float32', 'float64'],
-                             'sigmoid')
     if in_dygraph_mode():
+        if inplace:
+            warnings.warn(
+                "Inplace on sigmoid is not allowed and will be discarded in dygraph mode currently."
+            )
         return core.ops.sigmoid(input)
 
+    check_variable_and_dtype(input, 'X', ['float16', 'float32', 'float64'],
+                             'sigmoid')
     helper = LayerHelper("sigmoid", **locals())
     outputs = helper.create_variable_for_type_inference(input.dtype)
     helper.append_op(
