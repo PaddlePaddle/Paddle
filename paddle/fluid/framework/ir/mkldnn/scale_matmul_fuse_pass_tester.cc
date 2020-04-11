@@ -19,7 +19,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
+void SetOp(ProgramDesc* prog, const std::string& type,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs, float scale = 1.0f,
            float bias = 0.0f) {
@@ -48,10 +48,8 @@ ProgramDesc BuildProgramDesc(float scale, float bias, float alpha) {
   for (auto& v : std::vector<std::string>({"a", "b", "c", "d"})) {
     prog.MutableBlock(0)->Var(v);
   }
-
-  SetOp(&prog, "scale", "Scale", {"a"}, {"b"}, scale, bias);
-  SetOp(&prog, "matmul", "Matmul", {"b", "c"}, {"d"}, alpha);
-
+  SetOp(&prog, "scale", {"a"}, {"b"}, scale, bias);
+  SetOp(&prog, "matmul", {"b", "c"}, {"d"}, alpha);
   return prog;
 }
 

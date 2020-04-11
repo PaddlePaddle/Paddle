@@ -346,7 +346,6 @@ class Qat2Int8MkldnnPass(object):
                                      ['use_gpu', 'use_fc_padding'],
                                      [False, False])
             graph = self._apply_pass(graph, 'fc_mkldnn_pass')
-        graph = self._apply_pass(graph, 'scale_matmul_fuse_pass')
         return graph
 
     def _apply_pass(self, graph, pass_name, attrs=None, attr_values=None):
@@ -471,7 +470,7 @@ class Qat2Int8MkldnnPass(object):
         if self._debug:
             graph.draw('.', 'qat_int8_{}'.format(ir_pass.type()),
                        graph.all_op_nodes())
-
+        graph = self._apply_pass(graph, 'scale_matmul_fuse_pass')
         graph = self._apply_pass(
             graph, 'cpu_quantize_pass', ['quant_var_scales', 'data_layout'],
             [self._var_quant_scales, self._get_data_layout()])
