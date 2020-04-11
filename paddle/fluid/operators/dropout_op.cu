@@ -18,9 +18,11 @@ limitations under the License. */
 #include <thrust/random.h>
 #include <thrust/transform.h>
 #include <string>
+#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/platform/dynload/curand.h"
 #include "paddle/fluid/platform/float16.h"
+
 namespace paddle {
 namespace operators {
 
@@ -90,9 +92,9 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       std::random_device rnd;
       if (seed) {
         if (platform::is_gpu_place(seed->place())) {
-          framework::Tensor temp;
-          TensorCopySync(*seed, platform::CPUPlace(), &temp);
-          seed_data = *(temp.data<int>());
+          auto src_gpu_place = boost::get<platform::CUDAPlace>(seed->place());
+          memory::Copy(platform::CPUPlace(), &seed_data, src_gpu_place,
+                       seed->data<int>(), sizeof(int), stream);
         } else {
           seed_data = *(seed->data<int>());
         }
