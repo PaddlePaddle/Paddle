@@ -23,14 +23,8 @@ class ClipOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(X) of ClipOp should not be null. Please "
-                          "check if it is created correctly."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(Out) of ClipOp should not be null. Please "
-                          "check if it is created correctly."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "clip");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "clip");
     auto x_dims = ctx->GetInputDim("X");
     auto max = ctx->Attrs().Get<float>("max");
     auto min = ctx->Attrs().Get<float>("min");
@@ -72,9 +66,9 @@ class ClipOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Clip_grad");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "clip_grad");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input", "Out",
-                   "Clip_grad");
+                   "clip_grad");
     auto x_dims = ctx->GetInputDim("X");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
