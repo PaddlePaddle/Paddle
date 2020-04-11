@@ -380,7 +380,7 @@ class DownpourServer(Server):
         table.accessor.fea_dim = fea_dim
 
     def add_sparse_optimizer(self, sgd, strategy, prefix):
-        optimizer_name = strategy.get(prefix + "sparse_optimizer", "adam")
+        optimizer_name = strategy.get(prefix + "_sparse_optimizer", "adam")
         sgd.name = optimizer_name
         if optimizer_name == "naive":
             sgd.naive.learning_rate = \
