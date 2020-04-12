@@ -136,12 +136,12 @@ class SampleLogitsOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(logits_dims.size(), 2UL,
                       platform::errors::InvalidArgument(
                           "Input(Logits) of SampleLogitsOp should be 2D.",
-                          "But received shape = [%s] and dimension is [%s].",
+                          "But received shape = [%s] and dimension is %d.",
                           logits_dims, logits_dims.size()));
     PADDLE_ENFORCE_EQ(labels_dims.size(), 2UL,
                       platform::errors::InvalidArgument(
                           "Input(Labels) of SampleLogitsOp should be 2D.",
-                          "But received shape = [%s] and dimension is [%s].",
+                          "But received shape = [%s] and dimension is %d.",
                           labels_dims, labels_dims.size()));
 
     const int num_samples = ctx->Attrs().Get<int>("num_samples");
@@ -199,13 +199,13 @@ class SampleLogitsOpGrad : public framework::OperatorWithKernel {
         logits_dims.size(), 2UL,
         platform::errors::InvalidArgument(
             "Input(LogitsDim) of SampleLogitsOpGrad should be 2D.",
-            "But received shape = [%s] and dimension is [%s].", logits_dims,
+            "But received shape = [%s] and dimension is %d.", logits_dims,
             logits_dims.size()));
     PADDLE_ENFORCE_EQ(
         labels_dims.size(), 2UL,
         platform::errors::InvalidArgument(
             "Input(LabelsDim) of SampleLogitsOpGrad should be 2D.",
-            "But received shape = [%s] and dimension is [%s].", labels_dims,
+            "But received shape = [%s] and dimension is %d.", labels_dims,
             labels_dims.size()));
 
     ctx->SetOutputDim(framework::GradVarName("Logits"), logits_dims);

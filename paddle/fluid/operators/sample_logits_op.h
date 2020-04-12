@@ -60,19 +60,19 @@ static void CPUTakeAlongD1(const platform::DeviceContext& ctx,
   PADDLE_ENFORCE_EQ(idx_dims.size(), 2,
                     platform::errors::InvalidArgument(
                         "index of CPUTakeAlongD1 should be 2D.",
-                        "But received shape = [%s] and dimension is [%s].",
+                        "But received shape = [%s] and dimension is %d.",
                         idx_dims, idx_dims.size()));
   PADDLE_ENFORCE_EQ(array_dims.size(), 2,
                     platform::errors::InvalidArgument(
                         "array of CPUTakeAlongD1 should be 2D.",
-                        "But received shape = [%s] and dimension is [%s].",
+                        "But received shape = [%s] and dimension is %d.",
                         array_dims, array_dims.size()));
   PADDLE_ENFORCE_EQ(idx_dims[0], array_dims[0],
                     platform::errors::InvalidArgument(
                         "The first dimension of index and array of ",
                         "CPUTakeAlongD1 should be equal.",
                         "But received index shape = [%s], array shape = [%s],",
-                        "and the first dimensions are [%s] and [%s].", idx_dims,
+                        "and the first dimensions are %d and %d.", idx_dims,
                         array_dims, idx_dims[0], array_dims[0]));
   PADDLE_ENFORCE_EQ(
       idx_dims, value->dims(),
@@ -120,19 +120,19 @@ static void CPUPutAlongD1(const platform::DeviceContext& ctx,
   PADDLE_ENFORCE_EQ(idx_dims.size(), 2,
                     platform::errors::InvalidArgument(
                         "index of CPUPutAlongD1 should be 2D.",
-                        "But received shape = [%s] and dimension is [%s].",
+                        "But received shape = [%s] and dimension is %d.",
                         idx_dims, idx_dims.size()));
   PADDLE_ENFORCE_EQ(array_dims.size(), 2,
                     platform::errors::InvalidArgument(
                         "array of CPUPutAlongD1 should be 2D.",
-                        "But received shape = [%s] and dimension is [%s].",
+                        "But received shape = [%s] and dimension is %d.",
                         array_dims, array_dims.size()));
   PADDLE_ENFORCE_EQ(idx_dims[0], array_dims[0],
                     platform::errors::InvalidArgument(
                         "The first dimension of index and array of ",
                         "CPUPutAlongD1 should be equal.",
                         "But received index shape = [%s], array shape = [%s],",
-                        "and the first dimensions are [%s] and [%s].", idx_dims,
+                        "and the first dimensions are %d and %d.", idx_dims,
                         array_dims, idx_dims[0], array_dims[0]));
   PADDLE_ENFORCE_EQ(
       idx_dims, value.dims(),

@@ -42,7 +42,7 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
             "Input(X) and Input(X) of SquaredL2DistanceOp should ",
             "have same dimensions.",
             "But received X's shape = [%s] and Y's shape = [%s],",
-            "the dimensions are [%s] and [%s] respectively", x_dims, y_dims,
+            "the dimensions are %d and %d respectively", x_dims, y_dims,
             framework::arity(x_dims), framework::arity(y_dims)));
 
     int rank = framework::arity(x_dims);
@@ -50,7 +50,7 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
         rank, 2,
         platform::errors::InvalidArgument(
             "Input dimensions of SquaredL2DistanceOp should be ", "at least 2.",
-            "But received shape = [%s] and dimension is [%s].", x_dims, rank));
+            "But received shape = [%s] and dimension is %d.", x_dims, rank));
     bool check = true;
     if ((!ctx->IsRuntime()) &&
         (framework::product(x_dims) <= 0 || framework::product(y_dims) <= 0)) {
@@ -63,7 +63,7 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
               "Input(X) and Input(Y) of SquaredL2DistanceOp should ",
               "have same dimensions.",
               "But received X's shape = [%s] and Y's shape = [%s]",
-              ", the products are [%s] and [%s] respectively", x_dims, y_dims,
+              ", the products are %d and %d respectively", x_dims, y_dims,
               product(x_dims) / x_dims[0], product(y_dims) / y_dims[0]));
     }
     check = true;
@@ -77,8 +77,8 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
               "First dimension of Input(Y) of SquaredL2DistanceOp ",
               "must be equal to 1", "or to first dimension of Input(X).",
               "But received X's shape = [%s] and Y's shape = [%s],",
-              "the first dimensions are [%s] and [%s] respectively", x_dims,
-              y_dims, x_dims[0], y_dims[0]));
+              "the first dimensions are %d and %d respectively", x_dims, y_dims,
+              x_dims[0], y_dims[0]));
     }
     ctx->SetOutputDim("sub_result", {x_dims[0], product(x_dims) / x_dims[0]});
     ctx->SetOutputDim("Out", {x_dims[0], 1});
@@ -155,15 +155,14 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
               "First dimension of output gradient and Input(X) ",
               "of SquaredL2DistanceGradOp must be equal",
               "But received X's shape = [%s] and grad's shape = [%s],",
-              "the first dimensions are [%s] and [%s] respectively", x_dims,
+              "the first dimensions are %d and %d respectively", x_dims,
               out_dims, x_dims[0], out_dims[0]));
-      PADDLE_ENFORCE_EQ(
-          out_dims[1], 1,
-          platform::errors::InvalidArgument(
-              "Second dimension of output gradient of ",
-              "SquaredL2DistanceGradOp must be 1."
-              "But received grad's shape = [%s],",
-              "with first dimensions [%s]", out_dims, out_dims[1]));
+      PADDLE_ENFORCE_EQ(out_dims[1], 1,
+                        platform::errors::InvalidArgument(
+                            "Second dimension of output gradient of ",
+                            "SquaredL2DistanceGradOp must be 1."
+                            "But received grad's shape = [%s],",
+                            "with first dimensions %d", out_dims, out_dims[1]));
     }
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
