@@ -383,6 +383,47 @@ class TestBicubicOpError(unittest.TestCase):
                     align_corners=False,
                     scale=-2.0)
 
+            def test_attr_5D_input():
+                # for 5-D input, data_format only can be NCDHW or NDHWC
+                input = fluid.data(
+                    name="input", shape=[2, 3, 6, 9, 4], dtype="float32")
+                out = interpolate(
+                    input,
+                    out_shape=[4, 8, 4, 5],
+                    resample='TRILINEAR',
+                    data_format='NDHWC')
+
+            def test_scale_type():
+                # the scale must be greater than zero.
+                x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+                scale = fluid.create_lod_tensor(
+                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+                out = interpolate(
+                    x,
+                    out_shape=None,
+                    resample='BICUBIC',
+                    align_corners=False,
+                    scale=scale)
+
+            def test_align_mode():
+                x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+                out = interpolate(
+                    x,
+                    out_shape=None,
+                    resample='NEAREST',
+                    align_corners=False,
+                    align_mode=2,
+                    scale=1.0)
+
+            def test_outshape_and_scale():
+                x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+                out = interpolate(
+                    x,
+                    out_shape=None,
+                    resample='BICUBIC',
+                    align_corners=False,
+                    scale=None)
+
             self.assertRaises(ValueError, test_mode_type)
             self.assertRaises(ValueError, test_input_shape)
             self.assertRaises(TypeError, test_align_corcers)
@@ -390,6 +431,10 @@ class TestBicubicOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_actual_shape)
             self.assertRaises(ValueError, test_scale_value)
             self.assertRaises(ValueError, test_out_shape)
+            self.assertRaises(ValueError, test_attr_5D_input)
+            self.assertRaises(TypeError, test_scale_type)
+            self.assertRaises(ValueError, test_align_mode)
+            self.assertRaises(ValueError, test_outshape_and_scale)
 
 
 if __name__ == "__main__":
