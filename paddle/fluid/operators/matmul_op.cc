@@ -17,6 +17,9 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -409,6 +412,21 @@ class MatMulOp : public framework::OperatorWithKernel {
     context->SetOutputDim("Out", framework::make_ddim(dim_out));
     context->ShareLoD("X", /*->*/ "Out");
   }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+#ifdef PADDLE_WITH_MKLDNN
+    using mkldnn::memory;
+    if (platform::CanMKLDNNBeUsed(ctx)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
 };
 
 class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -426,6 +444,30 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         )DOC")
         .SetDefault(false);
     AddAttr<float>("alpha", "The scale of Out").SetDefault(1.0f);
+    AddAttr<bool>(
+        "use_mkldnn",
+        "(bool, default false) Indicates if MKL-DNN kernel will be used")
+        .SetDefault(false);
+    /* int8 parameters */
+    AddAttr<bool>("use_quantizer",
+                  "(bool, default false) "
+                  "Set to true for operators that should be quantized and use "
+                  "int8 kernel. "
+                  "Only used on CPU.")
+        .SetDefault(false);
+    AddAttr<float>("Scale_x",
+                   "(float, default 1.0f), The quantize scale of X tensor")
+        .SetDefault(1.0f);
+    AddAttr<float>("Scale_y",
+                   "(float, default 1.0f), The quantize scale of Y tensor")
+        .SetDefault(1.0f);
+    AddAttr<float>("Scale_out",
+                   "(float, default 1.0f), The quantize scale of output data")
+        .SetDefault(1.0f);
+    AddAttr<bool>("force_fp32_output",
+                  "(bool, default false) Force INT8 kernel output FP32, only "
+                  "used in MKL-DNN INT8")
+        .SetDefault(false);
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
     AddAttr<int>("head_number", "The number of heads of the matrix")
         .SetDefault(1);

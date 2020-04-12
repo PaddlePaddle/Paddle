@@ -28,10 +28,8 @@ class SeluOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SeluOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SeluOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "selu");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "selu");
 
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -105,9 +103,9 @@ class SeluGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("Out"), "Input(Out) should not be null");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   "Out@GRAD", "selu_grad");
+    OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "selu_grad");
     auto x_grad_name = framework::GradVarName("X");
     ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("Out"));
   }
