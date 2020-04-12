@@ -32,7 +32,7 @@ class TeacherStudentSigmoidLossOp : public framework::OperatorWithKernel {
                    "teacher_student_sigmoid_loss");
     OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label",
                    "teacher_student_sigmoid_loss");
-    OP_INOUT_CHECK(ctx->HasInput("Y"), "Output", "Y",
+    OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y",
                    "teacher_student_sigmoid_loss");
 
     auto x_dims = ctx->GetInputDim("X");
@@ -109,7 +109,7 @@ class TeacherStudentSigmoidLossGradientOp
                    "teacher_student_sigmoid_loss_grad");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")), "Input",
                    "Y@Grad", "teacher_student_sigmoid_loss_grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("X")), "Input",
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Input",
                    "X@Grad", "teacher_student_sigmoid_loss_grad");
 
     auto x_dims = ctx->GetInputDim("X");
