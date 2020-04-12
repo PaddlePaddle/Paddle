@@ -196,11 +196,16 @@ def cast(x, dtype):
             # [[ 1 -2]
             #  [ 0  4]] int32
     """
-    helper = LayerHelper('cast', **locals())
     check_variable_and_dtype(
         x, 'x',
         ['bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
         'cast')
+    check_dtype(dtype, 'dtype', [
+        'bool', 'float16', 'float32', 'float64', 'int8', 'int32', 'int64',
+        'uint8'
+    ], 'cast')
+
+    helper = LayerHelper('cast', **locals())
     out = helper.create_variable_for_type_inference(dtype=dtype)
     helper.append_op(
         type='cast',
@@ -623,11 +628,18 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
         out.stop_gradient = True
         return out
 
-    helper = LayerHelper("fill_constant", **locals())
-    check_dtype(dtype, 'create data type',
+    check_dtype(dtype, 'dtype',
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
                 'fill_constant')
     check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
+    if isinstance(shape, Variable):
+        check_variable_and_dtype(shape, 'shape', ['int32', 'int64'],
+                                 'fill_constant')
+    if out is not None:
+        check_variable_and_dtype(out, 'out', [convert_dtype(dtype)],
+                                 'fill_constant')
+
+    helper = LayerHelper("fill_constant", **locals())
     inputs = utils._get_shape_tensor_inputs(
         inputs=inputs,
         helper=helper,
@@ -637,12 +649,6 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
 
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
-    else:
-        check_dtype(
-            dtype, 'create data type',
-            convert_dtype(out.dtype), 'fill_constant',
-            '(The create data type in fill_constant must be the same with out data type.)'
-        )
     attrs['dtype'] = out.dtype
     helper.append_op(
         type='fill_constant',
@@ -768,6 +774,9 @@ def argmin(x, axis=0):
                 # [[0 0 2]
                 #  [1 0 2]]
     """
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'uint8', 'int16', 'int32', 'int64'],
+        'argmin')
     helper = LayerHelper("arg_min", **locals())
     out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
     helper.append_op(
@@ -828,6 +837,9 @@ def argmax(x, axis=0):
                 # [[2 3 1]
                 #  [0 3 1]]
     """
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'uint8', 'int16', 'int32', 'int64'],
+        'argmax')
     helper = LayerHelper("arg_max", **locals())
     out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
     helper.append_op(
@@ -909,6 +921,9 @@ def argsort(input, axis=-1, descending=False, name=None):
                 #   [4. 7. 4. 6.]
                 #   [5. 7. 7. 9.]]]
     """
+    check_variable_and_dtype(
+        input, 'input',
+        ['float32', 'float64', 'int16', 'int32', 'int64', 'uint8'], 'argsort')
     helper = LayerHelper("argsort", **locals())
     out = helper.create_variable_for_type_inference(
         dtype=input.dtype, stop_gradient=True)
@@ -1106,6 +1121,7 @@ def has_inf(x):
           res = fluid.layers.has_inf(data)
 
     """
+    # check_type(x, 'x', (Variable), 'has_inf')
     helper = LayerHelper("isinf", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type="isinf", inputs={"X": x}, outputs={"Out": out})
@@ -1130,6 +1146,7 @@ def has_nan(x):
           res = fluid.layers.has_nan(data)
 
     """
+    # check_type(x, 'x', (Variable), 'has_nan')
     helper = LayerHelper("isnan", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type="isnan", inputs={"X": x}, outputs={"Out": out})
@@ -1333,7 +1350,9 @@ def diag(diagonal):
           # diagonal.shape=(3,) data.shape=(3, 3)
 
     """
-
+    check_type(diagonal, 'diagonal', (Variable, numpy.ndarray), 'diag')
+    check_dtype(diagonal.dtype, 'diagonal',
+                ['float32', 'float64', 'int32', 'int64'], 'diag')
     helper = LayerHelper("diag", **locals())
 
     if not isinstance(diagonal, Variable):

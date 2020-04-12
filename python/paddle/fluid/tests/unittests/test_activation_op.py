@@ -21,6 +21,8 @@ from op_test import OpTest
 from scipy.special import expit, erf
 import paddle
 import paddle.fluid as fluid
+import paddle.nn as nn
+import paddle.nn.functional as functional
 from paddle.fluid import compiler, Program, program_guard
 
 
@@ -218,6 +220,19 @@ class TestHardShrink(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
+class TestHardShrinkOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, fluid.layers.hard_shrink, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, fluid.layers.hard_shrink, x_int32)
+            # support the input dtype is float16
+            x_fp16 = fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            fluid.layers.hard_shrink(x_fp16)
+
+
 class TestSoftShrink(TestActivation):
     def setUp(self):
         self.op_type = "softshrink"
@@ -237,6 +252,19 @@ class TestSoftShrink(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+
+class TestSoftShrinkOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, fluid.layers.softshrink, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, fluid.layers.softshrink, x_int32)
+            # support the input dtype is float16
+            x_fp16 = fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            fluid.layers.softshrink(x_fp16)
 
 
 class TestSqrt(TestActivation, TestParameter):
@@ -584,6 +612,19 @@ class TestRelu6(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
+class TestRelu6OpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, fluid.layers.relu6, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, fluid.layers.relu6, x_int32)
+            # support the input dtype is float16
+            x_fp16 = fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            fluid.layers.relu6(x_fp16)
+
+
 class TestHardSwish(TestActivation):
     def setUp(self):
         self.op_type = 'hard_swish'
@@ -606,6 +647,19 @@ class TestHardSwish(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+
+class TestHardSwishOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, fluid.layers.hard_swish, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, fluid.layers.hard_swish, x_int32)
+            # support the input dtype is float16
+            x_fp16 = fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            fluid.layers.hard_swish(x_fp16)
 
 
 class TestSoftRelu(TestActivation):
@@ -631,6 +685,19 @@ class TestSoftRelu(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.02)
+
+
+class TestSoftReluOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, fluid.layers.soft_relu, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, fluid.layers.soft_relu, x_int32)
+            # support the input dtype is float16
+            x_fp16 = fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            fluid.layers.soft_relu(x_fp16)
 
 
 class TestELU(TestActivation):
@@ -759,9 +826,6 @@ class TestPow_factor_tensor(TestActivation):
         self.check_grad(['X'], 'Out')
 
     def test_api(self):
-        import paddle
-        import paddle.fluid as fluid
-
         input = np.random.uniform(1, 2, [11, 17]).astype("float32")
         x = fluid.layers.data(
             name="x", shape=[11, 17], append_batch_size=False, dtype="float32")
@@ -811,6 +875,19 @@ class TestSTanh(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+
+class TestSTanhOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, fluid.layers.stanh, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, fluid.layers.stanh, x_int32)
+            # support the input dtype is float16
+            x_fp16 = fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            fluid.layers.stanh(x_fp16)
 
 
 class TestSoftplus(TestActivation):
@@ -871,6 +948,19 @@ class TestThresholdedRelu(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
+class TestThresholdedReluOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, fluid.layers.thresholded_relu, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, fluid.layers.thresholded_relu, x_int32)
+            # support the input dtype is float16
+            x_fp16 = fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            fluid.layers.thresholded_relu(x_fp16)
+
+
 class TestHardSigmoid(TestActivation):
     def setUp(self):
         self.op_type = "hard_sigmoid"
@@ -900,6 +990,19 @@ class TestHardSigmoid(TestActivation):
         self.check_grad(['X'], 'Out')
 
 
+class TestHardSigmoidOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, fluid.layers.hard_sigmoid, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, fluid.layers.hard_sigmoid, x_int32)
+            # support the input dtype is float16
+            x_fp16 = fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            fluid.layers.hard_sigmoid(x_fp16)
+
+
 class TestSwish(TestActivation):
     def setUp(self):
         self.op_type = "swish"
@@ -917,6 +1020,19 @@ class TestSwish(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.008)
+
+
+class TestSwishOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program()):
+            # The input type must be Variable.
+            self.assertRaises(TypeError, fluid.layers.swish, 1)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = fluid.data(name='x_int32', shape=[12, 10], dtype='int32')
+            self.assertRaises(TypeError, fluid.layers.swish, x_int32)
+            # support the input dtype is float16
+            x_fp16 = fluid.data(name='x_fp16', shape=[12, 10], dtype='float16')
+            fluid.layers.swish(x_fp16)
 
 
 #------------------ Test Cudnn Activation----------------------
@@ -1002,6 +1118,141 @@ create_test_act_fp16_class(TestThresholdedRelu)
 create_test_act_fp16_class(TestHardSigmoid)
 create_test_act_fp16_class(TestSwish)
 create_test_act_fp16_class(TestHardSwish)
+
+
+class TestNNReluAPI(unittest.TestCase):
+    def setUp(self):
+        self.init_data()
+
+    def init_data(self):
+        self.x_shape = [10, 12]
+        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
+        self.y = self.ref_forward(self.x)
+
+    def ref_forward(self, x):
+        return np.maximum(x, 0)
+
+    def ref_backward(self, y, dy):
+        y_t = y.copy()
+        y_t[y_t > 0] = 1
+        return y_t * dy
+
+    def check_api(self, place=fluid.CPUPlace(), inplace=False):
+        main_program = Program()
+        myrelu = nn.ReLU(inplace)
+        with fluid.program_guard(main_program):
+            x = fluid.data(name='x', shape=self.x_shape)
+            x.stop_gradient = False
+            y = myrelu(x)
+            fluid.backward.append_backward(fluid.layers.mean(y))
+        exe = fluid.Executor(place)
+        out = exe.run(main_program,
+                      feed={'x': self.x},
+                      fetch_list=[y, y.grad_name, x.grad_name])
+        self.assertTrue(np.allclose(out[0], self.y))
+        self.assertTrue(np.allclose(out[2], self.ref_backward(self.y, out[1])))
+
+        with fluid.dygraph.guard(place):
+            x = fluid.dygraph.to_variable(self.x)
+            y = myrelu(x)
+        self.assertTrue(np.allclose(y.numpy(), self.y))
+
+    def test_check_api(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for place in places:
+            for inplace in [True, False]:
+                self.check_api(place, inplace)
+
+
+class TestNNFunctionalReluAPI(unittest.TestCase):
+    def setUp(self):
+        self.init_data()
+
+    def init_data(self):
+        self.x_shape = [10, 12]
+        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
+        self.y = self.ref_forward(self.x)
+
+    def ref_forward(self, x):
+        return np.maximum(x, 0)
+
+    def test_check_api(self):
+        main_program = Program()
+        with fluid.program_guard(main_program):
+            x = fluid.data(name='x', shape=self.x_shape)
+            y = functional.relu(x)
+        exe = fluid.Executor(fluid.CPUPlace())
+        out = exe.run(main_program, feed={'x': self.x}, fetch_list=[y])
+        self.assertTrue(np.allclose(out[0], self.y))
+
+
+class TestNNSigmoidAPI(unittest.TestCase):
+    def setUp(self):
+        self.init_data()
+
+    def init_data(self):
+        self.x_shape = [10, 15]
+        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
+        self.y = self.ref_forward(self.x)
+
+    def ref_forward(self, x):
+        return 1 / (1 + np.exp(-x))
+
+    def ref_backward(self, y, dy):
+        return dy * y * (1 - y)
+
+    def check_api(self, place=fluid.CPUPlace(), inplace=False):
+        main_program = Program()
+        mysigmoid = nn.Sigmoid(inplace)
+        with fluid.program_guard(main_program):
+            x = fluid.data(name='x', shape=self.x_shape)
+            x.stop_gradient = False
+            y = mysigmoid(x)
+            fluid.backward.append_backward(fluid.layers.mean(y))
+        exe = fluid.Executor(place)
+        out = exe.run(main_program,
+                      feed={'x': self.x},
+                      fetch_list=[y, y.grad_name, x.grad_name])
+        self.assertTrue(np.allclose(out[0], self.y))
+        self.assertTrue(np.allclose(out[2], self.ref_backward(self.y, out[1])))
+
+        with fluid.dygraph.guard(place):
+            x = fluid.dygraph.to_variable(self.x)
+            y = mysigmoid(x)
+        self.assertTrue(np.allclose(y.numpy(), self.y))
+
+    def test_check_api(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for place in places:
+            for inplace in [True, False]:
+                self.check_api(place, inplace)
+
+
+class TestNNFunctionalSigmoidAPI(unittest.TestCase):
+    def setUp(self):
+        self.init_data()
+
+    def init_data(self):
+        self.x_shape = [10, 15]
+        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
+        self.y = self.ref_forward(self.x)
+
+    def ref_forward(self, x):
+        return 1 / (1 + np.exp(-x))
+
+    def test_check_api(self):
+        main_program = Program()
+        with fluid.program_guard(main_program):
+            x = fluid.data(name='x', shape=self.x_shape)
+            y = functional.sigmoid(x)
+        exe = fluid.Executor(fluid.CPUPlace())
+        out = exe.run(main_program, feed={'x': self.x}, fetch_list=[y])
+        self.assertTrue(np.allclose(out[0], self.y))
+
 
 if __name__ == "__main__":
     unittest.main()
