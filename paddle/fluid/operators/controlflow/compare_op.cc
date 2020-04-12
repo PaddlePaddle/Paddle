@@ -80,14 +80,14 @@ class CompareOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* context) const override {
     OpComment comment;
-    PADDLE_ENFORCE(context->HasInput("X"), "%s operator must have input X",
-                   comment.type);
-    PADDLE_ENFORCE(context->HasInput("Y"), "%s operator must have input Y",
-                   comment.type);
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "Compare");
+    OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", "Compare");
     auto dim_x = context->GetInputDim("X");
     auto dim_y = context->GetInputDim("Y");
     PADDLE_ENFORCE_GE(dim_x.size(), dim_y.size(),
-                      "The size of dim_y should not be greater than dim_x's.");
+                      platform::errors::InvalidArgument(
+                          "The size of Input(Y) dim should not be "
+                          "greater than Input(x) dim."));
 
     context->SetOutputDim("Out", context->GetInputDim("X"));
     context->ShareLoD("X", "Out");
