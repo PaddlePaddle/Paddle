@@ -93,7 +93,7 @@ def TensorStd2(TensorStd):
 
 def TensorStd3(TensorStd):
     def setUp(self):
-        self.shape = [11, 25, 32, 43]
+        self.shape = [10, 10, 2, 2]
         self.unbiased = False
         self.axis = 1
         self.keepdim = False
