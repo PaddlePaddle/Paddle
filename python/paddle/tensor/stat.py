@@ -129,15 +129,15 @@ def std(input, axis, keepdim=False, unbiased=True, out=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import padle
             # x is a Tensor variable with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the corresponding output tensor.
             x = fluid.data(name='x', shape=[2, 4], dtype='float32')
-            fluid.tensor.std(x)  # 
-            fluid.tensor.std(x, dim=0)  # 
-            fluid.tensor.std(x, dim=-1)  # 
+            paddle.std(x)  # 
+            paddle.std(x, dim=0)  # 
+            paddle.std(x, dim=-1)  # 
     """
     check_variable_and_dtype(input, 'input',
                              ['float32', 'float64', 'int32', 'int64'], 'std')
