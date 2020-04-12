@@ -28,9 +28,9 @@ class Yolov3LossOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("GTLabel"), "Input", "GTLabel",
                    "Yolov3LossOp");
     OP_INOUT_CHECK(ctx->HasOutput("Loss"), "Output", "Loss", "Yolov3LossOp");
-    OP_INOUT_CHECK(ctx->HasInput("ObjectnessMask"), "Input", "ObjectnessMask",
+    OP_INOUT_CHECK(ctx->HasOutput("ObjectnessMask"), "Output", "ObjectnessMask",
                    "Yolov3LossOp");
-    OP_INOUT_CHECK(ctx->HasInput("GTMatchMask"), "Input", "GTMatchMask",
+    OP_INOUT_CHECK(ctx->HasOutput("GTMatchMask"), "Output", "GTMatchMask",
                    "Yolov3LossOp");
 
     auto dim_x = ctx->GetInputDim("X");
