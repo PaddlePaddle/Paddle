@@ -26,7 +26,7 @@ import numpy
 import warnings
 import six
 from functools import reduce, partial
-from ..data_feeder import convert_dtype, check_variable_and_dtype
+from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type
 from ... import compat as cpt
 from ..backward import _infer_var_data_type_shape_
 
@@ -56,6 +56,10 @@ def select_output(input, outputs, mask):
         Variable: The outputs variables
     """
     helper = LayerHelper('select_output', **locals())
+    check_type(input, 'input', (Variable), 'select_output')
+    check_variable_and_dtype(mask, 'mask', ['int32'], 'select_output')
+    check_type(outputs, 'outputs', (list, tuple), 'select_output')
+
     helper.append_op(
         type='select_output',
         inputs={'X': input,
@@ -80,14 +84,12 @@ def select_input(inputs, mask):
         Variable: The selected input variable
     """
     helper = LayerHelper('select_input', **locals())
-    if isinstance(inputs, list) or isinstance(inputs, tuple):
-        input_dtype = inputs[0].dtype
-        input_shape = inputs[0].shape
-        input_type = inputs[0].type
-    else:
-        input_dtype = inputs.dtype
-        input_shape = inputs.shape
-        input_type = inputs.type
+    check_type(inputs, 'inputs', (list, tuple), 'select_input')
+    check_variable_and_dtype(mask, 'mask', ['int32'], 'select_input')
+
+    input_dtype = inputs[0].dtype
+    input_shape = inputs[0].shape
+    input_type = inputs[0].type
 
     out = helper.create_variable(
         dtype=input_dtype, shape=input_shape, type=input_type)
@@ -1287,7 +1289,40 @@ def array_write(x, i, array=None):
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
 
     """
+    if in_dygraph_mode():
+        assert isinstance(
+            x, Variable
+        ), "The input data 'x' in array_write must be Variable in dygraph mode"
+        assert isinstance(
+            i, Variable
+        ), "The index 'i' in array_write must be Variable in dygraph mode"
+        assert i.shape == [
+            1
+        ], "The shape of index 'i' should be [1] in dygraph mode"
+        i = i.numpy()[0]
+        if array is None:
+            array = create_array(x.dtype)
+        assert isinstance(
+            array,
+            list), "The 'array' in array_write must be a list in dygraph mode"
+        assert i <= len(
+            array
+        ), "The index 'i' should not be greater than the length of 'array' in dygraph mode"
+        if i < len(array):
+            array[i] = x
+        else:
+            array.append(x)
+        return array
+
+    check_variable_and_dtype(i, 'i', ['int64'], 'array_write')
+    check_type(x, 'x', (Variable), 'array_write')
     helper = LayerHelper('array_write', **locals())
+    if array is not None:
+        if not isinstance(
+                array,
+                Variable) or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+            raise TypeError(
+                "array should be tensor array vairable in array_write Op")
     if array is None:
         array = helper.create_variable(
             name="{0}.out".format(helper.name),
@@ -1322,6 +1357,9 @@ def create_array(dtype):
           data = fluid.layers.create_array(dtype='float32') # Create a float32 LoDTensorArray.
 
     """
+    if in_dygraph_mode():
+        return []
+
     helper = LayerHelper("array", **locals())
     return helper.create_variable(
         name="{0}.out".format(helper.name),
@@ -1643,6 +1681,20 @@ def array_read(array, i):
             #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux, 
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
+    if in_dygraph_mode():
+        assert isinstance(
+            array,
+            list), "The 'array' in array_read must be list in dygraph mode"
+        assert isinstance(
+            i, Variable
+        ), "The index 'i' in array_read must be Variable in dygraph mode"
+        assert i.shape == [
+            1
+        ], "The shape of index 'i' should be [1] in dygraph mode"
+        i = i.numpy()[0]
+        return array[i]
+
+    check_variable_and_dtype(i, 'i', ['int64'], 'array_read')
     helper = LayerHelper('array_read', **locals())
     if not isinstance(
             array,
@@ -1739,6 +1791,19 @@ def array_length(array):
             #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux, 
             #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
+
+    if in_dygraph_mode():
+        assert isinstance(
+            array,
+            list), "The 'array' in array_write must be a list in dygraph mode"
+        return len(array)
+
+    if not isinstance(
+            array,
+            Variable) or array.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+        raise TypeError(
+            "array should be tensor array vairable in array_length Op")
+
     helper = LayerHelper('array_length', **locals())
     tmp = helper.create_variable_for_type_inference(dtype='int64')
     tmp.stop_gradient = True
@@ -1756,8 +1821,7 @@ class ConditionalBlockGuard(BlockGuard):
     """
 
     def __init__(self, block):
-        if not isinstance(block, ConditionalBlock):
-            raise TypeError("block should be conditional block")
+        check_type(block, "block", ConditionalBlock, "ConditionalBlockGuard")
         super(ConditionalBlockGuard, self).__init__(block.helper.main_program)
         self.block = block
 
@@ -1799,8 +1863,7 @@ class ConditionalBlock(object):
 
     def __init__(self, inputs, is_scalar_condition=False, name=None):
         for each_input in inputs:
-            if not isinstance(each_input, Variable):
-                raise TypeError("Each input should be variable")
+            check_type(each_input, "input", Variable, "ConditionalBlock")
         self.inputs = inputs
         self.is_scalar_condition = is_scalar_condition
         self.helper = LayerHelper('conditional_block', name=name)
@@ -2126,7 +2189,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
 
 
 def _error_message(what, arg_name, op_name, right_value, error_value):
-    error_message = "{what} of '{arg_name}' in Op({op_name}) must be " \
+    error_message = "{what} of '{arg_name}' in {op_name} must be " \
         "{right_value}, but received: {error_value}.".format(
         what=what,
         arg_name=arg_name,
@@ -2204,16 +2267,13 @@ def case(pred_fn_pairs, default=None, name=None):
         '''
         Check arguments pred_fn_pairs and default. Return canonical pre_fn_pairs and default.
         '''
-        if not isinstance(pred_fn_pairs, (list, tuple)):
-            raise TypeError(
-                _error_message("The type", "pred_fn_pairs", "case",
-                               "list or tuple", type(pred_fn_pairs)))
+        check_type(pred_fn_pairs, 'pred_fn_pairs', (list, tuple), 'case')
 
         for pred_fn in pred_fn_pairs:
             if not isinstance(pred_fn, tuple):
                 raise TypeError(
                     _error_message("The elements' type", "pred_fn_pairs",
-                                   "case", "tuple", type(pred_fn)))
+                                   "case", tuple, type(pred_fn)))
             if len(pred_fn) != 2:
                 raise TypeError(
                     _error_message("The tuple's size", "pred_fn_pairs", "case",
@@ -2265,14 +2325,14 @@ class Switch(object):
         OP :ref:`api_fluid_layers_case` is easier to use and is called with less code but does the same thing as ``Switch`` .
 
     Member Functions:
-        case(cond): The case branch of Switch whose parameter cond is a scalar Variable of bool type. Only if the cond of the current case branch is True and the cond of the previous case branch is False, the statement after the case branch will be executed, and the statement after the case branch will not be executed.
+        case(condition): The case branch of Switch whose parameter cond is a scalar Variable of bool type. Only if the cond of the current case branch is True and the cond of the previous case branch is False, the statement after the case branch will be executed, and the statement after the case branch will not be executed.
         
         default(): The default branch of Switch. When cond of all case branches is False, the statement after default branch is executed.
 
     Case and default functions can only be used inside the scope of Switch, as shown below:
 
     .. code-block:: python
-        
+
         '''
         with fluid.layers.Switch() as switch:
             with switch.case(cond1):
@@ -2327,6 +2387,10 @@ class Switch(object):
     def case(self, condition):
         if not self.inside_scope:
             raise ValueError("case should be called inside with")
+
+        check_variable_and_dtype(
+            condition, 'condition', ['bool'],
+            'the member function case of fluid.layers.Switch')
 
         if len(self.pre_not_conditions) == 0:
             cond_block = ConditionalBlock([condition], is_scalar_condition=True)
@@ -3308,8 +3372,7 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
                     branch_fns=[(0, fn_1), (4, fn_2), (7, fn_3)])
 
                 exe = fluid.Executor(fluid.CPUPlace())
-                res_1, res_2, res_3 = exe.run(main_program,
-                                              fetch_list=[out_1, out_2, out_3])
+                res_1, res_2, res_3 = exe.run(main_program, fetch_list=[out_1, out_2, out_3])
                 print(res_1)  # [[1. 1.]]
                 print(res_2)  # [[2 2] [2 2]]
                 print(res_3)  # [3 3 3]
@@ -3317,24 +3380,14 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
     helper = LayerHelper('switch_case', **locals())
 
     def _check_args(branch_index, branch_fns, default):
-        if not isinstance(branch_index, Variable):
-            raise TypeError(
-                _error_message("The type", "branch_index", "switch_case",
-                               "Variable", type(branch_index)))
 
-        if convert_dtype(branch_index.dtype) not in ["uint8", "int32", "int64"]:
-            raise TypeError(
-                _error_message("The data type", "branch_index", "switch_case",
-                               "uint8, int32 or int64",
-                               convert_dtype(branch_index.dtype)))
+        check_variable_and_dtype(branch_index, 'branch_index',
+                                 ['uint8', 'int32', 'int64'], 'switch_case')
 
         if convert_dtype(branch_index.dtype) != "int64":
             branch_index = cast(branch_index, "int64")
 
-        if not isinstance(branch_fns, (list, tuple, dict)):
-            raise TypeError(
-                _error_message("The type", "branch_fns", "switch_case",
-                               "dict, tuple or list", type(branch_fns)))
+        check_type(branch_fns, 'branch_fns', (list, tuple, dict), 'switch_case')
 
         branch_fns = branch_fns.items() if isinstance(branch_fns,
                                                       dict) else branch_fns
@@ -3347,7 +3400,7 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
             if not isinstance(index_fn_pair, tuple):
                 raise TypeError(
                     _error_message("The elements' type", "branch_fns",
-                                   "switch_case", "tuple", type(branch_fns)))
+                                   "switch_case", tuple, type(branch_fns)))
 
             if len(index_fn_pair) != 2:
                 raise TypeError(
@@ -3360,7 +3413,7 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
             if not isinstance(key, int):
                 raise TypeError(
                     _error_message("The key's type", "branch_fns",
-                                   "switch_case", "int", type(key)))
+                                   "switch_case", int, type(key)))
 
             if key in keys_of_fns:
                 raise ValueError(
@@ -3422,9 +3475,14 @@ def reorder_lod_tensor_by_rank(x, rank_table):
                            x=data, rank_table=table)
 
     """
+
+    check_type(x, 'x', (Variable), 'reorder_lod_tensor_by_rank')
+    check_type(rank_table, 'rank_table', (Variable),
+               'reorder_lod_tensor_by_rank')
+    if rank_table.type != core.VarDesc.VarType.LOD_RANK_TABLE:
+        raise TypeError("The type of rank_table should be LOD_RANK_TABLE.")
+
     helper = LayerHelper('reorder_lod_tensor_by_rank', **locals())
-    helper.is_instance('x', Variable)
-    helper.is_instance('rank_table', Variable)
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(

@@ -32,8 +32,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
-DECLARE_bool(use_ngraph);
-
 DECLARE_double(eager_delete_tensor_gb);
 
 #ifdef WITH_GPERFTOOLS
@@ -286,13 +284,6 @@ bool ParallelExecutorPrivate::AllowPartialFeed() const {
 }
 
 ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
-  if (FLAGS_use_ngraph) {
-    LOG_FIRST_N(WARNING, 1)
-        << "FLAGS_use_ngraph=True, memory optimization strategy is "
-           "disabled in ParallelExecutor";
-    return graph;
-  }
-
   /**
    * NOTE(zengjinle): If BuildStrategy.memory_optimize = None in Python,
    * set BuildStrategy.memory_optimize according to whether gc is enabled.
@@ -330,8 +321,8 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     VLOG(10) << "Start to apply buffer_shared_inplace_pass";
     graph = inplace_pass->Apply(graph);
     VLOG(10) << "buffer_shared_inplace_pass Applied";
-    LOG_FIRST_N(INFO, 1) << "Inplace strategy is enabled, when "
-                            "build_strategy.enable_inplace = True";
+    VLOG(1) << "Inplace strategy is enabled, when "
+               "build_strategy.enable_inplace = True";
   }
 
   if (build_strategy_.memory_optimize_.get()) {
@@ -398,9 +389,9 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     eager_deletion_pass->SetNotOwned(ir::kAllPlaces, &places_);
     graph = eager_deletion_pass->Apply(graph);
     VLOG(10) << "EagerDeletionPass Applied";
-    LOG_FIRST_N(INFO, 1) << "Garbage collection strategy is enabled, when "
-                         << "FLAGS_eager_delete_tensor_gb = "
-                         << FLAGS_eager_delete_tensor_gb;
+    VLOG(1) << "Garbage collection strategy is enabled, when "
+            << "FLAGS_eager_delete_tensor_gb = "
+            << FLAGS_eager_delete_tensor_gb;
   }
   return graph;
 }
@@ -478,7 +469,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
           "Please recompile and turn on the WITH_NCCL option."));
 #endif
 
-  LOG(INFO) << string::Sprintf(
+  VLOG(1) << string::Sprintf(
       "The Program will be executed on %s using ParallelExecutor, %lu "
       "cards are used, so %lu programs are executed in parallel.",
       (member_->use_cuda_ ? "CUDA" : "CPU"), places.size(), places.size());
@@ -647,11 +638,22 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 #ifdef PADDLE_WITH_CUDA
     // TODO(Yancey1989): Remove passing in the main_program when
     // allreduce_seq_pass doesn't need it as the attr.
+    bool is_inference = details::IsDataParallelInferenceGraph(*graph);
+    bool has_drop_last_read_op = details::HasDropLastReadOp(*graph);
+
     auto *pg_exe = new details::ParallelSSAGraphExecutor(
         exec_strategy, member_->local_scopes_, member_->local_exec_scopes_,
         member_->places_, graph);
     final_graphs = pg_exe->Graphs();
     member_->executor_.reset(pg_exe);
+
+    if (is_inference && member_->places_.size() > 1) {
+      member_->inference_executor_ = pg_exe;
+      if (!has_drop_last_read_op) {
+        VLOG(5) << "Enable partial feed support in inference phase";
+        pg_exe->EnablePartialFeedSupport();
+      }
+    }
 #else
     PADDLE_THROW(
         "Paddle should be compiled with CUDA for ParallelGraph Execution.");
@@ -787,7 +789,6 @@ void ParallelExecutor::BCastParamsToDevices(
 FetchResultType ParallelExecutor::Run(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
   VLOG(3) << "enter ParallelExecutor Run";
-  platform::RecordEvent parallel_executor_event("ParallelExecutor::Run");
 #ifdef WITH_GPERFTOOLS
   if (gProfileStarted) {
     ProfilerFlush();
