@@ -60,8 +60,8 @@ class API_TestBmm(unittest.TestCase):
 
 class API_TestDygraphBmm(unittest.TestCase):
     def test_out(self):
-        input1 = np.random.random([10, 3, 4]).astype('float64')
-        input2 = np.random.random([10, 4, 5]).astype('float64')
+        input1 = np.random.random([10, 3, 4]).astype('float32')
+        input2 = np.random.random([10, 4, 5]).astype('float32')
         with fluid.dygraph.guard():
             x = fluid.dygraph.to_variable(input1)
             y = fluid.dygraph.to_variable(input2)
