@@ -65,6 +65,7 @@ class TestAddReaderDependency(unittest.TestCase):
                 prog = fluid.CompiledProgram(fluid.default_main_program())
 
                 exe = fluid.Executor(place)
+                exe.run(fluid.default_startup_program())
 
                 loader.set_batch_generator(data_source)
                 loader.start()
