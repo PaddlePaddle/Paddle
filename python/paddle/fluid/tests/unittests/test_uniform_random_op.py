@@ -177,6 +177,12 @@ class TestUniformRandomOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_Variable)
 
+            def test_Variable2():
+                x1 = np.zeros((4, 784))
+                fluid.layers.uniform_random(x1)
+
+            self.assertRaises(TypeError, test_Variable2)
+
             def test_dtype():
                 x2 = fluid.layers.data(
                     name='x2', shape=[4, 784], dtype='float32')
@@ -424,6 +430,34 @@ class TestUniformRandomDygraphMode(unittest.TestCase):
             x_np = x.numpy()
             for i in range(10):
                 self.assertTrue((x_np[i] > 0 and x_np[i] < 1.0))
+
+
+class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
+    def test_errors(self):
+        main_prog = Program()
+        start_prog = Program()
+        with program_guard(main_prog, start_prog):
+
+            def test_Variable():
+                x1 = fluid.create_lod_tensor(
+                    np.zeros((4, 784)), [[1, 1, 1, 1]], fluid.CPUPlace())
+                fluid.layers.uniform_random_batch_size_like(x1)
+
+            self.assertRaises(TypeError, test_Variable)
+
+            def test_shape():
+                x1 = fluid.layers.data(
+                    name='x2', shape=[4, 784], dtype='float32')
+                fluid.layers.uniform_random_batch_size_like(x1, shape="shape")
+
+            self.assertRaises(TypeError, test_shape)
+
+            def test_dtype():
+                x2 = fluid.layers.data(
+                    name='x2', shape=[4, 784], dtype='float32')
+                fluid.layers.uniform_random_batch_size_like(x2, 'int32')
+
+            self.assertRaises(TypeError, test_dtype)
 
 
 if __name__ == "__main__":

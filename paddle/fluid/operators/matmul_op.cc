@@ -321,12 +321,9 @@ class MatMulOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("X"),
-                   "Input(X) of MatMulOp should not be null.");
-    PADDLE_ENFORCE(context->HasInput("Y"),
-                   "Input(Y) of MatMulOp should not be null.");
-    PADDLE_ENFORCE(context->HasOutput("Out"),
-                   "Output(Out) of MatMulOp should not be null.");
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "matmul");
+    OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", "matmul");
+    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "matmul");
 
     auto dim_x = context->GetInputDim("X");
     auto dim_y = context->GetInputDim("Y");
@@ -346,7 +343,7 @@ class MatMulOp : public framework::OperatorWithKernel {
     }
 
     if (context->IsRuntime()) {
-      PADDLE_ENFORCE(
+      OP_INOUT_CHECK(
           mat_dim_x.batch_size_ == mat_dim_y.batch_size_ ||
               mat_dim_x.batch_size_ == 0 || mat_dim_y.batch_size_ == 0,
           "ShapeError: The batch size of the two matrices should be equal, or "
@@ -362,10 +359,11 @@ class MatMulOp : public framework::OperatorWithKernel {
     if (context->IsRuntime()) {
       PADDLE_ENFORCE_LE(
           head_number, mat_dim_x.width_,
-          "ShapeError: Unsatisfied mkl acceleration library requirements: "
-          "The number of heads "
-          "(%d) must be equal to X's width. But received X's shape: %s.",
-          head_number, DumpMatrixShape(mat_dim_x).c_str());
+          platform::errors::InvalidArgument(
+              "ShapeError: Unsatisfied mkl acceleration library requirements: "
+              "The number of heads "
+              "(%d) must be equal to X's width. But received X's shape: %s.",
+              head_number, DumpMatrixShape(mat_dim_x)));
 
       if (!split_vertical_y && head_number > 0) {
         dim_out_y = head_number * mat_dim_y.width_;
@@ -478,10 +476,10 @@ class MatMulOpGrad : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(context->HasInput("Y"), "Input(Y) should not be null");
-    PADDLE_ENFORCE(context->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "matmul");
+    OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", "matmul");
+    OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")), "Input",
+                   "Out@GRAD", "matmul");
     auto x_dims = context->GetInputDim("X");
     auto y_dims = context->GetInputDim("Y");
 
