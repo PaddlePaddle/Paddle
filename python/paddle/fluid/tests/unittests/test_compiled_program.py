@@ -95,6 +95,16 @@ class TestCompiledProgramError(unittest.TestCase):
         loss = fluid.layers.cross_entropy(input=prediction, label=label)
         avg_loss = fluid.layers.mean(loss)
 
+    def compile_program_not_compiled(self):
+        with fluid.program_guard(fluid.Program()):
+            # build model
+            self.build_simple_model()
+            # compile program
+            program = fluid.default_main_program()
+            compiled_program = fluid.CompiledProgram(
+                program).with_data_parallel()
+            return compiled_program
+
     def compile_program(self):
         with fluid.program_guard(fluid.Program()):
             # build model
@@ -121,10 +131,23 @@ class TestCompiledProgramError(unittest.TestCase):
             with self.assertRaises(ValueError):
                 compiled_program._compile(scope, new_place)
 
-    def test_share_vars_from_error(self):
+    def test_share_vars_from_error_no_parallel(self):
         with fluid.program_guard(fluid.Program()):
-            self.build_simple_model()
             source_program, _, _ = self.compile_program()
+            self.build_simple_model()
+            # compile program
+            program = fluid.default_main_program()
+            compiled_program = fluid.CompiledProgram(
+                program).with_data_parallel(share_vars_from=source_program)
+            scope = fluid.global_scope()
+            place = fluid.CPUPlace()
+            with self.assertRaises(ValueError):
+                compiled_program._compile(scope, place)
+
+    def test_share_vars_from_error_no_executor(self):
+        with fluid.program_guard(fluid.Program()):
+            source_program = self.compile_program_not_compiled()
+            self.build_simple_model()
             # compile program
             program = fluid.default_main_program()
             compiled_program = fluid.CompiledProgram(

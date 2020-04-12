@@ -300,10 +300,6 @@ class CompiledProgram(object):
         if self._share_vars_from:
             if scope:
                 sys.stderr.write("share_vars_from is set, scope is ignored.\n")
-            if not self._is_data_parallel:
-                raise ValueError(
-                    "Currently, only data parallel mode need share_vars_from config."
-                )
             if not self._share_vars_from._is_data_parallel:
                 raise ValueError(
                     "The shared Program is not data parallel, cannot "
