@@ -78,6 +78,69 @@ def non_cudnn_step(step_in, pre_hidden, gate_w, gate_b, candidate_w,
     return new_hidden
 
 
+class TestNamedCudnnGRU(unittest.TestCase):
+    def setUp(self):
+        self.input_size = 100
+        self.hidden_size = 200
+        self.batch_size = 64
+
+    def test_run(self):
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+
+        with fluid.dygraph.guard(place):
+            param_attr = fluid.ParamAttr(name="param_attr")
+            bias_attr = fluid.ParamAttr(name="bias_attr")
+            cudnn_gru = CudnnGRUCell(self.hidden_size, self.input_size,
+                                     param_attr, bias_attr)
+
+            param_list = cudnn_gru.state_dict()
+
+            # process weight and bias
+
+            weight_ih_name = "_weight_ih"
+            bias_ih_name = "_bias_ih"
+            weight_hh_name = "_weight_hh"
+            bias_hh_name = "_bias_hh"
+
+            weight_ih = param_list[weight_ih_name].numpy()
+            weight_ih = np.random.uniform(
+                -0.1, 0.1, size=weight_ih.shape).astype('float64')
+            param_list[weight_ih_name].set_value(weight_ih)
+
+            bias_ih = param_list[bias_ih_name].numpy()
+            bias_ih = np.random.uniform(
+                -0.1, 0.1, size=bias_ih.shape).astype('float64')
+            param_list[bias_ih_name].set_value(bias_ih)
+
+            weight_hh = param_list[weight_hh_name].numpy()
+            weight_hh = np.random.uniform(
+                -0.1, 0.1, size=weight_hh.shape).astype('float64')
+            param_list[weight_hh_name].set_value(weight_hh)
+
+            bias_hh = param_list[bias_hh_name].numpy()
+            bias_hh = np.random.uniform(
+                -0.1, 0.1, size=bias_hh.shape).astype('float64')
+            param_list[bias_hh_name].set_value(bias_hh)
+
+            step_input_np = np.random.uniform(-0.1, 0.1, (
+                self.batch_size, self.input_size)).astype('float64')
+            pre_hidden_np = np.random.uniform(-0.1, 0.1, (
+                self.batch_size, self.hidden_size)).astype('float64')
+
+            step_input_var = fluid.dygraph.to_variable(step_input_np)
+            pre_hidden_var = fluid.dygraph.to_variable(pre_hidden_np)
+            api_out = cudnn_gru(step_input_var, pre_hidden_var)
+
+        np_out = cudnn_step(step_input_np, pre_hidden_np, weight_ih, bias_ih,
+                            weight_hh, bias_hh)
+
+        self.assertTrue(np.allclose(api_out.numpy(), np_out, rtol=1e-5, atol=0))
+
+
 class TestCudnnGRU(unittest.TestCase):
     def setUp(self):
         self.input_size = 100
@@ -92,7 +155,6 @@ class TestCudnnGRU(unittest.TestCase):
             place = core.CPUPlace()
 
         with fluid.dygraph.guard(place):
-
             cudnn_gru = CudnnGRUCell(self.hidden_size, self.input_size)
 
             param_list = cudnn_gru.state_dict()
@@ -135,6 +197,74 @@ class TestCudnnGRU(unittest.TestCase):
 
         np_out = cudnn_step(step_input_np, pre_hidden_np, weight_ih, bias_ih,
                             weight_hh, bias_hh)
+
+        self.assertTrue(np.allclose(api_out.numpy(), np_out, rtol=1e-5, atol=0))
+
+
+class TestNamedNonCudnnGRU(unittest.TestCase):
+    def setUp(self):
+        self.input_size = 100
+        self.hidden_size = 200
+        self.batch_size = 64
+
+    def test_run(self):
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
+
+        with fluid.dygraph.guard(place):
+
+            param_attr = fluid.ParamAttr(name="param_attr")
+            bias_attr = fluid.ParamAttr(name="bias_attr")
+            non_cudnn_gru = CudnnGRUCell(
+                self.hidden_size,
+                self.input_size,
+                param_attr,
+                bias_attr,
+                cudnn_compatibale=False)
+
+            param_list = non_cudnn_gru.state_dict()
+
+            # process weight and bias
+
+            gate_w_name = "_gate_weight"
+            gate_b_name = "_gate_bias"
+            candidate_w_name = "_candidate_weight"
+            candidate_b_name = "_candidate_bias"
+
+            gate_w = param_list[gate_w_name].numpy()
+            gate_w = np.random.uniform(
+                -0.1, 0.1, size=gate_w.shape).astype('float64')
+            param_list[gate_w_name].set_value(gate_w)
+
+            gate_b = param_list[gate_b_name].numpy()
+            gate_b = np.random.uniform(
+                -0.1, 0.1, size=gate_b.shape).astype('float64')
+            param_list[gate_b_name].set_value(gate_b)
+
+            candidate_w = param_list[candidate_w_name].numpy()
+            candidate_w = np.random.uniform(
+                -0.1, 0.1, size=candidate_w.shape).astype('float64')
+            param_list[candidate_w_name].set_value(candidate_w)
+
+            candidate_b = param_list[candidate_b_name].numpy()
+            candidate_b = np.random.uniform(
+                -0.1, 0.1, size=candidate_b.shape).astype('float64')
+            param_list[candidate_b_name].set_value(candidate_b)
+
+            step_input_np = np.random.uniform(-0.1, 0.1, (
+                self.batch_size, self.input_size)).astype('float64')
+            pre_hidden_np = np.random.uniform(-0.1, 0.1, (
+                self.batch_size, self.hidden_size)).astype('float64')
+
+            step_input_var = fluid.dygraph.to_variable(step_input_np)
+            pre_hidden_var = fluid.dygraph.to_variable(pre_hidden_np)
+            api_out = non_cudnn_gru(step_input_var, pre_hidden_var)
+
+        np_out = non_cudnn_step(step_input_np, pre_hidden_np, gate_w, gate_b,
+                                candidate_w, candidate_b)
 
         self.assertTrue(np.allclose(api_out.numpy(), np_out, rtol=1e-5, atol=0))
 
