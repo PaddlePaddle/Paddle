@@ -894,6 +894,8 @@ def cos_sim(X, Y):
             y = fluid.data(name='y', shape=[1, 7], dtype='float32')
             out = fluid.layers.cos_sim(x, y)
     """
+    check_variable_and_dtype(X, 'X', ['float32'], 'cos_sim')
+    check_variable_and_dtype(Y, 'Y', ['float32'], 'cos_sim')
     helper = LayerHelper('cos_sim', **locals())
     out = helper.create_variable_for_type_inference(dtype=X.dtype)
     xnorm = helper.create_variable_for_type_inference(dtype=X.dtype)
@@ -3090,6 +3092,8 @@ def instance_norm(input,
             hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
             hidden2 = fluid.layers.instance_norm(input=hidden1)
     """
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'instance_norm')
     assert bias_attr is not False, "bias_attr should not be False in instance_norm."
     helper = LayerHelper('instance_norm', **locals())
     dtype = helper.input_dtype()

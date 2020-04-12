@@ -46,21 +46,24 @@ class CosSimOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           x_dims.size(), y_dims.size(),
           platform::errors::InvalidArgument(
-              "Ranks of Input(X) [%s] and Input(Y) [%s] must be equal.", x_dims,
-              y_dims));
+              "ShapeError: Ranks of Input(X) and Input(Y) must be equal."
+              "But received: Ranks of Input(X) is [%d], Ranks of Input(Y) is "
+              "[%d]",
+              x_dims.size(), y_dims.size()));
       PADDLE_ENFORCE_GE(
           x_dims.size(), 2,
           platform::errors::InvalidArgument(
-              "Rank of Input(X) %d must not be less than 2.", x_dims.size()));
+              "ShapeError: Rank of Input(X) must not be less than 2."
+              "But received: Ranks of Input(X) is [%d]",
+              x_dims.size()));
       PADDLE_ENFORCE_EQ(
           framework::slice_ddim(x_dims, 1, x_dims.size()),
           framework::slice_ddim(y_dims, 1, y_dims.size()),
           platform::errors::InvalidArgument(
-              "All dimensions except the 1st of Input(X) [%s] and Input(Y) [%s]"
-              "must be equal.",
-              x_dims, y_dims));
-      PADDLE_ENFORCE(
-          x_dims[0] == y_dims[0] || y_dims[0] == 1,
+              "All dimensions except the 1st of Input(X) and Input(Y) "
+              "must be equal."));
+      PADDLE_ENFORCE_EQ(
+          x_dims[0] == y_dims[0] || y_dims[0] == 1, true,
           platform::errors::InvalidArgument(
               "The 1st dimension of Input(Y) %d must be equal to Input(X) %d or"
               " just 1 (which will be broadcasted to match Input(X)).",
@@ -136,14 +139,19 @@ class CosSimOpGrad : public framework::OperatorWithKernel {
     auto out_dims = ctx->GetInputDim("Out");
     auto out_grad_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
-    PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
-                      platform::errors::InvalidArgument(
-                          "Ranks of Input(X) %d and Input(Y) %d must be equal.",
-                          x_dims.size(), y_dims.size()));
+    PADDLE_ENFORCE_GE(
+        x_dims.size(), y_dims.size(),
+        platform::errors::InvalidArgument(
+            "ShapeError: Ranks of Input(X) and Input(Y) must be equal."
+            "But received: Ranks of Input(X) is [%d], Ranks of Input(Y) is "
+            "[%d]",
+            x_dims.size(), y_dims.size()));
     PADDLE_ENFORCE_GE(
         x_dims.size(), 2,
         platform::errors::InvalidArgument(
-            "Rank of Input(X) %d must not be less than 2.", x_dims.size()));
+            "ShapeError: Rank of Input(X) must not be less than 2."
+            "But received: Ranks of Input(X) is [%d]",
+            x_dims.size()));
     PADDLE_ENFORCE_EQ(
         framework::slice_ddim(x_dims, 1, x_dims.size()),
         framework::slice_ddim(y_dims, 1, y_dims.size()),
