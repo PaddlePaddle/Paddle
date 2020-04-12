@@ -137,9 +137,6 @@ class GradientClipBase(object):
         raise NotImplementedError
 
     def __call__(self, params_grads):
-        assert len(
-            params_grads
-        ) > 0, "The number of trainable parameters should be greater than 0."
         if framework.in_dygraph_mode():
             return self._dygraph_clip(params_grads)
         else:
@@ -272,6 +269,7 @@ class GradientClipByValue(GradientClipBase):
 
     def _static_clip(self, params_grads):
         params_and_grads = []
+        param_new_grad_name_dict = dict()
         with framework.name_scope('gradient_clip'):
             for p, g in params_grads:
                 if g is None:
@@ -284,7 +282,8 @@ class GradientClipByValue(GradientClipBase):
                 with p.block.program._optimized_guard([p, g]):
                     new_grad = layers.clip(x=g, min=self.min, max=self.max)
                 params_and_grads.append((p, new_grad))
-        _correct_clip_op_role_var(params_and_grads)
+                param_new_grad_name_dict[p.name] = new_grad.name
+        _correct_clip_op_role_var(params_and_grads, param_new_grad_name_dict)
         return params_and_grads
 
     def _process_context(self, context, param, grad):
@@ -422,6 +421,7 @@ class GradientClipByNorm(GradientClipBase):
     def _static_clip(self, params_grads):
         params_and_grads = []
         with framework.name_scope('gradient_clip'):
+            param_new_grad_name_dict = dict()
             for p, g in params_grads:
                 if g is None:
                     continue
@@ -432,8 +432,9 @@ class GradientClipByNorm(GradientClipBase):
 
                 with p.block.program._optimized_guard([p, g]):
                     new_grad = layers.clip_by_norm(x=g, max_norm=self.clip_norm)
+                param_new_grad_name_dict[p.name] = new_grad.name
                 params_and_grads.append((p, new_grad))
-        _correct_clip_op_role_var(params_and_grads)
+        _correct_clip_op_role_var(params_and_grads, param_new_grad_name_dict)
         return params_and_grads
 
     def _process_context(self, context, param, grad):
@@ -627,7 +628,8 @@ class GradientClipByGlobalNorm(GradientClipBase):
                     x=max_global_norm,
                     y=layers.elementwise_max(
                         x=max_global_norm, y=global_norm_var))
-
+            
+            param_new_grad_name_dict = dict()
             for p, g in params_grads:
                 if g is None:
                     continue
@@ -638,9 +640,11 @@ class GradientClipByGlobalNorm(GradientClipBase):
 
                 with p.block.program._optimized_guard([p, g]):
                     new_grad = layers.elementwise_mul(x=g, y=scale_var)
+                param_new_grad_name_dict[p.name] = new_grad.name
                 params_and_grads.append((p, new_grad))
+                
 
-        _correct_clip_op_role_var(params_and_grads)
+        _correct_clip_op_role_var(params_and_grads, param_new_grad_name_dict)
         return params_and_grads
 
     def _process_context(self, context, param, grad):
@@ -824,33 +828,38 @@ def append_gradient_clip_ops(param_grads):
             clip_attr._process_context(context=context, param=p, grad=g)
 
     res = []
+    param_new_grad_name_dict = dict()
     for p, g in param_grads:
         if g is None:
             continue
         with p.block.program._optimized_guard(
             [p, g]), framework.name_scope('graident_clip_@CLIP'):
             param, new_grad = clip_attr._create_operators(param=p, grad=g)
+            param_new_grad_name_dict[param.name] = new_grad.name
             res.append([param, new_grad])
 
-    _correct_clip_op_role_var(res)
+    _correct_clip_op_role_var(res, param_new_grad_name_dict)
     return res
 
 
 # change wrong mapping relation between param & grad in clip op
-def _correct_clip_op_role_var(params_grads):
+def _correct_clip_op_role_var(params_grads, param_new_grad_name_dict):
+    block_id_list = []
+    if len(param_new_grad_name_dict) == 0:
+        return
     for param, grad in params_grads:
         if grad is None:
             continue
+        block_id = param.block.idx
+        if block_id in block_id_list:
+            continue
+        block_id_list.append(block_id)
         for op in param.block.program.global_block().ops:
             if 'op_namescope' in op.all_attrs() and "gradient_clip" in op.attr(
                     "op_namescope"):
                 if op.attr('op_role_var'):
                     param_name = op.attr('op_role_var')[0]
-                    index = 0
-                    for i in range(len(params_grads)):
-                        if params_grads[i][0].name == param_name:
-                            index = i
-                    correct_p_g = [param_name, params_grads[index][1].name]
+                    correct_p_g = [param_name, param_new_grad_name_dict[param_name]]
                     op._set_attr('op_role_var', correct_p_g)
 
 
