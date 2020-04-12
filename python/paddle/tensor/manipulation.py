@@ -102,30 +102,9 @@ def flip(input, dims, name=None):
 
 def roll(input, shifts, dims=None):
     """
-    Roll the `input` tensor along the given dimension(s).
-    Elements that are shifted beyond the last position
-    are re-introduced at the first position. If a dimension
-    is not specified, the tensor will be flattened before 
-    rolling and then restored to the original shape.
-
-        .. code-block:: text
-            Given:
-                input.shape = [3, 3]
-                input.data = [[1.0, 2.0, 3.0],
-                              [4.0, 5.0, 6.0],
-                              [7.0, 8.0, 9.0]]
-            
-            Output when shifts = 1, dims = None
-                out.shape = [3, 3]
-                out.data = [[9.0, 1.0, 2.0],
-                            [3.0, 4.0, 5.0],
-                            [6.0, 7.0, 8.0]]
-            
-            Output when shifts = [1], dims = [0]
-                out.shape = [3, 3]
-                out.data = [[7.0, 8.0, 9.0],
-                            [1.0, 2.0, 3.0],
-                            [4.0, 5.0, 6.0]]
+    Roll the `input` tensor along the given dimension(s). Elements that are shifted beyond 
+    the last position are re-introduced at the first position. If a dimension is not specified, 
+    the tensor will be flattened before rolling and then restored to the original shape.
 
     Args:
         input (Variable): The input tensor variable.
@@ -134,16 +113,29 @@ def roll(input, shifts, dims=None):
         dims (int|list|tuple|None): Dimentions along which to roll.
 
     Returns:
-        A `Tensor` or `LoDTensor`. The data type is same as `input`.
+        Variable: A Tensor with same data type as `input`.
 
     Examples:
-
         .. code-block:: python
-
+            import numpy as np
             import paddle
             import paddle.fluid as fluid
-            x = fluid.data(name="data_x", shape=[None, 32, 3], dtype="float32")
-            out = paddle.roll(x, shifts=[1], dims=[0])
+
+            data = np.array([[1.0, 2.0, 3.0],
+                             [4.0, 5.0, 6.0],
+                             [7.0, 8.0, 9.0]])
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(data)
+                out_z1 = paddle.roll(x, shifts=1)
+                print(out_z1.numpy())
+                #[[9. 1. 2.]
+                # [3. 4. 5.]
+                # [6. 7. 8.]]
+                out_z2 = paddle.roll(x, shifts=1, dims=0)
+                print(out_z2.numpy())
+                #[[7. 8. 9.]
+                # [1. 2. 3.]
+                # [4. 5. 6.]]
     """
     helper = LayerHelper("roll", **locals())
     origin_shape = input.shape

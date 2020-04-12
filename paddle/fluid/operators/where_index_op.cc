@@ -40,8 +40,8 @@ class WhereIndexOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto output_type = framework::proto::VarType::INT64;
-    return framework::OpKernelType(output_type, ctx.device_context());
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Condition");
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
@@ -61,4 +61,8 @@ class WhereIndexOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(where_index, ops::WhereIndexOp,
                              ops::WhereIndexOpMaker);
-REGISTER_OP_CPU_KERNEL(where_index, ops::CPUWhereIndexKernel<int64_t>);
+REGISTER_OP_CPU_KERNEL(where_index, ops::CPUWhereIndexKernel<int64_t>,
+                       ops::CPUWhereIndexKernel<int>,
+                       ops::CPUWhereIndexKernel<bool>,
+                       ops::CPUWhereIndexKernel<float>,
+                       ops::CPUWhereIndexKernel<double>);

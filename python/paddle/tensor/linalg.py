@@ -163,46 +163,44 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
 
 def cross(input, other, dim=None):
     """
-    Returns the cross product of vectors in dimension `dim` of the
-    `input` and `other` tensor. Inputs must have the same shape, 
-    and the size of their dim-th dimension should be equla to 3.
-    If `dim` is not given, it defaults to the first dimension found
-    with the size 3.
-        .. code-block:: text
-            Given:
-                input.shape = [3, 3]
-                input.data = [[1.0, 1.0, 1.0],
-                              [2.0, 2.0, 2.0],
-                              [3.0, 3.0, 3.0]]
-                other.shape = [3, 3]
-                other.data = [[1.0, 1.0, 1.0],
-                              [1.0, 1.0, 1.0],
-                              [1.0, 1.0, 1.0]]
-            
-            Output when dim = 0:
-                out.shape = [3, 3]
-                out.data = [[-1.0, -1.0, -1.0], 
-                            [2.0, 2.0, 2.0],
-                            [-1.0, -1.0, -1.0]]
-            
-            Output when dim = 1:
-                out.shape = [3, 3]
-                out.data = [[0.0, 0.0, 0.0], 
-                            [0.0, 0.0, 0.0],
-                            [0.0, 0.0, 0.0]]
+    Returns the cross product of vectors in dimension `dim` of the `input` and `other` tensor. 
+    Inputs must have the same shape, and the size of their dim-th dimension should be equla to 3. 
+    If `dim` is not given, it defaults to the first dimension found with the size 3.
+    
     Args:
         input (Variable): The first input tensor variable.
         other (Variable): The second input tensor variable.
         dim (int): The dimension to take the cross-product in.
+
     Returns:
-        A `Tensor` or `LoDTensor`. The shape and data type are same as `input`.
+        Variable: A Tensor with same data type as `input`.
+        
     Examples:
         .. code-block:: python
             import paddle
             import paddle.fluid as fluid
-            x = fluid.data(name="data_x", shape=[None, 32, 3], dtype="float32")
-            y = fluid.data(name="data_y", shape=[None, 32, 3], dtype="float32")
-            out = paddle.cross(x, y, dim=2)
+            import numpy as np
+
+            data_x = np.array([[1.0, 1.0, 1.0],
+                               [2.0, 2.0, 2.0],
+                               [3.0, 3.0, 3.0]])
+            data_y = np.array([[1.0, 1.0, 1.0],
+                               [1.0, 1.0, 1.0],
+                               [1.0, 1.0, 1.0]])
+
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(data_x)
+                y = fluid.dygraph.to_variable(data_y)
+                out_z1 = paddle.cross(x, y)
+                print(out_z1.numpy())
+                #[[-1. -1. -1.]
+                # [ 2.  2.  2.]
+                # [-1. -1. -1.]]
+                out_z2 = paddle.cross(x, y, dim=1)
+                print(out_z2.numpy())
+                #[[0. 0. 0.]
+                # [0. 0. 0.]
+                # [0. 0. 0.]]
     """
     helper = LayerHelper("cross", **locals())
     if in_dygraph_mode():
