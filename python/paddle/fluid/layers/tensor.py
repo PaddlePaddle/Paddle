@@ -628,11 +628,18 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
         out.stop_gradient = True
         return out
 
-    helper = LayerHelper("fill_constant", **locals())
-    check_dtype(dtype, 'create data type',
+    check_dtype(dtype, 'dtype',
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
                 'fill_constant')
     check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
+    if isinstance(shape, Variable):
+        check_variable_and_dtype(shape, 'shape', ['int32', 'int64'],
+                                 'fill_constant')
+    if out is not None:
+        check_variable_and_dtype(out, 'out', [convert_dtype(dtype)],
+                                 'fill_constant')
+
+    helper = LayerHelper("fill_constant", **locals())
     inputs = utils._get_shape_tensor_inputs(
         inputs=inputs,
         helper=helper,
@@ -642,12 +649,6 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
 
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
-    else:
-        check_dtype(
-            dtype, 'create data type',
-            convert_dtype(out.dtype), 'fill_constant',
-            '(The create data type in fill_constant must be the same with out data type.)'
-        )
     attrs['dtype'] = out.dtype
     helper.append_op(
         type='fill_constant',
@@ -960,8 +961,10 @@ def ones(shape, dtype, force_cpu=False):
           import paddle.fluid as fluid
           data = fluid.layers.ones(shape=[2, 4], dtype='float32') # [[1., 1., 1., 1.], [1., 1., 1., 1.]]
     """
-    assert isinstance(shape, list) or isinstance(
-        shape, tuple), "The shape's type should be list or tuple."
+    check_type(shape, 'shape', (list, tuple), 'ones')
+    check_dtype(dtype, 'create data type',
+                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+                'ones')
     assert reduce(lambda x, y: x * y,
                   shape) > 0, "The shape is invalid: %s." % (str(shape))
     return fill_constant(value=1.0, **locals())
@@ -989,6 +992,7 @@ def zeros(shape, dtype, force_cpu=False):
           import paddle.fluid as fluid
           data = fluid.layers.zeros(shape=[3, 2], dtype='float32') # [[0., 0.], [0., 0.], [0., 0.]]
     """
+    check_type(shape, 'shape', (list, tuple), 'zeros')
     check_dtype(dtype, 'create data type',
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
                 'zeros')
@@ -1173,7 +1177,10 @@ def isfinite(x):
                                     dtype="float32")
             out = fluid.layers.isfinite(var)
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "isfinite")
     helper = LayerHelper("isfinite", **locals())
+
     out = helper.create_variable_for_type_inference(dtype='bool')
     helper.append_op(type="isfinite", inputs={"X": x}, outputs={"Out": out})
     return out
@@ -1272,12 +1279,25 @@ def linspace(start, stop, num, dtype):
     """
     helper = LayerHelper("linspace", **locals())
 
+    check_type(start, 'start', (Variable, float, int), linspace)
+    check_type(stop, 'stop', (Variable, float, int), linspace)
+    check_type(num, 'num', (Variable, float, int), linspace)
+
     if not isinstance(start, Variable):
         start = fill_constant([1], dtype, start)
+    else:
+        check_variable_and_dtype(start, "start", ["float32", "float64"],
+                                 "linspace")
+
     if not isinstance(stop, Variable):
         stop = fill_constant([1], dtype, stop)
+    else:
+        check_variable_and_dtype(stop, "stop", ["float32", "float64"],
+                                 "linspace")
     if not isinstance(num, Variable):
         num = fill_constant([1], 'int32', num)
+    else:
+        check_variable_and_dtype(num, "num", ["int32"], "linspace")
 
     out = helper.create_variable_for_type_inference(dtype=start.dtype)
 
@@ -1314,9 +1334,16 @@ def zeros_like(x, out=None):
 
     """
 
+    check_variable_and_dtype(
+        x, "x", ['bool', 'float32', 'float64', 'int32', 'int64'], 'ones_like')
     helper = LayerHelper("zeros_like", **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        check_variable_and_dtype(
+            out, "out", ['bool', 'float32', 'float64', 'int32', 'int64'],
+            'ones_like')
+
     helper.append_op(
         type='fill_zeros_like', inputs={'X': [x]}, outputs={'Out': [out]})
     out.stop_gradient = True
@@ -1461,10 +1488,16 @@ def ones_like(x, out=None):
           data = fluid.layers.ones_like(x) # [1.0, 1.0, 1.0]
 
     """
+    check_variable_and_dtype(
+        x, "x", ['bool', 'float32', 'float64', 'int32', 'int64'], 'ones_like')
 
     helper = LayerHelper("ones_like", **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        check_variable_and_dtype(
+            out, "out", ['bool', 'float32', 'float64', 'int32', 'int64'],
+            'ones_like')
     helper.append_op(
         type='fill_any_like',
         inputs={'X': [x]},
