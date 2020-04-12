@@ -13516,6 +13516,12 @@ def deformable_conv(input,
                                              num_filters=2, filter_size=filter_size, padding=1, modulated=False)
     """
 
+    check_variable_and_dtype(input, "input", ['float32', 'float64'],
+                             'deformable_conv')
+    check_variable_and_dtype(offset, "offset", ['float32', 'float64'],
+                             'deformable_conv')
+    check_type(mask, 'mask', (Variable, type(None)), 'deformable_conv')
+
     num_channels = input.shape[1]
     assert param_attr is not False, "param_attr should not be False here."
 
