@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include "paddle/fluid/framework/io/fs.h"
+#include "paddle/fluid/string/string_helper.h"
 
 #if defined _WIN32 || defined __APPLE__
 #else
@@ -44,6 +45,7 @@ TEST(TEST_GLOO, store_1) {
   store.Check(std::vector<std::string>{"test"}, &status);
 
   auto gw = paddle::framework::GlooWrapper();
+  gw.SetTimeoutSeconds(1000, 1000);
   gw.SetRank(0);
   gw.SetSize(1);
   gw.SetPrefix("");
@@ -70,5 +72,8 @@ TEST(TEST_FLEET, fleet_1) {
   fleet->RunServer("", 0);
   fleet->SaveModelOneTable(0, "", 0);
   fleet->SaveModelOneTablePrefix(0, "", 0, "");
+  fleet->Confirm();
+  fleet->Revert();
+  paddle::string::erase_spaces("1 2");
 #endif
 }

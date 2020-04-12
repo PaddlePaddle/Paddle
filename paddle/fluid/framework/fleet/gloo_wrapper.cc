@@ -66,6 +66,7 @@ void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
 
 int retry_do_func(std::function<int(void)> func, uint32_t max_try_time,
                   uint32_t retry_interval_ms) {
+#ifdef PADDLE_WITH_GLOO
   int ret = -1;
   for (uint32_t i = 0; i < max_try_time; ++i) {
     ret = func();
@@ -77,6 +78,7 @@ int retry_do_func(std::function<int(void)> func, uint32_t max_try_time,
 #endif
   }
   return ret;
+#endif
 }
 
 std::vector<char> HdfsStore::get(const std::string& key) {
