@@ -70,8 +70,8 @@ class TestMeshgridOp3(unittest.TestCase):
         x = fluid.data(shape=[100], dtype='int32', name='x')
         y = fluid.data(shape=[200], dtype='int32', name='y')
 
-        input_1 = np.random.random([100, ]).astype('int32')
-        input_2 = np.random.random([200, ]).astype('int32')
+        input_1 = np.random.randint(0, 100, [100, ]).astype('int32')
+        input_2 = np.random.randint(0, 100, [200, ]).astype('int32')
 
         out_1 = np.reshape(input_1, [100, 1])
         out_1 = np.broadcast_to(out_1, [100, 200])
@@ -98,6 +98,20 @@ class TestMeshgridOp4(unittest.TestCase):
                 paddle.tensor.meshgrid(x)
 
         self.assertRaises(TypeError, test_input_type)
+
+
+class TestMeshgridOp5(unittest.TestCase):
+    def test_api_with_dygraph(self):
+        input_3 = np.random.randint(0, 100, [100, ]).astype('int32')
+        input_4 = np.random.randint(0, 100, [200, ]).astype('int32')
+
+        with fluid.dygraph.guard():
+            tensor_3 = fluid.dygraph.to_variable(input_3)
+            tensor_4 = fluid.dygraph.to_variable(input_4)
+            res_3, res_4 = paddle.tensor.meshgrid([tensor_3, tensor_4])
+
+            assert np.array_equal(res_3.shape, [100, 200])
+            assert np.array_equal(res_4.shape, [100, 200])
 
 
 if __name__ == '__main__':

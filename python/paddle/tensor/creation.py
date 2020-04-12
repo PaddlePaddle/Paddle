@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
-from ..fluid.framework import Variable
+from ..fluid.framework import Variable, in_dygraph_mode
 from ..fluid.initializer import Constant
 from ..fluid.layers import core
 from ..fluid.layer_helper import LayerHelper
@@ -689,7 +689,22 @@ def meshgrid(x, name=None):
      
     #the shape of grid_x is (100, 200)
     #the shape of grid_y is (100, 200)
+
+    #in dygraph mode
+
+    x = np.random.random([100, ]).astype('int32')
+    y = np.random.random([200, ]).astype('int32')
+    with fluid.dygraph.guard():
+        x = fluid.dygraph.to_variable(input_3)
+        y = fluid.dygraph.to_variable(input_4)
+        grid_x, grid_y = paddle.tensor.meshgrid([tensor_3, tensor_4])
+
     """
+
+    if in_dygraph_mode():
+        num = len(x)
+        out = core.ops.meshgrid(x, num)
+        return out
 
     helper = LayerHelper('meshgrid', **locals())
 
