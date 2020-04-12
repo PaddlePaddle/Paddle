@@ -1317,14 +1317,15 @@ def zeros_like(x, out=None):
 
     """
 
-    check_variable_and_dtype(x, "x", ['float32', 'float64', 'int32', 'int64'],
-                             'ones_like')
+    check_variable_and_dtype(
+        x, "x", ['bool', 'float32', 'float64', 'int32', 'int64'], 'ones_like')
     helper = LayerHelper("zeros_like", **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
     else:
         check_variable_and_dtype(
-            out, "out", ['float32', 'float64', 'int32', 'int64'], 'ones_like')
+            out, "out", ['bool', 'float32', 'float64', 'int32', 'int64'],
+            'ones_like')
 
     helper.append_op(
         type='fill_zeros_like', inputs={'X': [x]}, outputs={'Out': [out]})
