@@ -16,8 +16,8 @@ from __future__ import print_function
 import os
 from .layer_function_generator import generate_layer_fn, generate_activation_fn
 from .. import core
-from ..framework import convert_np_dtype_to_dtype_
-from ..data_feeder import check_variable_and_dtype
+from ..framework import convert_np_dtype_to_dtype_, Variable
+from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
 __activations_noattr__ = [
     'sigmoid',
@@ -136,6 +136,7 @@ _cum_sum_ = generate_layer_fn('cumsum')
 
 
 def cumsum(x, axis=None, exclusive=None, reverse=None):
+    check_type(x, 'x', (Variable), 'cumsum')
     locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():
