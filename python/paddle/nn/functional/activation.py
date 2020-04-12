@@ -16,6 +16,7 @@ import warnings
 from ...fluid.layer_helper import LayerHelper
 from ...fluid.framework import in_dygraph_mode, convert_np_dtype_to_dtype_
 from ...fluid import core
+from ...fluid.data_feeder import check_variable_and_dtype
 
 # TODO: define activation functions of neural network  
 __all__ = [
@@ -34,7 +35,7 @@ __all__ = [
     'relu',
     # 'relu6',
     # 'selu',
-    # 'sigmoid',
+    'sigmoid',
     # 'soft_relu',
     # 'softmax',
     # 'softplus',
@@ -92,6 +93,64 @@ def relu(input, inplace=False, name=None):
         input.dtype)
     helper.append_op(type='relu', inputs={'X': [input]}, outputs={'Out': outs})
     return outs
+
+
+def sigmoid(input, inplace=False, name=None):
+    """
+    Sigmoid Activation.
+
+    .. math:
+
+        output = \frac{1}{1 + e^{-input}}
+    
+    Parameters:
+        input (Variable): The input variable. A multi-dimension Tensor with type float16, float32, or float64.
+        inplace (bool, optional): If inplace is True, the input and output are the same variable.
+            Otherwise, the input and output of are different variables. Default: False. Note that if x is
+            more than one OPs' input, inplace must be False.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+    
+    Returns:
+        Output of sigmoid operator, a Tensor with shape same as input
+    
+    Examples:
+        .. code-block:: python
+          
+          import paddle.fluid as fluid
+          import paddle.nn.functional as functional
+          import numpy as np
+          # In the static graph mode
+          input = fluid.data(name="input", shape=[None, 4])
+          output = functional.sigmoid(input)
+          place = fluid.CPUPlace()
+          exe = fluid.Executor(place)
+          exe.run(fluid.default_startup_program())
+          input_data = np.array([1.0, 2.0, 3.0, 4.0]).astype('float32')
+          output_data = exe.run(feed={"input": input_data},
+                                fetch_list=[output])
+          print(output_data) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
+          # In the dynamic graph mode
+          with fluid.dygraph.guard():
+              input = fluid.dygraph.to_variable(input_data)
+              output = functional.sigmoid(input)
+              print(output) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
+    """
+
+    if in_dygraph_mode():
+        if inplace:
+            warnings.warn(
+                "Inplace on sigmoid is not allowed and will be discarded in dygraph mode currently."
+            )
+        return core.ops.sigmoid(input)
+
+    check_variable_and_dtype(input, 'X', ['float16', 'float32', 'float64'],
+                             'sigmoid')
+    helper = LayerHelper("sigmoid", **locals())
+    outputs = helper.create_variable_for_type_inference(input.dtype)
+    helper.append_op(
+        type='sigmoid', inputs={'X': [input]}, outputs={'Out': outputs})
+    return outputs
 
 
 def log_softmax(input, axis=None, dtype=None, name=None):

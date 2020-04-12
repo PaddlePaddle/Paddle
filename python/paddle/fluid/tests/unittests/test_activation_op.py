@@ -1071,5 +1071,71 @@ class TestNNFunctionalReluAPI(unittest.TestCase):
         self.assertTrue(np.allclose(out[0], self.y))
 
 
+class TestNNSigmoidAPI(unittest.TestCase):
+    def setUp(self):
+        self.init_data()
+
+    def init_data(self):
+        self.x_shape = [10, 15]
+        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
+        self.y = self.ref_forward(self.x)
+
+    def ref_forward(self, x):
+        return 1 / (1 + np.exp(-x))
+
+    def ref_backward(self, y, dy):
+        return dy * y * (1 - y)
+
+    def check_api(self, place=fluid.CPUPlace(), inplace=False):
+        main_program = Program()
+        mysigmoid = nn.Sigmoid(inplace)
+        with fluid.program_guard(main_program):
+            x = fluid.data(name='x', shape=self.x_shape)
+            x.stop_gradient = False
+            y = mysigmoid(x)
+            fluid.backward.append_backward(fluid.layers.mean(y))
+        exe = fluid.Executor(place)
+        out = exe.run(main_program,
+                      feed={'x': self.x},
+                      fetch_list=[y, y.grad_name, x.grad_name])
+        self.assertTrue(np.allclose(out[0], self.y))
+        self.assertTrue(np.allclose(out[2], self.ref_backward(self.y, out[1])))
+
+        with fluid.dygraph.guard(place):
+            x = fluid.dygraph.to_variable(self.x)
+            y = mysigmoid(x)
+        self.assertTrue(np.allclose(y.numpy(), self.y))
+
+    def test_check_api(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for place in places:
+            for inplace in [True, False]:
+                self.check_api(place, inplace)
+
+
+class TestNNFunctionalSigmoidAPI(unittest.TestCase):
+    def setUp(self):
+        self.init_data()
+
+    def init_data(self):
+        self.x_shape = [10, 15]
+        self.x = np.random.uniform(-1, 1, self.x_shape).astype(np.float32)
+        self.y = self.ref_forward(self.x)
+
+    def ref_forward(self, x):
+        return 1 / (1 + np.exp(-x))
+
+    def test_check_api(self):
+        main_program = Program()
+        with fluid.program_guard(main_program):
+            x = fluid.data(name='x', shape=self.x_shape)
+            y = functional.sigmoid(x)
+        exe = fluid.Executor(fluid.CPUPlace())
+        out = exe.run(main_program, feed={'x': self.x}, fetch_list=[y])
+        self.assertTrue(np.allclose(out[0], self.y))
+
+
 if __name__ == "__main__":
     unittest.main()
