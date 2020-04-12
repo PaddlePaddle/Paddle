@@ -135,10 +135,11 @@ class DeformableConvOp : public framework::OperatorWithKernel {
         in_dims.size(), 4,
         platform::errors::InvalidArgument(
             "Conv input should be 4-D tensor, get %u", in_dims.size()));
-    PADDLE_ENFORCE_EQ(
-        in_dims.size(), filter_dims.size(),
-        platform::errors::InvalidArgument(
-            "Conv input dimension and filter dimension should be the same."));
+    PADDLE_ENFORCE_EQ(in_dims.size(), filter_dims.size(),
+                      platform::errors::InvalidArgument(
+                          "Conv input dimension and filter dimension should be "
+                          "the same. The diff is [%d] vs [%d]",
+                          in_dims.size(), filter_dims.size()));
     PADDLE_ENFORCE_EQ(
         in_dims.size() - strides.size(), 2U,
         platform::errors::InvalidArgument("Conv input dimension and strides "
@@ -146,21 +147,25 @@ class DeformableConvOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(paddings.size(), strides.size(),
                       platform::errors::InvalidArgument(
                           "Conv paddings dimension and Conv strides dimension "
-                          "should be the same."));
+                          "should be the same. The diff is [%d] vs [%d]",
+                          paddings.size(), strides.size()));
 
     PADDLE_ENFORCE_EQ(
         in_dims[1], filter_dims[1] * groups,
         platform::errors::InvalidArgument(
             "The number of input channels should be equal to filter "
-            "channels * groups."));
+            "channels * groups. The diff is [%d] vs [%d]",
+            in_dims[1], filter_dims[1] * groups));
     PADDLE_ENFORCE_EQ(
         filter_dims[0] % groups, 0,
         platform::errors::InvalidArgument(
             "The number of output channels should be divided by groups."));
-    PADDLE_ENFORCE_EQ(filter_dims[0] % deformable_groups, 0,
-                      platform::errors::InvalidArgument(
-                          "The number of output channels should be "
-                          "divided by deformable groups."));
+    PADDLE_ENFORCE_EQ(
+        filter_dims[0] % deformable_groups, 0,
+        platform::errors::InvalidArgument(
+            "The number of output channels should be "
+            "divided by deformable groups. The diff is [%d] vs [%d]",
+            filter_dims[0] % groups, 0));
 
     if (in_dims[0] > im2col_step) {
       PADDLE_ENFORCE_EQ(
@@ -198,10 +203,14 @@ class DeformableConvOp : public framework::OperatorWithKernel {
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(output_shape[2], offset_dims[2],
                         platform::errors::InvalidArgument(
-                            "output height must equal to offset map height."));
+                            "output height must equal to offset map height. "
+                            "The diff is [%d] vs [%d]",
+                            output_shape[2], offset_dims[2]));
       PADDLE_ENFORCE_EQ(output_shape[3], offset_dims[3],
                         platform::errors::InvalidArgument(
-                            "output width must equal to offset map width."));
+                            "output width must equal to offset map width. The "
+                            "diff is [%d] vs [%d]",
+                            output_shape[3], offset_dims[3]));
       PADDLE_ENFORCE_EQ(
           offset_dims[1] % (filter_dims[2] * filter_dims[3]), 0U,
           platform::errors::InvalidArgument(
@@ -213,10 +222,14 @@ class DeformableConvOp : public framework::OperatorWithKernel {
               "offset filter must divide deformable group size."));
       PADDLE_ENFORCE_EQ(output_shape[2], mask_dims[2],
                         platform::errors::InvalidArgument(
-                            "output height must equal to mask map height."));
+                            "output height must equal to mask map height. The "
+                            "diff is [%d] vs [%d]",
+                            output_shape[2], mask_dims[2]));
       PADDLE_ENFORCE_EQ(output_shape[3], mask_dims[3],
                         platform::errors::InvalidArgument(
-                            "output width must equal to mask map width."));
+                            "output width must equal to mask map width. The "
+                            "diff is [%d] vs [%d]",
+                            output_shape[3], mask_dims[3]));
 
       PADDLE_ENFORCE_EQ(mask_dims[1] % (filter_dims[2] * filter_dims[3]), 0U,
                         platform::errors::InvalidArgument(

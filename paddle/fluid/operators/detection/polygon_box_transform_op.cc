@@ -64,11 +64,16 @@ class PolygonBoxTransformOp : public framework::OperatorWithKernel {
 
     auto in_dim = ctx->GetInputDim("Input");
 
-    PADDLE_ENFORCE_EQ(in_dim.size(), 4, platform::errors::InvalidArgument(
-                                            "input's rank must be 4."));
+    PADDLE_ENFORCE_EQ(
+        in_dim.size(), 4,
+        platform::errors::InvalidArgument(
+            "input's rank must be 4. But received: Input rank is [%d]",
+            in_dim.size()));
     PADDLE_ENFORCE_EQ(in_dim[1] % 2, 0,
                       platform::errors::InvalidArgument(
-                          "input's second dimension must be even."));
+                          "input's second dimension must be even. But "
+                          "received: Input 2nd dim is [%d]",
+                          in_dim[1]));
 
     ctx->SetOutputDim("Output", in_dim);
   }
