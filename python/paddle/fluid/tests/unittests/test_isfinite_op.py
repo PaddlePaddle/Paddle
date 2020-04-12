@@ -14,10 +14,9 @@
 
 import unittest
 import numpy as np
+import paddle.fluid as fluid
 import paddle.fluid.core as core
 from op_test import OpTest
-import paddle.fluid.core as core
-import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 
 
@@ -39,6 +38,20 @@ class TestInf(OpTest):
 
     def test_output(self):
         self.check_output()
+
+
+class TestRaiseError(unittest.TestCase):
+    def test_errors(self):
+        def test_type():
+            fluid.layers.isfinite([10])
+
+        self.assertRaises(TypeError, test_type)
+
+        def test_dtype():
+            data = fluid.data(shape=[10], dtype="float16", name="input")
+            fluid.layers.isfinite(data)
+
+        self.assertRaises(TypeError, test_dtype)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
