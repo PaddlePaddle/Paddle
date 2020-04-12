@@ -21,10 +21,10 @@ __all__ = [  #'mean',
 
 import numpy as np
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import Variable, in_dygraph_mode
-
+from ..fluid.framework import in_dygraph_mode
 from ..fluid import layers
 from .search import where
+from ..fluid.data_feeder import convert_dtype
 
 
 def var(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
@@ -34,7 +34,7 @@ def var(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
 
     Args:
         input (Variable): The input Variable to be computed variance, with data 
-            type float32, float64, int32 and int64 supported.
+            type float32 and float64 supported.
         axis (list|int, optional): The axis along which the variance is computed. 
             If `None`, compute the variance over all elements of :attr:`input`
             and return a Variable with a single element, otherwise it must be in 
@@ -75,6 +75,10 @@ def var(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
                 print(variance.numpy())   
                 # [0.5 0.5]
     """
+    dtype = convert_dtype(input.dtype)
+    if dtype not in ["float32", "float64"]:
+        raise ValueError("Layer tensor.var() only supports floating-point "
+                         "dtypes, but received {}.".format(dtype))
     rank = len(input.shape)
     axes = axis if axis != None and axis != [] else range(rank)
     axes = [e if e >= 0 else e + rank for e in axes]
@@ -90,13 +94,14 @@ def var(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
         for i in axes:
             n *= expand_times[i]
         if not in_dygraph_mode():
-            n = layers.cast(n, "float32")
-            factor = where(n > 1.0, n / (n - 1.0),
-                           layers.assign(np.array([0.0]).astype("float32")))
+            n = layers.cast(n, dtype)
+            zero_const = layers.fill_constant(shape=[1], dtype=dtype, value=0.0)
+            factor = where(n > 1.0, n / (n - 1.0), zero_const)
         else:
             factor = n / (n - 1.0) if n > 1.0 else 0.0
         tmp *= factor
     if out:
         layers.assign(input=tmp, output=out)
+        return out
     else:
         return tmp

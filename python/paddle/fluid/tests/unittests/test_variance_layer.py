@@ -20,13 +20,15 @@ import paddle.fluid as fluid
 
 class TestVarianceLayer(unittest.TestCase):
     def setUp(self):
-        self._input = np.random.random([3, 5]).astype("float64")
+        self._dtype = "float64"
+        self._input = np.random.random([3, 5]).astype(self._dtype)
 
     def static(self, axis=None, keepdim=False, unbiased=True):
         prog = fluid.Program()
         with fluid.program_guard(prog):
-            data = fluid.data(name="data", dtype="float64", shape=[None, 5])
-            out = prog.current_block().create_var(dtype="float64", shape=[3, 5])
+            data = fluid.data(name="data", dtype=self._dtype, shape=[None, 5])
+            out = prog.current_block().create_var(
+                dtype=self._dtype, shape=[3, 5])
             paddle.var(input=data,
                        axis=axis,
                        keepdim=keepdim,
