@@ -137,8 +137,8 @@ def std(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
             # Each example is followed by the corresponding output tensor.
             x = fluid.data(name='x', shape=[2, 4], dtype='float32')
             paddle.std(x)  # 
-            paddle.std(x, dim=0)  # 
-            paddle.std(x, dim=-1)  # 
+            paddle.std(x, axis=0)  # 
+            paddle.std(x, axis=-1)  # 
     """
     check_variable_and_dtype(input, 'input',
                              ['float32', 'float64', 'int32', 'int64'], 'std')
