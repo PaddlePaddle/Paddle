@@ -17,7 +17,7 @@ import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from op_test import OpTest
-import unittest
+from paddle.fluid import compiler, Program, program_guard
 
 
 class TestInf(OpTest):
@@ -114,6 +114,23 @@ class TestIsfinite(OpTest):
 class TestFP16Isfinite(TestIsfinite):
     def init_dtype(self):
         self.dtype = np.float16
+
+
+class BadInputTest(unittest.TestCase):
+    def test_error(self):
+        with fluid.program_guard(fluid.Program()):
+
+            def test_has_inf_bad_x():
+                data = [1, 2, 3]
+                result = fluid.layers.has_inf(data)
+
+            self.assertRaises(TypeError, test_has_inf_bad_x)
+
+            def test_has_nan_bad_x():
+                data = [1, 2, 3]
+                result = fluid.layers.has_nan(data)
+
+            self.assertRaises(TypeError, test_has_nan_bad_x)
 
 
 if __name__ == '__main__':
