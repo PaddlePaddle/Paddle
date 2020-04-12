@@ -18,6 +18,7 @@ math functions
 from __future__ import print_function
 
 from paddle.common_ops_import import *
+from ..fluid import layers
 from ..fluid.framework import core
 from ..fluid.layers.layer_function_generator import _generate_doc_string_
 
@@ -70,7 +71,7 @@ __all__ = [
            'div',
            'add',
 #            'atan',
-#            'logsumexp',
+           'logsumexp',
 #            'inverse',
 #            'log1p',
 #            'erf',
@@ -994,3 +995,57 @@ def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
     helper.append_op(
         type="addmm", inputs=inputs, attrs=attrs, outputs={"Out": out})
     return out
+
+
+def logsumexp(x, dim=None, keepdim=False, out=None, name=None):
+    """
+This operator calculates the log of the sum of exponentials of the input Tensor.
+
+.. math::
+   logsumexp(x) = \log\sum exp(x)
+
+
+Parameters:
+   x (Variable): Input LoDTensor or Tensor. Must be one of the following types: float32, float64.
+   dim (list|int, optional): The dimensions along which the sum is performed. If :attr:`None`, 
+     sum all elements of :attr:`input` and return a Tensor variable with a single element, 
+     otherwise must be in the range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
+     the dimension to reduce is :math:`rank + dim[i]`.
+   keep_dim (bool, optional): Whether to reserve the reduced dimension in the output Tensor. 
+     The result tensor will have one fewer dimension than the :attr:`input` unless :attr:`keep_dim` 
+     is true, default value is False.
+   name (str, optional): The default value is None.  Normally there is no need for user to 
+     set this property.  For more information, please refer to :ref:`api_guide_Name`
+
+
+Examples:
+
+.. code-block:: python
+
+    import paddle
+    import paddle.fluid as fluid
+    import numpy as np
+    
+    with fluid.dygraph.guard():
+      np_x = np.random.uniform(0.1, 1, [10]).astype(np.float32)
+      x = fluid.dygraph.to_variable(np_x)
+      print(paddle.logsumexp(x).numpy())
+
+
+    """
+    op_type = 'logsumexp'
+    assert x is not None, 'x cannot be None in {}'.format(op_type)
+
+    # reduce_sum does not support float16
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], op_type)
+
+    exp_out = layers.exp(x)
+    sum_out = layers.reduce_sum(exp_out, dim, keepdim)
+
+    if out is not None:
+        check_variable_and_dtype(out, 'out', [x.dtype], op_type)
+        helper = LayerHelper(op_type, **locals())
+        helper.append_op(type="log", inputs={"X": sum_out}, outputs={"Out": out})
+        return out
+
+    return layers.log(sum_out, name)
