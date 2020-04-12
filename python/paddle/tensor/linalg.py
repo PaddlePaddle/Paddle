@@ -341,6 +341,21 @@ def bmm(x, y, name=None):
         x = fluid.layers.data(name='x', shape=[10, 3, 4], dtype='float32')
         y = fluid.layers.data(name='y', shape=[10, 4, 5], dtype='float32')
         out = paddle.bmm(x, y)
+    
+        # In dygraph mode:
+        # size input1: (2, 2, 3) and input2: (2, 3, 2)
+        input1 = np.array([[[1.0, 1.0, 1.0],[2.0, 2.0, 2.0]],[[3.0, 3.0, 3.0],[4.0, 4.0, 4.0]]])
+        input2 = np.array([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],[[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
+
+        with fluid.dygraph.guard():
+        x = fluid.dygraph.to_variable(input1)
+        y = fluid.dygraph.to_variable(input2)
+        out = paddle.bmm(x, y)
+        #output size: (2, 2, 2)
+        #output value:
+        [[[6.0, 6.0],[12.0, 12.0]],[[45.0, 45.0],[60.0, 60.0]]]
+        out_np = out.numpy()
+        
     """
 
     helper = LayerHelper('bmm', **locals())

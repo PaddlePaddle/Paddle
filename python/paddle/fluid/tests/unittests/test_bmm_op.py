@@ -55,20 +55,22 @@ class API_TestBmm(unittest.TestCase):
                                     "data2": input2},
                               fetch_list=[result_bmm])
             expected_result = np.matmul(input1, input2)
-        self.assertEqual((result == expected_result).all(), True)
+        self.assertTrue(np.allclose(expected_result, result))
 
 
 class API_TestDygraphBmm(unittest.TestCase):
     def test_out(self):
-        input1 = np.random.random([10, 3, 4]).astype('float32')
-        input2 = np.random.random([10, 4, 5]).astype('float32')
+        input1 = np.array([[[1.0, 1.0, 1.0], [2.0, 2.0, 2.0]],
+                           [[3.0, 3.0, 3.0], [4.0, 4.0, 4.0]]])
+        input2 = np.array([[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]],
+                           [[4.0, 4.0], [5.0, 5.0], [6.0, 6.0]]])
         with fluid.dygraph.guard():
             x = fluid.dygraph.to_variable(input1)
             y = fluid.dygraph.to_variable(input2)
             out = paddle.bmm(x, y)
             out_np = out.numpy()
         expected_result = np.matmul(input1, input2)
-        self.assertEqual((out_np == expected_result).all(), True)
+        self.assertTrue(np.allclose(expected_result, out_np))
 
 
 if __name__ == "__main__":
