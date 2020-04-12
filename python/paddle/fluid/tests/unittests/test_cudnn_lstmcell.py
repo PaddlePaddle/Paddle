@@ -74,80 +74,6 @@ def non_cudnn_step(step_input_np, pre_hidden_np, pre_cell_np, weight_ih,
     return new_hidden, new_cell
 
 
-class TestNamedCudnnLSTM(unittest.TestCase):
-    def setUp(self):
-        self.input_size = 100
-        self.hidden_size = 200
-        self.batch_size = 128
-
-    def test_run(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-
-        with fluid.dygraph.guard(place):
-            param_attr = fluid.ParamAttr(name="param_attr")
-            bias_attr = fluid.ParamAttr(name="bias_attr")
-            cudnn_lstm = CudnnLSTMCell(self.hidden_size, self.input_size,
-                                       param_attr, bias_attr)
-
-            param_list = cudnn_lstm.state_dict()
-
-            # process weight and bias
-
-            weight_ih_name = "_weight_ih"
-            bias_ih_name = "_bias_ih"
-            weight_hh_name = "_weight_hh"
-            bias_hh_name = "_bias_hh"
-
-            weight_ih = param_list[weight_ih_name].numpy()
-            weight_ih = np.random.uniform(
-                -0.1, 0.1, size=weight_ih.shape).astype('float64')
-            param_list[weight_ih_name].set_value(weight_ih)
-
-            bias_ih = param_list[bias_ih_name].numpy()
-            bias_ih = np.random.uniform(
-                -0.1, 0.1, size=bias_ih.shape).astype('float64')
-            param_list[bias_ih_name].set_value(bias_ih)
-
-            weight_hh = param_list[weight_hh_name].numpy()
-            weight_hh = np.random.uniform(
-                -0.1, 0.1, size=weight_hh.shape).astype('float64')
-            param_list[weight_hh_name].set_value(weight_hh)
-
-            bias_hh = param_list[bias_hh_name].numpy()
-            bias_hh = np.random.uniform(
-                -0.1, 0.1, size=bias_hh.shape).astype('float64')
-            param_list[bias_hh_name].set_value(bias_hh)
-
-            step_input_np = np.random.uniform(-0.1, 0.1, (
-                self.batch_size, self.input_size)).astype('float64')
-            pre_hidden_np = np.random.uniform(-0.1, 0.1, (
-                self.batch_size, self.hidden_size)).astype('float64')
-            pre_cell_np = np.random.uniform(-0.1, 0.1, (
-                self.batch_size, self.hidden_size)).astype('float64')
-
-            step_input_var = fluid.dygraph.to_variable(step_input_np)
-            pre_hidden_var = fluid.dygraph.to_variable(pre_hidden_np)
-            pre_cell_var = fluid.dygraph.to_variable(pre_cell_np)
-            api_out = cudnn_lstm(step_input_var, pre_hidden_var, pre_cell_var)
-
-            api_hidden_out = api_out[0]
-            api_cell_out = api_out[1]
-
-            np_hidden_out, np_cell_out = non_cudnn_step(
-                step_input_np, pre_hidden_np, pre_cell_np, weight_ih, bias_ih,
-                weight_hh, bias_hh)
-
-            self.assertTrue(
-                np.allclose(
-                    api_hidden_out.numpy(), np_hidden_out, rtol=1e-5, atol=0))
-            self.assertTrue(
-                np.allclose(
-                    api_cell_out.numpy(), np_cell_out, rtol=1e-5, atol=0))
-
-
 class TestCudnnLSTM(unittest.TestCase):
     def setUp(self):
         self.input_size = 100
@@ -161,10 +87,14 @@ class TestCudnnLSTM(unittest.TestCase):
             place = core.CPUPlace()
 
         with fluid.dygraph.guard(place):
-
+            param_attr = fluid.ParamAttr(name="param_attr")
+            bias_attr = fluid.ParamAttr(name="bias_attr")
+            named_cudnn_lstm = CudnnLSTMCell(self.hidden_size, self.input_size,
+                                             param_attr, bias_attr)
             cudnn_lstm = CudnnLSTMCell(self.hidden_size, self.input_size)
 
             param_list = cudnn_lstm.state_dict()
+            named_param_list = named_cudnn_lstm.state_dict()
 
             # process weight and bias
 
@@ -177,21 +107,25 @@ class TestCudnnLSTM(unittest.TestCase):
             weight_ih = np.random.uniform(
                 -0.1, 0.1, size=weight_ih.shape).astype('float64')
             param_list[weight_ih_name].set_value(weight_ih)
+            named_param_list[weight_ih_name].set_value(weight_ih)
 
             bias_ih = param_list[bias_ih_name].numpy()
             bias_ih = np.random.uniform(
                 -0.1, 0.1, size=bias_ih.shape).astype('float64')
             param_list[bias_ih_name].set_value(bias_ih)
+            named_param_list[bias_ih_name].set_value(bias_ih)
 
             weight_hh = param_list[weight_hh_name].numpy()
             weight_hh = np.random.uniform(
                 -0.1, 0.1, size=weight_hh.shape).astype('float64')
             param_list[weight_hh_name].set_value(weight_hh)
+            named_param_list[weight_hh_name].set_value(weight_hh)
 
             bias_hh = param_list[bias_hh_name].numpy()
             bias_hh = np.random.uniform(
                 -0.1, 0.1, size=bias_hh.shape).astype('float64')
             param_list[bias_hh_name].set_value(bias_hh)
+            named_param_list[bias_hh_name].set_value(bias_hh)
 
             step_input_np = np.random.uniform(-0.1, 0.1, (
                 self.batch_size, self.input_size)).astype('float64')
@@ -204,9 +138,13 @@ class TestCudnnLSTM(unittest.TestCase):
             pre_hidden_var = fluid.dygraph.to_variable(pre_hidden_np)
             pre_cell_var = fluid.dygraph.to_variable(pre_cell_np)
             api_out = cudnn_lstm(step_input_var, pre_hidden_var, pre_cell_var)
+            named_api_out = named_cudnn_lstm(step_input_var, pre_hidden_var,
+                                             pre_cell_var)
 
             api_hidden_out = api_out[0]
             api_cell_out = api_out[1]
+            named_api_hidden_out = named_api_out[0]
+            named_api_cell_out = named_api_out[1]
 
             np_hidden_out, np_cell_out = non_cudnn_step(
                 step_input_np, pre_hidden_np, pre_cell_np, weight_ih, bias_ih,
@@ -218,71 +156,15 @@ class TestCudnnLSTM(unittest.TestCase):
             self.assertTrue(
                 np.allclose(
                     api_cell_out.numpy(), np_cell_out, rtol=1e-5, atol=0))
-
-
-class TestNamedNonCudnnLSTM(unittest.TestCase):
-    def setUp(self):
-        self.input_size = 100
-        self.hidden_size = 200
-        self.batch_size = 128
-
-    def test_run(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-
-        with fluid.dygraph.guard(place):
-            param_attr = fluid.ParamAttr(name="param_attr")
-            bias_attr = fluid.ParamAttr(name="bias_attr")
-            cudnn_lstm = CudnnLSTMCell(
-                self.hidden_size,
-                self.input_size,
-                param_attr,
-                bias_attr,
-                cudnn_compatibale=False)
-
-            param_list = cudnn_lstm.state_dict()
-
-            # process weight and bias
-
-            gate_w_name = "_weight"
-            gate_b_name = "_bias"
-
-            gate_w = param_list[gate_w_name].numpy()
-            gate_w = np.random.uniform(
-                -0.1, 0.1, size=gate_w.shape).astype('float64')
-            param_list[gate_w_name].set_value(gate_w)
-
-            gate_b = param_list[gate_b_name].numpy()
-            gate_b = np.random.uniform(
-                -0.1, 0.1, size=gate_b.shape).astype('float64')
-            param_list[gate_b_name].set_value(gate_b)
-
-            step_input_np = np.random.uniform(-0.1, 0.1, (
-                self.batch_size, self.input_size)).astype('float64')
-            pre_hidden_np = np.random.uniform(-0.1, 0.1, (
-                self.batch_size, self.hidden_size)).astype('float64')
-            pre_cell_np = np.random.uniform(-0.1, 0.1, (
-                self.batch_size, self.hidden_size)).astype('float64')
-
-            step_input_var = fluid.dygraph.to_variable(step_input_np)
-            pre_hidden_var = fluid.dygraph.to_variable(pre_hidden_np)
-            pre_cell_var = fluid.dygraph.to_variable(pre_cell_np)
-            api_out = cudnn_lstm(step_input_var, pre_hidden_var, pre_cell_var)
-
-            api_hidden_out = api_out[0]
-            api_cell_out = api_out[1]
-
-            np_hidden_out, np_cell_out = cudnn_step(
-                step_input_np, pre_hidden_np, pre_cell_np, gate_w, gate_b)
-
             self.assertTrue(
                 np.allclose(
-                    api_hidden_out.numpy(), np_hidden_out, rtol=1e-5, atol=0))
+                    named_api_hidden_out.numpy(),
+                    np_hidden_out,
+                    rtol=1e-5,
+                    atol=0))
             self.assertTrue(
                 np.allclose(
-                    api_cell_out.numpy(), np_cell_out, rtol=1e-5, atol=0))
+                    named_api_cell_out.numpy(), np_cell_out, rtol=1e-5, atol=0))
 
 
 class TestNonCudnnLSTM(unittest.TestCase):
@@ -298,11 +180,19 @@ class TestNonCudnnLSTM(unittest.TestCase):
             place = core.CPUPlace()
 
         with fluid.dygraph.guard(place):
-
+            param_attr = fluid.ParamAttr(name="param_attr")
+            bias_attr = fluid.ParamAttr(name="bias_attr")
+            named_cudnn_lstm = CudnnLSTMCell(
+                self.hidden_size,
+                self.input_size,
+                param_attr,
+                bias_attr,
+                cudnn_compatibale=False)
             cudnn_lstm = CudnnLSTMCell(
                 self.hidden_size, self.input_size, cudnn_compatibale=False)
 
             param_list = cudnn_lstm.state_dict()
+            named_param_list = named_cudnn_lstm.state_dict()
 
             # process weight and bias
 
@@ -313,11 +203,13 @@ class TestNonCudnnLSTM(unittest.TestCase):
             gate_w = np.random.uniform(
                 -0.1, 0.1, size=gate_w.shape).astype('float64')
             param_list[gate_w_name].set_value(gate_w)
+            named_param_list[gate_w_name].set_value(gate_w)
 
             gate_b = param_list[gate_b_name].numpy()
             gate_b = np.random.uniform(
                 -0.1, 0.1, size=gate_b.shape).astype('float64')
             param_list[gate_b_name].set_value(gate_b)
+            named_param_list[gate_b_name].set_value(gate_b)
 
             step_input_np = np.random.uniform(-0.1, 0.1, (
                 self.batch_size, self.input_size)).astype('float64')
@@ -330,9 +222,13 @@ class TestNonCudnnLSTM(unittest.TestCase):
             pre_hidden_var = fluid.dygraph.to_variable(pre_hidden_np)
             pre_cell_var = fluid.dygraph.to_variable(pre_cell_np)
             api_out = cudnn_lstm(step_input_var, pre_hidden_var, pre_cell_var)
+            named_api_out = named_cudnn_lstm(step_input_var, pre_hidden_var,
+                                             pre_cell_var)
 
             api_hidden_out = api_out[0]
             api_cell_out = api_out[1]
+            named_api_hidden_out = named_api_out[0]
+            named_api_cell_out = named_api_out[1]
 
             np_hidden_out, np_cell_out = cudnn_step(
                 step_input_np, pre_hidden_np, pre_cell_np, gate_w, gate_b)
@@ -343,6 +239,15 @@ class TestNonCudnnLSTM(unittest.TestCase):
             self.assertTrue(
                 np.allclose(
                     api_cell_out.numpy(), np_cell_out, rtol=1e-5, atol=0))
+            self.assertTrue(
+                np.allclose(
+                    named_api_hidden_out.numpy(),
+                    np_hidden_out,
+                    rtol=1e-5,
+                    atol=0))
+            self.assertTrue(
+                np.allclose(
+                    named_api_cell_out.numpy(), np_cell_out, rtol=1e-5, atol=0))
 
 
 if __name__ == '__main__':
