@@ -1116,7 +1116,7 @@ def has_inf(x):
           res = fluid.layers.has_inf(data)
 
     """
-    # check_type(x, 'x', (Variable), 'has_inf')
+    check_type(x, 'x', (Variable), 'has_inf')
     helper = LayerHelper("isinf", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type="isinf", inputs={"X": x}, outputs={"Out": out})
@@ -1141,7 +1141,7 @@ def has_nan(x):
           res = fluid.layers.has_nan(data)
 
     """
-    # check_type(x, 'x', (Variable), 'has_nan')
+    check_type(x, 'x', (Variable), 'has_nan')
     helper = LayerHelper("isnan", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type="isnan", inputs={"X": x}, outputs={"Out": out})

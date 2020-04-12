@@ -1226,6 +1226,8 @@ def increment(x, value=1.0, in_place=True):
           counter = fluid.layers.zeros(shape=[1], dtype='float32') # [0.]
           fluid.layers.increment(counter) # [1.]
     """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'increment')
     helper = LayerHelper("increment", **locals())
     if not in_place:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)

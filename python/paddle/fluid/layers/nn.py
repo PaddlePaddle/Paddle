@@ -13158,6 +13158,8 @@ def fsp_matrix(x, y):
             loss = fluid.layers.fsp_matrix(feature_map_0, feature_map_1)
 
     """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'fsp_matrix')
+    check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'fsp_matrix')
     helper = LayerHelper('fsp_matrix', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype(
         input_param_name='x'))
