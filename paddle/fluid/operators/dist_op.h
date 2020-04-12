@@ -19,6 +19,7 @@
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -169,7 +170,9 @@ static void DistGradFunction(const framework::ExecutionContext& context) {
 
   // 1: Lp-norm(z), z = x-y, compute dz
   if (p == 0) {
-    grad_t.device(place) = grad_t * static_cast<T>(0);
+    math::SetConstant<DeviceContext, T> set_zero;
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    set_zero(dev_ctx, &grad, static_cast<T>(0));
   } else if (p == INFINITY || p == -INFINITY) {
     // p=inf or -inf, Lp-norm = |z_i|, the j-th element of dz tends to 0 if
     // j!=i, or equals to sign(z_i) * dout if j=i.

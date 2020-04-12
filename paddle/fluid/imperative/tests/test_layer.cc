@@ -271,6 +271,15 @@ TEST(test_layer, test_dygraph_infershape_context) {
   ASSERT_EQ(have_z, false);
 }
 
+TEST(test_layer, test_inner_op_not_inited) {
+  OpBase op;
+  std::string kUnknown = "unknown";
+  ASSERT_EQ(op.Type(), kUnknown);
+  ASSERT_THROW(op.Info(), platform::EnforceNotMet);
+  ASSERT_THROW(op.InnerOp(), platform::EnforceNotMet);
+  ASSERT_THROW(op.CheckAttrs(), platform::EnforceNotMet);
+}
+
 }  // namespace imperative
 }  // namespace paddle
 

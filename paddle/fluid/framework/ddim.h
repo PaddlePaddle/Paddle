@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <initializer_list>
 #include <stdexcept>
+#include <string>
 #include <vector>
 #include "paddle/fluid/framework/dim.h"
 
@@ -122,6 +123,8 @@ class DDim {
   inline int64_t* GetMutable() { return dim_.GetMutable(); }
 
   inline int size() const { return rank_; }
+
+  std::string to_str() const;
 
  private:
   template <int D>

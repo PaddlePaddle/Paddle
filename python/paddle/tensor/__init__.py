@@ -112,7 +112,7 @@ from .math import mm  #DEFINE_ALIAS
 from .math import div  #DEFINE_ALIAS
 from .math import add  #DEFINE_ALIAS
 # from .math import atan   #DEFINE_ALIAS
-# from .math import logsumexp   #DEFINE_ALIAS
+from .math import logsumexp  #DEFINE_ALIAS
 # from .math import inverse   #DEFINE_ALIAS
 # from .math import log1p   #DEFINE_ALIAS
 # from .math import erf   #DEFINE_ALIAS
@@ -123,7 +123,7 @@ from .math import addmm  #DEFINE_ALIAS
 # from .io import save   #DEFINE_ALIAS
 # from .io import load   #DEFINE_ALIAS
 from .linalg import matmul  #DEFINE_ALIAS
-# from .linalg import dot   #DEFINE_ALIAS
+from .linalg import dot  #DEFINE_ALIAS
 # from .linalg import einsum   #DEFINE_ALIAS
 # from .linalg import morm   #DEFINE_ALIAS
 # from .linalg import transpose   #DEFINE_ALIAS
@@ -131,7 +131,6 @@ from .linalg import dist  #DEFINE_ALIAS
 # from .linalg import t   #DEFINE_ALIAS
 # from .linalg import cross   #DEFINE_ALIAS
 # from .linalg import cholesky   #DEFINE_ALIAS
-# from .linalg import dot   #DEFINE_ALIAS
 # from .manipulation import cast   #DEFINE_ALIAS
 # from .manipulation import concat   #DEFINE_ALIAS
 # from .manipulation import expand   #DEFINE_ALIAS
