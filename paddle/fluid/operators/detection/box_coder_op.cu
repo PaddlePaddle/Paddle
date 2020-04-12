@@ -143,24 +143,25 @@ class BoxCoderCUDAKernel : public framework::OpKernel<T> {
     if (prior_box_var) {
       PADDLE_ENFORCE_EQ(variance.empty(), true,
                         platform::errors::InvalidArgument(
-                            "Input 'PriorBoxVar' "
-                            "and attribute 'variance' should not"
-                            "be used at the same time."));
+                            "Input 'PriorBoxVar' and attribute 'variance'"
+                            " of BoxCoder operator should not be used at the "
+                            "same time."));
       prior_box_var_data = prior_box_var->data<T>();
       prior_box_var_size = prior_box_var->dims().size();
     }
     if (!(variance.empty())) {
-      PADDLE_ENFORCE_EQ(static_cast<int>(variance.size()) == 4, true,
+      PADDLE_ENFORCE_EQ(static_cast<int>(variance.size()), 4,
                         platform::errors::InvalidArgument(
-                            "Size of attribute "
-                            "'variance' in BoxCoder should be 4"));
+                            "Size of attribute 'variance' in BoxCoder operator"
+                            " should be 4. But received size is %d",
+                            variance.size()));
     }
 
     if (target_box->lod().size()) {
       PADDLE_ENFORCE_EQ(target_box->lod().size(), 1,
                         platform::errors::InvalidArgument(
-                            "Input 'TargetBox' "
-                            "of BoxCoder only supports 1 level of LoD."));
+                            "Input 'TargetBox' of BoxCoder operator only"
+                            " supports LoD with one level."));
     }
     const int var_size = static_cast<int>(variance.size());
 

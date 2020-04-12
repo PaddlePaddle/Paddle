@@ -187,21 +187,21 @@ class BoxCoderKernel : public framework::OpKernel<T> {
     if (target_box->lod().size()) {
       PADDLE_ENFORCE_EQ(target_box->lod().size(), 1UL,
                         platform::errors::InvalidArgument(
-                            "Input(TargetBox) of "
-                            "BoxCoder only supports 1 level of LoD."));
+                            "Input(TargetBox) of BoxCoder operator "
+                            "supports LoD with only one level."));
     }
     if (prior_box_var) {
       PADDLE_ENFORCE_EQ(variance.empty(), true,
                         platform::errors::InvalidArgument(
-                            "Input 'PriorBoxVar' "
-                            "and attribute 'variance' of BoxCoder should not"
-                            "be used at the same time."));
+                            "Input 'PriorBoxVar' and attribute 'variance' "
+                            "of BoxCoder operator should not be used at the "
+                            "same time."));
     }
     if (!(variance.empty())) {
-      PADDLE_ENFORCE_EQ(static_cast<int>(variance.size()) == 4, true,
+      PADDLE_ENFORCE_EQ(static_cast<int>(variance.size()), 4,
                         platform::errors::InvalidArgument(
-                            "Size of attribute "
-                            "'variance' of BoxCoder should be 4"));
+                            "Size of attribute 'variance' of BoxCoder "
+                            "operator should be 4"));
     }
     auto code_type = GetBoxCodeType(context.Attr<std::string>("code_type"));
     bool normalized = context.Attr<bool>("box_normalized");

@@ -47,7 +47,7 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(score_size == 2 || score_size == 3, true,
                         platform::errors::InvalidArgument(
                             "The rank of Input(Scores) must be 2 or 3"
-                            ". But received score_size = %d",
+                            ". But received rank = %d",
                             score_size));
       PADDLE_ENFORCE_EQ(box_dims.size(), 3,
                         platform::errors::InvalidArgument(

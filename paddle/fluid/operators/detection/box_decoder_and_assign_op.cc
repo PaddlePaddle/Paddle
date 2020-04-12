@@ -87,16 +87,17 @@ class BoxDecoderAndAssignOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           prior_box_dims[0], target_box_dims[0],
           platform::errors::InvalidArgument(
-              "The first dim of prior_box and "
-              "target_box is roi nums and should be same. But received dim of "
-              "prior_box is %d, dim of target_box is %d",
+              "The first dimension of prior_box and "
+              "target_box is the number of box and should be same. But "
+              "received dimension of prior_box is %d, dimension of target_box "
+              "is %d",
               prior_box_dims[0], target_box_dims[0]));
       PADDLE_ENFORCE_EQ(
           prior_box_dims[0], box_score_dims[0],
           platform::errors::InvalidArgument(
-              "The first dim of prior_box and "
-              "box_score is roi nums and should be same. But received dim of "
-              "prior_box is %d, dim of box_score is %d",
+              "The first dimension of prior_box and "
+              "box_score is the number of box and should be same. But received "
+              "dimension of prior_box is %d, dimension of box_score is %d",
               prior_box_dims[0], box_score_dims[0]));
       PADDLE_ENFORCE_EQ(
           target_box_dims[1], box_score_dims[1] * prior_box_dims[1],
