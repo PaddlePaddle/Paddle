@@ -8183,6 +8183,7 @@ def log(x, name=None):
     if in_dygraph_mode():
         return core.ops.log(x)
 
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log")
     inputs = {'X': [x]}
     helper = LayerHelper('log', **locals())
     dtype = helper.input_dtype(input_param_name='x')
@@ -8938,10 +8939,14 @@ def pow(x, factor=1.0, name=None):
             y_2 = fluid.layers.pow(x, factor=factor_tensor)
             # y_2 is x^{3.0}
     """
+    check_variable_and_dtype(x, 'x', ['int32', 'int64', 'float32', 'float64'],
+                             'pow')
+
     helper = LayerHelper('pow', **locals())
     inputs = {'X': x}
     attrs = {}
     if isinstance(factor, Variable):
+        check_variable_and_dtype(factor, 'factor', ['float32'], 'pow')
         factor.stop_gradient = True
         inputs['FactorTensor'] = factor
     else:
