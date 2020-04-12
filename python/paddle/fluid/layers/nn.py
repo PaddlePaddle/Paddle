@@ -10708,6 +10708,10 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
     """
 
+    check_variable_and_dtype(
+        x, "x",
+        ['float32', 'float64', 'uint8', 'int16', 'int32', 'in64', 'uint8'],
+        "scale")
     if in_dygraph_mode():
         _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
         out = core.ops.scale(x, 'scale',
@@ -13256,6 +13260,7 @@ def where(condition):
              out = layers.where(condition) # [[]]
 
     """
+    check_variable_and_dtype(condition, "condition", ['bool'], "where")
     helper = LayerHelper("where_index", **locals())
 
     out = helper.create_variable_for_type_inference(
@@ -13324,6 +13329,8 @@ def unique(x, dtype='int32'):
              out, index = fluid.layers.unique(x) # out is [2, 3, 1, 5]; index is [0, 1, 1, 2, 3, 1]
     """
 
+    check_variable_and_dtype(x, "x", ['float32', 'float64', 'int32', 'int64'],
+                             "unique")
     helper = LayerHelper("unique", **locals())
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -13368,6 +13375,8 @@ def unique_with_counts(x, dtype='int32'):
                                                         # count is [1, 3, 1, 1]
             # x.shape=(6,) out.shape=(4,), index.shape=(6,), count.shape=(4,)
     """
+    check_variable_and_dtype(x, "x", ['float32', 'float64', 'int32', 'int64'],
+                             "unique_with_counts")
     if not (dtype == 'int32' or dtype == 'int64'):
         raise TypeError(
             "Op unique_with_counts, index dtype must be int32 or int64")

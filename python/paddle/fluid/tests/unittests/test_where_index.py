@@ -102,5 +102,19 @@ class TestWhereOpError(unittest.TestCase):
             out = exe.run(fluid.default_main_program(), feed={'cond': cond_i})
 
 
+class TestWhereRaiseError(unittest.TestCase):
+    def test_errors(self):
+        def test_type():
+            fluid.layers.where([10])
+
+        self.assertRaises(TypeError, test_type)
+
+        def test_dtype():
+            data = fluid.data(shape=[10], dtype="float32", name="input")
+            fluid.layers.where(data)
+
+        self.assertRaises(TypeError, test_dtype)
+
+
 if __name__ == "__main__":
     unittest.main()

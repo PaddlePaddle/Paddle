@@ -464,10 +464,23 @@ def sums(input, out=None):
             # Sum of multiple Tensors, sum1 and x3 represents the same Variable (x3=x0+x1+x2, the value is [[6, ..., 6], ..., [6, ..., 6]])
             sum1 = fluid.layers.sums(input=[x0, x1, x2], out=x3)
     """
+    check_type(input, 'input', (Variable, tuple, list), 'sums')
+    if isinstance(input, list) or isinstance(input, tuple):
+        for input_section in input:
+            check_variable_and_dtype(input_section, "input", \
+                    ['float32', 'float64', 'int32', 'int64'], 'sums')
+    else:
+        check_variable_and_dtype(input, "input", \
+                ['float32', 'float64', 'int32', 'int64'], 'sums')
+
     helper = LayerHelper('sum', **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(
             dtype=helper.input_dtype())
+    else:
+        check_variable_and_dtype(
+            out, "out", ['float32', 'float64', 'int32', 'int64'], 'sums')
+
     helper.append_op(
         type='sum',
         inputs={'X': input},
