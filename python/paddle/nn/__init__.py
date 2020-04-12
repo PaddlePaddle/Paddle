@@ -59,14 +59,14 @@ __all__ += norm.__all__
 # from .layer.conv import TreeConv   #DEFINE_ALIAS
 # from .layer.conv import Conv1D   #DEFINE_ALIAS
 # from .layer.loss import NCELoss   #DEFINE_ALIAS
-# from .layer.loss import CrossEntropyLoss   #DEFINE_ALIAS
+from .layer.loss import CrossEntropyLoss  #DEFINE_ALIAS
 # from .layer.loss import MSELoss   #DEFINE_ALIAS
 from .layer.loss import L1Loss  #DEFINE_ALIAS
 from .layer import loss  #DEFINE_ALIAS
 from .layer import conv  #DEFINE_ALIAS
 from .layer.conv import Conv2D, Conv2DTranspose, Conv3D, Conv3DTranspose  #DEFINE_ALIAS
 # from .layer.loss import NLLLoss   #DEFINE_ALIAS
-# from .layer.loss import BCELoss   #DEFINE_ALIAS
+from .layer.loss import BCELoss  #DEFINE_ALIAS
 # from .layer.learning_rate import CosineDecay   #DEFINE_ALIAS
 # from .layer.learning_rate import ExponentialDecay   #DEFINE_ALIAS
 # from .layer.learning_rate import InverseTimeDecay   #DEFINE_ALIAS
@@ -82,7 +82,7 @@ from .layer.norm import InstanceNorm  #DEFINE_ALIAS
 # from .layer.norm import SpectralNorm   #DEFINE_ALIAS
 # from .layer.activation import PReLU   #DEFINE_ALIAS
 from .layer.activation import ReLU  #DEFINE_ALIAS
-# from .layer.activation import Sigmoid   #DEFINE_ALIAS
+from .layer.activation import Sigmoid  #DEFINE_ALIAS
 # from .layer.activation import Softmax   #DEFINE_ALIAS
 from .layer.activation import LogSoftmax  #DEFINE_ALIAS
 # from .layer.rnn import RNNCell   #DEFINE_ALIAS
@@ -192,7 +192,7 @@ from .functional.conv import conv3d_transpose  #DEFINE_ALIAS
 from .functional.activation import relu  #DEFINE_ALIAS
 # from .functional.activation import relu6   #DEFINE_ALIAS
 # from .functional.activation import selu   #DEFINE_ALIAS
-# from .functional.activation import sigmoid   #DEFINE_ALIAS
+from .functional.activation import sigmoid  #DEFINE_ALIAS
 # from .functional.activation import soft_relu   #DEFINE_ALIAS
 # from .functional.activation import softmax   #DEFINE_ALIAS
 # from .functional.activation import softplus   #DEFINE_ALIAS

@@ -25,49 +25,32 @@ namespace paddle {
 namespace operators {
 
 void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
-  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                    platform::errors::InvalidArgument(
-                        "Input(X) of BatchNormOp should not be null."));
-  PADDLE_ENFORCE_EQ(ctx->HasInput("Scale"), true,
-                    platform::errors::InvalidArgument(
-                        "Input(Scale) of BatchNormOp should not be null."));
-  PADDLE_ENFORCE_EQ(ctx->HasInput("Bias"), true,
-                    platform::errors::InvalidArgument(
-                        "Input(Bias) of BatchNormOp should not be null."));
-  PADDLE_ENFORCE_EQ(ctx->HasInput("Mean"), true,
-                    platform::errors::InvalidArgument(
-                        "Input(Mean) of BatchNormOp should not be null."));
-  PADDLE_ENFORCE_EQ(ctx->HasInput("Variance"), true,
-                    platform::errors::InvalidArgument(
-                        "Input(Variance) of BatchNormOp should not be null."));
-  PADDLE_ENFORCE_EQ(ctx->HasOutput("Y"), true,
-                    platform::errors::InvalidArgument(
-                        "Output(Y) of BatchNormOp should not be null."));
+  OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "BatchNorm");
+  OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale", "BatchNorm");
+  OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias", "BatchNorm");
+  OP_INOUT_CHECK(ctx->HasInput("Mean"), "Input", "Mean", "BatchNorm");
+  OP_INOUT_CHECK(ctx->HasInput("Variance"), "Input", "Variance", "BatchNorm");
+  OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "BatchNorm");
+
   bool is_test = ctx->Attrs().Get<bool>("is_test");
   if (!is_test) {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("MeanOut"), true,
-        platform::errors::InvalidArgument(
-            "Output(MeanOut) of BatchNormOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("VarianceOut"), true,
-        platform::errors::InvalidArgument(
-            "Output(VarianceOut) of BatchNormOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("SavedMean"), true,
-        platform::errors::InvalidArgument(
-            "Output(SavedMean) of BatchNormOp should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("SavedVariance"), true,
-        platform::errors::InvalidArgument(
-            "Output(SavedVariance) of BatchNormOp should not be null."));
+    OP_INOUT_CHECK(ctx->HasOutput("MeanOut"), "Output", "MeanOut", "BatchNorm");
+    OP_INOUT_CHECK(ctx->HasOutput("VarianceOut"), "Output", "VarianceOut",
+                   "BatchNorm");
+    OP_INOUT_CHECK(ctx->HasOutput("SavedMean"), "Output", "SavedMean",
+                   "BatchNorm");
+    OP_INOUT_CHECK(ctx->HasOutput("SavedVariance"), "Output", "SavedVariance",
+                   "BatchNorm");
   }
 
   // make sure Mean/MeanOut and Variance/VarianceOut share memory in Python
   PADDLE_ENFORCE_EQ(ctx->Inputs("Mean")[0], ctx->Outputs("MeanOut")[0],
-                    "Mean and MeanOut should share the same memory");
-  PADDLE_ENFORCE_EQ(ctx->Inputs("Variance")[0], ctx->Outputs("VarianceOut")[0],
-                    "Variance and VarianceOut should share the same memory");
+                    platform::errors::InvalidArgument(
+                        "Mean and MeanOut should share the same memory"));
+  PADDLE_ENFORCE_EQ(
+      ctx->Inputs("Variance")[0], ctx->Outputs("VarianceOut")[0],
+      platform::errors::InvalidArgument(
+          "Variance and VarianceOut should share the same memory"));
 
   const auto x_dims = ctx->GetInputDim("X");
   const DataLayout data_layout = framework::StringToDataLayout(
@@ -103,16 +86,19 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   auto scale_dim = ctx->GetInputDim("Scale");
   auto bias_dim = ctx->GetInputDim("Bias");
 
-  PADDLE_ENFORCE_EQ(scale_dim.size(), 1UL,
-                    "ShapeError: the dimension of scale must equal to 1."
-                    "But received: the shape of scale is [%s], the dimension "
-                    "of scale is [%d]",
-                    scale_dim, scale_dim.size());
   PADDLE_ENFORCE_EQ(
-      bias_dim.size(), 1UL,
-      "ShapeError: the dimension of bias must equal to 1."
-      "But received: the shape of bias is [%s],the dimension of bias is [%d]",
-      bias_dim, bias_dim.size());
+      scale_dim.size(), 1UL,
+      platform::errors::InvalidArgument(
+          "ShapeError: the dimension of scale must equal to 1."
+          "But received: the shape of scale is [%s], the dimension "
+          "of scale is [%d]",
+          scale_dim, scale_dim.size()));
+  PADDLE_ENFORCE_EQ(bias_dim.size(), 1UL,
+                    platform::errors::InvalidArgument(
+                        "ShapeError: the dimension of bias must equal to 1."
+                        "But received: the shape of bias is [%s],the dimension "
+                        "of bias is [%d]",
+                        bias_dim, bias_dim.size()));
 
   bool check = true;
   if ((!ctx->IsRuntime()) && (framework::product(scale_dim) <= 0 ||
@@ -122,13 +108,15 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
 
   if (check) {
     PADDLE_ENFORCE_EQ(scale_dim[0], C,
-                      "ShapeError: the shape of scale must equal to [%d]"
-                      "But received: the shape of scale is [%d]",
-                      C, scale_dim[0]);
+                      platform::errors::InvalidArgument(
+                          "ShapeError: the shape of scale must equal to [%d]"
+                          "But received: the shape of scale is [%d]",
+                          C, scale_dim[0]));
     PADDLE_ENFORCE_EQ(bias_dim[0], C,
-                      "ShapeError: the shape of bias must equal to [%d]"
-                      "But received: the shape of bias is [%d]",
-                      C, bias_dim[0]);
+                      platform::errors::InvalidArgument(
+                          "ShapeError: the shape of bias must equal to [%d]"
+                          "But received: the shape of bias is [%d]",
+                          C, bias_dim[0]));
   }
   ctx->SetOutputDim("Y", x_dims);
   ctx->SetOutputDim("MeanOut", {C});
@@ -449,27 +437,23 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
 
 void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
   // check input
-  PADDLE_ENFORCE_EQ(
-      ctx->HasInput("Scale"), true,
-      platform::errors::InvalidArgument("Input(scale) should not be null."));
-  PADDLE_ENFORCE_EQ(
-      ctx->HasInput(framework::GradVarName("Y")), true,
-      platform::errors::InvalidArgument("Input(Y@GRAD) should not be null."));
-  PADDLE_ENFORCE_EQ(ctx->HasInput("SavedMean"), true,
-                    platform::errors::InvalidArgument(
-                        "Input(SavedMean) should not be null."));
-  PADDLE_ENFORCE_EQ(ctx->HasInput("SavedVariance"), true,
-                    platform::errors::InvalidArgument(
-                        "Input(SavedVariance) should not be null"));
+  OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale", "BatchNormGrad");
+  OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")), "Input",
+                 framework::GradVarName("Y"), "BatchNormGrad");
+  OP_INOUT_CHECK(ctx->HasInput("SavedMean"), "Input", "SavedMean",
+                 "BatchNormGrad");
+  OP_INOUT_CHECK(ctx->HasInput("SavedVariance"), "Input", "SavedVariance",
+                 "BatchNormGrad");
 
   // check output
-  PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")), "");
+  OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+                 framework::GradVarName("X"), "BatchNormGrad");
 
   const bool has_scale_grad = ctx->HasOutput(framework::GradVarName("Scale"));
   const bool has_bias_grad = ctx->HasOutput(framework::GradVarName("Bias"));
 
   PADDLE_ENFORCE_EQ((has_scale_grad == has_bias_grad), true,
-                    platform::errors::InvalidArgument(
+                    platform::errors::NotFound(
                         "Output(Scale@GRAD) and Output(Bias@GRAD) must be null "
                         "or not be null at same time. But now, "
                         "has Scale@Grad=[%d], has Bias@GRAD=[%d]",
@@ -489,7 +473,7 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
   // so only infer shape in run time here.
   if (ctx->IsRuntime()) {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X") || ctx->HasInput("Y"), true,
-                      platform::errors::InvalidArgument(
+                      platform::errors::NotFound(
                           "Input(X) and Input(Y) should not be all null."));
     auto input_name = "Y";
     if (ctx->HasInput("X")) input_name = "X";
