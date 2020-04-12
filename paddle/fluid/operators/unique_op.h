@@ -49,7 +49,7 @@ struct UniqueOpFunctor {
     PADDLE_ENFORCE_LT(
         in_->numel(), pow(2, 31),
         platform::errors::InvalidArgument(
-            "The num of Input(X) elements should less then INT_MAX, "
+            "The num of Input(X) elements should be less then INT_MAX, "
             "but received num is %d.",
             in_->numel()));
 

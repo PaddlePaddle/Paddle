@@ -255,6 +255,12 @@ class TestRaiseSumError(unittest.TestCase):
 
         self.assertRaises(TypeError, test_dtype)
 
+        def test_dtype1():
+            data1 = fluid.data(name="input1", shape=[10], dtype="int8")
+            fluid.layers.sum(data1)
+
+        self.assertRaises(TypeError, test_dtype1)
+
 
 class TestRaiseSumsError(unittest.TestCase):
     def test_errors(self):
@@ -269,6 +275,12 @@ class TestRaiseSumsError(unittest.TestCase):
             fluid.layers.sums([data1, data2])
 
         self.assertRaises(TypeError, test_dtype)
+
+        def test_dtype1():
+            data1 = fluid.data(name="input1", shape=[10], dtype="int8")
+            fluid.layers.sums(data1)
+
+        self.assertRaises(TypeError, test_dtype1)
 
         def test_out_type():
             data1 = fluid.data(name="input1", shape=[10], dtype="flaot32")
