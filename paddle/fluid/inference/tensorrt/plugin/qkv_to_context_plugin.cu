@@ -118,7 +118,7 @@ inline void TransposeQKV(const int batch, const int seq_len,
 
   if (head_size % 8 == 0 && scratch_size % 8 == 0) {
     int h = head_size / 8;
-    int4 *input4 = reinterpret_cast<const int4 *>(input);
+    const int4 *input4 = reinterpret_cast<const int4 *>(input);
     int4 *output4 = reinterpret_cast<int4 *>(output);
     dim3 block(h, head_num, 1);
     // limit h * head_num to max block size(1024).

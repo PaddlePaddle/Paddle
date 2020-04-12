@@ -55,8 +55,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       "relu",
       "softmax",
       "sigmoid",
-      "hard_sigmoid",
-      "hard_swish",
       "depthwise_conv2d",
       "batch_norm",
       "concat",
@@ -75,6 +73,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "instance_norm",
       "gelu",
       "layer_norm",
+      "scale",
   };
 };
 

@@ -494,6 +494,8 @@ class NameVisitor(gast.NodeVisitor):
             self.generic_visit(node)
 
     def visit_Name(self, node):
+        blacklist = {'True', 'False', 'None'}
+        if node.id in blacklist: return
         if not self._is_call_func_name_node(node):
             if isinstance(node.ctx, self._candidate_ctxs):
                 self.name_ids[node.id].append(node.ctx)

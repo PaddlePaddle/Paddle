@@ -343,18 +343,6 @@ struct AnalysisConfig {
   void SwitchIrDebug(int x = true);
 
   ///
-  /// \brief Turn on NGRAPH.
-  ///
-  ///
-  void EnableNgraph();
-  ///
-  /// \brief A boolean state telling whether to use the NGRAPH.
-  ///
-  /// \return bool Whether to use the NGRAPH.
-  ///
-  bool ngraph_enabled() const { return use_ngraph_; }
-
-  ///
   /// \brief Turn on MKLDNN.
   ///
   ///
@@ -551,7 +539,6 @@ struct AnalysisConfig {
   // memory reuse related.
   bool enable_memory_optim_{false};
 
-  bool use_ngraph_{false};
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
 

@@ -854,8 +854,11 @@ class SGDOptimizer(Optimizer):
         parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization: A Regularizer, such as :ref:`api_fluid_regularizer_L2DecayRegularizer`. \
-            Optional, default is None.
+        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
+             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
+            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
+            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
+            Default None, meaning there is no regularization.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -954,8 +957,11 @@ class MomentumOptimizer(Optimizer):
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
         use_nesterov (bool, optional): Enables Nesterov momentum, default is false.
-        regularization: A Regularizer, such as :ref:`api_fluid_regularizer_L2DecayRegularizer`. \
-            Optional, default is None.
+        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
+             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
+            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
+            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
+            Default None, meaning there is no regularization.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -1093,8 +1099,11 @@ class DGCMomentumOptimizer(Optimizer):
         use_nesterov (bool): Enables Nesterov momentum. True means use Nesterov. Default is False.
         local_grad_clip_norm (float, optional): Local gradient clip norm value. Optional, default is None, represent no need clip.
         num_trainers (int, optional): The number of training nodes. Optional, default is None.
-        regularization (WeightDecayRegularizer, optional): A Regularizer, such as \
-            :ref:`api_fluid_regularizer_L2DecayRegularizer`. Optional, default is None.
+        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
+             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
+            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
+            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
+            Default None, meaning there is no regularization.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -1480,8 +1489,11 @@ class LarsMomentumOptimizer(Optimizer):
         parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization: A Regularizer, such as :ref:`api_fluid_regularizer_L2DecayRegularizer`.
-            Optional, default is None.
+        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
+             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
+            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
+            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
+            Default None, meaning there is no regularization.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -1590,8 +1602,11 @@ class AdagradOptimizer(Optimizer):
         parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization (WeightDecayRegularizer, optional): A ``Regularizer``, such as
-             :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
+        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
+             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
+            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
+            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
+            Default None, meaning there is no regularization.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -1706,8 +1721,11 @@ class AdamOptimizer(Optimizer):
         parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization (WeightDecayRegularizer, optional): A ``Regularizer``, such as
-             :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
+        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
+             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
+            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
+            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
+            Default None, meaning there is no regularization.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -1963,8 +1981,11 @@ class AdamaxOptimizer(Optimizer):
         parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization (WeightDecayRegularizer, optional): A ``Regularizer``, such as
-             :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
+        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
+             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
+            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
+            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
+            Default None, meaning there is no regularization.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -2212,8 +2233,11 @@ class DecayedAdagradOptimizer(Optimizer):
         parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization (WeightDecayRegularizer, optional): A ``Regularizer``, such as
-             :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
+        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
+             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
+            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
+            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
+            Default None, meaning there is no regularization.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -2308,9 +2332,11 @@ class AdadeltaOptimizer(Optimizer):
         parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization (WeightDecayRegularizer, optional): A Regularizer, such as
-                fluid.regularizer.L2DecayRegularizer. Default None, meaning that there is no
-                regularization.
+        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
+             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
+            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
+            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
+            Default None, meaning there is no regularization.
         name (str, optional): The default value is None. Normally there is no need for user
                 to set this property. For more information, please refer to
                 :ref:`api_guide_Name` .
@@ -2457,8 +2483,11 @@ class RMSPropOptimizer(Optimizer):
         parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization: A Regularizer, such as :ref:`api_fluid_regularizer_L2DecayRegularizer`. \
-            Optional, default is None.
+        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
+             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
+            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
+            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
+            Default None, meaning there is no regularization.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -2622,8 +2651,11 @@ class FtrlOptimizer(Optimizer):
         parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization: A Regularizer, such as :ref:`api_fluid_regularizer_L2DecayRegularizer`. \
-            Optional, default is None.
+        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
+             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
+            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
+            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
+            Default None, meaning there is no regularization.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
@@ -2761,8 +2793,11 @@ class LambOptimizer(AdamOptimizer):
         parameter_list (list, optional):  List of ``Variable`` names to update to minimize ``loss``. \
             This parameter is required in dygraph mode. \
             The default value is None in static mode, at this time all parameters will be updated.
-        regularization (Regularizer|None): A Regularizer, such as
-           fluid.regularizer.L1DecayRegularizer. Default None.
+        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
+             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
+            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
+            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
+            Default None, meaning there is no regularization.
         exclude_from_weight_decay_fn (function|None): Exclude a parameter from weight 
             decay when **exclude_from_weight_decay_fn(parameter)** returns true. 
             Default None.
@@ -2922,8 +2957,11 @@ class ModelAverage(Optimizer):
         average_window_rate (float): The calculate ratio of the window length relative to ``Parameter`` update times.
         min_average_window (int, optional): the minimum size of average window length. The default value is 10000.
         max_average_window (int, optional): The maximum size of average window length. The default value is 10000.
-        regularization (WeightDecayRegularizer, optional): A ``Regularizer``, such as
-             :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
+        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
+             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
+            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
+            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
+            Default None, meaning there is no regularization.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.

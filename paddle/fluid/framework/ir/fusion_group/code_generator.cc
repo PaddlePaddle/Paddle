@@ -36,7 +36,7 @@ std::string ExtractDataType(const std::vector<Node*>& nodes) {
       } else if (dtype == proto::VarType::FP64) {
         dtype_str = "double";
       } else if (dtype == proto::VarType::FP16) {
-        dtype_str = "float16";
+        dtype_str = "__half";
       }
       break;
     }
@@ -147,13 +147,13 @@ std::string CodeGenerator::Generate(
   }
   std::string predefined_cuda_functions = "";
   if (all_dtype.find("float") != all_dtype.end() &&
-      all_dtype.find("float16") == all_dtype.end()) {
+      all_dtype.find("__half") == all_dtype.end()) {
     predefined_cuda_functions += predefined_cuda_functions_fp32;
   }
   if (all_dtype.find("double") != all_dtype.end()) {
     predefined_cuda_functions += predefined_cuda_functions_fp64;
   }
-  if (all_dtype.find("float16") != all_dtype.end()) {
+  if (all_dtype.find("__half") != all_dtype.end()) {
     predefined_cuda_functions += predefined_cuda_functions_fp16;
   }
   return predefined_cuda_functions + code_templates_[0].Format(template_var);

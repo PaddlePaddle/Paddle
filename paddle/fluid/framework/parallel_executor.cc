@@ -32,8 +32,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
-DECLARE_bool(use_ngraph);
-
 DECLARE_double(eager_delete_tensor_gb);
 
 #ifdef WITH_GPERFTOOLS
@@ -157,7 +155,9 @@ class ParallelExecutorPrivate {
         VLOG(10) << "find nccl_id_var:" << var_name << ", nccl_id:" << nccl_id;
       } else {
         nccl_id = new ncclUniqueId();
-        PADDLE_ENFORCE(platform::dynload::ncclGetUniqueId(nccl_id));
+        PADDLE_ENFORCE_EQ(
+            platform::dynload::ncclGetUniqueId(nccl_id), ncclSuccess,
+            platform::errors::PreconditionNotMet("Get NCCL unique ID failed."));
         VLOG(10) << "can't find nccl_id_var:" << var_name
                  << ", nccl_id:" << nccl_id;
       }
@@ -180,7 +180,9 @@ class ParallelExecutorPrivate {
     for (int i = 0; i < static_cast<int>(bst.nccl_comm_num_); i++) {
       std::string var_name = platform::GetFlatNCCLVarName(i);
       auto nccl_id_var = scope->FindVar(var_name);
-      PADDLE_ENFORCE(nccl_id_var, "can't find %s nccl_id_var", var_name);
+      PADDLE_ENFORCE_NOT_NULL(
+          nccl_id_var,
+          platform::errors::NotFound("Can't find nccl_id_var '%s'.", var_name));
       auto nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
       flat_nccl_ids.push_back(nccl_id);
     }
@@ -193,7 +195,9 @@ class ParallelExecutorPrivate {
       for (int i = 0; i < static_cast<int>(bst.nccl_comm_num_); i++) {
         std::string var_name = platform::GetHierarchicalInterNCCLVarName(i);
         auto nccl_id_var = scope->FindVar(var_name);
-        PADDLE_ENFORCE(nccl_id_var, "can't find %s nccl_id_var", var_name);
+        PADDLE_ENFORCE_NOT_NULL(nccl_id_var,
+                                platform::errors::NotFound(
+                                    "Can't find nccl_id_var '%s'.", var_name));
         auto inter_nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
         inter_nccl_ids.push_back(inter_nccl_id);
       }
@@ -202,7 +206,9 @@ class ParallelExecutorPrivate {
       for (int i = 0; i < static_cast<int>(bst.nccl_comm_num_); i++) {
         std::string var_name = platform::GetHierarchicalExterNCCLVarName(i);
         auto nccl_id_var = scope->FindVar(var_name);
-        PADDLE_ENFORCE(nccl_id_var, "can't find %s nccl_id_var", var_name);
+        PADDLE_ENFORCE_NOT_NULL(nccl_id_var,
+                                platform::errors::NotFound(
+                                    "Can't find nccl_id_var '%s'.", var_name));
         auto nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
         exter_nccl_ids.push_back(nccl_id);
       }
@@ -218,8 +224,9 @@ class ParallelExecutorPrivate {
     const std::string var_name = "NCCLCommunicator";
     auto var = scope->FindVar(var_name);
     if (var != nullptr) {
-      PADDLE_ENFORCE(var->IsInitialized(),
-                     "if %s exists, it must be initialized", var_name);
+      PADDLE_ENFORCE_EQ(var->IsInitialized(), true,
+                        platform::errors::PreconditionNotMet(
+                            "if %s exists, it must be initialized", var_name));
       VLOG(1) << "find " << var_name
               << " in scope, so use it and does not recreate!";
       nccl_ctxs_ = var->GetMutable<platform::NCCLCommunicator>();
@@ -227,15 +234,21 @@ class ParallelExecutorPrivate {
     }
 
     if (bst->use_hierarchical_allreduce_) {
-      PADDLE_ENFORCE(bst->num_trainers_ > 1, "num_trainers:%llu < 1",
-                     bst->num_trainers_);
-      PADDLE_ENFORCE(bst->hierarchical_allreduce_inter_nranks_ > 1,
-                     "inter_nranks:%d < 1",
-                     bst->hierarchical_allreduce_inter_nranks_);
-      PADDLE_ENFORCE(
-          (bst->num_trainers_ % bst->hierarchical_allreduce_inter_nranks_ == 0),
-          "num_trainers:%llu mod inter_nranks:%d != 0", bst->num_trainers_,
-          bst->hierarchical_allreduce_inter_nranks_);
+      PADDLE_ENFORCE_GT(
+          bst->num_trainers_, 1,
+          platform::errors::PreconditionNotMet(
+              "The num_trainers should be greater than 1, but received %llu.",
+              bst->num_trainers_));
+      PADDLE_ENFORCE_GT(
+          bst->hierarchical_allreduce_inter_nranks_, 1,
+          platform::errors::PreconditionNotMet(
+              "The inter_nranks should be greater than 1, but received %d.",
+              bst->hierarchical_allreduce_inter_nranks_));
+      PADDLE_ENFORCE_EQ(
+          bst->num_trainers_ % bst->hierarchical_allreduce_inter_nranks_, 0,
+          platform::errors::PreconditionNotMet(
+              "num_trainers:%llu mod inter_nranks:%d != 0", bst->num_trainers_,
+              bst->hierarchical_allreduce_inter_nranks_));
 
       bst->hierarchical_allreduce_exter_nranks_ =
           bst->num_trainers_ / bst->hierarchical_allreduce_inter_nranks_;
@@ -286,13 +299,6 @@ bool ParallelExecutorPrivate::AllowPartialFeed() const {
 }
 
 ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
-  if (FLAGS_use_ngraph) {
-    LOG_FIRST_N(WARNING, 1)
-        << "FLAGS_use_ngraph=True, memory optimization strategy is "
-           "disabled in ParallelExecutor";
-    return graph;
-  }
-
   /**
    * NOTE(zengjinle): If BuildStrategy.memory_optimize = None in Python,
    * set BuildStrategy.memory_optimize according to whether gc is enabled.
@@ -378,7 +384,8 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
                                          max_memory_size));
         VLOG(10) << "Created GarbageCollector at " << place;
       } else {
-        PADDLE_THROW("Unsupported place for garbage collection");
+        PADDLE_THROW(platform::errors::PreconditionNotMet(
+            "Unsupported place for garbage collection"));
       }
 #ifdef PADDLE_WITH_CUDA
     }
@@ -464,7 +471,9 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
 #if defined(PADDLE_WITH_CUDA) && defined(_WIN32)
   if (member_->use_cuda_) {
-    PADDLE_ENFORCE(places.size() == 1, "Windows can support Single GPU only.");
+    PADDLE_ENFORCE_EQ(
+        places.size(), 1,
+        platform::errors::Unavailable("Windows can support Single GPU only."));
   }
 #endif
 
@@ -493,7 +502,11 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     }
   } else {
     member_->own_local_scope_ = false;
-    PADDLE_ENFORCE_EQ(member_->places_.size(), local_scopes.size());
+    PADDLE_ENFORCE_EQ(member_->places_.size(), local_scopes.size(),
+                      platform::errors::PreconditionNotMet(
+                          "member_->places_.size() = %d is not equal to "
+                          "local_scopes.size() = %d",
+                          member_->places_.size(), local_scopes.size()));
     for (size_t i = 0; i < member_->places_.size(); ++i) {
       member_->local_scopes_.emplace_back(&local_scopes[i]->NewScope());
     }
@@ -501,8 +514,9 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 
   std::vector<ir::Graph *> graphs;
   if (member_->build_strategy_.async_mode_) {
-    PADDLE_ENFORCE(!member_->use_cuda_,
-                   "gpu mode does not support async_mode_ now!");
+    PADDLE_ENFORCE_EQ(member_->use_cuda_, false,
+                      platform::errors::Unavailable(
+                          "gpu mode does not support async_mode_ now!"));
     graphs.push_back(graph);
     for (size_t i = 1; i < places.size(); ++i) {
       auto *tmp_graph = new ir::Graph(graph->OriginProgram());
@@ -631,8 +645,12 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
     scope_map.emplace(scope, &local_exec_scope);
   }
 
-  PADDLE_ENFORCE_EQ(member_->local_scopes_.size(),
-                    member_->local_exec_scopes_.size());
+  PADDLE_ENFORCE_EQ(
+      member_->local_scopes_.size(), member_->local_exec_scopes_.size(),
+      platform::errors::PreconditionNotMet(
+          "member_->local_scopes_.size() = %d is not equal to "
+          "member_->local_exec_scopes_.size() = %d",
+          member_->local_scopes_.size(), member_->local_exec_scopes_.size()));
 
   std::vector<ir::Graph *> final_graphs;
 
@@ -664,8 +682,8 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
       }
     }
 #else
-    PADDLE_THROW(
-        "Paddle should be compiled with CUDA for ParallelGraph Execution.");
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Paddle should be compiled with CUDA for ParallelGraph Execution."));
 #endif
   } else {
     bool has_drop_last_read_op = details::HasDropLastReadOp(*graph);
@@ -755,7 +773,10 @@ void ParallelExecutor::BCastParamsToDevices(
       }
 
       PADDLE_ENFORCE_EQ(member_->places_.size(), buffers.size(),
-                        "variables' buffer size to bcast NOT equal to places");
+                        platform::errors::PreconditionNotMet(
+                            "variables' buffer size to bcast is %d, which is "
+                            "NOT equal to places size %d",
+                            buffers.size(), member_->places_.size()));
       {
         auto *nccl_ctxs = member_->nccl_ctxs_->DefaultFlatCtx();
         platform::NCCLGroupGuard guard;
@@ -798,7 +819,6 @@ void ParallelExecutor::BCastParamsToDevices(
 FetchResultType ParallelExecutor::Run(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
   VLOG(3) << "enter ParallelExecutor Run";
-  platform::RecordEvent parallel_executor_event("ParallelExecutor::Run");
 #ifdef WITH_GPERFTOOLS
   if (gProfileStarted) {
     ProfilerFlush();
@@ -899,15 +919,17 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
             "You should set the environment variable CPU_NUM in the system "
             "to determine the number of devices you need.";
       }
-      PADDLE_THROW(error_info);
+      PADDLE_THROW(platform::errors::PreconditionNotMet(error_info));
     } else if (is_persistable) {
       if (lod_tensors.size() == 1) {
         lod_tensors.reserve(num_places);
         auto &tensor = lod_tensors.front();
-        PADDLE_ENFORCE_EQ(tensor.dims(), pair.second.dims(),
-                          "The dim doesn't match.");
-        PADDLE_ENFORCE_EQ(tensor.place(), member_->places_.at(0),
-                          "The place doesn't match.");
+        PADDLE_ENFORCE_EQ(
+            tensor.dims(), pair.second.dims(),
+            platform::errors::PreconditionNotMet("The dim doesn't match."));
+        PADDLE_ENFORCE_EQ(
+            tensor.place(), member_->places_.at(0),
+            platform::errors::PreconditionNotMet("The place doesn't match."));
         for (size_t i = 1; i < num_places; ++i) {
           lod_tensors.emplace_back();
           auto &tmp = lod_tensors.back();
@@ -924,7 +946,7 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
             "value, you should feed %d samples.",
             lod_tensors.size(), pair.first, num_places,
             (is_cpu_place ? "CPU" : "GPU"), pair.first, num_places, num_places);
-        PADDLE_THROW(error_info);
+        PADDLE_THROW(platform::errors::PreconditionNotMet(error_info));
       }
     }
 

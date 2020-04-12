@@ -894,6 +894,8 @@ def cos_sim(X, Y):
             y = fluid.data(name='y', shape=[1, 7], dtype='float32')
             out = fluid.layers.cos_sim(x, y)
     """
+    check_variable_and_dtype(X, 'X', ['float32'], 'cos_sim')
+    check_variable_and_dtype(Y, 'Y', ['float32'], 'cos_sim')
     helper = LayerHelper('cos_sim', **locals())
     out = helper.create_variable_for_type_inference(dtype=X.dtype)
     xnorm = helper.create_variable_for_type_inference(dtype=X.dtype)
@@ -2361,6 +2363,12 @@ def adaptive_pool2d(input,
                             pool_size=[3, 3],
                             pool_type='max')
     """
+    check_variable_and_dtype(
+        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'adaptive_pool2d')
+    check_type(pool_type, 'pool_type', str, 'adaptive_pool2d')
+    check_type(pool_size, 'pool_size', (int, list, tuple), 'adaptive_pool2d')
+    check_type(require_index, 'require_index', bool, 'adaptive_pool2d')
     if pool_type not in ["max", "avg"]:
         raise ValueError(
             "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
@@ -2516,6 +2524,12 @@ def adaptive_pool3d(input,
                             pool_size=[3, 3, 3],
                             pool_type='max')
     """
+    check_variable_and_dtype(
+        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'adaptive_pool3d')
+    check_type(pool_type, 'pool_type', str, 'adaptive_pool3d')
+    check_type(pool_size, 'pool_size', (int, list, tuple), 'adaptive_pool3d')
+    check_type(require_index, 'require_index', bool, 'adaptive_pool3d')
     if pool_type not in ["max", "avg"]:
         raise ValueError(
             "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
@@ -3078,6 +3092,8 @@ def instance_norm(input,
             hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
             hidden2 = fluid.layers.instance_norm(input=hidden1)
     """
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'instance_norm')
     assert bias_attr is not False, "bias_attr should not be False in instance_norm."
     helper = LayerHelper('instance_norm', **locals())
     dtype = helper.input_dtype()
@@ -3568,6 +3584,11 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
             x = fluid.layers.spectral_norm(weight=weight, dim=1, power_iters=2)
     """
     helper = LayerHelper('spectral_norm', **locals())
+    check_variable_and_dtype(weight, 'weight', ['float32', 'float64'],
+                             'spectral_norm')
+    check_type(dim, 'dim', int, 'spectral_norm')
+    check_type(power_iters, 'power_iters', int, 'spectral_norm')
+    check_type(eps, 'eps', float, 'spectral_norm')
     dtype = weight.dtype
 
     # create intput and parameters
@@ -6189,9 +6210,16 @@ def lod_reset(x, y=None, target_lod=None):
             y = fluid.layers.data(name='y', shape=[10, 20], lod_level=2)
             out = fluid.layers.lod_reset(x=x, y=y)
     """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'lod_reset')
     helper = LayerHelper("lod_reset", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     if y is not None:
+        if y.lod_level > 0:
+            check_variable_and_dtype(
+                y, 'y', ['float32', 'float64', 'int32', 'int64'], 'lod_reset')
+        else:
+            check_variable_and_dtype(y, 'y', ['int32', 'int64'], 'lod_reset')
         helper.append_op(
             type="lod_reset", inputs={'X': x,
                                       'Y': y}, outputs={'Out': out})
@@ -6372,7 +6400,6 @@ def pad(x, paddings, pad_value=0., name=None):
             pad_value = 0
 
         Return:
-
             out = [[0, 1, 2, 0, 0]
                    [0, 3, 4, 0, 0]
                    [0, 0, 0, 0, 0]]
@@ -6397,12 +6424,10 @@ def pad(x, paddings, pad_value=0., name=None):
     Examples:
         .. code-block:: python
 
-            # x is a rank 2 tensor variable with shape [100, 224].
-            # out will be a tensor of shape [101, 227] 
+            # x is a rank 2 tensor variable
             import paddle.fluid as fluid
-            x = fluid.data(name='data', shape=[100, 224], dtype='float32')
-            out = fluid.layers.pad(
-                x=x, paddings=[0, 1, 1, 2], pad_value=0.)
+            x = fluid.data(name='data', shape=[300, 300], dtype='float32')
+            out = fluid.layers.pad(x=x, paddings=[0, 1, 1, 2], pad_value=0.)
     """
     helper = LayerHelper('pad', input=x, **locals())
     dtype = helper.input_dtype()
@@ -6440,29 +6465,34 @@ def pad_constant_like(x, y, pad_value=0., name=None):
                    [27, 28, 29]],
                   [[30, 31, 32],
                    [33, 34, 35]]]]
+
             X.shape = (2, 3, 2, 3)
 
             Y = [[[[35, 36, 37]],
                   [[38, 39, 40]],
                   [[41, 42, 43]]]]
+
             Y.shape = (1, 3, 1, 3)
-		And
-            pad_value = -1,
+
+        And
+            pad_value = 0.
 
         Return:
             Out = [[[[35, 36, 37],
-                     [-1, -1, -1]],
+                     [ 0,  0,  0]],
                     [[38, 39, 40],
-                     [-1, -1, -1]],
+                     [ 0,  0,  0]],
                     [[41, 42, 43],
-                     [-1, -1, -1]]],
-                  [[[-1, -1, -1],
-                    [-1, -1, -1]],
-                   [[-1, -1, -1],
-                    [-1, -1, -1]],
-                   [[-1, -1, -1],
-                    [-1, -1, -1]]]]
-            Out.shape = (2, 3, 2, 3)
+                     [ 0,  0,  0]]],
+                   [[[ 0,  0,  0], 
+                     [ 0,  0,  0]],
+                    [[ 0,  0,  0], 
+                     [ 0,  0,  0]],
+                    [[ 0,  0,  0], 
+                     [ 0,  0,  0]]]]
+
+            Out.shape = [2, 3, 2, 3]
+
 
     Args:
         x (Variable): Tensor, its shape specifies the shape of output.
@@ -6580,7 +6610,12 @@ def label_smooth(label,
 
 
 @templatedoc()
-def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
+def roi_pool(input,
+             rois,
+             pooled_height=1,
+             pooled_width=1,
+             spatial_scale=1.0,
+             rois_lod=None):
     """
     This operator implements the roi_pooling layer. 
     Region of interest pooling (also known as RoI pooling) is to perform max pooling on inputs of nonuniform sizes to obtain fixed-size feature maps (e.g. 7*7).
@@ -6596,6 +6631,7 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
     Args:
         input (Variable): Input feature, 4D-Tensor with the shape of [N,C,H,W], where N is the batch size, C is the input channel, H is Height, W is weight. The data type is float32 or float64.
         rois (Variable): ROIs (Regions of Interest) to pool over. 2D-LoDTensor with the shape of [num_rois,4], the lod level is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is the top left coordinates, and (x2, y2) is the bottom right coordinates.
+        rois_lod (Variable): The lod info of rois. Default: None
         pooled_height (int, optional): The pooled output height, data type is int32. Default: 1
         pooled_width (int, optional): The pooled output height, data type is int32. Default: 1
         spatial_scale (float, optional): Multiplicative spatial scale factor to translate ROI coords from their input scale to the scale used when pooling. Default: 1.0
@@ -6618,19 +6654,22 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
     
         input_data = np.array([i for i in range(1,17)]).reshape(1,1,4,4).astype(DATATYPE)
         roi_data =fluid.create_lod_tensor(np.array([[1., 1., 2., 2.], [1.5, 1.5, 3., 3.]]).astype(DATATYPE),[[2]], place)
-    
+        rois_lod_data = np.array([0, 2])
+
         x = fluid.data(name='input', shape=[None,1,4,4], dtype=DATATYPE)
         rois = fluid.data(name='roi', shape=[None,4], dtype=DATATYPE)
-    
+        rois_lod = fluid.data(name='rois_lod', shape=[None], dtype='int64') 
+
         pool_out = fluid.layers.roi_pool(
                 input=x,
                 rois=rois,
                 pooled_height=1,
                 pooled_width=1,
-                spatial_scale=1.0)
+                spatial_scale=1.0,
+                rois_lod=rois_lod)
     
         exe = fluid.Executor(place)
-        out, = exe.run(feed={'input':input_data ,'roi':roi_data}, fetch_list=[pool_out.name])
+        out, = exe.run(feed={'input':input_data ,'roi':roi_data, 'rois_lod': rois_lod_data}, fetch_list=[pool_out.name])
         print(out)   #array([[[[11.]]], [[[16.]]]], dtype=float32)
         print(np.array(out).shape)  # (2, 1, 1, 1)
     """
@@ -6641,7 +6680,8 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
     helper.append_op(
         type="roi_pool",
         inputs={"X": input,
-                "ROIs": rois},
+                "ROIs": rois,
+                "RoisLod": rois_lod},
         outputs={"Out": pool_out,
                  "Argmax": argmaxes},
         attrs={
@@ -6659,7 +6699,8 @@ def roi_align(input,
               pooled_width=1,
               spatial_scale=1.0,
               sampling_ratio=-1,
-              name=None):
+              name=None,
+              rois_lod=None):
     """
     ${comment}
 
@@ -6669,7 +6710,8 @@ def roi_align(input,
             a 2-D LoDTensor of shape (num_rois, 4), the lod level is 1. The 
             data type is float32 or float64. Given as [[x1, y1, x2, y2], ...], 
             (x1, y1) is the top left coordinates, and (x2, y2) is the bottom
-            right coordinates. 
+            right coordinates.
+        rois_lod (Variable): The lod info of rois. Default: None
         pooled_height (int32, optional): ${pooled_height_comment} Default: 1
         pooled_width (int32, optional): ${pooled_width_comment} Default: 1
         spatial_scale (float32, optional): ${spatial_scale_comment} Default: 1.0
@@ -6692,20 +6734,26 @@ def roi_align(input,
                 name='data', shape=[None, 256, 32, 32], dtype='float32')
             rois = fluid.data(
                 name='rois', shape=[None, 4], dtype='float32')
+            rois_lod = fluid.data(name='rois_lod', shape=[None], dtype='int64')
             align_out = fluid.layers.roi_align(input=x,
                                                rois=rois,
                                                pooled_height=7,
                                                pooled_width=7,
                                                spatial_scale=0.5,
-                                               sampling_ratio=-1)
+                                               sampling_ratio=-1,
+                                               rois_lod=rois_lod)
     """
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'roi_align')
+    check_variable_and_dtype(rois, 'rois', ['float32', 'float64'], 'roi_align')
     helper = LayerHelper('roi_align', **locals())
     dtype = helper.input_dtype()
     align_out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="roi_align",
         inputs={"X": input,
-                "ROIs": rois},
+                "ROIs": rois,
+                "RoisLod": rois_lod},
         outputs={"Out": align_out},
         attrs={
             "pooled_height": pooled_height,
@@ -7832,11 +7880,7 @@ def gather_nd(input, index, name=None):
     """
     helper = LayerHelper('gather_nd', **locals())
     dtype = helper.input_dtype()
-    if name is None:
-        output = helper.create_variable_for_type_inference(dtype)
-    else:
-        output = helper.create_variable(
-            name=name, dtype=dtype, persistable=False)
+    output = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="gather_nd",
         inputs={"X": input,
@@ -7999,11 +8043,7 @@ def scatter_nd_add(ref, index, updates, name=None):
 
     helper = LayerHelper('scatter_nd_add', **locals())
     dtype = helper.input_dtype(input_param_name='ref')
-    if name is None:
-        output = helper.create_variable_for_type_inference(dtype)
-    else:
-        output = helper.create_variable(
-            name=name, dtype=dtype, persistable=False)
+    output = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="scatter_nd_add",
         inputs={"X": ref,
@@ -8143,6 +8183,7 @@ def log(x, name=None):
     if in_dygraph_mode():
         return core.ops.log(x)
 
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log")
     inputs = {'X': [x]}
     helper = LayerHelper('log', **locals())
     dtype = helper.input_dtype(input_param_name='x')
@@ -8181,6 +8222,8 @@ def relu(x, name=None):
 """
     if in_dygraph_mode():
         return core.ops.relu(x)
+
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'relu')
 
     inputs = {'X': [x]}
     helper = LayerHelper('relu', **locals())
@@ -8242,6 +8285,8 @@ def selu(x, scale=None, alpha=None, name=None):
             res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
             print(res) # [array([[0.      , 1.050701],[2.101402, 3.152103]], dtype=float32)]
     """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'selu')
+
     helper = LayerHelper('selu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
@@ -8722,47 +8767,37 @@ def pad2d(input,
     Examples:
         .. code-block:: text
 
-	      Given that X is a channel of image from input:
+            Input = [[[[1., 2., 3.],
+                       [4., 5., 6.]]]]
 
-	      X = [[1, 2, 3],
-		   [4, 5, 6]]
+            Case 0:
+                paddings = [0, 1, 2, 3],
+                mode = 'constant'
+                pad_value = 0
+                Out = [[[[0., 0., 1., 2., 3., 0., 0., 0.],
+                         [0., 0., 4., 5., 6., 0., 0., 0.],
+                         [0., 0., 0., 0., 0., 0., 0., 0.]]]]
 
-	      Case 0:
+            Case 1:
+                paddings = [0, 1, 2, 1],
+                mode = 'reflect'
+                Out = [[[[3., 2., 1., 2., 3., 2.],
+                         [6., 5., 4., 5., 6., 5.],
+                         [3., 2., 1., 2., 3., 2.]]]]
 
-		paddings = [0, 1, 2, 3],
-		mode = 'constant'
-		pad_value = 0
-
-		Out = [[0, 0, 1, 2, 3, 0, 0, 0]
-		       [0, 0, 4, 5, 6, 0, 0, 0]
-		       [0, 0, 0, 0, 0, 0, 0, 0]]
-
-	      Case 1:
-
-		paddings = [0, 1, 2, 1],
-		mode = 'reflect'
-
-		Out = [[3, 2, 1, 2, 3, 2]
-		       [6, 5, 4, 5, 6, 5]
-		       [3, 2, 1, 2, 3, 2]]
-
-	      Case 2:
-
-		paddings = [0, 1, 2, 1],
-		mode = 'edge'
-
-		Out = [[1, 1, 1, 2, 3, 3]
-		       [4, 4, 4, 5, 6, 6]
-		       [4, 4, 4, 5, 6, 6]]
+            Case 2:
+                paddings = [0, 1, 2, 1],
+                mode = 'edge'
+                Out = [[[[1., 1., 1., 2., 3., 3.],
+                         [4., 4., 4., 5., 6., 6.],
+                         [4., 4., 4., 5., 6., 6.]]]]
 
     Code Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          data = fluid.data(name='data', shape=[None, 3, 32, 32],
-                                   dtype='float32')
-          result = fluid.layers.pad2d(input=data, paddings=[1, 2, 3, 4],
-                                      mode='reflect')
+            import paddle.fluid as fluid
+            data = fluid.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
+            result = fluid.layers.pad2d(input=data, paddings=[0, 1, 2, 3], mode='reflect')
     """
 
     if in_dygraph_mode():
@@ -8860,6 +8895,8 @@ def relu6(x, threshold=6.0, name=None):
                 # [[0.  0. ]
                 #  [2.5 6. ]]
     """
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'relu6')
+
     helper = LayerHelper('relu6', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -8902,10 +8939,14 @@ def pow(x, factor=1.0, name=None):
             y_2 = fluid.layers.pow(x, factor=factor_tensor)
             # y_2 is x^{3.0}
     """
+    check_variable_and_dtype(x, 'x', ['int32', 'int64', 'float32', 'float64'],
+                             'pow')
+
     helper = LayerHelper('pow', **locals())
     inputs = {'X': x}
     attrs = {}
     if isinstance(factor, Variable):
+        check_variable_and_dtype(factor, 'factor', ['float32'], 'pow')
         factor.stop_gradient = True
         inputs['FactorTensor'] = factor
     else:
@@ -8952,6 +8993,8 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
             #       [0.62705994, 0.23110689, 0.56902856]], dtype=float32)]
 
     """
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'stanh')
+
     helper = LayerHelper('stanh', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -8986,6 +9029,9 @@ def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
             data = fluid.layers.fill_constant(shape=[3, 2], value=0.5, dtype='float32') # [[0.5, 0.5], [0.5, 0.5], [0.5, 0.5]]
             result = fluid.layers.hard_sigmoid(data) # [[0.6, 0.6], [0.6, 0.6], [0.6, 0.6]]
     """
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'hard_sigmoid')
+
     helper = LayerHelper('hard_sigmoid', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -9066,6 +9112,8 @@ def swish(x, beta=1.0, name=None):
             # array([[-0.03916847,  0.8835007 , -0.25835553],
             #        [ 0.51126915,  0.82324016,  0.06915068]], dtype=float32)
     """
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'swish')
+
     helper = LayerHelper('swish', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -9119,6 +9167,8 @@ def prelu(x, mode, param_attr=None, name=None):
                      x,mode,param_attr=ParamAttr(name='alpha'))
 
     """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'prelu')
+
     helper = LayerHelper('prelu', **locals())
     if mode not in ['all', 'channel', 'element']:
         raise ValueError('mode should be one of all, channel, element.')
@@ -9172,6 +9222,8 @@ def brelu(x, t_min=0.0, t_max=24.0, name=None):
                 #[[ 1.  6.]
                 #[ 1. 10.]] 
     """
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'brelu')
+
     helper = LayerHelper('brelu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -9217,6 +9269,9 @@ def leaky_relu(x, alpha=0.02, name=None):
     if in_dygraph_mode():
         return core.ops.leaky_relu(x, 'alpha', alpha)
 
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'leaky_relu')
+
     inputs = {'X': [x]}
     attrs = {'alpha': alpha}
     helper = LayerHelper('leaky_relu', **locals())
@@ -9258,6 +9313,9 @@ def soft_relu(x, threshold=40.0, name=None):
             res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
             print(res) # [array([[0.6931472, 1.3132616], [2.126928 , 3.0485873]], dtype=float32)]
     """
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'soft_relu')
+
     helper = LayerHelper('soft_relu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -10577,11 +10635,7 @@ def _elementwise_op(helper):
     axis = helper.kwargs.get('axis', -1)
     use_mkldnn = helper.kwargs.get('use_mkldnn', False)
     name = helper.kwargs.get('name', None)
-    if name is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        out = helper.create_variable(
-            name=name, dtype=x.dtype, persistable=False)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(
         type=op_type,
@@ -10659,6 +10713,10 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
     """
 
+    check_variable_and_dtype(
+        x, "x",
+        ['float32', 'float64', 'uint8', 'int16', 'int32', 'in64', 'uint8'],
+        "scale")
     if in_dygraph_mode():
         _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
         out = core.ops.scale(x, 'scale',
@@ -10676,11 +10734,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     else:
         attrs['scale'] = float(scale)
     helper = LayerHelper('scale', **locals())
-    if name is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        out = helper.create_variable(
-            name=name, dtype=x.dtype, persistable=False)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(
         type='scale', inputs=inputs, outputs={'Out': out}, attrs=attrs)
@@ -11316,11 +11370,7 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
         assert x.dtype == y.dtype
 
     if out is None:
-        if name is None:
-            out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        else:
-            out = helper.create_variable(
-                name=name, dtype=x.dtype, persistable=False)
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     if binary_op:
         helper.append_op(
@@ -11642,11 +11692,7 @@ def mean(x, name=None):
 
     helper = LayerHelper("mean", **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'mean')
-    if name is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        out = helper.create_variable(
-            name=name, dtype=x.dtype, persistable=False)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(
         type="mean", inputs={"X": x}, attrs={}, outputs={"Out": out})
@@ -11729,11 +11775,7 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
     helper = LayerHelper("mul", **locals())
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'mul')
     check_variable_and_dtype(y, 'y', ['float16', 'float32', 'float64'], 'mul')
-    if name is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        out = helper.create_variable(
-            name=name, dtype=x.dtype, persistable=False)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(
         type="mul", inputs={"X": x,
@@ -11771,6 +11813,8 @@ def maxout(x, groups, name=None, axis=1):
                 dtype='float32')
             out = fluid.layers.maxout(input, groups=2)
     """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'maxout')
+
     helper = LayerHelper("maxout", **locals())
     if axis not in [1, -1, 3]:
         raise ValueError(
@@ -11779,11 +11823,7 @@ def maxout(x, groups, name=None, axis=1):
     if axis == -1:
         axis = 3
 
-    if name is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        out = helper.create_variable(
-            name=name, dtype=x.dtype, persistable=False)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(
         type="maxout",
@@ -11883,12 +11923,7 @@ def space_to_depth(x, blocksize, name=None):
     if not (isinstance(blocksize, int)):
         raise ValueError("blocksize must be a python Int")
 
-    if name is None:
-        out = helper.create_variable_for_type_inference(
-            dtype=x.dtype)  #fix create
-    else:
-        out = helper.create_variable(
-            name=name, dtype=x.dtype, persistable=False)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(
         type="space_to_depth",
@@ -11961,12 +11996,7 @@ def affine_channel(x,
 
     """
     helper = LayerHelper("affine_channel", **locals())
-
-    if name is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        out = helper.create_variable(
-            name=name, dtype=x.dtype, persistable=False)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(
         type="affine_channel",
@@ -12080,11 +12110,7 @@ def similarity_focus(input, axis, indexes, name=None):
     if len(indexes) == 0:
         raise ValueError("indexes can not be empty.")
 
-    if name is None:
-        out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    else:
-        out = helper.create_variable(
-            name=name, dtype=input.dtype, persistable=False)
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
         type='similarity_focus',
         inputs={'X': input},
@@ -12237,6 +12263,9 @@ def grid_sampler(x, grid, name=None):
     """
     helper = LayerHelper("grid_sampler", **locals())
 
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'grid_sampler')
+    check_variable_and_dtype(grid, 'grid', ['float32', 'float64'],
+                             'grid_sampler')
     if not isinstance(x, Variable):
         return ValueError("The x should be a Variable")
 
@@ -12286,11 +12315,7 @@ def log_loss(input, label, epsilon=1e-4, name=None):
     """
     helper = LayerHelper('log_loss', **locals())
 
-    if name is None:
-        loss = helper.create_variable_for_type_inference(dtype=input.dtype)
-    else:
-        loss = helper.create_variable(
-            name=name, dtype=input.dtype, persistable=False)
+    loss = helper.create_variable_for_type_inference(dtype=input.dtype)
 
     helper.append_op(
         type='log_loss',
@@ -12354,10 +12379,7 @@ def add_position_encoding(input, alpha, beta, name=None):
     helper = LayerHelper('add_position_encoding', **locals())
     dtype = helper.input_dtype()
 
-    if name is None:
-        out = helper.create_variable_for_type_inference(dtype=dtype)
-    else:
-        out = helper.create_variable(name=name, dtype=dtype, persistable=False)
+    out = helper.create_variable_for_type_inference(dtype=dtype)
 
     helper.append_op(
         type="add_position_encoding",
@@ -12424,11 +12446,7 @@ def bilinear_tensor_product(x,
 
     w = helper.create_parameter(
         attr=helper.param_attr, shape=param_shape, dtype=dtype, is_bias=False)
-
-    if name is None:
-        out = helper.create_variable_for_type_inference(dtype=dtype)
-    else:
-        out = helper.create_variable(name=name, dtype=dtype, persistable=False)
+    out = helper.create_variable_for_type_inference(dtype=dtype)
 
     inputs = {"X": x, "Y": y, "Weight": w}
     if helper.bias_attr:
@@ -12592,6 +12610,9 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None):
             out = fluid.layers.temporal_shift(x=input, seg_num=2, shift_ratio=0.2)
     """
     helper = LayerHelper("temporal_shift", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'temporal_shift')
+    check_type(seg_num, 'seg_num', int, 'temporal_shift')
+    check_type(shift_ratio, 'shift_ratio', float, 'temporal_shift')
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
@@ -12837,6 +12858,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
             #  [7, 5, 2]]     [1, 3, 3]]            [8, 8, 5]], dtype=int32)]
     """
     helper = LayerHelper('py_func', **locals())
+    check_type(x, 'X', (list, tuple, Variable, type(None)), 'py_func')
     if x is None:
         x = []
     elif isinstance(x, Variable):
@@ -12845,7 +12867,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
         x = list(x)
     elif not isinstance(x, (list, tuple, Variable)):
         raise TypeError('Input must be Variable/list(Variable)/tuple(Variable)')
-
+    check_type(out, 'Out', (list, tuple, Variable, type(None)), 'py_func')
     if out is None:
         out_list = []
     elif isinstance(out, Variable):
@@ -13149,6 +13171,8 @@ def fsp_matrix(x, y):
             loss = fluid.layers.fsp_matrix(feature_map_0, feature_map_1)
 
     """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'fsp_matrix')
+    check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'fsp_matrix')
     helper = LayerHelper('fsp_matrix', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype(
         input_param_name='x'))
@@ -13243,6 +13267,7 @@ def where(condition):
              out = layers.where(condition) # [[]]
 
     """
+    check_variable_and_dtype(condition, "condition", ['bool'], "where")
     helper = LayerHelper("where_index", **locals())
 
     out = helper.create_variable_for_type_inference(
@@ -13311,6 +13336,8 @@ def unique(x, dtype='int32'):
              out, index = fluid.layers.unique(x) # out is [2, 3, 1, 5]; index is [0, 1, 1, 2, 3, 1]
     """
 
+    check_variable_and_dtype(x, "x", ['float32', 'float64', 'int32', 'int64'],
+                             "unique")
     helper = LayerHelper("unique", **locals())
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -13355,6 +13382,8 @@ def unique_with_counts(x, dtype='int32'):
                                                         # count is [1, 3, 1, 1]
             # x.shape=(6,) out.shape=(4,), index.shape=(6,), count.shape=(4,)
     """
+    check_variable_and_dtype(x, "x", ['float32', 'float64', 'int32', 'int64'],
+                             "unique_with_counts")
     if not (dtype == 'int32' or dtype == 'int64'):
         raise TypeError(
             "Op unique_with_counts, index dtype must be int32 or int64")
@@ -13840,6 +13869,18 @@ def deformable_roi_pooling(input,
                                                 position_sensitive=False)
     """
 
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'deformable_roi_pooling')
+    check_variable_and_dtype(rois, 'rois', ['float32', 'float64'],
+                             'deformable_roi_pooling')
+    check_variable_and_dtype(trans, 'trans', ['float32', 'float64'],
+                             'deformable_roi_pooling')
+    check_type(group_size, 'group_size', (list, tuple),
+               'deformable_roi_pooling')
+    if part_size is not None:
+        check_type(part_size, 'part_size', (list, tuple),
+                   'deformable_roi_pooling')
+
     input_channels = input.shape[1]
     if position_sensitive == False:
         output_channels = input_channels
@@ -14000,6 +14041,9 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
         out, = exe.run(feed={'x':x_data}, fetch_list=[y.name])
         print(out)  # [[0.66666667, 1.66666667,3., 4.]]
     """
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'hard_swish')
+
     helper = LayerHelper('hard_swish', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(

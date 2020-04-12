@@ -36,7 +36,9 @@ class ActivationOpConverter : public OpConverter {
 
     auto op_pair = ops.find(op_type_);
     if (op_pair == ops.end()) {
-      PADDLE_THROW("Wrong activation op type!");
+      PADDLE_THROW(platform::errors::Fatal(
+          "Wrong activation op type, the trt do not support the %s act type.",
+          op_type_));
     }
 
     nvinfer1::IActivationLayer* layer = TRT_ENGINE_ADD_LAYER(
