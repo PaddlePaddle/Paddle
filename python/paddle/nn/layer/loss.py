@@ -442,7 +442,8 @@ class NLLLoss(fluid.dygraph.Layer):
                 x_dims))
         if x_dims != 2 and x_dims != 4:
             input = fluid.layers.reshape(input, shape=[n, c, 1, -1])
-            label = fluid.layers.reshape(label, shape=[n, c, 1, -1])
+            label = fluid.layers.reshape(label, shape=[n, 1, -1])
+            out_shape = [n] + x_shape[2:]
 
         inputs = {'X': input, 'Label': label}
         attrs = {'Reduction': self.reduction, 'ignore_index': self.ignore_index}
@@ -458,5 +459,7 @@ class NLLLoss(fluid.dygraph.Layer):
 
         self._helper.append_op(
             type='nll_loss', inputs=inputs, outputs=outputs, attrs=attrs)
+        if x_dims != 2 and x_dims != 4 and self.reduction == 'none':
+            out = fluid.layers.reshape(out, shape=out_shape)
 
         return out
