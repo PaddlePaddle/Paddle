@@ -1167,15 +1167,16 @@ def detection_map(detect_res,
         return helper.create_variable_for_type_inference(dtype=type)
 
     map_out = __create_var('float32')
-    accum_pos_count_out = out_states[0] if out_states else __create_var('int32')
-    accum_true_pos_out = out_states[1] if out_states else __create_var(
-        'float32')
-    accum_false_pos_out = out_states[2] if out_states else __create_var(
-        'float32')
+    accum_pos_count_out = out_states[
+        0] if out_states is not None else __create_var('int32')
+    accum_true_pos_out = out_states[
+        1] if out_states is not None else __create_var('float32')
+    accum_false_pos_out = out_states[
+        2] if out_states is not None else __create_var('float32')
 
-    pos_count = input_states[0] if input_states else None
-    true_pos = input_states[1] if input_states else None
-    false_pos = input_states[2] if input_states else None
+    pos_count = input_states[0] if input_states is not None else None
+    true_pos = input_states[1] if input_states is not None else None
+    false_pos = input_states[2] if input_states is not None else None
 
     helper.append_op(
         type="detection_map",
@@ -2167,17 +2168,17 @@ def multi_box_head(inputs,
             aspect_ratios, num_layer,
             'aspect_ratios should be list or tuple, and the length of inputs '
             'and aspect_ratios should be the same.')
-    if step_h:
+    if step_h is not None:
         _is_list_or_tuple_and_equal(
             step_h, num_layer,
             'step_h should be list or tuple, and the length of inputs and '
             'step_h should be the same.')
-    if step_w:
+    if step_w is not None:
         _is_list_or_tuple_and_equal(
             step_w, num_layer,
             'step_w should be list or tuple, and the length of inputs and '
             'step_w should be the same.')
-    if steps:
+    if steps is not None:
         _is_list_or_tuple_and_equal(
             steps, num_layer,
             'steps should be list or tuple, and the length of inputs and '
