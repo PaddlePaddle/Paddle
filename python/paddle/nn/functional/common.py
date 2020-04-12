@@ -79,7 +79,9 @@ def interpolate(input,
     nearest-neighbor interpolation.
 
     Example:
+
     .. code-block:: text
+
         For scale:
 
             if align_corners = True && out_size > 1 :
