@@ -257,9 +257,9 @@ class DownpourServer(Server):
             elif accessor_class == 'DownpourUnitAccessor':
                 self.add_sparse_table_common_config(table, strategy)
                 self.add_sparse_optimizer(table.accessor.embed_sgd_param,
-                                          strategy, "embed")
+                                          strategy, "embed_")
                 self.add_sparse_optimizer(table.accessor.embedx_sgd_param,
-                                          strategy, "embedx")
+                                          strategy, "embedx_")
 
     def add_dense_table(self, table_id, param_var, grad_var, strategy,
                         sparse_table_names):
@@ -380,18 +380,15 @@ class DownpourServer(Server):
         table.accessor.fea_dim = fea_dim
 
     def add_sparse_optimizer(self, sgd, strategy, prefix):
-        optimizer_name = strategy.get(prefix + "_sparse_optimizer", "adam")
+        optimizer_name = strategy.get(prefix + "sparse_optimizer", "adam")
         sgd.name = optimizer_name
         if optimizer_name == "naive":
             sgd.naive.learning_rate = \
                 strategy.get(prefix + 'sparse_learning_rate', 0.05)
             sgd.naive.initial_range = \
-                strategy.get(predix + 'sparse_initial_range', 1e-4)
-            if strategy.get(prefix + 'sparse_weight_bounds') is None:
-                sgd.naive.weight_bounds.extend([-10, 10])
-            else:
-                sgd.naive.weight_bounds.extend(
-                    strategy.get(prefix + 'sparse_weight_bounds'))
+                strategy.get(prefix + 'sparse_initial_range', 1e-4)
+            bounds = strategy.get(prefix + 'sparse_weight_bounds', [-10, 10])
+            sgd.naive.weight_bounds.extend(bounds)
         elif optimizer_name == "adagrad":
             sgd.adagrad.learning_rate = \
                 strategy.get(prefix + 'sparse_learning_rate', 0.05)
@@ -399,11 +396,8 @@ class DownpourServer(Server):
                 strategy.get(prefix + 'sparse_initial_range', 1e-4)
             sgd.adagrad.initial_g2sum = strategy.get(
                 prefix + 'sparse_initial_g2sum', 3)
-            if strategy.get('sparse_weight_bounds') is None:
-                sgd.adagrad.weight_bounds.extend([-10, 10])
-            else:
-                sgd.adagrad.weight_bounds.extend(
-                    strategy.get(prefix + 'sparse_weight_bounds'))
+            bounds = strategy.get(prefix + 'sparse_weight_bounds', [-10, 10])
+            sgd.adagrad.weight_bounds.extend(bounds)
         elif optimizer_name == "adam":
             sgd.adam.learning_rate = \
                 strategy.get(prefix + 'sparse_learning_rate', 0.001)
@@ -415,11 +409,8 @@ class DownpourServer(Server):
                 prefix + 'sparse_beta2_decay_rate', 0.999)
             sgd.adam.ada_epsilon = strategy.get(prefix + 'sparse_ada_epsilon',
                                                 1e-8)
-            if strategy.get(prefix + 'sparse_weight_bounds') is None:
-                sgd.adam.weight_bounds.extend([-10, 10])
-            else:
-                sgd.adam.weight_bounds.extend(
-                    strategy.get(prefix + 'sparse_weight_bounds'))
+            bounds = strategy.get(prefix + 'sparse_weight_bounds', [-10, 10])
+            sgd.adam.weight_bounds.extend(bounds)
 
     def add_sparse_table_common_config(self, table, strategy):
         table.accessor.embedx_dim = strategy.get('sparse_embedx_dim', 8)
