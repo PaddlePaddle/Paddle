@@ -65,6 +65,9 @@ _softshrink_ = generate_layer_fn('softshrink')
 
 
 def softshrink(x, alpha=None):
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'softshrink')
+
     locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():
@@ -108,6 +111,9 @@ _hard_shrink_ = generate_layer_fn('hard_shrink')
 
 
 def hard_shrink(x, threshold=None):
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'hard_shrink')
+
     locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():
@@ -165,6 +171,9 @@ _thresholded_relu_ = generate_layer_fn('thresholded_relu')
 
 
 def thresholded_relu(x, threshold=None):
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'thresholded_relu')
+
     locals_var = locals().copy()
     kwargs = dict()
     for name, val in locals_var.items():
