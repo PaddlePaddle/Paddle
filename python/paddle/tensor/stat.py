@@ -96,7 +96,7 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
     return out
 
 
-def std(input, axis, keepdim=False, unbiased=True, out=None, name=None):
+def std(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
     """
     Computes the standard-deviation of the input tensor's elements along the given axis.
 
