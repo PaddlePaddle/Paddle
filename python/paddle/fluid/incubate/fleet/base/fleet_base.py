@@ -20,12 +20,12 @@ import paddle.fluid as fluid
 from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import SGD
 
+from paddle.fluid.incubate.fleet.base.mode import Mode
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
 from paddle.fluid.incubate.fleet.base.role_maker import UserDefinedRoleMaker
 from paddle.fluid.contrib.mixed_precision.decorator import OptimizerWithMixedPrecision
 from . import mode
-from mode import *
 
 __all__ = ['Fleet', 'DistributedOptimizer']
 __all__ += mode.__all__
