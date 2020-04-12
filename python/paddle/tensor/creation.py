@@ -207,7 +207,7 @@ def ones(shape, dtype=None, out=None, device=None):
 
           import paddle
           data = paddle.ones(shape=[3, 2], dtype='float32') # [[1., 1.], [1., 1.], [1., 1.]]
-          data = paddle.ones(shape=[2, 2], dtype='float32', device='cpu') # [[1., 1.], [1., 0.]]
+          data = paddle.ones(shape=[2, 2], dtype='float32', device='cpu') # [[1., 1.], [1., 1.]]
     """
     check_dtype(dtype, 'create data type',
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
@@ -247,7 +247,7 @@ def ones_like(input, dtype=None, device=None, name=None):
           import paddle
           import paddle.fluid as fluid
 
-          x = fluid.layers.data(name='x', dtype='float32', shape=[3], append_batch_size=False)
+          x = fluid.data(name='x', dtype='float32', shape=[3])
           data = paddle.ones_like(x) # data=[1.0, 1.0, 1.0]
           data1 = paddle.ones_like(input=x, device="gpu") data1=[1.0, 1.0. 1.0]
 
@@ -354,9 +354,9 @@ def zeros_like(input, dtype=None, device=None, name=None):
           import paddle
           import paddle.fluid as fluid
 
-          x = fluid.layers.data(name='x', dtype='float32', shape=[3], append_batch_size=False)
+          x = fluid.data(name='x', dtype='float32', shape=[3])
           data = paddle.ones_like(x) # data=[1.0, 1.0, 1.0]
-          data1 = paddle.ones_like(input=x, device="gpu") data1=[1.0, 1.0. 1.0]
+          data1 = paddle.ones_like(input=x, device="gpu") #data1=[1.0, 1.0. 1.0]
 
     """
 
