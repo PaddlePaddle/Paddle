@@ -848,18 +848,19 @@ class TestRecomputeOptimizer(unittest.TestCase):
     def test_dropout_with_seed(self):
         """
         when we recompute a dropout op, make sure that the recomputed one
-	is the same as the original var.
-	"""
+	    is the same as the original var.
+	    """
 
         def gen_data():
             return {
-                "x": np.random.random(size=(12, 3)).astype('float32'),
+                "x": np.random.random(size=(100, 3)).astype('float32'),
                 "y": np.random.randint(
-                    2, size=(12, 1)).astype('int64')
+                    2, size=(100, 1)).astype('int64')
             }
 
         def mlp(input_x, input_y):
-            drop_res = fluid.layers.dropout(input_x, dropout_prob=0.5)
+            drop_res = fluid.layers.dropout(
+                input_x, dropout_prob=0.5, name="dropout_with_seed_cpu")
             prediction = fluid.layers.fc(input=[drop_res],
                                          size=2,
                                          act='softmax')
@@ -888,8 +889,8 @@ class TestRecomputeOptimizer(unittest.TestCase):
                 drop_vec = exe.run(feed=feed_data,
                                    program=fluid.default_main_program(),
                                    fetch_list=[
-                                       "dropout_0.tmp_1",
-                                       "dropout_0.tmp_1.subprog_0"
+                                       "dropout_with_seed_cpu.tmp_1",
+                                       "dropout_with_seed_cpu.tmp_1.subprog_0"
                                    ])
                 self.assertEqual(drop_vec[0].tolist(), drop_vec[1].tolist())
 
@@ -905,13 +906,14 @@ class TestRecomputeOptimizerCUDA(unittest.TestCase):
 
         def gen_data():
             return {
-                "x": np.random.random(size=(12, 3)).astype('float32'),
+                "x": np.random.random(size=(100, 3)).astype('float32'),
                 "y": np.random.randint(
-                    2, size=(12, 1)).astype('int64')
+                    2, size=(100, 1)).astype('int64')
             }
 
         def mlp(input_x, input_y):
-            drop_res = fluid.layers.dropout(input_x, dropout_prob=0.5)
+            drop_res = fluid.layers.dropout(
+                input_x, dropout_prob=0.5, name="dropout_with_seed_gpu")
             prediction = fluid.layers.fc(input=[drop_res],
                                          size=2,
                                          act='softmax')
@@ -940,11 +942,9 @@ class TestRecomputeOptimizerCUDA(unittest.TestCase):
                 drop_vec = exe.run(feed=feed_data,
                                    program=fluid.default_main_program(),
                                    fetch_list=[
-                                       "dropout_0.tmp_1",
-                                       "dropout_0.tmp_1.subprog_0"
+                                       "dropout_with_seed_gpu.tmp_1",
+                                       "dropout_with_seed_gpu.tmp_1.subprog_0"
                                    ])
-                print("y: ", drop_vec[0])
-                print("y_recompute: ", drop_vec[1])
                 self.assertEqual(drop_vec[0].tolist(), drop_vec[1].tolist())
 
 
