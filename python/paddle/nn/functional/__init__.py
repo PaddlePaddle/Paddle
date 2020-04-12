@@ -118,7 +118,7 @@ from . import activation
 from .activation import relu  #DEFINE_ALIAS
 # from .activation import relu6   #DEFINE_ALIAS
 # from .activation import selu   #DEFINE_ALIAS
-# from .activation import sigmoid   #DEFINE_ALIAS
+from .activation import sigmoid  #DEFINE_ALIAS
 # from .activation import soft_relu   #DEFINE_ALIAS
 # from .activation import softmax   #DEFINE_ALIAS
 # from .activation import softplus   #DEFINE_ALIAS

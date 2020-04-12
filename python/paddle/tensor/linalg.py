@@ -16,10 +16,9 @@ from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type
 from ..fluid.framework import in_dygraph_mode
 
-# TODO: define functions of linear algebra   
 __all__ = [
     'matmul',
-    #  'dot',
+    'dot',
     #  'einsum',
     #  'morm',
     #  'transpose',
@@ -233,4 +232,53 @@ def dist(x, y, p=2):
     attrs = {"p": float(p)}
     helper.append_op(
         type='dist', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+    return out
+
+
+def dot(x, y, name=None):
+    """
+    This operator calculates inner product for vectors.
+   
+    .. note::
+       Only support 1-d Tensor(vector).
+
+    Parameters:
+    
+        x(Variable): 1-D ``Tensor`` or ``LoDTensor``. Its datatype should be ``float32``, ``float64``, ``int32``, ``int64``
+        y(Variable): 1-D ``Tensor`` or ``LoDTensor``. Its datatype soulde be ``float32``, ``float64``, ``int32``, ``int64``
+        name(str, optional): Name of the output. Default is None. It's used to print debug info for developers. Details: :ref:`api_guide_Name`
+
+    Examples:
+
+    .. code-block:: python
+
+        import paddle
+        import paddle.fluid as fluid
+        import numpy as np
+        
+        with fluid.dygraph.guard():
+          x = fluid.dygraph.to_variable(np.random.uniform(0.1, 1, [10]).astype(np.float32))
+          y = fluid.dygraph.to_variable(np.random.uniform(1, 3, [10]).astype(np.float32))
+          z = paddle.dot(x, y)
+          print(z.numpy())
+
+    """
+    op_type = 'dot'
+    assert x is not None, 'x cannot be None in {}'.format(op_type)
+    assert y is not None, 'y cannot be None in {}'.format(op_type)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             op_type)
+    check_variable_and_dtype(y, 'y', ['float32', 'float64', 'int32', 'int64'],
+                             op_type)
+
+    helper = LayerHelper(op_type, **locals())
+    if name is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+    helper.append_op(
+        type="dot", inputs={'X': x,
+                            'Y': y}, attrs={}, outputs={"Out": out})
     return out

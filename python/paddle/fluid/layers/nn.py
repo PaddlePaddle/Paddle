@@ -894,6 +894,8 @@ def cos_sim(X, Y):
             y = fluid.data(name='y', shape=[1, 7], dtype='float32')
             out = fluid.layers.cos_sim(x, y)
     """
+    check_variable_and_dtype(X, 'X', ['float32'], 'cos_sim')
+    check_variable_and_dtype(Y, 'Y', ['float32'], 'cos_sim')
     helper = LayerHelper('cos_sim', **locals())
     out = helper.create_variable_for_type_inference(dtype=X.dtype)
     xnorm = helper.create_variable_for_type_inference(dtype=X.dtype)
@@ -3090,6 +3092,8 @@ def instance_norm(input,
             hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
             hidden2 = fluid.layers.instance_norm(input=hidden1)
     """
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'instance_norm')
     assert bias_attr is not False, "bias_attr should not be False in instance_norm."
     helper = LayerHelper('instance_norm', **locals())
     dtype = helper.input_dtype()
@@ -6606,7 +6610,12 @@ def label_smooth(label,
 
 
 @templatedoc()
-def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
+def roi_pool(input,
+             rois,
+             pooled_height=1,
+             pooled_width=1,
+             spatial_scale=1.0,
+             rois_lod=None):
     """
     This operator implements the roi_pooling layer. 
     Region of interest pooling (also known as RoI pooling) is to perform max pooling on inputs of nonuniform sizes to obtain fixed-size feature maps (e.g. 7*7).
@@ -6622,6 +6631,7 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
     Args:
         input (Variable): Input feature, 4D-Tensor with the shape of [N,C,H,W], where N is the batch size, C is the input channel, H is Height, W is weight. The data type is float32 or float64.
         rois (Variable): ROIs (Regions of Interest) to pool over. 2D-LoDTensor with the shape of [num_rois,4], the lod level is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is the top left coordinates, and (x2, y2) is the bottom right coordinates.
+        rois_lod (Variable): The lod info of rois. Default: None
         pooled_height (int, optional): The pooled output height, data type is int32. Default: 1
         pooled_width (int, optional): The pooled output height, data type is int32. Default: 1
         spatial_scale (float, optional): Multiplicative spatial scale factor to translate ROI coords from their input scale to the scale used when pooling. Default: 1.0
@@ -6644,19 +6654,22 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
     
         input_data = np.array([i for i in range(1,17)]).reshape(1,1,4,4).astype(DATATYPE)
         roi_data =fluid.create_lod_tensor(np.array([[1., 1., 2., 2.], [1.5, 1.5, 3., 3.]]).astype(DATATYPE),[[2]], place)
-    
+        rois_lod_data = np.array([0, 2])
+
         x = fluid.data(name='input', shape=[None,1,4,4], dtype=DATATYPE)
         rois = fluid.data(name='roi', shape=[None,4], dtype=DATATYPE)
-    
+        rois_lod = fluid.data(name='rois_lod', shape=[None], dtype='int64') 
+
         pool_out = fluid.layers.roi_pool(
                 input=x,
                 rois=rois,
                 pooled_height=1,
                 pooled_width=1,
-                spatial_scale=1.0)
+                spatial_scale=1.0,
+                rois_lod=rois_lod)
     
         exe = fluid.Executor(place)
-        out, = exe.run(feed={'input':input_data ,'roi':roi_data}, fetch_list=[pool_out.name])
+        out, = exe.run(feed={'input':input_data ,'roi':roi_data, 'rois_lod': rois_lod_data}, fetch_list=[pool_out.name])
         print(out)   #array([[[[11.]]], [[[16.]]]], dtype=float32)
         print(np.array(out).shape)  # (2, 1, 1, 1)
     """
@@ -6667,7 +6680,8 @@ def roi_pool(input, rois, pooled_height=1, pooled_width=1, spatial_scale=1.0):
     helper.append_op(
         type="roi_pool",
         inputs={"X": input,
-                "ROIs": rois},
+                "ROIs": rois,
+                "RoisLod": rois_lod},
         outputs={"Out": pool_out,
                  "Argmax": argmaxes},
         attrs={
@@ -6685,7 +6699,8 @@ def roi_align(input,
               pooled_width=1,
               spatial_scale=1.0,
               sampling_ratio=-1,
-              name=None):
+              name=None,
+              rois_lod=None):
     """
     ${comment}
 
@@ -6695,7 +6710,8 @@ def roi_align(input,
             a 2-D LoDTensor of shape (num_rois, 4), the lod level is 1. The 
             data type is float32 or float64. Given as [[x1, y1, x2, y2], ...], 
             (x1, y1) is the top left coordinates, and (x2, y2) is the bottom
-            right coordinates. 
+            right coordinates.
+        rois_lod (Variable): The lod info of rois. Default: None
         pooled_height (int32, optional): ${pooled_height_comment} Default: 1
         pooled_width (int32, optional): ${pooled_width_comment} Default: 1
         spatial_scale (float32, optional): ${spatial_scale_comment} Default: 1.0
@@ -6718,12 +6734,14 @@ def roi_align(input,
                 name='data', shape=[None, 256, 32, 32], dtype='float32')
             rois = fluid.data(
                 name='rois', shape=[None, 4], dtype='float32')
+            rois_lod = fluid.data(name='rois_lod', shape=[None], dtype='int64')
             align_out = fluid.layers.roi_align(input=x,
                                                rois=rois,
                                                pooled_height=7,
                                                pooled_width=7,
                                                spatial_scale=0.5,
-                                               sampling_ratio=-1)
+                                               sampling_ratio=-1,
+                                               rois_lod=rois_lod)
     """
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              'roi_align')
@@ -6734,7 +6752,8 @@ def roi_align(input,
     helper.append_op(
         type="roi_align",
         inputs={"X": input,
-                "ROIs": rois},
+                "ROIs": rois,
+                "RoisLod": rois_lod},
         outputs={"Out": align_out},
         attrs={
             "pooled_height": pooled_height,
@@ -8266,6 +8285,8 @@ def selu(x, scale=None, alpha=None, name=None):
             res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
             print(res) # [array([[0.      , 1.050701],[2.101402, 3.152103]], dtype=float32)]
     """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'selu')
+
     helper = LayerHelper('selu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
@@ -8874,6 +8895,8 @@ def relu6(x, threshold=6.0, name=None):
                 # [[0.  0. ]
                 #  [2.5 6. ]]
     """
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'relu6')
+
     helper = LayerHelper('relu6', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -8927,7 +8950,6 @@ def pow(x, factor=1.0, name=None):
         factor.stop_gradient = True
         inputs['FactorTensor'] = factor
     else:
-        check_type(factor, 'factor', float, 'pow')
         attrs['factor'] = factor
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -8971,6 +8993,8 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
             #       [0.62705994, 0.23110689, 0.56902856]], dtype=float32)]
 
     """
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'stanh')
+
     helper = LayerHelper('stanh', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -9005,6 +9029,9 @@ def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
             data = fluid.layers.fill_constant(shape=[3, 2], value=0.5, dtype='float32') # [[0.5, 0.5], [0.5, 0.5], [0.5, 0.5]]
             result = fluid.layers.hard_sigmoid(data) # [[0.6, 0.6], [0.6, 0.6], [0.6, 0.6]]
     """
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'hard_sigmoid')
+
     helper = LayerHelper('hard_sigmoid', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -9085,6 +9112,8 @@ def swish(x, beta=1.0, name=None):
             # array([[-0.03916847,  0.8835007 , -0.25835553],
             #        [ 0.51126915,  0.82324016,  0.06915068]], dtype=float32)
     """
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'swish')
+
     helper = LayerHelper('swish', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -9284,6 +9313,9 @@ def soft_relu(x, threshold=40.0, name=None):
             res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
             print(res) # [array([[0.6931472, 1.3132616], [2.126928 , 3.0485873]], dtype=float32)]
     """
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'soft_relu')
+
     helper = LayerHelper('soft_relu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -11777,6 +11809,8 @@ def maxout(x, groups, name=None, axis=1):
                 dtype='float32')
             out = fluid.layers.maxout(input, groups=2)
     """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'maxout')
+
     helper = LayerHelper("maxout", **locals())
     if axis not in [1, -1, 3]:
         raise ValueError(
@@ -13824,6 +13858,18 @@ def deformable_roi_pooling(input,
                                                 position_sensitive=False)
     """
 
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'deformable_roi_pooling')
+    check_variable_and_dtype(rois, 'rois', ['float32', 'float64'],
+                             'deformable_roi_pooling')
+    check_variable_and_dtype(trans, 'trans', ['float32', 'float64'],
+                             'deformable_roi_pooling')
+    check_type(group_size, 'group_size', (list, tuple),
+               'deformable_roi_pooling')
+    if part_size is not None:
+        check_type(part_size, 'part_size', (list, tuple),
+                   'deformable_roi_pooling')
+
     input_channels = input.shape[1]
     if position_sensitive == False:
         output_channels = input_channels
@@ -13984,6 +14030,9 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
         out, = exe.run(feed={'x':x_data}, fetch_list=[y.name])
         print(out)  # [[0.66666667, 1.66666667,3., 4.]]
     """
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'hard_swish')
+
     helper = LayerHelper('hard_swish', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
