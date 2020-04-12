@@ -30,7 +30,7 @@ class IncrementOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(framework::product(ctx->GetInputDim("X")), 1UL,
                       platform::errors::InvalidArgument(
                           "The number of elements in Input(X) should be 1."
-                          "Now the number is %d".,
+                          "Now the number is %d.",
                           framework::product(ctx->GetInputDim("X"))));
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "increment");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "increment");

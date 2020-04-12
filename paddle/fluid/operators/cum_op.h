@@ -43,7 +43,7 @@ class CumKernel : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
     PADDLE_ENFORCE_LT(
         axis, x_dims.size(),
         platform::errors::InvalidArgument("axis(%d) should be less than the "
-                                          "dimensiotn(%d) of the input tensor.",
+                                          "dimension(%d) of the input tensor.",
                                           axis, x_dims.size()));
     Out.template mutable_data<T>(context.GetPlace());
 
