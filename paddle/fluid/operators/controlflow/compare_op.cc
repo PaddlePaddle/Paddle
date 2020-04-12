@@ -80,8 +80,8 @@ class CompareOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* context) const override {
     OpComment comment;
-    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "Compare");
-    OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", "Compare");
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", comment.type);
+    OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", comment.type);
     auto dim_x = context->GetInputDim("X");
     auto dim_y = context->GetInputDim("Y");
     PADDLE_ENFORCE_GE(dim_x.size(), dim_y.size(),
