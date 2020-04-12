@@ -35,6 +35,14 @@ class ROIAlignOp : public framework::OperatorWithKernel {
     auto input_dims = ctx->GetInputDim("X");
     auto rois_dims = ctx->GetInputDim("ROIs");
 
+    if (ctx->HasInput("RoisLod")) {
+      auto rois_lod_dims = ctx->GetInputDim("RoisLod");
+      PADDLE_ENFORCE_EQ(
+          rois_lod_dims.size(), 1,
+          platform::errors::InvalidArgument("The RoisLod dimension should be 1"
+                                            ", but got dim = %d",
+                                            rois_lod_dims.size()));
+    }
     PADDLE_ENFORCE_EQ(
         input_dims.size(), 4,
         platform::errors::InvalidArgument(
@@ -136,6 +144,10 @@ class ROIAlignOpMaker : public framework::OpProtoAndCheckerMaker {
              "given as [[x1, y1, x2, y2], ...]. "
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates.");
+    AddInput("RoisLod",
+             "(Tensor), "
+             "The lod info of rois.")
+        .AsDispensable();
     AddOutput("Out",
               "(Tensor), "
               "The output of ROIAlignOp is a 4-D tensor with shape "
@@ -190,6 +202,7 @@ class ROIAlignGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetType("roi_align_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("ROIs", this->Input("ROIs"));
+    op->SetInput("RoisLod", this->Input("RoisLod"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
@@ -210,8 +223,10 @@ REGISTER_OPERATOR(roi_align_grad, ops::ROIAlignGradOp,
 REGISTER_OP_CPU_KERNEL(
     roi_align,
     ops::CPUROIAlignOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUROIAlignOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::CPUROIAlignOpKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::CPUROIAlignOpKernel<paddle::platform::CPUDeviceContext, int>);
 REGISTER_OP_CPU_KERNEL(
     roi_align_grad,
     ops::CPUROIAlignGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUROIAlignGradOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::CPUROIAlignGradOpKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::CPUROIAlignGradOpKernel<paddle::platform::CPUDeviceContext, int>);
