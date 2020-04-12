@@ -26,15 +26,16 @@ from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 from .. import unique_name
 from .layer_object_helper import LayerObjectHelper
+from ..data_feeder import check_variable_and_dtype, check_type
 import numpy as np
 import numbers
 import logging
 
 __all__ = [
     'Conv2D', 'Conv3D', 'Pool2D', 'Linear', 'BatchNorm', 'Dropout', 'Embedding',
-    'GRUUnit', 'LayerNorm', 'NCE', 'PRelu', 'BilinearTensorProduct',
-    'Conv2DTranspose', 'Conv3DTranspose', 'GroupNorm', 'SpectralNorm',
-    'TreeConv'
+    'GRUUnit', 'InstanceNorm', 'LayerNorm', 'NCE', 'PRelu',
+    'BilinearTensorProduct', 'Conv2DTranspose', 'Conv3DTranspose', 'GroupNorm',
+    'SpectralNorm', 'TreeConv'
 ]
 
 
@@ -837,6 +838,10 @@ class Pool2D(layers.Layer):
                      'use_mkldnn', False, 'exclusive', self._exclusive)
             return core.ops.pool2d(input, *attrs)
 
+        check_variable_and_dtype(
+            input, 'input', ['int8', 'uint8', 'float16', 'float32', 'float64'],
+            'Pool2D')
+
         attrs = {
             "pooling_type": self._pool_type,
             "ksize": self._pool_size,
@@ -931,9 +936,8 @@ class Linear(layers.Layer):
 
     def forward(self, input):
         if in_dygraph_mode():
-            pre_bias = core.ops.mul(input, self.weight, 'x_num_col_dims',
-                                    len(input.shape) - 1, 'y_num_col_dims', 1)
-
+            pre_bias = core.ops.matmul(input, self.weight, 'transpose_X', False,
+                                       'transpose_Y', False, "alpha", 1)
             pre_act = dygraph_utils._append_bias_in_dygraph(
                 pre_bias, self.bias, axis=len(input.shape) - 1)
 
@@ -944,14 +948,15 @@ class Linear(layers.Layer):
                                  ['float16', 'float32', 'float64'], "Linear")
 
         attrs = {
-            "x_num_col_dims": len(input.shape) - 1,
-            "y_num_col_dims": 1,
+            "transpose_X": False,
+            "transpose_Y": False,
+            "alpha": 1,
         }
         inputs = {"X": [input], "Y": [self.weight]}
 
         tmp = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
-            type="mul", inputs=inputs, outputs={"Out": tmp}, attrs=attrs)
+            type="matmul", inputs=inputs, outputs={"Out": tmp}, attrs=attrs)
         if self.bias:
             pre_activation = self._helper.create_variable_for_type_inference(
                 dtype=self._dtype)
@@ -964,6 +969,132 @@ class Linear(layers.Layer):
         else:
             pre_activation = tmp
         return self._helper.append_activation(pre_activation, act=self._act)
+
+
+class InstanceNorm(layers.Layer):
+    """
+    This interface is used to construct a callable object of the ``InstanceNorm`` class.
+    For more details, refer to code examples.
+
+    Can be used as a normalizer function for convolution or fully_connected operations.
+    The required data format for this layer is one of the following:
+
+    DataLayout: NCHW `[batch, in_channels, in_height, in_width]`
+
+    Refer to `Instance Normalization: The Missing Ingredient for Fast Stylization <https://arxiv.org/pdf/1607.08022.pdf>`_
+    for more details.
+
+    :math:`input` is the input features over a mini-batch.
+
+    ..  math::
+        
+        \\mu_{\\beta} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW} x_i \\qquad &//\\
+        \\ mean\ of\ one\  feature\ map\ in\ mini-batch \\\\
+        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW}(x_i - \\
+        \\mu_{\\beta})^2 \\qquad &//\ variance\ of\ one\ feature\ map\ in\ mini-batch \\\\
+        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
+        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
+        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+
+    Note:
+        `H` means height of feature map, `W` means width of feature map.
+
+    Parameters:
+        num_channels(int): Indicate the number of channels of the input ``Tensor``.
+        epsilon(float, optional): A value added to the denominator for
+            numerical stability. Default is 1e-5.
+        param_attr(ParamAttr, optional): The parameter attribute for Parameter `scale`
+             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
+	     will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+	     If the Initializer of the param_attr is not set, the parameter is initialized 
+	     one. Default: None.
+        bias_attr(ParamAttr, optional): The parameter attribute for the bias of instance_norm.
+             If it is set to None or one attribute of ParamAttr, instance_norm
+	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
+	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
+	     Default: None.
+        dtype(str, optional): Indicate the data type of the input ``Tensor``,
+             which can be float32 or float64. Default: float32.
+
+    Returns:
+        None.
+
+    Examples:
+
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          from paddle.fluid.dygraph.base import to_variable
+          import numpy as np
+          import paddle
+
+          # x's shape is [1, 3, 1, 2] 
+          x = np.array([[[[1.0, 8.0]], [[10.0, 5.0]], [[4.0, 6.0]]]]).astype('float32')
+          with fluid.dygraph.guard():
+              x = to_variable(x)
+              instanceNorm = paddle.nn.InstanceNorm(3)
+              ret = instanceNorm(x)
+              # ret's shape is [1, 3, 1, 2]; value is [-1 1 0.999999 -0.999999 -0.999995 0.999995] 
+              print(ret)
+
+    """
+
+    def __init__(self,
+                 num_channels,
+                 epsilon=1e-5,
+                 param_attr=None,
+                 bias_attr=None,
+                 dtype='float32'):
+        super(InstanceNorm, self).__init__()
+        assert bias_attr is not False, "bias_attr should not be False in InstanceNorm."
+
+        self._epsilon = epsilon
+        self._param_attr = param_attr
+        self._bias_attr = bias_attr
+        self._dtype = dtype
+
+        self.scale = self.create_parameter(
+            attr=self._param_attr,
+            shape=[num_channels],
+            dtype=self._dtype,
+            default_initializer=Constant(1.0),
+            is_bias=False)
+        self.bias = self.create_parameter(
+            attr=self._bias_attr,
+            shape=[num_channels],
+            dtype=self._dtype,
+            default_initializer=Constant(0.0),
+            is_bias=True)
+
+    def forward(self, input):
+        if in_dygraph_mode():
+            out, _, _ = core.ops.instance_norm(input, self.scale, self.bias,
+                                               'epsilon', self._epsilon)
+            return out
+
+        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                                 "InstanceNorm")
+
+        attrs = {"epsilon": self._epsilon}
+
+        inputs = {"X": [input], "Scale": [self.scale], "Bias": [self.bias]}
+
+        saved_mean = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype, stop_gradient=True)
+        saved_variance = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype, stop_gradient=True)
+        instance_norm_out = self._helper.create_variable_for_type_inference(
+            self._dtype)
+
+        outputs = {
+            "Y": [instance_norm_out],
+            "SavedMean": [saved_mean],
+            "SavedVariance": [saved_variance]
+        }
+
+        self._helper.append_op(
+            type="instance_norm", inputs=inputs, outputs=outputs, attrs=attrs)
+        return instance_norm_out
 
 
 class BatchNorm(layers.Layer):
@@ -1445,6 +1576,7 @@ class Embedding(layers.Layer):
                 'is_distributed', self._is_distributed, 'remote_prefetch',
                 self._remote_prefetch, 'padding_idx', self._padding_idx)
 
+        check_variable_and_dtype(input, 'input', ['int64'], 'Embedding')
         attrs = {
             'is_sparse': self._is_sparse,
             'is_distributed': self._is_distributed,
@@ -1779,6 +1911,10 @@ class GRUUnit(layers.Layer):
                 self.activation, 'gate_activation', self.gate_activation)
             return updated_hidden, reset_hidden_pre, gate
 
+        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                                 'GRUUnit')
+        check_variable_and_dtype(hidden, 'hidden', ['float32', 'float64'],
+                                 'GRUUnit')
         inputs = {
             'Input': [input],
             'HiddenPrev': [hidden],
@@ -1786,10 +1922,6 @@ class GRUUnit(layers.Layer):
         }
         if self.bias is not None:
             inputs['Bias'] = [self.bias]
-        attrs = {
-            'activation': self.activation,
-            'gate_activation': self.gate_activation,
-        }
         gate = self._helper.create_variable_for_type_inference(self._dtype)
         reset_hidden_pre = self._helper.create_variable_for_type_inference(
             self._dtype)
@@ -2019,6 +2151,10 @@ class NCE(layers.Layer):
         self._inputs['Weight'] = self.weight
 
     def forward(self, input, label, sample_weight=None):
+        check_variable_and_dtype(input, "input", ['float32', 'float64'], "NCE")
+        check_variable_and_dtype(label, "label", ['int64'], "NCE")
+        check_type(sample_weight, 'sample_weight', (Variable, type(None)),
+                   'NCE')
         assert isinstance(input, Variable)
         assert isinstance(label, Variable)
 
@@ -2138,6 +2274,7 @@ class PRelu(layers.Layer):
             default_initializer=Constant(1.0))
 
     def forward(self, input):
+        check_variable_and_dtype(input, 'input', ['float32'], 'PRelu')
         out = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
             type="prelu",
@@ -2236,6 +2373,10 @@ class BilinearTensorProduct(layers.Layer):
             is_bias=True)
 
     def forward(self, x, y):
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'],
+                                 'BilinearTensorProduct')
+        check_variable_and_dtype(y, 'y', ['float32', 'float64'],
+                                 'BilinearTensorProduct')
         self._inputs = {"X": x, "Y": y, "Weight": self.weight}
         if self.bias is not None:
             self._inputs["Bias"] = self.bias
@@ -2452,6 +2593,10 @@ class Conv2DTranspose(layers.Layer):
                                                             1)
             return dygraph_utils._append_activation_in_dygraph(
                 pre_act, act=self._act)
+
+        check_variable_and_dtype(input, 'input',
+                                 ['float16', 'float32', 'float64'],
+                                 "Conv2DTranspose")
 
         inputs = {'Input': [input], 'Filter': [self.weight]}
         attrs = {
@@ -2850,6 +2995,8 @@ class SpectralNorm(layers.Layer):
         self.weight_v.stop_gradient = True
 
     def forward(self, weight):
+        check_variable_and_dtype(weight, "weight", ['float32', 'float64'],
+                                 'SpectralNorm')
         inputs = {'Weight': weight, 'U': self.weight_u, 'V': self.weight_v}
         out = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
@@ -2944,6 +3091,8 @@ class TreeConv(layers.Layer):
             is_bias=False)
 
     def forward(self, nodes_vector, edge_set):
+        check_type(nodes_vector, 'nodes_vector', (Variable), 'TreeConv')
+        check_type(edge_set, 'edge_set', (Variable), 'TreeConv')
         if self._name:
             out = self.create_variable(
                 name=self._name, dtype=self._dtype, persistable=False)

@@ -82,7 +82,7 @@ class TestPool2D(unittest.TestCase):
         with fluid.program_guard(main_prog, startup_prog):
             dy_layer = self.dygraph_class()
             out = dy_layer(x=self.data)
-            return out[0]
+            return out[0].numpy()
 
     def test_static_output(self):
         dygraph_res = self.run_dygraph_mode()

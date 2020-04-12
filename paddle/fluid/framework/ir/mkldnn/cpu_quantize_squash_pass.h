@@ -53,7 +53,7 @@ class CPUQuantizeSquashPass : public FusePassBase {
   /*
    * Squash requantize op into conv with scale_out like requantize scale_out
    */
-  void ConvRequantSquash(Graph* graph) const;
+  void OpRequantSquash(Graph* graph) const;
 
   /*
   *  Squash conv2d with dequant when dequant is the only op after conv2d

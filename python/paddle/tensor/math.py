@@ -18,6 +18,7 @@ math functions
 from __future__ import print_function
 
 from paddle.common_ops_import import *
+from ..fluid import layers
 from ..fluid.framework import core
 from ..fluid.layers.layer_function_generator import _generate_doc_string_
 
@@ -70,12 +71,12 @@ __all__ = [
            'div',
            'add',
 #            'atan',
-#            'logsumexp',
+           'logsumexp',
 #            'inverse',
 #            'log1p',
 #            'erf',
 #            'addcmul',
-#            'addmm']
+           'addmm'
 ]
 # yapf: enable.
 
@@ -648,6 +649,7 @@ for func in [
         skip_attrs_set={"x_data_format", "y_data_format", "axis"
                         }) + """\n""" + str(func.__doc__)
 
+
 def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
     """
     Computes the sum of tensor elements over the given dimension.
@@ -747,6 +749,7 @@ def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
         outputs={'Out': out},
         attrs=attrs)
     return out
+
 
 @templatedoc(op_type="sum")
 def elementwise_sum(inputs, name=None):
@@ -930,3 +933,119 @@ def mm(input, mat2, out=None, name=None):
         type='matmul', inputs={'X': input,
                                'Y': mat2}, outputs={'Out': out})
     return out
+
+
+def addmm(input, x, y, alpha=1.0, beta=1.0, name=None):
+    """
+    **addmm**
+
+    This operator is used to perform matrix multiplication for input $x$ and $y$.
+    $input$ is added to the final result.
+    The equation is:
+
+    ..  math::
+        Out = alpha * x * y + beta * input
+
+    $Input$, $x$ and $y$ can carry the LoD (Level of Details) information, or not. But the output only shares the LoD information with input $input$.
+
+    Args:
+        input (Variable): The input Tensor/LoDTensor to be added to the final result.
+        x (Variable): The first input Tensor/LoDTensor for matrix multiplication.
+        y (Variable): The second input Tensor/LoDTensor for matrix multiplication.
+        alpha (float): Coefficient of $x*y$.
+        beta (float): Coefficient of $input$.
+        name (str, optional): Name of the output. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default is None.
+
+    Returns:
+        Variable(Tensor/LoDTensor): The output Tensor/LoDTensor of addmm op.
+
+    Examples:
+        ..  code-block:: python
+
+            import numpy as np
+            import paddle
+            import paddle.fluid as fluid
+
+            input = fluid.data(name='input', shape=[2, 2], dtype='float32')
+            x = fluid.data(name='x', shape=[2, 2], dtype='float32')
+            y = fluid.data(name='y', shape=[2, 2], dtype='float32')
+            out = paddle.addmm( input=input, x=x, y=y, alpha=5.0, beta=0.5 )
+
+            data_x = np.ones((2, 2)).astype(np.float32)
+            data_y = np.ones((2, 2)).astype(np.float32)
+            data_input = np.ones((2, 2)).astype(np.float32)
+
+            place =  fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            results = exe.run(fluid.default_main_program(), 
+                              fetch_list=[out], feed={"input": data_input, 'x': data_x, "y": data_y})
+            print( np.array(results[0]) )
+            # [[10.5 10.5]
+            # [10.5 10.5]]
+    """
+    inputs = {'Input': input, "X": x, "Y": y}
+    attrs = {'Alpha': alpha, 'Beta': beta}
+
+    helper = LayerHelper("addmm", **locals())
+    check_variable_and_dtype(x, 'Input', ['float32', 'float64'], 'addmm')
+    check_variable_and_dtype(x, 'X', ['float32', 'float64'], 'addmm')
+    check_variable_and_dtype(y, 'Y', ['float32', 'float64'], 'addmm')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type="addmm", inputs=inputs, attrs=attrs, outputs={"Out": out})
+    return out
+
+
+def logsumexp(x, dim=None, keepdim=False, out=None, name=None):
+    """
+This operator calculates the log of the sum of exponentials of the input Tensor.
+
+.. math::
+   logsumexp(x) = \log\sum exp(x)
+
+
+Parameters:
+   x (Variable): Input LoDTensor or Tensor. Must be one of the following types: float32, float64.
+   dim (list|int, optional): The dimensions along which the sum is performed. If :attr:`None`, 
+     sum all elements of :attr:`input` and return a Tensor variable with a single element, 
+     otherwise must be in the range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
+     the dimension to reduce is :math:`rank + dim[i]`.
+   keep_dim (bool, optional): Whether to reserve the reduced dimension in the output Tensor. 
+     The result tensor will have one fewer dimension than the :attr:`input` unless :attr:`keep_dim` 
+     is true, default value is False.
+   name (str, optional): The default value is None.  Normally there is no need for user to 
+     set this property.  For more information, please refer to :ref:`api_guide_Name`
+
+
+Examples:
+
+.. code-block:: python
+
+    import paddle
+    import paddle.fluid as fluid
+    import numpy as np
+    
+    with fluid.dygraph.guard():
+      np_x = np.random.uniform(0.1, 1, [10]).astype(np.float32)
+      x = fluid.dygraph.to_variable(np_x)
+      print(paddle.logsumexp(x).numpy())
+
+
+    """
+    op_type = 'logsumexp'
+    assert x is not None, 'x cannot be None in {}'.format(op_type)
+
+    # reduce_sum does not support float16
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], op_type)
+
+    exp_out = layers.exp(x)
+    sum_out = layers.reduce_sum(exp_out, dim, keepdim)
+
+    if out is not None:
+        check_variable_and_dtype(out, 'out', [x.dtype], op_type)
+        helper = LayerHelper(op_type, **locals())
+        helper.append_op(type="log", inputs={"X": sum_out}, outputs={"Out": out})
+        return out
+
+    return layers.log(sum_out, name)
