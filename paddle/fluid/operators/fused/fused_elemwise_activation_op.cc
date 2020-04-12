@@ -93,16 +93,16 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(
-        ctx->HasInput("X"),
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"), true,
         platform::errors::InvalidArgument(
             "Input(X) of FusedElemwiseActivationOp op should not be null."));
-    PADDLE_ENFORCE(
-        ctx->HasInput("Y"),
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Y"), true,
         platform::errors::InvalidArgument(
             "Input(Y) of FusedElemwiseActivationOp op should not be null."));
-    PADDLE_ENFORCE(
-        ctx->HasOutput("Out"),
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("Out"), true,
         platform::errors::InvalidArgument(
             "Output(Out) of FusedElemwiseActivationOp op should not be null."));
 
@@ -117,10 +117,11 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
     std::string out_lod = bcast_y ? "X" : "Y";
 
     if (ctx->Attrs().Get<bool>("save_intermediate_out")) {
-      PADDLE_ENFORCE(ctx->HasOutput("IntermediateOut"),
-                     platform::errors::InvalidArgument(
-                         "Output(IntermediateOut) of FusedElemwiseActivationOp "
-                         "should not be null."));
+      PADDLE_ENFORCE_EQ(
+          ctx->HasOutput("IntermediateOut"), true,
+          platform::errors::InvalidArgument(
+              "Output(IntermediateOut) of FusedElemwiseActivationOp "
+              "should not be null."));
 
       if (IsUnaryCompound(
               ctx->Attrs().Get<std::vector<std::string>>("functor_list"))) {
@@ -291,21 +292,22 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   platform::errors::InvalidArgument(
-                       "Input(Out@Grad) should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+                      platform::errors::InvalidArgument(
+                          "Input(Out@Grad) should not be null."));
 
     auto functor_list =
         ctx->Attrs().Get<std::vector<std::string>>("functor_list");
 
     if (ctx->Attrs().Get<bool>("save_intermediate_out")) {
-      PADDLE_ENFORCE(ctx->HasInput("IntermediateOut"),
-                     platform::errors::InvalidArgument(
-                         "Input(IntermediateOut) should not be null."));
+      PADDLE_ENFORCE_EQ(ctx->HasInput("IntermediateOut"), true,
+                        platform::errors::InvalidArgument(
+                            "Input(IntermediateOut) should not be null."));
     } else {
       if (!InputXCanBeAbsent(functor_list)) {
-        PADDLE_ENFORCE(ctx->HasInput("X"), platform::errors::InvalidArgument(
-                                               "Input(X) should not be null."));
+        PADDLE_ENFORCE_EQ(
+            ctx->HasInput("X"), true,
+            platform::errors::InvalidArgument("Input(X) should not be null."));
       }
     }
 
@@ -320,8 +322,8 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
       } else {
         // Currently, only when Binary is elementwise_add or elementwise_sub,
         // the "X" could be absent.
-        PADDLE_ENFORCE(
-            InputXCanBeAbsent(functor_list),
+        PADDLE_ENFORCE_EQ(
+            InputXCanBeAbsent(functor_list), true,
             platform::errors::InvalidArgument(
                 "Only when BinaryFunctor is elementwise_add, the 'X' "
                 "could be absent."));
@@ -336,8 +338,9 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
     }
 
     if (ctx->HasOutput(y_grad_name)) {
-      PADDLE_ENFORCE(ctx->HasInput("Y"), platform::errors::InvalidArgument(
-                                             "Input(Y) should not be null."));
+      PADDLE_ENFORCE_EQ(
+          ctx->HasInput("Y"), true,
+          platform::errors::InvalidArgument("Input(Y) should not be null."));
       ctx->SetOutputDim(y_grad_name, ctx->GetInputDim("Y"));
       ctx->ShareLoD("Y", y_grad_name);
     }
