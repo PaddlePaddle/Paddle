@@ -254,10 +254,10 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, out=None, name=None):
         ..  code-block:: python
             
             import paddle
-            dataX = paddle.fluid.data(name="dataX", append_batch_size = False, shape=[2, 5], dtype="float32")
-            dataY = paddle.fluid.data(name="dataY", append_batch_size = False, shape=[5, 3], dtype="float32")
+            dataX = paddle.fluid.data(name="dataX", shape=[2, 5], dtype="float32")
+            dataY = paddle.fluid.data(name="dataY", shape=[5, 3], dtype="float32")
             
-            res = paddle.fluid.data(name="output", append_batch_size = False, shape=[2, 3], dtype="float32")
+            res = paddle.fluid.data(name="output", shape=[2, 3], dtype="float32")
             output = paddle.mul(dataX, dataY,
                                       x_num_col_dims = 1,
                                       y_num_col_dims = 1, 
