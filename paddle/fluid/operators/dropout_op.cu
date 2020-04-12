@@ -61,6 +61,41 @@ __global__ void RandomGenerator(const size_t n, const int seed,
   }
 }
 
+template <typename T, typename MaskType>
+__global__ void RandomGeneratorWithSeed(const size_t n, const int* seed,
+                                        const float dropout_prob, const T* src,
+                                        MaskType* mask_data, T* dst,
+                                        bool is_upscale_in_train) {
+  curandStatePhilox4_32_10_t state;
+  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int step_size = 0;
+
+  MaskType mask;
+  T dest;
+  for (; idx < n; idx += blockDim.x * gridDim.x) {
+    T s = src[idx];
+    if (step_size == 0) {
+      curand_init(seed[0], idx, idx, &state);
+      step_size = blockDim.x * gridDim.x;
+    } else {
+      curand_init(seed[0], idx, step_size, &state);
+    }
+    if (curand_uniform(&state) < dropout_prob) {
+      mask = 0;
+      dest = 0;
+    } else {
+      mask = 1;
+      if (is_upscale_in_train) {
+        dest = s / static_cast<T>(1.0f - dropout_prob);
+      } else {
+        dest = s;
+      }
+    }
+    mask_data[idx] = mask;
+    dst[idx] = dest;
+  }
+}
+
 // It seems that Eigen::Tensor::setRandom in GPU will SEGFAULT.
 // Use std::random and thrust::random(thrust is a std library in CUDA) to
 // implement uniform random.
@@ -88,40 +123,6 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       auto* mask_data = mask->mutable_data<uint8_t>(context.GetPlace());
       size_t size = framework::product(mask->dims());
       auto* x_data = x->data<T>();
-      int seed_data;
-      std::random_device rnd;
-      if (seed) {
-        if (platform::is_gpu_place(seed->place())) {
-          // method 1
-          // auto src_gpu_place =
-          // boost::get<platform::CUDAPlace>(seed->place());
-          // VLOG(1) << "host: before tensor copy";
-          // memory::Copy(platform::CPUPlace(), &seed_data, src_gpu_place,
-          //              seed->data<int>(), sizeof(int), stream);
-          // VLOG(1) << "host: after tensor copy";
-
-          // method 2
-          // framework::Tensor n;
-          // VLOG(1) << "host: before tensor copy";
-          // framework::TensorCopy(*seed, platform::CPUPlace(), &n);
-          // VLOG(1) << "host: after tensor copy";
-          // seed_data = n.data<int>()[0];
-
-          // method 3
-          framework::Tensor n;
-          auto pinned_place = platform::CUDAPinnedPlace();
-          // VLOG(1) << "host: before tensor copy";
-          framework::TensorCopy(*seed, pinned_place, &n);
-          // VLOG(1) << "host: after tensor copy";
-          seed_data = n.data<int>()[0];
-
-        } else {
-          seed_data = *(seed->data<int>());
-        }
-      } else {
-        seed_data =
-            context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
-      }
       auto* y_data = y->mutable_data<T>(context.GetPlace());
       if (dropout_prob == 1.0f) {
         PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -133,6 +134,22 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
 
       int threads = 512;
       int grid = (x_numel + threads - 1) / threads;
+      if (seed && platform::is_gpu_place(seed->place())) {
+        auto seed_gpu_data = seed->data<int>();
+        RandomGeneratorWithSeed<T, uint8_t><<<grid, threads, 0, stream>>>(
+            size, seed_gpu_data, dropout_prob, x_data, mask_data, y_data,
+            upscale_in_train);
+        return;
+      }
+      int seed_data;
+      std::random_device rnd;
+      if (seed) {
+        seed_data = *(seed->data<int>());
+      } else {
+        seed_data =
+            context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
+      }
+
       RandomGenerator<T, uint8_t><<<grid, threads, 0, stream>>>(
           size, seed_data, dropout_prob, x_data, mask_data, y_data,
           upscale_in_train);
