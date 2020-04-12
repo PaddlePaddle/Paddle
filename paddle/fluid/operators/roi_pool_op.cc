@@ -36,7 +36,10 @@ class ROIPoolOp : public framework::OperatorWithKernel {
                    "Output(Argmax) of ROIPoolOp should not be null.");
     auto input_dims = ctx->GetInputDim("X");
     auto rois_dims = ctx->GetInputDim("ROIs");
-
+    if (ctx->HasInput("RoisLod")) {
+      auto rois_lod_dims = ctx->GetInputDim("RoisLod");
+      PADDLE_ENFORCE(rois_lod_dims.size() == 1, "");
+    }
     PADDLE_ENFORCE(input_dims.size() == 4,
                    "The format of input tensor is NCHW.");
     PADDLE_ENFORCE(rois_dims.size() == 2,
@@ -115,6 +118,7 @@ class ROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "Where batch_id is the id of the data, "
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates.");
+    AddInput("RoisLod", "(Tensor), The lod info of rois.").AsDispensable();
     AddOutput("Out",
               "(Tensor), "
               "The output of ROIPoolOp is a 4-D tensor with shape "
@@ -171,6 +175,7 @@ class ROIPoolGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetType("roi_pool_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("ROIs", this->Input("ROIs"));
+    op->SetInput("RoisLod", this->Input("RoisLod"));
     op->SetInput("Argmax", this->Output("Argmax"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
@@ -189,8 +194,10 @@ REGISTER_OPERATOR(roi_pool_grad, ops::ROIPoolGradOp);
 REGISTER_OP_CPU_KERNEL(
     roi_pool,
     ops::CPUROIPoolOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUROIPoolOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::CPUROIPoolOpKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::CPUROIPoolOpKernel<paddle::platform::CPUDeviceContext, int>);
 REGISTER_OP_CPU_KERNEL(
     roi_pool_grad,
     ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::CPUROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, int>);
