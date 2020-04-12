@@ -825,6 +825,17 @@ def elementwise_sum(inputs, name=None):
     """
 
     helper = LayerHelper('elementwise_sum', **locals())
+    check_type(inputs, 'inputs', (Variable, tuple, list), 'elementwise_sum')
+    if isinstance(inputs, list) or isinstance(inputs, tuple):
+        if len(inputs) > 0:
+            for input in inputs:
+                check_variable_and_dtype(input, "inputs", \
+                   ['float32', 'float64', 'int32', 'int64'], 'elementwise_sum')
+    else:
+        check_variable_and_dtype(inputs, "inputs", \
+                ['float32', 'float64', 'int32', 'int64'], 'elementwise_sum')
+
+
     out = helper.create_variable_for_type_inference(
         dtype=helper.input_dtype('inputs'))
     helper.append_op(

@@ -22,8 +22,7 @@ class FillConstantOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of FillConstantOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "FillConstant");
 
     auto& shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
 
