@@ -71,8 +71,8 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
       check = false;
     }
     if (check) {
-      PADDLE_ENFORCE(
-          y_dims[0] == 1 || y_dims[0] == x_dims[0],
+      PADDLE_ENFORCE_EQ(
+          y_dims[0] == 1 || y_dims[0] == x_dims[0], true,
           platform::errors::InvalidArgument(
               "First dimension of Input(Y) of SquaredL2DistanceOp ",
               "must be equal to 1", "or to first dimension of Input(X).",
