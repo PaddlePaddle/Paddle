@@ -25,8 +25,9 @@ class Yolov3LossOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Yolov3LossOp");
     OP_INOUT_CHECK(ctx->HasInput("GTBox"), "Input", "GTBox", "Yolov3LossOp");
-    OP_INOUT_CHECK(ctx->HasInput("GTLabel"), "GTLabel", "X", "Yolov3LossOp");
-    OP_INOUT_CHECK(ctx->HasInput("Loss"), "Input", "Loss", "Yolov3LossOp");
+    OP_INOUT_CHECK(ctx->HasInput("GTLabel"), "Input", "GTLabel",
+                   "Yolov3LossOp");
+    OP_INOUT_CHECK(ctx->HasOutput("Loss"), "Output", "Loss", "Yolov3LossOp");
     OP_INOUT_CHECK(ctx->HasInput("ObjectnessMask"), "Input", "ObjectnessMask",
                    "Yolov3LossOp");
     OP_INOUT_CHECK(ctx->HasInput("GTMatchMask"), "Input", "GTMatchMask",

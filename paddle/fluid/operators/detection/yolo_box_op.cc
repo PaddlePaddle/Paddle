@@ -23,8 +23,8 @@ class YoloBoxOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "YoloBoxOp");
     OP_INOUT_CHECK(ctx->HasInput("ImgSize"), "Input", "ImgSize", "YoloBoxOp");
-    OP_INOUT_CHECK(ctx->HasInput("Boxes"), "Input", "Boxes", "YoloBoxOp");
-    OP_INOUT_CHECK(ctx->HasInput("Scores"), "Input", "Scores", "YoloBoxOp");
+    OP_INOUT_CHECK(ctx->HasOutput("Boxes"), "Output", "Boxes", "YoloBoxOp");
+    OP_INOUT_CHECK(ctx->HasOutput("Scores"), "Output", "Scores", "YoloBoxOp");
 
     auto dim_x = ctx->GetInputDim("X");
     auto dim_imgsize = ctx->GetInputDim("ImgSize");
