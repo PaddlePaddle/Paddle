@@ -401,6 +401,7 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
     bool force_disable_gc) {
   PADDLE_ENFORCE_EQ(
       skip_ref_cnt_vars.empty() || skip_ref_cnt_vars.size() == block_ids.size(),
+      true,
       platform::errors::InvalidArgument("skip_ref_cnt_vars should be either "
                                         "empty or equals to block number %d",
                                         block_ids.size()));
