@@ -148,7 +148,7 @@ from .tensor.math import addmm  #DEFINE_ALIAS
 # from .tensor.io import save   #DEFINE_ALIAS
 # from .tensor.io import load   #DEFINE_ALIAS
 from .tensor.linalg import matmul  #DEFINE_ALIAS
-# from .tensor.linalg import dot   #DEFINE_ALIAS
+from .tensor.linalg import dot  #DEFINE_ALIAS
 # from .tensor.linalg import einsum   #DEFINE_ALIAS
 # from .tensor.linalg import morm   #DEFINE_ALIAS
 # from .tensor.linalg import transpose   #DEFINE_ALIAS
