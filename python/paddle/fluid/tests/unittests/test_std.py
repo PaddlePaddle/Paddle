@@ -75,7 +75,7 @@ class TensorStd(unittest.TestCase):
 
 def TensorStd1(TensorStd):
     def setUp(self):
-        self.shape = [11, 25, 32, 43]
+        self.shape = [10, 10, 2, 2]
         self.unbiased = False
         self.axis = None
         self.keepdim = False
@@ -84,7 +84,7 @@ def TensorStd1(TensorStd):
 
 def TensorStd2(TensorStd):
     def setUp(self):
-        self.shape = [11, 25, 32, 43]
+        self.shape = [10, 10, 2, 2]
         self.unbiased = True
         self.axis = 0
         self.keepdim = True
@@ -102,7 +102,7 @@ def TensorStd3(TensorStd):
 
 def TensorStd4(TensorStd):
     def setUp(self):
-        self.shape = [11, 25, 32, 43]
+        self.shape = [10, 10, 2, 2]
         self.unbiased = False
         self.axis = None
         self.keepdim = True
