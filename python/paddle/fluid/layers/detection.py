@@ -434,7 +434,7 @@ def rpn_target_assign(bbox_pred,
     return predicted_cls_logits, predicted_bbox_pred, target_label, target_bbox, bbox_inside_weight
 
 
-def sigmoid_focal_loss(x, label, fg_num, gamma=2., alpha=0.25):
+def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
     """
     **Sigmoid Focal Loss Operator.**
 
@@ -496,7 +496,7 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2., alpha=0.25):
             loss = fluid.layers.sigmoid_focal_loss(x=input,
                                                    label=label,
                                                    fg_num=fg_num,
-                                                   gamma=2.,
+                                                   gamma=2.0,
                                                    alpha=0.25)
     """
 
@@ -2871,7 +2871,7 @@ def retinanet_detection_output(bboxes,
                                nms_top_k=1000,
                                keep_top_k=100,
                                nms_threshold=0.3,
-                               nms_eta=1.):
+                               nms_eta=1.0):
     """
     **Detection Output Layer for the detector RetinaNet.**
 
@@ -2975,7 +2975,7 @@ def retinanet_detection_output(bboxes,
                nms_top_k=1000,
                keep_top_k=100,
                nms_threshold=0.45,
-               nms_eta=1.)
+               nms_eta=1.0)
     """
 
     helper = LayerHelper('retinanet_detection_output', **locals())
