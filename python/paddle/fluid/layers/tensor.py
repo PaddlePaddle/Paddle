@@ -462,7 +462,7 @@ def sums(input, out=None):
     helper = LayerHelper('sum', **locals())
     check_type(input, 'input', (tuple, list), 'sums')
     if len(input) > 0:
-        for i in range(0, len(input)):
+        for i in list(xrange(0, len(input))):
             check_variable_and_dtype(input[i], "input[%d]"%(i), \
                ['float32', 'float64', 'int32', 'int64'], 'sums')
     else:
