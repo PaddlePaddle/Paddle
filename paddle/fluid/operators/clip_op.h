@@ -130,6 +130,7 @@ class ClipGradKernel : public framework::OpKernel<T> {
       auto* max_data = max_t->data<T>();
       Tensor max_cpu;
       if (platform::is_gpu_place(max_t->place())) {
+        PADDLE_THROW("ClipOp GPU test!!!");
         TensorCopySync(*max_t, platform::CPUPlace(), &max_cpu);
         max_data = max_cpu.data<T>();
       }
