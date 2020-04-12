@@ -13267,7 +13267,6 @@ def where(condition):
              out = layers.where(condition) # [[]]
 
     """
-    check_variable_and_dtype(condition, "condition", ['bool'], "where")
     helper = LayerHelper("where_index", **locals())
 
     if in_dygraph_mode():
