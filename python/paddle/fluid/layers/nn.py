@@ -8280,6 +8280,8 @@ def selu(x, scale=None, alpha=None, name=None):
             res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
             print(res) # [array([[0.      , 1.050701],[2.101402, 3.152103]], dtype=float32)]
     """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'selu')
+
     helper = LayerHelper('selu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
@@ -8888,6 +8890,8 @@ def relu6(x, threshold=6.0, name=None):
                 # [[0.  0. ]
                 #  [2.5 6. ]]
     """
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'relu6')
+
     helper = LayerHelper('relu6', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -8980,6 +8984,8 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
             #       [0.62705994, 0.23110689, 0.56902856]], dtype=float32)]
 
     """
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'stanh')
+
     helper = LayerHelper('stanh', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -9014,6 +9020,9 @@ def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
             data = fluid.layers.fill_constant(shape=[3, 2], value=0.5, dtype='float32') # [[0.5, 0.5], [0.5, 0.5], [0.5, 0.5]]
             result = fluid.layers.hard_sigmoid(data) # [[0.6, 0.6], [0.6, 0.6], [0.6, 0.6]]
     """
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'hard_sigmoid')
+
     helper = LayerHelper('hard_sigmoid', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -9094,6 +9103,8 @@ def swish(x, beta=1.0, name=None):
             # array([[-0.03916847,  0.8835007 , -0.25835553],
             #        [ 0.51126915,  0.82324016,  0.06915068]], dtype=float32)
     """
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'swish')
+
     helper = LayerHelper('swish', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -9293,6 +9304,9 @@ def soft_relu(x, threshold=40.0, name=None):
             res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
             print(res) # [array([[0.6931472, 1.3132616], [2.126928 , 3.0485873]], dtype=float32)]
     """
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'soft_relu')
+
     helper = LayerHelper('soft_relu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -11786,6 +11800,8 @@ def maxout(x, groups, name=None, axis=1):
                 dtype='float32')
             out = fluid.layers.maxout(input, groups=2)
     """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'maxout')
+
     helper = LayerHelper("maxout", **locals())
     if axis not in [1, -1, 3]:
         raise ValueError(
@@ -14005,6 +14021,9 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
         out, = exe.run(feed={'x':x_data}, fetch_list=[y.name])
         print(out)  # [[0.66666667, 1.66666667,3., 4.]]
     """
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'hard_swish')
+
     helper = LayerHelper('hard_swish', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
