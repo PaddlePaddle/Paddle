@@ -36,13 +36,14 @@ class MatrixInverseFunctor<platform::CPUDeviceContext, T> {
     int N = mat_dims[rank - 1];
     int batch_size = rank > 2 ? A.numel() / (N * N) : 1;
 
+    const T* A_ptr = A.data<T>();
     T* A_inv_ptr = A_inv->mutable_data<T>(context.GetPlace());
 
 #ifdef PADDLE_WITH_MKLML
     framework::Tensor ipiv;
     int* ipiv_ptr = ipiv.mutable_data<int>({N}, context.GetPlace());
 
-    if (A.data<T>() != A_inv_ptr) {
+    if (A_ptr != A_inv_ptr) {
       framework::TensorCopy(A, context.GetPlace(), A_inv);
     }
 
@@ -57,10 +58,9 @@ class MatrixInverseFunctor<platform::CPUDeviceContext, T> {
       blas.GETRI(N, mat_ptr, ipiv_ptr);
     }
 #else
-    const T* input_ptr = input->data<T>();
     for (int i = 0; i < batch_size; ++i) {
-      ConstEigenMatrixMap mat(input_ptr + i * N * N, N, N);
-      EigenMatrixMap mat_inv(output_ptr + i * N * N, N, N);
+      ConstEigenMatrixMap mat(A_ptr + i * N * N, N, N);
+      EigenMatrixMap mat_inv(A_inv_ptr + i * N * N, N, N);
       Eigen::PartialPivLU<Matrix> lu;
       lu.compute(mat);
 

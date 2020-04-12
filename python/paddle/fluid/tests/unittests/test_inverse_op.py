@@ -44,25 +44,29 @@ class TestInverseOpBatched(TestInverseOp):
 
 
 class TestInverseAPI(unittest.TestCase):
-    def test_static(self):
-        input = fluid.data(name="input", shape=[4, 4], dtype="float64")
-        result = tensor.inverse(input=input)
+    def check_static_result(self, place, N):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input = fluid.data(name="input", shape=[N, N], dtype="float32")
+            result = tensor.inverse(input=input)
 
-        input_np = np.random.random([4, 4]).astype("float64")
-        use_cuda_list = [False]
-        if core.is_compiled_with_cuda():
-            use_cuda_list.append(True)
-        for use_cuda in use_cuda_list:
-            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            input_np = np.random.random([N, N]).astype("float32")
             exe = fluid.Executor(place)
             result_np = exe.run(fluid.default_main_program(),
                                 feed={"input": input_np},
                                 fetch_list=[result])
-            self.assertTrue(np.allclose(result_np[0], np.linalg.inv(input_np)))
+            self.assertTrue(
+                np.allclose(
+                    result_np[0], np.linalg.inv(input_np), atol=1e-4))
+
+    def test_static(self):
+        for N in [4, 40]:
+            self.check_static_result(place=fluid.CPUPlace(), N=N)
+            if core.is_compiled_with_cuda():
+                self.check_static_result(place=fluid.CUDAPlace(0), N=N)
 
     def test_dygraph(self):
         with fluid.dygraph.guard():
-            input_np = np.array([[2, 0], [0, 2]]).astype("float64")
+            input_np = np.array([[2, 0], [0, 2]]).astype("float32")
             input = fluid.dygraph.to_variable(input_np)
             result = tensor.inverse(input)
             self.assertTrue(

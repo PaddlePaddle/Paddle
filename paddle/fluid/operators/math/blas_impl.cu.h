@@ -71,19 +71,22 @@ struct CUBlas<float> {
   template <typename... ARGS>
   static void GETRF_BATCH(ARGS... args) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cublasSgetrfBatched(args...));
+        platform::dynload::cublasSgetrfBatched(args...),
+        platform::errors::External("Call of cublasSgetrfBatched failed."));
   }
 
   template <typename... ARGS>
   static void GETRI_BATCH(ARGS... args) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cublasSgetriBatched(args...));
+        platform::dynload::cublasSgetriBatched(args...),
+        platform::errors::External("Call of cublasSgetriBatched failed."));
   }
 
   template <typename... ARGS>
   static void MATINV_BATCH(ARGS... args) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cublasSmatinvBatched(args...));
+        platform::dynload::cublasSmatinvBatched(args...),
+        platform::errors::External("Call of cublasSmatinvBatched failed."));
   }
 
   // NOTES: GEMM_EX can use Tensor Core to accelerate matrix multiply.
@@ -156,19 +159,22 @@ struct CUBlas<double> {
   template <typename... ARGS>
   static void GETRF_BATCH(ARGS... args) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cublasDgetrfBatched(args...));
+        platform::dynload::cublasDgetrfBatched(args...),
+        platform::errors::External("Call of cublasDgetrfBatched failed."));
   }
 
   template <typename... ARGS>
   static void GETRI_BATCH(ARGS... args) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cublasDgetriBatched(args...));
+        platform::dynload::cublasDgetriBatched(args...),
+        platform::errors::External("Call of cublasDgetriBatched failed."));
   }
 
   template <typename... ARGS>
   static void MATINV_BATCH(ARGS... args) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cublasDmatinvBatched(args...));
+        platform::dynload::cublasDmatinvBatched(args...),
+        platform::errors::External("Call of cublasDmatinvBatched failed."));
   }
 
   template <typename... ARGS>
