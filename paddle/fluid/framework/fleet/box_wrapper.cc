@@ -27,6 +27,7 @@ namespace framework {
 std::shared_ptr<BoxWrapper> BoxWrapper::s_instance_ = nullptr;
 cudaStream_t BoxWrapper::stream_list_[8];
 std::shared_ptr<boxps::BoxPSBase> BoxWrapper::boxps_ptr_ = nullptr;
+AfsManager* BoxWrapper::afs_manager = nullptr;
 
 void BasicAucCalculator::compute() {
   double* table[2] = {&_table[0][0], &_table[1][0]};
@@ -117,8 +118,8 @@ void BoxWrapper::BeginPass() const {
                                 "BeginPass failed in BoxPS."));
 }
 
-void BoxWrapper::EndPass() const {
-  int ret = boxps_ptr_->EndPass();
+void BoxWrapper::EndPass(bool need_save_delta) const {
+  int ret = boxps_ptr_->EndPass(need_save_delta);
   PADDLE_ENFORCE_EQ(
       ret, 0, platform::errors::PreconditionNotMet("EndPass failed in BoxPS."));
 }

@@ -19,6 +19,10 @@
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/imperative/execution_context.h"
+#include "paddle/fluid/imperative/infer_shape_context.h"
+#include "paddle/fluid/imperative/infer_var_type_context.h"
+#include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/imperative/prepared_operator.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -37,7 +41,9 @@ void ThreadSafeNameSet::Insert(const std::string& name) {
 void ThreadSafeNameSet::Remove(const std::string& name) {
   std::lock_guard<std::mutex> guard(mtx_);
   auto iter = set_.find(name);
-  PADDLE_ENFORCE_EQ(iter != set_.end(), true, "%s does not exist", name);
+  PADDLE_ENFORCE_EQ(
+      iter != set_.end(), true,
+      platform::errors::NotFound("Variable name %s does not exist", name));
   set_.erase(iter);
 }
 
@@ -49,48 +55,6 @@ std::vector<std::string> ThreadSafeNameSet::Names() const {
 ThreadSafeNameSet VarBase::name_set_;
 
 std::vector<std::string> VarBase::AliveVarNames() { return name_set_.Names(); }
-
-static framework::VariableNameMap CreateVarNameMap(
-    const framework::OpInfo& op_info, const std::string& op_type,
-    const NameVarBaseMap& varbase_map, bool is_input) {
-  if (op_info.proto_ == nullptr) {
-    framework::VariableNameMap result;
-
-    for (auto& it : varbase_map) {
-      auto& var_vector = it.second;
-      std::vector<std::string> args;
-      args.reserve(var_vector.size());
-      for (auto& var_base : var_vector) {
-        args.emplace_back(var_base->Name());
-      }
-      result[it.first] = std::move(args);
-    }
-    return result;
-  }
-
-  framework::VariableNameMap result;
-
-  for (auto& var :
-       is_input ? op_info.Proto().inputs() : op_info.Proto().outputs()) {
-    auto it = varbase_map.find(var.name());
-    if (it == varbase_map.end()) {
-      PADDLE_ENFORCE_EQ(
-          var.dispensable(), true,
-          "Var: %s not dispensable and there are no such var in inputs",
-          var.name());
-      result[var.name()] = {};
-    } else {
-      auto& var_vector = it->second;
-      std::vector<std::string> args;
-      args.reserve(var_vector.size());
-      for (auto& var_base : var_vector) {
-        args.emplace_back(var_base->Name());
-      }
-      result[var.name()] = std::move(args);
-    }
-  }
-  return result;
-}
 
 static framework::RuntimeContext PrepareRuntimeContext(
     const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
@@ -180,7 +144,7 @@ static std::string LayerDebugStringImpl(const std::string& op_type,
   size_t i = 0;
   for (auto& pair : ins) {
     if (i > 0) ss << ", ";
-    ss << DebugString(pair.first, pair.second);
+    ss << DebugString<VarType>(pair.first, pair.second);
     ++i;
   }
 
@@ -188,7 +152,7 @@ static std::string LayerDebugStringImpl(const std::string& op_type,
   i = 0;
   for (auto& pair : outs) {
     if (i > 0) ss << ", ";
-    ss << DebugString(pair.first, pair.second);
+    ss << DebugString<VarType>(pair.first, pair.second);
     ++i;
   }
   return ss.str();
@@ -204,6 +168,22 @@ std::string LayerDebugString(const std::string& op_type,
                              const NameVarMap<VariableWrapper>& ins,
                              const NameVarMap<VariableWrapper>& outs) {
   return LayerDebugStringImpl<VariableWrapper>(op_type, ins, outs);
+}
+
+VarBase::VarBase(const std::shared_ptr<VariableWrapper>& var)
+    : var_(var), grad_node_(var->GetGradNode()) {
+  if (auto grad_var = var_->GetGradVar()) {
+    grad_var_ = std::make_shared<VarBase>(grad_var);
+  }
+
+  if (IsDebugEnabled()) {
+    VLOG(10) << "Construct VarBase: " << Name();
+    name_set_.Insert(Name());
+  }
+}
+
+size_t VarBase::GradOpNum() const {
+  return grad_node_ ? grad_node_->size() : 0;
 }
 
 void VarBase::ClearGradient() {
@@ -292,8 +272,6 @@ void OpBase::SetType(const std::string& type) {
 }
 
 void OpBase::ClearBackwardTrace() {
-  grad_pending_ops_.clear();
-  allow_empty_vars_.clear();
   ins_.clear();
   outs_.clear();
 }
@@ -305,17 +283,21 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
                           const framework::AttributeMap& attrs,
                           const platform::Place& place) {
   auto* op_kernel = dynamic_cast<const framework::OperatorWithKernel*>(&op);
-  PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
+  PADDLE_ENFORCE_NOT_NULL(
+      op_kernel, platform::errors::PermissionDenied(
+                     "Only support operator with kernel in Dygraph mode."));
   auto& info = op.Info();
   if (info.infer_var_type_) {
-    RuntimeInferVarTypeContext<VarType> infer_var_type_ctx(ins, &outs, attrs);
+    RuntimeInferVarTypeContext<VarType> infer_var_type_ctx(ins, outs, attrs);
     info.infer_var_type_(&infer_var_type_ctx);
   }
 
   // Initialize output var type
   for (auto& var_pair : outs) {
     for (auto& var : var_pair.second) {
-      InitializeVariable(var->MutableVar(), var->Type());
+      if (var) {
+        InitializeVariable(var->MutableVar(), var->Type());
+      }
     }
   }
 
@@ -342,6 +324,65 @@ void OpBase::Run(const framework::OperatorBase& op,
                  const framework::AttributeMap& attrs,
                  const platform::Place& place) {
   OpBaseRunImpl<VariableWrapper>(op, ins, outs, attrs, place);
+}
+
+static void ClearNoNeedBufferInputs(OpBase* op) {
+  auto& inferer = op->Info().NoNeedBufferVarsInferer();
+  if (!inferer) return;
+  auto* ins = op->GetMutableInsMap();
+  const auto& no_need_buffer_slots =
+      inferer(*ins, op->GetOutsMap(), op->Attrs());
+  if (no_need_buffer_slots.empty()) return;
+
+  for (auto& slot : no_need_buffer_slots) {
+    auto iter = ins->find(slot);
+    if (iter == ins->end()) continue;
+    VLOG(2) << "Clear data buffer of " << slot << " in " << op->Type();
+
+    PADDLE_ENFORCE_EQ(
+        iter->second.IsGrad(), false,
+        platform::errors::InvalidArgument(
+            "Only forward variable buffers can be clear, this may be a bug"));
+
+    for (auto& each_var : *(iter->second.MutableVarList())) {
+      if (!each_var) continue;
+
+      auto& var = each_var->Var();
+      PADDLE_ENFORCE_EQ(var.IsType<framework::LoDTensor>(), true,
+                        platform::errors::PermissionDenied(
+                            "NoNeedBufferVars only support LoDTensor"));
+      // TODO(zjl): support higher order derivatives
+      auto new_var = new VariableWrapper(each_var->Name());
+      auto* new_tensor =
+          new_var->MutableVar()->GetMutable<framework::LoDTensor>();
+      auto& old_tensor = var.Get<framework::LoDTensor>();
+      new_tensor->Resize(old_tensor.dims());
+      new_tensor->set_lod(old_tensor.lod());
+      each_var.reset(new_var);
+    }
+  }
+}
+
+std::shared_ptr<GradOpNode> CreateGradOpNode(
+    const framework::OperatorBase& op, const NameVarBaseMap& ins,
+    const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
+    const platform::Place& place) {
+  const auto& info = op.Info();
+  if (!info.dygraph_grad_op_maker_) {
+    return nullptr;
+  }
+
+  auto grad_node = info.dygraph_grad_op_maker_(op.Type(), ins, outs, attrs);
+  if (grad_node && !grad_node->empty()) {
+    for (auto& grad_op : *grad_node) {
+      grad_op.SetId(OpBase::GenerateUniqueId());
+      grad_op.SetPlace(place);
+      ClearNoNeedBufferInputs(&grad_op);
+    }
+    return grad_node;
+  } else {
+    return nullptr;
+  }
 }
 
 }  // namespace imperative

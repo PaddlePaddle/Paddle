@@ -47,6 +47,7 @@ constexpr char kGraphVars[] = "vars";
 constexpr char kNRanks[] = "nranks";
 
 constexpr char kPlaces[] = "places";
+constexpr char kGlobalScope[] = "global_scope";
 constexpr char kLocalScopes[] = "local_scopes";
 constexpr char kNCCLCtxs[] = "nccl_ctxs";
 constexpr char kUseHierarchicalAllReduce[] = "use_hierarchical_allreduce";
@@ -98,6 +99,24 @@ inline std::vector<std::string> GetOpRoleVarsOrEmpty(const OpDesc &op) {
           "The size of attribute %s must be an even number, but got %d",
           OpProtoAndCheckerMaker::OpRoleVarAttrName(), ret.size()));
   return boost::get<std::vector<std::string>>(iter->second);
+}
+
+bool IsDataParallelInferenceGraph(const ir::Graph &graph);
+
+std::vector<std::unique_ptr<ir::Graph>> TrySeparateToMultipleSingleDeviceGraphs(
+    ir::Graph *graph);
+
+bool HasDropLastReadOp(const ir::Graph &graph);
+
+bool HasKeepLastReadOp(const ir::Graph &graph);
+
+template <typename T>
+void CopyGraphAttrIfExists(const ir::Graph &src, ir::Graph *dst,
+                           const std::string &name) {
+  if (src.Has(name)) {
+    auto &attr = src.Get<T>(name);
+    dst->Set(name, new T(attr));
+  }
 }
 
 }  // namespace details

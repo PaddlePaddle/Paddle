@@ -15,7 +15,13 @@ limitations under the License. */
 #pragma once
 
 #ifdef PADDLE_WITH_BOX_PS
+#include <afs_filesystem.h>
 #include <boxps_public.h>
+#include <dirent.h>
+#include <signal.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #endif
 #include <glog/logging.h>
 #include <algorithm>
@@ -36,6 +42,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/string/string_helper.h"
+#define BUF_SIZE 1024 * 1024
 
 namespace paddle {
 namespace framework {
@@ -120,6 +127,203 @@ class BasicAucCalculator {
   std::mutex _table_mutex;
 };
 
+class AfsStreamFile {
+ public:
+  explicit AfsStreamFile(afs::AfsFileSystem* afsfile)
+      : afsfile_(afsfile), reader_(nullptr) {}
+  virtual ~AfsStreamFile() {
+    if (reader_ != NULL) {
+      afsfile_->CloseReader(reader_);
+      reader_ = NULL;
+    }
+  }
+  virtual int Open(const char* path) {
+    if (path == NULL) {
+      return -1;
+    }
+    reader_ = afsfile_->OpenReader(path);
+    PADDLE_ENFORCE_NE(reader_, nullptr,
+                      platform::errors::PreconditionNotMet(
+                          "OpenReader for file[%s] failed.", path));
+    return 0;
+  }
+  virtual int Read(char* buf, int len) {
+    int ret = reader_->Read(buf, len);
+    return ret;
+  }
+
+ private:
+  afs::AfsFileSystem* afsfile_;
+  afs::Reader* reader_;
+};
+
+class AfsManager {
+ public:
+  AfsManager(const std::string& fs_name, const std::string& fs_ugi,
+             const std::string& conf_path) {
+    auto split = fs_ugi.find(",");
+    std::string user = fs_ugi.substr(0, split);
+    std::string pwd = fs_ugi.substr(split + 1);
+    _afshandler = new afs::AfsFileSystem(fs_name.c_str(), user.c_str(),
+                                         pwd.c_str(), conf_path.c_str());
+    VLOG(0) << "AFSAPI Init: user: " << user << ", pwd: " << pwd;
+    int ret = _afshandler->Init(true, true);
+    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
+                                  "Called AFSAPI Init Interface Failed."));
+    ret = _afshandler->Connect();
+    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
+                                  "Called AFSAPI Connect Interface Failed"));
+  }
+  virtual ~AfsManager() {
+    if (_afshandler != NULL) {
+      _afshandler->DisConnect();
+      _afshandler->Destroy();
+      delete _afshandler;
+      _afshandler = nullptr;
+    }
+  }
+  static void ReadFromAfs(const std::string& path, FILE* wfp,
+                          afs::AfsFileSystem* _afshandler) {
+    AfsStreamFile* read_stream = new AfsStreamFile(_afshandler);
+    int ret = read_stream->Open(path.c_str());
+    PADDLE_ENFORCE_EQ(ret, 0,
+                      platform::errors::PreconditionNotMet(
+                          "Called AFSAPI Open file %s Failed.", path.c_str()));
+    char* _buff = static_cast<char*>(calloc(BUF_SIZE + 2, sizeof(char)));
+    int size = 0;
+    while ((size = read_stream->Read(_buff, BUF_SIZE)) > 0) {
+      fwrite(_buff, 1, size, wfp);
+    }
+    fflush(wfp);
+    fclose(wfp);
+    delete _buff;
+    delete read_stream;
+  }
+  int PopenBidirectionalInternal(const char* command,
+                                 FILE*& fp_read,               // NOLINT
+                                 FILE*& fp_write, pid_t& pid,  // NOLINT
+                                 bool read,                    // NOLINT
+                                 bool write) {
+    std::lock_guard<std::mutex> g(g_flock);
+    int fd_read[2];
+    int fd_write[2];
+    if (read) {
+      if (pipe(fd_read) != 0) {
+        LOG(FATAL) << "create read pipe failed";
+        return -1;
+      }
+    }
+    if (write) {
+      if (pipe(fd_write) != 0) {
+        LOG(FATAL) << "create write pipe failed";
+        return -1;
+      }
+    }
+    pid = vfork();
+    if (pid < 0) {
+      LOG(FATAL) << "fork failed";
+      return -1;
+    }
+    if (pid == 0) {
+      if (read) {
+        if (-1 == dup2(fd_read[1], STDOUT_FILENO)) {
+          LOG(FATAL) << "dup2 failed";
+        }
+        close(fd_read[1]);
+        close(fd_read[0]);
+      }
+
+      if (write) {
+        if (-1 == dup2(fd_write[0], STDIN_FILENO)) {
+          LOG(FATAL) << "dup2 failed";
+        }
+        close(fd_write[0]);
+        close(fd_write[1]);
+      }
+
+      struct dirent* item;
+      DIR* dir = opendir("/proc/self/fd");
+      while ((item = readdir(dir)) != NULL) {
+        int fd = atoi(item->d_name);
+        if (fd >= 3) {
+          (void)close(fd);
+        }
+      }
+
+      closedir(dir);
+
+      execl("/bin/sh", "sh", "-c", command, NULL);
+      exit(127);
+    } else {
+      if (read) {
+        close(fd_read[1]);
+        fcntl(fd_read[0], F_SETFD, FD_CLOEXEC);
+        fp_read = fdopen(fd_read[0], "r");
+        if (0 == fp_read) {
+          LOG(FATAL) << "fdopen failed.";
+          return -1;
+        }
+      }
+
+      if (write) {
+        close(fd_write[0]);
+        fcntl(fd_write[1], F_SETFD, FD_CLOEXEC);
+        fp_write = fdopen(fd_write[1], "w");
+        if (0 == fp_write) {
+          LOG(FATAL) << "fdopen failed.";
+          return -1;
+        }
+      }
+      return 0;
+    }
+  }
+  std::shared_ptr<FILE> GetFile(const std::string& path,
+                                const std::string& pipe_command) {
+    pid_t pid = 0;
+    FILE* wfp = NULL;
+    FILE* rfp = NULL;
+
+    // Always use set -eo pipefail. Fail fast and be aware of exit codes.
+    std::string cmd = "set -eo pipefail; " + pipe_command;
+    int ret =
+        PopenBidirectionalInternal(cmd.c_str(), rfp, wfp, pid, true, true);
+
+    PADDLE_ENFORCE_EQ(ret, 0, platform::errors::PreconditionNotMet(
+                                  "Called PopenBidirectionalInternal Failed"));
+    std::string filename(path);
+    if (strncmp(filename.c_str(), "afs:", 4) == 0) {
+      filename = filename.substr(4);
+    }
+    std::thread read_thread(&AfsManager::ReadFromAfs, filename, wfp,
+                            _afshandler);
+    read_thread.detach();
+    return {rfp, [pid, cmd](FILE* rfp) {
+              int wstatus = -1;
+              int ret = -1;
+              do {
+                ret = waitpid(pid, &wstatus, 0);
+              } while (ret == -1 && errno == EINTR);
+
+              fclose(rfp);
+              if (wstatus == 0 || wstatus == (128 + SIGPIPE) * 256 ||
+                  (wstatus == -1 && errno == ECHILD)) {
+                VLOG(3) << "pclose_bidirectional pid[" << pid << "], status["
+                        << wstatus << "]";
+              } else {
+                LOG(WARNING) << "pclose_bidirectional pid[" << pid << "]"
+                             << ", ret[" << ret << "] shell open fail";
+              }
+              if (wstatus == -1 && errno == ECHILD) {
+                LOG(WARNING) << "errno is ECHILD";
+              }
+            }};
+  }
+
+ private:
+  afs::AfsFileSystem* _afshandler;
+  std::mutex g_flock;
+};
+
 class BoxWrapper {
  public:
   virtual ~BoxWrapper() {}
@@ -129,7 +333,7 @@ class BoxWrapper {
   void BeginFeedPass(int date, boxps::PSAgentBase** agent) const;
   void EndFeedPass(boxps::PSAgentBase* agent) const;
   void BeginPass() const;
-  void EndPass() const;
+  void EndPass(bool need_save_delta) const;
   void PullSparse(const paddle::platform::Place& place,
                   const std::vector<const uint64_t*>& keys,
                   const std::vector<float*>& values,
@@ -223,6 +427,14 @@ class BoxWrapper {
     }
     return s_instance_;
   }
+
+  void InitAfsAPI(const std::string& fs_name, const std::string& fs_ugi,
+                  const std::string& conf_path) {
+    afs_manager = new AfsManager(fs_name, fs_ugi, conf_path);
+    use_afs_api_ = true;
+  }
+
+  bool UseAfsApi() const { return use_afs_api_; }
 
   const std::unordered_set<std::string>& GetOmitedSlot() const {
     return slot_name_omited_in_feedpass_;
@@ -413,6 +625,38 @@ class BoxWrapper {
     std::vector<std::pair<int, int>> cmatch_rank_v;
     std::string cmatch_rank_varname_;
   };
+  class MaskMetricMsg : public MetricMsg {
+   public:
+    MaskMetricMsg(const std::string& label_varname,
+                  const std::string& pred_varname, int is_join,
+                  const std::string& mask_varname, int bucket_size = 1000000) {
+      label_varname_ = label_varname;
+      pred_varname_ = pred_varname;
+      mask_varname_ = mask_varname;
+      is_join_ = is_join;
+      calculator = new BasicAucCalculator();
+      calculator->init(bucket_size);
+    }
+    virtual ~MaskMetricMsg() {}
+    void add_data(const Scope* exe_scope) override {
+      std::vector<int64_t> label_data;
+      get_data<int64_t>(exe_scope, label_varname_, &label_data);
+      std::vector<float> pred_data;
+      get_data<float>(exe_scope, pred_varname_, &pred_data);
+      std::vector<int64_t> mask_data;
+      get_data<int64_t>(exe_scope, mask_varname_, &mask_data);
+      auto cal = GetCalculator();
+      auto batch_size = label_data.size();
+      for (size_t i = 0; i < batch_size; ++i) {
+        if (mask_data[i] == 1) {
+          cal->add_data(pred_data[i], label_data[i]);
+        }
+      }
+    }
+
+   protected:
+    std::string mask_varname_;
+  };
   const std::vector<std::string>& GetMetricNameList() const {
     return metric_name_list_;
   }
@@ -423,7 +667,8 @@ class BoxWrapper {
   void InitMetric(const std::string& method, const std::string& name,
                   const std::string& label_varname,
                   const std::string& pred_varname,
-                  const std::string& cmatch_rank_varname, bool is_join,
+                  const std::string& cmatch_rank_varname,
+                  const std::string& mask_varname, bool is_join,
                   const std::string& cmatch_rank_group,
                   int bucket_size = 1000000) {
     if (method == "AucCalculator") {
@@ -439,10 +684,14 @@ class BoxWrapper {
           name, new CmatchRankMetricMsg(label_varname, pred_varname,
                                         is_join ? 1 : 0, cmatch_rank_group,
                                         cmatch_rank_varname, bucket_size));
+    } else if (method == "MaskAucCalculator") {
+      metric_lists_.emplace(
+          name, new MaskMetricMsg(label_varname, pred_varname, is_join ? 1 : 0,
+                                  mask_varname, bucket_size));
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
-          "PaddleBox only support AucCalculator, MultiTaskAucCalculator and "
-          "CmatchRankAucCalculator"));
+          "PaddleBox only support AucCalculator, MultiTaskAucCalculator "
+          "CmatchRankAucCalculator and MaskAucCalculator"));
     }
     metric_name_list_.emplace_back(name);
   }
@@ -484,6 +733,10 @@ class BoxWrapper {
   std::vector<std::string> metric_name_list_;
   std::vector<int> slot_vector_;
   std::vector<LoDTensor> keys_tensor;  // Cache for pull_sparse
+  bool use_afs_api_ = false;
+
+ public:
+  static AfsManager* afs_manager;
 };
 #endif
 
@@ -503,10 +756,10 @@ class BoxHelper {
     box_ptr->BeginPass();
 #endif
   }
-  void EndPass() {
+  void EndPass(bool need_save_delta) {
 #ifdef PADDLE_WITH_BOX_PS
     auto box_ptr = BoxWrapper::GetInstance();
-    box_ptr->EndPass();
+    box_ptr->EndPass(need_save_delta);
 #endif
   }
   void LoadIntoMemory() {

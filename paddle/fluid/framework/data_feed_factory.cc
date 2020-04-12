@@ -64,6 +64,7 @@ std::shared_ptr<DataFeed> DataFeedFactory::CreateDataFeed(
 
 REGISTER_DATAFEED_CLASS(MultiSlotDataFeed);
 REGISTER_DATAFEED_CLASS(MultiSlotInMemoryDataFeed);
+REGISTER_DATAFEED_CLASS(PaddleBoxDataFeed);
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 REGISTER_DATAFEED_CLASS(MultiSlotFileInstantDataFeed);
 #endif

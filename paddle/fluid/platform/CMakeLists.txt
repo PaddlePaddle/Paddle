@@ -78,8 +78,11 @@ cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool 
     place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
     ${dgc_deps} dlpack cudnn_workspace_helper)
 
-if (WITH_DISTRIBUTE)
-  cc_library(collective_helper SRCS collective_helper.cc DEPS framework_proto  device_context enforce)
+cc_library(collective_helper SRCS collective_helper.cc DEPS framework_proto  device_context enforce)
+
+if(WITH_GPU)
+    cc_library(cuda_resource_pool SRCS cuda_resource_pool.cc DEPS gpu_info)
+    target_link_libraries(device_context cuda_resource_pool)
 endif()
 
 if(WIN32)

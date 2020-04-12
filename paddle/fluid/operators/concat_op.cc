@@ -30,18 +30,17 @@ class ConcatOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_GE(ctx->Inputs("X").size(), 1UL,
-                      "Inputs(X) of ConcatOp should not be empty.");
-
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of ConcatOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X", "Concat");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Concat");
 
     auto inputs_dims = ctx->GetInputsDim("X");
 
     const size_t inputs_num = inputs_dims.size();
-    PADDLE_ENFORCE_GT(inputs_num, 0,
-                      "ShapeError: Input tensors count should > 0. But "
-                      "recevied inputs' length is 0.");
+    PADDLE_ENFORCE_GT(
+        inputs_num, static_cast<size_t>(0),
+        platform::errors::InvalidArgument(
+            "The number of input tensors in concat op should > 0. But "
+            "received inputs' length is 0."));
     if (inputs_num == 1) {
       VLOG(3) << "Warning: concat op have only one input, may waste memory";
     }
@@ -176,8 +175,7 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ConcatOpGradNoNeedBufferVarInference,
-                                      "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ConcatOpGradNoNeedBufferVarInference, "X");
 
 template <typename T>
 class ConcatGradOpMaker : public framework::SingleGradOpMaker<T> {

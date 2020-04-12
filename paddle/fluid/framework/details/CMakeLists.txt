@@ -9,7 +9,7 @@ cc_library(computation_op_handle SRCS computation_op_handle.cc DEPS framework_pr
 cc_library(share_tensor_buffer_op_handle SRCS share_tensor_buffer_op_handle.cc DEPS op_handle_base scope computation_op_handle share_tensor_buffer_functor)
 cc_library(rpc_op_handle SRCS rpc_op_handle.cc DEPS framework_proto scope place operator op_registry)
 cc_library(fetch_barrier_op_handle SRCS fetch_barrier_op_handle.cc DEPS framework_proto scope place operator op_registry)
-cc_library(multi_devices_helper INTERFACE SRCS multi_devices_helper.cc DEPS graph graph_helper)
+cc_library(multi_devices_helper SRCS multi_devices_helper.cc DEPS graph graph_helper)
 
 cc_library(variable_visitor SRCS variable_visitor.cc DEPS lod_tensor selected_rows)
 
@@ -65,13 +65,16 @@ cc_library(gather_op_handle SRCS gather_op_handle.cc DEPS op_handle_base scope d
 cc_library(eager_deletion_op_handle SRCS eager_deletion_op_handle.cc DEPS lod_tensor selected_rows reference_count_pass_helper)
 
 set(SSA_GRAPH_EXECUTOR_DEPS graph framework_proto
+    multi_devices_helper
     sequential_execution_pass
     modify_op_lock_and_record_event_pass
     all_reduce_deps_pass
     reference_count_pass
     eager_deletion_pass
     buffer_shared_inplace_op_pass
-    buffer_shared_cross_op_memory_reuse_pass)
+    buffer_shared_cross_op_memory_reuse_pass
+    set_reader_device_info_pass
+    add_reader_dependency_pass)
 cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS ${SSA_GRAPH_EXECUTOR_DEPS})
 
 cc_library(threaded_ssa_graph_executor SRCS threaded_ssa_graph_executor.cc DEPS fetch_op_handle ssa_graph_executor scope
@@ -110,15 +113,8 @@ set(IR_PASS_DEPS graph_viz_pass multi_devices_graph_pass
 if(NOT APPLE AND NOT WIN32 AND WITH_GPU)
   set(IR_PASS_DEPS ${IR_PASS_DEPS} fusion_group_pass)
 endif()
-if(WITH_NGRAPH) 
-  set(IR_PASS_DEPS ${IR_PASS_DEPS} ngraph)
-endif()
 cc_library(build_strategy SRCS build_strategy.cc DEPS pass_builder ${IR_PASS_DEPS})
 
 if (WITH_MKLDNN)
   target_link_libraries(build_strategy mkldnn_placement_pass)
-endif()
-
-if (WITH_NGRAPH)
-  target_link_libraries(build_strategy ngraph_subgraph_pass)
 endif()

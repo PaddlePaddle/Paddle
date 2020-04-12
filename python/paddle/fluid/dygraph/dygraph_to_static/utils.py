@@ -45,8 +45,15 @@ def is_api_in_module(node, module_prefix):
     assert isinstance(node, gast.Call), "Input non-Call node for is_dygraph_api"
     func_str = astor.to_source(gast.gast_to_ast(node.func))
     try:
+        # TODO(liym27):
+        #  Consider a better to import modules like:
+        #  source_file = inspect.getfile(dyfunc)
+        #  import_statements = ImportVisitor(source_file).transform()
+        #  import_str = "".join(import_statements)
         import paddle.fluid as fluid
         import paddle
+        from paddle.fluid.dygraph import to_variable
+        import paddle.fluid.dygraph as dygraph
         return eval("_is_api_in_module_helper({}, '{}')".format(func_str,
                                                                 module_prefix))
     except NameError:
@@ -86,8 +93,10 @@ def is_control_flow_to_transform(node, var_name_to_type):
         "The type of input node must be gast.AST, but received %s." % type(node)
 
     if isinstance(node, gast.If):
-        # TODO: make a better condition
-        return True
+        from .ifelse_transformer import IfConditionVisitor
+        if_visitor = IfConditionVisitor(
+            node.test, node_var_type_map=var_name_to_type)
+        return if_visitor.is_control_flow()
 
     if isinstance(node, gast.For):
         # TODO: make a better condition
@@ -148,8 +157,8 @@ def _add_keywords_to(node, dygraph_api_name):
 def is_to_variable(node):
     assert isinstance(node, gast.Call)
     if is_dygraph_api(node):
-        api_name = node.func.attr
-        return api_name == "to_variable"
+        api_name = ast_to_source_code(node.func).strip()
+        return api_name.endswith("to_variable")
     return False
 
 
@@ -299,9 +308,56 @@ def create_funcDef_node(nodes, name, input_args, return_name_ids):
     return func_def_node
 
 
-def ast_to_func(ast_root, func_name, delete_on_exit=True):
+def index_in_list(array_list, item):
+    try:
+        return array_list.index(item)
+    except ValueError:
+        # Item not in array_list
+        return -1
+
+
+def create_assign_node(name, node):
+    """
+    Creates a `gast.Assign` node by given name_id as target and node as value.
+    """
+    targets = generate_name_node(name, ctx=gast.Store())
+    assign_node = gast.Assign(targets=[targets], value=node)
+    return targets, assign_node
+
+
+class RenameTransformer(gast.NodeTransformer):
+    def __init__(self, node):
+        assert isinstance(
+            node, gast.AST), "RenameTransformer only accepts gast.AST as input"
+        self.root = node
+        self.old_name = ""
+        self.new_name = ""
+
+    def rename(self, old_name, new_name):
+        self.old_name = old_name
+        self.new_name = new_name
+        self.visit(self.root)
+
+    def visit_Name(self, node):
+        self.generic_visit(node)
+        if node.id == self.old_name:
+            node.id = self.new_name
+        return node
+
+    def visit_Attribute(self, node):
+        self.generic_visit(node)
+        attr_full_name = get_attribute_full_name(node)
+        if attr_full_name == self.old_name:
+            new_name_node = gast.parse(self.new_name).body[0].value
+            return new_name_node
+        return node
+
+
+def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     """
     Transform modified AST of decorated function into python callable object.
+    TODO: If only decorate one of inner function instead of decorating the main
+    function, the other inner functions are invisible for the decorated function.
     """
     source = ast_to_source_code(ast_root)
     if six.PY2:
@@ -310,27 +366,37 @@ def ast_to_func(ast_root, func_name, delete_on_exit=True):
     else:
         f = tempfile.NamedTemporaryFile(
             mode='w', suffix='.py', delete=False, encoding='utf-8')
-
-    # TODO(Aurelius84): more elegant way to transform ast into callable object
-    import_str = "import paddle\n" \
-                 "import paddle.fluid as fluid\n" \
-                 "import paddle.fluid.layers as layers\n" \
-                 "import numpy as np\n" \
-                 "import numpy\n"
     with f:
         module_name = os.path.basename(f.name[:-3])
-        f.write(import_str)
         f.write(source)
 
     if delete_on_exit:
         atexit.register(lambda: os.remove(f.name))
     module = imp.load_source(module_name, f.name)
+    func_name = dyfunc.__name__
     if not hasattr(module, func_name):
         raise ValueError(
             'Function: %s doesn\'t exist in the Module transformed from AST.' %
             func_name)
+    callable_func = getattr(module, func_name)
+    # After transform dygraph function into callable_func saved in tmp file,
+    # it lost the global variables from imported statements or defined in source file.
+    # Recovers the necessary variables by `__globals__`.
+    recover_globals_attribute(dyfunc, callable_func)
 
-    return getattr(module, func_name), f.name
+    return callable_func, f.name
+
+
+def recover_globals_attribute(src_obj, dst_obj):
+    attr_name = '__globals__'
+
+    src_globals = getattr(src_obj, attr_name, {})
+    dst_globals = getattr(dst_obj, attr_name, {})
+
+    for k, v in src_globals.items():
+        # ignore builtin attribute.
+        if not (k.startswith('__') and k.endswith('__')):
+            dst_globals[k] = v
 
 
 def ast_to_source_code(ast_node):
@@ -345,12 +411,3 @@ def ast_to_source_code(ast_node):
         ast_node = gast.gast_to_ast(ast_node)
     source_code = astor.to_source(ast_node)
     return source_code
-
-
-def create_assign_node(name, node):
-    """
-    Creates a `gast.Assign` node by given name_id as target and node as value.
-    """
-    targets = generate_name_node(name, ctx=gast.Store())
-    assign_node = gast.Assign(targets=[targets], value=node)
-    return targets, assign_node

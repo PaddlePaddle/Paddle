@@ -417,8 +417,8 @@ class GRUGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(GRUGradOpNoNeedBufferVarInference,
-                                      "Input", "Bias");
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(GRUGradOpNoNeedBufferVarInference, "Input",
+                                    "Bias");
 
 }  // namespace operators
 }  // namespace paddle

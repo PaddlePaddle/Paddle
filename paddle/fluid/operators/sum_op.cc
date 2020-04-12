@@ -18,7 +18,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/var_type_inference.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
@@ -272,25 +271,25 @@ class SumGradOpBaseMaker : public imperative::GradOpBaseMakerBase {
  public:
   using imperative::GradOpBaseMakerBase::GradOpBaseMakerBase;
 
-  std::vector<std::shared_ptr<imperative::OpBase>> operator()() const override {
+  std::shared_ptr<imperative::GradOpNode> operator()() const override {
     auto x_grads = InputGrad("X", false);
     using InputGradsType = decltype(x_grads);
 
-    std::vector<std::shared_ptr<imperative::OpBase>> grad_ops;
-    grad_ops.reserve(x_grads.size());
-    auto og = OutputGrad("Out");
-    std::transform(x_grads.begin(), x_grads.end(), std::back_inserter(grad_ops),
-                   [&og](const std::shared_ptr<imperative::VarBase>& x_grad) {
-                     auto grad_op = CreateOp();
-                     imperative::TracedGradOp op(grad_op);
-                     op.SetType("scale");
-                     op.SetInput("X", og);
-                     op.SetOutput("Out", InputGradsType{x_grad});
-                     op.SetAttr("scale", 1.0f);
-                     return grad_op;
-                   });
-
-    return grad_ops;
+    if (!x_grads.empty()) {
+      auto node = this->NewGradNode();
+      node->reserve(x_grads.size());
+      auto og = OutputGrad("Out");
+      for (auto& x_grad : x_grads) {
+        imperative::TracedGradOp op(node);
+        op.SetType("scale");
+        op.SetInput("X", og);
+        op.SetOutput("Out", InputGradsType{x_grad});
+        op.SetAttr("scale", 1.0f);
+      }
+      return node;
+    } else {
+      return nullptr;
+    }
   }
 };
 

@@ -91,24 +91,45 @@ void OperationMap::InsertUnaryElementwiseOperations() {
   // relu:
   //  out = f(x) = x > 0 ? x : 0
   //  dx = dout * (out > 0 ? 1 : 0)
-  insert_handler("relu", "${0} > 0 ? ${0} : 0", {"${1} > 0 ? ${2} : 0"});
+  insert_handler("relu", "${0} > %{0} ? ${0} : %{0.0}",
+                 {"${1} > %{0.0} ? ${2} : %{0.0}"});
   // sigmoid:
   //  out = f(x) = 1.0 / (1.0 + exp(-x))
   //  dx = dout * out * (1 - out)
-  insert_handler("sigmoid", "1.0 / (1.0 + real_exp(- ${0}))",
-                 {"${2} * ${1} * (1.0 - ${1})"});
+  insert_handler("sigmoid", "%{1.0} / (%{1.0} + Exp(- ${0}))",
+                 {"${2} * ${1} * (%{1.0} - ${1})"});
   // tanh:
   //  out = f(x) = 2.0 / (1.0 + exp(-2.0 * x)) - 1.0;
   //  dx = dout * (1 - out * out)
-  insert_handler("tanh", "2.0 / (1.0 + real_exp(-2.0 * ${0})) - 1.0",
-                 {"${2} * (1.0 - ${1} * ${1})"});
+  insert_handler("tanh", "%{2.0} / (%{1.0} + Exp(-%{2.0} * ${0})) - %{1.0}",
+                 {"${2} * (%{1.0} - ${1} * ${1})"});
 
-  // cast
-  // out = static_cast<T>(d)
-  // dx = static_cast<T>(d_out)
+  // cast:
+  // out = static_cast<T>(x)
   // TODO(wangchaochaohu): This is not the compelete definition of
   // cast Op, We need refine it later.
-  insert_handler("cast", "${0}", {"${0}"});
+  insert_handler("cast", "${0}", {});
+
+  // sqrt:
+  //  out = x^(1/2)
+  //  dx = dout * 0.5 / out
+  insert_handler("sqrt", "Sqrt(${0})", {"${2} * %{0.5} / ${1}"});
+
+  // square:
+  //  out = x^2
+  //  dx = dout * 2.0 * x
+  insert_handler("square", "${0} * ${0}", {"${2} * %{2.0} * ${0}"});
+
+  // scale
+  // out = (bias_after_scale) ? scale * X +  bias : scale(X + bias)
+  // here we use '=' operator to seperate th default value
+  // TODO(wangchaochaohu): Later we need to support Tensor input for scale and
+  // bias.
+  insert_handler(
+      "scale",
+      "${bias_after_scale=true} ? (${scale=%{1.0}} * ${0} + "
+      "${bias=%{0.0}}) : (${scale=%{1.0}} * (${0} + ${bias=%{0.0}}))",
+      {});
 }
 
 void OperationMap::InsertBinaryElementwiseOperations() {
@@ -168,10 +189,23 @@ void OperationMap::InsertMultivariateElementwiseOperations() {
     Insert(type, num_oprands, op_type, expr, grad_exprs, {"X"}, {"Out"});
   };
 
-  // here [] represent the number of input is positive(>=0).
-  // if input list size of Sum Op is 3, It will expand as
-  // ${0} + ${1} + ${2}
+  // sum:
+  //  out = x_0 + x_1 + ... + x_N-1
+  //
+  // For sum with N inputs, the expression inside "[]" will be expanded
+  //  N - 1 times. The ${?} represents the number of inputs starting with is 1.
+  // For example, sum with 4 inputs, the expanded expression is:
+  //  ${0} + ${1} + ${2} + ${3}
   insert_handler("sum", "${0}[ + ${?}]", {});
+
+  auto insert_handler_without_input = [&](std::string op_type, std::string expr,
+                                          std::vector<std::string> grad_exprs) {
+    int type = 0;
+    int num_oprands = 0;
+    Insert(type, num_oprands, op_type, expr, grad_exprs, {}, {"Out"});
+  };
+  // fill_constant:
+  insert_handler_without_input("fill_constant", "${str_value}", {});
 }
 
 }  // namespace fusion_group

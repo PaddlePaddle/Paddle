@@ -21,6 +21,9 @@
 #include <string>
 #include <vector>
 #include "gtest/gtest.h"
+#include "paddle/fluid/imperative/execution_context.h"
+#include "paddle/fluid/imperative/infer_shape_context.h"
+#include "paddle/fluid/imperative/infer_var_type_context.h"
 #include "paddle/fluid/imperative/layer.h"
 
 namespace imperative = paddle::imperative;
@@ -45,7 +48,7 @@ TEST(test_layer, test_runtime_context) {
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap attrs;
   auto *ctx = new imperative::RuntimeInferVarTypeContext<imperative::VarBase>(
-      ins, &outs, attrs);
+      ins, outs, attrs);
   ASSERT_TRUE(ctx->HasVar("vin"));
   ASSERT_TRUE(ctx->HasInput("X"));
   ASSERT_TRUE(ctx->HasOutput("Out"));
@@ -120,11 +123,12 @@ TEST(test_layer, test_debug_string) {
   ASSERT_TRUE(res_sr.find("SelectedRows") != std::string::npos);
 }
 
-static std::shared_ptr<imperative::OpBase> CreateOpBase(
+static std::shared_ptr<imperative::GradOpNode> CreateGradNode(
     size_t id, const std::string &type, const imperative::NameVarBaseMap &ins,
     const imperative::NameVarBaseMap &outs,
     const framework::AttributeMap &attrs, const platform::Place &place) {
-  auto op = std::make_shared<imperative::OpBase>();
+  auto node = std::make_shared<imperative::GradOpNode>();
+  auto *op = &(node->emplace_back());
   op->SetId(id);
   op->SetPlace(place);
   op->SetType(type);
@@ -134,7 +138,7 @@ static std::shared_ptr<imperative::OpBase> CreateOpBase(
     for (auto &var : pair.second) {
       vars.emplace_back(var->SharedVar());
     }
-    op->SetInput(pair.first, vars);
+    op->SetInput(pair.first, vars, false);
   }
 
   for (auto &pair : outs) {
@@ -142,10 +146,10 @@ static std::shared_ptr<imperative::OpBase> CreateOpBase(
     for (auto &var : pair.second) {
       vars.emplace_back(var->SharedVar());
     }
-    op->SetOutput(pair.first, vars);
+    op->SetOutput(pair.first, vars, false);
   }
 
-  return op;
+  return node;
 }
 
 TEST(test_layer, test_clear_backward_info) {
@@ -163,19 +167,21 @@ TEST(test_layer, test_clear_backward_info) {
   framework::AttributeMap concat_att_map;
   concat_att_map["axis"] = 1;
 
-  auto op = CreateOpBase(0, "mul", ins, outs, concat_att_map, place);
-  auto preceding_op = CreateOpBase(0, "mul", ins, outs, concat_att_map, place);
-  op->SetGradPendingOps({preceding_op});
+  auto node = CreateGradNode(0, "mul", ins, outs, concat_att_map, place);
+  auto pending_node =
+      CreateGradNode(0, "mul", ins, outs, concat_att_map, place);
+  node->InsertGradPendingNode(pending_node);
+
+  ASSERT_EQ(node->size(), 1UL);
+  auto *op = &(node->back());
 
   ASSERT_GT(op->GetInsMap().size(), 0UL);
   ASSERT_GT(op->GetOutsMap().size(), 0UL);
-  ASSERT_GT(op->GradPendingOps().size(), 0UL);
 
   op->ClearBackwardTrace();
 
   ASSERT_EQ(op->GetInsMap().size(), 0UL);
   ASSERT_EQ(op->GetOutsMap().size(), 0UL);
-  ASSERT_EQ(op->GradPendingOps().size(), 0UL);
 }
 
 TEST(test_layer, test_varbase_basic) {
@@ -229,7 +235,7 @@ TEST(test_layer, test_dygraph_execution_context) {
   framework::Scope scope;
 
   DygraphExecutionContext<imperative::VarBase> dy_exe_context(
-      *(op.get()), scope, *dev_ctx, ctx, nullptr, ins, outs, concat_att_map);
+      *(op.get()), scope, *dev_ctx, ctx, ins, outs, concat_att_map);
 
   ASSERT_EQ(dy_exe_context.InputSize("X"), 1u);
   ASSERT_EQ(dy_exe_context.InputName("X"), "vin");
@@ -263,6 +269,15 @@ TEST(test_layer, test_dygraph_infershape_context) {
   ASSERT_EQ(have_x, true);
   bool have_z = infer_shape_ctx.HasOutputs("Z");
   ASSERT_EQ(have_z, false);
+}
+
+TEST(test_layer, test_inner_op_not_inited) {
+  OpBase op;
+  std::string kUnknown = "unknown";
+  ASSERT_EQ(op.Type(), kUnknown);
+  ASSERT_THROW(op.Info(), platform::EnforceNotMet);
+  ASSERT_THROW(op.InnerOp(), platform::EnforceNotMet);
+  ASSERT_THROW(op.CheckAttrs(), platform::EnforceNotMet);
 }
 
 }  // namespace imperative
