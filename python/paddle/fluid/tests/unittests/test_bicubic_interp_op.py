@@ -265,28 +265,6 @@ class TestBicubicInterpDataLayout(TestBicubicInterpOp):
 
 class TestBicubicInterpOpAPI(unittest.TestCase):
     def test_case(self):
-        x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
-
-        dim = fluid.data(name="dim", shape=[1], dtype="int32")
-        shape_tensor = fluid.data(name="shape_tensor", shape=[2], dtype="int32")
-        actual_size = fluid.data(name="actual_size", shape=[2], dtype="int32")
-        scale_tensor = fluid.data(
-            name="scale_tensor", shape=[1], dtype="float32")
-
-        out1 = interpolate(
-            x, out_shape=[12, 12], resample='BICUBIC', align_corners=False)
-        out2 = interpolate(
-            x, out_shape=[12, dim], resample='BICUBIC', align_corners=False)
-        out3 = interpolate(
-            x, out_shape=shape_tensor, resample='BICUBIC', align_corners=False)
-        out4 = interpolate(
-            x,
-            out_shape=[4, 4],
-            actual_shape=actual_size,
-            resample='BICUBIC',
-            align_corners=False)
-        out5 = interpolate(
-            x, scale=scale_tensor, resample='BICUBIC', align_corners=False)
 
         x_data = np.random.random((2, 3, 6, 6)).astype("float32")
         dim_data = np.array([12]).astype("int32")
@@ -294,27 +272,67 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
         actual_size_data = np.array([12, 12]).astype("int32")
         scale_data = np.array([2.0]).astype("float32")
 
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        results = exe.run(fluid.default_main_program(),
-                          feed={
-                              "x": x_data,
-                              "dim": dim_data,
-                              "shape_tensor": shape_data,
-                              "actual_size": actual_size_data,
-                              "scale_tensor": scale_data
-                          },
-                          fetch_list=[out1, out2, out3, out4, out5],
-                          return_numpy=True)
+        prog = fluid.Program()
+        startup_prog = fluid.Program()
+        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
 
-        expect_res = bicubic_interp_np(
-            x_data, out_h=12, out_w=12, align_corners=False)
-        for res in results:
-            self.assertTrue(np.allclose(res, expect_res))
+        with fluid.program_guard(prog, startup_prog):
+
+            x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+
+            dim = fluid.data(name="dim", shape=[1], dtype="int32")
+            shape_tensor = fluid.data(
+                name="shape_tensor", shape=[2], dtype="int32")
+            actual_size = fluid.data(
+                name="actual_size", shape=[2], dtype="int32")
+            scale_tensor = fluid.data(
+                name="scale_tensor", shape=[1], dtype="float32")
+
+            out1 = interpolate(
+                x, out_shape=[12, 12], resample='BICUBIC', align_corners=False)
+            out2 = interpolate(
+                x, out_shape=[12, dim], resample='BICUBIC', align_corners=False)
+            out3 = interpolate(
+                x,
+                out_shape=shape_tensor,
+                resample='BICUBIC',
+                align_corners=False)
+            out4 = interpolate(
+                x,
+                out_shape=[4, 4],
+                actual_shape=actual_size,
+                resample='BICUBIC',
+                align_corners=False)
+            out5 = interpolate(
+                x, scale=scale_tensor, resample='BICUBIC', align_corners=False)
+
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            results = exe.run(fluid.default_main_program(),
+                              feed={
+                                  "x": x_data,
+                                  "dim": dim_data,
+                                  "shape_tensor": shape_data,
+                                  "actual_size": actual_size_data,
+                                  "scale_tensor": scale_data
+                              },
+                              fetch_list=[out1, out2, out3, out4, out5],
+                              return_numpy=True)
+
+            expect_res = bicubic_interp_np(
+                x_data, out_h=12, out_w=12, align_corners=False)
+            for res in results:
+                self.assertTrue(np.allclose(res, expect_res))
+
+        with fluid.dygraph.guard():
+            x = fluid.dygraph.to_variable(x_data)
+            interp = interpolate(
+                x, out_shape=[12, 12], resample='BICUBIC', align_corners=False)
+            dy_result = interp.numpy()
+            expect = bicubic_interp_np(
+                x_data, out_h=12, out_w=12, align_corners=False)
+            self.assertTrue(np.allclose(dy_result, expect))
 
 
 class TestBicubicOpError(unittest.TestCase):
