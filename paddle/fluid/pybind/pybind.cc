@@ -1595,17 +1595,7 @@ All parameter, weight, gradient are variables in Paddle.
              return res;
            },
            py::return_value_policy::take_ownership);
-  /*
-    py::class_<FetchType>(m, "FetchType", R"DOC( FetchType is a
-          boost::variant<LoDTensor, LoDTensorArray>)DOC")
-        .def("get_var",
-             [](FetchType &self) -> py::object {
-               if (data_is_lod_tensor(self)) {
-                 return py::cast(boost::get<LoDTensor>(self));
-               }
-               return py::cast(boost::get<LoDTensorArray>(self));
-             });
-  */
+
   py::class_<FetchList>(m, "FetchList", R"DOC( FetchList is a
         vector of boost::variant<LoDTensor, LoDTensorArray>.
         )DOC")

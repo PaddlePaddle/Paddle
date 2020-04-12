@@ -38,9 +38,6 @@ struct FetchOpHandle : public OpHandleBase {
 
   void WaitAndMergeCPUFetchVars() const;
 
-  // void CheckDims(const framework::DDim &tensor_dims, const framework::DDim
-  // &ele_dims) const;
-
   std::string Name() const override;
 
   bool IsMultiDeviceTransfer() override;

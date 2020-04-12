@@ -23,7 +23,6 @@ namespace framework {
 using FeedType = LoDTensor;
 using FeedList = std::vector<FeedType>;
 
-// using FetchType = boost::variant<LoDTensor, LoDTensorArray>;
 class FetchType : public boost::variant<LoDTensor, LoDTensorArray> {
  private:
   using FetchTypeBase = boost::variant<LoDTensor, LoDTensorArray>;

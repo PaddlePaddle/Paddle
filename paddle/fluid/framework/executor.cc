@@ -372,7 +372,12 @@ std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
     const std::vector<std::string>& skip_ref_cnt_vars, bool force_disable_gc) {
   std::unique_ptr<ExecutorPrepareContext> ctx(
       new ExecutorPrepareContext(program, block_id));
-  PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), program.Size());
+  PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), program.Size(),
+                    platform::errors::InvalidArgument(
+                        "block_id must be less than the size of program."
+                        "But received block_id is %d, the size of program is "
+                        "%d.",
+                        block_id, program.Size()));
   auto& block = program.Block(block_id);
   for (auto& op_desc : block.AllOps()) {
     ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
@@ -393,7 +398,12 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
   std::vector<std::shared_ptr<ExecutorPrepareContext>> result;
   size_t idx = 0;
   for (auto& bid : block_ids) {
-    PADDLE_ENFORCE_LT(static_cast<size_t>(bid), program.Size());
+    PADDLE_ENFORCE_LT(static_cast<size_t>(bid), program.Size(),
+                      platform::errors::InvalidArgument(
+                          "block_id must be less than the size of program."
+                          "But received block_id is %d, the size of program "
+                          "is %d.",
+                          bid, program.Size()));
     auto* ctx = new ExecutorPrepareContext(program, bid);
     auto& block = program.Block(bid);
     for (auto& op_desc : block.AllOps()) {
@@ -416,7 +426,9 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
                                          bool create_local_scope,
                                          bool create_vars, bool keep_kids) {
   platform::RecordBlock b(kProgramId);
-  PADDLE_ENFORCE_NOT_NULL(scope);
+  PADDLE_ENFORCE_NOT_NULL(
+      scope, platform::errors::PreconditionNotMet(
+                 "Scope must be set when run RunPartialPreparedContext."));
   Scope* local_scope = scope;
   if (create_vars) {
     if (create_local_scope) {

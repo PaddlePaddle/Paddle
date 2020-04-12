@@ -41,18 +41,21 @@ void SetFeedVariable(Scope* scope, const LoDTensor& input,
 
 FetchType& GetFetchVariable(const Scope& scope, const std::string& var_name,
                             size_t index) {
-  // Since we want to fetch LodTensor from a variable, the variable must
+  // Since we want to fetch FetchType from a variable, the variable must
   // be created alreadly.
   Variable* g_fetch_value = scope.FindVar(var_name);
-  PADDLE_ENFORCE_NOT_NULL(g_fetch_value, "%s is not found.", var_name);
+  PADDLE_ENFORCE_NOT_NULL(
+      g_fetch_value, platform::errors::NotFound("%s is not found.", var_name));
   PADDLE_ENFORCE(g_fetch_value->IsType<FetchList>(),
-                 "Only %s can be invoked by GetFetchVariable",
-                 typeid(FetchList).name());
+                 platform::errors::InvalidArgument(
+                     "Only %s can be invoked by GetFetchVariable",
+                     typeid(FetchList).name()));
   auto& fetch_outputs = *g_fetch_value->GetMutable<FetchList>();
   auto& tensor = fetch_outputs[index];
   VLOG(3) << "Fetch " << var_name << " with index " << index;
-  //          << " shape= " << tensor.dims();
-  PADDLE_ENFORCE_LT(index, fetch_outputs.size());
+  PADDLE_ENFORCE_LT(index, fetch_outputs.size(),
+                    platform::errors::InvalidArgument(
+                        "index must less than fetch_outputs size."));
   return tensor;
 }
 
