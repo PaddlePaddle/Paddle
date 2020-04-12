@@ -20,7 +20,7 @@ import numpy as np
 
 class TensorStd(unittest.TestCase):
     def setUp(self):
-        self.shape = [11, 25, 32, 43]
+        self.shape = [10, 10, 2, 2]
         self.unbiased = True
         self.axis = None
         self.keepdim = True
@@ -70,8 +70,7 @@ class TensorStd(unittest.TestCase):
         res = res[0]
         self.assertEqual(np_res.shape, res.shape)
 
-        all_close = np.allclose(np_res, res)
-        self.assertTrue(all_close)
+        self.assertTrue(np.allclose(np_res, res, rtol=1e-6, atol=0))
 
 
 def TensorStd1(TensorStd):
