@@ -1217,5 +1217,12 @@ size_t FleetWrapper::GetAbsoluteSum(size_t start, size_t end, size_t level,
   return ret;
 }
 
+void FleetWrapper::ChangeDenseFeaDim(const uint64_t table_id, int fea_dim) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->change_dense_fea_dim(table_id, fea_dim);
+  ret.wait();
+#endif
+}
+
 }  // end namespace framework
 }  // end namespace paddle

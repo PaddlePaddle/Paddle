@@ -80,6 +80,7 @@ void BindFleetWrapper(py::module* m) {
            &framework::FleetWrapper::SetClient2ClientConfig)
       .def("set_pull_local_thread_num",
            &framework::FleetWrapper::SetPullLocalThreadNum)
+      .def("change_dense_fea_dim", &framework::FleetWrapper::ChangeDenseFeaDim)
       .def("copy_table", &framework::FleetWrapper::CopyTable)
       .def("copy_table_by_feasign",
            &framework::FleetWrapper::CopyTableByFeasign);

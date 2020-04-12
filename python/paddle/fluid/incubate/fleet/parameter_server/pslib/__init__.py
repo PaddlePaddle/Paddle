@@ -653,7 +653,12 @@ class PSLib(Fleet):
         """
         self._opt_info = opt_info
 
-
+    def change_dense_fea_dim(self, table_id, fea_dim):
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.change_dense_fea_dim(table_id, fea_dim)
+        self._role_maker._barrier_worker()
+   
 fleet = PSLib()
 
 

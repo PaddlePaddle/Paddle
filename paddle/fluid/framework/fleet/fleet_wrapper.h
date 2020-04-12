@@ -266,6 +266,8 @@ class FleetWrapper {
   // send client to client message
   std::future<int32_t> SendClientToClientMsg(int msg_type, int to_client_id,
                                              const std::string& msg);
+  void ChangeDenseFeaDim(const uint64_t table_id, int fea_dim);
+  
   // FleetWrapper singleton
   static std::shared_ptr<FleetWrapper> GetInstance() {
     if (NULL == s_instance_) {
