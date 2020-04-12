@@ -182,7 +182,7 @@ class ParallelExecutorPrivate {
       auto nccl_id_var = scope->FindVar(var_name);
       PADDLE_ENFORCE_NOT_NULL(
           nccl_id_var,
-          platform::errors::NotFound("can't find %s nccl_id_var", var_name));
+          platform::errors::NotFound("Can't find nccl_id_var '%s'.", var_name));
       auto nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
       flat_nccl_ids.push_back(nccl_id);
     }
@@ -195,9 +195,9 @@ class ParallelExecutorPrivate {
       for (int i = 0; i < static_cast<int>(bst.nccl_comm_num_); i++) {
         std::string var_name = platform::GetHierarchicalInterNCCLVarName(i);
         auto nccl_id_var = scope->FindVar(var_name);
-        PADDLE_ENFORCE_NOT_NULL(
-            nccl_id_var,
-            platform::errors::NotFound("can't find %s nccl_id_var", var_name));
+        PADDLE_ENFORCE_NOT_NULL(nccl_id_var,
+                                platform::errors::NotFound(
+                                    "Can't find nccl_id_var '%s'.", var_name));
         auto inter_nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
         inter_nccl_ids.push_back(inter_nccl_id);
       }
@@ -206,9 +206,9 @@ class ParallelExecutorPrivate {
       for (int i = 0; i < static_cast<int>(bst.nccl_comm_num_); i++) {
         std::string var_name = platform::GetHierarchicalExterNCCLVarName(i);
         auto nccl_id_var = scope->FindVar(var_name);
-        PADDLE_ENFORCE_NOT_NULL(
-            nccl_id_var,
-            platform::errors::NotFound("can't find %s nccl_id_var", var_name));
+        PADDLE_ENFORCE_NOT_NULL(nccl_id_var,
+                                platform::errors::NotFound(
+                                    "Can't find nccl_id_var '%s'.", var_name));
         auto nccl_id = nccl_id_var->GetMutable<ncclUniqueId>();
         exter_nccl_ids.push_back(nccl_id);
       }

@@ -21,6 +21,7 @@ limitations under the License. */
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
@@ -209,7 +210,8 @@ static bool has_feed_operators(
       PADDLE_ENFORCE_EQ(
           op->Input("X")[0], feed_holder_name,
           platform::errors::PreconditionNotMet(
-              "Input to feed op should be '%s'", feed_holder_name));
+              "Input to feed op should be '%s', but received '%s'.",
+              feed_holder_name, op->Input("X")[0]));
       std::string feed_target_name = op->Output("Out")[0];
       PADDLE_ENFORCE_NE(feed_targets.find(feed_target_name), feed_targets.end(),
                         platform::errors::PreconditionNotMet(
@@ -234,10 +236,12 @@ static bool has_feed_operators(
           var,
           platform::errors::PreconditionNotMet(
               "Block should already have a '%s' variable", feed_holder_name));
-      PADDLE_ENFORCE_EQ(var->GetType(), proto::VarType::FEED_MINIBATCH,
-                        platform::errors::PreconditionNotMet(
-                            "'%s' variable should be 'FEED_MINIBATCH' type",
-                            feed_holder_name));
+      PADDLE_ENFORCE_EQ(
+          var->GetType(), proto::VarType::FEED_MINIBATCH,
+          platform::errors::PreconditionNotMet(
+              "'%s' variable should be 'FEED_MINIBATCH' type, but received "
+              "'%s'.",
+              feed_holder_name, DataTypeToString(var->GetType())));
     }
   }
 
@@ -262,13 +266,14 @@ static bool has_fetch_operators(
       PADDLE_ENFORCE_EQ(
           op->Output("Out")[0], fetch_holder_name,
           platform::errors::PreconditionNotMet(
-              "Output of fetch op should be '%s'", fetch_holder_name));
+              "Output of fetch op should be '%s', but received '%s'.",
+              fetch_holder_name, op->Output("Out")[0]));
       std::string fetch_target_name = op->Input("X")[0];
       PADDLE_ENFORCE_NE(fetch_targets.find(fetch_target_name),
                         fetch_targets.end(),
-                        platform::errors::PreconditionNotMet(
+                        platform::errors::NotFound(
                             "Fetch operator input name '%s' cannot be found in "
-                            "'fetch_targets'",
+                            "'fetch_targets'.",
                             fetch_target_name));
     }
   }
@@ -287,11 +292,12 @@ static bool has_fetch_operators(
       PADDLE_ENFORCE_NOT_NULL(
           var,
           platform::errors::PreconditionNotMet(
-              "Block should already have a '%s' variable", fetch_holder_name));
+              "Block should already have a '%s' variable.", fetch_holder_name));
       PADDLE_ENFORCE_EQ(
           var->GetType(), proto::VarType::FETCH_LIST,
           platform::errors::PreconditionNotMet(
-              "'%s' variable should be 'FETCH_LIST' type", fetch_holder_name));
+              "'%s' variable should be 'FETCH_LIST' type, but received '%s'.",
+              fetch_holder_name, DataTypeToString(var->GetType())));
     }
   }
 
