@@ -129,7 +129,7 @@ def std(input, axis, keepdim=False, unbiased=True, out=None, name=None):
     Examples:
         .. code-block:: python
 
-            import padle
+            import paddle
             # x is a Tensor variable with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
