@@ -70,8 +70,8 @@ class TestTeacherStudentSigmoidLossInvalidInput(unittest.TestCase):
         self.assertRaises(TypeError, test_invalid_input)
 
         def test_invalid_label():
-            input = fluid.data(name='input', shape=[None, 1], dtype='float32')
-            label = fluid.data(name='label', shape=[None, 1], dtype='float64')
+            input = fluid.data(name='input1', shape=[None, 1], dtype='float32')
+            label = fluid.data(name='label1', shape=[None, 1], dtype='float64')
             loss = fluid.layers.teacher_student_sigmoid_loss(input, label)
 
         self.assertRaises(TypeError, test_invalid_label)
