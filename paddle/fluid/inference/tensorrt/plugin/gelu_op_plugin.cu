@@ -194,8 +194,9 @@ int GeluPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   if (input_type == nvinfer1::DataType::kFLOAT) {
     const float* input = static_cast<const float*>(inputs[0]);
     float* output = static_cast<float*>(outputs[0]);
-    gelu_kernel<float, block_size><<<grid_size, block_size, 0, stream>>>(
-        kA, num, input, output);
+    no_exact_gelu_kernel<float,
+                         block_size><<<grid_size, block_size, 0, stream>>>(
+        kAT, kBT, kCT, num, input, output);
   } else if (input_type == nvinfer1::DataType::kHALF) {
 #ifdef SUPPORTS_CUDA_FP16
     const half* input = static_cast<const half*>(inputs[0]);
