@@ -92,9 +92,29 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       std::random_device rnd;
       if (seed) {
         if (platform::is_gpu_place(seed->place())) {
-          auto src_gpu_place = boost::get<platform::CUDAPlace>(seed->place());
-          memory::Copy(platform::CPUPlace(), &seed_data, src_gpu_place,
-                       seed->data<int>(), sizeof(int), stream);
+          // method 1
+          // auto src_gpu_place =
+          // boost::get<platform::CUDAPlace>(seed->place());
+          // VLOG(1) << "host: before tensor copy";
+          // memory::Copy(platform::CPUPlace(), &seed_data, src_gpu_place,
+          //              seed->data<int>(), sizeof(int), stream);
+          // VLOG(1) << "host: after tensor copy";
+
+          // method 2
+          // framework::Tensor n;
+          // VLOG(1) << "host: before tensor copy";
+          // framework::TensorCopy(*seed, platform::CPUPlace(), &n);
+          // VLOG(1) << "host: after tensor copy";
+          // seed_data = n.data<int>()[0];
+
+          // method 3
+          framework::Tensor n;
+          auto pinned_place = platform::CUDAPinnedPlace();
+          // VLOG(1) << "host: before tensor copy";
+          framework::TensorCopy(*seed, pinned_place, &n);
+          // VLOG(1) << "host: after tensor copy";
+          seed_data = n.data<int>()[0];
+
         } else {
           seed_data = *(seed->data<int>());
         }

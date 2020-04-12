@@ -19,9 +19,11 @@ import unittest
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.fluid.optimizer as optimizer
+import paddle.fluid.core as core
 import paddle.compat as cpt
 import numpy as np
 from paddle.fluid.backward import append_backward
+from paddle.fluid.framework import Program, program_guard
 
 
 class TestOptimizer(unittest.TestCase):
@@ -851,9 +853,9 @@ class TestRecomputeOptimizer(unittest.TestCase):
 
         def gen_data():
             return {
-                "x": np.random.random(size=(2, 3)).astype('float32'),
+                "x": np.random.random(size=(12, 3)).astype('float32'),
                 "y": np.random.randint(
-                    2, size=(2, 1)).astype('int64')
+                    2, size=(12, 1)).astype('int64')
             }
 
         def mlp(input_x, input_y):
@@ -865,23 +867,85 @@ class TestRecomputeOptimizer(unittest.TestCase):
             sum_cost = fluid.layers.reduce_mean(cost)
             return drop_res, prediction, sum_cost
 
-        input_x = fluid.layers.data(name="x", shape=[3], dtype='float32')
-        input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
-        drop_res, prediction, cost = mlp(input_x, input_y)
-        sgd = fluid.optimizer.Adam(learning_rate=0.01)
-        sgd = fluid.optimizer.RecomputeOptimizer(sgd)
-        sgd._set_checkpoints([prediction])
-        sgd.minimize(cost)
+        main_program = Program()
+        startup_program = Program()
+        scope = fluid.Scope()
+        with fluid.scope_guard(scope):
+            with program_guard(main_program, startup_program):
+                input_x = fluid.layers.data(
+                    name="x", shape=[3], dtype='float32')
+                input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+                drop_res, prediction, cost = mlp(input_x, input_y)
+                sgd = fluid.optimizer.Adam(learning_rate=0.01)
+                sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                sgd._set_checkpoints([prediction])
+                sgd.minimize(cost)
 
-        for place in [fluid.CPUPlace(), fluid.CUDAPlace(0)]:
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-            feed_data = gen_data()
-            drop_vec = exe.run(
-                feed=feed_data,
-                program=fluid.default_main_program(),
-                fetch_list=["dropout_0.tmp_1", "dropout_0.tmp_1.subprog_0"])
-            self.assertEqual(drop_vec[0].tolist(), drop_vec[1].tolist())
+                place = fluid.CPUPlace()
+                exe = fluid.Executor(place)
+                exe.run(fluid.default_startup_program())
+                feed_data = gen_data()
+                drop_vec = exe.run(feed=feed_data,
+                                   program=fluid.default_main_program(),
+                                   fetch_list=[
+                                       "dropout_0.tmp_1",
+                                       "dropout_0.tmp_1.subprog_0"
+                                   ])
+                self.assertEqual(drop_vec[0].tolist(), drop_vec[1].tolist())
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestRecomputeOptimizerCUDA(unittest.TestCase):
+    def test_dropout_with_seed(self):
+        """
+        when we recompute a dropout op, make sure that the recomputed one
+        is the same as the original var.
+        """
+
+        def gen_data():
+            return {
+                "x": np.random.random(size=(12, 3)).astype('float32'),
+                "y": np.random.randint(
+                    2, size=(12, 1)).astype('int64')
+            }
+
+        def mlp(input_x, input_y):
+            drop_res = fluid.layers.dropout(input_x, dropout_prob=0.5)
+            prediction = fluid.layers.fc(input=[drop_res],
+                                         size=2,
+                                         act='softmax')
+            cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+            sum_cost = fluid.layers.reduce_mean(cost)
+            return drop_res, prediction, sum_cost
+
+        main_program = Program()
+        startup_program = Program()
+        scope = fluid.Scope()
+        with fluid.scope_guard(scope):
+            with program_guard(main_program, startup_program):
+                input_x = fluid.layers.data(
+                    name="x", shape=[3], dtype='float32')
+                input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+                drop_res, prediction, cost = mlp(input_x, input_y)
+                sgd = fluid.optimizer.Adam(learning_rate=0.01)
+                sgd = fluid.optimizer.RecomputeOptimizer(sgd)
+                sgd._set_checkpoints([prediction])
+                sgd.minimize(cost)
+
+                place = fluid.CUDAPlace(0)
+                exe = fluid.Executor(place)
+                exe.run(fluid.default_startup_program())
+                feed_data = gen_data()
+                drop_vec = exe.run(feed=feed_data,
+                                   program=fluid.default_main_program(),
+                                   fetch_list=[
+                                       "dropout_0.tmp_1",
+                                       "dropout_0.tmp_1.subprog_0"
+                                   ])
+                print("y: ", drop_vec[0])
+                print("y_recompute: ", drop_vec[1])
+                self.assertEqual(drop_vec[0].tolist(), drop_vec[1].tolist())
 
 
 if __name__ == '__main__':
