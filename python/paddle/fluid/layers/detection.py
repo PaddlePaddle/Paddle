@@ -3195,7 +3195,6 @@ def multiclass_nms(bboxes,
     check_type(background_label, 'background_label', int, 'multiclass_nms')
 
     helper = LayerHelper('multiclass_nms', **locals())
-
     output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
     helper.append_op(
         type="multiclass_nms",
