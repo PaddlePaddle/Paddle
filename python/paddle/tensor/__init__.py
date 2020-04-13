@@ -62,7 +62,7 @@ from .logic import elementwise_equal  #DEFINE_ALIAS
 # from .random import gaussin   #DEFINE_ALIAS
 # from .random import uniform   #DEFINE_ALIAS
 # from .random import shuffle   #DEFINE_ALIAS
-# from .random import randn   #DEFINE_ALIAS
+from .random import randn  #DEFINE_ALIAS
 # from .random import rand   #DEFINE_ALIAS
 from .random import randint  #DEFINE_ALIAS
 from .random import randperm
@@ -125,7 +125,7 @@ from .math import addmm  #DEFINE_ALIAS
 from .linalg import matmul  #DEFINE_ALIAS
 from .linalg import dot  #DEFINE_ALIAS
 # from .linalg import einsum   #DEFINE_ALIAS
-# from .linalg import morm   #DEFINE_ALIAS
+from .linalg import norm  #DEFINE_ALIAS
 # from .linalg import transpose   #DEFINE_ALIAS
 from .linalg import dist  #DEFINE_ALIAS
 # from .linalg import t   #DEFINE_ALIAS

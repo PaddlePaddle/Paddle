@@ -87,7 +87,7 @@ from .tensor.logic import elementwise_equal  #DEFINE_ALIAS
 # from .tensor.random import gaussin   #DEFINE_ALIAS
 # from .tensor.random import uniform   #DEFINE_ALIAS
 # from .tensor.random import shuffle   #DEFINE_ALIAS
-# from .tensor.random import randn   #DEFINE_ALIAS
+from .tensor.random import randn  #DEFINE_ALIAS
 from .tensor.random import randperm
 # from .tensor.random import rand   #DEFINE_ALIAS
 from .tensor.random import randint  #DEFINE_ALIAS
@@ -150,7 +150,7 @@ from .tensor.math import addmm  #DEFINE_ALIAS
 from .tensor.linalg import matmul  #DEFINE_ALIAS
 from .tensor.linalg import dot  #DEFINE_ALIAS
 # from .tensor.linalg import einsum   #DEFINE_ALIAS
-# from .tensor.linalg import morm   #DEFINE_ALIAS
+from .tensor.linalg import norm  #DEFINE_ALIAS
 # from .tensor.linalg import transpose   #DEFINE_ALIAS
 from .tensor.linalg import dist  #DEFINE_ALIAS
 # from .tensor.linalg import t   #DEFINE_ALIAS
