@@ -225,7 +225,8 @@ class TestCPUSplitMergeLoDTensorGrad(unittest.TestCase):
 class TestMergeLodTensorOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            input_data = np.random.random((2, 4)).astype("float32")
+            input_data = layers.data(
+                name='x', shape=[1], dtype='float32', stop_gradient=False)
             y = layers.data(
                 name='y', shape=[1], dtype='bool', stop_gradient=False)
             x_true = layers.data(
@@ -234,22 +235,35 @@ class TestMergeLodTensorOpError(unittest.TestCase):
                 name='x_false', shape=[1], dtype='float32', stop_gradient=False)
             level = 0
 
-            def test_Variable():
+            def test_x():
                 out = layers.merge_lod_tensor(
-                    in_true=x_true,
-                    in_false=x_false,
+                    x=set(),
                     mask=y,
-                    x=input_data,
+                    int_true=x_true,
+                    in_false=x_false,
                     level=level)
 
-            self.assertRaises(TypeError, test_Variable)
+            self.assertRaises(TypeError, test_x)
 
-            def test_dtype():
-                x2 = layers.data(name='x2', shape=[1], dtype='int32')
+            def test_mask():
                 out = layers.merge_lod_tensor(
-                    in_true=x_true, in_false=x_false, mask=y, x=x2, level=level)
+                    x=input_data,
+                    mask=set(),
+                    int_true=x_true,
+                    in_false=x_false,
+                    level=level)
 
-            self.assertRaises(TypeError, test_dtype)
+            self.assertRaises(TypeError, test_mask)
+
+            def test_level():
+                out = layers.merge_lod_tensor(
+                    x=input_data,
+                    mask=y,
+                    int_true=x_true,
+                    in_false=x_false,
+                    level=0.5)
+
+            self.assertRaises(TypeError, test_level)
 
 
 class TestSplitLodTensorWithError(unittest.TestCase):
