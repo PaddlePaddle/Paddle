@@ -334,8 +334,10 @@ def square_error_cost(input, label):
 	        
 	        # [0.04000002]
     """
-    check_variable_and_dtype(input, "input", ['float32'], 'square_error_cost')
-    check_variable_and_dtype(label, "label", ['float32'], 'square_error_cost')
+    check_variable_and_dtype(input, "input", ['float32', 'float64'],
+                             'square_error_cost')
+    check_variable_and_dtype(label, "label", ['float32', 'float64'],
+                             'square_error_cost')
     helper = LayerHelper('square_error_cost', **locals())
     minus_out = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
@@ -1714,6 +1716,6 @@ def mse_loss(input, label):
 	        # [0.04000002]
 
     """
-    check_variable_and_dtype(input, "input", ['float32'], 'mse_loss')
-    check_variable_and_dtype(label, "label", ['float32'], 'mse_loss')
+    check_variable_and_dtype(input, "input", ['float32', 'float64'], 'mse_loss')
+    check_variable_and_dtype(label, "label", ['float32', 'float64'], 'mse_loss')
     return nn.reduce_mean(square_error_cost(input, label))

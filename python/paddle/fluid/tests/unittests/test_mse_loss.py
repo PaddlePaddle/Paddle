@@ -58,7 +58,7 @@ class TestMseInvalidInput(unittest.TestCase):
 
         def test_invalid_label():
             input = fluid.data(name='input1', shape=[None, 3], dtype='float32')
-            label = fluid.data(name='label1', shape=[None, 3], dtype='float64')
+            label = [256, 3]
             loss = fluid.layers.mse_loss(input, label)
 
         self.assertRaises(TypeError, test_invalid_label)

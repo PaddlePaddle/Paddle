@@ -59,7 +59,7 @@ class TestSquareErrorInvalidInput(unittest.TestCase):
 
         def test_invalid_label():
             input = fluid.data(name='input2', shape=[None, 3], dtype='float32')
-            label = fluid.data(name='label2', shape=[None, 3], dtype='float64')
+            label = [256, 3]
             loss = fluid.layers.square_error_cost(input, label)
 
         self.assertRaises(TypeError, test_invalid_label)
