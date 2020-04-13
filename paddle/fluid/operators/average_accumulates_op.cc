@@ -60,8 +60,8 @@ class AverageAccumulatesOp : public framework::OperatorWithKernel {
                    "in_num_accumulates", "AverageAccumulates");
     OP_INOUT_CHECK(ctx->HasInput("in_old_num_accumulates"), "Input",
                    "in_old_num_accumulates", "AverageAccumulates");
-    OP_INOUT_CHECK(ctx->HasInput("in_num_updates"), "Input",
-                   "in_num_updates", "AverageAccumulates");
+    OP_INOUT_CHECK(ctx->HasInput("in_num_updates"), "Input", "in_num_updates",
+                   "AverageAccumulates");
 
     OP_INOUT_CHECK(ctx->HasOutput("out_sum_1"), "Output", "out_sum_1",
                    "AverageAccumulates");
