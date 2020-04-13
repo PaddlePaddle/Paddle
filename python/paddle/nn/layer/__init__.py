@@ -14,12 +14,16 @@
 
 # TODO: define activation functions of neural network
 
+from . import activation
 from . import loss
 from . import conv
 from . import extension
 from . import activation
+from . import norm
 
+from .activation import *
 from .loss import *
 from .conv import *
 from .extension import *
 from .activation import *
+from .norm import *

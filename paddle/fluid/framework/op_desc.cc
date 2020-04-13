@@ -721,6 +721,9 @@ CompileTimeInferShapeContext::CompileTimeInferShapeContext(
     : op_(op), block_(block) {}
 
 bool CompileTimeInferShapeContext::HasInput(const std::string &name) const {
+  if (op_.Inputs().find(name) == op_.Inputs().end()) {
+    return false;
+  }
   const std::vector<std::string> &input_names = op_.Input(name);
   auto length = input_names.size();
   if (length == 0) {
@@ -734,6 +737,9 @@ bool CompileTimeInferShapeContext::HasInput(const std::string &name) const {
 }
 
 bool CompileTimeInferShapeContext::HasOutput(const std::string &name) const {
+  if (op_.Outputs().find(name) == op_.Outputs().end()) {
+    return false;
+  }
   const std::vector<std::string> &output_names = op_.Output(name);
   auto length = output_names.size();
   if (length == 0) {
@@ -747,6 +753,9 @@ bool CompileTimeInferShapeContext::HasOutput(const std::string &name) const {
 }
 
 bool CompileTimeInferShapeContext::HasInputs(const std::string &name) const {
+  if (op_.Inputs().find(name) == op_.Inputs().end()) {
+    return false;
+  }
   const std::vector<std::string> &input_names = op_.Input(name);
   if (input_names.empty()) {
     return false;
@@ -758,6 +767,9 @@ bool CompileTimeInferShapeContext::HasInputs(const std::string &name) const {
 }
 
 bool CompileTimeInferShapeContext::HasOutputs(const std::string &name) const {
+  if (op_.Outputs().find(name) == op_.Outputs().end()) {
+    return false;
+  }
   const std::vector<std::string> &output_names = op_.Output(name);
   if (output_names.empty()) {
     return false;

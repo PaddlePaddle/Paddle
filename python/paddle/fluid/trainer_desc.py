@@ -14,7 +14,7 @@
 """Defination of trainers."""
 
 import sys
-from os import path
+import os
 __all__ = ['TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer']
 
 
@@ -32,9 +32,16 @@ class TrainerDesc(object):
         '''
         # Workaround for relative import in protobuf under python3
         # TODO: should be fixed
-        cur_path = path.dirname(__file__)
+        cur_path = os.path.dirname(__file__)
         sys.path.append(cur_path)
         sys.path.append(cur_path + "/proto")
+
+        # Just for fix random UT fail, will be deleted soon
+        print("cur_path: ", cur_path)
+        print("sys.path: ", sys.path)
+        if os.path.isdir(cur_path + "/proto"):
+            print("[listdir]")
+            print(os.listdir(cur_path + "/proto"))
         from proto import trainer_desc_pb2
         self.proto_desc = trainer_desc_pb2.TrainerDesc()
         import multiprocessing as mp
