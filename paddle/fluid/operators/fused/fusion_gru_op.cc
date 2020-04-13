@@ -110,7 +110,7 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
                    "fusion_gru");
     OP_INOUT_CHECK(ctx->HasOutput("BatchedInput"), "Output", "BatchedInput",
                    "fusion_gru");
-    PADDLE_ENFORCE(ctx->HasOutput("BatchedOut"), "Output", "BatchedOut",
+    OP_INOUT_CHECK(ctx->HasOutput("BatchedOut"), "Output", "BatchedOut",
                    "fusion_gru");
     ctx->SetOutputDim("BatchedInput", {x_dims[0], wx_dims[1]});
     ctx->SetOutputDim("BatchedOut", out_dims);
