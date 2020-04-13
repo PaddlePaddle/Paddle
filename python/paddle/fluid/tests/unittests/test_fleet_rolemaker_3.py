@@ -47,11 +47,9 @@ class TestCloudRoleMaker(unittest.TestCase):
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
         os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36002"
         os.environ["PADDLE_TRAINER_ID"] = "0"
-        d = {}
-        d["init_timeout_seconds"] = 100
-        d["run_timeout_seconds"] = 100
-        d["http_ip_port"] = "127.0.0.1:36003"
-        role_maker = GeneralRoleMaker(d)
+        role_maker = GeneralRoleMaker(init_timeout_seconds=100,
+                                      run_timeout_seconds=100,
+                                      http_ip_port="127.0.0.1:36003")
         role_maker.generate_role()
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
