@@ -2740,7 +2740,8 @@ def generate_proposals(scores,
                        nms_thresh=0.5,
                        min_size=0.1,
                        eta=1.0,
-                       name=None):
+                       name=None,
+                       return_lod=False):
     """
     **Generate proposal Faster-RCNN**
 
@@ -2840,8 +2841,10 @@ def generate_proposals(scores,
     rpn_rois.stop_gradient = True
     rpn_roi_probs.stop_gradient = True
     rpn_rois_lod.stop_gradient = True
-
-    return rpn_rois, rpn_roi_probs, rpn_rois_lod
+    if return_lod:
+        return rpn_rois, rpn_roi_probs, rpn_rois_lod
+    else:
+        return rpn_rois, rpn_rois_probs
 
 
 def box_clip(input, im_info, name=None):
