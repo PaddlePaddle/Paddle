@@ -58,7 +58,7 @@ namespace platform {
 
 DeviceContextPool* DeviceContextPool::pool = nullptr;
 
-//pfd::StreamExecutor* CUDADeviceContext::se_ = nullptr;
+// pfd::StreamExecutor* CUDADeviceContext::se_ = nullptr;
 
 platform::DeviceContext* DeviceContextPool::Get(const platform::Place& place) {
   auto it = device_contexts_.find(place);
@@ -243,8 +243,8 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
 
   VLOG(3) << "set default stream:" << stream_;
 
-  //se_->SetMainStream(bstream_[0]);
-  //se_->SetD2HStream(bstream_[2]);
+  // se_->SetMainStream(bstream_[0]);
+  // se_->SetD2HStream(bstream_[2]);
 
   driver_version_ = GetCUDADriverVersion(place_.device);
   runtime_version_ = GetCUDARuntimeVersion(place_.device);

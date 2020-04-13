@@ -1,0 +1,1 @@
+cc_library(gpu_event_manager SRCS gpu_event_manage.cc DEPS paddle_stream gpu_event gpu_event_impl gpu_stream_executor )

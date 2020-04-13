@@ -28,13 +28,13 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-// class GPUStreamExecutor;
+ class GPUStreamExecutor;
 
 struct FetchOpHandle : public OpHandleBase {
  public:
   FetchOpHandle(ir::Node *node, FeedFetchList *data, size_t offset,
                 std::vector<Scope *> *local_scopes,
-                std::vector<Scope *> *local_exec_scopes, StreamExecutor *exec);
+                std::vector<Scope *> *local_exec_scopes, GPUStreamExecutor *exec);
 
   ~FetchOpHandle();
 

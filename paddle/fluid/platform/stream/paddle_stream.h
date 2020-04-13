@@ -54,7 +54,7 @@ class BaseStream {
   //                 const KernelParam<Params...> &kernel, Args... args);
   BaseStream& WaitForOtherStream(BaseStream* other);
   // should delete later
-  //BaseStream& WaitForOtherStream(cudaStream_t other);
+  // BaseStream& WaitForOtherStream(cudaStream_t other);
 
   BaseStream& InsertEvent(stream::Event* event);
   internal::StreamInterface* implementation() { return implementation_.get(); }
