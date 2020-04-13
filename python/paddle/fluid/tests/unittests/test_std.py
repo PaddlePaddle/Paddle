@@ -27,6 +27,7 @@ class TensorStd(unittest.TestCase):
         self.keepdim = True
         self.use_gpu = False
         np.random.seed(123)
+        self.x_array = np.random.random(self.shape).astype('float32')
 
     def numpy_res(self, x_array):
         if self.axis is not None and isinstance(self.axis, list):
@@ -66,11 +67,10 @@ class TensorStd(unittest.TestCase):
                          keepdim=self.keepdim)
 
         prog = fluid.default_main_program()
-        x_array = np.random.random(self.shape).astype('float32')
-        np_res = self.numpy_res(x_array)
+        np_res = self.numpy_res(self.x_array)
         res = exe.run(fluid.default_main_program(),
                       fetch_list=[out],
-                      feed={'x': x_array})
+                      feed={'x': self.x_array})
         res = res[0]
         self.assertEqual(np_res.shape, res.shape)
         self.assertTrue(np.allclose(np_res, res, rtol=1e-6, atol=0))
@@ -90,15 +90,14 @@ class TensorStd(unittest.TestCase):
                                keepdim=self.keepdim)
                 return x
 
-        x_array = np.random.random(self.shape).astype('float32')
         with fluid.dygraph.guard():
             x_std = Net(unbiased=self.unbiased,
                         axis=self.axis,
                         keepdim=self.keepdim)
-            dy_ret = x_std(fluid.dygraph.to_variable(x_array))
+            dy_ret = x_std(fluid.dygraph.to_variable(self.x_array))
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
-        np_res = self.numpy_res(x_array)
+        np_res = self.numpy_res(self.x_array)
         self.assertTrue(np.allclose(np_res, dy_ret_value, rtol=1e-6, atol=0))
 
 
@@ -109,6 +108,7 @@ class TensorStd1(TensorStd):
         self.axis = [1, 2, 3]
         self.keepdim = False
         self.use_gpu = False
+        self.x_array = np.random.random(self.shape).astype('float32')
 
 
 class TensorStd2(TensorStd):
@@ -118,6 +118,7 @@ class TensorStd2(TensorStd):
         self.axis = 0
         self.keepdim = True
         self.use_gpu = False
+        self.x_array = np.random.random(self.shape).astype('float32')
 
 
 class TensorStd3(TensorStd):
@@ -127,6 +128,7 @@ class TensorStd3(TensorStd):
         self.axis = 1
         self.keepdim = False
         self.use_gpu = False
+        self.x_array = np.random.random(self.shape).astype('float32')
 
 
 class TensorStd4(TensorStd):
@@ -136,6 +138,7 @@ class TensorStd4(TensorStd):
         self.axis = None
         self.keepdim = True
         self.use_gpu = True
+        self.x_array = np.random.random(self.shape).astype('float32')
 
 
 if __name__ == '__main__':
