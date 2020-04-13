@@ -34,7 +34,8 @@ __all__ = [
     'fused_elemwise_activation', 'sequence_topk_avg_pooling', 'var_conv_2d',
     'match_matrix_tensor', 'tree_conv', 'fused_embedding_seq_pool',
     'multiclass_nms2', 'search_pyramid_hash', 'shuffle_batch', 'partial_concat',
-    'partial_sum', 'tdm_child', 'rank_attention', 'tdm_sampler'
+    'partial_sum', 'tdm_child', 'rank_attention', 'tdm_sampler',
+    'sequence_pool_all'
 ]
 
 
@@ -1292,3 +1293,65 @@ def rank_attention(input,
         attrs={"MaxRank": max_rank})
 
     return output
+
+
+def sequence_pool_all(input, pool_type="sum", pad_value=0.0, dtype='float32'):
+    """
+    **Sequence_Pool_All**
+    This Op can calculate sequence_pool of many variables(LoDTensor)
+    Notice: It currently supports GPU device and SUM pooltype.
+    This Op exists in contrib, which means that it is not shown to the public.
+
+    .. code-block:: text
+
+        Given:
+            x.lod = [[0, 2, 5, 7, 7]]
+            x.data = [[1.], [3.], [2.], [4.], [6.], [5.], [1.]]
+            y.lod = [[0, 2, 5, 7, 7]]
+            y.data = [[1.], [2.], [3.], [4.], [5.], [6.], [7.]]
+            output = sequence_pool_all([x, y])
+
+          we get:
+
+            output = [[4, 12, 6, 0],
+                      [3, 12, 13, 0]]
+
+    Args:
+        input(list): List of input Tensors with data type float32, float64.
+        pool_type(string): The pooling type that supports sum.
+        pad_value(float32): Used to pad the pooling result for empty input sequence. Default: 0.0.
+    Returns:
+        Variable: LoDTensor after pooling with the same data type as input's.
+
+    Examples:
+        .. code-block:: python
+            import paddle.fluid as fluid
+            x = fluid.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
+            y = fluid.data(name='y', shape=[None, 10], dtype='float32', lod_level=1)
+            sum_xy = fluid.contrib.layers.sequence_pool_all([x, y])
+    """
+    if not isinstance(input, list):
+        warnings.warn(
+            "The type of input in sequence_pool_all should be list, but received %s."
+            % (type(input)))
+        input = [input]
+    for id, x in enumerate(input):
+        check_variable_and_dtype(x, 'input[' + str(id) + ']',
+                                 ['float32', 'float64'], 'sequence_pool_all')
+
+    helper = LayerHelper('sequence_pool_all', **locals())
+    helper.input_dtype()
+    inputs = helper.multiple_input()
+    outs = [
+        helper.create_variable_for_type_inference(dtype)
+        for i in range(len(inputs))
+    ]
+    helper.append_op(
+        type='sequence_pool_all',
+        inputs={'X': inputs},
+        outputs={'Out': outs},
+        attrs={"pooltype": pool_type.upper(),
+               "pad_value": pad_value})
+    if len(outs) == 1:
+        return outs[0]
+    return outs

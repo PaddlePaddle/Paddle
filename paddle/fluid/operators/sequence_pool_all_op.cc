@@ -29,15 +29,30 @@ class SequencePoolAllOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "Output(Out) of SequencePoolAllOp can not be null"));
 
-    auto all_dims = ctx->GetInputsDim("X");
-    // const size_t var_nums = all_dims.size();
-    // std::vector<framework::DDim> outs_dims;
-    // outs_dims.resize(var_nums);
-    // for (size_t i = 0; i < var_nums; ++i) {
-    //   const auto input_dim = all_dims[i];
-    //   outs_dims[i] = input_dim;
-    // }
-    ctx->SetOutputsDim("Out", all_dims);
+    auto inputs_dims = ctx->GetInputsDim("X");
+    const size_t inputs_num = inputs_dims.size();
+    PADDLE_ENFORCE_GT(inputs_num, 0,
+                      platform::errors::InvalidArgument(
+                          "ShapeError: Input tensors count should > 0. But "
+                          "recevied inputs' length is 0."));
+    if (inputs_num == 1) {
+      VLOG(3) << "Warning: sequence_pool_all op has only one input";
+    }
+
+    int64_t input_len = -1;
+    for (size_t i = 0; i < inputs_num; ++i) {
+      PADDLE_ENFORCE_EQ(inputs_dims[i].size(), 2,
+                        platform::errors::InvalidArgument(
+                            "Only suppert two dimensions input now."));
+      if (i == 0) {
+        input_len = inputs_dims[0][1];
+      } else {
+        PADDLE_ENFORCE_EQ(inputs_dims[i][1], input_len,
+                          platform::errors::InvalidArgument(
+                              "The input len of all inputs must be same"));
+      }
+    }
+    ctx->SetOutputsDim("Out", inputs_dims);
   }
 
  protected:
@@ -76,19 +91,74 @@ class SequencePoolAllOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 SequencePoolAll Operator.
 
-This operator is used to perform lookups on the PSLib
-then concatenated into a dense tensor.
-
+This Op can calculate sequence_pool of many variables(LoDTensor)  
+Notice: It currently supports GPU device and SUM pooltype.
+This Op exists in contrib, which means that it is not shown to the public.
 )DOC");
   }
 };
+
+class SequencePoolAllGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    auto in_x = "X";
+    auto out_x_g_n = framework::GradVarName(in_x);
+    ctx->SetOutputsDim(out_x_g_n, ctx->GetInputsDim(in_x));
+    auto in_names = ctx->Inputs(in_x);
+    auto out_names = ctx->Outputs(out_x_g_n);
+    PADDLE_ENFORCE_EQ(
+        in_names.size(), out_names.size(),
+        platform::errors::InvalidArgument(
+            "The number of arguments in %s[%d] and %s[%d] is not equal.", in_x,
+            in_names.size(), out_x_g_n, out_names.size()));
+    for (size_t i = 0; i < in_names.size(); ++i) {
+      if (out_names[i] != framework::kEmptyVarName) {
+        ctx->ShareLoD(in_x, out_x_g_n, i, i);
+      }
+    }
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
+  }
+};
+
+template <typename T>
+class SequencePoolAllGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("sequence_pool_all_grad");
+
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X", false));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(
+    SequencePoolAllGradOpNoNeedBufferVarsInference, "X");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_pool_all, ops::SequencePoolAllOp,
-                  ops::SequencePoolAllOpMaker);
+                  ops::SequencePoolAllOpMaker,
+                  ops::SequencePoolAllGradOpMaker<paddle::framework::OpDesc>,
+                  ops::SequencePoolAllGradOpMaker<paddle::imperative::OpBase>);
+
+REGISTER_OPERATOR(sequence_pool_all_grad, ops::SequencePoolAllGradOp,
+                  ops::SequencePoolAllGradOpNoNeedBufferVarsInference);
 
 REGISTER_OP_CPU_KERNEL(
     sequence_pool_all,

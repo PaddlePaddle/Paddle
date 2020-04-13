@@ -3211,6 +3211,15 @@ class TestBook(LayerTest):
                 max_rank=3)
             return (out)
 
+    def test_sequence_pool_all(self):
+        with self.static_graph():
+            x = fluid.data(
+                name='x', shape=[None, 10], dtype='float32', lod_level=1)
+            y = fluid.data(
+                name='y', shape=[None, 10], dtype='float32', lod_level=1)
+            sum_xy = fluid.contrib.layers.sequence_pool_all([x, y])
+            return sum_xy
+
     def test_roi_pool(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():

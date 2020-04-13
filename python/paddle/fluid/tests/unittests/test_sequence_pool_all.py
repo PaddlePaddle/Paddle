@@ -16,9 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-import sys
-sys.path.append("../")
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest
 from test_reorder_lod_tensor import convert_to_offset
 import six
 import random
@@ -44,7 +42,7 @@ class TestSequencePoolAll(OpTest):
             lod = all_vars[index][1]
             level = len(lod) - 1
             offset = convert_to_offset(lod)
-            out = np.zeros((len(lod[level]), self.feat_len)).astype('float32')
+            out = np.zeros((len(lod[level]), self.feat_len)).astype(self.dtype)
             compute_seqpool_sum(var, offset, out, self.pad_value)
             res.append(out)
         return res
@@ -55,7 +53,10 @@ class TestSequencePoolAll(OpTest):
             lod = []
             temp_lod = []
             for bid in range(batch_size):
-                seq_len = random.randint(0, 8)
+                if bid % 2 == 0:
+                    seq_len = random.randint(1, 5)
+                else:
+                    seq_len = random.randint(0, 4)
                 temp_lod.append(seq_len)
             lod.append(temp_lod)
             x = np.random.uniform(
@@ -65,7 +66,7 @@ class TestSequencePoolAll(OpTest):
 
     def config(self):
         self.var_num = 100
-        self.batch_size = 100
+        self.batch_size = 10
         self.feat_len = 8
         self.var_names = [
             'x' + str(num) for num in six.moves.range(self.var_num)
@@ -90,11 +91,21 @@ class TestSequencePoolAll(OpTest):
         if core.is_compiled_with_cuda():
             self.check_output_with_place(core.CUDAPlace(0), check_dygraph=False)
 
+    def test_check_grad_gpu(self):
+        if core.is_compiled_with_cuda():
+            for index in range(self.var_num):
+                self.check_grad_with_place(
+                    core.CUDAPlace(0), [self.var_names[index]],
+                    self.out_names[index],
+                    check_dygraph=False)
 
-#    def test_check_grad_gpu(self):
-#        if core.is_compiled_with_cuda():
-#            self.check_grad_with_place(core.CUDAPlace(0), ["RankParam"], "Out")
-#
+    def test_check_output_cpu(self):
+        try:
+            self.check_output_with_place(
+                place=core.CPUPlace(), check_dygraph=False)
+        except:
+            print("do not support cpu test, skip")
+
 
 if __name__ == '__main__':
     unittest.main()
