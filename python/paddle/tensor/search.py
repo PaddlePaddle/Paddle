@@ -272,8 +272,7 @@ def where(condition, x, y, name=None):
             return core.ops.where(condition, x, y)
         else:
             helper = LayerHelper("where", **locals())
-            dtype = helper.input_dtype()
-            out = helper.create_variable_for_type_inference(dtype)
+            out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
             helper.append_op(
                 type='where',
