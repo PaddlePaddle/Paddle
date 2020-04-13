@@ -252,5 +252,26 @@ class TestMergeLodTensorOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_dtype)
 
 
+class TestSplitLodTensorWithError(unittest.TestCase):
+    def test_error(self):
+        main_program = Program()
+        startup_program = Program()
+        with program_guard(main_program, startup_program):
+            x = layers.data(
+                name='x', shape=[1], dtype='float32', stop_gradient=False)
+            y = layers.data(
+                name='y', shape=[1], dtype='bool', stop_gradient=False)
+            level = 0
+
+            with self.assertRaises(TypeError):
+                split_lod_tensor(input=set(), mask=y, level=level)
+
+            with self.assertRaises(TypeError):
+                split_lod_tensor(input=x, mask=set(), level=level)
+
+            with self.assertRaises(TypeError):
+                split_lod_tensor(input=x, mask=set(), level=None)
+
+
 if __name__ == '__main__':
     unittest.main()

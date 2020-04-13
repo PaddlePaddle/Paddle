@@ -48,20 +48,68 @@ class ElementwiseWeightOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
 
     auto* X = engine_->GetITensor(op_desc.Input("X").front());
-    nvinfer1::Dims dims_x = X->getDimensions();
-    std::vector<int> no_batch_dims;
-    int start_index = 0;
-
-    if (engine_->with_dynamic_shape()) start_index = 1;
-    for (; start_index < dims_x.nbDims; start_index++)
-      no_batch_dims.push_back(dims_x.d[start_index]);
-
     auto* Y_v = scope.FindVar(op_desc.Input("Y").front());
     PADDLE_ENFORCE_NOT_NULL(Y_v);
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
     float* weight_data = nullptr;
     weight_data =
         engine_->GetWeightCPUData(op_desc.Input("Y").front(), Y_t, false);
+    nvinfer1::Dims dims_x = X->getDimensions();
+
+    auto regist_eltwise_weight = [&](nvinfer1::ScaleMode scale_mode) {
+      TensorRTEngine::Weight shift_weights{nvinfer1::DataType::kFLOAT,
+                                           static_cast<void*>(weight_data),
+                                           static_cast<size_t>(Y_t->numel())};
+      TensorRTEngine::Weight scale_weights{nvinfer1::DataType::kFLOAT, nullptr,
+                                           0};
+      TensorRTEngine::Weight power_weights{nvinfer1::DataType::kFLOAT, nullptr,
+                                           0};
+      if (op_type_ == "add") {
+        nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
+            engine_, Scale, *X, scale_mode, shift_weights.get(),
+            scale_weights.get(), power_weights.get());
+        layer = scale_layer;
+      } else if (op_type_ == "mul") {
+        nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
+            engine_, Scale, *X, scale_mode, scale_weights.get(),
+            shift_weights.get(), power_weights.get());
+        layer = scale_layer;
+      }
+
+      auto output_name = op_desc.Output("Out")[0];
+      RreplenishLayerAndOutput(layer, "elementwise_" + op_type_, {output_name},
+                               test_mode);
+      if (op_desc.HasAttr("enable_int8")) {
+#if IS_TRT_VERSION_GE(5000)
+        CHECK(op_desc.HasAttr("X_scale"));
+        float x_scale = boost::get<float>(op_desc.GetAttr("X_scale"));
+        engine_->SetTensorDynamicRange(X, x_scale);
+#endif
+      }
+    };
+
+    if (engine_->with_dynamic_shape()) {
+      if (Y_t->dims().size() == 1) {
+        auto scale_mode = nvinfer1::ScaleMode::kCHANNEL;
+        PADDLE_ENFORCE_EQ(Y_t->dims()[0], dims_x.d[1],
+                          platform::errors::InvalidArgument(
+                              "The Bias's size(%d) should be equal to the "
+                              "first dim(%d) of the Input.",
+                              Y_t->dims()[0], dims_x.d[1]));
+        regist_eltwise_weight(scale_mode);
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "TensorRT Dynamic shape unsupported weight shape for Elementwise "
+            "op!"));
+      }
+      return;
+    }
+
+    std::vector<int> no_batch_dims;
+    int start_index = 0;
+
+    for (; start_index < dims_x.nbDims; start_index++)
+      no_batch_dims.push_back(dims_x.d[start_index]);
 
     auto scale_mode = nvinfer1::ScaleMode::kELEMENTWISE;
 
@@ -91,36 +139,7 @@ class ElementwiseWeightOpConverter : public OpConverter {
     } else {
       PADDLE_THROW("TensorRT unsupported weight Shape for Elementwise op!");
     }
-
-    TensorRTEngine::Weight shift_weights{nvinfer1::DataType::kFLOAT,
-                                         static_cast<void*>(weight_data),
-                                         static_cast<size_t>(Y_t->numel())};
-    TensorRTEngine::Weight scale_weights{nvinfer1::DataType::kFLOAT, nullptr,
-                                         0};
-    TensorRTEngine::Weight power_weights{nvinfer1::DataType::kFLOAT, nullptr,
-                                         0};
-    if (op_type_ == "add") {
-      nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
-          engine_, Scale, *X, scale_mode, shift_weights.get(),
-          scale_weights.get(), power_weights.get());
-      layer = scale_layer;
-    } else if (op_type_ == "mul") {
-      nvinfer1::IScaleLayer* scale_layer = TRT_ENGINE_ADD_LAYER(
-          engine_, Scale, *X, scale_mode, scale_weights.get(),
-          shift_weights.get(), power_weights.get());
-      layer = scale_layer;
-    }
-
-    auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "elementwise_" + op_type_, {output_name},
-                             test_mode);
-    if (op_desc.HasAttr("enable_int8")) {
-#if IS_TRT_VERSION_GE(5000)
-      CHECK(op_desc.HasAttr("X_scale"));
-      float x_scale = boost::get<float>(op_desc.GetAttr("X_scale"));
-      engine_->SetTensorDynamicRange(X, x_scale);
-#endif
-    }
+    regist_eltwise_weight(scale_mode);
   }
 
  protected:
@@ -149,44 +168,62 @@ class ElementwiseTensorOpConverter : public OpConverter {
 
     auto* X = engine_->GetITensor(op_desc.Input("X").front());
     auto* Y = engine_->GetITensor(op_desc.Input("Y").front());
+    std::vector<nvinfer1::ITensor*> itensors;
+    itensors.push_back(X);
+    itensors.push_back(Y);
     nvinfer1::Dims dims_x = X->getDimensions();
     nvinfer1::Dims dims_y = Y->getDimensions();
 
     int axis = boost::get<int>(op_desc.GetAttr("axis"));
     auto output_name = op_desc.Output("Out")[0];
+
+    auto common_func = [&](nvinfer1::ILayer* layer) {
+      RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
+      if (op_desc.HasAttr("enable_int8")) {
+#if IS_TRT_VERSION_GE(5000)
+        CHECK(op_desc.HasAttr("X_scale"));
+        CHECK(op_desc.HasAttr("Y_scale"));
+        float x_scale = boost::get<float>(op_desc.GetAttr("X_scale"));
+        float y_scale = boost::get<float>(op_desc.GetAttr("Y_scale"));
+        engine_->SetTensorDynamicRange(X, x_scale);
+        engine_->SetTensorDynamicRange(Y, y_scale);
+#endif
+      }
+    };
+
     if (CheckDims(dims_x, dims_y)) {
       // The two input tensor should have the same dims
       VLOG(3) << "Convert a fluid elementwise op to TensorRT IElementWiseLayer";
-      nvinfer1::IElementWiseLayer* elet_layer = TRT_ENGINE_ADD_LAYER(
-          engine_, ElementWise, *const_cast<nvinfer1::ITensor*>(X),
-          *const_cast<nvinfer1::ITensor*>(Y), op_pair->second);
+      nvinfer1::IElementWiseLayer* elet_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, ElementWise, *X, *Y, op_pair->second);
 
       layer = elet_layer;
     } else {
       VLOG(3) << "Convert a fluid elementwise op to TensorRT "
                  "ElementWisePluginLayer";
-
-      plugin::ElementWisePlugin* plugin =
-          new plugin::ElementWisePlugin(op_type_, dims_x, dims_y, axis);
-      plugin->AddInput(X);
-      plugin->AddInput(Y);
-      nvinfer1::IPluginLayer* plugin_layer = engine_->AddPlugin(
-          const_cast<nvinfer1::ITensor* const*>(plugin->GetInputs().data()), 2,
-          reinterpret_cast<plugin::PluginTensorRT*>(plugin));
-
-      layer = plugin_layer;
-    }
-    RreplenishLayerAndOutput(layer, "elementwise", {output_name}, test_mode);
-    if (op_desc.HasAttr("enable_int8")) {
-#if IS_TRT_VERSION_GE(5000)
-      CHECK(op_desc.HasAttr("X_scale"));
-      CHECK(op_desc.HasAttr("Y_scale"));
-      float x_scale = boost::get<float>(op_desc.GetAttr("X_scale"));
-      float y_scale = boost::get<float>(op_desc.GetAttr("Y_scale"));
-      engine_->SetTensorDynamicRange(X, x_scale);
-      engine_->SetTensorDynamicRange(Y, y_scale);
+      if (engine_->with_dynamic_shape()) {
+#if IS_TRT_VERSION_GE(6000)
+        plugin::ElementwisePluginDynamic* plugin =
+            new plugin::ElementwisePluginDynamic(op_type_, axis);
+        layer = engine_->AddPluginV2(itensors.data(), 2, plugin);
+#else
+        PADDLE_THROW(platform::errors::Fatal(
+            "You are running the TRT Dynamic Shape mode, need to confirm that "
+            "your TRT version is no less than 6.0"));
 #endif
+      } else {
+        plugin::ElementWisePlugin* plugin =
+            new plugin::ElementWisePlugin(op_type_, dims_x, dims_y, axis);
+        plugin->AddInput(X);
+        plugin->AddInput(Y);
+        nvinfer1::IPluginLayer* plugin_layer = engine_->AddPlugin(
+            plugin->GetInputs().data(), 2,
+            reinterpret_cast<plugin::PluginTensorRT*>(plugin));
+
+        layer = plugin_layer;
+      }
     }
+    common_func(layer);
   }
 
  protected:

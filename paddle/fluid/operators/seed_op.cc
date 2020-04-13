@@ -30,7 +30,7 @@ class SeedOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(framework::proto::VarType::INT32,
-                                   platform::CPUPlace());
+                                   ctx.device_context());
   }
 };
 

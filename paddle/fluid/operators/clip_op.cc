@@ -28,7 +28,10 @@ class ClipOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto max = ctx->Attrs().Get<float>("max");
     auto min = ctx->Attrs().Get<float>("min");
-    PADDLE_ENFORCE_LT(min, max, "max should be greater than min.");
+    PADDLE_ENFORCE_LT(min, max, platform::errors::InvalidArgument(
+                                    "Max of ClipOp should be greater than min. "
+                                    "Received max is %f, received min is %f.",
+                                    max, min));
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -50,7 +53,7 @@ class ClipOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Clip Operator.
 
-The clip operator limits the value of given input within an interval [min, max], 
+The clip operator limits the value of given input within an interval [min, max],
 just as the following equation,
 
 $$
