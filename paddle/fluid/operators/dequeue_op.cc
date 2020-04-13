@@ -38,7 +38,7 @@ class DequeueOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
-    const std::string& queue_name = Input("queue_name");
+    const std::string& queue_name = Attr<std::string>("queue_name");
     auto* queue_holder_var = scope.FindVar(queue_name);
     PADDLE_ENFORCE_NOT_NULL(
         queue_holder_var,
@@ -46,17 +46,25 @@ class DequeueOp : public framework::OperatorBase {
         queue_name);
     auto* queue_holder =
         queue_holder_var->template GetMutable<LoDTensorBlockingQueueHolder>();
-    const std::string& out_name = Attr<std::string>("var_name");
-    auto out_var = scope.FindVar(out_name);
-    PADDLE_ENFORCE_NOT_NULL(out_var, "No variable with name %s found",
-                            out_name);
-    auto* out_tensor = out_var->GetMutable<LoDTensor>();
+    auto& out_names = Outputs("Out");
+    PADDLE_ENFORCE_GT(out_names.size(), 0, "No output set for dequeue op.");
+    for (size_t i = 0; i < out_names.size(); ++i) {
+      auto out_var = scope.FindVar(out_names[i]);
+      VLOG(0) << "out var name:" << out_names[i];
+      PADDLE_ENFORCE_NOT_NULL(out_var, "No variable with name %s found",
+                              out_names[i]);
+      auto* out_tensor = out_var->GetMutable<LoDTensor>();
 
-    std::vector<LoDTensor> lod_tensor_vec;
-    bool success = false;
-    lod_tensor_vec = queue_holder->GetQueue()->Pop(&success);
-    for (size_t i = 0; i < lod_tensor_vec.size(); ++i) {
-      TensorCopySync(lod_tensor_vec[i], dev_place, out_tensor);
+      std::vector<LoDTensor> lod_tensor_vec;
+      bool success = false;
+      lod_tensor_vec = queue_holder->GetQueue()->Pop(&success);
+      PADDLE_ENFORCE_EQ(success, true, "An error occurs for dequeue op.");
+      PADDLE_ENFORCE_EQ(
+          lod_tensor_vec.size(), 1,
+          "For dequeue op, dequeue one element per call for Pop.");
+      for (size_t j = 0; j < lod_tensor_vec.size(); ++j) {
+        TensorCopySync(lod_tensor_vec[j], dev_place, out_tensor);
+      }
     }
   }
 };
@@ -64,10 +72,10 @@ class DequeueOp : public framework::OperatorBase {
 class DequeueOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("queue_name",
-             "Name of the `LoDTensorBlockingQueueHolder` variable");
-    AddAttr<std::vector<std::string>>("var_name",
-                                      "Names of the `lod_tensor` to assign");
+    AddAttr<std::string>("queue_name",
+                         "Name of the `LoDTensorBlockingQueueHolder` variable");
+    AddOutput("Out", "A list of `lod_tensor` to dequeue and assigned.")
+        .AsDuplicable();
     AddComment(R"DOC(
 			Dequeue operator.
       )DOC");

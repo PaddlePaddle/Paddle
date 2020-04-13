@@ -25,7 +25,7 @@ from . import framework
 from . import layers
 from . import unique_name
 from .backward import append_backward, _some_in_set_, _append_grad_suffix_, _get_no_grad_set_name
-from .clip import GradientClipBase, error_clip_callback, append_gradient_clip_ops
+from .clip import append_gradient_clip_ops, error_clip_callback
 from .framework import program_guard
 from .initializer import Constant
 from .layer_helper import LayerHelper
@@ -111,8 +111,6 @@ class Optimizer(object):
         self._opti_name_list = []
         self._accumulators_holder = {}
         self._param_device_map = dict()
-        # if pass grad_clip into minimize, it will not be None
-        self._grad_clip = None
 
     @framework.dygraph_only
     def state_dict(self):
@@ -694,17 +692,12 @@ class Optimizer(object):
                 # ...
                 optimizer.apply_gradients(params_grads)
         """
-
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
 
         params_grads, table_param_and_grad, table_optimize_op = \
             self._process_distribute_lookuptable(params_grads)
 
-        # 'minimize(grad_clip)' or 'set_gradient_clip'
-        if self._grad_clip is not None:
-            params_grads = self._grad_clip(params_grads)
-        else:
-            params_grads = append_gradient_clip_ops(params_grads)
+        params_grads = append_gradient_clip_ops(params_grads)
 
         # Add regularization if any
         params_grads = append_regularization_ops(params_grads,
@@ -721,19 +714,19 @@ class Optimizer(object):
         """
         Second part of `minimize`, appending optimization operators for
         given `params_grads` pairs.
+
         Args:
             loss (Variable): loss variable to run optimizations.
             startup_program (Program): startup_program for initializing parameters
                 in `parameter_list`.
             params_grads (list): list of (param, grad) pair to do optimization.
+
         Returns:
             list: A list of operators appended to the current program.
         """
         if framework.in_dygraph_mode():
             with program_guard(framework.default_main_program(),
                                framework.default_startup_program()):
-                if self._grad_clip is not None:
-                    params_grads = self._grad_clip(params_grads)
                 params_grads = append_regularization_ops(params_grads,
                                                          self.regularization)
                 optimize_ops = self._create_optimization_pass(params_grads)
@@ -813,26 +806,20 @@ class Optimizer(object):
             tuple: tuple (optimize_ops, params_grads), A list of operators appended
             by minimize and a list of (param, grad) variable pairs, param is
             ``Parameter``, grad is the gradient value corresponding to the parameter.
-            The returned tuple can be passed to ``fetch_list`` in ``Executor.run()`` to 
-            indicate program pruning. If so, the program will be pruned by ``feed`` and 
-            ``fetch_list`` before run, see details in ``Executor``.
 
         Examples:
             Please refer to the example of current Optimizer.
         """
         assert isinstance(loss, Variable), "The loss should be an Variable."
-        if grad_clip is not None:
-            if not isinstance(grad_clip, GradientClipBase):
-                raise TypeError(
-                    "'grad_clip' should be an instance of GradientClipBase's derived class"
-                )
-            self._grad_clip = grad_clip
-
         params_grads = self.backward(
             loss,
             startup_program=startup_program,
             parameter_list=parameter_list,
             no_grad_set=no_grad_set)
+
+        if grad_clip is not None and framework.in_dygraph_mode():
+            # TODO(hongyu): FIX later, this is only for dygraph, should be work for static mode
+            params_grads = grad_clip(params_grads)
 
         optimize_ops = self.apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads)
@@ -904,11 +891,16 @@ class SGDOptimizer(Optimizer):
 
     @no_grad
     def _append_optimize_op(self, block, param_and_grad):
-        lr = self._create_param_lr(param_and_grad)
         if framework.in_dygraph_mode():
-            core.ops.sgd(param_and_grad[0], lr, param_and_grad[1],
-                         param_and_grad[0])
-            return None
+            inputs = {
+                "Param": [param_and_grad[0]],
+                "Grad": [param_and_grad[1]],
+                "LearningRate": [self._create_param_lr(param_and_grad)]
+            }
+            attrs = {}
+            outputs = {'ParamOut': [param_and_grad[0]]}
+            outs = core.ops.sgd(inputs, attrs, outputs)
+            return outs['ParamOut'][0]
 
         assert isinstance(block, framework.Block)
         # create the optimize op
@@ -917,7 +909,7 @@ class SGDOptimizer(Optimizer):
             inputs={
                 "Param": param_and_grad[0],
                 "Grad": param_and_grad[1],
-                "LearningRate": lr
+                "LearningRate": self._create_param_lr(param_and_grad)
             },
             outputs={"ParamOut": param_and_grad[0]},
             stop_gradient=True)
@@ -1019,27 +1011,24 @@ class MomentumOptimizer(Optimizer):
 
         velocity_acc = self._get_accumulator(self._velocity_acc_str,
                                              param_and_grad[0])
-        lr = self._create_param_lr(param_and_grad)
-
-        if framework.in_dygraph_mode():
-            _, _ = core.ops.momentum(param_and_grad[0], param_and_grad[1],
-                                     velocity_acc, lr, param_and_grad[0],
-                                     velocity_acc, 'mu', self._momentum,
-                                     'use_nesterov', self._use_nesterov)
-            return None
-
         attrs = {"mu": self._momentum, "use_nesterov": self._use_nesterov}
+
         inputs = {
             "Param": [param_and_grad[0]],
             "Grad": [param_and_grad[1]],
             "Velocity": [velocity_acc],
-            "LearningRate": [lr]
+            "LearningRate": [self._create_param_lr(param_and_grad)]
         }
 
         outputs = {
             "ParamOut": [param_and_grad[0]],
             "VelocityOut": [velocity_acc]
         }
+
+        if framework.in_dygraph_mode():
+            core.ops.momentum(inputs, attrs, outputs)
+            return None
+
         # create the momentum optimize op
         momentum_op = block.append_op(
             type=self.type,
@@ -1163,7 +1152,6 @@ class DGCMomentumOptimizer(Optimizer):
 
         self.regular_type, self.regular_coeff = self._get_regularization_param(
             self.regularization)
-        self._grad_clip = None
 
     def _get_regularization_param(self, regularization):
         regular_type = 0
@@ -1420,28 +1408,24 @@ class DGCMomentumOptimizer(Optimizer):
         dgc_op._set_attr(op_maker.kOpRoleVarAttrName(),
                          [param_var.name, grad_var.name])
 
-    @imperative_base.no_grad
     def apply_gradients(self, params_grads):
         params_grads = sorted(params_grads, key=lambda x: x[0].name)
+
         params_grads, table_param_and_grad, table_optimize_op = \
             self._process_distribute_lookuptable(params_grads)
 
         not_dgc_params_grads = []
         dgc_params_grads = []
-        # DGC clip and regularization in optimizer.backward
         for param, grad in params_grads:
             if not self._is_use_dgc(param, grad):
                 not_dgc_params_grads.append((param, grad))
             else:
                 dgc_params_grads.append((param, grad))
 
-        # 'minimize(grad_clip)' or 'set_gradient_clip'
-        if self._grad_clip is not None:
-            not_dgc_params_grads = self._grad_clip(not_dgc_params_grads)
-        else:
-            not_dgc_params_grads = append_gradient_clip_ops(
-                not_dgc_params_grads)
+        # DGC clip and regularization in local
+        not_dgc_params_grads = append_gradient_clip_ops(not_dgc_params_grads)
 
+        # Add regularization if any
         not_dgc_params_grads = append_regularization_ops(not_dgc_params_grads,
                                                          self.regularization)
 
@@ -1867,27 +1851,12 @@ class AdamOptimizer(Optimizer):
                                               param_and_grad[0])
         beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
                                               param_and_grad[0])
-        lr = self._create_param_lr(param_and_grad)
+
         # create the adam optimize op
-
-        if framework.in_dygraph_mode():
-            _beta1 = self._beta1 if not isinstance(
-                self._beta1, Variable) else self._beta1.numpy().item(0)
-            _beta2 = self._beta2 if not isinstance(
-                self._beta2, Variable) else self._beta2.numpy().item(0)
-            _, _, _, _, _ = core.ops.adam(
-                param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
-                beta1_pow_acc, beta2_pow_acc, param_and_grad[0], moment1,
-                moment2, beta1_pow_acc, beta2_pow_acc, 'epsilon', self._epsilon,
-                'lazy_mode', self._lazy_mode, 'min_row_size_to_use_multithread',
-                1000, 'beta1', _beta1, 'beta2', _beta2)
-
-            return None
-
         inputs = {
             "Param": [param_and_grad[0]],
             "Grad": [param_and_grad[1]],
-            "LearningRate": [lr],
+            "LearningRate": [self._create_param_lr(param_and_grad)],
             "Moment1": [moment1],
             "Moment2": [moment2],
             "Beta1Pow": [beta1_pow_acc],
@@ -1914,6 +1883,10 @@ class AdamOptimizer(Optimizer):
             inputs['Beta2Tensor'] = self._beta2
         else:
             attrs['beta2'] = self._beta2
+
+        if framework.in_dygraph_mode():
+            core.ops.adam(inputs, attrs, outputs)
+            return None
 
         adam_op = block.append_op(
             type=self.type,
@@ -3962,13 +3935,16 @@ class RecomputeOptimizer(Optimizer):
     def apply_optimize(self, loss, startup_program, params_grads):
         """
         call the apply_optimize function of self._optimizer
+
         Args:
             loss (Variable): loss variable to run optimizations.
             startup_program (Program): startup_program for initializing parameters
                 in `parameter_list`.
             params_grads (list): list of (param, grad) pair to do optimization.
+
         Examples:
             .. code-block:: python
+
                 import paddle.fluid as fluid
                 
                 def mlp(input_x, input_y, hid_dim=128, label_dim=2):
@@ -3996,6 +3972,7 @@ class RecomputeOptimizer(Optimizer):
                     cost, startup_program=None, params_grads=params_grads)
                 
                 print("Finished apply_optimize")
+
         """
 
         return self._optimizer.apply_optimize(
@@ -4007,23 +3984,23 @@ class RecomputeOptimizer(Optimizer):
                  parameter_list=None,
                  no_grad_set=None,
                  grad_clip=None):
-        assert isinstance(loss, Variable), "The loss should be an Variable."
+
+        assert (isinstance(loss, Variable)), "The loss should be an Variable."
         assert (self._checkpoints is not None
                 ), "You should call _set_checkpoints first"
         if framework.in_dygraph_mode():
             raise NotImplementedError(
                 "DyGraph current does not support recompute")
-        if grad_clip is not None:
-            if not isinstance(grad_clip, GradientClipBase):
-                raise TypeError(
-                    "'grad_clip' should be an instance of GradientClipBase's derived class"
-                )
-            self._optimizer._grad_clip = grad_clip
+
         params_grads = self.backward(
             loss,
             startup_program=startup_program,
             parameter_list=parameter_list,
             no_grad_set=no_grad_set)
+
+        if grad_clip:
+            # TODO(guru4elephant): should add grad_clip for static graph
+            pass
 
         optimize_ops = self.apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads)
@@ -4246,21 +4223,21 @@ class ModelParallelOptimizer(object):
 
     def __init__(self, optimizer, num_macrobatches=1, start_cpu_core_id=0):
         if framework.in_dygraph_mode():
-            raise Exception("In dygraph mode, ModelParallelOptimizer "
-                            "is not supported now.")
+            raise Exception("ModelParallelOptimizer is not supported now "
+                            "in dygraph mode.")
         if not isinstance(optimizer, Optimizer):
             raise ValueError("optimizer must be an instance of Optimizer, "
                              "but the given type is {}.".format(
                                  type(optimizer)))
 
         self._optimizer = optimizer
-        self._place_list = None
-        assert start_cpu_core_id>=0, \
-            "start_cpu_core_id can not be a negative value."
-        self._start_cpu_core_id = start_cpu_core_id
         assert num_macrobatches>=1, \
             "num_macrobatches must be a positive value."
         self._num_macrobatches = num_macrobatches
+        assert start_cpu_core_id>=0, \
+            "start_cpu_core_id can not be a negative value."
+        self._start_cpu_core_id = start_cpu_core_id
+        self._place_list = None
         op_maker = core.op_proto_and_checker_maker
         self._op_role = core.op_proto_and_checker_maker.OpRole
         self._op_role_key = op_maker.kOpRoleAttrName()
@@ -4268,19 +4245,26 @@ class ModelParallelOptimizer(object):
         self._op_device_key = op_maker.kOpDeviceAttrName()
 
     def _create_vars(self, block, main_program):
-        # Create vars for block, copied from main_program
+        # Create vars for block, copied from main_program.block(0)
         used_var_set = set()
         for op_idx in range(block.desc.op_size()):
             op_desc = block.desc.op(op_idx)
             vars = op_desc.input_arg_names() + op_desc.output_arg_names()
             for var_name in vars:
-                # var for which name contains "blocking_queue" 
+                # a var for which name contains "blocking_queue" 
                 # only exists in startup program 
                 if var_name in used_var_set or "blocking_queue" in var_name:
                     continue
                 used_var_set.add(var_name)
                 source_var = main_program.block(0).var(var_name)
                 block._clone_variable(source_var, False)
+
+    def _is_loss_grad_op(self, op):
+        if self._op_role_key not in op.attr_names:
+            return False
+        op_role = int(op.all_attrs()[self._op_role_key])
+        return op_role & int(self._op_role.Backward) and op_role & int(
+            self._op_role.Loss)
 
     def _is_backward_op(self, op):
         return self._op_role_key in op.attr_names and \
@@ -4296,7 +4280,8 @@ class ModelParallelOptimizer(object):
 
     def _split_program(self, main_program):
         """
-        Split program into section programs according to devices that ops run on.
+        Split a program into section programs according to devices that ops
+        run on.
 
         Args:
             main_program (Program): the main program
@@ -4326,6 +4311,7 @@ class ModelParallelOptimizer(object):
 
         for key in sorted(device_program_map.keys()):
             program = device_program_map[key]
+            program['program']._sync_with_cpp()
             programs.append(program)
 
         return programs
@@ -4367,24 +4353,29 @@ class ModelParallelOptimizer(object):
     def _create_var(self, block, ref_var, name):
         """
         Create a new var for block, which has the same type,
-        shape and dtype as ref_var.
+        shape and dtype as ref_var, then rename it with the
+        name `name`.
         """
-        new_var = block._clone_variable(ref_var, False)
-        new_var.name = name
+        new_var = block.create_var(
+            name=name,
+            shape=ref_var.shape,
+            dtype=ref_var.dtype,
+            type=ref_var.type,
+            lod_level=ref_var.lod_level,
+            persistable=False,
+            is_data=False,
+            need_check_feed=ref_var.desc.need_check_feed())
         return new_var
 
     def _get_data_var_info(self, block):
         """
-        Get all data vars and rename them.
+        Get all vars whose is_data attribute is set and rename them.
 
         For ModelParallelTrainer, all data vars are binded to
         minibatch scope, so we have to feed them to the macromatch
         to avoid conflicts. The vars feeded to macrobatch have to
         be renamed.
         """
-        op_maker = core.op_proto_and_checker_maker
-        op_device = op_maker.kOpDeviceAttrName()
-
         raw_name_new_name_map = dict()
         # Because we will create vars in block, it is more safe
         # to get all var_names before iteration.
@@ -4399,18 +4390,19 @@ class ModelParallelOptimizer(object):
             new_var = self._create_var(block, var, new_name)
             new_var.is_data = False
 
-        # map of data to devices that that data may on
+        # map of data to devices that that data on
         data_devices_map = dict()
         for op in block.ops:
             device = op.attr(self._op_device_key)
             for var_name in op.input_arg_names:
-                if var_name in raw_name_new_name_map:
-                    if not var_name in data_devices_map:
-                        data_devices_map[var_name] = []
-                    if not device in data_devices_map[var_name]:
-                        data_devices_map[var_name].append(device)
-                    new_name = raw_name_new_name_map[var_name]
-                    self._rename_arg(op, var_name, new_name)
+                if var_name not in raw_name_new_name_map:
+                    continue
+                if not var_name in data_devices_map:
+                    data_devices_map[var_name] = []
+                if not device in data_devices_map[var_name]:
+                    data_devices_map[var_name].append(device)
+                new_name = raw_name_new_name_map[var_name]
+                self._rename_arg(op, var_name, new_name)
         return data_devices_map, raw_name_new_name_map
 
     def _rename_var_in_block(self, block, raw_name_new_name_map):
@@ -4426,21 +4418,21 @@ class ModelParallelOptimizer(object):
         """
         Insert enqueue and dequeue ops for data var
         """
-        op_maker = core.op_proto_and_checker_maker
-        op_device = op_maker.kOpDeviceAttrName()
+        main_program = block.program
         data_devices_map, raw_name_new_name_map = self._get_data_var_info(block)
 
         first_prog = programs[0]['program']
-        first_prog._sync_with_cpp()
         first_block = first_prog.block(0)
         first_device = devices[0]
         for var_name in data_devices_map.keys():
             for device in data_devices_map[var_name]:
                 # step1: generate queue for each pair of data var and device
                 # that that data on
-                queue_name = var_name
+                queue_name = var_name + "_blocking_queue"
                 queue_name = unique_name.generate(queue_name)
                 queue_var = startup.block(0).create_var(
+                    name=queue_name,
+                    persistable=True,
                     type=core.VarDesc.VarType.RAW)
                 startup.block(0).append_op(
                     type='gen_queue',
@@ -4462,12 +4454,14 @@ class ModelParallelOptimizer(object):
                 assert device in devices
                 index = devices.index(device)
                 prog = programs[index]['program']
-                prog._sync_with_cpp()
                 block = prog.block(0)
                 index = 0
                 if device == first_device:
                     index = 1
                 new_name = raw_name_new_name_map[var_name]
+                source_var = main_program.block(0).var(var_name)
+                #new_var = block._clone_variable(source_var, False)
+                self._create_var(block, source_var, new_name)
                 block._insert_op(
                     index=index,
                     type='dequeue',
@@ -4496,8 +4490,6 @@ class ModelParallelOptimizer(object):
         """
         Check whether ops in a block are all validate.
         """
-        op_maker = core.op_proto_and_checker_maker
-        op_device = op_maker.kOpDeviceAttrName()
         for op in block.ops:
             type = op.type
             if op.has_attr('sub_block'):
@@ -4520,15 +4512,13 @@ class ModelParallelOptimizer(object):
         Insert a pair of enqueue and dequeue ops for every two
         consecutive ops on different devices.
         """
-        op_maker = core.op_proto_and_checker_maker
-        op_device = op_maker.kOpDeviceAttrName()
         devices = set()
         startup_block = startup_program.global_block()
 
         for index, op in reversed(list(enumerate(block.ops))):
             if op.type == "print":
                 continue
-            cur_device = op.attr(op_device)
+            cur_device = op.attr(self._op_device_key)
             # Todo: add op_device for sum op in backward pass
             # we set it as "gpu" just for test
             if cur_device == "" and op.type == "sum":
@@ -4539,7 +4529,7 @@ class ModelParallelOptimizer(object):
                 prev_op = self._find_real_prev_op(block.ops, op, var_name)
                 if prev_op is None:
                     continue
-                prev_device = prev_op.attr(op_device)
+                prev_device = prev_op.attr(self._op_device_key)
                 # Todo: add op_device for sum op in backward pass
                 # we set it as "gpu" just for test
                 if prev_device == "" and prev_op.type == "sum":
@@ -4585,8 +4575,6 @@ class ModelParallelOptimizer(object):
         """
         Insert enqueue op for gradients for parameters and dequeue_N ops.
         """
-        op_maker = core.op_proto_and_checker_maker
-        op_device = op_maker.kOpDeviceAttrName()
         startup_block = startup_program.global_block()
         grad_queue_map = dict()
 
@@ -4594,12 +4582,25 @@ class ModelParallelOptimizer(object):
             offset = index
             if op.type == "print":
                 continue
-            device = op.attr(op_device)
+            device = op.attr(self._op_device_key)
             # Todo: add op_device for sum op in backward pass
             # we set it as "gpu" just for test
             if device == "" and op.type == "sum":
                 device = "gpu"
             # Backward pass
+            if self._is_loss_grad_op(op):
+                loss_grad_var = block.vars[op.output_arg_names[0]]
+                block._insert_op(
+                    index=index + 1,
+                    type='scale',
+                    inputs={'X': loss_grad_var},
+                    outputs={'Out': loss_grad_var},
+                    attrs={
+                        'scale': 1.0 / self._num_macrobatches,
+                        self._op_device_key: device,
+                        self._op_role_key: self._op_role.Backward
+                    })
+                continue
             if self._is_backward_op(op) and \
                     self._op_role_var_key in op.attr_names:
                 op_role_var = op.all_attrs()[self._op_role_var_key]
@@ -4620,7 +4621,7 @@ class ModelParallelOptimizer(object):
                             'lod_tensor': grad_name
                         },
                         attrs={
-                            op_device: cur_device,
+                            self._op_device_key: device,
                             self._op_role_key: self._op_role.Backward
                         })
                     offset += 1
@@ -4652,15 +4653,15 @@ class ModelParallelOptimizer(object):
                     u_grad_name = self._append_grad_suffix(u_name)
                     self._create_var(block, ref_var, u_grad_name)
                     grad_names.append(u_grad_name)
-                scale_name = unique_name.generate(grad_name)
-                self._create_var(block, ref_var, scale_name)
-                scale_var = block.var(scale_name)
+                #scale_name = unique_name.generate(grad_name)
+                #self._create_var(block, ref_var, scale_name)
+                #scale_var = block.var(scale_name)
                 block._insert_op(
                     index=offset,
                     type='dequeue',
                     inputs={'blocking_queue': queue_name, },
                     attrs={
-                        op_device: cur_device,
+                        self._op_device_key: device,
                         'lod_tensors': grad_names,
                         self._op_role_key: self._op_role.Optimize
                     })
@@ -4668,21 +4669,22 @@ class ModelParallelOptimizer(object):
                     index=offset + 1,
                     type='sum',
                     inputs={'X': grad_names, },
-                    outputs={'Out': scale_var},
-                    attrs={
-                        op_device: cur_device,
-                        self._op_role_key: self._op_role.Optimize
-                    })
-                block._insert_op(
-                    index=offset + 2,
-                    type='scale',
-                    inputs={'X': scale_var, },
+                    #outputs={'Out': scale_var},
                     outputs={'Out': ref_var},
                     attrs={
-                        'scale': 1.0 / self._num_macrobatches,
-                        op_device: cur_device,
+                        self._op_device_key: device,
                         self._op_role_key: self._op_role.Optimize
                     })
+                #block._insert_op(
+                #    index=offset + 2,
+                #    type='scale',
+                #    inputs={'X': scale_var, },
+                #    outputs={'Out': ref_var},
+                #    attrs={
+                #        'scale': 1.0 / self._num_macrobatches,
+                #        self._op_device_key: device,
+                #        self._op_role_key: self._op_role.Optimize
+                #    })
 
     def minimize(self,
                  loss,
@@ -4699,6 +4701,7 @@ class ModelParallelOptimizer(object):
         self._check_validation(block)
         devices = self._insert_enq_deq_ops_for_boundaries(block,
                                                           startup_program)
+        self._insert_enq_deq_ops_for_update(block, startup_program)
         device_list = sorted(devices)
         if "cpu" in device_list:
             assert device_list[0] == "cpu", \
@@ -4803,7 +4806,8 @@ class ModelParallelOptimizer(object):
         self._insert_enq_deq_for_data_var(block, program_list, startup_program,
                                           sorted(devices))
         place_list = sorted(place_list)
-        place_id_list = [-1, 0]
+        print("place_list:", place_list)
+        place_id_list = [-1, 6]
         program._pipeline_opt = {
             "trainer": "ModelParallelTrainer",
             "device_worker": "ModelParallel",

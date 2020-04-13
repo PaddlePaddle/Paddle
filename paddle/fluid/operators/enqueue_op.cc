@@ -38,13 +38,13 @@ class EnqueueOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
-    const std::string& queue_name = Input("queue_name");
+    const std::string& queue_name = Attr<std::string>("queue_name");
     auto* queue_holder_var = scope.FindVar(queue_name);
     PADDLE_ENFORCE_NOT_NULL(
         queue_holder_var,
         "No LoDTensorBlockingQueueHolder variable with name %s found",
         queue_name);
-    const std::string& var_name = Input("var_name");
+    const std::string& var_name = Input("X");
     auto* in_var = scope.FindVar(var_name);
     auto* in_tensor = in_var->GetMutable<LoDTensor>();
     PADDLE_ENFORCE_NOT_NULL(in_tensor, "No variable with name %s found",
@@ -53,7 +53,7 @@ class EnqueueOp : public framework::OperatorBase {
         queue_holder_var->template GetMutable<LoDTensorBlockingQueueHolder>();
 
     std::vector<LoDTensor> lod_tensor_vec;
-    lod_tensor_vec.push_back(*in_tensor);
+    lod_tensor_vec.emplace_back(*in_tensor);
     queue_holder->GetQueue()->Push(lod_tensor_vec);
   }
 };
@@ -61,9 +61,9 @@ class EnqueueOp : public framework::OperatorBase {
 class EnqueueOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("queue_name",
-             "Name of the `LoDTensorBlockingQueueHolder` variable");
-    AddInput("var_name", "Name of the `lod_tensor` to enqueue");
+    AddInput("X", "`lod_tensor` to enqueue");
+    AddAttr<std::string>("queue_name",
+                         "Name of the `LoDTensorBlockingQueueHolder` variable");
     AddComment(R"DOC(
 			Enqueue operator.
       )DOC");
