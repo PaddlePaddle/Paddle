@@ -22,23 +22,29 @@ from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 from paddle.fluid import Program, program_guard
 
-class TestTensorArrayToTensorError(unittest.TestCase):
-     """Tensor_array_to_tensor error message enhance"""
-     def test_errors(self):
-         with program_guard(Program()):
-             input_data = np.random.random((2, 4)).astype("float32")
-             def test_Variable():
-                 # The input type must be Variable.
-                 fluid.layers.tensor_array_to_tensor(input=input_data)
-             self.assertRaises(TypeError, test_Variable)
 
-             def test_input_list():
-                 # The input type must be List.
-                 fluid.layers.tensor_array_to_tensor(input=[input_data])
-             self.assertRaises(TypeError, test_input_list) 
-             # input data type must be int16 int32 fp16 fp32 fp64
-             x_fp16 = fluid.data(name='x_fp16', shape=[2, 4], dtype='fp16')
-             fluid.layers.tensor_array_to_tensor(input=x_fp16)
+class TestTensorArrayToTensorError(unittest.TestCase):
+    """Tensor_array_to_tensor error message enhance"""
+
+    def test_errors(self):
+        with program_guard(Program()):
+            input_data = np.random.random((2, 4)).astype("float32")
+
+            def test_Variable():
+                # The input type must be Variable.
+                fluid.layers.tensor_array_to_tensor(input=input_data)
+
+            self.assertRaises(TypeError, test_Variable)
+
+            def test_input_list():
+                # The input type must be List.
+                fluid.layers.tensor_array_to_tensor(input=[input_data])
+
+            self.assertRaises(TypeError, test_input_list)
+            # input data type must be int16 int32 fp16 fp32 fp64
+            x_fp16 = fluid.data(name='x_fp16', shape=[2, 4], dtype='fp16')
+            fluid.layers.tensor_array_to_tensor(input=x_fp16)
+
 
 class TestLoDTensorArrayConcat(unittest.TestCase):
     """Test case for concat mode of tensor_array_to_tensor."""

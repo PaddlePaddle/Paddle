@@ -100,8 +100,7 @@ class ErrorClipByValue(BaseErrorClipAttr):
 
     def _append_clip_op(self, block, grad_name):
         check_variable_and_dtype(
-            input, "X", ['float32', 'float64', 'int32', 'int64'],
-            "clip")
+            input, "X", ['float32', 'float64', 'int32', 'int64'], "clip")
         clip_op_desc = block.desc.append_op()
         clip_op_desc.set_type("clip")
         clip_op_desc.set_input("X", [grad_name])
