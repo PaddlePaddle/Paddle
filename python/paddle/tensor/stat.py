@@ -42,9 +42,8 @@ def var(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
             the axis to compute is :math:`rank(input) + axis[i]`.
         keepdim (bool, optional): Whether to reserve the reduced dimensions in 
             the output Variable. The dimensions in :attr:`axis` will be squeezed 
-            and the result Variable will have :attr:`len(axis)`fewer dimensions 
-            than the :attr:`input` unless :attr:`keep_dim` is true, default 
-            False.
+            and the result Variable will have :attr:`len(axis)` fewer dimensions 
+            than the :attr:`input` unless :attr:`keepdim` is true, default False.
         unbiased (bool, optional): Whether to compute variance via the unbiased 
             estimator, in which the divisor used in the computation is 
             :math:`N - 1`, where :math:`N` represents the number of elements 
@@ -56,10 +55,9 @@ def var(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
             refer to :ref:`api_guide_Name`. Default None.
 
     Returns:
-        variance (Variable): The result variance with the same dtype as 
-            :attr:`input`. If :attr:`out = None`, returns a new Variable 
-            containing the variance, otherwise returns a reference to the
-            output Variable.
+        Variable: The result variance with the same dtype as :attr:`input`. 
+            If :attr:`out = None`, returns a new Variable containing the 
+            variance, otherwise returns a reference to the output Variable.
 
     Examples:
         .. code-block:: python
