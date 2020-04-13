@@ -83,16 +83,14 @@ def var(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
     axes = axis if axis != None and axis != [] else range(rank)
     axes = [e if e >= 0 else e + rank for e in axes]
     inp_shape = input.shape if in_dygraph_mode() else layers.shape(input)
-    expand_times = [inp_shape[i] if i in axes else 1 for i in range(rank)]
     mean = layers.reduce_mean(input, dim=axis, keep_dim=True, name=name)
-    mean = layers.expand(x=mean, expand_times=expand_times, name=name)
     tmp = layers.reduce_mean(
         (input - mean)**2, dim=axis, keep_dim=keepdim, name=name)
 
     if unbiased:
         n = 1
         for i in axes:
-            n *= expand_times[i]
+            n *= inp_shape[i]
         if not in_dygraph_mode():
             n = layers.cast(n, dtype)
             zero_const = layers.fill_constant(shape=[1], dtype=dtype, value=0.0)

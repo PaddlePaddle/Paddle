@@ -21,14 +21,15 @@ import paddle.fluid as fluid
 class TestVarianceLayer(unittest.TestCase):
     def setUp(self):
         self._dtype = "float64"
-        self._input = np.random.random([3, 5]).astype(self._dtype)
+        self._input = np.random.random([2, 3, 4, 5]).astype(self._dtype)
 
     def static(self, axis=None, keepdim=False, unbiased=True):
         prog = fluid.Program()
         with fluid.program_guard(prog):
-            data = fluid.data(name="data", dtype=self._dtype, shape=[None, 5])
+            data = fluid.data(
+                name="data", dtype=self._dtype, shape=[None, 3, 4, 5])
             out = prog.current_block().create_var(
-                dtype=self._dtype, shape=[3, 5])
+                dtype=self._dtype, shape=[2, 3, 4, 5])
             paddle.var(input=data,
                        axis=axis,
                        keepdim=keepdim,
@@ -63,13 +64,13 @@ class TestVarianceLayer(unittest.TestCase):
             self.assertTrue(np.allclose(self.numpy(), self.static()))
             self.assertTrue(
                 np.allclose(
-                    self.numpy(axis=[1]), self.dynamic(axis=[1])))
+                    self.numpy(axis=[0, 2]), self.dynamic(axis=[0, 2])))
             self.assertTrue(
                 np.allclose(
                     self.numpy(
-                        axis=[1], keepdim=True),
+                        axis=[1, 3], keepdim=True),
                     self.dynamic(
-                        axis=[1], keepdim=True)))
+                        axis=[1, 3], keepdim=True)))
             self.assertTrue(
                 np.allclose(
                     self.numpy(unbiased=False), self.dynamic(unbiased=False)))
