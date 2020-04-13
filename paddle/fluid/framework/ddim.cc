@@ -48,6 +48,16 @@ bool DDim::operator==(const DDim& d) const {
 
 bool DDim::operator!=(const DDim& d) const { return !(*this == d); }
 
+std::string DDim::to_str() const {
+  std::stringstream ss;
+  ss << '[';
+  if (rank_ > 0) ss << dim_[0];
+
+  for (int i = 1; i < rank_; ++i) ss << ", " << dim_[i];
+  ss << ']';
+  return ss.str();
+}
+
 struct ProductVisitor {
   template <int D>
   inline int64_t operator()(const Dim<D>& dim) {

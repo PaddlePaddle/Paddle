@@ -923,6 +923,8 @@ def hsigmoid(input,
                 value=0.05), bias_attr=fluid.initializer.Constant(value=.0))
             # out = [[0.62792355], [0.62792355], [0.62792355], [0.62792355]]
     """
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'hsigmoid')
+    check_variable_and_dtype(label, 'label', ['int64'], 'hsigmoid')
 
     helper = LayerHelper('hierarchical_sigmoid', **locals())
     dtype = helper.input_dtype()
@@ -1631,6 +1633,12 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
 
        npair_loss = fluid.layers.npair_loss(anchor, positive, labels, l2_reg = 0.002)
   '''
+    check_variable_and_dtype(anchor, 'anchor', ['float32', 'float64'],
+                             'npair_loss')
+    check_variable_and_dtype(positive, 'positive', ['float32', 'float64'],
+                             'positive')
+    check_variable_and_dtype(labels, 'labels', ['float32', 'float64', 'int64'],
+                             'labels')
     Beta = 0.25
     batch_size = labels.shape[0]
 
