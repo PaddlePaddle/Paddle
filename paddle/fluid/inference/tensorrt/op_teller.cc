@@ -72,6 +72,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "instance_norm",
       "gelu",
       "layer_norm",
+      "scale",
   };
 };
 

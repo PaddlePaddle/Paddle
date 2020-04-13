@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 
 #ifdef PADDLE_WITH_MKLDNN
@@ -53,12 +54,9 @@ inline void ExtractActivationTensor(const framework::ExecutionContext& context,
                                     framework::Tensor** Out) {
   auto x_var = context.InputVar("X");
   auto out_var = context.OutputVar("Out");
-  PADDLE_ENFORCE_NOT_NULL(
-      x_var, platform::errors::NotFound("No Input(X) found for %s operator.",
-                                        context.Type()));
-  PADDLE_ENFORCE_NOT_NULL(
-      out_var, platform::errors::NotFound(
-                   "No Output(Out) found for %s operator.", context.Type()));
+  OP_INOUT_CHECK(x_var, "Input", "X", context.Type());
+  OP_INOUT_CHECK(out_var, "Output", "Out", context.Type());
+
   if (CanBeUsedBySelectedRows.count(context.Type())) {
     *X = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var);
     *Out = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
@@ -80,22 +78,14 @@ inline void ExtractActivationGradTensor(
     framework::Tensor** dX) {
   auto out_grad_var = context.InputVar(framework::GradVarName("Out"));
   auto x_grad_var = context.OutputVar(framework::GradVarName("X"));
-  const framework::Variable* out_var = nullptr;
+  OP_INOUT_CHECK(out_grad_var, "Input", "Out@Grad", context.Type());
+  OP_INOUT_CHECK(x_grad_var, "Output", "X@Grad", context.Type());
 
+  const framework::Variable* out_var = nullptr;
   if (static_cast<int>(kDepValue) & static_cast<int>(kDepOut)) {
     out_var = context.InputVar("Out");
-    PADDLE_ENFORCE_NOT_NULL(
-        out_var, platform::errors::NotFound(
-                     "No Input(Out) found for %s operator.", context.Type()));
+    OP_INOUT_CHECK(out_var, "Input", "Out", context.Type());
   }
-  PADDLE_ENFORCE_NOT_NULL(
-      out_grad_var,
-      platform::errors::NotFound("No Input(Out@Grad) found for %s operator.",
-                                 context.Type()));
-  PADDLE_ENFORCE_NOT_NULL(
-      x_grad_var,
-      platform::errors::NotFound("No Output(X@Grad) found for %s operator.",
-                                 context.Type()));
 
   if (CanBeUsedBySelectedRows.count(context.Type())) {
     *dOut = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(
@@ -121,16 +111,13 @@ inline void ExtractActivationGradTensor(
       *Out = *dOut;  // fake out
     }
   }
-
   PADDLE_ENFORCE_NOT_NULL(
       *dX, platform::errors::NotFound("No X@Grad tensor found for %s operator.",
                                       context.Type()));
 
   if (static_cast<int>(kDepValue) & static_cast<int>(kDepX)) {
     auto x_var = context.InputVar("X");
-    PADDLE_ENFORCE_NOT_NULL(
-        x_var, platform::errors::NotFound("No Input(X) found for %s operator.",
-                                          context.Type()));
+    OP_INOUT_CHECK(x_var, "Input", "X", context.Type());
     if (CanBeUsedBySelectedRows.count(context.Type())) {
       *X = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var);
     } else {
@@ -1185,9 +1172,8 @@ inline void ExtractActivationDoubleGradTensor(
     framework::Tensor** ddOut) {
   auto ddx_var = ctx.InputVar("DDX");
   auto ddo_var = ctx.OutputVar("DDOut");
-  PADDLE_ENFORCE_NOT_NULL(
-      ddx_var, platform::errors::NotFound(
-                   "No Input(DDx) found for %s operator.", ctx.Type()));
+  OP_INOUT_CHECK(ddx_var, "Input", "DDX", ctx.Type());
+
   if (CanBeUsedBySelectedRows.count(ctx.Type())) {
     *ddX = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*ddx_var);
     if (ddo_var) {
@@ -1206,9 +1192,7 @@ inline void ExtractActivationDoubleGradTensor(
 
   if (static_cast<int>(kDepValue) & static_cast<int>(kDepX)) {
     auto x_var = ctx.InputVar("X");
-    PADDLE_ENFORCE_NOT_NULL(
-        x_var, platform::errors::NotFound("No Input(X) found for %s operator.",
-                                          ctx.Type()));
+    OP_INOUT_CHECK(x_var, "Input", "X", ctx.Type());
     auto dx_var = ctx.OutputVar("DX");
     if (CanBeUsedBySelectedRows.count(ctx.Type())) {
       *X = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var);
@@ -1228,9 +1212,7 @@ inline void ExtractActivationDoubleGradTensor(
   }
   if (static_cast<int>(kDepValue) & static_cast<int>(kDepOut)) {
     auto out_var = ctx.InputVar("Out");
-    PADDLE_ENFORCE_NOT_NULL(
-        out_var, platform::errors::NotFound(
-                     "No Input(Out) found for %s operator.", ctx.Type()));
+    OP_INOUT_CHECK(out_var, "Input", "Out", ctx.Type());
     auto dout_var = ctx.OutputVar("DOut");
     if (CanBeUsedBySelectedRows.count(ctx.Type())) {
       *Out =
@@ -1437,9 +1419,7 @@ inline void ExtractDoubleGradTensorWithInputDOut(
   // extract ddX(output), ddOut(input)
   auto ddx_var = ctx.InputVar("DDX");
   auto ddo_var = ctx.OutputVar("DDOut");
-  PADDLE_ENFORCE_NOT_NULL(
-      ddx_var, platform::errors::NotFound(
-                   "No Input(DDX) found for %s operator.", ctx.Type()));
+  OP_INOUT_CHECK(ddx_var, "Input", "DDX", ctx.Type());
   *ddX = ctx.Input<framework::Tensor>("DDX");
   if (ddo_var) {
     *ddOut = ctx.Output<framework::Tensor>("DDOut");
@@ -1450,9 +1430,7 @@ inline void ExtractDoubleGradTensorWithInputDOut(
 
   // extract x(input), dx(output)
   auto x_var = ctx.InputVar("X");
-  PADDLE_ENFORCE_NOT_NULL(
-      x_var, platform::errors::NotFound("No Input(X) found for %s operator.",
-                                        ctx.Type()));
+  OP_INOUT_CHECK(x_var, "Input", "X", ctx.Type());
   auto dx_var = ctx.OutputVar("DX");
   *X = ctx.Input<framework::Tensor>("X");
   if (dx_var) {
@@ -1596,11 +1574,11 @@ class PowKernel : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
       }
       auto factor =
           std::vector<float>(factor_data, factor_data + factor_tensor->numel());
-      PADDLE_ENFORCE_EQ(factor.size(), 1,
-                        platform::errors::InvalidArgument(
-                            "The size of factor(tensor) must be [1]. But "
-                            "received the size of factor: %d.",
-                            factor.size()));
+      PADDLE_ENFORCE_EQ(
+          factor.size(), 1,
+          platform::errors::InvalidArgument(
+              "The shape of factor(tensor) must be [1] rather than %d",
+              factor.size()));
       for (auto& attr : attrs) {
         *attr.second = factor[0];
       }
@@ -1651,11 +1629,11 @@ class PowGradKernel
       }
       auto factor =
           std::vector<float>(factor_data, factor_data + factor_tensor->numel());
-      PADDLE_ENFORCE_EQ(factor.size(), 1,
-                        platform::errors::InvalidArgument(
-                            "The size of factor(tensor) must be [1]. But "
-                            "received the size of factor: %d.",
-                            factor.size()));
+      PADDLE_ENFORCE_EQ(
+          factor.size(), 1,
+          platform::errors::InvalidArgument(
+              "The shape of factor(tensor) must be [1] rather than %d",
+              factor.size()));
       for (auto& attr : attrs) {
         *attr.second = factor[0];
       }
