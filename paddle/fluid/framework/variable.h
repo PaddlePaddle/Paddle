@@ -90,7 +90,7 @@ class Variable {
     static_assert(
         IsRegisteredVarType<T>(),
         "Not registered type. Please register T inside var_type_traits.h");
-    PlaceholderImpl() { this->Init(&obj_, VarTypeTrait<T>::kId); }
+    PlaceholderImpl() : obj_() { this->Init(&obj_, VarTypeTrait<T>::kId); }
 
    private:
     T obj_;
