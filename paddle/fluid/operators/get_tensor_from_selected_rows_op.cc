@@ -23,6 +23,9 @@ class GetTensorFromSelectedRowsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "GetTensorFromSelectedRows");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "GetTensorFromSelectedRows");
+
     PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("X").front() ==
                            framework::proto::VarType::SELECTED_ROWS,
                        true, platform::errors::InvalidArgument(
@@ -37,8 +40,6 @@ class GetTensorFromSelectedRowsOp : public framework::OperatorWithKernel {
                                  "but the received is %s",
                                  ctx->Outputs("Out").front(),
                                  ctx->GetOutputsVarType("Out").front()));
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "GetTensorFromSelectedRows");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "GetTensorFromSelectedRows");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
   }
 
