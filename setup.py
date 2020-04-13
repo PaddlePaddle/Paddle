@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 ################################################################################
 #
-#   Copyright (c) 2019  Baidu.com, Inc. All Rights Reserved.
+#   Copyright (c) 2020  Baidu.com, Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"
 # you may not use this file except in compliance with the License.
@@ -29,10 +29,7 @@ setuptools.setup(
     author="PaddlePaddle",
     author_email="zhouxiangyang@baidu.com",
     description="A Paddle High-level API that supports both static and dynamic execution modes (still under development)",
-    # long_description=long_description,
-    # long_description_content_type="text/markdown",
     url="https://github.com/PaddlePaddle/hapi",
-    # packages=setuptools.find_packages(),
     packages=[
         'hapi', 'hapi.text', 'hapi.text.tokenizer', 'hapi.text.bert',
         'hapi.text.bert.utils'

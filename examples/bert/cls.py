@@ -1,4 +1,4 @@
-# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved. 
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved. 
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,10 +13,6 @@
 # limitations under the License.
 "dygraph transformer layers"
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import six
 import json
 import numpy as np
@@ -25,7 +21,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import Linear, Layer
 
-from hapi.text.bert.bert import BertEncoder
+from hapi.text.bert import BertEncoder
 from hapi.model import Model
 
 
@@ -63,11 +59,6 @@ class ClsModelLayer(Model):
         """
         forward
         """
-        #src_ids = data_ids[0]
-        #position_ids = data_ids[1]
-        #sentence_ids = data_ids[2]
-        #input_mask = data_ids[3]
-        #labels = data_ids[4]
 
         enc_output, next_sent_feat = self.bert_layer(src_ids, position_ids,
                                                      sentence_ids, input_mask)
@@ -80,19 +71,3 @@ class ClsModelLayer(Model):
         logits = self.cls_fc(cls_feats)
 
         return logits
-        """
-        logits = self.cls_fc(cls_feats)
-
-        ce_loss, probs = fluid.layers.softmax_with_cross_entropy(
-            logits=logits, label=labels, return_softmax=True)
-        loss = fluid.layers.mean(x=ce_loss)
-
-        if self.use_fp16 and self.loss_scaling > 1.0:
-            loss *= self.loss_scaling
-
-        num_seqs = fluid.layers.create_tensor(dtype='int64')
-        accuracy = fluid.layers.accuracy(
-            input=probs, label=labels, total=num_seqs)
-        """
-
-        return loss, accuracy

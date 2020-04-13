@@ -1,4 +1,4 @@
-# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ import hapi.text.tokenizer.tokenization as tokenization
 
 __all__ = [
     'BertInputExample', 'BertInputFeatures', 'SingleSentenceDataset',
-    'SentencePairDataset'
+    'SentencePairDataset', 'BertDataLoader'
 ]
 
 
@@ -289,7 +289,7 @@ def _prepare_train_batch(insts,
         return_num_token=return_num_token)
 
 
-class SingleSentenceDataLoader(object):
+class BertDataLoader(object):
     def __init__(self,
                  input_file,
                  tokenizer,

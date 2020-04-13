@@ -8,7 +8,6 @@ export CUDA_VISIBLE_DEVICES=0
 
 # start fine-tuning
 python3.7 bert_classifier.py\
-    --task_name ${TASK_NAME} \
     --use_cuda true \
     --do_train true \
     --do_test true \
