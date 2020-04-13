@@ -169,14 +169,14 @@ $$out = \\log \\frac{1}{1 + e^{-x}}$$
 UNUSED constexpr char ExpDoc[] = R"DOC(
 Exp Operator. Computes exp of x element-wise with a natural number :math:`e` as the base.
 
-$out = e^x$
+$$out = e^x$$
 
 )DOC";
 
 UNUSED constexpr char ReluDoc[] = R"DOC(
 Relu Activation Operator.
 
-$out = \max(x, 0)$
+$$out = \max(x, 0)$$
 
 )DOC";
 
@@ -209,42 +209,42 @@ Rsqrt Activation Operator.
 
 Please make sure input is legal in case of numeric errors.
 
-$out = \frac{1}{\sqrt{x}}$
+$$out = \frac{1}{\sqrt{x}}$$
 
 )DOC";
 
 UNUSED constexpr char AbsDoc[] = R"DOC(
 Abs Activation Operator.
 
-$out = |x|$
+$$out = |x|$$
 
 )DOC";
 
 UNUSED constexpr char CeilDoc[] = R"DOC(
 Ceil Operator. Computes ceil of x element-wise.
 
-$out = \left \lceil x \right \rceil$
+$$out = \left \lceil x \right \rceil$$
 
 )DOC";
 
 UNUSED constexpr char FloorDoc[] = R"DOC(
 Floor Activation Operator.
 
-$out = \left \lfloor x \right \rfloor$
+$$out = \left \lfloor x \right \rfloor$$
 
 )DOC";
 
 UNUSED constexpr char CosDoc[] = R"DOC(
 Cosine Operator. Computes cosine of x element-wise.
 
-$out = cos(x)$
+$$out = cos(x)$$
 
 )DOC";
 
 UNUSED constexpr char SinDoc[] = R"DOC(
 Sine Activation Operator.
 
-$out = sin(x)$
+$$out = sin(x)$$
 
 )DOC";
 
@@ -273,7 +273,7 @@ $$out = \\frac{1}{x}$$
 UNUSED constexpr char LogDoc[] = R"DOC(
 Log Activation Operator.
 
-$out = \ln(x)$
+$$out = \ln(x)$$
 
 Natural logarithm of x.
 
@@ -282,14 +282,14 @@ Natural logarithm of x.
 UNUSED constexpr char SquareDoc[] = R"DOC(
 The OP square each elements of the inputs.
 
-$out = x^2$
+$$out = x^2$$
 
 )DOC";
 
 UNUSED constexpr char SoftplusDoc[] = R"DOC(
 Softplus Activation Operator.
 
-$out = \ln(1 + e^{x})$
+$$out = \ln(1 + e^{x})$$
 
 )DOC";
 
@@ -423,7 +423,7 @@ class BReluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 BRelu Activation Operator.
 
-$out = \min(\max(x, t_{min}), t_{max})$
+$$out = \min(\max(x, t_{min}), t_{max})$$
 
 )DOC");
   }
@@ -439,7 +439,7 @@ class SoftReluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 SoftRelu Activation Operator.
 
-$out = \ln(1 + \exp(\max(\min(x, threshold), -threshold)))$
+$$out = \ln(1 + \exp(\max(\min(x, threshold), -threshold)))$$
 
 )DOC");
   }
@@ -461,7 +461,7 @@ ELU Activation Operator.
 Applies the following element-wise computation on the input according to
 https://arxiv.org/abs/1511.07289.
 
-$out = \max(0, x) + \min(0, \alpha * (e^x - 1))$
+$$out = \max(0, x) + \min(0, \alpha * (e^x - 1))$$
 
 )DOC");
   }
@@ -482,7 +482,7 @@ class Relu6OpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Relu6 Activation Operator.
 
-$out = \min(\max(0, x), threshold)$
+$$out = \min(\max(0, x), threshold)$$
 
 )DOC");
   }
@@ -502,7 +502,7 @@ class PowOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Pow Activation Operator.
 
-$out = x^{factor}$
+$$out = x^{factor}$$
 
 )DOC");
   }
@@ -568,7 +568,7 @@ HardSigmoid Activation Operator.
 A 3-part piecewise linear approximation of sigmoid(https://arxiv.org/abs/1603.00391),
 which is much faster than sigmoid.
 
-$out = \max(0, \min(1, slope * x + offset))$
+$$out = \max(0, \min(1, slope * x + offset))$$
 
 )DOC");
   }
@@ -608,7 +608,7 @@ HardSwish Activation Operator.
 
 The hard version of swish(https://arxiv.org/pdf/1905.02244.pdf).
 
-$out = \frac{x * (min(max(0, x+offset), threshold))}{scale}$
+$$out = \frac{x * (min(max(0, x+offset), threshold))}{scale}$$
 
 The threshold and scale should be positive. The offset can be either positive or negative.
 The default parameters are set according to the above reference.

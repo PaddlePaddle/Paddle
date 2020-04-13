@@ -30,8 +30,9 @@ template <typename T>
 class CUDNNGridSampleOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use CUDAPlace");
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                      platform::errors::InvalidArgument(
+                          "It must use CUDAPlace when using CUDA Kernel"));
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
     auto* input = ctx.Input<Tensor>("X");
@@ -59,10 +60,13 @@ class CUDNNGridSampleOpKernel : public framework::OpKernel<T> {
     cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
         DataLayout::kNCHW, framework::vectorize<int>(output->dims()));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSpatialTfSamplerForward(
-        handle, cudnn_st_desc, CudnnDataType<T>::kOne(), cudnn_input_desc,
-        input_data, grid_data, CudnnDataType<T>::kZero(), cudnn_output_desc,
-        output_data));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnSpatialTfSamplerForward(
+            handle, cudnn_st_desc, CudnnDataType<T>::kOne(), cudnn_input_desc,
+            input_data, grid_data, CudnnDataType<T>::kZero(), cudnn_output_desc,
+            output_data),
+        platform::errors::InvalidArgument(
+            "cudnnSpatialTfSamplerForward in Op(grid_sampler) failed"));
   }
 };
 
@@ -70,8 +74,9 @@ template <typename T>
 class CUDNNGridSampleGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use CUDAPlace");
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                      platform::errors::InvalidArgument(
+                          "It must use CUDAPlace when using CUDA Kernel"));
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
     auto* input = ctx.Input<Tensor>("X");
@@ -117,7 +122,9 @@ class CUDNNGridSampleGradOpKernel : public framework::OpKernel<T> {
             input_data, CudnnDataType<T>::kZero(), cudnn_input_grad_desc,
             input_grad_data, CudnnDataType<T>::kOne(), cudnn_output_grad_desc,
             output_grad_data, grid_data, CudnnDataType<T>::kZero(),
-            grid_grad_data));
+            grid_grad_data),
+        platform::errors::InvalidArgument(
+            "cudnnSpatialTfSamplerBackward in Op(grid_sampler) failed"));
   }
 };
 

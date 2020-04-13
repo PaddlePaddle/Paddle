@@ -109,11 +109,9 @@ class FusionGroupPassTest2(FusionGroupPassTest):
             tmp_2 = layers.relu(layers.sigmoid(self.feed_vars[3]))
             tmp_3 = layers.mul(tmp_1, tmp_2)
 
-        # TODO(wangchaochaohu): support the case when some vars are set
-        #  stop_gradient = True.
-
+        self.append_gradients(tmp_3)
         self.num_fused_ops = 2
-        self.fetch_list = [tmp_3]
+        self.fetch_list = [tmp_3, self.grad(tmp_1)]
 
 
 class FusionGroupPassTestFP64(FusionGroupPassTest):
@@ -175,7 +173,7 @@ class FusionGroupPassCastTest(FusionGroupPassTest):
             self.feed_vars = self._prepare_feed_vars([2, 2], dtype, 2)
 
             tmp_0 = layers.elementwise_add(self.feed_vars[0], self.feed_vars[1])
-            tmp_1 = layers.cast(tmp_0, dtype="double")
+            tmp_1 = layers.cast(tmp_0, dtype="float64")
             tmp_2 = layers.cast(tmp_1, dtype="float32")
 
         self.append_gradients(tmp_2)
