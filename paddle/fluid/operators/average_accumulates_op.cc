@@ -48,65 +48,26 @@ class AverageAccumulatesOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("param"), true,
-        platform::errors::InvalidArgument(
-            "Input (param) of average_accumulates op should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("in_sum_1"), true,
-        platform::errors::InvalidArgument(
-            "Input (sum_1) of average_accumulates op should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("in_sum_2"), true,
-        platform::errors::InvalidArgument(
-            "Input (sum_2) of average_accumulates op should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("in_sum_3"), true,
-        platform::errors::InvalidArgument(
-            "Input (sum_3) of average_accumulates op should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("in_num_accumulates"), true,
-        platform::errors::InvalidArgument(
-            "Input (in_num_accumulates) of average_accumulates op should "
-            "not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("in_old_num_accumulates"), true,
-        platform::errors::InvalidArgument(
-            "Input (old_num_accumulates) of average_accumulates op "
-            "should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("in_num_updates"), true,
-                      platform::errors::InvalidArgument(
-                          "Input (num_updates) of average_accumulates op "
-                          "should not be null."));
+    OP_INOUT_CHECK(ctx->HasInput("param"), "Input", "param", "AverageAccumulates");
+    OP_INOUT_CHECK(ctx->HasInput("in_sum_1"), "Input", "in_sum_1", "AverageAccumulates");
+    OP_INOUT_CHECK(ctx->HasInput("in_sum_2"), "Input", "in_sum_2", "AverageAccumulates");
+    OP_INOUT_CHECK(ctx->HasInput("in_sum_3"), "Input", "in_sum_3", "AverageAccumulates");
+    OP_INOUT_CHECK(ctx->HasInput("in_num_accumulates"), "Input",
+                            "in_num_accumulates", "AverageAccumulates");
+    OP_INOUT_CHECK(ctx->HasInput("in_old_num_accumulates"), "Input",
+                            "in_old_num_accumulates", "AverageAccumulates");
+    OP_INOUT_CHECK(ctx->HasInput("in_num_updates"), "Input",
+                            "in_num_updates", "AverageAccumulates");
 
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("out_sum_1"), true,
-        platform::errors::InvalidArgument(
-            "Output (sum_1) of average_accumulates op should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("out_sum_2"), true,
-        platform::errors::InvalidArgument(
-            "Output (sum_2) of average_accumulates op should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("out_sum_3"), true,
-        platform::errors::InvalidArgument(
-            "Output (sum_3) of average_accumulates op should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("out_num_accumulates"), true,
-        platform::errors::InvalidArgument(
-            "Output (num_accumulates) of average_accumulates op should "
-            "not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("out_num_accumulates"), true,
-        platform::errors::InvalidArgument(
-            "Output (num_accumulates) of average_accumulates op should "
-            "not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("out_num_updates"), true,
-        platform::errors::InvalidArgument(
-            "Output (old_num_accumulates) of average_accumulates op "
-            "should not be null."));
-
+    OP_INOUT_CHECK(ctx->HasOutput("out_sum_1"), "Output", "out_sum_1", "AverageAccumulates");
+    OP_INOUT_CHECK(ctx->HasOutput("out_sum_2"), "Output", "out_sum_2", "AverageAccumulates");
+    OP_INOUT_CHECK(ctx->HasOutput("out_sum_3"), "Output", "out_sum_3", "AverageAccumulates");
+    OP_INOUT_CHECK(ctx->HasOutput("out_num_accumulates"), "Output",
+                            "out_num_accumulates", "AverageAccumulates");
+    OP_INOUT_CHECK(ctx->HasOutput("out_old_num_accumulates"), "Output",
+                            "out_old_num_accumulates", "AverageAccumulates");
+    OP_INOUT_CHECK(ctx->HasOutput("out_num_updates"), "Output",
+                            "out_num_updates", "AverageAccumulates");
     auto in_dim = ctx->GetInputDim("param");
 
     ctx->SetOutputDim("out_sum_1", in_dim);
