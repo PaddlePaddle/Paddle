@@ -2841,10 +2841,11 @@ def generate_proposals(scores,
     rpn_rois.stop_gradient = True
     rpn_roi_probs.stop_gradient = True
     rpn_rois_lod.stop_gradient = True
+
     if return_lod:
         return rpn_rois, rpn_roi_probs, rpn_rois_lod
     else:
-        return rpn_rois, rpn_rois_probs
+        return rpn_rois, rpn_roi_probs
 
 
 def box_clip(input, im_info, name=None):
