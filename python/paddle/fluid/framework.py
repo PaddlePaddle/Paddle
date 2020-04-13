@@ -3833,10 +3833,12 @@ class Program(object):
                 import paddle.fluid as fluid
 
                 prog = fluid.default_main_program()
+                x = fluid.layers.data(name="X", shape=[2,3], dtype="float32", append_batch_size=False)
+                pred = fluid.layers.fc(x, size=3)
                 prog_string = prog.to_string(throw_on_error=True, with_details=False)
+                prog_string_with_details = prog.to_string(throw_on_error=False, with_details=True)
                 print("program string without detail: {}".format(prog_string))
-                prog_string_with_detail = prog.to_string(throw_on_error=True, with_details=True)
-                print("program string with detail: {}".format(prog_string_with_detail))
+                print("program string with detail: {}".format(prog_string_with_details))
         """
         assert isinstance(
             throw_on_error, bool
@@ -3882,34 +3884,38 @@ class Program(object):
             **3. This API has no effect in Dygraph Mode**
 
         Create a new Program with forward content of original one when ``for_test=True``.
-        Create a new Program as the same as original one when ``for_test=False``
-
+        Create a new Program as same as the original one when ``for_test=False``.
 
         Some operators, e.g., :ref:`api_fluid_layers_batch_norm` , behave differently between
         training and testing. They have an attribute, :code:`is_test`, to
         control this behaviour. This method will change the :code:`is_test`
         attribute of them to :code:`True` when :code:`for_test=True`.
 
-        * Set for_test to False when we want to clone the program for training.
-        * Set for_test to True when we want to clone the program for testing.
+        * Set for_test to False when you want to clone the program for training.
+        * Set for_test to True when you want to clone the program for testing.
           We will prune the backward and optimize part of the program when you
           use :code:`clone` after :code:`Opimizer.minimize`, but we still
           recommend you to use :code:`clone` before using :code:`Opimizer.minimize`.
 
         For Example:
-            .. code-block:: python
+          ::
 
-                test_program = fluid.default_main_program().clone(for_test=True)
-                # Here we use clone before Momentum
-                optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
-                optimizer.minimize()
+            import paddle.fluid as fluid
+            img = fluid.layers.data(name='image', shape=[784])
+            pred = fluid.layers.fc(input=img, size=10, act='relu')
+            loss = fluid.layers.mean(pred)
+            # Here we use clone before Momentum
+            test_program = fluid.default_main_program().clone(for_test=True)
+            optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
+            optimizer.minimize(loss)
 
         Args:
 
-            for_test (bool): True if change the :code:`is_test` attribute of operators to :code:`True`.
+            for_test (bool): True if change the :code:`is_test` attribute of operators to :code:`True`
+                and prune the backward and optimize part of the program. The default value is :code:`False` .
 
         Returns:
-            Program: A new Program with forward content of original one when ``for_test=True``.  A new Program as the same as original one when ``for_test=False``
+            Program: A new Program with forward content of original one when ``for_test=True``.  A new Program as same as the original one when ``for_test=False``
 
 
         Examples:
@@ -3923,7 +3929,6 @@ class Program(object):
 
                 import paddle.fluid as fluid
                 import six
-
 
                 def print_prog(prog):
                     for name, value in sorted(six.iteritems(prog.block(0).vars)):
@@ -3968,7 +3973,7 @@ class Program(object):
                                                       input=fluid.layers.fc(hidden, size=10, act='softmax'),
                                         label=fluid.layers.data(name='label', shape=[1], dtype='int64'))
                             avg_loss = fluid.layers.mean(loss)
-                            test_program = train_program.clone(for_test=False)
+                            test_program = train_program.clone(for_test=True)
                     print_prog(test_program)
 
                     # Due to parameter sharing usage for train and test, so we need to use startup program of train
@@ -4001,7 +4006,8 @@ class Program(object):
                             for key, value in sorted(six.iteritems(op.all_attrs())):
                                 if key not in ['op_callstack', 'op_role_var']:
                                     print(" [ attrs: {}:   {} ]".format(key, value))
-                    def network(is_test):
+                    
+                    def network():
                         img = fluid.layers.data(name='image', shape=[784])
                         hidden = fluid.layers.fc(input=img, size=200, act='relu')
                         hidden = fluid.layers.dropout(hidden, dropout_prob=0.5)
@@ -4011,19 +4017,19 @@ class Program(object):
                         avg_loss = fluid.layers.mean(loss)
                         return avg_loss
 
-
                     train_program_2 = fluid.Program()
                     startup_program_2 = fluid.Program()
                     test_program_2 = fluid.Program()
                     with fluid.program_guard(train_program_2, startup_program_2):
                         with fluid.unique_name.guard():
-                             sgd = fluid.optimizer.SGD(learning_rate=1e-3)
-                             sgd.minimize(avg_loss)
+                            avg_loss = network()
+                            sgd = fluid.optimizer.SGD(learning_rate=1e-3)
+                            sgd.minimize(avg_loss)
                     # the test startup program is not used.
-                    with fluid.program_guard(test_program_2, fluid.Program()):
+                    with fluid.program_guard(test_program_2, startup_program_2):
                         with fluid.unique_name.guard():
-                            loss = network(is_test=True)
-                    print(test_program_2)
+                            avg_loss = network()
+                    print_prog(test_program_2)
 
         The two code snippets above will generate and print same programs.
         """
@@ -4299,13 +4305,17 @@ class Program(object):
                 prog = fluid.default_main_program()
                 random_seed = prog.random_seed
                 x_var = fluid.layers.data(name="X", shape=[3,3], dtype="float32", append_batch_size=False)
+                print(random_seed)
+                ## 0
+                ## the default random seed is 0
 
                 # Here we need to set random seed before we use fluid.layers.dropout
-                print(random_seed)
                 prog.random_seed = 1
                 z_var = fluid.layers.dropout(x_var, 0.7)
 
                 print(prog.random_seed)
+                ## 1
+                ## the random seed is change to 1
         """
         return self._seed
 

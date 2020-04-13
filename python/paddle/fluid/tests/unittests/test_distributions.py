@@ -574,5 +574,82 @@ class DistributionTest(unittest.TestCase):
             output_kl_np, gt_kl_np, rtol=tolerance, atol=tolerance)
 
 
+class DistributionTestError(unittest.TestCase):
+    def test_normal_error(self):
+        loc = int(1)
+        scale = int(1)
+
+        # type of loc and scale must be float, list, numpy.ndarray, Variable
+        self.assertRaises(TypeError, Normal, loc, 1.0)
+        self.assertRaises(TypeError, Normal, 1.0, scale)
+
+        normal = Normal(0.0, 1.0)
+
+        value = [1.0, 2.0]
+        # type of value must be variable
+        self.assertRaises(TypeError, normal.log_prob, value)
+
+        shape = 1.0
+        # type of shape must be list
+        self.assertRaises(TypeError, normal.sample, shape)
+
+        seed = 1.0
+        # type of seed must be int
+        self.assertRaises(TypeError, normal.sample, [2, 3], seed)
+
+        normal_other = Uniform(1.0, 2.0)
+        # type of other must be an instance of Normal
+        self.assertRaises(TypeError, normal.kl_divergence, normal_other)
+
+    def test_uniform_error(self):
+        low = int(1)
+        high = int(1)
+
+        # type of loc and scale must be float, list, numpy.ndarray, Variable
+        self.assertRaises(TypeError, Uniform, low, 1.0)
+        self.assertRaises(TypeError, Uniform, 1.0, high)
+
+        uniform = Uniform(0.0, 1.0)
+
+        value = [1.0, 2.0]
+        # type of value must be variable
+        self.assertRaises(TypeError, uniform.log_prob, value)
+
+        shape = 1.0
+        # type of shape must be list
+        self.assertRaises(TypeError, uniform.sample, shape)
+
+        seed = 1.0
+        # type of seed must be int
+        self.assertRaises(TypeError, uniform.sample, [2, 3], seed)
+
+    def test_categorical_error(self):
+        logit = 1.0
+
+        # type of loc and scale must be list, numpy.ndarray, Variable
+        self.assertRaises(TypeError, Categorical, logit)
+
+        categorical = Categorical([-0.602, -0.602])
+
+        categorical_other = Normal(1.0, 2.0)
+        # type of other must be an instance of Normal
+        self.assertRaises(TypeError, categorical.kl_divergence,
+                          categorical_other)
+
+    def test_multivariate_normal_diag_error(self):
+        loc = 1.0
+        scale = 1.0
+
+        # type of loc and scale must be list, numpy.ndarray, Variable
+        self.assertRaises(TypeError, MultivariateNormalDiag, loc, [1.0])
+        self.assertRaises(TypeError, MultivariateNormalDiag, [1.0], scale)
+
+        mnd = MultivariateNormalDiag([0.3, 0.5], [[0.4, 0], [0, 0.5]])
+
+        categorical_other = Normal(1.0, 2.0)
+        # type of other must be an instance of Normal
+        self.assertRaises(TypeError, mnd.kl_divergence, categorical_other)
+
+
 if __name__ == '__main__':
     unittest.main()

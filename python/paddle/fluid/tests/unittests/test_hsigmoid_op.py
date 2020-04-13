@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 import paddle.fluid.core as core
 import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 import math
 from op_test import OpTest, skip_check_grad_ci
 
@@ -376,6 +377,28 @@ class TestHSigmoidOpWithCostumTreeWithoutBias(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X', 'W'], ['Out'], no_grad_set=set('Label'))
+
+
+class TestHSigmoidOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program()):
+            label = fluid.data('label', [4, 1], 'int64')
+            # The input type must be Variable.
+            self.assertRaises(TypeError, fluid.layers.hsigmoid, 1, label, 2)
+            # The input dtype must be float16, float32, float64.
+            x_int32 = fluid.data(name='x_int32', shape=[4, 3], dtype='int32')
+            self.assertRaises(TypeError, fluid.layers.hsigmoid, x_int32, label,
+                              2)
+            # support the input dtype is float32
+            x_fp32 = fluid.data(name='x_fp32', shape=[4, 3], dtype='float32')
+            fluid.layers.hsigmoid(x_fp32, label, 2)
+
+            # The label type must be Variable.
+            self.assertRaises(TypeError, fluid.layers.hsigmoid, x_fp32, 1, 2)
+            # The label dtype must be int64.
+            label_int32 = fluid.data('label_int32', [4, 1], 'int32')
+            self.assertRaises(TypeError, fluid.layers.hsigmoid, x_fp32,
+                              label_int32, 2)
 
 
 if __name__ == '__main__':

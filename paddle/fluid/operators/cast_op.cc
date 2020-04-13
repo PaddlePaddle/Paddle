@@ -59,12 +59,8 @@ class CastOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE_EQ(
-        context->HasInput("X"), true,
-        platform::errors::NotFound("The input(X) of cast op must be set"));
-    PADDLE_ENFORCE_EQ(
-        context->HasOutput("Out"), true,
-        platform::errors::NotFound("The output of cast op must be set"));
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "cast");
+    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "cast");
     context->SetOutputDim("Out", context->GetInputDim("X"));
     context->ShareLoD("X", "Out");
   }

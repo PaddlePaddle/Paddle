@@ -40,6 +40,20 @@ struct CUBlas<float> {
   }
 
   template <typename... ARGS>
+  static void SCAL(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cublasSscal(args...),
+        platform::errors::External("dynload cublasSscal lib failed"));
+  }
+
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cublasScopy(args...),
+        platform::errors::External("dynload cublasScopy lib failed"));
+  }
+
+  template <typename... ARGS>
   static void GEMV(ARGS... args) {
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasSgemv(args...));
   }
@@ -90,6 +104,20 @@ struct CUBlas<double> {
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasDaxpy(args...));
+  }
+
+  template <typename... ARGS>
+  static void SCAL(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cublasDscal(args...),
+        platform::errors::External("dynload cublasDscal lib failed"));
+  }
+
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cublasDcopy(args...),
+        platform::errors::External("dynload cublasDcopy lib failed"));
   }
 
   template <typename... ARGS>
@@ -316,6 +344,20 @@ void Blas<platform::CUDADeviceContext>::AXPY(int n, T alpha, const T *x,
   context_.CublasCall([&](cublasHandle_t handle) {
     CUBlas<T>::AXPY(handle, n, &alpha, x, 1, y, 1);
   });
+}
+
+template <>
+template <typename T>
+void Blas<platform::CUDADeviceContext>::SCAL(int n, const T alpha, T *x) const {
+  context_.CublasCall(
+      [&](cublasHandle_t handle) { CUBlas<T>::SCAL(handle, n, &alpha, x, 1); });
+}
+
+template <>
+template <typename T>
+void Blas<platform::CUDADeviceContext>::VCOPY(int n, const T *x, T *y) const {
+  context_.CublasCall(
+      [&](cublasHandle_t handle) { CUBlas<T>::VCOPY(handle, n, x, 1, y, 1); });
 }
 
 template <>

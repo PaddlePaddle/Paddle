@@ -31,7 +31,7 @@ def _append_activation_in_dygraph(input,
 
     Return the Variable after append activation
     """
-    if not act:
+    if act is None:
         return input
 
     attrs = ()

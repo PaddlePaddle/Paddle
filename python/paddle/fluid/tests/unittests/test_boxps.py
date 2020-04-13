@@ -76,6 +76,16 @@ class TestTranspile(unittest.TestCase):
             print(e)
 
 
+class TestRunCmd(unittest.TestCase):
+    """ TestCases for run_cmd"""
+
+    def test_run_cmd(self):
+        ret1 = int(core.run_cmd("ls; echo $?").strip().split('\n')[-1])
+        ret2 = int(core.run_cmd("ls; echo $?", -1, -1).strip().split('\n')[-1])
+        self.assertTrue(ret1 == 0)
+        self.assertTrue(ret2 == 0)
+
+
 class TestBoxPSPreload(unittest.TestCase):
     """  TestCases for BoxPS Preload """
 
