@@ -10713,10 +10713,6 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
     """
 
-    check_variable_and_dtype(
-        x, "x",
-        ['float32', 'float64', 'uint8', 'int16', 'int32', 'in64', 'uint8'],
-        "scale")
     if in_dygraph_mode():
         _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
         out = core.ops.scale(x, 'scale',
@@ -10724,6 +10720,10 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
                              float(bias), 'bias_after_scale', bias_after_scale)
         return dygraph_utils._append_activation_in_dygraph(out)
 
+    check_variable_and_dtype(x, "x", [
+        'float16', 'float32', 'float64', 'uint8', 'int16', 'int32', 'int64',
+        'uint8'
+    ], "scale")
     inputs = {'X': [x]}
     attrs = {
         'bias': float(bias),
