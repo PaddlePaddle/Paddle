@@ -16,9 +16,9 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-import paddle.tensor as tensor
 import paddle.fluid.core as core
 from op_test import OpTest
 from paddle.fluid import compiler, Program, program_guard
@@ -68,7 +68,7 @@ class TestWhereAPI(unittest.TestCase):
             x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float32")
             y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype("float32")
             cond_i = np.array([False, False, True, True]).astype("bool")
-            result = tensor.where(x > 1, x=x, y=y)
+            result = paddle.where(x > 1, x=x, y=y)
 
             for use_cuda in [False, True]:
                 if use_cuda and not fluid.core.is_compiled_with_cuda():
@@ -94,7 +94,7 @@ class TestWhereAPI(unittest.TestCase):
                 x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float32")
                 y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype("float32")
                 cond_i = np.array([False, False, True, True]).astype("bool")
-                result = tensor.where(x > 1, x=x, y=y)
+                result = paddle.where(x > 1, x=x, y=y)
                 x_mean = layers.mean(x)
                 append_backward(x_mean)
                 y_mean = layers.mean(y)
@@ -126,7 +126,7 @@ class TestWhereAPI(unittest.TestCase):
                             [1.0, 1.0, 1.0, 1.0]]).astype("float32")
             cond_i = np.array([[False, False, True, True],
                                [False, False, True, True]]).astype("bool")
-            result = tensor.where(x > 1, x=x, y=y)
+            result = paddle.where(x > 1, x=x, y=y)
 
             for use_cuda in [False, True]:
                 if use_cuda and not fluid.core.is_compiled_with_cuda():
@@ -149,7 +149,7 @@ class TestWhereDygraphAPI(unittest.TestCase):
             x = fluid.dygraph.to_variable(x_i)
             y = fluid.dygraph.to_variable(y_i)
             cond = fluid.dygraph.to_variable(cond_i)
-            out = tensor.where(cond, x, y)
+            out = paddle.where(cond, x, y)
             assert np.array_equal(out.numpy(), np.where(cond_i, x_i, y_i))
 
 
@@ -161,7 +161,7 @@ class TestWhereOpError(unittest.TestCase):
             cond_i = np.array([False, False, True, True]).astype("bool")
 
             def test_Variable():
-                tensor.where(cond_i, x_i, y_i)
+                paddle.where(cond_i, x_i, y_i)
 
             self.assertRaises(TypeError, test_Variable)
 
@@ -169,7 +169,7 @@ class TestWhereOpError(unittest.TestCase):
                 x = fluid.layers.data(name='x', shape=[4], dtype='bool')
                 y = fluid.layers.data(name='y', shape=[4], dtype='float16')
                 cond = fluid.layers.data(name='cond', shape=[4], dtype='int32')
-                tensor.where(cond, x, y)
+                paddle.where(cond, x, y)
 
             self.assertRaises(TypeError, test_type)
 
