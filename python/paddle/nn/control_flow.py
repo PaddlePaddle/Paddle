@@ -13,10 +13,13 @@
 # limitations under the License.
 
 # TODO: define the control flow api  
-# __all__ = ['case',
-#            'cond',
-#            'DynamicRNN',
-#            'StaticRNN',
-#            'switch_case',
-#            'while_loop',
-#            'rnn']
+
+__all__ = [
+    #       'case',
+    #       'cond',
+    #       'DynamicRNN',
+    #       'StaticRNN',
+    #       'switch_case',
+    #       'while_loop',
+    #       'rnn'
+]

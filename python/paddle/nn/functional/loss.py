@@ -13,25 +13,32 @@
 # limitations under the License.
 
 # TODO: define loss functions of neural network  
-# __all__ = ['bpr_loss',
-#            'center_loss',
-#            'cross_entropy',
-#            'dice_loss',
-#            'edit_distance',
-#            'huber_loss',
-#            'iou_similarity',
-#            'kldiv_loss',
-#            'log_loss',
-#            'margin_rank_loss',
-#            'mse_loss',
-#            'nce',
-#            'npair_loss',
-#            'rank_loss',
-#            'sampled_softmax_with_cross_entropy',
-#            'sigmoid_cross_entropy_with_logits',
-#            'sigmoid_focal_loss',
-#            'smooth_l1',
-#            'softmax_with_cross_entropy',
-#            'square_error_cost',
-#            'ssd_loss',
-#            'teacher_student_sigmoid_loss']
+from ...fluid.layers import sigmoid_cross_entropy_with_logits  #DEFINE_ALIAS
+from ...fluid.layers import softmax_with_cross_entropy  #DEFINE_ALIAS
+from ...fluid.layers import square_error_cost  #DEFINE_ALIAS
+from ...fluid.layers import ssd_loss  #DEFINE_ALIAS
+
+__all__ = [
+    #       'bpr_loss',
+    #       'center_loss',
+    #       'cross_entropy',
+    #       'dice_loss',
+    #       'edit_distance',
+    #       'huber_loss',
+    #       'iou_similarity',
+    #       'kldiv_loss',
+    #       'log_loss',
+    #       'margin_rank_loss',
+    #       'mse_loss',
+    #       'nce',
+    #       'npair_loss',
+    #       'rank_loss',
+    #       'sampled_softmax_with_cross_entropy',
+    'sigmoid_cross_entropy_with_logits',
+    #       'sigmoid_focal_loss',
+    #       'smooth_l1',
+    'softmax_with_cross_entropy',
+    'square_error_cost',
+    'ssd_loss',
+    #       'teacher_student_sigmoid_loss'
+]

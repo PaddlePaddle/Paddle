@@ -18,12 +18,13 @@ from ...fluid.framework import in_dygraph_mode
 from .. import functional
 
 # TODO: define activation functions of neural network  
+
 __all__ = [
-    # 'PReLU',
+    #       'PReLU',
     'ReLU',
     'Sigmoid',
-    # 'Softmax',
-    'LogSoftmax',
+    #       'Softmax',
+    'LogSoftmax'
 ]
 
 

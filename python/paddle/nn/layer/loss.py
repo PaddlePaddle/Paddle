@@ -14,12 +14,13 @@
 
 # TODO: define loss functions of neural network  
 import paddle.fluid as fluid
+
 __all__ = [
-    #'NCELoss',
+    #       'NCELoss',
     'CrossEntropyLoss',
-    #    'MSELoss',
+    #       'MSELoss',
     'L1Loss',
-    #    'NLLLoss',
+    #       'NLLLoss',
     'BCELoss'
 ]
 

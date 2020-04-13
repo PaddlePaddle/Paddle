@@ -13,4 +13,8 @@
 # limitations under the License.
 
 # TODO: define input placeholders of neural network  
-# __all__ = ['data', 'Input']
+
+__all__ = [
+    #       'data',
+    #       'Input'
+]

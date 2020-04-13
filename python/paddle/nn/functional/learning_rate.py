@@ -13,11 +13,14 @@
 # limitations under the License.
 
 # TODO: define learning rate decay  
-# __all__ = ['cosine_decay',
-#            'exponential_decay',
-#            'inverse_time_decay',
-#            'natural_exp_decay',
-#            'noam_decay',
-#            'piecewise_decay',
-#            'polynomial_decay',
-#            'linear_lr_warmup']
+
+__all__ = [
+    #       'cosine_decay',
+    #       'exponential_decay',
+    #       'inverse_time_decay',
+    #       'natural_exp_decay',
+    #       'noam_decay',
+    #       'piecewise_decay',
+    #       'polynomial_decay',
+    #       'linear_lr_warmup'
+]

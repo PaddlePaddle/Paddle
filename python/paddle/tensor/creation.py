@@ -23,27 +23,35 @@ from ..fluid.layers import fill_constant
 from paddle.common_ops_import import *
 
 # TODO: define functions to get create a tensor  
+from ..fluid.layers import crop_tensor  #DEFINE_ALIAS
+from ..fluid.layers import diag  #DEFINE_ALIAS
+from ..fluid.layers import eye  #DEFINE_ALIAS
+from ..fluid.layers import fill_constant  #DEFINE_ALIAS
+from ..fluid.layers import range  #DEFINE_ALIAS
+from ..fluid.layers import eye  #DEFINE_ALIAS
+
 __all__ = [
     'create_tensor',
-    #            'create_lod_tensor', 
-    #            'create_random_int_lodtensor',
-    #            'crop_tensor', 
-    #            'diag', 'eye', 
-    #            'fill_constant', 
-    #            'get_tensor_from_selected_rows', 
+    #       'create_lod_tensor',
+    #       'create_random_int_lodtensor',
+    'crop_tensor',
+    'diag',
+    'eye',
+    'fill_constant',
+    #       'get_tensor_from_selected_rows',
     'linspace',
     'ones',
     'ones_like',
-    #            'range', 
+    'range',
     'zeros',
     'zeros_like',
-    #            'arrange',
-    #            'eye',
+    #       'arrange',
+    'eye',
     'full',
     'full_like',
     'triu',
     'tril',
-    #            'meshgrid',
+    #       'meshgrid'
 ]
 
 

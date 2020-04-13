@@ -19,32 +19,53 @@ from ...fluid import core
 from ...fluid.data_feeder import check_variable_and_dtype
 
 # TODO: define activation functions of neural network  
+from ...fluid.layers import brelu  #DEFINE_ALIAS
+from ...fluid.layers import elu  #DEFINE_ALIAS
+from ...fluid.layers import erf  #DEFINE_ALIAS
+from ...fluid.layers import gelu  #DEFINE_ALIAS
+from ...fluid.layers import hard_shrink  #DEFINE_ALIAS
+from ...fluid.layers import hard_sigmoid  #DEFINE_ALIAS
+from ...fluid.layers import hard_swish  #DEFINE_ALIAS
+from ...fluid.layers import leaky_relu  #DEFINE_ALIAS
+from ...fluid.layers import logsigmoid  #DEFINE_ALIAS
+from ...fluid.layers import maxout  #DEFINE_ALIAS
+from ...fluid.layers import relu6  #DEFINE_ALIAS
+from ...fluid.layers import selu  #DEFINE_ALIAS
+from ...fluid.layers import soft_relu  #DEFINE_ALIAS
+from ...fluid.layers import softmax  #DEFINE_ALIAS
+from ...fluid.layers import softplus  #DEFINE_ALIAS
+from ...fluid.layers import softshrink  #DEFINE_ALIAS
+from ...fluid.layers import softsign  #DEFINE_ALIAS
+from ...fluid.layers import swish  #DEFINE_ALIAS
+from ...fluid.layers import tanh_shrink  #DEFINE_ALIAS
+from ...fluid.layers import thresholded_relu  #DEFINE_ALIAS
+
 __all__ = [
-    # 'brelu',
-    # 'elu',
-    # 'erf',
-    # 'gelu',
-    # 'hard_shrink',
-    # 'hard_sigmoid',
-    # 'hard_swish',
-    # 'hsigmoid',
-    # 'leaky_relu',
-    # 'logsigmoid',
-    # 'maxout',
-    # 'prelu',
+    'brelu',
+    'elu',
+    'erf',
+    'gelu',
+    'hard_shrink',
+    'hard_sigmoid',
+    'hard_swish',
+    #       'hsigmoid',
+    'leaky_relu',
+    'logsigmoid',
+    'maxout',
+    #       'prelu',
     'relu',
-    # 'relu6',
-    # 'selu',
+    'relu6',
+    'selu',
     'sigmoid',
-    # 'soft_relu',
-    # 'softmax',
-    # 'softplus',
-    # 'softshrink',
-    # 'softsign',
-    # 'swish',
-    # 'tanh_shrink',
-    # 'thresholded_relu',
-    'log_softmax',
+    'soft_relu',
+    'softmax',
+    'softplus',
+    'softshrink',
+    'softsign',
+    'swish',
+    'tanh_shrink',
+    'thresholded_relu',
+    'log_softmax'
 ]
 
 
