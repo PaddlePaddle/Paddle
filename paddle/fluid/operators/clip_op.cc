@@ -23,12 +23,14 @@ class ClipOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::NotFound("Input(X) of ClipOp is not found."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
-        platform::errors::NotFound("Output(Out) of ClipOp is not found."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      platform::errors::InvalidArgument(
+                          "Input(X) of ClipOp should not be null. Please check "
+                          "if it is created correctly."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      platform::errors::InvalidArgument(
+                          "Output(Out) of ClipOp should not be null. Please "
+                          "check if it is created correctly."));
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -59,7 +61,7 @@ class ClipOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Clip Operator.
 
-The clip operator limits the value of given input within an interval [min, max], 
+The clip operator limits the value of given input within an interval [min, max],
 just as the following equation,
 
 $$
@@ -77,10 +79,12 @@ class ClipOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("X"), true,
-        platform::errors::NotFound("Input(X) of ClipOp is not found"));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput(framework::GradVarName("Out")), true,
-        platform::errors::NotFound("Input(Out@GRAD) of ClipOp is not found"));
+        platform::errors::InvalidArgument("Input(X) should not be null. Please "
+                                          "check if it is created correctly."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+                      platform::errors::InvalidArgument(
+                          "Input(Out@GRAD) should not be null. Please check if "
+                          "it is created correctly."));
     auto x_dims = ctx->GetInputDim("X");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
