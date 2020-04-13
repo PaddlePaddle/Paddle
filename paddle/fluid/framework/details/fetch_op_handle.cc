@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/details/stream_executor_gpu.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -73,7 +74,8 @@ void FetchOpHandle::RunImpl() {
           LOG(INFO) << "++++fetch var:" << var_handle->name();
           TensorCopyD2H(t, cpu_pinned, &tensors_[i], exec_->GetD2HStream(),
                         exec_->GetMainStream());
-          exec_->GetEventMgr()->Execute(exec_->GetD2HStream(), CopyFinished);
+          // exec_->GetEventManager()->Execute(exec_->GetD2HStream(),
+          // CopyFinished);
           // Can return directly? or need to wait event finished.
           return;
         } else {

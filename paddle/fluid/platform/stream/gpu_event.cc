@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/stream/gpu_event.h"
-#include "paddle/fluid/framework/details/stream_executor_impl.h"
+#include "paddle/fluid/framework/details/stream_executor_gpu.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/stream/gpu_stream.h"
 

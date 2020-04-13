@@ -43,7 +43,7 @@ limitations under the License. */
 #include "unsupported/Eigen/CXX11/Tensor"
 
 //#include "paddle/fluid/platform/stream/paddle_stream.h"
-#include "paddle/fluid/framework/details/stream_executor_impl.h"
+#include "paddle/fluid/framework/details/stream_executor_gpu.h"
 
 namespace paddle {
 namespace framework {
@@ -192,7 +192,7 @@ class CUDADeviceContext : public DeviceContext {
   // void SetStreamExecutor(paddle::framework::details::StreamExecutor* se) {
   // pe_ = se; }
   static pfd::StreamExecutor* Instance() { return se_; }
-  static void InitStreamExecutor() { se_ = new pfd::StreamExecutor(); }
+  static void InitStreamExecutor() { se_ = new pfd::GPUStreamExecutor(); }
   stream::BaseStream* GetMainStream() { return bstream_[0]; }
 
  private:
@@ -230,7 +230,7 @@ class CUDADeviceContext : public DeviceContext {
   // StreamCallbackManager is thread-safe
   std::unique_ptr<StreamCallbackManager> callback_manager_;
 
-  static pfd::StreamExecutor* se_;
+  static pfd::GPUStreamExecutor* se_;
   stream::BaseStream* bstream_[3];
 
   DISABLE_COPY_AND_ASSIGN(CUDADeviceContext);

@@ -16,7 +16,7 @@ limitations under the License. */
 
 #include <cuda.h>
 #include <memory>
-#include "paddle/fluid/framework/details/stream_executor_impl.h"
+#include "paddle/fluid/framework/details/stream_executor_gpu.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/stream/gpu_event.h"
 
@@ -54,7 +54,7 @@ class BaseStream {
   //                 const KernelParam<Params...> &kernel, Args... args);
   BaseStream& WaitForOtherStream(BaseStream* other);
   // should delete later
-  BaseStream& WaitForOtherStream(cudaStream_t other);
+  //BaseStream& WaitForOtherStream(cudaStream_t other);
 
   BaseStream& InsertEvent(stream::Event* event);
   internal::StreamInterface* implementation() { return implementation_.get(); }

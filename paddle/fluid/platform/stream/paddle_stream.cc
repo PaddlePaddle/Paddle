@@ -63,13 +63,13 @@ BaseStream& BaseStream::WaitForOtherStream(BaseStream* other) {
   return *this;
 }
 
-BaseStream& BaseStream::WaitForOtherStream(cudaStream_t other) {
+/*BaseStream& BaseStream::WaitForOtherStream(cudaStream_t other) {
   PADDLE_ENFORCE_NE(pe_, nullptr, "PE should not be nullptr");
   VLOG(3) << "stream:" << this << " wait for cuda stream:" << other;
   PADDLE_ENFORCE_EQ(pe_->CreateStreamDependency(this, other), true,
                     "wait dependency should be ok");
   return *this;
-}
+}*/
 
 BaseStream& BaseStream::Memcpy(void* host_dst, const void* gpu_src,
                                uint64_t size) {

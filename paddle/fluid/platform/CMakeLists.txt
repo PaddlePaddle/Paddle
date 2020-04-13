@@ -106,7 +106,6 @@ cc_library(lodtensor_printer SRCS lodtensor_printer.cc DEPS ddim place tensor sc
 cc_test(lodtensor_printer_test SRCS lodtensor_printer_test.cc DEPS lodtensor_printer)
 
 cc_library(device_tracer SRCS device_tracer.cc DEPS boost profiler_proto framework_proto ${GPU_CTX_DEPS})
-cc_library(device_base SRCS device_base.cc DEPS paddle_stream)
 if(WITH_GPU)
   nv_library(profiler SRCS profiler.cc profiler.cu DEPS device_tracer gpu_info enforce)
   nv_test(cuda_helper_test SRCS cuda_helper_test.cu)

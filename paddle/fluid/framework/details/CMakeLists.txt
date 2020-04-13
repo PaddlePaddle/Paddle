@@ -78,7 +78,7 @@ cc_library(threaded_ssa_graph_executor SRCS threaded_ssa_graph_executor.cc DEPS 
         simple_threadpool device_context)
 
 cc_library(parallel_ssa_graph_executor SRCS parallel_ssa_graph_executor.cc DEPS threaded_ssa_graph_executor)
-cc_library(gpu_stream_executor SRCS stream_executor_gpu.cc DEPS gpu_event_impl gpu_stream gpu_event_manager device_base)
+cc_library(gpu_stream_executor SRCS stream_executor_gpu.cc DEPS gpu_event_impl gpu_stream gpu_event_manager)
 
 set(ASYNC_SSA_GRAPH_EXECUTOR_DEPS threaded_ssa_graph_executor)
 if(WITH_DISTRIBUTE)

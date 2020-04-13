@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/details/op_handle_base.h"
-#include "paddle/fluid/framework/details/stream_executor_impl.h"
+//#include "paddle/fluid/framework/details/stream_executor_internal.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -27,6 +27,8 @@
 namespace paddle {
 namespace framework {
 namespace details {
+
+// class GPUStreamExecutor;
 
 struct FetchOpHandle : public OpHandleBase {
  public:
@@ -57,8 +59,7 @@ struct FetchOpHandle : public OpHandleBase {
   std::vector<Scope *> *local_scopes_;
   std::vector<Scope *> *local_exec_scopes_;
   std::vector<LoDTensor> tensors_;
-  // const paddle::platform::stream::BaseStream* d2h_;
-  StreamExecutor *exec_;
+  GPUStreamExecutor *exec_;
 };
 
 }  // namespace details
