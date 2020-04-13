@@ -19,6 +19,7 @@ import csv
 import glob
 import tarfile
 import itertools
+import leveldb
 from functools import partial
 
 import numpy as np
@@ -167,10 +168,14 @@ class SingleSentenceDataset(Dataset):
         assert isinstance(mode,
                           str), "mode of SingleSentenceDataset should be str"
         assert mode in [
-            "all_in_memory", "leveldb"
-        ], "mode of SingleSentenceDataset should be in [all_in_memory, leveldb], but get" % mode
+            "all_in_memory", "leveldb", "streaming"
+        ], "mode of SingleSentenceDataset should be in [all_in_memory, leveldb, streaming], but get" % mode
 
+        self.delimiter = None
+        self.mode = mode
         self.examples = []
+        self._db = None
+        self._line_processor = None
 
     def load_all_data_in_memory(self,
                                 input_file,
@@ -202,13 +207,87 @@ class SingleSentenceDataset(Dataset):
                 tokenizer)
             self.examples.append(input_feature)
 
+    def prepare_leveldb(self,
+                        input_file,
+                        leveldb_file,
+                        label_list,
+                        max_seq_length,
+                        tokenizer,
+                        line_processor=None,
+                        delimiter="\t",
+                        quotechar=None):
+        def default_line_processor(line_id, line):
+            assert len(line) == 2
+            text_a = line[0]
+            label = line[1]
+
+            return BertInputExample(
+                str(line_id), text_a=text_a, text_b=None, label=label)
+
+        if line_processor is None:
+            line_processor = default_line_processor
+
+        if not os.path.exists(leveldb_file):
+            print("putting data %s into leveldb %s" %
+                  (input_file, leveldb_file))
+            _example_num = 0
+            _db = leveldb.LevelDB(leveldb_file, create_if_missing=True)
+            with io.open(input_file, "r", encoding="utf8") as f:
+                reader = csv.reader(
+                    f, delimiter=delimiter, quotechar=quotechar)
+                line_id = 0
+                for (_line_id, line) in enumerate(reader):
+                    if line_processor(str(_line_id), line) is None:
+                        continue
+
+                    line_str = delimiter.join(line)
+                    _db.Put(
+                        str(line_id).encode("utf8"), line_str.encode("utf8"))
+                    line_id += 1
+                    _example_num += 1
+            _db.Put("_example_num_".encode("utf8"),
+                    str(_example_num).encode("utf8"))
+        else:
+            _db = leveldb.LevelDB(leveldb_file, create_if_missing=False)
+
+        self.label_list = label_list
+        self.max_seq_length = max_seq_length
+        self.tokenizer = tokenizer
+        self.delimiter = delimiter
+        self._db = _db
+        self._line_processor = line_processor
+
     def __getitem__(self, idx):
-        return self.examples[idx].input_ids, self.examples[
-            idx].pos_ids, self.examples[idx].segment_ids, self.examples[
-                idx].label_id
+
+        if self.mode == "all_in_memory":
+            return self.examples[idx].input_ids, self.examples[
+                idx].pos_ids, self.examples[idx].segment_ids, self.examples[
+                    idx].label_id
+
+        if self.mode == "leveldb":
+            assert self._db is not None, "you shold call prepare_leveldb before you run dataloader"
+            line_str = self._db.Get(str(idx).encode("utf8"))
+            line_str = line_str.decode("utf8")
+
+            line = line_str.split(self.delimiter)
+            input_example = self._line_processor(str(idx + 1), line)
+
+            input_example = convert_single_example(
+                str(idx + 1), input_example, self.label_list,
+                self.max_seq_length, self.tokenizer)
+
+            return input_example.input_ids, input_example.pos_ids, input_example.segment_ids, input_example.label_id
 
     def __len__(self):
-        return len(self.examples)
+        if self.mode == "all_in_memory":
+            return len(self.examples)
+
+        if self.mode == "leveldb":
+            assert self._db is not None, "you shold call prepare_leveldb before you run dataloader"
+
+            exmaple_num = self._db.Get("_example_num_".encode("utf8"))
+            exmaple_num = exmaple_num.decode("utf8")
+            return int(exmaple_num)
 
 
 class SentencePairDataset(Dataset):
@@ -299,6 +378,7 @@ class BertDataLoader(object):
                  shuffle=False,
                  drop_last=False,
                  mode="all_in_memory",
+                 leveldb_file="./leveldb",
                  line_processor=None,
                  delimiter="\t",
                  quotechar=None,
@@ -314,8 +394,10 @@ class BertDataLoader(object):
                 input_file, label_list, max_seq_length, tokenizer,
                 line_processor, delimiter, quotechar)
         elif mode == "leveldb":
-            #TODO add leveldb reader
-            pass
+            #prepare_leveldb(self, input_file, leveldb_file, label_list, max_seq_length, tokenizer, line_processor=None, delimiter="\t", quotechar=None):
+            self.dataset.prepare_leveldb(input_file, leveldb_file, label_list,
+                                         max_seq_length, tokenizer,
+                                         line_processor, delimiter, quotechar)
         else:
             raise ValueError("mode should be in [all_in_memory, leveldb]")
 
