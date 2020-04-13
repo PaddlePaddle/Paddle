@@ -1581,6 +1581,21 @@ PDNode *patterns::MatmulDequant::operator()() {
   return dequant_out;
 }
 
+PDNode *patterns::ScaleMatmul::operator()() {
+  auto scale_in = pattern->NewNode(scale_in_repr())
+                      ->AsInput()
+                      ->assert_is_op_input("scale", "X");
+  auto scale_op = pattern->NewNode(scale_op_repr())->assert_is_op("scale");
+  auto scale_out = pattern->NewNode(scale_out_repr())
+                       ->AsOutput()
+                       ->assert_is_op_output("scale", "Out");
+  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+
+  scale_op->LinksFrom({scale_in}).LinksTo({scale_out});
+  matmul_op->LinksFrom({scale_out});
+  return matmul_op;
+}
+
 PDNode *patterns::PriorBox::operator()() {
   auto prior_box_op =
       pattern->NewNode(prior_box_op_repr())->assert_is_op("prior_box");
