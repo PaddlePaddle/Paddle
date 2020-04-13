@@ -22,18 +22,12 @@ class WhereIndexOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Condition"), true,
-        platform::errors::NotFound(
-            "Input(Condition) of layers.where should not be null."));
+    OP_INOUT_CHECK(ctx->HasInput("Condition"), "Input", "Condition", "where");
     PADDLE_ENFORCE_GE(
         ctx->GetInputDim("Condition").size(), 1UL,
         platform::errors::InvalidArgument(
             "Input(Condition) should have number of dimension at least 1"));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::NotFound(
-                          "Output(Out) of layers.where should not be null."));
-
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "where");
     ctx->SetOutputDim("Out", {-1, ctx->GetInputDim("Condition").size()});
   }
 

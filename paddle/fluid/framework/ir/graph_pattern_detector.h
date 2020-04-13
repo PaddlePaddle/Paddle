@@ -897,19 +897,18 @@ struct ConvConcatReLU : public PatternBase {
   PATTERN_DECL_NODE(relu_out);
 };
 
-// Conv + Requant
+// Op + Requant
 // named nodes:
-// conv_op, conv_out
+// any_op, any_out
 // requant_op, requant_out
-struct ConvRequant : public PatternBase {
-  ConvRequant(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "conv_requant") {}
+struct OpRequant : public PatternBase {
+  OpRequant(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "op_requant") {}
 
   PDNode* operator()();
 
-  PATTERN_DECL_NODE(conv_op);
-  PATTERN_DECL_NODE(conv_out);
-
+  PATTERN_DECL_NODE(any_op);
+  PATTERN_DECL_NODE(requant_in);
   PATTERN_DECL_NODE(requant_op);
   PATTERN_DECL_NODE(requant_out);
 };
@@ -957,6 +956,20 @@ struct DequantScale : public PatternBase {
 
   PATTERN_DECL_NODE(scale_op);
   PATTERN_DECL_NODE(scale_out);
+};
+
+// Matmul + Dequantize
+struct MatmulDequant : public PatternBase {
+  MatmulDequant(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "matmul_dequant") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(matmul_op);
+  PATTERN_DECL_NODE(matmul_out);
+
+  PATTERN_DECL_NODE(dequant_op);
+  PATTERN_DECL_NODE(dequant_out);
 };
 
 // PriorBox operator

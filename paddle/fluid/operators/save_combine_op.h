@@ -41,31 +41,40 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
 
     bool is_present = FileExists(filename);
     if (is_present && !overwrite) {
-      PADDLE_THROW("%s exists!, cannot save_combine to it when overwrite=false",
-                   filename, overwrite);
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "%s exists! Cannot save_combine to it when overwrite is set to "
+          "false.",
+          filename, overwrite));
     }
 
     MkDirRecursively(DirName(filename).c_str());
     std::ofstream fout(filename, std::ios::binary);
-    PADDLE_ENFORCE(static_cast<bool>(fout), "Cannot open %s to write",
-                   filename);
+    PADDLE_ENFORCE_EQ(static_cast<bool>(fout), true,
+                      platform::errors::Unavailable(
+                          "Cannot open %s to save variables.", filename));
 
     auto inp_var_names = ctx.InputNames("X");
     auto &inp_vars = ctx.MultiInputVar("X");
-    PADDLE_ENFORCE_GT(static_cast<int>(inp_var_names.size()), 0,
-                      "The number of input variables should be greater than 0");
+    PADDLE_ENFORCE_GT(inp_var_names.size(), 0UL,
+                      platform::errors::InvalidArgument(
+                          "The number of variables to be saved is %d, expect "
+                          "it to be greater than 0.",
+                          inp_var_names.size()));
 
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(place);
 
     for (size_t i = 0; i < inp_var_names.size(); i++) {
-      PADDLE_ENFORCE(inp_vars[i] != nullptr,
-                     "Cannot find variable %s for save_combine_op",
-                     inp_var_names[i]);
-      PADDLE_ENFORCE(inp_vars[i]->IsType<framework::LoDTensor>(),
-                     "SaveCombineOp only supports LoDTensor, %s has wrong type",
-                     inp_var_names[i]);
+      PADDLE_ENFORCE_NOT_NULL(
+          inp_vars[i],
+          platform::errors::InvalidArgument("Cannot find variable %s to save.",
+                                            inp_var_names[i]));
+      PADDLE_ENFORCE_EQ(inp_vars[i]->IsType<framework::LoDTensor>(), true,
+                        platform::errors::InvalidArgument(
+                            "SaveCombine operator only supports saving "
+                            "LoDTensor variable, %s has wrong type.",
+                            inp_var_names[i]));
 
       auto &tensor = inp_vars[i]->Get<framework::LoDTensor>();
       // Serialize tensors one by one

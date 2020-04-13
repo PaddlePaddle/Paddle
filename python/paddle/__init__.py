@@ -87,7 +87,7 @@ from .tensor.logic import elementwise_equal  #DEFINE_ALIAS
 # from .tensor.random import gaussin   #DEFINE_ALIAS
 # from .tensor.random import uniform   #DEFINE_ALIAS
 # from .tensor.random import shuffle   #DEFINE_ALIAS
-# from .tensor.random import randn   #DEFINE_ALIAS
+from .tensor.random import randn  #DEFINE_ALIAS
 from .tensor.random import randperm
 from .tensor.random import rand  #DEFINE_ALIAS
 from .tensor.random import randint  #DEFINE_ALIAS
@@ -137,22 +137,22 @@ from .tensor.math import mm  #DEFINE_ALIAS
 from .tensor.math import div  #DEFINE_ALIAS
 from .tensor.math import add  #DEFINE_ALIAS
 # from .tensor.math import atan   #DEFINE_ALIAS
-# from .tensor.math import logsumexp   #DEFINE_ALIAS
+from .tensor.math import logsumexp  #DEFINE_ALIAS
 # from .tensor.math import inverse   #DEFINE_ALIAS
 # from .tensor.math import log1p   #DEFINE_ALIAS
 # from .tensor.math import erf   #DEFINE_ALIAS
 # from .tensor.math import addcmul   #DEFINE_ALIAS
-# from .tensor.math import addmm   #DEFINE_ALIAS
+from .tensor.math import addmm  #DEFINE_ALIAS
 # from .tensor.attribute import rank   #DEFINE_ALIAS
 # from .tensor.attribute import shape   #DEFINE_ALIAS
 # from .tensor.io import save   #DEFINE_ALIAS
 # from .tensor.io import load   #DEFINE_ALIAS
 from .tensor.linalg import matmul  #DEFINE_ALIAS
-# from .tensor.linalg import dot   #DEFINE_ALIAS
+from .tensor.linalg import dot  #DEFINE_ALIAS
 # from .tensor.linalg import einsum   #DEFINE_ALIAS
-# from .tensor.linalg import morm   #DEFINE_ALIAS
+from .tensor.linalg import norm  #DEFINE_ALIAS
 # from .tensor.linalg import transpose   #DEFINE_ALIAS
-# from .tensor.linalg import dist   #DEFINE_ALIAS
+from .tensor.linalg import dist  #DEFINE_ALIAS
 # from .tensor.linalg import t   #DEFINE_ALIAS
 # from .tensor.linalg import cross   #DEFINE_ALIAS
 # from .tensor.linalg import cholesky   #DEFINE_ALIAS
