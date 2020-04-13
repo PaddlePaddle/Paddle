@@ -972,6 +972,18 @@ struct MatmulDequant : public PatternBase {
   PATTERN_DECL_NODE(dequant_out);
 };
 
+// Scale + Matmul
+struct ScaleMatmul : public PatternBase {
+  ScaleMatmul(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "scale_matmul") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(scale_in);
+  PATTERN_DECL_NODE(scale_op);
+  PATTERN_DECL_NODE(scale_out);
+  PATTERN_DECL_NODE(matmul_op);
+};
+
 // PriorBox operator
 // operator: prior_box_op
 // inputs: prior_box_input, prior_box_image
