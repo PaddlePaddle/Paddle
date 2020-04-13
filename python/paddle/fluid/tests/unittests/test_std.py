@@ -16,6 +16,7 @@ import paddle.fluid as fluid
 import paddle.tensor as tensor
 import unittest
 import numpy as np
+import paddle
 
 
 class TensorStd(unittest.TestCase):
@@ -25,10 +26,13 @@ class TensorStd(unittest.TestCase):
         self.axis = None
         self.keepdim = True
         self.use_gpu = False
+        np.random.seed(123)
 
     def numpy_res(self, x_array):
-        if self.axis is not None:
+        if self.axis is not None and isinstance(self.axis, list):
             axis = tuple(self.axis)
+        elif self.axis is not None and isinstance(self.axis, int):
+            axis = tuple([self.axis])
         else:
             axis = self.axis
         if self.unbiased:
@@ -69,20 +73,45 @@ class TensorStd(unittest.TestCase):
                       feed={'x': x_array})
         res = res[0]
         self.assertEqual(np_res.shape, res.shape)
-
         self.assertTrue(np.allclose(np_res, res, rtol=1e-6, atol=0))
 
+    def test_dygraph(self):
+        class Net(fluid.Layer):
+            def __init__(self, axis=None, unbiased=True, keepdim=False):
+                super(Net, self).__init__()
+                self.axis = axis
+                self.unbiased = unbiased
+                self.keepdim = keepdim
 
-def TensorStd1(TensorStd):
+            def forward(self, x):
+                x = tensor.std(x,
+                               axis=self.axis,
+                               unbiased=self.unbiased,
+                               keepdim=self.keepdim)
+                return x
+
+        x_array = np.random.random(self.shape).astype('float32')
+        with fluid.dygraph.guard():
+            x_std = Net(unbiased=self.unbiased,
+                        axis=self.axis,
+                        keepdim=self.keepdim)
+            dy_ret = x_std(fluid.dygraph.to_variable(x_array))
+            dy_ret_value = dy_ret.numpy()
+            self.assertIsNotNone(dy_ret_value)
+        np_res = self.numpy_res(x_array)
+        self.assertTrue(np.allclose(np_res, dy_ret_value, rtol=1e-6, atol=0))
+
+
+class TensorStd1(TensorStd):
     def setUp(self):
         self.shape = [10, 10, 2, 2]
         self.unbiased = False
-        self.axis = None
+        self.axis = [1, 2, 3]
         self.keepdim = False
         self.use_gpu = False
 
 
-def TensorStd2(TensorStd):
+class TensorStd2(TensorStd):
     def setUp(self):
         self.shape = [10, 10, 2, 2]
         self.unbiased = True
@@ -91,7 +120,7 @@ def TensorStd2(TensorStd):
         self.use_gpu = False
 
 
-def TensorStd3(TensorStd):
+class TensorStd3(TensorStd):
     def setUp(self):
         self.shape = [10, 10, 2, 2]
         self.unbiased = False
@@ -100,7 +129,7 @@ def TensorStd3(TensorStd):
         self.use_gpu = False
 
 
-def TensorStd4(TensorStd):
+class TensorStd4(TensorStd):
     def setUp(self):
         self.shape = [10, 10, 2, 2]
         self.unbiased = False
