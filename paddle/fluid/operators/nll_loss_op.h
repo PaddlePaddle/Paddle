@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <memory>
 #include <string>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -87,8 +88,12 @@ static void nll_loss_2D(T* out_data, T* total_weight_data, const T* x_data,
           }
           PADDLE_ENFORCE_EQ(cur_label >= 0 && cur_label < n_classes, true,
                             "label should nor be out of bounds.");
+          const auto cur_weight =
+              weight_data ? weight_data[cur_label] : static_cast<T>(1);
           out_data[i * map_size + h * in_dim3 + w] =
-              -x_data[i * sample_size + cur_label * map_size + h * in_dim3 + w];
+              -x_data[i * sample_size + cur_label * map_size + h * in_dim3 +
+                      w] *
+              cur_weight;
         }
       }
     }
@@ -136,13 +141,13 @@ class NLLLossOpKernel : public framework::OpKernel<T> {
     auto* total_weight = ctx.Output<Tensor>("Total_weight");
     auto reduction = ctx.Attr<std::string>("Reduction");
     auto ignore_index = ctx.Attr<int64_t>("ignore_index");
-    LOG(INFO) << "reduction in kernel: " << reduction;
 
     auto x_data = x->data<T>();
     auto label_data = labels->data<int64_t>();
     auto weight_data = weight ? weight->data<T>() : nullptr;
     auto out_data = out->mutable_data<T>(ctx.GetPlace());
     auto total_weight_data = total_weight->mutable_data<T>(ctx.GetPlace());
+    *total_weight_data = 0;
 
     auto x_dims = x->dims();
     const auto batch_size = x_dims[0];
@@ -219,7 +224,8 @@ static void nll_loss_grad_2D(T* dx_data, const T* dout_data,
           }
           const auto cur_weight =
               weight_data ? weight_data[cur_label] : static_cast<T>(1);
-          dx_data[i * n_classes + cur_label] = -cur_weight * dout_data[i];
+          dx_data[i * sample_size + cur_label * map_size + h * in_dim3 + w] =
+              -cur_weight * dout_data[i * map_size + h * in_dim3 + w];
         }
       }
     }
@@ -266,6 +272,7 @@ class NLLLossGradOpKernel : public framework::OpKernel<T> {
     auto label_data = labels->data<int64_t>();
     auto weight_data = weight ? weight->data<T>() : nullptr;
     auto total_weight_data = total_weight->data<T>();
+    memset(dx_data, 0, dx->numel() * sizeof(T));
 
     const auto x_dims = x->dims();
     const auto batch_size = x_dims[0];

@@ -206,7 +206,6 @@ class NLLLossGradOp : public framework::OperatorWithKernel {
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
       ctx->SetOutputDim(x_grad_name, x_dims);
-      ctx->ShareLoD("X", x_grad_name);
     }
   }
 
@@ -229,15 +228,13 @@ class NLLLossGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetType("nll_loss_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("Label", this->Input("Label"));
-    op->SetInput("Total_weight", this->Input("Total_weight"));
+    op->SetInput("Total_weight", this->Output("Total_weight"));
 
     if (this->HasInput("Weight")) {
       op->SetInput("Weight", this->Input("Weight"));
     }
-    op->SetInput("Reduction", this->Input("Reduction"));
-    op->SetInput("ignore_index", this->Input("ignore_index"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), this->OutputGrad("X"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
 
     op->SetAttrMap(this->Attrs());
   }

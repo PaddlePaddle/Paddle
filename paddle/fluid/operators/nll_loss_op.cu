@@ -355,6 +355,7 @@ class NLLLossCUDAKernel : public framework::OpKernel<T> {
     auto total_weight_data = total_weight->mutable_data<T>(ctx.GetPlace());
     auto label_data = labels->data<int64_t>();
     auto weight_data = weight ? weight->data<T>() : nullptr;
+    cudaMemset(total_weight_data, 0, sizeof(T));
     auto x_dims = x->dims();
     auto batch_size = x_dims[0];
     auto n_classes = x_dims[1];
@@ -422,6 +423,7 @@ class NLLLossGradCUDAKernel : public framework::OpKernel<T> {
     auto total_weight_data = total_weight->data<T>();
     auto ignore_index = ctx.Attr<int64_t>("ignore_index");
     auto reduction = ctx.Attr<std::string>("Reduction");
+    cudaMemset(dx_data, 0, dx->numel() * sizeof(T));
 
     int64_t size_average = (int64_t)(reduction == "mean");
     auto x_dims = x->dims();
