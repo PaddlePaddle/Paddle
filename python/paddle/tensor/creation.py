@@ -684,6 +684,7 @@ def meshgrid(input, name=None):
 
           import paddle
           import paddle.fluid as fluid
+          import numpy as np
 
           x = fluid.data(name='x', shape=[100], dtype='int32')
           y = fluid.data(name='y', shape=[200], dtype='int32')
