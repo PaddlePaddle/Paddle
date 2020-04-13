@@ -55,13 +55,6 @@ class ErrorClipByValue(BaseErrorClipAttr):
         min (float, optional): The minimum value to clip by. if not set by user, \
         will be set to ``-max`` by framework.
 
-    Raises:
-         TypeError: The `dtype` must be one of bool, float16, float32, float64, int32 and int64
-                    and the data type of out Tensor must be the same as the dtype. 
-         TypeError: The `shape` must be one of list, tuple, Variable.
-         TypeError: The `out` must be None or Variable.
-         TypeError: The `input` must be Variable.
-
     Examples:
         .. code-block:: python
 
