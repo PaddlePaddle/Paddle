@@ -42,12 +42,13 @@ class ElementwiseOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "ElementwiseOp");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ElementwiseOp");
 
-    PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("Y").front(),
-                      framework::proto::VarType::LOD_TENSOR,
-                      "The input var's type should be LoDTensor, but the "
-                      "received is %s [%s].",
-                      ctx->GetInputsVarType("Y").front(),
-                      ctx->Inputs("Y").front());
+    PADDLE_ENFORCE_EQ(
+        ctx->GetInputsVarType("Y").front(),
+        framework::proto::VarType::LOD_TENSOR,
+        platform::errors::InvalidArgument(
+            "The input var's type should be LoDTensor, but the "
+            "received is %s [%s].",
+            ctx->GetInputsVarType("Y").front(), ctx->Inputs("Y").front()));
 
     if (ctx->GetInputsVarType("X").front() ==
         framework::proto::VarType::SELECTED_ROWS) {
