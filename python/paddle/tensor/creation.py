@@ -705,6 +705,9 @@ def meshgrid(input, name=None):
       .. code-block:: python
 
           #example 2: in dygraph mode
+
+          import paddle
+          import paddle.fluid as fluid
           import numpy as np
 
           input_3 = np.random.randint(0, 100, [100, ]).astype('int32')
