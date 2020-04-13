@@ -23,10 +23,9 @@ class SignOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SignOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SignOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "sign");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "sign");
+
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
   }

@@ -50,10 +50,22 @@ class PReluOpConverter : public OpConverter {
     TensorCopySync(*alpha_tensor, cpu_place, alpha_tensor_temp.get());
     float* alpha_data = alpha_tensor_temp->mutable_data<float>(cpu_place);
 
-    plugin::PReluPlugin* plugin =
-        new plugin::PReluPlugin(alpha_data, alpha_tensor_temp->numel(), mode);
-    nvinfer1::IPluginLayer* layer =
-        engine_->AddPlugin(&input, input_num, plugin);
+    nvinfer1::ILayer* layer = nullptr;
+    if (engine_->with_dynamic_shape()) {
+#if IS_TRT_VERSION_GE(6000)
+      plugin::PReluPluginDynamic* plugin = new plugin::PReluPluginDynamic(
+          alpha_data, alpha_tensor_temp->numel(), mode);
+      layer = engine_->AddPluginV2(&input, input_num, plugin);
+#else
+      PADDLE_THROW(platform::errors::Fatal(
+          "You are running the TRT Dynamic Shape mode, need to confirm that "
+          "your TRT version is no less than 6.0"));
+#endif
+    } else {
+      plugin::PReluPlugin* plugin =
+          new plugin::PReluPlugin(alpha_data, alpha_tensor_temp->numel(), mode);
+      layer = engine_->AddPlugin(&input, input_num, plugin);
+    }
     // keep alpha tensor to avoid release it's memory
     engine_->SetWeights(op_desc.Input("Alpha")[0],
                         std::move(alpha_tensor_temp));
