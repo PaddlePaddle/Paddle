@@ -16,7 +16,7 @@ include(ExternalProject)
 
 set(EIGEN_PREFIX_DIR ${THIRD_PARTY_PATH}/eigen3)
 set(EIGEN_SOURCE_DIR ${THIRD_PARTY_PATH}/eigen3/src/extern_eigen3)
-set(EIGEN_REPOSITORY https://github.com/eigenteam/eigen-git-mirror)
+set(EIGEN_REPOSITORY https://github.com/eigenteam/eigen-git-mirror.git)
 set(EIGEN_TAG        917060c364181f33a735dc023818d5a54f60e54c)
 
 # eigen on cuda9.1 missing header of math_funtions.hpp
