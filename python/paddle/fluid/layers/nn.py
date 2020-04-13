@@ -5698,8 +5698,8 @@ def one_hot(input, depth, allow_out_of_range=False):
         input(Variable): Tensor or LoDTensor with shape :math:`[N_1, N_2, ..., N_k, 1]` ,
             which contains at least one dimension and the last dimension must be 1.
             The data type is int32 or int64.
-        depth(scalar): An integer defining the :attr:`depth` of the one hot dimension.
-            It should be tensor(with data type int32)  or int value.
+        depth(int | long | Variable): An integer defining the :attr:`depth` of the one hot dimension.
+            It should be tensor(with data type int32)  or int/long value.
             If input is word id, depth is generally the dictionary size.
         allow_out_of_range(bool): A bool value indicating whether the input
             indices could be out of range :math:`[0, depth)` . When input indices are
@@ -5731,7 +5731,7 @@ def one_hot(input, depth, allow_out_of_range=False):
 
     helper = LayerHelper("one_hot", **locals())
     check_variable_and_dtype(input, 'input', ['int32', 'int64'], 'one_hot')
-    check_type(depth, 'depth', (int, Variable), 'one_hot')
+    check_type(depth, 'depth', (int, long, Variable), 'one_hot')
     one_hot_out = helper.create_variable_for_type_inference(dtype='float32')
 
     if not isinstance(depth, Variable):

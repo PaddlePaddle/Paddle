@@ -178,25 +178,25 @@ class TestOneHotOp_exception(unittest.TestCase):
 class TestOneHotOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
+            # the input must be Variable
+            in_w = np.random.random((4, 1)).astype("int32")
+            self.assertRaises(TypeError, fluid.layers.one_hot, in_w)
+            # the input must be int32 or int 64
+            in_w2 = fluid.layers.data(
+                name="in_w2",
+                shape=[4, 1],
+                append_batch_size=False,
+                dtype="float32")
+            self.assertRaises(TypeError, fluid.layers.one_hot, in_w2)
+            # the depth must be int, long or Variable
             in_r = fluid.layers.data(
                 name="in_r",
                 shape=[4, 1],
                 append_batch_size=False,
                 dtype="int32")
-            # the input must be Variable
-            in_w = np.random.random((4, 1)).astype("int32")
-            self.assertRaises(
-                TypeError, fluid.layers.one_hot, in_w, depth=4, False)
-            # the depth must be int or Variable(int32)
-            depth_w = fluid.layers.data(
-                name="depth_w",
-                shape=[1],
-                append_batch_size=False,
-                dtype="float32")
-            self.assertRaises(
-                TypeError, fluid.layers.one_hot, in_r, depth=4.1, False)
-            self.assertRaises(
-                TypeError, fluid.layers.one_hot, in_r, depth=depth_w, False)
+            depth_w = np.array([4])
+            self.assertRaises(TypeError, fluid.layers.one_hot, in_r, 4.1)
+            self.assertRaises(TypeError, fluid.layers.one_hot, in_r, depth_w)
 
 
 if __name__ == '__main__':
