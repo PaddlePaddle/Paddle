@@ -20,22 +20,33 @@ import numpy as np
 from paddle.fluid.op import Operator
 from paddle.fluid import Program, program_guard
 
+
 class TestGetTensorFromSelectedRowsError(unittest.TestCase):
     """get_tensor_from_selected_rows error message enhance"""
+
     def test_errors(self):
         with program_guard(Program()):
             b = fluid.default_main_program().global_block()
-            x = b.create_var(name="X", dtype="float32", persistable=True,
-                      type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
+            x = b.create_var(
+                name="X",
+                dtype="float32",
+                persistable=True,
+                type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
+
             def test_Variable():
                 # The input type must be Variable.
                 fluid.layers.get_tensor_from_selected_rows(input=x)
+
             self.assertRaises(TypeError, test_Variable)
 
             # The input dtype must be int32, int64, float16, float32, float64
-            x_fp16 = b.create_var(name="X", dtype="float16", persistable=True,
-                           type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
+            x_fp16 = b.create_var(
+                name="X",
+                dtype="float16",
+                persistable=True,
+                type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
             fluid.layers.get_tensor_from_selected_rows(input=x)
+
 
 class TestGetTensorFromSelectedRows(unittest.TestCase):
     def get_places(self):
