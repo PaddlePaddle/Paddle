@@ -170,8 +170,9 @@ class ElementwiseTensorOpConverter : public OpConverter {
     auto op_pair = ops.find(op_type_);
     PADDLE_ENFORCE_NE(op_pair, ops.end(),
                       platform::errors::InvalidArgument(
-                          "Elementwise op's type is not supported. Please "
-                          "check if the op_type is correct."));
+                          "Elementwise op's type(%s) is not supported. Please "
+                          "check if the op_type is correct.",
+                          op_type_));
 
     // Here the two nullptr looks strange, that's because the
     // framework::OpDesc's constructor is strange.

@@ -167,7 +167,7 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
     Args:
         in_true(tuple|list|None): The True branch to be merged.
         in_false(tuple|list|None): The False branch to be merged.
-        x(Variable): The input tensor that contains complete
+        x(Variable|tuple|list|None): The input tensor that contains complete
                             lod information needed to construct the output.
         mask(list): A bool column vector which masks the input.
         level(int): The specific lod level to merge.

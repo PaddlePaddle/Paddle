@@ -237,30 +237,30 @@ class TestMergeLodTensorOpError(unittest.TestCase):
 
             def test_x():
                 out = layers.merge_lod_tensor(
-                    x=set(),
-                    mask=y,
                     int_true=x_true,
                     in_false=x_false,
+                    x=set(),
+                    mask=y,
                     level=level)
 
             self.assertRaises(TypeError, test_x)
 
             def test_mask():
                 out = layers.merge_lod_tensor(
-                    x=input_data,
-                    mask=set(),
                     int_true=x_true,
                     in_false=x_false,
+                    x=input_data,
+                    mask=set(),
                     level=level)
 
             self.assertRaises(TypeError, test_mask)
 
             def test_level():
                 out = layers.merge_lod_tensor(
-                    x=input_data,
-                    mask=y,
                     int_true=x_true,
                     in_false=x_false,
+                    x=input_data,
+                    mask=y,
                     level=0.5)
 
             self.assertRaises(TypeError, test_level)
