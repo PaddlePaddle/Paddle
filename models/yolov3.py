@@ -88,6 +88,20 @@ class YoloDetectionBlock(fluid.dygraph.Layer):
 
 
 class YOLOv3(Model):
+    """YOLOv3 model from
+    `"YOLOv3: An Incremental Improvement" <https://arxiv.org/abs/1804.02767>`_
+
+    Args:
+        num_classes (int): class number, default 80.
+        model_mode (str): 'train', 'eval', 'test' mode, network structure
+            will be diffrent in the output layer and data, in 'train' mode,
+            no output layer append, in 'eval' and 'test', output feature
+            map will be decode to predictions by 'fluid.layers.yolo_box',
+            in 'eval' mode, return feature maps and predictions, in 'test'
+            mode, only return predictions. Default 'train'.
+
+    """
+
     def __init__(self, num_classes=80, model_mode='train'):
         super(YOLOv3, self).__init__()
         self.num_classes = num_classes
@@ -245,4 +259,17 @@ def _yolov3_darknet(num_layers=53, num_classes=80,
 
 
 def yolov3_darknet53(num_classes=80, model_mode='train', pretrained=True):
+    """YOLOv3 model with 53-layer DarkNet as backbone
+    
+    Args:
+        num_classes (int): class number, default 80.
+        model_mode (str): 'train', 'eval', 'test' mode, network structure
+            will be diffrent in the output layer and data, in 'train' mode,
+            no output layer append, in 'eval' and 'test', output feature
+            map will be decode to predictions by 'fluid.layers.yolo_box',
+            in 'eval' mode, return feature maps and predictions, in 'test'
+            mode, only return predictions. Default 'train'.
+        pretrained (bool): If True, returns a model with pre-trained model
+            on COCO, default True
+    """
     return _yolov3_darknet(53, num_classes, model_mode, pretrained)

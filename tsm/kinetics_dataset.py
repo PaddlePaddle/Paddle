@@ -26,7 +26,7 @@ except ImportError:
     import pickle
     from io import BytesIO
 
-from paddle.fluid.io import Dataset
+from paddle.io import Dataset
 
 import logging
 logger = logging.getLogger(__name__)

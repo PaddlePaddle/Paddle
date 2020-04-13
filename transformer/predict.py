@@ -22,7 +22,7 @@ from functools import partial
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.io import DataLoader
+from paddle.io import DataLoader
 from paddle.fluid.layers.utils import flatten
 
 from utils.configure import PDConfig

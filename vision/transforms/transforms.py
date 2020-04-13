@@ -24,6 +24,7 @@ import numbers
 import types
 import collections
 import warnings
+import traceback
 
 from . import functional as F
 
@@ -34,6 +35,7 @@ else:
 
 __all__ = [
     "Compose",
+    "BatchCompose",
     "Resize",
     "RandomResizedCrop",
     "CenterCropResize",
@@ -62,10 +64,16 @@ class Compose(object):
     def __init__(self, transforms):
         self.transforms = transforms
 
-    def __call__(self, img):
-        for t in self.transforms:
-            img = t(img)
-        return img
+    def __call__(self, *data):
+        for f in self.transforms:
+            try:
+                data = f(*data)
+            except Exception as e:
+                stack_info = traceback.format_exc()
+                print("fail to perform transform [{}] with error: "
+                        "{} and stack:\n{}".format(f, e, str(stack_info)))
+                raise e
+        return data
 
     def __repr__(self):
         format_string = self.__class__.__name__ + '('
@@ -74,6 +82,33 @@ class Compose(object):
             format_string += '    {0}'.format(t)
         format_string += '\n)'
         return format_string
+
+
+class BatchCompose(object):
+    """Composes several batch transforms together
+
+    Args:
+        transforms (list of ``Transform`` objects): list of transforms to compose.
+                                            these transforms perform on batch data.
+
+    """
+    def __init__(self, transforms=[]):
+        self.transforms = transforms
+
+    def __call__(self, data):
+        for f in self.transforms:
+            try:
+                data = f(data)
+            except Exception as e:
+                stack_info = traceback.format_exc()
+                print("fail to perform batch transform [{}] with error: "
+                        "{} and stack:\n{}".format(f, e, str(stack_info)))
+                raise e
+
+        # sample list to batch data
+        batch = list(zip(*data))
+
+        return batch
 
 
 class Resize(object):

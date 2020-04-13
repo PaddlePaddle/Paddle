@@ -21,7 +21,7 @@ from paddle.fluid.dygraph.nn import Conv2D, BatchNorm
 from model import Model
 from .download import get_weights_path
 
-__all__ = ['DarkNet53', 'ConvBNLayer', 'darknet53']
+__all__ = ['DarkNet', 'ConvBNLayer', 'darknet53']
 
 # {num_layers: (url, md5)}
 pretrain_infos = {
@@ -136,9 +136,17 @@ class LayerWarp(fluid.dygraph.Layer):
 DarkNet_cfg = {53: ([1, 2, 8, 8, 4])}
 
 
-class DarkNet53(Model):
+class DarkNet(Model):
+    """DarkNet model from
+    `"YOLOv3: An Incremental Improvement" <https://arxiv.org/abs/1804.02767>`_
+
+    Args:
+        num_layers (int): layer number of DarkNet, only 53 supported currently, default: 53.
+        ch_in (int): channel number of input data, default 3.
+    """
+
     def __init__(self, num_layers=53, ch_in=3):
-        super(DarkNet53, self).__init__()
+        super(DarkNet, self).__init__()
         assert num_layers in DarkNet_cfg.keys(), \
             "only support num_layers in {} currently" \
             .format(DarkNet_cfg.keys())
@@ -188,7 +196,7 @@ class DarkNet53(Model):
 
 
 def _darknet(num_layers=53, input_channels=3, pretrained=True):
-    model = DarkNet53(num_layers, input_channels)
+    model = DarkNet(num_layers, input_channels)
     if pretrained:
         assert num_layers in pretrain_infos.keys(), \
                 "DarkNet{} do not have pretrained weights now, " \
@@ -201,4 +209,11 @@ def _darknet(num_layers=53, input_channels=3, pretrained=True):
 
 
 def darknet53(input_channels=3, pretrained=True):
+    """DarkNet 53-layer model
+    
+    Args:
+        input_channels (bool): channel number of input data, default 3. 
+        pretrained (bool): If True, returns a model pre-trained on ImageNet,
+            default True.
+    """
     return _darknet(53, input_channels, pretrained)

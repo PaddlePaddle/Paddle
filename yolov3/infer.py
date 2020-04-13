@@ -22,7 +22,7 @@ from PIL import Image
 
 from paddle import fluid
 from paddle.fluid.optimizer import Momentum
-from paddle.fluid.io import DataLoader
+from paddle.io import DataLoader
 
 from model import Model, Input, set_device
 from models import yolov3_darknet53, YoloLoss

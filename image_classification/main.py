@@ -32,7 +32,7 @@ from imagenet_dataset import ImageNetDataset
 from distributed import DistributedBatchSampler
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from metrics import Accuracy
-from paddle.fluid.io import BatchSampler, DataLoader
+from paddle.io import BatchSampler, DataLoader
 
 
 def make_optimizer(step_per_epoch, parameter_list=None):

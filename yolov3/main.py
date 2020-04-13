@@ -23,15 +23,15 @@ import numpy as np
 
 from paddle import fluid
 from paddle.fluid.optimizer import Momentum
-from paddle.fluid.io import DataLoader
+from paddle.io import DataLoader
 
 from model import Model, Input, set_device
 from distributed import DistributedBatchSampler
 from models import yolov3_darknet53, YoloLoss
 
 from coco_metric import COCOMetric
-from coco import COCODataset
-from transforms import *
+from vision.datasets import COCODataset
+from vision.transforms import *
 
 NUM_MAX_BOXES = 50
 

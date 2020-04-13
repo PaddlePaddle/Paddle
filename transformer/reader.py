@@ -22,7 +22,7 @@ from functools import partial
 import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.fluid.io import BatchSampler, DataLoader, Dataset
+from paddle.io import BatchSampler, DataLoader, Dataset
 
 
 def create_data_loader(args, device):

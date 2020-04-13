@@ -32,7 +32,7 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 from paddle.fluid.incubate.fleet.base import role_maker
-from paddle.fluid.io import DataLoader, Dataset
+from paddle.io import DataLoader, Dataset
 
 from distributed import DistributedBatchSampler, _all_gather, prepare_distributed_context, _parallel_context_initialized
 from metrics import Metric
@@ -913,11 +913,11 @@ class Model(fluid.dygraph.Layer):
         FIXME: add more comments and usage
         Args:
             train_data (Dataset|DataLoader): An iterable data loader is used for 
-                train. An instance of paddle.fluid.io.Dataset or 
-                paddle.fluid.io.Dataloader is recomended.
+                train. An instance of paddle paddle.io.Dataset or 
+                paddle.io.Dataloader is recomended.
             eval_data (Dataset|DataLoader): An iterable data loader is used for
                 evaluation at the end of epoch. If None, will not do evaluation. 
-                An instance of paddle.fluid.io.Dataset or paddle.fluid.io.Dataloader 
+                An instance of paddle.io.Dataset or paddle.io.Dataloader 
                 is recomended.
             batch_size (int): Integer number. The batch size of train_data and eval_data. 
                 When train_data and eval_data are both the instance of Dataloader, this 
@@ -1041,8 +1041,8 @@ class Model(fluid.dygraph.Layer):
         FIXME: add more comments and usage
         Args:
             eval_data (Dataset|DataLoader): An iterable data loader is used for
-                evaluation. An instance of paddle.fluid.io.Dataset or 
-                paddle.fluid.io.Dataloader is recomended.
+                evaluation. An instance of paddle.io.Dataset or 
+                paddle.io.Dataloader is recomended.
             batch_size (int): Integer number. The batch size of train_data and eval_data. 
                 When train_data and eval_data are both the instance of Dataloader, this 
                 parameter will be ignored.
@@ -1116,7 +1116,7 @@ class Model(fluid.dygraph.Layer):
         FIXME: add more comments and usage
         Args:
             test_data (Dataset|DataLoader): An iterable data loader is used for
-                predict. An instance of paddle.fluid.io.Dataset or paddle.fluid.io.Dataloader 
+                predict. An instance of paddle.io.Dataset or paddle.io.Dataloader 
                 is recomended.
             batch_size (int): Integer number. The batch size of train_data and eval_data. 
                 When train_data and eval_data are both the instance of Dataloader, this 
@@ -1177,8 +1177,8 @@ class Model(fluid.dygraph.Layer):
         """
         Args:
             eval_data (Dataset|DataLoader|None): An iterable data loader is used for 
-                eval. An instance of paddle.fluid.io.Dataset or 
-                paddle.fluid.io.Dataloader is recomended. 
+                eval. An instance of paddle.io.Dataset or 
+                paddle.io.Dataloader is recomended. 
         """
         assert isinstance(
             eval_data,

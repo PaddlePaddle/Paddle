@@ -13,3 +13,5 @@
 # limitations under the License.
 
 from .transforms import *
+from .functional import *
+from .detection_transforms import *

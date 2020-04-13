@@ -16,7 +16,9 @@ import os
 import sys
 import cv2
 
-from paddle.fluid.io import Dataset
+from paddle.io import Dataset
+
+__all__ = ["DatasetFolder"]
 
 
 def has_valid_extension(filename, extensions):

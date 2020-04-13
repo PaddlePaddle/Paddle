@@ -22,7 +22,7 @@ import sys
 sys.path.append('../')
 
 from distributed import DistributedBatchSampler
-from paddle.fluid.io import Dataset, DataLoader
+from paddle.io import Dataset, DataLoader
 
 logger = logging.getLogger(__name__)
 

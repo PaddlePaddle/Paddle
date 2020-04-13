@@ -19,48 +19,18 @@ import cv2
 import traceback
 import numpy as np
 
-import logging
-logger = logging.getLogger(__name__)
-
-__all__ = ['ColorDistort', 'RandomExpand', 'RandomCrop', 'RandomFlip',
-           'NormalizeBox', 'PadBox', 'RandomShape', 'NormalizeImage',
-           'BboxXYXY2XYWH', 'ResizeImage', 'Compose', 'BatchCompose']
-
-
-class Compose(object):
-    def __init__(self, transforms=[]):
-        self.transforms = transforms
-
-    def __call__(self, *data):
-        for f in self.transforms:
-            try:
-                data = f(*data)
-            except Exception as e:
-                stack_info = traceback.format_exc()
-                logger.info("fail to perform transform [{}] with error: "
-                        "{} and stack:\n{}".format(f, e, str(stack_info)))
-                raise e
-        return data
-
-
-class BatchCompose(object):
-    def __init__(self, transforms=[]):
-        self.transforms = transforms
-
-    def __call__(self, data):
-        for f in self.transforms:
-            try:
-                data = f(data)
-            except Exception as e:
-                stack_info = traceback.format_exc()
-                logger.info("fail to perform batch transform [{}] with error: "
-                        "{} and stack:\n{}".format(f, e, str(stack_info)))
-                raise e
-
-        # sample list to batch data
-        batch = list(zip(*data))
-
-        return batch
+__all__ = [
+    'ColorDistort',
+    'RandomExpand',
+    'RandomCrop',
+    'RandomFlip',
+    'NormalizeBox',
+    'PadBox',
+    'RandomShape',
+    'NormalizeImage',
+    'BboxXYXY2XYWH',
+    'ResizeImage',
+]
 
 
 class ColorDistort(object):

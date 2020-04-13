@@ -20,7 +20,7 @@ import cv2
 import numpy as np
 from pycocotools.coco import COCO
 
-from paddle.fluid.io import Dataset
+from paddle.io import Dataset
 
 import logging
 logger = logging.getLogger(__name__)

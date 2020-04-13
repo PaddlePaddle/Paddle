@@ -201,4 +201,12 @@ def _tsm_resnet(num_layers, seg_num=8, num_classes=400, pretrained=True):
 
 
 def tsm_resnet50(seg_num=8, num_classes=400, pretrained=True):
+    """TSM model with 50-layer ResNet as backbone
+    
+    Args:
+        seg_num (int): segment number of each video sample. Default 8.
+        num_classes (int): video class number. Default 400.
+        pretrained (bool): If True, returns a model with pre-trained model
+            on COCO, default True
+    """
     return _tsm_resnet(50, seg_num, num_classes, pretrained)
