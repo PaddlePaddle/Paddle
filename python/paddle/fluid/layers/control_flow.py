@@ -1420,7 +1420,7 @@ def less_than(x, y, force_cpu=None, cond=None):
     check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
                              "less_than")
     if cond is not None:
-        check_variable_and_dtype(cond, "cond", [x.dtype], "less_than")
+        check_type(cond, "cond", Variable, "less_than")
     if force_cpu != None:
         check_type(force_cpu, "force_cpu", bool, "less_than")
 
@@ -1473,7 +1473,8 @@ def less_equal(x, y, cond=None):
     check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
                              "less_equal")
     if cond is not None:
-        check_variable_and_dtype(cond, "cond", [x.dtype], "less_equal")
+        check_variable_and_dtype(cond, "cond", [convert_dtype(x.dtype)],
+                                 "less_equal")
 
     helper = LayerHelper("less_equal", **locals())
     if cond is None:
@@ -1521,7 +1522,8 @@ def greater_than(x, y, cond=None):
     check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
                              "greater_than")
     if cond is not None:
-        check_variable_and_dtype(cond, "cond", [x.dtype], "greater_than")
+        check_variable_and_dtype(cond, "cond", [convert_dtype(x.dtype)],
+                                 "greater_than")
 
     helper = LayerHelper("greater_than", **locals())
     if cond is None:
@@ -1571,7 +1573,8 @@ def greater_equal(x, y, cond=None):
     check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
                              "greater_equal")
     if cond is not None:
-        check_variable_and_dtype(cond, "cond", [x.dtype], "greater_equal")
+        check_variable_and_dtype(cond, "cond", [convert_dtype(x.dtype)],
+                                 "greater_equal")
 
     helper = LayerHelper("greater_equal", **locals())
     if cond is None:
@@ -1621,7 +1624,8 @@ def equal(x, y, cond=None):
     check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
                              "equal")
     if cond is not None:
-        check_variable_and_dtype(cond, "cond", [x.dtype], "equal")
+        check_variable_and_dtype(cond, "cond", [convert_dtype(x.dtype)],
+                                 "equal")
 
     helper = LayerHelper("equal", **locals())
     if cond is None:
@@ -1662,7 +1666,8 @@ def not_equal(x, y, cond=None):
     check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
                              "not_equal")
     if cond is not None:
-        check_variable_and_dtype(cond, "cond", [x.dtype], "not_equal")
+        check_variable_and_dtype(cond, "cond", [convert_dtype(x.dtype)],
+                                 "not_equal")
 
     helper = LayerHelper("not_equal", **locals())
     if cond is None:

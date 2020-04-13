@@ -51,7 +51,8 @@ def create_test_class(op_type, typename, callback):
                         force_cpu=1)
                 op = eval("fluid.layers.%s" % self.op_type)
                 self.assertRaises(TypeError, op, x=x, y=y, cond=1)
-                self.assertRaises(TypeError, op, x=x, y=y, cond=b)
+                if self.op_type != "less_than":
+                    self.assertRaises(TypeError, op, x=x, y=y, cond=b)
                 self.assertRaises(TypeError, op, x=x, y=a)
                 self.assertRaises(TypeError, op, x=a, y=y)
 
