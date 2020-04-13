@@ -113,6 +113,7 @@ packages=['paddle',
           'paddle.fluid',
           'paddle.tensor',
           'paddle.fluid.dygraph',
+          'paddle.tensor',
           'paddle.fluid.dygraph.dygraph_to_static',
           'paddle.fluid.proto',
           'paddle.fluid.proto.profiler',
@@ -151,6 +152,30 @@ packages=['paddle',
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()
+
+# Note(wangzhongpu):
+# When compiling paddle under python36, the dependencies belonging to python2.7 will be imported, resulting in errors when installing paddle
+if sys.version_info >= (3,6) and sys.version_info < (3,7):
+    setup_requires_tmp = []
+    for setup_requires_i in setup_requires:
+        if "<\"3.6\"" in setup_requires_i or "<\"3.5\"" in setup_requires_i or "<=\"3.5\"" in setup_requires_i:
+            continue
+        setup_requires_tmp+=[setup_requires_i]
+    setup_requires = setup_requires_tmp
+if sys.version_info >= (3,5) and sys.version_info < (3,6):
+    setup_requires_tmp = []
+    for setup_requires_i in setup_requires:
+        if "<\"3.5\"" in setup_requires_i:
+            continue
+        setup_requires_tmp+=[setup_requires_i]
+    setup_requires = setup_requires_tmp
+if sys.version_info >= (3,7):
+    setup_requires_tmp = []
+    for setup_requires_i in setup_requires:
+        if "<\"3.6\"" in setup_requires_i or "<=\"3.6\"" in setup_requires_i or "<\"3.5\"" in setup_requires_i or "<=\"3.5\"" in setup_requires_i or "<\"3.7\"" in setup_requires_i:
+            continue
+        setup_requires_tmp+=[setup_requires_i]
+    setup_requires = setup_requires_tmp
 
 if '${CMAKE_SYSTEM_PROCESSOR}' not in ['arm', 'armv7-a', 'aarch64']:
     setup_requires+=['opencv-python']

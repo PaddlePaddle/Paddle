@@ -93,12 +93,10 @@ class TestAssignOpError(unittest.TestCase):
             x3 = fluid.layers.data(name='x3', shape=[4], dtype="uint8")
             self.assertRaises(TypeError, fluid.layers.assign, x3)
             # When the type of input is numpy.ndarray, the dtype of input must be float32, int32.
-            x4 = np.array([[2.5, 2.5]], dtype='bool')
+            x4 = np.array([[2.5, 2.5]], dtype='float64')
             self.assertRaises(TypeError, fluid.layers.assign, x4)
-            x5 = np.array([[2.5, 2.5]], dtype='float64')
+            x5 = np.array([[2.5, 2.5]], dtype='uint8')
             self.assertRaises(TypeError, fluid.layers.assign, x5)
-            x6 = np.array([[2.5, 2.5]], dtype='uint8')
-            self.assertRaises(TypeError, fluid.layers.assign, x6)
 
 
 if __name__ == '__main__':
