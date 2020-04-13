@@ -16,10 +16,10 @@ from .layers import Layer
 from paddle.fluid import layers
 import copy
 
-__all__ = ['CudnnLSTMCell', 'CudnnGRUCell']
+__all__ = ['LSTMCell', 'GRUCell']
 
 
-class CudnnLSTMCell(Layer):
+class LSTMCell(Layer):
     """
     LSTMCell implementation using basic operators.
     There are two LSTMCell version, the default one is compatible with CUDNN LSTM implementation.
@@ -69,7 +69,7 @@ class CudnnLSTMCell(Layer):
         .. code-block:: python
             from paddle import fluid
             import paddle.fluid.core as core
-            from paddle.fluid.dygraph.rnn import CudnnLSTMCell
+            from paddle.fluid.dygraph.rnn import LSTMCell
             import numpy as np
 
             batch_size = 64
@@ -89,7 +89,7 @@ class CudnnLSTMCell(Layer):
                 place = core.CPUPlace()
 
             with fluid.dygraph.guard(place):
-                cudnn_lstm = CudnnLSTMCell(hidden_size, input_size)
+                cudnn_lstm = LSTMCell(hidden_size, input_size)
                 step_input_var = fluid.dygraph.to_variable(step_input_np)
                 pre_hidden_var = fluid.dygraph.to_variable(pre_hidden_np)
                 pre_cell_var = fluid.dygraph.to_variable(pre_cell_np)
@@ -106,7 +106,7 @@ class CudnnLSTMCell(Layer):
                  forget_bias=1.0,
                  use_cudnn_impl=True,
                  dtype='float64'):
-        super(CudnnLSTMCell, self).__init__(dtype)
+        super(LSTMCell, self).__init__(dtype)
 
         self._hidden_size = hidden_size
         self._input_size = input_size
@@ -226,7 +226,7 @@ class CudnnLSTMCell(Layer):
         return new_hidden, new_cell
 
 
-class CudnnGRUCell(Layer):
+class GRUCell(Layer):
     """
     GRU implementation using basic operators.
     There are two GRUCell version, the default one is compatible with CUDNN GRU implementation.
@@ -269,7 +269,7 @@ class CudnnGRUCell(Layer):
         .. code-block:: python
             from paddle import fluid
             import paddle.fluid.core as core
-            from paddle.fluid.dygraph.rnn import CudnnGRUCell
+            from paddle.fluid.dygraph.rnn import GRUCell
             import numpy as np
 
             batch_size = 64
@@ -287,7 +287,7 @@ class CudnnGRUCell(Layer):
                 place = core.CPUPlace()
 
             with fluid.dygraph.guard(place):
-                cudnn_gru = CudnnGRUCell(hidden_size, input_size)
+                cudnn_gru = GRUCell(hidden_size, input_size)
                 step_input_var = fluid.dygraph.to_variable(step_input_np)
                 pre_hidden_var = fluid.dygraph.to_variable(pre_hidden_np)
     """
@@ -301,7 +301,7 @@ class CudnnGRUCell(Layer):
                  activation=None,
                  use_cudnn_impl=True,
                  dtype='float64'):
-        super(CudnnGRUCell, self).__init__()
+        super(GRUCell, self).__init__()
 
         self._hidden_size = hidden_size
         self._input_size = input_size

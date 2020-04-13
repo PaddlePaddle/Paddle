@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.dygraph.rnn import CudnnGRUCell
+from paddle.fluid.dygraph.rnn import GRUCell
 
 import numpy as np
 
@@ -94,9 +94,9 @@ class TestCudnnGRU(unittest.TestCase):
         with fluid.dygraph.guard(place):
             param_attr = fluid.ParamAttr(name="param_attr")
             bias_attr = fluid.ParamAttr(name="bias_attr")
-            named_cudnn_gru = CudnnGRUCell(self.hidden_size, self.input_size,
-                                           param_attr, bias_attr)
-            cudnn_gru = CudnnGRUCell(self.hidden_size, self.input_size)
+            named_cudnn_gru = GRUCell(self.hidden_size, self.input_size,
+                                      param_attr, bias_attr)
+            cudnn_gru = GRUCell(self.hidden_size, self.input_size)
 
             param_list = cudnn_gru.state_dict()
             named_param_list = named_cudnn_gru.state_dict()
@@ -167,13 +167,13 @@ class TestNonCudnnGRU(unittest.TestCase):
         with fluid.dygraph.guard(place):
             param_attr = fluid.ParamAttr(name="param_attr")
             bias_attr = fluid.ParamAttr(name="bias_attr")
-            named_non_cudnn_gru = CudnnGRUCell(
+            named_non_cudnn_gru = GRUCell(
                 self.hidden_size,
                 self.input_size,
                 param_attr,
                 bias_attr,
                 use_cudnn_impl=False)
-            non_cudnn_gru = CudnnGRUCell(
+            non_cudnn_gru = GRUCell(
                 self.hidden_size, self.input_size, use_cudnn_impl=False)
 
             param_list = non_cudnn_gru.state_dict()

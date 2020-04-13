@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.dygraph.rnn import CudnnLSTMCell
+from paddle.fluid.dygraph.rnn import LSTMCell
 
 import numpy as np
 
@@ -89,9 +89,9 @@ class TestCudnnLSTM(unittest.TestCase):
         with fluid.dygraph.guard(place):
             param_attr = fluid.ParamAttr(name="param_attr")
             bias_attr = fluid.ParamAttr(name="bias_attr")
-            named_cudnn_lstm = CudnnLSTMCell(self.hidden_size, self.input_size,
-                                             param_attr, bias_attr)
-            cudnn_lstm = CudnnLSTMCell(self.hidden_size, self.input_size)
+            named_cudnn_lstm = LSTMCell(self.hidden_size, self.input_size,
+                                        param_attr, bias_attr)
+            cudnn_lstm = LSTMCell(self.hidden_size, self.input_size)
 
             param_list = cudnn_lstm.state_dict()
             named_param_list = named_cudnn_lstm.state_dict()
@@ -182,13 +182,13 @@ class TestNonCudnnLSTM(unittest.TestCase):
         with fluid.dygraph.guard(place):
             param_attr = fluid.ParamAttr(name="param_attr")
             bias_attr = fluid.ParamAttr(name="bias_attr")
-            named_cudnn_lstm = CudnnLSTMCell(
+            named_cudnn_lstm = LSTMCell(
                 self.hidden_size,
                 self.input_size,
                 param_attr,
                 bias_attr,
                 use_cudnn_impl=False)
-            cudnn_lstm = CudnnLSTMCell(
+            cudnn_lstm = LSTMCell(
                 self.hidden_size, self.input_size, use_cudnn_impl=False)
 
             param_list = cudnn_lstm.state_dict()
