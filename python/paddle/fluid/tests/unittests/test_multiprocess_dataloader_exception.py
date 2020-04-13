@@ -42,32 +42,6 @@ class RandomDataset(Dataset):
         return self.sample_num
 
 
-class TestDataLoaderSetXXXException(unittest.TestCase):
-    def test_main(self):
-        place = fluid.cpu_places()[0]
-        with fluid.dygraph.guard(place):
-            dataset = RandomDataset(800)
-            dataloader = DataLoader(dataset, places=place)
-
-            try:
-                dataloader.set_sample_generator(dataset)
-                self.assertTrue(False)
-            except:
-                pass
-
-            try:
-                dataloader.set_sample_list_generator(dataset)
-                self.assertTrue(False)
-            except:
-                pass
-
-            try:
-                dataloader.set_batch_generator(dataset)
-                self.assertTrue(False)
-            except:
-                pass
-
-
 class TestDataLoaderAssert(unittest.TestCase):
     def test_main(self):
         place = fluid.cpu_places()[0]
