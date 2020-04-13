@@ -450,7 +450,9 @@ def rand(shape, out=None, dtype=None, device=None, stop_gradient=True):
         dtype = 'float32'
 
     check_dtype(dtype, 'create data type', ['float32', 'float64'], 'rand')
+
     check_type(shape, 'shape', (Variable, list, tuple), 'rand')
+
     if device not in [None, 'cpu', 'gpu']:
         raise ValueError("The input device should in [None, 'cpu', 'gpu'].")
 
