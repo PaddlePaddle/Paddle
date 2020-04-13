@@ -19,6 +19,7 @@ import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
 import paddle.fluid as fluid
+from paddle.nn.functional import *
 
 
 def trilinear_interp_np(input,
@@ -264,19 +265,6 @@ class TestTrilinearInterpCase6(TestTrilinearInterpOp):
         self.out_w = 16
         self.scale = 0.
         self.out_size = np.array([17, 9, 5]).astype("int32")
-        self.align_corners = True
-        self.align_mode = 1
-
-
-class TestTrilinearInterpCase7(TestTrilinearInterpOp):
-    def init_test_case(self):
-        self.interp_method = 'trilinear'
-        self.input_shape = [3, 2, 9, 6, 8]
-        self.out_d = 32
-        self.out_h = 16
-        self.out_w = 8
-        self.scale = 0.3
-        self.out_size = np.array([12, 4, 4]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
 
@@ -581,36 +569,6 @@ class TestTrilinearInterp_attr_tensor_Case3(TestTrilinearInterpOp_attr_tensor):
         self.scale_by_1Dtensor = True
 
 
-# scale is a 1-D tensor
-class TestTrilinearInterp_attr_tensor_Case4(TestTrilinearInterpOp_attr_tensor):
-    def init_test_case(self):
-        self.interp_method = 'trilinear'
-        self.input_shape = [2, 3, 8, 8, 4]
-        self.out_d = 16
-        self.out_h = 16
-        self.out_w = 8
-        self.scale = 3.0
-        self.out_size = None
-        self.align_corners = True
-        self.align_mode = 1
-        self.scale_by_1Dtensor = True
-
-
-# scale is a 1-D tensor
-class TestTrilinearInterp_attr_tensor_Case5(TestTrilinearInterpOp_attr_tensor):
-    def init_test_case(self):
-        self.interp_method = 'trilinear'
-        self.input_shape = [2, 3, 8, 8, 4]
-        self.out_d = 16
-        self.out_h = 16
-        self.out_w = 8
-        self.scale = 2.0
-        self.out_size = [6, 4, 10]
-        self.align_corners = True
-        self.align_mode = 0
-        self.scale_by_1Dtensor = True
-
-
 class TestTrilinearInterpAPI(unittest.TestCase):
     def test_case(self):
         x = fluid.data(name="x", shape=[2, 3, 6, 9, 4], dtype="float32")
@@ -629,6 +587,15 @@ class TestTrilinearInterpAPI(unittest.TestCase):
         out4 = fluid.layers.resize_trilinear(
             x, out_shape=[4, 4, 8], actual_shape=actual_size)
         out5 = fluid.layers.resize_trilinear(x, scale=scale_tensor)
+        out6 = interpolate(
+            x, scale=scale_tensor, resample='TRILINEAR', data_format="NCDHW")
+        out7 = interpolate(
+            x, out_shape=[4, 4, 8], resample='TRILINEAR', data_format="NCDHW")
+        out8 = interpolate(
+            x,
+            out_shape=shape_tensor,
+            resample='TRILINEAR',
+            data_format="NCDHW")
 
         x_data = np.random.random((2, 3, 6, 9, 4)).astype("float32")
         dim_data = np.array([18]).astype("int32")
@@ -671,13 +638,7 @@ class TestTrilinearInterpOpException(unittest.TestCase):
             out = fluid.layers.resize_trilinear(
                 input, out_shape=[4, 8, 4], data_format='NHWC')
 
-        def test_out_shape():
-            # for 5-D input , out shape should be 3
-            out = fluid.layers.resize_trilinear(
-                input, out_shape=[4, 8], data_format='NDHWC')
-
         self.assertRaises(ValueError, attr_data_format)
-        self.assertRaises(ValueError, test_out_shape)
 
 
 if __name__ == "__main__":
