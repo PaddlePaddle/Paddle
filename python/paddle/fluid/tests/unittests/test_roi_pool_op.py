@@ -28,7 +28,10 @@ class TestROIPoolOp(OpTest):
         self.make_rois()
         self.calc_roi_pool()
 
-        self.inputs = {'X': self.x, 'ROIs': (self.rois[:, 1:5], self.rois_lod)}
+        self.inputs = {
+            'X': self.x,
+            'ROIs': (self.rois[:, 1:5], self.rois_lod),
+        }
 
         self.attrs = {
             'spatial_scale': self.spatial_scale,
@@ -151,6 +154,34 @@ class BadInputTestRoiPool(unittest.TestCase):
                 label = [[1,2,3,4], [2,3,4,5]]
                 output = fluid.layers.roi_pool(x, label, 1, 1, 1.0)
             self.assertRaises(TypeError, test_bad_y)
+
+class TestROIPoolInLodOp(TestROIPoolOp):
+    def set_data(self):
+        self.init_test_case()
+        self.make_rois()
+        self.calc_roi_pool()
+
+        seq_len = self.rois_lod[0]
+        cur_len = 0
+        lod = [cur_len]
+        for l in seq_len:
+            cur_len += l
+            lod.append(cur_len)
+
+        self.inputs = {
+            'X': self.x,
+            'ROIs': (self.rois[:, 1:5], self.rois_lod),
+            'RoisLod': np.asarray(lod).astype('int64')
+        }
+
+        self.attrs = {
+            'spatial_scale': self.spatial_scale,
+            'pooled_height': self.pooled_height,
+            'pooled_width': self.pooled_width
+        }
+
+        self.outputs = {'Out': self.outs, 'Argmax': self.argmaxes}
+
 
 if __name__ == '__main__':
     unittest.main()

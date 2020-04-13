@@ -28,31 +28,48 @@ class GridSampleOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of GridSampleOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Grid"),
-                   "Input(Grid) of GridSampleOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Output"),
-                   "Output(Output) of GridSampleOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "GridSampler");
+    OP_INOUT_CHECK(ctx->HasInput("Grid"), "Input", "Grid", "GridSampler");
+    OP_INOUT_CHECK(ctx->HasOutput("Output"), "Output", "Output", "GridSampler");
 
     auto x_dims = ctx->GetInputDim("X");
     auto grid_dims = ctx->GetInputDim("Grid");
-    PADDLE_ENFORCE(x_dims.size() == 4,
-                   "Input(X) of GridSampleOp should be 4-D Tensor.");
-    PADDLE_ENFORCE(grid_dims.size() == 4,
-                   "Input(Grid) of GridSampleOp should be 4-D Tensor.");
+    PADDLE_ENFORCE_EQ(x_dims.size(), 4,
+                      platform::errors::InvalidArgument(
+                          "Input(X) of GridSampleOp should be 4-D Tensor, but "
+                          "received X dimension size(%d)",
+                          x_dims.size()));
+    PADDLE_ENFORCE_EQ(grid_dims.size(), 4,
+                      platform::errors::InvalidArgument(
+                          "Input(Grid) of GridSampleOp should be 4-D Tensor, "
+                          "but received X dimension size(%d)",
+                          grid_dims.size()));
     if (ctx->IsRuntime() || grid_dims[3] > 0) {
-      PADDLE_ENFORCE(grid_dims[3] == 2, "Input(Grid) dims[3] should be 2.");
+      PADDLE_ENFORCE_EQ(
+          grid_dims[3], 2,
+          platform::errors::InvalidArgument(
+              "Input(Grid) dimension[3] should be 2, but received %d",
+              grid_dims[3]));
     }
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(grid_dims[0], x_dims[0],
-                        "Input(X) and Input(Grid) dims[0] should be equal.");
+      PADDLE_ENFORCE_EQ(
+          grid_dims[0], x_dims[0],
+          platform::errors::InvalidArgument(
+              "Input(X) and Input(Grid) dimension[0] should be equal, but "
+              "received X dimension[0](%d) != Grid dimension[0](%d)",
+              x_dims[0], grid_dims[0]));
       PADDLE_ENFORCE_EQ(
           grid_dims[1], x_dims[2],
-          "Input(X) dims[2] and Input(Grid) dims[1] should be equal.");
+          platform::errors::InvalidArgument(
+              "Input(X) dims[2] and Input(Grid) dims[1] should be equal, but "
+              "received X dimension[2](%d) != Grid dimension[1](%d)",
+              x_dims[2], grid_dims[1]));
       PADDLE_ENFORCE_EQ(
           grid_dims[2], x_dims[3],
-          "Input(X) dims[3] and Input(Grid) dims[2] should be equal.");
+          platform::errors::InvalidArgument(
+              "Input(X) dims[3] and Input(Grid) dims[2] should be equal, but "
+              "received X dimension[3](%d) != Grid dimension[2](%d)",
+              x_dims[3], grid_dims[2]));
     }
 
     ctx->SetOutputDim("Output", x_dims);
