@@ -59,7 +59,7 @@ class CudnnLSTMCell(Layer):
                              Default: 'fluid.layers.tanh'
         forget_bias(float|1.0): forget bias used when computing forget gate. This 
             is not used in default LSTMCell implementation (CUDNN compatiable)
-        cudnn_compatibale(bool|True): whether to use CUDNN compatible LSTMCell
+        use_cudnn_impl(bool|True): whether to use CUDNN compatible LSTMCell
         dtype(string): data type used in this unit
     
     Returns:
@@ -104,7 +104,7 @@ class CudnnLSTMCell(Layer):
                  gate_activation=None,
                  activation=None,
                  forget_bias=1.0,
-                 cudnn_compatibale=True,
+                 use_cudnn_impl=True,
                  dtype='float64'):
         super(CudnnLSTMCell, self).__init__(dtype)
 
@@ -115,9 +115,9 @@ class CudnnLSTMCell(Layer):
         self._dtype = dtype
         self._gate_activation = gate_activation or layers.sigmoid
         self._activation = activation or layers.tanh
-        self._cudnn_compatibale = cudnn_compatibale
+        self._use_cudnn_impl = use_cudnn_impl
 
-        if self._cudnn_compatibale:
+        if self._use_cudnn_impl:
 
             if self._param_attr is not None and self._param_attr.name is not None:
                 weight_ih_param_attr = copy.deepcopy(self._param_attr)
@@ -179,7 +179,7 @@ class CudnnLSTMCell(Layer):
 
     def forward(self, input, pre_hidden, pre_cell):
 
-        if self._cudnn_compatibale:
+        if self._use_cudnn_impl:
 
             igates = layers.matmul(input, y=self._weight_ih)
             igates = layers.elementwise_add(igates, self._bias_ih)
@@ -259,7 +259,7 @@ class CudnnGRUCell(Layer):
                                   Default: 'fluid.layers.sigmoid'
         activation (function|None): The activation function for cell (actNode).
                              Default: 'fluid.layers.tanh'
-        cudnn_compatibale(bool|True): whether to use CUDNN compatible LSTMCell
+        use_cudnn_impl(bool|True): whether to use CUDNN compatible LSTMCell
         dtype(string): data type used in this unit
     
     Returns:
@@ -299,7 +299,7 @@ class CudnnGRUCell(Layer):
                  bias_attr=None,
                  gate_activation=None,
                  activation=None,
-                 cudnn_compatibale=True,
+                 use_cudnn_impl=True,
                  dtype='float64'):
         super(CudnnGRUCell, self).__init__()
 
@@ -310,9 +310,9 @@ class CudnnGRUCell(Layer):
         self._dtype = dtype
         self._gate_activation = gate_activation or layers.sigmoid
         self._activation = activation or layers.tanh
-        self._cudnn_compatibale = cudnn_compatibale
+        self._use_cudnn_impl = use_cudnn_impl
 
-        if self._cudnn_compatibale:
+        if self._use_cudnn_impl:
 
             if self._param_attr is not None and self._param_attr.name is not None:
                 weight_ih_param_attr = copy.deepcopy(self._param_attr)
@@ -400,7 +400,7 @@ class CudnnGRUCell(Layer):
 
     def forward(self, input, pre_hidden):
 
-        if self._cudnn_compatibale:
+        if self._use_cudnn_impl:
 
             igates = layers.matmul(input, y=self._weight_ih)
             igates = layers.elementwise_add(igates, self._bias_ih)

@@ -172,9 +172,9 @@ class TestNonCudnnGRU(unittest.TestCase):
                 self.input_size,
                 param_attr,
                 bias_attr,
-                cudnn_compatibale=False)
+                use_cudnn_impl=False)
             non_cudnn_gru = CudnnGRUCell(
-                self.hidden_size, self.input_size, cudnn_compatibale=False)
+                self.hidden_size, self.input_size, use_cudnn_impl=False)
 
             param_list = non_cudnn_gru.state_dict()
             named_param_list = named_non_cudnn_gru.state_dict()

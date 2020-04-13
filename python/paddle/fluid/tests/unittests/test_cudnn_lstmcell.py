@@ -187,9 +187,9 @@ class TestNonCudnnLSTM(unittest.TestCase):
                 self.input_size,
                 param_attr,
                 bias_attr,
-                cudnn_compatibale=False)
+                use_cudnn_impl=False)
             cudnn_lstm = CudnnLSTMCell(
-                self.hidden_size, self.input_size, cudnn_compatibale=False)
+                self.hidden_size, self.input_size, use_cudnn_impl=False)
 
             param_list = cudnn_lstm.state_dict()
             named_param_list = named_cudnn_lstm.state_dict()
