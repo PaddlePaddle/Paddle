@@ -6190,9 +6190,11 @@ def lod_reset(x, y=None, target_lod=None):
                 out.dims = [6, 1]
 
     Args:
-        x (Variable): Input variable which could be a Tensor or LoDTensor.
-        y (Variable|None): If provided, output's LoD would be derived
-                           from :attr:`y`.
+        x (Variable): Input variable which could be a Tensor or LoDTensor. 
+                      The data type should be int32, int64, float32 or float64.
+        y (Variable|None): If provided, output's LoD would be derived from :attr:`y`. 
+                           If y's lod level>0, the data type should be int32, int64, float32 or float64. 
+                           If y's lod level=0, the data type should be int32 or int64.
         target_lod (list|tuple|None): One level LoD which should be considered
                                       as target LoD when :attr:`y` not provided.
 
@@ -6255,8 +6257,10 @@ def lod_append(x, level):
                 x.dims = [6, 1]
 
     Args:
-        x (Variable): Input variable which could be a tensor or LoDTensor.
-        level (list|tuple|Variable): The LoD level to be appended into LoD of x.
+        x (Variable): Input variable which could be a tensor or LoDTensor. 
+                      The data type should be int32, int64, float32 or float64.
+        level (list|tuple|Variable): The LoD level to be appended into LoD of x. 
+                                     If level is variable and its lod level=0, the data type should be int32.
 
     Returns:
         Variable: Output variable with new LoD level.
