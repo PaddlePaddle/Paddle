@@ -64,27 +64,23 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
 
   void InferShape(framework::InferShapeContext* ctx) const {
     // check input
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Scale"), true,
-        platform::errors::InvalidArgument("Input(scale) should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput(framework::GradVarName("Y")), true,
-        platform::errors::InvalidArgument("Input(Y@GRAD) should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("SavedMean"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(SavedMean) should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("SavedVariance"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(SavedVariance) should not be null"));
+    OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale", "InplaceABNGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")), "Input",
+                   "Y@GRAD", "InplaceABNGrad");
+    OP_INOUT_CHECK(ctx->HasInput("SavedMean"), "Input", "SavedMean",
+                   "InplaceABNGrad");
+    OP_INOUT_CHECK(ctx->HasInput("SavedVariance"), "Input", "SavedVariance",
+                   "InplaceABNGrad");
 
     // check output
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")), "");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+                   "X@GRAD", "InplaceABNGrad");
 
     const bool has_scale_grad = ctx->HasOutput(framework::GradVarName("Scale"));
     const bool has_bias_grad = ctx->HasOutput(framework::GradVarName("Bias"));
 
     PADDLE_ENFORCE_EQ(
-        (has_scale_grad == has_bias_grad), true,
+        has_scale_grad, has_bias_grad,
         platform::errors::InvalidArgument(
             "Output(Scale@GRAD) and Output(Bias@GRAD) must be null "
             "or not be null at same time. But now, "
