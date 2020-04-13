@@ -268,28 +268,27 @@ class ReduceOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "ReduceOp");
     auto x_dims = ctx->GetInputDim("X");
     auto x_rank = x_dims.size();
-    PADDLE_ENFORCE_LE(
-        x_rank, 6, platform::errors::InvalidArgument(
-                       "ShapeError: The input tensor X's dimensions of Reduce "
-                       "should be less equal than 6. But received X's "
-                       "dimensions = %d, X's shape = [%s].",
-                       x_rank, x_dims));
+    PADDLE_ENFORCE_LE(x_rank, 6,
+                      platform::errors::InvalidArgument(
+                          "The input tensor X's dimensions of ReduceOp "
+                          "should be less equal than 6. But received X's "
+                          "dimensions = %d, X's shape = [%s].",
+                          x_rank, x_dims));
     auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
     PADDLE_ENFORCE_GT(dims.size(), 0,
                       platform::errors::InvalidArgument(
-                          "ShapeError: The input dim dimensions of Reduce "
+                          "The input dim dimensions of ReduceOp "
                           "should be greater than 0. But received the dim "
                           "dimesions of Reduce = %d.",
                           dims.size()));
 
     for (size_t i = 0; i < dims.size(); ++i) {
-      PADDLE_ENFORCE_LT(
-          dims[i], x_rank,
-          platform::errors::InvalidArgument(
-              "ShapeError: The reduce dim index %d should be in the "
-              "range [-dimension(X), dimension(X)] "
-              "which dimesion = %d. But received dim index = %d.",
-              i, x_rank, dims[i]));
+      PADDLE_ENFORCE_LT(dims[i], x_rank,
+                        platform::errors::InvalidArgument(
+                            "The reduce dim index %d should be in the "
+                            "range [-dimension(X), dimension(X)] "
+                            "which dimesion = %d. But received dim index = %d.",
+                            i, x_rank, dims[i]));
       if (dims[i] < 0) dims[i] = x_rank + dims[i];
     }
     sort(dims.begin(), dims.end());
@@ -352,19 +351,19 @@ class ReduceGradOp : public framework::OperatorWithKernel {
                    "Out@GRAD", "ReduceOp");
     auto x_dims = ctx->GetInputDim("X");
     auto x_rank = x_dims.size();
-    PADDLE_ENFORCE_LE(x_rank, 6, platform::errors::InvalidArgument(
-                                     "Tensors with rank at most 6 are "
-                                     "supported. Received tensor with rank %d",
-                                     x_rank));
+    PADDLE_ENFORCE_LE(x_rank, 6,
+                      platform::errors::InvalidArgument(
+                          "Tensors with rank at most 6 are supported by "
+                          "ReduceOp. Received tensor with rank %d.",
+                          x_rank));
     auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
     for (size_t i = 0; i < dims.size(); ++i) {
-      PADDLE_ENFORCE_LT(
-          dims[i], x_rank,
-          platform::errors::InvalidArgument(
-              "ShapeError: The reduce dim index %d should be in the "
-              "range [-dimension(X), dimension(X)]."
-              "which dimesion = %d, But received dim index = %d",
-              i, x_rank, dims[i]));
+      PADDLE_ENFORCE_LT(dims[i], x_rank,
+                        platform::errors::InvalidArgument(
+                            "The reduce dim index %d should be in the "
+                            "range [-dimension(X), dimension(X)], "
+                            "which dimesion = %d. But received dim index = %d.",
+                            i, x_rank, dims[i]));
       if (dims[i] < 0) dims[i] = x_rank + dims[i];
     }
     sort(dims.begin(), dims.end());

@@ -97,7 +97,7 @@ class API_NormTest(unittest.TestCase):
                 data = fluid.data(name="x", shape=[3, 3], dtype="int64")
                 out = fluid.layers.l2_normalize(data)
 
-            self.assertRaises(TypeError, l2_normalize)
+            self.assertRaises(TypeError, test_norm_x_type)
 
 
 if __name__ == '__main__':

@@ -71,7 +71,7 @@ class NormOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "norm");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Input",
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
                    "X@GRAD", "norm");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }

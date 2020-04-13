@@ -343,14 +343,15 @@ class MatMulOp : public framework::OperatorWithKernel {
     }
 
     if (context->IsRuntime()) {
-      OP_INOUT_CHECK(
+      PADDLE_ENFORCE_EQ(
           mat_dim_x.batch_size_ == mat_dim_y.batch_size_ ||
               mat_dim_x.batch_size_ == 0 || mat_dim_y.batch_size_ == 0,
-          "ShapeError: The batch size of the two matrices should be equal, or "
-          "at least one is zero.\n"
-          "But received X's shape: %s, Y's shape: %s.",
-          DumpMatrixShape(mat_dim_x).c_str(),
-          DumpMatrixShape(mat_dim_y).c_str());
+          true, platform::errors::InvalidArgument(
+                    "The batch size of the two matrices should be equal, or "
+                    "at least one is zero.\n"
+                    "But received X's shape: %s, Y's shape: %s.",
+                    DumpMatrixShape(mat_dim_x).c_str(),
+                    DumpMatrixShape(mat_dim_y).c_str()));
     }
     int64_t dim_out_y = mat_dim_y.width_;
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
@@ -360,23 +361,22 @@ class MatMulOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_LE(
           head_number, mat_dim_x.width_,
           platform::errors::InvalidArgument(
-              "ShapeError: Unsatisfied mkl acceleration library requirements: "
+              "Unsatisfied mkl acceleration library requirements: "
               "The number of heads "
               "(%d) must be equal to X's width. But received X's shape: %s.",
-              head_number, DumpMatrixShape(mat_dim_x)));
+              head_number, DumpMatrixShape(mat_dim_x).c_str()));
 
       if (!split_vertical_y && head_number > 0) {
         dim_out_y = head_number * mat_dim_y.width_;
       }
     }
 #else
-    PADDLE_ENFORCE_EQ(
-        mat_dim_x.width_, mat_dim_y.height_,
-        platform::errors::InvalidArgument(
-            "ShapeError: Input X's width should be equal to the Y's height, "
-            "but received X's shape: [%s],"
-            "Y's shape: [%s].",
-            dim_x, dim_y));
+    PADDLE_ENFORCE_EQ(mat_dim_x.width_, mat_dim_y.height_,
+                      platform::errors::InvalidArgument(
+                          "Input X's width should be equal to the Y's height, "
+                          "but received X's shape: [%s],"
+                          "Y's shape: [%s].",
+                          dim_x, dim_y));
 #endif
 
     std::vector<int64_t> dim_out;

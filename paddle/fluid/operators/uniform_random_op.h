@@ -50,8 +50,8 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
     return vec_new_data;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "The dtype of shape tensor must be int32 or int64 "
-        "(uniform_random_op)."));
+        "The dtype of shape tensor in uniform_random_op must be int32 or "
+        "int64."));
   }
 }
 
@@ -65,7 +65,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
         tensor->dims(), framework::make_ddim({1}),
         platform::errors::InvalidArgument(
             "Shape of dim tensor in uniform_random_op should be [1]"
-            "But received tensor's dim=%s",
+            "But received tensor's dim=%s.",
             tensor->dims()));
 
     if (tensor->type() == framework::proto::VarType::INT32) {

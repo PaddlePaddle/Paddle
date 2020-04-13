@@ -52,7 +52,7 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "uniform_random_op's output only supports SelectedRows and "
-          "LoDTensor"));
+          "LoDTensor."));
     }
     T *data = tensor->mutable_data<T>(ctx.GetPlace());
     unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
@@ -77,7 +77,7 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_GT(
           size, (diag_num - 1) * (diag_step + 1),
           platform::errors::InvalidArgument(
-              "ShapeError: the diagonal's elements is equal (num-1) * (step-1) "
+              "The diagonal's elements is equal (num-1) * (step-1) "
               "with num %d, step %d, It should be smaller than %d, but "
               "received %d.",
               diag_num, diag_step, (diag_num - 1) * (diag_step + 1), size));
@@ -131,7 +131,7 @@ class UniformRandomOp : public framework::OperatorWithKernel {
       auto shape_dims = ctx->GetInputDim("ShapeTensor");
       PADDLE_ENFORCE_EQ(shape_dims.size(), 1,
                         platform::errors::InvalidArgument(
-                            "ShapeError: Input(ShapeTensor)' dimension size of "
+                            "Input(ShapeTensor)' dimension size of "
                             "Op(uniform_random) must be 1. But received "
                             "ShapeTensor's dimensions = %d, shape = [%s].",
                             shape_dims.size(), shape_dims));

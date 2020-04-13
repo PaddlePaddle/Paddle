@@ -171,10 +171,11 @@ static inline void CheckReduceRankIsValid(int reduce_rank, int rank) {
   } else {
     auto lower_rank = (rank - 1) / 2;
     auto upper_rank = (rank + 1) / 2;
-    PADDLE_ENFORCE(reduce_rank == lower_rank || reduce_rank == upper_rank,
-                   "ReduceOp: invalid reduce rank. When rank = %d, reduce_rank "
-                   "must be %d or %d, but got %d.",
-                   rank, lower_rank, upper_rank, reduce_rank);
+    PADDLE_ENFORCE_EQ(
+        reduce_rank == lower_rank || reduce_rank == upper_rank, true,
+        "ReduceOp: invalid reduce rank. When rank = %d, reduce_rank "
+        "must be %d or %d, but got %d.",
+        rank, lower_rank, upper_rank, reduce_rank);
   }
 }
 
