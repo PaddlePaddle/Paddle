@@ -26,18 +26,9 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("BBoxes"), true,
-        platform::errors::NotFound("Input(BBoxes) of MultiClassNMS is not "
-                                   "found."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Scores"), true,
-        platform::errors::NotFound("Input(Scores) of MultiClassNMS is not "
-                                   "found."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
-        platform::errors::NotFound("Output(Out) of MultiClassNMS is not "
-                                   "found."));
+    OP_INOUT_CHECK(ctx->HasInput("BBoxes"), "Input", "BBoxes", "MultiClassNMS");
+    OP_INOUT_CHECK(ctx->HasInput("Scores"), "Input", "Scores", "MultiClassNMS");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "MultiClassNMS");
 
     auto box_dims = ctx->GetInputDim("BBoxes");
     auto score_dims = ctx->GetInputDim("Scores");
@@ -70,11 +61,10 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_EQ(
             box_dims[1], score_dims[2],
             platform::errors::InvalidArgument(
-                "The 2nd dimension of Input"
-                "(BBoxes) must be equal to last dimension of Input(Scores), "
-                "which represents the predicted bboxes. But received box_dim = "
-                "%d, "
-                "score_dim = %d",
+                "The 2nd dimension of Input(BBoxes) must be equal to "
+                "last dimension of Input(Scores), which represents the "
+                "predicted bboxes."
+                "But received box_dims[1](%s) != socre_dims[2](%s)",
                 box_dims[1], score_dims[2]));
       } else {
         PADDLE_ENFORCE_EQ(box_dims[2], 4,

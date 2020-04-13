@@ -505,7 +505,7 @@ class TestGenerateProposals(unittest.TestCase):
                 name='bbox_deltas',
                 shape=[num_anchors * 4, 8, 8],
                 dtype='float32')
-            rpn_rois, rpn_roi_probs = fluid.layers.generate_proposals(
+            rpn_rois, rpn_roi_probs, _ = fluid.layers.generate_proposals(
                 name='generate_proposals',
                 scores=scores,
                 bbox_deltas=bbox_deltas,

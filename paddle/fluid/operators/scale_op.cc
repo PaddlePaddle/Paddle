@@ -28,16 +28,16 @@ class ScaleOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of ScaleOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of ScaleOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "scale");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "scale");
 
     if (ctx->IsRuntime() && ctx->HasInput("ScaleTensor")) {
       auto scale = ctx->Inputs("ScaleTensor");
       PADDLE_ENFORCE_EQ(scale.size(), 1,
                         platform::errors::InvalidArgument(
-                            "Input(ScaleTensor) size must be 1"));
+                            "Input(ScaleTensor) size must be 1, "
+                            "but received size is %d.",
+                            scale.size()));
     }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
