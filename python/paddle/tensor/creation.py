@@ -665,7 +665,7 @@ def triu(input, diagonal=0, name=None):
     return _tril_triu_op(LayerHelper('triu', **locals()))
 
 
-def meshgrid(x, name=None):
+def meshgrid(input, name=None):
     """
     This op takes a list of N tensors as input, each of which can be either scalr or 1-dimensional 
     vector, and create N-dimensional grids.
@@ -702,14 +702,15 @@ def meshgrid(x, name=None):
           #the shape of res_2 is (100, 200)
 
       .. code-block:: python
-          #in dygraph mode
+
+          #example 2: in dygraph mode
 
           x = np.random.randint(0, 100, [100, ]).astype('int32')
           y = np.random.randint(0, 100, [200, ]).astype('int32')
           with fluid.dygraph.guard():
-          x = fluid.dygraph.to_variable(input_3)
-          y = fluid.dygraph.to_variable(input_4)
-          grid_x, grid_y = paddle.tensor.meshgrid([tensor_3, tensor_4])
+              x = fluid.dygraph.to_variable(input_3)
+              y = fluid.dygraph.to_variable(input_4)
+              grid_x, grid_y = paddle.tensor.meshgrid([tensor_3, tensor_4])
 
           #the shape of grid_x is (100, 200)
           #the shape of grid_y is (100, 200)
@@ -717,25 +718,25 @@ def meshgrid(x, name=None):
     """
 
     if in_dygraph_mode():
-        num = len(x)
-        out = core.ops.meshgrid(x, num)
+        num = len(input)
+        out = core.ops.meshgrid(input, num)
         return out
 
     helper = LayerHelper('meshgrid', **locals())
 
-    if not isinstance(x, list):
+    if not isinstance(input, list):
         raise TypeError("The type of input in meshgrid should be list.")
 
-    for id, x_ in enumerate(x):
-        check_dtype(x_.dtype, 'create data type',
+    for id, input_ in enumerate(input):
+        check_dtype(input_.dtype, 'create data type',
                     ['float16', 'float32', 'float64', 'int32', 'int64'],
                     'meshgrid')
 
-    num = len(x)
+    num = len(input)
     out = [
-        helper.create_variable_for_type_inference(dtype=x[i].dtype)
+        helper.create_variable_for_type_inference(dtype=input[i].dtype)
         for i in range(num)
     ]
-    helper.append_op(type='meshgrid', inputs={'X': x}, outputs={'Out': out})
+    helper.append_op(type='meshgrid', inputs={'X': input}, outputs={'Out': out})
 
     return out
