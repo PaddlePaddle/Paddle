@@ -82,7 +82,7 @@ from .layer.norm import InstanceNorm  #DEFINE_ALIAS
 # from .layer.norm import SpectralNorm   #DEFINE_ALIAS
 # from .layer.activation import PReLU   #DEFINE_ALIAS
 from .layer.activation import ReLU  #DEFINE_ALIAS
-# from .layer.activation import Sigmoid   #DEFINE_ALIAS
+from .layer.activation import Sigmoid  #DEFINE_ALIAS
 # from .layer.activation import Softmax   #DEFINE_ALIAS
 from .layer.activation import LogSoftmax  #DEFINE_ALIAS
 # from .layer.rnn import RNNCell   #DEFINE_ALIAS
@@ -192,7 +192,7 @@ from .functional.conv import conv3d_transpose  #DEFINE_ALIAS
 from .functional.activation import relu  #DEFINE_ALIAS
 # from .functional.activation import relu6   #DEFINE_ALIAS
 # from .functional.activation import selu   #DEFINE_ALIAS
-# from .functional.activation import sigmoid   #DEFINE_ALIAS
+from .functional.activation import sigmoid  #DEFINE_ALIAS
 # from .functional.activation import soft_relu   #DEFINE_ALIAS
 # from .functional.activation import softmax   #DEFINE_ALIAS
 # from .functional.activation import softplus   #DEFINE_ALIAS
