@@ -775,6 +775,57 @@ class TestLog(TestActivation):
         self.assertRaises(TypeError, fluid.layers.log, in2)
 
 
+class TestLog1p(TestActivation):
+    def setUp(self):
+        self.op_type = "log1p"
+        self.init_dtype()
+
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
+        out = np.log1p(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out')
+
+    def test_api(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
+            data_x = fluid.layers.data(
+                name="data_x",
+                shape=[11, 17],
+                append_batch_size=False,
+                dtype="float64")
+            res_log1p = fluid.layers.data(
+                name="res_log1p",
+                shape=[11, 17],
+                append_batch_size=False,
+                dtype="float64")
+
+            out1 = paddle.log1p(data_x)
+            out2 = paddle.log1p(data_x, out=res_log1p)
+            exe = fluid.Executor(place=fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+            res1, res_in = exe.run(fluid.default_main_program(),
+                                   feed={"data_x": input_x},
+                                   fetch_list=[out1, res_log1p])
+        expected_res = np.log1p(input_x)
+        np.testing.assert_allclose(res1, expected_res)
+        np.testing.assert_allclose(res_in, expected_res)
+
+        # dygraph
+        with fluid.dygraph.guard():
+            np_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
+            data_x = fluid.dygraph.to_variable(np_x)
+            z = paddle.log1p(data_x)
+            np_z = z.numpy()
+            z_expected = np.array(np.log1p(np_x))
+        np.testing.assert_allclose(np_z, z_expected)
+
+
 class TestSquare(TestActivation):
     def setUp(self):
         self.op_type = "square"
@@ -1173,6 +1224,7 @@ create_test_act_fp16_class(TestSoftRelu)
 create_test_act_fp16_class(TestELU)
 create_test_act_fp16_class(TestReciprocal)
 create_test_act_fp16_class(TestLog)
+create_test_act_fp16_class(TestLog1p, grad_atol=0.9)
 create_test_act_fp16_class(TestSquare)
 create_test_act_fp16_class(TestPow, atol=5e-2)
 create_test_act_fp16_class(TestPow_factor_tensor, atol=5e-2)
