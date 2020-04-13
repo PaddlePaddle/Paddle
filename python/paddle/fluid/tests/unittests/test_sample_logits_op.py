@@ -60,10 +60,17 @@ class TestSampleLogitsOp(OpTest):
             (Samples, Probabilities, LogitsDim, LabelsDim, SampledLogits,
              SampledLabels) = [np.array(o) for o in self.calc_output(p)]
 
-            assert Samples.dtype == np.int64
-            assert Probabilities.dtype == np.float64
-            assert SampledLogits.dtype == np.float64
-            assert SampledLabels.dtype == np.int64
+            assert Samples.dtype == np.int64, \
+                "Samples dtype is {}, not int64".format(Samples.dtype)
+            assert Probabilities.dtype == np.float64, \
+                "Probabilities dtype is {}, not float64".format(
+                    Probabilities.dtype)
+            assert SampledLogits.dtype == np.float64, \
+                "SampledLogits dtype is {}, not float64".format(
+                    SampledLogits.dtype)
+            assert SampledLabels.dtype == np.int64, \
+                "SampledLabels dtype is {}, not int64".format(
+                    SampledLabels.dtype)
 
             assert Samples.shape == (self.bs, self.NT + self.S)
             assert Probabilities.shape == (self.bs, self.NT + self.S)
