@@ -37,7 +37,7 @@ class HSigmoid(layers.Layer):
     represents the number of classes or the size of word dict.
 
     The OP supports default tree and custom tree. For the default tree, you can refer to `Hierarchical Probabilistic Neural
-    Network Language Model <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>`. For the custom
+    Network Language Model <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>_`. For the custom
     tree, you need to set :attr:`is_custom` to True, and do the following steps (take the language model as an example):
 
     1. Using a custom word dict to build a binary tree, each leaf node should be an word in the word dict.
@@ -69,7 +69,7 @@ class HSigmoid(layers.Layer):
             gradient of W and input will be sparse. Default: False.
 
     Returns:
-        Variable: A tensor with the cost of hierarchical sigmoid, its shape is [N, 1] and data type is the same as :attr:`input`.
+        None
 
     Examples:
 

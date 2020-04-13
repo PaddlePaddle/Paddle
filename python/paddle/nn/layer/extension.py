@@ -20,12 +20,14 @@ from .. import functional as F
 
 class RowConv(layers.Layer):
     """
-    ***Row-convolution operator***
+    **Row-convolution operator**
 
-    The row convolution is called lookahead convolution.  This operator was introduced in the following paper for DeepSpeech2:
-    http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf
+    The row convolution is called lookahead convolution.  This operator was 
+    introduced in the following paper for 
+    `DeepSpeech2 <http://www.cs.cmu.edu/~dyogatam/papers/wang+etal.iclrworkshop2016.pdf>`_.
 
-    The main motivation is that a bidirectional RNN, useful in DeepSpeech like speech models, learns representation for a sequence by performing a
+    The main motivation is that a bidirectional RNN, useful in DeepSpeech like 
+    speech models, learns representation for a sequence by performing a
     forward and a backward pass through the entire sequence. However, unlike
     unidirectional RNNs, bidirectional RNNs are challenging to deploy in an online
     and low-latency setting. The lookahead convolution incorporates information
@@ -33,9 +35,11 @@ class RowConv(layers.Layer):
     unidirectional recurrent neural networks. The row convolution operator is
     different from the 1D sequence convolution, and is computed as follows:
 
-    Given an input sequence X of length t and input dimension D, and a filter (W) of size context * D.
+    Given an input sequence X of length t and input dimension D, and a filter 
+    (W) of size context * D.
 
-    More details about row_conv please refer to the design document https://github.com/PaddlePaddle/Paddle/issues/2228#issuecomment-303903645 .
+    More details about row_conv please refer to the design document 
+    `<https://github.com/PaddlePaddle/Paddle/issues/2228#issuecomment-303903645>`_ .
 
     Parameters:
         num_channels (int): input data's feature size.
