@@ -37,12 +37,12 @@ class ROIPoolOp : public framework::OperatorWithKernel {
       auto rois_lod_dims = ctx->GetInputDim("RoisLod");
       PADDLE_ENFORCE(rois_lod_dims.size() == 1, "");
     }
-    PADDLE_ENFORCE(input_dims.size() == 4, platform::errors::InvalidArgument(
+    PADDLE_ENFORCE_EQ(input_dims.size(), 4, platform::errors::InvalidArgument(
                    "The format of input tensor is NCHW."));
-    PADDLE_ENFORCE(rois_dims.size() == 2, platform::errors::InvalidArgument(
+    PADDLE_ENFORCE_EQ(rois_dims.size(), 2, platform::errors::InvalidArgument(
                    "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
                    "given as [[x1, y1, x2, y2], ...]."));
-    PADDLE_ENFORCE(rois_dims[1] == kROISize, platform::errors::InvalidArgument(
+    PADDLE_ENFORCE_EQ(rois_dims[1], kROISize, platform::errors::InvalidArgument(
                    "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
                    "given as [[x1, y1, x2, y2], ...]."));
 
