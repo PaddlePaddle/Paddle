@@ -263,9 +263,7 @@ class TestLinearInterpOpAPI(unittest.TestCase):
         out1 = fluid.layers.resize_linear(x, out_shape=[12, 12])
         out2 = fluid.layers.resize_linear(x, out_shape=[12, dim])
         out3 = fluid.layers.resize_linear(x, out_shape=shape_tensor)
-        out4 = fluid.layers.resize_linear(
-            x, out_shape=[4, 4], actual_shape=actual_size)
-        out5 = fluid.layers.resize_linear(x, scale=scale_tensor)
+        out4 = fluid.layers.resize_linear(x, scale=scale_tensor)
 
         x_data = np.random.random((2, 3, 6, 6)).astype("float32")
         dim_data = np.array([12]).astype("int32")
@@ -287,7 +285,7 @@ class TestLinearInterpOpAPI(unittest.TestCase):
                               "actual_size": actual_size_data,
                               "scale_tensor": scale_data
                           },
-                          fetch_list=[out1, out2, out3, out4, out5],
+                          fetch_list=[out1, out2, out3, out4],
                           return_numpy=True)
 
         expect_res = linear_interp_np(
