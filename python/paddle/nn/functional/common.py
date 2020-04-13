@@ -228,7 +228,7 @@ def interpolate(input,
         .. code-block:: python
 
 	    #declarative mode
-	    import paddle.fluid as fluid
+	    import paddle
 	    import numpy as np
 	    input = fluid.data(name="input", shape=[None,3,6,10])
 	    #1
