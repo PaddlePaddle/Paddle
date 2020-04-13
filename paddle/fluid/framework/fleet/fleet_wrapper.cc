@@ -581,7 +581,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
         slot = boost::lexical_cast<int>(sparse_key_names[i]);     
       } catch(boost::bad_lexical_cast& e)  {  
          // bad lexical cast: source type value could not be interpreted as target  
-        slot = 1;
+        slot = -1;
       }
     }
     Variable* g_var = scope.FindVar(sparse_grad_names[i]);
