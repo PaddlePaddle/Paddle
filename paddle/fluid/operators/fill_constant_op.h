@@ -49,11 +49,11 @@ inline framework::DDim GetShape(const framework::ExecutionContext &ctx) {
       auto tensor = shape_tensor_list[i];
       PADDLE_ENFORCE_EQ(
           tensor->dims(), framework::make_ddim({1}),
-          "ShapeError: If the element type of 'shape' in FillConstantOp is "
-          "Tensor, "
-          "the element's shape must be [1]. But received the element's shape "
-          "is [%s]",
-          tensor->dims());
+          platform::errors::InvalidArgument(
+              "If the element type of 'shape'(tensor_list type) in "
+              "FillConstantOp is Tensor, the shape of this Tensor element must "
+              "be [1]. But received the Tensor element's shape is [%s]",
+              tensor->dims()));
       if (platform::is_gpu_place(tensor->place())) {
         framework::Tensor temp;
         TensorCopySync(*tensor, platform::CPUPlace(), &temp);
@@ -124,9 +124,9 @@ class FillConstantKernel : public framework::OpKernel<T> {
       tensor = out_var->GetMutable<framework::SelectedRows>()->mutable_value();
       tensor->Resize(shape);
     } else {
-      PADDLE_THROW(
-          "fill constant op's output only"
-          "supports SelectedRows and LoDTensor");
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "In fill constant Op, the output only supports SelectedRows and "
+          "LoDTensor."));
     }
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();

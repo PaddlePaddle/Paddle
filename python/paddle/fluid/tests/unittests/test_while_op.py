@@ -21,6 +21,7 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid.backward import append_backward
 import numpy
+from paddle.fluid import compiler, Program, program_guard
 
 
 class TestWhileOp(unittest.TestCase):
@@ -120,6 +121,17 @@ class TestWhileOp(unittest.TestCase):
         cond = layers.cast(cond, dtype='float64')
         with self.assertRaises(TypeError):
             layers.While(cond=cond)
+
+
+class BadInputTest(unittest.TestCase):
+    def test_error(self):
+        with fluid.program_guard(fluid.Program()):
+
+            def test_bad_x():
+                x = [1, 2, 3]
+                fluid.layers.increment(x)
+
+            self.assertRaises(TypeError, test_bad_x)
 
 
 if __name__ == '__main__':

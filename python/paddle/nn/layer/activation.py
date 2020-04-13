@@ -21,7 +21,7 @@ from .. import functional
 __all__ = [
     # 'PReLU',
     'ReLU',
-    # 'Sigmoid',
+    'Sigmoid',
     # 'Softmax',
     'LogSoftmax',
 ]
@@ -64,6 +64,48 @@ class ReLU(layers.Layer):
 
     def forward(self, input):
         return functional.relu(input, self._inplace)
+
+
+class Sigmoid(layers.Layer):
+    """
+    Sigmoid Activation.
+    
+    .. math:
+
+        output = \frac{1}{1 + e^{-input}}
+
+    Parameters:
+        inplace (bool, optional): If inplace is True, the input and output
+            are the same variable. Otherwise, the input and output
+            are different variables. Default False. Note that if x is
+            more than one OPs' input, inplace must be False.
+    
+    Returns:
+        None
+    
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          import paddle.nn as nn
+          import numpy as np
+          input = fluid.data(name="input", shape=[None, 4])
+          output = nn.Sigmoid()(input)
+          place = fluid.CPUPlace()
+          exe = fluid.Executor(place)
+          exe.run(fluid.default_startup_program())
+          input_data = np.array([1.0, 2.0, 3.0, 4.0]).astype('float32')
+          output_data = exe.run(feed={"input": input_data},
+                                fetch_list=[output])
+          print(output_data) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
+    """
+
+    def __init__(self, inplace=False):
+        super(Sigmoid, self).__init__()
+        self._inplace = inplace
+
+    def forward(self, input):
+        return functional.sigmoid(input, self._inplace)
 
 
 class LogSoftmax(layers.Layer):
