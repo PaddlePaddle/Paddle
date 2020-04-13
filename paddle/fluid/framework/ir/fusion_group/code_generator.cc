@@ -226,7 +226,8 @@ std::string CodeGenerator::EmitParameters(
   // from the input list.
   for (auto id : input_ids) {
     if (output_ids.find(id) == output_ids.end()) {
-      ret << dtypes.at(id) << "* " << ArgName(id) << ", ";
+      ret << "const " << dtypes.at(id) << "* __restrict__ " << ArgName(id)
+          << ", ";
     }
   }
 
@@ -258,7 +259,8 @@ std::string CodeGenerator::EmitComputeBody(
   for (auto id : input_ids) {
     if (output_ids.find(id) == output_ids.end() &&
         used.find(id) != used.end()) {
-      load << dtypes.at(id) << " " << TmpName(id) << " = " << VarName(id)
+      load << dtypes.at(id) << " " << TmpName(id) << " = "
+           << "__ldg(&" << VarName(id) << ")"
            << ";";
     }
   }
