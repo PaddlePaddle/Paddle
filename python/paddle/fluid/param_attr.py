@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import six
 import warnings
+import sys
 
 from .initializer import Initializer, Xavier, Constant
 from .regularizer import WeightDecayRegularizer
@@ -79,9 +80,10 @@ class ParamAttr(object):
                  trainable=True,
                  do_model_average=True):
 
-        #compatible with python3
-        if not isinstance(name, str):
-            check_type(name, "name", (type(None), unicode), "ParamAttr")
+        if sys.version_info.major == 2:
+            check_type(name, "name", (str, type(None), unicode), "ParamAttr")
+        else:
+            check_type(name, "name", (str, type(None)), "ParamAttr")
         check_type(learning_rate, "learning_rate", (float, int), "ParamAttr")
         check_type(trainable, "trainable", (bool), "ParamAttr")
         check_type(do_model_average, "do_model_average", (bool), "ParamAttr")
