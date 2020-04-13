@@ -1169,6 +1169,16 @@ def lod_tensor_to_array(x, table):
           table = fluid.layers.lod_rank_table(x, level=0)
           array = fluid.layers.lod_tensor_to_array(x, table)
     """
+    check_type(x, 'x', (Variable, list), 'lod_tensor_to_array')
+    if isinstance(x, (list)):
+        for i, input_x in enumerate(x):
+            check_type(input_x, 'input[' + str(i) + ']', Variable,
+                       'lod_tensor_to_array')
+    check_type(table, 'table', (Variable, list), 'lod_tensor_to_array')
+    if isinstance(table, (list)):
+        for i, table_x in enumerate(table):
+            check_type(table_x, 'table[' + str(i) + ']', Variable,
+                       'lod_tensor_to_array')
     helper = LayerHelper("lod_tensor_to_array", **locals())
     array = helper.create_variable(
         name=unique_name.generate("lod_tensor_to_array"),
@@ -1204,6 +1214,17 @@ def array_to_lod_tensor(x, table):
           array = fluid.layers.lod_tensor_to_array(x, table)
           lod_tensor = fluid.layers.array_to_lod_tensor(array, table)
     """
+    check_type(x, 'x', (Variable, list), 'array_to_lod_tensor')
+    if isinstance(x, (list)):
+        for i, input_x in enumerate(x):
+            check_type(input_x, 'input[' + str(i) + ']', Variable,
+                       'array_to_lod_tensor')
+    check_type(table, 'table', (Variable, list), 'array_to_lod_tensor')
+    if isinstance(table, (list)):
+        for i, table_x in enumerate(table):
+            check_type(table_x, 'table[' + str(i) + ']', Variable,
+                       'array_to_lod_tensor')
+
     helper = LayerHelper("array_to_lod_tensor", **locals())
     tmp = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
