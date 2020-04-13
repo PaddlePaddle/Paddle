@@ -74,7 +74,8 @@ void SetReaderOpDeviceInfo(Graph *graph, size_t dev_cnt, size_t dev_idx) {
       op_base_attrs["device_count"] = static_cast<int>(dev_cnt);
 
       ++found_op_num;
-      VLOG(10) << "Found op " << op_desc->Type() << " on device " << dev_idx;
+      VLOG(10) << "Found op " << op_desc->Type() << " on device "
+               << actual_dev_idx;
     }
   }
 
