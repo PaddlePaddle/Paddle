@@ -3698,6 +3698,25 @@ class Program(object):
     def global_seed(self, seed=0):
         """
         Set global seed for Program
+
+        Returns:
+            None.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                prog = fluid.default_main_program()
+                print(prog.random_seed)
+                ## 0
+                ## the default random seed is 0
+
+                prog.global_seed(102)
+                prog1 = fluid.default_main_program()
+                print(prog1.random_seed)
+                ## 102
+                ## the random seed is 102
         """
         global global_prog_seed
         global_prog_seed = seed
