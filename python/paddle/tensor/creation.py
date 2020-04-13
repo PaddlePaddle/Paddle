@@ -667,17 +667,17 @@ def triu(input, diagonal=0, name=None):
 
 def meshgrid(input, name=None):
     """
-    This op takes a list of N tensors as input, each of which can be either scalr or 1-dimensional 
-    vector, and create N-dimensional grids.
+    This op takes a list of N tensors as input, each of which is 1-dimensional 
+    vector, and creates N-dimensional grids.
     
     Args:
-        input(Variable) : tensors (list of tensor): the input k tensors has (N1,), 
+        input(Variable) : tensors (list of tensor): the shapes of input k tensors are (N1,), 
             (N2,),..., (Nk,). Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
         name (str, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
  
     Returns:
-         Variable: k tensors are of size(N1, N2, ..., Nk)
+         Variable: k tensors. The shape of each tensor is (N1, N2, ..., Nk)
 
     Examples:
       .. code-block:: python
