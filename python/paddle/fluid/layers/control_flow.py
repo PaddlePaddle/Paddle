@@ -192,7 +192,7 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
                 in_true=out_true, in_false=out_false, mask=y, x=x, level=level)
     """
     helper = LayerHelper('merge_lod_tensor', **locals())
-    check_type(input, 'input', (Variable, list, tuple, type(None)),
+    check_type(x, 'input', (Variable, list, tuple, type(None)),
                'fluid.layers.merge_lod_tensor')
     check_type(mask, 'mask', (Variable, list), 'fluid.layers.merge_lod_tensor')
     check_type(level, 'level', int, 'fluid.layers.merge_lod_tensor')
