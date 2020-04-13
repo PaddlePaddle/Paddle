@@ -25,8 +25,8 @@ namespace math {
 template <typename DeviceContext, typename T>
 class MatrixInverseFunctor {
  public:
-  void operator()(const DeviceContext& context, const framework::Tensor& A,
-                  framework::Tensor* A_inv);
+  void operator()(const DeviceContext& context, const framework::Tensor& a,
+                  framework::Tensor* a_inv);
 };
 
 }  // namespace math

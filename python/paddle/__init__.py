@@ -138,7 +138,7 @@ from .tensor.math import div  #DEFINE_ALIAS
 from .tensor.math import add  #DEFINE_ALIAS
 # from .tensor.math import atan   #DEFINE_ALIAS
 from .tensor.math import logsumexp  #DEFINE_ALIAS
-# from .tensor.math import inverse   #DEFINE_ALIAS
+from .tensor.math import inverse  #DEFINE_ALIAS
 # from .tensor.math import log1p   #DEFINE_ALIAS
 # from .tensor.math import erf   #DEFINE_ALIAS
 # from .tensor.math import addcmul   #DEFINE_ALIAS

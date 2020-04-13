@@ -461,6 +461,44 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
 #endif  // CUDA_VERSION >= 9010
 }
 
+template <>
+template <typename T>
+void Blas<platform::CUDADeviceContext>::BatchedGETRF(int n, T **a, int *ipiv,
+                                                     int *info,
+                                                     int batch_size) const {
+  context_.CublasCall([&](cublasHandle_t handle) {
+    CUBlas<T>::GETRF_BATCH(handle, n, a, n, ipiv, info, batch_size);
+  });
+}
+
+template <>
+template <typename T>
+void Blas<platform::CUDADeviceContext>::BatchedGETRI(int n, const T **a,
+                                                     const int *ipiv, T **a_inv,
+                                                     int *info,
+                                                     int batch_size) const {
+  PADDLE_ENFORCE_NE(
+      a_inv, a,
+      platform::errors::InvalidArgument(
+          "cuBLAS fuction 'cublas<S/D>getrfBatched' cannot be executed "
+          "in-place. The memory space of output matrix (address: %p) cannot "
+          "overlap memory space of input matrix (address: %p).",
+          a_inv, a));
+  context_.CublasCall([&](cublasHandle_t handle) {
+    CUBlas<T>::GETRI_BATCH(handle, n, a, n, ipiv, a_inv, n, info, batch_size);
+  });
+}
+
+template <>
+template <typename T>
+void Blas<platform::CUDADeviceContext>::BatchedMatInv(int n, const T **a,
+                                                      T **a_inv, int *info,
+                                                      int batch_size) const {
+  context_.CublasCall([&](cublasHandle_t handle) {
+    CUBlas<T>::MATINV_BATCH(handle, n, a, n, a_inv, n, info, batch_size);
+  });
+}
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

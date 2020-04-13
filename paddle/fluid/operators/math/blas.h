@@ -226,6 +226,19 @@ class Blas {
   void GETRI(int n, T* a, const int* ipiv) const;
 #endif
 
+#ifdef PADDLE_WITH_CUDA
+  template <typename T>
+  void BatchedGETRF(int n, T** a, int* ipiv, int* info, int batch_size) const;
+
+  template <typename T>
+  void BatchedGETRI(int n, const T** a, const int* ipiv, T** a_inv, int* info,
+                    int batch_size) const;
+
+  template <typename T>
+  void BatchedMatInv(int n, const T** a, T** a_inv, int* info,
+                     int batch_size) const;
+#endif
+
  private:
   const DeviceContext& context_;
 };
@@ -368,6 +381,23 @@ class BlasT : private Blas<DeviceContext> {
   template <typename... ARGS>
   void GETRI(ARGS... args) const {
     Base()->template GETRI<T>(args...);
+  }
+#endif
+
+#ifdef PADDLE_WITH_CUDA
+  template <typename... ARGS>
+  void BatchedGETRF(ARGS... args) const {
+    Base()->template BatchedGETRF<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void BatchedGETRI(ARGS... args) const {
+    Base()->template BatchedGETRI<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void BatchedMatInv(ARGS... args) const {
+    Base()->template BatchedMatInv<T>(args...);
   }
 #endif
 

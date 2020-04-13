@@ -16,7 +16,7 @@ import unittest
 import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.tensor as tensor
+import paddle
 from op_test import OpTest
 
 
@@ -44,22 +44,31 @@ class TestInverseOpBatched(TestInverseOp):
 
 
 class TestInverseAPI(unittest.TestCase):
-    def check_static_result(self, place, N):
+    def check_static_result(self, place, N, with_out=False):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input = fluid.data(name="input", shape=[N, N], dtype="float32")
-            result = tensor.inverse(input=input)
+            if with_out:
+                out = fluid.data(name="output", shape=[N, N], dtype="float32")
+            else:
+                out = None
+            result = paddle.inverse(input=input, out=None)
 
             input_np = np.random.random([N, N]).astype("float32")
+            result_np = np.linalg.inv(input_np)
+
             exe = fluid.Executor(place)
-            result_np = exe.run(fluid.default_main_program(),
-                                feed={"input": input_np},
-                                fetch_list=[result])
+            fetches = exe.run(fluid.default_main_program(),
+                              feed={"input": input_np},
+                              fetch_list=[result])
             self.assertTrue(
                 np.allclose(
-                    result_np[0], np.linalg.inv(input_np), atol=1e-4))
+                    fetches[0], result_np, atol=1e-5),
+                "Output has diff at " + str(place) + " when the shape is " +
+                str(input.shape) + ". The maximum diff is " +
+                str(np.amax(np.absolute(fetches[0] - result_np))))
 
     def test_static(self):
-        for N in [4, 40]:
+        for N in [4, 36]:
             self.check_static_result(place=fluid.CPUPlace(), N=N)
             if core.is_compiled_with_cuda():
                 self.check_static_result(place=fluid.CUDAPlace(0), N=N)
@@ -68,7 +77,7 @@ class TestInverseAPI(unittest.TestCase):
         with fluid.dygraph.guard():
             input_np = np.array([[2, 0], [0, 2]]).astype("float32")
             input = fluid.dygraph.to_variable(input_np)
-            result = tensor.inverse(input)
+            result = paddle.inverse(input)
             self.assertTrue(
                 np.allclose(result.numpy(), np.linalg.inv(input_np)))
 
@@ -77,18 +86,18 @@ class TestInverseAPIError(unittest.TestCase):
     def test_errors(self):
         input_np = np.random.random([4, 4]).astype("float64")
 
-        self.assertRaises(TypeError, tensor.inverse, input_np)
+        self.assertRaises(TypeError, paddle.inverse, input_np)
 
         for dtype in ["bool", "int32", "int64", "float16"]:
             input = fluid.data(name='input_' + dtype, shape=[4, 4], dtype=dtype)
-            self.assertRaises(TypeError, tensor.inverse, input)
+            self.assertRaises(TypeError, paddle.inverse, input)
 
         input = fluid.data(name='input_1', shape=[4, 4], dtype="float32")
         out = fluid.data(name='output', shape=[4, 4], dtype="float64")
-        self.assertRaises(TypeError, tensor.inverse, input, out)
+        self.assertRaises(TypeError, paddle.inverse, input, out)
 
         input = fluid.data(name='input_2', shape=[4], dtype="float32")
-        self.assertRaises(ValueError, tensor.inverse, input)
+        self.assertRaises(ValueError, paddle.inverse, input)
 
 
 if __name__ == "__main__":

@@ -30,37 +30,37 @@ class MatrixInverseFunctor<platform::CPUDeviceContext, T> {
 
  public:
   void operator()(const platform::CPUDeviceContext& context,
-                  const framework::Tensor& A, framework::Tensor* A_inv) {
-    const auto& mat_dims = A.dims();
+                  const framework::Tensor& a, framework::Tensor* a_inv) {
+    const auto& mat_dims = a.dims();
     const int rank = mat_dims.size();
-    int N = mat_dims[rank - 1];
-    int batch_size = rank > 2 ? A.numel() / (N * N) : 1;
+    int n = mat_dims[rank - 1];
+    int batch_size = rank > 2 ? a.numel() / (n * n) : 1;
 
-    const T* A_ptr = A.data<T>();
-    T* A_inv_ptr = A_inv->mutable_data<T>(context.GetPlace());
+    const T* a_ptr = a.data<T>();
+    T* a_inv_ptr = a_inv->mutable_data<T>(context.GetPlace());
 
 #ifdef PADDLE_WITH_MKLML
     framework::Tensor ipiv;
-    int* ipiv_ptr = ipiv.mutable_data<int>({N}, context.GetPlace());
+    int* ipiv_ptr = ipiv.mutable_data<int>({n}, context.GetPlace());
 
-    if (A_ptr != A_inv_ptr) {
-      framework::TensorCopy(A, context.GetPlace(), A_inv);
+    if (a_ptr != a_inv_ptr) {
+      framework::TensorCopy(a, context.GetPlace(), a_inv);
     }
 
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
     for (int i = 0; i < batch_size; ++i) {
-      T* mat_ptr = A_inv_ptr + i * N * N;
+      T* mat_ptr = a_inv_ptr + i * n * n;
 
       // Compute the LU Factorization of a general m-by-n matrix: A = P*L*U
-      blas.GETRF(N, N, mat_ptr, ipiv_ptr);
+      blas.GETRF(n, n, mat_ptr, ipiv_ptr);
 
       // Computes the inverse of an LU-factored general matrix.
-      blas.GETRI(N, mat_ptr, ipiv_ptr);
+      blas.GETRI(n, mat_ptr, ipiv_ptr);
     }
 #else
     for (int i = 0; i < batch_size; ++i) {
-      ConstEigenMatrixMap mat(A_ptr + i * N * N, N, N);
-      EigenMatrixMap mat_inv(A_inv_ptr + i * N * N, N, N);
+      ConstEigenMatrixMap mat(a_ptr + i * n * n, n, n);
+      EigenMatrixMap mat_inv(a_inv_ptr + i * n * n, n, n);
       Eigen::PartialPivLU<Matrix> lu;
       lu.compute(mat);
 

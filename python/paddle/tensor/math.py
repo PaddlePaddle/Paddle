@@ -970,14 +970,14 @@ def inverse(input, out=None, name=None):
         .. code-block:: python
 
             import numpy as np
-            import paddle.tensor as tensor
+            import paddle
             import paddle.fluid as fluid
 
             mat_np = np.array([[2, 0], [0, 2]]).astype("float32")
 
             # example for static graph
             input = fluid.data("input", shape=[2, 2], dtype="float32")
-            out = tensor.inverse(input)
+            out = paddle.inverse(input)
         
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -988,7 +988,7 @@ def inverse(input, out=None, name=None):
             # example for dynamic graph
             with fluid.dygraph.guard():
                 mat = fluid.dygraph.to_variable(mat_np)
-                inv = tensor.inverse(mat)
+                inv = paddle.inverse(mat)
                 print(inv) # [[0.5, 0], [0, 0.5]]
     """
     if in_dygraph_mode():

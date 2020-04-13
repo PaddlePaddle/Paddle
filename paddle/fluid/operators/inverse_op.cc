@@ -55,7 +55,7 @@ class InverseOpMaker : public framework::OpProtoAndCheckerMaker {
         "Input",
         "(Tensor) A square matrix (2-D Tensor) or batches of square matrixs"
         " to inverse.");
-    AddOutput("Output", "(Tensor) The inverse matrix of input.");
+    AddOutput("Output", "(Tensor) The inverse of input matrix.");
     AddComment(R"DOC(
 Inverse Operator
 
