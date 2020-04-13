@@ -567,6 +567,88 @@ class PSLib(Fleet):
                         model_proto_file, table_var_names, load_combine)
         self._role_maker._barrier_worker()
 
+    def load_model(self, model_dir=None, **kwargs):
+        """
+        load pslib model, there are at least 4 modes, these modes are the same
+        in load one table/save model/save one table:
+        0: load checkpoint model
+        1: load delta model (delta means diff, it's usually for online predict)
+        2: load base model (base model filters some feasigns in checkpoint, it's
+           usually for online predict)
+        3: load batch model (do some statistic works in checkpoint, such as
+           calculate unseen days of each feasign)
+
+        Args:
+            model_dir(str): if you use hdfs, model_dir should starts with
+                            'hdfs:', otherwise means local dir
+            kwargs(dict): user-defined properties.
+                          mode(int): the modes illustrated above, default 0
+
+        Examples:
+            .. code-block:: python
+
+              fleet.load_model("afs:/user/path/")
+
+        """
+        mode = kwargs.get("mode", 0)
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.load_model(model_dir, mode)
+        self._role_maker._barrier_worker()
+
+    def save_model(self, model_dir=None, **kwargs):
+        """
+        save pslib model, the modes are same with load model.
+
+        Args:
+            model_dir(str): if you use hdfs, model_dir should starts with
+                            'hdfs:', otherwise means local dir
+            kwargs(dict): user-defined properties.
+                          mode(int): the modes illustrated above, default 0
+
+        Examples:
+            .. code-block:: python
+
+              fleet.save_model("afs:/user/path/")
+
+        """
+        mode = kwargs.get("mode", 0)
+        prefix = kwargs.get("prefix", None)
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.save_model(model_dir, mode)
+        self._role_maker._barrier_worker()
+
+    def save_one_table(self, table_id, model_dir, **kwargs):
+        """
+        save pslib model's one table, the modes are same with load model.
+
+        Args:
+            table_id(int): table id
+            model_dir(str): if you use hdfs, model_dir should starts with
+                            'hdfs:', otherwise means local dir
+            kwargs(dict): user-defined properties.
+                          mode(int): the modes illustrated above, default 0
+                          prefix(str): the parts to save can have prefix,
+                                       for example, part-prefix-000-00000
+
+        Examples:
+            .. code-block:: python
+
+              fleet.save_one_table("afs:/user/path/")
+
+        """
+        mode = kwargs.get("mode", 0)
+        prefix = kwargs.get("prefix", None)
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            if prefix is not None:
+                self._fleet_ptr.save_model_one_table_with_prefix(
+                    table_id, model_dir, mode, prefix)
+            else:
+                self._fleet_ptr.save_model_one_table(table_id, model_dir, mode)
+        self._role_maker._barrier_worker()
+
     def _set_opt_info(self, opt_info):
         """
         this function saves the result from DistributedOptimizer.minimize()

@@ -66,36 +66,25 @@ class TestFleet1(unittest.TestCase):
                 dtype="int64", lod_level=1, append_batch_size=False)
             label_cast = fluid.layers.cast(label, dtype='float32')
             cost = fluid.layers.log_loss(fc, label_cast)
-        try:
-            adam = fluid.optimizer.Adam(learning_rate=0.000005)
-            adam = fleet.distributed_optimizer(
-                adam,
-                strategy={
-                    "embedding": {
-                        "sparse_accessor_class": "DownpourCtrAccessor"
-                    }
-                })
-            adam.minimize([cost], [scope])
-            fleet.run_server()
-        except:
-            print("do not support pslib test, skip")
-            return
-        try:
-            # worker should call these methods instead of server
-            # the following is only for test when with_pslib=off
-            def test_func():
-                """
-                it is only a test function
-                """
-                return True
 
-            fleet._role_maker.is_first_worker = test_func
-            fleet._role_maker._barrier_worker = test_func
-            fleet.save_model("./model_000")
-            fleet.save_one_table(0, "./model_001")
-            fleet.save_one_table(0, "./model_002", prefix="hahaha")
-            fleet.load_model("./model_0003")
-            fleet.load_one_table(0, "./model_004")
+        strategy = {}
+        strategy["embedding"] = {}
+        strategy["embedding"]["sparse_accessor_class"] = "DownpourUnitAccessor"
+        strategy["embedding"]["embed_sparse_optimizer"] = "naive"
+        try:
+            adam1 = fluid.optimizer.Adam(learning_rate=0.000005)
+            adam1 = fleet.distributed_optimizer(adam1, strategy=strategy)
+            adam1.minimize([cost], [scope])
+
+            strategy["embedding"]["embed_sparse_optimizer"] = "adagrad"
+            adam2 = fluid.optimizer.Adam(learning_rate=0.000005)
+            adam2 = fleet.distributed_optimizer(adam2, strategy=strategy)
+            adam2.minimize([cost], [scope])
+
+            strategy["embedding"]["embed_sparse_optimizer"] = "adam"
+            adam3 = fluid.optimizer.Adam(learning_rate=0.000005)
+            adam3 = fleet.distributed_optimizer(adam3, strategy=strategy)
+            adam3.minimize([cost], [scope])
         except:
             print("do not support pslib test, skip")
             return
