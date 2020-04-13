@@ -269,6 +269,10 @@ class ProgramTranslator(object):
         self._loss_name = None
         # Once main_program is changed, should run startup_program.
         self._need_startup = True
+        self.enable_declarative = True
+
+    def enable_declarative_function(self, enable_declarative):
+        self.enable_declarative = enable_declarative
 
     def get_output(self, dygraph_func, *args, **kwargs):
         """
@@ -279,6 +283,8 @@ class ProgramTranslator(object):
                 "The ProgramTranslator.get_output doesn't work in dygraph "
                 "mode. We will just return dygraph output. Use it in "
                 "static mode if you would like to translate to static graph.")
+            return dygraph_func(*args, **kwargs)
+        if not self.enable_declarative:
             return dygraph_func(*args, **kwargs)
 
         program_cache = self.get_program_cache()
@@ -300,6 +306,9 @@ class ProgramTranslator(object):
                 "mode. We will just return dygraph function. Use it in "
                 "static mode if you would like to translate to static graph.")
             return dygraph_func
+        if not self.enable_declarative:
+            return dygraph_func
+
         static_func = convert_function_with_cache(dygraph_func)
         return static_func
 
@@ -314,6 +323,13 @@ class ProgramTranslator(object):
                 "mode. We will just return dygraph output. Use it in static "
                 "mode if you would like to translate to static graph.")
             return dygraph_func(*args, **kwargs)
+        if not self.enable_declarative:
+            warnings.warn(
+                "The ProgramTranslator.get_program doesn't work when you set "
+                "enable_declarative_function to False. We will just return "
+                "dygraph output.")
+            return dygraph_func(*args, **kwargs)
+
         program_cache = self.get_program_cache()
         outputs = program_cache.build_program_and_return_output(dygraph_func,
                                                                 *args, **kwargs)

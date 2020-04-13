@@ -14,10 +14,7 @@
 
 from __future__ import print_function
 
-__all__ = [
-    'TracedLayer', 'dygraph_to_static_code', 'dygraph_to_static_func',
-    'dygraph_to_static_output', 'dygraph_to_static_program'
-]
+__all__ = ['TracedLayer', 'declarative']
 
 import warnings
 
@@ -54,70 +51,23 @@ def extract_vars(inputs):
     return result_list
 
 
-def _dygraph_to_static_code_(dygraph_func):
-    def __impl__(*args, **kwargs):
-        program_translator = ProgramTranslator()
-        return program_translator.get_code(dygraph_func)
-
-    return __impl__
-
-
-dygraph_to_static_code = wrap_decorator(_dygraph_to_static_code_)
-
-
-def _dygraph_to_static_program_(dygraph_func):
+def _declarative_(dygraph_func):
     def __impl__(*args, **kwargs):
         if in_dygraph_mode():
             warnings.warn(
-                "The decorator 'dygraph_to_static_program' doesn't work in "
-                "dygraph mode. We will just return dygraph output. Use the "
-                "decorator in static mode if you would like to translate to "
-                "static graph.")
+                "The decorator 'declarative' doesn't work in dygraph mode. We "
+                "will just return dygraph output. Use the decorator in static "
+                "mode if you would like to translate to static graph.")
             return dygraph_func(*args, **kwargs)
         program_translator = ProgramTranslator()
-        return program_translator.get_program(dygraph_func, *args, **kwargs)
-
-    return __impl__
-
-
-dygraph_to_static_program = wrap_decorator(_dygraph_to_static_program_)
-
-
-def _dygraph_to_static_func_(dygraph_func):
-    def __impl__(*args, **kwargs):
-        if in_dygraph_mode():
-            warnings.warn(
-                "The decorator 'dygraph_to_static_func' doesn't work in "
-                "dygraph mode. We will just return dygraph output. Use the "
-                "decorator in static mode if you would like to translate to "
-                "static graph.")
+        if not program_translator.enable_declarative:
             return dygraph_func(*args, **kwargs)
-        program_translator = ProgramTranslator()
-        static_func = program_translator.get_func(dygraph_func)
-        return static_func(*args, **kwargs)
-
-    return __impl__
-
-
-dygraph_to_static_func = wrap_decorator(_dygraph_to_static_func_)
-
-
-def _dygraph_to_static_output_(dygraph_func):
-    def __impl__(*args, **kwargs):
-        if in_dygraph_mode():
-            warnings.warn(
-                "The decorator 'dygraph_to_static_output' doesn't work in "
-                "dygraph mode. We will just return dygraph output. Use the "
-                "decorator in static mode if you would like to translate to "
-                "static graph.")
-            return dygraph_func(*args, **kwargs)
-        program_translator = ProgramTranslator()
         return program_translator.get_output(dygraph_func, *args, **kwargs)
 
     return __impl__
 
 
-dygraph_to_static_output = wrap_decorator(_dygraph_to_static_output_)
+declarative = wrap_decorator(_declarative_)
 
 
 @dygraph_only
