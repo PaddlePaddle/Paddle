@@ -24,6 +24,7 @@ class CTCAlignOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "ctc_align");
     OP_INOUT_CHECK(ctx->HasOutput("Output"), "Output", "Output", "ctc_align");
+
     auto input_dims = ctx->GetInputDim("Input");
 
     // TODO(wanghaoshuang): it is tricky to set the wrong dimension here.

@@ -30,13 +30,15 @@ class CenterLossOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CenterLoss");
     auto x_dims = ctx->GetInputDim("X");
 
-    OP_INOUT_CHECK(ctx->HasInput("CenterUpdateRate"), "Input", "CenterUpdateRate", "CenterLoss");
+    OP_INOUT_CHECK(ctx->HasInput("CenterUpdateRate"), "Input",
+                   "CenterUpdateRate", "CenterLoss");
     OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "CenterLoss");
     OP_INOUT_CHECK(ctx->HasInput("Centers"), "Input", "Centers", "CenterLoss");
-    OP_INOUT_CHECK(ctx->HasOutput("SampleCenterDiff"), "Output", "SampleCenterDiff", "CenterLoss");
-
+    OP_INOUT_CHECK(ctx->HasOutput("SampleCenterDiff"), "Output",
+                   "SampleCenterDiff", "CenterLoss");
     OP_INOUT_CHECK(ctx->HasOutput("Loss"), "Output", "Loss", "CenterLoss");
-    OP_INOUT_CHECK(ctx->HasOutput("CentersOut"), "Output", "CentersOut", "CenterLoss");
+    OP_INOUT_CHECK(ctx->HasOutput("CentersOut"), "Output", "CentersOut",
+                   "CenterLoss");
 
     ctx->SetOutputDim("SampleCenterDiff",
                       {x_dims[0], product(x_dims) / x_dims[0]});
@@ -86,9 +88,12 @@ class CenterLossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("SampleCenterDiff"), "Input", "SampleCenterDiff", "CenterLossGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Loss")), "Input", framework::GradVarName("Loss"), "CenterLossGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output", framework::GradVarName("X"), "CenterLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput("SampleCenterDiff"), "Input",
+                   "SampleCenterDiff", "CenterLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Loss")), "Input",
+                   framework::GradVarName("Loss"), "CenterLossGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+                   framework::GradVarName("X"), "CenterLossGrad");
 
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");

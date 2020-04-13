@@ -22,6 +22,7 @@ import paddle.compat as cpt
 from op_test import OpTest
 import paddle.fluid as fluid
 
+
 class TestROIPoolOp(OpTest):
     def set_data(self):
         self.init_test_case()
@@ -121,9 +122,9 @@ class TestROIPoolOp(OpTest):
                     0, self.height // self.spatial_scale - self.pooled_height)
 
                 x2 = np.random.randint(x1 + self.pooled_width,
-                                               self.width // self.spatial_scale)
-                y2 = np.random.randint(
-                    y1 + self.pooled_height, self.height // self.spatial_scale)
+                                       self.width // self.spatial_scale)
+                y2 = np.random.randint(y1 + self.pooled_height,
+                                       self.height // self.spatial_scale)
 
                 roi = [bno, x1, y1, x2, y2]
                 rois.append(roi)
@@ -140,20 +141,31 @@ class TestROIPoolOp(OpTest):
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
 
+
 class BadInputTestRoiPool(unittest.TestCase):
     def test_error(self):
         with fluid.program_guard(fluid.Program()):
+
             def test_bad_x():
-                x = fluid.layers.data(name='data1', shape=[2, 1, 4, 4], dtype='int64')
-                label = fluid.layers.data(name='label', shape=[2, 4], dtype='float32', lod_level=1)
+                x = fluid.layers.data(
+                    name='data1', shape=[2, 1, 4, 4], dtype='int64')
+                label = fluid.layers.data(
+                    name='label', shape=[2, 4], dtype='float32', lod_level=1)
                 output = fluid.layers.roi_pool(x, label, 1, 1, 1.0)
+
             self.assertRaises(TypeError, test_bad_x)
 
             def test_bad_y():
-                x = fluid.layers.data(name='data2', shape=[2, 1, 4, 4], dtype='float32', append_batch_size=False)
-                label = [[1,2,3,4], [2,3,4,5]]
+                x = fluid.layers.data(
+                    name='data2',
+                    shape=[2, 1, 4, 4],
+                    dtype='float32',
+                    append_batch_size=False)
+                label = [[1, 2, 3, 4], [2, 3, 4, 5]]
                 output = fluid.layers.roi_pool(x, label, 1, 1, 1.0)
+
             self.assertRaises(TypeError, test_bad_y)
+
 
 class TestROIPoolInLodOp(TestROIPoolOp):
     def set_data(self):

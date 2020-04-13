@@ -26,9 +26,11 @@ class OneHotV2Op : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "one_hot_v2");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "one_hot_v2");
+
     auto x_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_GE(x_dims.size(), 1, platform::errors::InvalidArgument(
-                      "Rank of Input(X) should be at least 1."));
+    PADDLE_ENFORCE_GE(x_dims.size(), 1,
+                      platform::errors::InvalidArgument(
+                          "Rank of Input(X) should be at least 1."));
 
     int depth = ctx->Attrs().Get<int>("depth");
     if (ctx->HasInput("depth_tensor")) {

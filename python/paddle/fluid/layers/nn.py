@@ -5196,7 +5196,9 @@ def ctc_greedy_decoder(input,
                             input_length=x_pad_len)
 
     """
-    check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'ctc_greedy_decoder')
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'ctc_greedy_decoder')
+
     helper = LayerHelper("ctc_greedy_decoder", **locals())
     _, topk_indices = topk(input, k=1)
 

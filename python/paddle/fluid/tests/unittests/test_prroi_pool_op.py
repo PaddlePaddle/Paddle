@@ -250,16 +250,32 @@ class TestPRROIPoolOpTensorRoIs(OpTest):
             # pooled_width must be int type
             self.assertRaises(TypeError, fluid.layers.prroi_pool, x, rois, 0.25,
                               7, 0.7)
+
             def test_bad_x():
-                x = fluid.layers.data(name='data1', shape=[2, 3, 16, 16], dtype='int64', append_batch_size=False)
-                label = fluid.layers.data(name='label1', shape=[2, 4], dtype='float32', lod_level=1, append_batch_size=False)
+                x = fluid.layers.data(
+                    name='data1',
+                    shape=[2, 3, 16, 16],
+                    dtype='int64',
+                    append_batch_size=False)
+                label = fluid.layers.data(
+                    name='label1',
+                    shape=[2, 4],
+                    dtype='float32',
+                    lod_level=1,
+                    append_batch_size=False)
                 output = fluid.layers.prroi_pool(x, label, 0.25, 2, 2)
+
             self.assertRaises(TypeError, test_bad_x)
-                
+
             def test_bad_y():
-                x = fluid.layers.data(name='data2', shape=[2, 3, 16, 16], dtype='float32', append_batch_size=False)
-                label = [[1,2,3,4], [2,3,4,5]]
+                x = fluid.layers.data(
+                    name='data2',
+                    shape=[2, 3, 16, 16],
+                    dtype='float32',
+                    append_batch_size=False)
+                label = [[1, 2, 3, 4], [2, 3, 4, 5]]
                 output = fluid.layers.prroi_pool(x, label, 0.25, 2, 2)
+
             self.assertRaises(TypeError, test_bad_y)
 
 

@@ -203,13 +203,21 @@ class TestOneHotOpApi(unittest.TestCase):
                       fetch_list=[one_hot_label],
                       return_numpy=False)
 
-class BadInputTestOnehotV2(unittest.TestCase):     
+
+class BadInputTestOnehotV2(unittest.TestCase):
     def test_error(self):
         with fluid.program_guard(fluid.Program()):
+
             def test_bad_x():
-                label = fluid.layers.data(name="label", shape=[4], append_batch_size=False, dtype="float32")
+                label = fluid.layers.data(
+                    name="label",
+                    shape=[4],
+                    append_batch_size=False,
+                    dtype="float32")
                 one_hot_label = fluid.one_hot(input=label, depth=4)
+
             self.assertRaises(TypeError, test_bad_x)
+
 
 if __name__ == '__main__':
     unittest.main()
