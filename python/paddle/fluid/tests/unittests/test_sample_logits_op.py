@@ -44,6 +44,9 @@ class TestSampleLogitsOp(OpTest):
         self.Logits = np.random.random([self.bs, self.K]).astype('float64')
 
         self.inputs = {"Logits": self.Logits, "Labels": self.Labels}
+        self.fetch_list = [
+            'Samples', 'Probabilities', 'SampledLogits', 'SampledLabels'
+        ]
         self.outputs = collections.OrderedDict(
             (('Samples', Samples), ('Probabilities', Probabilities),
              ('LogitsDim', LogitsDim), ('LabelsDim', LabelsDim),
@@ -55,7 +58,7 @@ class TestSampleLogitsOp(OpTest):
     def test_check_output(self):
         places = self._get_places()
         for p in places:
-            (Samples, Probabilities, LogitsDim, LabelsDim, SampledLogits,
+            (Samples, Probabilities, SampledLogits,
              SampledLabels) = [np.array(o) for o in self.calc_output(p)]
 
             assert Samples.dtype == np.int64, \
