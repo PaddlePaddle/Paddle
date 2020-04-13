@@ -449,8 +449,6 @@ void refresh_create_py_reader_op_attrs(int dev_idx, int dev_cnt,
 
       op_desc->SetAttr("device_index", dev_idx);
       op_desc->SetAttr("device_count", dev_cnt);
-
-      VLOG(10) << "Found op " << op_desc->Type() << " on device " << dev_idx;
     }
   }
 }
