@@ -68,6 +68,11 @@ class ProgramStats(object):
                     for idx in self.var_op_deps[name]["var_as_input_ops"]:
                         if idx >= end_op_idx:
                             var_name.append(name)
+            for name in self.ops[i].desc.input_arg_names():
+                if name in self.var_op_deps:
+                    for idx in self.var_op_deps[name]["var_as_output_ops"]:
+                        if idx < begin_op_idx:
+                            var_name.append(name)
         return var_name
 
     def is_subgraph(self, var_group1, var_group2):
@@ -700,7 +705,7 @@ def _append_backward_ops_with_checkpoints_(
     for segment in recompute_segments:
         vars_should_be_hold.extend(
             program_stat.get_out_of_subgraph_vars(segment[0], segment[1]))
-    # b. output of dropout op will be held in memory
+    # b. output of seed op should be kept in memory
     vars_should_be_hold.extend(program_stat.get_reserved_vars())
     # c. input variables are checkpoints
     vars_should_be_hold.extend(program_stat.get_input_nodes())
