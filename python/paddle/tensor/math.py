@@ -1065,6 +1065,7 @@ Examples:
 def max(input, dim=None, keep_dim=False, out=None, name=None):
     """
     Computes the maximum of tensor elements over the given dimension.
+
     Args:
         input (Variable): The input variable which is a Tensor, the data type is float32,
             float64, int32, int64.
@@ -1082,9 +1083,11 @@ def max(input, dim=None, keep_dim=False, out=None, name=None):
             if out is None, a new Varibale will be create to store the result.
         name(str, optional): The default value is None.  Normally there is no need for 
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+
     Returns:
         Variable: Tensor, results of maximum on the specified dim of input tensor,
         it's data type is the same as input's Tensor.
+
     Examples:
         .. code-block:: python
             import paddle
@@ -1107,20 +1110,31 @@ def max(input, dim=None, keep_dim=False, out=None, name=None):
             paddle.max(y, dim=[1, 2]) # [4.0, 8.0]
             paddle.max(y, dim=[0, 1]) # [7.0, 8.0]
     """
+
     helper = LayerHelper('max', **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(
             dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
+
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64', 'int32', 'int64'], 'max')
+
+    reduce_all = True if dim == None or dim == [] else False
+    dim = dim if dim != None and dim != [] else [0]
+
+    if in_dygraph_mode():
+        return core.ops.reduce_max(input, 'dim', dim, 'keep_dim', keep_dim,
+                                   'reduce_all', reduce_all)
     helper.append_op(
         type='reduce_max',
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None and dim != [] else [0],
+            'dim': dim,
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None or dim == [] else False
+            'reduce_all': reduce_all
         })
     return out
 
@@ -1169,20 +1183,31 @@ def min(input, dim=None, keep_dim=False, out=None, name=None):
             paddle.min(y, dim=[1, 2]) # [1.0, 5.0]
             paddle.min(y, dim=[0, 1]) # [1.0, 2.0]
     """
+
     helper = LayerHelper('min', **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(
             dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
+
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64', 'int32', 'int64'], 'max')
+
+    reduce_all = True if dim == None or dim == [] else False
+    dim = dim if dim != None and dim != [] else [0]
+
+    if in_dygraph_mode():
+        return core.ops.reduce_min(input, 'dim', dim, 'keep_dim', keep_dim,
+                                   'reduce_all', reduce_all)
     helper.append_op(
         type='reduce_min',
         inputs={'X': input},
         outputs={'Out': out},
         attrs={
-            'dim': dim if dim != None and dim != [] else [0],
+            'dim': dim,
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None or dim == [] else False
+            'reduce_all': reduce_all
         })
     return out
 
@@ -1220,6 +1245,7 @@ def log1p(x, out=None, name=None):
     if in_dygraph_mode():
         return core.ops.log1p(x)
 
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log1p")
     inputs = {'X': [x]}
     helper = LayerHelper('log1p', **locals())
     dtype = helper.input_dtype(input_param_name='x')
