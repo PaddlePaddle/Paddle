@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <cublas.h>
+#include <algorithm>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/rank_attention.cu.h"
@@ -32,6 +33,7 @@ class RankAttentionCUDAKernel : public framework::OpKernel<T> {
     auto *input_help = ctx.Output<Tensor>("InputHelp");
     auto *ins_rank = ctx.Output<Tensor>("InsRank");
     int max_rank = ctx.Attr<int>("MaxRank");
+    int64_t max_size = ctx.Attr<int>("MaxSize");
     auto *Out = ctx.Output<Tensor>("Out");
 
     // check dims
@@ -56,11 +58,16 @@ class RankAttentionCUDAKernel : public framework::OpKernel<T> {
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
 
+    int max_ins = std::max(ins_num, max_size);
+
     Tensor param_help;
     param_help = ctx.AllocateTmpTensor<T, DeviceContext>(
-        {ins_num * block_matrix_row, para_col}, dev_ctx);
+        {max_ins * block_matrix_row, para_col}, dev_ctx);
     param_help.mutable_data<T>(ctx.GetPlace());
 
+    input_help->Resize({max_ins, block_matrix_row});
+    ins_rank->Resize({max_ins, 1});
+    // Out->Resize({max_ins,para_col});
     input_help->mutable_data<T>(ctx.GetPlace());
     ins_rank->mutable_data<T>(ctx.GetPlace());
     Out->mutable_data<T>(ctx.GetPlace());
@@ -123,6 +130,7 @@ class RankAttentionGradOpCUDAKernel : public framework::OpKernel<T> {
     auto *input_help = ctx.Input<Tensor>("InputHelp");
     auto *ins_rank = ctx.Input<Tensor>("InsRank");
     auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    int64_t max_size = ctx.Attr<int>("MaxSize");
 
     auto *drank_para = ctx.Output<Tensor>(framework::GradVarName("RankParam"));
 
@@ -140,6 +148,7 @@ class RankAttentionGradOpCUDAKernel : public framework::OpKernel<T> {
     auto &place = *ctx.template device_context<platform::CUDADeviceContext>()
                        .eigen_device();
 
+    int max_ins = std::max(ins_num, max_size);
     // initialize out grad
     drank_para->mutable_data<T>(ctx.GetPlace());
     auto drank_para_eigen = framework::EigenVector<T>::Flatten(*drank_para);
@@ -150,7 +159,7 @@ class RankAttentionGradOpCUDAKernel : public framework::OpKernel<T> {
     Tensor param_grad;
     // Tensor input_grad;
     param_grad = ctx.AllocateTmpTensor<T, DeviceContext>(
-        {ins_num * block_matrix_row, para_col}, dev_ctx);
+        {max_ins * block_matrix_row, para_col}, dev_ctx);
     param_grad.mutable_data<T>(ctx.GetPlace());
     // initialize
     auto param_grad_eigen = framework::EigenVector<T>::Flatten(param_grad);

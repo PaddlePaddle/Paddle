@@ -1236,7 +1236,8 @@ def rank_attention(input,
                    rank_offset,
                    rank_param_shape,
                    rank_param_attr,
-                   max_rank=3):
+                   max_rank=3,
+                   max_size=1024):
     """
     **Rank Attention layer**
     This Op can calculate rank attention between input and rank_param, and 
@@ -1293,5 +1294,6 @@ def rank_attention(input,
         outputs={"Out": output,
                  "InputHelp": input_help,
                  "InsRank": ins_rank},
-        attrs={"MaxRank": max_rank})
+        attrs={"MaxRank": max_rank,
+               "MaxSize": max_size})
     return output
