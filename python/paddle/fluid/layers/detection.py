@@ -493,9 +493,9 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
             is int32.
         fg_num(Variable): A 1-D tensor with shape [1] represents the number of positive samples in a
             mini-batch, which should be obtained before this OP. The data type of :attr:`fg_num` is int32.
-        gamma(float): Hyper-parameter to balance the easy and hard examples. Default value is
+        gamma(int|float): Hyper-parameter to balance the easy and hard examples. Default value is
             set to 2.0.
-        alpha(float): Hyper-parameter to balance the positive and negative example. Default value
+        alpha(int|float): Hyper-parameter to balance the positive and negative example. Default value
             is set to 0.25.
 
     Returns:
