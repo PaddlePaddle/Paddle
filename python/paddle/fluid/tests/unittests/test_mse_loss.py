@@ -66,17 +66,17 @@ class TestMseInvalidInput(unittest.TestCase):
 
 class TestNNMseLoss(unittest.TestCase):
     def test_NNMseLoss_mean(self):
-        input_np = np.random.uniform(0.1, 0.5, (2, 3)).astype("float32")
-        label_np = np.random.uniform(0.1, 0.5, (2, 3)).astype("float32")
+        input_np = np.random.uniform(0.1, 0.5, (10, 10)).astype("float32")
+        label_np = np.random.uniform(0.1, 0.5, (10, 10)).astype("float32")
         prog = fluid.Program()
         startup_prog = fluid.Program()
         place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
             input = fluid.layers.data(
-                name='input', shape=[2, 3], dtype='float32')
+                name='input', shape=[10, 10], dtype='float32')
             label = fluid.layers.data(
-                name='label', shape=[2, 3], dtype='float32')
+                name='label', shape=[10, 10], dtype='float32')
             mse_loss = paddle.nn.loss.MSELoss()
             ret = mse_loss(input, label)
 
@@ -102,17 +102,17 @@ class TestNNMseLoss(unittest.TestCase):
         self.assertTrue(dy_result.shape, [1])
 
     def test_NNMseLoss_sum(self):
-        input_np = np.random.uniform(0.1, 0.5, (2, 3)).astype("float32")
-        label_np = np.random.uniform(0.1, 0.5, (2, 3)).astype("float32")
+        input_np = np.random.uniform(0.1, 0.5, (10, 10)).astype("float32")
+        label_np = np.random.uniform(0.1, 0.5, (10, 10)).astype("float32")
         prog = fluid.Program()
         startup_prog = fluid.Program()
         place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
             input = fluid.layers.data(
-                name='input', shape=[2, 3], dtype='float32')
+                name='input', shape=[10, 10], dtype='float32')
             label = fluid.layers.data(
-                name='label', shape=[2, 3], dtype='float32')
+                name='label', shape=[10, 10], dtype='float32')
             mse_loss = paddle.nn.loss.MSELoss(reduction='sum')
             ret = mse_loss(input, label)
 
@@ -138,17 +138,17 @@ class TestNNMseLoss(unittest.TestCase):
         self.assertTrue(dy_result.shape, [1])
 
     def test_NNMseLoss_none(self):
-        input_np = np.random.uniform(0.1, 0.5, (2, 3)).astype("float32")
-        label_np = np.random.uniform(0.1, 0.5, (2, 3)).astype("float32")
+        input_np = np.random.uniform(0.1, 0.5, (10, 10)).astype("float32")
+        label_np = np.random.uniform(0.1, 0.5, (10, 10)).astype("float32")
         prog = fluid.Program()
         startup_prog = fluid.Program()
         place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
             input = fluid.layers.data(
-                name='input', shape=[2, 3], dtype='float32')
+                name='input', shape=[10, 10], dtype='float32')
             label = fluid.layers.data(
-                name='label', shape=[2, 3], dtype='float32')
+                name='label', shape=[10, 10], dtype='float32')
             mse_loss = paddle.nn.loss.MSELoss(reduction='none')
             ret = mse_loss(input, label)
 
