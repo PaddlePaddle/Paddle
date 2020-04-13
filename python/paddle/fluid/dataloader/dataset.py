@@ -24,23 +24,23 @@ class Dataset(object):
     An abstract class to encapsulates methods and behaviors of datasets.
 
     All datasets in map-style(dataset samples can be get by a given key)
-    should be a subclass of `fluid.io.Dataset`. All subclasses should
+    should be a subclass of `paddle.io.Dataset`. All subclasses should
     implement following methods:
 
     :code:`__getitem__`: get sample from dataset with a given index. This
-    method is required by reading dataset sample in :code:`fluid.io.DataLoader`.
+    method is required by reading dataset sample in :code:`paddle.io.DataLoader`.
 
     :code:`__len__`: return dataset sample number. This method is required
-    by some implements of :code:`fluid.io.BatchSampler`
+    by some implements of :code:`paddle.io.BatchSampler`
 
-    see :code:`fluid.io.DataLoader`.
+    see :code:`paddle.io.DataLoader`.
 
     Examples:
         
         .. code-block:: python
 
             import numpy as np
-            from paddle.fluid.io import Dataset
+            from paddle.io import Dataset
             
             # define a random dataset
             class RandomDataset(Dataset):

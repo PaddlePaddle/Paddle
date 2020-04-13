@@ -23,12 +23,12 @@ __all__ = ["BatchSampler"]
 
 class BatchSampler(object):
     """
-    A base implement of batch sampler used by `fluid.io.DataLoader`
+    A base implement of batch sampler used by `paddle.io.DataLoader`
     which yield mini-batch indices(a list/tuple with length as
     mini-batch size and holds sample indices) iterably.
 
-    Batch sampler used by :code:`fluid.io.DataLoader` should be a subclass
-    of :code:`fluid.io.BatchSampler`, BatchSampler subclasses should
+    Batch sampler used by :code:`paddle.io.DataLoader` should be a subclass
+    of :code:`paddle.io.BatchSampler`, BatchSampler subclasses should
     implement following methods:
 
     :code:`__iter__`: return mini-batch indices iterably.
@@ -37,7 +37,7 @@ class BatchSampler(object):
 
 
     Args:
-        dataset(Dataset): this could be a :code:`fluid.io.Dataset` 
+        dataset(Dataset): this could be a :code:`paddle.io.Dataset` 
                 implement or other python object which implemented
                 :code:`__len__` for BatchSampler to get indices as the
                 range of :attr:`dataset` length. Default None.
@@ -58,10 +58,10 @@ class BatchSampler(object):
         
         .. code-block:: python
             
-            from paddle.fluid.io import BatchSampler, MNIST
+            from paddle.io import BatchSampler, Dataset
 
             # init with indices
-            bs = BatchSampler(indices=list(range(1000)),
+            bs = BatchSampler(indices=list(range(100)),
                               shuffle=True,
                               batch_size=8,
                               drop_last=True)
@@ -70,7 +70,19 @@ class BatchSampler(object):
                 print(batch_indices)
 
             # init with dataset
-            bs = BatchSampler(dataset=MNIST(mode='test'),
+            class RandomDataset(Dataset):
+                def __init__(self, num_samples):
+                    self.num_samples = num_samples
+            
+                def __getitem__(self, idx):
+                    image = np.random.random([784]).astype('float32')
+                    label = np.random.randint(0, 9, (1, )).astype('int64')
+                    return image, label
+                
+                def __len__(self):
+                    return self.num_samples
+            
+            bs = BatchSampler(dataset=RandomDataset(100),
                               shuffle=False,
                               batch_size=16,
                               drop_last=False)
@@ -78,7 +90,7 @@ class BatchSampler(object):
             for batch_indices in bs:
                 print(batch_indices)
 
-    see `fluid.io.DataLoader`
+    see `paddle.io.DataLoader`
 
     """
 
@@ -96,7 +108,7 @@ class BatchSampler(object):
             self.indices = indices
         else:
             assert isinstance(dataset, Dataset), \
-                "dataset should be an instance of fluid.io.Dataset"
+                "dataset should be an instance of paddle.io.Dataset"
             assert indices is None, \
                 "should not set both dataset and indices"
             self.indices = list(range(len(dataset)))

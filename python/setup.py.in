@@ -148,6 +148,7 @@ packages=['paddle',
           'paddle.fluid.incubate.fleet.parameter_server.pslib',
           'paddle.fluid.incubate.fleet.collective',
           'paddle.fluid.incubate.fleet.utils',
+          'paddle.io',
           'paddle.nn',
           'paddle.nn.functional',
           'paddle.nn.layer']

@@ -108,13 +108,13 @@ class DataLoader(object):
 
     DataLoader only supports map-style dataset(can get a sample from
     dataset with a given index) currently, for a map-style dataset,
-    please see :code:`fluid.io.Dataset`.
+    please see :code:`paddle.io.Dataset`.
 
-    batch_sampler please see :code:`fluid.io.BatchSampler`
+    batch_sampler please see :code:`paddle.io.BatchSampler`
 
     Args:  
         dataset(Dataset): the dataset to load data from, should be an
-            instance of subclass of :code:`fluid.io.Dataset`.
+            instance of subclass of :code:`paddle.io.Dataset`.
         feed_list (list(Variable)|tuple(Variable)): feed variable list.
             The variables should be created by :code:`fluid.data()`.
             :attr:`feed_list` must be set if :attr:`return_list` is
@@ -130,12 +130,12 @@ class DataLoader(object):
             :attr:`return_list=True`, the return value on each device would
             be a list(LoDTensor). :attr:`return_list` can only be True
             in dynamic graph mode. Default False.
-        batch_sampler(BatchSampler): an instance of `fluid.io.BatchSampler`
+        batch_sampler(BatchSampler): an instance of `paddle.io.BatchSampler`
             to generate batch indices to draw samples from :attr:`dataset`
             and combine a batch. Default None.
         batch_size(int): sample number in a mini-batch, a substitution
             parameter for :attr:`batch_sampler`, if :attr:`batch_sampler`
-            is not set, a default `fluid.io.BatchSampler` will be used
+            is not set, a default `paddle.io.BatchSampler` will be used
             and initialize by :attr:`batch_size`, :attr:`shuffle` and
             :attr:`drop_last`. Default 1.
         shuffle(bool): whther to shuffle indices order before genrate
@@ -175,7 +175,7 @@ class DataLoader(object):
 
             import numpy as np
             import paddle.fluid as fluid
-            from paddle.fluid.io import Dataset, BatchSampler, DataLoader
+            from paddle.io import Dataset, BatchSampler, DataLoader
 
             BATCH_NUM = 20
             BATCH_SIZE = 16
@@ -296,7 +296,7 @@ class DataLoader(object):
         self.worker_init_fn = worker_init_fn
 
         assert isinstance(dataset, Dataset), \
-            "dataset should be subclass instance of fluid.io.Dataset"
+            "dataset should be subclass instance of paddle.io.Dataset"
         self.dataset = dataset
 
         if not return_list and not in_dygraph_mode():
@@ -329,7 +329,7 @@ class DataLoader(object):
         if batch_sampler is not None:
             assert isinstance(batch_sampler, BatchSampler), \
                 "batch_sampler should be None or subclass instance " \
-                "of fluid.io.BatchSampler"
+                "of paddle.io.BatchSampler"
             assert batch_size == 1 and not shuffle and not drop_last, \
                 "batch_size/shuffle/drop_last should not be set when " \
                 "batch_sampler is given"

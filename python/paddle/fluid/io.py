@@ -60,7 +60,7 @@ __all__ = [
     'set_program_state',
     'get_program_parameter',
     'get_program_persistable_vars',
-] + reader.__all__ + paddle.reader.__all__ + dataloader.__all__
+] + reader.__all__ + paddle.reader.__all__
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')

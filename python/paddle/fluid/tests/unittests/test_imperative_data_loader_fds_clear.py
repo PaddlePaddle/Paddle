@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.io import Dataset, DataLoader
+from paddle.io import Dataset, DataLoader
 
 
 def get_random_images_and_labels(image_shape, label_shape):

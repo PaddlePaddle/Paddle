@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle.fluid as fluid
-from paddle.fluid.io import *
+from paddle.io import *
 
 
 class TestDatasetAbstract(unittest.TestCase):
@@ -35,72 +35,6 @@ class TestDatasetAbstract(unittest.TestCase):
             self.assertTrue(False)
         except NotImplementedError:
             pass
-
-
-class TestMNISTTest(unittest.TestCase):
-    def test_main(self):
-        mnist = MNIST(mode='test')
-        self.assertTrue(len(mnist) == 10000)
-
-        for i in range(len(mnist)):
-            image, label = mnist[i]
-            self.assertTrue(image.shape[0] == 784)
-            self.assertTrue(label.shape[0] == 1)
-            self.assertTrue(0 <= int(label) <= 9)
-
-
-class TestMNISTTrain(unittest.TestCase):
-    def test_main(self):
-        mnist = MNIST(mode='train')
-        self.assertTrue(len(mnist) == 60000)
-
-        for i in range(len(mnist)):
-            image, label = mnist[i]
-            self.assertTrue(image.shape[0] == 784)
-            self.assertTrue(label.shape[0] == 1)
-            self.assertTrue(0 <= int(label) <= 9)
-
-
-class TestFlowersTrain(unittest.TestCase):
-    def test_main(self):
-        flowers = Flowers(mode='train')
-        self.assertTrue(len(flowers) == 6149)
-
-        # traversal whole dataset may cost a
-        # long time, randomly check 1 sample
-        idx = np.random.randint(0, 6149)
-        image, label = flowers[idx]
-        self.assertTrue(len(image.shape) == 3)
-        self.assertTrue(image.shape[2] == 3)
-        self.assertTrue(label.shape[0] == 1)
-
-
-class TestFlowersValid(unittest.TestCase):
-    def test_main(self):
-        flowers = Flowers(mode='valid')
-        self.assertTrue(len(flowers) == 1020)
-
-        # traversal whole dataset may cost a
-        # long time, randomly check 1 sample
-        idx = np.random.randint(0, 1020)
-        image, label = flowers[idx]
-        self.assertTrue(len(image.shape) == 3)
-        self.assertTrue(image.shape[2] == 3)
-        self.assertTrue(label.shape[0] == 1)
-
-
-class TestFlowersTest(unittest.TestCase):
-    def test_main(self):
-        flowers = Flowers(mode='test')
-        self.assertTrue(len(flowers) == 1020)
-
-        # traversal whole dataset may cost a
-        # long time, randomly check 1 sample
-        idx = np.random.randint(0, 1020)
-        image, label = flowers[idx]
-        self.assertTrue(len(image.shape) == 3)
-        self.assertTrue(image.shape[2] == 3)
-        self.assertTrue(label.shape[0] == 1)
 
 
 if __name__ == '__main__':

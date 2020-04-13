@@ -17,7 +17,7 @@ from __future__ import division
 import unittest
 
 import paddle.fluid as fluid
-from paddle.fluid.io import BatchSampler, Dataset
+from paddle.io import BatchSampler, Dataset
 
 
 class RandomDataset(Dataset):
