@@ -94,10 +94,7 @@ class UniformRandomOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::NotFound(
-                          "Output(Out) of UniformRandomOp is not found."));
-
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "UniformRandom");
     PADDLE_ENFORCE_LT(ctx->Attrs().Get<float>("min"),
                       ctx->Attrs().Get<float>("max"),
                       platform::errors::InvalidArgument(

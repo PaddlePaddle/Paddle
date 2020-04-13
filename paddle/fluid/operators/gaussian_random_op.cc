@@ -50,9 +50,8 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::NotFound(
-                          "Output(Out) of GaussianRandomOp is not found."));
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "GaussianRandom");
+
     auto shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
     std::vector<int64_t> temp;
     temp.reserve(shape.size());

@@ -23,12 +23,8 @@ class SmoothL1LossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::NotFound("Input(X) of SmoothL1LossOp is not found."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Y"), true,
-        platform::errors::NotFound("Input(Y) of SmoothL1LossOp is not found."));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SmoothL1Loss");
+    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "SmoothL1Loss");
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");

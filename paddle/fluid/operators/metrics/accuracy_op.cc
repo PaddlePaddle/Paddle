@@ -41,6 +41,14 @@ class AccuracyOp : public framework::OperatorWithKernel {
                       platform::errors::NotFound(
                           "Output (Total) of AccuracyOp is not found."));
 
+    OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "Accuracy");
+    OP_INOUT_CHECK(ctx->HasInput("Indices"), "Input", "Indices", "Accuracy");
+    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "Accuracy");
+    OP_INOUT_CHECK(ctx->HasOutput("Accuracy"), "Output", "Accuracy",
+                   "Accuracy");
+    OP_INOUT_CHECK(ctx->HasOutput("Correct"), "Output", "Correct", "Accuracy");
+    OP_INOUT_CHECK(ctx->HasOutput("Total"), "Output", "Total", "Accuracy");
+
     auto inference_dim = ctx->GetInputDim("Out");
     auto label_dim = ctx->GetInputDim("Label");
     // Assume indices has same shape as inference, because

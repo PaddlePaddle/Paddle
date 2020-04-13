@@ -22,21 +22,14 @@ class MeanIoUOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Predictions"), true,
-                      platform::errors::NotFound(
-                          "Input (Predictions) of MeanIoUOp is not found."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Labels"), true,
-                      platform::errors::NotFound(
-                          "Input (labels) of MeanIoUOp is not found."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("OutMeanIou"), true,
-                      platform::errors::NotFound(
-                          "Output (OutMeanIou) of MeanIoUOp is not found."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("OutWrong"), true,
-                      platform::errors::NotFound(
-                          "Output (OutWrong) of MeanIoUOp is not found."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("OutCorrect"), true,
-                      platform::errors::NotFound(
-                          "Output (OutWrong) of MeanIoUOp is not found."));
+    OP_INOUT_CHECK(ctx->HasInput("Predictions"), "Input", "Predictions",
+                   "MeanIoU");
+    OP_INOUT_CHECK(ctx->HasInput("Labels"), "Input", "Labels", "MeanIoU");
+    OP_INOUT_CHECK(ctx->HasOutput("OutMeanIou"), "Output", "OutMeanIou",
+                   "MeanIoU");
+    OP_INOUT_CHECK(ctx->HasOutput("OutWrong"), "Output", "OutWrong", "MeanIoU");
+    OP_INOUT_CHECK(ctx->HasOutput("OutCorrect"), "Output", "OutCorrect",
+                   "MeanIoU");
 
     int64_t num_classes =
         static_cast<int64_t>(ctx->Attrs().Get<int>("num_classes"));
