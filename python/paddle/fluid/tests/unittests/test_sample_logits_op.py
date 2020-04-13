@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+import collections
 import numpy as np
 from op_test import OpTest
 
@@ -43,14 +44,11 @@ class TestSampleLogitsOp(OpTest):
         self.Logits = np.random.random([self.bs, self.K]).astype('float64')
 
         self.inputs = {"Logits": self.Logits, "Labels": self.Labels}
-        self.outputs = {
-            'Samples': Samples,
-            'Probabilities': Probabilities,
-            'LogitsDim': LogitsDim,
-            'LabelsDim': LabelsDim,
-            'SampledLogits': SampledLogits,
-            'SampledLabels': SampledLabels,
-        }
+        self.outputs = collections.OrderedDict(
+            (('Samples', Samples), ('Probabilities', Probabilities),
+             ('LogitsDim', LogitsDim), ('LabelsDim', LabelsDim),
+             ('SampledLogits', SampledLogits), ('SampledLabels',
+                                                SampledLabels)))
 
         self.attrs = {'num_samples': self.S}
 
