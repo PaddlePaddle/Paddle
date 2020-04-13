@@ -198,7 +198,6 @@ function cmake_base() {
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF}
         -DWITH_DISTRIBUTE=${distibuted_flag}
         -DWITH_MKL=${WITH_MKL:-ON}
-        -DWITH_NGRAPH=${WITH_NGRAPH:-OFF}
         -DWITH_AVX=${WITH_AVX:-OFF}
         -DWITH_GOLANG=${WITH_GOLANG:-OFF}
         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
@@ -231,7 +230,6 @@ EOF
         -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF} \
         -DWITH_DISTRIBUTE=${distibuted_flag} \
         -DWITH_MKL=${WITH_MKL:-ON} \
-        -DWITH_NGRAPH=${WITH_NGRAPH:-OFF} \
         -DWITH_AVX=${WITH_AVX:-OFF} \
         -DNOAVX_CORE_FILE=${NOAVX_CORE_FILE:-""} \
         -DWITH_GOLANG=${WITH_GOLANG:-OFF} \
@@ -508,7 +506,7 @@ function generate_api_spec() {
     source .${spec_kind}_env/bin/activate
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
     spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec
-    python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > $spec_path
+    python ${PADDLE_ROOT}/tools/print_signatures.py paddle > $spec_path
 
     # used to log op_register data_type
     op_type_path=${PADDLE_ROOT}/paddle/fluid/OP_TYPE_${spec_kind}.spec

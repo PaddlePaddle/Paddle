@@ -56,7 +56,7 @@ from .tensor.creation import zeros_like  #DEFINE_ALIAS
 # from .tensor.creation import eye   #DEFINE_ALIAS
 from .tensor.creation import full  #DEFINE_ALIAS
 # from .tensor.creation import linspace   #DEFINE_ALIAS
-# from .tensor.creation import full_like   #DEFINE_ALIAS
+from .tensor.creation import full_like  #DEFINE_ALIAS
 # from .tensor.creation import triu   #DEFINE_ALIAS
 # from .tensor.creation import tril   #DEFINE_ALIAS
 # from .tensor.creation import meshgrid   #DEFINE_ALIAS
@@ -137,22 +137,22 @@ from .tensor.math import mm  #DEFINE_ALIAS
 from .tensor.math import div  #DEFINE_ALIAS
 from .tensor.math import add  #DEFINE_ALIAS
 # from .tensor.math import atan   #DEFINE_ALIAS
-# from .tensor.math import logsumexp   #DEFINE_ALIAS
+from .tensor.math import logsumexp  #DEFINE_ALIAS
 # from .tensor.math import inverse   #DEFINE_ALIAS
 # from .tensor.math import log1p   #DEFINE_ALIAS
 # from .tensor.math import erf   #DEFINE_ALIAS
 # from .tensor.math import addcmul   #DEFINE_ALIAS
-# from .tensor.math import addmm   #DEFINE_ALIAS
+from .tensor.math import addmm  #DEFINE_ALIAS
 # from .tensor.attribute import rank   #DEFINE_ALIAS
 # from .tensor.attribute import shape   #DEFINE_ALIAS
 # from .tensor.io import save   #DEFINE_ALIAS
 # from .tensor.io import load   #DEFINE_ALIAS
 from .tensor.linalg import matmul  #DEFINE_ALIAS
-# from .tensor.linalg import dot   #DEFINE_ALIAS
+from .tensor.linalg import dot  #DEFINE_ALIAS
 # from .tensor.linalg import einsum   #DEFINE_ALIAS
 # from .tensor.linalg import morm   #DEFINE_ALIAS
 # from .tensor.linalg import transpose   #DEFINE_ALIAS
-# from .tensor.linalg import dist   #DEFINE_ALIAS
+from .tensor.linalg import dist  #DEFINE_ALIAS
 # from .tensor.linalg import t   #DEFINE_ALIAS
 # from .tensor.linalg import cross   #DEFINE_ALIAS
 # from .tensor.linalg import cholesky   #DEFINE_ALIAS
