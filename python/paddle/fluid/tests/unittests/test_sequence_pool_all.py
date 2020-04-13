@@ -65,9 +65,9 @@ class TestSequencePoolAll(OpTest):
         return res
 
     def config(self):
-        self.var_num = 100
-        self.batch_size = 10
-        self.feat_len = 8
+        self.var_num = 8
+        self.batch_size = 100
+        self.feat_len = 5
         self.var_names = [
             'x' + str(num) for num in six.moves.range(self.var_num)
         ]

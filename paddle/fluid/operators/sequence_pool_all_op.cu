@@ -51,8 +51,8 @@ __global__ void sequence_pool_all_kernel(T **input, const T pad_value,
         const int index = j * item_dim + i;
         ou += static_cast<T>(input[tid][item_dim * start + index]);
       }
-      __syncthreads();
       ou = BlockReduce(ou_storage).Reduce(ou, cub::Sum());
+      __syncthreads();
       if (threadIdx.x == 0) {
         output[tid][bid * item_dim + i] = ou;
       }
