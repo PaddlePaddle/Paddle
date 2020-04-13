@@ -80,6 +80,30 @@ def clone_variable(block, var, persistable=True):
         persistable=persistable)
 
 
+def _get_varname_parts(varname):
+    # returns origin, blockid, trainerid
+    orig_var_name = ""
+    trainer_part = ""
+    block_part = ""
+    trainer_idx = varname.find(".trainer_")
+    if trainer_idx >= 0:
+        trainer_part = varname[trainer_idx + 1:]
+    else:
+        trainer_idx = len(varname)
+    block_index = varname.find(".block")
+    if block_index >= 0:
+        block_part = varname[block_index + 1:trainer_idx]
+    else:
+        block_index = len(varname)
+    orig_var_name = varname[0:min(block_index, trainer_idx)]
+    return orig_var_name, block_part, trainer_part
+
+
+def _orig_varname(varname):
+    orig, _, _ = _get_varname_parts(varname)
+    return orig
+
+
 def get_param_grads(origin_program):
     def _get_params_grads(sparse_varnames):
         block = origin_program.global_block()
