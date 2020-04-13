@@ -20,7 +20,7 @@ import math
 import sys
 import paddle.compat as cpt
 from op_test import OpTest
-
+import paddle.fluid as fluid
 
 class TestROIPoolOp(OpTest):
     def set_data(self):
@@ -112,14 +112,14 @@ class TestROIPoolOp(OpTest):
         for bno in range(self.batch_size):
             self.rois_lod[0].append(bno + 1)
             for i in range(bno + 1):
-                x1 = np.random.random_integers(
+                x1 = np.random.randint(
                     0, self.width // self.spatial_scale - self.pooled_width)
-                y1 = np.random.random_integers(
+                y1 = np.random.randint(
                     0, self.height // self.spatial_scale - self.pooled_height)
 
-                x2 = np.random.random_integers(x1 + self.pooled_width,
+                x2 = np.random.randint(x1 + self.pooled_width,
                                                self.width // self.spatial_scale)
-                y2 = np.random.random_integers(
+                y2 = np.random.randint(
                     y1 + self.pooled_height, self.height // self.spatial_scale)
 
                 roi = [bno, x1, y1, x2, y2]
@@ -137,6 +137,20 @@ class TestROIPoolOp(OpTest):
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
 
+class BadInputTestRoiPool(unittest.TestCase):
+    def test_error(self):
+        with fluid.program_guard(fluid.Program()):
+            def test_bad_x():
+                x = fluid.layers.data(name='data1', shape=[2, 1, 4, 4], dtype='int64')
+                label = fluid.layers.data(name='label', shape=[2, 4], dtype='float32', lod_level=1)
+                output = fluid.layers.roi_pool(x, label, 1, 1, 1.0)
+            self.assertRaises(TypeError, test_bad_x)
+
+            def test_bad_y():
+                x = fluid.layers.data(name='data2', shape=[2, 1, 4, 4], dtype='float32', append_batch_size=False)
+                label = [[1,2,3,4], [2,3,4,5]]
+                output = fluid.layers.roi_pool(x, label, 1, 1, 1.0)
+            self.assertRaises(TypeError, test_bad_y)
 
 if __name__ == '__main__':
     unittest.main()

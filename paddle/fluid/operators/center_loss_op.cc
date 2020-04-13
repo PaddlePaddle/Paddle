@@ -27,29 +27,32 @@ class CenterLossOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of CenterLoss should not be null.");
+    //PADDLE_ENFORCE(ctx->HasInput("X"),
+    //               "Input(X) of CenterLoss should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CenterLoss");
     auto x_dims = ctx->GetInputDim("X");
 
-    PADDLE_ENFORCE(ctx->HasInput("CenterUpdateRate"),
-                   "Input(CenterUpdateRate) of CenterLoss should not be null.");
+    //PADDLE_ENFORCE(ctx->HasInput("CenterUpdateRate"),
+    //               "Input(CenterUpdateRate) of CenterLoss should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("CenterUpdateRate"), "Input", "CenterUpdateRate", "CenterLoss");
+    //PADDLE_ENFORCE(ctx->HasInput("Label"),
+    //               "Input(Label) of CenterLoss should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "CenterLoss");
+    //PADDLE_ENFORCE(ctx->HasInput("Centers"),
+    //               "Input(Centers) of CenterLoss should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Centers"), "Input", "Centers", "CenterLoss");
+    //PADDLE_ENFORCE(
+    //    ctx->HasOutput("SampleCenterDiff"),
+    //    "Output(SampleCenterDiff) of CenterLoss should not be null.");
+    OP_INOUT_CHECK(ctx->HasOutput("SampleCenterDiff"), "Output", "SampleCenterDiff", "CenterLoss");
 
-    PADDLE_ENFORCE(ctx->HasInput("Label"),
-                   "Input(Label) of CenterLoss should not be null.");
-
-    PADDLE_ENFORCE(ctx->HasInput("Centers"),
-                   "Input(Centers) of CenterLoss should not be null.");
-
-    PADDLE_ENFORCE(
-        ctx->HasOutput("SampleCenterDiff"),
-        "Output(SampleCenterDiff) of CenterLoss should not be null.");
-
-    PADDLE_ENFORCE(ctx->HasOutput("Loss"),
-                   "Output(Loss) of CenterLoss should not be null.");
-
-    PADDLE_ENFORCE(
-        ctx->HasOutput("CentersOut"),
-        "Output(CentersOut) of CenterLoss shared data with Centers.");
+    //PADDLE_ENFORCE(ctx->HasOutput("Loss"),
+    //               "Output(Loss) of CenterLoss should not be null.");
+    OP_INOUT_CHECK(ctx->HasOutput("Loss"), "Output", "Loss", "CenterLoss");
+    //PADDLE_ENFORCE(
+    //    ctx->HasOutput("CentersOut"),
+    //    "Output(CentersOut) of CenterLoss shared data with Centers.");
+    OP_INOUT_CHECK(ctx->HasOutput("CentersOut"), "Output", "CentersOut", "CenterLoss");
 
     ctx->SetOutputDim("SampleCenterDiff",
                       {x_dims[0], product(x_dims) / x_dims[0]});
@@ -99,12 +102,15 @@ class CenterLossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("SampleCenterDiff"),
-                   "Input(SampleCenterDiff) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Loss")),
-                   "Input(Loss) should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output(X) should not be null");
+    //PADDLE_ENFORCE(ctx->HasInput("SampleCenterDiff"),
+    //               "Input(SampleCenterDiff) should not be null");
+    //PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Loss")),
+    //               "Input(Loss) should not be null");
+    //PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
+    //               "Output(X) should not be null");
+    OP_INOUT_CHECK(ctx->HasInput("SampleCenterDiff"), "Input", "SampleCenterDiff", "CenterLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Loss")), "Input", framework::GradVarName("Loss"), "CenterLossGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output", framework::GradVarName("X"), "CenterLossGrad");
 
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");

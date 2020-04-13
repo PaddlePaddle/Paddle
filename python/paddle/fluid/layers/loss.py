@@ -101,6 +101,9 @@ def center_loss(input,
     """
     helper = LayerHelper('center_loss', **locals())
     dtype = helper.input_dtype()
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'center_loss')
+    check_variable_and_dtype(label, 'label', ['int32'], 'center_loss')
+
     centers_shape = [num_classes, input.shape[1]]
     centers_param = helper.create_parameter(
         attr=param_attr, shape=centers_shape, dtype=dtype)
@@ -108,6 +111,7 @@ def center_loss(input,
 
     if isinstance(alpha, Variable):
         alpha_param = alpha
+        check_variable_and_dtype(alpha, 'alpha', ['float32', 'float64'], 'center_loss')
     else:
         assert isinstance(alpha, float)
         alpha_param = helper.create_variable(
