@@ -408,13 +408,10 @@ def sequence_concat(input, name=None):
     helper = LayerHelper('sequence_concat', **locals())
 
     check_type(input, 'input', list, 'fluid.layers.sequence_concat')
-    if isinstance(input, list):
-        for i, input_x in enumerate(input):
-            check_type(input_x, 'input[' + str(i) + ']', Variable,
-                       'fluid.layers.sequence_concat')
-            check_dtype(input_x.dtype, 'input[' + str(i) + ']',
-                        ['int64', 'float32', 'float64'],
-                        'fluid.layers.sequence_concat')
+    for i, input_x in enumerate(input):
+        check_variable_and_dtype(input_x, 'input[' + str(i) + ']',
+                                 ['int64', 'float32', 'float64'],
+                                 'fluid.layers.sequence_concat')
 
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     helper.append_op(
