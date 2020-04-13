@@ -47,6 +47,7 @@ class TestGetTensorFromSelectedRowsError(unittest.TestCase):
                 type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
             fluid.layers.get_tensor_from_selected_rows(input=x)
 
+
 class TestGetTensorFromSelectedRows(unittest.TestCase):
     def get_places(self):
         places = [core.CPUPlace()]
