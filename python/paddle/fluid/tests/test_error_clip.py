@@ -37,6 +37,13 @@ with fluid.program_guard(main_program=prog):
     avg_cost = fluid.layers.mean(cost)
 
 prog_clip = prog.clone()
+# check clip error message enhance
+input_data = np.random.random((2, 4)).astype("float32")
+def test_Variable():
+    # The input type must be Variable.
+    fluid.clip(input=input_data)
+self.assertRaises(TypeError, test_Variable)
+
 prog_clip.block(0).var(hidden1.name)._set_error_clip(
     fluid.clip.ErrorClipByValue(
         max=CLIP_MAX, min=CLIP_MIN))
