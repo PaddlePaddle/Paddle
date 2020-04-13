@@ -212,13 +212,13 @@ void CudnnWorkspaceHandle::ReallocWorkspace(size_t required_workspace_bytes) {
 }
 
 thread_local std::unordered_map<const CUDADeviceContext*,
-                                std::unique_ptr<CUDAContext>>
+                                std::shared_ptr<CUDAContext>>
     CUDADeviceContext::thread_ctx_;
 thread_local std::mutex CUDADeviceContext::ctx_mtx_;
 
-void CUDAContext::InitEigenContext(const stream::CUDAStream& stream) {
+void CUDAContext::InitEigenContext() {
   eigen_stream_.reset(new EigenCudaStreamDevice());
-  eigen_stream_->Reinitialize(&stream.stream(), place_);
+  eigen_stream_->Reinitialize(&RawStream(), place_);
   eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
 }
 
@@ -226,11 +226,10 @@ CUDAContext::CUDAContext(const CUDAPlace& place,
                          const enum stream::Priority& priority) {
   place_ = place;
   CUDADeviceGuard guard(place_.device);
-  stream_.Init(place, priority);
-  InitEigenContext(stream_);
-  InitCuBlasContext(stream_);
-  InitCuDNNContext(stream_);
-  InitCallbackManager(stream_);
+  stream_.reset(new stream::CUDAStream(place, priority));
+  InitEigenContext();
+  InitCuBlasContext();
+  InitCuDNNContext();
 }
 
 CUDAContext::~CUDAContext() {
@@ -285,8 +284,6 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
 
 CUDADeviceContext::~CUDADeviceContext() {
   SetDeviceId(place_.device);
-  Wait();
-  WaitStreamCallback();
 #if defined(PADDLE_WITH_NCCL)
   if (nccl_comm_) {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclCommDestroy(nccl_comm_));
@@ -296,7 +293,7 @@ CUDADeviceContext::~CUDADeviceContext() {
 
 Place CUDADeviceContext::GetPlace() const { return place_; }
 
-void CUDADeviceContext::Wait() const { context()->Wait(); }
+void CUDADeviceContext::Wait() const { context()->Stream()->Wait(); }
 
 int CUDADeviceContext::GetComputeCapability() const {
   return compute_capability_;
@@ -332,7 +329,9 @@ CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
   return CudnnWorkspaceHandle(*this, &cudnn_handle_mtx_);
 }
 
-cudaStream_t CUDADeviceContext::stream() const { return context()->Stream(); }
+cudaStream_t CUDADeviceContext::stream() const {
+  return context()->RawStream();
+}
 
 CUDAPinnedDeviceContext::CUDAPinnedDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());

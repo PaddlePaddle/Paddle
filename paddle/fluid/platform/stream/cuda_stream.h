@@ -15,9 +15,11 @@ limitations under the License. */
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/stream_callback_manager.h"
 
 namespace paddle {
 namespace platform {
@@ -43,13 +45,30 @@ class CUDAStream final {
   bool Init(const Place& place,
             const enum Priority& priority = Priority::NORMAL);
 
-  const cudaStream_t& stream() const { return stream_; }
+  template <typename Callback>
+  void AddCallback(Callback&& callback) const {
+    callback_manager_->AddCallback(callback);
+  }
+
+  template <typename Callback>
+  void RecordEvent(cudaEvent_t ev, Callback callback) const {
+    callback();
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaEventRecord(ev, stream_),
+        platform::errors::Fatal("CUDA event recording failed."));
+  }
+
+  void Wait() const;
+  void WaitCallback() const { callback_manager_->Wait(); }
+
+  const cudaStream_t& raw_stream() const { return stream_; }
   void Destroy();
 
  private:
   Place place_;
   cudaStream_t stream_{nullptr};
   Priority priority_{Priority::NORMAL};
+  std::unique_ptr<StreamCallbackManager> callback_manager_;
 
   DISABLE_COPY_AND_ASSIGN(CUDAStream);
 };
