@@ -15,13 +15,12 @@
 from __future__ import print_function
 
 import unittest
-import numpy as np
-from op_test import OpTest
-from test_reorder_lod_tensor import convert_to_offset
 import six
 import random
-from test_reorder_lod_tensor import convert_to_offset
+import numpy as np
+from op_test import OpTest
 import paddle.fluid.core as core
+from test_reorder_lod_tensor import convert_to_offset
 
 
 def compute_seqpool_sum(x, offset, out, pad_value=0.0):
@@ -34,7 +33,7 @@ def compute_seqpool_sum(x, offset, out, pad_value=0.0):
             out[i] = sub_x.sum(axis=0)
 
 
-class TestSequencePoolAll(OpTest):
+class TestSequencePoolAll1(OpTest):
     def compute_np_out(self, all_vars):
         res = []
         for index in range(len(all_vars)):
@@ -67,7 +66,7 @@ class TestSequencePoolAll(OpTest):
     def config(self):
         self.var_num = 8
         self.batch_size = 100
-        self.feat_len = 5
+        self.feat_len = 2
         self.var_names = [
             'x' + str(num) for num in six.moves.range(self.var_num)
         ]
@@ -105,6 +104,57 @@ class TestSequencePoolAll(OpTest):
                 place=core.CPUPlace(), check_dygraph=False)
         except:
             print("do not support cpu test, skip")
+
+
+class TestSequencePoolAll2(TestSequencePoolAll1):
+    def config(self):
+        self.var_num = 5
+        self.batch_size = 1
+        self.feat_len = 100
+        self.var_names = [
+            'x' + str(num) for num in six.moves.range(self.var_num)
+        ]
+        self.out_names = [
+            'out' + str(num) for num in six.moves.range(self.var_num)
+        ]
+        self.dtype = "float32"
+        self.pad_value = 0.5
+
+    def set_lod_data(self, var_num, batch_size, feat_len):
+        res = []
+        for index in six.moves.range(var_num):
+            lod = []
+            seq_len = random.randint(1, 5)
+            temp_lod = [seq_len]
+            lod.append(temp_lod)
+            lodtensor = self.get_sequence_batch_size_1_input(
+                lod=lod, shape=[lod[0][0], self.feat_len])
+            res.append(lodtensor)
+        return res
+
+
+class TestSequencePoolAll3(TestSequencePoolAll1):
+    def config(self):
+        self.var_num = 5
+        self.feat_len = 100
+        self.batch_size = 9
+        self.var_names = [
+            'x' + str(num) for num in six.moves.range(self.var_num)
+        ]
+        self.out_names = [
+            'out' + str(num) for num in six.moves.range(self.var_num)
+        ]
+        self.dtype = "float32"
+        self.pad_value = 0.0
+
+    def set_lod_data(self, var_num, batch_size, feat_len):
+        res = []
+        lod = [[0, 0, 4, 0, 3, 0, 0, 5, 0, 0]]
+        shape = [12, self.feat_len]
+        for index in six.moves.range(var_num):
+            lodtensor = self.get_sequence_instance_size_0_input(lod, shape)
+            res.append(lodtensor)
+        return res
 
 
 if __name__ == '__main__':
