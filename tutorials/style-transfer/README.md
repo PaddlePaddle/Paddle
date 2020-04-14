@@ -7,7 +7,7 @@
 <div align=center>
  <img src="images/markdown/img1.png" width = "600" height = "300"  />
 </br>
- <img src="images/markdown/img2.png" width = "300" height = "300"  divalign=center />
+ <img src="images/markdown/img2.png" width = "300" height = "300" />
 
 <div align=left>
 
@@ -17,7 +17,7 @@
 ```python
 # tensor shape is [1, c, h, w]
 _, c, h, w = tensor.shape
-tensor = fluid.layers.reshape(c, h * w)
+tensor = fluid.layers.reshape(tensor, [c, h * w])
 # gram matrix with shape: [c, c]
 gram_matrix = fluid.layers.matmul(tensor, fluid.layers.transpose(tensor, [1, 0]))
 ```
