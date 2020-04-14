@@ -43,7 +43,7 @@ class TestWeightQuantization(unittest.TestCase):
             os.system(cmd)
 
     def run_test(self, model_name, model_data_url, model_data_md5, weight_bits,
-                 quantizable_op_type, weight_quantize_type, for_test,
+                 quantizable_op_type, weight_quantize_type, generate_test_model,
                  threshold_rate):
 
         model_dir = self.download_model(model_name, model_data_url,
@@ -59,7 +59,7 @@ class TestWeightQuantization(unittest.TestCase):
             weight_bits=weight_bits,
             quantizable_op_type=quantizable_op_type,
             weight_quantize_type=weight_quantize_type,
-            for_test=for_test,
+            generate_test_model=generate_test_model,
             threshold_rate=threshold_rate)
         print("finish weight quantization for " + model_name + "\n")
 
@@ -79,41 +79,41 @@ class TestWeightQuantizationMobilenetv1(TestWeightQuantization):
         weight_bits = 8
         quantizable_op_type = ['conv2d', 'depthwise_conv2d', 'mul']
         weight_quantize_type = "abs_max"
-        for_test = True
+        generate_test_model = True
         threshold_rate = 0.0
         self.run_test(self.model_name, self.model_data_url, self.model_data_md5,
                       weight_bits, quantizable_op_type, weight_quantize_type,
-                      for_test, threshold_rate)
+                      generate_test_model, threshold_rate)
 
     def test_weight_quantization_mobilenetv1_8bit_channel_wise_abs_max(self):
         weight_bits = 8
         quantizable_op_type = ['conv2d', 'depthwise_conv2d', 'mul']
         weight_quantize_type = "channel_wise_abs_max"
-        for_test = True
+        generate_test_model = True
         threshold_rate = 0.0
         self.run_test(self.model_name, self.model_data_url, self.model_data_md5,
                       weight_bits, quantizable_op_type, weight_quantize_type,
-                      for_test, threshold_rate)
+                      generate_test_model, threshold_rate)
 
     def test_weight_quantization_mobilenetv1_16bit_abs_max(self):
         weight_bits = 16
         quantizable_op_type = ['conv2d', 'depthwise_conv2d', 'mul']
         weight_quantize_type = "abs_max"
-        for_test = False
+        generate_test_model = False
         threshold_rate = 1e-9
         self.run_test(self.model_name, self.model_data_url, self.model_data_md5,
                       weight_bits, quantizable_op_type, weight_quantize_type,
-                      for_test, threshold_rate)
+                      generate_test_model, threshold_rate)
 
     def test_weight_quantization_mobilenetv1_16bit_channel_wise_abs_max(self):
         weight_bits = 16
         quantizable_op_type = ['conv2d', 'depthwise_conv2d', 'mul']
         weight_quantize_type = "channel_wise_abs_max"
-        for_test = False
+        generate_test_model = False
         threshold_rate = 1e-9
         self.run_test(self.model_name, self.model_data_url, self.model_data_md5,
                       weight_bits, quantizable_op_type, weight_quantize_type,
-                      for_test, threshold_rate)
+                      generate_test_model, threshold_rate)
 
 
 if __name__ == '__main__':

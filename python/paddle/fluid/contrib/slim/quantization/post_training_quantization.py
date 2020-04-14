@@ -771,7 +771,7 @@ class WeightQuantization(object):
                                quantizable_op_type=["conv2d", "mul"],
                                weight_bits=8,
                                weight_quantize_type="channel_wise_abs_max",
-                               for_test=False,
+                               generate_test_model=False,
                                threshold_rate=0.0):
         '''
         In order to reduce the size of model, this api quantizes the weight
@@ -796,11 +796,10 @@ class WeightQuantization(object):
             weight_quantize_type(str, optional): quantization type for weights,
                 support 'channel_wise_abs_max' and 'abs_max'. Set it as
                 'channel_wise_abs_max', the accuracy performs better.
-            for_test(bool, optional): If set for_test as True, the output model
-                is fake quantized. We can use PaddlePaddle to load the fake
-                quantized model and test the accuracy on GPU or CPU. If set
-                for_test as False, the type of weights in the quantized model
-                is int8/16, so we have to use PaddleLite to run it.
+            generate_test_model(bool, optional): If set generate_test_model 
+                as True, it saves a fake quantized model, in which the weights 
+                are quantized and dequantized. We can use PaddlePaddle to load 
+                the fake quantized model and test the accuracy on GPU or CPU.
             threshold_rate(float, optional): This api uses abs_max methd to 
                 quantize the weight from float32 to int8/16, and the abs max 
                 value is important for quantization diff. When the abs_max 
@@ -818,6 +817,27 @@ class WeightQuantization(object):
             "Input error: weight_quantize_type should in {}".format(
                 self._supported_weight_quantize_type)
 
+        self._quantize_weight_to_int(save_model_dir, save_model_filename,
+                                     save_params_filename, quantizable_op_type,
+                                     weight_bits, weight_quantize_type, False,
+                                     threshold_rate)
+
+        if generate_test_model:
+            if save_model_dir[-1] == '/':
+                save_model_dir = save_model_dir[0:-1]
+            test_model_dir = save_model_dir + "_test"
+            self._quantize_weight_to_int(
+                test_model_dir, save_model_filename, save_params_filename,
+                quantizable_op_type, weight_bits, weight_quantize_type, True,
+                threshold_rate)
+
+    def _quantize_weight_to_int(self, save_model_dir, save_model_filename,
+                                save_params_filename, quantizable_op_type,
+                                weight_bits, weight_quantize_type, for_test,
+                                threshold_rate):
+        """
+        Generate quantized model or fake quantized model.
+        """
         # Load model
         place = core.CPUPlace()
         exe = Executor(place)
@@ -835,7 +855,7 @@ class WeightQuantization(object):
                 if op.type in quantizable_op_type:
                     quantized_ops.append(op)
 
-        # Quantiz weights
+        # Quantize weights
         persistable_var_names = _all_persistable_var_names(program)
         for op in quantized_ops:
             for var_name in op.input_arg_names:
