@@ -567,7 +567,7 @@ class PSLib(Fleet):
                         model_proto_file, table_var_names, load_combine)
         self._role_maker._barrier_worker()
 
-    def confirm():
+    def confirm(self):
         """
         confirm all the updated params in current pass
         """
@@ -576,7 +576,7 @@ class PSLib(Fleet):
             self._fleet_ptr.confirm()
         self._role_maker._barrier_worker()
 
-    def revert():
+    def revert(self):
         """
         revert all the updated params in current pass
         """

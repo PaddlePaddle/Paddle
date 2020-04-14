@@ -71,6 +71,10 @@ class TestCloudRoleMaker(unittest.TestCase):
             adam = fleet.distributed_optimizer(adam)
             adam.minimize([cost], [scope])
             fleet.run_server()
+            http_server_d = {}
+            http_server_d["running"] = False
+            size_d = {}
+            role_maker._GeneralRoleMaker__start_kv_server(http_server_d, size_d)
         except:
             print("do not support pslib test, skip")
             return
