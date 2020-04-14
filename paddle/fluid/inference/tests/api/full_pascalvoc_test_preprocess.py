@@ -28,6 +28,8 @@ DATA_URL = "http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtest_06-Nov-2007.t
 DATA_DIR = os.path.expanduser("~/.cache/paddle/dataset/pascalvoc/")
 TAR_FILE = "VOCtest_06-Nov-2007.tar"
 TAR_PATH = os.path.join(DATA_DIR, TAR_FILE)
+SIZE_FLOAT32 = 4
+SIZE_INT64 = 8
 RESIZE_H = 300
 RESIZE_W = 300
 MEAN_VALUE = [127.5, 127.5, 127.5]
@@ -60,6 +62,7 @@ def preprocess(img):
 def convert_pascalvoc_local2bin(args):
     data_dir = os.path.expanduser(args.data_dir)
     label_fpath = os.path.join(data_dir, args.label_file)
+    assert data_dir, 'Once set --local, user need to provide the --data_dir'
     flabel = open(label_fpath)
     label_list = [line.strip() for line in flabel]
 
@@ -128,8 +131,12 @@ def convert_pascalvoc_local2bin(args):
     f1.close()
 
     object_nums_sum = sum(object_nums)
-    target_size = 8 + image_nums * 3 * args.resize_h * args.resize_h * 4 + image_nums * 8 + object_nums_sum * (
-        8 + 4 * 4 + 8)
+    # The data should be contains 
+    # number of images + all images data + an array that represent object numbers of each image
+    # + labels of all objects in images + bboxes of all objects + difficulties of all objects
+    # so the target size should be as follows:
+    target_size = SIZE_INT64 + image_nums * 3 * args.resize_h * args.resize_h * SIZE_FLOAT32 + image_nums * SIZE_INT64 + object_nums_sum * (
+        SIZE_INT64 + 4 * SIZE_FLOAT32 + SIZE_INT64)
     if (os.path.getsize(output_file_path) == target_size):
         print("Success! \nThe local data output binary file can be found at: ",
               output_file_path)
@@ -223,6 +230,9 @@ def convert_pascalvoc_tar2bin(tar_path, data_out_path):
         if line_idx % per_percentage:
             print_processbar(line_idx / per_percentage)
 
+    # The data should be stored in binary in following sequence: 
+    # number of images->all images data->an array that represent object numbers in each image
+    # ->labels of all objects in images->bboxes of all objects->difficulties of all objects
     f1.write(np.array(object_nums).astype('uint64').tobytes())
     f1.write(np.array(lbls).astype('int64').tobytes())
     f1.write(np.array(boxes).astype('float32').tobytes())
@@ -268,12 +278,12 @@ def main_pascalvoc_preprocess(args):
         description="Convert the full pascalvoc val set or local data to binary file.",
         usage=None,
         add_help=True)
-    parser.add_argument('--local', action="store_true")
     parser.add_argument(
-        "--data_dir",
-        default="./third_party/inference_demo/int8v2/pascalvoc_small",
-        type=str,
-        help="Dataset root directory")
+        '--local',
+        action="store_true",
+        help="If used, user need to set --data_dir and then convert file")
+    parser.add_argument(
+        "--data_dir", default="", type=str, help="Dataset root directory")
     parser.add_argument(
         "--img_annotation_list",
         type=str,

@@ -214,6 +214,7 @@ def convert_Imagenet_local2bin(args):
     data_dir = args.data_dir
     label_list_path = os.path.join(args.data_dir, args.label_list)
     bin_file_path = os.path.join(args.data_dir, args.output_file)
+    assert data_dir, 'Once set --local, user need to provide the --data_dir'
     with open(label_list_path) as flist:
         lines = [line.strip() for line in flist]
         num_images = len(lines)
@@ -243,7 +244,10 @@ def convert_Imagenet_local2bin(args):
                         num_images + idx * SIZE_INT64)
                 of.write(np_label.astype('int64').tobytes())
 
-        target_size = 8 + num_images * 3 * args.data_dim * args.data_dim * 4 + num_images * 8
+        # The bin file should contain
+        # number of images + all images data + all corresponding labels
+        # so the file target_size should be as follows
+        target_size = SIZE_INT64 + num_images * 3 * args.data_dim * args.data_dim * SIZE_FLOAT32 + num_images * SIZE_INT64
         if (os.path.getsize(bin_file_path) == target_size):
             print(
                 "Success! The user data output binary file can be found at: {0}".
@@ -257,12 +261,12 @@ def main_preprocess_Imagenet(args):
         description="Convert the full Imagenet val set or local data to binary file.",
         usage=None,
         add_help=True)
-    parser.add_argument('--local', action="store_true")
     parser.add_argument(
-        "--data_dir",
-        default="./third_party/inference_demo/int8v2/imagenet_small",
-        type=str,
-        help="Dataset root directory")
+        '--local',
+        action="store_true",
+        help="If used, user need to set --data_dir and then convert file")
+    parser.add_argument(
+        "--data_dir", default="", type=str, help="Dataset root directory")
     parser.add_argument(
         "--label_list",
         type=str,
