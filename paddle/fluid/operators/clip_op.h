@@ -61,10 +61,10 @@ class ClipKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto max = static_cast<T>(context.Attr<float>("max"));
+    Tensor max_cpu;
     if (context.HasInput("Max")) {
       auto* max_t = context.Input<Tensor>("Max");
       auto* max_data = max_t->data<T>();
-      Tensor max_cpu;
       if (platform::is_gpu_place(max_t->place())) {
         TensorCopySync(*max_t, platform::CPUPlace(), &max_cpu);
         max_data = max_cpu.data<T>();
@@ -74,10 +74,10 @@ class ClipKernel : public framework::OpKernel<T> {
     max = static_cast<T>(max);
 
     auto min = context.Attr<float>("min");
+    Tensor min_cpu;
     if (context.HasInput("Min")) {
       auto* min_t = context.Input<Tensor>("Min");
       auto* min_data = min_t->data<T>();
-      Tensor min_cpu;
       if (platform::is_gpu_place(min_t->place())) {
         TensorCopySync(*min_t, platform::CPUPlace(), &min_cpu);
         min_data = min_cpu.data<T>();
@@ -125,10 +125,10 @@ class ClipGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto max = static_cast<T>(context.Attr<float>("max"));
+    Tensor max_cpu;
     if (context.HasInput("Max")) {
       auto* max_t = context.Input<Tensor>("Max");
       auto* max_data = max_t->data<T>();
-      Tensor max_cpu;
       if (platform::is_gpu_place(max_t->place())) {
         TensorCopySync(*max_t, platform::CPUPlace(), &max_cpu);
         max_data = max_cpu.data<T>();
@@ -138,10 +138,10 @@ class ClipGradKernel : public framework::OpKernel<T> {
     max = static_cast<T>(max);
 
     auto min = context.Attr<float>("min");
+    Tensor min_cpu;
     if (context.HasInput("Min")) {
       auto* min_t = context.Input<Tensor>("Min");
       auto* min_data = min_t->data<T>();
-      Tensor min_cpu;
       if (platform::is_gpu_place(min_t->place())) {
         TensorCopySync(*min_t, platform::CPUPlace(), &min_cpu);
         min_data = min_cpu.data<T>();

@@ -66,15 +66,15 @@ __all__ = [
 #            'sums',
            'tanh',
            'elementwise_sum',
-#            'max',
-#            'min',
+           'max',
+           'min',
            'mm',
            'div',
            'add',
 #            'atan',
            'logsumexp',
 #            'inverse',
-#            'log1p',
+           'log1p',
 #            'erf',
 #            'addcmul',
            'addmm',
@@ -170,18 +170,19 @@ def pow(input, exponent, out=None, name=None):
         .. code-block:: python
 
             import paddle
+            import paddle.fluid as fluid
 
-            x = paddle.fluid.data(name="x", shape=[32,32], dtype="float32")
+            x = fluid.data(name="x", shape=[32,32], dtype="float32")
 
             # example 1: argument exponent is float
-            res = paddle.fluid.data(name="output", shape=[32,32], dtype="float32")
+            res = fluid.data(name="output", shape=[32,32], dtype="float32")
             y_1 = paddle.pow(x, 2.0, out=res)
             # y_1 is x^{2.0}
 
             # example 2: argument exponent is Variable
             exponet_tensor = fluid.layers.fill_constant([1], "float32", 3.0)
-            res = paddle.fluid.data(name="output", shape=[32,32], dtype="float32")
-            y_2 = paddle.pow(x, exponent_tensor, out=res)
+            res = fluid.data(name="output", shape=[32,32], dtype="float32")
+            y_2 = paddle.pow(x, exponet_tensor, out=res)
             # y_2 is x^{3.0}
     """
     helper = LayerHelper('pow', **locals())
@@ -256,10 +257,11 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, out=None, name=None):
         ..  code-block:: python
             
             import paddle
-            dataX = paddle.fluid.data(name="dataX", append_batch_size = False, shape=[2, 5], dtype="float32")
-            dataY = paddle.fluid.data(name="dataY", append_batch_size = False, shape=[5, 3], dtype="float32")
+            import paddle.fluid as fluid
+            dataX = fluid.data(name="dataX", shape=[2, 5], dtype="float32")
+            dataY = fluid.data(name="dataY", shape=[5, 3], dtype="float32")
             
-            res = paddle.fluid.data(name="output", append_batch_size = False, shape=[2, 3], dtype="float32")
+            res = fluid.data(name="output", shape=[2, 3], dtype="float32")
             output = paddle.mul(dataX, dataY,
                                       x_num_col_dims = 1,
                                       y_num_col_dims = 1, 
@@ -1061,6 +1063,199 @@ Examples:
         return out
 
     return layers.log(sum_out, name)
+
+
+def max(input, dim=None, keep_dim=False, out=None, name=None):
+    """
+    Computes the maximum of tensor elements over the given dimension.
+
+    Args:
+        input (Variable): The input variable which is a Tensor, the data type is float32,
+            float64, int32, int64.
+        dim (list|int, optional): The dimension along which the maximum is computed.
+            If :attr:`None`, compute the maximum over all elements of
+            :attr:`input` and return a Tensor variable with a single element,
+            otherwise must be in the range :math:`[-rank(input), rank(input))`.
+            If :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
+        keep_dim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result tensor will have one fewer dimension
+            than the :attr:`input` unless :attr:`keep_dim` is true, default
+            value is False.
+        out(Variable, optional): Optional output which can be any created 
+            Variable that meets the requirements to store the result of operation.
+            if out is None, a new Varibale will be create to store the result.
+        name(str, optional): The default value is None.  Normally there is no need for 
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+
+    Returns:
+        Variable: Tensor, results of maximum on the specified dim of input tensor,
+        it's data type is the same as input's Tensor.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.fluid as fluid
+            
+            # x is a Tensor variable with following elements:
+            #    [[0.2, 0.3, 0.5, 0.9]
+            #     [0.1, 0.2, 0.6, 0.7]]
+            # Each example is followed by the corresponding output tensor.
+            x = fluid.data(name='x', shape=[2, 4], dtype='float32')
+            paddle.max(x)  # [0.9]
+            paddle.max(x, dim=0)  # [0.2, 0.3, 0.6, 0.9]
+            paddle.max(x, dim=-1)  # [0.9, 0.7]
+            paddle.max(x, dim=1, keep_dim=True)  # [[0.9], [0.7]]
+            # y is a Tensor variable with shape [2, 2, 2] and elements as below:
+            #      [[[1.0, 2.0], [3.0, 4.0]],
+            #      [[5.0, 6.0], [7.0, 8.0]]]
+            # Each example is followed by the corresponding output tensor.
+            y = fluid.data(name='y', shape=[2, 2, 2], dtype='float32')
+            paddle.max(y, dim=[1, 2]) # [4.0, 8.0]
+            paddle.max(y, dim=[0, 1]) # [7.0, 8.0]
+    """
+
+    helper = LayerHelper('max', **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(
+            dtype=helper.input_dtype())
+    if dim is not None and not isinstance(dim, list):
+        dim = [dim]
+
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64', 'int32', 'int64'], 'max')
+
+    reduce_all = True if dim == None or dim == [] else False
+    dim = dim if dim != None and dim != [] else [0]
+
+    if in_dygraph_mode():
+        return core.ops.reduce_max(input, 'dim', dim, 'keep_dim', keep_dim,
+                                   'reduce_all', reduce_all)
+    helper.append_op(
+        type='reduce_max',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={
+            'dim': dim,
+            'keep_dim': keep_dim,
+            'reduce_all': reduce_all
+        })
+    return out
+
+
+def min(input, dim=None, keep_dim=False, out=None, name=None):
+    """
+    Computes the minimum of tensor elements over the given dimension.
+    Args:
+        input (Variable): The input variable which is a Tensor, the data type is float32,
+            float64, int32, int64.
+        dim (list|int, optional): The dimensions along which the minimum is computed.
+            If :attr:`None`, compute the minimum over all elements of
+            :attr:`input` and return a Tensor variable with a single element,
+            otherwise must be in the range :math:`[-rank(input), rank(input))`.
+            If :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
+        keep_dim (bool, optional): Whether to reserve the reduced dimension in the
+            output Tensor. The result tensor will have one fewer dimension
+            than the :attr:`input` unless :attr:`keep_dim` is true, default
+            value is False.
+        out(Variable, optional): Optional output which can be any created 
+            Variable that meets the requirements to store the result of operation.
+            if out is None, a new Varibale will be create to store the result.
+        name(str, optional): The default value is None.  Normally there is no need for 
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+    Returns:
+        Variable: Tensor, result of minimum on the specified dim of input tensor,
+        it's data type is the same as input's Tensor.
+    Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.fluid as fluid
+            # x is a Tensor variable with following elements:
+            #    [[0.2, 0.3, 0.5, 0.9]
+            #     [0.1, 0.2, 0.6, 0.7]]
+            # Each example is followed by the corresponding output tensor.
+            x = fluid.data(name='x', shape=[2, 4], dtype='float32')
+            paddle.min(x)  # [0.1]
+            paddle.min(x, dim=0)  # [0.1, 0.2, 0.5, 0.7]
+            paddle.min(x, dim=-1)  # [0.2, 0.1]
+            paddle.min(x, dim=1, keep_dim=True)  # [[0.2], [0.1]]
+            # y is a Tensor variable with shape [2, 2, 2] and elements as below:
+            #      [[[1.0, 2.0], [3.0, 4.0]],
+            #      [[5.0, 6.0], [7.0, 8.0]]]
+            # Each example is followed by the corresponding output tensor.
+            y = fluid.data(name='y', shape=[2, 2, 2], dtype='float32')
+            paddle.min(y, dim=[1, 2]) # [1.0, 5.0]
+            paddle.min(y, dim=[0, 1]) # [1.0, 2.0]
+    """
+
+    helper = LayerHelper('min', **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(
+            dtype=helper.input_dtype())
+    if dim is not None and not isinstance(dim, list):
+        dim = [dim]
+
+    check_variable_and_dtype(
+        input, 'input', ['float32', 'float64', 'int32', 'int64'], 'max')
+
+    reduce_all = True if dim == None or dim == [] else False
+    dim = dim if dim != None and dim != [] else [0]
+
+    if in_dygraph_mode():
+        return core.ops.reduce_min(input, 'dim', dim, 'keep_dim', keep_dim,
+                                   'reduce_all', reduce_all)
+    helper.append_op(
+        type='reduce_min',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={
+            'dim': dim,
+            'keep_dim': keep_dim,
+            'reduce_all': reduce_all
+        })
+    return out
+
+
+def log1p(x, out=None, name=None):
+    """
+    Calculates the natural log of the given input tensor, element-wise.
+    .. math::
+        Out = \\ln(x+1)
+    Args:
+        x (Variable): Input LoDTensor or Tensor. Must be one of the following types: float32, float64.
+        out(Variable, optional): Optional output which can be any created 
+            Variable that meets the requirements to store the result of operation.
+            if out is None, a new Varibale will be create to store the result.
+        name(str, optional): The default value is None.  Normally there is no need for 
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+    Returns:
+        Variable: The natural log of the input LoDTensor or Tensor computed element-wise.
+    Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+            # Graph Organizing
+            x = fluid.data(name="x", shape=[2,1], dtype="float32")
+            res = paddle.log1p(x)
+            # Create an executor using CPU as an example
+            exe = fluid.Executor(fluid.CPUPlace())
+            # Execute
+            x_i = np.array([[0], [1]]).astype(np.float32)
+            res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res])
+            print(res_val) # [[0.], [0.6931472]]
+    """
+
+    if in_dygraph_mode():
+        return core.ops.log1p(x)
+
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], "log1p")
+    inputs = {'X': [x]}
+    helper = LayerHelper('log1p', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(type="log1p", inputs={"X": x}, outputs={"Out": out})
+    return out
 
 
 def clamp(input, min=None, max=None, output=None, name=None):

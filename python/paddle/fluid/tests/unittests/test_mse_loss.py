@@ -47,5 +47,22 @@ class TestMseLoss(unittest.TestCase):
             self.assertTrue(np.isclose(np_result, result).all())
 
 
+class TestMseInvalidInput(unittest.TestCase):
+    def test_error(self):
+        def test_invalid_input():
+            input = [256, 3]
+            label = fluid.data(name='label', shape=[None, 3], dtype='float32')
+            loss = fluid.layers.mse_loss(input, label)
+
+        self.assertRaises(TypeError, test_invalid_input)
+
+        def test_invalid_label():
+            input = fluid.data(name='input1', shape=[None, 3], dtype='float32')
+            label = [256, 3]
+            loss = fluid.layers.mse_loss(input, label)
+
+        self.assertRaises(TypeError, test_invalid_label)
+
+
 if __name__ == "__main__":
     unittest.main()

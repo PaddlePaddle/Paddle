@@ -56,6 +56,8 @@ class TestClipOp(OpTest):
         self.shape = (4, 10, 10)
         self.max = 0.8
         self.min = 0.3
+        self.inputs['Max'] = np.array([0.8]).astype('float32')
+        self.inputs['Min'] = np.array([0.1]).astype('float32')
 
 
 class TestCase1(TestClipOp):
@@ -84,8 +86,8 @@ class TestCase4(TestClipOp):
         self.shape = (4, 8, 8)
         self.max = 0.7
         self.min = 0.2
-        self.inputs['Min'] = np.array([0.1]).astype('float32')
         self.inputs['Max'] = np.array([0.8]).astype('float32')
+        self.inputs['Min'] = np.array([0.3]).astype('float32')
 
 
 if __name__ == '__main__':
