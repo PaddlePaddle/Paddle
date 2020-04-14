@@ -103,7 +103,7 @@ def center_loss(input,
     dtype = helper.input_dtype()
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              'center_loss')
-    check_variable_and_dtype(label, 'label', ['int32'], 'center_loss')
+    check_variable_and_dtype(label, 'label', ['int32', 'int64'], 'center_loss')
 
     centers_shape = [num_classes, input.shape[1]]
     centers_param = helper.create_parameter(

@@ -97,10 +97,9 @@ class BadInputTestCenterLoss(unittest.TestCase):
         with fluid.program_guard(fluid.Program()):
 
             def test_bad_x():
-                #                 data = fluid.layers.data(name='data', shape=[2, 32], dtype='int64')
                 data = [[1, 2, 3, 4], [5, 6, 7, 8]]
                 label = fluid.layers.data(
-                    name='label', shape=[2, 1], dtype='int64')
+                    name='label', shape=[2, 1], dtype='int32')
                 res = fluid.layers.center_loss(
                     data,
                     label,
@@ -113,8 +112,7 @@ class BadInputTestCenterLoss(unittest.TestCase):
 
             def test_bad_y():
                 data = fluid.layers.data(
-                    name='data', shape=[2, 32], dtype='int64')
-                #                 label = fluid.layers.data(name='label', shape=[2, 1], dtype='int64')
+                    name='data', shape=[2, 32], dtype='float32')
                 label = [[2], [3]]
                 res = fluid.layers.center_loss(
                     data,
@@ -125,6 +123,32 @@ class BadInputTestCenterLoss(unittest.TestCase):
                     update_center=True)
 
             self.assertRaises(TypeError, test_bad_y)
+
+            def test_bad_alpha():
+                data = fluid.layers.data(
+                    name='data2',
+                    shape=[2, 32],
+                    dtype='float32',
+                    append_batch_size=False)
+                label = fluid.layers.data(
+                    name='label2',
+                    shape=[2, 1],
+                    dtype='int32',
+                    append_batch_size=False)
+                alpha = fluid.layers.data(
+                    name='alpha',
+                    shape=[1],
+                    dtype='int64',
+                    append_batch_size=False)
+                res = fluid.layers.center_loss(
+                    data,
+                    label,
+                    num_classes=1000,
+                    alpha=alpha,
+                    param_attr=fluid.initializer.Xavier(uniform=False),
+                    update_center=True)
+
+            self.assertRaises(TypeError, test_bad_alpha)
 
 
 if __name__ == "__main__":
