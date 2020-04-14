@@ -53,6 +53,9 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
     attr_checker->Check(&attrs, true);
   }
 
+  if (enable_autocast_) {
+    VLOG(5) << "Auto mixed precision run operator: " << type;
+  }
   OpBase::Run(*op, ins, outs, attrs, place);
 
   if (enable_program_desc_tracing_) {

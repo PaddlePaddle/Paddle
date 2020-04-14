@@ -185,6 +185,7 @@ class VarBase {
   }
 
   framework::proto::VarType::Type DataType() const { return var_->DataType(); }
+  const platform::Place Place() const { return var_->Place(); }
 
   void ClearGradient();
 

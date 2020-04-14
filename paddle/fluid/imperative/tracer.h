@@ -72,6 +72,10 @@ class Tracer {
     return enable_program_desc_tracing_;
   }
 
+  void SetEnableAutoCast(bool enabled) { enable_autocast_ = enabled; }
+
+  bool IsAutoCastEnabled() const { return enable_autocast_; }
+
   jit::ProgramDescTracer* GetProgramDescTracer() {
     return program_desc_tracer_.get();
   }
@@ -94,6 +98,7 @@ class Tracer {
   std::unique_ptr<BasicEngine> basic_engine_;
   std::unique_ptr<jit::ProgramDescTracer> program_desc_tracer_;
   bool enable_program_desc_tracing_{false};
+  bool enable_autocast_{false};
   std::unique_ptr<UniqueNameGenerator> generator_;
   platform::Place expected_place_;
   bool has_grad_{true};
