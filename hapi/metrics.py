@@ -52,12 +52,12 @@ class Metric(object):
         """
         Update states for metric
 
-        Inputs of :code:`update` is the outputs of :code:`add_metric_op`, if
-        :code:`add_metric_op` is not defined, the inputs of :code:`update` will
-        be flatten arguments of **output** of mode and **label** from data:
+        Inputs of :code:`update` is the outputs of :code:`Metric.add_metric_op`,
+        if :code:`add_metric_op` is not defined, the inputs of :code:`update`
+        will be flatten arguments of **output** of mode and **label** from data:
         :code:`update(output1, output2, ..., label1, label2,...)`
 
-        see :code:`add_metric_op`
+        see :code:`Metric.add_metric_op`
         """
         raise NotImplementedError("function 'update' not implemented in {}.".
                                   format(self.__class__.__name__))
@@ -81,10 +81,13 @@ class Metric(object):
 
     def add_metric_op(self, *args):
         """
-        Add process op for metric in program
+        This API is advanced usage to accelerate metric calculating, calulations
+        from outputs of model to the states which should be updated by Metric can
+        be defined here, where Paddle OPs is also supported. Outputs of this API
+        will be the inputs of "Metric.update".
 
         If :code:`add_metric_op` is defined, it will be called with **outputs**
-        of model and **labels** from data as parameter, all outputs and labels
+        of model and **labels** from data as arguments, all outputs and labels
         will be concatenated and flatten and each filed as a separate argument
         as follows:
         :code:`add_metric_op(output1, output2, ..., label1, label2,...)`
@@ -93,7 +96,7 @@ class Metric(object):
         input to output, so output format will be:
         :code:`return output1, output2, ..., label1, label2,...`
 
-        NOTE: output of :code:`add_metric_op` will be input of :code:`update`
+        see :code:`Metric.update`
         """
         return args
 
