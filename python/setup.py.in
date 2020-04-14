@@ -182,11 +182,13 @@ if '${CMAKE_SYSTEM_PROCESSOR}' not in ['arm', 'armv7-a', 'aarch64']:
 
 # the prefix is sys.prefix which should always be usr
 paddle_bins = ''
+
 if not '${WIN32}':
     paddle_bins = ['${PADDLE_BINARY_DIR}/paddle/scripts/paddle']
 package_data={'paddle.fluid': ['${FLUID_CORE_NAME}' + ('.so' if os.name != 'nt' else '.pyd')]}
 if '${HAS_NOAVX_CORE}' == 'ON':
     package_data['paddle.fluid'] += ['core_noavx' + ('.so' if os.name != 'nt' else '.pyd')]
+
 
 package_dir={
     '': '${PADDLE_BINARY_DIR}/python',
@@ -298,6 +300,7 @@ headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/string')) +
     list(find_files('*.pb.h', '${PADDLE_BINARY_DIR}/paddle/fluid/platform')) +
     list(find_files('*.pb.h', '${PADDLE_BINARY_DIR}/paddle/fluid/framework')) +
+    list(find_files('*.pb', '${cudaerror_INCLUDE_DIR}')) + # errorMessage.pb for errormessage
     ['${EIGEN_INCLUDE_DIR}/Eigen/Core'] + # eigen
     list(find_files('*', '${EIGEN_INCLUDE_DIR}/Eigen/src')) + # eigen
     list(find_files('*', '${EIGEN_INCLUDE_DIR}/unsupported/Eigen')) + # eigen
@@ -369,7 +372,9 @@ class InstallHeaders(Command):
         return self.copy_file(header, install_dir)
 
     def run(self):
+        # only copy third_party/cudaErrorMessage.pb for cudaErrorMessage on mac or windows
         if os.name == 'nt' or sys.platform == 'darwin':
+            self.mkdir_and_copy_file('${cudaerror_INCLUDE_DIR}/cudaErrorMessage.pb')
             return
         hdrs = self.distribution.headers
         if not hdrs:
