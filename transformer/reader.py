@@ -289,7 +289,6 @@ class Seq2SeqDataset(Dataset):
                  start_mark="<s>",
                  end_mark="<e>",
                  unk_mark="<unk>",
-                 only_src=False,
                  trg_fpattern=None,
                  byte_data=False):
         if byte_data:

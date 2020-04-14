@@ -1,3 +1,5 @@
+export CUDA_VISIBLE_DEVICES=0
+
 python train.py \
         --src_lang en --tar_lang vi \
         --attention True \

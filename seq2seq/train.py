@@ -28,7 +28,7 @@ from callbacks import ProgBarLogger
 from args import parse_args
 from seq2seq_base import BaseModel, CrossEntropyCriterion
 from seq2seq_attn import AttentionModel
-from reader import Seq2SeqDataset, Seq2SeqBatchSampler, SortType, prepare_train_input
+from reader import create_data_loader
 
 
 def do_train(args):
@@ -38,7 +38,6 @@ def do_train(args):
     if args.enable_ce:
         fluid.default_main_program().random_seed = 102
         fluid.default_startup_program().random_seed = 102
-        args.shuffle = False
 
     # define model
     inputs = [
@@ -54,64 +53,25 @@ def do_train(args):
     labels = [Input([None, None, 1], "int64", name="label"), ]
 
     # def dataloader
-    data_loaders = [None, None]
-    data_prefixes = [args.train_data_prefix, args.eval_data_prefix
-                     ] if args.eval_data_prefix else [args.train_data_prefix]
-    for i, data_prefix in enumerate(data_prefixes):
-        dataset = Seq2SeqDataset(
-            fpattern=data_prefix + "." + args.src_lang,
-            trg_fpattern=data_prefix + "." + args.tar_lang,
-            src_vocab_fpath=args.vocab_prefix + "." + args.src_lang,
-            trg_vocab_fpath=args.vocab_prefix + "." + args.tar_lang,
-            token_delimiter=None,
-            start_mark="<s>",
-            end_mark="</s>",
-            unk_mark="<unk>")
-        (args.src_vocab_size, args.trg_vocab_size, bos_id, eos_id,
-         unk_id) = dataset.get_vocab_summary()
-        batch_sampler = Seq2SeqBatchSampler(
-            dataset=dataset,
-            use_token_batch=False,
-            batch_size=args.batch_size,
-            pool_size=args.batch_size * 20,
-            sort_type=SortType.POOL,
-            shuffle=args.shuffle)
-        data_loader = DataLoader(
-            dataset=dataset,
-            batch_sampler=batch_sampler,
-            places=device,
-            feed_list=None if fluid.in_dygraph_mode() else
-            [x.forward() for x in inputs + labels],
-            collate_fn=partial(
-                prepare_train_input,
-                bos_id=bos_id,
-                eos_id=eos_id,
-                pad_id=eos_id),
-            num_workers=0,
-            return_list=True)
-        data_loaders[i] = data_loader
-    train_loader, eval_loader = data_loaders
+    train_loader, eval_loader = create_data_loader(args, device)
 
     model_maker = AttentionModel if args.attention else BaseModel
     model = model_maker(args.src_vocab_size, args.tar_vocab_size,
                         args.hidden_size, args.hidden_size, args.num_layers,
                         args.dropout)
-
+    optimizer = fluid.optimizer.Adam(
+        learning_rate=args.learning_rate, parameter_list=model.parameters())
+    optimizer._grad_clip = fluid.clip.GradientClipByGlobalNorm(
+        clip_norm=args.max_grad_norm)
     model.prepare(
-        fluid.optimizer.Adam(
-            learning_rate=args.learning_rate,
-            parameter_list=model.parameters()),
-        CrossEntropyCriterion(),
-        inputs=inputs,
-        labels=labels)
+        optimizer, CrossEntropyCriterion(), inputs=inputs, labels=labels)
     model.fit(train_data=train_loader,
               eval_data=eval_loader,
               epochs=args.max_epoch,
               eval_freq=1,
               save_freq=1,
               save_dir=args.model_path,
-              log_freq=1,
-              verbose=2)
+              log_freq=1)
 
 
 if __name__ == "__main__":

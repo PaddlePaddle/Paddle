@@ -17,11 +17,56 @@ from __future__ import division
 from __future__ import print_function
 
 import glob
+import six
+import os
 import io
-import numpy as np
 import itertools
+from functools import partial
+
+import numpy as np
+import paddle.fluid as fluid
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid.io import BatchSampler, DataLoader, Dataset
+
+
+def create_data_loader(args, device, for_train=True):
+    data_loaders = [None, None]
+    data_prefixes = [args.train_data_prefix, args.eval_data_prefix
+                     ] if args.eval_data_prefix else [args.train_data_prefix]
+    for i, data_prefix in enumerate(data_prefixes):
+        dataset = Seq2SeqDataset(
+            fpattern=data_prefix + "." + args.src_lang,
+            trg_fpattern=data_prefix + "." + args.tar_lang,
+            src_vocab_fpath=args.vocab_prefix + "." + args.src_lang,
+            trg_vocab_fpath=args.vocab_prefix + "." + args.tar_lang,
+            token_delimiter=None,
+            start_mark="<s>",
+            end_mark="</s>",
+            unk_mark="<unk>",
+            max_length=args.max_len if i == 0 else None,
+            truncate=True)
+        (args.src_vocab_size, args.tar_vocab_size, bos_id, eos_id,
+         unk_id) = dataset.get_vocab_summary()
+        batch_sampler = Seq2SeqBatchSampler(
+            dataset=dataset,
+            use_token_batch=False,
+            batch_size=args.batch_size,
+            pool_size=args.batch_size * 20,
+            sort_type=SortType.POOL,
+            shuffle=False if args.enable_ce else True)
+        data_loader = DataLoader(
+            dataset=dataset,
+            batch_sampler=batch_sampler,
+            places=device,
+            collate_fn=partial(
+                prepare_train_input,
+                bos_id=bos_id,
+                eos_id=eos_id,
+                pad_id=eos_id),
+            num_workers=0,
+            return_list=True)
+        data_loaders[i] = data_loader
+    return data_loaders
 
 
 def prepare_train_input(insts, bos_id, eos_id, pad_id):
@@ -118,10 +163,11 @@ class TokenBatchCreator(object):
 
 
 class SampleInfo(object):
-    def __init__(self, i, max_len, min_len):
+    def __init__(self, i, lens):
         self.i = i
-        self.min_len = min_len
-        self.max_len = max_len
+        # to be consistent with origianl reader implementation
+        self.min_len = lens[0]
+        self.max_len = lens[0]
 
 
 class MinMaxFilter(object):
@@ -131,9 +177,8 @@ class MinMaxFilter(object):
         self._creator = underlying_creator
 
     def append(self, info):
-        if info.max_len > self._max_len or info.min_len < self._min_len:
-            return
-        else:
+        if (self._min_len is None or info.min_len >= self._min_len) and (
+                self._max_len is None or info.max_len <= self._max_len):
             return self._creator.append(info)
 
     @property
@@ -151,22 +196,30 @@ class Seq2SeqDataset(Dataset):
                  start_mark="<s>",
                  end_mark="<e>",
                  unk_mark="<unk>",
-                 only_src=False,
-                 trg_fpattern=None):
-        # convert str to bytes, and use byte data
-        # field_delimiter = field_delimiter.encode("utf8")
-        # token_delimiter = token_delimiter.encode("utf8")
-        # start_mark = start_mark.encode("utf8")
-        # end_mark = end_mark.encode("utf8")
-        # unk_mark = unk_mark.encode("utf8")
-        self._src_vocab = self.load_dict(src_vocab_fpath)
-        self._trg_vocab = self.load_dict(trg_vocab_fpath)
+                 trg_fpattern=None,
+                 byte_data=False,
+                 min_length=None,
+                 max_length=None,
+                 truncate=False):
+        if byte_data:
+            # The WMT16 bpe data used here seems including bytes can not be
+            # decoded by utf8. Thus convert str to bytes, and use byte data
+            field_delimiter = field_delimiter.encode("utf8")
+            token_delimiter = token_delimiter.encode("utf8")
+            start_mark = start_mark.encode("utf8")
+            end_mark = end_mark.encode("utf8")
+            unk_mark = unk_mark.encode("utf8")
+        self._byte_data = byte_data
+        self._src_vocab = self.load_dict(src_vocab_fpath, byte_data=byte_data)
+        self._trg_vocab = self.load_dict(trg_vocab_fpath, byte_data=byte_data)
         self._bos_idx = self._src_vocab[start_mark]
         self._eos_idx = self._src_vocab[end_mark]
         self._unk_idx = self._src_vocab[unk_mark]
-        self._only_src = only_src
         self._field_delimiter = field_delimiter
         self._token_delimiter = token_delimiter
+        self._min_length = min_length
+        self._max_length = max_length
+        self._truncate = truncate
         self.load_src_trg_ids(fpattern, trg_fpattern)
 
     def load_src_trg_ids(self, fpattern, trg_fpattern=None):
@@ -195,26 +248,32 @@ class Seq2SeqDataset(Dataset):
         self._sample_infos = []
 
         slots = [self._src_seq_ids, self._trg_seq_ids]
-        lens = []
         for i, line in enumerate(self._load_lines(fpattern, trg_fpattern)):
-            lens = []
-            for field, slot in zip(converters(line), slots):
-                slot.append(field)
-                lens.append(len(field))
-            # self._sample_infos.append(SampleInfo(i, max(lens), min(lens)))
-            self._sample_infos.append(SampleInfo(i, lens[0], lens[0]))
+            fields = converters(line)
+            lens = [len(field) for field in fields]
+            sample = SampleInfo(i, lens)
+            if (self._min_length is None or
+                    sample.min_len >= self._min_length) and (
+                        self._max_length is None or
+                        sample.max_len <= self._max_length or self._truncate):
+                for field, slot in zip(fields, slots):
+                    slot.append(field[:self._max_length] if self._truncate and
+                                self._max_length is not None else field)
+                self._sample_infos.append(sample)
 
     def _load_lines(self, fpattern, trg_fpattern=None):
         fpaths = glob.glob(fpattern)
         fpaths = sorted(fpaths)  # TODO: Add custum sort
         assert len(fpaths) > 0, "no matching file to the provided data path"
 
+        (f_mode, f_encoding,
+         endl) = ("rb", None, b"\n") if self._byte_data else ("r", "utf8",
+                                                              "\n")
         if trg_fpattern is None:
             for fpath in fpaths:
-                # with io.open(fpath, "rb") as f:
-                with io.open(fpath, "r", encoding="utf8") as f:
+                with io.open(fpath, f_mode, encoding=f_encoding) as f:
                     for line in f:
-                        fields = line.strip("\n").split(self._field_delimiter)
+                        fields = line.strip(endl).split(self._field_delimiter)
                         yield fields
         else:
             # separated source and target language data files
@@ -228,24 +287,24 @@ class Seq2SeqDataset(Dataset):
                 with that of source language"
 
             for fpath, trg_fpath in zip(fpaths, trg_fpaths):
-                # with io.open(fpath, "rb") as f:
-                #     with io.open(trg_fpath, "rb") as trg_f:
-                with io.open(fpath, "r", encoding="utf8") as f:
-                    with io.open(trg_fpath, "r", encoding="utf8") as trg_f:
+                with io.open(fpath, f_mode, encoding=f_encoding) as f:
+                    with io.open(
+                            trg_fpath, f_mode, encoding=f_encoding) as trg_f:
                         for line in zip(f, trg_f):
-                            fields = [field.strip("\n") for field in line]
+                            fields = [field.strip(endl) for field in line]
                             yield fields
 
     @staticmethod
-    def load_dict(dict_path, reverse=False):
+    def load_dict(dict_path, reverse=False, byte_data=False):
         word_dict = {}
-        # with io.open(dict_path, "rb") as fdict:
-        with io.open(dict_path, "r", encoding="utf8") as fdict:
+        (f_mode, f_encoding,
+         endl) = ("rb", None, b"\n") if byte_data else ("r", "utf8", "\n")
+        with io.open(dict_path, f_mode, encoding=f_encoding) as fdict:
             for idx, line in enumerate(fdict):
                 if reverse:
-                    word_dict[idx] = line.strip("\n")
+                    word_dict[idx] = line.strip(endl)
                 else:
-                    word_dict[line.strip("\n")] = idx
+                    word_dict[line.strip(endl)] = idx
         return word_dict
 
     def get_vocab_summary(self):
@@ -266,19 +325,21 @@ class Seq2SeqBatchSampler(BatchSampler):
                  batch_size,
                  pool_size=10000,
                  sort_type=SortType.NONE,
-                 min_length=0,
-                 max_length=100,
+                 min_length=None,
+                 max_length=None,
                  shuffle=False,
                  shuffle_batch=False,
                  use_token_batch=False,
                  clip_last_batch=False,
-                 seed=None):
+                 distribute_mode=True,
+                 seed=0):
         for arg, value in locals().items():
             if arg != "self":
                 setattr(self, "_" + arg, value)
         self._random = np.random
         self._random.seed(seed)
         # for multi-devices
+        self._distribute_mode = distribute_mode
         self._nranks = ParallelEnv().nranks
         self._local_rank = ParallelEnv().local_rank
         self._device_id = ParallelEnv().dev_id
@@ -337,11 +398,14 @@ class Seq2SeqBatchSampler(BatchSampler):
 
         # for multi-device
         for batch_id, batch in enumerate(batches):
-            if batch_id % self._nranks == self._local_rank:
+            if not self._distribute_mode or (
+                    batch_id % self._nranks == self._local_rank):
                 batch_indices = [info.i for info in batch]
                 yield batch_indices
-        if self._local_rank > len(batches) % self._nranks:
-            yield batch_indices
+        if self._distribute_mode and len(batches) % self._nranks != 0:
+            if self._local_rank >= len(batches) % self._nranks:
+                # use previous data to pad
+                yield batch_indices
 
     def __len__(self):
         if not self._use_token_batch:
@@ -349,5 +413,6 @@ class Seq2SeqBatchSampler(BatchSampler):
                 len(self._dataset) + self._batch_size * self._nranks - 1) // (
                     self._batch_size * self._nranks)
         else:
-            batch_number = 100
+            # TODO(guosheng): fix the uncertain length
+            batch_number = 1
         return batch_number
