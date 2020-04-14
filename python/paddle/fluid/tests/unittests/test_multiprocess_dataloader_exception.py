@@ -106,40 +106,6 @@ class TestDataLoaderAssert(unittest.TestCase):
             except AssertionError:
                 self.assertTrue(False)
 
-            # test init_fn
-            def _init_fn(worker_id):
-                pass
-
-            try:
-                loader = DataLoader(
-                    dataset=dataset,
-                    places=place,
-                    batch_sampler=batch_sampler,
-                    num_workers=1,
-                    worker_init_fn=_init_fn)
-                for d in loader():
-                    print(d)
-                self.assertTrue(True)
-            except:
-                self.assertTrue(False)
-
-            # test collate_fn
-            def _collate_fn(sample_list):
-                return [np.stack(s, axis=0) for s in list(zip(*sample_list))]
-
-            try:
-                loader = DataLoader(
-                    dataset=dataset,
-                    places=place,
-                    batch_sampler=batch_sampler,
-                    num_workers=1,
-                    worker_init_fn=_init_fn)
-                for d in loader():
-                    print(d)
-                self.assertTrue(True)
-            except:
-                self.assertTrue(False)
-
 
 # CI Converage cannot record stub in subprocess,
 # HACK a _worker_loop in main process call here
@@ -149,6 +115,18 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
             place = fluid.cpu_places()[0]
             with fluid.dygraph.guard(place):
                 dataset = RandomDataset(800)
+
+                # test init_fn
+                def _init_fn(worker_id):
+                    pass
+
+                # test collate_fn
+                def _collate_fn(sample_list):
+                    return [
+                        np.stack(
+                            s, axis=0) for s in list(zip(*sample_list))
+                    ]
+
                 loader = DataLoader(
                     dataset,
                     num_workers=1,
@@ -162,13 +140,13 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                 for i in range(10):
                     indices_queue.put([i, i + 10])
                 indices_queue.put(None)
-                loader._worker_loop(loader._dataset, indices_queue,
-                                    loader._data_queue,
-                                    loader._workers_done_event, None, None, 0)
+                loader._worker_loop(
+                    loader._dataset, indices_queue, loader._data_queue,
+                    loader._workers_done_event, _collate_fn, _init_fn, 0)
                 self.assertTrue(False)
         except AssertionError:
             pass
-        except Exception as e:
+        except Exception:
             self.assertTrue(False)
 
     def test_main(self):

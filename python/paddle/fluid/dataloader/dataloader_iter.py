@@ -499,32 +499,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             # set _thread_done_event here, py_reader will raise StopIteration,
             # end workers and indices_queues in StopIteration handling
             if self._batches_outstanding < len(self._places):
-                # datas in workers should be all processed when starting to
-                # end this epoch, if there are still data in workers, some
-                # exceptions may occured in workers, log details here
-                if self._send_idx != self._rcvd_idx:
-                    worker_status = [w.is_alive() for w in self._workers]
-                    indices_queue_lens = [
-                        q.qsize() for q in self._indices_queues
-                    ]
-                    logging.warn("Data drained for outstanding batches({})"
-                                 " < places num({}) in multiprocessing, except "
-                                 "send_idx({}) == rcvd_idx({}) but not, status:"
-                                 "\n  outstanding capacity: {}"
-                                 "\n  reorder_dict indices: {}"
-                                 "\n  blocking_queue size: {}"
-                                 "\n  thread_event set: {}"
-                                 "\n  worker_event set: {}"
-                                 "\n  worker status: {}"
-                                 "\n  indices_queue length: {}".format(
-                                     self._batches_outstanding,
-                                     len(self._places), self._send_idx,
-                                     self._rcvd_idx, self._outstanding_capacity,
-                                     self._reorder_dict.keys(),
-                                     self._blocking_queue.size(),
-                                     self._thread_done_event.is_set(),
-                                     self._workers_done_event.is_set(
-                                     ), worker_status, indices_queue_lens))
                 self._thread_done_event.set()
                 self._blocking_queue.close()
 
