@@ -35,7 +35,8 @@ static void nll_loss_1D(T* out_data, T* total_weight_data, const T* x_data,
         continue;
       }
       PADDLE_ENFORCE_EQ(cur_label >= 0 && cur_label < n_classes, true,
-                        "label should nor be out of bounds.");
+                        platform::errors::InvalidArgument(
+                            "label should not be out of bounds."));
 
       const auto cur_weight =
           weight_data ? weight_data[cur_label] : static_cast<T>(1);
@@ -54,7 +55,8 @@ static void nll_loss_1D(T* out_data, T* total_weight_data, const T* x_data,
       continue;
     }
     PADDLE_ENFORCE_EQ(cur_label >= 0 && cur_label < n_classes, true,
-                      "label should nor be out of bounds.");
+                      platform::errors::InvalidArgument(
+                          "label should not be out of bounds."));
 
     const auto cur_weight =
         weight_data ? weight_data[cur_label] : static_cast<T>(1);
@@ -87,7 +89,8 @@ static void nll_loss_2D(T* out_data, T* total_weight_data, const T* x_data,
             continue;
           }
           PADDLE_ENFORCE_EQ(cur_label >= 0 && cur_label < n_classes, true,
-                            "label should nor be out of bounds.");
+                            platform::errors::InvalidArgument(
+                                "label should nor be out of bounds."));
           const auto cur_weight =
               weight_data ? weight_data[cur_label] : static_cast<T>(1);
           out_data[i * map_size + h * in_dim3 + w] =
@@ -112,7 +115,8 @@ static void nll_loss_2D(T* out_data, T* total_weight_data, const T* x_data,
           continue;
         }
         PADDLE_ENFORCE_EQ(cur_label >= 0 && cur_label < n_classes, true,
-                          "label should nor be out of bounds.");
+                          platform::errors::InvalidArgument(
+                              "label should nor be out of bounds."));
         const auto cur_weight =
             weight_data ? weight_data[cur_label] : static_cast<T>(1);
         total_weight_val += cur_weight;
