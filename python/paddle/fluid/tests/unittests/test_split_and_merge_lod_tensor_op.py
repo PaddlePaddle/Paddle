@@ -236,7 +236,7 @@ class TestMergeLodTensorOpError(unittest.TestCase):
             level = 0
 
             def test_x():
-                out = layers.merge_lod_tensor(
+                out = merge_lod_tensor(
                     int_true=x_true,
                     in_false=x_false,
                     x=set(),
@@ -246,7 +246,7 @@ class TestMergeLodTensorOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_x)
 
             def test_mask():
-                out = layers.merge_lod_tensor(
+                out = merge_lod_tensor(
                     int_true=x_true,
                     in_false=x_false,
                     x=input_data,
@@ -256,24 +256,24 @@ class TestMergeLodTensorOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_mask)
 
             def test_xtrue():
-                out = layers.merge_lod_tensor(
+                out = merge_lod_tensor(
                     int_true=set(),
                     in_false=x_false,
                     x=input_data,
                     mask=y,
                     level=level)
 
-            self.assertRaises(TypeError, test_level)
+            self.assertRaises(TypeError, test_xtrue)
 
             def test_xfalse():
-                out = layers.merge_lod_tensor(
+                out = merge_lod_tensor(
                     int_true=x_true,
                     in_false=set(),
                     x=input_data,
                     mask=y,
                     level=level)
 
-            self.assertRaises(TypeError, test_level)
+            self.assertRaises(TypeError, test_xfalse)
 
 
 class TestSplitLodTensorWithError(unittest.TestCase):
