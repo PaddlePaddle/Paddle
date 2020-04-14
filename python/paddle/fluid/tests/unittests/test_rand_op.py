@@ -55,7 +55,7 @@ class TestRandOpError(unittest.TestCase):
 
 class TestRandOp(unittest.TestCase):
     """
-    This function test the common usages of randop.
+    This class test the common usages of randop.
 
     """
 
