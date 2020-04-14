@@ -1063,7 +1063,6 @@ Examples:
     return layers.log(sum_out, name)
 
 
-
 def clamp(input, min=None, max=None, output=None, name=None):
     """
     **clampe layer**
