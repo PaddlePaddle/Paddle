@@ -771,7 +771,7 @@ class WeightQuantization(object):
                                quantizable_op_type=["conv2d", "mul"],
                                weight_bits=8,
                                weight_quantize_type="channel_wise_abs_max",
-                               is_test=False,
+                               for_test=False,
                                threshold_rate=0.0):
         '''
         In order to reduce the size of model, this api quantizes the weight
@@ -796,10 +796,10 @@ class WeightQuantization(object):
             weight_quantize_type(str, optional): quantization type for weights,
                 support 'channel_wise_abs_max' and 'abs_max'. Set it as
                 'channel_wise_abs_max', the accuracy performs better.
-            is_test(bool, optional): If set is_test as True, the output model
+            for_test(bool, optional): If set for_test as True, the output model
                 is fake quantized. We can use PaddlePaddle to load the fake
                 quantized model and test the accuracy on GPU or CPU. If set
-                is_test as False, the type of weights in the quantized model
+                for_test as False, the type of weights in the quantized model
                 is int8/16, so we have to use PaddleLite to run it.
             threshold_rate(float, optional): This api uses abs_max methd to 
                 quantize the weight from float32 to int8/16, and the abs max 
@@ -843,10 +843,10 @@ class WeightQuantization(object):
                     if weight_quantize_type == "abs_max":
                         self._weight_abs_max_quantization(
                             scope, place, weight_bits, threshold_rate, op,
-                            var_name, is_test)
+                            var_name, for_test)
                     elif weight_quantize_type == "channel_wise_abs_max":
                         self._weight_channel_wise_abs_max_quantization(
-                            scope, place, weight_bits, op, var_name, is_test)
+                            scope, place, weight_bits, op, var_name, for_test)
 
         io.save_inference_model(
             dirname=save_model_dir,
@@ -858,7 +858,7 @@ class WeightQuantization(object):
             params_filename=save_params_filename)
 
     def _weight_abs_max_quantization(self, scope, place, weight_bits,
-                                     threshold_rate, op, var_name, is_test):
+                                     threshold_rate, op, var_name, for_test):
         '''
         Use abs_max method to quantize weight.
         '''
@@ -879,7 +879,7 @@ class WeightQuantization(object):
             np.around(weight_data / scale).astype(save_weight_dtype)
 
         # Set weight data
-        if not is_test:
+        if not for_test:
             _set_variable_data(scope, place, var_name, quantized_weight_data)
         else:
             dequantized_weight_data = \
@@ -892,7 +892,7 @@ class WeightQuantization(object):
         op._set_attr(var_name + "_quant_scale", [scale])  # Save as list
 
     def _weight_channel_wise_abs_max_quantization(
-            self, scope, place, weight_bits, op, var_name, is_test):
+            self, scope, place, weight_bits, op, var_name, for_test):
         ''' 
         Use channel_wise_abs_max method to quantize weight.
         '''
@@ -913,7 +913,7 @@ class WeightQuantization(object):
             _logger.error(op.type + " is not supported by weight quantization")
 
         # Set weight data
-        if not is_test:
+        if not for_test:
             _set_variable_data(scope, place, var_name, quantized_weight_data)
         else:
             if op.type == "mul":
