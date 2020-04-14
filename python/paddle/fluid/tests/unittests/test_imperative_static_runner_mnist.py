@@ -75,41 +75,43 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
         return _reader_impl
 
     def train_and_save_model(self):
-        startup_program = fluid.default_startup_program()
-        main_program = fluid.default_main_program()
+        with new_program_scope():
+            startup_program = fluid.default_startup_program()
+            main_program = fluid.default_main_program()
 
-        img = fluid.data(name='img', shape=[None, 1, 28, 28], dtype='float32')
-        label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+            img = fluid.data(
+                name='img', shape=[None, 1, 28, 28], dtype='float32')
+            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
 
-        prediction, avg_loss = static_train_net(img, label)
+            prediction, avg_loss = static_train_net(img, label)
 
-        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
+            place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+            ) else fluid.CPUPlace()
 
-        exe = fluid.Executor(place)
+            exe = fluid.Executor(place)
 
-        feeder = fluid.DataFeeder(feed_list=[img, label], place=place)
-        exe.run(startup_program)
+            feeder = fluid.DataFeeder(feed_list=[img, label], place=place)
+            exe.run(startup_program)
 
-        train_reader = paddle.batch(
-            paddle.reader.shuffle(
-                paddle.dataset.mnist.train(), buf_size=100),
-            batch_size=self.batch_size)
+            train_reader = paddle.batch(
+                paddle.reader.shuffle(
+                    paddle.dataset.mnist.train(), buf_size=100),
+                batch_size=self.batch_size)
 
-        for _ in range(0, self.epoch_num):
-            for batch_id, data in enumerate(train_reader()):
-                exe.run(main_program,
-                        feed=feeder.feed(data),
-                        fetch_list=[avg_loss])
+            for _ in range(0, self.epoch_num):
+                for batch_id, data in enumerate(train_reader()):
+                    exe.run(main_program,
+                            feed=feeder.feed(data),
+                            fetch_list=[avg_loss])
 
-                if batch_id > self.batch_num:
-                    break
+                    if batch_id > self.batch_num:
+                        break
 
-        fluid.io.save_inference_model(
-            self.save_dirname, ["img"], [prediction],
-            exe,
-            model_filename=self.model_filename,
-            params_filename=self.params_filename)
+            fluid.io.save_inference_model(
+                self.save_dirname, ["img"], [prediction],
+                exe,
+                model_filename=self.model_filename,
+                params_filename=self.params_filename)
 
     def load_and_train_dygraph(self):
         place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
@@ -248,11 +250,12 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
             key += core.loaded_var_suffix()
             self.assertTrue(np.array_equal(value, dy_param_init_value[key]))
 
-        self.assertTrue(np.allclose(static_out, dy_out))
+        # np.testing.assert_array_almost_equal(static_out, dy_out)
+        self.assertTrue(np.allclose(static_out, dy_out, atol=1e-04))
 
         for key, value in six.iteritems(static_param_value):
             key += core.loaded_var_suffix()
-            self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-5))
+            self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-4))
 
     def test_mnist_with_params_filename(self):
         self.save_dirname = "mnist.inference.model"
@@ -275,11 +278,12 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
             key += core.loaded_var_suffix()
             self.assertTrue(np.array_equal(value, dy_param_init_value[key]))
 
-        self.assertTrue(np.allclose(static_out, dy_out))
+        # np.testing.assert_array_almost_equal(static_out, dy_out)
+        self.assertTrue(np.allclose(static_out, dy_out, atol=1e-04))
 
         for key, value in six.iteritems(static_param_value):
             key += core.loaded_var_suffix()
-            self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-5))
+            self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-4))
 
 
 if __name__ == '__main__':

@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import print_function
+import numpy as np
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
+from ..fluid import core, layers
 
-# TODO: define searching & indexing functions of a tensor
+# TODO: define searching & indexing functions of a tensor  
 __all__ = [
     'argmax',
     #            'argmin',
@@ -24,7 +26,7 @@ __all__ = [
     #            'has_nan',
     #            'masked_select',
     #            'topk',
-    #            'where',
+    'where',
     #            'index_select',
     #            'nonzero',
     'sort',
@@ -211,6 +213,82 @@ def sort(input, axis=-1, descending=False, out=None, name=None):
         attrs={'axis': axis,
                'descending': descending})
     return out, ids
+
+
+def where(condition, x, y, name=None):
+    """
+    Return a tensor of elements selected from either $x$ or $y$, depending on $condition$.
+
+    .. math::
+ 
+      out_i =
+      \\begin{cases}
+      x_i, \quad  \\text{if}  \\ condition_i \\  is \\ True \\\\
+      y_i, \quad  \\text{if}  \\ condition_i \\  is \\ False \\\\
+      \\end{cases}
+  
+
+    Args:
+        condition(Variable): The condition to choose x or y.
+        x(Variable): x is a Tensor Variable with data type float32, float64, int32, int64.
+        y(Variable): y is a Tensor Variable with data type float32, float64, int32, int64.
+
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Variable: A Tensor with the same data dype as x. 
+
+    Examples:
+        .. code-block:: python
+
+          import numpy as np
+          import paddle.fluid as fluid
+          import paddle.tensor as paddle
+
+          x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float32")
+          y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype("float32")
+
+          with fluid.dygraph.guard():
+              x = fluid.dygraph.to_variable(x_i)
+              y = fluid.dygraph.to_variable(y_i)
+              out = paddle.where(x>1, x, y)
+
+          print(out.numpy())
+          #out: [1.0, 1.0, 3.2, 1.2]
+    """
+    if not in_dygraph_mode():
+        check_variable_and_dtype(condition, 'condition', ['bool'], 'where')
+        check_variable_and_dtype(
+            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'where')
+        check_variable_and_dtype(
+            y, 'y', ['float32', 'float64', 'int32', 'int64'], 'where')
+
+    x_shape = list(x.shape)
+    y_shape = list(y.shape)
+    if x_shape == y_shape:
+        if in_dygraph_mode():
+            return core.ops.where(condition, x, y)
+        else:
+            helper = LayerHelper("where", **locals())
+            dtype = helper.input_dtype()
+            out = helper.create_variable_for_type_inference(dtype)
+
+            helper.append_op(
+                type='where',
+                inputs={'Condition': condition,
+                        'X': x,
+                        'Y': y},
+                outputs={'Out': [out]})
+            return out
+    else:
+        cond_int = layers.cast(condition, x.dtype)
+        cond_not_int = layers.cast(layers.logical_not(condition), x.dtype)
+        out1 = layers.elementwise_mul(x, cond_int)
+        out2 = layers.elementwise_mul(y, cond_not_int)
+        out = layers.elementwise_add(out1, out2)
+        return out
 
 
 def index_sample(x, index):

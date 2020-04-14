@@ -63,7 +63,7 @@ def save_dygraph(state_dict, model_path):
     '''
 
     base_name = os.path.basename(model_path)
-    assert base_name != "", "model_path MUST be format of dirname/filename [dirname\\filename in Window], Now filename is empty str"
+    assert base_name != "", "The input model_path MUST be format of dirname/filename [dirname\\filename in Windows system], but received filename is empty string."
 
     suffix = ".pdparams"
     assert len(state_dict) > 0, "state_dict is empty, no need to save"
