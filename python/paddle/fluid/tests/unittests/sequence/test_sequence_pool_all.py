@@ -88,32 +88,14 @@ class TestSequencePoolAll1(OpTest):
 
     def test_check_output_gpu(self):
         if core.is_compiled_with_cuda():
-            self.check_output_with_place(core.CUDAPlace(0), check_dygraph=False)
+            self.check_output_with_place(core.CUDAPlace(0))
 
     def test_check_grad_gpu(self):
         if core.is_compiled_with_cuda():
             for index in range(self.var_num):
                 self.check_grad_with_place(
                     core.CUDAPlace(0), [self.var_names[index]],
-                    self.out_names[index],
-                    check_dygraph=False)
-
-    def test_check_output_cpu(self):
-        try:
-            self.check_output_with_place(
-                place=core.CPUPlace(), check_dygraph=False)
-        except:
-            print("do not support cpu test, skip")
-
-    def test_check_grad_cpu(self):
-        try:
-            for index in range(self.var_num):
-                self.check_grad_with_place(
-                    core.CPUPlace(), [self.var_names[index]],
-                    self.out_names[index],
-                    check_dygraph=False)
-        except:
-            print("do not support cpu test, skip")
+                    self.out_names[index])
 
 
 class TestSequencePoolAll2(TestSequencePoolAll1):
@@ -165,6 +147,53 @@ class TestSequencePoolAll3(TestSequencePoolAll1):
             lodtensor = self.get_sequence_instance_size_0_input(lod, shape)
             res.append(lodtensor)
         return res
+
+
+class TestSequencePoolAll4(TestSequencePoolAll1):
+    """ checkout only cpu"""
+
+    def config(self):
+        self.var_num = 5
+        self.feat_len = 100
+        self.batch_size = 9
+        self.var_names = [
+            'x' + str(num) for num in six.moves.range(self.var_num)
+        ]
+        self.out_names = [
+            'out' + str(num) for num in six.moves.range(self.var_num)
+        ]
+        self.dtype = "float64"
+        self.pad_value = 0.0
+
+    def set_lod_data(self, var_num, batch_size, feat_len):
+        res = []
+        lod = [[0, 0, 4, 0, 3, 0, 0, 5, 0, 0]]
+        shape = [12, self.feat_len]
+        for index in six.moves.range(var_num):
+            lodtensor = self.get_sequence_instance_size_0_input(lod, shape)
+            res.append(lodtensor)
+        return res
+
+    def test_check_output_cpu(self):
+        try:
+            self.check_output_with_place(place=core.CPUPlace())
+        except:
+            print("do not support cpu test, skip")
+
+    def test_check_grad_cpu(self):
+        try:
+            for index in range(self.var_num):
+                self.check_grad_with_place(core.CPUPlace(),
+                                           [self.var_names[index]],
+                                           self.out_names[index])
+        except:
+            print("do not support cpu test, skip")
+
+    def test_check_output_gpu(self):
+        pass
+
+    def test_check_grad_gpu(self):
+        pass
 
 
 if __name__ == '__main__':
