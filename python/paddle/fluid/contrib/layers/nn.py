@@ -1330,11 +1330,6 @@ def sequence_pool_all(input, pool_type="sum", pad_value=0.0, dtype='float32'):
             y = fluid.data(name='y', shape=[None, 10], dtype='float32', lod_level=1)
             sum_xy = fluid.contrib.layers.sequence_pool_all([x, y])
     """
-    if not isinstance(input, list):
-        warnings.warn(
-            "The type of input in sequence_pool_all should be list, but received %s."
-            % (type(input)))
-        input = [input]
     for id, x in enumerate(input):
         check_variable_and_dtype(x, 'input[' + str(id) + ']',
                                  ['float32', 'float64'], 'sequence_pool_all')

@@ -154,7 +154,7 @@ class SequencePoolAllCUDAKernel : public framework::OpKernel<T> {
                  out_data.size() * sizeof(T *), dev_ctx.stream());
     T **out_array_data = reinterpret_cast<T **>(tmp_out_array->ptr());
 
-    const int block = 16;
+    const int block = 1024;
     dim3 threads(block, 1);
     dim3 grid(out_data.size(), std::max(batch_size, 1),
               std::max(static_cast<int>(item_dim), 1));
