@@ -156,12 +156,10 @@ class PyFuncOpVarTypeInference : public framework::StaticGraphVarTypeInference {
       size_t len = out_var_name.size() - kGradVarSuffix.size();
       if (out_var_name.substr(len) == kGradVarSuffix) {
         auto fwd_var_name = out_var_name.substr(0, len);
-        PADDLE_ENFORCE_EQ(HasVar(ctx, out_var_name), true,
-                          platform::errors::InvalidArgument(
-                              "Backward variable %s not found", out_var_name));
-        PADDLE_ENFORCE_EQ(HasVar(ctx, fwd_var_name), true,
-                          platform::errors::InvalidArgument(
-                              "Backward variable %s not found", fwd_var_name));
+        OP_INOUT_CHECK(HasVar(ctx, out_var_name), "Var", out_var_name,
+                       "py_func");
+        OP_INOUT_CHECK(HasVar(ctx, fwd_var_name), "Var", fwd_var_name,
+                       "py_func");
         VLOG(10) << "Infer var_desc of Output(" << out_var_name << ") as Input("
                  << fwd_var_name << ")";
 
