@@ -845,6 +845,10 @@ def box_coder(prior_box,
                                     box_normalized=False,
                                     axis=1)
     """
+    check_variable_and_dtype(prior_box, 'prior_box', ['float32', 'float64'],
+                             'box_coder')
+    check_variable_and_dtype(target_box, 'target_box', ['float32', 'float64'],
+                             'box_coder')
     helper = LayerHelper("box_coder", **locals())
 
     output_box = helper.create_variable_for_type_inference(
@@ -3193,7 +3197,6 @@ def multiclass_nms(bboxes,
     check_type(background_label, 'background_label', int, 'multiclass_nms')
 
     helper = LayerHelper('multiclass_nms', **locals())
-
     output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
     helper.append_op(
         type="multiclass_nms",
@@ -3405,7 +3408,8 @@ def distribute_fpn_proposals(fpn_rois,
                 refer_level=4,
                 refer_scale=224)
     """
-
+    check_variable_and_dtype(fpn_rois, 'fpn_rois', ['float32', 'float64'],
+                             'distribute_fpn_proposals')
     helper = LayerHelper('distribute_fpn_proposals', **locals())
     dtype = helper.input_dtype('fpn_rois')
     num_lvl = max_level - min_level + 1
@@ -3470,6 +3474,12 @@ def box_decoder_and_assign(prior_box,
                 pb, pbv, loc, scores, 4.135)
 
     """
+    check_variable_and_dtype(prior_box, 'prior_box', ['float32', 'float64'],
+                             'box_decoder_and_assign')
+    check_variable_and_dtype(target_box, 'target_box', ['float32', 'float64'],
+                             'box_decoder_and_assign')
+    check_variable_and_dtype(box_score, 'box_score', ['float32', 'float64'],
+                             'box_decoder_and_assign')
     helper = LayerHelper("box_decoder_and_assign", **locals())
 
     decoded_box = helper.create_variable_for_type_inference(
@@ -3551,9 +3561,12 @@ def collect_fpn_proposals(multi_rois,
                 max_level=5, 
                 post_nms_top_n=2000)
     """
-
+    check_type(multi_rois, 'multi_rois', list, 'collect_fpn_proposals')
+    check_type(multi_scores, 'multi_scores', list, 'collect_fpn_proposals')
     helper = LayerHelper('collect_fpn_proposals', **locals())
     dtype = helper.input_dtype('multi_rois')
+    check_dtype(dtype, 'multi_rois', ['float32', 'float64'],
+                'collect_fpn_proposals')
     num_lvl = max_level - min_level + 1
     input_rois = multi_rois[:num_lvl]
     input_scores = multi_scores[:num_lvl]
