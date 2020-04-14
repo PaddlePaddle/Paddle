@@ -136,7 +136,7 @@ def train_bmn(args):
     val_dataset = BmnDataset(val_cfg, 'valid')
 
     # model
-    model = bmn(config, args.dynamic, pretrained=False)
+    model = bmn(config, pretrained=False)
     optim = optimizer(config, parameter_list=model.parameters())
     model.prepare(
         optimizer=optim,

@@ -97,7 +97,7 @@ def test_bmn(args):
     eval_dataset = BmnDataset(eval_cfg, 'test')
 
     #model
-    model = bmn(config, args.dynamic, pretrained=args.weights is None)
+    model = bmn(config, pretrained=args.weights is None)
     model.prepare(
         loss_function=BmnLoss(config),
         metrics=BmnMetric(

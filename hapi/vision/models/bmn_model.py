@@ -14,6 +14,7 @@
 
 import paddle.fluid as fluid
 from paddle.fluid import ParamAttr
+from paddle.fluid.framework import in_dygraph_mode
 import numpy as np
 import math
 
@@ -131,9 +132,8 @@ class BMN(Model):
 
     Args:
         cfg (AttrDict): configs for BMN model
-        is_dygraph (bool): whether in dygraph mode, default True.
     """
-    def __init__(self, cfg, is_dygraph=True):
+    def __init__(self, cfg):
         super(BMN, self).__init__()
 
         #init config
@@ -142,7 +142,6 @@ class BMN(Model):
         self.prop_boundary_ratio = cfg.MODEL.prop_boundary_ratio
         self.num_sample = cfg.MODEL.num_sample
         self.num_sample_perbin = cfg.MODEL.num_sample_perbin
-        self.is_dygraph = is_dygraph
 
         self.hidden_dim_1d = 256
         self.hidden_dim_2d = 128
@@ -197,7 +196,7 @@ class BMN(Model):
         sample_mask_array = get_interp1d_mask(
             self.tscale, self.dscale, self.prop_boundary_ratio,
             self.num_sample, self.num_sample_perbin)
-        if self.is_dygraph:
+        if in_dygraph_mode(): 
             self.sample_mask = fluid.dygraph.base.to_variable(
                 sample_mask_array)
         else:  # static
@@ -438,16 +437,15 @@ class BmnLoss(Loss):
         return loss
 
 
-def bmn(cfg, is_dygraph=True, pretrained=True):
+def bmn(cfg, pretrained=True):
     """BMN model
     
     Args:
         cfg (AttrDict): configs for BMN model
-        is_dygraph (bool): whether in dygraph mode, default True.
         pretrained (bool): If True, returns a model with pre-trained model
             on COCO, default True
     """
-    model = BMN(cfg, is_dygraph=is_dygraph)
+    model = BMN(cfg)
     if pretrained:
         weight_path = get_weights_path(*(pretrain_infos['bmn']))
         assert weight_path.endswith('.pdparams'), \

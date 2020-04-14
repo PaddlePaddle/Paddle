@@ -92,7 +92,7 @@ def infer_bmn(args):
     #data
     infer_dataset = BmnDataset(infer_cfg, 'infer')
 
-    model = bmn(config, args.dynamic, pretrained=args.weights is None)
+    model = bmn(config, pretrained=args.weights is None)
     model.prepare(
         metrics=BmnMetric(
             config, mode='infer'),
