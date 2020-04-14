@@ -1835,7 +1835,6 @@ PDNode *patterns::MultipleQuantize::operator()() {
 }
 
 PDNode *patterns::MKLDNNInPlace::operator()() {
-
   auto possible_inplace_op =
       pattern->NewNode(inplace_to_be_op_repr())
           ->assert_is_ops({"elementwise_add", "softmax"});

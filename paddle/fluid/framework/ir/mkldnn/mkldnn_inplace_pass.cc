@@ -64,13 +64,12 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
 
-
     VLOG(3) << "MKL-DNN Inplace op(" << current_op->id() << ") "
-    << "Curr Node In: "<< current_op_in->Name() << " Curr Node out: " 
-    << current_op_out->Name(); 
+            << "Curr Node In: " << current_op_in->Name()
+            << " Curr Node out: " << current_op_out->Name();
 
     VLOG(3) << "MKL-DNN Inplace next op(" << next_op->id() << ") "
-    << " next Node out: " << next_op_out->Name(); 
+            << " next Node out: " << next_op_out->Name();
 
     auto inputs = current_op->Op()->Inputs();
     auto outputs = current_op->Op()->Outputs();
@@ -102,13 +101,10 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
     // is used anywhere else apart from inplaced op
     auto input_consumers = current_op_in->outputs;
     if (input_consumers.size() > 1) {
-      VLOG(3)
-          << "MKL-DNN in-place pass FAIL: in-place var cannot "
-             "be an input to multiple operators";
+      VLOG(3) << "MKL-DNN in-place pass FAIL: in-place var cannot "
+                 "be an input to multiple operators";
       return;
     }
-    
-
 
     // If this op was alrady inplaced in previous pass placements
     // then we need to update input of next op
@@ -144,9 +140,11 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
       auto outputs = op->Outputs();
       // Check if in-place happened
       // for variable we changed (original name)
-      auto next_op_inplace_inputs =  inputs[in_to_outs.begin()->first];
+      auto next_op_inplace_inputs = inputs[in_to_outs.begin()->first];
       if ((next_op_inplace_inputs == outputs[in_to_outs.begin()->second]) &&
-          (std::find(next_op_inplace_inputs.begin(), next_op_inplace_inputs.end(), original_name) != next_op_inplace_inputs.end())) {
+          (std::find(next_op_inplace_inputs.begin(),
+                     next_op_inplace_inputs.end(),
+                     original_name) != next_op_inplace_inputs.end())) {
         VLOG(3) << "MKL-DNN InPlace: Next Op is in-placed , updating its input "
                    "and output var!";
         next_op->Op()->SetOutput(
