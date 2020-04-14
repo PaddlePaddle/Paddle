@@ -241,8 +241,7 @@ set(TEST_OPS_WITH_GC
   test_sequence_slice_op
   test_slice_op
   test_space_to_depth_op
-  test_squared_l2_distance_op
-  test_sequence_pool_all)
+  test_squared_l2_distance_op)
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
