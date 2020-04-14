@@ -32,7 +32,7 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 from paddle.fluid.incubate.fleet.base import role_maker
-from paddle.fluid.io import DataLoader, Dataset
+from paddle.io import DataLoader, Dataset
 
 from hapi.distributed import DistributedBatchSampler, _all_gather, prepare_distributed_context, _parallel_context_initialized
 from hapi.metrics import Metric
@@ -45,6 +45,14 @@ __all__ = [
 
 
 def set_device(device):
+    """
+    Args:
+        device (str): specify device type, 'cpu' or 'gpu'.
+        
+    Returns:
+        fluid.CUDAPlace or fluid.CPUPlace: Created GPU or CPU place.
+    """
+
     assert isinstance(device, six.string_types) and device.lower() in ['cpu', 'gpu'], \
     "Expected device in ['cpu', 'gpu'], but got {}".format(device)
 
@@ -117,9 +125,9 @@ class Loss(object):
     def forward(self, outputs, labels):
         raise NotImplementedError()
 
-    def __call__(self, outputs, labels):
+    def __call__(self, outputs, labels=None):
         labels = to_list(labels)
-        if in_dygraph_mode():
+        if in_dygraph_mode() and labels:
             labels = [to_variable(l) for l in labels]
         losses = to_list(self.forward(to_list(outputs), labels))
         if self.average:
@@ -366,10 +374,27 @@ class StaticGraphAdapter(object):
             metric_list, metric_splits = flatten_list(endpoints['metric'])
             fetch_list = endpoints['loss'] + metric_list
             num_loss = len(endpoints['loss'])
+
+        # if fetch Variable is same as input Variable, do not fetch
+        # from program, get it from input directly
+        pruned_fetch_list = []
+        pruned_fetch_idx_name_map = [""] * len(fetch_list)
+        for i, fetch_var in enumerate(fetch_list):
+            if fetch_var.name in feed.keys():
+                pruned_fetch_idx_name_map[i] = fetch_var.name
+            else:
+                pruned_fetch_list.append(fetch_var)
+
         rets = self._executor.run(compiled_prog,
                                   feed=feed,
-                                  fetch_list=fetch_list,
+                                  fetch_list=pruned_fetch_list,
                                   return_numpy=False)
+
+        # restore pruned fetch_list Variable from feeds
+        for i, name in enumerate(pruned_fetch_idx_name_map):
+            if len(name) > 0:
+                rets.insert(i, feed[name])
+
         # LoDTensor cannot be fetch as numpy directly
         rets = [np.array(v) for v in rets]
         if self.mode == 'test':
@@ -867,8 +892,6 @@ class Model(fluid.dygraph.Layer):
             if not isinstance(inputs, (list, dict, Input)):
                 raise TypeError(
                     "'inputs' must be list or dict in static graph mode")
-            if loss_function and not isinstance(labels, (list, Input)):
-                raise TypeError("'labels' must be list in static graph mode")
 
         metrics = metrics or []
         for metric in to_list(metrics):
@@ -904,11 +927,11 @@ class Model(fluid.dygraph.Layer):
         FIXME: add more comments and usage
         Args:
             train_data (Dataset|DataLoader): An iterable data loader is used for 
-                train. An instance of paddle.fluid.io.Dataset or 
-                paddle.fluid.io.Dataloader is recomended.
+                train. An instance of paddle paddle.io.Dataset or 
+                paddle.io.Dataloader is recomended.
             eval_data (Dataset|DataLoader): An iterable data loader is used for
                 evaluation at the end of epoch. If None, will not do evaluation. 
-                An instance of paddle.fluid.io.Dataset or paddle.fluid.io.Dataloader 
+                An instance of paddle.io.Dataset or paddle.io.Dataloader 
                 is recomended.
             batch_size (int): Integer number. The batch size of train_data and eval_data. 
                 When train_data and eval_data are both the instance of Dataloader, this 
@@ -1032,8 +1055,8 @@ class Model(fluid.dygraph.Layer):
         FIXME: add more comments and usage
         Args:
             eval_data (Dataset|DataLoader): An iterable data loader is used for
-                evaluation. An instance of paddle.fluid.io.Dataset or 
-                paddle.fluid.io.Dataloader is recomended.
+                evaluation. An instance of paddle.io.Dataset or 
+                paddle.io.Dataloader is recomended.
             batch_size (int): Integer number. The batch size of train_data and eval_data. 
                 When train_data and eval_data are both the instance of Dataloader, this 
                 parameter will be ignored.
@@ -1098,12 +1121,16 @@ class Model(fluid.dygraph.Layer):
 
         return eval_result
 
-    def predict(self, test_data, batch_size=1, num_workers=0):
+    def predict(self,
+                test_data,
+                batch_size=1,
+                num_workers=0,
+                stack_outputs=True):
         """
         FIXME: add more comments and usage
         Args:
             test_data (Dataset|DataLoader): An iterable data loader is used for
-                predict. An instance of paddle.fluid.io.Dataset or paddle.fluid.io.Dataloader 
+                predict. An instance of paddle.io.Dataset or paddle.io.Dataloader 
                 is recomended.
             batch_size (int): Integer number. The batch size of train_data and eval_data. 
                 When train_data and eval_data are both the instance of Dataloader, this 
@@ -1111,6 +1138,12 @@ class Model(fluid.dygraph.Layer):
             num_workers (int): the number of subprocess to load data, 0 for no subprocess 
                 used and loading data in main process. When train_data and eval_data are
                 both the instance of Dataloader, this parameter will be ignored.
+            stack_output (bool): whether stack output field like a batch, as for an output
+                filed of a sample is in shape [X, Y], test_data contains N samples, predict
+                output field will be in shape [N, X, Y] if stack_output is True, and will
+                be a length N list in shape [[X, Y], [X, Y], ....[X, Y]] if stack_outputs
+                is False. stack_outputs as False is used for LoDTensor output situation,
+                it is recommended set as True if outputs contains no LoDTensor. Default False
         """
 
         if fluid.in_dygraph_mode():
@@ -1137,19 +1170,16 @@ class Model(fluid.dygraph.Layer):
         if not isinstance(test_loader, Iterable):
             loader = test_loader()
 
-        outputs = None
+        outputs = []
         for data in tqdm.tqdm(loader):
-            if not fluid.in_dygraph_mode():
-                data = data[0]
+            data = flatten(data)
+            outputs.append(self.test(data[:len(self._inputs)]))
 
-            outs = self.test(*data)
-
-            if outputs is None:
-                outputs = outs
-            else:
-                outputs = [
-                    np.vstack([x, outs[i]]) for i, x in enumerate(outputs)
-                ]
+        # NOTE: for lod tensor output, we should not stack outputs
+        # for stacking may loss its detail info
+        outputs = list(zip(*outputs))
+        if stack_outputs:
+            outputs = [np.stack(outs, axis=0) for outs in outputs]
 
         self._test_dataloader = None
         if test_loader is not None and self._adapter._nranks > 1 \
@@ -1161,8 +1191,8 @@ class Model(fluid.dygraph.Layer):
         """
         Args:
             eval_data (Dataset|DataLoader|None): An iterable data loader is used for 
-                eval. An instance of paddle.fluid.io.Dataset or 
-                paddle.fluid.io.Dataloader is recomended. 
+                eval. An instance of paddle.io.Dataset or 
+                paddle.io.Dataloader is recomended. 
         """
         assert isinstance(
             eval_data,

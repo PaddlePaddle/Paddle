@@ -86,13 +86,13 @@ def main():
     if FLAGS.resume:
         g.load(FLAGS.resume)
 
-    loader_A = fluid.io.DataLoader(
+    loader_A = paddle.io.DataLoader(
         data.DataA(),
         places=place,
         shuffle=True,
         return_list=True,
         batch_size=FLAGS.batch_size)
-    loader_B = fluid.io.DataLoader(
+    loader_B = paddle.io.DataLoader(
         data.DataB(),
         places=place,
         shuffle=True,

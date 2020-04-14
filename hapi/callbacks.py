@@ -15,7 +15,7 @@
 import six
 import copy
 
-from hapi.progressbar import ProgressBar
+from progressbar import ProgressBar
 from paddle.fluid.dygraph.parallel import ParallelEnv
 
 

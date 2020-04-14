@@ -30,7 +30,7 @@ IMAGES_ROOT = "./data/" + DATASET + "/"
 import paddle.fluid as fluid
 
 
-class Cityscapes(fluid.io.Dataset):
+class Cityscapes(paddle.io.Dataset):
     def __init__(self, root_path, file_path, mode='train', return_name=False):
         self.root_path = root_path
         self.file_path = file_path
