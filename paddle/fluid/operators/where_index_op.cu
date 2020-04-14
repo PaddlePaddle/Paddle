@@ -35,40 +35,40 @@ class CUDAWhereIndexKernel : public framework::OpKernel<T> {
     framework::Tensor cond_cpu;
     framework::TensorCopy(*condition, platform::CPUPlace(), &cond_cpu);
 
-    const bool* cond_data = cond_cpu.data<bool>();
+    const T* cond_data = cond_cpu.data<T>();
     int64_t numel = cond_cpu.numel();
     auto dims = cond_cpu.dims();
     int rank = dims.size();
 
-    thrust::host_vector<int> h_true_index;
+    thrust::host_vector<int64_t> h_true_index;
     for (int64_t i = 0; i < numel; i++) {
-      if (cond_data[i]) {
+      if (static_cast<bool>(cond_data[i])) {
         h_true_index.push_back(i);
       }
     }
-    thrust::device_vector<int> d_true_index = h_true_index;
-    int* ptr_true_index = thrust::raw_pointer_cast(d_true_index.data());
+    thrust::device_vector<int64_t> d_true_index = h_true_index;
+    int64_t* ptr_true_index = thrust::raw_pointer_cast(d_true_index.data());
 
     size_t true_num = h_true_index.size();
 
     out->Resize(framework::make_ddim({static_cast<int64_t>(true_num), rank}));
-    auto out_ptr = out->mutable_data<T>(context.GetPlace());
+    auto out_ptr = out->mutable_data<int64_t>(context.GetPlace());
 
     if (true_num == 0) {
       return;
     }
 
-    thrust::host_vector<int> h_stride(rank, 0);
+    thrust::host_vector<int64_t> h_stride(rank, 0);
     h_stride[rank - 1] = 1;
     for (int i = rank - 2; i >= 0; i--) {
       h_stride[i] = h_stride[i + 1] * dims[i + 1];
     }
-    thrust::device_vector<int> d_stride = h_stride;
-    int* ptr_stride = thrust::raw_pointer_cast(d_stride.data());
+    thrust::device_vector<int64_t> d_stride = h_stride;
+    int64_t* ptr_stride = thrust::raw_pointer_cast(d_stride.data());
 
     auto& dev_ctx = context.template device_context<CUDADeviceContext>();
-    WhereIndexFunctor<int*> functor(ptr_true_index, true_num, ptr_stride, rank,
-                                    out_ptr);
+    WhereIndexFunctor<int64_t> functor(ptr_true_index, true_num, ptr_stride,
+                                       rank, out_ptr);
     platform::ForRange<CUDADeviceContext> for_range(dev_ctx, true_num);
     for_range(functor);
   }
@@ -78,4 +78,8 @@ class CUDAWhereIndexKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(where_index, ops::CUDAWhereIndexKernel<int64_t>);
+REGISTER_OP_CUDA_KERNEL(where_index, ops::CUDAWhereIndexKernel<int64_t>,
+                        ops::CUDAWhereIndexKernel<int>,
+                        ops::CUDAWhereIndexKernel<bool>,
+                        ops::CUDAWhereIndexKernel<float>,
+                        ops::CUDAWhereIndexKernel<double>);

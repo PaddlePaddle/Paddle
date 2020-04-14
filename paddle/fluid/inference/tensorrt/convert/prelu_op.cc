@@ -30,17 +30,27 @@ class PReluOpConverter : public OpConverter {
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
-    int input_num = op_desc.Input("X").size();
-    PADDLE_ENFORCE(input_num == 1);
+    size_t input_num = op_desc.Input("X").size();
+    PADDLE_ENFORCE_EQ(input_num, 1UL,
+                      platform::errors::InvalidArgument(
+                          "Invalid input X's size of prelu TRT converter. "
+                          "Expected 1, received %d.",
+                          input_num));
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     // Get output
     size_t output_num = op_desc.Output("Out").size();
-    PADDLE_ENFORCE(output_num == 1);
+    PADDLE_ENFORCE_EQ(output_num, 1UL,
+                      platform::errors::InvalidArgument(
+                          "Invalid output Out's size of prelu TRT converter. "
+                          "Expected 1, received %d.",
+                          output_num));
     // Get attrs
     std::string mode = boost::get<std::string>(op_desc.GetAttr("mode"));
     //
     auto* alpha_var = scope.FindVar(op_desc.Input("Alpha")[0]);
-    PADDLE_ENFORCE_NOT_NULL(alpha_var);
+    PADDLE_ENFORCE_NOT_NULL(
+        alpha_var, platform::errors::NotFound(
+                       "Variable Alpha of prelu TRT converter is not found."));
     auto* alpha_tensor = alpha_var->GetMutable<framework::LoDTensor>();
 
     platform::CPUPlace cpu_place;
