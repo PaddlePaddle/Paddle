@@ -377,6 +377,31 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
 #endif  // CUDA_VERSION >= 9010
 }
 
+template <>
+template <typename T>
+void Blas<platform::CUDADeviceContext>::TRSM(CBLAS_SIDE side, CBLAS_UPLO uplo,
+                                             CBLAS_TRANSPOSE transA,
+                                             CBLAS_DIAG diag, int M, int N,
+                                             T alpha, const T *A, int lda, T *B,
+                                             int ldb) const {
+  // solve row major `op ( A ) X = α B` by taking it as `X' op ( A' )  =  α B'`
+  // where ' stands for transpose
+  cublasSideMode_t cuSide =
+      (side == CblasLeft) ? CUBLAS_SIDE_RIGHT : CUBLAS_SIDE_LEFT;
+  cublasFillMode_t cuUplo =
+      (uplo == CblasLower) ? CUBLAS_FILL_MODE_UPPER : CUBLAS_FILL_MODE_LOWER;
+  // use CUBLAS_OP_C (conjugate transpose) for complex
+  cublasOperation_t cuTransA =
+      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  cublasDiagType_t cuDiag =
+      (diag == CblasUnit) ? CUBLAS_DIAG_UNIT : CUBLAS_DIAG_NON_UNIT;
+
+  context_.CublasCall([&](cublasHandle_t handle) {
+    CUBlas<T>::TRSM(handle, cuSide, cuUplo, cuTransA, cuDiag, N, M, alpha, A,
+                    lda, B, ldb);
+  });
+}
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

@@ -152,6 +152,11 @@ struct CBlas<float> {
     platform::dynload::mkl_scsrmm(args...);
   }
 #endif
+
+  template <typename... ARGS>
+  static void TRSM(ARGS... args) {
+    platform::dynload::cblas_strsm(args...);
+  }
 };
 
 template <>
@@ -273,6 +278,11 @@ struct CBlas<double> {
     platform::dynload::mkl_dcsrmm(args...);
   }
 #endif
+
+  template <typename... ARGS>
+  static void TRSM(ARGS... args) {
+    platform::dynload::cblas_dtrsm(args...);
+  }
 };
 
 #else
@@ -298,6 +308,11 @@ struct CBlas<float> {
   static void GEMV(ARGS... args) {
     cblas_sgemv(args...);
   }
+
+  template <typename... ARGS>
+  static void TRSM(ARGS... args) {
+    cblas_strsm(args...);
+  }
 };
 
 template <>
@@ -320,6 +335,11 @@ struct CBlas<double> {
   template <typename... ARGS>
   static void GEMV(ARGS... args) {
     cblas_dgemv(args...);
+  }
+
+  template <typename... ARGS>
+  static void TRSM(ARGS... args) {
+    cblas_dtrsm(args...);
   }
 };
 #endif
@@ -898,6 +918,17 @@ void Blas<platform::CPUDeviceContext>::CSRMM(
                   ldb, beta, c, ldc);
 }
 #endif
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::TRSM(CBLAS_SIDE side, CBLAS_UPLO uplo,
+                                            CBLAS_TRANSPOSE transA,
+                                            CBLAS_DIAG diag, int M, int N,
+                                            T alpha, const T *A, int lda, T *B,
+                                            int ldb) const {
+  CBlas<T>::TRSM(CblasRowMajor, side, uplo, transA, diag, M, N, alpha, A, lda,
+                 B, ldb);
+}
 
 }  // namespace math
 }  // namespace operators

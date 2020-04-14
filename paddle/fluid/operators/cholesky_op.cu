@@ -125,7 +125,7 @@ class CholeskyGPUKernel : public framework::OpKernel<T> {
                     int* info_array, int batch_size) const;
 };
 
-#define CALL_POTRF_TYPES(m) m(float, S) m(double, D)
+#define FUNC_WITH_TYPES(m) m(float, S) m(double, D)
 
 #define POTRF_INSTANCE(T, C)                                                   \
   template <>                                                                  \
@@ -143,7 +143,7 @@ class CholeskyGPUKernel : public framework::OpKernel<T> {
         handle, uplo, n, A, lda, workspace_ptr, workspace_size, info));        \
   }
 
-CALL_POTRF_TYPES(POTRF_INSTANCE);
+FUNC_WITH_TYPES(POTRF_INSTANCE);
 
 #if CUDA_VERSION >= 9020
 #define POTRF_BATCH_INSTANCE(T, C)                                          \
@@ -157,7 +157,7 @@ CALL_POTRF_TYPES(POTRF_INSTANCE);
             handle, uplo, n, Aarray, lda, info_array, batch_size));         \
   }
 
-CALL_POTRF_TYPES(POTRF_BATCH_INSTANCE);
+FUNC_WITH_TYPES(POTRF_BATCH_INSTANCE);
 #endif
 
 }  // namespace operators
