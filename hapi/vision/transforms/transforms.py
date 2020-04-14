@@ -502,4 +502,4 @@ class ColorJitter(object):
         self.transforms = Compose(transforms)
 
     def __call__(self, img, lbl):
-        return self.transforms(img), lbl
+        return self.transforms(img, lbl)

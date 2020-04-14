@@ -18,12 +18,12 @@
 import unittest
 import numpy as np
 
-from vision.datasets import *
+from hapi.datasets import *
 
 
 class TestFolderDatasets(unittest.TestCase):
     def test_dataset(self):
-        dataset_folder = DatasetFolder('test_data')
+        dataset_folder = DatasetFolder('tests/test_data')
 
         for _ in dataset_folder:
             pass

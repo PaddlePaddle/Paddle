@@ -18,7 +18,7 @@ import unittest
 import time
 import random
 
-from callbacks import config_callbacks
+from hapi.callbacks import config_callbacks
 
 
 class TestCallbacks(unittest.TestCase):

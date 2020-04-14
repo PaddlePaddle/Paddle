@@ -18,7 +18,7 @@ import unittest
 import random
 import time
 
-from progressbar import ProgressBar
+from hapi.progressbar import ProgressBar
 
 
 class TestProgressBar(unittest.TestCase):
