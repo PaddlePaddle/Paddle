@@ -16,13 +16,13 @@
 # export PYTHONPATH=PATH_TO_HAPI:$PYTHONPATH
 import unittest
 
-from datasets.folder import DatasetFolder
-from transform import transforms
+from hapi.datasets import DatasetFolder
+import hapi.vision.transforms as transforms
 
 
 class TestTransforms(unittest.TestCase):
     def do_transform(self, trans):
-        dataset_folder = DatasetFolder('test_data', transform=trans)
+        dataset_folder = DatasetFolder('tests/test_data', transform=trans)
 
         for _ in dataset_folder:
             pass

@@ -168,13 +168,13 @@ def create_lexnet_data_generator(args, reader, file_name, place, mode="train"):
 
 def create_dataloader(generator, place, feed_list=None):
     if not feed_list:
-        data_loader = fluid.io.DataLoader.from_generator(
+        data_loader = paddle.io.DataLoader.from_generator(
             capacity=50,
             use_double_buffer=True,
             iterable=True,
             return_list=True)
     else:
-        data_loader = fluid.io.DataLoader.from_generator(
+        data_loader = paddle.io.DataLoader.from_generator(
             feed_list=feed_list,
             capacity=50,
             use_double_buffer=True,
