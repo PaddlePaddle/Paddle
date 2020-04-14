@@ -27,6 +27,16 @@ class SequencePoolAllKernel : public framework::OpKernel<T> {
                       platform::errors::Unimplemented(
                           "SequencePoolAllOp only supports GPU now."));
   }
+
+  template <typename T>
+  class SequencePoolAllGradOpCUDAKernel : public framework::OpKernel<T> {
+   public:
+    void Compute(const framework::ExecutionContext& ctx) const override {
+      PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                        platform::errors::Unimplemented(
+                            "SequencePoolAllOp only supports GPU now."));
+    }
+  };
 };
 }  // namespace operators
 }  // namespace paddle
