@@ -136,7 +136,7 @@ class LayerWarp(fluid.dygraph.Layer):
 DarkNet_cfg = {53: ([1, 2, 8, 8, 4])}
 
 
-class DarkNet(Model):
+class DarkNet(fluid.dygraph.Layer):
     """DarkNet model from
     `"YOLOv3: An Incremental Improvement" <https://arxiv.org/abs/1804.02767>`_
 
