@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
@@ -78,18 +77,16 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
-    auto &x =
-        detail::Ref(scope.FindVar(Input("X")),
-                    "Cannot find input lod tensor variable %s", Input("X"))
-            .Get<framework::LoDTensor>();
-    auto &rank_table = detail::Ref(scope.FindVar(Input("RankTable")),
-                                   "Cannot find input rank table variable %s",
-                                   Input("RankTable"))
-                           .Get<framework::LoDRankTable>();
-    auto &out =
-        *detail::Ref(scope.FindVar(Output("Out")),
-                     "Cannot find output lod tensor variable %s", Output("Out"))
-             .GetMutable<framework::LoDTensor>();
+    auto &x = GET_DATA_SAFELY(scope.FindVar(Input("X")), "Input", "X",
+                              "ReorderLoDTensorByRankTable")
+                  .Get<framework::LoDTensor>();
+    auto &rank_table =
+        GET_DATA_SAFELY(scope.FindVar(Input("RankTable")), "Input", "RankTable",
+                        "ReorderLoDTensorByRankTable")
+            .Get<framework::LoDRankTable>();
+    auto &out = *(GET_DATA_SAFELY(scope.FindVar(Output("Out")), "Output", "Out",
+                                  "ReorderLoDTensorByRankTable")
+                      .GetMutable<framework::LoDTensor>());
 
     out.Resize(x.dims());
     out.mutable_data(x.place(), x.type());
@@ -191,7 +188,9 @@ class ReorderLoDTensorByRankTableOp : public ReorderLoDTensorByRankTableBase {
     size_t out_offset = 0;
     out->mutable_lod()->clear();
     for (auto &item : rank_table.items()) {
-      PADDLE_ENFORCE_LT(item.index, absolute_table.size());
+      PADDLE_ENFORCE_LT(item.index, absolute_table.size(),
+                        platform::errors::OutOfRange(
+                            "The value of rank_table is out of range."));
       out_offset = CopyTensorAndLod(place, absolute_table[item.index], x, out,
                                     out_offset);
     }

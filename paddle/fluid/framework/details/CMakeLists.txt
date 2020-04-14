@@ -73,7 +73,8 @@ set(SSA_GRAPH_EXECUTOR_DEPS graph framework_proto
     eager_deletion_pass
     buffer_shared_inplace_op_pass
     buffer_shared_cross_op_memory_reuse_pass
-    set_reader_device_info_pass)
+    set_reader_device_info_utils
+    add_reader_dependency_pass)
 cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS ${SSA_GRAPH_EXECUTOR_DEPS})
 
 cc_library(threaded_ssa_graph_executor SRCS threaded_ssa_graph_executor.cc DEPS fetch_op_handle ssa_graph_executor scope
@@ -112,15 +113,8 @@ set(IR_PASS_DEPS graph_viz_pass multi_devices_graph_pass
 if(NOT APPLE AND NOT WIN32 AND WITH_GPU)
   set(IR_PASS_DEPS ${IR_PASS_DEPS} fusion_group_pass)
 endif()
-if(WITH_NGRAPH) 
-  set(IR_PASS_DEPS ${IR_PASS_DEPS} ngraph)
-endif()
 cc_library(build_strategy SRCS build_strategy.cc DEPS pass_builder ${IR_PASS_DEPS})
 
 if (WITH_MKLDNN)
   target_link_libraries(build_strategy mkldnn_placement_pass)
-endif()
-
-if (WITH_NGRAPH)
-  target_link_libraries(build_strategy ngraph_subgraph_pass)
 endif()

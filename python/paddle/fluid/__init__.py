@@ -75,7 +75,6 @@ from .transpiler import DistributeTranspiler, \
     memory_optimize, release_memory, DistributeTranspilerConfig
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
 from . import clip
-from . import dygraph_grad_clip
 from . import profiler
 from . import unique_name
 from . import parallel_executor
@@ -122,7 +121,6 @@ __all__ = framework.__all__ + executor.__all__ + \
         'WeightNormParamAttr',
         'DataFeeder',
         'clip',
-        'dygraph_grad_clip',
         'profiler',
         'unique_name',
         'Scope',
@@ -185,9 +183,6 @@ def __bootstrap__():
     if core.is_compiled_with_mkldnn():
         read_env_flags.append('use_mkldnn')
 
-    if core.is_compiled_with_ngraph():
-        read_env_flags.append('use_ngraph')
-
     if core.is_compiled_with_dist():
         #env for rpc
         read_env_flags.append('rpc_deadline')
@@ -216,8 +211,7 @@ def __bootstrap__():
             'cudnn_batchnorm_spatial_persistent', 'gpu_allocator_retry_time',
             'local_exe_sub_scope_limit', 'gpu_memory_limit_mb'
         ]
-    core.init_gflags([sys.argv[0]] +
-                     ["--tryfromenv=" + ",".join(read_env_flags)])
+    core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])
     # don't init_p2p when in unittest to save time.
     core.init_devices(not in_test)

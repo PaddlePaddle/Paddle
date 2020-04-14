@@ -20,7 +20,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/gather.cu.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/for_range.h"
@@ -367,12 +366,10 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
     auto *scores = context.Input<Tensor>("Scores");
     auto *bbox_deltas = context.Input<Tensor>("BboxDeltas");
     auto *im_info = context.Input<Tensor>("ImInfo");
-    auto anchors = detail::Ref(context.Input<Tensor>("Anchors"),
-                               "Cannot find input Anchors(%s) in scope",
-                               context.InputNames("Anchors")[0]);
-    auto variances = detail::Ref(context.Input<Tensor>("Variances"),
-                                 "Cannot find input Variances(%s) in scope",
-                                 context.InputNames("Variances")[0]);
+    auto anchors = GET_DATA_SAFELY(context.Input<Tensor>("Anchors"), "Input",
+                                   "Anchors", "GenerateProposals");
+    auto variances = GET_DATA_SAFELY(context.Input<Tensor>("Variances"),
+                                     "Input", "Variances", "GenerateProposals");
 
     auto *rpn_rois = context.Output<LoDTensor>("RpnRois");
     auto *rpn_roi_probs = context.Output<LoDTensor>("RpnRoiProbs");
@@ -419,9 +416,12 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
     T *rpn_roi_probs_data = rpn_roi_probs->data<T>();
 
     auto place = boost::get<platform::CUDAPlace>(dev_ctx.GetPlace());
+    auto cpu_place = platform::CPUPlace();
 
     int64_t num_proposals = 0;
     std::vector<size_t> offset(1, 0);
+    std::vector<int64_t> tmp_lod;
+
     for (int64_t i = 0; i < num; ++i) {
       Tensor im_info_slice = im_info->Slice(i, i + 1);
       Tensor bbox_deltas_slice = bbox_deltas_swap.Slice(i, i + 1);
@@ -447,6 +447,15 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
       dev_ctx.Wait();
       num_proposals += proposals.dims()[0];
       offset.emplace_back(num_proposals);
+      tmp_lod.push_back(num_proposals);
+    }
+    if (context.HasOutput("RpnRoisLod")) {
+      auto *rpn_rois_lod = context.Output<Tensor>("RpnRoisLod");
+      rpn_rois_lod->mutable_data<int64_t>({num}, context.GetPlace());
+      int64_t *lod_data = rpn_rois_lod->data<int64_t>();
+      memory::Copy(place, lod_data, cpu_place, &tmp_lod[0],
+                   sizeof(int64_t) * num, dev_ctx.stream());
+      rpn_rois_lod->Resize({num});
     }
     framework::LoD lod;
     lod.emplace_back(offset);
