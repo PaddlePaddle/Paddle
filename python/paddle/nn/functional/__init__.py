@@ -102,6 +102,7 @@ from .conv import conv3d_transpose  #DEFINE_ALIAS
 # from .vision import space_to_depth   #DEFINE_ALIAS
 # from .vision import yolo_box   #DEFINE_ALIAS
 # from .vision import yolov3_loss   #DEFINE_ALIAS
+from . import activation
 # from .activation import brelu   #DEFINE_ALIAS
 # from .activation import elu   #DEFINE_ALIAS
 # from .activation import erf   #DEFINE_ALIAS
@@ -114,10 +115,10 @@ from .conv import conv3d_transpose  #DEFINE_ALIAS
 # from .activation import logsigmoid   #DEFINE_ALIAS
 # from .activation import maxout   #DEFINE_ALIAS
 # from .activation import prelu   #DEFINE_ALIAS
-# from .activation import relu   #DEFINE_ALIAS
+from .activation import relu  #DEFINE_ALIAS
 # from .activation import relu6   #DEFINE_ALIAS
 # from .activation import selu   #DEFINE_ALIAS
-# from .activation import sigmoid   #DEFINE_ALIAS
+from .activation import sigmoid  #DEFINE_ALIAS
 # from .activation import soft_relu   #DEFINE_ALIAS
 # from .activation import softmax   #DEFINE_ALIAS
 # from .activation import softplus   #DEFINE_ALIAS
@@ -126,7 +127,7 @@ from .conv import conv3d_transpose  #DEFINE_ALIAS
 # from .activation import swish   #DEFINE_ALIAS
 # from .activation import tanh_shrink   #DEFINE_ALIAS
 # from .activation import thresholded_relu   #DEFINE_ALIAS
-# from .activation import log_softmax   #DEFINE_ALIAS
+from .activation import log_softmax  #DEFINE_ALIAS
 # from .extension import add_position_encoding   #DEFINE_ALIAS
 # from .extension import autoincreased_step_counter   #DEFINE_ALIAS
 # from .extension import continuous_value_model   #DEFINE_ALIAS

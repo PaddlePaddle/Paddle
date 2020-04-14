@@ -53,19 +53,23 @@ def get_functools_partial_spec(func):
     return '{}(args={}, keywords={})'.format(func_str, args, keywords)
 
 
-def format_spec_doc(spec, doc=None):
+def format_spec(spec):
     args = spec.args
     varargs = spec.varargs
     keywords = spec.keywords
-    defaults = list(spec.defaults)
-    for idx, item in enumerate(defaults):
-        if not isinstance(item, functools.partial):
-            continue
+    defaults = spec.defaults
+    if defaults is not None:
+        defaults = list(defaults)
+        for idx, item in enumerate(defaults):
+            if not isinstance(item, functools.partial):
+                continue
 
-        defaults[idx] = get_functools_partial_spec(item)
+            defaults[idx] = get_functools_partial_spec(item)
+
+        defaults = tuple(defaults)
 
     return 'ArgSpec(args={}, varargs={}, keywords={}, defaults={})'.format(
-        args, varargs, keywords, tuple(defaults))
+        args, varargs, keywords, defaults)
 
 
 def queue_dict(member, cur_name):
@@ -78,12 +82,18 @@ def queue_dict(member, cur_name):
         args = member.__module__ + "." + member.__name__
     else:
         try:
-            args = format_spec_doc(inspect.getargspec(member))
+            args = inspect.getargspec(member)
+            has_type_error = False
         except TypeError:  # special for PyBind method
             args = "  ".join([
                 line.strip() for line in pydoc.render_doc(member).split('\n')
                 if "->" in line
             ])
+            has_type_error = True
+
+        if not has_type_error:
+            args = format_spec(args)
+
     member_dict[cur_name] = "({}, ('document', '{}'))".format(args, doc_md5)
 
 
@@ -122,6 +132,9 @@ def is_primitive(instance):
 def visit_all_module(mod):
     mod_name = mod.__name__
     if mod_name != 'paddle' and not mod_name.startswith('paddle.'):
+        return
+
+    if mod_name.startswith('paddle.fluid.core'):
         return
 
     if mod in visited_modules:

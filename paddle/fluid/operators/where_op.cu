@@ -48,9 +48,6 @@ class WhereKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(context.GetPlace()), true,
-        platform::errors::PermissionDenied("It must use CUDAPlace."));
     auto* condition = context.Input<framework::Tensor>("Condition");
     auto* X = context.Input<framework::Tensor>("X");
     auto* Y = context.Input<framework::Tensor>("Y");
@@ -78,10 +75,6 @@ class WhereGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(context.GetPlace()), true,
-        platform::errors::PermissionDenied("It must use CUDAPlace."));
-
     auto* condition = context.Input<framework::Tensor>("Condition");
     const bool* cond_data = condition->data<bool>();
     auto numel = condition->numel();
