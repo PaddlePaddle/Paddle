@@ -11373,6 +11373,12 @@ Examples:
 
 
 def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
+    check_variable_and_dtype(x, "x", ["bool"], op_name)
+    if y is not None:
+        check_variable_and_dtype(y, "y", ["bool"], op_name)
+    if out is not None:
+        check_variable_and_dtype(out, "out", [convert_dtype(x.dtype)], op_name)
+
     helper = LayerHelper(op_name, **locals())
 
     if binary_op:
@@ -13562,6 +13568,12 @@ def deformable_conv(input,
           out = fluid.layers.deformable_conv(input=data, offset=offset, mask=None,
                                              num_filters=2, filter_size=filter_size, padding=1, modulated=False)
     """
+
+    check_variable_and_dtype(input, "input", ['float32', 'float64'],
+                             'deformable_conv')
+    check_variable_and_dtype(offset, "offset", ['float32', 'float64'],
+                             'deformable_conv')
+    check_type(mask, 'mask', (Variable, type(None)), 'deformable_conv')
 
     num_channels = input.shape[1]
     assert param_attr is not False, "param_attr should not be False here."
