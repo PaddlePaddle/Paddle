@@ -105,6 +105,16 @@ class TestSequencePoolAll1(OpTest):
         except:
             print("do not support cpu test, skip")
 
+    def test_check_grad_cpu(self):
+        try:
+            for index in range(self.var_num):
+                self.check_grad_with_place(
+                    core.CPUPlace(), [self.var_names[index]],
+                    self.out_names[index],
+                    check_dygraph=False)
+        except:
+            print("do not support cpu test, skip")
+
 
 class TestSequencePoolAll2(TestSequencePoolAll1):
     def config(self):
