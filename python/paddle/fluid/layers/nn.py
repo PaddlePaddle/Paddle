@@ -5484,7 +5484,7 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
     """
     helper = LayerHelper('row_conv', **locals())
     dtype = helper.input_dtype()
-    filter_shape = [future_context_size + 1, input.shape[1]]
+    filter_shape = [future_context_size + 1, input.shape[-1]]
     filter_param = helper.create_parameter(
         attr=helper.param_attr, shape=filter_shape, dtype=dtype)
     out = helper.create_variable_for_type_inference(dtype)
