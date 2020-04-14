@@ -59,7 +59,7 @@ from .tensor.creation import full  #DEFINE_ALIAS
 from .tensor.creation import full_like  #DEFINE_ALIAS
 # from .tensor.creation import triu   #DEFINE_ALIAS
 # from .tensor.creation import tril   #DEFINE_ALIAS
-# from .tensor.creation import meshgrid   #DEFINE_ALIAS
+from .tensor.creation import meshgrid  #DEFINE_ALIAS
 # from .tensor.stat import mean   #DEFINE_ALIAS
 # from .tensor.stat import reduce_mean   #DEFINE_ALIAS
 # from .tensor.stat import std   #DEFINE_ALIAS
