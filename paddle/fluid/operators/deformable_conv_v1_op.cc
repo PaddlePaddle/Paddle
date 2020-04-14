@@ -163,9 +163,10 @@ class DeformableConvV1Op : public framework::OperatorWithKernel {
             "channels * groups. The difference is [%d]: [%d]",
             in_dims[1], filter_dims[1] * groups));
     PADDLE_ENFORCE_EQ(filter_dims[0] % groups, 0,
-                      "The number of output channels should be divided by "
-                      "groups. But received [%d]: [%d]",
-                      filter_dims[0], groups);
+                      platform::errors::InvalidArgument(
+                          "The number of output channels should be divided by "
+                          "groups. But received [%d]: [%d]",
+                          filter_dims[0], groups));
     PADDLE_ENFORCE_EQ(
         filter_dims[0] % deformable_groups, 0,
         platform::errors::InvalidArgument(
