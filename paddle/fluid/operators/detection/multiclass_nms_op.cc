@@ -29,30 +29,34 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("BBoxes"), "Input", "BBoxes", "MultiClassNMS");
     OP_INOUT_CHECK(ctx->HasInput("Scores"), "Input", "Scores", "MultiClassNMS");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "MultiClassNMS");
-
     auto box_dims = ctx->GetInputDim("BBoxes");
     auto score_dims = ctx->GetInputDim("Scores");
     auto score_size = score_dims.size();
 
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE(score_size == 2 || score_size == 3,
-                     "The rank of Input(Scores) must be 2 or 3");
+      PADDLE_ENFORCE_EQ(score_size == 2 || score_size == 3, true,
+                        platform::errors::InvalidArgument(
+                            "The rank of Input(Scores) must be 2 or 3"
+                            ". But received rank = %d",
+                            score_size));
       PADDLE_ENFORCE_EQ(box_dims.size(), 3,
                         platform::errors::InvalidArgument(
                             "The rank of Input(BBoxes) must be 3"
-                            "But receive box_dims size(%s)",
+                            ". But received rank = %d",
                             box_dims.size()));
       if (score_size == 3) {
-        PADDLE_ENFORCE(box_dims[2] == 4 || box_dims[2] == 8 ||
-                           box_dims[2] == 16 || box_dims[2] == 24 ||
-                           box_dims[2] == 32,
-                       "The last dimension of Input(BBoxes) must be 4 or 8, "
-                       "represents the layout of coordinate "
-                       "[xmin, ymin, xmax, ymax] or "
-                       "4 points: [x1, y1, x2, y2, x3, y3, x4, y4] or "
-                       "8 points: [xi, yi] i= 1,2,...,8 or "
-                       "12 points: [xi, yi] i= 1,2,...,12 or "
-                       "16 points: [xi, yi] i= 1,2,...,16");
+        PADDLE_ENFORCE_EQ(
+            box_dims[2] == 4 || box_dims[2] == 8 || box_dims[2] == 16 ||
+                box_dims[2] == 24 || box_dims[2] == 32,
+            true, platform::errors::InvalidArgument(
+                      "The last dimension of Input"
+                      "(BBoxes) must be 4 or 8, "
+                      "represents the layout of coordinate "
+                      "[xmin, ymin, xmax, ymax] or "
+                      "4 points: [x1, y1, x2, y2, x3, y3, x4, y4] or "
+                      "8 points: [xi, yi] i= 1,2,...,8 or "
+                      "12 points: [xi, yi] i= 1,2,...,12 or "
+                      "16 points: [xi, yi] i= 1,2,...,16"));
         PADDLE_ENFORCE_EQ(
             box_dims[1], score_dims[2],
             platform::errors::InvalidArgument(
@@ -64,17 +68,16 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
       } else {
         PADDLE_ENFORCE_EQ(box_dims[2], 4,
                           platform::errors::InvalidArgument(
-                              "The last dimension of Input(BBoxes) must be 4"
-                              "But received box_dims[2](%s).",
+                              "The last dimension of Input"
+                              "(BBoxes) must be 4. But received dimension = %d",
                               box_dims[2]));
-        PADDLE_ENFORCE_EQ(box_dims[1], score_dims[1],
-                          platform::errors::InvalidArgument(
-                              "The 2nd dimension of Input(BBoxes)"
-                              "must be equal to the 2nd dimension"
-                              " of Input(Scores)"
-                              "But received box_dims[1](%s) != "
-                              "score_dims[1](%s)",
-                              box_dims[1], score_dims[1]));
+        PADDLE_ENFORCE_EQ(
+            box_dims[1], score_dims[1],
+            platform::errors::InvalidArgument(
+                "The 2nd dimension of Input"
+                "(BBoxes) must be equal to the 2nd dimension of Input(Scores). "
+                "But received box dimension = %d, score dimension = %d",
+                box_dims[1], score_dims[1]));
       }
     }
     // Here the box_dims[0] is not the real dimension of output.
