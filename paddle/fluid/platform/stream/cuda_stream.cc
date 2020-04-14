@@ -20,8 +20,6 @@ namespace paddle {
 namespace platform {
 namespace stream {
 
-constexpr int64_t kHighPriority = -1;
-constexpr int64_t kNormalPriority = 0;
 constexpr unsigned int kDefaultFlag = cudaStreamDefault;
 
 bool CUDAStream::Init(const Place& place, const enum Priority& priority) {
@@ -30,13 +28,13 @@ bool CUDAStream::Init(const Place& place, const enum Priority& priority) {
                         "Cuda stream must be created using cuda place."));
   place_ = place;
   CUDADeviceGuard guard(boost::get<CUDAPlace>(place_).device);
-  if (priority == Priority::HIGH) {
+  if (priority == Priority::kHigh) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaStreamCreateWithPriority(&stream_, kDefaultFlag, kHighPriority),
+        cudaStreamCreateWithPriority(&stream_, kDefaultFlag, -1),
         platform::errors::Fatal("High priority cuda stream creation failed."));
-  } else if (priority == Priority::NORMAL) {
+  } else if (priority == Priority::kNormal) {
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaStreamCreateWithPriority(&stream_, kDefaultFlag, kNormalPriority),
+        cudaStreamCreateWithPriority(&stream_, kDefaultFlag, 0),
         platform::errors::Fatal(
             "Normal priority cuda stream creation failed."));
   }

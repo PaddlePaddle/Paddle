@@ -85,7 +85,7 @@ class CUDAContext {
   CUDAContext() = default;
   explicit CUDAContext(
       const CUDAPlace& place,
-      const enum stream::Priority& priority = stream::Priority::NORMAL);
+      const enum stream::Priority& priority = stream::Priority::kNormal);
 
   ~CUDAContext();
 
