@@ -1209,6 +1209,24 @@ struct DeleteQuantDequantOpPattern : public PatternBase {
   PATTERN_DECL_NODE(any_op2);
 };
 
+// Matmul + Transpose + Reshape
+struct MatmulTransposeReshapePattern : public PatternBase {
+  MatmulTransposeReshapePattern(PDPattern* pattern,
+                                const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "matmul_transpose_reshape") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(matmul_op);
+  PATTERN_DECL_NODE(matmul_out);
+  PATTERN_DECL_NODE(transpose_op);
+  PATTERN_DECL_NODE(transpose_out);
+  PATTERN_DECL_NODE(transpose_out_xshape);
+  PATTERN_DECL_NODE(reshape_op);
+  PATTERN_DECL_NODE(reshape_out);
+  PATTERN_DECL_NODE(reshape_out_xshape);
+};
+
 }  // namespace patterns
 
 // Link two ir::Nodes from each other.

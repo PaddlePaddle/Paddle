@@ -126,6 +126,60 @@ class DDim {
 
   std::string to_str() const;
 
+  template <typename T>
+  DDim reshape(const std::vector<T>& shape) const {
+    const int64_t copy_dim_val = 0;
+    const DDim& in_dims = *this;
+    framework::DDim out_dims;
+    out_dims.rank_ = shape.size();
+    for (size_t i = 0; i < shape.size(); ++i) {
+      if (shape[i] == copy_dim_val) {
+        PADDLE_ENFORCE_LT(static_cast<T>(i), in_dims.size(),
+                          platform::errors::InvalidArgument(
+                              "The index of 0 in `shape` must be less than "
+                              "the dimensions. But received shape[%d] "
+                              "= 0, dimensions = %d, shape = [%s].",
+                              i, in_dims.size(), in_dims));
+        out_dims[i] = in_dims[i];
+      } else {
+        out_dims[i] = shape[i];
+      }
+    }
+    return out_dims;
+  }
+  template <typename T>
+  DDim transpose(const std::vector<T>& axis) const {
+    const DDim& in_dims = *this;
+    size_t x_rank = in_dims.size();
+    size_t axis_size = axis.size();
+
+    PADDLE_ENFORCE_EQ(x_rank, axis_size,
+                      "The input dimension's size "
+                      "should be equal to the axis's size. "
+                      "But received dimension is %d, "
+                      "axis's size is %d",
+                      x_rank, axis_size);
+
+    std::vector<T> count(axis_size, 0);
+    for (size_t i = 0; i < axis_size; i++) {
+      PADDLE_ENFORCE(
+          axis[i] < static_cast<T>(axis_size) && ++count[axis[i]] == 1,
+          "ValueError: Each element of axis should "
+          "be a unique value range from 0 to (dims - 1), "
+          "where the dims is the axis's size, "
+          "unique value means this axis value can appear only once. "
+          "But received axis[%d] is %d, axis_size is %d, "
+          "count[axis[%d]] is %d",
+          i, axis[i], axis_size, i, count[axis[i]]);
+    }
+
+    framework::DDim out_dims(in_dims);
+    for (size_t i = 0; i < axis_size; i++) {
+      out_dims[i] = in_dims[axis[i]];
+    }
+    return out_dims;
+  }
+
  private:
   template <int D>
   inline Dim<D>& UnsafeCast() {

@@ -64,7 +64,8 @@ class MatMulFactory {
 
  private:
   struct MatMulDims {
-    const memory::dim BS, M, N, K;
+    const memory::dims x_dims, y_dims, out_dims, x_strides, y_strides,
+        out_strides;
   };
 
   void SetDNNLEngine(const ExecutionContext& ctx) {
@@ -78,6 +79,14 @@ class MatMulFactory {
                             const memory::dims& strides, const T* data) {
     auto md = memory::desc(dims, MKLDNNGetDataType<T>(), strides);
     return dnnl::memory(md, engine_, to_void_cast(data));
+  }
+
+  void correctStridesWhenOutputFused(const ExecutionContext& ctx,
+                                     const memory::dim N, memory::dim b,
+                                     memory::dims* out_strides) const {
+    auto& reshape_Out = ctx.Attr<std::vector<int64_t>>("reshape_Out");
+    auto& axis_Out = ctx.Attr<std::vector<int64_t>>("axis_Out");
+    if (!reshape_Out.empty() && !axis_Out.empty()) *out_strides = {N, b * N, 1};
   }
 
   MatMulDims GetMatmulDims(const ExecutionContext& ctx) {
@@ -100,34 +109,41 @@ class MatMulFactory {
     const memory::dim M = mat_dim_x.height_;
     const memory::dim N = mat_dim_y.width_;
     const memory::dim K = mat_dim_x.width_;
-    return {BS, M, N, K};
+
+    batch_size_ = static_cast<unsigned int>(ctx.Input<Tensor>("X")->dims()[0]);
+    auto b = BS / batch_size_;
+    memory::dims x_dims = {b, M, K};
+    memory::dims y_dims = {b, K, N};
+    memory::dims out_dims = {b, M, N};
+
+    size_t x_size = b * M * K * sizeof(XT);
+    size_t y_size = b * K * N * sizeof(YT);
+    size_t out_size = b * M * N * sizeof(OT);
+    offsets_ = {x_size, y_size, out_size};
+
+    // Translate transA and transB
+    memory::dims strides_x = !ctx.Attr<bool>("transpose_X")
+                                 ? memory::dims{M * K, K, 1}
+                                 : memory::dims{M * K, 1, M};
+    memory::dims strides_y = !ctx.Attr<bool>("transpose_Y")
+                                 ? memory::dims{N * K, N, 1}
+                                 : memory::dims{N * K, 1, K};
+    memory::dims out_strides = memory::dims{M * N, N, 1};
+
+    correctStridesWhenOutputFused(ctx, N, b, &out_strides);
+
+    return {x_dims, y_dims, out_dims, strides_x, strides_y, out_strides};
   }
 
   void CreateMemories(const ExecutionContext& ctx) {
     auto matmul_dims = GetMatmulDims(ctx);
-    auto BS = matmul_dims.BS;
-    auto M = matmul_dims.M;
-    auto N = matmul_dims.N;
-    auto K = matmul_dims.K;
-    bool x_trans = ctx.Attr<bool>("transpose_X");
-    bool y_trans = ctx.Attr<bool>("transpose_Y");
 
-    typedef memory::dims dims;
-    dims x_dims = {BS, M, K};
-    dims y_dims = {BS, K, N};
-    dims out_dims = {BS, M, N};
-
-    // Translate transA and transB
-    dims x_strides = !x_trans ? dims{M * K, K, 1} : dims{M * K, 1, M};
-    dims y_strides = !y_trans ? dims{N * K, N, 1} : dims{N * K, 1, K};
-    dims out_strides = {M * N, N, 1};
-
-    x_mem_ =
-        CreateMemory<XT>(x_dims, x_strides, ctx.Input<Tensor>("X")->data<XT>());
-    y_mem_ =
-        CreateMemory<YT>(y_dims, y_strides, ctx.Input<Tensor>("Y")->data<YT>());
+    x_mem_ = CreateMemory<XT>(matmul_dims.x_dims, matmul_dims.x_strides,
+                              ctx.Input<Tensor>("X")->data<XT>());
+    y_mem_ = CreateMemory<YT>(matmul_dims.y_dims, matmul_dims.y_strides,
+                              ctx.Input<Tensor>("Y")->data<YT>());
     out_mem_ = CreateMemory<OT>(
-        out_dims, out_strides,
+        matmul_dims.out_dims, matmul_dims.out_strides,
         ctx.Output<Tensor>("Out")->mutable_data<OT>(ctx.GetPlace()));
   }
 
@@ -156,11 +172,25 @@ class MatMulFactory {
 
   void Execute() {
     dnnl::stream stream(engine_);
-    matmul_prim_.execute(stream, {
-                                     {MKLDNN_ARG_SRC, x_mem_},
-                                     {MKLDNN_ARG_WEIGHTS, y_mem_},
-                                     {MKLDNN_ARG_DST, out_mem_},
-                                 });
+
+    auto offsets = offsets_;
+    unsigned bs = batch_size_;
+    void* x_ptr = x_mem_.get_data_handle();
+    void* y_ptr = y_mem_.get_data_handle();
+    void* out_ptr = out_mem_.get_data_handle();
+    for (unsigned i = 0; i < bs; i++) {
+      x_mem_.set_data_handle(x_ptr);
+      y_mem_.set_data_handle(y_ptr);
+      out_mem_.set_data_handle(out_ptr);
+      matmul_prim_.execute(stream, {
+                                       {MKLDNN_ARG_SRC, x_mem_},
+                                       {MKLDNN_ARG_WEIGHTS, y_mem_},
+                                       {MKLDNN_ARG_DST, out_mem_},
+                                   });
+      x_ptr = static_cast<char*>(x_ptr) + offsets.x_offset;
+      y_ptr = static_cast<char*>(y_ptr) + offsets.y_offset;
+      out_ptr = static_cast<char*>(out_ptr) + offsets.out_offset;
+    }
     stream.wait();
   }
 
@@ -188,11 +218,19 @@ class MatMulFactory {
   void SetInitialized() { initialized_ = true; }
 
  private:
+  struct memory_offsets {
+    size_t x_offset;
+    size_t y_offset;
+    size_t out_offset;
+  };
+
   dnnl::engine engine_;
   dnnl::memory x_mem_;
   dnnl::memory y_mem_;
   dnnl::memory out_mem_;
   dnnl::matmul matmul_prim_;
+  memory_offsets offsets_;
+  unsigned batch_size_;
   bool initialized_ = false;
 };
 

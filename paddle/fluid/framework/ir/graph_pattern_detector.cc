@@ -2147,6 +2147,43 @@ void patterns::DeleteQuantDequantOpPattern::operator()() {
   any_op2->LinksFrom({quant_dequant_out});
 }
 
+PDNode *patterns::MatmulTransposeReshapePattern::operator()() {
+  auto reshape_op =
+      pattern->NewNode(reshape_op_repr())->assert_is_op("reshape2");
+  auto transpose_op =
+      pattern->NewNode(transpose_op_repr())->assert_is_op("transpose2");
+  auto matmul_op = pattern->NewNode(matmul_op_repr())->assert_is_op("matmul");
+
+  auto matmul_out = pattern->NewNode(matmul_out_repr())
+                        ->AsInput()
+                        ->assert_is_op_output("matmul", "Out")
+                        ->assert_is_op_input("transpose2", "X");
+
+  auto transpose_out = pattern->NewNode(transpose_out_repr())
+                           ->AsIntermediate()
+                           ->assert_is_op_output("transpose2", "Out")
+                           ->assert_is_op_input("reshape2", "X");
+
+  auto transpose_out_xshape = pattern->NewNode(transpose_out_xshape_repr())
+                                  ->AsIntermediate()
+                                  ->assert_is_op_output("transpose2", "XShape");
+
+  auto reshape_out = pattern->NewNode(reshape_out_repr())
+                         ->AsOutput()
+                         ->assert_is_op_output("reshape2");
+
+  auto reshape_out_xshape = pattern->NewNode(reshape_out_xshape_repr())
+                                ->AsIntermediate()
+                                ->assert_is_op_output("reshape2", "XShape");
+
+  matmul_op->LinksTo({matmul_out});
+  transpose_op->LinksTo({transpose_out_xshape});
+  reshape_op->LinksTo({reshape_out_xshape});
+  transpose_op->LinksFrom({matmul_out}).LinksTo({transpose_out});
+  reshape_op->LinksFrom({transpose_out}).LinksTo({reshape_out});
+  return reshape_out;
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

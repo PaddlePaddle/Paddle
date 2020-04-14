@@ -330,6 +330,9 @@ class MatMulOp : public framework::OperatorWithKernel {
                    "Input(Y) of MatMulOp should not be null.");
     PADDLE_ENFORCE(context->HasOutput("Out"),
                    "Output(Out) of MatMulOp should not be null.");
+    auto reshape_out =
+        context->Attrs().Get<std::vector<int64_t>>("reshape_Out");
+    auto axis_out = context->Attrs().Get<std::vector<int64_t>>("axis_Out");
 
     auto dim_x = context->GetInputDim("X");
     auto dim_y = context->GetInputDim("Y");
@@ -409,7 +412,19 @@ class MatMulOp : public framework::OperatorWithKernel {
     if (dim_out.empty()) {
       dim_out = {1};
     }
-    context->SetOutputDim("Out", framework::make_ddim(dim_out));
+
+    framework::DDim ddim_out = framework::make_ddim(dim_out);
+
+    //  if matmul+transpose+reshape fuse activated
+    if (!reshape_out.empty() && !axis_out.empty()) {
+      PADDLE_ENFORCE(reshape_out.size() == 3 || reshape_out.size() == 4);
+      framework::DDim shape_out =
+          ddim_out.transpose(axis_out).reshape(reshape_out);
+      context->SetOutputDim("Out", shape_out);
+    } else {
+      context->SetOutputDim("Out", ddim_out);
+    }
+
     context->ShareLoD("X", /*->*/ "Out");
   }
 
@@ -468,6 +483,11 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Force INT8 kernel output FP32, only "
                   "used in MKL-DNN INT8")
         .SetDefault(false);
+    AddAttr<std::vector<int64_t>>("reshape_Out", "Shape of fused reshape.")
+        .SetDefault({});
+    AddAttr<std::vector<int64_t>>("axis_Out", "Axis of fused transpose.")
+        .SetDefault({});
+
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
     AddAttr<int>("head_number", "The number of heads of the matrix")
         .SetDefault(1);
