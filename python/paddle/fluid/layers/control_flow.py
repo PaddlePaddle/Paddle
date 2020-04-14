@@ -1436,6 +1436,15 @@ def less_than(x, y, force_cpu=None, cond=None):
           result_value, = exe.run(fluid.default_main_program(), feed={'x':x_i, 'y':y_i}, fetch_list=[result])
           print(result_value) # [[True, False], [False, False]]
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "less_than")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "less_than")
+    if cond is not None:
+        check_type(cond, "cond", Variable, "less_than")
+    if force_cpu != None:
+        check_type(force_cpu, "force_cpu", bool, "less_than")
+
     helper = LayerHelper("less_than", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1480,6 +1489,14 @@ def less_equal(x, y, cond=None):
           out1 = label<= limit #out1=[True, False]
 
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "less_equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "less_equal")
+    if cond is not None:
+        check_variable_and_dtype(cond, "cond", [convert_dtype(x.dtype)],
+                                 "less_equal")
+
     helper = LayerHelper("less_equal", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1521,6 +1538,14 @@ def greater_than(x, y, cond=None):
           out = fluid.layers.greater_than(x=label, y=limit) #out=[False, True]
           out1 = label > limit #out1=[False, True]
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "greater_than")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "greater_than")
+    if cond is not None:
+        check_variable_and_dtype(cond, "cond", [convert_dtype(x.dtype)],
+                                 "greater_than")
+
     helper = LayerHelper("greater_than", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1564,6 +1589,14 @@ def greater_equal(x, y, cond=None):
           out_1 = label >= limit #out1=[True, False]
 
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "greater_equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "greater_equal")
+    if cond is not None:
+        check_variable_and_dtype(cond, "cond", [convert_dtype(x.dtype)],
+                                 "greater_equal")
+
     helper = LayerHelper("greater_equal", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1607,6 +1640,14 @@ def equal(x, y, cond=None):
           out1 = fluid.layers.equal(x=label,y=limit) #out1=[True, False]
           out2 = fluid.layers.equal(x=label_cond,y=limit, cond=out_cond) #out2=[False, True] out_cond=[False, True]
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "equal")
+    if cond is not None:
+        check_variable_and_dtype(cond, "cond", [convert_dtype(x.dtype)],
+                                 "equal")
+
     helper = LayerHelper("equal", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1641,6 +1682,14 @@ def not_equal(x, y, cond=None):
           limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
           out = fluid.layers.not_equal(x=label, y=limit)
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "not_equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "not_equal")
+    if cond is not None:
+        check_variable_and_dtype(cond, "cond", [convert_dtype(x.dtype)],
+                                 "not_equal")
+
     helper = LayerHelper("not_equal", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
