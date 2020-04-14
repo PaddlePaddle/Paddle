@@ -131,5 +131,15 @@ class TestBceLossOp(OpTest):
         self.shape = [10, 10]
 
 
+class TestBceLossOpCase1(OpTest):
+    def init_test_cast(self):
+        self.shape = [2, 3, 4, 5]
+
+
+class TestBceLossOpCase2(OpTest):
+    def init_test_cast(self):
+        self.shape = [2, 3, 20]
+
+
 if __name__ == "__main__":
     unittest.main()

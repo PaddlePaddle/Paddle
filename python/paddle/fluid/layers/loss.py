@@ -334,6 +334,10 @@ def square_error_cost(input, label):
 	        
 	        # [0.04000002]
     """
+    check_variable_and_dtype(input, "input", ['float32', 'float64'],
+                             'square_error_cost')
+    check_variable_and_dtype(label, "label", ['float32', 'float64'],
+                             'square_error_cost')
     helper = LayerHelper('square_error_cost', **locals())
     minus_out = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
@@ -923,6 +927,8 @@ def hsigmoid(input,
                 value=0.05), bias_attr=fluid.initializer.Constant(value=.0))
             # out = [[0.62792355], [0.62792355], [0.62792355], [0.62792355]]
     """
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'hsigmoid')
+    check_variable_and_dtype(label, 'label', ['int64'], 'hsigmoid')
 
     helper = LayerHelper('hierarchical_sigmoid', **locals())
     dtype = helper.input_dtype()
@@ -1479,6 +1485,11 @@ def teacher_student_sigmoid_loss(input,
           cost = fluid.layers.teacher_student_sigmoid_loss(input=similarity, label=label)
 
     """
+    check_variable_and_dtype(input, "input", ['float32', 'float64'],
+                             'teacher_student_sigmoid_loss')
+    check_variable_and_dtype(label, "label", ['float32', 'float64'],
+                             'teacher_student_sigmoid_loss')
+
     helper = LayerHelper('teacher_student_sigmoid_loss', **locals())
     out = helper.create_variable(dtype=input.dtype)
     helper.append_op(
@@ -1631,6 +1642,12 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
 
        npair_loss = fluid.layers.npair_loss(anchor, positive, labels, l2_reg = 0.002)
   '''
+    check_variable_and_dtype(anchor, 'anchor', ['float32', 'float64'],
+                             'npair_loss')
+    check_variable_and_dtype(positive, 'positive', ['float32', 'float64'],
+                             'positive')
+    check_variable_and_dtype(labels, 'labels', ['float32', 'float64', 'int64'],
+                             'labels')
     Beta = 0.25
     batch_size = labels.shape[0]
 
@@ -1707,4 +1724,6 @@ def mse_loss(input, label):
 	        # [0.04000002]
 
     """
+    check_variable_and_dtype(input, "input", ['float32', 'float64'], 'mse_loss')
+    check_variable_and_dtype(label, "label", ['float32', 'float64'], 'mse_loss')
     return nn.reduce_mean(square_error_cost(input, label))

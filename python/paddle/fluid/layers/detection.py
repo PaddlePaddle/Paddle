@@ -233,7 +233,7 @@ def retinanet_target_assign(bbox_pred,
                             dtype='float32')
           is_crowd = fluid.data(name='is_crowd', shape=[1],
                             dtype='float32')
-          im_info = fluid.data(name='im_infoss', shape=[1, 3],
+          im_info = fluid.data(name='im_info', shape=[1, 3],
                             dtype='float32')
           score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num = \\
                 fluid.layers.retinanet_target_assign(bbox_pred, cls_logits, anchor_box,
@@ -452,7 +452,7 @@ def rpn_target_assign(bbox_pred,
     return predicted_cls_logits, predicted_bbox_pred, target_label, target_bbox, bbox_inside_weight
 
 
-def sigmoid_focal_loss(x, label, fg_num, gamma=2, alpha=0.25):
+def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
     """
     **Sigmoid Focal Loss Operator.**
 
@@ -493,9 +493,9 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2, alpha=0.25):
             is int32.
         fg_num(Variable): A 1-D tensor with shape [1] represents the number of positive samples in a
             mini-batch, which should be obtained before this OP. The data type of :attr:`fg_num` is int32.
-        gamma(float): Hyper-parameter to balance the easy and hard examples. Default value is
+        gamma(int|float): Hyper-parameter to balance the easy and hard examples. Default value is
             set to 2.0.
-        alpha(float): Hyper-parameter to balance the positive and negative example. Default value
+        alpha(int|float): Hyper-parameter to balance the positive and negative example. Default value
             is set to 0.25.
 
     Returns:
@@ -514,7 +514,7 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2, alpha=0.25):
             loss = fluid.layers.sigmoid_focal_loss(x=input,
                                                    label=label,
                                                    fg_num=fg_num,
-                                                   gamma=2.,
+                                                   gamma=2.0,
                                                    alpha=0.25)
     """
 
@@ -891,6 +891,8 @@ def polygon_box_transform(input, name=None):
             input = fluid.data(name='input', shape=[4, 10, 5, 5], dtype='float32')
             out = fluid.layers.polygon_box_transform(input)
     """
+    check_variable_and_dtype(input, "input", ['float32', 'float64'],
+                             'polygon_box_transform')
     helper = LayerHelper("polygon_box_transform", **locals())
     output = helper.create_variable_for_type_inference(dtype=input.dtype)
 
@@ -1167,15 +1169,16 @@ def detection_map(detect_res,
         return helper.create_variable_for_type_inference(dtype=type)
 
     map_out = __create_var('float32')
-    accum_pos_count_out = out_states[0] if out_states else __create_var('int32')
-    accum_true_pos_out = out_states[1] if out_states else __create_var(
-        'float32')
-    accum_false_pos_out = out_states[2] if out_states else __create_var(
-        'float32')
+    accum_pos_count_out = out_states[
+        0] if out_states is not None else __create_var('int32')
+    accum_true_pos_out = out_states[
+        1] if out_states is not None else __create_var('float32')
+    accum_false_pos_out = out_states[
+        2] if out_states is not None else __create_var('float32')
 
-    pos_count = input_states[0] if input_states else None
-    true_pos = input_states[1] if input_states else None
-    false_pos = input_states[2] if input_states else None
+    pos_count = input_states[0] if input_states is not None else None
+    true_pos = input_states[1] if input_states is not None else None
+    false_pos = input_states[2] if input_states is not None else None
 
     helper.append_op(
         type="detection_map",
@@ -2167,17 +2170,17 @@ def multi_box_head(inputs,
             aspect_ratios, num_layer,
             'aspect_ratios should be list or tuple, and the length of inputs '
             'and aspect_ratios should be the same.')
-    if step_h:
+    if step_h is not None:
         _is_list_or_tuple_and_equal(
             step_h, num_layer,
             'step_h should be list or tuple, and the length of inputs and '
             'step_h should be the same.')
-    if step_w:
+    if step_w is not None:
         _is_list_or_tuple_and_equal(
             step_w, num_layer,
             'step_w should be list or tuple, and the length of inputs and '
             'step_w should be the same.')
-    if steps:
+    if steps is not None:
         _is_list_or_tuple_and_equal(
             steps, num_layer,
             'steps should be list or tuple, and the length of inputs and '
@@ -2420,6 +2423,17 @@ def roi_perspective_transform(input,
             rois = fluid.data(name='rois', shape=[None, 8], lod_level=1, dtype='float32')
             out, mask, transform_matrix = fluid.layers.roi_perspective_transform(x, rois, 7, 7, 1.0)
     """
+    check_variable_and_dtype(input, 'input', ['float32'],
+                             'roi_perspective_transform')
+    check_variable_and_dtype(rois, 'rois', ['float32'],
+                             'roi_perspective_transform')
+    check_type(transformed_height, 'transformed_height', int,
+               'roi_perspective_transform')
+    check_type(transformed_width, 'transformed_width', int,
+               'roi_perspective_transform')
+    check_type(spatial_scale, 'spatial_scale', float,
+               'roi_perspective_transform')
+
     helper = LayerHelper('roi_perspective_transform', **locals())
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
@@ -2900,7 +2914,7 @@ def retinanet_detection_output(bboxes,
                                nms_top_k=1000,
                                keep_top_k=100,
                                nms_threshold=0.3,
-                               nms_eta=1.):
+                               nms_eta=1.0):
     """
     **Detection Output Layer for the detector RetinaNet.**
 
@@ -2996,15 +3010,15 @@ def retinanet_detection_output(bboxes,
            im_info = fluid.data(
                name="im_info", shape=[1, 3], dtype='float32')
            nmsed_outs = fluid.layers.retinanet_detection_output(
-                                          bboxes=[bboxes_low, bboxes_high],
-                                          scores=[scores_low, scores_high],
-                                          anchors=[anchors_low, anchors_high],
-                                          im_info=im_info,
-                                          score_threshold=0.05,
-                                          nms_top_k=1000,
-                                          keep_top_k=100,
-                                          nms_threshold=0.45,
-                                          nms_eta=1.)
+               bboxes=[bboxes_low, bboxes_high],
+               scores=[scores_low, scores_high],
+               anchors=[anchors_low, anchors_high],
+               im_info=im_info,
+               score_threshold=0.05,
+               nms_top_k=1000,
+               keep_top_k=100,
+               nms_threshold=0.45,
+               nms_eta=1.0)
     """
 
     check_type(bboxes, 'bboxes', (list), 'retinanet_detection_output')
@@ -3166,6 +3180,18 @@ def multiclass_nms(bboxes,
                                               keep_top_k=200,
                                               normalized=False)
     """
+    check_variable_and_dtype(bboxes, 'BBoxes', ['float32', 'float64'],
+                             'multiclass_nms')
+    check_variable_and_dtype(scores, 'Scores', ['float32', 'float64'],
+                             'multiclass_nms')
+    check_type(score_threshold, 'score_threshold', float, 'multicalss_nms')
+    check_type(nms_top_k, 'nums_top_k', int, 'multiclass_nms')
+    check_type(keep_top_k, 'keep_top_k', int, 'mutliclass_nms')
+    check_type(nms_threshold, 'nms_threshold', float, 'multiclass_nms')
+    check_type(normalized, 'normalized', bool, 'multiclass_nms')
+    check_type(nms_eta, 'nms_eta', float, 'multiclass_nms')
+    check_type(background_label, 'background_label', int, 'multiclass_nms')
+
     helper = LayerHelper('multiclass_nms', **locals())
 
     output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
@@ -3180,7 +3206,6 @@ def multiclass_nms(bboxes,
             'nms_threshold': nms_threshold,
             'nms_eta': nms_eta,
             'keep_top_k': keep_top_k,
-            'nms_eta': nms_eta,
             'normalized': normalized
         },
         outputs={'Out': output})
@@ -3239,10 +3264,10 @@ def locality_aware_nms(bboxes,
         nms_top_k (int): Maximum number of detections to be kept according to
                          the confidences after the filtering detections based
                          on score_threshold.
-        nms_threshold (float): The threshold to be used in NMS. Default: 0.3
-        nms_eta (float): The threshold to be used in NMS. Default: 1.0
         keep_top_k (int): Number of total bboxes to be kept per image after NMS
                           step. -1 means keeping all bboxes after NMS step.
+        nms_threshold (float): The threshold to be used in NMS. Default: 0.3
+        nms_eta (float): The threshold to be used in NMS. Default: 1.0
         normalized (bool): Whether detections are normalized. Default: True
         name(str): Name of the locality aware nms op, please refer to :ref:`api_guide_Name` .
                           Default: None.
@@ -3277,6 +3302,18 @@ def locality_aware_nms(bboxes,
                                               keep_top_k=200,
                                               normalized=False)
     """
+    check_variable_and_dtype(bboxes, 'bboxes', ['float32', 'float64'],
+                             'locality_aware_nms')
+    check_variable_and_dtype(scores, 'scores', ['float32', 'float64'],
+                             'locality_aware_nms')
+    check_type(background_label, 'background_label', int, 'locality_aware_nms')
+    check_type(score_threshold, 'score_threshold', float, 'locality_aware_nms')
+    check_type(nms_top_k, 'nms_top_k', int, 'locality_aware_nms')
+    check_type(nms_eta, 'nms_eta', float, 'locality_aware_nms')
+    check_type(nms_threshold, 'nms_threshold', float, 'locality_aware_nms')
+    check_type(keep_top_k, 'keep_top_k', int, 'locality_aware_nms')
+    check_type(normalized, 'normalized', bool, 'locality_aware_nms')
+
     shape = scores.shape
     assert len(shape) == 3, "dim size of scores must be 3"
     assert shape[
