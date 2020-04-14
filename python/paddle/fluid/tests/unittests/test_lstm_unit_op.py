@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+from paddle.fluid.layers import lstm_unit
 
 
 def sigmoid_np(x):
@@ -25,6 +26,55 @@ def sigmoid_np(x):
 
 def tanh_np(x):
     return 2 * sigmoid_np(2. * x) - 1.
+
+
+class LstmUnitTestError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            batch_size = 5
+            hidden_dim = 40
+            input = fluid.data(
+                name='input', shape=[None, hidden_dim * 4], dtype='float32')
+            pre_hidden = fluid.data(
+                name='pre_hidden', shape=[None, hidden_dim], dtype='float32')
+            pre_cell = fluid.data(
+                name='pre_cell', shape=[None, hidden_dim], dtype='float32')
+            np_input = np.random.uniform(
+                -0.1, 0.1, (batch_size, hidden_dim * 4)).astype('float64')
+            np_pre_hidden = np.random.uniform(
+                -0.1, 0.1, (batch_size, hidden_dim)).astype('float64')
+            np_pre_cell = np.random.uniform(
+                -0.1, 0.1, (batch_size, hidden_dim)).astype('float64')
+
+            def test_input_Variable():
+                lstm_unit(np_input, pre_hidden, pre_cell)
+            self.assertRaises(TypeError, test_input_Variable)
+
+            def test_pre_hidden_Variable():
+                lstm_unit(input, np_pre_hidden, pre_cell)
+            self.assertRaises(TypeError, test_pre_hidden_Variable)
+
+            def test_pre_cell_Variable():
+                lstm_unit(input, pre_hidden, np_pre_cell)
+            self.assertRaises(TypeError, test_pre_cell_Variable)
+
+            def test_input_type():
+                error_input = fluid.data(
+                    name='error_input', shape=[None, hidden_dim * 3], dtype='int32')
+                lstm_unit(error_input, pre_hidden, pre_cell)
+            self.assertRaises(TypeError, test_input_type)
+
+            def test_pre_hidden_type():
+                error_pre_hidden = fluid.data(
+                    name='error_pre_hidden', shape=[None, hidden_dim], dtype='int32')
+                lstm_unit(input, error_pre_hidden, pre_cell)
+            self.assertRaises(TypeError, test_pre_hidden_type)
+
+            def test_pre_cell_type():
+                error_pre_cell = fluid.data(
+                    name='error_pre_cell', shape=[None, hidden_dim], dtype='int32')
+                lstm_unit(input, pre_hidden, error_pre_cell)
+            self.assertRaises(TypeError, test_pre_cell_type)
 
 
 class LstmUnitTest(OpTest):

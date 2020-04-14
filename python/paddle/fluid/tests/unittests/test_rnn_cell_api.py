@@ -33,6 +33,56 @@ import paddle.fluid.layers.utils as utils
 import numpy as np
 
 
+class TestLSTMCellError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            batch_size, input_size, hidden_size = 4, 16, 16
+            inputs = fluid.data(
+                name='inputs', shape=[None, self.input_size], dtype='float32')
+            pre_hidden = fluid.data(
+                name='pre_hidden', shape=[None, self.hidden_size], dtype='float32')
+            pre_cell = fluid.data(
+                name='pre_cell', shape=[None, self.hidden_size], dtype='float32')
+            cell = LSTMCell(self.hidden_size)    
+
+            def test_input_Variable():
+                np_input = np.random.random((batch_size, input_size)).astype("float32")
+                cell(np_input, [pre_hidden, pre_cell])
+            self.assertRaises(TypeError, test_input_Variable)
+
+            def test_pre_hidden_Variable():
+                np_pre_hidden = np.random.random((batch_size, hidden_size)).astype("float32")
+                cell(inputs, [np_pre_hidden, pre_cell])
+            self.assertRaises(TypeError, test_pre_hidden_Variable)
+
+            def test_pre_cell_Variable():
+                np_pre_cell = np.random.random((batch_size, input_size)).astype("float32")
+                cell(inputs, [pre_hidden, np_pre_cell])
+            self.assertRaises(TypeError, test_pre_cell_Variable)
+
+            def test_input_type():
+                error_inputs = fluid.data(
+                    name='error_inputs', shape=[None, self.input_size], dtype='int32')
+                cell(error_inputs, [pre_hidden, pre_cell])
+            self.assertRaises(TypeError, test_input_type)
+
+            def test_pre_hidden_type():
+                error_pre_hidden = fluid.data(
+                    name='error_pre_hidden', shape=[None, self.hidden_size], dtype='int32')
+                cell(inputs, [error_pre_hidden, pre_cell])
+            self.assertRaises(TypeError, test_pre_hidden_type)
+
+            def test_pre_cell_type():
+                error_pre_cell = fluid.data(
+                    name='error_pre_cell', shape=[None, self.hidden_size], dtype='int32')
+                cell(inputs, [pre_hidden, error_pre_cell])
+            self.assertRaises(TypeError, test_pre_cell_type)
+
+            def test_dtype():
+                # the input type must be Variable
+                LSTMCell(hidden_size, dtype="int32")
+            self.assertRaises(TypeError, test_dtype)
+
 class TestLSTMCell(unittest.TestCase):
     def setUp(self):
         self.batch_size = 4
@@ -93,6 +143,46 @@ class TestLSTMCell(unittest.TestCase):
         self.assertTrue(np.allclose(out[0], out[1], rtol=1e-4, atol=0))
 
 
+class TestGRUCellError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            batch_size, input_size, hidden_size = 4, 16, 16
+            inputs = fluid.data(
+                name='inputs', shape=[None, self.input_size], dtype='float32')
+            pre_hidden = layers.data(
+                name='pre_hidden',
+                shape=[None, self.hidden_size],
+                append_batch_size=False,
+                dtype='float32')
+            cell = GRUCell(self.hidden_size)
+
+            def test_input_Variable():
+                np_input = np.random.random((batch_size, input_size)).astype("float32")
+                cell(np_input, pre_hidden)
+            self.assertRaises(TypeError, test_input_Variable)
+
+            def test_pre_hidden_Variable():
+                np_pre_hidden = np.random.random((batch_size, hidden_size)).astype("float32")
+                cell(inputs, np_pre_hidden)
+            self.assertRaises(TypeError, test_pre_hidden_Variable)
+
+            def test_input_type():
+                error_inputs = fluid.data(
+                    name='error_inputs', shape=[None, self.input_size], dtype='int32')
+                cell(error_inputs, pre_hidden)
+            self.assertRaises(TypeError, test_input_type)
+
+            def test_pre_hidden_type():
+                error_pre_hidden = fluid.data(
+                    name='error_pre_hidden', shape=[None, self.hidden_size], dtype='int32')
+                cell(inputs, error_pre_hidden)
+            self.assertRaises(TypeError, test_pre_hidden_type)
+
+            def test_dtype():
+                # the input type must be Variable
+                GRUCell(hidden_size, dtype="int32")
+            self.assertRaises(TypeError, test_dtype)
+
 class TestGRUCell(unittest.TestCase):
     def setUp(self):
         self.batch_size = 4
@@ -150,6 +240,79 @@ class TestGRUCell(unittest.TestCase):
 
         self.assertTrue(np.allclose(out[0], out[1], rtol=1e-4, atol=0))
 
+
+class TestRnnError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            batch_size = 4
+            input_size = 16
+            hidden_size = 16
+            seq_len = 4
+            inputs = fluid.data(
+                name='inputs', shape=[None, self.input_size], dtype='float32')
+            pre_hidden = layers.data(
+                name='pre_hidden',
+                shape=[None, self.hidden_size],
+                append_batch_size=False,
+                dtype='float32')
+            inputs_basic_lstm = fluid.data(
+                name='inputs_basic_lstm',
+                shape=[None, None, self.input_size],
+                dtype='float32')
+            sequence_length = fluid.data(
+                name="sequence_length", shape=[None], dtype='int64')
+
+            inputs_dynamic_rnn = layers.transpose(inputs_basic_lstm, perm=[1, 0, 2])
+            cell = LSTMCell(self.hidden_size, name="LSTMCell_for_rnn")
+            np_inputs_dynamic_rnn = np.random.random((seq_len, batch_size, input_size)).astype("float32")
+
+            def test_input_Variable():
+                dynamic_rnn(
+                    cell=cell,
+                    inputs=inputs_dynamic_rnn,
+                    sequence_length=sequence_length,
+                    is_reverse=False)
+            self.assertRaises(TypeError, test_input_Variable)
+
+            def test_input_list():
+                dynamic_rnn(
+                    cell=cell,
+                    inputs=[np_inputs_dynamic_rnn],
+                    sequence_length=sequence_length,
+                    is_reverse=False)
+            self.assertRaises(TypeError, test_input_list)
+
+            def test_initial_states_type():
+                cell = GRUCell(self.hidden_size, name="GRUCell_for_rnn")
+                error_initial_states = np.random.random((batch_size, hidden_size)).astype("float32")
+                dynamic_rnn(
+                    cell=cell,
+                    inputs=inputs_dynamic_rnn,
+                    initial_states=error_initial_states,
+                    sequence_length=sequence_length,
+                    is_reverse=False)
+            self.assertRaises(TypeError, test_initial_states_type)
+
+            def test_initial_states_list():
+                error_initial_states = [
+                    np.random.random((batch_size, hidden_size)).astype("float32"),
+                    np.random.random((batch_size, hidden_size)).astype("float32")]
+                dynamic_rnn(
+                    cell=cell,
+                    inputs=inputs_dynamic_rnn,
+                    initial_states=error_initial_states,
+                    sequence_length=sequence_length,
+                    is_reverse=False)
+            self.assertRaises(TypeError, test_initial_states_type)
+
+            def test_sequence_length_type():
+                np_sequence_length = np.random.random((batch_size)).astype("float32")
+                dynamic_rnn(
+                    cell=cell,
+                    inputs=inputs_dynamic_rnn,
+                    sequence_length=np_sequence_length,
+                    is_reverse=False)
+            self.assertRaises(TypeError, test_sequence_length_type)
 
 class TestRnn(unittest.TestCase):
     def setUp(self):
