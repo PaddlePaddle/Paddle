@@ -42,7 +42,6 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
                      Graph* g) {
     VLOG(3) << "Start to handle MKL-DNN In-Place pass";
 
-    GET_IR_NODE_FROM_SUBGRAPH(prev_op, prev_op, mkldnn_inplace);
     GET_IR_NODE_FROM_SUBGRAPH(current_op, inplace_to_be_op, mkldnn_inplace);
     GET_IR_NODE_FROM_SUBGRAPH(current_op_in, inplace_to_be_op_in,
                               mkldnn_inplace);
@@ -64,6 +63,14 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
       VLOG(3) << "do not perform mkl-dnn inplace: missing InplaceInferer";
       return;
     }
+
+
+    VLOG(3) << "MKL-DNN Inplace op(" << current_op->id() << ") "
+    << "Curr Node In: "<< current_op_in->Name() << " Curr Node out: " 
+    << current_op_out->Name(); 
+
+    VLOG(3) << "MKL-DNN Inplace next op(" << next_op->id() << ") "
+    << " next Node out: " << next_op_out->Name(); 
 
     auto inputs = current_op->Op()->Inputs();
     auto outputs = current_op->Op()->Outputs();
@@ -91,70 +98,17 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
       return count;
     };
 
-    // Iterate over all nodes  that are ops
-    // and check if in-place to be var is part of inputs
-    // if positive then do not perform inplace
-    for (const Node* n : graph->Nodes()) {
-      if (n->IsOp()) {
-        // Avoid searchin in op that is to be inplace
-        if ((n->id() != current_op->id())) {
-          auto* op = n->Op();
-          auto inputs = op->Inputs();
-          auto outputs = op->Outputs();
-          auto in_place_input = current_op_in->Name();
-          for (auto& it : inputs) {
-            for (auto& var_name : it.second) {
-              if (var_name == in_place_input) {
-                if (n->id() == next_op->id()) {
-                  // If next op is already having inplace var
-                  // among its inputs then do not perform inplacing
-                  if (count_specific_vars(inputs, var_name) > 0) {
-                    VLOG(3)
-                        << "MKL-DNN in-place pass FAIL: in-place var cannot "
-                           "be an "
-                           "input to next op in same chain";
-                    return;
-                  }
-                } else if (n->id() == prev_op->id()) {
-                  // Ok if op that is having current op input as its own
-                  // input is directly before current op, and prev op
-                  // is also in-place then we can in-placed current op
-                  if (count_specific_vars(outputs, var_name) > 0) {
-                    VLOG(3) << "MKL-DNN in-place pass OK: in-place var is "
-                               "an input of prev op, but also of inplaced op.";
-                  } else {
-                    VLOG(3)
-                        << "MKL-DNN in-place pass FAIL: in-place var cannot be "
-                           "an "
-                           "input to more than one operator of diffrent "
-                           "branches";
-                    return;
-                  }
-                } else {
-                  // Neither prev_op or next_op
-                  // If some no in pattern node is having our current input var
-                  // among its
-                  // inputs,  it is usually cycle, unless current op is already
-                  // inplaced
-                  if (current_op_in->Name() == current_op_out->Name()) {
-                    VLOG(3)
-                        << "MKL-DNN in-place pass OK: op was in-placed already,"
-                           "but its output is used in multiple ops.";
-                  } else {
-                    VLOG(3)
-                        << "MKL-DNN in-place pass FAIL: in-place var cannot be "
-                           "an "
-                           "input to more than one operator of diffrent "
-                           "branches";
-                    return;
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+    // Checking if this particular node (to be inplaced, overwritten)
+    // is used anywhere else apart from inplaced op
+    auto input_consumers = current_op_in->outputs;
+    if (input_consumers.size() > 1) {
+      VLOG(3)
+          << "MKL-DNN in-place pass FAIL: in-place var cannot "
+             "be an input to multiple operators";
+      return;
     }
+    
+
 
     // If this op was alrady inplaced in previous pass placements
     // then we need to update input of next op
@@ -189,8 +143,10 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
       auto inputs = op->Inputs();
       auto outputs = op->Outputs();
       // Check if in-place happened
-      if (inputs[in_to_outs.begin()->first] ==
-          outputs[in_to_outs.begin()->second]) {
+      // for variable we changed (original name)
+      auto next_op_inplace_inputs =  inputs[in_to_outs.begin()->first];
+      if ((next_op_inplace_inputs == outputs[in_to_outs.begin()->second]) &&
+          (std::find(next_op_inplace_inputs.begin(), next_op_inplace_inputs.end(), original_name) != next_op_inplace_inputs.end())) {
         VLOG(3) << "MKL-DNN InPlace: Next Op is in-placed , updating its input "
                    "and output var!";
         next_op->Op()->SetOutput(
