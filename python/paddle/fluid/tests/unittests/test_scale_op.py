@@ -131,12 +131,6 @@ class TestScaleRaiseError(unittest.TestCase):
 
         self.assertRaises(TypeError, test_type)
 
-        def test_dtype():
-            data = fluid.data(shape=[10], dtype="float16", name="input")
-            fluid.layers.scale(data)
-
-        self.assertRaises(TypeError, test_dtype)
-
 
 # Add FP16 test
 @unittest.skipIf(not core.is_compiled_with_cuda(),
