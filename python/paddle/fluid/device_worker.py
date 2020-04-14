@@ -16,7 +16,6 @@
 from __future__ import print_function
 
 from paddle.fluid.incubate.fleet.parameter_server import version
-from paddle.fluid.incubate.fleet.parameter_server.pslib.optimizer_factory import FLEET_GLOBAL_DICT
 
 __all__ = [
     'DeviceWorker', 'Hogwild', 'DownpourSGD', 'Section', 'DownpourSGDOPT'
@@ -96,10 +95,6 @@ class Hogwild(DeviceWorker):
             # just ignore feed op for inference model
             trainer_desc.hogwild_param.skip_ops.extend(["feed"])
 
-        global FLEET_GLOBAL_DICT
-        if version.is_transpiler() and FLEET_GLOBAL_DICT["enable"] == False:
-            return
-
         dense_table_set = set()
         program_id = str(id(self._program))
         if self._program == None:
@@ -108,6 +103,9 @@ class Hogwild(DeviceWorker):
         opt_info = self._program._fleet_opt
         # when opt_info is None or empty dict, it should return
         if not opt_info:
+            return
+
+        if version.is_transpiler() and "fleet_desc" not in opt_info:
             return
 
         program_configs = opt_info["program_configs"]
