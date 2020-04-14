@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/inverse_op.h"
 #include <string>
+#include <unordered_map>
 
 namespace paddle {
 namespace operators {
