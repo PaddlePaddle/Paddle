@@ -531,7 +531,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["dump_param"] = strategy.get("dump_param", [])
         if server._server.downpour_server_param.downpour_table_param[
                 0].accessor.accessor_class in [
-                    "DownpourCtrAccessor", "DownpourCtrDoubleAccessor"
+                    "DownpourCtrAccessor", "DownpourCtrDoubleAccessor",
+                    "DownpourUnitAccessor"
                 ]:
             opt_info["dump_slot"] = True
         elif server._server.downpour_server_param.downpour_table_param[
