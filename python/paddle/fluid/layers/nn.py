@@ -3157,7 +3157,8 @@ def data_norm(input,
               do_model_average_for_mean_and_var=True,
               slot_dim=-1,
               sync_stats=False,
-              summary_decay_rate=0.9999999):
+              summary_decay_rate=0.9999999,
+              enable_scale_and_shift=False):
     """
     **Data Normalization Layer**
 
@@ -3206,6 +3207,7 @@ def data_norm(input,
         sync_stats(bool, Default False): When running with multiple GPU cards, using allreduce to sync the
             summary messages.
         summary_decay_rate(float, Default 0.9999999): The decay rate when updating summary.
+        enable_scale_and_shift(bool, Default False): do scale&shift after normalization.
 
     Returns:
         Variable: A tensor variable which is the result after applying data normalization on the input.
@@ -3236,12 +3238,35 @@ def data_norm(input,
     batch_size_default = 1e4
     batch_sum_default = 0.0
     batch_square_sum_default = 1e4
+    scale_w_default = 1.0
+    bias_default = 0.0
 
     if param_attr and isinstance(param_attr, dict):
         batch_size_default = param_attr.get("batch_size", 1e4)
         batch_sum_default = param_attr.get("batch_sum", 0.0)
         batch_square_sum_default = param_attr.get("batch_square", 1e4)
+    if enable_scale_and_shift:
+        scale_w_default = param_attr.get("scale_w", 1.0)
+        bias_default = param_attr.get("bias", 0.0)
 
+    # create scale and shift(bias) when enable_scale_and_shift is True
+    if name == None:
+        name = "dn"
+    if enable_scale_and_shift:
+        scale_w = helper.create_parameter(
+            attr=ParamAttr(
+                name=name + '.scale_w',
+                initializer=Constant(value=float(scale_w_default)),
+                trainable=True),
+            shape=param_shape,
+            dtype=input.dtype)
+        bias = helper.create_parameter(
+            attr=ParamAttr(
+                name=name + '.bias',
+                initializer=Constant(value=float(bias_default)),
+                trainable=True),
+            shape=param_shape,
+            dtype=input.dtype)
     # create parameter
     batch_size = helper.create_parameter(
         attr=ParamAttr(
@@ -3272,14 +3297,18 @@ def data_norm(input,
 
     data_norm_out = input if in_place else helper.create_variable(dtype=dtype)
 
+    inputs = {
+        "X": input,
+        "BatchSize": batch_size,
+        "BatchSum": batch_sum,
+        "BatchSquareSum": batch_square_sum
+    }
+    if enable_scale_and_shift:
+        inputs["scale_w"] = scale_w
+        inputs["bias"] = bias
     helper.append_op(
         type="data_norm",
-        inputs={
-            "X": input,
-            "BatchSize": batch_size,
-            "BatchSum": batch_sum,
-            "BatchSquareSum": batch_square_sum
-        },
+        inputs=inputs,
         outputs={
             "Y": data_norm_out,
             "Means": means,
@@ -3292,7 +3321,8 @@ def data_norm(input,
             "epsilon": epsilon,
             "slot_dim": slot_dim,
             "sync_stats": sync_stats,
-            "summary_decay_rate": summary_decay_rate
+            "summary_decay_rate": summary_decay_rate,
+            "enable_scale_and_shift": enable_scale_and_shift
         })
 
     return helper.append_activation(data_norm_out)
