@@ -19,7 +19,7 @@ import sys
 import os
 
 from hapi.model import set_device, Input
-from hapi.vision.models import BMN, BmnLoss
+from hapi.vision.models import bmn, BmnLoss
 from reader import BmnDataset
 from config_utils import *
 
@@ -136,7 +136,7 @@ def train_bmn(args):
     val_dataset = BmnDataset(val_cfg, 'valid')
 
     # model
-    model = BMN(config, args.dynamic)
+    model = bmn(config, args.dynamic, pretrained=False)
     optim = optimizer(config, parameter_list=model.parameters())
     model.prepare(
         optimizer=optim,

@@ -19,7 +19,7 @@ from . import mobilenetv2
 from . import darknet
 from . import yolov3
 from . import tsm
-from . import bmn
+from . import bmn_model
 
 from .resnet import *
 from .mobilenetv1 import *
@@ -28,7 +28,7 @@ from .vgg import *
 from .darknet import *
 from .yolov3 import *
 from .tsm import *
-from .bmn import *
+from .bmn_model import *
 
 __all__ = resnet.__all__ \
         + vgg.__all__ \
@@ -37,4 +37,4 @@ __all__ = resnet.__all__ \
         + darknet.__all__ \
         + yolov3.__all__ \
         + tsm.__all__ \
-        + bmn.__all__
+        + bmn_model.__all__

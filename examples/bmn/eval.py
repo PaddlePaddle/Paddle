@@ -19,7 +19,7 @@ import logging
 import paddle.fluid as fluid
 
 from hapi.model import set_device, Input
-from hapi.vision.models import BMN, BmnLoss
+from hapi.vision.models import bmn, BmnLoss
 from bmn_metric import BmnMetric
 from reader import BmnDataset
 from config_utils import *
@@ -53,7 +53,7 @@ def parse_args():
     parser.add_argument(
         '--weights',
         type=str,
-        default="checkpoint/final",
+        default=None,
         help='weight path, None to automatically download weights provided by Paddle.'
     )
     parser.add_argument(
@@ -97,7 +97,7 @@ def test_bmn(args):
     eval_dataset = BmnDataset(eval_cfg, 'test')
 
     #model
-    model = BMN(config, args.dynamic)
+    model = bmn(config, args.dynamic, pretrained=args.weights is None)
     model.prepare(
         loss_function=BmnLoss(config),
         metrics=BmnMetric(
@@ -107,11 +107,11 @@ def test_bmn(args):
         device=device)
 
     #load checkpoint
-    if args.weights:
+    if args.weights is not None:
         assert os.path.exists(args.weights + '.pdparams'), \
             "Given weight dir {} not exist.".format(args.weights)
-    logger.info('load test weights from {}'.format(args.weights))
-    model.load(args.weights)
+        logger.info('load test weights from {}'.format(args.weights))
+        model.load(args.weights)
 
     model.evaluate(
         eval_data=eval_dataset,
