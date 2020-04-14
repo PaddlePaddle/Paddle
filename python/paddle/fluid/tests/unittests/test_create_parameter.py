@@ -34,11 +34,6 @@ class TestCreateParameterError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_shape_item)
 
-            def test_dtype():
-                fluid.layers.create_parameter([1, 2, 3], np.int32)
-
-            self.assertRaises(TypeError, test_dtype)
-
             def test_attr():
                 fluid.layers.create_parameter(
                     [1, 2, 3], np.float32, attr=np.array([i for i in range(6)]))

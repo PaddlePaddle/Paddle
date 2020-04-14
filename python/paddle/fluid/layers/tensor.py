@@ -114,8 +114,10 @@ def create_parameter(shape,
                        (int, numpy.uint8, numpy.int8, numpy.int16, numpy.int32,
                         numpy.int64), 'create_parameter')
 
-    check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'],
-                'create_parameter')
+    check_dtype(dtype, 'dtype', [
+        'bool', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32',
+        'int64', 'uint8'
+    ], 'create_parameter')
     check_type(attr, 'attr', (type(None), ParamAttr), 'create_parameter')
     check_type(default_initializer, 'default_initializer',
                (type(None), Initializer), 'create_parameter')
