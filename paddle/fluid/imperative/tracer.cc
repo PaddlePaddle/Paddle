@@ -11,11 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #include "paddle/fluid/imperative/tracer.h"
 #include <set>
 #include <unordered_set>
 #include <utility>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/imperative/auto_cast.h"
 #include "paddle/fluid/imperative/op_base.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/string_helper.h"
@@ -53,18 +55,21 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
     attr_checker->Check(&attrs, true);
   }
 
+  NameVarBaseMap new_ins;
   if (enable_autocast_) {
     VLOG(5) << "Auto mixed precision run operator: " << type;
+    new_ins = AutoCastInputs(type, ins);
+  } else {
+    new_ins = ins;
   }
-  OpBase::Run(*op, ins, outs, attrs, place);
 
   if (enable_program_desc_tracing_) {
     VLOG(5) << "Trace op " << type << " into ProgramDesc";
-    program_desc_tracer_->InsertOp(type, ins, outs, attrs);
+    program_desc_tracer_->InsertOp(type, new_ins, outs, attrs);
   }
 
-  if (ComputeRequiredGrad(ins, outs, trace_backward)) {
-    CreateGradOpNode(*op, ins, outs, attrs, place);
+  if (ComputeRequiredGrad(new_ins, outs, trace_backward)) {
+    CreateGradOpNode(*op, new_ins, outs, attrs, place);
   } else {
     VLOG(3) << "No Grad to track for Op: " << type;
   }
