@@ -49,11 +49,11 @@ static inline framework::DDim ComputeAndCheckShape(
           // check all shape in run time
           PADDLE_ENFORCE_EQ(inputs_dims[0][j], inputs_dims[i][j],
                             platform::errors::InvalidArgument(
-                                "The %dth value of input[%d] must be equal to "
-                                "the %dth value of input[0]. "
+                                "The %d-th dimension of input[0] and input[%d] "
+                                "is expected to be equal."
                                 "But received input[0]'s shape = "
                                 "[%s], input[%d]'s shape = [%s].",
-                                j, i, j, inputs_dims[0], i, inputs_dims[i]));
+                                j, i, inputs_dims[0], i, inputs_dims[i]));
         }
       }
     }

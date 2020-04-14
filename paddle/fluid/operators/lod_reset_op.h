@@ -41,9 +41,10 @@ class LoDResetKernel : public framework::OpKernel<T> {
         PADDLE_ENFORCE_EQ(
             static_cast<int64_t>(last_level.back()), in->dims()[0],
             platform::errors::InvalidArgument(
-                "The last value of 'Y''s last level LoD should be equal "
-                "to the first dimension of 'X'. But received the last value of "
-                "'Y''s last level LoD is %d, the first dimension of 'X' is %d.",
+                "The last value of Input(Y)'s last level LoD should be equal "
+                "to the first dimension of Input(X). But received the last "
+                "value of Input(Y)'s last level LoD is %d, the first dimension "
+                "of Input(X) is %d.",
                 static_cast<int64_t>(last_level.back()), in->dims()[0]));
         out->set_lod(y_lod);
         return;  // early return, since lod already set
@@ -75,8 +76,8 @@ class LoDResetKernel : public framework::OpKernel<T> {
         static_cast<int64_t>(level0.back()), in->dims()[0],
         platform::errors::InvalidArgument(
             "The last value of 'Target LoD''s last level LoD should be equal "
-            "to the first dimension of 'X'. But received the 'Target LoD' "
-            "is %s, the first dimension of 'X' is %s.",
+            "to the first dimension of Input(X). But received the 'Target LoD' "
+            "is %s, Input(X)'s shape is is %s.",
             framework::make_ddim(level0), in->dims()));
     for (size_t i = 0; i < level0.size() - 1; ++i) {
       PADDLE_ENFORCE_GE(level0[i + 1], level0[i],
