@@ -38,6 +38,7 @@ TEST(TEST_GLOO, store_1) {
   }
   store.wait(std::vector<std::string>{"test"});
   store.wait(std::vector<std::string>{"test"}, std::chrono::milliseconds(0));
+  store.SetTimeoutSeconds(100000);
   store.EncodeName("1");
   store.TmpPath("1");
   store.ObjectPath("1");

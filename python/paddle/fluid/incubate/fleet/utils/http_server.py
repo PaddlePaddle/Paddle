@@ -153,7 +153,7 @@ class KVServer:
 
     def __init__(self, port, size={}):
         """Init."""
-        self.http_server = KVHTTPServer(port, KVHandler, size)
+        self.http_server = KVHTTPServer(port, KVHandler)
         self.listen_thread = None
         self.size = {}
 
