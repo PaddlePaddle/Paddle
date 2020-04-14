@@ -39,11 +39,6 @@ class BmnMetric(Metric):
         elif self.mode == 'infer':
             self.get_infer_dataset_dict()
 
-    def add_metric_op(self, preds, label):
-        pred_bm, pred_start, pred_en = preds
-        video_index = label[-1]
-        return [pred_bm, pred_start, pred_en, video_index]  #return list
-
     def update(self, pred_bm, pred_start, pred_end, fid):
         # generate proposals
         pred_start = pred_start[0]

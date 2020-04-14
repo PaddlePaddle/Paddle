@@ -67,7 +67,7 @@ def to_list(value):
     if value is None:
         return value
     if isinstance(value, (list, tuple)):
-        return value
+        return list(value)
     return [value]
 
 
