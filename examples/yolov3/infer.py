@@ -28,7 +28,6 @@ from hapi.model import Model, Input, set_device
 from hapi.vision.models import yolov3_darknet53, YoloLoss
 from hapi.vision.transforms import *
 
-from coco import COCODataset
 from visualizer import draw_bbox
 
 import logging
