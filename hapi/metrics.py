@@ -48,9 +48,16 @@ class Metric(object):
                                   format(self.__class__.__name__))
 
     @abc.abstractmethod
-    def update(self, *args, **kwargs):
+    def update(self, *args):
         """
         Update states for metric
+
+        Inputs of :code:`update` will be outputs for :code:`add_metric_op`, if
+        :code:`add_metric_op` is not defined, the inputs of :code:`update` will
+        be a flatten argument of **output** of mode and **label** from data:
+        :code:`update(output1, output2, ..., label1, label2,...)`
+
+        see :code:`add_metric_op`
         """
         raise NotImplementedError("function 'update' not implemented in {}.".
                                   format(self.__class__.__name__))
@@ -75,10 +82,18 @@ class Metric(object):
     def add_metric_op(self, *args):
         """
         Add process op for metric in program
-        If :code:`add_metric_op` is defined, it will be called with outputs
-        of model and labels from data as parameter, all outputs and labels
-        will be concatenated and flatten to a list like follows:
-        [output1, output2, ..., label1, label2,...]
+
+        If :code:`add_metric_op` is defined, it will be called with **outputs**
+        of model and **labels** from data as parameter, all outputs and labels
+        will be concatenated and flatten and each filed as a separate argument
+        as follows:
+        :code:`add_metric_op(output1, output2, ..., label1, label2,...)`
+
+        If :code:`add_metric_op` is not defined, default behaviour is to pass
+        input to output, so output format will be:
+        :code:`return output1, output2, ..., label1, label2,...`
+
+        NOTE: output of :code:`add_metric_op` will be input of :code:`update`
         """
         return args
 
