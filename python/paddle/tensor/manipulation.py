@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-from ..fluid.layers import core
+from ..fluid.layers import core, reshape
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.framework import Variable, OpProtoHolder, in_dygraph_mode, convert_np_dtype_to_dtype_
 from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
@@ -46,7 +46,7 @@ __all__ = [
     #            'unstack',
     'flip',
     #            'unbind',
-    #            'roll'
+    'roll'
 ]
 
 
@@ -97,4 +97,75 @@ def flip(input, dims, name=None):
         inputs={"X": input},
         outputs={"Out": out},
         attrs={"dims": dims})
+    return out
+
+
+def roll(input, shifts, dims=None):
+    """
+    Roll the `input` tensor along the given dimension(s). Elements that are shifted beyond 
+    the last position are re-introduced at the first position. If a dimension is not specified, 
+    the tensor will be flattened before rolling and then restored to the original shape.
+
+    Args:
+        input (Variable): The input tensor variable.
+        shifts (int|list|tuple): The number of places by which the elements
+                           of the `input` tensor are shifted.
+        dims (int|list|tuple|None): Dimentions along which to roll.
+
+    Returns:
+        Variable: A Tensor with same data type as `input`.
+
+    Examples:
+        .. code-block:: python
+            import numpy as np
+            import paddle
+            import paddle.fluid as fluid
+
+            data = np.array([[1.0, 2.0, 3.0],
+                             [4.0, 5.0, 6.0],
+                             [7.0, 8.0, 9.0]])
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(data)
+                out_z1 = paddle.roll(x, shifts=1)
+                print(out_z1.numpy())
+                #[[9. 1. 2.]
+                # [3. 4. 5.]
+                # [6. 7. 8.]]
+                out_z2 = paddle.roll(x, shifts=1, dims=0)
+                print(out_z2.numpy())
+                #[[7. 8. 9.]
+                # [1. 2. 3.]
+                # [4. 5. 6.]]
+    """
+    helper = LayerHelper("roll", **locals())
+    origin_shape = input.shape
+    if type(shifts) == int:
+        shifts = [shifts]
+    if type(dims) == int:
+        dims = [dims]
+
+    if dims:
+        check_type(dims, 'dims', (list, tuple), 'roll')
+    check_type(shifts, 'shifts', (list, tuple), 'roll')
+
+    if in_dygraph_mode():
+        if dims is None:
+            input = core.ops.reshape(input, 'shape', [-1, 1])
+            dims = [0]
+        out = core.ops.roll(input, 'dims', dims, 'shifts', shifts)
+        return core.ops.reshape(out, 'shape', origin_shape)
+
+    out = helper.create_variable_for_type_inference(input.dtype)
+
+    if dims is None:
+        input = reshape(input, shape=[-1, 1])
+        dims = [0]
+
+    helper.append_op(
+        type='roll',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={'dims': dims,
+               'shifts': shifts})
+    out = reshape(out, shape=origin_shape, inplace=True)
     return out
