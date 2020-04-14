@@ -75,7 +75,7 @@ __all__ = [
 #            'inverse',
            'log1p',
 #            'erf',
-#            'addcmul',
+           'addcmul',
            'addmm'
 ]
 # yapf: enable.
@@ -1254,4 +1254,53 @@ def log1p(x, out=None, name=None):
     if out is None:
         out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type="log1p", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
+def addcmul(input, tensor1, tensor2, value=1.0, out=None, name=None):
+    """
+    **addcmul**
+
+    Calculate the element-wise multiplication of tensor1 and tensor2,
+    then multiply the result by value, and add it to input.
+    The equation is:
+
+    ..  math::
+        out = input + value * tensor1 * tensor2
+
+    Args:
+        input(Variable): The input to be added. A Tensor with type float32, float64.
+        tensor1(Variable): The tensor to be multiplied. A Tensor with type float32, float64.
+        tensor2(Variable): The tensor to be multiplied. A Tensor with type float32, float64.
+        value(float|double): The multiplier for tensor1*tensor2.
+
+    Returns:
+        out(Variable): The output result. A Tensor with type float32, float64.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle
+          import paddle.fluid as fluid
+          input = fluid.data(name='input', dtype='float32', shape=[3, 4])
+          tensor1 = fluid.data(name='tenosr1', dtype='float32', shape=[1, 4])
+          tensor2 = fluid.data(name='tensor2', dtype='float32', shape=[3, 4])
+          data = paddle.addcmul(input, tensor1, tensor2)
+    """
+
+    op_type = 'addcmul'
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'], op_type)
+    check_variable_and_dtype(tensor1, 'tensor1', ['float32', 'float64'], op_type)
+    check_variable_and_dtype(tensor2, 'tensor2', ['float32', 'float64'], op_type)
+    helper = LayerHelper(op_type, **locals())
+
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    helper.append_op(
+        type=op_type,
+        inputs={'Input': input,
+                'Tensor1': tensor1,
+                'Tensor2': tensor2},
+        attrs={'value': value},
+        outputs={'Out': out})
     return out
