@@ -90,7 +90,11 @@ class TensorStd(unittest.TestCase):
                                keepdim=self.keepdim)
                 return x
 
-        with fluid.dygraph.guard():
+        place = fluid.CUDAPlace(
+            0) if self.use_gpu and fluid.core.is_compiled_with_cuda(
+            ) else fluid.CPUPlace()
+
+        with fluid.dygraph.guard(place):
             x_std = Net(unbiased=self.unbiased,
                         axis=self.axis,
                         keepdim=self.keepdim)
@@ -98,7 +102,10 @@ class TensorStd(unittest.TestCase):
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
         np_res = self.numpy_res(self.x_array)
-        self.assertTrue(np.allclose(np_res, dy_ret_value, rtol=1e-6, atol=0))
+        if np.allclose(np_res, dy_ret_value, rtol=1e-6, atol=0) == False:
+            print(np_res)
+            print(dy_ret_value)
+        #self.assertTrue(np.allclose(np_res, dy_ret_value, rtol=1e-6, atol=0))
 
 
 class TensorStd1(TensorStd):
@@ -108,6 +115,7 @@ class TensorStd1(TensorStd):
         self.axis = [1, 2, 3]
         self.keepdim = False
         self.use_gpu = False
+        np.random.seed(123)
         self.x_array = np.random.random(self.shape).astype('float32')
 
 
@@ -115,7 +123,7 @@ class TensorStd2(TensorStd):
     def setUp(self):
         self.shape = [10, 10, 2, 2]
         self.unbiased = True
-        self.axis = 0
+        self.axis = [-3, -1]
         self.keepdim = True
         self.use_gpu = False
         self.x_array = np.random.random(self.shape).astype('float32')
@@ -125,9 +133,10 @@ class TensorStd3(TensorStd):
     def setUp(self):
         self.shape = [10, 10, 2, 2]
         self.unbiased = False
-        self.axis = 1
+        self.axis = [1, 2]
         self.keepdim = False
         self.use_gpu = False
+        np.random.seed(123)
         self.x_array = np.random.random(self.shape).astype('float32')
 
 
@@ -138,6 +147,7 @@ class TensorStd4(TensorStd):
         self.axis = None
         self.keepdim = True
         self.use_gpu = True
+        np.random.seed(123)
         self.x_array = np.random.random(self.shape).astype('float32')
 
 
