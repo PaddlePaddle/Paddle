@@ -1262,8 +1262,8 @@ def clamp(input, min=None, max=None, output=None, name=None):
     """
     **clampe layer**
 
-    This operator clamp all elements in input into the range [ min, max ] and return
-    a resulting tensori as the following equation:
+    This operator clamps all elements in input into the range [ min, max ] and return
+    a resulting tensor as the following equation:
 
     .. math::
 
