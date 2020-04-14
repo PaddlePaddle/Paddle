@@ -23,6 +23,7 @@ struct SimpleOpTypeSetTeller : public Teller {
   SimpleOpTypeSetTeller() {
 #if IS_TRT_VERSION_GE(5130)
     teller_set.insert("relu6");
+    teller_set.insert("hard_sigmoid");
 #endif
 #if IS_TRT_VERSION_GE(6000)
     teller_set.insert("fused_embedding_eltwise_layernorm");
@@ -54,6 +55,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "relu",
       "softmax",
       "sigmoid",
+      "hard_swish",
       "depthwise_conv2d",
       "batch_norm",
       "concat",
