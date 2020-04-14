@@ -166,5 +166,5 @@ REGISTER_OP_CPU_KERNEL(
     ops::SequencePoolAllKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OP_CPU_KERNEL(sequence_pool_all_grad,
-                       ops::SequencePoolAllGradOpCUDAKernel<float>,
-                       ops::SequencePoolAllGradOpCUDAKernel<double>);
+                       ops::SequencePoolAllGradOpCPUKernel<float>,
+                       ops::SequencePoolAllGradOpCPUKernel<double>);

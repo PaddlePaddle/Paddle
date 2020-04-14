@@ -30,7 +30,7 @@ class SequencePoolAllKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class SequencePoolAllGradOpCUDAKernel : public framework::OpKernel<T> {
+class SequencePoolAllGradOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
