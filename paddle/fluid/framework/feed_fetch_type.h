@@ -23,39 +23,24 @@ namespace framework {
 using FeedType = LoDTensor;
 using FeedList = std::vector<FeedType>;
 
-class FetchType : public boost::variant<LoDTensor, LoDTensorArray> {
- private:
-  using FetchTypeBase = boost::variant<LoDTensor, LoDTensorArray>;
-
- public:
-  FetchType() = default;
-  FetchType(const LoDTensor &lod_tensor)             // NOLINT
-      : FetchTypeBase(lod_tensor) {}                 // NOLINT
-  FetchType(const LoDTensorArray &lod_tensor_array)  // NOLINT
-      : FetchTypeBase(lod_tensor_array) {}           // NOLINT
-};
-
+using FetchType = boost::variant<LoDTensor, LoDTensorArray>;
 using FetchList = std::vector<FetchType>;
 
 using FetchUnmergedList = std::vector<std::vector<FetchType>>;
 using FetchResultType = boost::variant<FetchList, FetchUnmergedList>;
 
-struct DataIsLoDTensor : public boost::static_visitor<bool> {
-  bool operator()(const LoDTensor &) const { return true; }
-  bool operator()(const LoDTensorArray &) const { return false; }
-};
-
-struct DataIsLoDTensorArray : public boost::static_visitor<bool> {
-  bool operator()(const LoDTensor &) const { return false; }
-  bool operator()(const LoDTensorArray &) const { return true; }
-};
-
 inline bool data_is_lod_tensor(const FetchType &data) {
-  return boost::apply_visitor(DataIsLoDTensor(), data);
+  if (data.type() == typeid(LoDTensor)) {
+    return true;
+  }
+  return false;
 }
 
 inline bool data_is_lod_tensor_array(const FetchType &data) {
-  return boost::apply_visitor(DataIsLoDTensorArray(), data);
+  if (data.type() == typeid(LoDTensorArray)) {
+    return true;
+  }
+  return false;
 }
 
 static const char kFeedOpType[] = "feed";

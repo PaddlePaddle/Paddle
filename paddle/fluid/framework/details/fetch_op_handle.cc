@@ -43,7 +43,8 @@ void CheckDims(const framework::DDim &tensor_dims,
                const framework::DDim &ele_dims, const size_t offset) {
   PADDLE_ENFORCE_EQ(
       tensor_dims.size(), ele_dims.size(),
-      platform::errors::Fatal("The dimension sizes of fetched Tensors are "
+      platform::errors::Fatal("The dimension sizes of fetched Tensors or "
+                              "the items of fetched LoDTensorArray are "
                               "different from each other on different "
                               "devices. And the error is caused by the %zu "
                               "(th) fetched variable. Please set the "
@@ -53,7 +54,8 @@ void CheckDims(const framework::DDim &tensor_dims,
   for (int j = 1; j < tensor_dims.size(); j++) {
     PADDLE_ENFORCE_EQ(
         tensor_dims[j], ele_dims[j],
-        platform::errors::Fatal("The dimensions of fetched Tensors are "
+        platform::errors::Fatal("The dimensions of fetched Tensors or "
+                                "the items of fetched LoDTensorArray are "
                                 "different from each other on different "
                                 "devices. And the error is caused by the "
                                 "%zu (th) fetched variable. Please set the "

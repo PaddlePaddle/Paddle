@@ -99,6 +99,7 @@ DECLARE_bool(use_mkldnn);
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchUnmergedList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchList);
+PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
 
 namespace paddle {
 namespace pybind {
@@ -1627,7 +1628,18 @@ All parameter, weight, gradient are variables in Paddle.
              lod_tensor.ShareDataWith(t);
              lod_tensor.set_lod(t.lod());
            },
-           py::arg("tensor"));
+           py::arg("var"))
+
+      .def("append",
+           [](FetchList &self, const LoDTensorArray &t) {
+             self.emplace_back();
+             auto &lod_tensor_array = boost::get<LoDTensorArray>(self.back());
+             for (size_t i = 0; i < t.size(); ++i) {
+               lod_tensor_array[i].ShareDataWith(t[i]);
+               lod_tensor_array[i].set_lod(t[i].lod());
+             }
+           },
+           py::arg("var"));
 
   py::class_<FetchUnmergedList>(m, "FetchUnmergedList", R"DOC(
         FetchUnmergedList is 2-D array of FetchType(boost::variant(LoDTensor, LoDTensorArray)).
