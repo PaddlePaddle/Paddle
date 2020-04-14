@@ -40,17 +40,24 @@ class ROIPoolOp : public framework::OperatorWithKernel {
     }
     PADDLE_ENFORCE_EQ(input_dims.size(), 4,
                       platform::errors::InvalidArgument(
-                          "The format of input tensor is NCHW."));
+                          "The input data should be a four-dimensional "
+                          "tensor with [N,C,H,W], but received input data with "
+                          " %d dimension",
+                          input_dims.size()));
     PADDLE_ENFORCE_EQ(
         rois_dims.size(), 2,
         platform::errors::InvalidArgument(
-            "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
-            "given as [[x1, y1, x2, y2], ...]."));
+            "ROIs should be a 2-D LoDTensor with shape (num_rois, 4)"
+            "given as [[x1, y1, x2, y2], ...], but received ROIs is "
+            "%d-dimensional LoDTensor",
+            rois_dims.size()));
     PADDLE_ENFORCE_EQ(
         rois_dims[1], kROISize,
         platform::errors::InvalidArgument(
-            "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
-            "given as [[x1, y1, x2, y2], ...]."));
+            "ROIs should be a 2-D LoDTensor with shape (num_rois, 4)"
+            "given as [[x1, y1, x2, y2], ...]. But the second dimension of  "
+            "the received data is %d",
+            rois_dims[1]));
 
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
     int pooled_width = ctx->Attrs().Get<int>("pooled_width");
@@ -58,13 +65,19 @@ class ROIPoolOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_GT(pooled_height, 0,
                       platform::errors::OutOfRange(
-                          "The pooled output height must greater than 0"));
+                          "The pooled output height must be greater than 0"
+                          "but received height is %d",
+                          pooled_height));
     PADDLE_ENFORCE_GT(pooled_width, 0,
                       platform::errors::OutOfRange(
-                          "The pooled output width must greater than 0"));
-    PADDLE_ENFORCE_GT(
-        spatial_scale, 0.0f,
-        platform::errors::OutOfRange("The spatial scale must greater than 0"));
+                          "The pooled output width must be greater than 0"
+                          "but received width is %d",
+                          pooled_width));
+    PADDLE_ENFORCE_GT(spatial_scale, 0.0f,
+                      platform::errors::OutOfRange(
+                          "The spatial scale must be greater than 0, "
+                          "but received spatial scale is %f",
+                          spatial_scale));
 
     auto out_dims = input_dims;
     out_dims[0] = rois_dims[0];
