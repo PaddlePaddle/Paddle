@@ -68,45 +68,53 @@ class TestWhereAPI(unittest.TestCase):
             x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float32")
             y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype("float32")
             cond_i = np.array([False, False, True, True]).astype("bool")
-            result = tensor.where(x > 1, X=x, Y=y)
+            result = tensor.where(x > 1, x=x, y=y)
 
-            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            out = exe.run(fluid.default_main_program(),
-                          feed={'x': x_i,
-                                'y': y_i},
-                          fetch_list=[result])
-            assert np.array_equal(out[0], np.where(cond_i, x_i, y_i))
-
-    def test_grad(self, use_cuda=False):
-        main_program = Program()
-        for x_stop_gradient, y_stop_gradient in [[False, False], [True, False],
-                                                 [False, True]]:
-            with fluid.program_guard(main_program):
-                x = fluid.layers.data(name='x', shape=[4], dtype='float32')
-                y = fluid.layers.data(name='y', shape=[4], dtype='float32')
-                x.stop_gradient = x_stop_gradient
-                y.stop_gradient = y_stop_gradient
-                x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float32")
-                y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype("float32")
-                cond_i = np.array([False, False, True, True]).astype("bool")
-                result = tensor.where(x > 1, X=x, Y=y)
-                x_mean = layers.mean(x)
-                append_backward(x_mean)
-                y_mean = layers.mean(y)
-                append_backward(y_mean)
-
+            for use_cuda in [False, True]:
+                if use_cuda and not fluid.core.is_compiled_with_cuda():
+                    return
                 place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
                 exe = fluid.Executor(place)
                 out = exe.run(fluid.default_main_program(),
                               feed={'x': x_i,
                                     'y': y_i},
-                              fetch_list=[result, x.grad_name, y.grad_name])
-                x_grad = [0.25] * 4
-                y_grad = [0.25] * 4
+                              fetch_list=[result])
                 assert np.array_equal(out[0], np.where(cond_i, x_i, y_i))
-                assert np.array_equal(out[1], x_grad)
-                assert np.array_equal(out[2], y_grad)
+
+    def test_grad(self, use_cuda=False):
+        main_program = Program()
+        with fluid.program_guard(main_program):
+            x = fluid.layers.data(name='x', shape=[4], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[4], dtype='float32')
+            for x_stop_gradient, y_stop_gradient in [[False, False],
+                                                     [True, False],
+                                                     [False, True]]:
+                x.stop_gradient = x_stop_gradient
+                y.stop_gradient = y_stop_gradient
+                x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float32")
+                y_i = np.array([1.0, 1.0, 1.0, 1.0]).astype("float32")
+                cond_i = np.array([False, False, True, True]).astype("bool")
+                result = tensor.where(x > 1, x=x, y=y)
+                x_mean = layers.mean(x)
+                append_backward(x_mean)
+                y_mean = layers.mean(y)
+                append_backward(y_mean)
+
+                for use_cuda in [False, True]:
+                    if use_cuda and not fluid.core.is_compiled_with_cuda():
+                        return
+                    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+                    exe = fluid.Executor(place)
+                    out = exe.run(
+                        fluid.default_main_program(),
+                        feed={'x': x_i,
+                              'y': y_i},
+                        fetch_list=[result, x.grad_name, y.grad_name])
+                    x_grad = [0.25] * 4
+                    y_grad = [0.25] * 4
+                    assert np.array_equal(out[0], np.where(cond_i, x_i, y_i))
+                    assert np.array_equal(out[1], x_grad)
+                    assert np.array_equal(out[2], y_grad)
 
     def test_api_broadcast(self, use_cuda=False):
         main_program = Program()
@@ -114,25 +122,22 @@ class TestWhereAPI(unittest.TestCase):
             x = fluid.layers.data(name='x', shape=[4, 1], dtype='float32')
             y = fluid.layers.data(name='y', shape=[4, 2], dtype='float32')
             x_i = np.array([[0.9383, 0.1983, 3.2, 1.2]]).astype("float32")
-            y_i = np.array(
-                [[1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0]]).astype("float32")
+            y_i = np.array([[1.0, 1.0, 1.0, 1.0],
+                            [1.0, 1.0, 1.0, 1.0]]).astype("float32")
             cond_i = np.array([[False, False, True, True],
                                [False, False, True, True]]).astype("bool")
-            result = tensor.where(x > 1, X=x, Y=y)
+            result = tensor.where(x > 1, x=x, y=y)
 
-            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            out = exe.run(fluid.default_main_program(),
-                          feed={'x': x_i,
-                                'y': y_i},
-                          fetch_list=[result])
-            assert np.array_equal(out[0], np.where(cond_i, x_i, y_i))
-
-    def test_fw_bw(self):
-        if core.is_compiled_with_cuda():
-            self.test_api(use_cuda=True)
-            self.test_api_broadcast(use_cuda=True)
-            self.test_grad(use_cuda=True)
+            for use_cuda in [False, True]:
+                if use_cuda and not fluid.core.is_compiled_with_cuda():
+                    return
+                place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+                exe = fluid.Executor(place)
+                out = exe.run(fluid.default_main_program(),
+                              feed={'x': x_i,
+                                    'y': y_i},
+                              fetch_list=[result])
+                assert np.array_equal(out[0], np.where(cond_i, x_i, y_i))
 
 
 class TestWhereDygraphAPI(unittest.TestCase):

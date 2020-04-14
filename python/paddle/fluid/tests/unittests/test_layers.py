@@ -3217,7 +3217,9 @@ class TestBook(LayerTest):
             x = layers.data(name="x", shape=[256, 30, 30], dtype="float32")
             rois = layers.data(
                 name="rois", shape=[4], dtype="float32", lod_level=1)
-            output = layers.roi_pool(x, rois, 7, 7, 0.6)
+            rois_lod = layers.data(
+                name="rois_lod", shape=[None, ], dtype="int", lod_level=1)
+            output = layers.roi_pool(x, rois, 7, 7, 0.6, rois_lod)
             return (output)
 
     def test_sequence_enumerate(self):
@@ -3232,7 +3234,10 @@ class TestBook(LayerTest):
             x = layers.data(name="x", shape=[256, 30, 30], dtype="float32")
             rois = layers.data(
                 name="rois", shape=[4], dtype="float32", lod_level=1)
-            output = layers.roi_align(x, rois, 14, 14, 0.5, 2)
+            rois_lod = layers.data(
+                name="rois_lod", shape=[None, ], dtype="int", lod_level=1)
+            output = layers.roi_align(x, rois, 14, 14, 0.5, 2, 'roi_align',
+                                      rois_lod)
             return (output)
 
     def test_roi_perspective_transform(self):
@@ -3427,12 +3432,12 @@ class TestBook(LayerTest):
                 name='gt_labels',
                 shape=[10, 1],
                 append_batch_size=False,
-                dtype='float32')
+                dtype='int32')
             is_crowd = layers.data(
                 name='is_crowd',
                 shape=[1],
                 append_batch_size=False,
-                dtype='float32')
+                dtype='int32')
             im_info = layers.data(
                 name='im_info',
                 shape=[1, 3],
@@ -3462,6 +3467,28 @@ class TestBook(LayerTest):
                 dtype='int32')
             out = fluid.layers.sigmoid_focal_loss(
                 x=input, label=label, fg_num=fg_num, gamma=2., alpha=0.25)
+            return (out)
+
+    def test_addmm(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            input = layers.data(
+                name='input_data',
+                shape=[3, 3],
+                append_batch_size=False,
+                dtype='float32')
+            x = layers.data(
+                name='x',
+                shape=[3, 2],
+                append_batch_size=False,
+                dtype='float32')
+            y = layers.data(
+                name='y',
+                shape=[2, 3],
+                append_batch_size=False,
+                dtype='float32')
+
+            out = paddle.addmm(input=input, x=x, y=y)
             return (out)
 
     def test_retinanet_detection_output(self):
