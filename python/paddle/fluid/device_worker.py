@@ -105,6 +105,7 @@ class Hogwild(DeviceWorker):
         if not opt_info:
             return
 
+        # when runing in pslib mode, opt_info has fleet_desc
         if version.is_transpiler() and "fleet_desc" not in opt_info:
             return
 
