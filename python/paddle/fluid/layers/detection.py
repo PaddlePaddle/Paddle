@@ -891,6 +891,8 @@ def polygon_box_transform(input, name=None):
             input = fluid.data(name='input', shape=[4, 10, 5, 5], dtype='float32')
             out = fluid.layers.polygon_box_transform(input)
     """
+    check_variable_and_dtype(input, "input", ['float32', 'float64'],
+                             'polygon_box_transform')
     helper = LayerHelper("polygon_box_transform", **locals())
     output = helper.create_variable_for_type_inference(dtype=input.dtype)
 
