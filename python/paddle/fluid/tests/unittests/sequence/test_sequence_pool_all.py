@@ -18,6 +18,8 @@ import unittest
 import six
 import random
 import numpy as np
+import sys
+sys.path.append("../")
 from op_test import OpTest
 import paddle.fluid.core as core
 from test_reorder_lod_tensor import convert_to_offset
