@@ -17,7 +17,7 @@ import os.path as osp
 import sys
 import tarfile
 
-from models.download import _download
+from hapi.download import _download
 
 import logging
 logger = logging.getLogger(__name__)
