@@ -28,7 +28,6 @@ from paddle.io import DataLoader
 from hapi.model import Model, Input, set_device
 from hapi.distributed import DistributedBatchSampler
 from hapi.datasets import COCODataset
-from hapi.download import get_weights_path
 from hapi.vision.transforms import *
 from hapi.vision.models import yolov3_darknet53, YoloLoss
 
