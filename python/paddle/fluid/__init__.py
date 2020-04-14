@@ -183,9 +183,6 @@ def __bootstrap__():
     if core.is_compiled_with_mkldnn():
         read_env_flags.append('use_mkldnn')
 
-    if core.is_compiled_with_ngraph():
-        read_env_flags.append('use_ngraph')
-
     if core.is_compiled_with_dist():
         #env for rpc
         read_env_flags.append('rpc_deadline')

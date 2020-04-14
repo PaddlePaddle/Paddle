@@ -76,6 +76,7 @@ class Layer(core.Layer):
     """
 
     def __init__(self, name_scope=None, dtype=core.VarDesc.VarType.FP32):
+        self.training = True
         if name_scope is None:
             name_scope = _convert_camel_to_snake(self.__class__.__name__)
         self._full_name = unique_name.generate(name_scope)
@@ -91,10 +92,34 @@ class Layer(core.Layer):
         self._forward_post_hooks = collections.OrderedDict()
 
     def train(self):
+        """
+        Sets this Layer and all its sublayers to training mode.
+        This only effects certain modules like `Dropout` and `BatchNorm`.
+
+        Returns:
+            None
+        """
+        # global setting
         framework._dygraph_tracer().train_mode()
+        # Layer-level setting
+        self.training = True
+        for layer in self.sublayers():
+            layer.train()
 
     def eval(self):
+        """
+        Sets this Layer and all its sublayers to evaluation mode.
+        This only effects certain modules like `Dropout` and `BatchNorm`.
+
+        Returns:
+            None
+        """
+        # global setting
         framework._dygraph_tracer().eval_mode()
+        # Layer-level setting
+        self.training = False
+        for layer in self.sublayers():
+            layer.eval()
 
     def full_name(self):
         """Full name for this layer, composed by name_scope + "/" + MyLayer.__class__.__name__

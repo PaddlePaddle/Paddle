@@ -61,5 +61,7 @@ TEST(TEST_FLEET, fleet_1) {
 #ifdef PADDLE_WITH_PSLIB
 #else
   fleet->RunServer("", 0);
+  fleet->SaveModelOneTable(0, "", 0);
+  fleet->SaveModelOneTablePrefix(0, "", 0, "");
 #endif
 }

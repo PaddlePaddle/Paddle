@@ -55,8 +55,8 @@ class NormOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "norm");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "norm");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "NormOp");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "NormOp");
     auto xdim = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", xdim);
     int axis = ctx->Attrs().Get<int>("axis");
@@ -70,9 +70,9 @@ class NormOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "norm");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   "X@GRAD", "norm");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "NormOpGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Input",
+                   "X@GRAD", "NormOpGrad");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };
