@@ -11404,7 +11404,7 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
     if y is not None:
         check_variable_and_dtype(y, "y", ["bool"], op_name)
     if out is not None:
-        check_variable_and_dtype(out, "out", [convert_dtype(x.dtype)], op_name)
+        check_type(out, "out", Variable, op_name)
 
     helper = LayerHelper(op_name, **locals())
 
