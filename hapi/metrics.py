@@ -52,7 +52,7 @@ class Metric(object):
         """
         Update states for metric
 
-        Inputs of :code:`update` will be outputs for :code:`add_metric_op`, if
+        Inputs of :code:`update` is the outputs of :code:`add_metric_op`, if
         :code:`add_metric_op` is not defined, the inputs of :code:`update` will
         be a flatten argument of **output** of mode and **label** from data:
         :code:`update(output1, output2, ..., label1, label2,...)`
