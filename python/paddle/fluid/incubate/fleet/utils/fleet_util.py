@@ -1353,7 +1353,7 @@ class FleetUtil(object):
             return [None] * 9
 
         # barrier worker to ensure all workers finished training
-        fleet._role_maker._barrier_worker()
+        #fleet._role_maker._barrier_worker()
 
         # get auc
         auc = self.get_global_auc(scope, stat_pos_name, stat_neg_name)
@@ -1362,17 +1362,17 @@ class FleetUtil(object):
         old_pos_shape = np.array(pos.shape)
         # reshape to one dim
         pos = pos.reshape(-1)
-        global_pos = np.copy(pos) * 0
+        global_pos = np.copy(pos)# * 0
         # mpi allreduce
-        fleet._role_maker._all_reduce(pos, global_pos)
+        #fleet._role_maker._all_reduce(pos, global_pos)
         # reshape to its original shape
         global_pos = global_pos.reshape(old_pos_shape)
         # auc neg bucket
         neg = np.array(scope.find_var(stat_neg_name).get_tensor())
         old_neg_shape = np.array(neg.shape)
         neg = neg.reshape(-1)
-        global_neg = np.copy(neg) * 0
-        fleet._role_maker._all_reduce(neg, global_neg)
+        global_neg = np.copy(neg)# * 0
+#        fleet._role_maker._all_reduce(neg, global_neg)
         global_neg = global_neg.reshape(old_neg_shape)
 
         num_bucket = len(global_pos[0])
@@ -1381,9 +1381,9 @@ class FleetUtil(object):
             metric = np.array(scope.find_var(name).get_tensor())
             old_metric_shape = np.array(metric.shape)
             metric = metric.reshape(-1)
-            global_metric = np.copy(metric) * 0
-            fleet._role_maker._all_reduce(metric, global_metric)
-            global_metric = global_metric.reshape(old_metric_shape)
+            global_metric = np.copy(metric)# * 0
+#            fleet._role_maker._all_reduce(metric, global_metric)
+#            global_metric = global_metric.reshape(old_metric_shape)
             return global_metric[0]
 
         global_sqrerr = get_metric(sqrerr_name)

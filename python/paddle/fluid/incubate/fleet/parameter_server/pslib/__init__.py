@@ -189,6 +189,47 @@ class PSLib(Fleet):
             raise Exception(
                 "You should run DistributedOptimizer.minimize() first")
 
+    def local_init(self):
+        if self._opt_info:
+            if "fleet_desc" not in self._opt_info:
+                raise Exception("You should run DistributedOptimizer.minimize() first")
+        self._dist_desc_str = text_format.MessageToString(self._opt_info["fleet_desc"])
+        self._dist_desc = self._opt_info["fleet_desc"]
+#        self._fleet_ptr.set_local(True)
+        self._fleet_ptr.init_server(self._dist_desc_str, 0)
+        self._fleet_ptr.set_local(True)
+        self._fleet_ptr.init_worker(self._dist_desc_str, [1], 1, 2)
+
+        if True:#self._role_maker.is_first_worker():
+            tables = []
+            for tp in self._dist_desc.trainer_param:
+                for i in tp.dense_table:
+                    tables.append(i)
+            for prog, scope in zip(self._main_programs, self._scopes):
+                prog_id = str(id(prog))
+                prog_conf = self._opt_info['program_configs'][prog_id]
+                prog_tables = {}
+                for key in prog_conf:
+                    if "dense" not in key:
+                        continue
+                    for table_id in prog_conf[key]:
+                        prog_tables[int(table_id)] = 0
+                for table in tables:
+                    if int(table.table_id) not in prog_tables:
+                        continue
+                    var_name_list = []
+                    for i in range(0, len(table.dense_variable_name)):
+                        var_name = table.dense_variable_name[i]
+                        if scope.find_var(var_name) is None:
+                            raise ValueError(
+                                "var " + var_name + " not found in scope, "
+                                + "you should run startup program first")
+                        var_name_list.append(var_name)
+                    self._fleet_ptr.init_model(scope,
+                                               int(table.table_id),
+                                               var_name_list)
+
+
     def stop_worker(self):
         """
         stop(): will be called after a user finishes his/her training task. Fleet instance will be

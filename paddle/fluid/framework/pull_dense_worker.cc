@@ -86,11 +86,13 @@ void PullDenseWorker::Stop() {
 
 void PullDenseWorker::PullDense(bool force_update) {
   pull_dense_status_.resize(0);
+  bool pull=false;
   for (int i = 0; i < dwp_param_.program_config(0).pull_dense_table_id_size();
        ++i) {
     uint64_t tid = static_cast<uint64_t>(
         dwp_param_.program_config(0).pull_dense_table_id(i));
     if (force_update || CheckUpdateParam(tid)) {
+      pull=true;
       fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid, dense_value_names_[tid],
                                      &pull_dense_status_);
       ResetThreadVersion(tid);
@@ -99,6 +101,26 @@ void PullDenseWorker::PullDense(bool force_update) {
   if (pull_dense_status_.size() != 0) {
     Wait(&pull_dense_status_);
   }
+
+  for (int i = 0; i < dwp_param_.program_config(0).pull_dense_table_id_size();  ++i) {
+    uint64_t tid = static_cast<uint64_t>(dwp_param_.program_config(0).pull_dense_table_id(i));
+    if (!pull) {
+        continue;
+    }
+    for (auto i = 0u; i < dense_value_names_[tid].size(); ++i) {
+      Variable* var = root_scope_->FindVar(dense_value_names_[tid][i]);
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      float* w = tensor->data<float>();
+      size_t size = tensor->numel();
+      std::stringstream ss;
+      ss << "PullDense " << dense_value_names_[tid][i] << " :";
+      for (size_t j = 0; j < size; ++j) {
+          ss << " " << w[j];
+      }
+      VLOG(0) << ss.str();
+    }
+  }
+
 }
 
 int PullDenseWorker::Start() {

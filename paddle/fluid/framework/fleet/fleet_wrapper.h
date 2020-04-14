@@ -296,6 +296,12 @@ class FleetWrapper {
   // this performs better than rand_r, especially large data
   std::default_random_engine& LocalRandomEngine();
 
+  void SetLocal(bool local) {
+#ifdef PADDLE_WITH_PSLIB 
+    pslib_ptr_->set_local(local);
+#endif
+  }
+
 #ifdef PADDLE_WITH_PSLIB
   static std::shared_ptr<paddle::distributed::PSlib> pslib_ptr_;
 #endif

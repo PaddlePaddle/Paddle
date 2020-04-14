@@ -57,15 +57,15 @@ void FleetWrapper::SetClient2ClientConfig(int request_timeout_ms,
 
 void FleetWrapper::InitServer(const std::string& dist_desc, int index) {
 #ifdef PADDLE_WITH_PSLIB
-  if (!is_initialized_) {
-    VLOG(3) << "Going to init server";
+ // if (!is_initialized_) {
+    VLOG(0) << "Going to init server";
     pslib_ptr_ = std::shared_ptr<paddle::distributed::PSlib>(
         new paddle::distributed::PSlib());
     pslib_ptr_->init_server(dist_desc, index);
     is_initialized_ = true;
-  } else {
-    VLOG(3) << "Server can be initialized only once";
-  }
+//  } else {
+//    VLOG(3) << "Server can be initialized only once";
+//  }
 #endif
 }
 
@@ -73,17 +73,17 @@ void FleetWrapper::InitWorker(const std::string& dist_desc,
                               const std::vector<uint64_t>& host_sign_list,
                               int node_num, int index) {
 #ifdef PADDLE_WITH_PSLIB
-  if (!is_initialized_) {
-    VLOG(3) << "Going to init worker";
-    pslib_ptr_ = std::shared_ptr<paddle::distributed::PSlib>(
-        new paddle::distributed::PSlib());
+//  if (!is_initialized_) {
+    VLOG(0) << "Going to init worker";
+  //  pslib_ptr_ = std::shared_ptr<paddle::distributed::PSlib>(
+  //      new paddle::distributed::PSlib());
     pslib_ptr_->init_worker(dist_desc,
                             const_cast<uint64_t*>(host_sign_list.data()),
                             node_num, index);
     is_initialized_ = true;
-  } else {
-    VLOG(3) << "Worker can be initialized only once";
-  }
+//  } else {
+//    VLOG(3) << "Worker can be initialized only once";
+//  }
 #endif
 }
 
@@ -571,6 +571,15 @@ void FleetWrapper::PullSparseVarsSync(
       exit(-1);
     }
   }
+  std::stringstream ss;
+  ss << "\n";
+  for (size_t j = 0; j < fea_keys->size(); ++j) {
+    ss << "\nPullSparseVarsSync " << fea_keys->at(j) << ":";
+    for (auto& k : fea_values->at(j)) {
+        ss << " " << k;
+    }
+  }
+  VLOG(0) << ss.str();
 #endif
 }
 
@@ -686,6 +695,12 @@ void FleetWrapper::PushDenseParamSync(
     CHECK(var != nullptr) << "var[" << t << "] not found";
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     float* g = tensor->mutable_data<float>(place);
+    std::stringstream ss;
+    ss << "PushDenseParamSync " << t << ":";
+    for (int j = 0; j < tensor->numel(); ++j) {
+        ss <<" " << g[j];
+    }
+    VLOG(0) << ss.str();
     paddle::ps::Region reg(g, tensor->numel());
     regions.emplace_back(std::move(reg));
   }
@@ -726,6 +741,13 @@ void FleetWrapper::PushDenseVarsAsync(
                  batch_size * scale_datanorm;
         }
       }
+   // }
+//      std::stringstream ss;
+//      ss << "PushDenseVarsAsync " << t << ":";
+//      for (int j = 0; j < count; ++j) {
+//          ss <<" " << g[j];
+//      }
+//      VLOG(0) << ss.str();
     }
     paddle::ps::Region reg(g, count);
     regions.emplace_back(std::move(reg));
