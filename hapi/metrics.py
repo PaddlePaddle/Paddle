@@ -72,11 +72,15 @@ class Metric(object):
         raise NotImplementedError("function 'name' not implemented in {}.".
                                   format(self.__class__.__name__))
 
-    def add_metric_op(self, pred, label):
+    def add_metric_op(self, *args):
         """
         Add process op for metric in program
+        If :code:`add_metric_op` is defined, it will be called with outputs
+        of model and labels from data as parameter, all outputs and labels
+        will be concatenated and flatten to a list like follows:
+        [output1, output2, ..., label1, label2,...]
         """
-        return pred, label
+        return args
 
 
 class Accuracy(Metric):
@@ -91,12 +95,12 @@ class Accuracy(Metric):
         self._init_name(name)
         self.reset()
 
-    def add_metric_op(self, pred, label, *args, **kwargs):
-        pred = fluid.layers.argsort(pred[0], descending=True)[1][:, :self.maxk]
-        correct = pred == label[0]
+    def add_metric_op(self, pred, label, *args):
+        pred = fluid.layers.argsort(pred, descending=True)[1][:, :self.maxk]
+        correct = pred == label
         return correct
 
-    def update(self, correct, *args, **kwargs):
+    def update(self, correct, *args):
         accs = []
         for i, k in enumerate(self.topk):
             num_corrects = correct[:, :k].sum()
