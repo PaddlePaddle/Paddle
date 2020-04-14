@@ -184,7 +184,7 @@ class TruncatedGaussianRandomOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
         ctx->HasOutput("Out"), true,
-        platform::errors::InvalidArgument(
+        platform::errors::NotFound(
             "Output(Out) of TruncatedGaussianRandomOp should not be null."));
     auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
     std::vector<int64_t> out_dim;
@@ -192,11 +192,12 @@ class TruncatedGaussianRandomOp : public framework::OperatorWithKernel {
     for (auto dim : shape) {
       out_dim.push_back(static_cast<int64_t>(dim));
     }
-    PADDLE_ENFORCE_GT(shape.size(), 0UL,
-                      platform::errors::InvalidArgument(
-                          "shape can be one int or array. shape must be set, "
-                          "But received (%d)",
-                          shape.size()));
+    PADDLE_ENFORCE_GT(
+        shape.size(), 0UL,
+        platform::errors::InvalidArgument(
+            "the input shape of TruncatedGaussianRandomOp must be set, "
+            "But the rank of shape we received is %d",
+            shape.size()));
     ctx->SetOutputDim("Out", framework::make_ddim(out_dim));
   }
 
