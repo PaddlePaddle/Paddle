@@ -18,8 +18,8 @@ import math
 import random
 import numpy as np
 
-from datasets.folder import DatasetFolder
-from transform import transforms
+from hapi.datasets import DatasetFolder
+from hapi.vision.transforms import transforms
 from paddle import fluid
 
 
@@ -45,7 +45,8 @@ class ImageNetDataset(DatasetFolder):
     def __getitem__(self, idx):
         img_path, label = self.samples[idx]
         img = cv2.imread(img_path).astype(np.float32)
-        return self.transform(img), [label]
+        label = np.array([label])
+        return self.transform(img, label)
 
     def __len__(self):
         return len(self.samples)

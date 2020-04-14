@@ -24,15 +24,17 @@ sys.path.append('../')
 import time
 import math
 import numpy as np
-import models
-import paddle.fluid as fluid
 
-from model import CrossEntropy, Input, set_device
-from imagenet_dataset import ImageNetDataset
-from distributed import DistributedBatchSampler
+import paddle.fluid as fluid
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from metrics import Accuracy
 from paddle.io import BatchSampler, DataLoader
+
+from hapi.model import CrossEntropy, Input, set_device
+from hapi.distributed import DistributedBatchSampler
+from hapi.metrics import Accuracy
+import hapi.vision.models as models
+
+from imagenet_dataset import ImageNetDataset
 
 
 def make_optimizer(step_per_epoch, parameter_list=None):

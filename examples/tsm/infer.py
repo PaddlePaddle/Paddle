@@ -19,8 +19,8 @@ import os
 import argparse
 import numpy as np
 
-from model import Input, set_device
-from models import tsm_resnet50
+from hapi.model import Input, set_device
+from hapi.vision.models import tsm_resnet50
 
 from check import check_gpu, check_version
 from kinetics_dataset import KineticsDataset

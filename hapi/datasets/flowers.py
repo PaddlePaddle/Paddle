@@ -75,7 +75,6 @@ class Flowers(Dataset):
                  setid_file=None,
                  mode='train',
                  transform=None,
-                 target_transform=None,
                  download=True):
         assert mode.lower() in ['train', 'valid', 'test'], \
                 "mode should be 'train', 'valid' or 'test', but got {}".format(mode)
@@ -100,7 +99,6 @@ class Flowers(Dataset):
                 setid_file, SETID_URL, SETID_MD5, 'flowers', download)
 
         self.transform = transform
-        self.target_transform = target_transform
 
         # read dataset into memory
         self._load_anno()
@@ -123,9 +121,7 @@ class Flowers(Dataset):
         image = np.array(Image.open(io.BytesIO(image)))
 
         if self.transform is not None:
-            image = self.transform(image)
-        if self.target_transform is not None:
-            label = self.target_transform(label)
+            image, label = self.transform(image, label)
 
         return image, label
 

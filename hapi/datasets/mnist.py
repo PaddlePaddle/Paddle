@@ -72,7 +72,6 @@ class MNIST(Dataset):
                  label_path=None,
                  mode='train',
                  transform=None,
-                 target_transform=None,
                  download=True):
         assert mode.lower() in ['train', 'test'], \
                 "mode should be 'train' or 'test', but got {}".format(mode)
@@ -95,7 +94,6 @@ class MNIST(Dataset):
                 label_path, label_url, label_md5, 'mnist', download)
 
         self.transform = transform
-        self.target_transform = target_transform
 
         # read dataset into memory
         self._parse_dataset()
@@ -151,9 +149,7 @@ class MNIST(Dataset):
     def __getitem__(self, idx):
         image, label = self.images[idx], self.labels[idx]
         if self.transform is not None:
-            image = self.transform(image)
-        if self.target_transform is not None:
-            label = self.target_transform(label)
+            image, label = self.transform(image, label)
         return image, label
 
     def __len__(self):

@@ -25,13 +25,13 @@ from paddle import fluid
 from paddle.fluid.optimizer import Momentum
 from paddle.io import DataLoader
 
-from model import Model, Input, set_device
-from distributed import DistributedBatchSampler
-from models import yolov3_darknet53, YoloLoss
+from hapi.model import Model, Input, set_device
+from hapi.distributed import DistributedBatchSampler
+from hapi.datasets import COCODataset
+from hapi.vision.transforms import *
+from hapi.vision.models import yolov3_darknet53, YoloLoss
 
 from coco_metric import COCOMetric
-from vision.datasets import COCODataset
-from vision.transforms import *
 
 NUM_MAX_BOXES = 50
 

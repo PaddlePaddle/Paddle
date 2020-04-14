@@ -129,7 +129,7 @@ class Resize(object):
         self.size = size
         self.interpolation = interpolation
 
-    def __call__(self, img):
+    def __call__(self, img, lbl):
         """
         Args:
             img (PIL Image): Image to be scaled.
@@ -137,7 +137,7 @@ class Resize(object):
         Returns:
             PIL Image: Rescaled image.
         """
-        return F.resize(img, self.size, self.interpolation)
+        return F.resize(img, self.size, self.interpolation), lbl
 
 
 class RandomResizedCrop(object):
@@ -199,10 +199,10 @@ class RandomResizedCrop(object):
         y = (height - h) // 2
         return x, y, w, h
 
-    def __call__(self, img):
+    def __call__(self, img, lbl):
         x, y, w, h = self._get_params(img)
         cropped_img = img[y:y + h, x:x + w]
-        return F.resize(cropped_img, self.output_size, self.interpolation)
+        return F.resize(cropped_img, self.output_size, self.interpolation), lbl
 
 
 class CenterCropResize(object):
@@ -230,10 +230,10 @@ class CenterCropResize(object):
         y = (w + 1 - c) // 2
         return c, x, y
 
-    def __call__(self, img):
+    def __call__(self, img, lbl):
         c, x, y = self._get_params(img)
         cropped_img = img[x:x + c, y:y + c, :]
-        return F.resize(cropped_img, self.size, self.interpolation)
+        return F.resize(cropped_img, self.size, self.interpolation), lbl
 
 
 class CenterCrop(object):
@@ -257,10 +257,10 @@ class CenterCrop(object):
         y = int(round((h - th) / 2.0))
         return x, y
 
-    def __call__(self, img):
+    def __call__(self, img, lbl):
         x, y = self._get_params(img)
         th, tw = self.output_size
-        return img[y:y + th, x:x + tw]
+        return img[y:y + th, x:x + tw], lbl
 
 
 class RandomHorizontalFlip(object):
@@ -273,10 +273,10 @@ class RandomHorizontalFlip(object):
     def __init__(self, prob=0.5):
         self.prob = prob
 
-    def __call__(self, img):
+    def __call__(self, img, lbl):
         if np.random.random() < self.prob:
-            return F.flip(img, code=1)
-        return img
+            return F.flip(img, code=1), lbl
+        return img, lbl
 
 
 class RandomVerticalFlip(object):
@@ -289,10 +289,10 @@ class RandomVerticalFlip(object):
     def __init__(self, prob=0.5):
         self.prob = prob
 
-    def __call__(self, img):
+    def __call__(self, img, lbl):
         if np.random.random() < self.prob:
-            return F.flip(img, code=0)
-        return img
+            return F.flip(img, code=0), lbl
+        return img, lbl
 
 
 class Normalize(object):
@@ -317,8 +317,8 @@ class Normalize(object):
         self.mean = np.array(mean, dtype=np.float32).reshape(len(mean), 1, 1)
         self.std = np.array(std, dtype=np.float32).reshape(len(std), 1, 1)
 
-    def __call__(self, img):
-        return (img - self.mean) / self.std
+    def __call__(self, img, lbl):
+        return (img - self.mean) / self.std, lbl
 
 
 class Permute(object):
@@ -337,10 +337,10 @@ class Permute(object):
         ], "Only support 'CHW' mode, but received mode: {}".format(mode)
         self.mode = mode
 
-    def __call__(self, img):
+    def __call__(self, img, lbl):
         if self.mode == "CHW":
-            return img.transpose((2, 0, 1))[::-1, ...]
-        return img
+            return img.transpose((2, 0, 1))[::-1, ...], lbl
+        return img, lbl
 
 
 class GaussianNoise(object):
@@ -356,11 +356,11 @@ class GaussianNoise(object):
         self.mean = np.array(mean, dtype=np.float32)
         self.std = np.array(std, dtype=np.float32)
 
-    def __call__(self, img):
+    def __call__(self, img, lbl):
         dtype = img.dtype
         noise = np.random.normal(self.mean, self.std, img.shape) * 255
         img = img + noise.astype(np.float32)
-        return np.clip(img, 0, 255).astype(dtype)
+        return np.clip(img, 0, 255).astype(dtype), lbl
 
 
 class BrightnessTransform(object):
@@ -376,15 +376,15 @@ class BrightnessTransform(object):
             raise ValueError("brightness value should be non-negative")
         self.value = value
 
-    def __call__(self, img):
+    def __call__(self, img, lbl):
         if self.value == 0:
-            return img
+            return img, lbl
 
         dtype = img.dtype
         img = img.astype(np.float32)
         alpha = np.random.uniform(max(0, 1 - self.value), 1 + self.value)
         img = img * alpha
-        return img.clip(0, 255).astype(dtype)
+        return img.clip(0, 255).astype(dtype), lbl
 
 
 class ContrastTransform(object):
@@ -400,16 +400,16 @@ class ContrastTransform(object):
             raise ValueError("contrast value should be non-negative")
         self.value = value
 
-    def __call__(self, img):
+    def __call__(self, img, lbl):
         if self.value == 0:
-            return img
+            return img, lbl
 
         dtype = img.dtype
         img = img.astype(np.float32)
         alpha = np.random.uniform(max(0, 1 - self.value), 1 + self.value)
         img = img * alpha + cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).mean() * (
             1 - alpha)
-        return img.clip(0, 255).astype(dtype)
+        return img.clip(0, 255).astype(dtype), lbl
 
 
 class SaturationTransform(object):
@@ -425,9 +425,9 @@ class SaturationTransform(object):
             raise ValueError("saturation value should be non-negative")
         self.value = value
 
-    def __call__(self, img):
+    def __call__(self, img, lbl):
         if self.value == 0:
-            return img
+            return img, lbl
 
         dtype = img.dtype
         img = img.astype(np.float32)
@@ -435,7 +435,7 @@ class SaturationTransform(object):
         gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         gray_img = gray_img[..., np.newaxis]
         img = img * alpha + gray_img * (1 - alpha)
-        return img.clip(0, 255).astype(dtype)
+        return img.clip(0, 255).astype(dtype), lbl
 
 
 class HueTransform(object):
@@ -451,9 +451,9 @@ class HueTransform(object):
             raise ValueError("hue value should be in [0.0, 0.5]")
         self.value = value
 
-    def __call__(self, img):
+    def __call__(self, img, lbl):
         if self.value == 0:
-            return img
+            return img, lbl
 
         dtype = img.dtype
         img = img.astype(np.uint8)
@@ -466,7 +466,7 @@ class HueTransform(object):
         with np.errstate(over="ignore"):
             h += np.uint8(alpha * 255)
         hsv_img = cv2.merge([h, s, v])
-        return cv2.cvtColor(hsv_img, cv2.COLOR_HSV2BGR_FULL).astype(dtype)
+        return cv2.cvtColor(hsv_img, cv2.COLOR_HSV2BGR_FULL).astype(dtype), lbl
 
 
 class ColorJitter(object):
@@ -501,5 +501,5 @@ class ColorJitter(object):
         random.shuffle(transforms)
         self.transforms = Compose(transforms)
 
-    def __call__(self, img):
-        return self.transforms(img)
+    def __call__(self, img, lbl):
+        return self.transforms(img), lbl

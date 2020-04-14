@@ -18,10 +18,8 @@ import logging
 import sys
 import os
 
-sys.path.append('../')
-
-from model import set_device, Input
-from bmn_model import BMN, BmnLoss
+from hapi.model import set_device, Input
+from hapi.vision.models import BMN, BmnLoss
 from reader import BmnDataset
 from config_utils import *
 

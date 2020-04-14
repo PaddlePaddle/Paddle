@@ -78,8 +78,6 @@ class DatasetFolder(Dataset):
             both extensions and is_valid_file should not be passed.
         transform (callable|optional): A function/transform that takes in
             a sample and returns a transformed version.
-        target_transform (callable|optional): A function/transform that takes
-            in the target and transforms it.
         is_valid_file (callable|optional): A function that takes path of a file
             and check if the file is a valid file (used to check of corrupt files)
             both extensions and is_valid_file should not be passed.
@@ -96,11 +94,9 @@ class DatasetFolder(Dataset):
                  loader=None,
                  extensions=None,
                  transform=None,
-                 target_transform=None,
                  is_valid_file=None):
         self.root = root
         self.transform = transform
-        self.target_transform = target_transform
         if extensions is None:
             extensions = IMG_EXTENSIONS
         classes, class_to_idx = self._find_classes(self.root)
@@ -154,9 +150,7 @@ class DatasetFolder(Dataset):
         path, target = self.samples[index]
         sample = self.loader(path)
         if self.transform is not None:
-            sample = self.transform(sample)
-        if self.target_transform is not None:
-            target = self.target_transform(target)
+            sample, target = self.transform(sample, target)
 
         return sample, target
 

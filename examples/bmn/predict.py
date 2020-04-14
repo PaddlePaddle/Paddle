@@ -13,16 +13,14 @@
 #limitations under the License.
 
 import argparse
-import os
 import sys
+import os
 import logging
 import paddle.fluid as fluid
 
-sys.path.append('../')
-
-from model import set_device, Input
+from hapi.model import set_device, Input
+from hapi.vision.models import BMN, BmnLoss
 from bmn_metric import BmnMetric
-from bmn_model import BMN, BmnLoss
 from reader import BmnDataset
 from config_utils import *
 
@@ -35,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 def parse_args():
-    parser = argparse.ArgumentParser("BMN test for performance evaluation.")
+    parser = argparse.ArgumentParser("BMN inference.")
     parser.add_argument(
         "-d",
         "--dynamic",
@@ -48,16 +46,18 @@ def parse_args():
         default='bmn.yaml',
         help='path to config file of model')
     parser.add_argument(
-        '--device',
-        type=str,
-        default='gpu',
-        help='gpu or cpu, default use gpu.')
+        '--device', type=str, default='GPU', help='default use gpu.')
     parser.add_argument(
         '--weights',
         type=str,
         default="checkpoint/final",
         help='weight path, None to automatically download weights provided by Paddle.'
     )
+    parser.add_argument(
+        '--save_dir',
+        type=str,
+        default="predict_results/",
+        help='output dir path, default to use ./predict_results/')
     parser.add_argument(
         '--log_interval',
         type=int,
@@ -67,18 +67,19 @@ def parse_args():
     return args
 
 
-# Performance Evaluation
-def test_bmn(args):
+# Prediction
+def infer_bmn(args):
     # only support dynamic mode at present time
     device = set_device(args.device)
     fluid.enable_dygraph(device) if args.dynamic else None
 
     config = parse_config(args.config_file)
-    eval_cfg = merge_configs(config, 'test', vars(args))
-    if not os.path.isdir(config.TEST.output_path):
-        os.makedirs(config.TEST.output_path)
-    if not os.path.isdir(config.TEST.result_path):
-        os.makedirs(config.TEST.result_path)
+    infer_cfg = merge_configs(config, 'infer', vars(args))
+
+    if not os.path.isdir(config.INFER.output_path):
+        os.makedirs(config.INFER.output_path)
+    if not os.path.isdir(config.INFER.result_path):
+        os.makedirs(config.INFER.result_path)
 
     inputs = [
         Input(
@@ -86,44 +87,37 @@ def test_bmn(args):
             'float32',
             name='feat_input')
     ]
-    gt_iou_map = Input(
-        [None, config.MODEL.dscale, config.MODEL.tscale],
-        'float32',
-        name='gt_iou_map')
-    gt_start = Input([None, config.MODEL.tscale], 'float32', name='gt_start')
-    gt_end = Input([None, config.MODEL.tscale], 'float32', name='gt_end')
-    video_idx = Input([None, 1], 'int64', name='video_idx')
-    labels = [gt_iou_map, gt_start, gt_end, video_idx]
+    labels = [Input([None, 1], 'int64', name='video_idx')]
 
     #data
-    eval_dataset = BmnDataset(eval_cfg, 'test')
+    infer_dataset = BmnDataset(infer_cfg, 'infer')
 
-    #model
     model = BMN(config, args.dynamic)
     model.prepare(
-        loss_function=BmnLoss(config),
         metrics=BmnMetric(
-            config, mode='test'),
+            config, mode='infer'),
         inputs=inputs,
         labels=labels,
         device=device)
 
-    #load checkpoint
+    # load checkpoint
     if args.weights:
-        assert os.path.exists(args.weights + '.pdparams'), \
-            "Given weight dir {} not exist.".format(args.weights)
+        assert os.path.exists(
+            args.weights +
+            ".pdparams"), "Given weight dir {} not exist.".format(args.weights)
     logger.info('load test weights from {}'.format(args.weights))
     model.load(args.weights)
 
+    # here use model.eval instead of model.test, as post process is required in our case
     model.evaluate(
-        eval_data=eval_dataset,
-        batch_size=eval_cfg.TEST.batch_size,
-        num_workers=eval_cfg.TEST.num_workers,
+        eval_data=infer_dataset,
+        batch_size=infer_cfg.TEST.batch_size,
+        num_workers=infer_cfg.TEST.num_workers,
         log_freq=args.log_interval)
 
-    logger.info("[EVAL] eval finished")
+    logger.info("[INFER] infer finished")
 
 
 if __name__ == '__main__':
     args = parse_args()
-    test_bmn(args)
+    infer_bmn(args)

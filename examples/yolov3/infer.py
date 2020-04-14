@@ -24,11 +24,11 @@ from paddle import fluid
 from paddle.fluid.optimizer import Momentum
 from paddle.io import DataLoader
 
-from model import Model, Input, set_device
-from models import yolov3_darknet53, YoloLoss
+from hapi.model import Model, Input, set_device
+from hapi.vision.models import yolov3_darknet53, YoloLoss
+from hapi.vision.transforms import *
 
 from coco import COCODataset
-from transforms import *
 from visualizer import draw_bbox
 
 import logging
@@ -65,7 +65,8 @@ def main():
     device = set_device(FLAGS.device)
     fluid.enable_dygraph(device) if FLAGS.dynamic else None
     
-    inputs = [Input([None, 3], 'int32', name='img_info'),
+    inputs = [Input([None, 1], 'int64', name='img_id'),
+              Input([None, 2], 'int32', name='img_shape'),
               Input([None, 3, None, None], 'float32', name='image')]
 
     cat2name = load_labels(FLAGS.label_list, with_background=False)
@@ -87,9 +88,10 @@ def main():
     img -= np.array(IMAGE_MEAN)
     img /= np.array(IMAGE_STD)
     img = img.transpose((2, 0, 1))[np.newaxis, :]
-    img_info = np.array([0, h, w]).astype('int32')[np.newaxis, :]
+    img_id = np.array([0]).astype('int64')[np.newaxis, :]
+    img_shape = np.array([h, w]).astype('int32')[np.newaxis, :]
 
-    _, bboxes = model.test([img_info, img])
+    _, bboxes = model.test([img_id, img_shape, img])
 
     vis_img = draw_bbox(orig_img, cat2name, bboxes, FLAGS.draw_threshold)
     save_name = get_save_image_name(FLAGS.output_dir, FLAGS.infer_image)

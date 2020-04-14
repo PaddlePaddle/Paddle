@@ -25,7 +25,7 @@ from functools import partial
 import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.fluid.io import BatchSampler, DataLoader, Dataset
+from paddle.io import BatchSampler, DataLoader, Dataset
 from hapi.distributed import DistributedBatchSampler
 from hapi.text.bert.data_processor import DataProcessor, XnliProcessor, ColaProcessor, MrpcProcessor, MnliProcessor
 from hapi.text.bert.batching import prepare_batch_data

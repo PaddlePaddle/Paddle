@@ -20,7 +20,7 @@ import json
 
 sys.path.append('../')
 
-from metrics import Metric
+from hapi.metrics import Metric
 from bmn_utils import boundary_choose, bmn_post_processing
 
 
