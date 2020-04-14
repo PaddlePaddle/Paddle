@@ -1262,20 +1262,27 @@ def addcmul(input, tensor1, tensor2, value=1.0, out=None, name=None):
     **addcmul**
 
     Calculate the element-wise multiplication of tensor1 and tensor2,
-    then multiply the result by value, and add it to input.
+    then multiply the result by value, and add it to input. The shape of input,
+    tensor1, tensor2 should be broadcastable.
     The equation is:
 
     ..  math::
         out = input + value * tensor1 * tensor2
 
     Args:
-        input(Variable): The input to be added. A Tensor with type float32, float64.
-        tensor1(Variable): The tensor to be multiplied. A Tensor with type float32, float64.
-        tensor2(Variable): The tensor to be multiplied. A Tensor with type float32, float64.
+        input(Variable): The input to be added. A Tensor with type float32, float64, int32, int64.
+        tensor1(Variable): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
+        tensor2(Variable): The tensor to be multiplied. A Tensor with type float32, float64, int32, int64.
         value(float|double): The multiplier for tensor1*tensor2.
+        out(Variable, Optional): The variable that specifies the output of the
+            operator, which can be Variable that has been created in the
+            program. The default value is None, and a new Variable will be
+            created to save the output. Default: None.
+        name(str, Optional): For details, please refer to :ref:`api_guide_Name`.
+                        Generally, no setting is required. Default: None.
 
     Returns:
-        out(Variable): The output result. A Tensor with type float32, float64.
+        out(Variable): The output result. A Tensor with type float32, float64, int32, int64.
 
     Examples:
         .. code-block:: python
@@ -1288,19 +1295,12 @@ def addcmul(input, tensor1, tensor2, value=1.0, out=None, name=None):
           data = paddle.addcmul(input, tensor1, tensor2)
     """
 
-    op_type = 'addcmul'
-    check_variable_and_dtype(input, 'input', ['float32', 'float64'], op_type)
-    check_variable_and_dtype(tensor1, 'tensor1', ['float32', 'float64'], op_type)
-    check_variable_and_dtype(tensor2, 'tensor2', ['float32', 'float64'], op_type)
-    helper = LayerHelper(op_type, **locals())
+    check_variable_and_dtype(input, 'input', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
+    check_variable_and_dtype(tensor1, 'tensor1', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
+    check_variable_and_dtype(tensor2, 'tensor2', ['float32', 'float64', 'int32', 'int64'], 'addcmul')
 
-    if out is None:
-        out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type=op_type,
-        inputs={'Input': input,
-                'Tensor1': tensor1,
-                'Tensor2': tensor2},
-        attrs={'value': value},
-        outputs={'Out': out})
+    if out is not None:
+        layers.assign(layers.elementwise_add(input, layers.elementwise_mul(tensor1, tensor2) * value), out)
+    else:
+        out = layers.elementwise_add(input, layers.elementwise_mul(tensor1, tensor2) * value)
     return out
