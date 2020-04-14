@@ -135,6 +135,7 @@ def std(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
             standard-deviation , otherwise returns a reference to the output Variable.
     Examples:
         .. code-block:: python
+
             import paddle
             import paddle.fluid as fluid
             # x is a Tensor variable with following elements:
