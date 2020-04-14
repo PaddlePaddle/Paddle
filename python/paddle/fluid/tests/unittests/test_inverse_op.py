@@ -37,6 +37,9 @@ class TestInverseOp(OpTest):
     def test_check_output(self):
         self.check_output()
 
+    def test_grad(self):
+        self.check_grad(['Input'], 'Output')
+
 
 class TestInverseOpBatched(TestInverseOp):
     def config(self):
@@ -62,7 +65,7 @@ class TestInverseAPI(unittest.TestCase):
                               fetch_list=[result])
             self.assertTrue(
                 np.allclose(
-                    fetches[0], result_np, atol=1e-5),
+                    fetches[0], result_np, atol=1e-4),
                 "Output has diff at " + str(place) + " when the shape is " +
                 str(input.shape) + ". The maximum diff is " +
                 str(np.amax(np.absolute(fetches[0] - result_np))))

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/inverse_op.h"
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -48,6 +49,33 @@ class InverseOp : public framework::OperatorWithKernel {
   }
 };
 
+class InverseOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
+ protected:
+  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+      const override {
+    return std::unordered_map<std::string, std::string>{
+        {"Input", /*->*/ "Output"}};
+  }
+};
+
+class InverseGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    auto input_grad = framework::GradVarName("Input");
+    auto output_grad = framework::GradVarName("Output");
+
+    OP_INOUT_CHECK(ctx->HasInput("Output"), "Input", "Output", "InverseGrad");
+    OP_INOUT_CHECK(ctx->HasInput(output_grad), "Input", output_grad,
+                   "InverseGrad");
+
+    if (ctx->HasOutput(input_grad)) {
+      ctx->SetOutputDim(input_grad, ctx->GetInputDim(output_grad));
+    }
+  }
+};
+
 class InverseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -64,11 +92,36 @@ Takes the inverse of the square matrix.
   }
 };
 
+template <typename T>
+class InverseGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad) const override {
+    grad->SetType(this->ForwardOpType() + "_grad");
+    grad->SetInput("Output", this->Output("Output"));
+    grad->SetInput(framework::GradVarName("Output"),
+                   this->OutputGrad("Output"));
+    grad->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(inverse, ops::InverseOp, ops::InverseOpMaker);
+REGISTER_OPERATOR(inverse, ops::InverseOp, ops::InverseOpMaker,
+                  ops::InverseOpInferVarType,
+                  ops::InverseGradOpMaker<paddle::framework::OpDesc>,
+                  ops::InverseGradOpMaker<paddle::imperative::OpBase>);
+
+REGISTER_OPERATOR(inverse_grad, ops::InverseGradOp);
+
 REGISTER_OP_CPU_KERNEL(
     inverse, ops::InverseKernel<paddle::platform::CPUDeviceContext, float>,
     ops::InverseKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    inverse_grad,
+    ops::InverseGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::InverseGradKernel<paddle::platform::CPUDeviceContext, double>);
