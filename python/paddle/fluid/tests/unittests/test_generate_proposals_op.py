@@ -282,8 +282,6 @@ class TestGenerateProposalsOp(OpTest):
         self.outputs = {
             'RpnRois': (self.rpn_rois[0], [self.lod]),
             'RpnRoiProbs': (self.rpn_roi_probs[0], [self.lod]),
-            #'RpnRoisLod': (np.asarray(
-            #    self.lod, dtype=np.int32))
         }
 
     def test_check_output(self):
