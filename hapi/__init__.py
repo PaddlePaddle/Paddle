@@ -12,4 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from hapi.configure import Config as Config
+from hapi.configure import Config
+from hapi import callbacks
+from hapi import datasets
+from hapi import distributed
+from hapi import download
+from hapi import metrics
+from hapi import model
+from hapi import progressbar
+from hapi import text
+from hapi import vision
+
+__all__ = [
+    'Config',
+    'callbacks',
+    'datasets',
+    'distributed',
+    'download',
+    'metrics',
+    'model',
+    'progressbar',
+    'text',
+    'vision',
+]

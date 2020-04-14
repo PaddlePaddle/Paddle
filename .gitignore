@@ -2,3 +2,6 @@
 *.json
 output*
 *checkpoint*
+build
+dist
+hapi.egg-info
