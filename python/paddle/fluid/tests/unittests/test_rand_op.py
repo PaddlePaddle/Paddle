@@ -24,6 +24,10 @@ from paddle.fluid import compiler, Program, program_guard
 
 
 class TestRandOpError(unittest.TestCase):
+    """
+    This class test the input type check.
+    """
+
     def test_errors(self):
         main_prog = Program()
         start_prog = Program()
@@ -50,6 +54,11 @@ class TestRandOpError(unittest.TestCase):
 
 
 class TestRandOp(unittest.TestCase):
+    """
+    This function test the common usages of randop.
+
+    """
+
     def test_run(self):
         use_cuda = False
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()

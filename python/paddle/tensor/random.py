@@ -405,7 +405,7 @@ def rand(shape, out=None, dtype=None, device=None, stop_gradient=True):
         shape(list|tuple|Variable): Shape of the Tensor to be created.
                 The data type is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
                 the elements of it should be integers or Tensors with shape [1].
-                If ``shape`` is an Variable, it should be an 1-D Tensor .
+                If ``shape`` is a Variable, it should be an 1-D Tensor .
         out(Variable, optional): Optional output which can be any created
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
