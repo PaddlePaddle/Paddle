@@ -97,7 +97,8 @@ class SequencePoolAllCUDAKernel : public framework::OpKernel<T> {
     std::string pooltype = ctx.Attr<std::string>("pooltype");
     PADDLE_ENFORCE_EQ(
         pooltype, "SUM",
-        "Currently, it only supports SUM for sequence_pool_all op");
+        platform::errors::InvalidArgument(
+            "Currently, it only supports SUM for sequence_pool_all op"));
     T pad_value = static_cast<T>(ctx.Attr<float>("pad_value"));
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
@@ -109,15 +110,18 @@ class SequencePoolAllCUDAKernel : public framework::OpKernel<T> {
       auto dims = in_vars[i]->dims();
       auto &lod = in_vars[i]->lod();
       PADDLE_ENFORCE_EQ(lod.size(), 1,
-                        "Currently, it only supports lod_level = 1.");
+                        platform::errors::InvalidArgument(
+                            "Currently, it only supports lod_level = 1."));
       PADDLE_ENFORCE_EQ(
           batch_size,
           /*batch size = */ static_cast<int64_t>(lod[0].size() - 1),
-          "There are error of lod mesage in inputs.");
+          platform::errors::InvalidArgument(
+              "There are error of lod mesage in inputs."));
       PADDLE_ENFORCE_GE(
           dims[0],
           /*batch size = */ static_cast<int64_t>(lod[0].size() - 1),
-          "The first dimension of Input(X) must be large than batch size.");
+          platform::errors::InvalidArgument("The first dimension of Input(X) "
+                                            "must be large than batch size."));
 
       lod_data.emplace_back(lod[0].CUDAData(dev_ctx.GetPlace()));
       dims[0] = batch_size;
@@ -181,15 +185,18 @@ class SequencePoolAllGradOpCUDAKernel : public framework::OpKernel<T> {
       auto dims = in_vars[i]->dims();
       auto &lod = in_vars[i]->lod();
       PADDLE_ENFORCE_EQ(lod.size(), 1,
-                        "Currently, it only supports lod_level = 1.");
+                        platform::errors::InvalidArgument(
+                            "Currently, it only supports lod_level = 1."));
       PADDLE_ENFORCE_EQ(
           batch_size,
           /*batch size = */ static_cast<int64_t>(lod[0].size() - 1),
-          "There are error of lod mesage in inputs.");
+          platform::errors::InvalidArgument(
+              "There are error of lod mesage in inputs."));
       PADDLE_ENFORCE_GE(
           dims[0],
           /*batch size = */ static_cast<int64_t>(lod[0].size() - 1),
-          "The first dimension of Input(X) must be large than batch size.");
+          platform::errors::InvalidArgument("The first dimension of Input(X) "
+                                            "must be large than batch size."));
       lod_data.emplace_back(lod[0].CUDAData(dev_ctx.GetPlace()));
 
       out_vars[i]->mutable_data<T>(ctx.GetPlace());
