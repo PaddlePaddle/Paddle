@@ -399,9 +399,19 @@ def add_rpc_global_flags_pass(program, get_threads, send_threads, pull_threads):
     return program
 
 
+def _clone_var(self, block, var, persistable=True):
+    return block.create_var(
+        name=var.name,
+        shape=var.shape,
+        dtype=var.dtype,
+        type=var.type,
+        lod_level=var.lod_level,
+        persistable=persistable)
+
+
 def add_recv_inputs_pass(program, mode, trainers):
     for v in self.param_grad_ep_mapping[endpoint]["params"]:
-        self._clone_var(pserver_program.global_block(), v)
+        _clone_var(pserver_program.global_block(), v)
     for v in self.param_grad_ep_mapping[endpoint]["grads"]:
         # create vars for each trainer in global scope, so
         # we don't need to create them when grad arrives.
@@ -555,3 +565,58 @@ def add_optimizer_pass(program, origin_program, ps_endpoint):
     op._set_attr("grad_to_block_id", grad_to_block_id)
     op._set_attr("sparse_grad_to_param", sparse_grad_to_param)
     op._set_attr("lr_decay_block_id", lr_decay_block_id)
+
+
+def build_pserver_startup_program_pass(program, ps_endpoint, p_main_program,
+                                       o_startup_program):
+    program.random_seed = o_startup_program.random_seed
+
+    params = self.param_grad_ep_mapping[ps_endpoint]["params"]
+
+    def _get_splited_name_and_shape(varname):
+        for idx, splited_param in enumerate(params):
+            pname = splited_param.name
+            if _same_or_split_var(pname, varname) and varname != pname:
+                return pname, splited_param.shape
+        return "", []
+
+    # 1. create vars in pserver program to startup program
+    pserver_vars = p_main_program.global_block().vars
+    created_var_map = collections.OrderedDict()
+    for _, var in six.iteritems(pserver_vars):
+        tmpvar = program.global_block()._clone_variable(var)
+        created_var_map[var.name] = tmpvar
+
+    # 2. rename op outputs
+    for op in o_startup_program.global_block().ops:
+        new_outputs = collections.OrderedDict()
+        # do not append startup op if var is not on this pserver
+        op_on_pserver = False
+        # TODO(gongwb): remove this line.
+        if op.type not in ["recv", "fetch_barrier", "concat"]:
+            for key in op.output_names:
+                newname, _ = _get_splited_name_and_shape(op.output(key)[0])
+                if newname:
+                    op_on_pserver = True
+                    new_outputs[key] = created_var_map[newname]
+                elif op.output(key)[0] in pserver_vars:
+                    op_on_pserver = True
+                    new_outputs[key] = pserver_vars[op.output(key)[0]]
+
+        if op_on_pserver:
+            # most startup program ops have no inputs
+            new_inputs = _get_input_map_from_op(pserver_vars, op)
+
+            if op.type in [
+                    "gaussian_random", "fill_constant", "uniform_random",
+                    "truncated_gaussian_random"
+            ]:
+                op._set_attr("shape", list(new_outputs["Out"].shape))
+
+            program.global_block().append_op(
+                type=op.type,
+                inputs=new_inputs,
+                outputs=new_outputs,
+                attrs=op.all_attrs())
+
+    return program

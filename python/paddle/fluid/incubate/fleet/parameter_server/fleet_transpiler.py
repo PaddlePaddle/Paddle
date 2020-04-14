@@ -52,7 +52,8 @@ from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy import Tr
 from paddle.fluid.incubate.fleet.parameter_server.mode import PSMode
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 
-import paddle.fluid.incubate.fleet.parameter_server.ir.worker_pass as worker
+import paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass as worker
+import paddle.fluid.incubate.fleet.parameter_server.ir.pserver_pass as server
 
 
 class FleetTranspiler(Fleet):
@@ -852,7 +853,32 @@ class ParameterServerOptimizer(DistributedOptimizer):
         return _main, _startup
 
     def _build_pserver_programs(self):
-        return
+        _main = fluid.Program()
+        _startup = fluid.Program()
+
+        ps_id = fleet._role_maker.server_index()
+        ps_endpoint = fleet._role_maker.get_pserver_endpoints(
+            fleet._role_maker.server_index())
+        trainers = fleet._role_maker.worker_num()
+        mode = fleet.strategy.distributed_mode
+
+        server_runtime = fleet.strategy.get_server_runtime_config()
+
+        _main = server.add_listen_and_serv_pass(_main, ps_id, ps_endpoint,
+                                                trainers, mode)
+
+        _main = server.add_rpc_global_flags_pass(
+            _main, server_runtime._rpc_send_thread_num,
+            server_runtime._rpc_get_thread_num,
+            server_runtime._rpc_prefetch_thread_num)
+
+        _main = server.add_optimizer_pass(_main, fleet._origin_main_program,
+                                          ps_endpoint)
+        _main = server.add_recv_inputs_pass(_main, mode, trainers)
+
+        _startup = server.build_pserver_startup_program_pass(
+            _startup, ps_endpoint, _main, fleet._origin_startup_program)
+        return _main, _startup
 
     def minimize(self,
                  losses,
@@ -869,4 +895,4 @@ class ParameterServerOptimizer(DistributedOptimizer):
 
         fleet.main_program, fleet.startup_program = \
             self._build_trainer_programs() if fleet.is_worker() \
-            else self._build_pserver_programs()
+                else self._build_pserver_programs()
