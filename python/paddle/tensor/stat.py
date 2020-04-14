@@ -124,7 +124,7 @@ def std(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
             :math:`N - 1`, where :math:`N` represents the number of elements 
             along :attr:`axis`, otherwise the divisor is :math:`N`. Default True.
         out (Variable, optional): Alternate output Variable to store the result
-            variance. Default None.
+            standard-deviation . Default None.
         name (str, optional): The name for this layer. Normally there is no 
             need for user to set this property.  For more information, please 
             refer to :ref:`api_guide_Name`. Default None.
@@ -132,7 +132,7 @@ def std(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
     Returns:
         Variable: The result standard-deviation  with the same dtype as :attr:`input`. 
             If :attr:`out = None`, returns a new Variable containing the 
-            variance, otherwise returns a reference to the output Variable.
+            standard-deviation , otherwise returns a reference to the output Variable.
     Examples:
         .. code-block:: python
             import paddle
