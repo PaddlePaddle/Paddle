@@ -50,10 +50,10 @@ class TestDiagEmbedOpCase1(TestDiagEmbedOp):
 
 class TestDiagEmbedAPICase(unittest.TestCase):
     def test_case1(self):
-        diag_embed = np.random.randn(2, 3).astype('float32')
-        data1 = fluid.data(name='data1', shape=[2, 3], dtype='float32')
+        diag_embed = np.random.randn(2, 3, 4).astype('float32')
+        data1 = fluid.data(name='data1', shape=[2, 3, 4], dtype='float32')
         out1 = F.diag_embed(data1)
-        out2 = F.diag_embed(data1, offset=1, dim1=0, dim2=2)
+        out2 = F.diag_embed(data1, offset=1, dim1=-2, dim2=3)
 
         place = core.CPUPlace()
         exe = fluid.Executor(place)
@@ -61,8 +61,10 @@ class TestDiagEmbedAPICase(unittest.TestCase):
                           feed={"data1": diag_embed},
                           fetch_list=[out1, out2],
                           return_numpy=True)
-        target1 = np.stack([np.diag(r, 0) for r in diag_embed], 0)
-        target2 = np.stack([np.diag(r, 1) for r in diag_embed], 1)
+        target1 = np.stack(
+            [np.stack([np.diag(s, 0) for s in r], 0) for r in diag_embed], 0)
+        target2 = np.stack(
+            [np.stack([np.diag(s, 1) for s in r], 0) for r in diag_embed], 0)
         self.assertTrue(np.allclose(results[0], target1))
         self.assertTrue(np.allclose(results[1], target2))
 

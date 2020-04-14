@@ -17,7 +17,7 @@
 
 from .layer import norm
 
-__all__ = ['diag_embed']
+__all__ = []
 __all__ += norm.__all__
 
 # TODO: define alias in nn directory

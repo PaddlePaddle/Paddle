@@ -21,11 +21,13 @@ namespace operators {
 template <typename T>
 struct DiagEmbedFunctor {
   DiagEmbedFunctor(const T* input, int64_t numel, const int64_t* dim,
-                   int64_t offset, T* output, int64_t* strides)
+                   int64_t offset, int64_t dims_size, T* output,
+                   int64_t* strides)
       : input_(input),
         numel_(numel),
         dim_(dim),
         offset_(offset),
+        dims_size_(dims_size),
         output_(output),
         strides_(strides) {}
 
@@ -33,7 +35,7 @@ struct DiagEmbedFunctor {
     int64_t position = 0;
     auto numel = numel_;
     int64_t num = idx;
-    for (size_t i = 0; i < 2; i++) {
+    for (size_t i = 0; i < dims_size_; i++) {
       numel = numel / dim_[i];
       position += num / numel * strides_[i];
       num = num % numel;
@@ -45,6 +47,7 @@ struct DiagEmbedFunctor {
   int64_t numel_;
   const int64_t* dim_;
   int64_t offset_;
+  int64_t dims_size_;
   T* output_;
   int64_t* strides_;
 };
@@ -99,7 +102,8 @@ class DiagEmbedCUDAKernel : public framework::OpKernel<T> {
 
     platform::ForRange<DeviceContext> for_range(dev_ctx, input->numel());
     DiagEmbedFunctor<T> functor(input_data, input->numel(), dims_arr,
-                                storage_offset, out_data, strides_arr);
+                                storage_offset, dims.size(), out_data,
+                                strides_arr);
     for_range(functor);
   }
 };

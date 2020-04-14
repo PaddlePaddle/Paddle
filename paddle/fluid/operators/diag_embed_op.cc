@@ -41,13 +41,13 @@ class DiagEmbedOp : public framework::OperatorWithKernel {
     int offset_ = std::abs(offset);
 
     PADDLE_ENFORCE_LE(
-        std::abs(dim1), x_dims.size(),
+        dim1_, x_dims.size(),
         platform::errors::OutOfRange(
             "Dim1 is out of range (expected to be in range of [%ld, "
             "%ld], but got %ld).",
             -(x_dims.size() + 1), x_dims.size(), dim1));
     PADDLE_ENFORCE_LE(
-        std::abs(dim2), x_dims.size(),
+        dim2_, x_dims.size(),
         platform::errors::OutOfRange(
             "Dim2 is out of range (expected to be in range of [%ld, "
             "%ld], but got %ld).",
