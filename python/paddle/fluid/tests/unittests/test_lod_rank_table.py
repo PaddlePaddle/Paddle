@@ -17,10 +17,8 @@ from __future__ import print_function
 from paddle.fluid.layers import data
 from paddle.fluid.layers.control_flow import lod_rank_table
 from paddle.fluid.executor import Executor
+from paddle.fluid import Program, program_guard, core, fluid
 import numpy as np
-#import paddle.fluid.core as core, program_guard
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard, core
 import numpy
 import unittest
 
