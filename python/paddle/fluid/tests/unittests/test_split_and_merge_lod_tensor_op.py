@@ -255,13 +255,23 @@ class TestMergeLodTensorOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_mask)
 
-            def test_level():
+            def test_xtrue():
                 out = layers.merge_lod_tensor(
-                    int_true=x_true,
+                    int_true=set(),
                     in_false=x_false,
                     x=input_data,
                     mask=y,
-                    level=0.5)
+                    level=level)
+
+            self.assertRaises(TypeError, test_level)
+
+            def test_xfalse():
+                out = layers.merge_lod_tensor(
+                    int_true=x_true,
+                    in_false=set(),
+                    x=input_data,
+                    mask=y,
+                    level=level)
 
             self.assertRaises(TypeError, test_level)
 

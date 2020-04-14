@@ -11604,7 +11604,7 @@ def clip(x, min, max, name=None):
     """
 
     helper = LayerHelper("clip", **locals())
-    check_variable_and_dtype(x, 'X', ['float16', 'float32', 'float64'], 'clip')
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'clip')
 
     if name is None:
         name = unique_name.generate_with_ignorable_key(".".join(

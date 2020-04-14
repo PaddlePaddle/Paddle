@@ -165,11 +165,11 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
     to merge the output if True block and False Block.
 
     Args:
-        in_true(tuple|list|None): The True branch to be merged.
-        in_false(tuple|list|None): The False branch to be merged.
+        in_true(Variable|tuple|list|None): The True branch to be merged.
+        in_false(Variable|tuple|list|None): The False branch to be merged.
         x(Variable|tuple|list|None): The input tensor that contains complete
                             lod information needed to construct the output.
-        mask(list): A bool column vector which masks the input.
+        mask(Variable|list): A bool column vector which masks the input.
         level(int): The specific lod level to merge.
 
     Returns:
@@ -195,7 +195,10 @@ def merge_lod_tensor(in_true, in_false, x, mask, level=0):
     check_type(x, 'x', (Variable, list, tuple, type(None)),
                'fluid.layers.merge_lod_tensor')
     check_type(mask, 'mask', (Variable, list), 'fluid.layers.merge_lod_tensor')
-    check_type(level, 'level', int, 'fluid.layers.merge_lod_tensor')
+    check_type(in_true, 'in_true', (Variable, list, tuple, type(None)),
+               'fluid.layers.merge_lod_tensor')
+    check_type(in_false, 'in_false', (Variable, list, tuple, type(None)),
+               'fluid.layers.merge_lod_tensor')
     out = helper.create_variable_for_type_inference(dtype=in_true.dtype)
     helper.append_op(
         type='merge_lod_tensor',

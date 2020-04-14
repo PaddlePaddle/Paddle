@@ -100,8 +100,7 @@ class ElementwiseWeightOpConverter : public OpConverter {
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "The size of input bias's dims is %d, but TensorRT dynamic shape "
-            "only support"
-            "size = 1 for Elementwise op!",
+            "only support size = 1 for Elementwise op!",
             Y_t->dims().size()));
       }
       return;
@@ -136,8 +135,7 @@ class ElementwiseWeightOpConverter : public OpConverter {
           if (dims_y[i] != 1)
             PADDLE_THROW(platform::errors::InvalidArgument(
                 "The bias's %d dim is %d, but TensorRT dynamic shape only "
-                "support"
-                "it equals to 1 for Elementwise op!",
+                "support it equals to 1 for Elementwise op!",
                 i, dims_y[i]));
         }
       }
@@ -145,12 +143,11 @@ class ElementwiseWeightOpConverter : public OpConverter {
       if (dims_y.size() >= 1) {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "The size of bias's dims is %d and bias's size is %d. TensorRT "
-            "doesn't support"
-            "this shape for Elementwise op!",
+            "doesn't support this shape for Elementwise op!",
             dims_y.size(), dims_y[0]));
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "The size of bias's dims is %d. TensorRT doesn't support"
+            "The size of bias's dims is %d. TensorRT doesn't support "
             "this shape for Elementwise op!",
             dims_y.size()));
       }
