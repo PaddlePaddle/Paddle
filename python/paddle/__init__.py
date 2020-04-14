@@ -36,6 +36,7 @@ batch = batch.batch
 import paddle.sysconfig
 import paddle.tensor
 import paddle.nn
+import paddle.imperative
 
 # TODO: define alias in tensor and framework directory
 # from .tensor.creation import create_.tensor   #DEFINE_ALIAS
