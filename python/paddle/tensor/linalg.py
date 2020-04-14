@@ -23,7 +23,7 @@ __all__ = [
     'norm',
     #  'transpose',
     'dist',
-    #  't',
+    't',
     #  'cross',
     #  'cholesky',
     #  'tensordot'
@@ -457,4 +457,75 @@ def dot(x, y, name=None):
     helper.append_op(
         type="dot", inputs={'X': x,
                             'Y': y}, attrs={}, outputs={"Out": out})
+    return out
+
+
+def t(input, name=None):
+    """
+    Transpose <=2-D tensor. 
+    0-D and 1-D tensors are returned as it is and 2-D tensor is equal to 
+    the fluid.layers.transpose function which perm dimensions set 0 and 1.
+    
+    Args:
+        input (Variable): The input Tensor. It is a N-D (N<=2) Tensor of data types float32, float64, int32.
+        name(str, optional): The default value is None.  Normally there is no need for 
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+    Returns:
+        Variable: A transposed n-D Tensor, with data type being float32, float64, int32, int64.
+    
+    For Example:
+        .. code-block:: text
+        # Example 1 (0-D tensor)
+         x = tensor([0.79])
+         paddle.t(x) = tensor([0.79])
+         # Example 2 (1-D tensor)
+         x = tensor([0.79, 0.84, 0.32])
+         paddle.t(x) = tensor([0.79, 0.84, 0.32])
+        
+         # Example 3 (2-D tensor)
+         x = tensor([0.79, 0.84, 0.32],
+                    [0.64, 0.14, 0.57])
+         paddle.t(x) = tensor([0.79, 0.64],
+                              [0.84, 0.14],
+                              [0.32, 0.57])
+    
+     Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.fluid as fluid
+            x = fluid.data(name='x', shape=[2, 3],
+                            dtype='float32')
+            x_transposed = paddle.t(x)
+            print x_transposed.shape
+            #(3L, 2L)
+    """
+    if len(input.shape) > 2:
+        raise ValueError(
+            "Input(input) only support N-D (N<=2) tensor, but received "
+            "length of Input(input) is %s. Perhaps you can use paddle."
+            "tensor.transpose() instead." % len(input.shape))
+    if in_dygraph_mode():
+        if len(input.shape) == 1:
+            return input
+        # 2-D tensor
+        perm = [1, 0]
+        out, _ = core.ops.transpose2(input, 'axis', perm)
+        return out
+
+    check_variable_and_dtype(
+        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        'transpose')
+
+    helper = LayerHelper('t', **locals())
+    out = helper.create_variable_for_type_inference(input.dtype)
+    input_shape = helper.create_variable_for_type_inference(input.dtype)
+    if len(input.shape) == 1:
+        out = input
+    else:
+        helper.append_op(
+            type='transpose2',
+            inputs={'X': [input]},
+            outputs={'Out': [out],
+                     'XShape': [input_shape]},
+            attrs={'axis': [1, 0]})
     return out

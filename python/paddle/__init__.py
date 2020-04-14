@@ -43,7 +43,7 @@ import paddle.nn
 # from .tensor.creation import create_random_int_lod.tensor   #DEFINE_ALIAS
 # from .tensor.creation import crop_.tensor   #DEFINE_ALIAS
 # from .tensor.creation import diag   #DEFINE_ALIAS
-# from .tensor.creation import eye   #DEFINE_ALIAS
+from .tensor.creation import eye  #DEFINE_ALIAS
 from .tensor.creation import fill_constant  #DEFINE_ALIAS
 # from .tensor.creation import get_.tensor_from_selected_rows   #DEFINE_ALIAS
 from .tensor.creation import linspace  #DEFINE_ALIAS
@@ -63,7 +63,7 @@ from .tensor.creation import full_like  #DEFINE_ALIAS
 # from .tensor.stat import mean   #DEFINE_ALIAS
 # from .tensor.stat import reduce_mean   #DEFINE_ALIAS
 # from .tensor.stat import std   #DEFINE_ALIAS
-# from .tensor.stat import var   #DEFINE_ALIAS
+from .tensor.stat import var  #DEFINE_ALIAS
 from .tensor.logic import equal  #DEFINE_ALIAS
 # from .tensor.logic import greater_equal   #DEFINE_ALIAS
 # from .tensor.logic import greater_than   #DEFINE_ALIAS
@@ -131,15 +131,15 @@ from .tensor.math import sum  #DEFINE_ALIAS
 # from .tensor.math import sums   #DEFINE_ALIAS
 from .tensor.math import tanh  #DEFINE_ALIAS
 from .tensor.math import elementwise_sum  #DEFINE_ALIAS
-# from .tensor.math import max   #DEFINE_ALIAS
-# from .tensor.math import min   #DEFINE_ALIAS
+from .tensor.math import max  #DEFINE_ALIAS
+from .tensor.math import min  #DEFINE_ALIAS
 from .tensor.math import mm  #DEFINE_ALIAS
 from .tensor.math import div  #DEFINE_ALIAS
 from .tensor.math import add  #DEFINE_ALIAS
 # from .tensor.math import atan   #DEFINE_ALIAS
 from .tensor.math import logsumexp  #DEFINE_ALIAS
 # from .tensor.math import inverse   #DEFINE_ALIAS
-# from .tensor.math import log1p   #DEFINE_ALIAS
+from .tensor.math import log1p  #DEFINE_ALIAS
 # from .tensor.math import erf   #DEFINE_ALIAS
 # from .tensor.math import addcmul   #DEFINE_ALIAS
 from .tensor.math import addmm  #DEFINE_ALIAS
@@ -153,7 +153,7 @@ from .tensor.linalg import dot  #DEFINE_ALIAS
 from .tensor.linalg import norm  #DEFINE_ALIAS
 # from .tensor.linalg import transpose   #DEFINE_ALIAS
 from .tensor.linalg import dist  #DEFINE_ALIAS
-# from .tensor.linalg import t   #DEFINE_ALIAS
+from .tensor.linalg import t  #DEFINE_ALIAS
 # from .tensor.linalg import cross   #DEFINE_ALIAS
 # from .tensor.linalg import cholesky   #DEFINE_ALIAS
 # from .tensor.linalg import .tensordot   #DEFINE_ALIAS

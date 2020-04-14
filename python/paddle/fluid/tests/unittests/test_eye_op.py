@@ -18,6 +18,8 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+import paddle
+import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 
 
@@ -68,6 +70,46 @@ class TestEyeOp2(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+
+class API_TestTensorEye(unittest.TestCase):
+    def test_out(self):
+        with fluid.program_guard(fluid.Program()):
+            data = paddle.eye(10)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            result, = exe.run(fetch_list=[data])
+            expected_result = np.eye(10, dtype="float32")
+        self.assertEqual((result == expected_result).all(), True)
+
+        with fluid.program_guard(fluid.Program()):
+            data = paddle.eye(10, num_columns=7, dtype="float64")
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            result, = exe.run(fetch_list=[data])
+            expected_result = np.eye(10, 7, dtype="float64")
+        self.assertEqual((result == expected_result).all(), True)
+
+        with fluid.program_guard(fluid.Program()):
+            data = paddle.eye(10, dtype="int64")
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            result, = exe.run(fetch_list=[data])
+            expected_result = np.eye(10, dtype="int64")
+        self.assertEqual((result == expected_result).all(), True)
+
+    def test_errors(self):
+        with fluid.program_guard(fluid.Program()):
+
+            def test_num_rows_type_check():
+                paddle.eye(-1, dtype="int64")
+
+            self.assertRaises(TypeError, test_num_rows_type_check)
+
+            def test_num_columns_type_check():
+                paddle.eye(10, num_columns=5.2, dtype="int64")
+
+            self.assertRaises(TypeError, test_num_columns_type_check)
 
 
 if __name__ == "__main__":
