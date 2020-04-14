@@ -32,12 +32,11 @@ def convolutional_neural_network(use_py_reader):
 
         py_reader = None
         if use_py_reader:
-            py_reader = fluid.layers.create_py_reader_by_data(
+            py_reader = fluid.io.DataLoader.from_generator(
                 capacity=64,
                 feed_list=[img, label],
-                name='py_reader',
+                iterable=False,
                 use_double_buffer=False)
-            img, label = fluid.layers.read_file(py_reader)
 
         conv_pool_1 = fluid.nets.simple_img_conv_pool(
             input=img,
@@ -144,7 +143,7 @@ def train(use_cuda, thread_num, cpu_num):
         exec_strategy=exec_strategy)
     print("declare parallel executor done.")
 
-    py_reader.decorate_paddle_reader(train_reader)
+    py_reader.set_sample_list_generator(train_reader)
 
     for pass_id in range(2):
         step = 0
