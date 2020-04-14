@@ -44,9 +44,10 @@ FetchType& GetFetchVariable(const Scope& scope, const std::string& var_name,
   // Since we want to fetch FetchType from a variable, the variable must
   // be created alreadly.
   Variable* g_fetch_value = scope.FindVar(var_name);
-  PADDLE_ENFORCE_NOT_NULL(
-      g_fetch_value, platform::errors::NotFound("%s is not found.", var_name));
-  PADDLE_ENFORCE(g_fetch_value->IsType<FetchList>(),
+  PADDLE_ENFORCE_NOT_NULL(g_fetch_value,
+                          platform::errors::NotFound(
+                              "Variable %s is not found in scope.", var_name));
+  PADDLE_ENFORCE(g_fetch_value->IsType<FetchList>(), true,
                  platform::errors::InvalidArgument(
                      "Only %s can be invoked by GetFetchVariable",
                      typeid(FetchList).name()));
@@ -61,8 +62,12 @@ FetchType& GetFetchVariable(const Scope& scope, const std::string& var_name,
 
 LoDTensor& GetVariableTensor(const Scope& scope, const std::string& var_name) {
   Variable* var = scope.FindVar(var_name);
-  PADDLE_ENFORCE(var, "%s no in scope", var_name);
-  PADDLE_ENFORCE(var->IsType<LoDTensor>(), "Only support lod tensor now.");
+  PADDLE_ENFORCE_NOT_NULL(
+      var, platform::errors::NotFound("Variable %s is not found in scope.",
+                                      var_name));
+  PADDLE_ENFORCE(var->IsType<LoDTensor>(), true,
+                 platform::errors::InvalidArgument(
+                     "Only support lod tensor in GetVariableTensor now."));
   return *var->GetMutable<LoDTensor>();
 }
 
