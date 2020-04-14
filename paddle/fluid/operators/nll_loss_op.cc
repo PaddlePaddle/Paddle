@@ -24,35 +24,46 @@ class NLLLossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Total_weight"),
-                   "Output(Total_weight) should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"), true,
+        platform::errors::InvalidArgument("Input(X) should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Label"), true,
+        platform::errors::InvalidArgument("Input(Label) should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("Out"), true,
+        platform::errors::InvalidArgument("Output(Out) should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Total_weight"), true,
+                      platform::errors::InvalidArgument(
+                          "Output(Total_weight) should not be null."));
 
     auto x_dims = ctx->GetInputDim("X");
     auto label_dims = ctx->GetInputDim("Label");
     auto reduction = ctx->Attrs().Get<std::string>("Reduction");
 
     PADDLE_ENFORCE_EQ(x_dims.size() == 2 || x_dims.size() == 4, true,
-                      "The tensor rank of Input(X) must be 2 or 4.");
+                      platform::errors::InvalidArgument(
+                          "The tensor rank of Input(X) must be 2 or 4."));
     bool contain_unknown_dim = framework::contain_unknown_dim(x_dims) ||
                                framework::contain_unknown_dim(label_dims);
     bool check = ctx->IsRuntime() || !contain_unknown_dim;
     if (check) {
       PADDLE_ENFORCE_EQ(
           x_dims[0], label_dims[0],
-          "ShapeError: Expected input batch_size to match label batch_size,"
-          "But received: the Input(x) batch_size is [%s], the Input(label) "
-          " batch_size is [%s].",
-          x_dims[0], label_dims[0]);
+          platform::errors::InvalidArgument(
+              "ShapeError: Expected input batch_size to match label batch_size,"
+              "But received: the Input(x) batch_size is [%s], the Input(label) "
+              " batch_size is [%s].",
+              x_dims[0], label_dims[0]));
       if (ctx->HasInput("Weight")) {
         auto w_dims = ctx->GetInputDim("Weight");
-        PADDLE_ENFORCE(w_dims.size(), 1,
-                       "Input(Weight) should be a 1D tensor.");
-        PADDLE_ENFORCE(x_dims[1], w_dims[0],
-                       "Input(Weight) Tensor's size should match"
-                       "to the class numer.");
+        PADDLE_ENFORCE_EQ(w_dims.size(), 1,
+                          platform::errors::InvalidArgument(
+                              "Input(Weight) should be a 1D tensor."));
+        PADDLE_ENFORCE_EQ(x_dims[1], w_dims[0],
+                          platform::errors::InvalidArgument(
+                              "Input(Weight) Tensor's size should match"
+                              "to the class numer."));
       }
     }
     if (x_dims.size() == 2) {
@@ -63,7 +74,8 @@ class NLLLossOp : public framework::OperatorWithKernel {
       }
     } else if (x_dims.size() == 4) {
       PADDLE_ENFORCE_EQ(label_dims.size(), 3,
-                        "The tensor rank of Input(Label) must be 3.");
+                        platform::errors::InvalidArgument(
+                            "The tensor rank of Input(Label) must be 3."));
       auto input0 = x_dims[0];
       auto input2 = x_dims[2];
       auto input3 = x_dims[3];
@@ -72,7 +84,9 @@ class NLLLossOp : public framework::OperatorWithKernel {
       auto label2 = label_dims[2];
       PADDLE_ENFORCE_EQ(
           input0 == label0 && input2 == label1 && input3 == label2, true,
-          "Input(X) tensor shape should match to Input(Label) tensor shape.");
+          platform::errors::InvalidArgument("Input(X) tensor shape should "
+                                            "match to Input(Label) tensor "
+                                            "shape."));
       if (reduction == "none") {
         ctx->SetOutputDim("Out", {x_dims[0], x_dims[2], x_dims[3]});
       } else {
@@ -156,12 +170,18 @@ class NLLLossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should be not null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) shoudl be not null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output(X@GRAD) should be not null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"), true,
+        platform::errors::InvalidArgument("Input(X) should be not null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Label"), true,
+        platform::errors::InvalidArgument("Input(Label) should be not null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+                      platform::errors::InvalidArgument(
+                          "Input(Out@GRAD) shoudl be not null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
+                      platform::errors::InvalidArgument(
+                          "Output(X@GRAD) should be not null."));
 
     auto reduction = ctx->Attrs().Get<std::string>("Reduction");
     auto x_dims = ctx->GetInputDim("X");
@@ -175,30 +195,38 @@ class NLLLossGradOp : public framework::OperatorWithKernel {
       auto batch_size = x_dims[0];
       if (x_dims.size() == 2) {
         PADDLE_ENFORCE_EQ(dout_dims.size(), 1,
-                          "The dimensions of Input(Out@Grad) must be 1");
+                          platform::errors::InvalidArgument(
+                              "The dimensions of Input(Out@Grad) must be 1"));
         if (reduction == "none") {
-          PADDLE_ENFORCE_EQ(dout_dims[0], batch_size,
-                            "The unreduced size ofInput(Out@Grad) must be the "
-                            "same as batch_size.");
+          PADDLE_ENFORCE_EQ(
+              dout_dims[0], batch_size,
+              platform::errors::InvalidArgument(
+                  "The unreduced size ofInput(Out@Grad) must be the "
+                  "same as batch_size."));
         } else {
-          PADDLE_ENFORCE_EQ(dout_dims[0], 1,
-                            "The reduced size of Input(Out@Grad) must be 1");
+          PADDLE_ENFORCE_EQ(
+              dout_dims[0], 1,
+              platform::errors::InvalidArgument(
+                  "The reduced size of Input(Out@Grad) must be 1"));
         }
       } else if (x_dims.size() == 4) {
         if (reduction == "none") {
           PADDLE_ENFORCE_EQ(
               dout_dims.size(), 3,
-              "The dimensions of Input(Out@Grad) must be 3,But got [%s].",
-              dout_dims.size());
-          PADDLE_ENFORCE_EQ(dout_dims[0] == label_dims[0] &&
-                                dout_dims[1] == label_dims[1] &&
-                                dout_dims[2] == label_dims[2],
-                            true,
-                            "The dimensions of Input(Out@Grad) must be match "
-                            "to Input(Label) dimensions.");
+              platform::errors::InvalidArgument(
+                  "The dimensions of Input(Out@Grad) must be 3,But got [%s].",
+                  dout_dims.size()));
+          PADDLE_ENFORCE_EQ(
+              dout_dims[0] == label_dims[0] && dout_dims[1] == label_dims[1] &&
+                  dout_dims[2] == label_dims[2],
+              true, platform::errors::InvalidArgument(
+                        "The dimensions of Input(Out@Grad) must be match "
+                        "to Input(Label) dimensions."));
         } else {
-          PADDLE_ENFORCE_EQ(dout_dims[0], 1,
-                            "The reduced size of Input(Out@Grad) must be 1");
+          PADDLE_ENFORCE_EQ(
+              dout_dims[0], 1,
+              platform::errors::InvalidArgument(
+                  "The reduced size of Input(Out@Grad) must be 1"));
         }
       }
     }
