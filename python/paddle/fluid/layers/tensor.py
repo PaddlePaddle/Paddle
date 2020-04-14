@@ -164,7 +164,7 @@ def cast(x, dtype):
         x(Variable): An input N-D Tensor with data type bool, float16,
             float32, float64, int32, int64, uint8.
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output:
-            bool, float15, float32, float64, int8, int32, int64, uint8.
+            bool, float16, float32, float64, int8, int32, int64, uint8.
 
     Returns:
         Variable: A Tensor with the same shape as input's.
@@ -526,7 +526,10 @@ def assign(input, output=None):
             type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
     elif isinstance(input, numpy.ndarray):
         dtype = convert_np_dtype_to_dtype_(input.dtype)
-        if dtype == VarDesc.VarType.FP32:
+        if dtype == VarDesc.VarType.BOOL:
+            value_name = "bool_values"
+            values = [bool(v) for v in input.flat]
+        elif dtype == VarDesc.VarType.FP32:
             value_name = "fp32_values"
             values = [float(v) for v in input.flat]
         elif dtype == VarDesc.VarType.INT32:
@@ -538,7 +541,7 @@ def assign(input, output=None):
         else:
             raise TypeError(
                 "When the type of 'input' in assign is numpy.ndarray, "
-                "the data type of 'input' must be float32, int32 or int64, but "
+                "the data type of 'input' must be bool, float32, int32 or int64, but "
                 "received %s." % convert_dtype(dtype))
         if input.size > 1024 * 1024:
             raise ValueError("The size of input is too big. Please consider "

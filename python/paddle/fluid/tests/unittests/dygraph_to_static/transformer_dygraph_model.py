@@ -584,8 +584,9 @@ class Transformer(Layer):
                 [[0.] + [-inf] * (beam_size - 1)] * batch_size,
                 dtype="float32"))
 
-        finished = fluid.layers.fill_constant(
-            shape=[batch_size, beam_size], value=0, dtype="bool")
+        finished = to_variable(
+            np.full(
+                [batch_size, beam_size], 0, dtype="bool"))
 
         trg_word = layers.fill_constant(
             shape=[batch_size * beam_size, 1], dtype="int64", value=bos_id)
