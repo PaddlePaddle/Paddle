@@ -86,16 +86,6 @@ void MKLDNNInPlacePass::ApplyImpl(ir::Graph* graph) const {
       VLOG(3) << "MKL-DNN in-place pass SKIP pattern ";
       return;
     }
-    auto count_specific_vars = [](VariableNameMap& mapvar,
-                                  std::string& target_var_name) {
-      unsigned int count = 0;
-      for (auto& it : mapvar) {
-        for (auto& var_name : it.second) {
-          count += (var_name == target_var_name) ? 1 : 0;
-        }
-      }
-      return count;
-    };
 
     // Checking if this particular node (to be inplaced, overwritten)
     // is used anywhere else apart from inplaced op
