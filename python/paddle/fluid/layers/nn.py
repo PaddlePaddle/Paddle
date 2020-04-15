@@ -5235,6 +5235,9 @@ def ctc_greedy_decoder(input,
                             input_length=x_pad_len)
 
     """
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'ctc_greedy_decoder')
+
     helper = LayerHelper("ctc_greedy_decoder", **locals())
     _, topk_indices = topk(input, k=1)
 
@@ -6715,6 +6718,8 @@ def roi_pool(input,
         print(out)   #array([[[[11.]]], [[[16.]]]], dtype=float32)
         print(np.array(out).shape)  # (2, 1, 1, 1)
     """
+    check_variable_and_dtype(input, 'input', ['float32'], 'roi_pool')
+    check_variable_and_dtype(rois, 'rois', ['float32'], 'roi_pool')
     helper = LayerHelper('roi_pool', **locals())
     dtype = helper.input_dtype()
     pool_out = helper.create_variable_for_type_inference(dtype)
@@ -13096,6 +13101,8 @@ def prroi_pool(input,
 
 
     """
+    check_variable_and_dtype(input, 'input', ['float32'], 'prroi_pool')
+    check_variable_and_dtype(rois, 'rois', ['float32'], 'prroi_pool')
     helper = LayerHelper('prroi_pool', **locals())
     # check attrs
     if not isinstance(spatial_scale, float):
