@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from hapi.model import Model, Loss
 
 from hapi.vision.models import vgg16
-from hapi.vision.transform import transforms
+from hapi.vision.transforms import transforms
 from paddle import fluid
 from paddle.fluid.io import Dataset
 
@@ -24,7 +24,7 @@ def load_image(image_path, max_size=400, shape=None):
         transforms.Resize(size), transforms.Permute(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
-    image = transform(image)[np.newaxis, :3, :, :]
+    image = transform(image, None)[0][np.newaxis, :3, :, :]
     image = fluid.dygraph.to_variable(image)
     return image
 
