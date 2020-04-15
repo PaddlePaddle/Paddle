@@ -28,13 +28,7 @@ class TestTensorArrayToTensorError(unittest.TestCase):
 
     def test_errors(self):
         with program_guard(Program()):
-            input_data = np.random.random((2, 4)).astype("float32")
-
-            def test_Variable():
-                # The input type must be Variable.
-                fluid.layers.tensor_array_to_tensor(input=input_data)
-
-            self.assertRaises(TypeError, test_Variable)
+            input_data = numpy.random.random((2, 4)).astype("float32")
 
             def test_input_list():
                 # The input type must be List.
