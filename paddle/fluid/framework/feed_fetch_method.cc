@@ -47,10 +47,10 @@ FetchType& GetFetchVariable(const Scope& scope, const std::string& var_name,
   PADDLE_ENFORCE_NOT_NULL(g_fetch_value,
                           platform::errors::NotFound(
                               "Variable %s is not found in scope.", var_name));
-  PADDLE_ENFORCE(g_fetch_value->IsType<FetchList>(), true,
-                 platform::errors::InvalidArgument(
-                     "Only %s can be invoked by GetFetchVariable",
-                     typeid(FetchList).name()));
+  PADDLE_ENFORCE_EQ(g_fetch_value->IsType<FetchList>(), true,
+                    platform::errors::InvalidArgument(
+                        "Only %s can be invoked by GetFetchVariable",
+                        typeid(FetchList).name()));
   auto& fetch_outputs = *g_fetch_value->GetMutable<FetchList>();
   auto& tensor = fetch_outputs[index];
   VLOG(3) << "Fetch " << var_name << " with index " << index;
@@ -65,9 +65,9 @@ LoDTensor& GetVariableTensor(const Scope& scope, const std::string& var_name) {
   PADDLE_ENFORCE_NOT_NULL(
       var, platform::errors::NotFound("Variable %s is not found in scope.",
                                       var_name));
-  PADDLE_ENFORCE(var->IsType<LoDTensor>(), true,
-                 platform::errors::InvalidArgument(
-                     "Only support lod tensor in GetVariableTensor now."));
+  PADDLE_ENFORCE_EQ(var->IsType<LoDTensor>(), true,
+                    platform::errors::InvalidArgument(
+                        "Only support lod tensor in GetVariableTensor now."));
   return *var->GetMutable<LoDTensor>();
 }
 
