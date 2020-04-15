@@ -62,8 +62,8 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
     }
     PADDLE_ENFORCE_GT(
         shape.size(), 0UL,
-        platform::errors::InvalidArgument("The shape size of GaussianRandomOp "
-                                          "Output(Out) should be larger than "
+        platform::errors::InvalidArgument("The size of GaussianRandomOp shape "
+                                          "should be larger than "
                                           "0. But received shape size is %d",
                                           shape.size()));
     ctx->SetOutputDim("Out", framework::make_ddim(temp));
