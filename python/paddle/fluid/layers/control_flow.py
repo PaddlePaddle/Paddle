@@ -885,7 +885,7 @@ class While(object):
         check_variable_and_dtype(cond, 'cond', ['bool'], 'fluid.layers.While')
         if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
             raise TypeError(
-                "condition expected shape as [], but given shape as {0}.".
+                "condition expected shape as [1], but given shape as {0}.".
                 format(list(cond.shape)))
         self.cond_var = cond
         self.is_test = is_test
@@ -1004,7 +1004,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                              'fluid.layers.while_loop')
     if reduce(lambda a, b: a * b, pre_cond.shape, 1) != 1:
         raise TypeError(
-            "the shape of the variable returned by cond should be [],"
+            "the shape of the variable returned by cond should be [1],"
             "but given shape as {0}.".format(list(pre_cond.shape)))
 
     if in_dygraph_mode():

@@ -58,8 +58,8 @@ class WhileOp : public framework::OperatorBase {
         cond.dims(), paddle::framework::make_ddim({1}),
         platform::errors::InvalidArgument(
             "The shape of Input(Condition) of WhileOp must be 1. But now "
-            "the Condition's shape is [",
-            *cond.dims().Get(), "].\n"));
+            "the Condition's shape is ",
+            cond.dims().to_str(), ".\n"));
 
     framework::Executor executor(dev_place);
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
