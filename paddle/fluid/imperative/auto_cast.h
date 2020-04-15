@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <string>
+#include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {
 namespace imperative {

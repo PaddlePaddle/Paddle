@@ -15,6 +15,7 @@
 import unittest
 import paddle.fluid as fluid
 import numpy as np
+import time
 
 
 class SimpleConv(fluid.dygraph.Layer):
@@ -35,7 +36,7 @@ class SimpleConv(fluid.dygraph.Layer):
             groups=groups,
             act=None,
             bias_attr=None,
-            use_cudnn=False)
+            use_cudnn=True)
 
     def forward(self, inputs):
         return self._conv(inputs)
@@ -53,18 +54,30 @@ class TestAmpApi(unittest.TestCase):
 
     def test_amp(self):
         #resnet = ResNet()
-        with fluid.dygraph.guard():
-            with fluid.dygraph.amp.autocast():
-                model = SimpleConv(
-                    num_channels=3,
-                    num_filters=64,
-                    filter_size=7,
-                    stride=2,
-                    act='relu')
-                inp_np = np.random.random(size=[3, 128, 128]).astype(np.float32)
-                inp = fluid.dygraph.to_variable(inp_np)
-                out = model(inp)
-                print(out.shape)
+        inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
+
+        def run_model(enable_amp=True):
+            with fluid.dygraph.guard():
+                with fluid.dygraph.amp.autocast(enable_amp):
+                    #            with fluid.dygraph.guard():
+                    model = SimpleConv(
+                        num_channels=3,
+                        num_filters=64,
+                        filter_size=7,
+                        stride=2,
+                        act='relu')
+                    inp = fluid.dygraph.to_variable(inp_np)
+                    out = model(inp)
+                    return out.numpy()
+
+        time1 = time.time()
+        out1 = run_model(False)
+        print(time.time() - time1)
+
+        time2 = time.time()
+        out2 = run_model(True)
+        print(time.time() - time2)
+        # self.assertTrue(np.allclose(out1, out2))
 
 
 if __name__ == '__main__':

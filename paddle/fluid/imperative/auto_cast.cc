@@ -26,8 +26,72 @@ namespace imperative {
 
 // TODO(zhiqiu): consider to cache casted params for better performance.
 
-const std::unordered_set<std::string> fp16_ops = {
+// Operators that supports fp16 calculation can be divided into 3 sets.
+
+// The set of ops that support fp16 calculation and are considered numerically -
+// safe and performance - critical.These ops are always converted to fp16.
+const std::unordered_set<std::string> white_ops = {
     "conv2d", "matmul", "mul",
+};
+
+// The set of ops that support fp16 calculation and are considered numerically -
+// dangerous and whose effects may also be observed in downstream ops.
+const std::unordered_set<std::string> black_ops = {
+    "exp",
+    "square",
+    "log",
+    "mean",
+    "sum",
+    "cos_sim",
+    "softmax",
+    "softmax_with_cross_entropy",
+    "sigmoid_cross_entropy_with_logits",
+    "cross_entropy",
+    "cross_entropy2",
+};
+
+// This set contains two types of ops. All ops supported fp16 calculation. One
+// of two types is considered numerically - safe, but may be made unsafe by an
+// upstream blacklist op. Another type do not have numerically - significant
+// effects, like stack, flatten2.
+const std::unordered_set<std::string> gray_ops = {
+    "elementwise_add",
+    "elementwise_sub",
+    "elementwise_mul",
+    "elementwise_div",
+    "elementwise_max",
+    "elementwise_min",
+    "elementwise_pow",
+    "elementwise_mod",
+    "elementwise_floordiv",
+    "batch_norm",
+    "tanh",
+    "sigmoid",
+    "lookup_table",
+    "top_k",
+    "pool2d",
+    "pool3d",
+    "dropout",
+    "relu",
+    "relu6",
+    "leaky_relu",
+    "soft_relu",
+    "flatten2",
+    "stack",
+    "unstack",
+    "uniform_random_batch_size_like",
+    "gaussian_random",
+    "gaussian_random_batch_size_like",
+    "slice",
+    "rank",
+    "scale",
+    "transpose2",
+    "reshape2",
+    "gather",
+    "fill_constant",
+    "get_tensor_from_selected_rows",
+    "sign",
+    "cast",
 };
 
 inline bool NeedCast(const std::shared_ptr<VarBase>& var) {
@@ -60,24 +124,72 @@ static inline std::shared_ptr<imperative::VarBase> CastToType(
 
 std::shared_ptr<imperative::VarBase> CastToFP16(
     const std::shared_ptr<VarBase>& var) {
-  return CastToType(var, framework::proto::VarType::FP16);
+  auto dst_type = framework::proto::VarType::FP16;
+  if (NeedCast(var) && (var->DataType() != dst_type)) {
+    return CastToType(var, dst_type);
+  }
+  return var;
 }
 
 std::shared_ptr<imperative::VarBase> CastToFP32(
     const std::shared_ptr<VarBase>& var) {
-  return CastToType(var, framework::proto::VarType::FP32);
+  auto dst_type = framework::proto::VarType::FP32;
+  if (NeedCast(var) && (var->DataType() != dst_type)) {
+    return CastToType(var, dst_type);
+  }
+  return var;
+}
+
+framework::proto::VarType::Type PromoteType(const NameVarBaseMap& ins) {
+  auto dst_type = framework::proto::VarType::FP16;
+  for (const auto& pair : ins) {
+    for (const auto& op : pair.second) {
+      if (op->DataType() == framework::proto::VarType::FP32) {
+        dst_type = op->DataType();
+      }
+    }
+  }
+  return dst_type;
 }
 
 NameVarBaseMap AutoCastInputs(const std::string& op_type,
                               const NameVarBaseMap& ins) {
   NameVarBaseMap new_ins = {};
-  if (fp16_ops.count(op_type)) {
+  if (white_ops.count(op_type)) {
     for (const auto& pair : ins) {
-      auto new_var = CastToFP16(*pair.second.cbegin());
-      new_ins[pair.first].emplace_back(new_var);
+      VLOG(5) << "Cast " << pair.first << " " << pair.second.size() << " "
+              << (*pair.second.cbegin())->DataType() << "to FP16";
+      for (const auto& var : pair.second) {
+        auto new_var = CastToFP16(var);
+        new_ins[pair.first].emplace_back(new_var);
+      }
     }
+    return new_ins;
+  } else if (black_ops.count(op_type)) {
+    for (const auto& pair : ins) {
+      VLOG(5) << "Cast " << pair.first << " " << pair.second.size() << " "
+              << (*pair.second.cbegin())->DataType() << "to FP16";
+      for (const auto& var : pair.second) {
+        auto new_var = CastToFP16(var);
+        new_ins[pair.first].emplace_back(new_var);
+      }
+    }
+    return new_ins;
+  } else if (gray_ops.count(op_type)) {
+    auto dst_type = PromoteType(ins);
+    for (const auto& pair : ins) {
+      VLOG(5) << "Cast " << pair.first << " " << pair.second.size() << " "
+              << (*pair.second.cbegin())->DataType() << "to " << dst_type;
+      for (const auto& var : pair.second) {
+        auto new_var = dst_type == framework::proto::VarType::FP32
+                           ? CastToFP32(var)
+                           : CastToFP16(var);
+        new_ins[pair.first].emplace_back(new_var);
+      }
+    }
+    return new_ins;
   }
-  return new_ins;
+  return ins;
 }
 }  // namespace imperative
 }  // namespace paddle

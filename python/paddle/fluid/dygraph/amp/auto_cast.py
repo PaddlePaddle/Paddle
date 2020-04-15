@@ -29,7 +29,7 @@ def autocast(enable=True):
         warnings.warn(
             'Auto Mixed Precision can only be enabled with Paddle compiled with CUDA.'
         )
-        enable = False
+        #enable = False
     tracer = _dygraph_tracer()
     if tracer:
         original_val = tracer._enable_autocast

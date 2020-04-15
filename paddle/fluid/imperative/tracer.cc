@@ -63,6 +63,8 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
     new_ins = ins;
   }
 
+  OpBase::Run(*op, new_ins, outs, attrs, place);
+
   if (enable_program_desc_tracing_) {
     VLOG(5) << "Trace op " << type << " into ProgramDesc";
     program_desc_tracer_->InsertOp(type, new_ins, outs, attrs);
