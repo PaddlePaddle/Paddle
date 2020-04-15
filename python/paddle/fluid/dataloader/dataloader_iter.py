@@ -231,6 +231,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._init_workers()
         self._init_thread()
 
+        self._shutdown = False
+
         for _ in range(self._outstanding_capacity):
             self._try_put_indices()
 
@@ -300,24 +302,26 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._worker_status[worker_id] = False
 
     def _try_shutdown_all(self):
-        try:
-            # set _workers_done_event should be set before put None
-            # to indices_queue, workers wll exit on reading None from
-            # indices_queue
-            self._workers_done_event.set()
-            for i in range(self._num_workers):
-                self._shutdown_worker(i)
+        if not self._shutdown:
+            try:
+                # set _workers_done_event should be set before put None
+                # to indices_queue, workers wll exit on reading None from
+                # indices_queue
+                self._workers_done_event.set()
+                for i in range(self._num_workers):
+                    self._shutdown_worker(i)
 
-            self._exit_thread_expectedly()
-            self._clear_and_remove_data_queue()
+                self._exit_thread_expectedly()
+                self._clear_and_remove_data_queue()
 
-            for w in self._workers:
-                w.join()
-            for q in self._indices_queues:
-                q.cancel_join_thread()
-                q.close()
-        finally:
-            core._erase_process_pids(id(self))
+                for w in self._workers:
+                    w.join()
+                for q in self._indices_queues:
+                    q.cancel_join_thread()
+                    q.close()
+            finally:
+                core._erase_process_pids(id(self))
+                self._shutdown = True
 
     def _exit_thread_expectedly(self):
         self._thread_done_event.set()
@@ -391,9 +395,6 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         finally:
             if self._use_shared_memory:
                 _cleanup_mmap()
-
-        if self._workers_done_event.is_set():
-            self._clear_and_remove_data_queue()
 
     def _thread_loop(self):
         while not self._thread_done_event.is_set():
