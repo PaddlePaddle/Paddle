@@ -50,22 +50,18 @@ class GaussianRandomOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
-        platform::errors::NotFound(
-            "Output(Out) of GaussianRandomOp should not be null."));
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "GaussianRandom");
+
     auto shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
     std::vector<int64_t> temp;
     temp.reserve(shape.size());
     for (auto dim : shape) {
       temp.push_back(static_cast<int64_t>(dim));
     }
-    PADDLE_ENFORCE_GT(
-        shape.size(), 0UL,
-        platform::errors::InvalidArgument("The size of GaussianRandomOp shape "
-                                          "should be larger than "
-                                          "0. But received shape size is %d",
-                                          shape.size()));
+    PADDLE_ENFORCE_GT(shape.size(), 0UL,
+                      platform::errors::InvalidArgument(
+                          "Attribute(shape) of GaussianRandomOp must be set "
+                          "and shape.size() > 0."));
     ctx->SetOutputDim("Out", framework::make_ddim(temp));
   }
 

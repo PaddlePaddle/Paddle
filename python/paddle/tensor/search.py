@@ -27,8 +27,8 @@ __all__ = [
     #            'masked_select',
     #            'topk',
     'where',
-    #            'index_select',
-    #            'nonzero',
+    'index_select',
+    'nonzero',
     'sort',
     'index_sample'
 ]
@@ -124,6 +124,151 @@ def argmax(input, axis=None, dtype=None, out=None, keepdims=False, name=None):
         attrs=attrs)
     out.stop_gradient = True
     return out
+
+
+def index_select(input, index, dim=0):
+    """
+    Returns a new tensor which indexes the `input` tensor along dimension `dim` using 
+    the entries in `index` which is a Tensor. The returned tensor has the same number 
+    of dimensions as the original `input` tensor. The dim-th dimension has the same 
+    size as the length of `index`; other dimensions have the same size as in the `input` tensor. 
+        
+    Args:
+        input (Variable): The input tensor variable.
+        index (Variable): The 1-D tensor containing the indices to index.
+        dim (int): The dimension in which we index.
+
+    Returns:
+        Variable: A Tensor with same data type as `input`.
+        
+    Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            data = np.array([[1.0, 2.0, 3.0, 4.0],
+                             [5.0, 6.0, 7.0, 8.0],
+                             [9.0, 10.0, 11.0, 12.0]])
+            data_index = np.array([0, 1, 1]).astype('int32')
+
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(data)
+                index = fluid.dygraph.to_variable(data_index)
+                out_z1 = paddle.index_select(x, index)
+                print(out_z1.numpy())
+                #[[1. 2. 3. 4.]
+                # [5. 6. 7. 8.]
+                # [5. 6. 7. 8.]]
+                out_z2 = paddle.index_select(x, index, dim=1)
+                print(out_z2.numpy())
+                #[[ 1.  2.  2.]
+                # [ 5.  6.  6.]
+                # [ 9. 10. 10.]]
+    """
+    helper = LayerHelper("index_select", **locals())
+    if in_dygraph_mode():
+        return core.ops.index_select(input, index, 'dim', dim)
+
+    check_variable_and_dtype(input, 'x',
+                             ['float32', 'float64', 'int32', 'int64'],
+                             'paddle.tensor.search.index_sample')
+    check_variable_and_dtype(index, 'index', ['int32', 'int64'],
+                             'paddle.tensor.search.index_sample')
+
+    out = helper.create_variable_for_type_inference(input.dtype)
+
+    helper.append_op(
+        type='index_select',
+        inputs={'X': input,
+                'Index': index},
+        outputs={'Out': out},
+        attrs={'dim': dim})
+    return out
+
+
+def nonzero(input, as_tuple=False):
+    """
+    Return a tensor containing the indices of all non-zero elements of the `input` 
+    tensor. If as_tuple is True, return a tuple of 1-D tensors, one for each dimension 
+    in `input`, each containing the indices (in that dimension) of all non-zero elements 
+    of `input`. Given a n-Dimensional `input` tensor with shape [x_1, x_2, ..., x_n], If 
+    as_tuple is False, we can get a output tensor with shape [z, n], where `z` is the 
+    number of all non-zero elements in the `input` tensor. If as_tuple is True, we can get 
+    a 1-D tensor tuple of length `n`, and the shape of each 1-D tensor is [z, 1].
+        
+    Args:
+        inputs (Variable): The input tensor variable.
+        as_tuple (bool): Return type, Tensor or tuple of Tensor.
+
+    Returns:
+        Variable. The data type is int64.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+
+            data1 = np.array([[1.0, 0.0, 0.0],
+                              [0.0, 2.0, 0.0],
+                              [0.0, 0.0, 3.0]])
+            data2 = np.array([0.0, 1.0, 0.0, 3.0])
+            data3 = np.array([0.0, 0.0, 0.0])
+            with fluid.dygraph.guard():
+                x1 = fluid.dygraph.to_variable(data1)
+                x2 = fluid.dygraph.to_variable(data2)
+                x3 = fluid.dygraph.to_variable(data3)
+                out_z1 = paddle.nonzero(x1)
+                print(out_z1.numpy())
+                #[[0 0]
+                # [1 1]
+                # [2 2]]
+                out_z1_tuple = paddle.nonzero(x1, as_tuple=True)
+                for out in out_z1_tuple:
+                    print(out.numpy())
+                #[[0]
+                # [1]
+                # [2]]
+                #[[0]
+                # [1]
+                # [2]]
+                out_z2 = paddle.nonzero(x2)
+                print(out_z2.numpy())
+                #[[1]
+                # [3]]
+                out_z2_tuple = paddle.nonzero(x2, as_tuple=True)
+                for out in out_z2_tuple:
+                    print(out.numpy())
+                #[[1]
+                # [3]]
+                out_z3 = paddle.nonzero(x3)
+                print(out_z3.numpy())
+                #[]
+                out_z3_tuple = paddle.nonzero(x3, as_tuple=True)
+                for out in out_z3_tuple:
+                    print(out.numpy())
+                #[]                    
+    """
+    list_out = []
+    shape = input.shape
+    rank = len(shape)
+
+    if in_dygraph_mode():
+        outs = core.ops.where_index(input)
+    else:
+        outs = layers.where(input)
+
+    if not as_tuple:
+        return outs
+    elif rank == 1:
+        return tuple([outs])
+    else:
+        for i in range(rank):
+            list_out.append(
+                layers.slice(
+                    outs, axes=[rank - 1], starts=[i], ends=[i + 1]))
+        return tuple(list_out)
 
 
 def sort(input, axis=-1, descending=False, out=None, name=None):
