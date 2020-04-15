@@ -27,6 +27,7 @@ from paddle.io import DataLoader
 
 from hapi.model import Model, Input, set_device
 from hapi.distributed import DistributedBatchSampler
+from hapi.download import is_url, get_weights_path
 from hapi.datasets import COCODataset
 from hapi.vision.transforms import *
 from hapi.vision.models import yolov3_darknet53, YoloLoss
@@ -125,7 +126,10 @@ def main():
                    pretrained=pretrained)
 
     if FLAGS.pretrain_weights and not FLAGS.eval_only:
-        model.load(FLAGS.pretrain_weights, skip_mismatch=True, reset_optimizer=True)
+        pretrain_weights = FLAGS.pretrain_weights
+        if is_url(pretrain_weights):
+            pretrain_weights = get_weights_path(pretrain_weights)
+        model.load(pretrain_weights, skip_mismatch=True, reset_optimizer=True)
 
     optim = make_optimizer(len(batch_sampler), parameter_list=model.parameters())
 

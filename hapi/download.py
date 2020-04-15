@@ -29,11 +29,20 @@ from paddle.fluid.dygraph.parallel import ParallelEnv
 import logging
 logger = logging.getLogger(__name__)
 
-__all__ = ['get_weights_path']
+__all__ = ['get_weights_path', 'is_url']
 
 WEIGHTS_HOME = osp.expanduser("~/.cache/paddle/hapi/weights")
 
 DOWNLOAD_RETRY_LIMIT = 3
+
+
+def is_url(path):
+    """
+    Whether path is URL.
+    Args:
+        path (string): URL string or not.
+    """
+    return path.startswith('http://') or path.startswith('https://')
 
 
 def get_weights_path(url, md5sum=None):
@@ -62,6 +71,7 @@ def get_path(url, root_dir, md5sum=None, check_exist=True):
                     WEIGHTS_HOME or DATASET_HOME
     md5sum (str): md5 sum of download package
     """
+    assert is_url(url), "downloading from {} not a url".format(url)
     # parse path after download to decompress under root_dir
     fullpath = map_path(url, root_dir)
 
