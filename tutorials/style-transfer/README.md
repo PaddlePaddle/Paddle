@@ -289,8 +289,10 @@ ax3.imshow(image_restore(style))
 上述可运行的代码都在[style-transfer.ipynb](./style-transfer.ipynb)中， 同时我们提供了[style-transfer.py](./style-transfer.py)脚本，可以直接执行如下命令，实现图片的风格迁移：
 
 ```shell
-python -u style-transfer.py --content-image /path/to/your-content-image --style-image /path/to/your-content-image --save-dir /path/to/your-output-dir
+python -u style-transfer.py --content-image /path/to/your-content-image --style-image /path/to/your-style-image --save-dir /path/to/your-output-dir
 ```
+
+风格迁移生成的图像保存在```--save-dir```中。
 
 ## 参考
 
