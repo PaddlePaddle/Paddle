@@ -275,7 +275,7 @@ function check_style() {
     fi
 
 
-    pip install cpplint pylint pytest astroid isort
+    pip install cpplint pylint==2.4.4 pytest astroid isort
     # set up go environment for running gometalinter
     mkdir -p $GOPATH/src/github.com/PaddlePaddle/
     ln -sf ${PADDLE_ROOT} $GOPATH/src/github.com/PaddlePaddle/Paddle
@@ -283,11 +283,13 @@ function check_style() {
     pre-commit install
     clang-format --version
 
-    if ! pre-commit run -a ; then
-        git diff
-        exit 1
-    fi
-
+    get_file=`git diff --numstat upstream/$BRANCH`
+    for file_name in `git diff --numstat upstream/$BRANCH`;do
+        if ! pre-commit run --files $file_name ; then
+            git diff
+            exit 1
+        fi
+    done 
     trap : 0
 }
 
