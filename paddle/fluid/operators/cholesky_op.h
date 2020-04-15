@@ -347,11 +347,10 @@ class CholeskyGradKernel : public framework::OpKernel<T> {
                 identity_data + i * m * m, /*ldb*/ m);
     }
     Tensor& l_inverse = identity;
-    auto* l_inverse_data = identity_data;
 
     /*! x_grad = matmul(matmul(L_inverse.transpose(-1, -2), phi), L_inverse) */
     Tensor middle1;
-    auto* middle1_data = middle1.mutable_data<T>(dims, context.GetPlace());
+    middle1.mutable_data<T>(dims, context.GetPlace());
     blas.MatMul(l_inverse, trans_desc, middle, no_trans_desc, T(1), &middle1,
                 T(0));
     blas.MatMul(middle1, no_trans_desc, l_inverse, no_trans_desc, T(1), x_grad,

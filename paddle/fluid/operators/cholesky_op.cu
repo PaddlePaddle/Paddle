@@ -166,3 +166,7 @@ FUNC_WITH_TYPES(POTRF_BATCH_INSTANCE);
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(cholesky, ops::CholeskyGPUKernel<float>,
                         ops::CholeskyGPUKernel<double>);
+REGISTER_OP_CUDA_KERNEL(
+    cholesky_grad,
+    ops::CholeskyGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::CholeskyGradKernel<paddle::platform::CUDADeviceContext, double>);

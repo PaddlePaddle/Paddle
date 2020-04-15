@@ -78,6 +78,11 @@ struct CUBlas<float> {
     PADDLE_THROW("cublasSgemmEx is supported on cuda >= 8.0");
 #endif
   }
+
+  template <typename... ARGS>
+  static void TRSM(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasStrsm(args...));
+  }
 };
 
 template <>
@@ -110,6 +115,11 @@ struct CUBlas<double> {
   template <typename... ARGS>
   static void GEMM_EX(ARGS... args) {
     PADDLE_THROW("Currently there are not cublasDgemmEx.");
+  }
+
+  template <typename... ARGS>
+  static void TRSM(ARGS... args) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasDtrsm(args...));
   }
 };
 
@@ -397,7 +407,7 @@ void Blas<platform::CUDADeviceContext>::TRSM(CBLAS_SIDE side, CBLAS_UPLO uplo,
       (diag == CblasUnit) ? CUBLAS_DIAG_UNIT : CUBLAS_DIAG_NON_UNIT;
 
   context_.CublasCall([&](cublasHandle_t handle) {
-    CUBlas<T>::TRSM(handle, cuSide, cuUplo, cuTransA, cuDiag, N, M, alpha, A,
+    CUBlas<T>::TRSM(handle, cuSide, cuUplo, cuTransA, cuDiag, N, M, &alpha, A,
                     lda, B, ldb);
   });
 }
