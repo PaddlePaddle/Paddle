@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/timer.h"
+#include "paddle/fluid/framework/heter_service.h"
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
@@ -141,6 +142,7 @@ class DeviceWorker {
     device_reader_->SetPlace(place);
   }
   virtual Scope* GetThreadScope() { return thread_scope_; }
+  virtual void SetXpuChannels(std::vector<std::shared_ptr<brpc::Channel>>& channels) {}
 
  protected:
   Scope* root_scope_ = nullptr;
@@ -312,9 +314,9 @@ public:
       state_ = OP_RUN;
     }
     else if (state_ == OP_RUN) {
-      //state_ = XPU;
+      state_ = XPU;
       //state_ = PUSH_GRAD;
-      state_ = PUSH_GRAD;
+      //state_ = PUSH_GRAD;
     }
     else if (state_ == XPU) {
       state_ = PUSH_GRAD;
@@ -537,14 +539,17 @@ class HeterCpuWorker : public HogwildWorker {
   virtual void SetWorkerNum(int num) { worker_num_ = num; }
   virtual void CreateThreadParam(const ProgramDesc &main_program);
   virtual void Schedule(int taskid);
+  virtual void CallRemoteXpu();
   virtual void JumpContext(std::shared_ptr<HeterTask> task);
   virtual void CacheProgram(const ProgramDesc &main_program) {
     new(&program_) ProgramDesc(main_program);
   }
+  virtual void SetXpuChannels(std::vector<std::shared_ptr<brpc::Channel>>& channels);
 
  protected:
   std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
+  std::vector<std::shared_ptr<brpc::Channel>> xpu_channels_;
   void FillSparseValue(std::shared_ptr<HeterTask> task, size_t table_id);
   void PushGradients();
   void CollectLabelInfo(std::shared_ptr<HeterTask> task, size_t table_id);

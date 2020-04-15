@@ -73,6 +73,10 @@ class FleetWrapper {
     pull_local_thread_num_ = 25;
   }
 
+  void SetXpuList(const std::vector<std::string>& xpu_list);
+  
+  void SetServerList(const std::vector<std::string>& server_list);
+ 
   // set client to client communication config
   void SetClient2ClientConfig(int request_timeout_ms, int connect_timeout_ms,
                               int max_retry);
@@ -292,6 +296,14 @@ class FleetWrapper {
 #ifdef PADDLE_WITH_PSLIB
   static std::shared_ptr<paddle::distributed::PSlib> pslib_ptr_;
 #endif
+  
+  std::vector<std::string>& GetServerList() {
+    return server_list_;
+  }
+  
+  std::vector<std::string>& GetXpuList() {
+    return xpu_list_;
+  }
 
  private:
   static std::shared_ptr<FleetWrapper> s_instance_;
@@ -301,7 +313,7 @@ class FleetWrapper {
 
   size_t GetAbsoluteSum(size_t start, size_t end, size_t level,
                         const framework::LoD& lod);
-
+  
  protected:
   static bool is_initialized_;
   bool scale_sparse_gradient_with_batch_size_;
@@ -314,6 +326,8 @@ class FleetWrapper {
   std::unique_ptr<::ThreadPool> pull_to_local_pool_{nullptr};
   int local_table_shard_num_;
   DISABLE_COPY_AND_ASSIGN(FleetWrapper);
+  std::vector<std::string> xpu_list_;
+  std::vector<std::string> server_list_;
 };
 
 }  // end namespace framework

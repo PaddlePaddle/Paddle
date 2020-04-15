@@ -101,6 +101,24 @@ void FleetWrapper::FinalizeWorker() {
 #endif
 }
 
+void FleetWrapper::SetXpuList(const std::vector<std::string>& xpu_list) {
+#ifdef PADDLE_WITH_PSLIB
+  VLOG(3) << "Going to set xpu list";
+  for (auto& x : xpu_list) {
+    xpu_list_.push_back(x);
+  }
+#endif
+}
+
+void FleetWrapper::SetServerList(const std::vector<std::string>& server_list) {
+#ifdef PADDLE_WITH_PSLIB
+  VLOG(3) << "Going to set xpu list";
+  for (auto& x : server_list_) {
+    server_list_.push_back(x);
+  }
+#endif
+}
+
 uint64_t FleetWrapper::RunServer() {
 #ifdef PADDLE_WITH_PSLIB
   VLOG(3) << "Going to run server";

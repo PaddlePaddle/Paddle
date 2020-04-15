@@ -15,7 +15,7 @@
 
 import sys
 from os import path
-__all__ = ['TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer']
+__all__ = ['TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer', 'HeterXpuTrainer']
 
 
 class TrainerDesc(object):
@@ -251,6 +251,30 @@ class DistMultiTrainer(TrainerDesc):
     def _gen_trainer_desc(self):
         super(DistMultiTrainer, self)._gen_trainer_desc()
         self.proto_desc.class_name = "DistMultiTrainer"
+        if self._program == None:
+            raise RuntimeError("None Program")
+        self._device_worker._set_infer(self._infer)
+        self._device_worker._set_program(self._program)
+        self._device_worker._gen_worker_desc(self.proto_desc)
+
+
+class HeterXpuTrainer(TrainerDesc):
+    """
+    Implement of HeterXpuTrainer.
+    It's for Distributed training.
+    """
+
+    def __init__(self):
+        super(HeterXpuTrainer, self).__init__()
+        pass
+
+    def _set_program(self, program):
+        super(HeterXpuTrainer, self)._set_program(program)
+        self._program = program
+
+    def _gen_trainer_desc(self):
+        super(HeterXpuTrainer, self)._gen_trainer_desc()
+        self.proto_desc.class_name = "HeterXpuTrainer"
         if self._program == None:
             raise RuntimeError("None Program")
         self._device_worker._set_infer(self._infer)

@@ -22,7 +22,7 @@ FORMAT = '%(asctime)s-%(levelname)s: %(message)s'
 logging.basicConfig(level=logging.INFO, format=FORMAT)
 local_logger = logging.getLogger(__name__)
 
-from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer
+from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer, HeterXpuTrainer
 from .device_worker import Hogwild, DownpourSGD, Section, DownpourSGDOPT
 from .framework import Variable
 from multiprocessing import Process, Manager

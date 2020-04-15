@@ -58,8 +58,22 @@ void HeterTask::PackTask(Scope* thread_scope, int taskid, DataFeed* reader, int 
 
 }
 
+void HeterCpuWorker::CallRemoteXpu() {
+  HeterRequest request;
+  HeterResponse response;
+  brpc::Controller cntl;
+  HeterService_Stub stub(xpu_channels_[0].get());
+  stub.service(&cntl, &request, &response, NULL);
+  if (cntl.Failed()) {
+    std::cout << "call xpu fail" << std::endl;
+  }
+  else {
+    std::cout << "call xpu success" << std::endl;
+  }
+}
+
 void HeterCpuWorker::Schedule(int taskid) {
-  //std::cout << "wxx schedule " << taskid << std::endl;
+  VLOG(3) << "schedule " << taskid;
   auto task = wait_queue_.TryGet(taskid);
   if (task) {
     run_queue_.Put(task->taskid_, task);
@@ -67,9 +81,15 @@ void HeterCpuWorker::Schedule(int taskid) {
 }
 
 void HeterCpuWorker::JumpContext(std::shared_ptr<HeterTask> task) {
-  //std::cout << "wxx jump context " << task->taskid_ << std::endl;
+  VLOG(3) << "jump context " << task->taskid_;
   if (!(wait_queue_.TryPut(task->taskid_, task))) {
     run_queue_.Put(task->taskid_, task);
+  }
+}
+
+void HeterCpuWorker::SetXpuChannels(std::vector<std::shared_ptr<brpc::Channel>>& channels) {
+  for (auto& x : channels) {
+    xpu_channels_.push_back(x);
   }
 }
 
@@ -968,22 +988,12 @@ void HeterCpuWorker::TrainFiles() {
     //}
 
     std::shared_ptr<HeterTask> task;
-    //std::cout << "wait_queue size:" << wait_queue_.Size() << " run_queue size:" << run_queue_.Size() << std::endl;
-    //std::cout << "object pool size: " << object_pool_.Size() << std::endl;
     
-   // while (wait_queue_.Size() > 10) {
-   //     std::cout << "sleep 10ms" << std::endl;
-   //     usleep(10000);
-   // }
     task = run_queue_.Get();
-    //std::cout << "wxx begin " << std::endl;
     if (!task) {
-      //std::cout << "wxx new pack " << std::endl;
       cur_batch = device_reader_->Next();
-      //std::cout << "wxx " << cur_batch << " " << wait_queue_.Empty() << std::endl;
       if (cur_batch <= 0) {
         if (batch_cnt == done_cnt) {
-          //std::cout << "wxx pass done " << std::endl;
           break;
         }
         else {
@@ -992,15 +1002,13 @@ void HeterCpuWorker::TrainFiles() {
       }
       batch_cnt += 1;
       int taskid = batch_cnt * worker_num_ + thread_id_;
-      //std::cout << "taskid " << taskid << " " << batch_cnt << " " << worker_num_ << " " << thread_id_ << std::endl;
       task = object_pool_.Get();
       task->PackTask(thread_scope_, taskid, device_reader_, cur_batch, program_);
     }
-    //task->Show();
     for (;;) {
       // pull sparse here
       if (task->state_ == PULL_SPARSE) {
-        //std::cout << "wxx pull sparse taskid = " << task->taskid_ << std::endl;
+        VLOG(3) << "pull sparse taskid = " << task->taskid_;
         for (int i = 0; i < param_.program_config(0).pull_sparse_table_id_size();
              ++i) {
           uint64_t tid = static_cast<uint64_t>(
@@ -1021,7 +1029,7 @@ void HeterCpuWorker::TrainFiles() {
         break;
       }
       else if (task->state_ == OP_RUN) {
-        //std::cout << "wxx oprun taskid = " << task->taskid_ << std::endl;
+        VLOG(3) << "oprun taskid = " << task->taskid_;
         for (int i = 0; i < param_.program_config(0).pull_sparse_table_id_size();
              ++i) {
           uint64_t tid = static_cast<uint64_t>(
@@ -1067,8 +1075,12 @@ void HeterCpuWorker::TrainFiles() {
         }
         task->Update();
       }
+      else if (task->state_ == XPU) {
+        CallRemoteXpu();
+        task->Update();
+      }
       else if (task->state_ == PUSH_GRAD) {
-        //std::cout << "wxx push grad taskid = " << task->taskid_ << std::endl;
+        VLOG(3) << "push grad taskid = " << task->taskid_;
         if (need_to_push_sparse_) {
           // push gradients here
           for (int i = 0; i < param_.program_config(0).push_sparse_table_id_size();
@@ -1189,7 +1201,7 @@ void HeterCpuWorker::TrainFiles() {
         task->Update();
       }
       else if (task->state_ == DONE) {
-        //std::cout << "wxx done taskid = " << task->taskid_ << std::endl;
+        VLOG(3) << "done taskid = " << task->taskid_;
         object_pool_.Push(task);
         PrintFetchVars();
         ++done_cnt;

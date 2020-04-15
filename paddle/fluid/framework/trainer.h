@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/operators/reader/blocking_queue.h"
 #include "paddle/fluid/platform/port.h"
+#include "paddle/fluid/framework/heter_service.h"
 
 namespace paddle {
 namespace framework {
@@ -112,9 +113,34 @@ class DistMultiTrainer : public MultiTrainer {
   virtual Scope* GetWorkerScope(int thread_id);
   virtual void DumpWork(int tid);
   virtual void RegisterHeterCallback();
+  void CreateClient2XpuConnection();
 
  protected:
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
+  std::vector<std::shared_ptr<brpc::Channel>> xpu_channels_;
+};
+
+class HeterXpuTrainer : public TrainerBase {
+ public:
+  HeterXpuTrainer() {}
+  virtual ~HeterXpuTrainer() {}
+  virtual void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set);
+  virtual void InitTrainerEnv(const ProgramDesc& main_program,
+                              const platform::Place& place);
+  virtual void InitOtherEnv(const ProgramDesc& main_program);
+  virtual void Run();
+  virtual void Finalize();
+  virtual void DumpWork(int tid);
+  virtual void CreateXpu2ServerConnection();
+  virtual void RegisterServiceHandler();
+  virtual int RunTask(const std::string& data);
+  virtual Scope* GetWorkerScope(int thread_id);
+ protected:
+  std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
+  brpc::Server server_;
+  HeterXpuService service_;
+  std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
+  std::vector<std::shared_ptr<brpc::Channel>> server_channels_;
 };
 
 #if defined(PADDLE_WITH_NCCL)

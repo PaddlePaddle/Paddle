@@ -27,6 +27,7 @@ __all__ = [
 class Role:
     WORKER = 1
     SERVER = 2
+    XPU = 3
 
 
 class RoleMakerBase(object):
@@ -538,6 +539,93 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self.generate_role()
         return self._trainers_num
 
+class HeterRoleMaker(GeneralRoleMaker):
+    """
+    This role maker is for general use, you can set os.environ to customize:
+        PADDLE_PSERVERS_IP_PORT_LIST : all pservers' ip:port, separated by ','
+        PADDLE_TRAINER_ENDPOINTS     : all trainers' ip:port, separated by ','
+        TRAINING_ROLE                : TRAINER or PSERVER
+        PADDLE_TRAINER_ID            : current trainer id (only for trainer),
+                                       it is index in PADDLE_TRAINER_ENDPOINTS
+        PADDLE_PSERVER_ID            : current pserver id (only for pserver)
+                                       it is index in PADDLE_PSERVERS_IP_PORT_LIST
+    """
+
+    def generate_role(self):
+        """
+        generate role for general role maker
+        """
+        if not self._role_is_generated:
+            eplist = os.environ["PADDLE_PSERVERS_IP_PORT_LIST"].split(",")
+            training_role = os.environ["TRAINING_ROLE"]
+            worker_endpoints = os.environ["PADDLE_TRAINER_ENDPOINTS"].split(",")
+            trainers_num = len(worker_endpoints)
+            xpu_endpoints = os.environ["PADDLE_XPU_ENDPOINTS"].split(",")
+            xpu_num = len(xpu_endpoints)
+            if training_role not in ["TRAINER", "PSERVER", "XPU"]:
+                raise ValueError("TRAINING_ROLE must be PSERVER or TRAINER or XPU")
+            if training_role == "TRAINER":
+                role = Role.WORKER
+                current_id = int(os.environ["PADDLE_TRAINER_ID"])
+                self._node_type = 1
+                self._cur_endpoint = worker_endpoints[current_id]
+                gloo = fluid.core.Gloo()
+                gloo.init(current_id,
+                          len(worker_endpoints),
+                          self._hdfs_path.rstrip("/") + "/trainer",
+                          self._hdfs_name, self._hdfs_ugi, self._iface,
+                          self._prefix)
+                self._node_type_comm = gloo
+            elif training_role == "XPU":
+                role = Role.XPU
+                current_id = int(os.environ["PADDLE_XPU_ID"])
+                self._node_type = 2
+                self._cur_endpoint = xpu_endpoints[current_id]
+                gloo = fluid.core.Gloo()
+                gloo.init(current_id,
+                          len(xpu_endpoints),
+                          self._hdfs_path.rstrip("/") + "/xpu",
+                          self._hdfs_name, self._hdfs_ugi, self._iface,
+                          self._prefix)
+                self._node_type_comm = gloo
+            elif training_role == "PSERVER":
+                role = Role.SERVER
+                if os.environ.get("PADDLE_PSERVER_ID") is not None:
+                    current_id = int(os.environ["PADDLE_PSERVER_ID"])
+                    cur_endpoint = eplist[current_id]
+                else:
+                    # this is for compatible with paddlecloud
+                    cur_ip = os.environ["POD_IP"]
+                    cur_port = os.environ["PADDLE_PORT"]
+                    cur_endpoint = ":".join([cur_ip, cur_port])
+                    current_id = eplist.index(cur_endpoint)
+                self._node_type = 0
+                self._cur_endpoint = cur_endpoint
+                gloo = fluid.core.Gloo()
+                gloo.init(current_id,
+                          len(eplist),
+                          self._hdfs_path.rstrip("/") + "/pserver",
+                          self._hdfs_name, self._hdfs_ugi, self._iface,
+                          self._prefix)
+                self._node_type_comm = gloo
+
+            gloo = fluid.core.Gloo()
+            all_list = worker_endpoints + eplist + xpu_endpoints
+            gloo.init(
+                all_list.index(self._cur_endpoint),
+                len(all_list),
+                self._hdfs_path.rstrip("/") + "/all", self._hdfs_name,
+                self._hdfs_ugi, self._iface, self._prefix)
+            self._all_comm = gloo
+            self._trainers_num = trainers_num
+            self._server_endpoints = eplist
+            self._role = role
+            self._current_id = current_id
+            self._rank = all_list.index(self._cur_endpoint)
+            self._size = len(all_list)
+            self._worker_endpoints = worker_endpoints
+            self._xpu_endpoints = xpu_endpoints
+            self._role_is_generated = True
 
 class GeneralRoleMaker(RoleMakerBase):
     """

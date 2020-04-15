@@ -84,6 +84,11 @@ class PSLib(Fleet):
             self._fleet_ptr.init_worker(self._dist_desc_str, self.all_ips_,
                                         self._role_maker._get_size(),
                                         self._role_maker.worker_index() * 2)
+            if isinstance(self._role_maker, HeterRoleMaker):
+                if self._role_maker.is_worker():
+                    self._fleet_ptr.set_xpu_endpoints(role_maker._xpu_endpoints)
+                if self._role_maker.is_xpu():
+                    self._fleet_ptr.set_server_endpoints(role_maker._server_endpoints)
             # barrier_all for init_worker
             self._role_maker._barrier_all()
             # prepare for client to client communication
@@ -95,6 +100,7 @@ class PSLib(Fleet):
                 self._client2client_connect_timeout_ms,
                 self._client2client_max_retry)
             self._fleet_ptr.create_client2client_connection()
+
             # barrier for init model
             self._role_maker._barrier_worker()
             if self._role_maker.is_first_worker():
