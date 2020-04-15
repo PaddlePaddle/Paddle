@@ -25,13 +25,22 @@ class CholeskyOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::NotFound(
-                          "Input(X) of CholeskyOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::NotFound(
-                          "Output(Out) of CholeskyOp should not be null."));
-
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Cholesky");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Cholesky");
+    auto dims = ctx->GetInputDim("X");
+    auto rank = dims.size();
+    PADDLE_ENFORCE_GE(rank, 2,
+                      platform::errors::InvalidArgument(
+                          "The Input(X) should have at least 2 dimensions. But "
+                          "received a %d dimension tensor.",
+                          rank));
+    PADDLE_ENFORCE_EQ(
+        dims[rank - 2], dims[rank - 1],
+        platform::errors::InvalidArgument(
+            "The inner-most 2 dimensions of Input(X) all should be symmetric "
+            "positive-definite matrices and have the same size. But received "
+            "X's shape[-2] = %d and shape[-1] = %d.",
+            dims[rank - 2], dims[rank - 1]));
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
   }
 };
@@ -68,14 +77,30 @@ class CholeskyGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
-    auto x_dims = ctx->GetInputDim("X");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CholeskyGrad");
+    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Out")), "Input",
+                   "Out@GRAD", "CholeskyGrad");
+    auto dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
-      ctx->SetOutputDim(x_grad_name, x_dims);
+      ctx->SetOutputDim(x_grad_name, dims);
     }
+  }
+};
+
+template <typename T>
+class CholeskyGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType(this->ForwardOpType() + "_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Out", this->Output("Out"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
   }
 };
 
@@ -83,10 +108,9 @@ class CholeskyGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(
-    cholesky, ops::CholeskyOp, ops::CholeskyOpMaker,
-    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
-    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
+REGISTER_OPERATOR(cholesky, ops::CholeskyOp, ops::CholeskyOpMaker,
+                  ops::CholeskyGradOpMaker<paddle::framework::OpDesc>,
+                  ops::CholeskyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(cholesky_grad, ops::CholeskyGradOp);
 
 REGISTER_OP_CPU_KERNEL(cholesky, ops::CholeskyCPUKernel<float>,

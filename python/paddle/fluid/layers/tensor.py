@@ -34,19 +34,8 @@ __all__ = [
     'tensor_array_to_tensor', 'concat', 'sums', 'assign',
     'fill_constant_batch_size_like', 'fill_constant', 'argmin', 'argmax',
     'argsort', 'ones', 'zeros', 'reverse', 'has_inf', 'has_nan', 'isfinite',
-    'range', 'linspace', 'zeros_like', 'ones_like', 'diag', 'eye', 'cholesky'
+    'range', 'linspace', 'zeros_like', 'ones_like', 'diag', 'eye'
 ]
-
-
-def cholesky(x, upper=False):
-    helper = LayerHelper('cholesky', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='cholesky',
-        inputs={'X': [x]},
-        outputs={'Out': out},
-        attrs={'upper': upper})
-    return out
 
 
 def create_tensor(dtype, name=None, persistable=False):

@@ -49,7 +49,7 @@ class CholeskyGPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto& dev_ctx =
-        context.template device_context<paddle::platform::CUDADeviceContext>();
+        context.template device_context<platform::CUDADeviceContext>();
 
     const Tensor* x = context.Input<Tensor>("X");
     Tensor* out = context.Output<Tensor>("Out");
@@ -71,16 +71,18 @@ class CholeskyGPUKernel : public framework::OpKernel<T> {
         upper ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER;
     // portf is inplace, thus copy the triangular part of the input matrices to
     // the output and set the other triangular part to 0 firstly
-    int threads = std::min(1024, dev_ctx.GetMaxThreadsPerBlock());
-    int blocks = (tensor_size + threads - 1) / threads;
+    platform::ForRange<platform::CUDADeviceContext> for_range(dev_ctx,
+                                                              tensor_size);
     if (upper) {
-      MatrixBandPart<<<blocks, threads, 0, dev_ctx.stream()>>>(
-          tensor_size, m, m, /* num_lower_diags */ 0,
-          /* num_upper_diags */ m, x_data, out_data);
+      MatrixBandPartFunctor<T> matrix_band_part_functor(
+          m, m, /* num_lower_diags */ 0, /* num_upper_diags */ m, x_data,
+          out_data);
+      for_range(matrix_band_part_functor);
     } else {
-      MatrixBandPart<<<blocks, threads, 0, dev_ctx.stream()>>>(
-          tensor_size, m, m, /* num_lower_diags */ m,
-          /* num_upper_diags */ 0, x_data, out_data);
+      MatrixBandPartFunctor<T> matrix_band_part_functor(
+          m, m, /* num_lower_diags */ m, /* num_upper_diags */ 0, x_data,
+          out_data);
+      for_range(matrix_band_part_functor);
     }
 
     // TODO(guosheng): Add callback to check info
@@ -102,9 +104,10 @@ class CholeskyGPUKernel : public framework::OpKernel<T> {
       // to clear the upper triangle of the output. Remove this workaround once
       // the bug is fixed.
       if (!upper) {
-        MatrixBandPart<<<blocks, threads, 0, dev_ctx.stream()>>>(
-            tensor_size, m, m, /* num_lower_diags */ m,
-            /* num_upper_diags */ 0, out_data, out_data);
+        MatrixBandPartFunctor<T> matrix_band_part_functor(
+            m, m, /* num_lower_diags */ m, /* num_upper_diags */ 0, out_data,
+            out_data);
+        for_range(matrix_band_part_functor);
       }
     } else {
 #endif
@@ -136,11 +139,17 @@ class CholeskyGPUKernel : public framework::OpKernel<T> {
     int workspace_size = 0;                                                    \
     PADDLE_ENFORCE_CUDA_SUCCESS(                                               \
         platform::dynload::cusolverDn##C##potrf_bufferSize(                    \
-            handle, uplo, n, A, lda, &workspace_size));                        \
+            handle, uplo, n, A, lda, &workspace_size),                         \
+        platform::errors::External(                                            \
+            "The error has happened when calling cusolverDn" #C                \
+            "potrf_bufferSize"));                                              \
     auto workspace = memory::Alloc(dev_ctx, workspace_size);                   \
     T* workspace_ptr = reinterpret_cast<T*>(workspace->ptr());                 \
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cusolverDn##C##potrf(       \
-        handle, uplo, n, A, lda, workspace_ptr, workspace_size, info));        \
+    PADDLE_ENFORCE_CUDA_SUCCESS(                                               \
+        platform::dynload::cusolverDn##C##potrf(                               \
+            handle, uplo, n, A, lda, workspace_ptr, workspace_size, info),     \
+        platform::errors::External(                                            \
+            "The error has happened when calling cusolverDn" #C "potrf"));     \
   }
 
 FUNC_WITH_TYPES(POTRF_INSTANCE);
@@ -154,7 +163,10 @@ FUNC_WITH_TYPES(POTRF_INSTANCE);
     auto handle = dev_ctx.cusolver_dn_handle();                             \
     PADDLE_ENFORCE_CUDA_SUCCESS(                                            \
         platform::dynload::cusolverDn##C##potrfBatched(                     \
-            handle, uplo, n, Aarray, lda, info_array, batch_size));         \
+            handle, uplo, n, Aarray, lda, info_array, batch_size),          \
+        platform::errors::External(                                         \
+            "The error has happened when calling cusolverDn" #C             \
+            "potrfBatched"));                                               \
   }
 
 FUNC_WITH_TYPES(POTRF_BATCH_INSTANCE);

@@ -37,9 +37,13 @@ class TestCholeskyOp(OpTest):
         self.inputs = {"X": input_data}
         self.attrs = {"upper": self._upper}
         self.outputs = {"Out": output_data}
+        self.gradient = calc_gradient(output_data)
 
     def test_check_output(self):
         self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out", user_defined_grads=self.gradient)
 
     def init_config(self):
         self._upper = True
