@@ -37,7 +37,17 @@ if sys.version_info[0] == 2:
 else:
     import queue
 # NOTE: [ avoid hanging & failed quickly ] These value is used in getting data from another process
-QUEUE_GET_TIMEOUT = 60
+MULTIPROCESS_QUEUE_TIMEOUT = 60
+
+
+def set_multiprocess_queue_timeout(*args):
+    global MULTIPROCESS_QUEUE_TIMEOUT
+    if len(args) == 0:
+        return MULTIPROCESS_QUEUE_TIMEOUT
+    else:
+        assert len(args) == 1 and isinstance(args[0], int)
+        MULTIPROCESS_QUEUE_TIMEOUT = args[0]
+
 
 # NOTE: [ mmap files clear ] If there is still data in the multiprocess queue when the main process finishes reading,
 # the data in the queue needs to be popped. Then the LoDTensor read by the main process
@@ -696,13 +706,14 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 # still happen when data in queue is corrupted (e.g., due to 
                 # Queue.cancel_join_thread or unexpected exit). So we set a timeout whenever 
                 # we try to get data from `data_queue`
-                # NOTE: [ avoid failed quickly ] Here, the time setting of QUEUE_GET_TIMEOUT
+                # NOTE: [ avoid failed quickly ] Here, the time setting of MULTIPROCESS_QUEUE_TIMEOUT
                 # is relatively long, currently it is 60 seconds, because in some models,
                 # if the reader child process starts with a heavy burden, the child process
                 # has no enough time to put the data in the queue when the main process
                 # start trying to get data from queue. At this time, the child thread needs
                 # to wait slightly longer
-                tensor_list = self._data_queue.get(timeout=QUEUE_GET_TIMEOUT)
+                tensor_list = self._data_queue.get(
+                    timeout=MULTIPROCESS_QUEUE_TIMEOUT)
             except:
                 # NOTE [ avoid handing ] After adding the shared memory mechanism, not only
                 # the queue.Empty exception will occur here, but other exceptions will also

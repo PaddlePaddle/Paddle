@@ -19,6 +19,10 @@ import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid import core
 import paddle.compat as cpt
+from paddle.fluid.reader import set_multiprocess_queue_timeout
+
+# NOTE: to shorten this unittest time cost
+set_multiprocess_queue_timeout(5)
 
 
 def get_random_images_and_labels(image_shape, label_shape):
