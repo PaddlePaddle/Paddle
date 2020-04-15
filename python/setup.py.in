@@ -148,7 +148,8 @@ packages=['paddle',
           'paddle.fluid.incubate.fleet.utils',
           'paddle.nn',
           'paddle.nn.functional',
-          'paddle.nn.layer']
+          'paddle.nn.layer',
+          'paddle.imperative']
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()
