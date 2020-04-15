@@ -75,7 +75,8 @@ __all__ = [
 #            'log1p',
 #            'erf',
 #            'addcmul',
-#            'addmm']
+#            'addmm',
+           'kron',
 ]
 # yapf: enable.
 
@@ -144,6 +145,7 @@ Examples:
 """ % op_type
     return func
 
+
 @templatedoc()
 def pow(input, exponent, out=None, name=None):
     """
@@ -194,8 +196,7 @@ def pow(input, exponent, out=None, name=None):
         out = helper.create_variable_for_type_inference(dtype=input.dtype)
     else:
         check_dtype(
-            out.dtype, out.name,
-            convert_dtype(input.dtype), 'pow',
+            out.dtype, out.name, convert_dtype(input.dtype), 'pow',
             '(The out data type in pow must be the same with input data type.)')
         if name:
             warnings.warn(
@@ -207,8 +208,10 @@ def pow(input, exponent, out=None, name=None):
                 category=UserWarning,
                 stacklevel=2)
 
-    helper.append_op(
-        type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+    helper.append_op(type='pow',
+                     inputs=inputs,
+                     outputs={'Out': out},
+                     attrs=attrs)
     return out
 
 
@@ -278,8 +281,7 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, out=None, name=None):
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
     else:
         check_dtype(
-            out.dtype, out.name,
-            convert_dtype(x.dtype), 'mul',
+            out.dtype, out.name, convert_dtype(x.dtype), 'mul',
             '(The out data type in pow must be the same with input data type.)')
         if name:
             warnings.warn(
@@ -290,9 +292,13 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, out=None, name=None):
                 out.name,
                 category=UserWarning,
                 stacklevel=2)
-    helper.append_op(
-        type="mul", inputs={"X": x,
-                            "Y": y}, attrs=attrs, outputs={"Out": out})
+    helper.append_op(type="mul",
+                     inputs={
+                         "X": x,
+                         "Y": y
+                     },
+                     attrs=attrs,
+                     outputs={"Out": out})
     return out
 
 
@@ -317,8 +323,9 @@ def _elementwise_op_in_dygraph(x,
     op = getattr(core.ops, op_name)
     out = op(x, y, 'axis', axis, 'use_mkldnn', use_mkldnn)
 
-    return dygraph_utils._append_activation_in_dygraph(
-        out, act, use_mkldnn=use_mkldnn)
+    return dygraph_utils._append_activation_in_dygraph(out,
+                                                       act,
+                                                       use_mkldnn=use_mkldnn)
 
 
 def _elementwise_op(helper):
@@ -344,16 +351,20 @@ def _elementwise_op(helper):
         if name is None:
             out = helper.create_variable_for_type_inference(dtype=x.dtype)
         else:
-            out = helper.create_variable(
-                name=name, dtype=x.dtype, persistable=False)
+            out = helper.create_variable(name=name,
+                                         dtype=x.dtype,
+                                         persistable=False)
 
-    helper.append_op(
-        type=op_type,
-        inputs={'X': x,
-                'Y': y},
-        outputs={'Out': out},
-        attrs={'axis': axis,
-               'use_mkldnn': use_mkldnn})
+    helper.append_op(type=op_type,
+                     inputs={
+                         'X': x,
+                         'Y': y
+                     },
+                     outputs={'Out': out},
+                     attrs={
+                         'axis': axis,
+                         'use_mkldnn': use_mkldnn
+                     })
     return helper.append_activation(out)
 
 
@@ -485,8 +496,11 @@ Examples:
     if alpha != 1:
         y = scale(y, scale=alpha)
     if in_dygraph_mode():
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name=op_type)
+        return _elementwise_op_in_dygraph(x,
+                                          y,
+                                          axis=axis,
+                                          act=act,
+                                          op_name=op_type)
 
     original_op_type = 'add'
     if name and out:
@@ -602,8 +616,11 @@ Examples:
     axis = -1
     act = None
     if in_dygraph_mode():
-        return _elementwise_op_in_dygraph(
-            x, y, axis=axis, act=act, op_name=op_type)
+        return _elementwise_op_in_dygraph(x,
+                                          y,
+                                          axis=axis,
+                                          act=act,
+                                          op_name=op_type)
 
     original_op_type = 'div'
     if name and out:
@@ -647,6 +664,7 @@ for func in [
         additional_args_lines=additional_args_lines,
         skip_attrs_set={"x_data_format", "y_data_format", "axis"
                         }) + """\n""" + str(func.__doc__)
+
 
 def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
     """
@@ -719,8 +737,8 @@ def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
                 dtype_flag = True
         else:
             raise ValueError(
-                "The value of 'dtype' in sum op must be float64, int64, but received of {}".
-                format(dtype))
+                "The value of 'dtype' in sum op must be float64, int64, but received of {}"
+                .format(dtype))
 
     if in_dygraph_mode():
         reduce_all = True if dim == None or dim == [] else False
@@ -733,20 +751,21 @@ def sum(input, dim=None, dtype=None, keep_dim=False, name=None):
         else:
             return core.ops.reduce_sum(input, 'dim', dim, 'keep_dim', keep_dim,
                                        'reduce_all', reduce_all)
-    check_variable_and_dtype(
-        input, 'input', ['float32', 'float64', 'int32', 'int64'], 'reduce_sum')
+    check_variable_and_dtype(input, 'input',
+                             ['float32', 'float64', 'int32', 'int64'],
+                             'reduce_sum')
     helper = LayerHelper('sum', **locals())
     if dtype_flag:
         out = helper.create_variable_for_type_inference(
             dtype=convert_np_dtype_to_dtype_(dtype))
     else:
         out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type='reduce_sum',
-        inputs={'X': input},
-        outputs={'Out': out},
-        attrs=attrs)
+    helper.append_op(type='reduce_sum',
+                     inputs={'X': input},
+                     outputs={'Out': out},
+                     attrs=attrs)
     return out
+
 
 @templatedoc(op_type="sum")
 def elementwise_sum(inputs, name=None):
@@ -824,11 +843,10 @@ def elementwise_sum(inputs, name=None):
     helper = LayerHelper('elementwise_sum', **locals())
     out = helper.create_variable_for_type_inference(
         dtype=helper.input_dtype('inputs'))
-    helper.append_op(
-        type='sum',
-        inputs={'X': inputs},
-        outputs={'Out': out},
-        attrs={'use_mkldnn': False})
+    helper.append_op(type='sum',
+                     inputs={'X': inputs},
+                     outputs={'Out': out},
+                     attrs={'use_mkldnn': False})
 
     return out
 
@@ -926,7 +944,67 @@ def mm(input, mat2, out=None, name=None):
     helper = LayerHelper('mm', **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type='matmul', inputs={'X': input,
-                               'Y': mat2}, outputs={'Out': out})
+    helper.append_op(type='matmul',
+                     inputs={
+                         'X': input,
+                         'Y': mat2
+                     },
+                     outputs={'Out': out})
+    return out
+
+
+@templatedoc(op_type="kron")
+def kron(x, y, out=None, name=None):
+    """${comment}
+
+    Args:
+        x (Variable): the fist operand of kron op, data type: float32 or 
+            float64.
+        y (Variable): the seconf operand of kron op, data type: float32 or 
+            float64. It's data type should be the same with x.
+        out (Variable, optional): Optional output which can be any created 
+            Variable that meets the requirements to store the result of 
+            operation. If out is None, a new Varibale will be create to store 
+            the result. Defaults to None.
+        name(str, optional): The default value is None.  Normally there is no 
+            need for user to set this property.  For more information, please 
+            refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Variable: The output of kron op, data type: float32 or float64. It's 
+            data type should be the same with x.
+
+    Examples:
+        .. code-block:: python
+        
+          import paddle
+          from paddle import fluid
+          import paddle.fluid.dygraph as dg
+          import numpy as np
+
+          a = np.arange(1, 5).reshape(2, 2).astype(np.float32)
+          b = np.arange(1, 10).reshape(3, 3).astype(np.float32)
+
+          place = fluid.CPUPlace()
+          with dg.guard(place):
+              a_var = dg.to_variable(a)
+              b_var = dg.to_variable(b)
+              c_var = paddle.kron(a_var, b_var)
+              c_np = c_var.numpy()
+          print(c_np)
+
+          #[[ 1.  2.  3.  2.  4.  6.]
+          # [ 4.  5.  6.  8. 10. 12.]
+          # [ 7.  8.  9. 14. 16. 18.]
+          # [ 3.  6.  9.  4.  8. 12.]
+          # [12. 15. 18. 16. 20. 24.]
+          # [21. 24. 27. 28. 32. 36.]]
+    """
+    if in_dygraph_mode():
+        return core.ops.kron(x, y)
+
+    helper = LayerHelper('kron', **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type="kron", inputs={"X": x, "Y": y}, outputs={"Out": out})
     return out
