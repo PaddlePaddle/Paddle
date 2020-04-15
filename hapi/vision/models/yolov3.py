@@ -118,7 +118,7 @@ class YOLOv3(Model):
         self.nms_posk = 100
         self.draw_thresh = 0.5
 
-        self.backbone = darknet53(pretrained=(model_mode=='train'))
+        self.backbone = darknet53(pretrained=False)
         self.block_outputs = []
         self.yolo_blocks = []
         self.route_blocks = []
