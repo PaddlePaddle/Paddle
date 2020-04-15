@@ -29,14 +29,21 @@ class SplitOpConverter : public OpConverter {
     // Declare inputs
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     auto input_dims = input->getDimensions();
-    int input_num = op_desc.Input("X").size();
+    size_t input_num = op_desc.Input("X").size();
     size_t output_num = op_desc.Output("Out").size();
 
     // Get Attrs
-    PADDLE_ENFORCE(input_num == 1);
+    PADDLE_ENFORCE_EQ(input_num, 1UL,
+                      platform::errors::InvalidArgument(
+                          "Invalid input X's size of split TRT converter. "
+                          "Expected 1, received %d.",
+                          input_num));
     int axis = boost::get<int>(op_desc.GetAttr("axis"));
     // split on batch is not supported in TensorRT
-    PADDLE_ENFORCE(axis != 0);
+    PADDLE_ENFORCE_NE(
+        axis, 0,
+        platform::errors::InvalidArgument(
+            "Invalid split axis. Split on batch is not supported in TensorRT"));
 
     std::vector<int> output_lengths =
         boost::get<std::vector<int>>(op_desc.GetAttr("sections"));
@@ -58,9 +65,13 @@ class SplitOpConverter : public OpConverter {
                           "The (%d) dim of input should not be -1", axis));
     if (num > 0) {
       int64_t in_axis_dim = input_dims.d[axis];
-      PADDLE_ENFORCE_EQ(in_axis_dim % num, 0,
-                        "Tensor split does not result"
-                        " in an equal division");
+      PADDLE_ENFORCE_EQ(
+          in_axis_dim % num, 0,
+          platform::errors::InvalidArgument(
+              "Invalid number to split. Tensor split does not result"
+              " in an equal division of dimensions. Axis dim = %d %% num = %d "
+              "!= 0",
+              in_axis_dim, num));
       size_t out_axis_dim = in_axis_dim / num;
       for (int i = 0; i < num; ++i) {
         output_lengths.push_back(out_axis_dim);

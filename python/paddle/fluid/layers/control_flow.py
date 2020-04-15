@@ -110,9 +110,9 @@ def split_lod_tensor(input, mask, level=0):
     data into two parts.
 
     Args:
-        input(tuple|list|None): The input tensor that contains complete
+        input(Variable|tuple|list|None): The input tensor that contains complete
                                 lod information needed to construct the output.
-        mask(list): A bool column vector which masks the input.
+        mask(Variable|list): A bool column vector which masks the input.
         level(int): The specific lod level to split.
 
     Returns:
@@ -135,6 +135,10 @@ def split_lod_tensor(input, mask, level=0):
                 input=x, mask=y, level=level)
 
     """
+    check_type(input, 'input', (Variable, list, tuple, type(None)),
+               'fluid.layers.split_lod_tensor')
+    check_type(mask, 'mask', (Variable, list), 'fluid.layers.split_lod_tensor')
+    check_type(level, 'level', int, 'fluid.layers.split_lod_tensor')
     helper = LayerHelper('split_lod_tensor', **locals())
     out_true = helper.create_variable_for_type_inference(dtype=input.dtype)
     out_false = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -407,6 +411,7 @@ class StaticRNN(object):
     AFTER_RNN_BLOCK = 2
 
     def __init__(self, name=None):
+        check_type(name, "name", (str, type(None)), "fluid.layers.StaticRNN")
         self.helper = LayerHelper("static_rnn", name=name)
         self.memories = {}  # memory map, from pre_mem.name --> MemoryLink
         self.inputs = []  # input variable list in current block
@@ -511,6 +516,12 @@ class StaticRNN(object):
 
         """
         self._assert_in_rnn_block_('memory')
+        check_type(init, "init", (Variable, type(None)),
+                   "fluid.layers.StaticRNN.memory")
+        check_type(shape, "shape", (list, tuple, type(None)),
+                   "fluid.layers.StaticRNN.memory")
+        check_type(batch_ref, "batch_ref", (Variable, type(None)),
+                   "fluid.layers.StaticRNN.memory")
         if init is None:
             if shape is None or batch_ref is None:
                 raise ValueError(
@@ -587,8 +598,7 @@ class StaticRNN(object):
 
         """
         self._assert_in_rnn_block_('step_input')
-        if not isinstance(x, Variable):
-            raise TypeError("step input takes a Variable")
+        check_type(x, "x", Variable, "fluid.layers.StaticRNN.step_input")
         if self.seq_len is None:
             self.seq_len = x.shape[0]
         elif x.shape[0] != -1 and self.seq_len != x.shape[0]:
@@ -641,8 +651,7 @@ class StaticRNN(object):
 
         """
         self._assert_in_rnn_block_('step_output')
-        if not isinstance(o, Variable):
-            raise TypeError("step output takes a Variable")
+        check_type(o, "o", Variable, "fluid.layers.StaticRNN.step_output")
 
         tmp_o = self.helper.create_variable_for_type_inference(dtype=o.dtype)
         self.helper.append_op(
@@ -715,8 +724,8 @@ class StaticRNN(object):
             None
 
         """
-        if not isinstance(mem, Variable) or not isinstance(var, Variable):
-            raise TypeError("update memory should take variables")
+        check_type(mem, "mem", Variable, "fluid.layers.StaticRNN.update_memory")
+        check_type(var, "var", Variable, "fluid.layers.StaticRNN.update_memory")
         self.memories[mem.name].mem = var
 
     def _parent_block(self):
@@ -1160,6 +1169,16 @@ def lod_tensor_to_array(x, table):
           table = fluid.layers.lod_rank_table(x, level=0)
           array = fluid.layers.lod_tensor_to_array(x, table)
     """
+    check_type(x, 'x', (Variable, list), 'lod_tensor_to_array')
+    if isinstance(x, (list)):
+        for i, input_x in enumerate(x):
+            check_type(input_x, 'input[' + str(i) + ']', Variable,
+                       'lod_tensor_to_array')
+    check_type(table, 'table', (Variable, list), 'lod_tensor_to_array')
+    if isinstance(table, (list)):
+        for i, table_x in enumerate(table):
+            check_type(table_x, 'table[' + str(i) + ']', Variable,
+                       'lod_tensor_to_array')
     helper = LayerHelper("lod_tensor_to_array", **locals())
     array = helper.create_variable(
         name=unique_name.generate("lod_tensor_to_array"),
@@ -1195,6 +1214,17 @@ def array_to_lod_tensor(x, table):
           array = fluid.layers.lod_tensor_to_array(x, table)
           lod_tensor = fluid.layers.array_to_lod_tensor(array, table)
     """
+    check_type(x, 'x', (Variable, list), 'array_to_lod_tensor')
+    if isinstance(x, (list)):
+        for i, input_x in enumerate(x):
+            check_type(input_x, 'input[' + str(i) + ']', Variable,
+                       'array_to_lod_tensor')
+    check_type(table, 'table', (Variable, list), 'array_to_lod_tensor')
+    if isinstance(table, (list)):
+        for i, table_x in enumerate(table):
+            check_type(table_x, 'table[' + str(i) + ']', Variable,
+                       'array_to_lod_tensor')
+
     helper = LayerHelper("array_to_lod_tensor", **locals())
     tmp = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
@@ -1226,6 +1256,8 @@ def increment(x, value=1.0, in_place=True):
           counter = fluid.layers.zeros(shape=[1], dtype='float32') # [0.]
           fluid.layers.increment(counter) # [1.]
     """
+    check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
+                             'increment')
     helper = LayerHelper("increment", **locals())
     if not in_place:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1404,6 +1436,15 @@ def less_than(x, y, force_cpu=None, cond=None):
           result_value, = exe.run(fluid.default_main_program(), feed={'x':x_i, 'y':y_i}, fetch_list=[result])
           print(result_value) # [[True, False], [False, False]]
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "less_than")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "less_than")
+    if cond is not None:
+        check_type(cond, "cond", Variable, "less_than")
+    if force_cpu != None:
+        check_type(force_cpu, "force_cpu", bool, "less_than")
+
     helper = LayerHelper("less_than", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1448,6 +1489,14 @@ def less_equal(x, y, cond=None):
           out1 = label<= limit #out1=[True, False]
 
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "less_equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "less_equal")
+    if cond is not None:
+        check_variable_and_dtype(cond, "cond", [convert_dtype(x.dtype)],
+                                 "less_equal")
+
     helper = LayerHelper("less_equal", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1489,6 +1538,14 @@ def greater_than(x, y, cond=None):
           out = fluid.layers.greater_than(x=label, y=limit) #out=[False, True]
           out1 = label > limit #out1=[False, True]
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "greater_than")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "greater_than")
+    if cond is not None:
+        check_variable_and_dtype(cond, "cond", [convert_dtype(x.dtype)],
+                                 "greater_than")
+
     helper = LayerHelper("greater_than", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1532,6 +1589,14 @@ def greater_equal(x, y, cond=None):
           out_1 = label >= limit #out1=[True, False]
 
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "greater_equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "greater_equal")
+    if cond is not None:
+        check_variable_and_dtype(cond, "cond", [convert_dtype(x.dtype)],
+                                 "greater_equal")
+
     helper = LayerHelper("greater_equal", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1575,6 +1640,14 @@ def equal(x, y, cond=None):
           out1 = fluid.layers.equal(x=label,y=limit) #out1=[True, False]
           out2 = fluid.layers.equal(x=label_cond,y=limit, cond=out_cond) #out2=[False, True] out_cond=[False, True]
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "equal")
+    if cond is not None:
+        check_variable_and_dtype(cond, "cond", [convert_dtype(x.dtype)],
+                                 "equal")
+
     helper = LayerHelper("equal", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1609,6 +1682,14 @@ def not_equal(x, y, cond=None):
           limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
           out = fluid.layers.not_equal(x=label, y=limit)
     """
+    check_variable_and_dtype(x, "x", ["float32", "float64", "int32", "int64"],
+                             "not_equal")
+    check_variable_and_dtype(y, "y", ["float32", "float64", "int32", "int64"],
+                             "not_equal")
+    if cond is not None:
+        check_variable_and_dtype(cond, "cond", [convert_dtype(x.dtype)],
+                                 "not_equal")
+
     helper = LayerHelper("not_equal", **locals())
     if cond is None:
         cond = helper.create_variable_for_type_inference(dtype='bool')
@@ -1735,6 +1816,9 @@ def shrink_memory(x, i, table):
         usage.
     """
     helper = LayerHelper('shrink_memory', **locals())
+    check_type(x, 'x', Variable, 'shrink_memory')
+    check_type(i, 'i', Variable, 'shrink_memory')
+    check_type(table, 'table', Variable, 'shrink_memory')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='shrink_rnn_memory',
@@ -2134,6 +2218,8 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
                 return false_fn()
         return None
 
+    check_variable_and_dtype(pred, "pred", ['bool'], "fluid.layers.cond")
+    check_type(name, "name", (str, type(None)), "fluid.layers.cond")
     helper = LayerHelper('cond', **locals())
     true_output = None
     false_output = None
@@ -2332,7 +2418,7 @@ class Switch(object):
     Case and default functions can only be used inside the scope of Switch, as shown below:
 
     .. code-block:: python
-        
+
         '''
         with fluid.layers.Switch() as switch:
             with switch.case(cond1):
@@ -2545,8 +2631,8 @@ class IfElse(object):
     IN_IF_ELSE_FALSE_BLOCKS = 2
 
     def __init__(self, cond, name=None):
-        if not isinstance(cond, Variable):
-            raise TypeError("cond must be a Variable")
+        check_type(cond, "cond", Variable, "fluid.layers.IfElse")
+        check_type(name, "name", (str, type(None)), "fluid.layers.IfElse")
         self.helper = LayerHelper('ifelse', name=name)
         self.cond = cond
         self.input_table = {}
@@ -2605,8 +2691,8 @@ class IfElse(object):
                                       self.IN_IF_ELSE_TRUE_BLOCKS else 0]
         parent_block = self._parent_block()
         for each_out in outs:
-            if not isinstance(each_out, Variable):
-                raise TypeError("Each output should be a variable")
+            check_type(each_out, "each output", Variable,
+                       "fluid.layers.IfElse.output")
             # create outside tensor
             outside_out = parent_block.create_var(
                 name=unique_name.generate_with_ignorable_key("_".join(
@@ -3372,8 +3458,7 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
                     branch_fns=[(0, fn_1), (4, fn_2), (7, fn_3)])
 
                 exe = fluid.Executor(fluid.CPUPlace())
-                res_1, res_2, res_3 = exe.run(main_program,
-                                              fetch_list=[out_1, out_2, out_3])
+                res_1, res_2, res_3 = exe.run(main_program, fetch_list=[out_1, out_2, out_3])
                 print(res_1)  # [[1. 1.]]
                 print(res_2)  # [[2 2] [2 2]]
                 print(res_3)  # [3 3 3]
