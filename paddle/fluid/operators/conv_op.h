@@ -41,10 +41,13 @@ inline int ConvOutputSize(int input_size, int filter_size, int dilation,
   int output_size = (input_size + 2 * padding - dkernel) / stride + 1;
   PADDLE_ENFORCE_GT(
       output_size, 0,
-      "Due to the settings of padding(%d), filter_size(%d), dilation(%d) and "
-      "stride(%d), the output size is less than 0, please check "
-      "again. Input_size:%d",
-      padding, filter_size, dilation, stride, input_size);
+      platform::errors::InvalidArgument(
+          "The output's size is expected to be greater than 0. "
+          "But recieved: output's size is %d. The output's size is computed by "
+          "((input_size + 2 * padding - (dilation * (filter_size - 1) + 1)) / "
+          "stride + 1), where input_size is %d, padding is %d, "
+          "filter_size is %d, dilation is %d, stride is %d.",
+          output_size, input_size, padding, filter_size, dilation, stride));
 
   return output_size;
 }
@@ -53,13 +56,16 @@ inline int ConvOutputSize(int input_size, int filter_size, int dilation,
                           int padding_1, int padding_2, int stride) {
   const int dkernel = dilation * (filter_size - 1) + 1;
   int output_size = (input_size + padding_1 + padding_2 - dkernel) / stride + 1;
-  PADDLE_ENFORCE_GT(output_size, 0,
-                    "Due to the settings of padding(%d, %d), filter_size(%d), "
-                    "dilation(%d) and "
-                    "stride(%d), the output size is less than 0, please check "
-                    "again. Input_size:%d",
-                    padding_1, padding_2, filter_size, dilation, stride,
-                    input_size);
+  PADDLE_ENFORCE_GT(
+      output_size, 0,
+      platform::errors::InvalidArgument(
+          "The output's size is expected to be greater than 0. "
+          "But recieved: output's size is %d. The output's size is computed by "
+          "((input_size + padding_1 + padding_2 - (dilation * (filter_size - "
+          "1) + 1)) / stride + 1), where input_size is %d, padding is "
+          "(%d, %d), filter_size is %d, dilation is %d, stride is %d.",
+          output_size, input_size, padding_1, padding_2, filter_size, dilation,
+          stride));
 
   return output_size;
 }
@@ -81,7 +87,13 @@ inline void UpdatePaddingAndDilation(std::vector<T>* paddings,
   } else {
     PADDLE_ENFORCE_EQ(
         data_dims.size() * 2, paddings->size(),
-        "Paddings size should be the same or twice as the input data size.");
+        platform::errors::InvalidArgument(
+            "Attribute padding's size should be the same or twice as the "
+            "input's dimension. "
+            "But recieved: padding's size is %d, padding is [%s]; input's "
+            "dimension is %d, input's shape is [%s].",
+            paddings->size(), framework::make_ddim(*paddings), data_dims.size(),
+            data_dims));
   }
 
   // when padding_algorithm is "VALID" or "SAME"
