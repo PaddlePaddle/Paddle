@@ -170,7 +170,7 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
       VLOG(5) << "Cast " << pair.first << " " << pair.second.size() << " "
               << (*pair.second.cbegin())->DataType() << "to FP16";
       for (const auto& var : pair.second) {
-        auto new_var = CastToFP16(var);
+        auto new_var = CastToFP32(var);
         new_ins[pair.first].emplace_back(new_var);
       }
     }

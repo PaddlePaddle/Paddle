@@ -55,28 +55,37 @@ class TestAmpApi(unittest.TestCase):
     def test_amp(self):
         #resnet = ResNet()
         inp_np = np.random.random(size=[1, 3, 128, 128]).astype(np.float32)
+        scaler = fluid.dygraph.amp.Scaler()
 
         def run_model(enable_amp=True):
             with fluid.dygraph.guard():
                 with fluid.dygraph.amp.autocast(enable_amp):
-                    #            with fluid.dygraph.guard():
-                    model = SimpleConv(
-                        num_channels=3,
-                        num_filters=64,
-                        filter_size=7,
-                        stride=2,
-                        act='relu')
-                    inp = fluid.dygraph.to_variable(inp_np)
-                    out = model(inp)
-                    return out.numpy()
+                    for i in range(10):
+                        model = SimpleConv(
+                            num_channels=3,
+                            num_filters=64,
+                            filter_size=7,
+                            stride=2,
+                            act='relu')
+                        sgd = fluid.optimizer.SGDOptimizer(
+                            learning_rate=0.001,
+                            parameter_list=model.parameters())
+                        inp = fluid.dygraph.to_variable(inp_np)
+                        out = model(inp)
+
+                        loss = fluid.layers.reduce_mean(out)
+                        scaled = scaler.scale(loss)
+                        print(loss, scaled)
+                        scaled.backward()
+                        scaler.step(sgd, scaled)
 
         time1 = time.time()
-        out1 = run_model(False)
+        out1 = run_model(True)
         print(time.time() - time1)
 
-        time2 = time.time()
-        out2 = run_model(True)
-        print(time.time() - time2)
+        # time2 = time.time()
+        # out2 = run_model(True)
+        # print(time.time() - time2)
         # self.assertTrue(np.allclose(out1, out2))
 
 
