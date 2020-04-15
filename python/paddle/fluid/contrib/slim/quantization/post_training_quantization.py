@@ -823,6 +823,7 @@ class WeightQuantization(object):
                                      threshold_rate)
 
         if generate_test_model:
+            save_model_dir = save_model_dir.replace('\\', '/')
             if save_model_dir[-1] == '/':
                 save_model_dir = save_model_dir[0:-1]
             test_model_dir = save_model_dir + "_test"
