@@ -28,7 +28,7 @@ from ..data_feeder import convert_dtype
 from ..layer_helper import LayerHelper
 from ..framework import in_dygraph_mode
 from ..param_attr import ParamAttr
-
+from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
 __all__ = [
     'RNNCell',
     'GRUCell',
@@ -116,11 +116,13 @@ class RNNCell(object):
             Variable: tensor variable[s] packed in the same structure provided \
                 by shape, representing the initialized states.
         """
-        
+
         check_type(batch_ref, 'batch_ref', (Variable, list, tuple), 'RNNCell')
-        check_type(shape, 'shape', (list, tuple, Variable, type(None)), 'RNNCell')
-        check_type(dtype, 'dtype', (list, tuple, Variable, type(None)), 'RNNCell')
-        
+        check_type(shape, 'shape', (list, tuple, Variable, type(None)),
+                   'RNNCell')
+        check_type(dtype, 'dtype', (list, tuple, Variable, type(None)),
+                   'RNNCell')
+
         # TODO: use inputs and batch_size
         batch_ref = flatten(batch_ref)[0]
 
@@ -280,9 +282,9 @@ class GRUCell(RNNCell):
                 tensor is same as that of `states`.        
         """
         check_variable_and_dtype(inputs, 'inputs', ['float32', 'float64'],
-                             'GRUCell')
+                                 'GRUCell')
         check_variable_and_dtype(states, 'states', ['float32', 'float64'],
-                             'GRUCell')
+                                 'GRUCell')
         new_hidden = self.gru_unit(inputs, states)
         return new_hidden, new_hidden
 
@@ -380,9 +382,13 @@ class LSTMCell(RNNCell):
                 tensors all is same as that of `states`.
         """
         check_variable_and_dtype(inputs, 'inputs', ['float32', 'float64'],
-                             'LSTMCell')
-        check_variable_and_dtype(states, 'states', ['float32', 'float64'],
-                             'LSTMCell')
+                                 'LSTMCell')
+        check_type(states, 'states', list, 'LSTMCell')
+        if isinstance(states, list):
+            for i, state in enumerate(states):
+                check_variable_and_dtype(state, 'state[' + str(i) + ']',
+                                         ['float32', 'float64'], 'LSTMCell')
+
         pre_hidden, pre_cell = states
         new_hidden, new_cell = self.lstm_unit(inputs, pre_hidden, pre_cell)
         return new_hidden, [new_hidden, new_cell]
@@ -459,8 +465,10 @@ def rnn(cell,
             outputs = fluid.layers.rnn(cell=cell, inputs=inputs)
     """
     check_type(inputs, 'inputs', (Variable, list, tuple), 'rnn')
-    check_type(initial_states, 'initial_states', (Variable, , list, tuple, type(None)), 'rnn')
-    check_type(sequence_length, 'sequence_length', (Variable, type(None)), 'rnn')
+    check_type(initial_states, 'initial_states',
+               (Variable, list, tuple, type(None)), 'rnn')
+    check_type(sequence_length, 'sequence_length', (Variable, type(None)),
+               'rnn')
 
     def _maybe_copy(state, new_state, step_mask):
         # TODO: use where_op
@@ -475,7 +483,7 @@ def rnn(cell,
     def _switch_grad(x, stop=False):
         x.stop_gradient = stop
         return x
-    
+
     if initial_states is None:
         initial_states = cell.get_initial_states(
             batch_ref=inputs, batch_dim_idx=1 if time_major else 0)
@@ -2144,12 +2152,9 @@ def lstm(input,
     """
 
     helper = LayerHelper('cudnn_lstm', **locals())
-    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
-                             'lstm')
-    check_variable_and_dtype(init_h, 'init_h', ['float32', 'float64'],
-                             'lstm')
-    check_variable_and_dtype(init_c, 'init_c', ['float32', 'float64'],
-                             'lstm')
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'lstm')
+    check_variable_and_dtype(init_h, 'init_h', ['float32', 'float64'], 'lstm')
+    check_variable_and_dtype(init_c, 'init_c', ['float32', 'float64'], 'lstm')
     dtype = input.dtype
     input_shape = list(input.shape)
     input_size = input_shape[-1]
@@ -2674,8 +2679,7 @@ def gru_unit(input,
                 input=x, hidden=pre_hidden, size=hidden_dim * 3)
 
     """
-    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
-                             'gru_unit')
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'gru_unit')
     check_variable_and_dtype(hidden, 'hidden', ['float32', 'float64'],
                              'gru_unit')
     activation_dict = dict(
@@ -3033,12 +3037,11 @@ def lstm_unit(x_t,
                 cell_t_prev=pre_cell)
     """
     helper = LayerHelper('lstm_unit', **locals())
-    check_variable_and_dtype(x_t, 'x_t', ['float32', 'float64'],
-                             'lstm_unit')
-    check_variable_and_dtype(hidden_t_prev, 'hidden_t_prev', ['float32', 'float64'],
-                             'lstm_unit')
-    check_variable_and_dtype(cell_t_prev, 'cell_t_prev', ['float32', 'float64'],
-                             'lstm_unit')
+    check_variable_and_dtype(x_t, 'x_t', ['float32', 'float64'], 'lstm_unit')
+    check_variable_and_dtype(hidden_t_prev, 'hidden_t_prev',
+                             ['float32', 'float64'], 'lstm_unit')
+    check_variable_and_dtype(cell_t_prev, 'cell_t_prev',
+                             ['float32', 'float64'], 'lstm_unit')
     if len(x_t.shape) != 2:
         raise ValueError("Rank of x_t must be 2.")
 

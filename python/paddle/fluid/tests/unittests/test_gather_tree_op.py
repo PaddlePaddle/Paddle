@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid as fluid
+from paddle.fluid.framework import program_guard, Program
 
 
 class TestGatherTreeOp(OpTest):
@@ -60,11 +61,15 @@ class TestGatherTreeOpAPI(unittest.TestCase):
             append_batch_size=False)
         final_sequences = fluid.layers.gather_tree(ids, parents)
 
+
 class TestGatherTreeOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             ids = fluid.layers.data(
-                name='ids', shape=[5, 2, 2], dtype='int64', append_batch_size=False)
+                name='ids',
+                shape=[5, 2, 2],
+                dtype='int64',
+                append_batch_size=False)
             parents = fluid.layers.data(
                 name='parents',
                 shape=[5, 2, 2],
@@ -88,7 +93,10 @@ class TestGatherTreeOpError(unittest.TestCase):
             def test_type_ids():
                 # dtype must be int32 or int64
                 bad_ids = fluid.layers.data(
-                    name='bad_ids', shape=[5, 2, 2], dtype='float32', append_batch_size=False)
+                    name='bad_ids',
+                    shape=[5, 2, 2],
+                    dtype='float32',
+                    append_batch_size=False)
                 fluid.layers.gather_tree(bad_ids, parents)
 
             self.assertRaises(TypeError, test_type_ids)
@@ -98,12 +106,11 @@ class TestGatherTreeOpError(unittest.TestCase):
                 bad_parents = fluid.layers.data(
                     name='bad_parents',
                     shape=[5, 2, 2],
-                    dtype='int64',
+                    dtype='float32',
                     append_batch_size=False)
                 fluid.layers.gather_tree(ids, bad_parents)
 
             self.assertRaises(TypeError, test_type_parents)
-            
 
 
 if __name__ == "__main__":

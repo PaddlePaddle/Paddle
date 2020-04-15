@@ -18,7 +18,9 @@ import math
 import unittest
 import numpy as np
 from op_test import OpTest
+from paddle import fluid
 from paddle.fluid.layers import gru_unit
+from paddle.fluid.framework import program_guard, Program
 
 
 class GRUActivationType(OpTest):
@@ -60,22 +62,30 @@ class TestGRUUnitOpError(unittest.TestCase):
 
             def test_input_Variable():
                 gru_unit(np_input, pre_hidden, hidden_dim * 3)
+
             self.assertRaises(TypeError, test_input_Variable)
 
             def test_pre_hidden_Variable():
                 gru_unit(input, np_pre_hidden, hidden_dim * 3)
+
             self.assertRaises(TypeError, test_pre_hidden_Variable)
 
             def test_input_type():
                 error_input = fluid.data(
-                    name='error_input', shape=[None, hidden_dim * 3], dtype='int32')
+                    name='error_input',
+                    shape=[None, hidden_dim * 3],
+                    dtype='int32')
                 gru_unit(error_input, pre_hidden, hidden_dim * 3)
+
             self.assertRaises(TypeError, test_input_type)
 
             def test_pre_hidden_type():
                 error_pre_hidden = fluid.data(
-                    name='error_pre_hidden', shape=[None, hidden_dim], dtype='int32')
+                    name='error_pre_hidden',
+                    shape=[None, hidden_dim],
+                    dtype='int32')
                 gru_unit(input, error_pre_hidden, hidden_dim * 3)
+
             self.assertRaises(TypeError, test_pre_hidden_type)
 
 
