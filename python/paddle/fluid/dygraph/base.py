@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from ..wrapped_decorator import signature_safe_contextmanager, wrap_decorator
+import decorator
 import contextlib
 import functools
 import sys
@@ -196,12 +197,12 @@ def no_grad(func=None):
         return _switch_tracer_mode_guard_(is_train=False)
     else:
 
-        @functools.wraps(func)
-        def __impl__(*args, **kwargs):
+        @decorator.decorator
+        def __impl__(func, *args, **kwargs):
             with _switch_tracer_mode_guard_(is_train=False):
                 return func(*args, **kwargs)
 
-        return __impl__
+        return __impl__(func)
 
 
 @signature_safe_contextmanager
