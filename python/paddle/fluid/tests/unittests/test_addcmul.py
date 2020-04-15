@@ -149,6 +149,16 @@ class InvalidInputTest(unittest.TestCase):
 
         self.assertRaises(TypeError, test_invalid_tensor2)
 
+        def test_invalid_value():
+            input = fluid.data(name='input1', shape=[20, 20], dtype='float32')
+            tensor1 = fluid.data(
+                name='tensor5', shape=[20, 20], dtype='float32')
+            tensor2 = fluid.data(
+                name='tensor6', shape=[20, 20], dtype='float32')
+            out = paddle.addcmul(input, tensor1, tensor2, value=1)
+
+        self.assertRaises(TypeError, test_invalid_value)
+
 
 if __name__ == '__main__':
     unittest.main()
