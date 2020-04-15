@@ -298,7 +298,10 @@ class ProgramTranslator(object):
         if not program_cache.in_build_process:
             outputs = self.run(*args, **kwargs)
             with guard():
-                outputs = [to_variable(x) for x in outputs]
+                if len(outputs) == 1:
+                    outputs = to_variable(outputs[0])
+                else:
+                    outputs = tuple(to_variable(x) for x in outputs)
         return outputs
 
     def get_func(self, dygraph_func):
