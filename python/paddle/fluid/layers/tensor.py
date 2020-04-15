@@ -280,6 +280,9 @@ def concat(input, axis=0, name=None):
         assert len(input) == 1, "If the elements of 'input' in concat are Variable(LoDTensorArray), " \
                             "number of the elements must be 1, but received %s." % len(x)
         out_index = helper.create_variable_for_type_inference(dtype="int32")
+        check_variable_and_dtype(
+            input, "X", ['float16', 'float32', 'float64', 'int32', 'int64'],
+            "tensor_array_to_tensor")
         helper.append_op(
             type='tensor_array_to_tensor',
             inputs={'X': input[0]},
@@ -395,10 +398,11 @@ def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
     helper = LayerHelper('tensor_array_to_tensor', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     out_index = helper.create_variable_for_type_inference(dtype="int32")
-    check_type(input, 'X', (list), 'tensor_array_to_tensor')
-    check_dtype(input, 'X',
-                ['float16', 'float32', 'float64', 'int32', 'int64'],
-                'tensor_array_to_tensor')
+    for id, x in enumerate(input):
+        check_variable_and_dtype(
+            x, 'input[' + str(id) + ']',
+            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            "tensor_array_to_tensor")
     helper.append_op(
         type='tensor_array_to_tensor',
         inputs={'X': input},
