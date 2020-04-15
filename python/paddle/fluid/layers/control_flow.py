@@ -1476,7 +1476,7 @@ def less_equal(x, y, cond=None):
             if cond is None, a new Varibale will be created to store the result.
 
     Returns:
-        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
+        Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x`.
 
     Examples:
         .. code-block:: python
@@ -1524,7 +1524,7 @@ def greater_than(x, y, cond=None):
             if cond is None, a new Varibale will be created to store the result.
 
     Returns:
-        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x` .
+        Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x` .
 
     Examples:
         .. code-block:: python
@@ -1571,7 +1571,7 @@ def greater_equal(x, y, cond=None):
             if cond is None, a new Varibale will be created to store the result.
 
     Returns:
-        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
+        Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x`.
 
     Examples:
         .. code-block:: python
@@ -1664,7 +1664,7 @@ def not_equal(x, y, cond=None):
             if cond is None, a new Varibale will be created to store the result.
 
     Returns:
-        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
+        Variable, the output data type is bool: The tensor variable storing the output, the output shape is same as input :attr:`x`.
 
     Examples:
         .. code-block:: python
