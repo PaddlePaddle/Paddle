@@ -120,5 +120,18 @@ void Tensor::ResetHolderWithType(std::shared_ptr<memory::Allocation> holder,
   type_ = type;
 }
 
+int Tensor::dump(const char* name) {
+  if (TensorDumpConfig<>::get().is_disabled()) {
+    return -1;
+  }
+
+  if (!TensorDumpConfig<>::get().hasOperator(name)) {
+    return -2;
+  }
+
+  DumpComposit<uint8_t, int8_t, float>::execute(name, *this);
+  return 0;
+}
+
 }  // namespace framework
 }  // namespace paddle

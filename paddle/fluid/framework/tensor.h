@@ -17,10 +17,14 @@ limitations under the License. */
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <string>
+#include <tuple>
 #include <typeindex>
 #include <utility>
 #include <vector>
+#include "boost/crc.hpp"
 #include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/memory/memory.h"
@@ -33,6 +37,111 @@ namespace paddle {
 namespace framework {
 
 class LoDTensor;
+
+class Tensor;
+
+template <class U>
+struct TensorOutStreamer {
+  typedef TensorOutStreamer<U> self;
+  const char* name;
+  const Tensor& tensor;
+  size_t limit;
+  TensorOutStreamer(const char* name, const Tensor& _tensor);
+  self& setLimit(size_t _limit);
+  const U* begin() const;
+  const U* end() const;
+  int checksum() const;
+};
+
+template <int version = 0>
+class TensorDumpConfig {
+ protected:
+  std::vector<std::string> split(const std::string& s, char delimiter) {
+    std::vector<std::string> tokens;
+    std::string token;
+    std::istringstream tokenStream(s);
+    while (std::getline(tokenStream, token, delimiter)) {
+      tokens.push_back(token);
+    }
+    return tokens;
+  }
+
+  template <class F>
+  void env_exe(const char* name, F f) {
+    auto* env = std::getenv(name);
+    if (env) {
+      f(env);
+    }
+  }
+
+  size_t limit_1;
+  size_t limit_4;
+  std::string filename;
+  std::vector<std::string> ops;
+  bool synchronized;
+  TensorDumpConfig()
+      : limit_1(128),
+        limit_4(128),
+        filename("/dev/stdout"),
+        synchronized(false) {
+    env_exe("TENSOR_DUMP_OPERATORS", [this](const char* value) {
+      if (strlen(value)) {
+        ops = split(value, ',');
+      }
+    });
+
+    env_exe("TENSOR_DUMP_FILE",
+            [this](const char* value) { filename = value; });
+
+    env_exe("TENSOR_DUMP_LIMIT_SIZEOF_1", [this](const char* value) {
+      std::stringstream ss;
+      ss << value;
+      ss >> limit_1;
+    });
+
+    env_exe("TENSOR_DUMP_LIMIT_SIZEOF_4", [this](const char* value) {
+      std::stringstream ss;
+      ss << value;
+      ss >> limit_4;
+    });
+
+    env_exe("TENSOR_DUMP_SYNCHRONIZE",
+            [this](const char* value) { synchronized = true; });
+  }
+
+ public:
+  bool is_disabled() const { return !ops.size(); }
+  bool hasOperator(const char* name) {
+    return std::find_if(ops.begin(), ops.end(),
+                        [name](const std::string& item) {
+                          return item == name;
+                        }) != ops.end();
+  }
+
+  bool is_synchronized() const { return synchronized; }
+  const std::string& getFilename() { return filename; }
+  std::ofstream& getOutputStream() {
+    static std::unique_ptr<std::ofstream> ptr(
+        new std::ofstream(filename.c_str()));
+    return *ptr;
+  }
+  size_t getLimit_1() { return limit_1; }
+  size_t getLimit_4() { return limit_4; }
+  size_t getLimitViaSize(int size) { return (size == 1) ? limit_1 : limit_4; }
+  static TensorDumpConfig<version>& get() {
+    static TensorDumpConfig<version> inst;
+    return inst;
+  }
+  static size_t NextRecord() {
+    static size_t seq = 0;
+    return seq++;
+  }
+
+  static std::mutex& getMutex() {
+    static std::mutex mx;
+    return mx;
+  }
+};
 
 class Tensor {
 #ifdef PADDLE_WITH_MKLDNN
@@ -79,6 +188,14 @@ class Tensor {
   /*! Return a pointer to constant memory block. */
   template <typename T>
   const T* data() const;
+
+  template <class T>
+  bool hasType() const {
+    return type_ == ::paddle::framework::DataTypeTrait<T>::DataType();
+  }
+
+  /*! Serialize tensor to file with label name */
+  int dump(const char* name);
 
   inline bool IsInitialized() const;
 
@@ -211,6 +328,169 @@ class Tensor {
    *          PlaceHolder::ptr_ and where the tensor data really begins.
    */
   size_t offset_;
+};
+
+template <class I, class F>
+void for_each_no_more(I b, I e, std::size_t count, F f) {
+  if (count) {
+    for (; count && b != e; ++b, --count) {
+      f(*b);
+    }
+  } else {
+    for (; b != e; ++b) {
+      f(*b);
+    }
+  }
+}
+
+template <class U>
+TensorOutStreamer<U>::TensorOutStreamer(const char* _name,
+                                        const Tensor& _tensor)
+    : name(_name), tensor(_tensor), limit(0) {}
+
+template <class U>
+TensorOutStreamer<U>& TensorOutStreamer<U>::setLimit(size_t _limit) {
+  limit = _limit;
+  return *this;
+}
+
+template <class U>
+const U* TensorOutStreamer<U>::begin() const {
+  return tensor.data<U>();
+}
+
+template <class U>
+const U* TensorOutStreamer<U>::end() const {
+  return begin() + tensor.memory_size() / sizeof(U);
+}
+
+template <class U>
+int TensorOutStreamer<U>::checksum() const {
+  boost::crc_32_type result;
+  result.process_bytes(reinterpret_cast<const unsigned char*>(begin()),
+                       tensor.memory_size());
+  return result.checksum();
+}
+
+template <class U>
+struct type_desc;
+
+template <>
+struct type_desc<signed char> {
+  enum { pad = 2, break_line = 256 };
+  static const char* name() { return "signed_char"; }
+  static std::ostream& format(std::ostream& out, signed char v) {
+    out << std::setw(pad) << std::setfill('0') << std::hex
+        << (static_cast<int>(v) & 0xFF);
+    return out;
+  }
+};
+
+template <>
+struct type_desc<unsigned char> {
+  enum { pad = 2, break_line = 256 };
+  static const char* name() { return "unsigned_char"; }
+  static std::ostream& format(std::ostream& out, unsigned char v) {
+    out << std::setw(pad) << std::setfill('0') << std::hex
+        << (static_cast<int>(v) & 0xFF);
+    return out;
+  }
+};
+
+template <>
+struct type_desc<float> {
+  enum { pad = 8, break_line = 32 };
+  static const char* name() { return "float"; }
+  static std::ostream& format(std::ostream& out, float v) {
+    out << std::setw(pad) << std::setfill(' ') << v << " ";
+    return out;
+  }
+};
+
+template <class U>
+std::ostream& operator<<(std::ostream& out, const TensorOutStreamer<U>& ts) {
+  auto& tensor = ts.tensor;
+  auto& dims = tensor.dims();
+  auto& conf = TensorDumpConfig<>::get();
+  out << std::setw(8) << std::setfill(' ') << (TensorDumpConfig<>::NextRecord())
+      << ") type=[" << type_desc<U>::name() << "]  => " << ts.name
+      << " crc32=" << std::hex << ts.checksum() << std::dec
+      << "  elem=" << tensor.numel() << "  "
+      << " dims=" << dims.size() << "=>";
+
+  for (decltype(dims.size()) i = 0; i < dims.size(); ++i) {
+    out << "[" << dims.at(i) << "]";
+  }
+
+  out << std::endl;
+  std::size_t br = 0;
+
+  for_each_no_more(ts.begin(), ts.end(), conf.getLimitViaSize(sizeof(U)),
+                   [&out, &br](U unit) {
+                     if (type_desc<U>::break_line == br++) {
+                       br = 0;
+                       out << std::endl;
+                     }
+                     type_desc<U>::format(out, unit) << std::dec;
+                   });
+  out << std::endl;
+  return out;
+}
+
+template <class T>
+struct TupleExtractor;
+
+template <class First, class... Tail>
+struct TupleExtractor<std::tuple<First, Tail...>> {
+  typedef First head;
+  typedef std::tuple<Tail...> tail;
+};
+
+template <>
+struct TupleExtractor<std::tuple<>> {};
+
+template <class First, class... Tail>
+struct DumpComposit {
+  typedef std::tuple<First, Tail...> args_tuple;
+  enum { size = std::tuple_size<args_tuple>::value };
+  typedef typename std::tuple_element<size - 1, args_tuple>::type last;
+  static_assert(std::is_same<last, float>::value,
+                "Last one must be float type!");
+  static_assert(std::is_arithmetic<First>::value,
+                "Incorrect type - is not an arithmetic type!");
+
+  static void execute(const char* name, const Tensor& _tensor) {
+    if (_tensor.hasType<First>()) {
+      if (TensorDumpConfig<>::get().is_synchronized()) {
+        /* in case of parallel executor , io must be synchronized */
+        std::lock_guard<decltype(TensorDumpConfig<>::getMutex())> l(
+            TensorDumpConfig<>::getMutex());
+        TensorDumpConfig<>::get().getOutputStream()
+            << TensorOutStreamer<First>(name, _tensor);
+      } else {
+        TensorDumpConfig<>::get().getOutputStream()
+            << TensorOutStreamer<First>(name, _tensor);
+      }
+    } else {
+      DumpComposit<Tail...>::execute(name, _tensor);
+    }
+  }
+};
+
+template <>
+struct DumpComposit<float> {
+  static void execute(const char* name, const Tensor& _tensor) {
+    if (TensorDumpConfig<>::get().is_synchronized()) {
+      /* in case of parallel executor , io must be synchronized */
+      std::lock_guard<decltype(TensorDumpConfig<>::getMutex())> l(
+          TensorDumpConfig<>::getMutex());
+      TensorDumpConfig<>::get().getOutputStream()
+          << TensorOutStreamer<float>(name, _tensor);
+    } else {
+      TensorDumpConfig<>::get().getOutputStream()
+          << TensorOutStreamer<float>(name, _tensor);
+    }
+  }
 };
 
 }  // namespace framework
