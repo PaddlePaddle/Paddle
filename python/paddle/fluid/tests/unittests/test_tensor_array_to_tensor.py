@@ -35,9 +35,6 @@ class TestTensorArrayToTensorError(unittest.TestCase):
                 fluid.layers.tensor_array_to_tensor(input=[input_data])
 
             self.assertRaises(TypeError, test_input_list)
-            # input data type must be int16 int32 fp16 fp32 fp64
-            x_fp16 = fluid.data(name='x_fp16', shape=[2, 4], dtype='fp16')
-            fluid.layers.tensor_array_to_tensor(input=x_fp16)
 
 
 class TestLoDTensorArrayConcat(unittest.TestCase):
