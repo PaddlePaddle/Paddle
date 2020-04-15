@@ -91,7 +91,7 @@ export CUDA_VISIBLE_DEVICES=0,1,2,3
 
 python -m paddle.distributed.launch --selected_gpus=0,1,2,3  train.py \
           --train_file ./data/train.tsv \
-		  --test_file  ./data/test.tsv \
+          --test_file  ./data/test.tsv \
           --word_dict_path ./conf/word.dic \
           --label_dict_path ./conf/tag.dic \ 
           --word_rep_dict_path ./conf/q2b.dic \
@@ -111,7 +111,7 @@ CPU上训练
 ```
 python -u train.py \
           --train_file ./data/train.tsv \
-		  --test_file ./data/test.tsv \
+          --test_file ./data/test.tsv \
           --word_dict_path ./conf/word.dic \
           --label_dict_path ./conf/tag.dic \ 
           --word_rep_dict_path ./conf/q2b.dic \
@@ -132,16 +132,16 @@ python -u train.py \
 加载已有的模型，对未知的数据进行预测
 ```bash
 python predict.py \
-          --predict_file ./data/infer.tsv \
-		  --word_dict_path ./conf/word.dic \
-		  --label_dict_path ./conf/tag.dic \
-		  --word_rep_dict_path ./conf/q2b.dic \
-		  --init_from_checkpoint  model_baseline/params \
-		  --output_file predict.result  \
-		  --mode predict \
-		  --device gpu  \
-		  -d 
-		  
+      --predict_file ./data/infer.tsv \
+      --word_dict_path ./conf/word.dic \
+      --label_dict_path ./conf/tag.dic \
+      --word_rep_dict_path ./conf/q2b.dic \
+      --init_from_checkpoint  model_baseline/params \
+      --output_file predict.result  \
+      --mode predict \
+      --device gpu  \
+      -d 
+  
 # -d： 是否使用动态图模式进行训练，如果使用静态图训练，命令行请删除-d参数
 
 ```
@@ -153,12 +153,12 @@ python predict.py \
 # baseline model
 python eval.py \
         --test_file  ./data/test.tsv \
-		--word_dict_path ./conf/word.dic  \
-		--label_dict_path ./conf/tag.dic  \
-		--word_rep_dict_path ./conf/q2b.dic \
-		--init_from_checkpoint  ./model_baseline/params \
-		--device gpu  \
-		-d
+        --word_dict_path ./conf/word.dic  \
+        --label_dict_path ./conf/tag.dic  \
+        --word_rep_dict_path ./conf/q2b.dic \
+        --init_from_checkpoint  ./model_baseline/params \
+        --device gpu  \
+        -d
 
 # -d： 是否使用动态图模式进行训练，如果使用静态图训练，命令行请删除-d参数
 ```
