@@ -100,19 +100,12 @@ class KineticsDataset(Dataset):
     def __getitem__(self, idx):
         pickle_path = os.path.join(self.pickle_dir, self.pickle_paths[idx])
 
-        try:
-            if six.PY2:
-                data = pickle.load(open(pickle_path, 'rb'))
-            else:
-                data = pickle.load(open(pickle_path, 'rb'), encoding='bytes')
+        if six.PY2:
+            data = pickle.load(open(pickle_path, 'rb'))
+        else:
+            data = pickle.load(open(pickle_path, 'rb'), encoding='bytes')
 
-            vid, label, frames = data
-            if len(frames) < 1:
-                logger.error("{} contains no frame".format(pickle_path))
-                sys.exit(-1)
-        except Exception as e:
-            logger.error("Load {} failed: {}".format(pickle_path, e))
-            sys.exit(-1)
+        vid, label, frames = data
 
         if self.label_list is not None:
             label = self.label_list.index(label)
