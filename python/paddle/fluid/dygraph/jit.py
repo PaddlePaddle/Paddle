@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-__all__ = ['TracedLayer', 'declarative']
+__all__ = ['TracedLayer', 'declarative', 'dygraph_to_static_func']
 
 import warnings
 
@@ -49,6 +49,28 @@ def extract_vars(inputs):
     result_list = []
     _extract_vars(inputs, result_list)
     return result_list
+
+
+def _dygraph_to_static_func_(dygraph_func):
+    # TODO: remove this decorator after we finalize training API
+    def __impl__(*args, **kwargs):
+        if in_dygraph_mode():
+            warnings.warn(
+                "The decorator 'dygraph_to_static_func' doesn't work in "
+                "dygraph mode. We will just return dygraph output. Use the "
+                "decorator in static mode if you would like to translate to "
+                "static graph.")
+            return dygraph_func(*args, **kwargs)
+        program_translator = ProgramTranslator()
+        if not program_translator.enable_declarative:
+            return dygraph_func(*args, **kwargs)
+        static_func = program_translator.get_func(dygraph_func)
+        return static_func(*args, **kwargs)
+
+    return __impl__
+
+
+dygraph_to_static_func = wrap_decorator(_dygraph_to_static_func_)
 
 
 def _declarative_(dygraph_func):

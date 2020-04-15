@@ -274,6 +274,7 @@ class ProgramTranslator(object):
         self._loss_name = None
         # Once startup_program is changed, should run startup_program.
         self._prev_startup = None
+        self.enable_declarative = True
 
     def enable_declarative_function(self, enable_declarative):
         self.enable_declarative = enable_declarative

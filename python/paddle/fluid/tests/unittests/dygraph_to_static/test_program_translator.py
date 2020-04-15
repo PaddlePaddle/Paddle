@@ -49,7 +49,8 @@ def dyfunc_with_if_else(x_v, label=None):\n\
     return x_v\n"
 
         x_v = None
-        code = dygraph_to_static_code(dyfunc_with_if_else)(x_v)
+        program_translator = ProgramTranslator()
+        code = program_translator.get_code(dyfunc_with_if_else)
         self.assertEqual(answer, code)
 
     def test_program_translator(self):

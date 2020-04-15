@@ -42,7 +42,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import dygraph_class_to_static
 
 __all__ = ['DygraphToStaticAst', 'convert_to_static']
 
-DECORATOR_NAMES = ['declarative']
+DECORATOR_NAMES = ['declarative', 'dygraph_to_static_func']
 
 
 class DygraphToStaticAst(gast.NodeTransformer):
