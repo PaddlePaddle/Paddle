@@ -42,7 +42,7 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(wx_dims.size(), 2,
                     platform::errors::InvalidArgument(
                         "The rank of Input(WeightX) should be 2, but received "
-                        "WeightX size is:%d, WeightX dim is:[%s] ",
+                        "WeightX dim size is:%d, WeightX dim is:[%s] ",
                         wx_dims.size(), wx_dims));
   PADDLE_ENFORCE_EQ(wx_dims[0], x_dims[1],
                     platform::errors::InvalidArgument(
@@ -61,8 +61,9 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
                         wh_dims.size(), wh_dims));
   PADDLE_ENFORCE_EQ(wh_dims[0], frame_size,
                     platform::errors::InvalidArgument(
-                        "The first dimension of Input(WeightH) "
-                        "should equal to frame_size, but received WeightH is: "
+                        "The first dimension of WeightH "
+                        "should equal to frame_size, but received WeightH's "
+                        "first dimension is: "
                         "%d, frame size is:%d",
                         wh_dims[0], frame_size));
   PADDLE_ENFORCE_EQ(wh_dims[1], 3 * frame_size,
