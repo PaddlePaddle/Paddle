@@ -17,9 +17,7 @@ from ..framework import Parameter
 from .layers import Layer
 
 __all__ = [
-    'Sequential',
-    'ParameterList',
-    'LayerList',
+    'Sequential', 'ParameterList', 'LayerList', 'ParameterDict', 'LayerDict'
 ]
 
 
