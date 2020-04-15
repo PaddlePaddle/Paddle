@@ -91,10 +91,10 @@ __all__ = [
     'dice_loss',
     'image_resize',
     'image_resize_short',
+    'resize_linear',
     'resize_bilinear',
     'resize_trilinear',
     'resize_nearest',
-    'resize_linear',
     'gather',
     'gather_nd',
     'scatter',
@@ -6648,7 +6648,7 @@ def image_resize(input,
                                input and output tensors are aligned, preserving the values at the 
                                corner pixels.
                                Default: True
-        align_mode(int)  :  An optional for bilinear interpolation. can be \'0\' 
+        align_mode(int)  :  An optional for linear interpolation. can be \'0\' 
                             for src_idx = scale*(dst_indx+0.5)-0.5 , can be \'1\' for 
                             src_idx = scale*dst_index.
         data_format (str, optional): Specify the data format of the input, and the data format of the output 
@@ -6666,15 +6666,17 @@ def image_resize(input,
         TypeError: actual_shape should either be Variable or None.
         ValueError: The 'resample' of image_resize can only be 'BILINEAR',
                     'TRILINEAR' or 'NEAREST' currently.
+        ValueError: 'LINEAR' only support 3-D tensor.
         ValueError: 'BILINEAR' and 'NEAREST' only support 4-D tensor.
         ValueError: 'TRILINEAR' only support 5-D tensor.
         ValueError: One of out_shape and scale must not be None.
+        ValueError: out_shape length should be 1 for input 3-D tensor.
         ValueError: out_shape length should be 2 for input 4-D tensor.
         ValueError: out_shape length should be 3 for input 5-D tensor.
         ValueError: scale should be greater than zero.
         TypeError: align_corners should be a bool value
         ValueError: align_mode can only be '0' or '1'
-        ValueError: data_format can only be 'NCHW', 'NHWC', 'NCDHW' or 'NDHWC'.
+        ValueError: data_format can only be 'NCW', 'NCHW', 'NHWC', 'NCDHW' or 'NDHWC'.
 
     Examples:
         .. code-block:: python
@@ -6750,8 +6752,12 @@ def image_resize(input,
             "or 'NEAREST' currently.")
     resample_type = resample_methods[resample]
 
-    if resample in ['BILINEAR', 'NEAREST', 'LINEAR'] and len(input.shape) != 4:
+    if resample in ['LINEAR'] and len(input.shape) != 3:
+        raise ValueError("'LINER only support 3-D tensor.")
+
+    if resample in ['BILINEAR', 'NEAREST'] and len(input.shape) != 4:
         raise ValueError("'BILINEAR' and 'NEAREST' only support 4-D tensor.")
+
     if resample == 'TRILINEAR' and len(input.shape) != 5:
         raise ValueError("'TRILINEAR'only support 5-D tensor.")
 
@@ -6829,7 +6835,16 @@ def image_resize(input,
                         size_list.append(dim)
                 inputs['SizeTensor'] = new_size_tensor
 
-            if len(input.shape) == 4:
+            if len(input.shape) == 3:
+                if len(out_shape) != 1:
+                    raise ValueError("out_shape length should be 2 for "
+                                     "input 4-D tensor.")
+                if contain_var:
+                    attrs['out_w'] = size_list[0]
+                else:
+                    out_shape = list(map(int, out_shape))
+                    attrs['out_w'] = out_shape[0]
+            elif len(input.shape) == 4:
                 if len(out_shape) != 2:
                     raise ValueError("out_shape length should be 2 for "
                                      "input 4-D tensor.")
@@ -6875,7 +6890,6 @@ def image_resize(input,
         inputs["OutSize"] = actual_shape
     elif actual_shape is not None:
         raise TypeError("actual_shape should either be Variable or None.")
-
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='{}_interp'.format(resample_type),
@@ -6924,24 +6938,22 @@ def resize_linear(input,
           if:
               align_corners = False , align_mode = 0
               
-              input : (N,C,H_in,W_in)
-              output: (N,C,H_out,W_out) where:
+              input : (N,C,W_in)
+              output: (N,C,W_out) where:
               
-              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
               W_out = (W_{in}+0.5) * scale_{factor} - 0.5
 
           else:
 
-              input : (N,C,H_in,W_in)
-              output: (N,C,H_out,W_out) where:
-              H_out = H_{in} * scale_{factor}
+              input : (N,C,W_in)
+              output: (N,C,W_out) where:
               W_out = W_{in} * scale_{factor}
 
     Parameters:
-        input(Variable): 4-D Tensor(NCHW), its data type is float32, float64, or uint8,
+        input(Variable): 3-D Tensor(NCHW), its data type is float32, float64, or uint8,
                           its data format is specified by :attr:`data_format`.
         out_shape(list|tuple|Variable|None): Output shape of resize linear
-            layer, the shape is (out_h, out_w).Default: None. If a list, each 
+            layer, the shape is (out_w,). Default: None. If a list, each 
             element can be an integer or a Tensor Variable with shape: [1]. If a 
             Tensor Variable, its dimension size should be 1.
         scale(float|Variable|None): The multiplier for the input height or width. At
@@ -6970,7 +6982,7 @@ def resize_linear(input,
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-	Variable: 4-D tensor(NCHW or NHWC).
+	Variable: 3-D tensor(NCHW or NHWC).
     
     Examples:
         .. code-block:: python
@@ -6978,34 +6990,16 @@ def resize_linear(input,
 	    #declarative mode
 	    import paddle.fluid as fluid
 	    import numpy as np
-	    input = fluid.data(name="input", shape=[None,3,6,10])
+	    input = fluid.data(name="input", shape=[None,3,100])
 
 	    #1
-	    output = fluid.layers.resize_linear(input=input,out_shape=[12,12])
-
-	    #2
-	    #x = np.array([2]).astype("int32")
-	    #dim1 = fluid.data(name="dim1", shape=[1], dtype="int32")
-	    #fluid.layers.assign(input=x, output=dim1)
-	    #output = fluid.layers.resize_linear(input=input,out_shape=[12,dim1])
-
-	    #3
-	    #x = np.array([3,12]).astype("int32")
-	    #shape_tensor = fluid.data(name="shape_tensor", shape=[2], dtype="int32")
-	    #fluid.layers.assign(input=x, output=shape_tensor)
-	    #output = fluid.layers.resize_linear(input=input,out_shape=shape_tensor)
-
-	    #4
-	    #x = np.array([0.5]).astype("float32")
-	    #scale_tensor = fluid.data(name="scale", shape=[1], dtype="float32")
-	    #fluid.layers.assign(x,scale_tensor)
-	    #output = fluid.layers.resize_linear(input=input,scale=scale_tensor)
+	    output = fluid.layers.resize_linear(input=input,out_shape=[50,])
 
 	    place = fluid.CPUPlace()
 	    exe = fluid.Executor(place)
 	    exe.run(fluid.default_startup_program())
  
-	    input_data = np.random.rand(2,3,6,10).astype("float32")
+	    input_data = np.random.rand(1,3,100).astype("float64")
 
 	    output_data = exe.run(fluid.default_main_program(),
                 feed={"input":input_data},
@@ -7015,23 +7009,17 @@ def resize_linear(input,
 	    print(output_data[0].shape)
 
 	    #1
-	    # (2, 3, 12, 12)
-	    #2
-	    # (2, 3, 12, 2)
-	    #3
-	    # (2, 3, 3, 12)
-	    #4
-	    # (2, 3, 3, 5)
+	    # (1, 3, 50)
 
 	    #imperative mode
 	    import paddle.fluid.dygraph as dg
 
 	    with dg.guard(place) as g:
     		input = dg.to_variable(input_data)
-    		output = fluid.layers.resize_linear(input=input, out_shape=[12,12])
+    		output = fluid.layers.resize_linear(input=input, out_shape=[50,])
     		print(output.shape)
 
-		# [2L, 3L, 12L, 12L]
+		# [1L, 3L, 50L]
 
     """
 

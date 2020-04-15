@@ -21,6 +21,73 @@ namespace operators {
 using framework::Tensor;
 using DataLayout = framework::DataLayout;
 
+static void Interpolate1DInferShapeCheck(framework::InferShapeContext* ctx) {
+  auto dim_x = ctx->GetInputDim("X");
+  auto interp_method = ctx->Attrs().Get<std::string>("interp_method");
+
+  PADDLE_ENFORCE("linear" == interp_method,
+                 "Interpolation method can only be \"linear\" when"
+                 "Input(X) dimension is 3");
+  const DataLayout data_layout = framework::StringToDataLayout(
+      ctx->Attrs().Get<std::string>("data_layout"));
+
+  if (ctx->HasInputs("SizeTensor")) {
+    // top prority size
+    auto inputs_name = ctx->Inputs("SizeTensor");
+    PADDLE_ENFORCE_EQ(
+        inputs_name.size(), 1,
+        "Input(SizeTensor)'size of Op(interpolate) must be 1. "
+        "Attr(out_shape)'s length must be 1 for 3-D input tensor.");
+    int out_w = ctx->Attrs().Get<int>("out_w");
+    framework::DDim dim_out;
+    if (data_layout == DataLayout::kNCHW) {
+      dim_out = {dim_x[0], dim_x[1], out_w};
+    } else {
+      dim_out = {dim_x[0], out_w, dim_x[2]};
+    }
+    ctx->SetOutputDim("Out", dim_out);
+
+    return;
+  }
+
+  int out_w;
+  if (ctx->HasInput("Scale")) {
+    auto scale_tensor = ctx->GetInputDim("Scale");
+    PADDLE_ENFORCE_EQ(scale_tensor.size(), 1,
+                      "Scale's dimension size must be 1.");
+    out_w = -1;
+  } else {
+    float scale = ctx->Attrs().Get<float>("scale");
+    if (scale > 0) {
+      // round down
+      out_w = (data_layout == DataLayout::kNCHW
+                   ? static_cast<int>(dim_x[3] * scale)
+                   : static_cast<int>(dim_x[2] * scale));
+      // protect when input shape is -1
+      out_w = out_w > 0 ? out_w : -1;
+    } else {
+      out_w = ctx->Attrs().Get<int>("out_w");
+    }
+  }
+
+  if (ctx->HasInput("OutSize") && ctx->IsRuntime()) {
+    auto out_size_dim = ctx->GetInputDim("OutSize");
+    PADDLE_ENFORCE_EQ(out_size_dim.size(), 1,
+                      "OutSize's dimension size must be 1");
+    PADDLE_ENFORCE_EQ(out_size_dim[0], 1, "OutSize's dim[0] must be 1");
+    ctx->ShareLoD("X", "Out");
+    return;
+  }
+
+  framework::DDim dim_out;
+  if (data_layout == DataLayout::kNCHW) {
+    dim_out = {dim_x[0], dim_x[1], out_w};
+  } else {
+    dim_out = {dim_x[0], out_w, dim_x[2]};
+  }
+  ctx->SetOutputDim("Out", dim_out);
+}
+
 static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
   auto dim_x = ctx->GetInputDim("X");
   auto interp_method = ctx->Attrs().Get<std::string>("interp_method");
@@ -190,10 +257,13 @@ class InterpolateOp : public framework::OperatorWithKernel {
                    "Output(Out) of InterpolationOp should not be null.");
 
     auto dim_x = ctx->GetInputDim("X");  // NCHW format
-    PADDLE_ENFORCE(dim_x.size() == 4 || dim_x.size() == 5,
+    PADDLE_ENFORCE(dim_x.size() == 3 || dim_x.size() == 4 || dim_x.size() == 5,
                    "Input(X) dimension must be 4 or 5");
 
-    if (dim_x.size() == 4) {
+    if (dim_x.size() == 3) {
+      // shape check for 1D interpolate for input tensor shape NCHW
+      Interpolate1DInferShapeCheck(ctx);
+    } else if (dim_x.size() == 4) {
       // shape check for 2D interpolate for input tensor shape NCHW
       Interpolate2DInferShapeCheck(ctx);
     } else {  // dim_x.size() == 5
@@ -260,13 +330,13 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("out_h", "output height of interpolate op.").SetDefault(0);
     AddAttr<int>("out_w", "output width of interpolate op.").SetDefault(0);
     AddAttr<float>("scale", "scale factor of interpolate op.").SetDefault(0.);
-    AddAttr<std::string>("interp_method",
-                         "(string, default \"bilinear\"), interpolation "
-                         "method, can be \"bilinear\" for "
-                         "bilinear interpolation, \"trilinear\" for trilinear "
-                         "interpolation and \"nearest\" for nearest "
-                         "neighbor interpolation, \"linear\" for linear"
-                         "interpolation")
+    AddAttr<std::string>(
+        "interp_method",
+        "(string, default \"bilinear\"), interpolation "
+        "method, can be \"bilinear\" for "
+        "bilinear interpolation, \"trilinear\" for trilinear "
+        "interpolation and \"nearest\" for nearest "
+        "neighbor interpolation, \"linear\" for linear interpolation")
         .SetDefault("bilinear");
     AddAttr<bool>(
         "align_corners",
