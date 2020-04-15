@@ -23,6 +23,8 @@ class SliceOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
+// This OP is implemented by trt dynamic shpae plugin.
+// Dynamic shape plugin requires TRT version greater than 6.0.
 #if IS_TRT_VERSION_GE(6000)
     VLOG(4) << "convert slice op to tensorrt layer";
     framework::OpDesc op_desc(op, nullptr);

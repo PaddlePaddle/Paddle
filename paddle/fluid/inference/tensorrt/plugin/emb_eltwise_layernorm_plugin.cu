@@ -28,7 +28,7 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-// Dynamic Plugin below.
+// Dynamic shape plugin requires TRT version greater than 6.0.
 #if IS_TRT_VERSION_GE(6000)
 
 template <typename T>
@@ -198,11 +198,15 @@ int EmbEltwiseLayernormPluginDynamic<T>::enqueue(
         out_type == nvinfer1::DataType::kFLOAT, true,
         platform::errors::InvalidArgument(
             "The EmbEltwiseLayernorm Plugin only support fp32 input."));
-  } else {
+  } else if (sizeof(T) == sizeof(int16_t)) {
     PADDLE_ENFORCE_EQ(
         out_type == nvinfer1::DataType::kHALF, true,
         platform::errors::InvalidArgument(
             "The EmbEltwiseLayernorm Plugin only support fp16 input."));
+  } else {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Unsupport data type, the out type of EmbEltwiseLayernorm should be "
+        "float or half."));
   }
 
   T *output_d = static_cast<T *>(outputs[0]);
@@ -217,7 +221,7 @@ int EmbEltwiseLayernormPluginDynamic<T>::enqueue(
 template class EmbEltwiseLayernormPluginDynamic<float>;
 #ifdef SUPPORTS_CUDA_FP16
 template class EmbEltwiseLayernormPluginDynamic<half>;
-#endif
+#endif  // SUPPORTS_CUDA_FP16
 
 #endif
 
