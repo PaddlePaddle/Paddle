@@ -14,14 +14,21 @@
 
 import paddle.fluid as fluid
 from paddle.fluid import ParamAttr
+from paddle.fluid.framework import in_dygraph_mode
 import numpy as np
 import math
 
 from hapi.model import Model, Loss
+from hapi.download import get_weights_path
 
-__all__ = ["BMN", "BmnLoss"]
+__all__ = ["BMN", "BmnLoss", "bmn"]
 
 DATATYPE = 'float32'
+
+pretrain_infos = {
+    'bmn': ('https://paddlemodels.bj.bcebos.com/hapi/bmn.pdparams',
+         '9286c821acc4cad46d6613b931ba468c')
+}
 
 
 def _get_interp1d_bin_mask(seg_xmin, seg_xmax, tscale, num_sample,
@@ -120,7 +127,13 @@ class Conv1D(fluid.dygraph.Layer):
 
 
 class BMN(Model):
-    def __init__(self, cfg, is_dygraph=True):
+    """BMN model from
+    `"BMN: Boundary-Matching Network for Temporal Action Proposal Generation" <https://arxiv.org/abs/1907.09702>`_
+
+    Args:
+        cfg (AttrDict): configs for BMN model
+    """
+    def __init__(self, cfg):
         super(BMN, self).__init__()
 
         #init config
@@ -129,7 +142,6 @@ class BMN(Model):
         self.prop_boundary_ratio = cfg.MODEL.prop_boundary_ratio
         self.num_sample = cfg.MODEL.num_sample
         self.num_sample_perbin = cfg.MODEL.num_sample_perbin
-        self.is_dygraph = is_dygraph
 
         self.hidden_dim_1d = 256
         self.hidden_dim_2d = 128
@@ -184,7 +196,7 @@ class BMN(Model):
         sample_mask_array = get_interp1d_mask(
             self.tscale, self.dscale, self.prop_boundary_ratio,
             self.num_sample, self.num_sample_perbin)
-        if self.is_dygraph:
+        if in_dygraph_mode(): 
             self.sample_mask = fluid.dygraph.base.to_variable(
                 sample_mask_array)
         else:  # static
@@ -277,6 +289,11 @@ class BMN(Model):
 
 
 class BmnLoss(Loss):
+    """Loss for BMN model
+
+    Args:
+        cfg (AttrDict): configs for BMN model
+    """
     def __init__(self, cfg):
         super(BmnLoss, self).__init__()
         self.cfg = cfg
@@ -418,3 +435,20 @@ class BmnLoss(Loss):
 
         loss = tem_loss + 10 * pem_reg_loss + pem_cls_loss
         return loss
+
+
+def bmn(cfg, pretrained=True):
+    """BMN model
+    
+    Args:
+        cfg (AttrDict): configs for BMN model
+        pretrained (bool): If True, returns a model with pre-trained model
+            on COCO, default True
+    """
+    model = BMN(cfg)
+    if pretrained:
+        weight_path = get_weights_path(*(pretrain_infos['bmn']))
+        assert weight_path.endswith('.pdparams'), \
+                "suffix of weight must be .pdparams"
+        model.load(weight_path[:-9])
+    return model
