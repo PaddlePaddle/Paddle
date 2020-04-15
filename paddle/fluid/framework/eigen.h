@@ -115,5 +115,29 @@ struct EigenScalar {
   }
 };
 
+// Define Tensor with 32-bit index.
+template <typename T, int D, int MajorType = Eigen::RowMajor>
+using Tensor32BitIndex =
+    Eigen::TensorMap<Eigen::Tensor<T, D, MajorType, int>, Eigen::Aligned>;
+
+typedef Tensor32BitIndex<float, 1>::Index Index32;
+
+template <typename DSizes>
+Eigen::DSizes<Index32, DSizes::count> To32BitDims(const DSizes& in) {
+  Eigen::DSizes<Index32, DSizes::count> out;
+  for (int i = 0; i < DSizes::count; ++i) {
+    out[i] = in[i];
+  }
+  return out;
+}
+
+template <typename EigenTensor>
+Tensor32BitIndex<typename EigenTensor::Scalar, EigenTensor::NumIndices>
+To32BitIndex(EigenTensor in) {
+  using RetType =
+      Tensor32BitIndex<typename EigenTensor::Scalar, EigenTensor::NumIndices>;
+  return RetType(in.data(), To32BitDims(in.dimensions()));
+}
+
 }  // namespace framework
 }  // namespace paddle
