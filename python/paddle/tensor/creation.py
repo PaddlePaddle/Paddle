@@ -539,7 +539,7 @@ def full(shape,
     return out
 
 
-def arange(start, end, step, dtype):
+def arange(start, end, step=1, dtype=None, name=None):
     """
     Return evenly spaced values within a given interval.
 
@@ -566,10 +566,20 @@ def arange(start, end, step, dtype):
         .. code-block:: python
 
              import paddle
+             # expected out put: [0, 2, 4, 6, 8]
              data = paddle.arange(0, 10, 2, 'int32')
 
+         #dygraph mode
+             with fluid.dygraph.guard():
+                 # x: [0, 2, 4]
+                 # x dtype: float32
+                 x = paddle.arange(0, 6, 2) 
+             
     """
     helper = LayerHelper("range", **locals())
+
+    if dtype is None:
+        dtype = 'float32'
 
     check_dtype(dtype, 'create data type',
                 ['float32', 'float64', 'int32', 'int64'], 'range')

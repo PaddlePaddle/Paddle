@@ -625,13 +625,13 @@ def bmm(x, y, name=None):
         input2 = np.array([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],[[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
 
         with fluid.dygraph.guard():
-        x = fluid.dygraph.to_variable(input1)
-        y = fluid.dygraph.to_variable(input2)
-        out = paddle.bmm(x, y)
-        #output size: (2, 2, 2)
-        #output value:
-        [[[6.0, 6.0],[12.0, 12.0]],[[45.0, 45.0],[60.0, 60.0]]]
-        out_np = out.numpy()
+            x = fluid.dygraph.to_variable(input1)
+            y = fluid.dygraph.to_variable(input2)
+            out = paddle.bmm(x, y)
+            #output size: (2, 2, 2)
+            #output value:
+            [[[6.0, 6.0],[12.0, 12.0]],[[45.0, 45.0],[60.0, 60.0]]]
+            out_np = out.numpy()
     """
 
     helper = LayerHelper('bmm', **locals())
