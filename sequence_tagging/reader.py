@@ -76,11 +76,11 @@ class LacDataset(object):
 
     @property
     def vocab_size(self):
-        return len(self.word2id_dict.values())
+        return max(self.word2id_dict.values()) + 1
 
     @property
     def num_labels(self):
-        return len(self.label2id_dict.values())
+        return max(self.label2id_dict.values()) + 1
 
     def get_num_examples(self, filename):
         """num of line of file"""
@@ -120,61 +120,97 @@ class LacDataset(object):
 
         def wrapper():
             fread = io.open(filename, "r", encoding="utf-8")
-            headline = next(fread)
-            headline = headline.strip().split('\t')
-            assert len(headline) == 2 and headline[0] == "text_a" and headline[
-                1] == "label"
-            buf = []
-            for line in fread:
-                words, labels = line.strip("\n").split("\t")
-                if len(words) < 1:
-                    continue
-                word_ids = self.word_to_ids(words.split("\002"))
-                label_ids = self.label_to_ids(labels.split("\002"))
-                assert len(word_ids) == len(label_ids)
-                word_ids = word_ids[0:max_seq_len]
-                words_len = np.int64(len(word_ids))
-                word_ids += [0 for _ in range(max_seq_len - words_len)]
-                label_ids = label_ids[0:max_seq_len]
-                label_ids += [0 for _ in range(max_seq_len - words_len)]
-                assert len(word_ids) == len(label_ids)
-                yield word_ids, label_ids, words_len
+            if mode == "train" or mode == "test": 
+                headline = next(fread)
+                headline = headline.strip().split('\t')
+                assert len(headline) == 2 and headline[0] == "text_a" and headline[
+                    1] == "label"
+                buf = []
+                for line in fread:
+                    words, labels = line.strip("\n").split("\t")
+                    if len(words) < 1:
+                        continue
+                    word_ids = self.word_to_ids(words.split("\002"))
+                    label_ids = self.label_to_ids(labels.split("\002"))
+                    assert len(word_ids) == len(label_ids)
+                    word_ids = word_ids[0:max_seq_len]
+                    words_len = np.int64(len(word_ids))
+                    word_ids += [0 for _ in range(max_seq_len - words_len)]
+                    label_ids = label_ids[0:max_seq_len]
+                    label_ids += [0 for _ in range(max_seq_len - words_len)]
+                    assert len(word_ids) == len(label_ids)
+                    yield word_ids, label_ids, words_len
+            else: 
+                for line in fread: 
+                    words = line.strip("\n").split('\t')[0]
+                    if words == u"text_a": 
+                        continue
+                    if "\002" not in words: 
+                        word_ids = self.word_to_ids(words)
+                    else: 
+                        word_ids = self.word_to_ids(words.split("\002"))
+                    words_len = np.int64(len(word_ids))
+                    yield word_ids, words_len
+
             fread.close()
 
         return wrapper
 
 
 def create_lexnet_data_generator(args, reader, file_name, place, mode="train"):
-    def wrapper():
-        batch_words, batch_labels, seq_lens = [], [], []
-        for epoch in xrange(args.epoch):
+    def wrapper(): 
+        if mode == "train" or mode == "test": 
+            batch_words, batch_labels, seq_lens = [], [], []
+            for epoch in xrange(args.epoch):
+                for instance in reader.file_reader(
+                        file_name, mode, max_seq_len=args.max_seq_len)():
+                    words, labels, words_len = instance
+                    if len(seq_lens) < args.batch_size:
+                        batch_words.append(words)
+                        batch_labels.append(labels)
+                        seq_lens.append(words_len)
+                    if len(seq_lens) == args.batch_size:
+                        yield batch_words, seq_lens, batch_labels, batch_labels
+                        batch_words, batch_labels, seq_lens = [], [], []
+
+            if len(seq_lens) > 0:
+                yield batch_words, seq_lens, batch_labels, batch_labels
+        else: 
+            batch_words, seq_lens, max_len = [], [], 0
             for instance in reader.file_reader(
-                    file_name, mode, max_seq_len=args.max_seq_len)():
-                words, labels, words_len = instance
+                   file_name, mode, max_seq_len=args.max_seq_len)():
+                words, words_len = instance
                 if len(seq_lens) < args.batch_size:
                     batch_words.append(words)
-                    batch_labels.append(labels)
                     seq_lens.append(words_len)
+                    if words_len > max_len: 
+                        max_len = words_len
                 if len(seq_lens) == args.batch_size:
-                    yield batch_words, batch_labels, seq_lens, batch_labels
-                    batch_words, batch_labels, seq_lens = [], [], []
-
-        if len(seq_lens) > 0:
-            yield batch_words, batch_labels, seq_lens, batch_labels
-            batch_words, batch_labels, seq_lens = [], [], []
+                    padding_batch_words = []
+                    for words in batch_words: 
+                        words += [0 for _ in range(max_len - len(words))]
+		        padding_batch_words.append(words)
+                    yield padding_batch_words, seq_lens
+                    batch_words, seq_lens, max_len = [], [], 0
+            if len(seq_lens) > 0: 
+                padding_batch_words = []
+                for words in batch_words:
+                    words += [0 for _ in range(max_len - len(words))]
+                    padding_batch_words.append(words)
+                yield padding_batch_words, seq_lens
 
     return wrapper
 
 
 def create_dataloader(generator, place, feed_list=None):
     if not feed_list:
-        data_loader = paddle.io.DataLoader.from_generator(
+        data_loader = fluid.io.DataLoader.from_generator(
             capacity=50,
             use_double_buffer=True,
             iterable=True,
             return_list=True)
     else:
-        data_loader = paddle.io.DataLoader.from_generator(
+        data_loader = fluid.io.DataLoader.from_generator(
             feed_list=feed_list,
             capacity=50,
             use_double_buffer=True,

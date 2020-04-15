@@ -1754,7 +1754,7 @@ class SequenceTagging(fluid.dygraph.Layer):
                 name='crfw', learning_rate=self.crf_lr),
             size=self.num_labels)
 
-    def forward(self, word, target, lengths):
+    def forward(self, word, lengths, target=None):
         """
         Configure the network
         """
@@ -1767,9 +1767,13 @@ class SequenceTagging(fluid.dygraph.Layer):
 
         emission = self.fc(bigru_output)
 
-        crf_cost = self.linear_chain_crf(
-            input=emission, label=target, length=lengths)
-        avg_cost = fluid.layers.mean(x=crf_cost)
-        self.crf_decoding.weight = self.linear_chain_crf.weight
-        crf_decode = self.crf_decoding(input=emission, length=lengths)
-        return crf_decode, avg_cost, lengths
+        if target: 
+            crf_cost = self.linear_chain_crf(
+                input=emission, label=target, length=lengths)
+            avg_cost = fluid.layers.mean(x=crf_cost)
+            self.crf_decoding.weight = self.linear_chain_crf.weight
+            crf_decode = self.crf_decoding(input=emission, length=lengths)
+            return crf_decode, avg_cost, lengths
+        else: 
+            crf_decode = self.crf_decoding(input=emission, length=lengths)
+            return crf_decode, lengths
