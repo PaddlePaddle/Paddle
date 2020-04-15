@@ -377,6 +377,8 @@ class NLLLoss(fluid.dygraph.Layer):
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned; 
             Default is ``'mean'``.
+        ignore_index (int64, optional): Specifies a target value that is ignored
+            and does not contribute to the input gradient.
 
     Returns:
         The tensor variable storing the nll_loss.
