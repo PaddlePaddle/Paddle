@@ -22,10 +22,8 @@ class FillZerosLikeOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of FillZerosLikeOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of FillZerosLikeOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "fill_zeros_like");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "fill_zeros_like");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
   }

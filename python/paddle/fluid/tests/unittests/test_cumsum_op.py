@@ -17,6 +17,9 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid.core as core
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
 
 
 class TestSumOp1(OpTest):
@@ -123,6 +126,17 @@ class TestSumOp8(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+class BadInputTest(unittest.TestCase):
+    def test_error(self):
+        with fluid.program_guard(fluid.Program()):
+
+            def test_bad_x():
+                data = [1, 2, 3]
+                result = fluid.layers.cumsum(data, axis=0)
+
+            self.assertRaises(TypeError, test_bad_x)
 
 
 if __name__ == '__main__':

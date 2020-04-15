@@ -74,12 +74,13 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
         static_cast<unsigned int>(ctx.Attr<int>("diag_step"));
     auto diag_val = static_cast<T>(ctx.Attr<float>("diag_val"));
     if (diag_num > 0) {
-      PADDLE_ENFORCE_GT(size, (diag_num - 1) * (diag_step + 1),
-                        "ShapeError: the diagonal's elements is equal (num-1) "
-                        "* (step-1) with num %d, step %d,"
-                        "It should be smaller than %d, but received %d",
-                        diag_num, diag_step, (diag_num - 1) * (diag_step + 1),
-                        size);
+      PADDLE_ENFORCE_GT(
+          size, (diag_num - 1) * (diag_step + 1),
+          platform::errors::InvalidArgument(
+              "ShapeInvalid: the diagonal's elements is equal (num-1) "
+              "* (step-1) with num %d, step %d,"
+              "It should be smaller than %d, but received %d",
+              diag_num, diag_step, (diag_num - 1) * (diag_step + 1), size));
       for (int64_t i = 0; i < diag_num; ++i) {
         int64_t pos = i * diag_step + i;
         data[pos] = diag_val;
@@ -93,25 +94,27 @@ class UniformRandomOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of UniformRandomOp should not be null.");
-
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "UniformRandom");
     PADDLE_ENFORCE_LT(ctx->Attrs().Get<float>("min"),
                       ctx->Attrs().Get<float>("max"),
-                      "uniform_random's min must less then max");
+                      platform::errors::InvalidArgument(
+                          "uniform_random's min must less then max"));
     PADDLE_ENFORCE_GE(ctx->Attrs().Get<int>("diag_num"), 0,
-                      "diag_num must greater than or equal 0");
+                      platform::errors::InvalidArgument(
+                          "diag_num must greater than or equal 0"));
     PADDLE_ENFORCE_GE(ctx->Attrs().Get<int>("diag_step"), 0,
-                      "diag_step must greater than or equal 0");
+                      platform::errors::InvalidArgument(
+                          "diag_step must greater than or equal 0"));
 
     if (ctx->HasInputs("ShapeTensorList")) {
       // top prority shape
       auto inputs_name = ctx->Inputs("ShapeTensorList");
       PADDLE_ENFORCE_GT(
           inputs_name.size(), 0,
-          "Input(ShapeTensorList)'size of Op(uniform_random) can't be zero."
-          "Please check the Attr(shape)'s size of"
-          "Op(fluid.layers.uniform_random).)");
+          platform::errors::InvalidArgument(
+              "Input(ShapeTensorList)'size of Op(uniform_random) can't be zero."
+              "Please check the Attr(shape)'s size of"
+              "Op(fluid.layers.uniform_random).)"));
       auto out_dims = std::vector<int>(inputs_name.size(), -1);
       ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
 
@@ -122,10 +125,11 @@ class UniformRandomOp : public framework::OperatorWithKernel {
       auto shape_dims = ctx->GetInputDim("ShapeTensor");
       PADDLE_ENFORCE_EQ(
           shape_dims.size(), 1,
-          "ShapeError: Input(ShapeTensor)' dimension size of "
-          "Op(uniform_random) must be 1."
-          "But received ShapeTensor's dimensions = %d, shape = [%s]",
-          shape_dims.size(), shape_dims);
+          platform::errors::InvalidArgument(
+              "ShapeError: Input(ShapeTensor)' dimension size of "
+              "Op(uniform_random) must be 1."
+              "But received ShapeTensor's dimensions = %d, shape = [%s]",
+              shape_dims.size(), shape_dims));
       int num_ele = 1;
       for (int i = 0; i < shape_dims.size(); ++i) {
         num_ele *= shape_dims[i];
@@ -136,11 +140,12 @@ class UniformRandomOp : public framework::OperatorWithKernel {
       return;
     }
 
-    PADDLE_ENFORCE_EQ(
-        shape.empty(), false,
-        "if there is no Input(ShapeTensorList) and no Input(ShapeTensor),the "
-        "attr(shape) information must "
-        "be set by Attr(shape).");
+    PADDLE_ENFORCE_EQ(shape.empty(), false,
+                      platform::errors::InvalidArgument(
+                          "if there is no Input(ShapeTensorList) and no "
+                          "Input(ShapeTensor),the "
+                          "attr(shape) information must "
+                          "be set by Attr(shape)."));
     std::vector<int64_t> tensor_shape;
     tensor_shape.reserve(shape.size());
     for (auto dim : shape) {
