@@ -798,12 +798,12 @@ class Model(fluid.dygraph.Layer):
                     "{} receives a shape {}, but the expected shape is {}.".
                     format(key, list(state.shape), list(param.shape)))
             return param, state
-
-	def _strip_postfix(path):
-	    path, ext = os.path.splitext(path)
-	    assert ext in ['', '.pdparams', '.pdopt', '.pdmodel'], \
-		    "Unknown postfix {} from weights".format(ext)
-	    return path
+        
+        def _strip_postfix(path):
+            path, ext = os.path.splitext(path)
+            assert ext in ['', '.pdparams', '.pdopt', '.pdmodel'], \
+                    "Unknown postfix {} from weights".format(ext)
+            return path
 
         path = _strip_postfix(path)
         param_state = _load_state_from_path(path + ".pdparams")
