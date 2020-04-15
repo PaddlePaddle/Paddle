@@ -26,7 +26,7 @@ class TestGetTensorFromSelectedRowsError(unittest.TestCase):
 
     def test_errors(self):
         with program_guard(Program()):
-            b = fluid.default_main_program().global_block()
+            b = paddle.fluid.default_main_program().global_block()
             x = b.create_var(
                 name="X",
                 dtype="float32",
