@@ -1282,7 +1282,7 @@ def addcmul(input, tensor1, tensor2, value=1.0, out=None, name=None):
                         Generally, no setting is required. Default: None.
 
     Returns:
-        out(Variable): The output result. A Tensor with type float32, float64, int32, int64.
+        out(Variable): The output result. A Tensor with the same data type as input's.
 
     Examples:
         .. code-block:: python
