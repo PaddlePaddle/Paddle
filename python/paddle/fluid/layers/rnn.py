@@ -116,12 +116,10 @@ class RNNCell(object):
             Variable: tensor variable[s] packed in the same structure provided \
                 by shape, representing the initialized states.
         """
-
-        check_type(batch_ref, 'batch_ref', (Variable, list, tuple), 'RNNCell')
-        check_type(shape, 'shape', (list, tuple, Variable, type(None)),
-                   'RNNCell')
-        check_type(dtype, 'dtype', (list, tuple, Variable, type(None)),
-                   'RNNCell')
+        check_variable_and_dtype(batch_ref, 'batch_ref', ['float32', 'float64'], 'RNNCell')
+        check_variable_and_dtype(shape, 'shape', ['int32', 'int64'], 'RNNCell')
+        check_dtype(dtype, 'dtype', ['float32', 'float64'],
+                'RNNCell')
 
         # TODO: use inputs and batch_size
         batch_ref = flatten(batch_ref)[0]
@@ -256,6 +254,7 @@ class GRUCell(RNNCell):
             dtype(string, optional): The data type used in this cell. Default float32.
             name(string, optional) : The name scope used to identify parameters and biases.
         """
+        check_type(hidden_size, 'hidden_size', (int), 'GRUCell')
         check_dtype(dtype, 'dtype', ['float32', 'float64'], 'GRUCell')
         self.hidden_size = hidden_size
         from .. import contrib  # TODO: resolve recurrent import
@@ -354,6 +353,7 @@ class LSTMCell(RNNCell):
             dtype(string, optional): The data type used in this cell. Default float32.
             name(string, optional) : The name scope used to identify parameters and biases.
         """
+        check_type(hidden_size, 'hidden_size', (int), 'LSTMCell')
         check_dtype(dtype, 'dtype', ['float32', 'float64'], 'LSTMCell')
         self.hidden_size = hidden_size
         from .. import contrib  # TODO: resolve recurrent import
@@ -465,8 +465,16 @@ def rnn(cell,
             outputs = fluid.layers.rnn(cell=cell, inputs=inputs)
     """
     check_type(inputs, 'inputs', (Variable, list, tuple), 'rnn')
+    if isinstance(inputs, (list, tuple)):
+        for i, input_x in enumerate(inputs):
+            check_variable_and_dtype(input_x, 'inputs[' + str(i) + ']',
+                                        ['float32', 'float64'], 'rnn')
     check_type(initial_states, 'initial_states',
                (Variable, list, tuple, type(None)), 'rnn')
+    if isinstance(initial_states, (list, tuple)):
+        for i, state in enumerate(initial_states):
+            check_variable_and_dtype(state, 'initial_states[' + str(i) + ']',
+                                        ['float32', 'float64'], 'rnn')
     check_type(sequence_length, 'sequence_length', (Variable, type(None)),
                'rnn')
 
@@ -2155,6 +2163,9 @@ def lstm(input,
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'lstm')
     check_variable_and_dtype(init_h, 'init_h', ['float32', 'float64'], 'lstm')
     check_variable_and_dtype(init_c, 'init_c', ['float32', 'float64'], 'lstm')
+    check_type(max_len, 'max_len', (int), 'lstm')
+    check_type(hidden_size, 'hidden_size', (int), 'lstm')
+    check_type(num_layers, 'num_layers', (int), 'lstm')
     dtype = input.dtype
     input_shape = list(input.shape)
     input_size = input_shape[-1]
@@ -2682,6 +2693,7 @@ def gru_unit(input,
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'gru_unit')
     check_variable_and_dtype(hidden, 'hidden', ['float32', 'float64'],
                              'gru_unit')
+    check_type(size, 'size', (int), 'gru_unit')
     activation_dict = dict(
         identity=0,
         sigmoid=1,
