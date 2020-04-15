@@ -275,7 +275,7 @@ function check_style() {
     fi
 
 
-    pip install cpplint pylint==2.4.4 pytest astroid isort
+    pip install cpplint pylint pytest astroid isort
     # set up go environment for running gometalinter
     mkdir -p $GOPATH/src/github.com/PaddlePaddle/
     ln -sf ${PADDLE_ROOT} $GOPATH/src/github.com/PaddlePaddle/Paddle
