@@ -41,7 +41,7 @@ class TestRandintOp(OpTest):
         self.outputs = {"Out": np.zeros((10000, 784)).astype("float32")}
 
     def init_attrs(self):
-        self.attrs = {"shape": [10000, 784], "low": -10, "high": 10}
+        self.attrs = {"shape": [10000, 784], "low": -10, "high": 10, "seed": 10}
         self.output_hist = output_hist
 
     def test_check_output(self):
@@ -90,7 +90,7 @@ class TestRandintOp_attr_tensorlist(OpTest):
         self.outputs = {"Out": np.zeros((10000, 784)).astype("int32")}
 
     def init_attrs(self):
-        self.attrs = {"low": -10, "high": 10}
+        self.attrs = {"low": -10, "high": 10, "seed": 10}
         self.output_hist = output_hist
 
     def test_check_output(self):
@@ -111,7 +111,7 @@ class TestRandint_attr_tensor(OpTest):
         self.outputs = {"Out": np.zeros((10000, 784)).astype("int64")}
 
     def init_attrs(self):
-        self.attrs = {"low": -10, "high": 10}
+        self.attrs = {"low": -10, "high": 10, "seed": 10}
         self.output_hist = output_hist
 
     def test_check_output(self):
