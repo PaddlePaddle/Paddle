@@ -495,7 +495,7 @@ inline std::string GetCudaErrorMessage(cudaError_t e) {
   int32_t cuda_version = -1;
 #endif
   std::ostringstream sout;
-  sout << " CUDA runtime error(" << e << "): " << cudaGetErrorString(e) << ".";
+  sout << " CUDA runtime error(" << e << "), " << cudaGetErrorString(e) << ".";
   static platform::proto::cudaerrorDesc cudaerror;
   static bool _initSucceed = false;
   if (cudaerror.ByteSizeLong() == 0) {
@@ -548,27 +548,27 @@ inline std::string GetCudaErrorMessage(cudaError_t e) {
       if (cuda_version == cudaerror.allmessages(i).version()) {
         for (int j = 0; j < cudaerror.allmessages(i).messages_size(); ++j) {
           if (e == cudaerror.allmessages(i).messages(j).errorcode()) {
-            sout << "\n\nRecommended Solution: "
-                 << cudaerror.allmessages(i).messages(j).errormessage() << " ";
+            sout << "\n  [Advise: "
+                 << cudaerror.allmessages(i).messages(j).errormessage() << "]";
             return sout.str();
           }
         }
       }
     }
   }
-  sout << "\n\nRecommended Solution: Please search for the error code[" << e
-       << "] on website[" << GetCudaErrorWebsite(cuda_version)
-       << "] to get Nvidia's official solution about CUDA Error. ";
+  sout << "\n  [Advise: Please search for the error code(" << e
+       << ") on website( " << GetCudaErrorWebsite(cuda_version)
+       << " ) to get Nvidia's official solution about CUDA Error.]";
   return sout.str();
 }
 
 inline bool is_error(cudaError_t e) { return e != cudaSuccess; }
 
 inline std::string build_ex_string(cudaError_t e, const std::string& msg) {
-  // note(zhouwei): default message when input no error message by developer, it
-  // is not needed.
-  // better method is to refactor class ErrorSummary or
-  // PADDLE_ENFORCE_CUDA_SUCCESS
+  // note(zhouwei): the generated message when developer don't input error
+  // message, but it is not needed when CUDA ERROR;
+  // Better method is to refactor class ErrorSummary or
+  // PADDLE_ENFORCE_CUDA_SUCCESS.
   if (msg.find("An error occurred here") != std::string::npos) {
     return platform::errors::External(GetCudaErrorMessage(e)).ToString();
   }
