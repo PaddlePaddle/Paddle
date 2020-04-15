@@ -187,4 +187,4 @@ from .extension import diag_embed  #DEFINE_ALIAS
 # from .common import unfold   #DEFINE_ALIAS
 # from .common import bilinear_tensor_product   #DEFINE_ALIAS
 # from .common import assign   #DEFINE_ALIAS
-# from .common import interpolate   #DEFINE_ALIAS
+from .common import interpolate  #DEFINE_ALIAS
