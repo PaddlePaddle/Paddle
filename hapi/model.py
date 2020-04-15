@@ -67,7 +67,7 @@ def to_list(value):
     if value is None:
         return value
     if isinstance(value, (list, tuple)):
-        return value
+        return list(value)
     return [value]
 
 
@@ -473,7 +473,7 @@ class StaticGraphAdapter(object):
             if mode != 'test':
                 for metric in self.model._metrics:
                     metrics.append(
-                        to_list(metric.add_metric_op(outputs, labels)))
+                        to_list(metric.add_metric_op(*(outputs + labels))))
 
             if mode == 'train' and self.model._optimizer:
                 self._loss_endpoint = fluid.layers.sum(losses)
@@ -593,7 +593,7 @@ class DynamicGraphAdapter(object):
         metrics = []
         for metric in self.model._metrics:
             metric_outs = metric.add_metric_op(
-                to_list(outputs), to_list(labels))
+                *(to_list(outputs) + to_list(labels)))
             m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
@@ -632,7 +632,8 @@ class DynamicGraphAdapter(object):
                     self._merge_count[self.mode + '_total'] += samples
                     self._merge_count[self.mode + '_batch'] = samples
 
-            metric_outs = metric.add_metric_op(to_list(outputs), labels)
+            metric_outs = metric.add_metric_op(
+                *(to_list(outputs) + to_list(labels)))
             m = metric.update(*[to_numpy(m) for m in to_list(metric_outs)])
             metrics.append(m)
 
