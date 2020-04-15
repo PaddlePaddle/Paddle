@@ -82,6 +82,19 @@ namespace platform {
 #define LIKELY(condition) (condition)
 #endif
 
+#if defined _WIN32 && defined PADDLE_ON_INFERENCE && defined PADDLE_NO_PYTHON
+#define HANDLE_THE_ERROR try {
+#define END_HANDLE_THE_ERROR            \
+  }                                     \
+  catch (const std::exception& e) {     \
+    std::cout << e.what() << std::endl; \
+    throw;                              \
+  }
+#else
+#define HANDLE_THE_ERROR
+#define END_HANDLE_THE_ERROR
+#endif
+
 #ifdef __GNUC__
 inline std::string demangle(std::string name) {
   int status = -4;  // some arbitrary value to eliminate the compiler warning
@@ -223,8 +236,10 @@ inline void throw_on_error(bool stat, const std::string& msg) {
 // Note: This Macro can only be used within enforce.h
 #define __THROW_ERROR_INTERNAL__(...)                                \
   do {                                                               \
+    HANDLE_THE_ERROR                                                 \
     throw ::paddle::platform::EnforceNotMet(                         \
         ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
+    END_HANDLE_THE_ERROR                                             \
   } while (0)
 
 /** ENFORCE EXCEPTION AND MACROS **/
@@ -251,8 +266,10 @@ struct EnforceNotMet : public std::exception {
 
 #define PADDLE_THROW(...)                                                   \
   do {                                                                      \
+    HANDLE_THE_ERROR                                                        \
     throw ::paddle::platform::EnforceNotMet(                                \
         ::paddle::platform::ErrorSummary(__VA_ARGS__), __FILE__, __LINE__); \
+    END_HANDLE_THE_ERROR                                                    \
   } while (0)
 
 #if defined(__CUDA_ARCH__)
@@ -279,8 +296,10 @@ struct EnforceNotMet : public std::exception {
                 __cond__,                                                   \
                 ::paddle::platform::ErrorSummary(__VA_ARGS__).ToString())); \
       } catch (...) {                                                       \
+        HANDLE_THE_ERROR                                                    \
         throw ::paddle::platform::EnforceNotMet(std::current_exception(),   \
                                                 __FILE__, __LINE__);        \
+        END_HANDLE_THE_ERROR                                                \
       }                                                                     \
     }                                                                       \
   } while (0)
@@ -349,6 +368,74 @@ struct EnforceNotMet : public std::exception {
 #define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) \
   __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <=, >, __VA_ARGS__)
 
+/** EXTENDED TOOL FUNCTIONS WITH CHECKING **/
+
+/*
+ * Summary: This macro is used to get Variable or internal type
+ *   data (such as LoDTensor or SelectedRows) of the Input and
+ *   Output in op, generally used when call scope.FindVar(Input/
+ *   Output("Name")) or ctx.Input<LoDTensor>().
+ *   Firstly this macro check whether the obtained pointer is null,
+ *   and then return data if it is not null.
+ *
+ * Note: This macro is only suitable for specific scenarios and
+ *   does not intended to be widely used. If it cannot meet the
+ *   requirements, please use other PADDLE_ENFORCE** check macro.
+ *
+ * Parameters:
+ *     __PTR: pointer
+ *     __ROLE: (string), Input or Output
+ *     __NAME: (string), Input or Output name
+ *     __OP_TYPE: (string), the op type
+ *  
+ * Return: The data pointed to by the pointer.
+ *
+ * Examples:
+ *    GET_DATA_SAFELY(ctx.Input<LoDTensor>("X"), "Input", "X", "Mul");
+*/
+#define GET_DATA_SAFELY(__PTR, __ROLE, __NAME, __OP_TYPE)                   \
+  (([&]() -> std::add_lvalue_reference<decltype(*(__PTR))>::type {          \
+    auto* __ptr = (__PTR);                                                  \
+    if (UNLIKELY(nullptr == __ptr)) {                                       \
+      __THROW_ERROR_INTERNAL__(                                             \
+          "%s\n  [Hint: pointer " #__PTR " should not be null.]",           \
+          paddle::platform::errors::NotFound(                               \
+              "Unable to get %s data of %s %s in operator %s. "             \
+              "Possible reasons are:\n"                                     \
+              "  1. The %s is not the %s of operator %s;\n"                 \
+              "  2. The %s has no corresponding variable passed in;\n"      \
+              "  3. The %s corresponding variable is not initialized.",     \
+              paddle::platform::demangle(                                   \
+                  typeid(std::add_lvalue_reference<decltype(*__ptr)>::type) \
+                      .name()),                                             \
+              __ROLE, __NAME, __OP_TYPE, __NAME, __ROLE, __OP_TYPE, __NAME, \
+              __NAME)                                                       \
+              .ToString());                                                 \
+    }                                                                       \
+    return *__ptr;                                                          \
+  })())
+
+/*
+ * Summary: This macro is used to check whether op has specified
+ * Input or Output Variables. Because op's Input and Output
+ * checking are written similarly, so abstract this macro.
+ *
+ * Parameters:
+ *     __EXPR: (bool), the bool expression
+ *     __ROLE: (string), Input or Output
+ *     __NAME: (string), Input or Output name
+ *     __OP_TYPE: (string), the op type
+ *
+ * Examples:
+ *    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Mul");
+*/
+#define OP_INOUT_CHECK(__EXPR, __ROLE, __NAME, __OP_TYPE)                   \
+  do {                                                                      \
+    PADDLE_ENFORCE_EQ(__EXPR, true, paddle::platform::errors::NotFound(     \
+                                        "No %s(%s) found for %s operator.", \
+                                        __ROLE, __NAME, __OP_TYPE));        \
+  } while (0)
+
 /** OTHER EXCEPTION AND ENFORCE **/
 
 struct EOFException : public std::exception {
@@ -362,15 +449,19 @@ struct EOFException : public std::exception {
 
 #define PADDLE_THROW_EOF()                                                     \
   do {                                                                         \
+    HANDLE_THE_ERROR                                                           \
     throw ::paddle::platform::EOFException("There is no next data.", __FILE__, \
                                            __LINE__);                          \
+    END_HANDLE_THE_ERROR                                                       \
   } while (0)
 
 #define PADDLE_THROW_BAD_ALLOC(...)                                         \
   do {                                                                      \
+    HANDLE_THE_ERROR                                                        \
     throw ::paddle::memory::allocation::BadAlloc(                           \
         ::paddle::platform::ErrorSummary(__VA_ARGS__).ToString(), __FILE__, \
         __LINE__);                                                          \
+    END_HANDLE_THE_ERROR                                                    \
   } while (0)
 
 /** CUDA PADDLE ENFORCE FUNCTIONS AND MACROS **/
@@ -527,8 +618,10 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
                 __cond__,                                                   \
                 ::paddle::platform::ErrorSummary(__VA_ARGS__).ToString())); \
       } catch (...) {                                                       \
+        HANDLE_THE_ERROR                                                    \
         throw ::paddle::platform::EnforceNotMet(std::current_exception(),   \
                                                 __FILE__, __LINE__);        \
+        END_HANDLE_THE_ERROR                                                \
       }                                                                     \
     }                                                                       \
   } while (0)

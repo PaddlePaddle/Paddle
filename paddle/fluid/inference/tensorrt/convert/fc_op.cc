@@ -40,7 +40,9 @@ class FcOpConverter : public OpConverter {
     auto* X = engine_->GetITensor(op_desc.Input(i_name).front());
     // Declare weights
     auto* Y_v = scope.FindVar(op_desc.Input(w_name).front());
-    PADDLE_ENFORCE_NOT_NULL(Y_v);
+    PADDLE_ENFORCE_NOT_NULL(
+        Y_v, platform::errors::NotFound(
+                 "Can not find %s presistale var of fc in scope.", w_name));
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
     const int x_num_col_dims =
         op_desc.HasAttr("x_num_col_dims")
@@ -71,7 +73,11 @@ class FcOpConverter : public OpConverter {
           engine_->GetWeightCPUData(op_desc.Input(w_name).front(), Y_t, false);
     }
 
-    PADDLE_ENFORCE_EQ(Y_t->dims().size(), 2UL);  // a matrix
+    PADDLE_ENFORCE_EQ(Y_t->dims().size(), 2UL,
+                      platform::errors::InvalidArgument(
+                          "The fc's weight should be a matrix with 2 dims, but "
+                          "it's %d-dimensional.",
+                          Y_t->dims().size()));  // a matrix
     size_t n_output = Y_t->dims()[1];
 
     int m = Y_t->dims()[0];
