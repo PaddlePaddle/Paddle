@@ -72,9 +72,8 @@ class Conv2DFusionOp : public operators::ConvOp {
     PADDLE_ENFORCE_EQ(
         in_dims.size(), 4U,
         platform::errors::InvalidArgument(
-            "Input(Input)'s dimension of Operator 'Conv2DFusion' is expected "
-            "to be 4. But received: "
-            "Input(Input)'s dimension = %u, shape = [%s].",
+            "The input's dimension of Operator(Conv2DFusion) is expected "
+            "to be 4. But received: input's dimension = %u, shape = [%s].",
             in_dims.size(), in_dims));
 
     // In some case, attribute data_format is "AnyLayout".
@@ -82,7 +81,7 @@ class Conv2DFusionOp : public operators::ConvOp {
     PADDLE_ENFORCE_NE(
         data_format, "NHWC",
         platform::errors::PermissionDenied(
-            "Operator 'Conv2DFusion' only supports data format of "
+            "Operator(Conv2DFusion) only supports data format of "
             "channel first (NCHW) now. But recieved: data_format = '%s'.",
             data_format));
 
