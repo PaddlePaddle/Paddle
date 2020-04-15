@@ -20,6 +20,9 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/fluid/framework/attribute.h"
+#include "paddle/fluid/framework/type_defs.h"
+#include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -55,7 +58,8 @@ class OperationExpression {
   std::vector<int> GetOutputIds() const { return output_ids_; }
   std::string GetRHSType() const { return rhs_type_; }
   std::string GetLHSType() const { return lhs_type_; }
-
+  void SetAttr(AttributeMap attr) { attr_ = attr; }
+  AttributeMap GetAttr() { return attr_; }
   // Check whether this operation type is supported in OperationMap.
   bool IsSupport() const;
 
@@ -64,7 +68,6 @@ class OperationExpression {
  private:
   // TODO(wangchao): make offset more flexible we add stride and basic offset
   std::string GetRHS(std::unordered_set<int>* used,
-                     std::string* half2fp32_statement,
                      size_t exprs_index = 0) const;
   std::string GetLHS(size_t i = 0) const;
 
@@ -72,6 +75,7 @@ class OperationExpression {
   std::string op_type_;
   std::vector<int> input_ids_;
   std::vector<int> output_ids_;
+  AttributeMap attr_;
   std::string rhs_type_;
   std::string lhs_type_;
 };

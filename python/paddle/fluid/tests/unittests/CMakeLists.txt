@@ -28,6 +28,8 @@ list(APPEND MIXED_DIST_TEST_OPS test_communicator_geo)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_half_async)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_sync)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
+list(APPEND MIXED_DIST_TEST_OPS test_fleet_checkpoint)
+list(APPEND MIXED_DIST_TEST_OPS test_collective_optimizer)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
@@ -43,6 +45,7 @@ endif()
 
 if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_boxps)
+    LIST(REMOVE_ITEM TEST_OPS test_paddlebox_datafeed)
     LIST(REMOVE_ITEM TEST_OPS test_trainer_desc)
     LIST(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
     LIST(REMOVE_ITEM TEST_OPS test_avoid_twice_initialization)
@@ -50,6 +53,7 @@ endif()
 
 if (NOT ${WITH_GPU})
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
+    LIST(REMOVE_ITEM TEST_OPS test_rank_attention_op) # TODO(shenliang03): rank_attention_op support CPU device in future
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_mnist) # TODO(Yancey1989): parallel dygraph support CPU device in future
 elseif(${CUDNN_VERSION} VERSION_LESS 7100)
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
@@ -58,6 +62,7 @@ endif()
 if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_pipeline)
     LIST(REMOVE_ITEM TEST_OPS test_boxps)
+    LIST(REMOVE_ITEM TEST_OPS test_paddlebox_datafeed)
 endif()
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
 list(REMOVE_ITEM TEST_OPS test_lstm_unit_op) # # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
@@ -192,6 +197,8 @@ list(REMOVE_ITEM TEST_OPS test_basic_lstm_api)
 list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
 list(REMOVE_ITEM TEST_OPS test_imperative_debug_string)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
+list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
+list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 
 if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
@@ -268,6 +275,10 @@ py_test_modules(test_install_check MODULES test_install_check ENVS
         FLAGS_cudnn_deterministic=1 SERIAL)
 set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
 py_test_modules(test_imperative_debug_string MODULES test_imperative_debug_string ENVS FLAGS_dygraph_debug=1)
+py_test_modules(test_imperative_static_runner_mnist MODULES test_imperative_static_runner_mnist ENVS
+    FLAGS_cudnn_deterministic=1)
+py_test_modules(test_imperative_static_runner_while MODULES test_imperative_static_runner_while ENVS
+    FLAGS_cudnn_deterministic=1)
 if(WITH_DISTRIBUTE)
     # FIXME(typhoonzero): add these tests back
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
@@ -285,7 +296,7 @@ if(WITH_DISTRIBUTE)
     py_test_modules(test_communicator_geo MODULES test_communicator_geo ENVS ${dist_ENVS})
     py_test_modules(test_communicator_half_async MODULES test_communicator_half_async ENVS ${dist_ENVS} FLAGS_communicator_send_queue_size=1 FLAGS_communicator_max_merge_var_num=1)
     py_test_modules(test_communicator_sync MODULES test_communicator_sync ENVS ${dist_ENVS} FLAGS_communicator_send_queue_size=1 FLAGS_communicator_max_merge_var_num=1)
-
+    py_test_modules(test_collective_optimizer MODULES test_collective_optimizer)
     if(WITH_DGC)
         # if with dgc, test all dgc tests.
         # NOTE. dist dgc tests is already in DIST_TEST_OPS
@@ -301,8 +312,9 @@ if(WITH_DISTRIBUTE)
         if(WITH_GPU)
             # NOTE. test_launch only work in gpu collective mode
             bash_test_modules(test_launch MODULES test_launch.sh  ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+            py_test_modules(test_fleet_checkpoint MODULES test_fleet_checkpoint)
         endif()
-        bash_test_modules(test_launch_ps MODULES test_launch_ps.sh)
+        bash_test_modules(test_launch_ps MODULES test_launch_ps.sh ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
 
         set(dist_ut_port 1000)
         foreach(TEST_OP ${DIST_TEST_OPS})
@@ -336,10 +348,6 @@ set_tests_properties(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu P
 add_subdirectory(sequence)
 add_subdirectory(dygraph_to_static)
 
-if (WITH_NGRAPH)
-    add_subdirectory(ngraph)
-endif()
-
 if (WITH_MKLDNN)
     add_subdirectory(mkldnn)
 endif()
@@ -357,10 +365,11 @@ set_tests_properties(test_parallel_executor_test_while_train test_parallel_execu
         test_optimizer_in_control_flow test_dataloader_keep_order
         test_dataloader_unkeep_order
         test_parallel_executor_inference_feed_partial_data
+        test_parallel_ssa_graph_inference_feed_partial_data
         test_fetch_unmerged
         test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
 
-set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op
+set_tests_properties(test_parallel_executor_crf test_sync_batch_norm_op test_inplace_abn_op
         test_parallel_executor_seresnext_base_gpu
         test_parallel_executor_seresnext_with_reduce_gpu
         test_parallel_executor_seresnext_with_fuse_all_reduce_gpu

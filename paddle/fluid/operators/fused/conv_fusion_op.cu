@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <array>
+#include "paddle/fluid/framework/conv_search_cache.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/operators/conv_op.h"
@@ -32,6 +33,7 @@ using ScopedConvolutionDescriptor = platform::ScopedConvolutionDescriptor;
 using ScopedActivationDescriptor = platform::ScopedActivationDescriptor;
 using DataLayout = platform::DataLayout;
 using framework::AlgorithmsCache;
+using framework::ConvSearchCache;
 
 template <typename T>
 using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
@@ -233,7 +235,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         return fwd_perf_stat[0].algo;
       };
       AlgorithmsCache<cudnnConvolutionFwdAlgo_t>& algo_cache =
-          ctx.GetKernelConfig<AlgorithmsCache<cudnnConvolutionFwdAlgo_t>>(0);
+          *(framework::ConvSearchCache::Instance().GetConvFusion());
       int search_times = ctx.Attr<int>("search_times");
       search_times = std::max(
           static_cast<int>(FLAGS_cudnn_exhaustive_search_times), search_times);
@@ -245,8 +247,9 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         algo = algo_cache.GetAlgorithm(x_dims[2] * x_dims[3], search_times, 0,
                                        search_func);
       } else {
+        auto dtype = platform::CudnnDataType<T>::type;
         algo = algo_cache.GetAlgorithm(x_dims, f_dims, strides, paddings,
-                                       dilations, 0, search_func);
+                                       dilations, 0, dtype, search_func);
       }
       VLOG(3) << "choose algo " << algo;
     }

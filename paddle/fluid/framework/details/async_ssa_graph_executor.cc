@@ -126,8 +126,9 @@ AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
     }
   }
 
-  for (size_t i = 0; i < local_scopes_.size(); ++i) {
-    InitVarsInScope(var_infos_, local_scopes_[i], local_exec_scopes_[i]);
+  for (size_t i = local_scopes_.size(); i >= 1; --i) {
+    InitVarsInScope(var_infos_, local_scopes_[i - 1],
+                    local_exec_scopes_[i - 1]);
   }
   ProcessGraph(graphs_, local_scopes_[0]);
 }

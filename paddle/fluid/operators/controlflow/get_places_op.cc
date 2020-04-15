@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include <thread>  // NOLINT
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/gpu_info.h"
@@ -52,19 +51,20 @@ class GetPlacesOp : public framework::OperatorBase {
       device_count =
           is_gpu ? CUDADevCount() : std::thread::hardware_concurrency();
     }
-    PADDLE_ENFORCE_NE(device_count, 0UL, "Cannot indicate %s device count",
-                      is_gpu ? "GPU" : "CPU");
+    PADDLE_ENFORCE_NE(device_count, 0UL, platform::errors::InvalidArgument(
+                                             "Cannot indicate %s device count",
+                                             is_gpu ? "GPU" : "CPU"));
 
     auto out_var_name = Output("Out");
-    auto &places =
-        *(detail::Ref(scope.FindVar(out_var_name),
-                      "Output variable %s cannot be found", out_var_name)
-              .GetMutable<platform::PlaceList>());
+    auto &places = *(GET_DATA_SAFELY(scope.FindVar(out_var_name), "Output",
+                                     "Out", "GetPlaces")
+                         .GetMutable<platform::PlaceList>());
     places.reserve(device_count);
     if (is_gpu) {
       PADDLE_ENFORCE_LE(device_count, CUDADevCount(),
-                        "Only %d CUDA devices found, cannot set to %d",
-                        CUDADevCount(), device_count);
+                        platform::errors::InvalidArgument(
+                            "Only %d CUDA devices found, cannot set to %d",
+                            CUDADevCount(), device_count));
       for (size_t i = 0; i < device_count; ++i) {
         places.emplace_back(platform::CUDAPlace(static_cast<int>(i)));
       }

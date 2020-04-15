@@ -84,6 +84,29 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst);
 //
 
 template <typename T>
+void TensorFromArray(const T* src, const size_t& array_size,
+                     const platform::DeviceContext& ctx, Tensor* dst) {
+  auto dst_place = ctx.GetPlace();
+  auto src_ptr = static_cast<const void*>(src);
+  platform::CPUPlace src_place;
+  dst->Resize({static_cast<int64_t>(array_size)});
+  auto dst_ptr = static_cast<void*>(dst->mutable_data<T>(dst_place));
+  auto size = array_size * sizeof(T);
+
+  if (platform::is_cpu_place(dst_place)) {
+    memory::Copy(boost::get<platform::CPUPlace>(dst_place), dst_ptr, src_place,
+                 src_ptr, size);
+  }
+#ifdef PADDLE_WITH_CUDA
+  else if (platform::is_gpu_place(dst_place)) {  // NOLINT
+    memory::Copy(
+        boost::get<platform::CUDAPlace>(dst_place), dst_ptr, src_place, src_ptr,
+        size,
+        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream());
+  }
+#endif
+}
+template <typename T>
 void TensorFromVector(const std::vector<T>& src,
                       const platform::DeviceContext& ctx, Tensor* dst) {
   auto dst_place = ctx.GetPlace();
