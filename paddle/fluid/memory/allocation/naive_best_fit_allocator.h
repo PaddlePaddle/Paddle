@@ -24,7 +24,9 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-class NaiveBestFitAllocator : public Allocator {
+class NaiveBestFitAllocator
+    : public Allocator,
+      public std::enable_shared_from_this<NaiveBestFitAllocator> {
  public:
   explicit NaiveBestFitAllocator(const platform::Place &p) : place_(p) {}
 

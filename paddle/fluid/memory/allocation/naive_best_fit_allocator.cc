@@ -118,7 +118,11 @@ class GPUBuddyAllocatorList {
 
  public:
   static GPUBuddyAllocatorList *Instance() {
+#ifndef PADDLE_ON_INFERENCE
     static auto *instance = CreateNewInstance();
+#else
+    static thread_local auto *instance = CreateNewInstance();
+#endif
     return instance;
   }
 
@@ -314,9 +318,24 @@ size_t Usage::operator()(const platform::CUDAPinnedPlace &cuda_pinned) const {
 
 namespace allocation {
 
+class NaiveBestFitAllocation : public Allocation {
+ public:
+  NaiveBestFitAllocation(void *ptr, size_t size, platform::Place place)
+      : Allocation(ptr, size, place) {}
+
+  void SetNaiveBestFitAllocator(
+      std::shared_ptr<NaiveBestFitAllocator> allocator) {
+    allocator_ = allocator;
+  }
+
+ private:
+  std::shared_ptr<NaiveBestFitAllocator> allocator_;
+};
+
 Allocation *NaiveBestFitAllocator::AllocateImpl(size_t size) {
   void *ptr = boost::apply_visitor(legacy::AllocVisitor(size), place_);
-  auto *tmp_alloc = new Allocation(ptr, size, place_);
+  auto *tmp_alloc = new NaiveBestFitAllocation(ptr, size, place_);
+  tmp_alloc->SetNaiveBestFitAllocator(shared_from_this());
   platform::MemEvenRecorder::Instance().PushMemRecord(
       static_cast<void *>(tmp_alloc), place_, size);
   return tmp_alloc;
