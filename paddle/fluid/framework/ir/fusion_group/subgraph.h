@@ -149,12 +149,14 @@ class SubGraph {
       bool enable_remove = true;
 
       if (n && n->IsVar() && n->Var()) {
+        bool leaf_graph = true;
         for (auto* node : graph_nodes) {
-          if (node->IsOp() && !Has(node)) {
+          if (node->IsOp()) {
             auto inputs = node->inputs;
             for (auto* in : inputs) {
               if (in == n) {
-                enable_remove = false;
+                if (!Has(node)) enable_remove = false;
+                leaf_graph = false;
               }
             }
           }
@@ -162,6 +164,8 @@ class SubGraph {
             break;
           }
         }
+        if (leaf_graph) enable_remove = false;
+
       } else {
         enable_remove = false;
       }
