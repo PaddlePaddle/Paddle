@@ -144,7 +144,7 @@ class NLLLossOpMaker : public framework::OpProtoAndCheckerMaker {
         "\"sum\".")
         .SetDefault("mean");
     AddComment(R"DOC(
-NLL Loss Operator.
+NLL(Negative Log Likelihood) Loss Operator.
 
 This operator computes the NLL loss for X and Label.
 The operator takes the first dimension of X and Label as batch size.
@@ -153,7 +153,7 @@ and then sums all the losses. So the shape of Out is [batch_size, 1].
 
 The loss can be described as:
 
-$Out[i] = -X[Label[i]]$
+$Out[i] = -X[Label[i]]*Weight[Label[i]]$
 
 It can also be used for higher dimension inputs, such as 2D images, by 
 providing an input of shape (batch_size, C, d1, d2, ..., dK), with 

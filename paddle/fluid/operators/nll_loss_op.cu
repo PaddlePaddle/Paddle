@@ -195,13 +195,14 @@ __global__ void GPUNLLLossForward2D_no_reduce(
     const int64_t h = (i / batch_size) % in_dim2;
     const int64_t w = (i / (batch_size * in_dim2)) % in_dim3;
 
-    const int64_t cur_label = label_data[b * map_size + h * in_dim3 + w];
+    const int64_t index = b * map_size + h * in_dim3 + w;
+    const int64_t cur_label = label_data[index];
     if (cur_label == ignore_index) {
-      out_data[b * map_size + h * in_dim3 + w] = 0;
+      out_data[index] = 0;
       continue;
     }
     const T cur_weight = weight_data ? weight_data[cur_label] : (T)1;
-    out_data[b * map_size + h * in_dim3 + w] =
+    out_data[index] =
         -x_data[b * sample_size + cur_label * map_size + h * in_dim3 + w] *
         cur_weight;
   }
@@ -301,14 +302,14 @@ __global__ void GPUNLLLossBackward2D_no_reduce(
     const int64_t b = i % batch_size;
     const int64_t h = (i / batch_size) % in_dim2;
     const int64_t w = (i / (batch_size * in_dim2)) % in_dim3;
-
-    const int64_t cur_label = label_data[b * map_size + h * in_dim3 + w];
+    const int64_t index = b * map_size + h * in_dim3 + w;
+    const int64_t cur_label = label_data[index];
     if (cur_label == ignore_index) {
       continue;
     }
     const T cur_weight = weight_data ? weight_data[cur_label] : (T)1;
     dx_data[b * sample_size + cur_label * map_size + h * in_dim3 + w] =
-        -dout_data[b * map_size + h * in_dim3 + w] * cur_weight;
+        -dout_data[index] * cur_weight;
   }
 }
 

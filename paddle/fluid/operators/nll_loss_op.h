@@ -83,9 +83,10 @@ static void nll_loss_2D(T* out_data, T* total_weight_data, const T* x_data,
     for (int i = 0; i < batch_size; i++) {
       for (int h = 0; h < in_dim2; h++) {
         for (int w = 0; w < in_dim3; w++) {
-          const auto cur_label = label_data[i * map_size + h * in_dim3 + w];
+          const auto index = i * map_size + h * in_dim3 + w;
+          const auto cur_label = label_data[index];
           if (cur_label == ignore_index) {
-            out_data[i * map_size + h * in_dim3 + w] = 0;
+            out_data[index] = 0;
             continue;
           }
           PADDLE_ENFORCE_EQ(cur_label >= 0 && cur_label < n_classes, true,
@@ -93,10 +94,9 @@ static void nll_loss_2D(T* out_data, T* total_weight_data, const T* x_data,
                                 "label should nor be out of bounds."));
           const auto cur_weight =
               weight_data ? weight_data[cur_label] : static_cast<T>(1);
-          out_data[i * map_size + h * in_dim3 + w] =
-              -x_data[i * sample_size + cur_label * map_size + h * in_dim3 +
-                      w] *
-              cur_weight;
+          out_data[index] = -x_data[i * sample_size + cur_label * map_size +
+                                    h * in_dim3 + w] *
+                            cur_weight;
         }
       }
     }
@@ -109,9 +109,10 @@ static void nll_loss_2D(T* out_data, T* total_weight_data, const T* x_data,
   for (int i = 0; i < batch_size; i++) {
     for (int h = 0; h < in_dim2; h++) {
       for (int w = 0; w < in_dim3; w++) {
-        const auto cur_label = label_data[i * map_size + h * in_dim3 + w];
+        const auto index = i * map_size + h * in_dim3 + w;
+        const auto cur_label = label_data[index];
         if (cur_label == ignore_index) {
-          out_data[i * map_size + h * in_dim3 + w] = 0;
+          out_data[index] = 0;
           continue;
         }
         PADDLE_ENFORCE_EQ(cur_label >= 0 && cur_label < n_classes, true,
@@ -222,14 +223,15 @@ static void nll_loss_grad_2D(T* dx_data, const T* dout_data,
     for (int i = 0; i < batch_size; i++) {
       for (int h = 0; h < in_dim2; h++) {
         for (int w = 0; w < in_dim3; w++) {
-          const auto cur_label = label_data[i * map_size + h * in_dim3 + w];
+          const auto index = i * map_size + h * in_dim3 + w;
+          const auto cur_label = label_data[index];
           if (cur_label == ignore_index) {
             continue;
           }
           const auto cur_weight =
               weight_data ? weight_data[cur_label] : static_cast<T>(1);
           dx_data[i * sample_size + cur_label * map_size + h * in_dim3 + w] =
-              -cur_weight * dout_data[i * map_size + h * in_dim3 + w];
+              -cur_weight * dout_data[index];
         }
       }
     }
@@ -241,17 +243,18 @@ static void nll_loss_grad_2D(T* dx_data, const T* dout_data,
   for (int i = 0; i < batch_size; i++) {
     for (int h = 0; h < in_dim2; h++) {
       for (int w = 0; w < in_dim3; w++) {
-        const auto cur_label = label_data[i * map_size + h * in_dim3 + w];
+        const auto index = i * map_size + h * in_dim3 + w;
+        const auto cur_label = label_data[index];
         if (cur_label == ignore_index) {
           continue;
         }
         const auto cur_weight =
             weight_data ? weight_data[cur_label] : static_cast<T>(1);
-        dx_data[i * sample_size + cur_label * map_size + h * in_dim3 + w] =
-            -dout_val * cur_weight;
+        const auto dx_index =
+            i * sample_size + cur_label * map_size + h * in_dim3 + w;
+        dx_data[dx_index] = -dout_val * cur_weight;
         if (reduction == "mean") {
-          dx_data[i * sample_size + cur_label * map_size + h * in_dim3 + w] /=
-              total_weight_val;
+          dx_data[dx_index] /= total_weight_val;
         }
       }
     }

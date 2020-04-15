@@ -351,20 +351,20 @@ class NLLLoss(fluid.dygraph.Layer):
     The unreduced (i.e. with :attr:`reduction` set to ``'none'``) loss can be described as:
 
     .. math::
-        \ell(x, y) = L = \{l_1,\dots,l_N\}^\top, \quad
+        \ell(x, y) = L = \{l_1,\dots,l_N\}^\\top, \quad
         l_n = - w_{y_n} x_{n,y_n}, \quad
-        w_{c} = \text{weight}[c] \cdot \mathbb{1}\{c \not= \text{ignore\_index}\},
+        w_{c} = \\text{weight}[c] \cdot \mathbb{1}\{c \\not= \\text{ignore\\_index}\},
 
     where :math:`N` is the batch size. If :attr:`reduction` is not ``'none'``
     (default ``'mean'``), then
 
     .. math::
-        \ell(x, y) = \begin{cases}
-            \sum_{n=1}^N \frac{1}{\sum_{n=1}^N w_{y_n}} l_n, &
-            \text{if reduction} = \text{'mean';}\\
-            \sum_{n=1}^N l_n,  &
-            \text{if reduction} = \text{'sum'.}
-        \end{cases}
+        \ell(x, y) = \\begin{cases}
+            \\sum_{n=1}^N \\frac{1}{\\sum_{n=1}^N w_{y_n}} l_n, &
+            \\text{if reduction} = \\text{'mean';}\\\\
+            \\sum_{n=1}^N l_n,  &
+            \\text{if reduction} = \\text{'sum'.}
+        \\end{cases}
 
     Parameters:
         input (Variable): Input tensor, the data type is float32, float64. 
@@ -377,17 +377,23 @@ class NLLLoss(fluid.dygraph.Layer):
             the candicates are ``'none'`` | ``'mean'`` | ``'sum'``.
             If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned; 
             Default is ``'mean'``.
+
     Returns:
         The tensor variable storing the nll_loss.
+
     Return type: Variable.
+    
     Examples:
+
         .. code-block:: python
+
             # declarative mode
             import paddle.fluid as fluid
             import numpy as np
+            import paddle
 
             input_np = np.random.random(size=(10, 10)).astype(np.float32)
-            label_np = np.random.randint(0, 10, size=(10, ))
+            label_np = np.random.randint(0, 10, size=(10,)).astype(np.int64)
             prog = fluid.Program()
             startup_prog = fluid.Program()
             place = fluid.CPUPlace()
