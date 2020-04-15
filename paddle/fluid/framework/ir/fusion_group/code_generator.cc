@@ -71,6 +71,8 @@ static bool HasInput(Node* n, std::string name) {
 std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
     SubGraph* subgraph) {
   std::unordered_map<std::string, int> var_ids = EncodeVarNodes(subgraph);
+  std::vector<Node*> intermediate_out_nodes =
+      subgraph->GetIntermediateOutVarNodes();
   std::vector<OperationExpression> expressions;
   for (auto* node : subgraph->SortedNodes()) {
     if (node && node->IsOp() && node->Op()) {
@@ -81,7 +83,8 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
       //  - X, Y in forward operations
       //  - X, Y, Out, out@GRAD in backward operations
       std::vector<int> input_ids;
-      auto operation = OperationMap::Instance().Get(op->Type());
+      std::string op_name = op->Type();
+      auto operation = OperationMap::Instance().Get(op_name);
       std::vector<std::string> input_names = operation.input_names;
 
       for (auto& name : input_names) {
@@ -105,6 +108,7 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
       std::vector<int> output_ids;
       std::vector<std::string> output_names =
           OperationMap::Instance().Get(op->Type()).output_names;
+      bool intermediate_state = false;
 
       for (auto& name : output_names) {
         PADDLE_ENFORCE_NE(
@@ -112,12 +116,19 @@ std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
             platform::errors::InvalidArgument(
                 "Output(%s) of operation %s is not set.", name, op->Type()));
         output_ids.push_back(var_ids[op->Output(name)[0]]);
+        for (auto* n : intermediate_out_nodes) {
+          if (n->Name() == op->Output(name)[0]) {
+            intermediate_state = true;
+            break;
+          }
+        }
       }
 
       std::string lhs_type = ExtractDataType(node->outputs);
       std::string rhs_type = ExtractDataType(node->inputs);
-      auto expression = OperationExpression(node->Name(), input_ids, output_ids,
-                                            rhs_type, lhs_type);
+      auto expression =
+          OperationExpression(node->Name(), input_ids, output_ids, rhs_type,
+                              lhs_type, intermediate_state);
       expression.SetAttr(attr);
       expressions.push_back(expression);
     }
@@ -133,13 +144,16 @@ std::string CodeGenerator::Generate(
   // TODO(liuyiqun): Check whether all expressions are elementwise operations.
   std::set<int> input_ids = std::move(DistilInputIds(expressions));
   std::set<int> output_ids = std::move(DistilOutputIds(expressions));
+  std::set<int> intermediate_ids =
+      std::move(DistilIntermediateIds(expressions));
   std::unordered_map<int, std::string> dtypes =
       std::move(DistilDtypes(expressions));
   TemplateVariable template_var;
   template_var.Add("func_name", func_name);
   template_var.Add("parameters", EmitParameters(input_ids, output_ids, dtypes));
   template_var.Add("compute_body",
-                   EmitComputeBody(expressions, input_ids, output_ids, dtypes));
+                   EmitComputeBody(expressions, input_ids, output_ids,
+                                   intermediate_ids, dtypes));
 
   std::set<std::string> all_dtype;
   for (const auto& type : dtypes) {
@@ -183,6 +197,18 @@ std::set<int> CodeGenerator::DistilOutputIds(
     }
   }
   return output_ids;
+}
+
+std::set<int> CodeGenerator::DistilIntermediateIds(
+    const std::vector<OperationExpression>& expressions) {
+  std::set<int> intermediate_ids;
+  // Use std::set to remove the reptead id and get a ordered list.
+  for (size_t i = 0; i < expressions.size(); i++) {
+    for (auto id : expressions[i].GetOutputIds()) {
+      if (expressions[i].GetIntermediateState()) intermediate_ids.insert(id);
+    }
+  }
+  return intermediate_ids;
 }
 
 std::unordered_map<int, std::string> CodeGenerator::DistilDtypes(
@@ -246,6 +272,7 @@ std::string CodeGenerator::EmitParameters(
 std::string CodeGenerator::EmitComputeBody(
     const std::vector<OperationExpression>& expressions,
     const std::set<int>& input_ids, const std::set<int>& output_ids,
+    const std::set<int>& intermediate_ids,
     const std::unordered_map<int, std::string>& dtypes) const {
   std::ostringstream compute;
   std::unordered_set<int> used;
@@ -267,7 +294,9 @@ std::string CodeGenerator::EmitComputeBody(
   // Store temporal variables to memory.
   std::ostringstream store;
   for (auto id : output_ids) {
-    store << VarName(id) << " = " << TmpName(id) << ";";
+    if (intermediate_ids.find(id) == intermediate_ids.end()) {
+      store << VarName(id) << " = " << TmpName(id) << ";";
+    }
   }
 
   return load.str() + compute.str() + store.str();
@@ -287,32 +316,7 @@ std::unordered_map<std::string, int> CodeGenerator::EncodeVarNodes(
       var_ids[in->Name()] = id++;
     }
   }
-  // Numbering internal vars.
-  for (auto* node : subgraph->SortedNodes()) {
-    if (node && node->IsVar() && node->Var()) {
-      bool is_found = false;
-      for (auto* in : input_var_nodes) {
-        if (node == in) {
-          is_found = true;
-          break;
-        }
-      }
-      if (is_found) {
-        continue;
-      }
-      for (auto* out : output_var_nodes) {
-        if (node == out) {
-          is_found = true;
-          break;
-        }
-      }
-      PADDLE_ENFORCE_EQ(
-          is_found, true,
-          platform::errors::Unimplemented(
-              "Subgraph with internal var nodes (%s) is not supported yet.",
-              node->Name()));
-    }
-  }
+
   // Encoding output vars.
   for (auto* out : output_var_nodes) {
     VLOG(3) << "Ecoding output names:" << out->Name() << ", id:" << id;

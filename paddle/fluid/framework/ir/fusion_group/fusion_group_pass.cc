@@ -48,13 +48,18 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
 
   int num_subgraphs = 0;
   size_t min_subgraph_size = 2;
-  bool save_intermediate_out = true;
+  bool save_intermediate_out = false;
   for (auto& vec : subgraphs) {
     fusion_group::SubGraph subgraph(
         type, "", save_intermediate_out,
         std::unordered_set<Node*>(vec.begin(), vec.end()));
     VLOG(3) << "subgraph: {\n" << DebugString(subgraph.SortedNodes()) << "}\n";
 
+    // In elementwise fused kernel, memory is the bound of execution,
+    // here we remove the output id to use less memory and less time.
+    if (subgraph.RemoveIntermediateOut()) {
+      subgraph.DetectIntermediateOutWithGraph(graph);
+    }
     if (subgraph.IsValid(min_subgraph_size)) {
       subgraph.SetFuncName("FusedElementwise" + std::to_string(index++));
       if (GenerateCode(&subgraph)) {

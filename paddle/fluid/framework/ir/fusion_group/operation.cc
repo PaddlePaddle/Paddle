@@ -54,6 +54,7 @@ void OperationMap::Insert(int type, int num_operands, std::string op_type,
     std::string grad_op_type = op_type + "_grad";
     // grad_inputs = inputs + outputs + grad of outputs
     std::vector<std::string> grad_input_names = input_names;
+
     for (auto name : output_names) {
       grad_input_names.push_back(name);
     }

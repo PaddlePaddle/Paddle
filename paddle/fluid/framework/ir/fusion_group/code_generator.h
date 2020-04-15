@@ -43,6 +43,8 @@ class CodeGenerator {
       const std::vector<OperationExpression>& expressions);
   std::set<int> DistilOutputIds(
       const std::vector<OperationExpression>& expressions);
+  std::set<int> DistilIntermediateIds(
+      const std::vector<OperationExpression>& expressions);
   std::unordered_map<int, std::string> DistilDtypes(
       const std::vector<OperationExpression>& expressions);
 
@@ -54,6 +56,7 @@ class CodeGenerator {
   std::string EmitComputeBody(
       const std::vector<OperationExpression>& expressions,
       const std::set<int>& input_ids, const std::set<int>& output_ids,
+      const std::set<int>& intermediate_ids,
       const std::unordered_map<int, std::string>& dtypes) const;
 
   // Encode all var nodes in the subgraph with an unique number.

@@ -46,14 +46,17 @@ class OperationExpression {
  public:
   explicit OperationExpression(std::string op_type, std::vector<int> input_ids,
                                std::vector<int> output_ids,
-                               std::string rhs_type, std::string lhs_type)
+                               std::string rhs_type, std::string lhs_type,
+                               bool intermediate_state)
       : op_type_(op_type),
         input_ids_(input_ids),
         output_ids_(output_ids),
         rhs_type_(rhs_type),
-        lhs_type_(lhs_type) {}
+        lhs_type_(lhs_type),
+        intermediate_state_(intermediate_state) {}
 
   std::string GetOpType() const { return op_type_; }
+  bool GetIntermediateState() const { return intermediate_state_; }
   std::vector<int> GetInputIds() const { return input_ids_; }
   std::vector<int> GetOutputIds() const { return output_ids_; }
   std::string GetRHSType() const { return rhs_type_; }
@@ -78,6 +81,7 @@ class OperationExpression {
   AttributeMap attr_;
   std::string rhs_type_;
   std::string lhs_type_;
+  bool intermediate_state_;
 };
 
 class TemplateVariable {
