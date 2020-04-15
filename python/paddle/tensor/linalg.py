@@ -623,14 +623,14 @@ def cholesky(x, upper=False):
 
             with fluid.dygraph.guard():
                 a = np.random.rand(3, 3)
-                a_t = np.transpose([1, 0])
+                a_t = np.transpose(a, [1, 0])
                 x = np.matmul(a, a_t) + 1e-03
                 x = fluid.dygraph.to_variable(x)
-                out = paddle.cholesky(x, upper=True)
+                out = paddle.cholesky(x, upper=False)
                 print(out.numpy())
-                # [[1.1595014  0.         0.        ]
-                #  [0.53322226 0.8691833  0.        ]
-                #  [0.25427225 0.3233953  0.21338333]]
+                # [[1.190523   0.         0.        ]
+                #  [0.9906703  0.27676893 0.        ]
+                #  [1.25450498 0.05600871 0.06400121]]
     """
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
     check_type(upper, 'upper', bool, 'cholesky')

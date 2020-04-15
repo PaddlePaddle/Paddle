@@ -22,28 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-#define CUDA_1D_KERNEL_LOOP(i, n)                              \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
-template <typename T>
-__global__ void MatrixBandPart(const int num_threads, const int m, const int n,
-                               const int num_lower_diags,
-                               const int num_upper_diags, const T* input_data,
-                               T* output_data) {
-  CUDA_1D_KERNEL_LOOP(index, num_threads) {
-    const int col = index % n;
-    const int row = (index / n) % m;
-    const int band_start = (num_lower_diags < 0 ? 0 : row - num_lower_diags);
-    const int band_end = (num_upper_diags < 0 ? n : row + num_upper_diags + 1);
-    if (col < band_start || col >= band_end) {
-      output_data[index] = T(0);
-    } else {
-      output_data[index] = input_data[index];
-    }
-  }
-}
-
 template <typename T>
 class CholeskyGPUKernel : public framework::OpKernel<T> {
  public:

@@ -19,9 +19,7 @@ limitations under the License. */
 #include "Eigen/Cholesky"
 #include "Eigen/Core"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/for_range.h"
 
