@@ -16,9 +16,11 @@
 # including layers, linear, conv, rnn etc.
 
 from .layer import norm
+from .functional import extension
 
 __all__ = []
 __all__ += norm.__all__
+__all__ += extension.__all__
 
 # TODO: define alias in nn directory
 # from .clip import ErrorClipByValue   #DEFINE_ALIAS
