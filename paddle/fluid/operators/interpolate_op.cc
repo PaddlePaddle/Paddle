@@ -92,11 +92,11 @@ static void Interpolate2DInferShapeCheck(framework::InferShapeContext* ctx) {
   auto dim_x = ctx->GetInputDim("X");
   auto interp_method = ctx->Attrs().Get<std::string>("interp_method");
 
-  PADDLE_ENFORCE("bilinear" == interp_method || "nearest" == interp_method ||
-                     "linear" == interp_method,
-                 "Interpolation method can only be \"bilinear\" or \"nearest\" "
-                 "or \"linear\" when "
-                 "Input(X) dimension is 4");
+  PADDLE_ENFORCE(
+      "bilinear" == interp_method || "nearest" == interp_method ||
+          "bicubic" == interp_method,
+      "Interpolation method can only be \"bilinear\" or \"nearest\" when "
+      "Input(X) dimension is 4");
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
 
@@ -330,13 +330,14 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("out_h", "output height of interpolate op.").SetDefault(0);
     AddAttr<int>("out_w", "output width of interpolate op.").SetDefault(0);
     AddAttr<float>("scale", "scale factor of interpolate op.").SetDefault(0.);
-    AddAttr<std::string>(
-        "interp_method",
-        "(string, default \"bilinear\"), interpolation "
-        "method, can be \"bilinear\" for "
-        "bilinear interpolation, \"trilinear\" for trilinear "
-        "interpolation and \"nearest\" for nearest "
-        "neighbor interpolation, \"linear\" for linear interpolation")
+    AddAttr<std::string>("interp_method",
+                         "(string, default \"bilinear\"), interpolation "
+                         "method, can be \"linear\" for linear interpolation"
+                         ",\"bilinear\" for "
+                         "bilinear interpolation, \"trilinear\" for trilinear "
+                         "interpolation and \"nearest\" for nearest "
+                         "neighbor interpolation, and \"bicubic\" for bicubic"
+                         "interpolation.")
         .SetDefault("bilinear");
     AddAttr<bool>(
         "align_corners",
@@ -370,6 +371,11 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
           interpolating functions of three variables (e.g. D-direction, 
           H-direction and W-direction in this op) on a rectilinear 3D grid. 
           The linear interpolation is performed on three directions.
+
+          Bicubic interpolation is an extension of cubic interpolation for interpolating
+          data points on a two-dimensional regular grid. The interpolated surface is
+          smoother than corresponding surfaces obtained by bilinear interpolation or
+          nearest-neighbor interpolation.
 
           Align_corners and align_mode are optional parameters,the calculation method 
           of interpolation can be selected by them.
@@ -448,7 +454,20 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
               D_out = D_{in} * scale_{factor}
               H_out = H_{in} * scale_{factor}
               W_out = W_{in} * scale_{factor}
-          
+
+          Bicubic interpolation:
+
+          if:
+              align_corners = False
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+              H_out = (H_{in}+0.5) * scale_{factor} - 0.5
+              W_out = (W_{in}+0.5) * scale_{factor} - 0.5
+          else:
+              input : (N,C,H_in,W_in)
+              output: (N,C,H_out,W_out) where:
+              H_out = H_{in} * scale_{factor}
+              W_out = W_{in} * scale_{factor}
 
           For details of nearest neighbor interpolation, please refer to Wikipedia: 
           https://en.wikipedia.org/wiki/Nearest-neighbor_interpolation
@@ -458,6 +477,9 @@ class InterpolateOpMaker : public framework::OpProtoAndCheckerMaker {
 
           For details of trilinear interpolation, please refer to Wikipedia: 
           https://en.wikipedia.org/wiki/Trilinear_interpolation
+
+          For details of bicubic interpolation, please refer to Wikipedia:
+          https://en.wikipedia.org/wiki/Bicubic_interpolation
          )DOC");
   }
 };
@@ -541,6 +563,11 @@ REGISTER_OPERATOR(trilinear_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
                   ops::InterpolateGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(trilinear_interp_grad, ops::InterpolateOpGrad,
                   ops::InterpolateGradNoNeedBufferVarsInference);
+REGISTER_OPERATOR(bicubic_interp, ops::InterpolateOp, ops::InterpolateOpMaker,
+                  ops::InterpolateGradMaker<paddle::framework::OpDesc>,
+                  ops::InterpolateGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(bicubic_interp_grad, ops::InterpolateOpGrad,
+                  ops::InterpolateGradNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(bilinear_interp, ops::InterpolateKernel<float>,
                        ops::InterpolateKernel<double>,
                        ops::InterpolateKernel<uint8_t>);
@@ -565,4 +592,8 @@ REGISTER_OP_CPU_KERNEL(linear_interp, ops::InterpolateKernel<float>,
                        ops::InterpolateKernel<double>,
                        ops::InterpolateKernel<uint8_t>);
 REGISTER_OP_CPU_KERNEL(linear_interp_grad, ops::InterpolateGradKernel<float>,
+                       ops::InterpolateGradKernel<double>);
+REGISTER_OP_CPU_KERNEL(bicubic_interp, ops::InterpolateKernel<float>,
+                       ops::InterpolateKernel<double>);
+REGISTER_OP_CPU_KERNEL(bicubic_interp_grad, ops::InterpolateGradKernel<float>,
                        ops::InterpolateGradKernel<double>);

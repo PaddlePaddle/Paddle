@@ -22,10 +22,8 @@ class CTCAlignOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
-                      "Input of CTCAlignOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Output"), true,
-                      "Output of CTCAlignOp should not be null.");
+    OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input", "ctc_align");
+    OP_INOUT_CHECK(ctx->HasOutput("Output"), "Output", "Output", "ctc_align");
 
     auto input_dims = ctx->GetInputDim("Input");
 

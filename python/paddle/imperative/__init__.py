@@ -12,15 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define api used to run in imperative mode 
-# __all__ = ['BackwardStrategy',
-#            'guard',
-#            'Layer',
-#            'LayerList',
-#            'load_dygraph',
-#            'save_dygraph',
-#            'prepare_context',
-#            'to_variable',
-#            'TracedLayer',
-#            'no_grad',
-#            'ParameterList']
+# define api used to run in imperative mode 
+__all__ = [
+    'BackwardStrategy', 'guard', 'Layer', 'LayerList', 'load_dygraph',
+    'save_dygraph', 'prepare_context', 'to_variable', 'TracedLayer', 'no_grad',
+    'ParameterList', 'Sequential'
+]
+
+from paddle.fluid import core
+from ..fluid.dygraph.base import guard, no_grad, to_variable
+from ..fluid.dygraph.layers import Layer
+from ..fluid.dygraph.container import LayerList, ParameterList, Sequential
+from ..fluid.dygraph.checkpoint import load_dygraph, save_dygraph
+from ..fluid.dygraph.parallel import prepare_context
+from ..fluid.dygraph.jit import TracedLayer
+
+BackwardStrategy = core.BackwardStrategy

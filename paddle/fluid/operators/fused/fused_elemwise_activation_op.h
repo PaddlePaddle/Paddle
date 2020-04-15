@@ -18,7 +18,6 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/compound_functors.h"
 #include "paddle/fluid/operators/math/functors.h"
@@ -383,12 +382,10 @@ template <typename DeviceContext, typename T>
 class FusedElemwiseActivationKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto &in_x = detail::Ref(ctx.Input<framework::Tensor>("X"),
-                             "Cannot get input tensor %s, variable name = %s",
-                             "X", ctx.InputName("X"));
-    auto &in_y = detail::Ref(ctx.Input<framework::Tensor>("Y"),
-                             "Cannot get input tensor %s, variable name = %s",
-                             "Y", ctx.InputName("Y"));
+    auto &in_x = GET_DATA_SAFELY(ctx.Input<framework::Tensor>("X"), "Input",
+                                 "X", "FusedElemwiseActivation");
+    auto &in_y = GET_DATA_SAFELY(ctx.Input<framework::Tensor>("Y"), "Input",
+                                 "Y", "FusedElemwiseActivation");
     PADDLE_ENFORCE(ctx.HasOutput("Out"), "The output(Out) should not be empty");
     auto output = ctx.Output<framework::Tensor>("Out");
 

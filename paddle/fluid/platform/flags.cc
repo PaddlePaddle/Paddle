@@ -171,9 +171,9 @@ DEFINE_bool(cudnn_batchnorm_spatial_persistent, false,
 
 /**
  * NCCL related FLAG
- * Name: FLAGS_enable_cublas_tensor_op_math
- * Since Version:
- * Value Range:
+ * Name: FLAGS_sync_nccl_allreduce
+ * Since Version: 1.3
+ * Value Range: bool, default=true
  * Example:
  * Note: asynchronous nccl allreduce or synchronous issue:
  *       https://github.com/PaddlePaddle/Paddle/issues/15049

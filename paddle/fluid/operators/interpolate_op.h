@@ -10,10 +10,12 @@
    limitations under the License. */
 
 #pragma once
+#include <algorithm>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
 namespace operators {
@@ -445,6 +447,106 @@ static void TrilinearInterpolation(
 }
 
 template <typename T>
+HOSTDEVICE inline T cubic_convolution1(T x, T A) {
+  return ((A + 2) * x - (A + 3)) * x * x + 1;
+}
+
+template <typename T>
+HOSTDEVICE inline T cubic_convolution2(T x, T A) {
+  return ((A * x - 5 * A) * x + 8 * A) * x - 4 * A;
+}
+
+template <typename T>
+HOSTDEVICE inline void get_cubic_upsample_coefficients(T coeffs[4], T t) {
+  T A = -0.75;
+
+  T x1 = t;
+  coeffs[0] = cubic_convolution2<T>(x1 + 1.0, A);
+  coeffs[1] = cubic_convolution1<T>(x1, A);
+
+  // opposite coefficients
+  T x2 = 1.0 - t;
+  coeffs[2] = cubic_convolution1<T>(x2, A);
+  coeffs[3] = cubic_convolution2<T>(x2 + 1.0, A);
+}
+
+template <typename T>
+static inline T cubic_interp(T x0, T x1, T x2, T x3, T t) {
+  T coeffs[4];
+  get_cubic_upsample_coefficients<T>(coeffs, t);
+
+  return x0 * coeffs[0] + x1 * coeffs[1] + x2 * coeffs[2] + x3 * coeffs[3];
+}
+
+template <typename T>
+static void BicubicInterpolation(const Tensor& input, Tensor* output,
+                                 const float ratio_h, const float ratio_w,
+                                 const int in_h, const int in_w, const int n,
+                                 const int c, const int out_h, const int out_w,
+                                 const bool align_corners,
+                                 const DataLayout data_layout) {
+  auto input_t = EigenTensor<T, 4>::From(input);
+  auto output_t = EigenTensor<T, 4>::From(*output);
+
+  for (int k = 0; k < out_h; k++) {  // loop for images
+    T y_n = align_corners ? static_cast<T>(ratio_h * k)
+                          : static_cast<T>(ratio_h * (k + 0.5) - 0.5);
+    int input_y = static_cast<int>(y_n);
+    const T y_t = y_n - input_y;
+
+    for (int l = 0; l < out_w; l++) {
+      T x_n = align_corners ? static_cast<T>(ratio_w * l)
+                            : static_cast<T>(ratio_w * (l + 0.5) - 0.5);
+      int input_x = static_cast<int>(x_n);
+      const T x_t = x_n - input_x;
+
+      for (int i = 0; i < n; i++) {    // loop for batches
+        for (int j = 0; j < c; j++) {  // loop for channels
+          T coefficients[4];
+          // interp 4 times in x direction
+          for (int ii = 0; ii < 4; ii++) {
+            int access_y = std::max(std::min(input_y - 1 + ii, in_h - 1),
+                                    static_cast<int>(0));
+            int access_x_0 =
+                std::max(std::min(input_x - 1, in_w - 1), static_cast<int>(0));
+            int access_x_1 =
+                std::max(std::min(input_x + 0, in_w - 1), static_cast<int>(0));
+            int access_x_2 =
+                std::max(std::min(input_x + 1, in_w - 1), static_cast<int>(0));
+            int access_x_3 =
+                std::max(std::min(input_x + 2, in_w - 1), static_cast<int>(0));
+            if (data_layout == DataLayout::kNCHW) {
+              coefficients[ii] =
+                  cubic_interp<T>(input_t(i, j, access_y, access_x_0),
+                                  input_t(i, j, access_y, access_x_1),
+                                  input_t(i, j, access_y, access_x_2),
+                                  input_t(i, j, access_y, access_x_3), x_t);
+            } else {
+              coefficients[ii] =
+                  cubic_interp<T>(input_t(i, access_y, access_x_0, j),
+                                  input_t(i, access_y, access_x_1, j),
+                                  input_t(i, access_y, access_x_2, j),
+                                  input_t(i, access_y, access_x_3, j), x_t);
+            }
+          }
+
+          // interp y direction
+          if (data_layout == DataLayout::kNCHW) {
+            output_t(i, j, k, l) =
+                cubic_interp<T>(coefficients[0], coefficients[1],
+                                coefficients[2], coefficients[3], y_t);
+          } else {
+            output_t(i, k, l, j) =
+                cubic_interp<T>(coefficients[0], coefficients[1],
+                                coefficients[2], coefficients[3], y_t);
+          }
+        }
+      }
+    }
+  }
+}
+
+template <typename T>
 static void NearestNeighborInterpolateGrad(
     const Tensor& output_grad, Tensor* input_grad, const float ratio_h,
     const float ratio_w, const int n, const int c, const int out_h,
@@ -612,6 +714,61 @@ static void TrilinearInterpolationGrad(
 }
 
 template <typename T>
+static void BicubicInterpolationGrad(const Tensor& output_grad,
+                                     Tensor* input_grad, const float ratio_h,
+                                     const float ratio_w, const int in_h,
+                                     const int in_w, const int n, const int c,
+                                     const int out_h, const int out_w,
+                                     const bool align_corners,
+                                     const DataLayout data_layout) {
+  auto input_grad_t = EigenTensor<T, 4>::From(*input_grad);
+  auto output_grad_t = EigenTensor<T, 4>::From(output_grad);
+
+  for (int k = 0; k < out_h; k++) {  // loop for images
+    T y_n = align_corners ? static_cast<T>(ratio_h * k)
+                          : static_cast<T>(ratio_h * (k + 0.5) - 0.5);
+    int input_y = static_cast<int>(y_n);
+    T y_t = y_n - input_y;
+
+    for (int l = 0; l < out_w; l++) {
+      T x_n = align_corners ? static_cast<T>(ratio_w * l)
+                            : static_cast<T>(ratio_w * (l + 0.5) - 0.5);
+      int input_x = static_cast<int>(x_n);
+      T x_t = x_n - input_x;
+
+      T x_coeffs[4];
+      T y_coeffs[4];
+
+      get_cubic_upsample_coefficients<T>(x_coeffs, x_t);
+      get_cubic_upsample_coefficients<T>(y_coeffs, y_t);
+
+      for (int i = 0; i < n; i++) {    // loop for batches
+        for (int j = 0; j < c; j++) {  // loop for channels
+          // bicubic interpolation grad
+          for (int ii = 0; ii < 4; ii++) {
+            for (int jj = 0; jj < 4; jj++) {
+              int access_x = std::max(std::min(input_x - 1 + ii, in_w - 1),
+                                      static_cast<int>(0));
+              int access_y = std::max(std::min(input_y - 1 + jj, in_h - 1),
+                                      static_cast<int>(0));
+              if (data_layout == DataLayout::kNCHW) {
+                T grad = output_grad_t(i, j, k, l);
+                input_grad_t(i, j, access_y, access_x) +=
+                    grad * y_coeffs[jj] * x_coeffs[ii];
+              } else {
+                T grad = output_grad_t(i, k, l, j);
+                input_grad_t(i, access_y, access_x, j) +=
+                    grad * y_coeffs[jj] * x_coeffs[ii];
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+template <typename T>
 static void Interpolate1DCPUFwd(const framework::ExecutionContext& ctx,
                                 const Tensor& input, Tensor* output) {
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
@@ -752,6 +909,9 @@ static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
   } else if ("nearest" == interp_method) {
     NearestNeighborInterpolate<T>(input, output, ratio_h, ratio_w, n, c, out_h,
                                   out_w, align_corners, data_layout);
+  } else if ("bicubic" == interp_method) {
+    BicubicInterpolation<T>(input, output, ratio_h, ratio_w, in_h, in_w, n, c,
+                            out_h, out_w, align_corners, data_layout);
   }
 }
 
@@ -989,6 +1149,10 @@ static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
     NearestNeighborInterpolateGrad<T>(output_grad, input_grad, ratio_h, ratio_w,
                                       n, c, out_h, out_w, align_corners,
                                       data_layout);
+  } else if ("bicubic" == interp_method) {
+    BicubicInterpolationGrad<T>(output_grad, input_grad, ratio_h, ratio_w, in_h,
+                                in_w, n, c, out_h, out_w, align_corners,
+                                data_layout);
   }
 }
 

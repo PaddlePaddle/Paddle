@@ -42,13 +42,25 @@ class OpBase {
 
   ~OpBase() { VLOG(3) << "Destruct Op: " << Type(); }
 
-  const std::string& Type() const { return op_->Type(); }
+  const std::string& Type() const {
+    return op_ ? op_->Type() : UnknownOpType();
+  }
 
   const framework::AttributeMap& Attrs() const { return attrs_; }
 
-  const framework::OpInfo& Info() const { return op_->Info(); }
+  const framework::OpInfo& Info() const {
+    PADDLE_ENFORCE_NOT_NULL(op_, platform::errors::PreconditionNotMet(
+                                     "OpBase::Info() should be called after "
+                                     "OpBase::SetType() is called"));
+    return op_->Info();
+  }
 
-  const framework::OperatorBase& InnerOp() const { return *op_; }
+  const framework::OperatorBase& InnerOp() const {
+    PADDLE_ENFORCE_NOT_NULL(op_, platform::errors::PreconditionNotMet(
+                                     "OpBase::InnerOp() should be called after "
+                                     "OpBase::SetType() is called"));
+    return *op_;
+  }
 
   void ClearBackwardTrace();
 
@@ -63,7 +75,7 @@ class OpBase {
   void SetType(const std::string& type);
 
   void CheckAttrs() {
-    auto& info = op_->Info();
+    auto& info = Info();
     if (info.Checker() != nullptr) {
       info.Checker()->Check(&attrs_, true);
     }
@@ -119,6 +131,20 @@ class OpBase {
 
   void SetPlace(const platform::Place& place) { place_ = place; }
 
+  void EnforceHasInOut() const {
+    PADDLE_ENFORCE_NE(
+        ins_.empty() && outs_.empty(), true,
+        platform::errors::NotFound(
+            "Inputs and outputs of %s do not exist. This may be because:\n"
+            "1. You use some output variables of the previous batch as the "
+            "inputs of the current batch. Please try to call \"stop_gradient "
+            "= True\" or \"detach()\" for these variables.\n"
+            "2. You calculate backward twice for the same subgraph without "
+            "setting retain_graph=True. Please set retain_graph=True in the "
+            "first backward call.\n\n",
+            Type()));
+  }
+
   static size_t GenerateUniqueId() {
     static std::atomic<size_t> unique_id{0};
     return unique_id.fetch_add(1);
@@ -135,6 +161,12 @@ class OpBase {
                   const NameVarMap<VariableWrapper>& outs,
                   const framework::AttributeMap& attrs,
                   const platform::Place& place);
+
+ private:
+  static const std::string& UnknownOpType() {
+    static std::string kUnknownOpType{"unknown"};
+    return kUnknownOpType;
+  }
 
  private:
   NameVarMap<VariableWrapper> ins_;

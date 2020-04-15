@@ -232,8 +232,14 @@ class TensorRTEngineOp : public framework::OperatorBase {
       auto t_shape = framework::vectorize<int64_t>(t.dims());
       runtime_batch = t_shape[0];
       const int bind_index = engine->engine()->getBindingIndex(x.c_str());
-      PADDLE_ENFORCE(bind_index < num_bindings,
-                     "The bind index should be less than num_bindings");
+      PADDLE_ENFORCE_LT(
+          bind_index, num_bindings,
+          platform::errors::InvalidArgument(
+              "Wrong TRT engine input binding index. Expected The "
+              "binding index of TRT engine input to be less than "
+              "the number of inputs and outputs. Received binding "
+              "index=%d >= total inputs and outputs=%d",
+              bind_index, num_bindings));
       if (!engine->with_dynamic_shape()) {
         // check if the input shapes are consistent with model.
         if (HasAttr(x + "_shape")) {
@@ -252,7 +258,15 @@ class TensorRTEngineOp : public framework::OperatorBase {
             bind_index, inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
 #endif
       }
-      buffers[bind_index] = static_cast<void *>(t.data<float>());
+      auto type = t.type();
+      if (type == framework::proto::VarType::FP32) {
+        buffers[bind_index] = static_cast<void *>(t.data<float>());
+      } else if (type == framework::proto::VarType::INT64) {
+        buffers[bind_index] = static_cast<void *>(t.data<int64_t>());
+      } else {
+        PADDLE_THROW(platform::errors::Fatal(
+            "The TRT Engine OP only support float and int64_t input."));
+      }
     }
 
     // Bind output tensor to TRT.

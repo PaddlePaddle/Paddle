@@ -349,9 +349,6 @@ if(WITH_GPU AND TENSORRT_FOUND)
     inference_analysis_test(trt_resnext_test SRCS trt_resnext_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
-    inference_analysis_test(trt_bert_test SRCS trt_bert_test.cc
-            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-            ARGS --infer_model=${BERT_INSTALL_DIR}/model)
     inference_analysis_test(trt_fc_prelu_test SRCS trt_fc_prelu_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
@@ -367,6 +364,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     inference_analysis_test(test_analyzer_capi_gpu SRCS analyzer_capi_gpu_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
+     
     set(TRT_MODEL_QUANT_RESNET_DIR "${INFERENCE_DEMO_INSTALL_DIR}/quant_small_model")
     if (NOT EXISTS ${TRT_MODEL_QUANT_RESNET_DIR})
         inference_download_and_uncompress(${INFERENCE_DEMO_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "quant_small_model.tar.gz")
@@ -375,13 +373,27 @@ if(WITH_GPU AND TENSORRT_FOUND)
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_QUANT_RESNET_DIR})
 
-    set(TEST_TRT_DYNAMIC_MODEL "${TRT_MODEL_INSTALL_DIR}/test_trt_dy_conv")
+    set(TEST_TRT_DYNAMIC_MODEL2 "${TRT_MODEL_INSTALL_DIR}/complex_model_dynamic")
+    if (NOT EXISTS ${TEST_TRT_DYNAMIC_MODEL2})
+        inference_download_and_uncompress(${TEST_TRT_DYNAMIC_MODEL2} ${INFERENCE_URL}/tensorrt_test "complex_model_dynamic2.tar.gz")
+    endif()
+
+    set(TEST_TRT_DYNAMIC_MODEL "${TRT_MODEL_INSTALL_DIR}/conv_bn_swish_split_gelu")
     if (NOT EXISTS ${TEST_TRT_DYNAMIC_MODEL})
-        inference_download_and_uncompress(${TEST_TRT_DYNAMIC_MODEL} ${INFERENCE_URL}/tensorrt_test "test_trt_dy_conv.tar.gz")
+        inference_download_and_uncompress(${TEST_TRT_DYNAMIC_MODEL} ${INFERENCE_URL}/tensorrt_test "conv_bn_swish_split_gelu.tar.gz")
     endif()
     inference_analysis_test(trt_dynamic_shape_test SRCS trt_dynamic_shape_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-            ARGS --infer_model=${TEST_TRT_DYNAMIC_MODEL})
+            ARGS --infer_model=${TRT_MODEL_INSTALL_DIR})
+
+    set(TEST_TRT_ERNIE_MODEL "${TRT_MODEL_INSTALL_DIR}/ernie_test")
+    if (NOT EXISTS ${TEST_TRT_ERNIE_MODEL})
+        inference_download_and_uncompress(${TEST_TRT_ERNIE_MODEL} ${INFERENCE_URL}/tensorrt_test "ernie_model_4.tar.gz")
+    endif()
+
+    inference_analysis_test(test_trt_dynamic_shape_ernie SRCS trt_dynamic_shape_ernie_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
+            ARGS --infer_model=${TEST_TRT_ERNIE_MODEL}/ernie_model_4)
 endif()
 
 set(LITE_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/lite")

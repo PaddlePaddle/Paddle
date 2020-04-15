@@ -37,6 +37,9 @@
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
+#ifdef PADDLE_WITH_MKLML
+#include "paddle/fluid/platform/dynload/mklml.h"
+#endif
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -309,6 +312,14 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
 #ifdef PADDLE_WITH_MKLDNN
   if (config_.use_mkldnn_) MkldnnPostReset();
 #endif
+#if defined(PADDLE_WITH_MKLML) && defined(_LINUX)
+  // Frees unused memory allocated by the Intel® MKL Memory Allocator to
+  // avoid memory leak. See:
+  // https://software.intel.com/en-us/mkl-developer-reference-c-mkl-free-buffers
+  platform::dynload::MKL_Free_Buffers();
+// We don't support windows since MKL_Free_Buffers is not in
+// mklml_win_2019.0.1.20181227.zip. We will upgrade mklml_win version later.
+#endif
   return true;
 }
 
@@ -428,6 +439,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetMinInputShape(config_.min_input_shape_);
     argument_.SetMaxInputShape(config_.max_input_shape_);
     argument_.SetOptimInputShape(config_.optim_input_shape_);
+    argument_.SetCloseTrtPluginFp16(config_.disable_trt_plugin_fp16_);
   }
 
   if (config_.lite_engine_enabled()) {
@@ -647,6 +659,14 @@ bool AnalysisPredictor::ZeroCopyRun() {
   // recover the cpu_math_library_num_threads to 1, in order to avoid thread
   // conflict when integrating it into deployment service.
   paddle::platform::SetNumThreads(1);
+#if defined(PADDLE_WITH_MKLML) && defined(_LINUX)
+  // Frees unused memory allocated by the Intel® MKL Memory Allocator to
+  // avoid memory leak. See:
+  // https://software.intel.com/en-us/mkl-developer-reference-c-mkl-free-buffers
+  platform::dynload::MKL_Free_Buffers();
+// We don't support windows since MKL_Free_Buffers is not in
+// mklml_win_2019.0.1.20181227.zip. We will upgrade mklml_win version later.
+#endif
   return true;
 }
 
@@ -941,6 +961,8 @@ USE_TRT_CONVERTER(batch_norm);
 USE_TRT_CONVERTER(concat);
 USE_TRT_CONVERTER(dropout);
 USE_TRT_CONVERTER(pad);
+USE_TRT_CONVERTER(hard_sigmoid);
+USE_TRT_CONVERTER(hard_swish);
 USE_TRT_CONVERTER(split);
 USE_TRT_CONVERTER(prelu);
 USE_TRT_CONVERTER(conv2d_transpose);
@@ -951,4 +973,7 @@ USE_TRT_CONVERTER(instance_norm);
 USE_TRT_CONVERTER(layer_norm);
 USE_TRT_CONVERTER(gelu);
 USE_TRT_CONVERTER(multihead_matmul);
+USE_TRT_CONVERTER(fused_embedding_eltwise_layernorm);
+USE_TRT_CONVERTER(skip_layernorm);
+USE_TRT_CONVERTER(scale);
 #endif
