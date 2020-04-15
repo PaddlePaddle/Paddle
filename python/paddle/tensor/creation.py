@@ -12,10 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+from ..fluid.framework import Variable, in_dygraph_mode
+from ..fluid.initializer import Constant
+from ..fluid.layers import core
+from ..fluid.layer_helper import LayerHelper
+from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype, convert_dtype
+from ..fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varbase_creator, device_guard, OpProtoHolder
+from ..fluid.layers import fill_constant
 from paddle.common_ops_import import *
 
 # TODO: define functions to get create a tensor  
-
 __all__ = [
     'create_tensor',
     #            'create_lod_tensor', 
@@ -31,13 +38,64 @@ __all__ = [
     'zeros',
     'zeros_like',
     #            'arrange',
-    #            'eye',
+    'eye',
     'full',
-    #            'full_like',
+    'full_like',
     'triu',
     'tril',
-    #            'meshgrid'
+    'meshgrid',
 ]
+
+
+def full_like(input,
+              fill_value,
+              out=None,
+              dtype=None,
+              device=None,
+              stop_gradient=True,
+              name=None):
+    """
+    **full_like**
+    This function creates a tensor filled with `fill_value` which has identical shape and dtype 
+    with `input`.
+    Args:
+        input(Variable): The input tensor which specifies shape and dtype.
+        fill_value: The value to fill the tensor with. Data type can be bool, float32, float64, int32, int64. Default value is 0.
+        out(Variable): The output tensor.
+    Returns:
+        out(Variable): The tensor variable storing the output.
+    Examples:
+        .. code-block:: python
+          import paddle
+          import paddle.fluid as fluid
+          import numpy as np
+
+          input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+          output = paddle.full_like(input, 2.0)
+          exe = fluid.Executor(fluid.CPUPlace())
+          exe.run(fluid.default_startup_program())
+          img=np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
+          res = exe.run(fluid.default_main_program(), feed={'input':img}, fetch_list=[output])
+          print(res) # [array([[2., 2., 2.], [2., 2., 2.]], dtype=float32)]
+    """
+    helper = LayerHelper("full_like", **locals())
+
+    if dtype is None:
+        dtype = 'float32'
+
+    check_dtype(dtype, 'dtype',
+                ['bool', 'float16', 'float32', 'int32', 'int64'], 'full_like')
+
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+    helper.append_op(
+        type='fill_any_like',
+        inputs={'X': [input]},
+        attrs={'value': fill_value},
+        outputs={'Out': [out]})
+    out.stop_gradient = stop_gradient
+
+    return out
 
 
 def linspace(start, stop, num, dtype, out=None, device=None, name=None):
@@ -149,7 +207,7 @@ def ones(shape, dtype=None, out=None, device=None):
 
           import paddle
           data = paddle.ones(shape=[3, 2], dtype='float32') # [[1., 1.], [1., 1.], [1., 1.]]
-          data = paddle.ones(shape=[2, 2], dtype='float32', device='cpu') # [[1., 1.], [1., 0.]]
+          data = paddle.ones(shape=[2, 2], dtype='float32', device='cpu') # [[1., 1.], [1., 1.]]
     """
     check_dtype(dtype, 'create data type',
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
@@ -189,7 +247,7 @@ def ones_like(input, dtype=None, device=None, name=None):
           import paddle
           import paddle.fluid as fluid
 
-          x = fluid.layers.data(name='x', dtype='float32', shape=[3], append_batch_size=False)
+          x = fluid.data(name='x', dtype='float32', shape=[3])
           data = paddle.ones_like(x) # data=[1.0, 1.0, 1.0]
           data1 = paddle.ones_like(input=x, device="gpu") data1=[1.0, 1.0. 1.0]
 
@@ -296,9 +354,9 @@ def zeros_like(input, dtype=None, device=None, name=None):
           import paddle
           import paddle.fluid as fluid
 
-          x = fluid.layers.data(name='x', dtype='float32', shape=[3], append_batch_size=False)
+          x = fluid.data(name='x', dtype='float32', shape=[3])
           data = paddle.ones_like(x) # data=[1.0, 1.0, 1.0]
-          data1 = paddle.ones_like(input=x, device="gpu") data1=[1.0, 1.0. 1.0]
+          data1 = paddle.ones_like(input=x, device="gpu") #data1=[1.0, 1.0. 1.0]
 
     """
 
@@ -338,6 +396,66 @@ def zeros_like(input, dtype=None, device=None, name=None):
     return out
 
 
+def eye(num_rows,
+        num_columns=None,
+        out=None,
+        dtype='float32',
+        stop_gradient=True,
+        name=None):
+    """
+    **eye**
+    This function constructs an identity tensor, or a batch of tensor.
+    Args:
+        num_rows(int): the number of rows in each batch tensor.
+        num_columns(int, optional): the number of columns in each batch tensor.
+                          If None, default: num_rows.
+        out(Variable, optional): Optional output which can be any created 
+            Variable that meets the requirements to store the result of operation.
+            if out is None, a new Varibale will be create to store the result.
+        dtype(string, optional): The data type of the returned tensor.
+                       It should be int32, int64, float16, float32, float64.
+        stop_gradient(bool, optional): Whether stop calculating gradients. Default:True.
+        name(str, optional): The default value is None.  Normally there is no need for 
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+    Returns:
+        Variable: An identity Tensor or LoDTensor of shape [num_rows, num_columns].
+    Examples:
+        .. code-block:: python
+          import paddle
+          data = paddle.eye(3, dtype='int32')
+          # [[1, 0, 0]
+          #  [0, 1, 0]
+          #  [0, 0, 1]]
+          data = paddle.eye(2, 3, dtype='int32')
+          # [[1, 0, 0]
+          #  [0, 1, 0]]
+    """
+
+    helper = LayerHelper("eye", **locals())
+    if not isinstance(num_rows, int) or num_rows < 0:
+        raise TypeError("num_rows should be a non-negative int")
+    if num_columns is not None:
+        if not isinstance(num_columns, int) or num_columns < 0:
+            raise TypeError("num_columns should be a non-negative int")
+    else:
+        num_columns = num_rows
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=dtype)
+    c_dtype = convert_np_dtype_to_dtype_(dtype)
+    helper.append_op(
+        type='eye',
+        inputs={},
+        outputs={'Out': [out]},
+        attrs={
+            'num_rows': num_rows,
+            'num_columns': num_columns,
+            'dtype': c_dtype
+        },
+        stop_gradient=True)
+    out.stop_gradient = stop_gradient
+    return out
+
+
 def full(shape,
          fill_value,
          out=None,
@@ -346,26 +464,36 @@ def full(shape,
          stop_gradient=True,
          name=None):
     """
-    This function return a Tensor with the `fill_value` which size is same as `shape`
+    This Op return a Tensor with the `fill_value` which size is same as `shape`
     
     Args:
         shape(list|tuple|Variable): Shape of the Tensor to be created.
                 The data type is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
                 the elements of it should be integers or Tensors with shape [1].
                 If ``shape`` is an Variable, it should be an 1-D Tensor .
-        value(float): The constant value used to initialize the Tensor to be created.
+        fill_value(bool|float16|float32|float64|int32|int64|Variable): The constant value
+            used to initialize the Tensor to be created. If fill_value is an Variable, it must be an 1-D Tensor.
         out(Variable, optional): Optional output which can be any created 
             Variable that meets the requirements to store the result of operation.
             if out is None, a new Varibale will be create to store the result.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): Data type of the output tensor
             which can be float16, float32, float64, int32, int64, if dytpe is `None`, the data
             type of created tensor is `float32`
-        device(str, optional): This parameter specifies that the Tensor is created 
-            on the GPU or CPU.
+        device(str, optional): On which device to run this Op. The :attr:`device` must be
+            None, 'cpu' or 'gpu'. If :attr:`device` is None, the device that the user set in 
+            the paddle program will be chosen. Default value is None.
         stop_gradient(bool, optional): Indicating if we stop gradient from current(out) Variable,
             default value is True.
         name(str, optional): The default value is None.  Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        Variable: Tensor which is created according to shape and dtype.
+
+    Raises:
+        TypeError: The `dtype` must be one of None, bool, float16, float32, float64, int32 and int64.
+        TypeError: The `out` must be a Variable.
+        TypeError: The `shape` must be one of Variable, list tuple.
     
     Examples:
         .. code-block:: python
@@ -373,16 +501,20 @@ def full(shape,
           import paddle
           import paddle.fluid as fluid
 
-          data1 = paddle.full(shape=[2,1], full_value=0, dtype='int64') # data1=[[0],[0]]
-          data2 = paddle.full(shape=[2,1], full_value=5, dtype='int64', device='gpu') # data2=[[5],[5]]
+          data1 = paddle.full(shape=[2,1], fill_value=0, dtype='int64') # data1=[[0],[0]]
+          data2 = paddle.full(shape=[2,1], fill_value=5, dtype='int64', device='gpu') # data2=[[5],[5]]
 
           # attr shape is a list which contains Variable Tensor.
           positive_2 = fluid.layers.fill_constant([1], "int32", 2)
-          data3 = paddle.full(shape=[1, positive_2], dtype='float32', full_value=1.5) # data3=[1.5, 1.5]
+          data3 = paddle.full(shape=[1, positive_2], dtype='float32', fill_value=1.5) # data3=[1.5, 1.5]
 
           # attr shape is an Variable Tensor.
           shape = fluid.layers.fill_constant([1,2], "int32", 2) # shape=[2,2]
-          data4 = paddle.full(shape=shape, dtype='bool', full_value=True) # data4=[[True,True],[True,True]]
+          data4 = paddle.full(shape=shape, dtype='bool', fill_value=True) # data4=[[True,True],[True,True]]
+          
+          # attr value is an Variable Tensor.
+          val = fluid.layers.fill_constant([1], "float32", 2.0) # val=[2.0]
+          data5 = paddle.full(shape=[2,1], fill_value=val, dtype='float32') #data5=[[2.0],[2.0]]
     """
 
     helper = LayerHelper("full", **locals())
@@ -394,6 +526,8 @@ def full(shape,
                 ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
                 'full')
     check_type(shape, 'shape', (Variable, list, tuple), 'full')
+    if out is not None:
+        check_type(shape, 'out', (Variable), 'full')
 
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -589,3 +723,85 @@ def triu(input, diagonal=0, name=None):
     """
 
     return _tril_triu_op(LayerHelper('triu', **locals()))
+
+
+def meshgrid(input, name=None):
+    """
+    This op takes a list of N tensors as input, each of which is 1-dimensional 
+    vector, and creates N-dimensional grids.
+    
+    Args:
+        input(Variable) : tensors (list of tensor): the shapes of input k tensors are (N1,), 
+            (N2,),..., (Nk,). Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
+        name (str, optional): The default value is None. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+ 
+    Returns:
+         Variable: k tensors. The shape of each tensor is (N1, N2, ..., Nk)
+
+    Examples:
+      .. code-block:: python
+
+          import paddle
+          import paddle.fluid as fluid
+          import numpy as np
+
+          x = fluid.data(name='x', shape=[100], dtype='int32')
+          y = fluid.data(name='y', shape=[200], dtype='int32')
+
+          input_1 = np.random.randint(0, 100, [100, ]).astype('int32')
+          input_2 = np.random.randint(0, 100, [200, ]).astype('int32')
+
+          exe = fluid.Executor(place=fluid.CPUPlace())
+          grid_x, grid_y = paddle.tensor.meshgrid([x, y])
+          res_1, res_2 = exe.run(fluid.default_main_program(),
+                                 feed={'x': input_1,
+                                       'y': input_2},
+                                 fetch_list=[grid_x, grid_y])
+     
+          #the shape of res_1 is (100, 200)
+          #the shape of res_2 is (100, 200)
+
+      .. code-block:: python
+
+          #example 2: in dygraph mode
+
+          import paddle
+          import paddle.fluid as fluid
+          import numpy as np
+
+          input_3 = np.random.randint(0, 100, [100, ]).astype('int32')
+          input_4 = np.random.randint(0, 100, [200, ]).astype('int32')
+          with fluid.dygraph.guard():
+              tensor_3 = fluid.dygraph.to_variable(input_3)
+              tensor_4 = fluid.dygraph.to_variable(input_4)
+              grid_x, grid_y = paddle.tensor.meshgrid([tensor_3, tensor_4])
+
+          #the shape of grid_x is (100, 200)
+          #the shape of grid_y is (100, 200)
+
+    """
+
+    if in_dygraph_mode():
+        num = len(input)
+        out = core.ops.meshgrid(input, num)
+        return out
+
+    helper = LayerHelper('meshgrid', **locals())
+
+    if not isinstance(input, list):
+        raise TypeError("The type of input in meshgrid should be list.")
+
+    for id, input_ in enumerate(input):
+        check_dtype(input_.dtype, 'create data type',
+                    ['float16', 'float32', 'float64', 'int32', 'int64'],
+                    'meshgrid')
+
+    num = len(input)
+    out = [
+        helper.create_variable_for_type_inference(dtype=input[i].dtype)
+        for i in range(num)
+    ]
+    helper.append_op(type='meshgrid', inputs={'X': input}, outputs={'Out': out})
+
+    return out

@@ -16,9 +16,11 @@ from __future__ import print_function
 
 import six
 import warnings
+import sys
 
 from .initializer import Initializer, Xavier, Constant
 from .regularizer import WeightDecayRegularizer
+from paddle.fluid.data_feeder import check_type
 
 __all__ = [
     'ParamAttr',
@@ -47,8 +49,11 @@ class ParamAttr(object):
         learning_rate (float): The parameter's learning rate. The learning rate when
                 optimize is the global learning rates times the parameter's learning rate times
                 the factor of learning rate scheduler. Default 1.0.
-        regularizer (WeightDecayRegularizer, optional): Regularization factor. Default None, meaning
-                there is no regularization.
+        regularizer (WeightDecayRegularizer, optional): Regularization strategy. There are two method: 
+                :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If 
+                regularizer is also set in ``optimizer`` (such as :ref:`api_fluid_optimizer_SGDOptimizer` ), 
+                that regularizer setting in optimizer will be ignored. Default None, meaning there is 
+                no regularization.
         trainable (bool): Whether this parameter is trainable. Default True.
         do_model_average (bool): Whether this parameter should do model average
                 when model average is enabled. Default False.
@@ -74,8 +79,17 @@ class ParamAttr(object):
                  regularizer=None,
                  trainable=True,
                  do_model_average=True):
+
+        if sys.version_info.major == 2:
+            check_type(name, "name", (str, type(None), unicode), "ParamAttr")
+        else:
+            check_type(name, "name", (str, type(None)), "ParamAttr")
+        check_type(learning_rate, "learning_rate", (float, int), "ParamAttr")
+        check_type(trainable, "trainable", (bool), "ParamAttr")
+        check_type(do_model_average, "do_model_average", (bool), "ParamAttr")
+
         self.name = name
-        if isinstance(self.name, six.string_types) and self.name == "":
+        if self.name == "":
             raise ValueError("name of ParamAttr can not be empty str")
 
         self.initializer = initializer
@@ -215,9 +229,10 @@ class WeightNormParamAttr(ParamAttr):
         learning_rate(float32): The parameter's learning rate when
             optimizer is :math:`global\_lr * parameter\_lr * scheduler\_factor`.
             Default 1.0.
-        regularizer(WeightDecayRegularizer): Regularization factor, such as
-            ``regularizer = fluid.regularizer.L2DecayRegularizer(regularization_coeff=0.1)``.
-            Default None, meaning that there is no regularization.
+        regularizer (WeightDecayRegularizer, optional): Regularization strategy. There are two method: 
+            :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If regularizer 
+            is also set in ``optimizer`` (such as :ref:`api_fluid_optimizer_SGDOptimizer` ), that regularizer 
+            setting in optimizer will be ignored. Default None, meaning there is no regularization.
         trainable(bool, optional): Whether this parameter is trainable. Default True.
         do_model_average(bool, optional): Whether this parameter should do model average.
             Default False.

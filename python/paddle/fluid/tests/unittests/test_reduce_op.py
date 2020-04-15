@@ -574,5 +574,69 @@ class API_TestSumOp(unittest.TestCase):
         self.assertEqual((np_z == z_expected).all(), True)
 
 
+class API_TestMaxOp(unittest.TestCase):
+    def test_1(self):
+        # type: float
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data = fluid.data("data", shape=[10, 10], dtype="float32")
+            result_max = paddle.max(input=data, dim=1)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            input_data = np.random.rand(10, 10).astype(np.float32)
+            res, = exe.run(feed={"data": input_data}, fetch_list=[result_max])
+        self.assertEqual((res == np.max(input_data, axis=1)).all(), True)
+
+        # type: int
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data = fluid.data("data", shape=[10, 10], dtype="int64")
+            result_max = paddle.max(input=data, dim=1)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            input_data = np.random.randint(10, size=(10, 10)).astype(np.int64)
+            res, = exe.run(feed={"data": input_data}, fetch_list=[result_max])
+        self.assertEqual((res == np.max(input_data, axis=1)).all(), True)
+
+        # dygraph
+        with fluid.dygraph.guard():
+            np_x = np.array([10, 10]).astype('float64')
+            x = fluid.dygraph.to_variable(np_x)
+            z = paddle.max(x, dim=0)
+            np_z = z.numpy()
+            z_expected = np.array(np.max(np_x, axis=0))
+        self.assertEqual((np_z == z_expected).all(), True)
+
+
+class API_TestMinOp(unittest.TestCase):
+    def test_1(self):
+        # type: float
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data = fluid.data("data", shape=[10, 10], dtype="float32")
+            result_min = paddle.min(input=data, dim=1)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            input_data = np.random.rand(10, 10).astype(np.float32)
+            res, = exe.run(feed={"data": input_data}, fetch_list=[result_min])
+        self.assertEqual((res == np.min(input_data, axis=1)).all(), True)
+
+        # type: int
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            data = fluid.data("data", shape=[10, 10], dtype="int64")
+            result_min = paddle.min(input=data, dim=1)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            input_data = np.random.randint(10, size=(10, 10)).astype(np.int64)
+            res, = exe.run(feed={"data": input_data}, fetch_list=[result_min])
+        self.assertEqual((res == np.min(input_data, axis=1)).all(), True)
+
+        # dygraph
+        with fluid.dygraph.guard():
+            np_x = np.array([10, 10]).astype('float64')
+            x = fluid.dygraph.to_variable(np_x)
+            z = paddle.min(x, dim=0)
+            np_z = z.numpy()
+            z_expected = np.array(np.min(np_x, axis=0))
+        self.assertEqual((np_z == z_expected).all(), True)
+
+
 if __name__ == '__main__':
     unittest.main()

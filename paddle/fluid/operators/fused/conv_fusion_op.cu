@@ -13,11 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <array>
+#include "paddle/fluid/framework/conv_search_cache.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/conv_cudnn_helper.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/operators/math/padding.h"
+#include "paddle/fluid/platform/cudnn_helper.h"
 
 DECLARE_int64(cudnn_exhaustive_search_times);
 
@@ -32,6 +33,7 @@ using ScopedConvolutionDescriptor = platform::ScopedConvolutionDescriptor;
 using ScopedActivationDescriptor = platform::ScopedActivationDescriptor;
 using DataLayout = platform::DataLayout;
 using framework::AlgorithmsCache;
+using framework::ConvSearchCache;
 
 template <typename T>
 using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
@@ -232,7 +234,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         return fwd_perf_stat[0].algo;
       };
       AlgorithmsCache<cudnnConvolutionFwdAlgo_t>& algo_cache =
-          *(ConvSearchCache::Instance().GetConvFusion());
+          *(framework::ConvSearchCache::Instance().GetConvFusion());
       int search_times = ctx.Attr<int>("search_times");
       search_times = std::max(
           static_cast<int>(FLAGS_cudnn_exhaustive_search_times), search_times);

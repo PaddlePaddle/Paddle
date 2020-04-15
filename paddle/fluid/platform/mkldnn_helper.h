@@ -13,12 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
-#include <mkldnn.h>
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
+#include "mkldnn.hpp"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
 namespace paddle {
