@@ -23,6 +23,7 @@ import paddle
 
 class MyLayer(fluid.Layer):
     def __init__(self, parameterdict):
+        super(MyLayer, self).__init__()
         self.parameterdict = parameterdict
 
     def forward(self, x, key):
@@ -50,7 +51,7 @@ class TestImperativeContainerParameterDict(unittest.TestCase):
 
             # use tuple to initialize parameterdict
             model1 = MyLayer(
-                fluid.dygraph.ParameterDict(tuple('param1', param1)))
+                fluid.dygraph.ParameterDict((('param1', param1), )))
 
             # use dict to initialize parameterdict
             model2 = MyLayer(
@@ -63,10 +64,11 @@ class TestImperativeContainerParameterDict(unittest.TestCase):
             orderdict_temp = collections.OrderedDict()
             orderdict_temp['param1'] = param1
             orderdict_temp['param2'] = param2
-            model3 = MyLayer(fluid.dygraph.ParameterDict(orderdict_temp))
+            parameter_dict_tmp = fluid.dygraph.ParameterDict(orderdict_temp)
+            model3 = MyLayer(parameter_dict_tmp)
 
             # use parameterdict to initialize parameterdict
-            model4 = MyLayer(fluid.dygraph.ParameterDict(model3))
+            model4 = MyLayer(fluid.dygraph.ParameterDict(parameter_dict_tmp))
 
             model1_param1 = model1(x, 'param1')
             model1_param1.backward()
@@ -81,19 +83,51 @@ class TestImperativeContainerParameterDict(unittest.TestCase):
             model4_param2 = model4(x, 'param2')
 
             self.assertListEqual(model1_param1.shape, model2_param1.shape)
-            self.assertTrue(np.array_equal(model1_param1, model2_param1))
+            self.assertTrue(
+                np.array_equal(model1_param1.numpy(), model2_param1.numpy()))
             self.assertListEqual(model1_param1.shape, model3_param1.shape)
-            self.assertTrue(np.array_equal(model1_param1, model3_param1))
+            self.assertTrue(
+                np.array_equal(model1_param1.numpy(), model3_param1.numpy()))
             self.assertListEqual(model1_param1.shape, model4_param1.shape)
-            self.assertTrue(np.array_equal(model1_param1, model4_param1))
+            self.assertTrue(
+                np.array_equal(model1_param1.numpy(), model4_param1.numpy()))
 
             self.assertListEqual(model2_param2.shape, model3_param2.shape)
-            self.assertTrue(np.array_equal(model2_param2, model3_param2))
+            self.assertTrue(
+                np.array_equal(model2_param2.numpy(), model3_param2.numpy()))
             self.assertListEqual(model2_param2.shape, model4_param2.shape)
-            self.assertTrue(np.array_equal(model2_param2, model4_param2))
+            self.assertTrue(
+                np.array_equal(model2_param2.numpy(), model4_param2.numpy()))
 
-    def test_parameter_dict():
+    def test_parameter_dict(self):
         self.parameter_dict()
+
+    def test_parameter_dict_basic(self):
+        param1 = fluid.layers.create_parameter(shape=[5, 10], dtype='float32')
+        param2 = fluid.layers.create_parameter(shape=[5, 5], dtype='float32')
+        parameter_dict_tmp = fluid.dygraph.ParameterDict({
+            'param1': param1,
+            'param2': param2
+        })
+        param3 = fluid.layers.create_parameter(shape=[5, 15], dtype='float32')
+        parameter_dict_tmp['param3'] = param3
+
+        # test __iter__
+        for i in (parameter_dict_tmp):
+            pass
+
+        self.assertTrue('param3' in parameter_dict_tmp)
+        self.assertTrue(len(parameter_dict_tmp) == 3)
+        del parameter_dict_tmp['param3']
+        self.assertTrue('param3' not in parameter_dict_tmp)
+        self.assertTrue(len(parameter_dict_tmp) == 2)
+
+        parameter_dict_tmp.pop('param2')
+        self.assertTrue('param2' not in parameter_dict_tmp)
+        self.assertTrue(len(parameter_dict_tmp) == 1)
+
+        parameter_dict_tmp.clear()
+        self.assertTrue(len(parameter_dict_tmp) == 0)
 
 
 if __name__ == '__main__':

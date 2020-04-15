@@ -164,7 +164,7 @@ class ParameterDict(Layer):
         return self._parameters[key]
 
     def __setitem__(self, key, parameter):
-        self.register_parameter(key, parameter)
+        self.add_parameter(key, parameter)
 
     def __delitem__(self, key):
         del self._parameters[key]
@@ -371,7 +371,7 @@ class LayerDict(Layer):
             self.update(layers)
 
     def __getitem__(self, key):
-        return self._layers[key]
+        return self._sub_layers[key]
 
     def __setitem__(self, key, layer):
         self.add_sublayer(key, layer)
@@ -392,7 +392,7 @@ class LayerDict(Layer):
         """
         Remove all items from the LayerDict.
         """
-        self._layers.clear()
+        self._sub_layers.clear()
 
     def pop(self, key):
         """
@@ -409,19 +409,19 @@ class LayerDict(Layer):
         """
         Return an iterable of the LayerDict keys.
         """
-        return self._layers.keys()
+        return self._sub_layers.keys()
 
     def items(self):
         """
         Return an iterable of the LayerDict key/value pairs.
         """
-        return self._layers.items()
+        return self._sub_layers.items()
 
     def values(self):
         """
         Return an iterable of the LayerDict values.
         """
-        return self._layers.values()
+        return self._sub_layers.values()
 
     def update(self, layers):
         """
