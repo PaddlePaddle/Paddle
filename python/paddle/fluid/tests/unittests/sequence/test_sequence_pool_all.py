@@ -112,7 +112,7 @@ class TestSequencePoolAll2(TestSequencePoolAll1):
         self.out_names = [
             'out' + str(num) for num in six.moves.range(self.var_num)
         ]
-        self.dtype = "float64"
+        self.dtype = "float32"
         self.pad_value = 0.5
 
     def set_lod_data(self, var_num, batch_size, feat_len):
@@ -139,7 +139,7 @@ class TestSequencePoolAll3(TestSequencePoolAll1):
         self.out_names = [
             'out' + str(num) for num in six.moves.range(self.var_num)
         ]
-        self.dtype = "float64"
+        self.dtype = "float32"
         self.pad_value = 0.0
 
     def set_lod_data(self, var_num, batch_size, feat_len):
@@ -165,7 +165,7 @@ class TestSequencePoolAll4(TestSequencePoolAll1):
         self.out_names = [
             'out' + str(num) for num in six.moves.range(self.var_num)
         ]
-        self.dtype = "float64"
+        self.dtype = "float32"
         self.pad_value = 0.0
 
     def set_lod_data(self, var_num, batch_size, feat_len):
