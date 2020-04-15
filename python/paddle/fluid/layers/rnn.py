@@ -88,7 +88,7 @@ class RNNCell(object):
     def get_initial_states(self,
                            batch_ref,
                            shape=None,
-                           dtype=None,
+                           dtype='float32',
                            init_value=0,
                            batch_dim_idx=0):
         """
@@ -105,9 +105,9 @@ class RNNCell(object):
                 property `state_shape` will be used. The default value is None.
             dtype: A (possibly nested structure of) data type[s]. The structure
                 must be same as that of `shape`, except when all tensors' in states
-                has the same data type, a single data type can be used. If None and
+                has the same data type, a single data type can be used. If
                 property `cell.state_shape` is not available, float32 will be used
-                as the data type. The default value is None.
+                as the data type. The default value is float32.
             init_value: A float value used to initialize states.
             batch_dim_idx: An integer indicating which dimension of the tensor in
                 inputs represents batch size.  The default value is 0.
@@ -116,10 +116,13 @@ class RNNCell(object):
             Variable: tensor variable[s] packed in the same structure provided \
                 by shape, representing the initialized states.
         """
-        check_variable_and_dtype(batch_ref, 'batch_ref', ['float32', 'float64'], 'RNNCell')
-        check_variable_and_dtype(shape, 'shape', ['int32', 'int64'], 'RNNCell')
-        check_dtype(dtype, 'dtype', ['float32', 'float64'],
-                'RNNCell')
+        check_variable_and_dtype(batch_ref, 'batch_ref',
+                                 ['float32', 'float64'], 'RNNCell')
+        check_type(shape, 'shape', (Variable, type(None)), 'RNNCell')
+        if isinstance(shape, Variable):
+            check_variable_and_dtype(shape, 'shape', ['int32', 'int64'],
+                                     'RNNCell')
+        check_dtype(dtype, 'dtype', ['float32', 'float64'], 'RNNCell')
 
         # TODO: use inputs and batch_size
         batch_ref = flatten(batch_ref)[0]
@@ -468,13 +471,14 @@ def rnn(cell,
     if isinstance(inputs, (list, tuple)):
         for i, input_x in enumerate(inputs):
             check_variable_and_dtype(input_x, 'inputs[' + str(i) + ']',
-                                        ['float32', 'float64'], 'rnn')
+                                     ['float32', 'float64'], 'rnn')
     check_type(initial_states, 'initial_states',
                (Variable, list, tuple, type(None)), 'rnn')
     if isinstance(initial_states, (list, tuple)):
-        for i, state in enumerate(initial_states):
-            check_variable_and_dtype(state, 'initial_states[' + str(i) + ']',
-                                        ['float32', 'float64'], 'rnn')
+        states = map_structure(lambda x: x, initial_states)[0]
+        for i, state in enumerate(states):
+            check_variable_and_dtype(state, 'states[' + str(i) + ']',
+                                     ['float32', 'float64'], 'rnn')
     check_type(sequence_length, 'sequence_length', (Variable, type(None)),
                'rnn')
 
