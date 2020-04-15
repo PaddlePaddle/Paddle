@@ -283,7 +283,6 @@ function check_style() {
     pre-commit install
     clang-format --version
 
-    get_file=`git diff --numstat upstream/$BRANCH |awk '{print $NF}'`
     for file_name in `git diff --numstat upstream/$BRANCH |awk '{print $NF}'`;do
         if ! pre-commit run --files $file_name ; then
             git diff
