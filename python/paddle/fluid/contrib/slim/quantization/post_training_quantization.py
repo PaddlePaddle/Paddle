@@ -817,16 +817,14 @@ class WeightQuantization(object):
             "Input error: weight_quantize_type should in {}".format(
                 self._supported_weight_quantize_type)
 
-        self._quantize_weight_to_int(save_model_dir, save_model_filename,
+        quantized_model_dir = os.path.join(save_model_dir, "quantized_model")
+        self._quantize_weight_to_int(quantized_model_dir, save_model_filename,
                                      save_params_filename, quantizable_op_type,
                                      weight_bits, weight_quantize_type, False,
                                      threshold_rate)
 
         if generate_test_model:
-            save_model_dir = save_model_dir.replace('\\', '/')
-            if save_model_dir[-1] == '/':
-                save_model_dir = save_model_dir[0:-1]
-            test_model_dir = save_model_dir + "_test"
+            test_model_dir = os.path.join(save_model_dir, "test_model")
             self._quantize_weight_to_int(
                 test_model_dir, save_model_filename, save_params_filename,
                 quantizable_op_type, weight_bits, weight_quantize_type, True,
