@@ -38,6 +38,11 @@ class CommContext(object):
         self.rpc_handler = rpc_handler
 
 
+def create_var_struct(var):
+    return VarStruct(var.name, var.shape, var.dtype, var.type, var.lod_level,
+                     var.persistable)
+
+
 class VarStruct(object):
     """
     record part properties of a Variable in python.
@@ -106,11 +111,6 @@ class VarDistributed(object):
 
         self.vtype = vtype
         self.endpoint = endpoint
-
-    @staticmethod
-    def __create_var_struct(var):
-        return VarStruct(var.name, var.shape, var.dtype, var.type,
-                         var.lod_level, var.persistable)
 
     @staticmethod
     def equal(var1, var2):

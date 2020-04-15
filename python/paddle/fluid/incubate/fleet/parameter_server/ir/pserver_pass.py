@@ -18,17 +18,12 @@ import collections
 import six
 
 from paddle.fluid import core
-from paddle.fluid import initializer
 from paddle.fluid.framework import Block
 
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_param_grads
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import clone_variable
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import _is_optimizer_op
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _orig_varname
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_varname_parts
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import DistributedMode
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import ServerRuntimeConfig
 
 LOOKUP_TABLE_TYPE = "lookup_table"
 LOOKUP_TABLE_GRAD_TYPE = "lookup_table_grad"
@@ -385,7 +380,12 @@ def add_listen_and_serv_pass(program, pserver_id, endpoint, trainers,
     return program
 
 
-def add_rpc_global_flags_pass(program, get_threads, send_threads, pull_threads):
+def add_rpc_global_flags_pass(program, config):
+    server_runtime = config.get_server_runtime_config()
+    send_threads = server_runtime._rpc_send_thread_num,
+    get_threads = server_runtime._rpc_get_thread_num,
+    pull_threads = server_runtime._rpc_prefetch_thread_num
+
     op = get_op_by_type(program.global_block(), "listen_and_serv")
 
     if get_threads <= 1 or send_threads <= 1 or pull_threads <= 1:
@@ -409,7 +409,10 @@ def _clone_var(self, block, var, persistable=True):
         persistable=persistable)
 
 
-def add_recv_inputs_pass(program, mode, trainers):
+def add_recv_inputs_pass(program, config):
+    mode = config.get_distributed_mode
+    trainers = config.get_trainers()
+
     for v in self.param_grad_ep_mapping[endpoint]["params"]:
         _clone_var(pserver_program.global_block(), v)
     for v in self.param_grad_ep_mapping[endpoint]["grads"]:
@@ -442,7 +445,10 @@ def add_recv_inputs_pass(program, mode, trainers):
     return program
 
 
-def add_optimizer_pass(program, origin_program, ps_endpoint):
+def add_optimizer_pass(program, config):
+    origin_program = config.get_origin_main_program
+    ps_endpoint = config.get_ps_endpoint()
+
     opt_op_on_pserver = []
     # Iterate through the ops, and if an op and the optimize ops
     # which located on current pserver are in one set, then
@@ -567,8 +573,9 @@ def add_optimizer_pass(program, origin_program, ps_endpoint):
     op._set_attr("lr_decay_block_id", lr_decay_block_id)
 
 
-def build_pserver_startup_program_pass(program, ps_endpoint, p_main_program,
-                                       o_startup_program):
+def build_pserver_startup_program_pass(program, p_main_program, config):
+    ps_endpoint = config.get_ps_endpoint()
+    o_startup_program = config.get_origin_startup_program()
     program.random_seed = o_startup_program.random_seed
 
     params = self.param_grad_ep_mapping[ps_endpoint]["params"]

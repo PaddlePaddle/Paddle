@@ -54,6 +54,7 @@ from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 
 import paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass as worker
 import paddle.fluid.incubate.fleet.parameter_server.ir.pserver_pass as server
+import paddle.fluid.incubate.fleet.parameter_server.ir.public as public
 
 
 class FleetTranspiler(Fleet):
@@ -69,7 +70,7 @@ class FleetTranspiler(Fleet):
 
         self._strategy = None
         self._transpiler = None
-        self._origin_program = None
+        self._origin_main_program = None
         self._communicator = None
         self.startup_program = None
         self.main_program = None
@@ -432,8 +433,8 @@ class FleetTranspiler(Fleet):
                                     export_for_deployment)
         else:
             io.save_inference_model(dirname, feeded_var_names, target_vars,
-                                    executor, self._origin_program, None, None,
-                                    export_for_deployment, True)
+                                    executor, self._origin_main_program, None,
+                                    None, export_for_deployment, True)
 
             model_basename = "__model__"
             model_filename = os.path.join(dirname, model_basename)
@@ -493,8 +494,10 @@ class FleetTranspiler(Fleet):
     def _transpile(self, config):
         program_config = self._strategy.get_program_config()
 
-        # _origin_program is a deep copy for default_main_program, for inference
-        self._origin_program = default_main_program().clone(for_test=False)
+        # _origin_main_program is a deep copy for default_main_program, for inference
+        self._origin_main_program = default_main_program().clone(for_test=False)
+        self._origin_startup_program = default_startup_program().clone(
+            for_test=False)
 
         if program_config.geo_sgd_mode:
             from paddle.fluid.transpiler.geo_sgd_transpiler import GeoSgdTranspiler
@@ -832,52 +835,32 @@ class ParameterServerOptimizer(DistributedOptimizer):
     def apply_gradients(self, params_grads):
         raise NotImplementedError()
 
-    def _build_trainer_programs(self):
-        _main = fleet._origin_program.clone()
+    def _build_trainer_programs(self, compiled_config):
+        _main = fleet._origin_main_program.clone()
         _startup = fluid.default_startup_program().clone()
 
-        mode = fleet.strategy.distributed_mode
-        role_id = fleet._role_maker.role_id()
-        ps_endpoints = fleet._role_maker.get_pserver_endpoints()
-
         # for main program
-        _main = worker.delete_optimizer_pass(_main)
-        _main = worker.distributed_ops_pass(_main, role_id, ps_endpoints)
-        _main = worker.append_send_ops_pass(_main, mode, fleet._origin_program,
-                                            ps_endpoints)
+        _main = worker.delete_optimizer_pass(_main, compiled_config)
+        _main = worker.distributed_ops_pass(_main, compiled_config)
+        _main = worker.append_send_ops_pass(_main, compiled_config)
 
         # for startup program
-        _startup = worker.fake_init_ops_pass(_startup, _main)
-        _startup = worker.init_from_server_pass(_startup, [])
+        _startup = worker.fake_init_ops_pass(_startup, compiled_config)
+        _startup = worker.init_from_server_pass(_startup, compiled_config)
 
         return _main, _startup
 
-    def _build_pserver_programs(self):
+    def _build_pserver_programs(self, compiled_config):
         _main = fluid.Program()
         _startup = fluid.Program()
 
-        ps_id = fleet._role_maker.server_index()
-        ps_endpoint = fleet._role_maker.get_pserver_endpoints(
-            fleet._role_maker.server_index())
-        trainers = fleet._role_maker.worker_num()
-        mode = fleet.strategy.distributed_mode
+        _main = server.add_listen_and_serv_pass(_main, compiled_config)
+        _main = server.add_rpc_global_flags_pass(_main, compiled_config)
+        _main = server.add_optimizer_pass(_main, compiled_config)
+        _main = server.add_recv_inputs_pass(_main, compiled_config)
 
-        server_runtime = fleet.strategy.get_server_runtime_config()
-
-        _main = server.add_listen_and_serv_pass(_main, ps_id, ps_endpoint,
-                                                trainers, mode)
-
-        _main = server.add_rpc_global_flags_pass(
-            _main, server_runtime._rpc_send_thread_num,
-            server_runtime._rpc_get_thread_num,
-            server_runtime._rpc_prefetch_thread_num)
-
-        _main = server.add_optimizer_pass(_main, fleet._origin_main_program,
-                                          ps_endpoint)
-        _main = server.add_recv_inputs_pass(_main, mode, trainers)
-
-        _startup = server.build_pserver_startup_program_pass(
-            _startup, ps_endpoint, _main, fleet._origin_startup_program)
+        _startup = server.build_pserver_startup_program_pass(_startup, _main,
+                                                             compiled_config)
         return _main, _startup
 
     def minimize(self,
@@ -893,6 +876,10 @@ class ParameterServerOptimizer(DistributedOptimizer):
         self._optimizer.minimize(losses, startup_programs, parameter_list,
                                  no_grad_set)
 
+        compiled_config = public.CompileTimeStrategy(
+            fleet._origin_main_program, fleet._origin_startup_program,
+            self._strategy, fleet._role_maker)
+
         fleet.main_program, fleet.startup_program = \
-            self._build_trainer_programs() if fleet.is_worker() \
-                else self._build_pserver_programs()
+            self._build_trainer_programs(compiled_config) if fleet.is_worker() \
+                else self._build_pserver_programs(compiled_config)

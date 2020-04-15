@@ -17,9 +17,9 @@ from __future__ import print_function
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 from paddle.fluid.incubate.fleet.parameter_server.ir.program_utils import delete_ops
-from paddle.fluid.incubate.fleet.parameter_server.ir.public import _is_opt_role_op
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_param_grads
 from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
+from paddle.fluid.incubate.fleet.parameter_server.ir.public import DistributedMode
 
 OP_NAME_SCOPE = "op_namescope"
 CLIP_OP_NAME_SCOPE = "@CLIP"
@@ -29,14 +29,7 @@ RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
 
-class DistributedMode:
-    SYNC = 0
-    ASYNC = 1
-    HALF_ASYNC = 2
-    GEO = 3
-
-
-def delete_optimizer_pass(program):
+def delete_optimizer_pass(program, config):
     def _delete_optimizer_op_and_vars(_program, optimize_ops):
         optimize_vars = []
         optimize_op_role_vars = []
@@ -65,7 +58,10 @@ def delete_optimizer_pass(program):
     return program
 
 
-def distributed_ops_pass(program, trainer_id, pserver_endpoints):
+def distributed_ops_pass(program, config):
+    trainer_id = config.get_role_id()
+    pserver_endpoints = config.get_ps_endpoints()
+
     def _get_pull_sparse_ops(_program):
         pull_sparse_ops = {}
         op_types = {"lookup_table": "W"}
@@ -133,8 +129,12 @@ def distributed_ops_pass(program, trainer_id, pserver_endpoints):
     return program
 
 
-def append_send_ops_pass(program, origin_program, mode, trainer_id,
-                         pserver_endpoints):
+def append_send_ops_pass(program, config):
+    origin_program = config.get_origin_main_program
+    mode = config.get_distributed_mode
+    trainer_id = config.get_role_id()
+    pserver_endpoints = config.get_ps_endpoints()
+
     def _append_send_op(union_vars, queue):
         send_input_vars = [
             program.global_block().vars[union_var] for union_var in union_vars
@@ -185,11 +185,13 @@ def append_send_ops_pass(program, origin_program, mode, trainer_id,
     return program
 
 
-def lr_decay_pass(program):
+def lr_decay_pass(program, config):
     pass
 
 
-def init_from_server_pass(program, excludes=[]):
+def init_from_server_pass(program, config):
+    excludes = config.get_exclueds_vars()
+
     program.global_block().append_op(
         type="recv",
         inputs={"X": []},
@@ -201,7 +203,9 @@ def init_from_server_pass(program, excludes=[]):
         })
 
 
-def fake_init_ops_pass(program, origin_program):
+def fake_init_ops_pass(program, config):
+    origin_program = config.get_origin_main_program()
+
     def _get_sparse_table_names():
         sparse_table_names = []
         for op in origin_program.global_block().ops:
@@ -237,9 +241,3 @@ def fake_init_ops_pass(program, origin_program):
     _fake_init_sparsetable(sparse_tables)
 
     return program
-
-
-def get_communicator_context(program):
-    send_contexts = []
-    recv_contexts = []
-    return send_contexts, recv_contexts
