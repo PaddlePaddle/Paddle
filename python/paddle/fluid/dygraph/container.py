@@ -116,49 +116,43 @@ class ParameterDict(Layer):
             import numpy as np
 
             class MyLayer(fluid.Layer):
-                def __init__(self, num_stacked_param):
+                def __init__(self):
                     super(MyLayer, self).__init__()
-                    # create ParameterList with iterable Parameters
-                    self.params = fluid.dygraph.ParameterList(
-                        [fluid.layers.create_parameter(
-                            shape=[2, 2], dtype='float32')] * num_stacked_param)
+                    self.parameter_dict = fluid.dygraph.ParameterDict({
+                        'param1':
+                        fluid.layers.create_parameter(shape=[5, 10], dtype='float32'),
+                        'param2':
+                        fluid.layers.create_parameter(shape=[5, 5], dtype='float32')
+                    })
 
-                def forward(self, x):
-                    for i, p in enumerate(self.params):
-                        tmp = self._helper.create_variable_for_type_inference('float32')
-                        self._helper.append_op(
-                            type="mul",
-                            inputs={"X": x,
-                                    "Y": p},
-                            outputs={"Out": tmp},
-                            attrs={"x_num_col_dims": 1,
-                                   "y_num_col_dims": 1})
-                        x = tmp
+                def forward(self, x, key):
+                    tmp = self._helper.create_variable_for_type_inference('float32')
+                    self._helper.append_op(
+                                        type="mul",
+                                        inputs={"X": x,
+                                                "Y": self.parameter_dict[key]},
+                                        outputs={"Out": tmp},
+                                        attrs={"x_num_col_dims": 1,
+                                               "y_num_col_dims": 1})
+                    x = tmp
                     return x
 
-            data_np = np.random.uniform(-1, 1, [5, 2]).astype('float32')
+            data_np = np.random.uniform(-1, 1, [3, 5]).astype('float32')
             with fluid.dygraph.guard():
                 x = fluid.dygraph.to_variable(data_np)
-                num_stacked_param = 4
-                model = MyLayer(num_stacked_param)
-                print(len(model.params))  # 4
-                res = model(x)
-                print(res.shape)  # [5, 2]
-
-                replaced_param = fluid.layers.create_parameter(shape=[2, 3], dtype='float32')
-                model.params[num_stacked_param - 1] = replaced_param  # replace last param
-                res = model(x)
-                print(res.shape)  # [5, 3]
-                model.params.append(fluid.layers.create_parameter(shape=[3, 4], dtype='float32'))  # append param
-                print(len(model.params))  # 5
-                res = model(x)
-                print(res.shape)  # [5, 4]
+                model = MyLayer()
+                model_param1 = model(x, 'param1')
+                model_param2 = model(x, 'param2')
+                # model_param1.shape is [3, 10]
+                print(model_param1.shape)
+                # model_param2.shape is [3, 5]
+                print(model_param2.shape)
     """
 
     def __init__(self, parameters=None):
         super(ParameterDict, self).__init__()
         if parameters is not None:
-            self.update(parameters)
+            self._update(parameters)
 
     def __getitem__(self, key):
         return self._parameters[key]
@@ -181,6 +175,42 @@ class ParameterDict(Layer):
     def clear(self):
         """
         Remove all items from the ParameterDict.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
+
+                class MyLayer(fluid.Layer):
+                    def __init__(self):
+                        super(MyLayer, self).__init__()
+                        self.parameter_dict = fluid.dygraph.ParameterDict({
+                            'param1':
+                            fluid.layers.create_parameter(shape=[5, 10], dtype='float32'),
+                            'param2':
+                            fluid.layers.create_parameter(shape=[5, 5], dtype='float32')
+                        })
+
+                    def forward(self, x, key):
+                        tmp = self._helper.create_variable_for_type_inference('float32')
+                        self._helper.append_op(
+                                            type="mul",
+                                            inputs={"X": x,
+                                                    "Y": self.parameter_dict[key]},
+                                            outputs={"Out": tmp},
+                                            attrs={"x_num_col_dims": 1,
+                                                   "y_num_col_dims": 1})
+                        x = tmp
+                        return x
+
+                with fluid.dygraph.guard():
+                    model = MyLayer()
+                    # len(model.parameter_dict) is 2
+                    print(len(model.parameter_dict) == 2)
+                    model.parameter_dict.clear()
+                    # len(model.parameter_dict) is 0
+                    print(len(model.parameter_dict) == 0)
         """
         self._parameters.clear()
 
@@ -190,6 +220,42 @@ class ParameterDict(Layer):
 
         Parameters:
             key (string): key to pop from the ParameterDict
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
+
+                class MyLayer(fluid.Layer):
+                    def __init__(self):
+                        super(MyLayer, self).__init__()
+                        self.parameter_dict = fluid.dygraph.ParameterDict({
+                            'param1':
+                            fluid.layers.create_parameter(shape=[5, 10], dtype='float32'),
+                            'param2':
+                            fluid.layers.create_parameter(shape=[5, 5], dtype='float32')
+                        })
+
+                    def forward(self, x, key):
+                        tmp = self._helper.create_variable_for_type_inference('float32')
+                        self._helper.append_op(
+                                            type="mul",
+                                            inputs={"X": x,
+                                                    "Y": self.parameter_dict[key]},
+                                            outputs={"Out": tmp},
+                                            attrs={"x_num_col_dims": 1,
+                                                   "y_num_col_dims": 1})
+                        x = tmp
+                        return x
+
+                with fluid.dygraph.guard():
+                    model = MyLayer()
+                    # len(model.parameter_dict) is 2
+                    print(len(model.parameter_dict) == 2)
+                    model.parameter_dict.pop('param1')
+                    # len(model.parameter_dict) is 1
+                    print(len(model.parameter_dict) == 1)
         """
         value = self[key]
         del self[key]
@@ -198,22 +264,127 @@ class ParameterDict(Layer):
     def keys(self):
         """
         Return an iterable of the ParameterDict keys.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
+
+                class MyLayer(fluid.Layer):
+                    def __init__(self):
+                        super(MyLayer, self).__init__()
+                        self.parameter_dict = fluid.dygraph.ParameterDict({
+                            'param1':
+                            fluid.layers.create_parameter(shape=[5, 10], dtype='float32'),
+                            'param2':
+                            fluid.layers.create_parameter(shape=[5, 5], dtype='float32')
+                        })
+
+                    def forward(self, x, key):
+                        tmp = self._helper.create_variable_for_type_inference('float32')
+                        self._helper.append_op(
+                                            type="mul",
+                                            inputs={"X": x,
+                                                    "Y": self.parameter_dict[key]},
+                                            outputs={"Out": tmp},
+                                            attrs={"x_num_col_dims": 1,
+                                                   "y_num_col_dims": 1})
+                        x = tmp
+                        return x
+
+                with fluid.dygraph.guard():
+                    model = MyLayer()
+                    # param1
+                    print(model.parameter_dict.keys()[0])
+                    # param2
+                    print(model.parameter_dict.keys()[1])
         """
         return self._parameters.keys()
 
     def items(self):
         """
         Return an iterable of the ParameterDict key/value pairs.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
+
+                class MyLayer(fluid.Layer):
+                    def __init__(self):
+                        super(MyLayer, self).__init__()
+                        self.parameter_dict = fluid.dygraph.ParameterDict({
+                            'param1':
+                            fluid.layers.create_parameter(shape=[5, 10], dtype='float32'),
+                            'param2':
+                            fluid.layers.create_parameter(shape=[5, 5], dtype='float32')
+                        })
+
+                    def forward(self, x, key):
+                        tmp = self._helper.create_variable_for_type_inference('float32')
+                        self._helper.append_op(
+                                            type="mul",
+                                            inputs={"X": x,
+                                                    "Y": self.parameter_dict[key]},
+                                            outputs={"Out": tmp},
+                                            attrs={"x_num_col_dims": 1,
+                                                   "y_num_col_dims": 1})
+                        x = tmp
+                        return x
+
+                with fluid.dygraph.guard():
+                    model = MyLayer()
+                    # ('param1', parameter object)
+                    print(model.parameter_dict.items()[0])
+                    # ('param2', parameter object)
+                    print(model.parameter_dict.items()[1])
         """
         return self._parameters.items()
 
     def values(self):
         """
         Return an iterable of the ParameterDict values.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
+
+                class MyLayer(fluid.Layer):
+                    def __init__(self):
+                        super(MyLayer, self).__init__()
+                        self.parameter_dict = fluid.dygraph.ParameterDict({
+                            'param1':
+                            fluid.layers.create_parameter(shape=[5, 10], dtype='float32'),
+                            'param2':
+                            fluid.layers.create_parameter(shape=[5, 5], dtype='float32')
+                        })
+
+                    def forward(self, x, key):
+                        tmp = self._helper.create_variable_for_type_inference('float32')
+                        self._helper.append_op(
+                                            type="mul",
+                                            inputs={"X": x,
+                                                    "Y": self.parameter_dict[key]},
+                                            outputs={"Out": tmp},
+                                            attrs={"x_num_col_dims": 1,
+                                                   "y_num_col_dims": 1})
+                        x = tmp
+                        return x
+
+                with fluid.dygraph.guard():
+                    model = MyLayer()
+                    # parameter object
+                    print(model.parameter_dict.values()[0])
+                    # parameter object
+                    print(model.parameter_dict.values()[1])
         """
         return self._parameters.values()
 
-    def update(self, parameters):
+    def _update(self, parameters):
         """
         Update the ParameterDict with the key-value pairs from a
         mapping or an iterable, overwriting existing keys.
@@ -349,26 +520,39 @@ class LayerDict(Layer):
 
     Examples:
         .. code-block:: python
+
             import paddle.fluid as fluid
             import numpy as np
 
             class MyLayer(fluid.Layer):
                 def __init__(self):
                     super(MyLayer, self).__init__()
-                    self.linears = fluid.dygraph.LayerList(
-                        [fluid.dygraph.Linear(10, 10) for i in range(10)])
+                    self.layerdict = fluid.dygraph.LayerDict({
+                        'linear1':
+                        fluid.dygraph.Linear(5, 10),
+                        'linear2':
+                        fluid.dygraph.Linear(5, 15)
+                    })
 
-                def forward(self, x):
-                    # LayerList can act as an iterable, or be indexed using ints
-                    for i, l in enumerate(self.linears):
-                        x = self.linears[i // 2](x) + l(x)
-                    return x
+                def forward(self, x, key):
+                    return self.layerdict[key](x)
+
+            data_np = np.random.uniform(-1, 1, [3, 5]).astype('float32')
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(data_np)
+                model = MyLayer()
+                model_linear1 = model(x, 'linear1')
+                model_linear2 = model(x, 'linear2')
+                # model_linear1.shape is [3, 10]
+                print(model_linear1.shape)
+                # model_linear2.shape is [3, 15]
+                print(model_linear2.shape)
     """
 
     def __init__(self, layers=None):
         super(LayerDict, self).__init__()
         if layers is not None:
-            self.update(layers)
+            self._update(layers)
 
     def __getitem__(self, key):
         return self._sub_layers[key]
@@ -391,6 +575,33 @@ class LayerDict(Layer):
     def clear(self):
         """
         Remove all items from the LayerDict.
+    
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
+
+                class MyLayer(fluid.Layer):
+                    def __init__(self):
+                        super(MyLayer, self).__init__()
+                        self.layerdict = fluid.dygraph.LayerDict({
+                            'linear1':
+                            fluid.dygraph.Linear(5, 10),
+                            'linear2':
+                            fluid.dygraph.Linear(5, 15)
+                        })
+
+                    def forward(self, x, key):
+                        return self.layerdict[key](x)
+
+                with fluid.dygraph.guard():
+                    model = MyLayer()
+                    # len(model.layerdict) is 2
+                    print(len(model.layerdict) == 2)
+                    model.layerdict.clear()
+                    # len(model.layerdict) is 0
+                    print(len(model.layerdict) == 0)
         """
         self._sub_layers.clear()
 
@@ -400,6 +611,33 @@ class LayerDict(Layer):
 
         Parameters:
             key (string): key to pop from the LayerDict
+        
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
+
+                class MyLayer(fluid.Layer):
+                    def __init__(self):
+                        super(MyLayer, self).__init__()
+                        self.layerdict = fluid.dygraph.LayerDict({
+                            'linear1':
+                            fluid.dygraph.Linear(5, 10),
+                            'linear2':
+                            fluid.dygraph.Linear(5, 15)
+                        })
+
+                    def forward(self, x, key):
+                        return self.layerdict[key](x)
+
+                with fluid.dygraph.guard():
+                    model = MyLayer()
+                    # len(model.layerdict) is 2
+                    print(len(model.layerdict) == 2)
+                    model.layerdict.pop('linear1')
+                    # len(model.layerdict) is 0
+                    print(len(model.layerdict) == 1)
         """
         v = self[key]
         del self[key]
@@ -408,22 +646,100 @@ class LayerDict(Layer):
     def keys(self):
         """
         Return an iterable of the LayerDict keys.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
+
+                class MyLayer(fluid.Layer):
+                    def __init__(self):
+                        super(MyLayer, self).__init__()
+                        self.layerdict = fluid.dygraph.LayerDict({
+                            'linear1':
+                            fluid.dygraph.Linear(5, 10),
+                            'linear2':
+                            fluid.dygraph.Linear(5, 15)
+                        })
+
+                    def forward(self, x, key):
+                        return self.layerdict[key](x)
+
+                with fluid.dygraph.guard():
+                    model = MyLayer()
+                    # linear1
+                    print(model.layerdict.keys()[0])
+                    # linear2
+                    print(model.layerdict.keys()[1])
         """
         return self._sub_layers.keys()
 
     def items(self):
         """
         Return an iterable of the LayerDict key/value pairs.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
+
+                class MyLayer(fluid.Layer):
+                    def __init__(self):
+                        super(MyLayer, self).__init__()
+                        self.layerdict = fluid.dygraph.LayerDict({
+                            'linear1':
+                            fluid.dygraph.Linear(5, 10),
+                            'linear2':
+                            fluid.dygraph.Linear(5, 15)
+                        })
+
+                    def forward(self, x, key):
+                        return self.layerdict[key](x)
+
+                with fluid.dygraph.guard():
+                    model = MyLayer()
+                    # ('linear1', <paddle.fluid.dygraph.nn.Linear object>)
+                    print(model.layerdict.items()[0])
+                    # ('linear2', <paddle.fluid.dygraph.nn.Linear object>)
+                    print(model.layerdict.items()[1])
         """
         return self._sub_layers.items()
 
     def values(self):
         """
         Return an iterable of the LayerDict values.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
+
+                class MyLayer(fluid.Layer):
+                    def __init__(self):
+                        super(MyLayer, self).__init__()
+                        self.layerdict = fluid.dygraph.LayerDict({
+                            'linear1':
+                            fluid.dygraph.Linear(5, 10),
+                            'linear2':
+                            fluid.dygraph.Linear(5, 15)
+                        })
+
+                    def forward(self, x, key):
+                        return self.layerdict[key](x)
+
+                with fluid.dygraph.guard():
+                    model = MyLayer()
+                    # <paddle.fluid.dygraph.nn.Linear object>
+                    print(model.layerdict.values()[0])
+                    # <paddle.fluid.dygraph.nn.Linear object>
+                    print(model.layerdict.values()[1])
         """
         return self._sub_layers.values()
 
-    def update(self, layers):
+    def _update(self, layers):
         """
         Update the LayerDict with the key-value pairs from a  or an OrderedDict or  iterable, overwriting existing keys.
 
