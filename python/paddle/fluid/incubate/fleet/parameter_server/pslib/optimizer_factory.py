@@ -470,10 +470,10 @@ class DistributedAdam(DistributedOptimizerImplBase):
                                     strategy.get("scale_datanorm", -1)
                                 })
 
-                    program_configs[program_id]["pull_dense"].extend(
-                        [dense_table_index])
-                    program_configs[program_id]["push_dense"].extend(
-                        [dense_table_index])
+                        program_configs[program_id]["pull_dense"].extend(
+                            [dense_table_index])
+                        program_configs[program_id]["push_dense"].extend(
+                            [dense_table_index])
                     dense_table_index += 1
 
             # Todo(guru4elephant): figure out how to support more sparse parameters
@@ -530,7 +530,10 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["dump_fields_path"] = strategy.get("dump_fields_path", "")
         opt_info["dump_param"] = strategy.get("dump_param", [])
         if server._server.downpour_server_param.downpour_table_param[
-                0].accessor.accessor_class == "DownpourCtrAccessor":
+                0].accessor.accessor_class in [
+                    "DownpourCtrAccessor", "DownpourCtrDoubleAccessor",
+                    "DownpourUnitAccessor"
+                ]:
             opt_info["dump_slot"] = True
         elif server._server.downpour_server_param.downpour_table_param[
                 0].accessor.accessor_class == "DownpourSparseValueAccessor":

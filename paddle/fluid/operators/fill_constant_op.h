@@ -49,11 +49,11 @@ inline framework::DDim GetShape(const framework::ExecutionContext &ctx) {
       auto tensor = shape_tensor_list[i];
       PADDLE_ENFORCE_EQ(
           tensor->dims(), framework::make_ddim({1}),
-          "ShapeError: If the element type of 'shape' in FillConstantOp is "
-          "Tensor, "
-          "the element's shape must be [1]. But received the element's shape "
-          "is [%s]",
-          tensor->dims());
+          platform::errors::InvalidArgument(
+              "If the element type of 'shape'(tensor_list type) in "
+              "FillConstantOp is Tensor, the shape of this Tensor element must "
+              "be [1]. But received the Tensor element's shape is [%s]",
+              tensor->dims()));
       if (platform::is_gpu_place(tensor->place())) {
         framework::Tensor temp;
         TensorCopySync(*tensor, platform::CPUPlace(), &temp);
@@ -99,6 +99,22 @@ class FillConstantKernel : public framework::OpKernel<T> {
         value = static_cast<T>(tmp_value);
       }
     }
+    if (ctx.HasInput("ValueTensor")) {
+      auto *value_tensor = ctx.Input<framework::Tensor>("ValueTensor");
+      PADDLE_ENFORCE_EQ(
+          value_tensor->numel(), 1,
+          platform::errors::InvalidArgument(
+              "When use Tensor as value to set Tensor value in fill_cosntant, "
+              "value input(ValueTensor) size must be 1, but get %d",
+              value_tensor->numel()));
+      const T *tensor_data = value_tensor->data<T>();
+      framework::Tensor cpu_tensor;
+      if (platform::is_gpu_place(value_tensor->place())) {
+        TensorCopySync(*value_tensor, platform::CPUPlace(), &cpu_tensor);
+        tensor_data = cpu_tensor.data<T>();
+      }
+      value = tensor_data[0];
+    }
     auto shape = GetShape(ctx);
 
     if (out_var->IsType<framework::LoDTensor>()) {
@@ -108,9 +124,9 @@ class FillConstantKernel : public framework::OpKernel<T> {
       tensor = out_var->GetMutable<framework::SelectedRows>()->mutable_value();
       tensor->Resize(shape);
     } else {
-      PADDLE_THROW(
-          "fill constant op's output only"
-          "supports SelectedRows and LoDTensor");
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "In fill constant Op, the output only supports SelectedRows and "
+          "LoDTensor."));
     }
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();

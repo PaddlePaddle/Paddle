@@ -21,24 +21,37 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInputs("MultiLevelRois"),
-                   "Inputs(MultiLevelRois) shouldn't be null");
-    PADDLE_ENFORCE(context->HasInputs("MultiLevelScores"),
-                   "Inputs(MultiLevelScores) shouldn't be null");
-    PADDLE_ENFORCE(context->HasOutput("FpnRois"),
-                   "Outputs(MultiFpnRois) of DistributeOp should not be null");
+    PADDLE_ENFORCE_EQ(
+        context->HasInputs("MultiLevelRois"), true,
+        platform::errors::NotFound("Inputs(MultiLevelRois) of "
+                                   "CollectFpnProposalsOp is not found"));
+    PADDLE_ENFORCE_EQ(
+        context->HasInputs("MultiLevelScores"), true,
+        platform::errors::NotFound("Inputs(MultiLevelScores) of "
+                                   "CollectFpnProposalsOp is not found"));
+    PADDLE_ENFORCE_EQ(
+        context->HasOutput("FpnRois"), true,
+        platform::errors::NotFound("Outputs(MultiFpnRois) of "
+                                   "CollectFpnProposalsOp is not found"));
     auto roi_dims = context->GetInputsDim("MultiLevelRois");
     auto score_dims = context->GetInputsDim("MultiLevelScores");
     auto post_nms_topN = context->Attrs().Get<int>("post_nms_topN");
     std::vector<int64_t> out_dims;
     for (auto &roi_dim : roi_dims) {
-      PADDLE_ENFORCE_EQ(roi_dim[1], 4,
-                        "Second dimension of Input(MultiLevelRois) must be 4");
+      PADDLE_ENFORCE_EQ(
+          roi_dim[1], 4,
+          platform::errors::InvalidArgument(
+              "Second dimension of Input"
+              "(MultiLevelRois) must be 4. But received dimension = %d",
+              roi_dim[1]));
     }
     for (auto &score_dim : score_dims) {
       PADDLE_ENFORCE_EQ(
           score_dim[1], 1,
-          "Second dimension of Input(MultiLevelScores) must be 1");
+          platform::errors::InvalidArgument(
+              "Second dimension of Input"
+              "(MultiLevelScores) must be 1. But received dimension = %d",
+              score_dim[1]));
     }
     context->SetOutputDim("FpnRois", {post_nms_topN, 4});
     if (!context->IsRuntime()) {  // Runtime LoD infershape will be computed
@@ -57,9 +70,11 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
             boost::get<framework::Variable *>(score_inputs[i]);
         auto &roi_lod = roi_var->Get<LoDTensor>().lod();
         auto &score_lod = score_var->Get<LoDTensor>().lod();
-        PADDLE_ENFORCE_EQ(roi_lod, score_lod,
-                          "Inputs(MultiLevelRois) and Inputs(MultiLevelScores) "
-                          "should have same lod.");
+        PADDLE_ENFORCE_EQ(
+            roi_lod, score_lod,
+            platform::errors::InvalidArgument(
+                "Inputs(MultiLevelRois) and "
+                "Inputs(MultiLevelScores) should have same lod."));
       }
     }
   }

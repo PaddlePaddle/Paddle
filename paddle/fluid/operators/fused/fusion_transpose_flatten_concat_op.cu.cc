@@ -46,9 +46,13 @@ class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
     cudnnTensorDescriptor_t in_desc;
     cudnnTensorDescriptor_t out_desc;
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnCreateTensorDescriptor(&in_desc));
+        platform::dynload::cudnnCreateTensorDescriptor(&in_desc),
+        platform::errors::External("Create cudnn tensor descriptor failed in "
+                                   "transpose_flatten_concat_fusion op."));
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnCreateTensorDescriptor(&out_desc));
+        platform::dynload::cudnnCreateTensorDescriptor(&out_desc),
+        platform::errors::External("Create cudnn tensor descriptor failed in "
+                                   "transpose_flatten_concat_fusion op."));
     cudnnDataType_t cudnn_dtype = CudnnDataType<T>::type;
 
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
@@ -87,15 +91,24 @@ class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
         dims_y[i] = 1;
       }
 
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-          in_desc, cudnn_dtype, max_dim, dims_y.data(), stride_x.data()));
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetTensorNdDescriptor(
-          out_desc, cudnn_dtype, max_dim, dims_y.data(), stride_y.data()));
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::cudnnSetTensorNdDescriptor(
+              in_desc, cudnn_dtype, max_dim, dims_y.data(), stride_x.data()),
+          platform::errors::External("Create cudnn tensorNd descriptor failed "
+                                     "in transpose_flatten_concat op."));
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::cudnnSetTensorNdDescriptor(
+              out_desc, cudnn_dtype, max_dim, dims_y.data(), stride_y.data()),
+          platform::errors::External("Create cudnn tensorNd descriptor failed "
+                                     "in transpose_flatten_concat op."));
 
-      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnTransformTensor(
-          handle, CudnnDataType<T>::kOne(), in_desc,
-          static_cast<const void*>(ins[k]->data<T>()),
-          CudnnDataType<T>::kZero(), out_desc, static_cast<void*>(odata)));
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::cudnnTransformTensor(
+              handle, CudnnDataType<T>::kOne(), in_desc,
+              static_cast<const void*>(ins[k]->data<T>()),
+              CudnnDataType<T>::kZero(), out_desc, static_cast<void*>(odata)),
+          platform::errors::External("Create cudnn transform tensor failed in "
+                                     "transpose_flatten_concat op."));
       if (concat_axis == 0) {
         odata += osize;
       } else {
@@ -104,9 +117,13 @@ class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
       }
     }
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnDestroyTensorDescriptor(in_desc));
+        platform::dynload::cudnnDestroyTensorDescriptor(in_desc),
+        platform::errors::External(
+            "Destory cudnn descriptor failed in transpose_flatten_concat op."));
     PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnDestroyTensorDescriptor(out_desc));
+        platform::dynload::cudnnDestroyTensorDescriptor(out_desc),
+        platform::errors::External(
+            "Destory cudnn descriptor failed in transpose_flatten_concat op."));
   }
 };
 

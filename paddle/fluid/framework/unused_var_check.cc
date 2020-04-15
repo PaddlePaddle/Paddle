@@ -33,7 +33,6 @@ DEFINE_bool(enable_unused_var_check, false,
 // not in cpu kernel;
 // 1: the inputs of which are used to indicate dtype of outputs;
 // 2: the inputs of which are used in fused operators.
-// 3: specical operators, like ngraph_engine.
 // The category number is presented in the comments after each operator.
 
 const std::unordered_set<std::string> op_has_unsed_vars_white_list = {
@@ -41,6 +40,8 @@ const std::unordered_set<std::string> op_has_unsed_vars_white_list = {
     "batch_norm_grad",                 // 0
     "sync_batch_norm",                 // 0
     "sync_batch_norm_grad",            // 0
+    "inplace_abn",                     // 0
+    "inplace_abn_grad",                // 0
     "dgc_momentum",                    // 0
     "fake_quantize_range_abs_max",     // 0
     "rmsprop",                         // 0
@@ -53,7 +54,8 @@ const std::unordered_set<std::string> op_has_unsed_vars_white_list = {
     "fusion_seqpool_cvm_concat",       // 2
     "fused_batch_norm_act",            // 2
     "fused_batch_norm_act_grad",       // 2
-    "ngraph_engine",                   // 3
+    "data_norm",                       // 0
+    "data_norm_grad",                  // 0
 };
 
 namespace paddle {
