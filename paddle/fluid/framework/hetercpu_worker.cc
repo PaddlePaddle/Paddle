@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
+#include "paddle/fluid/framework/fleet/heter_wrapper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/string/string_helper.h"
 
@@ -27,10 +28,10 @@ namespace paddle {
 namespace framework {
 
 void HeterTask::PackTask(Scope* thread_scope, int taskid, DataFeed* reader, int cur_batch, const ProgramDesc& program) {
-  total_time = 0;
-  read_time = 0;
-  pack_time = 0;
-  pull_sparse_local_time = 0;
+  //total_time = 0;
+  //read_time = 0;
+  //pack_time = 0;
+  //pull_sparse_local_time = 0;
   taskid_ = taskid;
   auto &block = program.Block(0);
   if (!scope_) {
@@ -58,8 +59,76 @@ void HeterTask::PackTask(Scope* thread_scope, int taskid, DataFeed* reader, int 
 
 }
 
+void HeterCpuWorker::GetXpuOpIndex() {
+  xpu_begin_op_index_ = xpu_end_op_index_ = -1;
+  for (size_t i = 0; i < ops_.size(); ++i) {
+    //if (!first && ops_[i]->Type() == "mul") {
+    //  first = 1;
+    //  xpu_begin_op_index_ = i;
+    //  auto& in_map = ops_[i]->Inputs();
+    //  
+    //  
+    //  auto it = in_map.find("X");
+    //  if (it != in_map.end()) {
+    //    for (auto& x : it->second) {
+    //      send_var_ = x;
+    //    }
+    //  }
+    //  
+    //}
+    //if (ops_[i]->Type() == "mul_grad") {
+    //  xpu_end_op_index_ = i;
+    //  //auto& out_map = ops_[i]->Outputs();
+    //  //auto it = out_map.find("X@GRAD");
+    //  //if (it != out_map.end()) {
+    //  //  for (auto& x : it->second) {
+    //  //    recv_var = x;
+    //  //  }
+    //  //}
+    //}
+    auto& out_map = ops_[i]->Outputs();
+    
+    {
+      auto it = out_map.find("Out");
+      if (it != out_map.end()) {
+        for (auto& x : it->second) {
+          if (x == "concat_1.tmp_0") {
+            xpu_begin_op_index_ = i + 1;
+          }
+        }
+      }
+    }
+    
+    {
+      auto it = out_map.find("X@GRAD");
+      if (it != out_map.end()) {
+        for (auto& x : it->second) {
+          if (x == "concat_1.tmp_0@GRAD") {
+            xpu_end_op_index_ = i;
+          }
+        }
+      }
+    }
+    
+    {
+      auto it = out_map.find("Out");
+      if (it != out_map.end()) {
+        for (auto& x : it->second) {
+          if (x == "concat_1.tmp_0@GRAD") {
+            xpu_end_op_index_ = i;
+          }
+        }
+      }
+    }
+  }
+  if (xpu_end_op_index_ == -1) {
+    xpu_end_op_index_ = ops_.size() - 1;
+  }
+  VLOG(0) << "xpu begin: " << xpu_begin_op_index_ << " xpu end: " << xpu_end_op_index_;
+}
+
 void HeterCpuWorker::Schedule(int taskid) {
-  //std::cout << "wxx schedule " << taskid << std::endl;
+  VLOG(3) << "schedule " << taskid;
   auto task = wait_queue_.TryGet(taskid);
   if (task) {
     run_queue_.Put(task->taskid_, task);
@@ -67,7 +136,7 @@ void HeterCpuWorker::Schedule(int taskid) {
 }
 
 void HeterCpuWorker::JumpContext(std::shared_ptr<HeterTask> task) {
-  //std::cout << "wxx jump context " << task->taskid_ << std::endl;
+  VLOG(3) << "jump context " << task->taskid_;
   if (!(wait_queue_.TryPut(task->taskid_, task))) {
     run_queue_.Put(task->taskid_, task);
   }
@@ -75,6 +144,7 @@ void HeterCpuWorker::JumpContext(std::shared_ptr<HeterTask> task) {
 
 void HeterCpuWorker::Initialize(const TrainerDesc& desc) {
   param_ = desc.downpour_param();
+  mpi_rank_ = desc.mpi_rank();
   for (int i = 0; i < param_.sparse_table_size(); ++i) {
     uint64_t table_id =
         static_cast<uint64_t>(param_.sparse_table(i).table_id());
@@ -120,6 +190,7 @@ void HeterCpuWorker::Initialize(const TrainerDesc& desc) {
   need_to_push_dense_ = param_.push_dense();
 
   fleet_ptr_ = FleetWrapper::GetInstance();
+  heter_ptr_ = HeterWrapper::GetInstance();
   fetch_config_ = desc.fetch_config();
   use_cvm_ = desc.use_cvm();
   // for sparse value accessor, embedding only
@@ -544,58 +615,6 @@ void HeterCpuWorker::CopyDenseTable() {
   }
 }
 
-void HeterCpuWorker::CreateThreadParam(const ProgramDesc& program) {
-  #ifdef PADDLE_WITH_CUDA
-  auto dev_id = boost::get<platform::CUDAPlace>(place_).device;
-  platform::CUDADeviceGuard guard(dev_id);
-  auto &block = program.Block(0);
-  for (auto& var : block.AllVars()) {
-    if (var->Persistable()) {
-      auto name = var->Name();
-      Variable* root_var = root_scope_->FindVar(name);
-      LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
-      auto *ptr = thread_scope_->Var(name);
-      InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
-      LoDTensor* thread_tensor = ptr->GetMutable<LoDTensor>();
-
-#define MemcpyCallback(cpp_type, proto_type)                              \
-  do {                                                                    \
-    if (root_tensor->type() == proto_type) {                              \
-      MemCpy<cpp_type>(thread_tensor, root_tensor, place_, copy_stream_); \
-    }                                                                     \
-  } while (0)
-        _ForEachDataType_(MemcpyCallback);
-
-    }
-  }
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(event_, copy_stream_));
-  cudaEventSynchronize(event_);
-  #endif
-}
-
-#ifdef PADDLE_WITH_CUDA
-template <typename T>
-void HeterCpuWorker::MemCpy(LoDTensor *thread_tensor, LoDTensor *root_tensor,
-                            const paddle::platform::Place& thread_place, 
-                            cudaStream_t stream) {
-  T* thread_ptr = thread_tensor->mutable_data<T>(root_tensor->dims(), thread_place);
-  T* root_ptr = root_tensor->data<T>();
-  if (platform::is_cpu_place(root_tensor->place())) {
-    memory::Copy(
-        boost::get<platform::CUDAPlace>(thread_place),
-        thread_ptr,
-        platform::CPUPlace(),
-        root_ptr, sizeof(T) * root_tensor->numel(), stream);
-  }
-  else {
-    memory::Copy(
-        boost::get<platform::CUDAPlace>(thread_place),
-        thread_ptr,
-        boost::get<platform::CUDAPlace>(root_tensor->place()),
-        root_ptr, sizeof(T) * root_tensor->numel(), stream);
-  }
-}
-#endif
 
 void HeterCpuWorker::CopyDenseVars() {
   if (thread_id_ != 0) {
@@ -660,13 +679,14 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
   platform::Timer timeline;
   double total_time = 0.0;
   double read_time = 0.0;
-  //double pull_sparse_time = 0.0;
-  double collect_label_time = 0.0;
-  double fill_sparse_time = 0.0;
-  double push_sparse_time = 0.0;
-  double push_dense_time = 0.0;
   double pack_time = 0.0;
   double pull_sparse_local_time = 0.0;
+  double op_all_time = 0;
+  double xpu_op_time = 0;
+  double cpu_op_time = 0;
+  double collect_label_time = 0;
+  double fill_sparse_time = 0;
+  double push_sparse_time = 0;
 
   int batch_cnt = 0;
   int done_cnt = 0;
@@ -695,6 +715,7 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
       int taskid = batch_cnt * worker_num_ + thread_id_;
       timeline.Start();
       task = object_pool_.Get();
+      task->Reset();
       task->PackTask(thread_scope_, taskid, device_reader_, cur_batch, program_);
       timeline.Pause();
       task->read_time = tmp_read_time;
@@ -721,17 +742,16 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
               table.fea_dim(), sparse_value_names_[tid]);
         }
         task->Update();
-        JumpContext(task);
+        //JumpContext(task);
         timeline.Pause();
         task->pull_sparse_local_time += timeline.ElapsedSec();
         task->total_time += timeline.ElapsedSec();
-        break;
       }
       else if (task->state_ == OP_RUN) {
-        total_time += task->total_time;
-        read_time += task->read_time;
-        pack_time += task->pack_time;
-        pull_sparse_local_time += task->pull_sparse_local_time;
+        //total_time += task->total_time;
+        //read_time += task->read_time;
+        //pack_time += task->pack_time;
+        //pull_sparse_local_time += task->pull_sparse_local_time;
         for (int i = 0; i < param_.program_config(0).pull_sparse_table_id_size();
              ++i) {
           uint64_t tid = static_cast<uint64_t>(
@@ -739,13 +759,13 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
           timeline.Start();
           CollectLabelInfo(task, i);
           timeline.Pause();
-          collect_label_time += timeline.ElapsedSec();
-          total_time += timeline.ElapsedSec();
+          task->collect_label_time += timeline.ElapsedSec();
+          task->total_time += timeline.ElapsedSec();
           timeline.Start();
           FillSparseValue(task, i);
           timeline.Pause();
-          fill_sparse_time += timeline.ElapsedSec();
-          total_time += timeline.ElapsedSec();
+          task->fill_sparse_time += timeline.ElapsedSec();
+          task->total_time += timeline.ElapsedSec();
           
           auto nid_iter = std::find(sparse_value_names_[tid].begin(),
                                     sparse_value_names_[tid].end(),
@@ -757,8 +777,10 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
         
         VLOG(3) << "fill sparse value for all sparse table done.";
         // do computation here
-        int run_op_idx = 0;
-        for (auto& op : ops_) {
+        //int run_op_idx = 0;
+        timeline.Start();
+        for (int i = 0; i < xpu_begin_op_index_; ++i) {
+          auto& op = ops_[i];
           bool need_skip = false;
           for (auto t = 0u; t < skip_ops_.size(); ++t) {
             if (op->Type().find(skip_ops_[t]) != std::string::npos) {
@@ -767,11 +789,42 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
             }
           }
           if (!need_skip) {
-            timeline.Start();
+            //timeline.Start();
             op->Run(*(task->scope_), place_);
-            timeline.Pause();
-            op_total_time[run_op_idx++] += timeline.ElapsedSec();
-            total_time += timeline.ElapsedSec();
+            //timeline.Pause();
+            //op_total_time[run_op_idx++] += timeline.ElapsedSec();
+            //total_time += timeline.ElapsedSec();
+          }
+        }
+        task->Update();
+        timeline.Pause();
+        task->cpu_op_time += timeline.ElapsedSec();
+        task->total_time += timeline.ElapsedSec();
+      }
+      else if (task->state_ == XPU) {
+        timeline.Start();
+        VLOG(3) << "call remote xpu taskid = " << task->taskid_;
+        heter_ptr_->CallRemoteXpu(task, this, mpi_rank_);
+        task->Update();
+        JumpContext(task);
+        timeline.Pause();
+        task->xpu_op_time += timeline.ElapsedSec();
+        task->total_time += timeline.ElapsedSec();
+        break;
+      }
+      else if (task->state_ == OP_RUN_END) {
+        timeline.Start();
+        for (size_t i = xpu_end_op_index_ + 1; i < ops_.size(); ++i) {
+          auto& op = ops_[i];
+          bool need_skip = false;
+          for (auto t = 0u; t < skip_ops_.size(); ++t) {
+            if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+              need_skip = true;
+              break;
+            }
+          }
+          if (!need_skip) {
+            op->Run(*(task->scope_), place_);
           }
         }
         // check inf and nan
@@ -790,6 +843,9 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
                             "Tensor %s contains NAN", var_name);
         }
         task->Update();
+        timeline.Pause();
+        task->cpu_op_time += timeline.ElapsedSec();
+        task->total_time += timeline.ElapsedSec();
       }
       else if (task->state_ == PUSH_GRAD) {
         if (need_to_push_sparse_) {
@@ -812,40 +868,8 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
                 &push_sparse_status_, use_cvm_,
                 dump_slot_, no_cvm_);
             timeline.Pause();
-            push_sparse_time += timeline.ElapsedSec();
-            total_time += timeline.ElapsedSec();
-          }
-        }
-        if (need_to_push_dense_) {
-          timeline.Start();
-          for (int i = 0; i < param_.program_config(0).push_dense_table_id_size();
-               ++i) {
-            uint64_t tid = static_cast<uint64_t>(
-                param_.program_config(0).push_dense_table_id(i));
-            fleet_ptr_->PushDenseVarsAsync(
-                *(task->scope_), tid, dense_grad_names_[tid], &push_sparse_status_,
-                scale_datanorm_, task->cur_batch_);
-          }
-          timeline.Pause();
-          push_dense_time += timeline.ElapsedSec();
-          total_time += timeline.ElapsedSec();
-          VLOG(3) << "push dense gradient done.";
-
-          // the following code should be more precise and clean
-          // TODO(guru4elephant)
-          int32_t tmp_push_dense_wait_times = -1;
-          static uint32_t push_dense_wait_times =
-              static_cast<uint32_t>(tmp_push_dense_wait_times);
-
-          if (push_dense_status_.size() >= push_dense_wait_times) {
-            for (auto& t : push_dense_status_) {
-              t.wait();
-            }
-            push_dense_status_.resize(0);
-          }
-
-          if (tmp_push_dense_wait_times == -1) {
-            push_dense_status_.resize(0);
+            task->push_sparse_time += timeline.ElapsedSec();
+            task->total_time += timeline.ElapsedSec();
           }
         }
 
@@ -866,14 +890,6 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
           }
         }
 
-        if (need_to_push_dense_) {
-          for (int i = 0; i < param_.program_config(0).push_dense_table_id_size();
-               ++i) {
-            uint64_t tid = static_cast<uint64_t>(
-                param_.program_config(0).push_dense_table_id(i));
-            pull_dense_worker_->IncreaseThreadVersion(thread_id_, tid);
-          }
-        }
 
         //thread_scope_->DropKids();
         task->Update();
@@ -883,26 +899,38 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
         ++done_cnt;
         total_inst += task->cur_batch_;
         object_pool_.Push(task);
+
+        total_time += task->total_time;
+        read_time += task->read_time;
+        pack_time += task->pack_time;
+        pull_sparse_local_time += task->pull_sparse_local_time;
+        op_all_time += task->op_all_time;
+        xpu_op_time += task->xpu_op_time;
+        cpu_op_time += task->cpu_op_time;
+        collect_label_time += task->collect_label_time;
+        fill_sparse_time += task->fill_sparse_time;
+        push_sparse_time += task->push_sparse_time;
         //++batch_cnt;
         if (thread_id_ == 0) {
           // should be configured here
           if (done_cnt > 0 && done_cnt % 100 == 0) {
-            double op_sum_time = 0;
-            std::unordered_map<std::string, double> op_to_time;
-            for (size_t i = 0; i < op_total_time.size(); ++i) {
-              fprintf(stderr, "op_name:[%zu][%s], op_mean_time:[%fs]\n", i,
-                      op_name[i].c_str(), op_total_time[i] / done_cnt);
-              if (op_to_time.find(op_name[i]) == op_to_time.end()) {
-                op_to_time[op_name[i]] = 0.0;
-              }
-              op_to_time[op_name[i]] += op_total_time[i];
-              op_sum_time += op_total_time[i];
-            }
-            for (auto& i : op_to_time) {
-              fprintf(stderr, "op [%s] run total time: [%f]ms\n", i.first.c_str(),
-                      i.second / done_cnt);
-            }
-            fprintf(stderr, "op run total time: %fs\n", op_sum_time / done_cnt);
+            //double op_sum_time = 0;
+            //std::unordered_map<std::string, double> op_to_time;
+            //for (size_t i = 0; i < op_total_time.size(); ++i) {
+            //  fprintf(stderr, "op_name:[%zu][%s], op_mean_time:[%fs]\n", i,
+            //          op_name[i].c_str(), op_total_time[i] / done_cnt);
+            //  if (op_to_time.find(op_name[i]) == op_to_time.end()) {
+            //    op_to_time[op_name[i]] = 0.0;
+            //  }
+            //  op_to_time[op_name[i]] += op_total_time[i];
+            //  op_sum_time += op_total_time[i];
+            //}
+            //for (auto& i : op_to_time) {
+            //  fprintf(stderr, "op [%s] run total time: [%f]ms\n", i.first.c_str(),
+            //          i.second / done_cnt);
+            //}
+            fprintf(stderr, "cpu op run total time: %fs\n", cpu_op_time / done_cnt);
+            fprintf(stderr, "xpu op run total time: %fs\n", xpu_op_time / done_cnt);
             fprintf(stderr, "pack task time: %fs\n", pack_time / done_cnt);
             fprintf(stderr, "train total time: %fs\n", total_time / done_cnt);
             fprintf(stderr, "pull sparse local time: %fs\n",
@@ -911,12 +939,12 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
                     fill_sparse_time / done_cnt);
             fprintf(stderr, "push sparse time: %fs\n",
                     push_sparse_time / done_cnt);
-            fprintf(stderr, "push dense time: %fs\n", push_dense_time / done_cnt);
             fprintf(stderr, "collect label time: %fs\n",
                     collect_label_time / done_cnt);
             fprintf(stderr, "mean read time: %fs\n", read_time / done_cnt);
             fprintf(stderr, "IO percent: %f\n", read_time / total_time * 100);
-            fprintf(stderr, "op run percent: %f\n", op_sum_time / total_time * 100);
+            fprintf(stderr, "cpu op run percent: %f\n", cpu_op_time / total_time * 100);
+            fprintf(stderr, "xpu op run percent: %f\n", xpu_op_time / total_time * 100);
             fprintf(stderr, "pack task percent: %f\n", pack_time / total_time * 100);
             fprintf(stderr, "pull sparse local time percent: %f\n",
                     pull_sparse_local_time / total_time * 100);
@@ -926,8 +954,6 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
                     fill_sparse_time / total_time * 100);
             fprintf(stderr, "push sparse time percent: %f\n",
                     push_sparse_time / total_time * 100);
-            fprintf(stderr, "push dense time percent: %f\n",
-                    push_dense_time / total_time * 100);
             fprintf(stderr, "%6.2f instances/s\n", total_inst / total_time);
           }
         }
@@ -950,7 +976,7 @@ void HeterCpuWorker::TrainFiles() {
   int done_cnt = 0;
   int cur_batch;
   wait_queue_.SetCap(3);
-  //while ((cur_batch = device_reader_->Next()) > 0) {
+  need_to_push_dense_ = false;
   while (1) {
     //if (copy_table_config_.need_copy()) {
     //  if (copy_table_config_.sparse_copy_by_feasign()) {
@@ -968,22 +994,12 @@ void HeterCpuWorker::TrainFiles() {
     //}
 
     std::shared_ptr<HeterTask> task;
-    //std::cout << "wait_queue size:" << wait_queue_.Size() << " run_queue size:" << run_queue_.Size() << std::endl;
-    //std::cout << "object pool size: " << object_pool_.Size() << std::endl;
     
-   // while (wait_queue_.Size() > 10) {
-   //     std::cout << "sleep 10ms" << std::endl;
-   //     usleep(10000);
-   // }
     task = run_queue_.Get();
-    //std::cout << "wxx begin " << std::endl;
     if (!task) {
-      //std::cout << "wxx new pack " << std::endl;
       cur_batch = device_reader_->Next();
-      //std::cout << "wxx " << cur_batch << " " << wait_queue_.Empty() << std::endl;
       if (cur_batch <= 0) {
         if (batch_cnt == done_cnt) {
-          //std::cout << "wxx pass done " << std::endl;
           break;
         }
         else {
@@ -992,15 +1008,14 @@ void HeterCpuWorker::TrainFiles() {
       }
       batch_cnt += 1;
       int taskid = batch_cnt * worker_num_ + thread_id_;
-      //std::cout << "taskid " << taskid << " " << batch_cnt << " " << worker_num_ << " " << thread_id_ << std::endl;
       task = object_pool_.Get();
+      task->Reset();
       task->PackTask(thread_scope_, taskid, device_reader_, cur_batch, program_);
     }
-    //task->Show();
     for (;;) {
       // pull sparse here
       if (task->state_ == PULL_SPARSE) {
-        //std::cout << "wxx pull sparse taskid = " << task->taskid_ << std::endl;
+        VLOG(3) << "pull sparse taskid = " << task->taskid_;
         for (int i = 0; i < param_.program_config(0).pull_sparse_table_id_size();
              ++i) {
           uint64_t tid = static_cast<uint64_t>(
@@ -1017,11 +1032,11 @@ void HeterCpuWorker::TrainFiles() {
               table.fea_dim(), sparse_value_names_[tid]);
         }
         task->Update();
-        JumpContext(task);
-        break;
+        //JumpContext(task);
+        //break;
       }
       else if (task->state_ == OP_RUN) {
-        //std::cout << "wxx oprun taskid = " << task->taskid_ << std::endl;
+        VLOG(3) << "oprun taskid = " << task->taskid_;
         for (int i = 0; i < param_.program_config(0).pull_sparse_table_id_size();
              ++i) {
           uint64_t tid = static_cast<uint64_t>(
@@ -1038,7 +1053,32 @@ void HeterCpuWorker::TrainFiles() {
         
         VLOG(3) << "fill sparse value for all sparse table done.";
         // do computation here
-        for (auto& op : ops_) {
+        for (int i = 0; i < xpu_begin_op_index_; ++i) {
+          auto& op = ops_[i];
+          bool need_skip = false;
+          for (auto t = 0u; t < skip_ops_.size(); ++t) {
+            if (op->Type().find(skip_ops_[t]) != std::string::npos) {
+              need_skip = true;
+              break;
+            }
+          }
+          if (!need_skip) {
+            VLOG(3) << "run op: " << op->Type();
+            op->Run(*(task->scope_), place_);
+          }
+        }
+        task->Update();
+      }
+      else if (task->state_ == XPU) {
+        VLOG(3) << "call remote xpu taskid = " << task->taskid_;
+        heter_ptr_->CallRemoteXpu(task, this, mpi_rank_);
+        task->Update();
+        JumpContext(task);
+        break;
+      }
+      else if (task->state_ == OP_RUN_END) {
+        for (size_t i = xpu_end_op_index_ + 1; i < ops_.size(); ++i) {
+          auto& op = ops_[i];
           bool need_skip = false;
           for (auto t = 0u; t < skip_ops_.size(); ++t) {
             if (op->Type().find(skip_ops_[t]) != std::string::npos) {
@@ -1068,7 +1108,7 @@ void HeterCpuWorker::TrainFiles() {
         task->Update();
       }
       else if (task->state_ == PUSH_GRAD) {
-        //std::cout << "wxx push grad taskid = " << task->taskid_ << std::endl;
+        VLOG(3) << "push grad taskid = " << task->taskid_;
         if (need_to_push_sparse_) {
           // push gradients here
           for (int i = 0; i < param_.program_config(0).push_sparse_table_id_size();
@@ -1089,34 +1129,6 @@ void HeterCpuWorker::TrainFiles() {
                 dump_slot_, no_cvm_);
           }
         }
-        if (need_to_push_dense_) {
-          for (int i = 0; i < param_.program_config(0).push_dense_table_id_size();
-               ++i) {
-            uint64_t tid = static_cast<uint64_t>(
-                param_.program_config(0).push_dense_table_id(i));
-            fleet_ptr_->PushDenseVarsAsync(
-                *(task->scope_), tid, dense_grad_names_[tid], &push_sparse_status_,
-                scale_datanorm_, task->cur_batch_);
-          }
-          VLOG(3) << "push dense gradient done.";
-
-          // the following code should be more precise and clean
-          // TODO(guru4elephant)
-          int32_t tmp_push_dense_wait_times = -1;
-          static uint32_t push_dense_wait_times =
-              static_cast<uint32_t>(tmp_push_dense_wait_times);
-
-          if (push_dense_status_.size() >= push_dense_wait_times) {
-            for (auto& t : push_dense_status_) {
-              t.wait();
-            }
-            push_dense_status_.resize(0);
-          }
-
-          if (tmp_push_dense_wait_times == -1) {
-            push_dense_status_.resize(0);
-          }
-        }
 
         if (need_to_push_sparse_) {
           VLOG(3) << "push sparse gradient done.";
@@ -1135,14 +1147,6 @@ void HeterCpuWorker::TrainFiles() {
           }
         }
 
-        if (need_to_push_dense_) {
-          for (int i = 0; i < param_.program_config(0).push_dense_table_id_size();
-               ++i) {
-            uint64_t tid = static_cast<uint64_t>(
-                param_.program_config(0).push_dense_table_id(i));
-            pull_dense_worker_->IncreaseThreadVersion(thread_id_, tid);
-          }
-        }
         //if (need_dump_field_) {
         //  size_t batch_size = device_reader_->GetCurBatchSize();
         //  std::vector<std::string> ars(batch_size);
@@ -1189,7 +1193,7 @@ void HeterCpuWorker::TrainFiles() {
         task->Update();
       }
       else if (task->state_ == DONE) {
-        //std::cout << "wxx done taskid = " << task->taskid_ << std::endl;
+        VLOG(3) << "done taskid = " << task->taskid_;
         object_pool_.Push(task);
         PrintFetchVars();
         ++done_cnt;

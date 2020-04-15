@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/timer.h"
+#include "paddle/fluid/framework/heter_service.h"
 
 #if defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/nccl_helper.h"
@@ -51,6 +52,8 @@ bool CheckValidOutput(LoDTensor* tensor, size_t batch_size);
 
 class FleetWrapper;
 
+class HeterWrapper;
+
 #define SEC_LOG                                                              \
   VLOG(3) << "[s" << section_id_ << "p" << pipeline_id_ << "t" << thread_id_ \
           << "]: "
@@ -59,6 +62,19 @@ class PullDenseWorker {
  public:
   virtual ~PullDenseWorker() {}
   virtual void Initialize(const TrainerDesc& param);
+  #ifdef PADDLE_WITH_CUDA
+  void AddStream(const cudaStream_t stream) { 
+    copy_streams_.push_back(stream);
+  }
+
+  void AddPlace(const paddle::platform::Place place) {
+      places_.push_back(place);
+  }
+  
+  void AddThreadScope(Scope* scope) {
+    thread_scopes_.push_back(scope);
+  }
+  #endif
   int Start();
   void Stop();
   void SetRootScope(Scope* scope) { root_scope_ = scope; }
@@ -66,6 +82,7 @@ class PullDenseWorker {
   void ResetThreadVersion(uint64_t table_id);
   void Wait(std::vector<::std::future<int32_t>>* status_vec);
   void PullDense(bool force_update = false);
+  void CreatePinVar();
   int GetThreadIdByScope(const Scope* scope);
   void SetThreadIdByScope(const Scope* scope, int tid);
   static std::shared_ptr<PullDenseWorker> GetInstance() {
@@ -109,6 +126,12 @@ class PullDenseWorker {
   std::mutex mutex_for_mean_scale_;
   float total_batch_num_ = 0;
   std::unordered_map<const Scope*, int> scope_to_thread_id_;
+  
+  #ifdef PADDLE_WITH_CUDA
+  std::vector<cudaStream_t> copy_streams_;
+  std::vector<paddle::platform::Place> places_;
+  std::vector<Scope*> thread_scopes_;
+  #endif
 };
 
 // should incorporate different type of device
@@ -141,6 +164,7 @@ class DeviceWorker {
     device_reader_->SetPlace(place);
   }
   virtual Scope* GetThreadScope() { return thread_scope_; }
+  virtual void GetXpuOpIndex() {}
 
  protected:
   Scope* root_scope_ = nullptr;
@@ -301,6 +325,7 @@ enum HeterTaskState {
   PULL_SPARSE,
   OP_RUN,
   XPU,
+  OP_RUN_END,
   PUSH_GRAD,
   DONE
 };
@@ -312,16 +337,31 @@ public:
       state_ = OP_RUN;
     }
     else if (state_ == OP_RUN) {
-      //state_ = XPU;
+      state_ = XPU;
       //state_ = PUSH_GRAD;
-      state_ = PUSH_GRAD;
+      //state_ = PUSH_GRAD;
     }
     else if (state_ == XPU) {
+      state_ = OP_RUN_END;
+    }
+    else if (state_ == OP_RUN_END) {
       state_ = PUSH_GRAD;
     }
     else if (state_ == PUSH_GRAD) {
       state_ = DONE;
     }
+  }
+  void Reset() {
+    total_time = 0;
+    read_time = 0;
+    pack_time = 0;
+    pull_sparse_local_time = 0;
+    op_all_time = 0;
+    xpu_op_time = 0;
+    cpu_op_time = 0;
+    collect_label_time = 0;
+    fill_sparse_time = 0;
+    push_sparse_time = 0;
   }
   void Show() {
     std::cout << "features size " << features_.size() << std::endl;
@@ -341,18 +381,30 @@ public:
   std::map<uint64_t, std::vector<std::vector<float>>> feature_values_;
   std::map<uint64_t, std::vector<std::vector<float>>> feature_grads_;
   std::map<uint64_t, std::vector<uint64_t>> sparse_push_keys_;
-  double total_time;
-  double read_time;
-  double pack_time;
-  double pull_sparse_local_time;
+  double total_time{0};
+  double read_time{0};
+  double pack_time{0};
+  double pull_sparse_local_time{0};
+  double op_all_time{0};
+  double xpu_op_time{0};
+  double cpu_op_time{0};
+  double collect_label_time{0};
+  double fill_sparse_time{0};
+  double push_sparse_time{0};
 };
 
 template <class T>
 class HeterObjectPool {
 public:
+  HeterObjectPool() {}
+  virtual ~HeterObjectPool() {};
   std::shared_ptr<T> Get() {
     std::lock_guard<std::mutex> lock(mutex_);
     if (pool_.empty()) {
+      num_ += 1;
+      #ifdef PADDLE_WITH_CUDA
+      VLOG(0) << "pool construct size: " << num_;
+      #endif
       return std::make_shared<T>();
     }
     else {
@@ -369,9 +421,13 @@ public:
     std::lock_guard<std::mutex> lock(mutex_);
     return pool_.size();
   }
+  std::shared_ptr<T>& GetElement(int i) {
+    return pool_[i];
+  }
 private:
   std::vector<std::shared_ptr<T>> pool_;
   std::mutex mutex_;
+  int num_{0};
 };
 
 
@@ -535,15 +591,16 @@ class HeterCpuWorker : public HogwildWorker {
   virtual void SetNeedDump(bool need_dump_field);
   virtual void SetChannelWriter(ChannelObject<std::string>* queue);
   virtual void SetWorkerNum(int num) { worker_num_ = num; }
-  virtual void CreateThreadParam(const ProgramDesc &main_program);
   virtual void Schedule(int taskid);
   virtual void JumpContext(std::shared_ptr<HeterTask> task);
   virtual void CacheProgram(const ProgramDesc &main_program) {
     new(&program_) ProgramDesc(main_program);
   }
+  virtual void GetXpuOpIndex();
 
  protected:
   std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
+  std::shared_ptr<paddle::framework::HeterWrapper> heter_ptr_;
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
   void FillSparseValue(std::shared_ptr<HeterTask> task, size_t table_id);
   void PushGradients();
@@ -555,7 +612,11 @@ class HeterCpuWorker : public HogwildWorker {
   void CopyDenseVars();
 
  private:
+  //std::string recv_var;
+  int mpi_rank_;
   int worker_num_;
+  int xpu_begin_op_index_;
+  int xpu_end_op_index_;
   ProgramDesc program_;
   HeterObjectPool<HeterTask> object_pool_;
   HeterList<int, std::shared_ptr<HeterTask>> run_queue_;

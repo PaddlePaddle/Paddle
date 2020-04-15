@@ -63,6 +63,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/data_set_py.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/fleet_wrapper_py.h"
+#include "paddle/fluid/pybind/heter_wrapper_py.h"
 #include "paddle/fluid/pybind/global_value_getter_setter.h"
 #include "paddle/fluid/pybind/gloo_wrapper_py.h"
 #include "paddle/fluid/pybind/imperative.h"
@@ -2310,6 +2311,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("device_count", &ParallelExecutor::DeviceCount);
 
   BindFleetWrapper(&m);
+  BindHeterWrapper(&m);
   BindGlooWrapper(&m);
   BindBoxHelper(&m);
 #ifdef PADDLE_WITH_BOX_PS

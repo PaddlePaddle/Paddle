@@ -22,7 +22,7 @@ FORMAT = '%(asctime)s-%(levelname)s: %(message)s'
 logging.basicConfig(level=logging.INFO, format=FORMAT)
 local_logger = logging.getLogger(__name__)
 
-from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer
+from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer, HeterXpuTrainer
 from .device_worker import Hogwild, DownpourSGD, Section, DownpourSGDOPT
 from .framework import Variable
 from multiprocessing import Process, Manager
@@ -72,6 +72,8 @@ class TrainerFactory(object):
                     trainer._set_dump_converter(opt_info["dump_converter"])
                 if opt_info.get("dump_param") is not None:
                     trainer._set_dump_param(opt_info["dump_param"])
+                if opt_info.get("worker_places") is not None:
+                    trainer._set_worker_places(opt_info["worker_places"])
 
             if "fleet_desc" in opt_info:
                 device_worker._set_fleet_desc(opt_info["fleet_desc"])

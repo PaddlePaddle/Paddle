@@ -30,8 +30,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/heter_service.h"
+#include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 
@@ -136,7 +137,8 @@ class FleetWrapper {
   void PullDenseVarsAsync(
       const Scope& scope, const uint64_t table_id,
       const std::vector<std::string>& var_names,
-      std::vector<::std::future<int32_t>>* pull_dense_status);
+      std::vector<::std::future<int32_t>>* pull_dense_status,
+      bool in_cpu);
 
   // push dense parameters(not gradients) to server in sync mode
   void PushDenseParamSync(const Scope& scope, const uint64_t table_id,
@@ -145,12 +147,21 @@ class FleetWrapper {
   // Push dense variables to server in async mode
   // Param<in>: scope, table_id, var_names, scale_datanorm, batch_size
   // Param<out>: push_sparse_status
+  #ifdef PADDLE_WITH_CUDA
+  void PushDenseVarsAsync(
+    const Scope& scope, const uint64_t table_id,
+    const std::vector<std::string>& var_names,
+    std::vector<::std::future<int32_t>>* push_sparse_status,
+    float scale_datanorm, int batch_size,
+    const paddle::platform::Place& place,
+    cudaStream_t stream,
+    cudaEvent_t event);
+  #endif
   void PushDenseVarsAsync(
       const Scope& scope, const uint64_t table_id,
       const std::vector<std::string>& var_names,
       std::vector<::std::future<int32_t>>* push_sparse_status,
       float scale_datanorm, int batch_size);
-
   // push dense variables to server in sync mode
   void PushDenseVarsSync(Scope* scope, const uint64_t table_id,
                          const std::vector<std::string>& var_names);
@@ -292,7 +303,7 @@ class FleetWrapper {
 #ifdef PADDLE_WITH_PSLIB
   static std::shared_ptr<paddle::distributed::PSlib> pslib_ptr_;
 #endif
-
+  
  private:
   static std::shared_ptr<FleetWrapper> s_instance_;
 #ifdef PADDLE_WITH_PSLIB
@@ -301,7 +312,7 @@ class FleetWrapper {
 
   size_t GetAbsoluteSum(size_t start, size_t end, size_t level,
                         const framework::LoD& lod);
-
+  
  protected:
   static bool is_initialized_;
   bool scale_sparse_gradient_with_batch_size_;

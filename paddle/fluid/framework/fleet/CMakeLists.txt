@@ -18,5 +18,7 @@ if(WITH_GLOO)
 else()
     cc_library(gloo_wrapper SRCS gloo_wrapper.cc DEPS framework_proto variable_helper scope)
 endif(WITH_GLOO)
+    
+cc_library(heter_wrapper SRCS heter_wrapper.cc)
 
 cc_test(test_fleet SRCS test_fleet.cc DEPS fleet_wrapper gloo_wrapper fs shell)

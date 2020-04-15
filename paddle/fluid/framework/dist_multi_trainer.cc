@@ -76,7 +76,7 @@ void DistMultiTrainer::RegisterHeterCallback() {
   auto fleet_ptr = FleetWrapper::GetInstance();
   fleet_ptr->RegisterHeterCallback(
     [this](int worker, int taskid) {
-      workers_[worker]->Schedule(taskid);
+      //workers_[worker]->Schedule(taskid);
     }
   );
 }
@@ -156,7 +156,10 @@ void DistMultiTrainer::InitOtherEnv(const ProgramDesc &main_program) {
     InitDumpEnv();
   }
   pull_dense_worker_->SetRootScope(root_scope_);
-  pull_dense_worker_->Start();
+  //pull_dense_worker_->Start();
+  for (int i = 0; i < thread_num_; ++i) {
+    workers_[i]->GetXpuOpIndex();
+  }
   VLOG(3) << "init other env done.";
 }
 
@@ -180,6 +183,10 @@ void DistMultiTrainer::Finalize() {
   for (auto &th : threads_) {
     th.join();
   }
+  //if (mpi_rank_ == 0) {
+  //  auto heter_ptr_ = HeterWrapper::GetInstance();
+  //  heter_ptr_->EndPass(root_scope_);
+  //}
   for (size_t i = 0; i < need_merge_var_names_.size(); i++) {
     Variable *root_var = root_scope_->FindVar(need_merge_var_names_[i]);
     if (root_var == nullptr) {
@@ -214,7 +221,7 @@ void DistMultiTrainer::Finalize() {
   if (need_dump_field_) {
     FinalizeDumpEnv();
   }
-  pull_dense_worker_->Stop();
+  //pull_dense_worker_->Stop();
   root_scope_->DropKids();
 
   // flush local client push queue
