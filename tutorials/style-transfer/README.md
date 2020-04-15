@@ -43,7 +43,7 @@ import cv2
 import copy
 
 # 图像预处理函数，和tensor恢复到自然图像的函数
-from .style-transfer import load_image, image_restore
+from .style_transfer import load_image, image_restore
 ```
 
 
