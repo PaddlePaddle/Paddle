@@ -22,7 +22,7 @@ from op_test import OpTest
 
 class TestInverseOp(OpTest):
     def config(self):
-        self.matrix_shape = [100, 100]
+        self.matrix_shape = [4, 8, 8]
 
     def setUp(self):
         self.op_type = "inverse"
@@ -43,38 +43,45 @@ class TestInverseOp(OpTest):
 
 class TestInverseOpBatched(TestInverseOp):
     def config(self):
-        self.matrix_shape = [4, 32, 32]
+        self.matrix_shape = [100, 100]
 
 
 class TestInverseAPI(unittest.TestCase):
+    def setUp(self):
+        self.places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(fluid.CUDAPlace(0))
+
+    def assert_is_close(self, place, array1, array2, atol=1e-5):
+        self.assertTrue(
+            np.allclose(
+                array1, array2, atol=1e-4),
+            "Array has diff at " + str(place) + " when the shape is " +
+            str(array1.shape) + ". The maximum diff is " +
+            str(np.amax(np.absolute(array1 - array2))))
+
     def check_static_result(self, place, N, with_out=False):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[N, N], dtype="float32")
+            input = fluid.data(name="input", shape=[N, N], dtype="float64")
             if with_out:
-                out = fluid.data(name="output", shape=[N, N], dtype="float32")
+                out = fluid.data(name="output", shape=[N, N], dtype="float64")
             else:
                 out = None
             result = paddle.inverse(input=input, out=None)
 
-            input_np = np.random.random([N, N]).astype("float32")
+            input_np = np.random.random([N, N]).astype("float64")
             result_np = np.linalg.inv(input_np)
 
             exe = fluid.Executor(place)
             fetches = exe.run(fluid.default_main_program(),
                               feed={"input": input_np},
                               fetch_list=[result])
-            self.assertTrue(
-                np.allclose(
-                    fetches[0], result_np, atol=1e-4),
-                "Output has diff at " + str(place) + " when the shape is " +
-                str(input.shape) + ". The maximum diff is " +
-                str(np.amax(np.absolute(fetches[0] - result_np))))
+            self.assert_is_close(place, fetches[0], result_np, atol=1e-5)
 
     def test_static(self):
-        for N in [4, 36]:
-            self.check_static_result(place=fluid.CPUPlace(), N=N)
-            if core.is_compiled_with_cuda():
-                self.check_static_result(place=fluid.CUDAPlace(0), N=N)
+        for place in self.places:
+            for N in [4, 36]:
+                self.check_static_result(place=place, N=N)
 
     def test_dygraph(self):
         with fluid.dygraph.guard():
@@ -83,6 +90,23 @@ class TestInverseAPI(unittest.TestCase):
             result = paddle.inverse(input)
             self.assertTrue(
                 np.allclose(result.numpy(), np.linalg.inv(input_np)))
+
+    def test_product(self):
+        for place in self.places:
+            for N in [4, 36]:
+                with fluid.program_guard(fluid.Program(), fluid.Program()):
+                    input = fluid.data(
+                        name="input", shape=[N, N], dtype="float32")
+                    matinv = paddle.inverse(input=input, out=None)
+                    prod = fluid.layers.matmul(input, matinv)
+
+                    input_np = np.random.random([N, N]).astype("float32")
+                    exe = fluid.Executor(place)
+                    fetches = exe.run(fluid.default_main_program(),
+                                      feed={"input": input_np},
+                                      fetch_list=[prod])
+                    self.assert_is_close(
+                        place, fetches[0], np.identity(N), atol=1e-5)
 
 
 class TestInverseAPIError(unittest.TestCase):

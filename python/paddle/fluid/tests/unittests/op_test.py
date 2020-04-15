@@ -1221,9 +1221,9 @@ class OpTest(unittest.TestCase):
 
             def err_msg():
                 offset = np.argmax(diff_mat > max_relative_error)
-                return ("%s error, %s variable %s max gradient diff %f over limit %f, "
-                    "the first error element is %d, expected %f, but got %f.") \
-                    % (self.op_type, msg_prefix, name, max_diff, max_relative_error,
+                return ("Operator %s error, %s variable %s (shape: %s) max gradient diff %e over limit %e, "
+                    "the first error element is %d, expected %e, but got %e.") \
+                    % (self.op_type, msg_prefix, name, str(a.shape), max_diff, max_relative_error,
                     offset, a.flatten()[offset], b.flatten()[offset])
 
             self.assertLessEqual(max_diff, max_relative_error, err_msg())
