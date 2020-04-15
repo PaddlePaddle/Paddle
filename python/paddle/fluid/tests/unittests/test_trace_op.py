@@ -21,6 +21,7 @@ import paddle.nn.functional as F
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
 import paddle.fluid.core as core
+import paddle.tensor as tensor
 
 
 class TestTraceOp(OpTest):
@@ -64,6 +65,25 @@ class TestTraceOpCase2(TestTraceOp):
             offset=self.attrs['offset'],
             axis1=self.attrs['dim1'],
             axis2=self.attrs['dim2'])
+
+
+class TestTraceAPICase(unittest.TestCase):
+    def test_case1(self):
+        case = np.random.randn(2, 20, 2, 3).astype('float32')
+        data1 = fluid.data(name='data1', shape=[2, 20, 2, 3], dtype='float32')
+        out1 = tensor.trace(data1)
+        out2 = tensor.trace(data1, offset=-5, dim1=1, dim2=-1)
+
+        place = core.CPUPlace()
+        exe = fluid.Executor(place)
+        results = exe.run(fluid.default_main_program(),
+                          feed={"data1": case},
+                          fetch_list=[out1, out2],
+                          return_numpy=True)
+        target1 = np.trace(case)
+        target2 = np.trace(case, offset=-5, axis1=1, axis2=-1)
+        self.assertTrue(np.allclose(results[0], target1))
+        self.assertTrue(np.allclose(results[1], target2))
 
 
 if __name__ == "__main__":

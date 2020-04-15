@@ -22,11 +22,13 @@ class TraceOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of TraceOp should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Input"), true,
+        platform::errors::NotFound("Input of TraceOp is not found."));
 
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of TraceOp should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("Out"), true,
+        platform::errors::NotFound("Output of TraceOp is not found."));
 
     int dim1 = ctx->Attrs().Get<int>("dim1");
     int dim2 = ctx->Attrs().Get<int>("dim2");
@@ -72,8 +74,9 @@ class TraceOp : public framework::OperatorWithKernel {
 class TraceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Input", "Input array, from which the diagonals are taken.");
-    AddOutput("Out", "the sum along the diagonal");
+    AddInput("Input",
+             "(Tensor) The input tensor, from which the diagonals are taken.");
+    AddOutput("Out", "(Tensor) the sum along diagonals of the input tensor");
     AddAttr<int>(
         "offset",
         R"DOC((int, default 0), Offset of the diagonal from the main diagonal. Can be both positive and negative. Defaults to 0.
@@ -81,16 +84,25 @@ class TraceOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0);
     AddAttr<int>(
         "dim1",
-        R"DOC((int, default 0), the first axis of the 2-D sub-arrays from which the diagonals should be taken.  Default: 0.
+        R"DOC((int, default 0), the first dim of the 2-D planes from which the diagonals should be taken. 
+        Can be both positive and negative. Default: 0.
         )DOC")
         .SetDefault(-2);
     AddAttr<int>(
         "dim2",
-        R"DOC((int, default 1), the second axis of the 2-D sub-arrays from which the diagonals should be taken. Default: 1.
+        R"DOC((int, default 1), the second dim of the 2-D planes from which the diagonals should be taken. 
+        Can be both positive and negative. Default: 1.
         )DOC")
         .SetDefault(-1);
     AddComment(R"DOC(
-    If a is 2-D, the sum along the diagonal is returned. If a has larger dimensions, then an array of sums along diagonals is returned. 
+Trace Operator.
+Return the sum along diagonals of the input tensor.
+The behavior of this operator is similar to how `numpy.trace` works.
+
+If Input is 2-D, returns the sum of diagonal. 
+If Input has larger dimensions, then returns an array of diagonals sum, diagonals be taken from
+the 2D planes specified by dim1 and dim2.
+
 )DOC");
   }
 };
@@ -107,14 +119,31 @@ class TraceOpGrad : public framework::OperatorWithKernel {
                       ctx->GetInputDim("Input"));
   }
 };
+
+template <typename T>
+class TraceGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("trace_grad");
+    grad_op->SetInput("Input", this->Input("Input"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("Input"),
+                       this->InputGrad("Input"));
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(
-    trace, ops::TraceOp, ops::TraceOpMaker,
-    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
-    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
+REGISTER_OPERATOR(trace, ops::TraceOp, ops::TraceOpMaker,
+                  ops::TraceGradOpMaker<paddle::framework::OpDesc>,
+                  ops::TraceGradOpMaker<paddle::imperative::OpBase>);
+
 REGISTER_OPERATOR(trace_grad, ops::TraceOpGrad);
 REGISTER_OP_CPU_KERNEL(
     trace, ops::TraceKernel<paddle::platform::CPUDeviceContext, int>,
