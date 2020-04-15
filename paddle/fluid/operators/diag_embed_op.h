@@ -23,6 +23,40 @@
 namespace paddle {
 namespace operators {
 
+template <typename T>
+struct DiagEmbedFunctor {
+  DiagEmbedFunctor(const T* input, int64_t numel, const int64_t* dim,
+                   int64_t offset, int64_t dims_size, T* output,
+                   const int64_t* strides)
+      : input_(input),
+        numel_(numel),
+        dim_(dim),
+        offset_(offset),
+        dims_size_(dims_size),
+        output_(output),
+        strides_(strides) {}
+
+  HOSTDEVICE void operator()(size_t idx) const {
+    int64_t position = 0;
+    auto numel = numel_;
+    int64_t num = idx;
+    for (int64_t i = 0; i < dims_size_; i++) {
+      numel = numel / dim_[i];
+      position += num / numel * strides_[i];
+      num = num % numel;
+    }
+    output_[position + offset_] = input_[idx];
+  }
+
+  const T* input_;
+  int64_t numel_;
+  const int64_t* dim_;
+  int64_t offset_;
+  int64_t dims_size_;
+  T* output_;
+  const int64_t* strides_;
+};
+
 template <typename DeviceContext, typename T>
 class DiagEmbedKernel : public framework::OpKernel<T> {
  public:
@@ -39,6 +73,7 @@ class DiagEmbedKernel : public framework::OpKernel<T> {
     math::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = context.template device_context<DeviceContext>();
     set_zero(dev_ctx, out, static_cast<T>(0.0));
+
     auto out_dims = out->dims();
     int dim1_ = dim1 < 0 ? out_dims.size() + dim1 : dim1;
     int dim2_ = dim2 < 0 ? out_dims.size() + dim2 : dim2;
@@ -63,21 +98,24 @@ class DiagEmbedKernel : public framework::OpKernel<T> {
     strides.erase(strides.begin() + std::max(dim1_, dim2_));
     strides.erase(strides.begin() + std::min(dim1_, dim2_));
     strides.push_back(stride[dim1_] + stride[dim2_]);
-
     const auto dims = vectorize(input->dims());
-    for (int idx = 0; idx < input->numel(); idx++) {
-      int64_t position = 0;
-      auto numel = input->numel();
-      int64_t num = idx;
-      for (size_t i = 0; i < dims.size(); i++) {
-        numel = numel / dims[i];
-        position += num / numel * strides[i];
-        num = num % numel;
-      }
-      out_data[position + storage_offset] = input_data[idx];
-    }
+
+#ifdef __NVCC__
+    thrust::device_vector<int64_t> dims_vec(dims);
+    const int64_t* dims_arr = thrust::raw_pointer_cast(dims_vec.data());
+    thrust::device_vector<int64_t> strides_vec(strides);
+    const int64_t* strides_arr = thrust::raw_pointer_cast(strides_vec.data());
+#else
+    const int64_t* dims_arr = dims.data();
+    const int64_t* strides_arr = strides.data();
+#endif
+
+    platform::ForRange<DeviceContext> for_range(dev_ctx, input->numel());
+    DiagEmbedFunctor<T> functor(input_data, input->numel(), dims_arr,
+                                storage_offset, dims.size(), out_data,
+                                strides_arr);
+    for_range(functor);
   }
 };
-
 }  // namespace operators
 }  // namespace paddle
