@@ -732,7 +732,7 @@ class TestNLLLossOp1DWithReduce(OpTest):
             self.inputs['Weight'] = weight_np
 
         self.outputs = {'Out': output_np, 'Total_weight': total_weight_np}
-        self.attrs = {'Reduction': 'mean', 'ignore_index': -100}
+        self.attrs = {'reduction': 'mean', 'ignore_index': -100}
 
     def test_check_output(self):
         self.check_output()
@@ -774,7 +774,7 @@ class TestNLLLossOp1DNoReduce(OpTest):
             self.inputs['Weight'] = weight_np
 
         self.outputs = {'Out': output_np, 'Total_weight': total_weight_np}
-        self.attrs = {'Reduction': 'none', 'ignore_index': -100}
+        self.attrs = {'reduction': 'none', 'ignore_index': -100}
 
     def test_check_output(self):
         self.check_output()
@@ -815,7 +815,7 @@ class TestNLLLossOp2DWithReduce(OpTest):
             self.inputs['Weight'] = weight_np
 
         self.outputs = {'Out': output_np, 'Total_weight': total_weight_np}
-        self.attrs = {'Reduction': 'mean', 'ignore_index': -100}
+        self.attrs = {'reduction': 'mean', 'ignore_index': -100}
 
     def test_check_output(self):
         self.check_output()
@@ -857,7 +857,7 @@ class TestNLLLossOp2DNoReduce(OpTest):
             self.inputs['Weight'] = weight_np
 
         self.outputs = {'Out': output_np, 'Total_weight': total_weight_np}
-        self.attrs = {'Reduction': 'none', 'ignore_index': -100}
+        self.attrs = {'reduction': 'none', 'ignore_index': -100}
 
     def test_check_output(self):
         self.check_output()

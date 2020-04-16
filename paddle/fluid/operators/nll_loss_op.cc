@@ -24,10 +24,11 @@ class NLLLossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INPUT_CHECK(ctx->HasInput("X"), "Input", "X", "NLLLoss");
-    OP_INPUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "NLLLoss");
-    OP_INPUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "NLLLoss");
-    OP_INPUT_CHECK(ctx->HasOutput("Total_weight"), "Output", "NLLLoss");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "NLLLoss");
+    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "NLLLoss");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "NLLLoss");
+    OP_INOUT_CHECK(ctx->HasOutput("Total_weight"), "Output", "Total_weight",
+                   "NLLLoss");
 
     auto x_dims = ctx->GetInputDim("X");
     auto label_dims = ctx->GetInputDim("Label");
@@ -158,11 +159,11 @@ class NLLLossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INPUT_CHECK(ctx->HasInput("X"), "Input", "X", "NLLLoss");
-    OP_INPUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "NLLLoss");
-    OP_INPUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "NLLLoss");
+    OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "NLLLoss");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
                    framework::GradVarName("Out"), "NLLLoss");
-    OP_INPUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
                    framework::GradVarName("X"), "NLLLoss");
 
     auto reduction = ctx->Attrs().Get<std::string>("reduction");
