@@ -474,6 +474,9 @@ struct EOFException : public std::exception {
 /** CUDA PADDLE ENFORCE FUNCTIONS AND MACROS **/
 #ifdef PADDLE_WITH_CUDA
 
+/** cuda ERROR **/
+inline bool is_error(cudaError_t e) { return e != cudaSuccess; }
+
 inline std::string GetCudaErrorWebsite(int32_t cuda_version) {
   std::ostringstream webstr;
   webstr << "https://docs.nvidia.com/cuda/";
@@ -486,7 +489,7 @@ inline std::string GetCudaErrorWebsite(int32_t cuda_version) {
   return webstr.str();
 }
 
-inline std::string GetCudaErrorMessage(cudaError_t e) {
+inline std::string build_nvidia_error_msg(cudaError_t e) {
 #if CUDA_VERSION >= 10000 && CUDA_VERSION < 11000
   int32_t cuda_version = 100;
 #elif CUDA_VERSION >= 9000
@@ -495,14 +498,14 @@ inline std::string GetCudaErrorMessage(cudaError_t e) {
   int32_t cuda_version = -1;
 #endif
   std::ostringstream sout;
-  sout << " CUDA runtime error(" << e << "), " << cudaGetErrorString(e) << ".";
+  sout << " Cuda error(" << e << "), " << cudaGetErrorString(e) << ".";
   static platform::proto::cudaerrorDesc cudaerror;
   static bool _initSucceed = false;
   if (cudaerror.ByteSizeLong() == 0) {
     std::string filePath;
 #if !defined(_WIN32)
     Dl_info info;
-    if (dladdr(reinterpret_cast<void*>(GetCudaErrorMessage), &info)) {
+    if (dladdr(reinterpret_cast<void*>(GetCudaErrorWebsite), &info)) {
       std::string strModule(info.dli_fname);
       const size_t last_slash_idx = strModule.find_last_of("/");
       std::string compare_path = strModule.substr(strModule.length() - 6);
@@ -521,7 +524,7 @@ inline std::string GetCudaErrorMessage(cudaError_t e) {
     char buf[100];
     MEMORY_BASIC_INFORMATION mbi;
     HMODULE h_module =
-        (::VirtualQuery(GetCudaErrorMessage, &mbi, sizeof(mbi)) != 0)
+        (::VirtualQuery(GetCudaErrorWebsite, &mbi, sizeof(mbi)) != 0)
             ? (HMODULE)mbi.AllocationBase
             : NULL;
     GetModuleFileName(h_module, buf, 100);
@@ -562,19 +565,6 @@ inline std::string GetCudaErrorMessage(cudaError_t e) {
   return sout.str();
 }
 
-inline bool is_error(cudaError_t e) { return e != cudaSuccess; }
-
-inline std::string build_ex_string(cudaError_t e, const std::string& msg) {
-  // note(zhouwei): the generated message when developer don't input error
-  // message, but it is not needed when CUDA ERROR;
-  // Better method is to refactor class ErrorSummary or
-  // PADDLE_ENFORCE_CUDA_SUCCESS.
-  if (msg.find("An error occurred here") != std::string::npos) {
-    return platform::errors::External(GetCudaErrorMessage(e)).ToString();
-  }
-  return msg + GetCudaErrorMessage(e);
-}
-
 inline void throw_on_error(cudaError_t e, const std::string& msg) {
 #ifndef REPLACE_ENFORCE_GLOG
   throw std::runtime_error(msg);
@@ -583,13 +573,47 @@ inline void throw_on_error(cudaError_t e, const std::string& msg) {
 #endif
 }
 
+/** curand ERROR **/
 inline bool is_error(curandStatus_t stat) {
   return stat != CURAND_STATUS_SUCCESS;
 }
 
-inline std::string build_ex_string(curandStatus_t stat,
-                                   const std::string& msg) {
-  return msg;
+inline const char* curandGetErrorString(curandStatus_t stat) {
+  switch (stat) {
+    case CURAND_STATUS_SUCCESS:
+      return "CURAND_STATUS_SUCCESS";
+    case CURAND_STATUS_VERSION_MISMATCH:
+      return "CURAND_STATUS_VERSION_MISMATCH";
+    case CURAND_STATUS_NOT_INITIALIZED:
+      return "CURAND_STATUS_NOT_INITIALIZED";
+    case CURAND_STATUS_ALLOCATION_FAILED:
+      return "CURAND_STATUS_ALLOCATION_FAILED";
+    case CURAND_STATUS_TYPE_ERROR:
+      return "CURAND_STATUS_TYPE_ERROR";
+    case CURAND_STATUS_OUT_OF_RANGE:
+      return "CURAND_STATUS_OUT_OF_RANGE";
+    case CURAND_STATUS_LENGTH_NOT_MULTIPLE:
+      return "CURAND_STATUS_LENGTH_NOT_MULTIPLE";
+    case CURAND_STATUS_DOUBLE_PRECISION_REQUIRED:
+      return "CURAND_STATUS_DOUBLE_PRECISION_REQUIRED";
+    case CURAND_STATUS_LAUNCH_FAILURE:
+      return "CURAND_STATUS_LAUNCH_FAILURE";
+    case CURAND_STATUS_PREEXISTING_FAILURE:
+      return "CURAND_STATUS_PREEXISTING_FAILURE";
+    case CURAND_STATUS_INITIALIZATION_FAILED:
+      return "CURAND_STATUS_INITIALIZATION_FAILED";
+    case CURAND_STATUS_ARCH_MISMATCH:
+      return "CURAND_STATUS_ARCH_MISMATCH";
+    case CURAND_STATUS_INTERNAL_ERROR:
+      return "CURAND_STATUS_INTERNAL_ERROR";
+    default:
+      return "Unknown curand status";
+  }
+}
+
+inline std::string build_nvidia_error_msg(curandStatus_t stat) {
+  std::string msg(" Curand error, ");
+  return msg + curandGetErrorString(stat) + " ";
 }
 
 inline void throw_on_error(curandStatus_t stat, const std::string& msg) {
@@ -601,13 +625,14 @@ inline void throw_on_error(curandStatus_t stat, const std::string& msg) {
 #endif
 }
 
+/** cudnn ERROR **/
 inline bool is_error(cudnnStatus_t stat) {
   return stat != CUDNN_STATUS_SUCCESS;
 }
 
-inline std::string build_ex_string(cudnnStatus_t stat, const std::string& msg) {
-  return msg + "\n  [Hint: " + platform::dynload::cudnnGetErrorString(stat) +
-         "]";
+inline std::string build_nvidia_error_msg(cudnnStatus_t stat) {
+  std::string msg(" Cudnn error, ");
+  return msg + platform::dynload::cudnnGetErrorString(stat) + " ";
 }
 
 inline void throw_on_error(cudnnStatus_t stat, const std::string& msg) {
@@ -618,33 +643,39 @@ inline void throw_on_error(cudnnStatus_t stat, const std::string& msg) {
 #endif
 }
 
+/** cublas ERROR **/
 inline bool is_error(cublasStatus_t stat) {
   return stat != CUBLAS_STATUS_SUCCESS;
 }
 
-inline std::string build_ex_string(cublasStatus_t stat,
-                                   const std::string& msg) {
-  std::string err;
-  if (stat == CUBLAS_STATUS_NOT_INITIALIZED) {
-    err = "CUBLAS_STATUS_NOT_INITIALIZED";
-  } else if (stat == CUBLAS_STATUS_ALLOC_FAILED) {
-    err = "CUBLAS_STATUS_ALLOC_FAILED";
-  } else if (stat == CUBLAS_STATUS_INVALID_VALUE) {
-    err = "CUBLAS_STATUS_INVALID_VALUE";
-  } else if (stat == CUBLAS_STATUS_ARCH_MISMATCH) {
-    err = "CUBLAS_STATUS_ARCH_MISMATCH";
-  } else if (stat == CUBLAS_STATUS_MAPPING_ERROR) {
-    err = "CUBLAS_STATUS_MAPPING_ERROR";
-  } else if (stat == CUBLAS_STATUS_EXECUTION_FAILED) {
-    err = "CUBLAS_STATUS_EXECUTION_FAILED";
-  } else if (stat == CUBLAS_STATUS_INTERNAL_ERROR) {
-    err = "CUBLAS_STATUS_INTERNAL_ERROR";
-  } else if (stat == CUBLAS_STATUS_NOT_SUPPORTED) {
-    err = "CUBLAS_STATUS_NOT_SUPPORTED";
-  } else if (stat == CUBLAS_STATUS_LICENSE_ERROR) {
-    err = "CUBLAS_STATUS_LICENSE_ERROR";
+inline const char* cublasGetErrorString(cublasStatus_t stat) {
+  switch (stat) {
+    case CUBLAS_STATUS_NOT_INITIALIZED:
+      return "CUBLAS_STATUS_NOT_INITIALIZED";
+    case CUBLAS_STATUS_ALLOC_FAILED:
+      return "CUBLAS_STATUS_ALLOC_FAILED";
+    case CUBLAS_STATUS_INVALID_VALUE:
+      return "CUBLAS_STATUS_INVALID_VALUE";
+    case CUBLAS_STATUS_ARCH_MISMATCH:
+      return "CUBLAS_STATUS_ARCH_MISMATCH";
+    case CUBLAS_STATUS_MAPPING_ERROR:
+      return "CUBLAS_STATUS_MAPPING_ERROR";
+    case CUBLAS_STATUS_EXECUTION_FAILED:
+      return "CUBLAS_STATUS_EXECUTION_FAILED";
+    case CUBLAS_STATUS_INTERNAL_ERROR:
+      return "CUBLAS_STATUS_INTERNAL_ERROR";
+    case CUBLAS_STATUS_NOT_SUPPORTED:
+      return "CUBLAS_STATUS_NOT_SUPPORTED";
+    case CUBLAS_STATUS_LICENSE_ERROR:
+      return "CUBLAS_STATUS_LICENSE_ERROR";
+    default:
+      return "Unknown cublas status";
   }
-  return msg + "\n  [Hint: " + err + "]";
+}
+
+inline std::string build_nvidia_error_msg(cublasStatus_t stat) {
+  std::string msg(" Cublas error, ");
+  return msg + cublasGetErrorString(stat) + " ";
 }
 
 inline void throw_on_error(cublasStatus_t stat, const std::string& msg) {
@@ -655,15 +686,15 @@ inline void throw_on_error(cublasStatus_t stat, const std::string& msg) {
 #endif
 }
 
+/** nccl ERROR **/
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 inline bool is_error(ncclResult_t nccl_result) {
   return nccl_result != ncclSuccess;
 }
 
-inline std::string build_ex_string(ncclResult_t nccl_result,
-                                   const std::string& msg) {
-  return msg + "\n  [" + platform::dynload::ncclGetErrorString(nccl_result) +
-         "]";
+inline std::string build_nvidia_error_msg(ncclResult_t nccl_result) {
+  std::string msg(" Nccl error, ");
+  return msg + platform::dynload::ncclGetErrorString(nccl_result) + " ";
 }
 
 inline void throw_on_error(ncclResult_t nccl_result, const std::string& msg) {
@@ -673,11 +704,8 @@ inline void throw_on_error(ncclResult_t nccl_result, const std::string& msg) {
   LOG(FATAL) << msg;
 #endif
 }
-#endif  // __APPLE__ and windows
+#endif  // not(__APPLE__) and PADDLE_WITH_NCCL
 
-#endif  // PADDLE_WITH_CUDA
-
-#ifdef PADDLE_WITH_CUDA
 namespace details {
 
 template <typename T>
@@ -700,30 +728,28 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
 #endif
 
 }  // namespace details
-#endif  // PADDLE_WITH_CUDA
 
-#ifdef PADDLE_WITH_CUDA
-#define PADDLE_ENFORCE_CUDA_SUCCESS(COND, ...)                              \
-  do {                                                                      \
-    auto __cond__ = (COND);                                                 \
-    using __CUDA_STATUS_TYPE__ = decltype(__cond__);                        \
-    constexpr auto __success_type__ =                                       \
-        ::paddle::platform::details::CudaStatusType<                        \
-            __CUDA_STATUS_TYPE__>::kSuccess;                                \
-    if (UNLIKELY(__cond__ != __success_type__)) {                           \
-      try {                                                                 \
-        ::paddle::platform::throw_on_error(                                 \
-            __cond__,                                                       \
-            ::paddle::platform::build_ex_string(                            \
-                __cond__,                                                   \
-                ::paddle::platform::ErrorSummary(__VA_ARGS__).ToString())); \
-      } catch (...) {                                                       \
-        HANDLE_THE_ERROR                                                    \
-        throw ::paddle::platform::EnforceNotMet(std::current_exception(),   \
-                                                __FILE__, __LINE__);        \
-        END_HANDLE_THE_ERROR                                                \
-      }                                                                     \
-    }                                                                       \
+#define PADDLE_ENFORCE_CUDA_SUCCESS(COND)                                 \
+  do {                                                                    \
+    auto __cond__ = (COND);                                               \
+    using __CUDA_STATUS_TYPE__ = decltype(__cond__);                      \
+    constexpr auto __success_type__ =                                     \
+        ::paddle::platform::details::CudaStatusType<                      \
+            __CUDA_STATUS_TYPE__>::kSuccess;                              \
+    if (UNLIKELY(__cond__ != __success_type__)) {                         \
+      try {                                                               \
+        ::paddle::platform::throw_on_error(                               \
+            __cond__,                                                     \
+            ::paddle::platform::errors::External(                         \
+                ::paddle::platform::build_nvidia_error_msg(__cond__))     \
+                .ToString());                                             \
+      } catch (...) {                                                     \
+        HANDLE_THE_ERROR                                                  \
+        throw ::paddle::platform::EnforceNotMet(std::current_exception(), \
+                                                __FILE__, __LINE__);      \
+        END_HANDLE_THE_ERROR                                              \
+      }                                                                   \
+    }                                                                     \
   } while (0)
 
 #undef DEFINE_CUDA_STATUS_TYPE

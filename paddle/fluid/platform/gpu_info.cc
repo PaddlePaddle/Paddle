@@ -273,22 +273,12 @@ size_t GpuMaxChunkSize() {
 
 void GpuMemcpyAsync(void *dst, const void *src, size_t count,
                     enum cudaMemcpyKind kind, cudaStream_t stream) {
-  PADDLE_ENFORCE_CUDA_SUCCESS(
-      cudaMemcpyAsync(dst, src, count, kind, stream),
-      platform::errors::External(
-          "cudaMemcpyAsync failed in paddle::platform::GpuMemcpyAsync "
-          "(%p -> %p, length: %d). ",
-          src, dst, static_cast<int>(count)));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpyAsync(dst, src, count, kind, stream));
 }
 
 void GpuMemcpySync(void *dst, const void *src, size_t count,
                    enum cudaMemcpyKind kind) {
-  PADDLE_ENFORCE_CUDA_SUCCESS(
-      cudaMemcpy(dst, src, count, kind),
-      platform::errors::External(
-          "cudaMemcpy failed in paddle::platform::GpuMemcpySync "
-          "(%p -> %p, length: %d). ",
-          src, dst, static_cast<int>(count)));
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(dst, src, count, kind));
 }
 
 void GpuMemcpyPeerAsync(void *dst, int dst_device, const void *src,
@@ -397,8 +387,7 @@ class RecordedCudaMallocHelper {
     CUDADeviceGuard guard(dev_id_);
     auto err = cudaFree(ptr);
     if (err != cudaErrorCudartUnloading) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          err, platform::errors::External("cudaFree raises unexpected error"));
+      PADDLE_ENFORCE_CUDA_SUCCESS(err);
       if (NeedRecord()) {
         std::lock_guard<std::mutex> guard(*mtx_);
         cur_size_ -= size;
