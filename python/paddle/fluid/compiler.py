@@ -139,8 +139,9 @@ class CompiledProgram(object):
             self._graph = core.Graph(program_or_graph.desc)
             self._program = program_or_graph
         else:
-            raise ValueError("Wrong program_to_graph type: %s" %
-                             type(program_or_graph))
+            raise TypeError(
+                "The type of program_to_graph parameter is wrong, expected Graph or Program, but received %s"
+                % type(program_or_graph))
 
         self._scope = None
         self._place = None
@@ -258,8 +259,8 @@ class CompiledProgram(object):
                                 feed={"X": test_data},
                                 fetch_list=[loss.name])
         """
-        assert not self._is_data_parallel, "Already compiled with parallel."
-        assert not self._is_inference, "Cannot compile both data parallel and inference"
+        assert not self._is_data_parallel, "Already compiled with parallel, cannot be recompiled."
+        assert not self._is_inference, "Cannot compile with both data parallel and inference."
         self._is_data_parallel = True
         # FIXME(zcd): Currently, the build_strategy can be set during creating
         # CompiledProgram or calling with_data_parallel, and it may be confusing,
@@ -272,7 +273,7 @@ class CompiledProgram(object):
         self._places = places
 
         if _has_backward_op(self._graph):
-            assert self._loss_name is not None, "The loss_name should be set here."
+            assert self._loss_name is not None, "The loss name of CompiledProgram is None. The loss name should be set if CompiledProgram contains backward part."
 
         if self._places is not None:
             if not isinstance(self._places, (list, tuple)):
@@ -288,8 +289,8 @@ class CompiledProgram(object):
         Returns:
             self
         """
-        assert not self._is_data_parallel, "Cannot compile both data parallel and inference"
-        assert not self._is_inference, "Already compiled with inference"
+        assert not self._is_data_parallel, "Cannot compile with both data parallel and inference"
+        assert not self._is_inference, "Already compiled with inference, cannot be recompiled."
 
         assert any([
             isinstance(config, InferNativeConfig),
@@ -300,30 +301,29 @@ class CompiledProgram(object):
         return self
 
     def _with_distributed(self):
-        raise NotImplementedError()
+        raise NotImplementedError(
+            "Subclass of CompiledProgram should implement _with_distributed method."
+        )
 
     def _compile_data_parallel(self, places, use_cuda=False, scope=None):
         if self._share_vars_from:
             if scope:
                 sys.stderr.write("share_vars_from is set, scope is ignored.\n")
-            if not self._is_data_parallel:
-                raise ValueError(
-                    "Currently, only data parallel mode need share_vars_from.")
             if not self._share_vars_from._is_data_parallel:
-                raise ValueError("share_vars_from is not data parallel. Cannot "
-                                 "share vars from it.")
+                raise ValueError(
+                    "The shared Program is not data parallel, cannot "
+                    "share variables from it.")
             if self._share_vars_from._executor is None:
                 raise ValueError(
-                    "share_vars_from is not compiled and run, so there is no "
-                    "var to share.")
+                    "The shared Program is not compiled and executed, so there is no "
+                    "variables to share.")
             self._local_scopes = self._share_vars_from._executor.local_scopes()
         else:
             assert scope is not None, ""
             self._local_scopes = []
 
         assert isinstance(places, tuple) or isinstance(places, list), \
-            "Currently , The places type only should be list or tuple, \n" \
-            "but the input type is {}.".format(type(places))
+            "Currently , The places type can only be list or tuple, but the input type is {}.".format(type(places))
 
         if self._build_strategy is None:
             self._build_strategy = BuildStrategy()
@@ -354,7 +354,7 @@ class CompiledProgram(object):
             tps = self._program._trainers_endpoints
 
             assert self._build_strategy.num_trainers == len(
-                tps), "num_trainers == len(end_points)"
+                tps), "The trainer numbers is not equal to endpoint numbers."
             self._build_strategy.trainers_endpoints = tps
 
         if self._program:
@@ -366,11 +366,11 @@ class CompiledProgram(object):
             self._build_strategy.enable_sequential_execution = True
 
         if self._program is not None and self._program._enable_dgc:
-            assert use_cuda, "DGC only used under cuda"
+            assert use_cuda, "DGC only used under CUDA environment."
             assert self._build_strategy.num_trainers * len(
-                places) > 1, "DGC is not useful for single card training"
+                places) > 1, "DGC is not avaliable for single card training."
             assert self._build_strategy.reduce_strategy == BuildStrategy.ReduceStrategy.AllReduce, "DGC \
-                only used for AllReduce BuildStrategy"
+                only can be used for AllReduce BuildStrategy."
 
             # DGC doesn't support fuse for now, close fuse.
             self._build_strategy.fuse_all_reduce_ops = False
@@ -411,9 +411,9 @@ class CompiledProgram(object):
         """
         if self._compiled:
             if scope and self._scope != scope:
-                raise ValueError("Cannot compile with different scope")
+                raise ValueError("Cannot compile program with different scope.")
             if place and not self._place._equals(place):
-                raise ValueError("Cannot compile with different place")
+                raise ValueError("Cannot compile program with different place.")
             return self
         self._compiled = True
 
@@ -448,9 +448,9 @@ class CompiledProgram(object):
         if has_set_place:
             for p in place_list:
                 assert p._type() == place._type(), \
-                    "Place type not match. You may set the wrong type of places"
+                    "Place type not match. You may set wrong type of places."
         else:
             place_list = cuda_places() if isinstance(
                 place, core.CUDAPlace) else cpu_places()
-        assert place_list, "no place for execution"
+        assert place_list, "No places for execution."
         return place_list
