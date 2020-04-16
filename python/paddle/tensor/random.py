@@ -462,7 +462,9 @@ def rand(shape, out=None, dtype=None, device=None, stop_gradient=True):
                                          ['int32', 'int64'], 'rand')
 
     if device not in [None, 'cpu', 'gpu']:
-        raise ValueError("The input device should in [None, 'cpu', 'gpu'].")
+        raise ValueError(
+            "The input device should in [None, 'cpu', 'gpu'], but received {}".
+            format(device))
 
     helper = LayerHelper("rand", **locals())
     if out is None:
