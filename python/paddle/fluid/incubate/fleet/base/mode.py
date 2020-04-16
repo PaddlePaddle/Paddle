@@ -12,18 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define activation functions of neural network
+from __future__ import print_function
 
-from . import activation
-from . import loss
-from . import conv
-from . import extension
-from . import activation
-from . import norm
+__all__ = ['Mode']
 
-from .activation import *
-from .loss import *
-from .conv import *
-from .extension import *
-from .activation import *
-from .norm import *
+
+class Mode:
+    """
+    There are various mode for fleet, each of them is designed for different model.
+    """
+    TRANSPILER = 1
+    PSLIB = 2
+    COLLECTIVE = 3

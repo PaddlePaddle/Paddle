@@ -5484,7 +5484,7 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
     """
     helper = LayerHelper('row_conv', **locals())
     dtype = helper.input_dtype()
-    filter_shape = [future_context_size + 1, input.shape[1]]
+    filter_shape = [future_context_size + 1, input.shape[-1]]
     filter_param = helper.create_parameter(
         attr=helper.param_attr, shape=filter_shape, dtype=dtype)
     out = helper.create_variable_for_type_inference(dtype)
@@ -10713,10 +10713,6 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
     """
 
-    check_variable_and_dtype(
-        x, "x",
-        ['float32', 'float64', 'uint8', 'int16', 'int32', 'in64', 'uint8'],
-        "scale")
     if in_dygraph_mode():
         _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
         out = core.ops.scale(x, 'scale',
@@ -10724,6 +10720,10 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
                              float(bias), 'bias_after_scale', bias_after_scale)
         return dygraph_utils._append_activation_in_dygraph(out)
 
+    check_variable_and_dtype(x, "x", [
+        'float16', 'float32', 'float64', 'int8', 'int16', 'int32', 'int64',
+        'uint8'
+    ], "scale")
     inputs = {'X': [x]}
     attrs = {
         'bias': float(bias),
@@ -13553,6 +13553,12 @@ def deformable_conv(input,
           out = fluid.layers.deformable_conv(input=data, offset=offset, mask=None,
                                              num_filters=2, filter_size=filter_size, padding=1, modulated=False)
     """
+
+    check_variable_and_dtype(input, "input", ['float32', 'float64'],
+                             'deformable_conv')
+    check_variable_and_dtype(offset, "offset", ['float32', 'float64'],
+                             'deformable_conv')
+    check_type(mask, 'mask', (Variable, type(None)), 'deformable_conv')
 
     num_channels = input.shape[1]
     assert param_attr is not False, "param_attr should not be False here."
