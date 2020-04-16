@@ -46,7 +46,7 @@ def test_Variable():
     fluid.clip(input=input_data)
 
 
-self.assertRaises(TypeError, test_Variable)
+assertRaises(TypeError, test_Variable)
 
 prog_clip.block(0).var(hidden1.name)._set_error_clip(
     fluid.clip.ErrorClipByValue(
