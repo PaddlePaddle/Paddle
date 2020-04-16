@@ -279,6 +279,15 @@ Natural logarithm of x.
 
 )DOC";
 
+UNUSED constexpr char Log1pDoc[] = R"DOC(
+Log Activation Operator.
+
+$out = \ln(x+1)$
+
+Natural logarithm of x.
+
+)DOC";
+
 UNUSED constexpr char SquareDoc[] = R"DOC(
 The OP square each elements of the inputs.
 
@@ -634,6 +643,7 @@ REGISTER_ACTIVATION_OP_MAKER(Sin, SinDoc);
 REGISTER_ACTIVATION_OP_MAKER(Round, RoundDoc);
 REGISTER_ACTIVATION_OP_MAKER(Reciprocal, ReciprocalDoc);
 REGISTER_ACTIVATION_OP_MAKER(Log, LogDoc);
+REGISTER_ACTIVATION_OP_MAKER(Log1p, Log1pDoc);
 REGISTER_ACTIVATION_OP_MAKER(Square, SquareDoc);
 REGISTER_ACTIVATION_OP_MAKER(Softplus, SoftplusDoc);
 REGISTER_ACTIVATION_OP_MAKER(Softsign, SoftsignDoc);

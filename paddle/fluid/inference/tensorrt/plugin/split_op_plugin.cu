@@ -45,8 +45,17 @@ __device__ int upper_bound(T const* vals, int n, T const& key) {
 
 nvinfer1::Dims SplitPlugin::getOutputDimensions(
     int index, const nvinfer1::Dims* input_dims, int num_inputs) {
-  PADDLE_ENFORCE_EQ(num_inputs, 1);
-  PADDLE_ENFORCE_LT(index, this->getNbOutputs());
+  PADDLE_ENFORCE_EQ(num_inputs, 1,
+                    platform::errors::InvalidArgument(
+                        "Invalid number of inputs of split TRT plugin. "
+                        "Expected 1, received %d.",
+                        num_inputs));
+  PADDLE_ENFORCE_LT(
+      index, this->getNbOutputs(),
+      platform::errors::InvalidArgument(
+          "Index of output should be less than the total number of outputs in "
+          "split TensorRT plugin. Received index = %d >= total outputs = %d",
+          index, this->getNbOutputs()));
 
   nvinfer1::Dims output_dims = input_dims[0];
   output_dims.d[axis_] = output_length_.at(index);
@@ -54,7 +63,11 @@ nvinfer1::Dims SplitPlugin::getOutputDimensions(
 }
 
 int SplitPlugin::initialize() {
-  PADDLE_ENFORCE_LE(axis_, nvinfer1::Dims::MAX_DIMS);
+  PADDLE_ENFORCE_LE(axis_, nvinfer1::Dims::MAX_DIMS,
+                    platform::errors::InvalidArgument(
+                        "Axis dimension exceeds max dimension in TensorRT. "
+                        "Received axis = %d > MAX_DIMS = %d",
+                        axis_, nvinfer1::Dims::MAX_DIMS));
   // notice input dims is [C, H, W]
   nvinfer1::Dims dims = this->getInputDims(0);
   outer_rows_ = 1;
@@ -111,9 +124,12 @@ int SplitPlugin::enqueue(int batchSize, const void* const* inputs,
   float const* input_ptr = reinterpret_cast<float const*>(inputs[0]);
   float* const* h_odatas = reinterpret_cast<float* const*>(outputs);
   float** output_ptrs = thrust::raw_pointer_cast(&d_output_ptrs_[0]);
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpyAsync(
-      output_ptrs, h_odatas, d_output_ptrs_.size() * sizeof(float*),
-      cudaMemcpyHostToDevice, stream));
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      cudaMemcpyAsync(output_ptrs, h_odatas,
+                      d_output_ptrs_.size() * sizeof(float*),
+                      cudaMemcpyHostToDevice, stream),
+      platform::errors::External(
+          "CUDA Memcpy failed during split plugin run."));
 
   int outer_rows = outer_rows_ * batchSize;
 
@@ -159,7 +175,7 @@ bool SplitPluginDynamic::supportsFormatCombination(
     int nb_outputs) {
   PADDLE_ENFORCE_NOT_NULL(
       in_out, platform::errors::InvalidArgument(
-                  "The input of swish plugin shoule not be nullptr."));
+                  "The input of split plugin should not be nullptr."));
 
   PADDLE_ENFORCE_LT(
       pos, nb_inputs + nb_outputs,
