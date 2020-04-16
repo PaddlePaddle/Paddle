@@ -1175,7 +1175,7 @@ class Variable(object):
         Get readable debug string of Variable.
 
         .. note::
-            If you want to get the debug string in json format,
+            If you want to get the debug string in protobuf format,
             please use :code:`to_string` method.
 
         Returns:
@@ -1974,7 +1974,7 @@ class Operator(object):
         Get readable debug string of Operator.
 
         .. note::
-            If you want to get the debug string in json format,
+            If you want to get the debug string in protobuf format,
             please use :code:`to_string` method.
 
         Args:
@@ -2367,7 +2367,7 @@ class Block(object):
         Get readable debug string of Block.
 
         .. note::
-            If you want to get the debug string in json format,
+            If you want to get the debug string in protobuf format,
             please use :code:`to_string` method.
 
         Args:
@@ -3997,7 +3997,7 @@ class Program(object):
         Get readable debug string of Program.
 
         .. note::
-            If you want to get the debug string in json format,
+            If you want to get the debug string in protobuf format,
             please use :code:`to_string` method.
 
         Args:
