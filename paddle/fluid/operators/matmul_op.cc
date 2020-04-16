@@ -332,7 +332,8 @@ class MatMulOp : public framework::OperatorWithKernel {
                    "Output(Out) of MatMulOp should not be null.");
     auto reshape_out =
         context->Attrs().Get<std::vector<int64_t>>("reshape_Out");
-    auto axis_out = context->Attrs().Get<std::vector<int64_t>>("axis_Out");
+    auto transpose_out =
+        context->Attrs().Get<std::vector<int64_t>>("transpose_Out");
 
     auto dim_x = context->GetInputDim("X");
     auto dim_y = context->GetInputDim("Y");
@@ -416,7 +417,7 @@ class MatMulOp : public framework::OperatorWithKernel {
     framework::DDim ddim_out = framework::make_ddim(dim_out);
 
     //  if matmul+transpose+reshape fuse activated
-    if (!reshape_out.empty() && !axis_out.empty()) {
+    if (!reshape_out.empty() && !transpose_out.empty()) {
       auto reshape_out_size = reshape_out.size();
       PADDLE_ENFORCE_EQ(reshape_out_size == 3 || reshape_out_size == 4, true,
                         platform::errors::InvalidArgument(
@@ -424,7 +425,7 @@ class MatMulOp : public framework::OperatorWithKernel {
                             "received %d",
                             reshape_out_size));
       framework::DDim shape_out =
-          ddim_out.transpose(axis_out).reshape(reshape_out);
+          ddim_out.transpose(transpose_out).reshape(reshape_out);
       context->SetOutputDim("Out", shape_out);
     } else {
       context->SetOutputDim("Out", ddim_out);
@@ -490,7 +491,7 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddAttr<std::vector<int64_t>>("reshape_Out", "Shape of fused reshape.")
         .SetDefault({});
-    AddAttr<std::vector<int64_t>>("axis_Out", "Axis of fused transpose.")
+    AddAttr<std::vector<int64_t>>("transpose_Out", "Axis of fused transpose.")
         .SetDefault({});
 
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)

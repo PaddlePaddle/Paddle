@@ -25,25 +25,35 @@ void SetOp(ProgramDesc *prog, const std::string &type,
   auto *op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
   op->SetInput("X", {inputs[0]});
-  op->SetOutput("Out", outputs);
+  op->SetOutput("Out", {outputs[0]});
+  if (type == "transpose2") {
+    op->SetAttr("axis", std::vector<int>({0, 2, 1}));
+    op->SetOutput("XShape", {outputs[1]});
+  }
+  if (type == "reshape2") {
+    op->SetAttr("shape", std::vector<int>({0, 2, 1}));
+    op->SetOutput("XShape", {outputs[1]});
+  }
+
   if (type == "matmul") {
     op->SetInput("Y", {inputs[1]});
     op->SetAttr("use_mkldnn", true);
-    op->SetAttr("shape_Out", std::vector<int64_t>({1, 2, 3}));
+    op->SetAttr("reshape_Out", std::vector<int64_t>({1, 2, 3}));
+    op->SetAttr("transpose_Out", std::vector<int64_t>({0, 2, 1}));
   }
 }
 
 ProgramDesc BuildProgramDesc() {
   ProgramDesc prog;
-  for (auto &v :
-       std::initializer_list<std::string>({"a1", "a2", "b", "c", "d", "e"})) {
+  for (auto &v : std::initializer_list<std::string>(
+           {"a1", "a2", "b", "c", "cx", "d", "dx", "e"})) {
     auto *var = prog.MutableBlock(0)->Var(v);
     var->SetType(proto::VarType::SELECTED_ROWS);
   }
 
   SetOp(&prog, "matmul", {"a1", "a2"}, {"b"});
-  SetOp(&prog, "transpose2", {"b"}, {"c"});
-  SetOp(&prog, "reshape2", {"c"}, {"d"});
+  SetOp(&prog, "transpose2", {"b"}, {"c", "cx"});
+  SetOp(&prog, "reshape2", {"c"}, {"d", "dx"});
   SetOp(&prog, "fc", {"d"}, {"e"});
 
   return prog;
@@ -59,13 +69,14 @@ void MainTest(const ProgramDesc &prog) {
   graph.reset(pass->Apply(graph.release()));
 
   int current_nodes_num = graph->Nodes().size();
-  EXPECT_EQ(original_nodes_num - 4, current_nodes_num);
+  EXPECT_EQ(original_nodes_num - 6, current_nodes_num);
 
   for (auto *node : graph->Nodes()) {
     if (node->IsOp()) {
       auto *op = node->Op();
       if (op->Type() == "matmul") {
-        ASSERT_TRUE(op->HasAttr("shape_Out"));
+        ASSERT_TRUE(op->HasAttr("reshape_Out"));
+        ASSERT_TRUE(op->HasAttr("transpose_Out"));
       }
     }
   }

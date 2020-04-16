@@ -23,7 +23,8 @@ namespace ir {
 
 void MatmulTransposeReshapePass::ApplyImpl(ir::Graph *graph) const {
   PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::InvalidArgument("graph cannot be null"));
+      graph, platform::errors::NotFound(
+                 "MatmulTransposeReshapePass graph parameter cannot be null"));
   FusePassBase::Init(name_scope_, graph);
 
   GraphPatternDetector gpd;
@@ -52,7 +53,7 @@ void MatmulTransposeReshapePass::ApplyImpl(ir::Graph *graph) const {
     OpDesc *matmul_desc = matmul_op->Op();
     matmul_desc->SetOutput("Out", {reshape_out->Name()});
     matmul_desc->SetAttr("reshape_Out", reshape_shape);
-    matmul_desc->SetAttr("axis_Out", transpose_axis);
+    matmul_desc->SetAttr("transpose_Out", transpose_axis);
 
     GraphSafeRemoveNodes(graph,
                          {matmul_out, transpose_op, transpose_out, reshape_op,
