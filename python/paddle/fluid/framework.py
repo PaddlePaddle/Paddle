@@ -1179,7 +1179,7 @@ class Variable(object):
             please use :code:`to_string` method.
 
         Returns:
-            string: The formatted string.
+            string: The formatted Variable string.
 
         Examples:
             .. code-block:: python
@@ -1978,10 +1978,11 @@ class Operator(object):
             please use :code:`to_string` method.
 
         Args:
-            skip_op_callstack(bool): whether to skip parsing Operator's attribute op_callstack
+            skip_op_callstack(bool): whether to skip parsing Operator's attribute
+                op_callstack, default value is True
 
         Returns:
-            string: The formatted string.
+            string: The formatted Operator string.
 
         Examples:
             .. code-block:: python
@@ -2370,10 +2371,11 @@ class Block(object):
             please use :code:`to_string` method.
 
         Args:
-            skip_op_callstack(bool): whether to skip parsing Operator's attribute op_callstack
+            skip_op_callstack(bool): whether to skip parsing Operator's attribute
+                op_callstack, default value is True
 
         Returns:
-            string: The formatted string.
+            string: The formatted Block string.
 
         Examples:
             .. code-block:: python
@@ -3999,10 +4001,11 @@ class Program(object):
             please use :code:`to_string` method.
 
         Args:
-            skip_op_callstack(bool): whether to skip parsing Operator's attribute op_callstack
+            skip_op_callstack(bool): whether to skip parsing Operator's attribute
+                op_callstack, default value is True
 
         Returns:
-            string: The formatted string.
+            string: The formatted Program string.
 
         Examples:
             .. code-block:: python
