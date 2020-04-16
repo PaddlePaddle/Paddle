@@ -142,6 +142,7 @@ class SubGraph {
   std::vector<Node*> GetIntermediateOutVarNodes() {
     return intermediate_out_nodes_;
   }
+
   void DetectIntermediateOutWithGraph(Graph* graph) {
     auto graph_nodes = graph->Nodes();
 

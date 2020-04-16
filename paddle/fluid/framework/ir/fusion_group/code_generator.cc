@@ -150,7 +150,8 @@ std::string CodeGenerator::Generate(
       std::move(DistilDtypes(expressions));
   TemplateVariable template_var;
   template_var.Add("func_name", func_name);
-  template_var.Add("parameters", EmitParameters(input_ids, output_ids, dtypes));
+  template_var.Add("parameters", EmitParameters(input_ids, output_ids,
+                                                intermediate_ids, dtypes));
   template_var.Add("compute_body",
                    EmitComputeBody(expressions, input_ids, output_ids,
                                    intermediate_ids, dtypes));
@@ -244,6 +245,7 @@ std::unordered_map<int, std::string> CodeGenerator::DistilDtypes(
 // we get the parameter list code for the expression information
 std::string CodeGenerator::EmitParameters(
     const std::set<int>& input_ids, const std::set<int>& output_ids,
+    const std::set<int>& intermediate_ids,
     const std::unordered_map<int, std::string>& dtypes) const {
   std::stringstream ret;
   ret << "int N, ";
@@ -259,9 +261,11 @@ std::string CodeGenerator::EmitParameters(
 
   size_t index = 0;
   for (auto id : output_ids) {
-    ret << dtypes.at(id) << "* " << ArgName(id);
-    if (index != output_ids.size() - 1) {
-      ret << ", ";
+    if (intermediate_ids.find(id) == intermediate_ids.end()) {
+      ret << dtypes.at(id) << "* " << ArgName(id);
+      if (index != output_ids.size() - 1) {
+        ret << ", ";
+      }
     }
     index++;
   }
@@ -284,6 +288,7 @@ std::string CodeGenerator::EmitComputeBody(
   // Load input to temporal variables.
   std::ostringstream load;
   for (auto id : input_ids) {
+    VLOG(0) << id;
     if (output_ids.find(id) == output_ids.end() &&
         used.find(id) != used.end()) {
       load << dtypes.at(id) << " " << TmpName(id) << " = "

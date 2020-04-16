@@ -111,6 +111,8 @@ void FusionGroupPass::InsertFusionGroupOp(
       subgraph->GetInputVarNodes();
   const std::vector<Node*>& output_vars_of_subgraph =
       subgraph->GetOutputVarNodes();
+  const std::vector<Node*> intermediate_vars_of_subgraph =
+      subgraph->GetIntermediateOutVarNodes();
   std::unordered_set<Node*> external_nodes;
 
   OpDesc op_desc;
@@ -127,9 +129,15 @@ void FusionGroupPass::InsertFusionGroupOp(
 
   std::vector<std::string> output_names;
   std::vector<std::string> outs_data_types;
+  std::vector<Node*> output_var_without_intermediate;
   for (auto* n : output_vars_of_subgraph) {
-    output_names.push_back(n->Name());
-    outs_data_types.push_back(DataTypeToString(n->Var()->GetDataType()));
+    auto it = find(intermediate_vars_of_subgraph.begin(),
+                   intermediate_vars_of_subgraph.end(), n);
+    if (it == intermediate_vars_of_subgraph.end()) {
+      output_names.push_back(n->Name());
+      outs_data_types.push_back(DataTypeToString(n->Var()->GetDataType()));
+      output_var_without_intermediate.push_back(n);
+    }
     external_nodes.insert(n);
   }
 
@@ -146,7 +154,7 @@ void FusionGroupPass::InsertFusionGroupOp(
     IR_NODE_LINK_TO(in, fusion_group_node);
   }
 
-  for (auto* out : output_vars_of_subgraph) {
+  for (auto* out : output_var_without_intermediate) {
     IR_NODE_LINK_TO(fusion_group_node, out);
   }
 
