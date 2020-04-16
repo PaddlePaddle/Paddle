@@ -570,6 +570,8 @@ def arange(start, end, step=1, dtype=None, name=None):
              data = paddle.arange(0, 10, 2, 'int32')
 
          #dygraph mode
+             import paddle
+             import paddle.fluid as fluid
              with fluid.dygraph.guard():
                  # x: [0, 2, 4]
                  # x dtype: float32
