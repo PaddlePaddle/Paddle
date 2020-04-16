@@ -71,7 +71,7 @@ class Compose(object):
             except Exception as e:
                 stack_info = traceback.format_exc()
                 print("fail to perform transform [{}] with error: "
-                        "{} and stack:\n{}".format(f, e, str(stack_info)))
+                      "{} and stack:\n{}".format(f, e, str(stack_info)))
                 raise e
         return data
 
@@ -92,6 +92,7 @@ class BatchCompose(object):
                                             these transforms perform on batch data.
 
     """
+
     def __init__(self, transforms=[]):
         self.transforms = transforms
 
@@ -102,7 +103,7 @@ class BatchCompose(object):
             except Exception as e:
                 stack_info = traceback.format_exc()
                 print("fail to perform batch transform [{}] with error: "
-                        "{} and stack:\n{}".format(f, e, str(stack_info)))
+                      "{} and stack:\n{}".format(f, e, str(stack_info)))
                 raise e
 
         # sample list to batch data
@@ -112,7 +113,7 @@ class BatchCompose(object):
 
 
 class Resize(object):
-    """Resize the input PIL Image to the given size.
+    """Resize the input Image to the given size.
 
     Args:
         size (int|list|tuple): Desired output size. If size is a sequence like
@@ -130,13 +131,6 @@ class Resize(object):
         self.interpolation = interpolation
 
     def __call__(self, img, lbl):
-        """
-        Args:
-            img (PIL Image): Image to be scaled.
-
-        Returns:
-            PIL Image: Rescaled image.
-        """
         return F.resize(img, self.size, self.interpolation), lbl
 
 
@@ -328,18 +322,22 @@ class Permute(object):
     Input image should be HWC mode and an instance of numpy.ndarray. 
 
     Args:
-        mode: Output mode of input. Use "CHW" mode by default.
+        mode: Output mode of input. Default: "CHW".
+        to_rgb: convert 'bgr' image to 'rgb'. Default: True.
     """
 
-    def __init__(self, mode="CHW"):
+    def __init__(self, mode="CHW", to_rgb=True):
         assert mode in [
             "CHW"
         ], "Only support 'CHW' mode, but received mode: {}".format(mode)
         self.mode = mode
+        self.to_rgb = to_rgb
 
     def __call__(self, img, lbl):
+        if self.to_rgb:
+            img = img[..., ::-1]
         if self.mode == "CHW":
-            return img.transpose((2, 0, 1))[::-1, ...], lbl
+            return img.transpose((2, 0, 1)), lbl
         return img, lbl
 
 

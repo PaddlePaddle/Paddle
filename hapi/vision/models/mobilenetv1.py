@@ -263,7 +263,7 @@ class MobileNetV1(Model):
 
 
 def _mobilenet(arch, pretrained=False, **kwargs):
-    model = MobileNetV1(num_classes=1000, with_pool=True, **kwargs)
+    model = MobileNetV1(**kwargs)
     if pretrained:
         assert arch in model_urls, "{} model do not have a pretrained model now, you should set pretrained=False".format(
             arch)
@@ -276,12 +276,13 @@ def _mobilenet(arch, pretrained=False, **kwargs):
     return model
 
 
-def mobilenet_v1(pretrained=False, scale=1.0):
+def mobilenet_v1(pretrained=False, scale=1.0, **kwargs):
     """MobileNetV1
     
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
         scale: (float): scale of channels in each layer. Default: 1.0.
     """
-    model = _mobilenet('mobilenetv1_' + str(scale), pretrained, scale=scale)
+    model = _mobilenet(
+        'mobilenetv1_' + str(scale), pretrained, scale=scale, **kwargs)
     return model
