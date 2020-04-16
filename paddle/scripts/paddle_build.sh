@@ -295,11 +295,7 @@ function check_style() {
 
 function build_base() {
     if [ "$SYSTEM" == "Linux" ];then
-      if [ `nproc` -gt 16 ];then
-          parallel_number=$(expr `nproc` - 8)
-      else
-          parallel_number=`nproc`
-      fi
+      parallel_number=`nproc`
     else
       parallel_number=8
     fi
@@ -311,7 +307,14 @@ function build_base() {
         make clean
     fi
 
-    make install -j ${parallel_number}
+    if [ `nproc` -gt 16 ];then
+        # For load average and avoid memory crash,
+        # don't start multiple jobs unless load is below max_load_number.
+        max_load_number=$(expr `nproc` - 8)
+        make install -j ${parallel_number} -l ${max_load_number}
+    else
+        make install -j ${parallel_number}
+    fi
 }
 
 function build() {
