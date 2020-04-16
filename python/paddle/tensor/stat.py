@@ -15,16 +15,15 @@
 # TODO: define statistical functions of a tensor  
 __all__ = [  #'mean', 
     #'reduce_mean', 
-    #'std', 
+    'std',
     'var'
 ]
-
 import numpy as np
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.framework import in_dygraph_mode
 from ..fluid import layers
 from .search import where
-from ..fluid.data_feeder import convert_dtype
+from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 
 
 def var(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
@@ -96,6 +95,62 @@ def var(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
         else:
             factor = n / (n - 1.0) if n > 1.0 else 0.0
         tmp *= factor
+    if out:
+        layers.assign(input=tmp, output=out)
+        return out
+    else:
+        return tmp
+
+
+def std(input, axis=None, keepdim=False, unbiased=True, out=None, name=None):
+    """
+    Computes the standard-deviation  of the input Variable's elements along the specified 
+    axis.
+
+    Args:
+        input (Variable): The input Variable to be computed standard-deviation, with data 
+            type float32 and float64 supported.
+        axis (list|int, optional): The axis along which the standard-deviation is computed. 
+            If `None`, compute the standard-deviation over all elements of :attr:`input`
+            and return a Variable with a single element, otherwise it must be in 
+            the range :math:`[-rank(input), rank(input))`. If :math:`axis[i] < 0`, 
+            the axis to compute is :math:`rank(input) + axis[i]`.
+        keepdim (bool, optional): Whether to reserve the reduced dimensions in 
+            the output Variable. The dimensions in :attr:`axis` will be squeezed 
+            and the result Variable will have :attr:`len(axis)` fewer dimensions 
+            than the :attr:`input` unless :attr:`keepdim` is true, default False.
+        unbiased (bool, optional): Whether to compute standard-deviation via the unbiased 
+            estimator, in which the divisor used in the computation is 
+            :math:`N - 1`, where :math:`N` represents the number of elements 
+            along :attr:`axis`, otherwise the divisor is :math:`N`. Default True.
+        out (Variable, optional): Alternate output Variable to store the result
+            standard-deviation . Default None.
+        name (str, optional): The name for this layer. Normally there is no 
+            need for user to set this property.  For more information, please 
+            refer to :ref:`api_guide_Name`. Default None.
+
+    Returns:
+        Variable: The result standard-deviation  with the same dtype as :attr:`input`. 
+            If :attr:`out = None`, returns a new Variable containing the 
+            standard-deviation , otherwise returns a reference to the output Variable.
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+            # x is a Tensor variable with following elements:
+            #    [[0.2, 0.3, 0.5, 0.9]
+            #     [0.1, 0.2, 0.6, 0.7]]
+            # Each example is followed by the corresponding output tensor.
+            x = fluid.data(name='x', shape=[2, 4], dtype='float32')
+            paddle.std(x)  # [0.28252685] 
+            paddle.std(x, axis=[0])  # [0.0707107, 0.07071075, 0.07071064, 0.1414217]
+            paddle.std(x, axis=[-1])  # [0.30956957, 0.29439208] 
+    """
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'std')
+
+    tmp = var(input, axis=axis, keepdim=keepdim, unbiased=unbiased, name=name)
+    tmp = layers.sqrt(tmp)
     if out:
         layers.assign(input=tmp, output=out)
         return out
