@@ -36,6 +36,7 @@ batch = batch.batch
 import paddle.sysconfig
 import paddle.tensor
 import paddle.nn
+import paddle.imperative
 
 # TODO: define alias in tensor and framework directory
 # from .tensor.creation import create_.tensor   #DEFINE_ALIAS
@@ -62,7 +63,7 @@ from .tensor.creation import full_like  #DEFINE_ALIAS
 from .tensor.creation import meshgrid  #DEFINE_ALIAS
 # from .tensor.stat import mean   #DEFINE_ALIAS
 # from .tensor.stat import reduce_mean   #DEFINE_ALIAS
-# from .tensor.stat import std   #DEFINE_ALIAS
+from .tensor.stat import std  #DEFINE_ALIAS
 from .tensor.stat import var  #DEFINE_ALIAS
 from .tensor.logic import equal  #DEFINE_ALIAS
 # from .tensor.logic import greater_equal   #DEFINE_ALIAS

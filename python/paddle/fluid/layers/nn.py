@@ -4298,14 +4298,16 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
         dim = [dim]
 
     if in_dygraph_mode():
-        reduce_all = True if dim == None or dim == [] else False
+        reduce_all = True if dim == None or dim == [] or len(dim) == len(
+            input.shape) else False
         dim = dim if dim != None and dim != [] else [0]
         return core.ops.reduce_sum(input, 'dim', dim, 'keep_dim', keep_dim,
                                    'reduce_all', reduce_all)
     attrs = {
         'dim': dim if dim != None and dim != [] else [0],
         'keep_dim': keep_dim,
-        'reduce_all': True if dim == None or dim == [] else False
+        'reduce_all': True
+        if dim == None or dim == [] or len(dim) == len(input.shape) else False
     }
     check_variable_and_dtype(
         input, 'input', ['float32', 'float64', 'int32', 'int64'], 'reduce_sum')
@@ -4373,14 +4375,16 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
         dim = [dim]
 
     if in_dygraph_mode():
-        reduce_all = True if dim == None or dim == [] else False
+        reduce_all = True if dim == None or dim == [] or len(dim) == len(
+            input.shape) else False
         dim = dim if dim != None and dim != [] else [0]
         return core.ops.reduce_mean(input, 'dim', dim, 'keep_dim', keep_dim,
                                     'reduce_all', reduce_all)
     attrs = {
         'dim': dim if dim != None and dim != [] else [0],
         'keep_dim': keep_dim,
-        'reduce_all': True if dim == None or dim == [] else False
+        'reduce_all': True
+        if dim == None or dim == [] or len(dim) == len(input.shape) else False
     }
     check_variable_and_dtype(
         input, 'input', ['float32', 'float64', 'int32', 'int64'], 'reduce_mean')
@@ -4450,7 +4454,8 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
         attrs={
             'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None or dim == [] else False
+            'reduce_all': True if dim == None or dim == [] or
+            len(dim) == len(input.shape) else False
         })
     return out
 
@@ -4511,7 +4516,8 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
         attrs={
             'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None or dim == [] else False
+            'reduce_all': True if dim == None or dim == [] or
+            len(dim) == len(input.shape) else False
         })
     return out
 
@@ -4573,7 +4579,8 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
         attrs={
             'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None or dim == [] else False
+            'reduce_all': True if dim == None or dim == [] or
+            len(dim) == len(input.shape) else False
         })
     return out
 
@@ -4631,7 +4638,8 @@ def reduce_all(input, dim=None, keep_dim=False, name=None):
         attrs={
             'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None or dim == [] else False
+            'reduce_all': True if dim == None or dim == [] or
+            len(dim) == len(input.shape) else False
         })
     return out
 
@@ -4689,7 +4697,8 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
         attrs={
             'dim': dim if dim != None and dim != [] else [0],
             'keep_dim': keep_dim,
-            'reduce_all': True if dim == None or dim == [] else False
+            'reduce_all': True if dim == None or dim == [] or
+            len(dim) == len(input.shape) else False
         })
     return out
 
@@ -5226,6 +5235,9 @@ def ctc_greedy_decoder(input,
                             input_length=x_pad_len)
 
     """
+    check_variable_and_dtype(input, 'input', ['float32', 'float64'],
+                             'ctc_greedy_decoder')
+
     helper = LayerHelper("ctc_greedy_decoder", **locals())
     _, topk_indices = topk(input, k=1)
 
@@ -6706,6 +6718,8 @@ def roi_pool(input,
         print(out)   #array([[[[11.]]], [[[16.]]]], dtype=float32)
         print(np.array(out).shape)  # (2, 1, 1, 1)
     """
+    check_variable_and_dtype(input, 'input', ['float32'], 'roi_pool')
+    check_variable_and_dtype(rois, 'rois', ['float32'], 'roi_pool')
     helper = LayerHelper('roi_pool', **locals())
     dtype = helper.input_dtype()
     pool_out = helper.create_variable_for_type_inference(dtype)
@@ -13087,6 +13101,8 @@ def prroi_pool(input,
 
 
     """
+    check_variable_and_dtype(input, 'input', ['float32'], 'prroi_pool')
+    check_variable_and_dtype(rois, 'rois', ['float32'], 'prroi_pool')
     helper = LayerHelper('prroi_pool', **locals())
     # check attrs
     if not isinstance(spatial_scale, float):

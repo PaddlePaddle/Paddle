@@ -296,7 +296,7 @@ function check_style() {
 function build_base() {
     if [ "$SYSTEM" == "Linux" ];then
       if [ `nproc` -gt 16 ];then
-          parallel_number=$(expr `nproc` - 4)
+          parallel_number=$(expr `nproc` - 8)
       else
           parallel_number=`nproc`
       fi
@@ -907,7 +907,7 @@ EOF
     if [[ ${WITH_MKL} == "ON" ]]; then
         ref_mkl=mkl
     else
-        ref_mkl=avx-openblas
+        ref_mkl=openblas
     fi
 
     ref_web=https://paddle-wheel.bj.bcebos.com/${PADDLE_BRANCH}-${ref_gpu}-${ref_mkl}
