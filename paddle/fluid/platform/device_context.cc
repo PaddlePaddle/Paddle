@@ -315,8 +315,9 @@ CUDADeviceContext::~CUDADeviceContext() {
                                 "Failed to destory Cudnn handle");
   }
   if (cusolver_dn_handle_) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cusolverDnDestroy(cusolver_dn_handle_),
-                                "Failed to destory Cusolver dn handle");
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cusolverDnDestroy(cusolver_dn_handle_),
+        platform::errors::External("Failed to destory Cusolver dn handle"));
   }
 #if defined(PADDLE_WITH_NCCL)
   if (nccl_comm_) {
