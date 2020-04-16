@@ -27,13 +27,11 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-static inline void random_permate(T* data_ptr, int num, unsigned int seed) {
+static inline void random_permate(T* data_ptr, int num) {
   for (int i = 0; i < num; ++i) {
     data_ptr[i] = static_cast<T>(i);
   }
-  if (seed == 0) {
-    seed = std::random_device()();
-  }
+  unsigned int seed = std::random_device()();
   std::srand(seed);
   std::random_shuffle(data_ptr, data_ptr + num);
 }
@@ -43,19 +41,18 @@ class RandpermKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     int n = ctx.Attr<int>("n");
-    unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
     framework::Variable* out_var = ctx.OutputVar("Out");
     framework::Tensor* out_tensor =
         framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(out_var);
 
     if (platform::is_cpu_place(ctx.GetPlace())) {
       T* out_data = out_tensor->mutable_data<T>(platform::CPUPlace());
-      random_permate<T>(out_data, n, seed);
+      random_permate<T>(out_data, n);
     } else {
       framework::Tensor tmp_tensor;
       tmp_tensor.Resize(framework::make_ddim({n}));
       T* tmp_data = tmp_tensor.mutable_data<T>(platform::CPUPlace());
-      random_permate<T>(tmp_data, n, seed);
+      random_permate<T>(tmp_data, n);
       framework::TensorCopy(tmp_tensor, platform::CUDAPlace(), out_tensor);
     }
   }

@@ -51,7 +51,6 @@ class TestRandpermOp(OpTest):
         self.n = 200
         self.dtype = "int64"
         self.device = None
-        self.seed = 0
 
         self.inputs = {}
         self.outputs = {"Out": np.zeros((self.n)).astype(self.dtype)}
@@ -60,7 +59,6 @@ class TestRandpermOp(OpTest):
             "n": self.n,
             "dtype": convert_dtype(self.dtype),
             "device": self.device,
-            "seed": self.seed,
         }
 
     def init_attrs(self):
@@ -101,13 +99,6 @@ class TestRandpermOp_attr_device_gpu(TestRandpermOp):
 
     def init_attrs(self):
         self.device = "gpu"
-
-
-class TestRandpermOp_attr_seed(TestRandpermOp):
-    """ Test randperm op for attr seed. """
-
-    def init_attrs(self):
-        self.seed = 10
 
 
 class TestRandpermOpError(unittest.TestCase):
