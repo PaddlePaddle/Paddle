@@ -130,8 +130,8 @@ class TDMChildGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetType("tdm_child_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Child"), this->OutputGrad("Child"));
-    op->SetInput(framework::GradVarName("LeafMask"),
-                 this->InputGrad("LeafMask"));
+  //  op->SetInput(framework::GradVarName("LeafMask"),
+  //               this->InputGrad("LeafMask"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   }
 };
@@ -146,6 +146,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(tdm_child, ops::TDMChildOp, ops::TDMChildOpMaker,
                   ops::TDMChildGradMaker<paddle::framework::OpDesc>,
                   ops::TDMChildGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(tdm_child_grad, ops::TDMChildGradOp,
+                  ops::TDMChildGradNoNeedBufferVarInferer);
 REGISTER_OP_CPU_KERNEL(
     tdm_child, ops::TDMChildKernel<paddle::platform::CPUPlace, float>,
     ops::TDMChildKernel<paddle::platform::CPUPlace, double>,
