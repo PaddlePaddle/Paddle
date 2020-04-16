@@ -547,6 +547,7 @@ def cross(input, other, dim=None):
         
     Examples:
         .. code-block:: python
+
             import paddle
             import paddle.fluid as fluid
             import numpy as np
@@ -571,6 +572,7 @@ def cross(input, other, dim=None):
                 #[[0. 0. 0.]
                 # [0. 0. 0.]
                 # [0. 0. 0.]]
+
     """
     helper = LayerHelper("cross", **locals())
     if in_dygraph_mode():

@@ -291,10 +291,12 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
 
   PADDLE_ENFORCE_CUDA_SUCCESS(
       dynload::cusolverDnCreate(&cusolver_dn_handle_),
-      "Failed to create Cusolver dn handle in DeviceContext");
+      platform::errors::External(
+          "Failed to create Cusolver dn handle in DeviceContext"));
   PADDLE_ENFORCE_CUDA_SUCCESS(
       dynload::cusolverDnSetStream(cusolver_dn_handle_, stream_),
-      "Failed to set stream for Cusolver dn handle in DeviceContext");
+      platform::errors::External(
+          "Failed to set stream for Cusolver dn handle in DeviceContext"));
 
   callback_manager_.reset(new StreamCallbackManager(stream_));
 }
