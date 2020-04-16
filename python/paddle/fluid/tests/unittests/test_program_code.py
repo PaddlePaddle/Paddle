@@ -78,5 +78,38 @@ class TestProgram2Code(unittest.TestCase):
         program_to_code(main)
 
 
+class TestProgramToReadableCode(unittest.TestCase):
+    def setUp(self):
+        self.program = fluid.Program()
+        self.block = self.program.current_block()
+        self.var = self.block.create_var(
+            name="X", shape=[-1, 23, 48], dtype='float32')
+        self.param = self.block.create_parameter(
+            name="W", shape=[23, 48], dtype='float32', trainable=True)
+        self.op = self.block.append_op(
+            type="abs", inputs={"X": [self.var]}, outputs={"Out": [self.var]})
+
+    def test_variable(self):
+        expect_str = "var X : fluid.VarType.LOD_TENSOR.shape(-1, 23, 48).astype(VarType.FP32)"
+        result_str = self.var.to_readable_code()
+        self.assertEqual(expect_str, result_str)
+
+    def test_parameter(self):
+        expect_str = "persist trainable param W : fluid.VarType.LOD_TENSOR.shape(23, 48).astype(VarType.FP32)"
+        result_str = self.param.to_readable_code()
+        self.assertEqual(expect_str, result_str)
+
+    def test_operator(self):
+        expect_str = "{Out=['X']} = abs(inputs={X=['X']}, op_device = , op_namescope = /, op_role = 0, op_role_var = [], use_cudnn = False, use_mkldnn = False)"
+        result_str = self.op.to_readable_code()
+        self.assertEqual(expect_str, result_str)
+
+    def test_block(self):
+        self.block.to_readable_code()
+
+    def test_program(self):
+        self.program.to_readable_code()
+
+
 if __name__ == "__main__":
     unittest.main()
