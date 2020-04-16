@@ -118,46 +118,80 @@ class TestAddcmul(unittest.TestCase):
             out = paddle.addcmul(input, tensor1, tensor2)
             self.assertEqual(out.shape, input.shape)
 
+    def test_addcmul_has_out(self):
+        program = Program()
+        with program_guard(program):
+            input = fluid.data(name='in', shape=[4, 100], dtype='float32')
+            tensor1 = fluid.data(name='t1', shape=[100], dtype='float32')
+            tensor2 = fluid.data(name='t2', shape=[100], dtype='float32')
+            out = fluid.data(name='out', shape=[4, 100], dtype='float32')
+
+            out = paddle.addcmul(input, tensor1, tensor2, out=out)
+            self.assertEqual(out.shape, input.shape)
+
 
 class InvalidInputTest(unittest.TestCase):
     def test_error(self):
         def test_invalid_input():
-            input = [20, 20]
-            tensor1 = fluid.data(
-                name='tensor1', shape=[20, 20], dtype='float32')
-            tensor2 = fluid.data(
-                name='tensor2', shape=[20, 20], dtype='float32')
-            out = paddle.addcmul(input, tensor1, tensor2)
+            program = Program()
+            with program_guard(program):
+                input = [20, 20]
+                tensor1 = fluid.data(
+                    name='tensor1', shape=[20, 20], dtype='float32')
+                tensor2 = fluid.data(
+                    name='tensor2', shape=[20, 20], dtype='float32')
+                out = paddle.addcmul(input, tensor1, tensor2)
 
         self.assertRaises(TypeError, test_invalid_input)
 
         def test_invalid_tensor1():
-            input = fluid.data(name='input', shape=[20, 20], dtype='float32')
-            tensor1 = [20, 20]
-            tensor2 = fluid.data(
-                name='tensor3', shape=[20, 20], dtype='float32')
-            out = paddle.addcmul(input, tensor1, tensor2)
+            program = Program()
+            with program_guard(program):
+                input = fluid.data(
+                    name='input', shape=[20, 20], dtype='float32')
+                tensor1 = [20, 20]
+                tensor2 = fluid.data(
+                    name='tensor2', shape=[20, 20], dtype='float32')
+                out = paddle.addcmul(input, tensor1, tensor2)
 
         self.assertRaises(TypeError, test_invalid_tensor1)
 
         def test_invalid_tensor2():
-            input = fluid.data(name='input1', shape=[20, 20], dtype='float32')
-            tensor1 = fluid.data(
-                name='tensor4', shape=[20, 20], dtype='float32')
-            tensor2 = [20, 20]
-            out = paddle.addcmul(input, tensor1, tensor2)
+            program = Program()
+            with program_guard(program):
+                input = fluid.data(
+                    name='input', shape=[20, 20], dtype='float32')
+                tensor1 = fluid.data(
+                    name='tensor1', shape=[20, 20], dtype='float32')
+                tensor2 = [20, 20]
+                out = paddle.addcmul(input, tensor1, tensor2)
 
         self.assertRaises(TypeError, test_invalid_tensor2)
 
-        def test_invalid_value():
-            input = fluid.data(name='input1', shape=[20, 20], dtype='float32')
-            tensor1 = fluid.data(
-                name='tensor5', shape=[20, 20], dtype='float32')
-            tensor2 = fluid.data(
-                name='tensor6', shape=[20, 20], dtype='float32')
-            out = paddle.addcmul(input, tensor1, tensor2, value=1)
+        def test_invalid_value_int():
+            program = Program()
+            with program_guard(program):
+                input = fluid.data(
+                    name='input', shape=[20, 20], dtype='float32')
+                tensor1 = fluid.data(
+                    name='tensor1', shape=[20, 20], dtype='float32')
+                tensor2 = fluid.data(
+                    name='tensor2', shape=[20, 20], dtype='float32')
+                out = paddle.addcmul(input, tensor1, tensor2, value=1)
 
-        self.assertRaises(TypeError, test_invalid_value)
+        self.assertRaises(TypeError, test_invalid_value_int)
+
+        def test_invalid_value_float():
+            program = Program()
+            with program_guard(program):
+                input = fluid.data(name='input', shape=[20, 20], dtype='int32')
+                tensor1 = fluid.data(
+                    name='tensor1', shape=[20, 20], dtype='int32')
+                tensor2 = fluid.data(
+                    name='tensor2', shape=[20, 20], dtype='int32')
+                out = paddle.addcmul(input, tensor1, tensor2, value=1.0)
+
+        self.assertRaises(TypeError, test_invalid_value_float)
 
 
 if __name__ == '__main__':
