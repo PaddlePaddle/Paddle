@@ -24,7 +24,6 @@ from . import framework
 from . import core
 from . import name_scope
 from .dygraph import base as imperative_base
-from .data_feeder import check_variable_and_dtype
 
 __all__ = [
     'set_gradient_clip', 'ErrorClipByValue', 'GradientClipByValue',
@@ -92,8 +91,6 @@ class ErrorClipByValue(BaseErrorClipAttr):
         return "ByValue, min=%f, max=%f" % (self.min, self.max)
 
     def _append_clip_op(self, block, grad_name):
-        check_variable_and_dtype(
-            input, "grad_name", ['float32', 'float64'], "clip")
         clip_op_desc = block.desc.append_op()
         clip_op_desc.set_type("clip")
         clip_op_desc.set_input("X", [grad_name])
