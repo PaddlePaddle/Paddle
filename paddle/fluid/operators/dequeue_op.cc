@@ -50,10 +50,12 @@ class DequeueOp : public framework::OperatorBase {
     PADDLE_ENFORCE_GT(out_names.size(), 0, "No output set for dequeue op.");
     for (size_t i = 0; i < out_names.size(); ++i) {
       auto out_var = scope.FindVar(out_names[i]);
-      VLOG(0) << "out var name:" << out_names[i];
       PADDLE_ENFORCE_NOT_NULL(out_var, "No variable with name %s found",
                               out_names[i]);
       auto* out_tensor = out_var->GetMutable<LoDTensor>();
+      PADDLE_ENFORCE_NOT_NULL(out_tensor,
+                              "Variable with name %s has not been initialized.",
+                              out_names[i]);
 
       std::vector<LoDTensor> lod_tensor_vec;
       bool success = false;

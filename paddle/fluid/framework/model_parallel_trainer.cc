@@ -30,6 +30,7 @@ void ModelParallelTrainer::Initialize(const TrainerDesc& trainer_desc,
   section_num_ = section_params.section_config_size();
   VLOG(3) << "Number of training devices: " << section_num_;
   trainer_desc_ = trainer_desc;
+  _start_cpu_core_id = section_params.start_cpu_core_id();
 
   SetDataset(dataset);
   const std::vector<paddle::framework::DataFeed*> readers =
@@ -61,6 +62,7 @@ void ModelParallelTrainer::Initialize(const TrainerDesc& trainer_desc,
         PADDLE_ENFORCE(false, "Unkown place type in SectionConfig: %d.",
                        section_config.place());
     }
+    _places.emplace_back(place);
     VLOG(3) << "Device worker place: " << place << ", device id: " << place_id
             << " for section: " << i;
 
@@ -105,26 +107,26 @@ void ModelParallelTrainer::CopyParameters(int section_id, int macrobatch_id,
     int is_feed_var =
         std::count(feed_var_names_.begin(), feed_var_names_.end(), var->Name());
     if (var->Persistable() && macrobatch_id == 0) {
-      auto* ptr = root_scope_->Var(var->Name());
-      InitializeVariable(ptr, var->GetType());
-      // const LoDTensor& root_tensor = ptr->Get<LoDTensor>();
-      // auto* new_ptr = minibatch_scope_->Var(var->Name());
-      // InitializeVariable(new_ptr, var->GetType());
-      // LoDTensor* minibatch_tensor = new_ptr->GetMutable<LoDTensor>();
-      // TensorCopy(*static_cast<const Tensor*>(&root_tensor), place,
-      //           static_cast<Tensor*>(minibatch_tensor));
+      auto* ptr = root_scope_->FindVar(var->Name());
+      // InitializeVariable(ptr, var->GetType());
+      const LoDTensor& root_tensor = ptr->Get<LoDTensor>();
+      auto* new_ptr = minibatch_scope_->Var(var->Name());
+      InitializeVariable(new_ptr, var->GetType());
+      LoDTensor* minibatch_tensor = new_ptr->GetMutable<LoDTensor>();
+      TensorCopy(*static_cast<const Tensor*>(&root_tensor), place,
+                 static_cast<Tensor*>(minibatch_tensor));
       VLOG(3) << "Create persistable var " << var->Name()
-              << " for root scope, which pointer is " << ptr;
+              << " for minibatch, which pointer is " << new_ptr;
     } else if (is_feed_var && macrobatch_id == 0) {
       auto* ptr = minibatch_scope_->Var(var->Name());
       InitializeVariable(ptr, var->GetType());
       VLOG(3) << "Create feed var " << var->Name()
               << " for minibatch scope, which pointer is " << ptr;
-    } else if (isPersistableVarGrad(var->Name())) {
-      auto* ptr = minibatch_scope_->Var(var->Name());
-      InitializeVariable(ptr, var->GetType());
-      VLOG(3) << "Create feed var " << var->Name()
-              << " for minibatch scope, which pointer is " << ptr;
+      //} else if (isPersistableVarGrad(var->Name())) {
+      //  auto* ptr = minibatch_scope_->Var(var->Name());
+      //  InitializeVariable(ptr, var->GetType());
+      //  VLOG(3) << "Create feed var " << var->Name()
+      //          << " for minibatch scope, which pointer is " << ptr;
     } else if (!var->Persistable() && !is_feed_var) {
       auto* ptr =
           macrobatch_scopes_[section_id][macrobatch_id]->Var(var->Name());
@@ -142,7 +144,7 @@ void ModelParallelTrainer::InitTrainerEnv(const ProgramDesc& main_program,
                           "root_scope_ for "
                           "ModelParallelTrainer::InitTrainerEnv should not "
                           "be null.");
-  // ModelParallelWorker::cpu_id_.store(pipeline_config_.start_cpu_core_id());
+  ModelParallelWorker::cpu_id_.store(_start_cpu_core_id);
   macrobatch_scopes_.resize(section_num_);
   minibatch_scope_ = &root_scope_->NewScope();
   auto& global_block = main_program.Block(0);
@@ -160,7 +162,7 @@ void ModelParallelTrainer::InitTrainerEnv(const ProgramDesc& main_program,
     macrobatch_scopes_[i].resize(num_macrobatches_);
     for (int j = 0; j < num_macrobatches_; ++j) {
       macrobatch_scopes_[i][j] = &minibatch_scope_->NewScope();
-      CopyParameters(i, j, *program, place);
+      CopyParameters(i, j, *program, _places[i]);
     }
   }
   VLOG(3) << "Created all scopes.";
@@ -195,6 +197,26 @@ void ModelParallelTrainer::Finalize() {
     th.join();
   }
   VLOG(3) << "trainer finalized. ";
+
+  for (int i = 0; i < section_num_; ++i) {
+    std::shared_ptr<framework::ProgramDesc> program;
+    program.reset(new ProgramDesc(
+        trainer_desc_.section_param().section_config(i).program_desc()));
+    for (int j = 0; j < num_macrobatches_; ++j) {
+      auto& global_block = program->Block(0);
+      for (auto& var : global_block.AllVars()) {
+        if (var->Persistable()) {
+          auto* ptr = root_scope_->FindVar(var->Name());
+          LoDTensor* root_tensor = ptr->GetMutable<LoDTensor>();
+          auto* minibatch_ptr = minibatch_scope_->Var(var->Name());
+          const LoDTensor& minibatch_tensor = minibatch_ptr->Get<LoDTensor>();
+          TensorCopy(*static_cast<const Tensor*>(&minibatch_tensor), _places[0],
+                     static_cast<Tensor*>(root_tensor));
+          VLOG(3) << "Copy persitable var " << var->Name() << " to root scope";
+        }
+      }
+    }
+  }
   root_scope_->DropKids();
 }
 

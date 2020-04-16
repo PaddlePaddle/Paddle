@@ -392,7 +392,7 @@ class SectionWorker : public DeviceWorker {
 
 class ModelParallelWorker : public DeviceWorker {
  public:
-  ModelParallelWorker() {}
+  ModelParallelWorker() { local_batch_id_ = 0; }
   ~ModelParallelWorker() override {}
 
   void Initialize(const TrainerDesc& desc) override;
@@ -425,6 +425,13 @@ class ModelParallelWorker : public DeviceWorker {
   const Scope* minibatch_scope_;
   void AutoSetCPUAffinity(bool reuse);
   std::vector<std::unique_ptr<OperatorBase>> ops_;
+  static std::mutex thread_mutex;
+  static std::condition_variable thread_condition;
+  static bool threads_completed;
+  // Todo: How to deal with the case that batch_id is
+  // greater than the maximum number of uint64_t
+  static uint64_t batch_id_;
+  uint64_t local_batch_id_;
 
   platform::DeviceContext* dev_ctx_ = nullptr;
 };

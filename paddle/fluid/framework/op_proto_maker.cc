@@ -89,6 +89,9 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
       .SetDefault({});
   AddAttr<std::string>(OpDeviceAttrName(), "Device type of this operator.")
       .SetDefault("");
+  AddAttr<std::string>(OpDeviceIndexAttrName(),
+                       "Device index of this operator.")
+      .SetDefault("");
   Validate();
 }
 

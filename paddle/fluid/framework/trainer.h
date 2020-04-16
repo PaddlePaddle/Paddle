@@ -189,9 +189,11 @@ class ModelParallelTrainer : public TrainerBase {
  protected:
   int section_num_;
   int num_macrobatches_;
+  int _start_cpu_core_id;
   std::vector<std::string> feed_var_names_;
   std::set<std::string> persistable_var_names_;
   std::set<std::string> persistable_var_grad_names_;
+  std::vector<platform::Place> _places;
   TrainerDesc trainer_desc_;
 
   // worker: [section_id]

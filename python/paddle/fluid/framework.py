@@ -5112,8 +5112,7 @@ def device_guard(device=None):
     """
 
     if ':' in device:
-        device = device.split(':')[0]
-        index = device.split(':')[1]
+        device, index = device.split(':')
     else:
         index = ""
     if device not in ['cpu', 'gpu', '', None]:

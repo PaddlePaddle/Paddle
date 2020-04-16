@@ -25,6 +25,10 @@ namespace paddle {
 namespace framework {
 
 std::atomic<int> ModelParallelWorker::cpu_id_(0);
+std::mutex ModelParallelWorker::thread_mutex;
+std::condition_variable ModelParallelWorker::thread_condition;
+bool ModelParallelWorker::threads_completed = false;
+uint64_t ModelParallelWorker::batch_id_(0);
 
 void ModelParallelWorker::Initialize(const TrainerDesc& trainer_desc) {
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
@@ -84,8 +88,24 @@ void ModelParallelWorker::TrainFiles() {
     while (true) {
       // Start a minibatch.
       // forward pass:
+      int batch_size = 0;
       for (int i = 0; i < num_macrobatches_; ++i) {
-        device_reader_->Next();
+        batch_size = device_reader_->Next();
+        {
+          std::unique_lock<std::mutex> lk(thread_mutex);
+          if (batch_size <= 0) {
+            threads_completed = true;
+            VLOG(3) << "thread " << thread_id_ << " completed.";
+            thread_condition.notify_all();
+            VLOG(3) << "thread " << thread_id_ << " notified all.";
+            return;
+          }
+          if (i == 0) {
+            batch_id_ += 1;
+            thread_condition.notify_all();
+            VLOG(3) << "thread " << thread_id_ << " notified all.";
+          }
+        }
         for (auto& op : ops_) {
           int op_role = boost::get<int>(op->Attr<int>(std::string("op_role")));
           if (op_role == static_cast<int>(OpRole::kForward) ||
@@ -94,6 +114,7 @@ void ModelParallelWorker::TrainFiles() {
             VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                     << " for scope " << i;
             op->Run(*macrobatch_scopes_[i], place_);
+            dev_ctx_->Wait();
           }
         }
       }
@@ -107,6 +128,7 @@ void ModelParallelWorker::TrainFiles() {
             VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                     << " for scope " << i;
             op->Run(*macrobatch_scopes_[i], place_);
+            dev_ctx_->Wait();
           }
         }
       }
@@ -119,12 +141,33 @@ void ModelParallelWorker::TrainFiles() {
                   << " for minibatch scope";
           // op->Run(*minibatch_scope_, place_);
           op->Run(*macrobatch_scopes_[num_macrobatches_ - 1], place_);
+          dev_ctx_->Wait();
         }
       }
       dev_ctx_->Wait();
     }
   } else {
     while (true) {
+      {
+        // Todo, how to deal with the case no data to train
+        std::unique_lock<std::mutex> lk(thread_mutex);
+        PADDLE_ENFORCE_LE(local_batch_id_, batch_id_,
+                          "local_batch_id_ (%d) must be less than or equal to "
+                          "batch_id_ (%d)",
+                          local_batch_id_, batch_id_);
+        if (local_batch_id_ == batch_id_ && !threads_completed) {
+          thread_condition.wait(lk);
+        }
+        VLOG(3) << "thread " << thread_id_ << " local_batch_id_ "
+                << local_batch_id_ << " batch_id_ " << batch_id_;
+        if (threads_completed) {
+          VLOG(3) << "thread " << thread_id_ << " completed.";
+          lk.unlock();
+          return;
+        }
+        lk.unlock();
+        local_batch_id_ += 1;
+      }
       // forward pass:
       for (int i = 0; i < num_macrobatches_; ++i) {
         for (auto& op : ops_) {
@@ -135,6 +178,7 @@ void ModelParallelWorker::TrainFiles() {
             VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                     << " for scope " << i;
             op->Run(*macrobatch_scopes_[i], place_);
+            dev_ctx_->Wait();
           }
         }
       }
@@ -148,6 +192,7 @@ void ModelParallelWorker::TrainFiles() {
             VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                     << " for scope " << i;
             op->Run(*macrobatch_scopes_[i], place_);
+            dev_ctx_->Wait();
           }
         }
       }
@@ -159,7 +204,7 @@ void ModelParallelWorker::TrainFiles() {
           VLOG(3) << "running an op " << op->Type() << " for " << thread_id_
                   << " for minibatch scope ";
           op->Run(*macrobatch_scopes_[num_macrobatches_ - 1], place_);
-          cudaDeviceSynchronize();
+          dev_ctx_->Wait();
         }
       }
       dev_ctx_->Wait();
