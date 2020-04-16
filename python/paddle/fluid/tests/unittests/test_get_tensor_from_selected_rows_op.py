@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import paddle.fluid.core as core
 import numpy as np
-import paddle
+import paddle.fluid as fluid
 from paddle.fluid.op import Operator
 from paddle.fluid import Program, program_guard
 
@@ -27,7 +27,7 @@ class TestGetTensorFromSelectedRowsError(unittest.TestCase):
 
     def test_errors(self):
         with program_guard(Program()):
-            b = paddle.fluid.default_main_program().global_block()
+            b = fluid.default_main_program().global_block()
             x = b.create_var(
                 name="X",
                 dtype="float32",
