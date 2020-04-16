@@ -117,8 +117,9 @@ static inline std::shared_ptr<imperative::VarBase> CastToType(
   auto out = std::shared_ptr<imperative::VarBase>(
       new imperative::VarBase(tracer->GenerateUniqueName()));
   imperative::NameVarBaseMap outs = {{"Out", {out}}};
-
+  tracer->SetEnableAutoCast(false);
   tracer->TraceOp("cast", ins, outs, std::move(attrs));
+  tracer->SetEnableAutoCast(true);
   return out;
 }
 
@@ -158,7 +159,7 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
   if (white_ops.count(op_type)) {
     for (const auto& pair : ins) {
       VLOG(5) << "Cast " << pair.first << " " << pair.second.size() << " "
-              << (*pair.second.cbegin())->DataType() << "to FP16";
+              << (*pair.second.cbegin())->DataType() << " to FP16";
       for (const auto& var : pair.second) {
         auto new_var = CastToFP16(var);
         new_ins[pair.first].emplace_back(new_var);
@@ -168,7 +169,7 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
   } else if (black_ops.count(op_type)) {
     for (const auto& pair : ins) {
       VLOG(5) << "Cast " << pair.first << " " << pair.second.size() << " "
-              << (*pair.second.cbegin())->DataType() << "to FP16";
+              << (*pair.second.cbegin())->DataType() << " to FP16";
       for (const auto& var : pair.second) {
         auto new_var = CastToFP32(var);
         new_ins[pair.first].emplace_back(new_var);
@@ -177,10 +178,18 @@ NameVarBaseMap AutoCastInputs(const std::string& op_type,
     return new_ins;
   } else if (gray_ops.count(op_type)) {
     auto dst_type = PromoteType(ins);
+
     for (const auto& pair : ins) {
       VLOG(5) << "Cast " << pair.first << " " << pair.second.size() << " "
-              << (*pair.second.cbegin())->DataType() << "to " << dst_type;
+              << (*pair.second.cbegin())->DataType() << " to " << dst_type;
       for (const auto& var : pair.second) {
+        // NOTE(zhiqiu): Conv + BN always occur together, we needn't
+        // cast X of batch_norm to FP32, which is produced by conv as FP16 type.
+        if (op_type == "batch_norm" && pair.first == "X" &&
+            dst_type == framework::proto::VarType::FP32) {
+          new_ins[pair.first].emplace_back(var);
+          continue;
+        }
         auto new_var = dst_type == framework::proto::VarType::FP32
                            ? CastToFP32(var)
                            : CastToFP16(var);
