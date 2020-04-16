@@ -86,5 +86,22 @@ class TestRandOp(unittest.TestCase):
                       fetch_list=[result_1, result_2, result_3, result_4])
 
 
+class TestRandOpForDygraph(unittest.TestCase):
+    """
+    This class test the common usages of randop.
+
+    """
+
+    def test_run(self):
+        use_cuda = False
+        with fluid.dygraph.guard():
+            rand(shape=[3, 4])
+            dim_1 = fluid.layers.fill_constant([1], "int64", 3)
+            dim_2 = fluid.layers.fill_constant([1], "int32", 5)
+            rand(shape=[dim_1, dim_2])
+            var_shape = fluid.dygraph.to_variable(np.array([3, 4]))
+            rand(var_shape)
+
+
 if __name__ == "__main__":
     unittest.main()

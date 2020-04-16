@@ -445,13 +445,21 @@ def rand(shape, out=None, dtype=None, device=None, stop_gradient=True):
             var_shape_int32 = fluid.data(name='var_shape_int32', shape=[2], dtype="int32")
             result_4 = paddle.rand(var_shape_int32)
     """
-
     if dtype is None:
         dtype = 'float32'
 
-    check_dtype(dtype, 'create data type', ['float32', 'float64'], 'rand')
+    check_dtype(dtype, 'dtype', ['float32', 'float64'], 'rand')
 
     check_type(shape, 'shape', (Variable, list, tuple), 'rand')
+    if isinstance(shape, Variable):
+        check_variable_and_dtype(shape, 'shape', ['int32', 'int64'], 'rand')
+    elif isinstance(shape, (list, tuple)):
+        for i, _shape in enumerate(shape):
+            if not isinstance(_shape, Variable):
+                check_type(_shape, '_shape', (int), 'rand')
+            else:
+                check_variable_and_dtype(_shape, 'shape[' + str(i) + ']',
+                                         ['int32', 'int64'], 'rand')
 
     if device not in [None, 'cpu', 'gpu']:
         raise ValueError("The input device should in [None, 'cpu', 'gpu'].")
@@ -459,7 +467,8 @@ def rand(shape, out=None, dtype=None, device=None, stop_gradient=True):
     helper = LayerHelper("rand", **locals())
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
-
+    else:
+        check_variable_and_dtype(out, 'out', [dtype], 'rand')
     out.stop_gradient = stop_gradient
 
     with device_guard(device):
