@@ -86,7 +86,7 @@ class Optimizer(object):
                 for param in self._parameter_list:
                     if param.regularizer is not None:
                         logging.info(
-                            "If regularization of a Parameter has been set by 'fluid.ParamAttr' or 'fluid.WeightNormParamAttr' already. "
+                            "If regularizer of a Parameter has been set by 'fluid.ParamAttr' or 'fluid.WeightNormParamAttr' already. "
                             "The Regularization[%s] in Optimizer will not take effect, and it will only be applied to other Parameters!"
                             % regularization.__str__())
                         break

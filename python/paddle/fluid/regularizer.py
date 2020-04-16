@@ -96,7 +96,7 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
                 if not repeate_regularizer and param.regularizer is not None and regularization is not None:
                     repeate_regularizer = True
                     logging.info(
-                        "If regularization of a Parameter has been set by 'fluid.ParamAttr' or 'fluid.WeightNormParamAttr' already. "
+                        "If regularizer of a Parameter has been set by 'fluid.ParamAttr' or 'fluid.WeightNormParamAttr' already. "
                         "The Regularization[%s] in Optimizer will not take effect, and it will only be applied to other Parameters!"
                         % regularization.__str__())
                 with param.block.program._optimized_guard([param, grad]):
