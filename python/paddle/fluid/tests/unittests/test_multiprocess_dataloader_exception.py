@@ -110,7 +110,7 @@ class TestDataLoaderAssert(unittest.TestCase):
 # CI Converage cannot record stub in subprocess,
 # HACK a _worker_loop in main process call here
 class TestDataLoaderWorkerLoop(unittest.TestCase):
-    def run_main(self, use_shared_memory=True):
+    def run_without_worker_done(self, use_shared_memory=True):
         try:
             place = fluid.cpu_places()[0]
             with fluid.dygraph.guard(place):
@@ -149,9 +149,48 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
         except Exception:
             self.assertTrue(False)
 
+    def run_with_worker_done(self, use_shared_memory=True):
+        try:
+            place = fluid.cpu_places()[0]
+            with fluid.dygraph.guard(place):
+                dataset = RandomDataset(800)
+
+                # test init_fn
+                def _init_fn(worker_id):
+                    pass
+
+                # test collate_fn
+                def _collate_fn(sample_list):
+                    return [
+                        np.stack(
+                            s, axis=0) for s in list(zip(*sample_list))
+                    ]
+
+                loader = DataLoader(
+                    dataset,
+                    num_workers=1,
+                    places=place,
+                    use_shared_memory=use_shared_memory)
+                assert loader.num_workers > 0, \
+                    "go to AssertionError and pass in Mac and Windows"
+                loader = iter(loader)
+                print("loader length", len(loader))
+                indices_queue = multiprocessing.Queue()
+                indices_queue.put(None)
+                loader._workers_done_event.set()
+                loader._worker_loop(
+                    loader._dataset, indices_queue, loader._data_queue,
+                    loader._workers_done_event, _collate_fn, _init_fn, 0)
+                self.assertTrue(True)
+        except AssertionError:
+            pass
+        except Exception:
+            self.assertTrue(False)
+
     def test_main(self):
         for use_shared_memory in [True, False]:
-            self.run_main(use_shared_memory)
+            self.run_without_worker_done(use_shared_memory)
+            self.run_with_worker_done(use_shared_memory)
 
 
 if __name__ == '__main__':

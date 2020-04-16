@@ -272,8 +272,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             while True:
                 try:
                     self._data_queue.get_nowait()
-                # python3 will raise OSError if _data_queue closed
-                except (queue.Empty, OSError):
+                except:
                     self._data_queue.cancel_join_thread()
                     self._data_queue.close()
                     break
@@ -362,8 +361,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
                 # None as poison piil, so worker event should be set
                 if data is None:
-                    assert done_event.is_set()
-                    return
+                    assert done_event.is_set(
+                    ), "get None when worker done_event set"
+                    break
                 # If worker done event is set but get still get data in
                 # indices_queue, remaining data should be get and skipped.
                 if done_event.is_set():
@@ -395,6 +395,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         finally:
             if self._use_shared_memory:
                 _cleanup_mmap()
+
+        if self._workers_done_event.is_set():
+            self._clear_and_remove_data_queue()
 
     def _thread_loop(self):
         while not self._thread_done_event.is_set():
