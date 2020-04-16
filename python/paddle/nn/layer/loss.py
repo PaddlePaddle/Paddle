@@ -454,7 +454,7 @@ class NLLLoss(fluid.dygraph.Layer):
             out_shape = [n] + x_shape[2:]
 
         inputs = {'X': input, 'Label': label}
-        attrs = {'Reduction': self.reduction, 'ignore_index': self.ignore_index}
+        attrs = {'reduction': self.reduction, 'ignore_index': self.ignore_index}
 
         if self.weight is not None:
             if isinstance(self.weight, fluid.framework.Variable):

@@ -349,7 +349,7 @@ class NLLLossCUDAKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<Tensor>("Out");
     auto* total_weight = ctx.Output<Tensor>("Total_weight");
     auto ignore_index = ctx.Attr<int64_t>("ignore_index");
-    auto reduction = ctx.Attr<std::string>("Reduction");
+    auto reduction = ctx.Attr<std::string>("reduction");
 
     auto x_data = x->data<T>();
     auto out_data = out->mutable_data<T>(ctx.GetPlace());
@@ -423,7 +423,7 @@ class NLLLossGradCUDAKernel : public framework::OpKernel<T> {
     auto weight_data = weight ? weight->data<T>() : nullptr;
     auto total_weight_data = total_weight->data<T>();
     auto ignore_index = ctx.Attr<int64_t>("ignore_index");
-    auto reduction = ctx.Attr<std::string>("Reduction");
+    auto reduction = ctx.Attr<std::string>("reduction");
     cudaMemset(dx_data, 0, dx->numel() * sizeof(T));
 
     int64_t size_average = (int64_t)(reduction == "mean");

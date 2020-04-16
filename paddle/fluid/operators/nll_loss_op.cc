@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,22 +24,14 @@ class NLLLossOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::InvalidArgument("Input(X) should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Label"), true,
-        platform::errors::InvalidArgument("Input(Label) should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Out"), true,
-        platform::errors::InvalidArgument("Output(Out) should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Total_weight"), true,
-                      platform::errors::InvalidArgument(
-                          "Output(Total_weight) should not be null."));
+    OP_INPUT_CHECK(ctx->HasInput("X"), "Input", "X", "NLLLoss");
+    OP_INPUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "NLLLoss");
+    OP_INPUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "NLLLoss");
+    OP_INPUT_CHECK(ctx->HasOutput("Total_weight"), "Output", "NLLLoss");
 
     auto x_dims = ctx->GetInputDim("X");
     auto label_dims = ctx->GetInputDim("Label");
-    auto reduction = ctx->Attrs().Get<std::string>("Reduction");
+    auto reduction = ctx->Attrs().Get<std::string>("reduction");
 
     PADDLE_ENFORCE_EQ(x_dims.size() == 2 || x_dims.size() == 4, true,
                       platform::errors::InvalidArgument(
@@ -124,33 +116,29 @@ class NLLLossOpMaker : public framework::OpProtoAndCheckerMaker {
              "with K >= 1 in the case K-dimensional loss.");
     AddInput("Weight",
              "(Tensor, optional) A tensor should be a 1D tensor assigning "
-             "weight to each of the classes. It's size must be equal to "
-             "the class number.")
+             "weight to each of the classes. It's shape must be [C], where "
+             "C is the class number.")
         .AsDispensable();
     AddOutput("Out",
               "(Tensor, default Tensor<float>) A tensor that represents the "
               "NLL loss.");
     AddOutput("Total_weight",
-              "(Tensor, default Tensor<float>) A tensor that save the total"
+              "(Tensor, default Tensor<float>) A tensor saves the total"
               "weight value in the forward process.");
     AddAttr<int64_t>("ignore_index",
                      "(int64_t, default -100), Specifies a target value that is"
                      "ignored and does not contribute to the input gradient.")
         .SetDefault(-100);
     AddAttr<std::string>(
-        "Reduction",
+        "reduction",
         "(string, default mean), Specifies the reduction to apply"
-        "to the oupput. The options include \"none\", \"mean\","
+        "to the output. The options include \"none\", \"mean\","
         "\"sum\".")
         .SetDefault("mean");
     AddComment(R"DOC(
 NLL(Negative Log Likelihood) Loss Operator.
 
-This operator computes the NLL loss for X and Label.
-The operator takes the first dimension of X and Label as batch size.
-For each instance, it computes the smooth l1 loss element by element first
-and then sums all the losses. So the shape of Out is [batch_size, 1].
-
+This operator computes the NLL loss according to the inputs.
 The loss can be described as:
 
 $Out[i] = -X[Label[i]]*Weight[Label[i]]$
@@ -170,20 +158,14 @@ class NLLLossGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("X"), true,
-        platform::errors::InvalidArgument("Input(X) should be not null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Label"), true,
-        platform::errors::InvalidArgument("Input(Label) should be not null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      platform::errors::InvalidArgument(
-                          "Input(Out@GRAD) shoudl be not null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
-                      platform::errors::InvalidArgument(
-                          "Output(X@GRAD) should be not null."));
+    OP_INPUT_CHECK(ctx->HasInput("X"), "Input", "X", "NLLLoss");
+    OP_INPUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "NLLLoss");
+    OP_INPUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "NLLLoss");
+    OP_INPUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+                   framework::GradVarName("X"), "NLLLoss");
 
-    auto reduction = ctx->Attrs().Get<std::string>("Reduction");
+    auto reduction = ctx->Attrs().Get<std::string>("reduction");
     auto x_dims = ctx->GetInputDim("X");
     auto label_dims = ctx->GetInputDim("Label");
     auto dout_dims = ctx->GetInputDim(framework::GradVarName("Out"));

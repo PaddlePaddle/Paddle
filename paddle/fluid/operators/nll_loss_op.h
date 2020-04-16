@@ -144,7 +144,7 @@ class NLLLossOpKernel : public framework::OpKernel<T> {
     auto* weight = ctx.Input<Tensor>("Weight");
     auto* out = ctx.Output<Tensor>("Out");
     auto* total_weight = ctx.Output<Tensor>("Total_weight");
-    auto reduction = ctx.Attr<std::string>("Reduction");
+    auto reduction = ctx.Attr<std::string>("reduction");
     auto ignore_index = ctx.Attr<int64_t>("ignore_index");
 
     auto x_data = x->data<T>();
@@ -272,7 +272,7 @@ class NLLLossGradOpKernel : public framework::OpKernel<T> {
     auto* total_weight = ctx.Input<Tensor>("Total_weight");
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto ignore_index = ctx.Attr<int64_t>("ignore_index");
-    auto reduction = ctx.Attr<std::string>("Reduction");
+    auto reduction = ctx.Attr<std::string>("reduction");
 
     auto dx_data = dx->mutable_data<T>(ctx.GetPlace());
     auto dout_data = dout->data<T>();
