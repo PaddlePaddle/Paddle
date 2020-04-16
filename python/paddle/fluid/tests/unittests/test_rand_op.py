@@ -47,6 +47,16 @@ class TestRandOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_dtype)
 
+            def test_shape_list():
+                rand(shape=[2.])
+
+            self.assertRaises(TypeError, test_shape_list)
+
+            def test_shape_list2():
+                rand(shape=[2, 3.])
+
+            self.assertRaises(TypeError, test_shape_list2)
+
             def test_device():
                 rand(shape=[3, 4], device='device')
 
