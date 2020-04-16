@@ -81,12 +81,16 @@ class MatMulFactory {
     return dnnl::memory(md, engine_, to_void_cast(data));
   }
 
+  bool IsOutputFused(const ExecutionContext& ctx) const {
+    auto& reshape_Out = ctx.Attr<std::vector<int64_t>>("reshape_Out");
+    auto& axis_Out = ctx.Attr<std::vector<int64_t>>("axis_Out");
+    return !reshape_Out.empty() && !axis_Out.empty();
+  }
+
   void correctStridesWhenOutputFused(const ExecutionContext& ctx,
                                      const memory::dim N, memory::dim b,
                                      memory::dims* out_strides) const {
-    auto& reshape_Out = ctx.Attr<std::vector<int64_t>>("reshape_Out");
-    auto& axis_Out = ctx.Attr<std::vector<int64_t>>("axis_Out");
-    if (!reshape_Out.empty() && !axis_Out.empty()) *out_strides = {N, b * N, 1};
+    if (IsOutputFused(ctx)) *out_strides = {N, b * N, 1};
   }
 
   MatMulDims GetMatmulDims(const ExecutionContext& ctx) {
@@ -110,8 +114,12 @@ class MatMulFactory {
     const memory::dim N = mat_dim_y.width_;
     const memory::dim K = mat_dim_x.width_;
 
-    batch_size_ = static_cast<unsigned int>(ctx.Input<Tensor>("X")->dims()[0]);
-    auto b = BS / batch_size_;
+    batch_size_ = 1;
+    auto b = BS;
+    if (BS > 1 && IsOutputFused(ctx)) {
+      batch_size_ = ctx.Input<Tensor>("X")->dims()[0];
+      b = BS / batch_size_;
+    }
     memory::dims x_dims = {b, M, K};
     memory::dims y_dims = {b, K, N};
     memory::dims out_dims = {b, M, N};
