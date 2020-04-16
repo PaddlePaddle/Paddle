@@ -40,14 +40,6 @@ class TestGetTensorFromSelectedRowsError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_Variable)
 
-            # The input dtype must be int32, int64, float16, float32, float64
-            x_fp16 = b.create_var(
-                name="X",
-                dtype="float16",
-                persistable=True,
-                type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
-            fluid.layers.get_tensor_from_selected_rows(input=x)
-
 
 class TestGetTensorFromSelectedRows(unittest.TestCase):
     def get_places(self):
