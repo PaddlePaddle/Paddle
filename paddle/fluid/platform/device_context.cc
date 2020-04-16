@@ -278,12 +278,9 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
             << "Please recompile or reinstall Paddle with compatible CUDNN "
                "version.";
       }
+      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreate(&cudnn_handle_));
       PADDLE_ENFORCE_CUDA_SUCCESS(
-          dynload::cudnnCreate(&cudnn_handle_),
-          "Failed to create Cudnn handle in DeviceContext");
-      PADDLE_ENFORCE_CUDA_SUCCESS(
-          dynload::cudnnSetStream(cudnn_handle_, stream_),
-          "Failed to set stream for Cudnn handle in DeviceContext");
+          dynload::cudnnSetStream(cudnn_handle_, stream_));
     } else {
       cudnn_handle_ = nullptr;
     }
@@ -302,8 +299,7 @@ CUDADeviceContext::~CUDADeviceContext() {
   eigen_device_.reset();
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamDestroy(stream_));
   if (cudnn_handle_) {
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_),
-                                "Failed to destory Cudnn handle");
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroy(cudnn_handle_));
   }
 #if defined(PADDLE_WITH_NCCL)
   if (nccl_comm_) {
@@ -325,10 +321,7 @@ void CUDADeviceContext::Wait() const {
   }
 #endif
 
-  PADDLE_ENFORCE_CUDA_SUCCESS(
-      e_sync, platform::errors::Fatal(
-                  "cudaStreamSynchronize raises error: %s, errono: %d",
-                  cudaGetErrorString(e_sync), static_cast<int>(e_sync)));
+  PADDLE_ENFORCE_CUDA_SUCCESS(e_sync);
 }
 
 int CUDADeviceContext::GetComputeCapability() const {

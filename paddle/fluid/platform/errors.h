@@ -34,8 +34,8 @@ class ErrorSummary {
   //   This constructor is only used to be compatible with
   //   current existing no error message PADDLE_ENFORCE_*
   // Note(zhouwei): PADDLE_ENFORCE_CUDA_SUCCESS error message
-  //   can be get from API or Nvidia official website, error
-  //   message from developer is not necessary
+  //   can be get automatically, error message from developer
+  //   is not necessary
   ErrorSummary() {
     code_ = paddle::platform::error::LEGACY;
     msg_ =
