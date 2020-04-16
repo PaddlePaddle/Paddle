@@ -120,11 +120,9 @@ template <typename T, int D, int MajorType = Eigen::RowMajor>
 using Tensor32BitIndex =
     Eigen::TensorMap<Eigen::Tensor<T, D, MajorType, int>, Eigen::Aligned>;
 
-typedef Tensor32BitIndex<float, 1>::Index Index32;
-
 template <typename DSizes>
-Eigen::DSizes<Index32, DSizes::count> To32BitDims(const DSizes& in) {
-  Eigen::DSizes<Index32, DSizes::count> out;
+Eigen::DSizes<int, DSizes::count> To32BitDims(const DSizes& in) {
+  Eigen::DSizes<int, DSizes::count> out;
   for (int i = 0; i < DSizes::count; ++i) {
     out[i] = in[i];
   }
