@@ -17,10 +17,12 @@ limitations under the License. */
 #include <gflags/gflags.h>
 #include <cmath>
 #include <fstream>
+#include <memory>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/framework/fleet/kv_maps.h"
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -32,87 +34,131 @@ using LoDTensor = framework::LoDTensor;
 using DDim = framework::DDim;
 using LoD = framework::LoD;
 
+template <typename T, typename OutT = int>
+void TDMChildInner(const framework::ExecutionContext &context,
+                   const LoDTensor &input,
+                   std::shared_ptr<framework::UUMAP> tree_info,
+                   LoDTensor *child, LoDTensor *mask) {
+  auto child_nums = context.Attr<int>("child_nums");
+  //   auto info_dims = tree_info.dims();
+  //   int node_nums = info_dims[0];
+  //   int length = info_dims[1];
+
+  int input_ids_num = input.numel();
+  VLOG(4) << "TDM child op: input numel ->  " << input_ids_num;
+
+  std::vector<OutT> child_vec{};
+  std::vector<OutT> item_mask_vec{};
+
+  auto *input_data = input.data<T>();
+  // auto *tree_info_data = tree_info.data<InfoT>();
+
+  // TreeInfo: node_id : item_id; layer_id; ancestor_id; child_id
+  for (int input_ids = 0; input_ids < input_ids_num; ++input_ids) {
+    std::vector<int64_t> tree_info_data = tree_info->at(input_data[input_ids]);
+    VLOG(1) << "TDM_Child node: " << input_data[input_ids]
+            << " info feasign: " << tree_info_data[0]
+            << " info child: " << tree_info_data[3] << " " << tree_info_data[4];
+    bool has_child =
+        (input_data[input_ids] == 0 || tree_info_data[3] == 0) ? false : true;
+
+    if (has_child) {
+      for (int child_ids = 0; child_ids < child_nums; ++child_ids) {
+        OutT child_id = static_cast<OutT>(tree_info_data[3 + child_ids]);
+        child_vec.push_back(child_id);
+        OutT child_is_item =
+            static_cast<OutT>((tree_info->at(child_id))[0] == 0 ? 0 : 1);
+        item_mask_vec.push_back(child_is_item);
+      }
+    } else {
+      for (int child_ids = 0; child_ids < child_nums; ++child_ids) {
+        child_vec.push_back(0);
+        item_mask_vec.push_back(0);
+      }
+    }
+  }
+
+  int output_nums = child_vec.size();
+  auto *child_data = child->mutable_data<OutT>(context.GetPlace());
+  auto *leaf_mask_data = mask->mutable_data<OutT>(context.GetPlace());
+
+  memcpy(child_data, &child_vec[0], sizeof(OutT) * output_nums);
+  memcpy(leaf_mask_data, &item_mask_vec[0], sizeof(OutT) * output_nums);
+}
+
 template <typename DeviceContext, typename T>
 class TDMChildKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *input_var = ctx.InputVar("Input");
-    auto *tree_emb_var = ctx.InputVar("Tree_embedding");
-    auto ancestor_nums = ctx.Attr<int>("Ancestor_nums");
-    auto child_nums = ctx.Attr<int>("Child_nums");
+    auto *input_var = ctx.InputVar("X");
+    // auto *tree_info_var = ctx.InputVar("TreeInfo");
 
     auto &input_tensor = input_var->Get<LoDTensor>();
-    auto &tree_emb_tensor = tree_emb_var->Get<LoDTensor>();
-    auto dims = tree_emb_tensor.dims();
-    int node_nums = dims[0];
-    int length = dims[1];
+    const auto &input_type = input_tensor.type();
+    bool input_type_match = input_type == framework::proto::VarType::INT32 ||
+                            input_type == framework::proto::VarType::INT64;
+    PADDLE_ENFORCE_EQ(input_type_match, true,
+                      platform::errors::InvalidArgument(
+                          "Input(X) holds the wrong type, it holds %s, but "
+                          "desires to be %s or %s",
+                          paddle::framework::DataTypeToString(input_type),
+                          paddle::framework::DataTypeToString(
+                              framework::proto::VarType::INT32),
+                          paddle::framework::DataTypeToString(
+                              framework::proto::VarType::INT64)));
 
-    int input_ids_num = input_tensor.numel();
-    int batch_size = input_tensor.dims()[0];
-    VLOG(1) << "TDM child : input numel -> " << input_ids_num;
-
-    std::vector<T> child_vec{};
-    std::vector<T> item_mask_vec{};
-    auto *input_data = input_tensor.data<T>();
-    auto *tree_emb_data = tree_emb_tensor.data<int>();
-
-    // Tree_emb: node_id : item_id; layer_id; ancestor_id; child_id
-    for (int input_ids = 0; input_ids < input_ids_num; ++input_ids) {
-      // if input_data[input_ids]>node_nums return false
-      PADDLE_ENFORCE_LT(
-          input_data[input_ids], node_nums,
-          "input id of OP(fluid.layers.tdm_child) "
-          "expected >= 0 and < %ld, but got %ld. Please check input "
-          "value.",
-          node_nums, input_data[input_ids]);
-      PADDLE_ENFORCE_LE(
-          0, input_data[input_ids],
-          "input id of OP(fluid.layers.tdm_child) "
-          "expected >= 0 and < %ld, but got %ld. Please check input "
-          "value.",
-          node_nums, input_data[input_ids]);
-
-      bool has_child =
-          (input_data[input_ids] == 0 ||
-           tree_emb_data[static_cast<int>(input_data[input_ids]) * length +
-                         3] == 0)
-              ? false
-              : true;
-
-      if (has_child) {
-        for (int child_ids = 0; child_ids < child_nums; ++child_ids) {
-          T child_id =
-              tree_emb_data[static_cast<int>(input_data[input_ids]) * length +
-                            3 + child_ids];
-          child_vec.push_back(child_id);
-          T child_is_item =
-              tree_emb_data[static_cast<int>(child_id) * length] == 0 ? 0 : 1;
-          item_mask_vec.push_back(child_is_item);
-        }
-      } else {
-        for (int child_ids = 0; child_ids < child_nums; ++child_ids) {
-          child_vec.push_back(0);
-          item_mask_vec.push_back(0);
-        }
-      }
-    }
+    // auto &tree_info_tensor = tree_info_var->Get<LoDTensor>();
+    std::shared_ptr<framework::UUMAP> tree_info =
+        framework::KV_MAPS::GetInstance()->get_data();
+    // const auto &info_type = tree_info_tensor.type();
+    // bool info_type_match = info_type == framework::proto::VarType::INT32 ||
+    //                        info_type == framework::proto::VarType::INT64;
+    // PADDLE_ENFORCE_EQ(
+    //     info_type_match, true,
+    //     platform::errors::InvalidArgument(
+    //         "Input(TreeInfo) holds the wrong type, it holds %s, but "
+    //         "desires to be %s or %s",
+    //         paddle::framework::DataTypeToString(info_type),
+    //         paddle::framework::DataTypeToString(
+    //             framework::proto::VarType::INT32),
+    //         paddle::framework::DataTypeToString(
+    //             framework::proto::VarType::INT64)));
 
     auto *child_var = ctx.OutputVar("Child");
-    auto *item_mask_var = ctx.OutputVar("Item_mask");
-
-    int output_nums = child_vec.size();
-    auto ddim = framework::make_ddim({batch_size, ancestor_nums, child_nums});
-
+    auto *leaf_mask_var = ctx.OutputVar("LeafMask");
     auto *child_tensor = child_var->GetMutable<framework::LoDTensor>();
-    child_tensor->Resize(ddim);
-    auto *item_mask_tensor = item_mask_var->GetMutable<framework::LoDTensor>();
-    item_mask_tensor->Resize(ddim);
+    auto *leaf_mask_tensor = leaf_mask_var->GetMutable<framework::LoDTensor>();
 
-    auto *child_data = child_tensor->mutable_data<T>(ctx.GetPlace());
-    auto *item_mask_data = item_mask_tensor->mutable_data<T>(ctx.GetPlace());
+    auto output_type =
+        static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
+    bool out_type_match = output_type == framework::proto::VarType::INT32 ||
+                          output_type == framework::proto::VarType::INT64;
+    PADDLE_ENFORCE_EQ(out_type_match, true,
+                      platform::errors::InvalidArgument(
+                          "Ouput(Child) & Output(LeafMask) holds the wrong "
+                          "type, it holds %s, but "
+                          "desires to be %s or %s",
+                          paddle::framework::DataTypeToString(output_type),
+                          paddle::framework::DataTypeToString(
+                              framework::proto::VarType::INT32),
+                          paddle::framework::DataTypeToString(
+                              framework::proto::VarType::INT64)));
 
-    memcpy(child_data, &child_vec[0], sizeof(T) * output_nums);
-    memcpy(item_mask_data, &item_mask_vec[0], sizeof(T) * output_nums);
+    if (output_type == framework::proto::VarType::INT32) {
+      TDMChildInner<T, int>(ctx, input_tensor, tree_info, child_tensor,
+                            leaf_mask_tensor);
+    } else if (output_type == framework::proto::VarType::INT64) {
+      TDMChildInner<T, int64_t>(ctx, input_tensor, tree_info, child_tensor,
+                                leaf_mask_tensor);
+    }
+  }
+};
+
+template <typename DeviceContext, typename T>
+class TDMChildGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &context) const override {
+    // empty, do nothing
   }
 };
 
