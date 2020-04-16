@@ -98,6 +98,7 @@ def one_hot(input, depth, allow_out_of_range=False):
             label = fluid.data(name="label", shape=[4], dtype="int64")
             one_hot_label = fluid.one_hot(input=label, depth=4)
     """
+    check_variable_and_dtype(input, 'input', ['int32', 'int64'], 'one_hot_v2')
     helper = LayerHelper("one_hot_v2", **locals())
 
     one_hot_out = helper.create_variable_for_type_inference(dtype='float32')
