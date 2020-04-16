@@ -57,14 +57,15 @@ class TestSimpleNet(unittest.TestCase):
                         simplenet = SimpleNet(20, 32, dtype)
                         adam = SGDOptimizer(
                             learning_rate=0.001,
-                            parameter_list=simplenet.parameters())
+                            parameter_list=simplenet.parameters(
+                            ))  # grad_clip=grad_clip
                         input_emb, emb = simplenet(input)
 
                         self.assertTrue(emb.weight.gradient() is None)
                         self.assertTrue(input_emb.gradient() is None)
 
                         input_emb.backward(backward_strategy)
-                        adam.minimize(input_emb)  # grad_clip=grad_clip
+                        adam.minimize(input_emb)
                         self.assertTrue(emb.weight.gradient() is not None)
 
                         emb.clear_gradients()
@@ -91,14 +92,15 @@ class TestSimpleNet(unittest.TestCase):
                     simplenet = SimpleNet(20, 32, "float32")
                     adam = SGDOptimizer(
                         learning_rate=0.001,
-                        parameter_list=simplenet.parameters())
+                        parameter_list=simplenet.parameters(),
+                        grad_clip=grad_clip)
                     input_emb, emb = simplenet(input)
 
                     self.assertTrue(emb.weight.gradient() is None)
                     self.assertTrue(input_emb.gradient() is None)
 
                     input_emb.backward(backward_strategy)
-                    adam.minimize(input_emb, grad_clip=grad_clip)
+                    adam.minimize(input_emb)
                     self.assertTrue(emb.weight.gradient() is not None)
 
                     emb.clear_gradients()
