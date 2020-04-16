@@ -847,12 +847,18 @@ class While(object):
         A new OP :ref:`api_fluid_layers_while_loop` is highly recommended instead of ``While`` if the shape of parameter ``cond`` is [1].
         OP :ref:`api_fluid_layers_while_loop` is easier to use and is called with less code but does the same thing as ``While`` .
 
+    Notice:
+        Local variables created in ``While`` are similar to that created in while of C++, and cannot be referenced externally.
+        As a result, they cannot be obtained through ``fetch_list`` of ``Executor``. If you would like to access the variable
+        out of ``while`` , PaddlePaddle provides ``assign`` API to assign local variables to external. Please refer to example
+        code 2 or refer to `issue#22724 <https://github.com/PaddlePaddle/Paddle/issues/22724>`_.
+
     Args:
         cond(Variable): A Tensor whose data type is bool controlling whether to continue looping.
         is_test(bool, optional): A flag indicating whether execution is in test phase. Default value is False.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
-    Examples:
+    Examples 1:
           .. code-block:: python
             
             import paddle.fluid as fluid
@@ -862,17 +868,45 @@ class While(object):
 
             loop_len = fluid.layers.fill_constant(shape=[1],dtype='int64', value=10)    # loop length
 
-            cond = fluid.layers.less_than(x=i, y=loop_len)              
+            cond = fluid.layers.less_than(x=i, y=loop_len)
             while_op = fluid.layers.While(cond=cond)
-            with while_op.block():  
+            with while_op.block():
                 i = fluid.layers.increment(x=i, value=1, in_place=True)
-                fluid.layers.less_than(x=i, y=loop_len, cond=cond)      
+                fluid.layers.less_than(x=i, y=loop_len, cond=cond)
 
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
 
             res = exe.run(fluid.default_main_program(), feed={}, fetch_list=[i])
-            print(res) # [array([10])]           
+            print(res) # [array([10])]
+
+
+    Examples 2:
+          .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+
+            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+            loop_len = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
+            one = fluid.layers.fill_constant(shape=[1], dtype='float32', value=1)
+            data = fluid.data(name='data', shape=[1], dtype='float32')
+            sums = fluid.layers.fill_constant(shape=[1], dtype='float32', value=0)  # Define the variable to be obtained ouside of While, which name should be different from the variable inside the While to be obtained
+
+            cond = fluid.layers.less_than(x=i, y=loop_len)
+            while_op = fluid.layers.While(cond=cond)
+            with while_op.block():
+                sums_tensor = fluid.layers.elementwise_add(x=data, y=data)
+                fluid.layers.assign(sums_tensor, sums)  # Update the value of sums_tensor defined in While to the sums which defined outside of While through layers.assign
+                i = fluid.layers.increment(x=i, value=1, in_place=True)
+                data = fluid.layers.elementwise_add(x=data, y=one)
+                fluid.layers.less_than(x=i, y=loop_len, cond=cond)
+
+            feed_data = np.ones(1).astype('float32')
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+            res = exe.run(fluid.default_main_program(), feed={'data': feed_data}, fetch_list=sums)
+            print(res[0])  # [2.]    # Because the data in While does not update the value outside the While, the value of sums is [2.] after the loop
     """
 
     BEFORE_WHILE_BLOCK = 0
@@ -943,6 +977,10 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
     """
     while_loop is one of the control flows. Repeats while_loop `body` until `cond` returns False.
 
+    Notice:
+        Local variables defined in ``body`` cannot be obtained through ``fetch_list`` of ``Executor`` , variables should
+        be defined outside ``body`` and placed in ``loop_vars`` for looping, then these variables can be fetched by ``fetch_list`` .
+
     Args:
         cond(Callable): A callable returning a boolean tensor controlling whether to continue looping. And ``cond`` takes
 	    as many arguments as ``loop_vars`` .
@@ -952,7 +990,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         is_test(bool, optional): A flag indicating whether execution is in test phase. Default value is False.
         name(str, optional): Normally there is no need for users to set this property. For more information, please
             refer to :ref:`api_guide_Name`. Default is None.
-    
+
     Returns:
         A list or tuple of tensors or LoDTensorArrays which returned by ``body`` .
     
