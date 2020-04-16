@@ -204,8 +204,8 @@ class Fleet(object):
 
         self._is_initialized = True
 
-    def init_kv(self, kv_maps_filename):
-        self._kv_maps = fluid.core.KV_MAPS(kv_maps_filename)
+    def init_kv(self, kv_maps):
+        self._kv_maps = fluid.core.KV_MAPS(kv_maps)
 
 
     def all_reduce_worker(self, input, output):

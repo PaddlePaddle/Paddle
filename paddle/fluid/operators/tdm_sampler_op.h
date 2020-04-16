@@ -202,7 +202,7 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     auto &input_tensor = input_var->Get<framework::LoDTensor>();
    // auto &travel_lod_tensor = travel_var->Get<framework::LoDTensor>();
     std::shared_ptr<framework::UUMAP> travel_info =
-        framework::KV_MAPS::GetInstance()->get_data();
+        framework::KV_MAPS::GetInstance()->get_data("travel_info");
     for (auto ite = travel_info->begin(); ite != travel_info->end(); ite++) {
         VLOG(1) << ite->first << " " << ite->second[0];
     }

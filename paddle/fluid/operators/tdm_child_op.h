@@ -109,7 +109,7 @@ class TDMChildKernel : public framework::OpKernel<T> {
 
     // auto &tree_info_tensor = tree_info_var->Get<LoDTensor>();
     std::shared_ptr<framework::UUMAP> tree_info =
-        framework::KV_MAPS::GetInstance()->get_data();
+        framework::KV_MAPS::GetInstance()->get_data("tree_info");
     // const auto &info_type = tree_info_tensor.type();
     // bool info_type_match = info_type == framework::proto::VarType::INT32 ||
     //                        info_type == framework::proto::VarType::INT64;

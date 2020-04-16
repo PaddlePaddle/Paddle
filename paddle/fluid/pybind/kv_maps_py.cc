@@ -34,12 +34,11 @@ namespace pybind {
 void BindKvMaps(py::module* m) {
   py::class_<framework::KV_MAPS, std::shared_ptr<framework::KV_MAPS>>(*m,
                                                                       "KV_MAPS")
-      .def(py::init([](const std::string& filename) {
-        VLOG(0) << "using KvMaps, init from " << filename;
-        framework::KV_MAPS::InitInstance(filename);
+      .def(py::init([](std::map<std::string, std::string>& configs) {
+        framework::KV_MAPS::InitInstance(configs);
         return framework::KV_MAPS::GetInstance();
       }))
-      .def("insert", &framework::KV_MAPS::InsertImpl);
+      .def("insert", &framework::KV_MAPS::InsertInstance);
 }
 }  // namespace pybind
 }  // namespace paddle
