@@ -340,7 +340,7 @@ class TensorRTEngine {
   infer_ptr<nvinfer1::INetworkDefinition> infer_networkv2_;
 #if IS_TRT_VERSION_GE(6000)
   infer_ptr<nvinfer1::IBuilderConfig> infer_builder_config_;
-  std::unique_ptr<nvinfer1::IOptimizationProfile> optim_profile_;
+  nvinfer1::IOptimizationProfile* optim_profile_;
   std::vector<std::unique_ptr<plugin::DynamicPluginTensorRT>> owned_pluginv2_;
 #endif
   std::mutex mutex_;
