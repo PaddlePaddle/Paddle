@@ -39,8 +39,8 @@ void FetchOpHandle::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
   PADDLE_THROW("Nobody should wait FetchOp. Unexpceted Error");
 }
 
-void CheckDims(const framework::DDim &tensor_dims,
-               const framework::DDim &ele_dims, const size_t offset) {
+static void CheckDims(const framework::DDim &tensor_dims,
+                      const framework::DDim &ele_dims, const size_t offset) {
   PADDLE_ENFORCE_EQ(
       tensor_dims.size(), ele_dims.size(),
       platform::errors::Fatal("The dimension sizes of fetched Tensors or "
@@ -109,8 +109,8 @@ void FetchOpHandle::WaitAndMergeCPUFetchVars() const {
   }
 }
 
-void TransData(const framework::LoDTensor &src_item,
-               framework::LoDTensor *dst_item) {
+static void TransData(const framework::LoDTensor &src_item,
+                      framework::LoDTensor *dst_item) {
   if (src_item.IsInitialized() && src_item.numel() > 0) {
     if (platform::is_gpu_place(src_item.place())) {
 #ifdef PADDLE_WITH_CUDA

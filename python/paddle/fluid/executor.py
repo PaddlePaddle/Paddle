@@ -931,14 +931,14 @@ class Executor(object):
             return_merged(bool): This parameter indicates whether fetched variables (the variables
                 specified in the fetch list) should be merged according to the execution device dimension.
                 If :code:`return_merged` is False, the type of the return value is a two-dimensional list
-                of :code:`Tensor` ( :code:`return_numpy` is False) or a two-dimensional list of
-                :code:`numpy.ndarray` ( :code:`return_numpy` is True). If :code:`return_merged` is True,
-                the type of the return value is an one-dimensional list of :code:`Tensor` ( :code:`return_numpy`
-                is False) or an one-dimensional list of :code:`numpy.ndarray` ( :code:`return_numpy` is True).
-                Please see Examples 2 for more details. If the lengths of fetched results are variant, please
-                set :code:`return_merged` as False, which denotes that the fetched results will not be merged.
-                The default is True, but it is just for the compatibility, and may use False as default value
-                in the future version.
+                of :code:`Tensor` / :code:`LoDTensorArray` ( :code:`return_numpy` is False) or a two-dimensional
+                list of :code:`numpy.ndarray` ( :code:`return_numpy` is True). If :code:`return_merged` is True,
+                the type of the return value is an one-dimensional list of :code:`Tensor` / :code:`LoDTensorArray`
+                ( :code:`return_numpy` is False) or an one-dimensional list of :code:`numpy.ndarray`
+                ( :code:`return_numpy` is True). Please see Examples 2 for more details. If the lengths of fetched
+                results are variant, please set :code:`return_merged` as False, which denotes that the fetched
+                results will not be merged. The default is True, but it is just for the compatibility, and may
+                use False as default value in the future version.
             use_prune(bool): This parameter indicates whether the input :code:`Program` will be pruned. 
                 If the parameter is True, the program will be pruned accroding to the given feed and fetch_list,
                 which means the operators and variables in program that generate :code:`feed` and are not 

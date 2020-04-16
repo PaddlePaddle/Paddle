@@ -23,9 +23,9 @@ namespace operators {
 
 // FIXME(yuyang18): Should we assume the fetch operator always generate
 // CPU outputs?
-void DataCopy(const framework::LoDTensor &src_item,
-              const std::string &fetch_var_name,
-              framework::LoDTensor *dst_item) {
+static void DataCopy(const framework::LoDTensor &src_item,
+                     const std::string &fetch_var_name,
+                     framework::LoDTensor *dst_item) {
   if (src_item.IsInitialized() && src_item.numel() > 0) {
 #ifdef PADDLE_WITH_MKLDNN
     // Conversion from MKL-DNN to Paddle
