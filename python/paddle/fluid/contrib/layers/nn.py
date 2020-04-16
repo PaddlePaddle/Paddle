@@ -1237,7 +1237,7 @@ def rank_attention(input,
                    rank_param_shape,
                    rank_param_attr,
                    max_rank=3,
-                   max_size=1024):
+                   max_size=0):
     """
     **Rank Attention layer**
     This Op can calculate rank attention between input and rank_param, and 
@@ -1267,7 +1267,8 @@ def rank_attention(input,
                                                                      name="ubm_rank_param.w_0",
                                                                      initializer=
                                                                      fluid.initializer.Xavier(uniform=False)),
-                                                      max_rank=3)
+                                                      max_rank=3,
+                                                      max_size=0)
     """
     helper = LayerHelper('rank_attention', **locals())
     dtype = helper.input_dtype(input_param_name='input')

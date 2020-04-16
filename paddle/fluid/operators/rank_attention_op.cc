@@ -122,8 +122,8 @@ class RankAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("InsRank", "Output tensor of rank_attention_Op operator.");
     AddAttr<int>("MaxRank", "(int, default 3) max rank of rank_attention_Op")
         .SetDefault(3);
-    AddAttr<int>("MaxSize", "(int, default 1024) max rank of rank_attention_Op")
-        .SetDefault(1024);
+    AddAttr<int>("MaxSize", "(int, default 0) max rank of rank_attention_Op")
+        .SetDefault(0);
     AddComment(R"DOC(
 RankAttention Operator.
 This Op can calculate rank attention between input and rank_param, 

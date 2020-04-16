@@ -67,7 +67,6 @@ class RankAttentionCUDAKernel : public framework::OpKernel<T> {
 
     input_help->Resize({max_ins, block_matrix_row});
     ins_rank->Resize({max_ins, 1});
-    // Out->Resize({max_ins,para_col});
     input_help->mutable_data<T>(ctx.GetPlace());
     ins_rank->mutable_data<T>(ctx.GetPlace());
     Out->mutable_data<T>(ctx.GetPlace());
@@ -157,7 +156,6 @@ class RankAttentionGradOpCUDAKernel : public framework::OpKernel<T> {
 
     // copy data
     Tensor param_grad;
-    // Tensor input_grad;
     param_grad = ctx.AllocateTmpTensor<T, DeviceContext>(
         {max_ins * block_matrix_row, para_col}, dev_ctx);
     param_grad.mutable_data<T>(ctx.GetPlace());
