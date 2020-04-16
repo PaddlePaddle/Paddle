@@ -181,12 +181,6 @@ cc_library(variable_helper SRCS variable_helper.cc DEPS lod_tensor)
 
 cc_library(naive_executor SRCS naive_executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass variable_helper)
 
-if(WITH_NGRAPH)
-  set(NGRAPH_EXE_DEPS ngraph_engine)
-else()
-  set(NGRAPH_EXE_DEPS)
-endif()
-
 cc_library(executor_gc_helper SRCS executor_gc_helper.cc DEPS scope proto_desc operator garbage_collector)
 if(WITH_DISTRIBUTE)
   cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc
@@ -196,7 +190,7 @@ if(WITH_DISTRIBUTE)
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto trainer_desc_proto glog fs shell fleet_wrapper box_wrapper lodtensor_printer
   lod_rank_table feed_fetch_method sendrecvop_rpc communicator collective_helper ${GLOB_DISTRIBUTE_DEPS}
-  graph_to_program_pass variable_helper data_feed_proto ${NGRAPH_EXE_DEPS} timer)
+  graph_to_program_pass variable_helper data_feed_proto timer)
 set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
 set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 else()
@@ -206,7 +200,7 @@ else()
   pull_dense_worker.cc section_worker.cc device_worker_factory.cc data_set.cc DEPS op_registry
   device_context scope framework_proto data_feed_proto trainer_desc_proto glog
   lod_rank_table fs shell fleet_wrapper box_wrapper lodtensor_printer feed_fetch_method
-  graph_to_program_pass variable_helper ${NGRAPH_EXE_DEPS} timer)
+  graph_to_program_pass variable_helper timer)
   cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
 endif()
 

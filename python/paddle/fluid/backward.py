@@ -24,6 +24,7 @@ from .. import compat as cpt
 from . import unique_name
 from . import log_helper
 import paddle.fluid
+from .data_feeder import check_type
 __all__ = [
     'append_backward',
     'gradients',
@@ -67,6 +68,11 @@ class ProgramStats(object):
                 if name in self.var_op_deps:
                     for idx in self.var_op_deps[name]["var_as_input_ops"]:
                         if idx >= end_op_idx:
+                            var_name.append(name)
+            for name in self.ops[i].desc.input_arg_names():
+                if name in self.var_op_deps:
+                    for idx in self.var_op_deps[name]["var_as_output_ops"]:
+                        if idx < begin_op_idx:
                             var_name.append(name)
         return var_name
 
@@ -706,7 +712,7 @@ def _append_backward_ops_with_checkpoints_(
     for segment in recompute_segments:
         vars_should_be_hold.extend(
             program_stat.get_out_of_subgraph_vars(segment[0], segment[1]))
-    # b. output of dropout op will be held in memory
+    # b. output of seed op should be kept in memory
     vars_should_be_hold.extend(program_stat.get_reserved_vars())
     # c. input variables are checkpoints
     vars_should_be_hold.extend(program_stat.get_input_nodes())
@@ -1252,7 +1258,8 @@ def append_backward(loss,
             p_g_list6 = fluid.backward.append_backward(loss=avg_loss, parameter_list=all_weights, no_grad_set=set(all_weights))
 
     """
-    assert isinstance(loss, framework.Variable)
+    check_type(loss, 'loss', framework.Variable,
+               'fluid.backward.append_backward')
 
     if loss.op is None:
         # the loss is from a cloned program. Find loss op manually.
@@ -1263,7 +1270,8 @@ def append_backward(loss,
                       int(core.op_proto_and_checker_maker.OpRole.Loss))
 
     if callbacks is not None:
-        isinstance(callbacks, list)
+        check_type(callbacks, 'callbacks', list,
+                   'fluid.backward.append_backward')
 
     program = loss.block.program
     root_block = program.block(0)
@@ -1379,20 +1387,17 @@ def append_backward(loss,
     program._sync_with_cpp()
 
     if parameter_list is not None:
-        if not isinstance(parameter_list, (list, tuple, set)):
-            raise TypeError(
-                "The type of parameter_list argument must be list or tuple or set, but received %s."
-                % (type(parameter_list)))
+        check_type(parameter_list, 'parameter_list', (list, tuple, set),
+                   'fluid.backward.append_backward')
         parameters = []
         for i, param in enumerate(parameter_list):
+            check_type(param, 'parameter_list[%s]' % i, (framework.Variable,
+                                                         six.string_types),
+                       'fluid.backward.append_backward')
             if isinstance(param, framework.Variable):
                 parameters.append(param.name)
             elif isinstance(param, six.string_types):
                 parameters.append(param)
-            else:
-                raise TypeError(
-                    "The type of parameter_list's member must be paddle.fluid.Variable or str, but received %s."
-                    % (type(param)))
     else:
         params = program.global_block().all_parameters()
         parameters = [param.name for param in params if param.trainable]
@@ -1719,5 +1724,12 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
             z = fluid.gradients([y], x)
             print(z)
     """
+    check_type(targets, 'targets', (framework.Variable, list),
+               'fluid.backward.gradients')
+    check_type(inputs, 'inputs', (framework.Variable, list),
+               'fluid.backward.gradients')
+    check_type(target_gradients, 'target_gradients', (
+        framework.Variable, list, type(None)), 'fluid.backward.gradients')
+
     outs = calc_gradient(targets, inputs, target_gradients, no_grad_set)
     return _as_list(outs)

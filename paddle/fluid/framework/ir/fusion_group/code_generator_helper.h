@@ -68,7 +68,6 @@ class OperationExpression {
  private:
   // TODO(wangchao): make offset more flexible we add stride and basic offset
   std::string GetRHS(std::unordered_set<int>* used,
-                     std::string* half2fp32_statement,
                      size_t exprs_index = 0) const;
   std::string GetLHS(size_t i = 0) const;
 
